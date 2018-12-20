@@ -299,7 +299,7 @@ void CMission::Export(XmlNodeRef& root, XmlNodeRef& objectsNode)
     //////////////////////////////////////////////////////////////////////////
     // Serialize objects.
     //////////////////////////////////////////////////////////////////////////
-    QString path = QDir::toNativeSeparators(QFileInfo(m_doc->GetPathName()).absolutePath());
+    QString path = QDir::toNativeSeparators(QFileInfo(m_doc->GetLevelPathName()).absolutePath());
     if (!path.endsWith(QDir::separator()))
         path += QDir::separator();
 

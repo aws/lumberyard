@@ -1,6 +1,6 @@
 <download name="GSG_10_Lighting" type="Map">
  <index src="filelist.xml" dest="filelist.xml"/>
  <files>
-  <file src="level.pak" dest="level.pak" size="1110098" md5="14fd6b16791bbac5748a2761ff98b5ff"/>
+  <file src="level.pak" dest="level.pak" size="1111062" md5="95a4bdc798cbce981d83f8b5c883d081"/>
  </files>
 </download>

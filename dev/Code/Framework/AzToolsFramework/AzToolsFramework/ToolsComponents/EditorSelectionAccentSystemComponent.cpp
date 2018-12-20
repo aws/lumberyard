@@ -95,6 +95,7 @@ namespace AzToolsFramework
             {
                 AzToolsFramework::ComponentEntityEditorRequestBus::Event(accentedEntity, &AzToolsFramework::ComponentEntityEditorRequests::SetSandboxObjectAccent, ComponentEntityAccentType::None);
             }
+            m_currentlyAccentedEntities.clear();
         }
 
         void EditorSelectionAccentSystemComponent::RecalculateAndApplyAccents()

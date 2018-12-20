@@ -75,12 +75,18 @@ def gui_list(context, args, pak_status = None):
     sections['PakStatus'] = pak_status
     context.view.show_manifest_file(sections)
 
+def validate_manifest_name(manifest_name):
+    regex_str = '^[-0-9a-zA-Z!_][-0-9a-zA-Z!_.]*$'
+    return re.match(regex_str, manifest_name) != None
+
 @stack_required
 def gui_list_manifests(context, args):
     list_manifests(context, args)
 
 @stack_required
 def gui_new_manifest(context, args):
+    if not validate_manifest_name(args.new_file_name):
+        raise HandledError('Invalid manifest name')
     manifest_path = os.path.normpath(os.path.dirname(_get_default_manifest_path(context)))
     new_file_name = os.path.join(manifest_path, args.new_file_name + os.path.extsep + 'json')
     new_file_platforms = args.platform_list
@@ -270,6 +276,8 @@ def validate_add_key_name(file_name):
         raise HandledError('File does not match naming rules')
 
 def command_new_manifest(context, args):
+    if not validate_manifest_name(args.manifest_name):
+        raise HandledError('Invalid manifest name')
     manifest_path = determine_manifest_path(context, args.manifest_path)
     manifest_dir_path = os.path.normpath(os.path.dirname(manifest_path))
     new_manifest_name = os.path.join(manifest_dir_path, args.manifest_name + os.path.extsep + 'json')

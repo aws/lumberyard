@@ -648,6 +648,7 @@ namespace ExporterLib
 
             // create the keyframe chunk
             EMotionFX::FileFormat::Motion_UnsignedShortKey keyChunk;
+            memset(&keyChunk, 0, sizeof(EMotionFX::FileFormat::Motion_UnsignedShortKey));
             keyChunk.mTime  = keyframe->GetTime();
             keyChunk.mValue = keyframe->GetStorageTypeValue().mValue;
 

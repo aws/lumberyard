@@ -479,7 +479,8 @@ def create_automoc_task(self):
         task = self.create_task('automoc', header_nodes)
 
         # this may mutate the link task, must run the link task after this task
-        self.link_task.set_run_after(task)
+        if hasattr(self, "link_task"):
+            self.link_task.set_run_after(task)
 
 @extension(*EXT_UI)
 def create_uic_task(self, node):

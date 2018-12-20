@@ -528,8 +528,10 @@ void CViewportTitleDlg::OnViewportSizeChanged(int width, int height)
 void CViewportTitleDlg::OnViewportFOVChanged(float fov)
 {
     const float degFOV = RAD2DEG(fov);
-
-    m_ui->m_fovStaticCtrl->setText(QString::fromLatin1("%1%2").arg(qRound(degFOV)).arg(QString(QByteArray::fromPercentEncoding("%C2%B0"))));
+    if (m_ui &&  m_ui->m_fovStaticCtrl)
+    {
+        m_ui->m_fovStaticCtrl->setText(QString::fromLatin1("%1%2").arg(qRound(degFOV)).arg(QString(QByteArray::fromPercentEncoding("%C2%B0"))));
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////

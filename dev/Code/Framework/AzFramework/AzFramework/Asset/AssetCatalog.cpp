@@ -377,13 +377,15 @@ namespace AzFramework
         if (!bytes.empty())
         {
             AZ::IO::MemoryStream catalogStream(bytes.data(), bytes.size());
-            AZ::Utils::LoadObjectFromStreamInPlace<AzFramework::AssetRegistry>(catalogStream, *m_registry.get(), serializeContext, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
+            AZ::Utils::LoadObjectFromStreamInPlace<AzFramework::AssetRegistry>(catalogStream, *m_registry.get(), serializeContext, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
 
             AZ_TracePrintf("AssetCatalog",
                 "\n========================================================\n"
                 "Loaded registry containing %u assets.\n"
                 "========================================================\n",
                 m_registry->m_assetIdToInfo.size());
+
+            AssetCatalogEventBus::Broadcast(&AssetCatalogEventBus::Events::OnCatalogLoaded, catalogRegistryFile);
         }
         else
         {

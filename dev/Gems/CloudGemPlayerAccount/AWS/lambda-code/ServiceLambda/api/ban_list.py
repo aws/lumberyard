@@ -19,5 +19,5 @@ import json
 def get(request):
     full_list =  admin_accountSearch.default_search()
     return {
-        "players": [p["CognitoUsername"] for p in full_list["Accounts"] if p.get('AccountBlacklisted', False)]
+        "players": [p["CognitoUsername"] for p in full_list["Accounts"] if p.get("CogntioUsername") and p.get('AccountBlacklisted', False)]
     }

@@ -9,10 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#include <AzCore/Debug/Trace.h>
 #include <AzQtComponents/Components/StylesheetPreprocessor.h>
 #include <QtCore/QObject>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QRegularExpression>
 
 namespace
 {
@@ -134,9 +136,42 @@ namespace AzQtComponents
         if (m_namedVariables.contains(name))
         {
             QColor color;
+            QString colorName(m_namedVariables.value(name));
 
-            color.setNamedColor(m_namedVariables.value(name));
+            bool colorSet = false;
+            if (QColor::isValidColor(colorName))
+            {
+                color.setNamedColor(colorName);
+                colorSet = true;
+            }
+            else if (colorName.startsWith("rgb"))
+            {
+                QRegularExpression expression("\\((.+)\\)");
+                QRegularExpressionMatch matches(expression.match(colorName));
 
+                if (matches.hasMatch())
+                {
+                    QStringList colorComponents = matches.captured(1).split(',', QString::SkipEmptyParts);
+                    if (colorComponents.count() <= 4)
+                    {
+                        if (colorComponents.count() == 3)
+                        {
+                            colorComponents.push_back("255");
+                        }
+
+                        color.setRgb(
+                            colorComponents[0].trimmed().toInt(),
+                            colorComponents[1].trimmed().toInt(),
+                            colorComponents[2].trimmed().toInt(),
+                            colorComponents[3].trimmed().toInt()
+                        );
+
+                        colorSet = true;
+                    }
+                }
+            }
+
+            AZ_Assert(colorSet, "Invalid color format specified for %s", name.toUtf8().data());
             m_cachedColors[name] = color;
 
             return m_cachedColors[name];

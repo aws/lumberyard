@@ -252,6 +252,11 @@ namespace AZ
         return ((_mm_movemask_ps(_mm_cmplt_ps(m_value, rhs.m_value)) & 0x0f) == 0);
     }
 
+    AZ_MATH_FORCE_INLINE const Vector4 Vector4::Lerp(const Vector4& dest, const VectorFloat& t) const
+    {
+        return (*this) * (1.0f - t) + dest * t;
+    }
+
     AZ_MATH_FORCE_INLINE const VectorFloat Vector4::Dot(const Vector4& rhs) const
     {
         SimdVectorType x2 = _mm_mul_ps(m_value, rhs.m_value);

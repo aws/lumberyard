@@ -15,6 +15,7 @@ import os
 import json
 import re
 import boto3
+import time
 from cgf_utils import custom_resource_utils
 
 from errors import HandledError
@@ -239,6 +240,7 @@ def delete_bucket_contents(context, stack_name, logical_bucket_id, physical_buck
             return
 
     total = 0
+    did_final_list = False
 
     while True:
 
@@ -268,16 +270,19 @@ def delete_bucket_contents(context, stack_name, logical_bucket_id, physical_buck
             s3.delete_objects(Bucket=physical_bucket_id, Delete={ 'Objects': delete_list, 'Quiet': True })
 
         if 'NextKeyMarker' not in list_res or 'NextVersionIdMarker' not in list_res:
+            if total and not did_final_list:
+                # Wait for consistency issues - if we're creating delete markers above the final ones may not have propagated immediately
+                did_final_list = True
+                time.sleep(5)
+                list_res = s3.list_object_versions(Bucket=physical_bucket_id, MaxKeys=500)
+                continue
+
             break
 
-         
         list_res = s3.list_object_versions(Bucket=physical_bucket_id, MaxKeys=500, KeyMarker=list_res['NextKeyMarker'], VersionIdMarker=list_res['NextVersionIdMarker'])
-    
-    #delete any unexpected files generated during the deletion process.  Delete markers etc.
-    #fail safe
-    config_bucket = boto3.resource('s3').Bucket(physical_bucket_id)
-    config_bucket.objects.all().delete()
-    
+
+
+
 
 
 

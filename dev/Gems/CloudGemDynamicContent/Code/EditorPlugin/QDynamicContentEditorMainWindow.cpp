@@ -409,7 +409,7 @@ namespace DynamicContent
 
     void QCreateNewManifestDialog::SetManifestNameRegExp()
     {
-        manifestNameEdit->setValidator(new QRegExpValidator(QRegExp("^[-0-9a-zA-Z!_.]*$")));
+        manifestNameEdit->setValidator(new QRegExpValidator(QRegExp("^[-0-9a-zA-Z_][-0-9a-zA-Z!_.]*$")));
     }
 
     QString QCreateNewManifestDialog::ManifestName()

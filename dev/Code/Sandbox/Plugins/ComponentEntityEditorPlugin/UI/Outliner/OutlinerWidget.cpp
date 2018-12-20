@@ -14,6 +14,7 @@
 #include "OutlinerListModel.hxx"
 #include "OutlinerSortFilterProxyModel.hxx"
 #include "OutlinerWidget.hxx"
+#include "OutlinerDisplayOptionsMenu.h"
 
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Component/ComponentApplication.h>
@@ -24,6 +25,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Slice/SliceComponent.h>
+#include <AzCore/std/sort.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
@@ -44,6 +46,75 @@
 
 Q_DECLARE_METATYPE(AZ::Uuid);
 
+namespace
+{
+    const int queuedChangeDelay = 16; // milliseconds
+
+    using EntityIdCompareFunc = AZStd::function<bool(AZ::EntityId, AZ::EntityId)>;
+
+    bool CompareEntitiesForSorting(AZ::EntityId leftEntityId, AZ::EntityId rightEntityId, EntityOutliner::DisplaySortMode sortMode)
+    {
+        AZ::Entity* leftEntity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(leftEntity, &AZ::ComponentApplicationBus::Events::FindEntity, leftEntityId);
+        AZ_Assert(leftEntity, "Could not find entity with id %d", leftEntityId);
+        if (!leftEntity)
+        {
+            return false;
+        }
+
+        AZ::Entity* rightEntity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(rightEntity, &AZ::ComponentApplicationBus::Events::FindEntity, rightEntityId);
+        AZ_Assert(rightEntity, "Could not find entity with id %d", rightEntityId);
+        if (!rightEntity)
+        {
+            return true;
+        }
+
+        const int compareResult = azstricmp(leftEntity->GetName().c_str(), rightEntity->GetName().c_str());
+        const bool isSame = (compareResult == 0);
+
+        if (sortMode == EntityOutliner::DisplaySortMode::AtoZ)
+        {
+            return (isSame ? 
+                leftEntityId < rightEntityId : 
+                compareResult < 0);
+        }
+        else
+        {
+            return (isSame ? 
+                leftEntityId > rightEntityId : 
+                compareResult > 0);
+        }
+    }
+
+    void SortEntityChildren(AZ::EntityId entityId, const EntityIdCompareFunc& comparer, AzToolsFramework::EntityOrderArray* newEntityOrder = nullptr)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        AzToolsFramework::EntityOrderArray entityOrderArray = AzToolsFramework::GetEntityChildOrder(entityId);
+        AZStd::sort(entityOrderArray.begin(), entityOrderArray.end(), comparer);
+        AzToolsFramework::SetEntityChildOrder(entityId, entityOrderArray);
+
+        if (newEntityOrder)
+        {
+            *newEntityOrder = AZStd::move(entityOrderArray);
+        }
+    }
+
+    void SortEntityChildrenRecursively(AZ::EntityId entityId, const EntityIdCompareFunc& comparer)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        AzToolsFramework::EntityOrderArray entityOrderArray;
+        SortEntityChildren(entityId, comparer, &entityOrderArray);
+
+        for (const AZ::EntityId& childId : entityOrderArray)
+        {
+            SortEntityChildrenRecursively(childId, comparer);
+        }
+    }
+}
+
 OutlinerWidget::OutlinerWidget(QWidget* pParent, Qt::WindowFlags flags)
     : QWidget(pParent, flags)
     , m_gui(nullptr)
@@ -60,15 +131,24 @@ OutlinerWidget::OutlinerWidget(QWidget* pParent, Qt::WindowFlags flags)
     , m_selectionChangeQueued(false)
     , m_selectionChangeInProgress(false)
     , m_enableSelectionUpdates(true)
+    , m_scrollToSelectedEntity(true)
+    , m_expandSelectedEntity(true)
+    , m_focusInEntityOutliner(false)
+    , m_displayOptionsMenu(new EntityOutliner::DisplayOptionsMenu(this))
+    , m_entitiesToSort()
+    , m_sortMode(EntityOutliner::DisplaySortMode::Manually)
+    , m_sortContentQueued(false)
+    , m_dropOperationInProgress(false)
 {
     m_gui = new Ui::OutlinerWidgetUI();
     m_gui->setupUi(this);
 
     m_listModel = aznew OutlinerListModel(this);
+    m_listModel->SetSortMode(m_sortMode);
 
-    const int autoExpandDelayMilliseconds = 500;
+    const int autoExpandDelayMilliseconds = 2500;
     m_gui->m_objectTree->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    m_gui->m_objectTree->setEditTriggers(QAbstractItemView::SelectedClicked | QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
+    m_gui->m_objectTree->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     m_gui->m_objectTree->setAutoExpandDelay(autoExpandDelayMilliseconds);
     m_gui->m_objectTree->setDragEnabled(true);
     m_gui->m_objectTree->setDropIndicatorShown(true);
@@ -92,11 +172,17 @@ OutlinerWidget::OutlinerWidget(QWidget* pParent, Qt::WindowFlags flags)
     connect(m_gui->m_objectTree, &QTreeView::clicked, this, &OutlinerWidget::OnTreeItemClicked);
     connect(m_gui->m_objectTree, &QTreeView::expanded, this, &OutlinerWidget::OnTreeItemExpanded);
     connect(m_gui->m_objectTree, &QTreeView::collapsed, this, &OutlinerWidget::OnTreeItemCollapsed);
+    connect(m_gui->m_objectTree, &OutlinerTreeView::ItemDropped, this, &OutlinerWidget::OnDropEvent);
     connect(m_listModel, &OutlinerListModel::ExpandEntity, this, &OutlinerWidget::OnExpandEntity);
     connect(m_listModel, &OutlinerListModel::SelectEntity, this, &OutlinerWidget::OnSelectEntity);
     connect(m_listModel, &OutlinerListModel::EnableSelectionUpdates, this, &OutlinerWidget::OnEnableSelectionUpdates);
     connect(m_listModel, &OutlinerListModel::ResetFilter, this, &OutlinerWidget::ClearFilter);
     connect(m_listModel, &OutlinerListModel::ReapplyFilter, this, &OutlinerWidget::InvalidateFilter);
+
+    // Set the display options menu
+    m_gui->m_display_options->setMenu(m_displayOptionsMenu);
+    connect(m_displayOptionsMenu, &EntityOutliner::DisplayOptionsMenu::OnSortModeChanged, this, &OutlinerWidget::OnSortModeChanged);
+    connect(m_displayOptionsMenu, &EntityOutliner::DisplayOptionsMenu::OnOptionToggled, this, &OutlinerWidget::OnDisplayOptionChanged);
 
     // Sorting is performed in a very specific way by the proxy model.
     // Disable sort indicator so user isn't confused by the fact
@@ -152,11 +238,12 @@ OutlinerWidget::OutlinerWidget(QWidget* pParent, Qt::WindowFlags flags)
     OutlinerModelNotificationBus::Handler::BusConnect();
     ToolsApplicationEvents::Bus::Handler::BusConnect();
     AzToolsFramework::EditorEntityContextNotificationBus::Handler::BusConnect();
-
+    AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusConnect();
 }
 
 OutlinerWidget::~OutlinerWidget()
 {
+    AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusDisconnect();
     AzToolsFramework::EditorMetricsEventsBus::Handler::BusDisconnect();
     EditorPickModeRequests::Bus::Handler::BusDisconnect();
     EntityHighlightMessages::Bus::Handler::BusDisconnect();
@@ -184,40 +271,54 @@ void OutlinerWidget::resizeEvent(QResizeEvent* event)
 //  Currently, the first behavior is implemented.
 void OutlinerWidget::OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
 {
+    if (selected.size() != 1)
+    {
+        AZ::EntityId id(AZ::EntityId::InvalidEntityId);
+        MainWindow::instance()->SetSelectedEntity(id);
+    }
+    else
+    {
+        AZ::EntityId entityId(GetEntityIdFromIndex(selected.indexes().at(0)));
+        MainWindow::instance()->SetSelectedEntity(entityId);
+    }
+
     if (m_selectionChangeInProgress || !m_enableSelectionUpdates)
     {
         return;
     }
 
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-    // Add the newly selected and deselected entities from the outliner to the appropriate selection buffer.
 
-    for (const auto& selectedIndex : selected.indexes())
+    AzToolsFramework::EntityIdSet newlySelected;
+    ExtractEntityIdsFromSelection(selected, newlySelected);
+
+    AzToolsFramework::EntityIdSet newlyDeselected;
+    ExtractEntityIdsFromSelection(deselected, newlyDeselected);
+
+    CEditTool* tool = GetIEditor()->GetEditTool();
+    IClassDesc* classDescription = tool ? tool->GetClassDesc() : nullptr;
+
+    if (classDescription && QString::compare(classDescription->ClassName(), "EditTool.Clone") == 0)
     {
-        // Skip any column except the main name column...
-        if (selectedIndex.column() == OutlinerListModel::ColumnName)
+        // if the user clicks an empty space or selects a different entity in the entity outliner, the clone operation will be accepted.
+        if ((newlySelected.empty() && !newlyDeselected.empty()) || !newlySelected.empty())
         {
-            const AZ::EntityId entityId = GetEntityIdFromIndex(selectedIndex);
-            if (entityId.IsValid())
-            {
-                m_entitiesSelectedByOutliner.insert(entityId);
-                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::MarkEntitySelected, entityId);
-            }
+            tool->Accept(true);
+            GetIEditor()->GetSelection()->FinishChanges();
         }
     }
 
-    for (const auto& deselectedIndex : deselected.indexes())
+    // Add the newly selected and deselected entities from the outliner to the appropriate selection buffer.
+    for (const AZ::EntityId& entityId : newlySelected)
     {
-        // Skip any column except the main name column...
-        if (deselectedIndex.column() == OutlinerListModel::ColumnName)
-        {
-            const AZ::EntityId entityId = GetEntityIdFromIndex(deselectedIndex);
-            if (entityId.IsValid())
-            {
-                m_entitiesDeselectedByOutliner.insert(entityId);
-                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::MarkEntityDeselected, entityId);
-            }
-        }
+        m_entitiesSelectedByOutliner.insert(entityId);
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::MarkEntitySelected, entityId);
+    }
+
+    for (const AZ::EntityId& entityId : newlyDeselected)
+    {
+        m_entitiesDeselectedByOutliner.insert(entityId);
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::MarkEntityDeselected, entityId);
     }
 
     m_entitiesDeselectedByOutliner.clear();
@@ -335,6 +436,12 @@ void OutlinerWidget::UpdateSelection()
             }
         }
 
+        // Scroll to selected entity when selecting from viewport
+        if (m_entitiesToSelect.size() > 0 && m_scrollToSelectedEntity)
+        {
+            QueueScrollToNewContent(*m_entitiesToSelect.begin());
+        }
+
         m_gui->m_objectTree->update();
         m_entitiesToSelect.clear();
         m_entitiesToDeselect.clear();
@@ -381,6 +488,16 @@ void OutlinerWidget::OnOpenTreeContextMenu(const QPoint& pos)
 
     PrepareSelection();
 
+    // Remove the "Find in Entity Outliner" option from the context menu
+    for (QAction* action : contextMenu->actions())
+    {
+        if (action->text() == "Find in Entity Outliner")
+        {
+            contextMenu->removeAction(action);
+            break;
+        }
+    }
+
     //register rename menu action
     if (!m_selectedEntityIds.empty())
     {
@@ -419,7 +536,7 @@ void OutlinerWidget::OnOpenTreeContextMenu(const QPoint& pos)
 
         contextMenu->addSeparator();
 
-        contextMenu->addAction(m_actionGoToEntitiesInViewport);
+        contextMenu->addAction(m_actionGoToEntitiesInViewport);        
     }
 
     contextMenu->exec(m_gui->m_objectTree->mapToGlobal(pos));
@@ -696,7 +813,7 @@ void OutlinerWidget::DoMoveEntityDown()
 
 void OutlinerWidget::GoToEntitiesInViewport()
 {
-    EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, GoToSelectedOrHighlightedEntitiesInViewports);
+    AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequestBus::Events::GoToSelectedEntitiesInViewports);
 }
 
 void OutlinerWidget::SetupActions()
@@ -725,7 +842,7 @@ void OutlinerWidget::SetupActions()
     connect(m_actionToDeleteSelectionAndDescendants, &QAction::triggered, this, &OutlinerWidget::DoDeleteSelectionAndDescendants);
     addAction(m_actionToDeleteSelectionAndDescendants);
 
-    m_actionToRenameSelection = new QAction(tr("Rename Selection"), this);
+    m_actionToRenameSelection = new QAction(tr("Rename"), this);
 #ifdef AZ_PLATFORM_APPLE_OSX
     // "Alt+Return" translates to Option+Return on macOS
     m_actionToRenameSelection->setShortcut(tr("Alt+Return"));
@@ -739,20 +856,26 @@ void OutlinerWidget::SetupActions()
     connect(m_actionToReparentSelection, &QAction::triggered, this, &OutlinerWidget::DoReparentSelection);
     addAction(m_actionToReparentSelection);
 
-    m_actionToMoveEntityUp = new QAction(tr("Move Up"), this);
+    m_actionToMoveEntityUp = new QAction(tr("Move up"), this);
     m_actionToMoveEntityUp->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     connect(m_actionToMoveEntityUp, &QAction::triggered, this, &OutlinerWidget::DoMoveEntityUp);
     addAction(m_actionToMoveEntityUp);
 
-    m_actionToMoveEntityDown = new QAction(tr("Move Down"), this);
+    m_actionToMoveEntityDown = new QAction(tr("Move down"), this);
     m_actionToMoveEntityDown->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     connect(m_actionToMoveEntityDown, &QAction::triggered, this, &OutlinerWidget::DoMoveEntityDown);
     addAction(m_actionToMoveEntityDown);
 
-    m_actionGoToEntitiesInViewport = new QAction(tr("Goto Entities in Viewport"), this);
+    m_actionGoToEntitiesInViewport = new QAction(tr("Find in viewport"), this);
     m_actionGoToEntitiesInViewport->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     connect(m_actionGoToEntitiesInViewport, &QAction::triggered, this, &OutlinerWidget::GoToEntitiesInViewport);
     addAction(m_actionGoToEntitiesInViewport);
+
+}
+
+void OutlinerWidget::SelectSliceRoot()
+{
+   MainWindow::instance()->OnGotoSliceRoot();
 }
 
 void OutlinerWidget::StartObjectPickMode()
@@ -838,9 +961,17 @@ void OutlinerWidget::OnEnableSelectionUpdates(bool enable)
     m_enableSelectionUpdates = enable;
 }
 
+void OutlinerWidget::OnDropEvent()
+{
+    m_dropOperationInProgress = true;
+    m_listModel->SetDropOperationInProgress(true);
+}
+
 void OutlinerWidget::EntityCreated(const AZ::EntityId& entityId)
 {
+    QueueContentUpdateSort(entityId);
     QueueScrollToNewContent(entityId);
+ 
     // When a new entity is created we need to make sure to apply the filter
     m_listModel->FilterEntity(entityId);
 }
@@ -848,6 +979,18 @@ void OutlinerWidget::EntityCreated(const AZ::EntityId& entityId)
 void OutlinerWidget::ScrollToNewContent()
 {
     m_scrollToNewContentQueued = false;
+    
+    // Scroll to the parent entity when auto-expand is disabled and the user doesn't click on the "Find in Entity Outliner" option in the context menu
+    if (!m_expandSelectedEntity && !m_focusInEntityOutliner)
+    {
+        AZ::EntityId parentId = m_scrollToEntityId;
+        while (parentId.IsValid())
+        {
+            m_scrollToEntityId = parentId;
+            parentId.SetInvalid();
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, m_scrollToEntityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+        }
+    }
 
     const QModelIndex proxyIndex = GetIndexFromEntityId(m_scrollToEntityId);
     if (!proxyIndex.isValid())
@@ -856,18 +999,27 @@ void OutlinerWidget::ScrollToNewContent()
         return;
     }
 
-    m_gui->m_objectTree->scrollTo(proxyIndex);
+    m_gui->m_objectTree->scrollTo(proxyIndex, QAbstractItemView::PositionAtTop);
+    m_focusInEntityOutliner = false;
 }
 
 void OutlinerWidget::QueueScrollToNewContent(const AZ::EntityId& entityId)
 {
+    if (m_dropOperationInProgress)
+    {
+        //don't scroll as the result of a drop operation, in order to stop new parent auto expanding. You can only drop in visible areas anyway. 
+        m_dropOperationInProgress = false;
+        m_listModel->SetDropOperationInProgress(false);
+        return;
+    }
+
     if (entityId.IsValid())
     {
         m_scrollToEntityId = entityId;
         if (!m_scrollToNewContentQueued)
         {
             m_scrollToNewContentQueued = true;
-            QTimer::singleShot(16, this, &OutlinerWidget::ScrollToNewContent);
+            QTimer::singleShot(queuedChangeDelay, this, &OutlinerWidget::ScrollToNewContent);
         }
     }
 }
@@ -898,6 +1050,22 @@ QModelIndex OutlinerWidget::GetIndexFromEntityId(const AZ::EntityId& entityId) c
     }
 
     return QModelIndex();
+}
+
+void OutlinerWidget::ExtractEntityIdsFromSelection(const QItemSelection& selection, AzToolsFramework::EntityIdSet& entityIdSet) const
+{
+    for (const auto& index : selection.indexes())
+    {
+        // Skip any column except the main name column...
+        if (index.column() == OutlinerListModel::ColumnName)
+        {
+            const AZ::EntityId entityId = GetEntityIdFromIndex(index);
+            if (entityId.IsValid())
+            {
+                entityIdSet.insert(entityId);
+            }
+        }
+    }
 }
 
 void OutlinerWidget::OnSearchTextChanged(const QString& activeTextFilter)
@@ -944,6 +1112,127 @@ void OutlinerWidget::OnStartPlayInEditor()
 void OutlinerWidget::OnStopPlayInEditor()
 {
     setEnabled(true);
+}
+
+void OutlinerWidget::OnSliceInstantiated(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& /*ticket*/)
+{
+    const AZ::SliceComponent::SliceReference* reference = sliceAddress.GetReference();
+    const AZ::SliceComponent::SliceInstance* instance = sliceAddress.GetInstance();
+    if (reference && instance)
+    {
+        // guard against special case slices (e.g. default slice) that produce technically valid, but garbage, slice instances
+        const AZ::SliceComponent::SliceReference::SliceInstances& sliceInstances = reference->GetInstances();
+        if (sliceInstances.find(*instance) != sliceInstances.end())
+        {
+            for (const AZ::Entity* entity : instance->GetInstantiated()->m_entities)
+            {
+                QueueContentUpdateSort(entity->GetId());
+            }
+        }
+    }
+}
+
+void OutlinerWidget::OnEntityInfoUpdatedAddChildEnd(AZ::EntityId /*parentId*/, AZ::EntityId childId)
+{
+    QueueContentUpdateSort(childId);
+}
+
+void OutlinerWidget::OnEntityInfoUpdatedName(AZ::EntityId entityId, const AZStd::string& /*name*/)
+{
+    QueueContentUpdateSort(entityId);   
+}
+
+void OutlinerWidget::QueueContentUpdateSort(const AZ::EntityId& entityId)
+{
+    if (m_sortMode != EntityOutliner::DisplaySortMode::Manually && entityId.IsValid())
+    {
+        m_entitiesToSort.insert(entityId);
+        if (!m_sortContentQueued)
+        {
+            m_sortContentQueued = true;
+            QTimer::singleShot(queuedChangeDelay, this, &OutlinerWidget::SortContent);
+        }
+    }
+}
+
+void OutlinerWidget::SortContent()
+{
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+    m_sortContentQueued = false;
+
+    // kick out early if we somehow managed to get here with manual sorting set
+    if (m_sortMode == EntityOutliner::DisplaySortMode::Manually)
+    {
+        m_entitiesToSort.clear();
+        return;
+    }
+
+    AzToolsFramework::EntityIdSet parentsToSort;
+    for (const AZ::EntityId& entityId : m_entitiesToSort)
+    {
+        AZ::EntityId parentId; 
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+        parentsToSort.insert(parentId);
+    }
+    m_entitiesToSort.clear();
+
+    auto comparer = AZStd::bind(&CompareEntitiesForSorting, AZStd::placeholders::_1, AZStd::placeholders::_2, m_sortMode);
+    for (const AZ::EntityId& entityId : parentsToSort)
+    {
+        SortEntityChildren(entityId, comparer);
+    }
+}
+
+void OutlinerWidget::OnSortModeChanged(EntityOutliner::DisplaySortMode sortMode)
+{
+    if (m_sortMode == sortMode)
+    {
+        return;
+    }
+
+    if (sortMode != EntityOutliner::DisplaySortMode::Manually)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        auto comparer = AZStd::bind(&CompareEntitiesForSorting, AZStd::placeholders::_1, AZStd::placeholders::_2, sortMode);
+        SortEntityChildrenRecursively(AZ::EntityId(), comparer);
+    }
+
+    m_sortMode = sortMode;
+    m_listModel->SetSortMode(m_sortMode);
+}
+
+void OutlinerWidget::OnDisplayOptionChanged(EntityOutliner::DisplayOption displayOption, bool enable)
+{
+    switch (displayOption)
+    {
+        case EntityOutliner::DisplayOption::AutoScroll:
+            m_scrollToSelectedEntity = enable;
+            break;
+
+        case EntityOutliner::DisplayOption::AutoExpand:
+            m_expandSelectedEntity = enable;
+            m_listModel->EnableAutoExpand(enable);
+            break;
+
+        default:
+            AZ_Assert(false, "Unknown display option event received (%d)", static_cast<int>(displayOption));
+            break;
+    }
+}
+
+void OutlinerWidget::OnFocusInEntityOutliner(const AzToolsFramework::EntityIdList& entityIdList)
+{
+    m_focusInEntityOutliner = true;
+
+    QModelIndex firstSelectedEntityIndex = GetIndexFromEntityId(entityIdList.front());
+    for (const AZ::EntityId& entityId : entityIdList)
+    {
+        QModelIndex index = GetIndexFromEntityId(entityId);
+        firstSelectedEntityIndex = index < firstSelectedEntityIndex ? index : firstSelectedEntityIndex;
+    }
+
+    QueueScrollToNewContent(GetEntityIdFromIndex(firstSelectedEntityIndex));
 }
 
 

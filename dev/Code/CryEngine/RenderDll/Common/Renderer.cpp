@@ -4640,7 +4640,7 @@ void CRenderer::FreeResources(int nFlags)
             }
 
             m_RP.m_arrCustomShadowMapFrustumData[i].clear();
-            m_RP.m_fogVolumeContibutions[i].clear();
+            m_RP.m_fogVolumeContibutionsData[i].clear();
         }
 
         for (int i = 0; i < sizeof(m_RP.m_RIs) / sizeof(m_RP.m_RIs[0]); ++i)
@@ -5280,7 +5280,7 @@ void CRenderer::EF_StartEf(const SRenderingPassInfo& passInfo)
         }
 
         EF_RemovePolysFromScene();
-        m_RP.m_fogVolumeContibutions[nThreadID].resize(0);
+        m_RP.m_fogVolumeContibutionsData[nThreadID].resize(0);
         //If we clear these flags during the recursion pass, it causes flickering and popping of objects.
         passInfo.GetRenderView()->PrepareForWriting();
     }
@@ -5328,8 +5328,8 @@ void CRenderer::RT_PrepareLevelTexStreaming()
 void CRenderer::RT_PostLevelLoading()
 {
     int nThreadID = m_pRT->GetThreadList();
-    m_RP.m_fogVolumeContibutions[nThreadID].reserve(2048);
-
+    m_RP.m_fogVolumeContibutionsData[nThreadID].reserve(2048);
+   
     m_cEF.m_Bin.InvalidateCache();
     CHWShader::mfCleanupCache();
     CResFile::m_nMaxOpenResFiles = 4;
@@ -7442,7 +7442,7 @@ void CRenderer::GetThreadIDs(threadID& mainThreadID, threadID& renderThreadID) c
 void CRenderer::PostLevelLoading()
 {
     int nThreadID = m_pRT->GetThreadList();
-    m_RP.m_fogVolumeContibutions[nThreadID].reserve(2048);
+    m_RP.m_fogVolumeContibutionsData[nThreadID].reserve(2048);
 }
 
 const char* CRenderer::GetTextureFormatName(ETEX_Format eTF)

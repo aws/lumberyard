@@ -28,6 +28,7 @@ namespace CommandSystem
     MCORE_DEFINECOMMAND_START(CommandAnimGraphCreateNode, "Create a anim graph node", true)
 public:
     EMotionFX::AnimGraphNodeId GetNodeId(const MCore::CommandLine& parameters);
+    void DeleteGraphNode(EMotionFX::AnimGraphNode* node);
 
     uint32  mAnimGraphID;
     bool    mOldDirtyFlag;
@@ -77,7 +78,7 @@ public:
 
 
     // set the entry state of a state machine
-        MCORE_DEFINECOMMAND_START(CommandAnimGraphSetEntryState, "Set entry state", true)
+    MCORE_DEFINECOMMAND_START(CommandAnimGraphSetEntryState, "Set entry state", true)
 public:
     uint32                      mAnimGraphID;
     EMotionFX::AnimGraphNodeId  mOldEntryStateNodeId;
@@ -90,11 +91,10 @@ public:
     // Helper functions
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    COMMANDSYSTEM_API void CreateAnimGraphNode(EMotionFX::AnimGraph* animGraph, const AZ::TypeId& type, const AZStd::string& namePrefix, EMotionFX::AnimGraphNode* parentNode, int32 offsetX, int32 offsetY, const AZStd::string& serializedContents="");
+    COMMANDSYSTEM_API void CreateAnimGraphNode(EMotionFX::AnimGraph* animGraph, const AZ::TypeId& type, const AZStd::string& namePrefix, EMotionFX::AnimGraphNode* parentNode, int32 offsetX, int32 offsetY, const AZStd::string& serializedContents = "");
 
     COMMANDSYSTEM_API void DeleteNodes(EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& nodeNames);
     COMMANDSYSTEM_API void DeleteNodes(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& nodeNames, AZStd::vector<EMotionFX::AnimGraphNode*>& nodeList, AZStd::vector<EMotionFX::BlendTreeConnection*>& connectionList, AZStd::vector<EMotionFX::AnimGraphStateTransition*>& transitionList, bool autoChangeEntryStates = true);
 
     COMMANDSYSTEM_API void ConstructCopyAnimGraphNodesCommandGroup(MCore::CommandGroup* commandGroup, EMotionFX::AnimGraphNode* targetNode, AZStd::vector<EMotionFX::AnimGraphNode*>& inOutNodesToCopy, int32 posX, int32 posY, bool cutMode, AZStd::unordered_map<EMotionFX::AnimGraphNode*, AZStd::string>& newNamesByCopiedNodes, bool ignoreTopLevelConnections);
-
 } // namespace CommandSystem

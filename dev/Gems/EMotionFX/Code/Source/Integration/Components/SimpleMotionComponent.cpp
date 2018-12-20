@@ -47,25 +47,19 @@ namespace EMotionFX
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<Configuration>(
-                        "Configuration", "Settings for this Simple Motion")
+                    editContext->Class<Configuration>( "Configuration", "Settings for this Simple Motion")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_motionAsset,
-                            "Motion", "EMotion FX motion to be loaded for this actor")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_loop,
-                            "Loop motion", "Toggles looping of the animation")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_retarget,
-                            "Retarget motion", "Toggles retargeting of the animation")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_reverse,
-                            "Reverse motion", "Toggles reversing of the animation")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_mirror,
-                            "Mirror motion", "Toggles mirroring of the animation")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_playspeed,
-                            "Play speed", "Determines the rate at which the motion is played")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_blendInTime,
-                            "Blend In Time", "Determines the blend in time in seconds")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_blendOutTime,
-                            "Blend Out Time", "Determines the blend out time in seconds")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_motionAsset, "Motion", "EMotion FX motion to be loaded for this actor")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_loop, "Loop motion", "Toggles looping of the animation")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_retarget, "Retarget motion", "Toggles retargeting of the animation")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_reverse, "Reverse motion", "Toggles reversing of the animation")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_mirror, "Mirror motion", "Toggles mirroring of the animation")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_playspeed, "Play speed", "Determines the rate at which the motion is played")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_blendInTime, "Blend In Time", "Determines the blend in time in seconds")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_blendOutTime, "Blend Out Time", "Determines the blend out time in seconds")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                         ;
                 }
             }

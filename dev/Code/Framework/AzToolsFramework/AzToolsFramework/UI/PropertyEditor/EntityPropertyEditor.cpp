@@ -31,6 +31,8 @@
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/Entity/EditorEntityRuntimeActivationBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
@@ -47,30 +49,38 @@
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorPendingCompositionBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
 #include <AzToolsFramework/UI/ComponentPalette/ComponentPaletteWidget.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
+#include <AzToolsFramework/UI/PropertyEditor/ComponentEditorHeader.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyRowWidget.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 
+#include <QContextMenuEvent>
 #include <QDrag>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
 #include <QInputDialog>
 #include <QLabel>
+#include <QListView>
 #include <QMainWindow>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPixmap>
 #include <QScrollBar>
+#include <QStandardItemModel>
+#include <QStringListModel>
+#include <QStylePainter>
+#include <QTableView>
 #include <QTimer>
-#include <QContextMenuEvent>
-#include <QDragEnterEvent>
-#include <QDragMoveEvent>
-#include <QMouseEvent>
 
 #include <UI/PropertyEditor/ui_EntityPropertyEditor.h>
 
@@ -123,6 +133,7 @@ namespace AzToolsFramework
             , m_dropIndicatorColor("#999999")
             , m_dragIndicatorColor("#E57829")
             , m_selectIndicatorColor("#E57829")
+            , m_highlightColor("#64c8c8c8")
         {
             setPalette(Qt::transparent);
             setWindowFlags(Qt::FramelessWindowHint);
@@ -262,6 +273,7 @@ namespace AzToolsFramework
         QColor m_dragIndicatorColor;
         QColor m_dropIndicatorColor;
         QColor m_selectIndicatorColor;
+        QColor m_highlightColor;
     };
 
     EntityPropertyEditor::SharedComponentInfo::SharedComponentInfo(AZ::Component* component, AZ::Component* sliceReferenceComponent)
@@ -295,11 +307,36 @@ namespace AzToolsFramework
         m_componentEditors.clear();
         m_componentToEditorMap.clear();
 
+        m_checkmarkIcon = QIcon(":/Cards/img/UI20/Cards/checkmark.png");
+        m_rectangleIcon = QIcon(":/Cards/img/UI20/Cards/rectangle.png");
+        m_spacerIcon = QIcon(":/Cards/img/UI20/Cards/spacer.png");
+
         m_gui = aznew Ui::EntityPropertyEditorUI();
         m_gui->setupUi(this);
         m_gui->m_entityNameEditor->setReadOnly(false);
         m_gui->m_entityDetailsLabel->setObjectName("LabelEntityDetails");
         m_gui->m_entitySearchBox->setReadOnly(false);
+
+        QStandardItemModel*model = new QStandardItemModel(3, 1);
+        for (int row = 0; row < 3; ++row)
+        {
+            m_comboItems[row] = new QStandardItem(m_spacerIcon, m_itemNames[row]);
+
+            model->setItem(row, 0, m_comboItems[row]);
+        }
+        QTableView* table = new QTableView();
+        m_gui->m_statusComboBox->setView(table);
+        table->setModel(model);
+        table->verticalHeader()->setVisible(false);
+        table->horizontalHeader()->setVisible(false);
+        table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        m_gui->m_statusComboBox->setModel(model);
+        m_gui->m_statusComboBox->setStyleSheet("QComboBox {border: 0px; border-radius:3px; background-color:#555555; color:white}"
+            "QComboBox[italic=true]{font-style: italic}"
+            "QComboBox:on {background-color:#e9e9e9; color:black; border:0px}"
+            "QComboBox::down-arrow:on {image: url(:/stylesheet/img/dropdowns/black_down_arrow.png)}"
+            "QComboBox::drop-down {border-radius: 3p}"
+            "QTableView {background-color:#333333; selection-background:#333333}");
         EnableEditor(true);
         m_sceneIsNew = true;
 
@@ -335,8 +372,8 @@ namespace AzToolsFramework
 
         m_isBuildingProperties = false;
 
-        setTabOrder(m_gui->m_entityNameEditor, m_gui->m_initiallyActiveCheckbox);
-        setTabOrder(m_gui->m_initiallyActiveCheckbox, m_gui->m_addComponentButton);
+        setTabOrder(m_gui->m_entityNameEditor, m_gui->m_statusComboBox);
+        setTabOrder(m_gui->m_statusComboBox, m_gui->m_addComponentButton);
 
         // the world editor has a fixed id:
 
@@ -345,10 +382,10 @@ namespace AzToolsFramework
             this,
             SLOT(OnEntityNameChanged()));
 
-        connect(m_gui->m_initiallyActiveCheckbox,
-            SIGNAL(stateChanged(int)),
+        connect(m_gui->m_statusComboBox,
+            SIGNAL(currentIndexChanged(int)),
             this,
-            SLOT(OnInitiallyActiveChanged(int)));
+            SLOT(OnStatusChanged(int)));
 
         CreateActions();
         UpdateContents();
@@ -456,6 +493,7 @@ namespace AzToolsFramework
             if (!areAnyEntitiesSelected)
             {
                 // Ensure a prompt refresh when all entities have been removed/deselected.
+                ClearInstances(false); // nothing is selected, make sure all editors and instances are committed and cleared before updating
                 UpdateContents();
                 return;
             }
@@ -565,7 +603,7 @@ namespace AzToolsFramework
 
     void EntityPropertyEditor::UpdateEntityDisplay()
     {
-        UpdateInitiallyActiveDisplay();
+        UpdateStatusComboBox();
 
         // Generic text for multiple entities selected
         if (m_selectedEntityIds.size() > 1)
@@ -626,9 +664,9 @@ namespace AzToolsFramework
         m_gui->m_entityNameLabel->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityIcon->setVisible(hasEntitiesDisplayed);
         m_gui->m_pinButton->setVisible(m_overrideSelectedEntityIds.size() == 0 && hasEntitiesDisplayed && !m_isSystemEntityEditor);
-        m_gui->m_startActiveLabel->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);
-        m_gui->m_initiallyActiveCheckbox->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);
-        m_gui->m_entitySearchBox->setVisible(hasEntitiesDisplayed);
+        m_gui->m_statusLabel->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);
+        m_gui->m_statusComboBox->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);
+        m_gui->m_darkBox->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);        m_gui->m_entitySearchBox->setVisible(hasEntitiesDisplayed);
         m_gui->m_buttonClearFilter->setVisible(hasEntitiesDisplayed);
 
         if (hasEntitiesDisplayed)
@@ -806,7 +844,7 @@ namespace AzToolsFramework
         {
             AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
             AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, id, &AzFramework::EntityIdContextQueries::GetOwningSlice);
-            auto sliceReference = sliceInstanceAddress.first;
+            auto sliceReference = sliceInstanceAddress.GetReference();
             if (!sliceReference)
             {
                 return false;
@@ -848,8 +886,8 @@ namespace AzToolsFramework
             AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
 
             AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, entityId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
-            auto sliceReference = sliceInstanceAddress.first;
-            auto sliceInstance = sliceInstanceAddress.second;
+            auto sliceReference = sliceInstanceAddress.GetReference();
+            auto sliceInstance = sliceInstanceAddress.GetInstance();
             if (sliceReference)
             {
                 AZ::SliceComponent::EntityAncestorList ancestors;
@@ -1007,7 +1045,10 @@ namespace AzToolsFramework
             connect(componentEditor, &ComponentEditor::OnRequestRequiredComponents, this, &EntityPropertyEditor::OnRequestRequiredComponents);
             connect(componentEditor, &ComponentEditor::OnRequestRemoveComponents, this, [this](const AZ::Entity::ComponentArrayType& components) {DeleteComponents(components); });
             connect(componentEditor, &ComponentEditor::OnRequestDisableComponents, this, [this](const AZ::Entity::ComponentArrayType& components) {DisableComponents(components); });
-            componentEditor->GetPropertyEditor()->SetValueComparisonFunction([this](const InstanceDataNode* source, const InstanceDataNode* target) { return CompareInstanceDataNodeValues(source, target); });
+            componentEditor->GetPropertyEditor()->SetValueComparisonFunction([this](const InstanceDataNode* source, const InstanceDataNode* target) { return InstanceNodeValueHasNoPushableChange(source, target); });
+            componentEditor->GetPropertyEditor()->SetReadOnlyQueryFunction([this](const InstanceDataNode* node) { return QueryInstanceDataNodeReadOnlyStatus(node); });
+            componentEditor->GetPropertyEditor()->SetHiddenQueryFunction([this](const InstanceDataNode* node) { return QueryInstanceDataNodeHiddenStatus(node); });
+            componentEditor->GetPropertyEditor()->SetIndicatorQueryFunction([this](const InstanceDataNode* node) { return GetAppropriateIndicator(node); });
 
             //move spacer to bottom of editors
             m_gui->m_componentListContents->layout()->removeItem(m_spacer);
@@ -1074,23 +1115,18 @@ namespace AzToolsFramework
 
         EntityIdList selectedEntityIds;
         GetSelectedEntities(selectedEntityIds);
-        if (selectedEntityIds.empty())
-        {
-            return;
-        }
 
-        bool areEntitiesEditable = true;
-        ToolsApplicationRequests::Bus::BroadcastResult(areEntitiesEditable, &ToolsApplicationRequests::AreEntitiesEditable, selectedEntityIds);
-        if (!areEntitiesEditable)
+        bool allSelectedEntitiesEditable = true;
+        ToolsApplicationRequests::Bus::BroadcastResult(allSelectedEntitiesEditable, &ToolsApplicationRequests::AreEntitiesEditable, selectedEntityIds);
+        if (!allSelectedEntitiesEditable)
         {
             return;
         }
 
         for (AZ::EntityId entityId : selectedEntityIds)
         {
-            bool editable = true;
-            ToolsApplicationRequests::Bus::BroadcastResult(editable, &ToolsApplicationRequests::IsEntityEditable, entityId);
-            if (!editable)
+            ToolsApplicationRequests::Bus::BroadcastResult(allSelectedEntitiesEditable, &ToolsApplicationRequests::IsEntityEditable, entityId);
+            if (!allSelectedEntitiesEditable)
             {
                 return;
             }
@@ -1265,7 +1301,7 @@ namespace AzToolsFramework
     void EntityPropertyEditor::EnableEditor(bool enabled)
     {
         m_gui->m_entityNameEditor->setReadOnly(!enabled);
-        m_gui->m_initiallyActiveCheckbox->setEnabled(enabled);
+        m_gui->m_statusComboBox->setEnabled(enabled);
         m_gui->m_addComponentButton->setVisible(enabled);
         m_gui->m_componentListContents->setEnabled(enabled);
     }
@@ -1347,7 +1383,7 @@ namespace AzToolsFramework
 
                 AddMenuOptionsForFields(node, componentNode, componentClassData, menu);
 
-                AddMenuOptionForSliceReset(menu);
+                AddMenuOptionsForRevert(node, componentNode, componentClassData, menu);
 
                 if (!menu.actions().empty())
                 {
@@ -1369,7 +1405,7 @@ namespace AzToolsFramework
         const AZ::SerializeContext::ClassData* componentClassData,
         QMenu& menu)
     {
-		if (!fieldNode || (!fieldNode->GetComparisonNode() && !fieldNode->IsNewVersusComparison()))
+        if (!fieldNode)
         {
             return;
         }
@@ -1381,81 +1417,237 @@ namespace AzToolsFramework
             AZ_Assert(fieldNode && fieldNode->GetClassMetadata() && fieldNode->GetClassMetadata()->m_container, "New element should be a child of a container.");
         }
 
-        // Generate prefab data push/pull options.
+        // Generate slice data push/pull options.
         AZ::Component* componentInstance = m_serializeContext->Cast<AZ::Component*>(
                 componentNode->FirstInstance(), componentClassData->m_typeId);
         AZ_Assert(componentInstance, "Failed to cast component instance.");
 
-        // With the entity the property ultimately belongs to, we can look up prefab ancestry for push/pull options.
+        // With the entity the property ultimately belongs to, we can look up slice ancestry for push/pull options.
         AZ::Entity* entity = componentInstance->GetEntity();
+
+        AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
+        AzFramework::EntityIdContextQueryBus::EventResult(contextId, entity->GetId(), &AzFramework::EntityIdContextQueryBus::Events::GetOwningContextId);
+        if (contextId.IsNull())
+        {
+            AZ_Error("PropertyEditor", false, "Entity \"%s\" does not belong to any context.", entity->GetName().c_str());
+            return;
+        }
+
+        AZ::SliceComponent* rootSlice = nullptr;
+        AzFramework::EntityContextRequestBus::EventResult(rootSlice, contextId, &AzFramework::EntityContextRequestBus::Events::GetRootSlice);
+        if (!rootSlice)
+        {
+            AZ_Error("PropertyEditor", false, "Entity context has no root slice");
+            return;
+        }
 
         AZ::SliceComponent::SliceInstanceAddress address;
         AzFramework::EntityIdContextQueryBus::EventResult(address, entity->GetId(), &AzFramework::EntityIdContextQueries::GetOwningSlice);
-        if (!address.first)
+        AZ::SliceComponent::SliceReference* sliceReference = address.GetReference();
+        if (sliceReference)
         {
-            // This entity does not belong to a prefab, so data push/pull is not relevant.
-            return;
-        }
+            // This entity is instanced from a slice, so show data push/pull options
+            AZ::SliceComponent::EntityAncestorList ancestors;
+            sliceReference->GetInstanceEntityAncestry(entity->GetId(), ancestors);
 
-        AZ::SliceComponent::EntityAncestorList ancestors;
-        address.first->GetInstanceEntityAncestry(entity->GetId(), ancestors);
-
-        if (ancestors.empty())
-        {
-            AZ_Error("PropertyEditor", false, "Entity \"%s\" belongs to a prefab, but its source entity could not be located.");
-            return;
-        }
-
-        AZStd::string sliceAssetPath;
-        AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, ancestors.front().m_sliceAddress.first->GetSliceAsset().GetId());
-
-        AZ::EntityId entityId = entity->GetId();
-        QAction* pushAction = menu.addAction(tr("Push to slice..."));
-		pushAction->setEnabled(fieldNode->HasChangesVersusComparison(true));
-        connect(pushAction, &QAction::triggered, this, [entityId]()
+            AZ_Error("PropertyEditor", !ancestors.empty(), "Entity \"%s\" belongs to a slice, but its source entity could not be located.", entity->GetName().c_str());
+            if (!ancestors.empty())
             {
-                SliceUtilities::PushEntitiesModal({ entityId }, nullptr);
+                menu.addSeparator();
+
+                // Populate slice push options.
+                // Address should start with the fully-addressable component Id to resolve within the target entity.
+                InstanceDataHierarchy::Address pushFieldAddress;
+                CalculateAndAdjustNodeAddress(*fieldNode, AddressRootType::RootAtEntity, pushFieldAddress);
+                if (!pushFieldAddress.empty())
+                {
+                    SliceUtilities::PopulateQuickPushMenu(menu, entity->GetId(), pushFieldAddress, "Save field override");
+                }
             }
-            );
+        }
 
         menu.addSeparator();
 
-		bool hasChanges = fieldNode->HasChangesVersusComparison(false);
-		bool isLeafNode = !fieldNode->GetClassMetadata()->m_container && fieldNode->GetClassMetadata()->m_serializer;
+        // by leaf node, we mean a visual leaf node in the property editor (ie, we do not have any visible children)
+        bool isLeafNode = !fieldNode->GetClassMetadata()->m_container;
 
-        if (!hasChanges && isLeafNode)
+        if (isLeafNode)
         {
-            // Add an option to set the ForceOverride flag for this field
-            menu.setToolTipsVisible(true);
-            QAction* forceOverrideAction = menu.addAction(tr("Force property override"));
-            forceOverrideAction->setToolTip(tr("Prevents a property from inheriting from its source slice"));
-            connect(forceOverrideAction, &QAction::triggered, this, [this, fieldNode]()
+            for (const InstanceDataNode& childNode : fieldNode->GetChildren())
+            {
+                if (HasAnyVisibleElements(childNode))
                 {
-                    ContextMenuActionSetDataFlag(fieldNode, AZ::DataPatch::Flag::ForceOverride, true);
+                    // If we have any visible children, we must not be a leaf node
+                    isLeafNode = false;
+                    break;
                 }
-                );
+            }
         }
-        else
+
+#ifdef ENABLE_SLICE_EDITOR
+        // Show PreventOverride & HideProperty options
+        if (GetEntityDataPatchAddress(fieldNode, m_dataPatchAddressBuffer))
         {
-            // Add an option to pull data from the first level of the slice (clear the override).
-            QAction* pullAction = menu.addAction(tr("Revert property override"));
-            pullAction->setEnabled(isLeafNode);
-            connect(pullAction, &QAction::triggered, this, [this, componentInstance, fieldNode]()
+            AZ::DataPatch::Flags nodeFlags = rootSlice->GetEntityDataFlagsAtAddress(entity->GetId(), m_dataPatchAddressBuffer);
+
+            if (nodeFlags & AZ::DataPatch::Flag::PreventOverrideSet)
+            {
+                QAction* PreventOverrideAction = menu.addAction(tr("Allow property override"));
+                PreventOverrideAction->setEnabled(isLeafNode);
+                connect(PreventOverrideAction, &QAction::triggered, this, [this, fieldNode]
                 {
-                    ContextMenuActionPullFieldData(componentInstance, fieldNode);
+                    ContextMenuActionSetDataFlag(fieldNode, AZ::DataPatch::Flag::PreventOverrideSet, false);
+                    InvalidatePropertyDisplay(Refresh_AttributesAndValues);
                 }
                 );
+            }
+            else
+            {
+                QAction* PreventOverrideAction = menu.addAction(tr("Prevent property override"));
+                PreventOverrideAction->setEnabled(isLeafNode);
+                connect(PreventOverrideAction, &QAction::triggered, this, [this, fieldNode]
+                {
+                    ContextMenuActionSetDataFlag(fieldNode, AZ::DataPatch::Flag::PreventOverrideSet, true);
+                    InvalidatePropertyDisplay(Refresh_AttributesAndValues);
+                }
+                );
+            }
+
+            if (nodeFlags & AZ::DataPatch::Flag::HidePropertySet)
+            {
+                QAction* HideProperyAction = menu.addAction(tr("Show property on instances"));
+                HideProperyAction->setEnabled(isLeafNode);
+                connect(HideProperyAction, &QAction::triggered, this, [this, fieldNode]
+                {
+                    ContextMenuActionSetDataFlag(fieldNode, AZ::DataPatch::Flag::HidePropertySet, false);
+                    InvalidatePropertyDisplay(Refresh_AttributesAndValues);
+                }
+                );
+            }
+            else
+            {
+                QAction* HideProperyAction = menu.addAction(tr("Hide property on instances"));
+                HideProperyAction->setEnabled(isLeafNode);
+                connect(HideProperyAction, &QAction::triggered, this, [this, fieldNode]
+                {
+                    ContextMenuActionSetDataFlag(fieldNode, AZ::DataPatch::Flag::HidePropertySet, true);
+                    InvalidatePropertyDisplay(Refresh_AttributesAndValues);
+                }
+                );
+            }
+        }
+#endif
+
+        if (sliceReference)
+        {
+            // This entity is referenced from a slice, so show property override options
+            bool hasChanges = fieldNode->HasChangesVersusComparison(false);
+
+            if (!hasChanges && isLeafNode)
+            {
+                // Add an option to set the ForceOverride flag for this field
+                menu.setToolTipsVisible(true);
+                QAction* forceOverrideAction = menu.addAction(tr("Force property override"));
+                forceOverrideAction->setToolTip(tr("Prevents a property from inheriting from its source slice"));
+                connect(forceOverrideAction, &QAction::triggered, this, [this, fieldNode]()
+                    {
+                        ContextMenuActionSetDataFlag(fieldNode, AZ::DataPatch::Flag::ForceOverrideSet, true);
+                    }
+                    );
+            }
         }
     }
 
-    void EntityPropertyEditor::AddMenuOptionForSliceReset(QMenu& menu)
+    bool EntityPropertyEditor::HasAnyVisibleElements(const InstanceDataNode& node)
     {
+        if (CalculateNodeDisplayVisibility(node, false) == AzToolsFramework::NodeDisplayVisibility::Visible)
+        {
+            return true;
+        }
+
+        for (const InstanceDataNode& childNode : node.GetChildren())
+        {
+            if (HasAnyVisibleElements(childNode))
+            {
+                return true;
+            }
+        }
+
+
+        return false;
+    }
+
+    void EntityPropertyEditor::AddMenuOptionsForRevert(InstanceDataNode* fieldNode, InstanceDataNode* componentNode, const AZ::SerializeContext::ClassData* componentClassData, QMenu& menu)
+    {
+        QMenu* revertMenu = nullptr;
+
+        revertMenu = menu.addMenu(tr("Revert overrides"));
+        revertMenu->setToolTipsVisible(true);
+        revertMenu->setEnabled(false);
+
+        //check for changes on selected property
+        if (componentClassData)
+        {
+            AZ::SliceComponent::SliceInstanceAddress address;
+
+            AZ::Component* componentInstance = m_serializeContext->Cast<AZ::Component*>(
+                componentNode->FirstInstance(), componentClassData->m_typeId);
+            AZ_Assert(componentInstance, "Failed to cast component instance.");
+            AZ::Entity* entity = componentInstance->GetEntity();
+
+            AzFramework::EntityIdContextQueryBus::EventResult(address, entity->GetId(), &AzFramework::EntityIdContextQueries::GetOwningSlice);
+            AZ::SliceComponent::SliceReference* sliceReference = address.GetReference();
+
+            if (!sliceReference)
+            {
+                return;
+            }
+
+            if (fieldNode)
+            {
+                bool hasChanges = fieldNode->HasChangesVersusComparison(false);
+
+                if (hasChanges)
+                {
+                    bool isLeafNode = !fieldNode->GetClassMetadata()->m_container;
+
+                    if (isLeafNode)
+                    {
+                        for (const InstanceDataNode& childNode : fieldNode->GetChildren())
+                        {
+                            if (HasAnyVisibleElements(childNode))
+                            {
+                                // If we have any visible children, we must not be a leaf node
+                                isLeafNode = false;
+                                break;
+                            }
+                        }
+
+                        if (isLeafNode)
+                        {
+                            revertMenu->setEnabled(true);
+
+                            // Add an option to pull data from the first level of the slice (clear the override).
+                            QAction* revertAction = revertMenu->addAction(tr("Property"));
+                            revertAction->setToolTip(tr("Revert the value for this property to the last saved state."));
+                            revertAction->setEnabled(true);
+                            connect(revertAction, &QAction::triggered, this, [this, componentInstance, fieldNode]()
+                            {
+                                ContextMenuActionPullFieldData(componentInstance, fieldNode);
+                            }
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        //check for changes on selected component(s)
         bool hasSliceChanges = false;
         bool isPartOfSlice = false;
 
         const auto& componentsToEdit = GetSelectedComponents();
 
-        // Determine if there are changes for any selected components
         for (auto component : componentsToEdit)
         {
             AZ_Assert(component, "Parent component is invalid.");
@@ -1476,27 +1668,67 @@ namespace AzToolsFramework
                                 hasSliceChanges = true;
                             }
                         }
-                    }
-                    );
+                    });
             }
         }
 
-        if (isPartOfSlice)
+        if (isPartOfSlice && hasSliceChanges)
         {
-            QAction* resetToSliceAction = menu.addAction(tr("Revert component overrides"));
-            resetToSliceAction->setEnabled(hasSliceChanges);
-            connect(resetToSliceAction, &QAction::triggered, this, [this]()
-                {
-                    ResetToSlice();
-                }
-                );
+            revertMenu->setEnabled(true);
+
+            QAction* revertComponentAction = revertMenu->addAction(tr("Component"));
+            revertComponentAction->setToolTip(tr("Revert all properties for this component to their last saved state."));
+            connect(revertComponentAction, &QAction::triggered, this, [this]()
+            {
+                ResetToSlice();
+            });
+        }
+
+        //check for changes on selected entities
+        EntityIdList selectedEntityIds;
+        GetSelectedEntities(selectedEntityIds);
+
+        bool canRevert = false;
+
+        for (AZ::EntityId id : m_selectedEntityIds)
+        {
+            bool entityHasOverrides = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(entityHasOverrides, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceEntityOverrides);
+            if (entityHasOverrides)
+            {
+                canRevert = true;
+                break;
+            }
+        }
+
+        if (canRevert && !selectedEntityIds.empty())
+        {
+            //check for changes in the slice
+            EntityIdSet relevantEntitiesSet;
+            ToolsApplicationRequestBus::BroadcastResult(relevantEntitiesSet, &ToolsApplicationRequestBus::Events::GatherEntitiesAndAllDescendents, selectedEntityIds);
+
+            EntityIdList relevantEntities;
+            relevantEntities.reserve(relevantEntitiesSet.size());
+            for (AZ::EntityId& id : relevantEntitiesSet)
+            {
+                relevantEntities.push_back(id);
+            }
+
+            revertMenu->setEnabled(true);
+            QAction* revertAction = revertMenu->addAction(QObject::tr("Entity"));
+            revertAction->setToolTip(QObject::tr("This will revert all component properties on this entity to the last saved."));
+
+            QObject::connect(revertAction, &QAction::triggered, [this, relevantEntities]
+            {
+                EditorEntityContextRequestBus::Broadcast(&EditorEntityContextRequests::ResetEntitiesToSliceDefaults, relevantEntities);
+            });
         }
     }
 
 
     void EntityPropertyEditor::ContextMenuActionPullFieldData(AZ::Component* parentComponent, InstanceDataNode* fieldNode)
     {
-        AZ_Assert(fieldNode && fieldNode->GetComparisonNode(), "Invalid node for prefab data pull.");
+        AZ_Assert(fieldNode && fieldNode->GetComparisonNode(), "Invalid node for slice data pull.");
         if (!fieldNode->GetComparisonNode())
         {
             return;
@@ -1620,9 +1852,43 @@ namespace AzToolsFramework
         }
     }
 
-    bool EntityPropertyEditor::GetEntityDataPatchAddress(const InstanceDataNode* node, AZ::DataPatch::AddressType& dataPatchAddressOut, AZ::EntityId* entityIdOut) const
+    void EntityPropertyEditor::CalculateAndAdjustNodeAddress(const InstanceDataNode& componentFieldNode, AddressRootType rootType, InstanceDataNode::Address& outAddress) const
     {
-        if (InstanceDataNode* componentNode = node ? node->GetRoot() : nullptr)
+        outAddress = componentFieldNode.ComputeAddress();
+
+        InstanceDataHierarchy::InstanceDataNode* componentRootNode = componentFieldNode.GetRoot();
+        AZ::Component* component = m_serializeContext->Cast<AZ::Component*>(
+            componentRootNode->FirstInstance(), componentRootNode->GetClassMetadata()->m_typeId);
+
+        if (component)
+        {
+            // Make sure address uses the component's persistent Id so it can be addressed under the entity or components container.
+            // Property data is populated per component, so the value isn't using the persistent Id required for addressing
+            // under containers.
+            outAddress.back() = component->GetId();
+
+            switch (rootType)
+            {
+                case AddressRootType::RootAtComponentsContainer:
+                {
+                    // Insert a node to represent the Components container.
+                    outAddress.push_back(AZ_CRC("Components", 0xee48f5fd));
+                }
+                break;
+                case AddressRootType::RootAtEntity:
+                {
+                    // Insert a node to represent the Components container, and another to represent the entity root.
+                    outAddress.push_back(AZ_CRC("Components", 0xee48f5fd));
+                    outAddress.push_back(AZ_CRC("AZ::Entity", 0x1fd61e11));
+                }
+                break;
+            }
+        }
+    }
+
+    bool EntityPropertyEditor::GetEntityDataPatchAddress(const InstanceDataNode* componentFieldNode, AZ::DataPatch::AddressType& dataPatchAddressOut, AZ::EntityId* entityIdOut) const
+    {
+        if (InstanceDataNode* componentNode = componentFieldNode ? componentFieldNode->GetRoot() : nullptr)
         {
             AZ::Component* component = m_serializeContext->Cast<AZ::Component*>(
                     componentNode->FirstInstance(), componentNode->GetClassMetadata()->m_typeId);
@@ -1631,25 +1897,21 @@ namespace AzToolsFramework
                 AZ::EntityId entityId = component->GetEntityId();
                 if (entityId.IsValid())
                 {
-                    InstanceDataNode::Address nodeAddress = node->ComputeAddress();
+                    // Data patch address is compatible with the InstanceDataHierarchy::Address, with one key difference:
+                    // It's stored in reverse order. InstanceDataHierarchy::Address is leaf-first. DataPatch::Address is root-first.
 
-                    // Translate InstanceDataNode address into a DataPatch address that's relative to an entity.
-                    // Differences:
-                    // 1) They're stored in reverse order. nodeAddress is leaf-first. dataPatchAddress is root-first.
-                    // 2) nodeAddress stores a CRC of the component's class name, dataPatchAddress stores the ComponentId instead.
-                    // 3) dataPatchAddress is relative to the entity, nodeAddress is relative to the component.
+                    // Additionally, we generate a ReflectedPropertyEditor for each component, so all instance data nodes from
+                    // one of those property grids are component-relative. To be addressable in a data patch or at the slice level,
+                    // the component crc needs to be converted to its persistent Id (component id), and additional parent address
+                    // levels must be added. See \ref CalculateAndAdjustNodeAddress for implementation details.
 
-                    AZ_Assert(nodeAddress.back() == AZ::Crc32(componentNode->GetClassMetadata()->m_name),
-                        "GetEntityDataPatchAddress has bad assumptions about InstanceDataNode addressing");
-                    nodeAddress.pop_back(); // throw out CRC of component name
+                    InstanceDataNode::Address nodeAddress;
+                    CalculateAndAdjustNodeAddress(*componentFieldNode, AddressRootType::RootAtComponentsContainer, nodeAddress);
 
-                    // start the dataPatchAddress with the path to this particular Component in the Entity
+                    // DataPatch::Address is root-first, while InstanceDataHierarchy::Address is leaf-first, so read
+                    // node address in reverse to convert to DataPatch::Address.
                     dataPatchAddressOut.clear();
-                    dataPatchAddressOut.reserve(nodeAddress.size() + 2);
-                    dataPatchAddressOut.push_back(AZ_CRC("Components", 0xee48f5fd));
-                    dataPatchAddressOut.push_back(component->GetId());
-
-                    // the rest of the dataPatchAddress is identical to the reversed nodeAddress
+                    dataPatchAddressOut.reserve(nodeAddress.size());
                     for (auto reverseIterator = nodeAddress.rbegin(); reverseIterator != nodeAddress.rend(); ++reverseIterator)
                     {
                         dataPatchAddressOut.push_back(*reverseIterator);
@@ -1668,20 +1930,40 @@ namespace AzToolsFramework
         return false;
     }
 
-    bool EntityPropertyEditor::CompareInstanceDataNodeValues(const InstanceDataNode* sourceNode, const InstanceDataNode* targetNode)
+    bool EntityPropertyEditor::InstanceNodeValueHasNoPushableChange(const InstanceDataNode* sourceNode, const InstanceDataNode* targetNode)
     {
-        // If target node has ForceOverride flag set, consider it different from source.
+        if (targetNode == nullptr)
+        {
+            return sourceNode == nullptr;
+        }
+        // If target node is affected by ForceOverride flag, consider it different from source.
         AZ::EntityId entityId;
         if (GetEntityDataPatchAddress(targetNode, m_dataPatchAddressBuffer, &entityId))
         {
-            AZ::SliceComponent::SliceInstanceAddress instanceAddress;
-            AzFramework::EntityIdContextQueryBus::EventResult(instanceAddress, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
-            if (const AZ::SliceComponent::SliceInstance* instance = instanceAddress.second)
+            if (AZ::SliceComponent* rootSlice = GetEntityRootSlice(entityId))
             {
-                AZ::DataPatch::Flags flags = instance->GetDataFlags().GetEntityDataFlagsAtAddress(entityId, m_dataPatchAddressBuffer);
-                if (flags & AZ::DataPatch::Flag::ForceOverride)
+                AZ::DataPatch::Flags flags = rootSlice->GetEntityDataFlagsAtAddress(entityId, m_dataPatchAddressBuffer);
+                if (flags & AZ::DataPatch::Flag::ForceOverrideEffect)
                 {
                     return false;
+                }
+            }
+        }
+
+        // Verify that this is a field that can be pushed into the slice.
+        if (InstanceDataNode* componentNode = targetNode->GetRoot())
+        {
+            AZ::Component* component = m_serializeContext->Cast<AZ::Component*>(
+                componentNode->FirstInstance(), componentNode->GetClassMetadata()->m_typeId);
+            if (component)
+            {
+                AZ::Entity* entity = component->GetEntity();
+                bool isRootEntity = entity ? SliceUtilities::IsRootEntity(*entity) : false;
+                if (!SliceUtilities::IsNodePushable(*targetNode, isRootEntity))
+                {
+                    // If this field is one that can't be pushed into the slice, then
+                    // return true to signify that here is no pushable change on this field.
+                    return true;
                 }
             }
         }
@@ -1690,43 +1972,177 @@ namespace AzToolsFramework
         return InstanceDataHierarchy::DefaultValueComparisonFunction(sourceNode, targetNode);
     }
 
-    void EntityPropertyEditor::UpdateInitiallyActiveDisplay()
+    bool EntityPropertyEditor::QueryInstanceDataNodeReadOnlyStatus(const InstanceDataNode* node)
     {
-        QSignalBlocker noSignals(m_gui->m_initiallyActiveCheckbox);
+        return QueryInstanceDataNodeEffectStatus(node, AZ::DataPatch::Flag::PreventOverrideEffect);
+    }
+
+    bool EntityPropertyEditor::QueryInstanceDataNodeReadOnlySetStatus(const InstanceDataNode* node)
+    {
+        return QueryInstanceDataNodeSetStatus(node, AZ::DataPatch::Flag::PreventOverrideSet);
+    }
+
+    bool EntityPropertyEditor::QueryInstanceDataNodeHiddenStatus(const InstanceDataNode* node)
+    {
+        return QueryInstanceDataNodeEffectStatus(node, AZ::DataPatch::Flag::HidePropertyEffect);
+    }
+    
+    bool EntityPropertyEditor::QueryInstanceDataNodeHiddenSetStatus(const InstanceDataNode* node)
+    {
+        return QueryInstanceDataNodeSetStatus(node, AZ::DataPatch::Flag::HidePropertySet);
+    }
+
+    const char* EntityPropertyEditor::GetAppropriateIndicator(const InstanceDataNode* node)
+    {
+        if (QueryInstanceDataNodeHiddenSetStatus(node))
+        {
+            return ":/PropertyEditor/Resources/hidden.png";
+        }
+        else if (QueryInstanceDataNodeReadOnlySetStatus(node))
+        {
+            return ":/PropertyEditor/Resources/locked.png";
+        }
+
+        return "";
+    }
+
+    bool EntityPropertyEditor::QueryInstanceDataNodeSetStatus(const InstanceDataNode* node, AZ::DataPatch::Flag testFlag)
+    {
+        // If target node is affected by HideProperty flag, it should be read-only.
+        AZ::EntityId entityId;
+        if (GetEntityDataPatchAddress(node, m_dataPatchAddressBuffer, &entityId))
+        {
+            if (const AZ::SliceComponent* rootSlice = GetEntityRootSlice(entityId))
+            {
+                AZ::DataPatch::Flags flags = rootSlice->GetEntityDataFlagsAtAddress(entityId, m_dataPatchAddressBuffer);
+                if (flags & testFlag)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    bool EntityPropertyEditor::QueryInstanceDataNodeEffectStatus(const InstanceDataNode* node, AZ::DataPatch::Flag testFlag)
+    {
+        // If target node is affected by HideProperty flag, it should be read-only.
+        AZ::EntityId entityId;
+        if (GetEntityDataPatchAddress(node, m_dataPatchAddressBuffer, &entityId))
+        {
+            if (const AZ::SliceComponent* rootSlice = GetEntityRootSlice(entityId))
+            {
+                AZ::DataPatch::Flags flags = rootSlice->GetEffectOfEntityDataFlagsAtAddress(entityId, m_dataPatchAddressBuffer);
+                if (flags & testFlag)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    void EntityPropertyEditor::UpdateStatusComboBox()
+    {
+        QSignalBlocker noSignals(m_gui->m_statusComboBox);
 
         if (m_selectedEntityIds.empty())
         {
-            m_gui->m_initiallyActiveCheckbox->setVisible(false);
+            m_gui->m_statusComboBox->setVisible(false);
             return;
+        }
+
+        for (auto& comboItem : m_comboItems)
+        {
+            comboItem->setIcon(m_spacerIcon);
         }
 
         bool allActive = true;
         bool allInactive = true;
+        bool allEditorOnly = true;
+        bool someActive = false;
+        bool someInactive = false;
+        bool someEditorOnly = false;
+        bool isSliceRoot2 = false;
 
         for (AZ::EntityId id : m_selectedEntityIds)
         {
-            AZ::Entity* entity = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, id);
+            bool isEditorOnly = false;
+            EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, id, &EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
 
-            const bool isInitiallyActive = entity ? entity->IsRuntimeActiveByDefault() : true;
-            allActive &= isInitiallyActive;
-            allInactive &= !isInitiallyActive;
+            if (isEditorOnly)
+            {
+                bool isSliceRoot = false;
+                EditorEntityInfoRequestBus::EventResult(isSliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
+
+                isSliceRoot2 |= isSliceRoot;
+                allEditorOnly &= true;
+                someEditorOnly = true;
+                allActive = false;
+                allInactive = false;
+            }
+            else
+            {
+
+                AZ::Entity* entity = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, id);
+
+                const bool isInitiallyActive = entity ? entity->IsRuntimeActiveByDefault() : true;
+                allActive &= isInitiallyActive;
+                allInactive &= !isInitiallyActive;
+                allEditorOnly = false;
+                someActive |= isInitiallyActive;
+                someInactive |= !isInitiallyActive;
+            }
         }
 
+        m_gui->m_statusComboBox->setProperty("italic", false);
         if (allActive)
         {
-            m_gui->m_initiallyActiveCheckbox->setCheckState(Qt::CheckState::Checked);
+            m_gui->m_statusComboBox->setHeaderOverride(m_itemNames[StatusType::StatusStartActive]);
+            m_gui->m_statusComboBox->setCurrentIndex(StatusType::StatusStartActive);
+            m_comboItems[StatusType::StatusStartActive]->setIcon(m_checkmarkIcon);
         }
-        else if (allInactive)
+        else 
+        if (allInactive)
         {
-            m_gui->m_initiallyActiveCheckbox->setCheckState(Qt::CheckState::Unchecked);
+            m_gui->m_statusComboBox->setHeaderOverride(m_itemNames[StatusType::StatusStartInactive]);
+            m_gui->m_statusComboBox->setCurrentIndex(StatusType::StatusStartInactive);
+            m_comboItems[StatusType::StatusStartInactive]->setIcon(m_checkmarkIcon);
+        }
+        else
+        if (allEditorOnly)
+        {
+            if (!isSliceRoot2)
+            {
+                m_gui->m_statusComboBox->setHeaderOverride(m_itemNames[StatusType::StatusEditorOnly]);
+                m_gui->m_statusComboBox->setCurrentIndex(StatusType::StatusEditorOnly);
+                m_comboItems[StatusType::StatusEditorOnly]->setIcon(m_checkmarkIcon);
+            }
         }
         else // Some marked active, some not
         {
-            m_gui->m_initiallyActiveCheckbox->setCheckState(Qt::CheckState::PartiallyChecked);
+            m_gui->m_statusComboBox->setProperty("italic", true);
+            m_gui->m_statusComboBox->setHeaderOverride("- Multiple selected -");
+            if (someActive)
+            {
+                m_comboItems[StatusType::StatusStartActive]->setIcon(m_rectangleIcon);
+            }
+            if (someInactive)
+            {
+                m_comboItems[StatusType::StatusStartInactive]->setIcon(m_rectangleIcon);
+            }
+            if (someEditorOnly && !isSliceRoot2)
+            {
+                m_comboItems[StatusType::StatusEditorOnly]->setIcon(m_rectangleIcon);
+            }
         }
 
-        m_gui->m_initiallyActiveCheckbox->setVisible(!m_isSystemEntityEditor);
+        m_gui->m_statusComboBox->setVisible(!m_isSystemEntityEditor);
+        m_gui->m_statusComboBox->style()->unpolish(m_gui->m_statusComboBox);
+        m_gui->m_statusComboBox->style()->polish(m_gui->m_statusComboBox);
     }
 
     void EntityPropertyEditor::OnDisplayComponentEditorMenu(const QPoint& position)
@@ -1740,7 +2156,7 @@ namespace AzToolsFramework
             menu.addSeparator();
         }
 
-        AddMenuOptionForSliceReset(menu);
+        AddMenuOptionsForRevert(nullptr, nullptr, nullptr, menu);
 
         if (!menu.actions().empty())
         {
@@ -2655,20 +3071,48 @@ namespace AzToolsFramework
         }
     }
 
-    void EntityPropertyEditor::OnInitiallyActiveChanged(int)
+    void EntityPropertyEditor::OnStatusChanged(int index)
     {
-        for (AZ::EntityId entityId : m_selectedEntityIds)
         {
-            AZ::Entity* entity = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+            ScopedUndoBatch undo("Change Status");
 
-            if (entity)
+            switch (index)
             {
-                entity->SetRuntimeActiveByDefault(m_gui->m_initiallyActiveCheckbox->isChecked());
+                case StatusType::StatusStartActive:
+                case StatusType::StatusStartInactive:
+                {
+                    bool entityIsStartingActive = index == StatusType::StatusStartActive;
+
+                    for (AZ::EntityId entityId : m_selectedEntityIds)
+                    {
+                        AZ::Entity* entity = nullptr;
+                        AZ::ComponentApplicationBus::BroadcastResult(
+                            entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+
+                        EditorOnlyEntityComponentRequestBus::Event(
+                            entityId, &EditorOnlyEntityComponentRequests::SetIsEditorOnlyEntity,
+                            false);
+                        if (entity)
+                        {
+                            EditorEntityRuntimeActivationChangeNotificationBus::Broadcast(
+                                &EditorEntityRuntimeActivationChangeNotificationBus::Events::
+                                OnEntityRuntimeActivationChanged,
+                                entityId, entityIsStartingActive);
+
+                            entity->SetRuntimeActiveByDefault(entityIsStartingActive);
+                        }
+                    }
+                    break;
+                }
+                case StatusType::StatusEditorOnly:
+                    for (AZ::EntityId entityId : m_selectedEntityIds)
+                    {
+                        EditorOnlyEntityComponentRequestBus::Event(entityId, &EditorOnlyEntityComponentRequests::SetIsEditorOnlyEntity, true);
+                    }
+                    break;
             }
         }
-
-        UpdateInitiallyActiveDisplay();
+        UpdateStatusComboBox();
     }
 
     void EntityPropertyEditor::UpdateOverlay()
@@ -3461,6 +3905,13 @@ namespace AzToolsFramework
     void EntityPropertyEditor::OnSearchTextChanged()
     {
         m_filterString = m_gui->m_entitySearchBox->text().toLatin1().data();
+
+        for (auto componentEditor : m_componentEditors)
+        {
+            componentEditor->GetPropertyEditor()->SetFilterString(m_filterString);
+            componentEditor->GetHeader()->SetFilterString(m_filterString);
+        }
+
         UpdateContents();
         m_gui->m_buttonClearFilter->setIcon(m_filterString.size() == 0 ?
             m_emptyIcon :
@@ -3576,6 +4027,43 @@ namespace AzToolsFramework
     }
 
 
+}
+
+StatusComboBox::StatusComboBox(QWidget* parent)
+    : QComboBox(parent)
+{
+}
+
+void StatusComboBox::paintEvent(QPaintEvent* event)
+{
+    if (m_headerOverride.size())
+    {
+        QStylePainter painter(this);
+
+        QStyleOptionComboBox opt;
+        this->initStyleOption(&opt);
+
+        opt.currentText = m_headerOverride;
+        opt.iconSize = QSize(0, 0);
+
+        painter.drawComplexControl(QStyle::CC_ComboBox, opt);
+
+        painter.drawControl(QStyle::CE_ComboBoxLabel, opt);
+    }
+    else
+    {
+        QComboBox::paintEvent(event);
+    }
+}
+
+void StatusComboBox::setHeaderOverride(QString overrideString)
+{
+    m_headerOverride = overrideString;
+}
+
+void StatusComboBox::showPopup()
+{
+    QComboBox::showPopup();
 }
 
 #include <UI/PropertyEditor/EntityPropertyEditor.moc>

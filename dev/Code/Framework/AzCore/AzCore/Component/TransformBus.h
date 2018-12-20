@@ -599,8 +599,8 @@ namespace AZ
         virtual void OnTransformChanged(const Transform& /*local*/, const Transform& /*world*/)     { }
 
         /**
-        * Signals that the static flag on the transfrom has changed. This should only be needed during editing.
-        * @param isStatic A boolean that indicates whether the transfrom is static or not.
+        * Signals that the static flag on the transform has changed. This should only be needed during editing.
+        * @param isStatic A boolean that indicates whether the transform is static or not.
         */
         virtual void OnStaticChanged( bool /*isStatic*/) { }
 

@@ -17,6 +17,7 @@
 #include <GridMate/Drillers/ReplicaDriller.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
+#include <AzGameFramework/AzGameFrameworkModule.h>
 
 namespace AzGameFramework
 {
@@ -39,29 +40,24 @@ namespace AzGameFramework
         }
     }
 
-    void GameApplication::RegisterCoreComponents()
+    AZ::ComponentTypeList GameApplication::GetRequiredSystemComponents() const
     {
-        AzFramework::Application::RegisterCoreComponents();
+        AZ::ComponentTypeList components = Application::GetRequiredSystemComponents();
 
-        RegisterComponentDescriptor(AzFramework::DrillerNetworkAgentComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AzFramework::DrillToFileComponent::CreateDescriptor());
+        // Note that this component is registered by AzFramework.
+        // It must be registered here instead of in the module so that existence of AzFrameworkModule is guaranteed.
+        components.emplace_back(azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>());
+
+        return components;
+    }
+
+    void GameApplication::CreateStaticModules(AZStd::vector<AZ::Module*>& outModules)
+    {
+        AzFramework::Application::CreateStaticModules(outModules);
+
+        outModules.emplace_back(aznew AzGameFrameworkModule());
 
         // have to let the metrics system know that it's ok to send back the name of the DrillerNetworkAgentComponent to Amazon as plain text, without hashing
         EBUS_EVENT(AzFramework::MetricsPlainTextNameRegistrationBus, RegisterForNameSending, AZStd::vector<AZ::Uuid>{ azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>() });
-    }
-
-    AZ::ComponentTypeList GameApplication::GetRequiredSystemComponents() const
-    {
-        AZ::ComponentTypeList components = AzFramework::Application::GetRequiredSystemComponents();
-
-        components.insert(components.end(), std::initializer_list<AZ::Uuid>{
-            azrtti_typeid<AzFramework::DrillerNetworkAgentComponent>(),
-#if !defined(_RELEASE)
-            azrtti_typeid<AzFramework::TargetManagementComponent>(),
-#endif
-            azrtti_typeid<AzFramework::DrillToFileComponent>(),
-        });
-
-        return components;
     }
 } // namespace AzGameFramework

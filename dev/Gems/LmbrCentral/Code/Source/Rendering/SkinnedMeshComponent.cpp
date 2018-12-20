@@ -230,7 +230,7 @@ namespace LmbrCentral
         , m_lodDistance(0.f)
         , m_isRegisteredWithRenderer(false)
         , m_objectMoved(false)
-        , m_characterDefinitionAsset(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_QUEUE_LOAD))
+        , m_characterDefinitionAsset(AZ::Data::AssetLoadBehavior::QueueLoad)
         , m_visible(true)
         , m_isQueuedForDestroyMesh(false)
     {
@@ -842,9 +842,10 @@ namespace LmbrCentral
         MaterialOwnerRequestBus::Handler::BusConnect(m_entity->GetId());
         MeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
         RenderNodeRequestBus::Handler::BusConnect(m_entity->GetId());
-        m_skinnedMeshRenderNode.CreateMesh();
         SkinnedMeshComponentRequestBus::Handler::BusConnect(GetEntityId());
         SkeletalHierarchyRequestBus::Handler::BusConnect(GetEntityId());
+
+        m_skinnedMeshRenderNode.CreateMesh();
     }
 
     void SkinnedMeshComponent::Deactivate()

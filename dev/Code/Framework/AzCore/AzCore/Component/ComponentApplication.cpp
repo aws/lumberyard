@@ -12,6 +12,7 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/PlatformIncl.h>
+#include <AzCore/AzCoreModule.h>
 
 #include <AzCore/Casting/numeric_cast.h>
 
@@ -25,7 +26,6 @@
 
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzCore/RTTI/BehaviorContext.h>
-#include <AzCore/RTTI/AzStdReflectionComponent.h>
 
 #include <AzCore/Module/Module.h>
 #include <AzCore/Module/ModuleManager.h>
@@ -39,22 +39,13 @@
 #include <AzCore/Debug/ProfilerDriller.h>
 #include <AzCore/Debug/EventTraceDriller.h>
 
-#include <AzCore/Asset/AssetManagerComponent.h>
-#include <AzCore/UserSettings/UserSettingsComponent.h>
-#include <AzCore/Memory/MemoryComponent.h>
-#include <AzCore/Debug/FrameProfilerComponent.h>
-#include <AzCore/IO/StreamerComponent.h>
-#include <AzCore/Jobs/JobManagerComponent.h>
-#include <AzCore/Serialization/ObjectStreamComponent.h>
-#include <AzCore/Script/ScriptSystemComponent.h>
-
-#include <AzCore/Slice/SliceComponent.h>
-#include <AzCore/Slice/SliceSystemComponent.h>
-#include <AzCore/Slice/SliceMetadataInfoComponent.h>
+#include <AzCore/Script/ScriptSystemBus.h>
 
 #include <AzCore/Math/PolygonPrism.h>
 #include <AzCore/Math/Spline.h>
 #include <AzCore/Math/VertexContainer.h>
+
+#include <AzCore/UserSettings/UserSettingsComponent.h>
 
 #include <AzCore/XML/rapidxml.h>
 
@@ -318,7 +309,7 @@ namespace AZ
         {
             SerializeContext sc;
             Descriptor::Reflect(&sc, this);
-            ObjectStream::LoadBlocking(&stream, sc, nullptr, ObjectStream::FilterDescriptor(ObjectStream::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+            ObjectStream::LoadBlocking(&stream, sc, nullptr, ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         }
 
         // Destroy the temp system allocator
@@ -354,7 +345,7 @@ namespace AZ
                 AZ_Error("ComponentApplication", false, "Unknown class type %p %s", classPtr, idStr);
             }
         }, 
-            ObjectStream::FilterDescriptor(ObjectStream::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+            ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
         // we cannot load assets during system bootstrap since we haven't even got the catalog yet.  But we can definitely read their IDs.
 
         AZ_Assert(systemEntity, "SystemEntity failed to load!");
@@ -450,11 +441,9 @@ namespace AZ
             }
 #endif
         }
-        // Load static modules if provided by the platform
-        if (m_startupParameters.m_createStaticModulesCallback)
-        {
-            ModuleManagerRequestBus::Broadcast(&ModuleManagerRequests::LoadStaticModules, m_startupParameters.m_createStaticModulesCallback, ModuleInitializationSteps::RegisterComponentDescriptors);
-        }
+
+        // Load static modules
+        ModuleManagerRequestBus::Broadcast(&ModuleManagerRequests::LoadStaticModules, AZStd::bind(&ComponentApplication::CreateStaticModules, this, AZStd::placeholders::_1), ModuleInitializationSteps::RegisterComponentDescriptors);
     }
 
     //=========================================================================
@@ -471,6 +460,8 @@ namespace AZ
         
         SystemTickBus::ExecuteQueuedEvents();
         SystemTickBus::AllowFunctionQueuing(false);
+
+        AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::Finalize);
 
         // deactivate all entities
         Entity* systemEntity = nullptr;
@@ -778,6 +769,19 @@ namespace AZ
     }
 
     //=========================================================================
+    // CreateStaticModules
+    //=========================================================================
+    void ComponentApplication::CreateStaticModules(AZStd::vector<AZ::Module*>& outModules)
+    {
+        if (m_startupParameters.m_createStaticModulesCallback)
+        {
+            m_startupParameters.m_createStaticModulesCallback(outModules);
+        }
+
+        outModules.emplace_back(aznew AzCoreModule());
+    }
+
+    //=========================================================================
     // Tick
     //=========================================================================
     void ComponentApplication::Tick(float deltaOverride /*= -1.f*/)
@@ -869,27 +873,9 @@ namespace AZ
 
     //=========================================================================
     // RegisterCoreComponents
-    // [5/30/2012]
     //=========================================================================
     void ComponentApplication::RegisterCoreComponents()
     {
-        RegisterComponentDescriptor(AzStdReflectionComponent::CreateDescriptor());
-        RegisterComponentDescriptor(MemoryComponent::CreateDescriptor());
-        RegisterComponentDescriptor(StreamerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(JobManagerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AssetManagerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(ObjectStreamComponent::CreateDescriptor());
-        RegisterComponentDescriptor(UserSettingsComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Debug::FrameProfilerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(SliceComponent::CreateDescriptor());
-        RegisterComponentDescriptor(SliceSystemComponent::CreateDescriptor());
-        RegisterComponentDescriptor(SliceMetadataInfoComponent::CreateDescriptor());
-
-
-#if !defined(AZCORE_EXCLUDE_LUA)
-        RegisterComponentDescriptor(ScriptSystemComponent::CreateDescriptor());
-#endif // #if !defined(AZCORE_EXCLUDE_LUA)
-
     }
 
     //=========================================================================

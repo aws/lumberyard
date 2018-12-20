@@ -21,6 +21,8 @@ using namespace AZ;
 
 namespace UnitTest
 {
+    static const AZ::Uuid AZCoreTestsDLLModuleId{ "{99C6BF95-847F-4EEE-BB60-9B26D02FF577}" };
+
     class SystemComponentRequests
         : public AZ::EBusTraits
     {
@@ -170,7 +172,7 @@ namespace UnitTest
                 // Find the dynamic module
                 const ModuleData* systemLoadedModule = nullptr;
                 ModuleManagerRequestBus::Broadcast(&ModuleManagerRequestBus::Events::EnumerateModules, [&systemLoadedModule](const ModuleData& moduleData) {
-                    if (azrtti_typeid(moduleData.GetModule()) == Uuid("{99C6BF95-847F-4EEE-BB60-9B26D02FF577}"))
+                    if (azrtti_typeid(moduleData.GetModule()) == AZCoreTestsDLLModuleId)
                     {
                         systemLoadedModule = &moduleData;
                         return false;
@@ -237,9 +239,18 @@ namespace UnitTest
 
                 // Find the dynamic module
                 const ModuleData* systemLoadedModule = nullptr;
-                ModuleManagerRequestBus::Broadcast(&ModuleManagerRequestBus::Events::EnumerateModules, [&systemLoadedModule](const ModuleData& moduleData) {
-                    systemLoadedModule = &moduleData;
-                    return false;
+                ModuleManagerRequestBus::Broadcast(&ModuleManagerRequestBus::Events::EnumerateModules, [&systemLoadedModule](const ModuleData& moduleData)
+                {
+                    // Because the module was loaded with ModuleInitializationSteps::None, it should be the only one that doesn't have a module class
+                    if (!moduleData.GetModule())
+                    {
+                        systemLoadedModule = &moduleData;
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
                 });
 
                 // Test that the module exists, but is empty

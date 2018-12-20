@@ -296,7 +296,7 @@ namespace AzFramework
     ScriptComponent::ScriptComponent()
         : m_context(nullptr)
         , m_contextId(AZ::ScriptContextIds::DefaultScriptContextId)
-        , m_script(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_PRE_LOAD))
+        , m_script(AZ::Data::AssetLoadBehavior::PreLoad)
         , m_table(LUA_NOREF)
         , m_netBindingTable(nullptr)
     {

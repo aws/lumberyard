@@ -60,7 +60,7 @@ static const char* kLevelFileNames[] =
 CLevelFileDialog::CLevelFileDialog(bool openDialog, QWidget* parent)
     : QDialog(parent)
     , m_bOpenDialog(openDialog)
-    , ui(new Ui::Dialog())
+    , ui(new Ui::LevelFileDialog())
     , m_model(new LevelTreeModel(this))
     , m_filterModel(new LevelTreeModelFilter(this))
 {

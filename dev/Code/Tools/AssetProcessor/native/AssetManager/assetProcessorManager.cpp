@@ -59,6 +59,8 @@ namespace AssetProcessor
         , m_platformConfig(config)
     {
         m_stateData = AZStd::shared_ptr<AssetDatabaseConnection>(aznew AssetDatabaseConnection());
+        // note that this is not the first time we're opening the database - the main thread also opens it before this happens,
+        // which allows it to upgrade it and check it for errors.  If we get here, it means the database is already good to go.
         m_stateData->OpenDatabase();
 
         MigrateScanFolders();
@@ -674,7 +676,6 @@ namespace AssetProcessor
         {
             //if we didn't find a job, we make a new one
             job.m_sourcePK = source.m_sourceID;
-            job.m_fingerprint = FAILED_FINGERPRINT;
             job.m_jobKey = jobEntry.m_jobKey.toUtf8().constData();
             job.m_platform = jobEntry.m_platformInfo.m_identifier;
             job.m_builderGuid = jobEntry.m_builderGuid;
@@ -683,6 +684,9 @@ namespace AssetProcessor
             job.m_firstFailLogTime = job.m_lastFailLogTime = job.m_lastLogTime = QDateTime::currentMSecsSinceEpoch();
             job.m_firstFailLogFile = job.m_lastFailLogFile = job.m_lastLogFile = AssetUtilities::ComputeJobLogFolder() + "/" + AssetUtilities::ComputeJobLogFileName(jobEntry);
         }
+
+        // invalidate the fingerprint
+        job.m_fingerprint = FAILED_FINGERPRINT;
 
         //set the random key
         job.m_jobRunKey = jobEntry.m_jobRunKey;

@@ -125,6 +125,11 @@ namespace RoadsAndRivers
         AZ::ConstSplinePtr spline = nullptr;
         LmbrCentral::SplineComponentRequestBus::EventResult(spline, m_entityId, &LmbrCentral::SplineComponentRequests::GetSpline);
 
+        if (!spline)
+        {
+            return;
+        }
+
         auto addChunkAtSplineDist = [spline, this](float t)
         {
             auto width = m_widthModifiers.GetWidthAt(t);
@@ -322,6 +327,18 @@ namespace RoadsAndRivers
         }
 
         return false;
+    }
+
+    SplineGeometry& SplineGeometry::operator=(const SplineGeometry& rhs)
+    {
+        m_widthModifiers = rhs.m_widthModifiers;
+        m_segmentLength = rhs.m_segmentLength;
+        m_tileLength = rhs.m_tileLength;
+        m_sortPriority = rhs.m_sortPriority;
+        m_viewDistanceMultiplier = rhs.m_viewDistanceMultiplier;
+        m_minSpec = rhs.m_minSpec;
+
+        return *this;
     }
 
     void SplineGeometry::Reflect(AZ::ReflectContext* context)

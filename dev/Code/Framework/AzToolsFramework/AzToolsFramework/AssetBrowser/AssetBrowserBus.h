@@ -253,5 +253,21 @@ namespace AzToolsFramework
         };
 
         using AssetBrowserModelNotificationBus = AZ::EBus<AssetBrowserModelNotifications>;
+
+        //! Sends requests to the Asset Browser view.
+        class AssetBrowserViewRequests
+            : public AZ::EBusTraits
+        {
+        public:
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
+            /**
+            * Requests the Asset Browser's view to select the given asset.
+            * \param assetID The asset to select.
+            */
+            virtual void SelectProduct(AZ::Data::AssetId assetID) = 0;
+        };
+        using AssetBrowserViewRequestBus = AZ::EBus<AssetBrowserViewRequests>;
+
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

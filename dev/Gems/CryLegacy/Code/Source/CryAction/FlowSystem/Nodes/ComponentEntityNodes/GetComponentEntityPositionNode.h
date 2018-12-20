@@ -86,7 +86,7 @@ private:
     Vec3 m_cachedEntityPosition;
 
     /*
-    * Resets the Transfrom bus handler to use a new entity Id
+    * Resets the Transform bus handler to use a new entity Id
     * @param triggerEntityId Entity id to be used
     */
     void ResetHandlerForEntityId(FlowEntityId triggerEntityId);

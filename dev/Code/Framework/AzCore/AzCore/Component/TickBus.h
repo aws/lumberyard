@@ -66,6 +66,7 @@ namespace AZ
         : public AZ::EBusTraits
     {
     public:
+        AZ_RTTI(TickEvents, "{DF79B555-D9E9-489A-8A00-AD39C564E258}");
 
         /**
          * Creates an instance of the class and sets the tick order of the 

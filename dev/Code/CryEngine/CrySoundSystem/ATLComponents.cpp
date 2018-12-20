@@ -20,6 +20,10 @@
 #include <I3DEngine.h>
 #include <IRenderAuxGeom.h>
 
+#if defined(INCLUDE_AUDIO_PRODUCTION_CODE)
+    #include <AzCore/std/string/conversions.h>
+#endif // INCLUDE_AUDIO_PRODUCTION_CODE
+
 namespace Audio
 {
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1848,7 +1852,7 @@ namespace Audio
     void CAudioEventManager::DrawDebugInfo(IRenderAuxGeom& rAuxGeom, float fPosX, float fPosY) const
     {
         static float const fHeaderColor[4] = { 1.0f, 1.0f, 1.0f, 0.9f };
-        static float const fItemPlayingColor[4] = { 0.1f, 0.6f, 0.1f, 0.9f };
+        static float const fItemPlayingColor[4] = { 0.3f, 0.6f, 0.3f, 0.9f };
         static float const fItemLoadingColor[4] = { 0.9f, 0.2f, 0.2f, 0.9f };
         static float const fItemOtherColor[4] = { 0.8f, 0.8f, 0.8f, 0.9f };
         static float const fNoImplColor[4] = { 1.0f, 0.6f, 0.6f, 0.9f };
@@ -1857,17 +1861,17 @@ namespace Audio
         fPosX += 20.0f;
         fPosY += 17.0f;
 
+        AZStd::string triggerFilter(g_audioCVars.m_pAudioTriggersDebugFilter->GetString());
+        AZStd::to_lower(triggerFilter.begin(), triggerFilter.end());
+
         for (auto& audioEventPair : m_cActiveAudioEvents)
         {
             auto const atlEvent = audioEventPair.second;
-            char const* const sOriginalName = m_pDebugNameStore->LookupAudioTriggerName(atlEvent->m_nTriggerID);
-            CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> sLowerCaseAudioTriggerName(sOriginalName);
-            sLowerCaseAudioTriggerName.MakeLower();
-            CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> sLowerCaseSearchString(g_audioCVars.m_pAudioTriggersDebugFilter->GetString());
-            sLowerCaseSearchString.MakeLower();
-            const bool bDraw = (sLowerCaseSearchString.empty() || (sLowerCaseSearchString.compareNoCase("0") == 0)) || (sLowerCaseAudioTriggerName.find(sLowerCaseSearchString) != CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH>::npos);
 
-            if (bDraw)
+            AZStd::string triggerName(m_pDebugNameStore->LookupAudioTriggerName(atlEvent->m_nTriggerID));
+            AZStd::to_lower(triggerName.begin(), triggerName.end());
+
+            if (AudioDebugDrawFilter(triggerName, triggerFilter))
             {
                 const float* pColor = fItemOtherColor;
 
@@ -1880,15 +1884,15 @@ namespace Audio
                     pColor = fItemLoadingColor;
                 }
 
-                rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.2f,
+                rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.6f,
                     pColor,
                     false,
                     "%s on %s : %llu",
-                    m_pDebugNameStore->LookupAudioTriggerName(atlEvent->m_nTriggerID),
+                    triggerName.c_str(),
                     m_pDebugNameStore->LookupAudioObjectName(atlEvent->m_nObjectID),
                     atlEvent->GetID());
 
-                fPosY += 10.0f;
+                fPosY += 16.0f;
             }
         }
     }
@@ -1956,11 +1960,21 @@ namespace Audio
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     void CAudioObjectManager::DrawPerObjectDebugInfo(IRenderAuxGeom& rAuxGeom, const Vec3& rListenerPos) const
     {
+        AZStd::string audioObjectFilter(g_audioCVars.m_pAudioObjectsDebugFilter->GetString());
+        AZStd::to_lower(audioObjectFilter.begin(), audioObjectFilter.end());
+
         for (auto& audioObjectPair : m_cAudioObjects)
         {
             auto const audioObject = audioObjectPair.second;
 
-            if (HasActiveEvents(audioObject))
+            AZStd::string audioObjectName(m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID()));
+            AZStd::to_lower(audioObjectName.begin(), audioObjectName.end());
+
+            bool bDraw = AudioDebugDrawFilter(audioObjectName, audioObjectFilter);
+
+            bDraw &= (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || HasActiveEvents(audioObject));
+
+            if (bDraw)
             {
                 audioObject->DrawDebugInfo(rAuxGeom, rListenerPos, m_pDebugNameStore);
             }
@@ -1971,41 +1985,67 @@ namespace Audio
     void CAudioObjectManager::DrawDebugInfo(IRenderAuxGeom& rAuxGeom, float fPosX, float fPosY) const
     {
         static const float fHeaderColor[4] = { 1.0f, 1.0f, 1.0f, 0.9f };
-        static const float fItemActiveColor[4] = { 0.1f, 0.6f, 0.1f, 0.9f };
+        static const float fItemActiveColor[4] = { 0.3f, 0.6f, 0.3f, 0.9f };
         static const float fItemInactiveColor[4] = { 0.8f, 0.8f, 0.8f, 0.9f };
+        static const float fOverloadColor[4] = { 1.0f, 0.3f, 0.3f, 0.9f };
 
-        size_t nObjects = 0;
+        size_t activeObjects = 0;
+        size_t aliveObjects = m_cAudioObjects.size();
+        size_t remainingObjects = (m_cObjectPool.m_nReserveSize > aliveObjects ? m_cObjectPool.m_nReserveSize - aliveObjects : 0);
         const float fHeaderPosY = fPosY;
+
         fPosX += 20.0f;
         fPosY += 17.0f;
+
+        AZStd::string audioObjectFilter(g_audioCVars.m_pAudioObjectsDebugFilter->GetString());
+        AZStd::to_lower(audioObjectFilter.begin(), audioObjectFilter.end());
 
         for (auto& audioObjectPair : m_cAudioObjects)
         {
             auto const audioObject = audioObjectPair.second;
-            const char* const sOriginalName = m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID());
-            CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> sLowerCaseAudioObjectName(sOriginalName);
-            sLowerCaseAudioObjectName.MakeLower();
-            CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> sLowerCaseSearchString(g_audioCVars.m_pAudioObjectsDebugFilter->GetString());
-            sLowerCaseSearchString.MakeLower();
-            const bool bHasActiveEvents = HasActiveEvents(audioObject);
-            const bool bStringFound = (sLowerCaseSearchString.empty() || (sLowerCaseSearchString.compareNoCase("0") == 0)) || (sLowerCaseAudioObjectName.find(sLowerCaseSearchString) != CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH>::npos);
-            const bool bDraw = bStringFound && ((g_audioCVars.m_nShowActiveAudioObjectsOnly == 0) || (g_audioCVars.m_nShowActiveAudioObjectsOnly > 0 && bHasActiveEvents));
+
+            AZStd::string audioObjectName(m_pDebugNameStore->LookupAudioObjectName(audioObject->GetID()));
+            AZStd::to_lower(audioObjectName.begin(), audioObjectName.end());
+
+            bool bDraw = AudioDebugDrawFilter(audioObjectName, audioObjectFilter);
+            bool hasActiveEvents = HasActiveEvents(audioObject);
+            bDraw &= (g_audioCVars.m_nShowActiveAudioObjectsOnly == 0 || hasActiveEvents);
 
             if (bDraw)
             {
-                rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.2f,
-                    bHasActiveEvents ? fItemActiveColor : fItemInactiveColor,
+                rAuxGeom.Draw2dLabel(fPosX, fPosY, 1.6f,
+                    hasActiveEvents ? fItemActiveColor : fItemInactiveColor,
                     false,
-                    "%llu : %s",
+                    "[%.2f  %.2f  %.2f] (%llu): %s",
+                    audioObject->GetPosition().mPosition.GetColumn3().x,
+                    audioObject->GetPosition().mPosition.GetColumn3().y,
+                    audioObject->GetPosition().mPosition.GetColumn3().z,
                     audioObject->GetID(),
-                    sOriginalName);
+                    audioObjectName.c_str());
 
-                fPosY += 10.0f;
-                ++nObjects;
+                fPosY += 16.0f;
+            }
+
+            if (hasActiveEvents)
+            {
+                ++activeObjects;
             }
         }
 
-        rAuxGeom.Draw2dLabel(fPosX, fHeaderPosY, 1.6f, fHeaderColor, false, "Audio Objects [%" PRISIZE_T "]", nObjects);
+        static const char* headerFormat = "Audio Objects [Active : %3" PRISIZE_T " | Alive: %3" PRISIZE_T " | Pool: %3" PRISIZE_T " | Remaining: %3" PRISIZE_T "]";
+        const bool overloaded = (m_cAudioObjects.size() > m_cObjectPool.m_nReserveSize);
+
+        rAuxGeom.Draw2dLabel(
+            fPosX,
+            fHeaderPosY,
+            1.6f,
+            overloaded ? fOverloadColor : fHeaderColor,
+            false,
+            headerFormat,
+            activeObjects,
+            aliveObjects,
+            m_cObjectPool.m_nReserveSize,
+            remainingObjects);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -16,6 +16,8 @@
 
 #include <AzToolsFramework/UI/Qt/FlowLayout.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <QMenu>
 #include <QLabel>
 #include <QVBoxLayout>
@@ -23,6 +25,9 @@
 #include <QSortFilterProxyModel>
 #include <QStandardItemModel>
 #include <QScopedValueRollback>
+#include <QScreen>
+#include <QDesktopwidget>
+#include <QTimer>
 
 namespace AzQtComponents
 {
@@ -66,12 +71,39 @@ namespace AzQtComponents
 
     SearchTypeSelector::SearchTypeSelector(QWidget* parent /* = nullptr */)
         : QMenu(parent)
+        , m_unfilteredData(nullptr)
     {
-        QVBoxLayout* layout = new QVBoxLayout(this);
-        layout->setContentsMargins(QMargins());
+        QVBoxLayout* verticalLayout = new QVBoxLayout(this);
+        verticalLayout->setSpacing(0);
+        verticalLayout->setObjectName(QStringLiteral("vertLayout"));
+        verticalLayout->setContentsMargins(0, 0, 0, 0);
+
+        //make text search box
+        QVBoxLayout* searchLayout = new QVBoxLayout();
+        verticalLayout->setContentsMargins(4, 4, 4, 4);
+
+        QLineEdit* textSearch = new QLineEdit(this);
+        textSearch->setObjectName(QStringLiteral("textSearch"));
+        QSizePolicy sizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        sizePolicy.setHorizontalStretch(0);
+        sizePolicy.setVerticalStretch(0);
+        sizePolicy.setHeightForWidth(textSearch->sizePolicy().hasHeightForWidth());
+        textSearch->setSizePolicy(sizePolicy);
+        textSearch->setMinimumSize(QSize(0, 25));
+        textSearch->setObjectName("filteredSearchWidget");
+        textSearch->setFrame(false);
+        textSearch->setText(QString());
+        textSearch->setPlaceholderText(QObject::tr("Search..."));
+        connect(textSearch, &QLineEdit::textChanged, this, &SearchTypeSelector::FilterTextChanged);
+
+        searchLayout->addWidget(textSearch);
+
+        //add in item tree
+        QVBoxLayout* itemLayout = new QVBoxLayout();
+        itemLayout->setContentsMargins(QMargins());
 
         m_tree = new QTreeView(this);
-        layout->addWidget(m_tree);
+        itemLayout->addWidget(m_tree);
 
         m_model = new QStandardItemModel(this);
         m_tree->setModel(m_model);
@@ -82,11 +114,18 @@ namespace AzQtComponents
             // Don't emit itemChanged while Setup is running
             if (!m_settingUp)
             {
-                emit TypeToggled(item->data().toInt(), item->checkState() == Qt::Checked);
+                int index = item->data().toInt();
+                if (index < m_filteredItemIndices.count())
+                {
+                    index = m_filteredItemIndices[item->data().toInt()];
+                }
+                
+                bool enabled = item->checkState() == Qt::Checked;
+                emit TypeToggled(index, enabled);
             }
         });
-
-        setMaximumSize(500, 750);
+        verticalLayout->addLayout(searchLayout);
+        verticalLayout->addLayout(itemLayout);
     }
 
     QSize SearchTypeSelector::sizeHint() const
@@ -94,15 +133,26 @@ namespace AzQtComponents
         return m_tree->sizeHint();
     }
 
-    void SearchTypeSelector::Setup(const SearchTypeFilterList& searchTypes)
+    void SearchTypeSelector::RepopulateDataModel()
     {
+        m_filteredItemIndices.clear();
         m_model->clear();
+        int numRows = 0;
+
+
+        bool amFiltering = m_filterString.length() > 0;
 
         QScopedValueRollback<bool> setupGuard(m_settingUp, true);
         QMap<QString, QStandardItem*> categories;
-        for (int i = 0, length = searchTypes.length(); i < length; ++i)
+
+        if (!m_unfilteredData)
         {
-            const SearchTypeFilter& filter = searchTypes[i];
+            return;
+        }
+
+        for (int i = 0, length = m_unfilteredData->length(); i < length; ++i)
+        {
+            const SearchTypeFilter& filter = m_unfilteredData->at(i);
             QStandardItem* categoryItem;
             if (categories.contains(filter.category))
             {
@@ -112,19 +162,97 @@ namespace AzQtComponents
             {
                 categoryItem = new QStandardItem(filter.category);
                 categories[filter.category] = categoryItem;
-                m_model->appendRow(categoryItem);
+                if (!amFiltering)
+                {
+                    //only show categories if not filtering
+                    m_model->appendRow(categoryItem);
+                }
                 categoryItem->setEditable(false);
+                ++numRows;
+            }
+
+            if (amFiltering && !filter.displayName.contains(m_filterString, Qt::CaseSensitivity::CaseInsensitive))
+            {
+                continue;
             }
 
             QStandardItem* item = new QStandardItem(filter.displayName);
             item->setCheckable(true);
             item->setCheckState(filter.enabled ? Qt::Checked : Qt::Unchecked);
             item->setData(i);
-            categoryItem->appendRow(item);
+            if (amFiltering)
+            {
+                m_model->appendRow(item);
+                m_filteredItemIndices.append(i);
+            } 
+            else
+            {
+                m_filteredItemIndices.append(i);
+                categoryItem->appendRow(item);
+            }
             item->setEditable(false);
+            ++numRows;
         }
 
         m_tree->expandAll();
+
+        // Calculate the maximum size of the tree
+        QFontMetrics fontMetric{m_tree->font()};
+        int height = fontMetric.height() * numRows;
+        // Decide whether the menu should go up or down from current point.
+        QPoint globalPos;
+        if (parentWidget())
+        {
+            globalPos = parentWidget()->mapToGlobal(parentWidget()->rect().bottomRight());
+        }
+        else
+        {
+            globalPos = mapToGlobal(QCursor::pos());
+        }
+        QDesktopWidget* desktop = QApplication::desktop();
+        int mouseScreen = desktop->screenNumber(globalPos);
+        QRect mouseScreenGeometry = desktop->screen(mouseScreen)->geometry();
+        QPoint localPos = globalPos - mouseScreenGeometry.topLeft();
+        int screenHeight;
+        int yPos;
+        if (localPos.y() > mouseScreenGeometry.height() / 2)
+        {
+            screenHeight = localPos.y();
+            yPos = mouseScreenGeometry.y();
+        }
+        else
+        {
+            screenHeight = mouseScreenGeometry.height() - localPos.y();
+            yPos = globalPos.y();
+        }
+        if (height > screenHeight)
+        {
+            height = screenHeight;
+        }
+
+        // Set the size of the menu
+        const QSize menuSize{ 256, height };
+        setMaximumSize(menuSize);
+        setMinimumSize(menuSize);
+
+        QPoint menuPosition{globalPos.x(), yPos};
+        // Wait until end of frame to move the menu as QMenu will make its own move after the
+        // function
+        QTimer::singleShot(0, [=] { this->move(menuPosition); });
+    }
+
+    void SearchTypeSelector::Setup(const SearchTypeFilterList& searchTypes)
+    {
+        m_unfilteredData = &searchTypes;
+
+        RepopulateDataModel();
+    }
+
+    void SearchTypeSelector::FilterTextChanged(const QString& newFilter)
+    {
+        m_filterString = newFilter;
+
+        RepopulateDataModel();
     }
 
     FilteredSearchWidget::FilteredSearchWidget(QWidget* parent)

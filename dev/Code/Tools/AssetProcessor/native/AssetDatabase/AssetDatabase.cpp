@@ -615,8 +615,22 @@ namespace AssetProcessor
 
     bool AssetDatabaseConnection::PostOpenDatabase()
     {
-        DatabaseVersion foundVersion = QueryDatabaseVersion();
+        DatabaseVersion foundVersion = DatabaseVersion::DatabaseDoesNotExist;
+
+        if (m_databaseConnection->DoesTableExist("dbinfo"))
+        {
+            foundVersion = QueryDatabaseVersion();
+        }
         bool dropAllTables = true;
+
+        // if its a future version, we don't want to drop tables and blow up, we'd rather just inform the user, and move on:
+        if (foundVersion > CurrentDatabaseVersion())
+        {
+            AZ_Error(AssetProcessor::ConsoleChannel, false,
+                "The database in the Cache folder appears to be from a NEWER version of Asset Processor than this one.\n"
+                "To prevent loss of data in the cache for the newer version, this Asset Processor will close.\n");
+            return false;
+        }
 
         if (foundVersion == DatabaseVersion::AddedOutputPrefixToScanFolders)
         {

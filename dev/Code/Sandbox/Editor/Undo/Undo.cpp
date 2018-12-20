@@ -285,7 +285,7 @@ void CUndoManager::Redo(int numSteps)
     if (!m_redoStack.empty())
     {
         Suspend();
-        while (numSteps-- > 0 && !m_redoStack.empty())
+        while (numSteps-- > 0 && !m_redoStack.empty() && !m_bClearRedoStackQueued)
         {
             m_bRedoing = true;
             CUndoStep* redo = m_redoStack.back();
@@ -310,6 +310,11 @@ void CUndoManager::Redo(int numSteps)
     m_bRedoing = false;
 
     GetIEditor()->Notify(eNotify_OnEndUndoRedo);
+
+    if (m_bClearRedoStackQueued)
+    {
+        ClearRedoStack();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -392,6 +397,13 @@ void CUndoManager::RecordUndo(IUndoObject* obj)
 //////////////////////////////////////////////////////////////////////////
 void CUndoManager::ClearRedoStack()
 {
+    if (m_bRedoing)
+    {
+        m_bClearRedoStackQueued = true;
+        return;
+    }
+    m_bClearRedoStackQueued = false;
+
     for (std::list<CUndoStep*>::iterator it = m_redoStack.begin(); it != m_redoStack.end(); it++)
     {
         delete *it;

@@ -184,8 +184,11 @@ namespace AzToolsFramework
             }
 
             m_componentOrderArray = componentOrderArray;
-            EditorInspectorComponentNotificationBus::Event(GetEntityId(), &EditorInspectorComponentNotificationBus::Events::OnComponentOrderChanged);
+
+            // mark the order as dirty before sending the OnComponentOrderChanged event in order for PrepareSave to be properly handled in the case 
+            // one of the event listeners needs to build the InstanceDataHierarchy
             m_componentOrderIsDirty = true;
+            EditorInspectorComponentNotificationBus::Event(GetEntityId(), &EditorInspectorComponentNotificationBus::Events::OnComponentOrderChanged);
         }
 
     } // namespace Components

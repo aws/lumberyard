@@ -39,9 +39,46 @@ namespace AZ
         class SliceReference;
         class SliceInstance;
 
+        /**
+         * Points to a specific instantiation of a nested slice.
+         */
+        class SliceInstanceAddress
+        {
+        public:
+            SliceInstanceAddress();
+            SliceInstanceAddress(SliceReference* reference, SliceInstance* instance);
+            SliceInstanceAddress(const SliceInstanceAddress& RHS);
+            SliceInstanceAddress(const SliceInstanceAddress&& RHS);
+
+            bool operator==(const SliceInstanceAddress& rhs) const;
+            bool operator!=(const SliceInstanceAddress& rhs) const;
+
+            SliceInstanceAddress& operator=(const SliceInstanceAddress& RHS);
+
+            bool IsValid() const;
+            explicit operator bool() const;
+
+            const SliceReference* GetReference() const;
+            SliceReference* GetReference();
+            void SetReference(SliceReference* reference);
+
+            const SliceInstance* GetInstance() const;
+            SliceInstance* GetInstance();
+            void SetInstance(SliceInstance* instance);
+
+            // DEPRECATED
+            // SlinceInstanceAddress used to be an AZStd::pair, so 'first' and 'second' are provided to maintain backwards compatibility.
+            // Use GetReference() and GetInstance() instead.
+            SliceReference*& first;
+            SliceInstance*& second;
+
+        private:
+            SliceReference* m_reference = nullptr; ///< The SliceReference to which this SliceInstance belongs
+            SliceInstance* m_instance = nullptr; ///< The specific instantiation of the nested slice
+        };
+
         using EntityList = AZStd::vector<Entity*>;
         using EntityIdToEntityIdMap = AZStd::unordered_map<EntityId, EntityId>;
-        using SliceInstanceAddress = AZStd::pair<SliceReference*, SliceInstance*>;
         using SliceInstanceToSliceInstanceMap = AZStd::unordered_map<SliceInstanceAddress, SliceInstanceAddress>;
         using EntityIdSet = AZStd::unordered_set<AZ::EntityId>;
         using SliceInstanceId = AZ::Uuid;
@@ -80,13 +117,33 @@ namespace AZ
             AZ_TYPE_INFO(DataFlagsPerEntity, "{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}");
             static void Reflect(ReflectContext* context);
 
+            using DataFlagsTransformFunction = AZStd::function<DataPatch::Flags(DataPatch::Flags)>;
+
             /// Function used to check whether a given entity ID is allowed.
             using IsValidEntityFunction = AZStd::function<bool(EntityId)>;
 
             DataFlagsPerEntity(const IsValidEntityFunction& isValidEntityFunction = nullptr);
 
+            void SetIsValidEntityFunction(const IsValidEntityFunction& isValidEntityFunction);
+
+            /// Replace all data flags.
             void CopyDataFlagsFrom(const DataFlagsPerEntity& rhs);
             void CopyDataFlagsFrom(DataFlagsPerEntity&& rhs);
+
+            /// Add data flags.
+            /// @from add data flags from this object
+            /// @remapFromIdToId (optional) If provided, when importing data flags, remap which EntityId receives the flags.
+            ///                  If an EntityId is not found in the map then its flags are not imported.
+            ///                  If no map is provided then all data flags are imported and EntityIds are not remapped.
+            /// @dataFlagsTransformFn (optional) If function is provided, then it will be applied to all imported flags.
+            void ImportDataFlagsFrom(const DataFlagsPerEntity& from, const EntityIdToEntityIdMap* remapFromIdToId = nullptr, const DataFlagsTransformFunction& dataFlagsTransformFn = nullptr);
+
+            /// Return all entities' data flags, using addresses that align with those in a data patch.
+            DataPatch::FlagsMap GetDataFlagsForPatching(const EntityIdToEntityIdMap* remapFromIdToId = nullptr) const;
+
+            /// Change all EntityIds.
+            /// If an existing EntityId is not found in the map then its data is removed.
+            void RemapEntityIds(const EntityIdToEntityIdMap& remapFromIdToId);
 
             /// Return all data flags for this entity.
             /// Addresses are relative the entity.
@@ -160,6 +217,7 @@ namespace AZ
             AZ_CLASS_ALLOCATOR(InstantiatedContainer, SystemAllocator, 0);
             AZ_TYPE_INFO(InstantiatedContainer, "{05038EF7-9EF7-40D8-A29B-503D85B85AF8}");
 
+            InstantiatedContainer(bool deleteEntitiesOnDestruction = true);
             ~InstantiatedContainer();
 
             void DeleteEntities();
@@ -172,6 +230,7 @@ namespace AZ
 
             EntityList m_entities;
             EntityList m_metadataEntities;
+            bool m_deleteEntitiesOnDestruction;
         };
 
         /**
@@ -240,12 +299,6 @@ namespace AZ
                 return m_dataFlags;
             }
 
-            /// Returns a reference to the data flags per entity.
-            DataFlagsPerEntity& GetDataFlags()
-            {
-                return m_dataFlags;
-            }
-
             /// Returns the EntityID of the from the base entity ID, to the new Entity ID that we will instantiate with this instance.
             /// @Note: This map may contain mappings to inactive entities.
             const EntityIdToEntityIdMap& GetEntityIdMap() const
@@ -263,6 +316,9 @@ namespace AZ
                 }
                 return m_entityIdToBaseCache;
             }
+
+            /// Returns whether this entity exists in this instance.
+            bool IsValidEntity(EntityId entityId) const;
 
             /// Returns the instance's unique Id.
             const SliceInstanceId& GetId() const
@@ -285,11 +341,6 @@ namespace AZ
             {
                 m_instanceId = id;
             }
-
-            /// Returns data flags whose addresses align with those in the data patch.
-            DataPatch::FlagsMap GetDataFlagsForPatching() const;
-
-            static DataFlagsPerEntity::IsValidEntityFunction GenerateValidEntityFunction(const SliceInstance*);
 
             // The lookup is built lazily when accessing the map, but constness is desirable
             // in the higher level APIs.
@@ -327,9 +378,12 @@ namespace AZ
 
             /**
              * Create a new instance of the slice (with new IDs for every entity).
-             * \param customMapper Used to generate runtime entity ids for the new instance. By default runtime ids are randomly generated.
+             * @param customMapper Used to generate runtime entity ids for the new instance. By default runtime ids are randomly generated.
+             * @param sliceInstanceId The id assigned to the slice instance to be created. If no argument is passed in and random id will be generated as default.
+             * @return A pointer to the newly created slice instance. An existing slice instance is returned if it has the same id as \ref sliceInstanceId passed in.
              */
-            SliceInstance* CreateInstance(const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customMapper = nullptr);
+            SliceInstance* CreateInstance(const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customMapper = nullptr, 
+                 SliceInstanceId sliceInstanceId = SliceInstanceId::CreateRandom());
 
             /** 
              * Clones an existing slice instance
@@ -385,6 +439,8 @@ namespace AZ
 
             void RemoveInstanceFromEntityInfoMap(SliceInstance& instance);
 
+            void FixUpMetadataEntityForSliceInstance(SliceInstance* sliceInstance);
+
             bool m_isInstantiated;
 
             SliceComponent* m_component = nullptr;
@@ -436,6 +492,9 @@ namespace AZ
         /// Returns list of the entities that are "new" for the current slice (not based on an existing slice)
         const EntityList& GetNewEntities() const;
 
+        /// Returns true for entities that are "new" entities in this slice (entities not based on another slice)
+        bool IsNewEntity(EntityId entityId) const;
+
         /**
          * Returns all entities including the ones based on instances, you need to provide container as we don't
          * keep all entities in one list (we can change that if we need it easily).
@@ -466,20 +525,43 @@ namespace AZ
         /// Returns list of all slices and their instantiated entities (for this slice node)
         const SliceList& GetSlices() const;
 
+        /**
+        * Returns the list of slice references associated with this slice that could not be loaded.
+        * \returns The list of invalid slice references. This is empty if there are none.
+        */
+        const SliceList& GetInvalidSlices() const;
+
         SliceReference* GetSlice(const Data::Asset<SliceAsset>& sliceAsset);
         SliceReference* GetSlice(const Data::AssetId& sliceAssetId);
 
         /**
          * Adds a dependent slice, and instantiate the slices if needed.
-         * \param sliceAsset slice asset.
-         * \param customMapper optional entity runtime id mapper.
-         * \returns null if adding slice failed.
+         * @param sliceAsset slice asset.
+         * @param customMapper optional entity runtime id mapper.
+         * @param assetLoadFilter Optional asset load filter. Any filtered-out asset references that are not already memory-resident will not trigger loads.
+         * @param sliceInstanceId The id assigned to the slice instance to be created. If no argument is passed in and random id will be generated as default.
+         * @returns null if adding slice failed.
          */
-        SliceInstanceAddress AddSlice(const Data::Asset<SliceAsset>& sliceAsset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customMapper = nullptr);
+        SliceInstanceAddress AddSlice(const Data::Asset<SliceAsset>& sliceAsset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customMapper = nullptr, 
+            SliceInstanceId sliceInstanceId = SliceInstanceId::CreateRandom());
         /// Adds a slice reference (moves it) along with its instance information.
         SliceReference* AddSlice(SliceReference& sliceReference);
         /// Adds a slice (moves it) from another already generated reference/instance pair.
         SliceInstanceAddress AddSliceInstance(SliceReference* sliceReference, SliceInstance* sliceInstance);
+
+        /**
+         * Given a sub-slice instance, create a slice reference based on the sub-slice instance's SliceAsset (if the slice reference doesn't already exist), then clone the sub-slice instance and add the clone to the slice reference just created.
+         * @param sourceSliceInstance The slice instance that contains the sub-slice instance.
+         * @param sourceSubSliceInstanceAncestry The ancestry in order from sourceSubSlice to sourceSlice
+         * @param sourceSubSliceInstanceAddress The address of the sub-slice instance to be cloned.
+         * @param out_sourceToCloneEntityIdMap [Optional] If provided, the internal source to clone entity ID map will be returned 
+         * @param preserveIds [Optional] If true will not generate new IDs for the clone and will direct entity ID maps from base ID to existing live IDs of the original
+         * @return The address of the newly created clone-instance.
+         */
+        SliceInstanceAddress CloneAndAddSubSliceInstance(const SliceInstance* sourceSliceInstance, 
+            const AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sourceSubSliceInstanceAncestry,
+            const AZ::SliceComponent::SliceInstanceAddress& sourceSubSliceInstanceAddress,
+            AZ::SliceComponent::EntityIdToEntityIdMap* out_sourceToCloneEntityIdMap = nullptr, bool preserveIds = false);
 
         /// Remove an entire slice asset reference and all its instances.
         bool RemoveSlice(const Data::Asset<SliceAsset>& sliceAsset);
@@ -487,6 +569,7 @@ namespace AZ
 
         /// Removes the slice instance, if this is last instance the SliceReference will be removed too.
         bool RemoveSliceInstance(SliceInstance* instance);
+        bool RemoveSliceInstance(SliceInstanceAddress sliceAddress);
 
         /// Adds entity to the current slice and takes ownership over it (you should not manage/delete it)
         void AddEntity(Entity* entity);
@@ -519,6 +602,14 @@ namespace AZ
         SliceInstanceAddress FindSlice(EntityId entityId);
         
         /**
+        * Flattens a slice reference directly into the slice component and then removes the reference, all dependencies inherited from the reference will become directly owned by the slice component
+        * \param toFlatten The reference we are flattening into the component
+        * \param toFlattenRoot The root entity used to determine common ancestry among the entities within the reference
+        * \return false if flattening failed
+        */
+        bool FlattenSlice(SliceReference* toFlatten, const EntityId& toFlattenRoot);
+
+        /**
          * Extracts data required to restore the specified entity.
          * \return false if the entity is not part of an internal instance, and doesn't require any special restore operations.
          */
@@ -529,10 +620,9 @@ namespace AZ
          * This create a reference for the specified asset if it doesn't already exist.
          * If the reference exists, but the instance with the specified id does not, one will be created.
          * Ownership of the entity is transferred to the instance.
-         * \param asset/reference the instance belongs to.
-         * \param Id of the instance the entity will be added to.
-         * \param entity to add to the instance.
-         * \param ancestorId must be the original ancestor's entity Id in order to relate the entity to its source in the asset.
+         * @param entity A pointer to the entity to be restored.
+         * @param restoreInfo An object holding various information for restoring the entity. Please see \ref EntityRestoreInfo.
+         * @return A pair of SliceReference and SliceInstance, or null if the operation failed.
          */
         SliceInstanceAddress RestoreEntity(AZ::Entity* entity, const EntityRestoreInfo& restoreInfo);
 
@@ -551,6 +641,37 @@ namespace AZ
         {
             return m_myAsset;
         }
+
+        /**
+         * Return all data flags set for this entity.
+         * Addresses are relative the entity.
+         */
+        const DataPatch::FlagsMap& GetEntityDataFlags(EntityId entityId) const;
+
+        /**
+         * Set all data flags for this entity.
+         * Addresses should be relative the entity.
+         * @return True if flags are set. False if the entity does not exist in this slice.
+         */
+        bool SetEntityDataFlags(EntityId entityId, const DataPatch::FlagsMap& dataFlags);
+
+        /**
+         * Get effect of data flags at a particular address within this entity.
+         * Note that the "effect" of data flags could be impacted by data flags set at
+         * other addresses, and data flags set in the slice that this entity is based on.
+         */
+        DataPatch::Flags GetEffectOfEntityDataFlagsAtAddress(EntityId, const DataPatch::AddressType& dataAddress) const;
+
+        /**
+         * Get the data flags set at a particular address within this entity.
+         */
+        DataPatch::Flags GetEntityDataFlagsAtAddress(EntityId entityId, const DataPatch::AddressType& dataAddress) const;
+
+        /**
+         * Set the data flags at a particular address within this entity.
+         * @return True if flags are set. False if the entity does not exist in this slice.
+         */
+        bool SetEntityDataFlagsAtAddress(EntityId entityId, const DataPatch::AddressType& dataAddress, DataPatch::Flags flags);
 
         /** 
         * Appends the metadata entities belonging only directly to each instance in the slice to the given list. Metadata entities belonging
@@ -626,10 +747,17 @@ namespace AZ
             m_isDynamic = isDynamic;
         }
 
+        enum class InstantiateResult
+        {
+            Success,
+            MissingDependency,
+            CyclicalDependency
+        };
+
         /**
         * Instantiate entities for this slice, otherwise only the data are stored.
         */
-        bool Instantiate();
+        InstantiateResult Instantiate();
         bool IsInstantiated() const;
         /**
          * Generate new entity Ids and remap references
@@ -675,6 +803,18 @@ namespace AZ
         /// Populate the entity info map. This will re-populate it even if already populated.
         void BuildEntityInfoMap();
 
+        /// Repopulate the entity info map if it was already populated.
+        void RebuildEntityInfoMapIfNecessary();
+
+        /// Return the appropriate DataFlagsPerEntity collection containing this entity's data flags.
+        DataFlagsPerEntity* GetCorrectBundleOfDataFlags(EntityId entityId);
+        const DataFlagsPerEntity* GetCorrectBundleOfDataFlags(EntityId entityId) const;
+
+        /// Returns data flags for use when instantiating an instance of this slice.
+        /// These data flags include those harvested from the entire slice ancestry.
+        const DataFlagsPerEntity& GetDataFlagsForInstances() const;
+        void BuildDataFlagsForInstances();
+
         /**
         * During instance instantiation, entities from root slices may be removed by data patches. We need to remove these
         * from the metadata associations in our newly cloned instance metadata entities.
@@ -682,7 +822,7 @@ namespace AZ
         void CleanMetadataAssociations();
         
         /// Returns the entity info map (and builds it if necessary).
-        EntityInfoMap& GetEntityInfoMap();
+        const EntityInfoMap& GetEntityInfoMap() const;
 
         /// Returns the reference associated with the specified asset Id. If none is present, one will be created.
         SliceReference* AddOrGetSliceReference(const Data::Asset<SliceAsset>& sliceAsset);
@@ -712,8 +852,14 @@ namespace AZ
         EntityList m_entities;  ///< Entities that are new (not based on a slice).
 
         SliceList m_slices; ///< List of base slices and their instances in the world
+        SliceList m_invalidSlices; ///< List of slice references that did not load correctly.
 
         AZ::Entity m_metadataEntity; ///< Entity for attaching slice metadata components
+
+        DataFlagsPerEntity m_dataFlagsForNewEntities; ///< DataFlags for new entities (DataFlags for entities based on a slice are stored within the SliceInstance) 
+
+        DataFlagsPerEntity m_cachedDataFlagsForInstances; ///< Cached DataFlags to be used when instantiating instances of this slice.
+        bool m_hasGeneratedCachedDataFlags; ///< Whether the cached DataFlags have been generated yet.
 
         AZStd::atomic<bool> m_slicesAreInstantiated; ///< Instantiate state of the base slices (they should be instantiated or not)
 
@@ -738,3 +884,21 @@ namespace AZ
     /// @deprecated Use SliceComponent.
     using PrefabComponent = SliceComponent;
 } // namespace AZ
+
+namespace AZStd
+{
+    template<>
+    struct hash<AZ::SliceComponent::SliceInstanceAddress>
+    {
+        using argument_type = AZ::SliceComponent::SliceInstanceAddress;
+        using result_type = size_t;
+
+        result_type operator() (const argument_type& slice) const
+        {
+            size_t h = 0;
+            hash_combine(h, slice.GetReference());
+            hash_combine(h, slice.GetInstance());
+            return h;
+        }
+    };
+}

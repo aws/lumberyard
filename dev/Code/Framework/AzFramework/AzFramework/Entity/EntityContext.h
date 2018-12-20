@@ -74,7 +74,11 @@ namespace AzFramework
 
         /// Instantiate a slice asset in the context. Listen for the OnSliceInstantiated() / OnSliceInstantiationFailed()
         /// events for details about the resulting entities.
-        virtual SliceInstantiationTicket InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper = nullptr);
+        /// \param asset slice asset to instantiate.
+        /// \param customIdMapper optional Id map callback to allow caller to customize entity Id generation.
+        /// \param assetLoadFilterCB optional asset load filter callback. This is only necessary when heavily customizing asset loading, as it can allow deferral of dependent asset loading.
+        /// \param return slice instantiation ticket.
+        virtual SliceInstantiationTicket InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper = nullptr, const AZ::Data::AssetFilterCB& assetLoadFilter = nullptr);
 
         /// Cancels the asynchronous instantiation of a slice.
         virtual void CancelSliceInstantiation(const SliceInstantiationTicket& ticket);
@@ -155,7 +159,9 @@ namespace AzFramework
         virtual void OnContextEntitiesAdded(const EntityList& /*entities*/) {}
         virtual void OnContextEntityRemoved(const AZ::EntityId& /*id*/) {}
         virtual void OnRootSliceCreated() {}
-        virtual void OnContextReset() {}
+        virtual void OnRootSlicePreDestruction() {}
+        virtual void PrepareForContextReset() { m_contextIsResetting = true; }
+        virtual void OnContextReset() { m_contextIsResetting = false; }
 
         /// Used to validate that the entities in an instantiated slice are valid entities for this context
         /// For example they could be non-UI entities being instantiated in a UI context
@@ -187,11 +193,16 @@ namespace AzFramework
             {
             }
 
-            AZ::Data::Asset<AZ::Data::AssetData> m_asset;
-            SliceInstantiationTicket m_ticket;
-            AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper m_customMapper;
+            AZ::Data::Asset<AZ::Data::AssetData>            m_asset;
+            SliceInstantiationTicket                        m_ticket;
+            AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper   m_customMapper;
         };
-        AZStd::vector<InstantiatingSliceInfo> m_queuedSliceInstantiations;
+
+        // Slices queued for instantation. AZStd::list is used for its stable iterators since elements are deleted during traversal in Entitycontext::OnAssetReady
+        AZStd::list<InstantiatingSliceInfo> m_queuedSliceInstantiations;
+        // Tracks if the context is currently being reset.
+        // This allows systems to skip steps during teardown that will be handled in bulk by the reset.
+        bool m_contextIsResetting = false;
     };
 } // namespace AzFramework
 

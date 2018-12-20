@@ -272,6 +272,8 @@ private: // ---------------------------------------------------------------
     bool                                            m_bUndoing;
     bool                                            m_bRedoing;
 
+    bool                                            m_bClearRedoStackQueued;
+
     CUndoStep*                             m_currentUndo;
     //! Undo step object created by SuperBegin.
     CSuperUndoStep*                    m_superUndo;

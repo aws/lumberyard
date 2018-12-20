@@ -45,7 +45,8 @@ public:
     void AddRef() { m_nRefCount++; };
     void Release()
     {
-        if (--m_nRefCount <= 0)
+        AZ_Assert(m_nRefCount > 0, "Negative ref count");
+        if (--m_nRefCount == 0)
         {
             DeleteThis();
         }
@@ -62,6 +63,9 @@ public:
 
     // Abort tool.
     virtual void Abort();
+
+    // Accept tool.
+    virtual void Accept(bool resetPosition = false) {}
 
     //! Status text displayed when this tool is active.
     void SetStatusText(const QString& text) { m_statusText = text; };

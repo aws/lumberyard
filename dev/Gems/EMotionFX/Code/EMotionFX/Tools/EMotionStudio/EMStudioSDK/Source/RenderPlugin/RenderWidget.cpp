@@ -61,6 +61,7 @@ namespace EMStudio
         mActiveTransformManip   = nullptr;
         mSkipFollowCalcs        = false;
         mNeedDisableFollowMode  = true;
+        mViewClosupSelectedInstancesOnly  = false;
     }
 
 
@@ -77,11 +78,11 @@ namespace EMStudio
 
 
     // start view closeup flight
-    void RenderWidget::ViewCloseup(const MCore::AABB& aabb, float flightTime, uint32 viewCloseupWaiting)
+    void RenderWidget::ViewCloseup(bool selectedInstancesOnly, float flightTime, uint32 viewCloseupWaiting)
     {
         //LogError("ViewCloseup: AABB: Pos=(%.3f, %.3f, %.3f), Width=%.3f, Height=%.3f, Depth=%.3f", aabb.CalcMiddle().x, aabb.CalcMiddle().y, aabb.CalcMiddle().z, aabb.CalcWidth(), aabb.CalcHeight(), aabb.CalcDepth());
         mViewCloseupWaiting     = viewCloseupWaiting;
-        mViewCloseupAABB        = aabb;
+        mViewClosupSelectedInstancesOnly  = selectedInstancesOnly;
         mViewCloseupFlightTime  = flightTime;
     }
 
@@ -1202,7 +1203,8 @@ namespace EMStudio
             mViewCloseupWaiting--;
             if (mViewCloseupWaiting == 0)
             {
-                mCamera->ViewCloseup(mViewCloseupAABB, mViewCloseupFlightTime);
+                const MCore::AABB sceneAABB = mPlugin->GetSceneAABB(mViewClosupSelectedInstancesOnly);
+                mCamera->ViewCloseup(sceneAABB, mViewCloseupFlightTime);
                 //mViewCloseupWaiting = 0;
             }
         }

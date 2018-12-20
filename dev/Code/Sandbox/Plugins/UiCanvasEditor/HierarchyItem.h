@@ -68,6 +68,9 @@ public:
 
     void ReplaceElement(const AZStd::string& buffer, const AZStd::unordered_set<AZ::Data::AssetId>& referencedSliceAssets);
 
+    //! Update the visual look of the element to show slice information
+    void UpdateSliceInfo();
+
 signals:
 
     void SignalItemAdd(HierarchyItem* item);

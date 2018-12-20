@@ -15,9 +15,17 @@
 #include <AzCore/UserSettings/UserSettings.h>
 #include <AzCore/Outcome/Outcome.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
+#include <QString>
+#include <QSize>
+#include <QWidget>
+#include <QLabel>
+#include <QDialog>
 
 #pragma once
+
+class QMenu;
 
 namespace AzToolsFramework
 {
@@ -25,23 +33,28 @@ namespace AzToolsFramework
 
     namespace SliceUtilities
     {
+        using EntityAncestorPair = AZStd::pair<AZ::EntityId, AZ::Entity*>;
+        using IdToEntityMapping = AZStd::unordered_map<AZ::EntityId, AZ::Entity*>;
+        using IdToInstanceAddressMapping = AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::SliceInstanceAddress>;
+
         /**
          * Displays slice push UI for the specified set of entities.
+         * \param parent - the parent application window
          * \param entities - the list of entity Ids to include in the push request.
          * \param serializeContext - desired serialize context. Specify nullptr to use application's serialize context.
          */
-        void PushEntitiesModal(const EntityIdList& entities, 
+        void PushEntitiesModal(QWidget* parent, const EntityIdList& entities,
                                AZ::SerializeContext* serializeContext = nullptr);
-        
+
         /**
          * Creates a new slice asset containing the specified entities.
          * If the asset already exists, entities will instead be pushed to the asset to preserve relationships.
-         * \param entities - the list of entities to include in the new slice.
+         * \param entities - the set of entities to include in the new slice.
          * \param targetDirectory - the preferred directory path.
          * \param inheritSlices - if true, entities already part of slice instances will be added by cascading from their corresponding slices.
          * \return true if slice was created successfully.
          */
-        bool MakeNewSlice(const AzToolsFramework::EntityIdList& entities, 
+        bool MakeNewSlice(const AzToolsFramework::EntityIdSet& entities, 
                           const char* targetDirectory, 
                           bool inheritSlices, 
                           AZ::SerializeContext* serializeContext = nullptr);
@@ -54,8 +67,24 @@ namespace AzToolsFramework
          * \param entitiesWithReferences - input/output set containing all referenced entities.
          * \param serializeContext - serialize context to use to traverse reflected data.
          */
-        void GatherAllReferencedEntities(AZStd::unordered_set<AZ::EntityId>& entitiesWithReferences,
+        void GatherAllReferencedEntities(AzToolsFramework::EntityIdSet& entitiesWithReferences,
                                          AZ::SerializeContext& serializeContext);
+
+        /**
+         * Utility function to gather all referenced entities given a set of entities and determine
+         * if there are references not in original set.
+         * This flood searches entity id references, so if you pass in Entity1 that references
+         * Entity2, and Entity2 references Entity3, Entity3 is also visited and added to output as
+         * a referenced entity.
+         * \param entities - input set containing all original entities to search.
+         * \param entitiesAndReferencedEntities - input/output set containing all referenced entities.
+         * \param hasExternalReferences output true if there are referenced entities not in original entities set
+         * \param serializeContext - serialize context to use to traverse reflected data.
+         */
+        void GatherAllReferencedEntitiesAndCompare(const AzToolsFramework::EntityIdSet& entities,
+                                                   AzToolsFramework::EntityIdSet& entitiesAndReferencedEntities,
+                                                   bool& hasExternalReferences,
+                                                   AZ::SerializeContext& serializeContext);
 
 
         /**
@@ -83,9 +112,39 @@ namespace AzToolsFramework
          * It is assumed that all provided entities belong to an instance of the provided slice, otherwise AZ::Failure will be returned.
          * \param entityIdList list of live entity Ids whose overrides will be pushed to the slice. Live entities must belong to instances of the specified slice.
          * \param sliceAsset the target slice asset.
+         * \param preSaveCallback the callback to use prior to the save to check that it is valid
          * \return AZ::Success if push is completed successfully, otherwise AZ::Failure with an AZStd::string payload.
          */
-        AZ::Outcome<void, AZStd::string> PushEntitiesBackToSlice(const AzToolsFramework::EntityIdList& entityIdList, const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset);
+        AZ::Outcome<void, AZStd::string> PushEntitiesBackToSlice(const AzToolsFramework::EntityIdList& entityIdList,
+            const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset, SliceTransaction::PreSaveCallback preSaveCallback);
+
+        /**
+        * Push a set of entities including addition and subtraction to a given slice asset.
+        * \param sliceAsset the target slice asset.
+        * \param entitiesToUpdate list of entities whose overrides will be pushed to the slice.
+        * \param entitiesToAdd list of entities to add to the slice.
+        * \param entitiesToRemove list of entities to remove from the slice.
+        * \param preSaveCallback the callback to use prior to the save to check that it is valid
+        * \return AZ::Success if push is completed successfully, otherwise AZ::Failure with an AZStd::string payload.
+        */
+        AZ::Outcome<void, AZStd::string> PushEntitiesIncludingAdditionAndSubtractionBackToSlice(
+            const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset,
+            const AZStd::unordered_set<AZ::EntityId>& entitiesToUpdate,
+            const AZStd::unordered_set<AZ::EntityId>& entitiesToAdd,
+            const AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
+            SliceTransaction::PreSaveCallback preSaveCallback);
+
+        /**
+         * Push an individual entity field back to a given slice asset.
+         * It is assumed that the provided entity belongs to an instance of the provided slice, otherwise AZ::Failure will be returned.
+         * \param entityId live entity Id whose instance of the provided field will be pushed back to the slice.
+         * \param sliceAsset the target slice asset.
+         * \param fieldNodeAddress InstanceDataHierarchy address of the field to be pushed back to the slice.
+         * \param preSaveCallback the callback to use prior to the save to check that it is valid
+         * \return AZ::Success if push is completed successfully, otherwise AZ::Failure with an AZStd::string payload.
+         */
+        AZ::Outcome<void, AZStd::string> PushEntityFieldBackToSlice(AZ::EntityId entityId,
+            const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset, const InstanceDataNode::Address& fieldAddress, SliceTransaction::PreSaveCallback preSaveCallback);
 
         /**
          * PreSaveCallback for SliceTransaction::Commits with default world entity rules.
@@ -111,18 +170,18 @@ namespace AzToolsFramework
         bool IsRootEntity(const AZ::Entity& entity);
 
         /**
-        * Retrieves the \ref AZ::Edit::Attributes::SliceFlags assigned to a given data node.
-        * \param editData - The specific element data to check for slice flags (can be nullptr)
-        * \param classData - The class data to check for slice flags (some flags can cascade from class to all elements, can also be nullptr)
-        * return ref AZ::Edit::SliceFlags
-        */
+         * Retrieves the \ref AZ::Edit::Attributes::SliceFlags assigned to a given data node.
+         * \param editData - The specific element data to check for slice flags (can be nullptr)
+         * \param classData - The class data to check for slice flags (some flags can cascade from class to all elements, can also be nullptr)
+         * return ref AZ::Edit::SliceFlags
+         */
         AZ::u32 GetSliceFlags(const AZ::Edit::ElementData* editData, const AZ::Edit::ClassData* classData);
 
         /**
-        * Retrieves the \ref AZ::Edit::Attributes::SliceFlags assigned to a given data node.
-        * \param node - instance data hierarchy node
-        * return ref AZ::Edit::SliceFlags
-        */
+         * Retrieves the \ref AZ::Edit::Attributes::SliceFlags assigned to a given data node.
+         * \param node - instance data hierarchy node
+         * return ref AZ::Edit::SliceFlags
+         */
         AZ::u32 GetNodeSliceFlags(const InstanceDataNode& node);
 
         /**
@@ -132,14 +191,238 @@ namespace AzToolsFramework
          */
         bool IsNodePushable(const InstanceDataNode& node, bool isRootEntity = false);
 
+        /**
+         * Displays "Save As" QFileDialog to user, generating suggested full slice path based on
+         * suggestedName and last place user saved a slice of this type to. Does error checking on
+         * user-chosen name like making sure it's ASCII only/it's not taken by slices in other gems
+         * \param suggestedName - initial suggested name of the slice
+         * \param initialTargetDirectory - default directory to suggest saving in (gets overridden by user settings if present)
+         * \param sliceUserSettingsId - CRC id for the SliceUserSettings for a given type of slice, used by "last saved in" logic
+         * \param activeWindow - active QWidget for parenting dialog windows to
+         * \param outSliceName - [out] name of the slice chosen by user/error checked
+         * \param outSliceFilePath - [out] full directory/filename path chosen by user/error checked
+         * \return true if valid name chosen, false if not or if cancelled by user
+         */
+        bool QueryUserForSliceFilename(const AZStd::string& suggestedName, 
+                                       const char* initialTargetDirectory,
+                                       AZ::u32 sliceUserSettingsId,
+                                       QWidget* activeWindow, 
+                                       AZStd::string& outSliceName, 
+                                       AZStd::string& outSliceFilePath);
 
-        bool GenerateSuggestedSlicePath(const AzToolsFramework::EntityIdSet& entitiesInSlice, const AZStd::string& targetDirectory, AZStd::string& suggestedFullPath);
+        /**
+         * Populates a QMenu with sub-menus to expose slice override push operations for a provided set of entities.
+         * \param outerMenu QMenu to which sub menus will be added.
+         * \param inputEntities a set of entities for which quick push options will be determined. Typically callers will pass the selected entity set.
+         * \param headerText optional header text for push options.
+         */
+        void PopulateQuickPushMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, const AZStd::string& headerText = "Save slice overrides");
 
-        void SetSliceSaveLocation(const AZStd::string& path);
-        bool GetSliceSaveLocation(AZStd::string& path);
+        /**
+         * Populates a QMenu with sub-menus to expose slice override push operations for a specific entity and data field.
+         * \param outerMenu QMenu to which sub menus will be added.
+         * \param entityId a specific live entity for which the specified field should be pushed.
+         * \param fieldAddress address for the specific field to be pushed.
+         */
+        void PopulateQuickPushMenu(QMenu& outerMenu, AZ::EntityId entityId, const InstanceDataNode::Address& fieldAddress, const AZStd::string& headerText = "Save slice overrides");
 
+        /**
+        * Get pushable new child entity Ids
+        * \param entityIdList input entities
+        * \param unpushableNewChildEntityIds [out] unpushable new child entity Ids from the input entities
+        * \param sliceAncestryMapping [out] mappings from the entity id to the slice ancestry to push to
+        * \param newChildEntityIdAncestorPairs [out] Pairs of new child entity Id and the entity ancestor list 
+        * \param hasUnpushableSliceEntityAdditions [out] whether the input entities contain unpushable additions
+        */
+        AZStd::unordered_set<AZ::EntityId> GetPushableNewChildEntityIds(
+            const AzToolsFramework::EntityIdList& entityIdList,
+            EntityIdSet& unpushableNewChildEntityIds,
+            AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>& sliceAncestryMapping,
+            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs,
+            bool& hasUnpushableSliceEntityAdditions);
+
+        /**
+        * Get unique removed entities
+        * \param sliceInstances slice instances which contain select entities
+        * \param assetEntityIdtoAssetEntityMappings [out] mappings from asset entity Id to asset entity
+        * \param assetEntityIdtoInstanceAddressMappings [out] mappings from asset entity Id to instance address
+        */
+        AZStd::unordered_set<AZ::EntityId> GetUniqueRemovedEntities(
+            const AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances,
+            IdToEntityMapping& assetEntityIdtoAssetEntityMapping,
+            IdToInstanceAddressMapping& assetEntityIdtoInstanceAddressMapping);
+
+        /** 
+         * Defines a callback for PopulateFindSliceMenu. This assists in bridging module boundaries. If the AssetBrowser isn't open when PopulateFindSliceMenu
+         * is called, then it should be opened. This can only be done from a Sandbox module. PopulateFindSliceMenu is in AzToolsFramework and not Sandbox so it can
+         * share logic with similar menus, like the quick push menu.
+         */ 
+        typedef void(*SliceSelectedCallback)();
+
+        /**
+        * Populates two QMenus: one with sub-menu to select slices associated to the passed in entity list in the asset browser and one with a list of parents of the current entity.
+        * \param outerMenu The menu used as the parent for the go to slice menu.
+        * \param selectedEntity The Entity to use to populate menus with. If this has more than one entry, no menus will be created.
+        * \param sliceSelectedCallback Callback for when a slice is selected, run before the asset selection. This allows this functionality to bridge module
+        *                              boundaries. SliceUtilities is in AzToolsFramework, but the AssetBrowser largely exists in Sandbox.
+        */
+        void PopulateSliceSubMenus(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, SliceSelectedCallback sliceSelectedCallback);
+
+        /**
+         * Populates a QMenu with a sub-menu to select slices associated to the passed in entity list in the asset browser.
+         * \param outerMenu The menu used as the parent for the go to slice menu.
+         * \param selectedEntity The Entity to use to populate the go to slice menu with. 
+         * \param sliceSelectedCallback Callback for when a slice is selected, run before the asset selection. This allows this functionality to bridge module
+         *                              boundaries. SliceUtilities is in AzToolsFramework, but the AssetBrowser largely exists in Sandbox.
+         */
+        void PopulateFindSliceMenu(QMenu& outerMenu, const AZ::EntityId& selectedEntity, const AZ::SliceComponent::EntityAncestorList& ancestors, SliceSelectedCallback sliceSelectedCallback);
+
+        /**
+        * Populates a QMenu with a sub-menu to reassign a slices root ancestor to a new base, this operation directly affects the slice asset file
+        * \param outerMenu The menu used as the parent for the go to slice menu.
+        * \param selectedEntities The entities selected and used to populate the menu
+        * \param headerText Optional header text
+        */
+        void PopulateDetachMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AZStd::string& headerText = "Detach");
+
+        /**
+        * Populates a (provided) QMenu with a list of slices that are antecedents of the current entity, allowing the user to select them.
+        * \param selectedEntity The Entity to use to populate the menu with. 
+        * \param selectMenu A pointer to the menu to populate
+        * \return true if any items have been added to the menu
+        */
+        bool PopulateSliceSelectSubMenu(const AZ::EntityId& selectedEntity, QMenu*& selectMenu);
+
+        /**
+        * Save slice overrides using the hot key.
+        * \param inputEntities list of entities whose overrides need to be pushed.
+        * \param numEntitiesToAdd [out] number of new entities to add.
+        * \param numEntitiesToRemove [out] number of entities to remove.
+        * \param numEntitiesToUpdate [out] number of entities to update.
+        * \param QuickPushToFirstLevel true if users press the hot key to save overrides to the first level. Otherwise save overrides to the root level.
+        */
+        bool SaveSlice(
+            const AzToolsFramework::EntityIdList& inputEntities,
+            int& numEntitiesToAdd,
+            int& numEntitiesToRemove,
+            int& numEntitiesToUpdate,
+            const bool& QuickPushToFirstLevel);
+
+        /**
+         * Returns true if any of the given entities have slice overrides for their immediate slice ancestor (may be slow on a large group of entities).
+         * \param inputEntities The entities to test. If any are not in a slice instance they are ignored.
+         */
+        bool DoEntitiesHaveOverrides(const AzToolsFramework::EntityIdList& inputEntities);
+
+        /**
+         * Check to see if a pending reparent request is non-trivial e.g. requires full or partial clones
+         *
+         * [A]                          | Clones should occur under the following scenarios:
+         *  |                           | A ->   |   |   |   |   |   |   |   |   |   |   |   |
+         *  |----<B>                    | B ->   |   |   |   |   | F | G | H | I | J | K |   |
+         *  |     |                     | C ->   |   |   |   |   |   |   |   |   |   |   |   |
+         *  |     |----[C]              | D ->   |   |   |   |   |   |   |   |   |   |   |   |
+         *  |     |     |               | E ->   |   |   |   |   |   |   |   |   |   |   |   |
+         *  |     |     |---- D         | F ->   |   | C | D | E |   |   |   |   |   | K |   |
+         *  |     |                     | G -> A | B | C | D | E |   |   |   |   |   | K | L |
+         *  |     |---- E               | H -> A | B | C | D | E | F |   |   |   | J | K | L |
+         *  |                           | I -> A | B | C | D | E | F |   |   |   | J | K | L |
+         *  |----{F}                    | J ->   |   |   |   |   |   |   |   |   |   |   |   |
+         *  |     |                     | K ->   |   | C | D | E | F | G | H | I | J |   |   |
+         *  |     |----{G}              | L ->   |   |   |   |   |   |   |   |   |   |   |   |
+         *  |           |               |
+         *  |           |----<H>        |
+         *  |           |               |
+         *  |           |----<I>        |
+         *  |           |               |--------------------------------
+         *  |           |---- J         | Legend: 
+         *  |                           | [] - slice root
+         *  |----{K}                    | {} - sub slice root
+         *  |                           | <> - slice entity
+         *  |---- L                     |    - loose entity
+         *
+         * \param entityId The target entity to reparent
+         * \param newParentId The target parent entity
+         */
+        bool IsReparentNonTrivial(const AZ::EntityId& entityId, const AZ::EntityId& newParentId);
+
+        /**
+         * Performs the necessary clones on orphaned slice and subslice entities while reparenting existing loose entities and slices.  The source 
+         * entities of the clones will be destroyed. 
+         * \param entityId The target entity to reparent
+         * \param newParentId The target parent entity
+         * \return The root ID of the new entity hierarchy after necessary cloning/reparenting
+         */
+        AZ::EntityId ReparentNonTrivialEntityHierarchy(const AZ::EntityId& entityId, const AZ::EntityId& newParentId);
+
+        /**
+        * Reflects slice tools related structures for serialization/editing.
+        */
         void Reflect(AZ::ReflectContext* context);
 
+        /**
+        * Gets the path to the icon used for representing slices.
+        */
+        QString GetSliceItemIconPath();
+
+        /**
+        * Gets the path to the icon used for representing modified slices.
+        */
+        QString GetSliceItemChangedIconPath();
+
+        /**
+        * Gets the path to the L shape icon.
+        */
+        QString GetLShapeIconPath();
+
+        /**
+        * Gets the path to the blue 3d box shape icon.
+        */
+        QString GetSliceEntityIconPath();
+
+        /**
+        * Gets the path to the warning icon.
+        */
+        QString GetWarningIconPath();
+
+        /**
+        * Gets the height to use for rows that represent slices.
+        */
+        AZ::u32 GetSliceItemHeight();
+
+        /**
+        * Gets the size to use for icons representing slices.
+        */
+        QSize GetSliceItemIconSize();
+
+        /**
+        * Gets the size of the L shape icon.
+        */
+        QSize GetLShapeIconSize();
+
+        /**
+        * Gets the size of the warning icon.
+        */
+        QSize GetWarningIconSize();
+
+        /**
+        * Gets the minimum width of the warning label.
+        */
+        int GetWarningLabelMinimumWidth();
+
+        /**
+        * Gets the depth to indent slices per level of that slice's hierarchy.
+        */
+        AZ::u32 GetSliceHierarchyMenuIdentationPerLevel();
+
+        /**
+        * Gets the font size to make the slice submenu look like the parent menu
+        */
+        int GetSliceSelectFontSize();
+
+        /**
+        * Structure for saving/retrieving user settings related to slice workflows.
+        */
         class SliceUserSettings
             : public AZ::UserSettings
         {
@@ -148,11 +431,81 @@ namespace AzToolsFramework
             AZ_RTTI(SliceUserSettings, "{56EC1A8F-1ADB-4CC7-A3C3-3F462750C31F}", AZ::UserSettings);
 
             AZStd::string m_saveLocation;
+            bool m_autoNumber = false; //!< Should the name of the slice file be automatically numbered. e.g SliceName_001.slice vs SliceName.slice.
 
             SliceUserSettings() = default;
 
             static void Reflect(AZ::ReflectContext* context);
         };
+
+        class DetachMenuActionWidget
+            : public QWidget
+        {
+        public:
+            DetachMenuActionWidget(QWidget* parent, const int& indentation, const AZStd::string& sliceAssetName, const bool& isLastAncestor);
+            void enterEvent(QEvent* event) override;
+            void leaveEvent(QEvent* event) override;
+
+        private:
+            void setsliceLabelTextColor(QString color);
+
+            QLabel* m_sliceLabel;
+            QLabel* m_toLabel;
+        };
+
+        class MoveToSliceLevelConfirmation
+            : public QDialog
+        {
+        public:
+            MoveToSliceLevelConfirmation(QWidget* parent, const AZStd::string& currentSlice, const AZStd::string& destinationSlice);
+        };
+
+        /// InvalidSliceReferencesWarningResult is used to contain the result
+        /// on calls to DisplayInvalidSliceReferencesWarning.
+        enum class InvalidSliceReferencesWarningResult
+        {
+            Save,   ///< The user has chosen continue with the save operation.
+            Cancel, ///< The user has chosen to cancel the current operation.
+            Details ///< The user has chosen to open the advanced slice push dialog.
+        };
+
+        /**
+        * Displays a message warning the user that the push they are attempting will remove missing invalid references.
+        * \param parent The widget to parent the window to.
+        * \param invalidSliceCount The number of slices to be saved with invalid references.
+        * \param invalidReferenceCount The number of references that will be cleared.
+        * \param showDetailsButton True to show a details button to be used to open the advanced slice push window.
+        */
+        InvalidSliceReferencesWarningResult DisplayInvalidSliceReferencesWarning(
+            QWidget* parent,
+            size_t invalidSliceCount,
+            size_t invalidReferenceCount,
+            bool showDetailsButton);
+
+        /**
+        * Calculates the number of changes in a list of slices to be used in push/revert menu options
+        * \param inputEntities List of entities to produce information for
+        * \param entitiesToRemove [out] List of entities tat have been removed
+        * \param numRelevantEntitiesInSlices [out] Number of entities that have changes
+        * \pararm pushableChangesPerAsset [out] List of the number of changes for each entitiy in list
+        * \param sliceDisplayOrder [out] List of changes slices in display order
+        * \param assetEntityAncestorMap [out] List of ancestors of affected entities
+        * \return True if there are changes
+        */
+        bool CountPushableChangesToSlice(const AzToolsFramework::EntityIdList& inputEntities,
+            const InstanceDataNode::Address* fieldAddress,
+            AZStd::unordered_set<AZ::EntityId>& entitiesToAdd,
+            AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
+            size_t& numRelevantEntitiesInSlices,
+            AZStd::unordered_map<AZ::Data::AssetId, int>& pushableChangesPerAsset,
+            AZStd::vector<AZ::Data::AssetId>& sliceDisplayOrder,
+            AZStd::unordered_map<AZ::Data::AssetId, AZStd::vector<EntityAncestorPair>>& assetEntityAncestorMap,
+            bool& hasUnpushableSliceEntityAdditions);
+
+        static const char* splitterColor = "black";
+        static const char* detachMenuItemHoverColor = "#4285F4";
+        static const char* detachMenuItemDefaultColor = "#ffffff";
+        static const char* detailWidgetBackgroundColor = "#303030";
 
     } // namespace SliceUtilities
 

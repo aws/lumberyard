@@ -8,7 +8,9 @@
             "Docs.h",
             "PlatformDef.h",
             "PlatformRestrictedFileDef.h",
-            "PlatformIncl.h"
+            "PlatformIncl.h",
+            "AzCoreModule.h",
+            "AzCoreModule.cpp"
         ],
         "Asset":
         [
@@ -43,6 +45,7 @@
             "Component/ComponentApplicationBus.h",
             "Component/ComponentBus.cpp",
             "Component/ComponentBus.h",
+            "Component/ComponentExport.h",
             "Component/Entity.cpp",
             "Component/Entity.h",
             "Component/EntityBus.h",

@@ -32,6 +32,7 @@ class QPushButton;
 namespace AzToolsFramework
 {
     class EntityIdQLabel;
+    class EditorEntityIdContainer;
 
     //just a test to see how it would work to pop a dialog
 
@@ -86,8 +87,8 @@ namespace AzToolsFramework
         void SetCurrentEntityId(const AZ::EntityId& newEntityId, bool emitChange, const AZStd::string& nameOverride);
 
     protected:
-        bool IsCorrectMimeData(const QMimeData* data) const;
-        AZ::EntityId EntityIdFromMimeData(const QMimeData &data) const;
+        bool IsCorrectMimeData(const QMimeData* mimeData) const;
+        bool EntityIdsFromMimeData(const QMimeData &mimeData, AzToolsFramework::EditorEntityIdContainer* entityIdListContainer = nullptr) const;
         void InitObjectPickMode();
         void CancelObjectPickMode();
 

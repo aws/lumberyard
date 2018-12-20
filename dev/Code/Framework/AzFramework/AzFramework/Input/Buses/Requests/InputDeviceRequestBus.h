@@ -41,8 +41,6 @@ namespace AzFramework
         //! EBus Trait: requests should be handled by only one input device connected to each id
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
-        typedef AZStd::recursive_mutex MutexType;
-
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! EBus Trait: requests can be addressed to a specific InputDeviceId
         using BusIdType = InputDeviceId;
@@ -50,6 +48,12 @@ namespace AzFramework
         ////////////////////////////////////////////////////////////////////////////////////////////
         //! EBus Trait: requests are handled by connected devices in the order of local player index
         using BusIdOrderCompare = AZStd::less<BusIdType>;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////
+        //! EBus Trait: InputDeviceRequestBus can be accessed from multiple threads, but is safe to use with
+        //! LocklessDispatch because connect/disconnect is handled only on engine startup/shutdown (InputSystemComponent).
+        using MutexType = AZStd::recursive_mutex;
+        static const bool LocklessDispatch = true;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         ///@{

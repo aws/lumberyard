@@ -73,8 +73,6 @@ namespace AZ
 
             void SuspendJobUntilReady(Job* job);
 
-            void NotifySuspendedJobReady(Job* job);
-
             void StartJobAndAssistUntilComplete(Job* job);
 
             void ClearStats();

@@ -27,8 +27,8 @@ public:
     static void StaticReset();
 
     static void SetTraceableArea(const AABB& traceableArea, const SRenderingPassInfo& passInfo);
-    static void TraceFogVolumes(const Vec3& worldPos, ColorF& fogColor, const SRenderingPassInfo& passInfo);
-
+    static void TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality);
+    static bool OverlapProjectedAABB(const AABB& objBBox0, const AABB& objBBox1, const CCamera& camera);
 public:
     CFogVolumeRenderNode();
 
@@ -59,9 +59,14 @@ public:
     virtual void SetBBox(const AABB& WSBBox) { m_WSBBox = WSBBox; }
     virtual void FillBBox(AABB& aabb);
     virtual void OffsetPosition(const Vec3& delta);
+    float GetGlobalDensity() const  { return  m_globalDensity; }
+    float GetDensityoffset() const { return  m_densityOffset; }
+    Vec3 GetHeightFallOffBasePoint() const { return  m_heightFallOffBasePoint; }
+    Vec3 GetHeightFallOffDirScaled() const { return  m_heightFallOffDirScaled; }
+
 
     ILINE bool IsAffectsThisAreaOnly() const { return m_affectsThisAreaOnly; }
-
+    int GetVolumeType() const  { return m_volumeType; }
 private:
     static void RegisterFogVolume(const CFogVolumeRenderNode* pFogVolume);
     static void UnregisterFogVolume(const CFogVolumeRenderNode* pFogVolume);
@@ -72,7 +77,6 @@ private:
     void UpdateFogVolumeMatrices();
     void UpdateWorldSpaceBBox();
     void UpdateHeightFallOffBasePoint();
-
     ColorF GetFogColor() const;
     Vec2 GetSoftEdgeLerp(const Vec3& viewerPosOS) const;
     bool IsViewerInsideVolume(const SRenderingPassInfo& passInfo) const;

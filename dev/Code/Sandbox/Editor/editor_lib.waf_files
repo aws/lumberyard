@@ -263,6 +263,9 @@
             "res/MannFileManagerImageList.bmp"
         ],
         "Core": [
+            "ErrorDialog.cpp",
+            "ErrorDialog.h",
+            "ErrorDialog.ui",
             "Plugin.cpp",
             "Plugin.h",
             "PluginManager.cpp",
@@ -283,7 +286,9 @@
             "Core/QtEditorApplication.h",
             "Core/EditorFilePathManager.h",
             "Core/LevelEditorMenuHandler.cpp",
-            "Core/LevelEditorMenuHandler.h"
+            "Core/LevelEditorMenuHandler.h",
+            "StartupTraceHandler.cpp",
+            "StartupTraceHandler.h"
         ],
         "Crates": [
             "Crates/Crates.cpp",
@@ -1863,6 +1868,8 @@
             "TrackView/TrackViewDialog.h",
             "TrackView/TrackViewDopeSheetBase.cpp",
             "TrackView/TrackViewDopeSheetBase.h",
+            "TrackView/TrackViewDoubleSpinBox.cpp",
+            "TrackView/TrackViewDoubleSpinBox.h",
             "TrackView/TrackViewPythonFuncs.cpp",
             "TrackView/TrackViewSequenceManager.cpp",
             "TrackView/TrackViewSequenceManager.h",

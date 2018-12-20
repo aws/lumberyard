@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="sort_a_to_z.png">icons/sort_a_to_z.png</file>
+        <file alias="sort_manually.png">icons/sort_manually.png</file>
+        <file alias="sort_z_to_a.png">icons/sort_z_to_a.png</file>
+    </qresource>
+</RCC>

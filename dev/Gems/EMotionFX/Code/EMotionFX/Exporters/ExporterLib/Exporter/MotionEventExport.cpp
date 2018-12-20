@@ -113,6 +113,7 @@ namespace ExporterLib
 
         // the motion event track chunk
         EMotionFX::FileFormat::FileMotionEventTrack motionEventTrackChunk;
+        memset(&motionEventTrackChunk, 0, sizeof(EMotionFX::FileFormat::FileMotionEventTrack));
         motionEventTrackChunk.mNumEvents            = numMotionEvents;
         motionEventTrackChunk.mNumTypeStrings       = numMotionEventTypes;
         motionEventTrackChunk.mNumParamStrings      = numParameters;
@@ -179,6 +180,7 @@ namespace ExporterLib
 
             // the motion event chunk
             EMotionFX::FileFormat::FileMotionEvent      motionEventChunk;
+            memset(&motionEventChunk, 0, sizeof(EMotionFX::FileFormat::FileMotionEvent));
             motionEventChunk.mStartTime         = motionEvent.GetStartTime();
             motionEventChunk.mEndTime           = motionEvent.GetEndTime();
             motionEventChunk.mEventTypeIndex    = motionEventTypes.Find(motionEvent.GetEventTypeString());

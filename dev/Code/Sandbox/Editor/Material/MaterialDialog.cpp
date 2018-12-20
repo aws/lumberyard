@@ -200,6 +200,7 @@ public:
     CSmartVariable<float> heatAmount;
     CSmartVariable<bool> bScatter;
     CSmartVariable<bool> bHideAfterBreaking;
+    CSmartVariable<bool> bFogVolumeShadingQualityHigh;
     CSmartVariable<bool> bBlendTerrainColor;
     //CSmartVariable<bool> bTranslucenseLayer;
     CSmartVariableEnum<QString> surfaceType;
@@ -492,9 +493,9 @@ public:
         AddVariable(tableAdvanced, bNoShadow, "No Shadow", "Disables casting shadows from mesh faces");
         AddVariable(tableAdvanced, bScatter, "Use Scattering", "Deprecated");
         AddVariable(tableAdvanced, bHideAfterBreaking, "Hide After Breaking", "Causes the object to disappear after procedurally breaking");
+        AddVariable(tableAdvanced, bFogVolumeShadingQualityHigh, "Fog Volume Shading Quality High", "high fog volume shading quality behaves more accurately with fog volumes.");
         AddVariable(tableAdvanced, bBlendTerrainColor, "Blend Terrain Color", "");
-
-        AddVariable(tableAdvanced, voxelCoverage, "Voxel Coverage", "Fine tunes occlsuion amount for svoti feature. Higher values occlude more closely to object shape.");
+        AddVariable(tableAdvanced, voxelCoverage, "Voxel Coverage", "Fine tunes occlusion amount for svogi feature. Higher values occlude more closely to object shape.");
         voxelCoverage->SetLimits(0, 1.0f);
 
         //////////////////////////////////////////////////////////////////////////
@@ -1099,6 +1100,7 @@ void CMaterialUI::SetFromMaterial(CMaterial* mtlIn)
     b2Sided = (mtlFlags & MTL_FLAG_2SIDED);
     bScatter = (mtlFlags & MTL_FLAG_SCATTER);
     bHideAfterBreaking = (mtlFlags & MTL_FLAG_HIDEONBREAK);
+    bFogVolumeShadingQualityHigh = (mtlFlags & MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH);
     bBlendTerrainColor = (mtlFlags & MTL_FLAG_BLEND_TERRAIN);
     texUsageMask = mtlIn->GetTexmapUsageMask();
 
@@ -1192,6 +1194,15 @@ void CMaterialUI::SetToMaterial(CMaterial* mtl, int propagationFlags)
         else
         {
             mtlFlags &= ~MTL_FLAG_HIDEONBREAK;
+        }
+
+        if (bFogVolumeShadingQualityHigh)
+        {
+            mtlFlags |= MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH;
+        }
+        else
+        {
+            mtlFlags &= ~MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH;
         }
 
         if (bBlendTerrainColor)
@@ -1451,6 +1462,16 @@ BOOL CMaterialDialog::OnInitDialog()
         // Start the background processing of material files after the widget has been initialized
         m_wndMtlBrowser->StartRecordUpdateJobs();
     }
+
+    // Set the image list control to give stretch priority to the other widgets. This is both to avoid resizing the 
+    // image list control when the window is resized and to avoid an issue with the QSplitter resizing the image list
+    // control when enabling/disabling the other two widgets.
+    const int materialImageControlIndex = 0;
+    const int materialImagePropertiesControlIndex = 1;
+    const int materialPlaceholderLabelIndex = 2;
+    rightWidget->setStretchFactor(materialImageControlIndex, 0);
+    rightWidget->setStretchFactor(materialImagePropertiesControlIndex, 1);
+    rightWidget->setStretchFactor(materialPlaceholderLabelIndex, 1);
 
     resize(1200, 800);
 

@@ -6,6 +6,7 @@
     <file>img/dockWidgetSeparatorDots_horiz.png</file>
     <file>img/dockWidgetSeparatorDots_vert.png</file>
     <file>img/filter.png</file>
+    <file>img/menu.png</file>
     <file>img/radio-hover.png</file>
     <file>img/radio-selected.png</file>
     <file>img/radio-unselected.png</file>
@@ -259,6 +260,7 @@
     <file>img/dropdowns/double_arrows_disabled.png</file>
     <file>img/dropdowns/down_arrow.png</file>
     <file>img/dropdowns/down_arrow_disabled.png</file>
+    <file>img/dropdowns/black_down_arrow.png</file>
     <file>img/titlebar/titlebar_close.png</file>
     <file>img/titlebar/titlebar_close_hover.png</file>
     <file>img/titlebar/titlebar_close_press.png</file>
@@ -327,6 +329,10 @@
     <file>img/UI20/Cards/close.png</file>
     <file>img/UI20/Cards/disabled_header.png</file>
     <file>img/UI20/Cards/help.png</file>
+    <file>img/UI20/Cards/help_hover.png</file>
+    <file>img/UI20/Cards/checkmark.png</file>
+    <file>img/UI20/Cards/rectangle.png</file>
+    <file>img/UI20/Cards/spacer.png</file>
     <file>img/UI20/Cards/eye_dropper.png</file>
 </qresource>
 <qresource prefix="/AzQtComponents">

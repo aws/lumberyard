@@ -16,6 +16,7 @@
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/std/sort.h>
+#include <AzCore/std/algorithm.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzQtComponents/Components/Style.h>
@@ -84,6 +85,11 @@ OutlinerTreeView::OutlinerTreeView(QWidget* pParent)
 
 OutlinerTreeView::~OutlinerTreeView()
 {
+}
+
+void OutlinerTreeView::setAutoExpandDelay(int delay)
+{
+    m_expandOnlyDelay = delay;
 }
 
 void OutlinerTreeView::mousePressEvent(QMouseEvent* /*event*/)
@@ -171,6 +177,22 @@ void OutlinerTreeView::startDrag(Qt::DropActions supportedActions)
     }
 }
 
+void OutlinerTreeView::dragMoveEvent(QDragMoveEvent* event)
+{
+    if (m_expandOnlyDelay >= 0)
+    {
+        m_expandTimer.start(m_expandOnlyDelay, this);
+    }
+
+    QTreeView::dragMoveEvent(event);
+}
+
+void OutlinerTreeView::dropEvent(QDropEvent* event)
+{
+    emit ItemDropped();
+    QTreeView::dropEvent(event);
+}
+
 void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const
 {
     QTreeView::drawBranches(painter, rect, index);
@@ -184,7 +206,9 @@ void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const 
     // if the current entity is not part of a slice, it's line is always white.
     // if the current entity is part of a slice, the line color is determined by it's parent type.
     auto type = OutlinerListModel::EntryType(index.data(OutlinerListModel::EntityTypeRole).value<int>());
-    if (type == OutlinerListModel::EntityType)
+    bool isSliceEntity = (type != OutlinerListModel::EntityType);
+
+    if (!isSliceEntity)
     {
         bool isDescendantOfSlice = false;
         for (QModelIndex ancestorIndex = index.parent(); ancestorIndex.isValid(); ancestorIndex = ancestorIndex.parent())
@@ -209,6 +233,9 @@ void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const 
 
     painter->setRenderHint(QPainter::RenderHint::Antialiasing, false);
 
+    static const QColor sliceEntityColor(GetIEditor()->GetColorByName("SliceEntityColor"));
+    static const QColor sliceOverrideColor(GetIEditor()->GetColorByName("SliceOverrideColor"));
+
     // The pen we're going to use the draw the branch line
     // Pen color and style are dependent on the type of the entity and its parent.
     QPen pen;
@@ -218,7 +245,13 @@ void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const 
     QVariant data = foregroundIndex.data(Qt::ForegroundRole);
     if (data.canConvert<QBrush>())
     {
-        pen.setColor(data.value<QBrush>().color());
+        auto targetColor = data.value<QBrush>().color();
+        if (isSliceEntity)
+        {
+            bool hasOverrides = index.data(OutlinerListModel::SliceEntityOverrideRole).value<bool>();
+            targetColor = (hasOverrides ? sliceOverrideColor : sliceEntityColor);
+        }
+        pen.setColor(targetColor);
         painter->setPen(pen);
     }
 
@@ -246,18 +279,56 @@ void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const 
     float depthMultiplier = 2.5f;
     for (QModelIndex ancestorIndex = index.parent(); ancestorIndex.isValid(); ancestorIndex = ancestorIndex.parent())
     {
-        auto uncleIndex = ancestorIndex.sibling(ancestorIndex.row() + 1, ancestorIndex.column());
         // If that parent has a sibling, draw a line to them!
+        auto uncleIndex = ancestorIndex.sibling(ancestorIndex.row() + 1, ancestorIndex.column());
         if (uncleIndex.isValid())
         {
-            // determine the color of the pen based on ancestor entity type
-            auto type = OutlinerListModel::EntryType(uncleIndex.data(OutlinerListModel::EntityTypeRole).value<int>());;
-            auto foregroundIndex = type != OutlinerListModel::EntryType::EntityType ? uncleIndex.parent() : uncleIndex;
-            QVariant data = foregroundIndex.data(Qt::ForegroundRole);
-            if (data.canConvert<QBrush>())
+            auto ancestorType = OutlinerListModel::EntryType(ancestorIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
+            bool ancestorIsSliceEntity = (ancestorType != OutlinerListModel::EntryType::EntityType);
+
+            auto uncleType = OutlinerListModel::EntryType(uncleIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
+            bool uncleIsSliceEntity = (uncleType != OutlinerListModel::EntryType::EntityType);
+
+            if (ancestorIsSliceEntity && uncleIsSliceEntity)
             {
-                pen.setColor(data.value<QBrush>().color());
+                if (ancestorIndex.data(OutlinerListModel::SliceEntityOverrideRole).value<bool>())
+                {
+                    pen.setColor(sliceOverrideColor);
+                }
+                else
+                {
+                    pen.setColor(sliceEntityColor);
+                }
                 painter->setPen(pen);
+            }
+            else if (uncleIsSliceEntity)
+            {
+                auto parent = uncleIndex.parent();
+                QVariant data = parent.data(Qt::ForegroundRole);
+                if (data.canConvert<QBrush>())
+                {
+                    auto type = parent.data(OutlinerListModel::EntityTypeRole).value<int>();
+                    if (type != OutlinerListModel::EntryType::EntityType)
+                    {
+                        bool parentHasOverrides = parent.data(OutlinerListModel::SliceEntityOverrideRole).value<bool>();
+                        pen.setColor(parentHasOverrides ? sliceOverrideColor : sliceEntityColor);
+                    }
+                    else
+                    {
+                        pen.setColor(data.value<QBrush>().color());
+                    }
+
+                    painter->setPen(pen);
+                }
+            }
+            else
+            {
+                QVariant data = uncleIndex.data(Qt::ForegroundRole);
+                if (data.canConvert<QBrush>())
+                {
+                    pen.setColor(data.value<QBrush>().color());
+                    painter->setPen(pen);
+                }
             }
 
             // draw vertical line segment
@@ -269,6 +340,26 @@ void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const 
     }
 
     painter->restore();
+}
+
+void OutlinerTreeView::timerEvent(QTimerEvent* event)
+{
+    if (event->timerId() == m_expandTimer.timerId())
+    {
+        //duplicates functionality from QTreeView, but won't collapse an already expanded item
+        QPoint pos = this->viewport()->mapFromGlobal(QCursor::pos());
+        if (state() == QAbstractItemView::DraggingState && this->rect().contains(pos))
+        {
+            QModelIndex index = indexAt(pos);
+            if (!isExpanded(index))
+            {
+                setExpanded(index, true);
+            }
+        }
+        m_expandTimer.stop();
+    }
+
+    QTreeView::timerEvent(event);
 }
 
 void OutlinerTreeView::processQueuedMousePressedEvent(QMouseEvent* event)
@@ -292,7 +383,7 @@ void OutlinerTreeView::startCustomDrag(const QModelIndexList& indexList, Qt::Dro
 {
     //sort by container entity depth and order in hierarchy for proper drag image and drop order
     QModelIndexList indexListSorted = indexList;
-    AZStd::unordered_map<AZ::EntityId, std::list<AZ::u64>> locations;
+    AZStd::unordered_map<AZ::EntityId, AZStd::list<AZ::u64>> locations;
     for (auto index : indexListSorted)
     {
         AZ::EntityId entityId(index.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
@@ -301,7 +392,9 @@ void OutlinerTreeView::startCustomDrag(const QModelIndexList& indexList, Qt::Dro
     AZStd::sort(indexListSorted.begin(), indexListSorted.end(), [&locations](const QModelIndex& index1, const QModelIndex& index2) {
         AZ::EntityId e1(index1.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
         AZ::EntityId e2(index2.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
-        return locations[e1] < locations[e2];
+        const auto& locationsE1 = locations[e1];
+        const auto& locationsE2 = locations[e2];
+        return AZStd::lexicographical_compare(locationsE1.begin(), locationsE1.end(), locationsE2.begin(), locationsE2.end());
     });
 
     //get the data for the unselected item(s)
@@ -331,6 +424,10 @@ QImage OutlinerTreeView::createDragImage(const QModelIndexList& indexList)
     QRect rect(0, 0, 0, 0);
     for (auto index : indexList)
     {
+        if (index.column() != 0)
+        {
+            continue;
+        }
         QRect itemRect = visualRect(index);
         rect.setHeight(rect.height() + itemRect.height());
         rect.setWidth(AZStd::GetMax(rect.width(), itemRect.width()));
@@ -349,6 +446,11 @@ QImage OutlinerTreeView::createDragImage(const QModelIndexList& indexList)
     int imageY = 0;
     for (auto index : indexList)
     {
+        if (index.column() != 0)
+        {
+            continue;
+        }
+
         QRect itemRect = visualRect(index);
         dragPainter.drawPixmap(QPoint(0, imageY),
             model()->data(index, Qt::DecorationRole).value<QIcon>().pixmap(QSize(16, 16)));

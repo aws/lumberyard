@@ -93,7 +93,7 @@ bool UiGameEntityContext::CloneUiEntities(const AZStd::vector<AZ::EntityId>& sou
 {
     resultEntities.clear();
 
-    AZ::SliceComponent::InstantiatedContainer sourceObjects;
+    AZ::SliceComponent::InstantiatedContainer sourceObjects(false);
     for (const AZ::EntityId& id : sourceEntities)
     {
         AZ::Entity* entity = nullptr;
@@ -117,8 +117,7 @@ bool UiGameEntityContext::CloneUiEntities(const AZStd::vector<AZ::EntityId>& sou
 
     AddUiEntities(resultEntities);
 
-    sourceObjects.m_entities.clear();
-    clonedObjects->m_entities.clear();
+    clonedObjects->m_deleteEntitiesOnDestruction = false;
     delete clonedObjects;
 
     return true;
@@ -269,13 +268,13 @@ void UiGameEntityContext::OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAs
     {
         if (instantiatingIter->m_asset.GetId() == sliceAssetId)
         {
-            const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+            const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
 
             // If the context was loaded from a stream and Ids were remapped, fix up entity Ids in that slice that
             // point to entities in the stream (i.e. level entities).
             if (!m_loadedEntityIdMap.empty())
             {
-                AZ::SliceComponent::InstantiatedContainer instanceEntities;
+                AZ::SliceComponent::InstantiatedContainer instanceEntities(false);
                 instanceEntities.m_entities = entities;
                 AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&instanceEntities,
                     [this](const AZ::EntityId& originalId, bool isEntityId, const AZStd::function<AZ::EntityId()>&) -> AZ::EntityId
@@ -290,8 +289,6 @@ void UiGameEntityContext::OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAs
                         }
                         return originalId;
                     }, m_serializeContext, false);
-
-                instanceEntities.m_entities.clear();
             }
 
             const AzFramework::SliceInstantiationTicket& ticket = *AzFramework::SliceInstantiationResultBus::GetCurrentBusId();
@@ -313,7 +310,7 @@ void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAsse
     {
         if (instantiatingIter->m_asset.GetId() == sliceAssetId)
         {
-            const AZ::SliceComponent::EntityList& entities = instance.second->GetInstantiated()->m_entities;
+            const AZ::SliceComponent::EntityList& entities = instance.GetInstance()->GetInstantiated()->m_entities;
 
             // Create a set of all the top-level entities.
             AZStd::unordered_set<AZ::Entity*> topLevelEntities;

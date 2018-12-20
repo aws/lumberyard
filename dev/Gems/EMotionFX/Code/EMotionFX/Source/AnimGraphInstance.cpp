@@ -100,7 +100,7 @@ namespace EMotionFX
             uniqueData->Destroy();
         }
         m_uniqueDatas.clear();
-        
+
         RemoveAllParameters(true);
         RemoveAllEventHandlers(true);
 
@@ -225,6 +225,18 @@ namespace EMotionFX
         //MCORE_ASSERT(GetEMotionFX().GetThreadData(0).GetPosePool().GetNumUsedPoses() == 0);
         if (autoFreeAllPoses)
         {
+            // Temp solution: In the AnimGraphStateMachine, there's a possibility that certain nodes get ref count increased, but never got decreased. This would result in some dangling
+            // poses in those node's output ports. If somehow we are accessing them later (this could be another bug as well - in blendNNode e.g, we are freeing all the in comming port
+            // regardless of whether they has gone through the output step), we will release such dangling pointer, which would cause random issue / crash later.
+            // For now, we free all poses and clean all the ports.
+            for (MCore::Attribute* attribute : m_internalAttributes)
+            {
+                if (attribute->GetType() == AttributePose::TYPE_ID)
+                {
+                    AttributePose* attributePose = static_cast<AttributePose*>(attribute);
+                    attributePose->SetValue(nullptr);
+                }
+            }
             posePool.FreeAllPoses();
         }
     }
@@ -607,7 +619,7 @@ namespace EMotionFX
         }
 
         const uint32 index = uniqueData->GetObject()->GetObjectIndex();
-        if (delFromMem)
+        if (delFromMem && m_uniqueDatas[index])
         {
             m_uniqueDatas[index]->Destroy();
         }
@@ -622,7 +634,7 @@ namespace EMotionFX
         AnimGraphObjectData* data = m_uniqueDatas[index];
         m_uniqueDatas.erase(m_uniqueDatas.begin() + index);
         mObjectFlags.Remove(static_cast<uint32>(index));
-        if (delFromMem)
+        if (delFromMem && data)
         {
             data->Destroy();
         }
@@ -639,11 +651,11 @@ namespace EMotionFX
                 uniqueData->Destroy();
             }
         }
-        
+
         m_uniqueDatas.clear();
         mObjectFlags.Clear();
     }
-    
+
 
     // register event handler
     void AnimGraphInstance::AddEventHandler(AnimGraphInstanceEventHandler* eventHandler)

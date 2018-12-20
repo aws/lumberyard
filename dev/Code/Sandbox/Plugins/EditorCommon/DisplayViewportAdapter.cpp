@@ -54,10 +54,7 @@ float CDisplayViewportAdapter::GetScreenScaleFactor(const CCamera& camera, const
 
 bool CDisplayViewportAdapter::HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& hitpoint, int pixelRadius, float* pToCameraDistance) const
 {
-    QPoint p1 = WorldToView(lineP1);
-    QPoint p2 = WorldToView(lineP2);
-
-    float dist = PointToLineDistance2D(Vec3(float(p1.x()), float(p1.y()), 0), Vec3(float(p2.x()), float(p2.y()), 0), Vec3(float(hitpoint.x()), float(hitpoint.y()), 0));
+    float dist = GetDistanceToLine(lineP1, lineP2, hitpoint);
     if (dist <= pixelRadius)
     {
         if (pToCameraDistance)
@@ -76,6 +73,17 @@ bool CDisplayViewportAdapter::HitTestLine(const Vec3& lineP1, const Vec3& lineP2
     }
 
     return false;
+}
+
+float CDisplayViewportAdapter::GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const
+{
+    QPoint p1 = WorldToView(lineP1);
+    QPoint p2 = WorldToView(lineP2);
+
+    return PointToLineDistance2D(
+        Vec3(float(p1.x()), float(p1.y()), 0), 
+        Vec3(float(p2.x()), float(p2.y()), 0), 
+        Vec3(float(point.x()), float(point.y()), 0));
 }
 
 CBaseObjectsCache* CDisplayViewportAdapter::GetVisibleObjectsCache()

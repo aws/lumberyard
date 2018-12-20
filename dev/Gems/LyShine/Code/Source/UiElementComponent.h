@@ -163,12 +163,71 @@ public: // static member functions
 
     static void Initialize();
 
+    //! Helper function used during conversion of old format canvas files. Called from
+    //! UiCanvasFileObject::VersionConverter and PrefabFileObject::VersionConverter.
+    //! In the old format child entities were referenced by Entity* rather than EntityId so each entity
+    //! had all of its children nested under it in the file. In the newer format, that was introduced when
+    //! slice support was added, the entities are owned by the root slice and referenced by entity id.
+    //! An index of -1 is used when this is called on the root element of the canvas, otherwise index
+    //! is the index of the child entity withing the children container.
+    static bool MoveEntityAndDescendantsToListAndReplaceWithEntityId(AZ::SerializeContext& context,
+        AZ::SerializeContext::DataElementNode& elementNode,
+        int index,
+        AZStd::vector<AZ::SerializeContext::DataElementNode>& entities);
+
 protected: // member functions
 
     // AZ::Component
     void Activate() override;
     void Deactivate() override;
     // ~AZ::Component
+
+private: //types
+
+    //! ChildOrderSerializationEvents intercepts the serialization events for patching.
+    //! This allows us to do some fixup after patching is done on a UiElementComponent.
+    class ChildOrderSerializationEvents
+        : public AZ::SerializeContext::IEventHandler
+    {
+        //! Called right after we finish writing data to the instance pointed at by classPtr.
+        void OnPatchEnd(void* classPtr, const AZ::DataPatchNodeInfo& patchInfo) override
+        {
+            UiElementComponent* component = reinterpret_cast<UiElementComponent*>(classPtr);
+            component->OnPatchEnd(patchInfo);
+        }
+    };
+
+    //! ChildEntityIdOrderEntry stores the entity id and the sort index (which is the absolute sort index relative to
+    //! the other entries, 0 is the first, 1 is the second, so on). We serialize out the order data in this fashion
+    //! because the slice data patching system will traditionally use the vector index to know what data goes where.
+    //! In the case of this data, it does not make sense to data patch by vector index since the underlying data may
+    //! have changed and the data patch will create duplicate or incorrect data. The slice data patch system has the
+    //! concept of a "Persistent ID" which can be used instead such that data patches will try to match persistent
+    //! ids which can be identified regardless of vector index. In this way, our vector order no longer matters and
+    //! the EntityId is now the identifier which the data patcher will use to update the sort index.
+
+    struct ChildEntityIdOrderEntry
+    {
+        AZ_TYPE_INFO(ChildEntityIdOrderEntry, "{D6F3CC55-6C7C-4D64-818F-FA3378EC8DA2}");
+        AZ::EntityId m_entityId;
+        AZ::u64 m_sortIndex;
+
+        bool operator==(const ChildEntityIdOrderEntry& rhs) const
+        {
+            return m_entityId == rhs.m_entityId && m_sortIndex == rhs.m_sortIndex;
+        }
+
+        bool operator!=(const ChildEntityIdOrderEntry& rhs) const
+        {
+            return m_entityId != rhs.m_entityId || m_sortIndex != rhs.m_sortIndex;
+        }
+
+        bool operator<(const ChildEntityIdOrderEntry& rhs) const
+        {
+            return m_sortIndex < rhs.m_sortIndex || (m_sortIndex == rhs.m_sortIndex && m_entityId < rhs.m_entityId);
+        }
+    };
+    using ChildEntityIdOrderArray = AZStd::vector<ChildEntityIdOrderEntry>;
 
 private: // member functions
 
@@ -177,6 +236,12 @@ private: // member functions
 
     // helper function for setting the multiple parent reference that we store
     void SetParentReferences(AZ::Entity* parent, UiElementComponent* parentElementComponent);
+
+    //! Ensures m_childEntityIdOrder is updated for any data patches to the old m_children
+    void OnPatchEnd(const AZ::DataPatchNodeInfo& patchInfo);
+
+    //! Recalculate the sort indices in m_childEntityIdOrder to match the order in the vector
+    void ResetChildEntityIdSortOrders();
 
 private: // static member functions
 
@@ -189,7 +254,6 @@ private: // data
 
     LyShine::ElementId m_elementId = 0;
 
-    AZStd::vector<AZ::EntityId> m_children;
     AZ::Entity* m_parent = nullptr;
     AZ::EntityId m_parentId;    // Stored in order to do error checking when m_parent could have been deleted
     UiCanvasComponent* m_canvas = nullptr;    // currently we store a pointer to the canvas component rather than an entity ID
@@ -207,6 +271,12 @@ private: // data
     bool m_isSelectableInEditor = true;
     bool m_isSelectedInEditor = false;
     bool m_isExpandedInEditor = true;
+
+    // New children array that uses persistent IDs. Required because slices/datapatches do not handle things well
+    // for the old m_children because it doesn't use persistent IDs.
+    // Note: once loaded and patched this vector is always in the correct order and the sort indices start at zero
+    // and are contiguous. OnPatchEnd enforces this after any patching.
+    ChildEntityIdOrderArray m_childEntityIdOrder;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +315,7 @@ inline bool UiElementComponent::IsFullyInitialized() const
 
 inline bool UiElementComponent::AreChildPointersValid() const
 {
-    if (m_childElementComponents.size() == m_children.size())
+    if (m_childElementComponents.size() == m_childEntityIdOrder.size())
     {
         return true;
     }

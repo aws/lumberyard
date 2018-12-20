@@ -53,6 +53,7 @@ namespace LmbrCentral
         bool                                m_deferred = false;
         AZStd::string                       m_deferredString = "";
         float                               m_opacity = 1.0f;
+        float                               m_angleAttenuation = 1.0f;
         float                               m_maxViewDist = 8000.0f;
         EngineSpec                          m_minSpec = EngineSpec::Low;
 
@@ -83,6 +84,7 @@ namespace LmbrCentral
             decalProperties.m_sortPrio = m_sortPriority;
             decalProperties.m_deferred = m_deferred;
             decalProperties.m_opacity = m_opacity;
+            decalProperties.m_angleAttenuation = m_angleAttenuation;
             decalProperties.m_depth = m_depth;
             decalProperties.m_maxViewDist = m_maxViewDist;
             decalProperties.m_minSpec = m_minSpec;
@@ -143,7 +145,7 @@ namespace LmbrCentral
         bool IsMaterialOwnerReady() override;
         void SetMaterial(_smart_ptr<IMaterial>) override;
         _smart_ptr<IMaterial> GetMaterial() override;
-        void SetMaterialHandle(MaterialHandle) override;
+        void SetMaterialHandle(const MaterialHandle& materialHandle) override;
         MaterialHandle GetMaterialHandle() override;
         void SetMaterialParamVector4( const AZStd::string& /*name*/, const AZ::Vector4& /*value*/, int /*materialId = 1*/) override;
         void SetMaterialParamVector3( const AZStd::string& /*name*/, const AZ::Vector3& /*value*/, int /*materialId = 1*/) override;

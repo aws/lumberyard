@@ -161,15 +161,24 @@ void UiImageComponent::Render()
 
     ISprite* sprite = (m_overrideSprite) ? m_overrideSprite : m_sprite;
     int cellIndex = (m_overrideSprite) ? m_overrideSpriteCellIndex : m_spriteSheetCellIndex;
-
-    ImageType imageType = m_imageType;
-
-    // if there is no texture we will just use a white texture and want to stretch it
     const bool spriteOrTextureIsNull = sprite == nullptr || sprite->GetTexture() == nullptr;
 
+    // Zero texture size may occur even if the UiImageComponent has a valid non-zero-sized texture,
+    // because a canvas can be requested to Render() before the texture asset is done loading.
+    if (!spriteOrTextureIsNull)
+    {
+        const AZ::Vector2 textureSize = sprite->GetSize();
+        if (textureSize.GetX() == 0 || textureSize.GetY() == 0)
+        {
+            return; // don't render
+        }
+    }
+
     // if the borders are zero width then sliced is the same as stretched and stretched is simpler to render
+    ImageType imageType = m_imageType;
     const bool spriteIsSlicedAndBordersAreZeroWidth = imageType == ImageType::Sliced && sprite && sprite->AreCellBordersZeroWidth(cellIndex);
 
+    // if there is no texture we will just use a white texture and want to stretch it
     if (spriteOrTextureIsNull || spriteIsSlicedAndBordersAreZeroWidth)
     {
         imageType = ImageType::Stretched;
@@ -1135,7 +1144,7 @@ void UiImageComponent::RenderStretchedToFitOrFillSprite(ISprite* sprite, int cel
     texture->SetClamp(true);
 
     AZ::Vector2 textureSize = sprite->GetCellSize(cellIndex);
-
+    
     UiTransformInterface::RectPoints points;
     EBUS_EVENT_ID(GetEntityId(), UiTransformBus, GetCanvasSpacePointsNoScaleRotate, points);
 
@@ -1144,8 +1153,12 @@ void UiImageComponent::RenderStretchedToFitOrFillSprite(ISprite* sprite, int cel
 
     // scale the texture so it either fits or fills the enclosing rect
     AZ::Vector2 rectSize = points.GetAxisAlignedSize();
+
+
     const float scaleFactorX = rectSize.GetX() / textureSize.GetX();
     const float scaleFactorY = rectSize.GetY() / textureSize.GetY();
+
+
     const float scaleFactor = toFit ?
         AZ::GetMin(scaleFactorX, scaleFactorY) :
         AZ::GetMax(scaleFactorX, scaleFactorY);

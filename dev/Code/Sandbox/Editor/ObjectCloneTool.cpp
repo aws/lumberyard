@@ -25,9 +25,30 @@
 #include "QtUtil.h"
 
 //////////////////////////////////////////////////////////////////////////
+// Class description.
+//////////////////////////////////////////////////////////////////////////
+class CObjectCloneTool_ClassDesc
+    : public CRefCountClassDesc
+{
+    virtual ESystemClassID SystemClassID() { return ESYSTEM_CLASS_EDITTOOL; }
+    virtual REFGUID ClassID()
+    {
+        // {6A73E865-71DF-4ED0-ABA2-457E66119B35}
+        static const GUID guid = {
+            0x6a73e865, 0x71df, 0x4ed0,{ 0xab, 0xa2, 0x45, 0x7e, 0x66, 0x11, 0x9b, 0x35 }
+        };
+        return guid;
+    }
+    virtual QString ClassName() { return "EditTool.Clone"; };
+    virtual QString Category() { return "EditTool"; };
+};
+CObjectCloneTool_ClassDesc g_cloneClassDesc;
+
+//////////////////////////////////////////////////////////////////////////
 CObjectCloneTool::CObjectCloneTool()
     : m_currentUndoBatch(nullptr)
 {
+    m_pClassDesc = &g_cloneClassDesc;
     m_bSetConstrPlane = true;
     //m_bSetCapture = false;
 
@@ -41,6 +62,7 @@ CObjectCloneTool::CObjectCloneTool()
         QWaitCursor wait;
         CloneSelection();
         m_selection = GetIEditor()->GetSelection();
+        m_origin = m_selection->GetCenter();
         //CViewport * view = GetIEditor()->GetViewManager()->GetActiveViewport();
         //if(view)
         //{
@@ -259,14 +281,20 @@ void CObjectCloneTool::Abort()
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CObjectCloneTool::Accept()
+void CObjectCloneTool::Accept(bool resetPosition)
 {
+    // Close the az undo batch so it can add the appropriate objects to the cry undo stack
+    EndUndoBatch();
+
+    if (resetPosition)
+    {
+        GetIEditor()->GetSelection()->MoveTo(m_origin, CSelectionGroup::eMS_None, GetIEditor()->GetReferenceCoordSys());
+    }
+
     if (GetIEditor()->IsUndoRecording())
     {
         GetIEditor()->SuperAcceptUndo("Clone");
     }
-
-    EndUndoBatch();
 
     GetIEditor()->SetEditTool(0);
 }

@@ -1402,6 +1402,10 @@ bool CDeferredShading::DeferredDecalPass(const SDeferredDecal& rDecal, uint32 in
     vDiff.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_OPACITY) * rDecal.fAlpha;
     m_pShader->FXSetPSFloat(m_pParamDecalDiffuse, &vDiff, 1);
 
+    // Angle Attenuation
+    Vec4 angleAttenuation = Vec4(rDecal.angleAttenuation,0,0,0);
+    m_pShader->FXSetPSFloat(m_pParamDecalAngleAttenuation, &angleAttenuation, 1);
+    
     // Specular
     Vec4 vSpec = sItem.m_pShaderResources->GetColorValue(EFTT_SPECULAR).toVec4();
     vSpec.w = sItem.m_pShaderResources->GetStrengthValue(EFTT_SMOOTHNESS);

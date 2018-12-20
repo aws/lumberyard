@@ -596,7 +596,7 @@ bool UiCanvasComponent::SaveAsPrefab(const string& pathname, AZ::Entity* entity)
     AZStd::vector<AZ::EntityId> entitiesInPrefab = GetEntityIdsOfElementAndDescendants(entity);
 
     // Next make a serializable object containing all the entities to save (in order to check for invalid refs)
-    AZ::SliceComponent::InstantiatedContainer sourceObjects;
+    AZ::SliceComponent::InstantiatedContainer sourceObjects(false);
     for (const AZ::EntityId& id : entitiesInPrefab)
     {
         AZ::Entity* sourceEntity = nullptr;
@@ -610,9 +610,6 @@ bool UiCanvasComponent::SaveAsPrefab(const string& pathname, AZ::Entity* entity)
     // clone all the objects in order to replace external references
     AZ::SliceComponent::InstantiatedContainer* clonedObjects = context->CloneObject(&sourceObjects);
     AZ::Entity* clonedRootEntity = clonedObjects->m_entities[0];
-
-    // clear sourceObjects so that its destructor doesn't delete the objects that we cloned from
-    sourceObjects.m_entities.clear();
 
     // use ReplaceEntityRefs to replace external references with invalid IDs
     // Note that we are not generating new IDs so we do not need to fixup internal references
@@ -3283,14 +3280,11 @@ UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ
         EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
         AZ_Assert(context, "No serialization context found");
 
-        AZ::SliceComponent::EntityList entities;
-        newRootSlice->GetEntities(entities);
+        AZ::SliceComponent::InstantiatedContainer entityContainer(false);
+        newRootSlice->GetEntities(entityContainer.m_entities);
 
         canvasComponent->m_editorToGameEntityIdMap = *previousRemapTable;
-        AZ::SliceComponent::InstantiatedContainer entityContainer;
-        entityContainer.m_entities = AZStd::move(entities);
         ReuseOrGenerateNewIdsAndFixRefs(&entityContainer, canvasComponent->m_editorToGameEntityIdMap, context);
-        entities = AZStd::move(entityContainer.m_entities); // have to move these out or all the entities get deleted
 
         if (!canvasComponent->m_entityContext->HandleLoadedRootSliceEntity(rootSliceEntity, false, nullptr))
         {

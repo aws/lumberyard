@@ -163,6 +163,7 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusConnect(m_entity->GetId());
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        CryPhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusConnect(GetEntityId());
 
@@ -178,6 +179,7 @@ namespace LmbrCentral
 
     void EditorMeshComponent::Deactivate()
     {
+        CryPhysicsComponentRequestBus::Handler::BusDisconnect();
         MaterialOwnerRequestBus::Handler::BusDisconnect();
         MeshComponentRequestBus::Handler::BusDisconnect();
         MeshComponentNotificationBus::Handler::BusDisconnect();
@@ -197,6 +199,43 @@ namespace LmbrCentral
         m_mesh.AttachToEntity(AZ::EntityId());
 
         EditorComponentBase::Deactivate();
+    }
+
+    IPhysicalEntity* EditorMeshComponent::GetPhysicalEntity()
+    {
+        return m_physicalEntity;
+    }
+
+    void EditorMeshComponent::GetPhysicsParameters(pe_params& outParameters)
+    {
+        if (m_physicalEntity)
+        {
+            m_physicalEntity->GetParams(&outParameters);
+        }
+    }
+
+    void EditorMeshComponent::SetPhysicsParameters(const pe_params& parameters)
+    {
+        if (m_physicalEntity)
+        {
+            m_physicalEntity->SetParams(&parameters);
+        }
+    }
+
+    void EditorMeshComponent::GetPhysicsStatus(pe_status& outStatus)
+    {
+        if (m_physicalEntity)
+        {
+            m_physicalEntity->GetStatus(&outStatus);
+        }
+    }
+
+    void EditorMeshComponent::ApplyPhysicsAction(const pe_action& action, bool threadSafe)
+    {
+        if (m_physicalEntity)
+        {
+            m_physicalEntity->Action(&action, threadSafe);
+        }
     }
 
     void EditorMeshComponent::OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset)

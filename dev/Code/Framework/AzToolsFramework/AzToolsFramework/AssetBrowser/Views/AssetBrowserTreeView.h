@@ -16,6 +16,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/Asset/AssetCommon.h>
 
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 
@@ -35,6 +36,7 @@ namespace AzToolsFramework
 
         class AssetBrowserTreeView
             : public QTreeViewWithStateSaving
+            , public AssetBrowserViewRequestBus::Handler
         {
             Q_OBJECT
         public:
@@ -50,7 +52,12 @@ namespace AzToolsFramework
             void SaveState() const;
 
             AZStd::vector<AssetBrowserEntry*> GetSelectedAssets() const;
-            void SelectProduct(AZ::Data::AssetId assetID);
+
+            //////////////////////////////////////////////////////////////////////////
+            // AssetBrowserViewRequestBus
+            //////////////////////////////////////////////////////////////////////////
+            void SelectProduct(AZ::Data::AssetId assetID) override;
+            //////////////////////////////////////////////////////////////////////////
 
             void SetThumbnailContext(const char* context) const;
             void SetShowSourceControlIcons(bool showSourceControlsIcons);

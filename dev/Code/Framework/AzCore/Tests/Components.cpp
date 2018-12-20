@@ -1957,6 +1957,150 @@ namespace UnitTest
         EXPECT_EQ(config.m_numHeads, component.m_config.m_numHeads);
         EXPECT_EQ(config.m_numArmsPerHead, component.m_config.m_numArmsPerHead);
     }
+
+    TEST_F(Components, RemoveDuplicateServicesOfAndAfterIterator_EmptyList_ReturnsFalse)
+    {
+        AZ::ComponentDescriptor::DependencyArrayType dependencyList;
+        const ComponentDescriptor::DependencyArrayType::iterator dependencyIter = dependencyList.begin();
+        const bool servicesRemoved = EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr);
+
+        EXPECT_FALSE(servicesRemoved);
+    }
+
+    TEST_F(Components, RemoveDuplicateServicesOfAndAfterIterator_OnlyOneService_ReturnsFalse)
+    {
+        AZ::ComponentDescriptor::DependencyArrayType dependencyList;
+        dependencyList.push_back(AZ_CRC("SomeService"));
+
+        const ComponentDescriptor::DependencyArrayType::iterator dependencyIter = dependencyList.begin();
+        const bool servicesRemoved = EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr);
+
+        EXPECT_FALSE(servicesRemoved);
+    }
+
+    TEST_F(Components, RemoveDuplicateServicesOfAndAfterIterator_NoDuplicates_ReturnsFalse)
+    {
+        AZ::ComponentDescriptor::DependencyArrayType dependencyList;
+        dependencyList.push_back(AZ_CRC("SomeService"));
+        dependencyList.push_back(AZ_CRC("AnotherService"));
+        dependencyList.push_back(AZ_CRC("YetAnotherService"));
+
+        for (ComponentDescriptor::DependencyArrayType::iterator dependencyIter = dependencyList.begin();
+            dependencyIter != dependencyList.end();
+            ++dependencyIter)
+        {
+            const bool servicesRemoved = EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr);
+            EXPECT_FALSE(servicesRemoved);
+        }
+        // Make sure no services were removed.
+        EXPECT_EQ(dependencyList.size(), 3);
+        EXPECT_EQ(dependencyList[0], AZ_CRC("SomeService"));
+        EXPECT_EQ(dependencyList[1], AZ_CRC("AnotherService"));
+        EXPECT_EQ(dependencyList[2], AZ_CRC("YetAnotherService"));
+    }
+
+    TEST_F(Components, RemoveDuplicateServicesOfAndAfterIterator_DuplicateAfterIterator_ReturnsTrueClearsDuplicates)
+    {
+        AZ::ComponentDescriptor::DependencyArrayType dependencyList;
+        dependencyList.push_back(AZ_CRC("SomeService"));
+        dependencyList.push_back(AZ_CRC("AnotherService"));
+        dependencyList.push_back(AZ_CRC("YetAnotherService"));
+        dependencyList.push_back(AZ_CRC("SomeService"));
+
+        ComponentDescriptor::DependencyArrayType::iterator dependencyIter = dependencyList.begin();
+        EXPECT_TRUE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_EQ(dependencyIter, dependencyList.end());
+        // Make sure the service was removed.
+        EXPECT_EQ(dependencyList.size(), 3);
+        EXPECT_EQ(dependencyList[0], AZ_CRC("SomeService"));
+        EXPECT_EQ(dependencyList[1], AZ_CRC("AnotherService"));
+        EXPECT_EQ(dependencyList[2], AZ_CRC("YetAnotherService"));
+    }
+
+    TEST_F(Components, RemoveDuplicateServicesOfAndAfterIterator_2DuplicatesAfterIterator_ReturnsTrueClearsDuplicates)
+    {
+        AZ::ComponentDescriptor::DependencyArrayType dependencyList;
+        dependencyList.push_back(AZ_CRC("SomeService"));
+        dependencyList.push_back(AZ_CRC("AnotherService"));
+        dependencyList.push_back(AZ_CRC("SomeService"));
+        dependencyList.push_back(AZ_CRC("YetAnotherService"));
+        dependencyList.push_back(AZ_CRC("SomeService"));
+
+        ComponentDescriptor::DependencyArrayType::iterator dependencyIter = dependencyList.begin();
+        EXPECT_TRUE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_EQ(dependencyIter, dependencyList.end());
+        // Make sure the service was removed.
+        EXPECT_EQ(dependencyList.size(), 3);
+        EXPECT_EQ(dependencyList[0], AZ_CRC("SomeService"));
+        EXPECT_EQ(dependencyList[1], AZ_CRC("AnotherService"));
+        EXPECT_EQ(dependencyList[2], AZ_CRC("YetAnotherService"));
+    }
+
+    // The duplicate check logic only checks after the current iterator for performance reasons.
+    // This function is primarily used in loops that are already iterating over the service dependencies.
+    TEST_F(Components, RemoveDuplicateServicesOfAndAfterIterator_DuplicateBeforeIterator_ReturnsFalseDuplicateRemains)
+    {
+        AZ::ComponentDescriptor::DependencyArrayType dependencyList;
+        dependencyList.push_back(AZ_CRC("SomeService"));
+        dependencyList.push_back(AZ_CRC("AnotherService"));
+        dependencyList.push_back(AZ_CRC("YetAnotherService"));
+        dependencyList.push_back(AZ_CRC("SomeService"));
+
+        ComponentDescriptor::DependencyArrayType::iterator dependencyIter = dependencyList.begin();
+        // Skip the first element to leave a duplicate before the iterator.
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_EQ(dependencyIter, dependencyList.end());
+        // Make sure the service was not removed.
+        EXPECT_EQ(dependencyList.size(), 4);
+        EXPECT_EQ(dependencyList[0], AZ_CRC("SomeService"));
+        EXPECT_EQ(dependencyList[1], AZ_CRC("AnotherService"));
+        EXPECT_EQ(dependencyList[2], AZ_CRC("YetAnotherService"));
+        EXPECT_EQ(dependencyList[3], AZ_CRC("SomeService"));
+    }
+
+    TEST_F(Components, RemoveDuplicateServicesOfAndAfterIterator_DuplicateBeforeAndAfterIterator_ReturnsTrueListUpdated)
+    {
+        AZ::ComponentDescriptor::DependencyArrayType dependencyList;
+        dependencyList.push_back(AZ_CRC("SomeService"));
+        dependencyList.push_back(AZ_CRC("AnotherService"));
+        dependencyList.push_back(AZ_CRC("SomeService"));
+        dependencyList.push_back(AZ_CRC("YetAnotherService"));
+        dependencyList.push_back(AZ_CRC("SomeService"));
+
+        ComponentDescriptor::DependencyArrayType::iterator dependencyIter = dependencyList.begin();
+        // Skip the first element to leave a duplicate before the iterator.
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_TRUE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_FALSE(EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(dependencyIter, dependencyList, nullptr));
+        ++dependencyIter;
+        EXPECT_EQ(dependencyIter, dependencyList.end());
+        // Make sure one service was removed, and another not removed.
+        EXPECT_EQ(dependencyList.size(), 4);
+        EXPECT_EQ(dependencyList[0], AZ_CRC("SomeService"));
+        EXPECT_EQ(dependencyList[1], AZ_CRC("AnotherService"));
+        EXPECT_EQ(dependencyList[2], AZ_CRC("SomeService"));
+        EXPECT_EQ(dependencyList[3], AZ_CRC("YetAnotherService"));
+
+    }
 } // namespace UnitTest
 
 #if defined(HAVE_BENCHMARK)

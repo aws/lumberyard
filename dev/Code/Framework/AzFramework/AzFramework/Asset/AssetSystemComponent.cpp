@@ -39,7 +39,7 @@ namespace AzFramework
             AssetNotificationMessage message;
             // note that we forbid asset loading and we set STRICT mode.  These messages are all the kind of message that is supposed to be transmitted between the
             // same version of software, and are created at runtime, not loaded from disk, so they should not contain errors - if they do, it requires investigation.
-            if (!AZ::Utils::LoadObjectFromBufferInPlace(buffer, bufferSize, message, nullptr, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_STRICT)))
+            if (!AZ::Utils::LoadObjectFromBufferInPlace(buffer, bufferSize, message, nullptr, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_STRICT)))
             {
                 AZ_WarningOnce("AssetSystem", false, "AssetNotificationMessage received but unable to deserialize it.  Is AssetProcessor.exe up to date?");
                 return;
@@ -136,7 +136,7 @@ namespace AzFramework
             AssetSystemRequestBus::Handler::BusDisconnect();
             
             m_socketConn->RemoveMessageHandler(AZ_CRC("AssetProcessorManager::AssetNotification", 0xd6191df5), m_cbHandle);
-            m_socketConn->Disconnect();
+            m_socketConn->Disconnect(true);
             
             DisableSocketConnection();
 
@@ -311,11 +311,16 @@ namespace AzFramework
                 return false;
             }
 
+            bool result = true;
+
             if (apConnection->IsConnected())
             {
-                return apConnection->Disconnect();
+                result = apConnection->Disconnect(true);
             }
-            return true;
+
+            AzFramework::AssetSystemBus::ClearQueuedEvents();
+
+            return result;
         }
 
         bool AssetSystemComponent::SaveCatalog()

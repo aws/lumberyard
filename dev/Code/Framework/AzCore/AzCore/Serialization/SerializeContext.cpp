@@ -16,6 +16,8 @@
 #include <AzCore/Serialization/DataOverlay.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/Asset/AssetSerializer.h>
+
 /// include AZStd any serializer support
 #include <AzCore/Serialization/AZStdAnyDataContainer.inl>
 
@@ -27,6 +29,10 @@
 #include <AzCore/Math/MathUtils.h>
 
 #include <AzCore/Debug/Profiler.h>
+
+#if defined(AZ_ENABLE_TRACING) && !defined(AZ_DISABLE_SERIALIZER_DEBUG)
+#   define AZ_ENABLE_SERIALIZER_DEBUG
+#endif
 
 namespace AZ
 {
@@ -1252,15 +1258,19 @@ namespace AZ
                 return true;
             };
 
-        sc.EnumerateInstanceConst(
-            objectPtr,
-            classId,
+        EnumerateInstanceCallContext callContext(
             beginCB,
             endCB,
+            &sc,
             SerializeContext::ENUM_ACCESS_FOR_READ,
+            errorHandler);
+
+        sc.EnumerateInstanceConst(
+            &callContext,
+            objectPtr,
+            classId,
             classData,
-            nullptr,
-            errorHandler
+            nullptr
             );
 
         return success;
@@ -1664,32 +1674,23 @@ namespace AZ
     // EnumerateInstanceConst
     // [10/31/2012]
     //=========================================================================
-    bool SerializeContext::EnumerateInstanceConst(const void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler) const
+    bool SerializeContext::EnumerateInstanceConst(SerializeContext::EnumerateInstanceCallContext* callContext, const void* ptr, const Uuid& classId, const ClassData* classData, const ClassElement* classElement) const
     {
-        AZ_Assert((accessFlags & ENUM_ACCESS_FOR_WRITE) == 0, "You are asking the serializer to lock the data for write but you only have a const pointer!");
-        return EnumerateInstance(const_cast<void*>(ptr), classId, beginElemCB, endElemCB, accessFlags, classData, classElement, errorHandler);
+        AZ_Assert((callContext->m_accessFlags & ENUM_ACCESS_FOR_WRITE) == 0, "You are asking the serializer to lock the data for write but you only have a const pointer!");
+        return EnumerateInstance(callContext, const_cast<void*>(ptr), classId, classData, classElement);
     }
 
     //=========================================================================
     // EnumerateInstance
     // [10/31/2012]
     //=========================================================================
-    bool SerializeContext::EnumerateInstance(void* ptr, const Uuid& _classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler) const
+    bool SerializeContext::EnumerateInstance(SerializeContext::EnumerateInstanceCallContext* callContext, void* ptr, const Uuid& classId, const ClassData* classData, const ClassElement* classElement) const
     {
         // if useClassData is provided, just use it, otherwise try to find it using the classId provided.
         void* objectPtr = ptr;
-        AZ::Uuid classId = _classId;
-        const SerializeContext::ClassData* dataClassInfo = classData ? classData : FindClassData(classId, nullptr, 0);
-
-    #if defined(AZ_ENABLE_TRACING)
-        AZStd::unique_ptr<ErrorHandler> standardErrorHandler;
-        if (!errorHandler)
-        {
-            standardErrorHandler.reset(aznew ErrorHandler());
-            errorHandler = standardErrorHandler.get();
-        }
-    #endif // AZ_ENABLE_TRACING
-
+        const AZ::Uuid* classIdPtr = &classId;
+        const SerializeContext::ClassData* dataClassInfo = classData;
+        
         if (classElement)
         {
             // if we are a pointer, then we may be pointing to a derived type.
@@ -1704,11 +1705,11 @@ namespace AZ
                 }
                 if (classElement->m_azRtti)
                 {
-                    AZ::Uuid actualClassId = classElement->m_azRtti->GetActualUuid(objectPtr);
-                    if (actualClassId != classId)
+                    const AZ::Uuid& actualClassId = classElement->m_azRtti->GetActualUuid(objectPtr);
+                    if (actualClassId != *classIdPtr)
                     {
                         // we are pointing to derived type, adjust class data, uuid and pointer.
-                        classId = actualClassId;
+                        classIdPtr = &actualClassId;
                         dataClassInfo = FindClassData(actualClassId);
                         if (dataClassInfo)
                         {
@@ -1719,37 +1720,43 @@ namespace AZ
             }
         }
 
-    #if defined(AZ_ENABLE_TRACING)
+        if (!dataClassInfo)
+        {
+            dataClassInfo = FindClassData(*classIdPtr);
+        }
+
+    #if defined(AZ_ENABLE_SERIALIZER_DEBUG)
         {
             DbgStackEntry de;
             de.m_dataPtr = objectPtr;
-            de.m_uuidPtr = &classId;
+            de.m_uuidPtr = classIdPtr;
             de.m_elementName = classElement ? classElement->m_name : NULL;
             de.m_classData = dataClassInfo;
             de.m_classElement = classElement;
-            errorHandler->Push(de);
+            callContext->m_errorHandler->Push(de);
         }
-    #endif // AZ_ENABLE_TRACING
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
 
         if (dataClassInfo == NULL)
         {
+    #if defined (AZ_ENABLE_SERIALIZER_DEBUG)
             // if we are a non-reflected base class, assume that the base class simply didn't need any reflection
             if (!(classElement && classElement->m_flags & SerializeContext::ClassElement::FLG_BASE_CLASS))
             {
                 // output an error
-                AZStd::string error = AZStd::string::format("Element with class ID '%s' is not registered with the serializer!", classId.ToString<AZStd::string>().c_str());
-                errorHandler->ReportError(error.c_str());
+                AZStd::string error = AZStd::string::format("Element with class ID '%s' is not registered with the serializer!", classIdPtr->ToString<AZStd::string>().c_str());
+                callContext->m_errorHandler->ReportError(error.c_str());
             }
-    #if defined (AZ_ENABLE_TRACING)
-            errorHandler->Pop();
-    #endif // AZ_ENABLE_TRACING
+
+            callContext->m_errorHandler->Pop();
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
 
             return true;    // we errored, but return true to continue enumeration of our siblings and other unrelated hierarchies
         }
 
         if (dataClassInfo->m_eventHandler)
         {
-            if ((accessFlags & ENUM_ACCESS_FOR_WRITE) == ENUM_ACCESS_FOR_WRITE)
+            if ((callContext->m_accessFlags & ENUM_ACCESS_FOR_WRITE) == ENUM_ACCESS_FOR_WRITE)
             {
                 dataClassInfo->m_eventHandler->OnWriteBegin(objectPtr);
             }
@@ -1765,20 +1772,11 @@ namespace AZ
         // returns false, stop enumeration of this branch
         // pass the original ptr to the user instead of objectPtr because
         // he may want to replace the actual object.
-        if (!beginElemCB || beginElemCB(ptr, dataClassInfo, classElement))
+        if (!callContext->m_beginElemCB || callContext->m_beginElemCB(ptr, dataClassInfo, classElement))
         {
             if (dataClassInfo->m_container)
             {
-                dataClassInfo->m_container->EnumElements(objectPtr, AZStd::bind(&SerializeContext::EnumerateInstance, this
-                        , AZStd::placeholders::_1
-                        , AZStd::placeholders::_2
-                        , beginElemCB
-                        , endElemCB
-                        , accessFlags
-                        , AZStd::placeholders::_3
-                        , AZStd::placeholders::_4
-                        , errorHandler
-                        ));
+                dataClassInfo->m_container->EnumElements(objectPtr, callContext->m_elementCallback);
             }
             else
             {
@@ -1790,7 +1788,7 @@ namespace AZ
                     {
                         const SerializeContext::ClassData* elemClassInfo = ed.m_genericClassInfo ? ed.m_genericClassInfo->GetClassData() : FindClassData(ed.m_typeId, dataClassInfo, ed.m_nameCrc);
 
-                        keepEnumeratingSiblings = EnumerateInstance(dataAddress, ed.m_typeId, beginElemCB, endElemCB, accessFlags, elemClassInfo, &ed, errorHandler);
+                        keepEnumeratingSiblings = EnumerateInstance(callContext, dataAddress, ed.m_typeId, elemClassInfo, &ed);
                         if (!keepEnumeratingSiblings)
                         {
                             break;
@@ -1816,7 +1814,7 @@ namespace AZ
                             dynamicElementData.m_genericClassInfo = FindGenericClassInfo(dynamicFieldDesc->m_typeId);
                             dynamicElementData.m_editData = nullptr; // we cannot have element edit data for dynamic fields.
                             dynamicElementData.m_flags = ClassElement::FLG_DYNAMIC_FIELD | ClassElement::FLG_POINTER;
-                            EnumerateInstance(&dynamicFieldDesc->m_data, dynamicTypeMetadata->m_typeId, beginElemCB, endElemCB, accessFlags, dynamicTypeMetadata, &dynamicElementData, errorHandler);
+                            EnumerateInstance(callContext, &dynamicFieldDesc->m_data, dynamicTypeMetadata->m_typeId, dynamicTypeMetadata, &dynamicElementData);
                         }
                         else
                         {
@@ -1829,16 +1827,16 @@ namespace AZ
         }
 
         // call endElemCB
-        if (endElemCB)
+        if (callContext->m_endElemCB)
         {
-            keepEnumeratingSiblings = endElemCB();
+            keepEnumeratingSiblings = callContext->m_endElemCB();
         }
 
         if (dataClassInfo->m_eventHandler)
         {
-            if ((accessFlags & ENUM_ACCESS_HOLD) == 0)
+            if ((callContext->m_accessFlags & ENUM_ACCESS_HOLD) == 0)
             {
-                if ((accessFlags & ENUM_ACCESS_FOR_WRITE) == ENUM_ACCESS_FOR_WRITE)
+                if ((callContext->m_accessFlags & ENUM_ACCESS_FOR_WRITE) == ENUM_ACCESS_FOR_WRITE)
                 {
                     dataClassInfo->m_eventHandler->OnWriteEnd(objectPtr);
                 }
@@ -1849,17 +1847,55 @@ namespace AZ
             }
         }
 
-    #if defined(AZ_ENABLE_TRACING)
-        errorHandler->Pop();
-    #endif // AZ_ENABLE_TRACING
+    #if defined(AZ_ENABLE_SERIALIZER_DEBUG)
+        callContext->m_errorHandler->Pop();
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
 
         return keepEnumeratingSiblings;
     }
 
     //=========================================================================
-    // CloneObject
-    // [03/21/2014]
+    // EnumerateInstanceConst (deprecated overload)
     //=========================================================================
+    bool SerializeContext::EnumerateInstanceConst(const void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler /*= nullptr*/) const
+    {
+        EnumerateInstanceCallContext callContext(
+            beginElemCB,
+            endElemCB,
+            this,
+            accessFlags,
+            errorHandler);
+
+        return EnumerateInstanceConst(
+            &callContext,
+            ptr,
+            classId,
+            classData,
+            classElement
+        );
+    }
+
+    //=========================================================================
+    // EnumerateInstance (deprecated overload)
+    //=========================================================================
+    bool SerializeContext::EnumerateInstance(void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler /*= nullptr*/) const
+    {
+        EnumerateInstanceCallContext callContext(
+            beginElemCB,
+            endElemCB,
+            this,
+            accessFlags,
+            errorHandler);
+
+        return EnumerateInstance(
+            &callContext,
+            ptr,
+            classId,
+            classData,
+            classElement
+        );
+    }
+
     struct ObjectCloneData
     {
         ObjectCloneData()
@@ -1879,9 +1915,12 @@ namespace AZ
         ObjectParentStack   m_parentStack;
     };
 
+    //=========================================================================
+    // CloneObject
+    //=========================================================================
     void* SerializeContext::CloneObject(const void* ptr, const Uuid& classId)
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+        AZStd::vector<char> scratchBuffer;
 
         ObjectCloneData cloneData;
         ErrorHandler m_errorLogger;
@@ -1893,20 +1932,31 @@ namespace AZ
             return nullptr;
         }
 
-        EnumerateInstance(const_cast<void*>(ptr)
+        EnumerateInstanceCallContext callContext(
+            AZStd::bind(&SerializeContext::BeginCloneElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger, &scratchBuffer),
+            AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData),
+            this,
+            SerializeContext::ENUM_ACCESS_FOR_READ,
+            &m_errorLogger);
+
+        EnumerateInstance(
+            &callContext
+            , const_cast<void*>(ptr)
             , classId
-            , AZStd::bind(&SerializeContext::BeginCloneElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger)
-            , AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData)
-            , SerializeContext::ENUM_ACCESS_FOR_READ
             , nullptr
             , nullptr
-            , &m_errorLogger
             );
+
         return cloneData.m_ptr;
     }
 
+    //=========================================================================
+    // CloneObjectInplace
+    //=========================================================================
     void SerializeContext::CloneObjectInplace(void* dest, const void* ptr, const Uuid& classId)
     {
+        AZStd::vector<char> scratchBuffer;
+
         ObjectCloneData cloneData;
         cloneData.m_ptr = dest;
         ErrorHandler m_errorLogger;
@@ -1915,20 +1965,27 @@ namespace AZ
 
         if (ptr)
         {
-            EnumerateInstanceConst(ptr
+            EnumerateInstanceCallContext callContext(
+            AZStd::bind(&SerializeContext::BeginCloneElementInplace, this, dest, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger, &scratchBuffer),
+                AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData),
+                this,
+                SerializeContext::ENUM_ACCESS_FOR_READ,
+                &m_errorLogger);
+
+            EnumerateInstance(
+                &callContext
+                , const_cast<void*>(ptr)
                 , classId
-                , AZStd::bind(&SerializeContext::BeginCloneElementInplace, this, dest, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger)
-                , AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData)
-                , SerializeContext::ENUM_ACCESS_FOR_READ
                 , nullptr
                 , nullptr
-                , &m_errorLogger
             );
         }
     }
 
-
-    bool SerializeContext::BeginCloneElement(void* ptr, const ClassData* classData, const ClassElement* elementData, void* data, ErrorHandler* errorHandler)
+    //=========================================================================
+    // BeginCloneElement (internal element clone callbacks)
+    //=========================================================================
+    bool SerializeContext::BeginCloneElement(void* ptr, const ClassData* classData, const ClassElement* elementData, void* data, ErrorHandler* errorHandler, AZStd::vector<char>* scratchBuffer)
     {
         ObjectCloneData* cloneData = reinterpret_cast<ObjectCloneData*>(data);
 
@@ -1939,10 +1996,13 @@ namespace AZ
             cloneData->m_ptr = classData->m_factory->Create(classData->m_name);
         }
 
-        return BeginCloneElementInplace(cloneData->m_ptr, ptr, classData, elementData, data, errorHandler);
+        return BeginCloneElementInplace(cloneData->m_ptr, ptr, classData, elementData, data, errorHandler, scratchBuffer);
     }
 
-    bool SerializeContext::BeginCloneElementInplace(void* rootDestPtr, void* ptr, const ClassData* classData, const ClassElement* elementData, void* data, ErrorHandler* errorHandler)
+    //=========================================================================
+    // BeginCloneElementInplace (internal element clone callbacks)
+    //=========================================================================
+    bool SerializeContext::BeginCloneElementInplace(void* rootDestPtr, void* ptr, const ClassData* classData, const ClassElement* elementData, void* data, ErrorHandler* errorHandler, AZStd::vector<char>* scratchBuffer)
     {
         ObjectCloneData* cloneData = reinterpret_cast<ObjectCloneData*>(data);
 
@@ -2013,12 +2073,21 @@ namespace AZ
 
         if (classData->m_serializer)
         {
-            AZStd::vector<char> buffer;
-            IO::ByteContainerStream<AZStd::vector<char> > stream(&buffer);
+            if (classData->m_typeId == GetAssetClassId())
+            {
+                // Optimized clone path for asset references.
+                static_cast<AssetSerializer*>(classData->m_serializer)->Clone(srcPtr, destPtr);
+            }
+            else
+            {
+                scratchBuffer->clear();
+                IO::ByteContainerStream<AZStd::vector<char>> stream(scratchBuffer);
 
-            classData->m_serializer->Save(srcPtr, stream);
-            stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-            classData->m_serializer->Load(destPtr, stream, classData->m_version);
+                classData->m_serializer->Save(srcPtr, stream);
+                stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+
+                classData->m_serializer->Load(destPtr, stream, classData->m_version);
+            }
         }
 
         // push this node in the stack
@@ -2031,6 +2100,9 @@ namespace AZ
         return true;
     }
 
+    //=========================================================================
+    // EndCloneElement (internal element clone callbacks)
+    //=========================================================================
     bool SerializeContext::EndCloneElement(void* data)
     {
         ObjectCloneData* cloneData = reinterpret_cast<ObjectCloneData*>(data);
@@ -2342,7 +2414,7 @@ namespace AZ
     {
         AZStd::string stackDescription;
 
-    #ifdef AZ_ENABLE_TRACING
+    #ifdef AZ_ENABLE_SERIALIZER_DEBUG
         if (!m_stack.empty())
         {
             stackDescription += "\n=== Serialize stack ===\n";
@@ -2352,7 +2424,7 @@ namespace AZ
             }
             stackDescription += "\n";
         }
-    #endif // AZ_ENABLE_TRACING
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
 
         return stackDescription;
     }
@@ -2385,9 +2457,9 @@ namespace AZ
     void SerializeContext::ErrorHandler::Push(const DbgStackEntry& de)
     {
         (void)de;
-    #ifdef AZ_ENABLE_TRACING
+    #ifdef AZ_ENABLE_SERIALIZER_DEBUG
         m_stack.push_back((de));
-    #endif // AZ_ENABLE_TRACING
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
     }
 
     //=========================================================================
@@ -2396,9 +2468,9 @@ namespace AZ
     //=========================================================================
     void SerializeContext::ErrorHandler::Pop()
     {
-    #ifdef AZ_ENABLE_TRACING
+    #ifdef AZ_ENABLE_SERIALIZER_DEBUG
         m_stack.pop_back();
-    #endif // AZ_ENABLE_TRACING
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
     }
 
     //=========================================================================
@@ -2407,11 +2479,38 @@ namespace AZ
     //=========================================================================
     void SerializeContext::ErrorHandler::Reset()
     {
-    #ifdef AZ_ENABLE_TRACING
+    #ifdef AZ_ENABLE_SERIALIZER_DEBUG
         m_stack.clear();
-    #endif
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
         m_nErrors = 0;
-    } // AZ_ENABLE_TRACING
+    }
+
+    //=========================================================================
+    // EnumerateInstanceCallContext
+    //=========================================================================
+
+    SerializeContext::EnumerateInstanceCallContext::EnumerateInstanceCallContext(
+        const SerializeContext::BeginElemEnumCB& beginElemCB,
+        const SerializeContext::EndElemEnumCB& endElemCB,
+        const SerializeContext* context,
+        unsigned int accessFlags,
+        SerializeContext::ErrorHandler* errorHandler)
+        : m_beginElemCB(beginElemCB)
+        , m_endElemCB(endElemCB)
+        , m_context(context)
+        , m_accessFlags(accessFlags)
+    {
+        m_errorHandler = errorHandler ? errorHandler : &m_defaultErrorHandler;
+
+        m_elementCallback = AZStd::bind(&SerializeContext::EnumerateInstance
+            , m_context
+            , this
+            , AZStd::placeholders::_1
+            , AZStd::placeholders::_2
+            , AZStd::placeholders::_3
+            , AZStd::placeholders::_4
+        );
+    }
 }   // namespace AZ
 
 #endif // #ifndef AZ_UNITY_BUILD

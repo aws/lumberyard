@@ -83,10 +83,10 @@ namespace AzToolsFramework
             if (socketConn)
             {
                 m_cbHandle = socketConn->AddMessageHandler(AZ_CRC("FileProcessor::FileInfosNotification", 0x001c43f5),
-                        [this](unsigned int /*typeId*/, unsigned int /*serial*/, const void* buffer, unsigned int bufferSize)
-                        {
-                            HandleFileInfoNotification(buffer, bufferSize);
-                        });
+                    [this](unsigned int /*typeId*/, unsigned int /*serial*/, const void* buffer, unsigned int bufferSize)
+                {
+                    HandleFileInfoNotification(buffer, bufferSize);
+                });
             }
         }
 
@@ -117,6 +117,21 @@ namespace AzToolsFramework
             {
                 serialize->Class<AssetBrowserComponent, AZ::Component>();
             }
+        }
+
+        void AssetBrowserComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType & services)
+        {
+            services.push_back(AZ_CRC("AssetBrowserService", 0x1e54fffb));
+        }
+
+        void AssetBrowserComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+        {
+            required.push_back(AZ_CRC("ThumbnailerService", 0x65422b97));
+        }
+
+        void AssetBrowserComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC("AssetBrowserService", 0x1e54fffb));
         }
 
         void AssetBrowserComponent::OnDatabaseInitialized()
@@ -354,11 +369,6 @@ namespace AzToolsFramework
                 AZ_WarningOnce("AssetSystem", false, "Unknown FileInfosNotificationMessage type");
                 break;
             }
-        }
-
-        void AssetBrowserComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
-        {
-            required.push_back(AZ_CRC("ThumbnailerService", 0x65422b97));
         }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

@@ -1634,21 +1634,6 @@ namespace EMStudio
             commandGroup.AddCommandString(tempString);
         }
 
-        // Rescale animGraphs
-        const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
-        for (uint32 i = 0; i < numAnimGraphs; ++i)
-        {
-            EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(i);
-
-            if (animGraph->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
-            tempString = AZStd::string::format("ScaleAnimGraphData -id %d -unitType \"%s\"", animGraph->GetID(), unitTypeString);
-            commandGroup.AddCommandString(tempString);
-        }
-
         AZStd::string result;
         if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {

@@ -40,6 +40,7 @@
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
+#include <AzToolsFramework/UI/Slice/SliceRelationshipBus.h>
 
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
@@ -340,13 +341,16 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
             });
         }
 
+        AZStd::vector<const ProductAssetBrowserEntry*> products;
+        entry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
+
         // slice source files need to react by adding additional menu items, regardless of status of compile or presence of products.
         if (AzFramework::StringFunc::Equal(extension.c_str(), ".slice", false))
         {
             // For slices, we provide the option to toggle the dynamic flag.
             QString sliceOptions[] = { QObject::tr("Set Dynamic Slice"), QObject::tr("Unset Dynamic Slice") };
             AZ::Entity* sliceEntity = AZ::Utils::LoadObjectFromFile<AZ::Entity>(fullFilePath, nullptr,
-                AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
+                AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading));
             AZ::SliceComponent* sliceAsset = sliceEntity ? sliceEntity->FindComponent<AZ::SliceComponent>() : nullptr;
             if (sliceAsset)
             {
@@ -372,6 +376,19 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
                         ResaveSlice(sliceEntity, fullFilePath);
                     });
                 }
+
+                if(!products.empty())
+                {
+                    const ProductAssetBrowserEntry* productEntry = products[0];
+                    menu->addAction("Open in Slice Relationship View", [productEntry]()
+                    {
+                        QtViewPaneManager::instance()->OpenPane(LyViewPane::SliceRelationships);
+
+                        const ProductAssetBrowserEntry* product = azrtti_cast<const ProductAssetBrowserEntry*>(productEntry);
+                    
+                        AzToolsFramework::SliceRelationshipRequestBus::Broadcast(&AzToolsFramework::SliceRelationshipRequests::OnSliceRelationshipViewRequested, product->GetAssetId());
+                    });
+                }
             }
             else
             {
@@ -379,8 +396,6 @@ void AzAssetBrowserRequestHandler::AddContextMenuActions(QWidget* caller, QMenu*
             }
         }
 
-        AZStd::vector<const ProductAssetBrowserEntry*> products;
-        entry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
         if (products.empty())
         {
             if (entry->GetEntryType() == AssetBrowserEntry::AssetEntryType::Source)

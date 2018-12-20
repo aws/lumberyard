@@ -17,6 +17,7 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
+#include <AzCore/std/function/function_fwd.h>
 
 #include <AzCore/std/typetraits/is_pointer.h>
 #include <AzCore/std/typetraits/is_abstract.h>
@@ -46,6 +47,8 @@ namespace AZ
     class ObjectStream;
     class GenericClassInfo;
 
+    struct DataPatchNodeInfo;
+
     namespace ObjectStreamInternal
     {
         class ObjectStreamImpl;
@@ -73,6 +76,16 @@ namespace AZ
         T StaticInstance<T>::s_instance;
     }
 
+    namespace Data
+    {
+        class AssetData;
+
+        template<typename T>
+        class Asset;
+
+        typedef AZStd::function<bool(const Data::Asset<Data::AssetData>& asset)> AssetFilterCB;
+    }
+
     /**
      * Serialize context is a class that manages information
      * about all reflected data structures. You will use it
@@ -92,6 +105,7 @@ namespace AZ
 
     public:
         class ClassData;
+        struct EnumerateInstanceCallContext;
         struct ClassElement;
         struct DataElement;
         class DataElementNode;
@@ -231,17 +245,19 @@ namespace AZ
 
         /**
          * Call this function to traverse an instance's hierarchy by providing address and classId, if you have the typed pointer you can just call \ref EnumerateObject
+         * \param callContext enumerate call context
          * \param ptr pointer to the object for traversal
          * \param classId classId of object for traversal
-         * \param beginElemCB callback when we begin/open a child element
-         * \param endElemCB callback when we end/close a child element
-         * \param accessFlags \ref EnumerationAccessFlags
          * \param classData pointer to the class data for the traversed object to avoid calling FindClassData(classId) (can be null)
          * \param classElement pointer to class element (null for root elements)
-         * \param errorHandler optional pointer to the error handler.
          */
+        bool EnumerateInstanceConst(EnumerateInstanceCallContext* callContext, const void* ptr, const Uuid& classId, const ClassData* classData, const ClassElement* classElement) const;
+        bool EnumerateInstance(EnumerateInstanceCallContext* callContext, void* ptr, const Uuid& classId, const ClassData* classData, const ClassElement* classElement) const;
+
+        // Deprecated overloads for EnumerateInstance*. Prefer versions that take a \ref EnumerateInstanceCallContext directly.
         bool EnumerateInstanceConst(const void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler = nullptr) const;
         bool EnumerateInstance(void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler = nullptr) const;
+
         /// Traverses a give object \ref EnumerateInstance assuming that object is a root element (not classData/classElement information).
         template<class T>
         bool EnumerateObject(T* obj, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, ErrorHandler* errorHandler = nullptr) const;
@@ -472,6 +488,11 @@ namespace AZ
             virtual void OnWriteBegin(void* classPtr) { (void)classPtr; }
             /// Called after we are done writing to the instance pointed by classPtr.
             virtual void OnWriteEnd(void* classPtr) { (void)classPtr; }
+
+            /// Called right before we start data patching the instance pointed by classPtr.
+            virtual void OnPatchBegin(void* classPtr, const DataPatchNodeInfo& patchInfo) { (void)classPtr; (void)patchInfo; }
+            /// Called after we are done data patching the instance pointed by classPtr.
+            virtual void OnPatchEnd(void* classPtr, const DataPatchNodeInfo& patchInfo) { (void)classPtr; (void)patchInfo; }
         };
 
         /**
@@ -563,6 +584,7 @@ namespace AZ
             const char*         GetNameString() const           { return m_element.m_name; }
             void                SetName(const char* newName);
             unsigned int        GetVersion() const              { return m_element.m_version; }
+            void                SetVersion(unsigned int version) { m_element.m_version = version; }
             const Uuid&         GetId() const                   { return m_element.m_id; }
 
             int                 GetNumSubElements() const       { return static_cast<int>(m_subElements.size()); }
@@ -607,6 +629,25 @@ namespace AZ
         };
         // @}
 
+        /**
+         * Storage for persistent parameters passed to a root EnumerateInstance pass.
+         * EnumerateInstance is used in high frequency performance-sensitive scenarios, and this ensures
+         * minimal interaction with the memory manager for things like bound functors.
+         */
+        struct EnumerateInstanceCallContext
+        {
+            EnumerateInstanceCallContext(const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, const SerializeContext* context, unsigned int accessflags, ErrorHandler* errorHandler);
+
+            BeginElemEnumCB                 m_beginElemCB;          ///< Optional callback when entering an element's hierarchy.
+            EndElemEnumCB                   m_endElemCB;            ///< Optional callback when exiting an element's hierarchy.
+            unsigned int                    m_accessFlags;          ///< Data access flags for the enumeration, see \ref EnumerationAccessFlags.
+            ErrorHandler*                   m_errorHandler;         ///< Optional user error handler.
+            const SerializeContext*         m_context;              ///< Serialize context containing class reflection required for data traversal.
+
+            IDataContainer::ElementCB       m_elementCallback;      // Pre-bound functor computed internally to avoid allocating closures during traversal.
+            ErrorHandler                    m_defaultErrorHandler;  // If no custom error handler is provided, the context provides one.
+        };
+
         /// Find a class data (stored information) based on a class ID and possible parent class data.
         const ClassData* FindClassData(const Uuid& classId, const SerializeContext::ClassData* parent = nullptr, u32 elementNameCrc = 0) const;
 
@@ -646,12 +687,7 @@ namespace AZ
         T Cast(void* instance, const Uuid& instanceClassId) const;
 
     private:
-        /**
-         * Generic enumerate function can can take both 'const void*' and 'void*' data pointer types.
-         */
-        template<class PtrType, class EnumType>
-        bool EnumerateInstanceTempl(PtrType ptr, const Uuid& classId, EnumType beginElemCB, const SerializeContext::EndElemEnumCB& endElemCB, const ClassData* classData, const char* elementName, const ClassElement* classElement);
-
+        
         /// Enumerate function called to enumerate an azrtti hierarchy
         static void EnumerateBaseRTTIEnumCallback(const Uuid& id, void* userData);
 
@@ -659,8 +695,8 @@ namespace AZ
         void RemoveClassData(ClassData* classData);
 
         /// Object cloning callbacks.
-        bool BeginCloneElement(void* ptr, const ClassData* classData, const ClassElement* elementData, void* stackData, ErrorHandler* errorHandler);
-        bool BeginCloneElementInplace(void* rootDestPtr, void* ptr, const ClassData* classData, const ClassElement* elementData, void* stackData, ErrorHandler* errorHandler);
+        bool BeginCloneElement(void* ptr, const ClassData* classData, const ClassElement* elementData, void* stackData, ErrorHandler* errorHandler, AZStd::vector<char>* scratchBuffer);
+        bool BeginCloneElementInplace(void* rootDestPtr, void* ptr, const ClassData* classData, const ClassElement* elementData, void* stackData, ErrorHandler* errorHandler, AZStd::vector<char>* scratchBuffer);
         bool EndCloneElement(void* stackData);
 
         /**
@@ -1176,9 +1212,14 @@ namespace AZ
     template<class T>
     T* SerializeContext::CloneObject(const T* obj)
     {
+        // This function could have been called with a base type as the template parameter, when the object to be cloned is a derived type.
+        // In this case, first cast to the derived type, since the pointer to the derived type might be offset from the base type due to multiple inheritance
         const void* classPtr = SerializeTypeInfo<T>::RttiCast(obj, SerializeTypeInfo<T>::GetRttiTypeId(obj));
         const Uuid& classId = SerializeTypeInfo<T>::GetUuid(obj);
-        return reinterpret_cast<T*>(CloneObject(classPtr, classId));
+        void* clonedObj = CloneObject(classPtr, classId);
+
+        // Now that the actual type has been cloned, cast back to the requested type of the template parameter.
+        return Cast<T*>(clonedObj, classId);
     }
 
     // CloneObject

@@ -145,6 +145,7 @@ namespace Audio
         // Below data is only used when INCLUDE_AUDIO_PRODUCTION_CODE is defined!
         const char* const GetImplementationNameString() const override { return s_nosoundLongName; }
         void GetMemoryInfo(SAudioImplMemoryInfo& oMemoryInfo) const override;
+        AZStd::vector<AudioImplMemoryPoolInfo> GetMemoryPoolInfo() override { return m_debugMemoryPoolInfo; }
 
         bool CreateAudioSource(const SAudioInputConfig& sourceConfig) override { return false; }
         void DestroyAudioSource(TAudioSourceId sourceId) override {}
@@ -182,6 +183,7 @@ namespace Audio
         static const float s_obstructionOcclusionMax;
 
         AudioSet<IATLAudioFileEntryData*> m_soundBanks;
+        AZStd::vector<AudioImplMemoryPoolInfo> m_debugMemoryPoolInfo;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

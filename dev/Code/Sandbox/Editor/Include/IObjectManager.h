@@ -30,6 +30,8 @@ class CObjectPhysicsManager;
 class CViewport;
 struct HitContext;
 enum class ImageRotationDegrees;
+struct ICharacterInstance;
+struct IStatObj;
 
 #include "ObjectEvent.h"
 
@@ -106,6 +108,10 @@ public:
     //! Check intersection with an object.
     //! @return true if hit, and fills hitInfo structure.
     virtual bool HitTestObject(CBaseObject* obj, HitContext& hc) = 0;
+
+    //! Gets a radius to be used for hit tests on the axis helpers, like the transform gizmo.
+    //! @return the axis helper hit radius.
+    virtual int GetAxisHelperHitRadius() const = 0;
 
     //! Send event to all objects.
     //! Will cause OnEvent handler to be called on all objects.

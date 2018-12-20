@@ -66,7 +66,15 @@ namespace RoadsAndRivers
     {
     public:
         AZ_RTTI(SplineGeometry, "{1E31B92F-5188-4074-8F71-810A3B59CC6B}");
-        AZ_CLASS_ALLOCATOR_DECL
+        AZ_CLASS_ALLOCATOR_DECL;
+
+        // Added to prevent ebus handler propagation and subsequent crash per LY-89510
+        // Todo: Replace this with a better solution - LY-89733
+        SplineGeometry() = default;
+        SplineGeometry(const SplineGeometry&) = delete;
+        SplineGeometry(SplineGeometry&&) = delete;
+        SplineGeometry& operator=(const SplineGeometry& rhs);
+        SplineGeometry& operator=(SplineGeometry&&) = delete;
 
         virtual ~SplineGeometry() = default;
         static void Reflect(AZ::ReflectContext* context);

@@ -80,13 +80,8 @@ def load_win_x64_win_x64_clang_common_settings(conf):
     del v['CC']
     del v['CXX']
     del v['LINK']
-    conf.find_program('clang',    var='CC',   mandatory=False, silent_output=True)
-
-    if not v['CC']:
-        conf.mark_supported_platform_for_removal(PLATFORM)
-        Logs.warn('clang executable not found, removing platform {}'.format(PLATFORM))
-        return
-
+        
+    conf.find_program('clang',    var='CC',   silent_output=True)
     conf.find_program('clang++',  var='CXX',  silent_output=True)
     conf.find_program('llvm-lib', var='AR',   silent_output=True)
     conf.find_program('lld-link', var='LINK', silent_output=True)

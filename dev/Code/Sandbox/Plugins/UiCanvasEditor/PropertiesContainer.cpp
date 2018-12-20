@@ -57,14 +57,14 @@ void PropertiesContainer::BuildSharedComponentList(ComponentTypeMap& sharedCompo
     {
         AZ::SliceComponent::SliceInstanceAddress address;
         EBUS_EVENT_ID_RESULT(address, entitiesShown[0], AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-        if (address.first)
+        if (address.IsValid())
         {
             AZ::SliceComponent::EntityAncestorList ancestors;
-            address.first->GetInstanceEntityAncestry(entitiesShown[0], ancestors, 1);
+            address.GetReference()->GetInstanceEntityAncestry(entitiesShown[0], ancestors, 1);
 
             if (!ancestors.empty())
             {
-                m_compareToEntity = AzToolsFramework::SliceUtilities::CloneSliceEntityForComparison(*ancestors[0].m_entity, *address.second, *m_serializeContext);
+                m_compareToEntity = AzToolsFramework::SliceUtilities::CloneSliceEntityForComparison(*ancestors[0].m_entity, *address.GetInstance(), *m_serializeContext);
             }
         }
     }

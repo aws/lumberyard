@@ -231,6 +231,15 @@ namespace AZ
                 m_onAssetErrorCB(asset, *this);
             }
         }
+
+        //=========================================================================
+        // AssetFilterNoAssetLoading
+        //=========================================================================
+        /*static*/ bool AssetFilterNoAssetLoading(const Asset<Data::AssetData>& /*asset*/)
+        {
+            return false;
+        }
+
     }   // namespace Data
 }   // namespace AZ
 

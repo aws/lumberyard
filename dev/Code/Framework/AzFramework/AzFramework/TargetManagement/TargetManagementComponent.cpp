@@ -29,6 +29,10 @@
 #include <GridMate/Replica/ReplicaFunctions.h>
 #include <time.h>
 
+#ifdef AZ_PLATFORM_APPLE_OSX
+#include <libproc.h>
+#endif
+
 namespace AzFramework
 {
     struct TargetManagementSettings
@@ -242,7 +246,7 @@ namespace AzFramework
         EBUS_EVENT_RESULT(m_serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
         m_settings = AZ::UserSettings::CreateFind<TargetManagementSettings>(AZ_CRC("TargetManagementSettings", 0x26fb3ccc), AZ::UserSettings::CT_GLOBAL);
 
-#ifdef AZ_PLATFORM_WINDOWS
+#if defined(AZ_PLATFORM_WINDOWS)
         if (m_settings->m_neighborhoodName.empty())
         {
             // On windows, if the neighborhood name was not provided we
@@ -264,6 +268,29 @@ namespace AzFramework
                 char procName[256];
                 ::_splitpath_s(procPath, nullptr, 0, nullptr, 0, procName, 256, nullptr, 0);
                 m_settings->m_persistentName = procName;
+            }
+            else
+            {
+                m_settings->m_persistentName = "Lumberyard";
+            }
+        }
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+        if (m_settings->m_neighborhoodName.empty())
+        {
+            char localhost[512];
+            if (gethostname(localhost, sizeof(localhost)) == 0)
+            {
+                m_settings->m_neighborhoodName = localhost;
+            }
+        }
+        if (m_settings->m_persistentName.empty())
+        {
+            char procName[PROC_PIDPATHINFO_MAXSIZE];
+            if (proc_pidpath(getpid(), procName, sizeof(procName)) > 0)
+            {
+                m_settings->m_persistentName = procName;
+                size_t slash = m_settings->m_persistentName.find_last_of('/');
+                m_settings->m_persistentName = m_settings->m_persistentName.substr(slash + 1);
             }
             else
             {
@@ -540,7 +567,7 @@ namespace AzFramework
         // Messages targeted at our own application just transfer right over to the inbox.
         if (target.m_flags & TF_SELF)
         {
-            TmMsg* inboxMessage = static_cast<TmMsg*>(m_serializeContext->CloneObject(&msg, msg.RTTI_GetType()));
+            TmMsg* inboxMessage = static_cast<TmMsg*>(m_serializeContext->CloneObject(static_cast<const void*>(&msg), msg.RTTI_GetType()));
             AZ_Assert(inboxMessage, "Failed to clone local loopback message.");
             inboxMessage->m_senderTargetId = target.GetNetworkId();
 

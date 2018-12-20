@@ -318,8 +318,20 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
             vswhere_exe = find_vswhere()
             if vswhere_exe == '':
                 return False
+
             installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+            if not installation_path:
+                try:
+                    version_arg_index = vs2017vswhereOptions.index('-version')
+                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs_where_args[version_arg_index + 1]))
+                    Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
+                    del vs2017vswhereOptions[version_arg_index : version_arg_index + 2]
+                    installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+                except ValueError:
+                    pass
+
             installation_path = installation_path[:len(installation_path)-2]
+            Logs.info('[INFO] Using Visual Studio version installed at: {}'.format(installation_path))
             build_root = os.path.join(installation_path, 'MSBuild', toolsetVer+'.0')
             props_file = os.path.join(build_root, 'Microsoft.common.props')
             return os.path.exists(props_file)
@@ -1024,6 +1036,13 @@ def get_available_platforms(conf):
             # Perform extra validation of platforms that can be disabled through options
             if platform.startswith('android') and not android_enabled:
                 continue
+
+            if platform.endswith('clang') and platform.startswith('win'):
+                if not conf.is_option_true('win_enable_clang_for_windows'):
+                    continue
+                elif not conf.find_program('clang', mandatory=False, silent_output=True):
+                    Logs.warn('[INFO] Removing target platform {}. Could not find Clang for Windows executable.'.format(platform))
+                    continue
 
             if not is_configure_context and validated_platforms_json:
                 if platform not in validated_platforms_json:

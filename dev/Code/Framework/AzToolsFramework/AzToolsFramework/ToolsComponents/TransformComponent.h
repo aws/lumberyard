@@ -264,6 +264,9 @@ namespace AzToolsFramework
 
             bool m_suppressTransformChangedEvent;
 
+            bool m_localTransformDirty = true;
+            bool m_worldTransformDirty = true;
+
             // Used to serialize data required for NetBindable
             bool m_netSyncEnabled;
             AZ::InterpolationMode m_interpolatePosition;

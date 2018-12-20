@@ -255,6 +255,9 @@ public:
     //! Load class templates for specified directory,
     void    LoadClassTemplates(const QString& path);
 
+    //! Registers the ObjectManager's console variables.
+    void RegisterCVars();
+
     //! Find object class by name.
     CObjectClassDesc* FindClass(const QString& className);
     void    GetClassCategories(QStringList& categories);
@@ -367,6 +370,8 @@ public:
 
     void SetExportingLevel(bool bExporting) override { m_bLevelExporting = bExporting; }
     bool IsExportingLevelInprogress() const override { return m_bLevelExporting; }
+
+    int GetAxisHelperHitRadius() const override { return m_axisHelperHitRadius; }
 
 private:
     friend CObjectArchive;
@@ -487,6 +492,8 @@ private:
     bool m_bLevelExporting;
 
     AZStd::unique_ptr<AZ::LegacyConversion::Converter> m_converter;
+
+    int m_axisHelperHitRadius = 20;
 };
 
 #endif // CRYINCLUDE_EDITOR_OBJECTS_OBJECTMANAGER_H

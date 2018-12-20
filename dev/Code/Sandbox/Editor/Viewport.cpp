@@ -863,6 +863,11 @@ void QtViewport::SetCurrentCursor(EStdCursor stdCursor, const QString& cursorStr
     m_cursorStr = cursorString;
 }
 
+void QtViewport::SetSupplementaryCursorStr(const QString& str)
+{
+    m_cursorSupplementaryStr = str;
+}
+
 //////////////////////////////////////////////////////////////////////////
 void QtViewport::SetCurrentCursor(EStdCursor stdCursor)
 {
@@ -1261,10 +1266,7 @@ bool QtViewport::IsBoundsVisible(const AABB& box) const
 //////////////////////////////////////////////////////////////////////////
 bool QtViewport::HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& hitpoint, int pixelRadius, float* pToCameraDistance) const
 {
-    auto p1 = WorldToView(lineP1);
-    auto p2 = WorldToView(lineP2);
-
-    float dist = PointToLineDistance2D(Vec3(p1.x(), p1.y(), 0), Vec3(p2.x(), p2.y(), 0), Vec3(hitpoint.x(), hitpoint.y(), 0));
+    float dist = GetDistanceToLine(lineP1, lineP2, hitpoint);
     if (dist <= pixelRadius)
     {
         if (pToCameraDistance)
@@ -1283,6 +1285,18 @@ bool QtViewport::HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoin
     }
 
     return false;
+}
+
+//////////////////////////////////////////////////////////////////////////
+float QtViewport::GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const
+{
+    QPoint p1 = WorldToView(lineP1);
+    QPoint p2 = WorldToView(lineP2);
+
+    return PointToLineDistance2D(
+        Vec3(p1.x(), p1.y(), 0), 
+        Vec3(p2.x(), p2.y(), 0), 
+        Vec3(point.x(), point.y(), 0));
 }
 
 //////////////////////////////////////////////////////////////////////////

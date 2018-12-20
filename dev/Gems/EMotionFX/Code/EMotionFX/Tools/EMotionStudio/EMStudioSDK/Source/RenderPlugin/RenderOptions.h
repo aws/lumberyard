@@ -37,7 +37,6 @@ namespace EMStudio
         static const char* s_tangentsScaleOptionName;
         static const char* s_nodeOrientationScaleOptionName;
         static const char* s_scaleBonesOnLengthOptionName;
-        static const char* s_renderBonesOnlyOptionName;
         static const char* s_nearClipPlaneDistanceOptionName;
         static const char* s_farClipPlaneDistanceOptionName;
         static const char* s_FOVOptionName;
@@ -108,9 +107,6 @@ namespace EMStudio
 
         bool GetScaleBonesOnLength() const { return m_scaleBonesOnLength; }
         void SetScaleBonesOnLenght(bool scaleBonesOnLenght);
-
-        bool GetRenderBonesOnly() const { return m_renderBonesOnly; }
-        void SetRenderBonesOnly(bool renderBonesOnly);
 
         float GetNearClipPlaneDistance() const { return m_nearClipPlaneDistance; }
         void SetNearClipPlaneDistance(float nearClipPlaneDistance);
@@ -241,7 +237,6 @@ namespace EMStudio
         void OnTangentsScaleChangedCallback() const;
         void OnNodeOrientationScaleChangedCallback() const;
         void OnScaleBonesOnLengthChangedCallback() const;
-        void OnRenderBonesOnlyChangedCallback() const;
         void OnNearClipPlaneDistanceChangedCallback() const;
         void OnFarClipPlaneDistanceChangedCallback() const;
         void OnFOVChangedCallback() const;
@@ -291,7 +286,6 @@ namespace EMStudio
         float            m_tangentsScale;
         float            m_nodeOrientationScale;
         bool             m_scaleBonesOnLength;
-        bool             m_renderBonesOnly;
         float            m_nearClipPlaneDistance;
         float            m_farClipPlaneDistance;
         float            m_FOV;

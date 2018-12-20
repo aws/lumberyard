@@ -153,6 +153,9 @@ void HierarchyWidget::CreateItems(const LyShine::EntityArray& elements)
         }
     }
 
+    // restore the expanded state of all items
+    ApplyElementIsExpanded();
+
     m_inited = true;
 }
 
@@ -165,9 +168,6 @@ void HierarchyWidget::RecreateItems(const LyShine::EntityArray& elements)
     ClearItems();
 
     CreateItems(elements);
-
-    // restore the expanded state of all items
-    ApplyElementIsExpanded();
 
     HierarchyHelpers::SetSelectedItems(this, &selectedEntityIds);
 }
@@ -711,6 +711,17 @@ void HierarchyWidget::ClearItemBeingHovered()
 
     m_itemBeingHovered->SetMouseIsHovering(false);
     m_itemBeingHovered = nullptr;
+}
+
+void HierarchyWidget::UpdateSliceInfo()
+{
+    // Update the slice information (color, font, tooltip) for all elements.
+    // As a simple way of going through all the HierarchyItem's we use the
+    // EntityHelpers::EntityToHierarchyItemMap
+    for (auto mapItem : m_entityItemMap)
+    {
+        mapItem.second->UpdateSliceInfo();
+    }
 }
 
 void HierarchyWidget::DeleteSelectedItems()

@@ -26,6 +26,7 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QPushButton>
+#include <QRegExpValidator>
 
 namespace EMStudio
 {
@@ -41,6 +42,7 @@ namespace EMStudio
         mLineEdit = new QLineEdit(defaultName);
         connect(mLineEdit, SIGNAL(textChanged(QString)), this, SLOT(NameEditChanged(QString)));
         mLineEdit->selectAll();
+        mLineEdit->setValidator(new QRegExpValidator(QRegExp("^[a-zA-Z0-9_\\-./]*$"), mLineEdit));
 
         QHBoxLayout* buttonLayout   = new QHBoxLayout();
         mOKButton                   = new QPushButton("OK");

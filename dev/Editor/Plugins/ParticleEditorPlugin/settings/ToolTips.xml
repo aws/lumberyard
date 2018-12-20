@@ -365,6 +365,7 @@
 		<tooltip path="Advanced.Streamable" title="Streamable" content="Texture/geometry allowed to be streamed"/>
 		<tooltip path="Advanced.Particle_Size_Discard" title="Particle Size Discard" content="-"/>
 		<tooltip path="Advanced.Depth_Of_Field_Blur" title="Depth of Field Blur" content="Particles will be blurred against depth of field fullscreen effect. (excluding geometry and decal types)"/>
+		<tooltip path="Advanced.Fog_Volume_Shading_Quality_High" title="Fog Volume Shading Quality" content="Particle fog volume shading quality, fog volumes are handled more accurately."/>
 		<tooltip path="Configuration" title="Configuration"/>
 		<tooltip path="Configuration.Config_Min" title="Config Min" content="Minimum config spec this effect runs in"/>
 		<tooltip path="Configuration.Config_Max" title="Config Max" content="Maximum config spec this effect runs in"/>

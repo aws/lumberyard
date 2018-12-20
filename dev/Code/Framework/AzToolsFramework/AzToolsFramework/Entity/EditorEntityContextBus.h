@@ -73,6 +73,18 @@ namespace AzToolsFramework
         /// Resets any slice data overrides for the specified entity
         virtual void ResetEntitiesToSliceDefaults(AzToolsFramework::EntityIdList entities) = 0;
 
+        /**
+         * Clone an slice-instance that comes from a sub-slice, and add the clone to the root slice.
+         * @param sourceSliceInstanceAddress The address of the slice instance that contains the sub-slice instance.
+         * @param sourceSubSliceInstanceAncestry The ancestry in order from sourceSubSlice to sourceSlice
+         * @param sourceSubSliceInstanceAddress The address of the sub-slice instance to be cloned.
+         * @param out_sourceToCloneEntityIdMap If valid address provided, the internal source to clone entity ID map will be returned 
+         */
+        virtual AZ::SliceComponent::SliceInstanceAddress CloneSubSliceInstance(const AZ::SliceComponent::SliceInstanceAddress& sourceSliceInstanceAddress,
+                                        const AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sourceSubSliceInstanceAncestry,
+                                        const AZ::SliceComponent::SliceInstanceAddress& sourceSubSliceInstanceAddress,
+                                        AZ::SliceComponent::EntityIdToEntityIdMap* out_sourceToCloneEntityIdMap) = 0;
+
         /// Clones a set of entities and optionally creates the Sandbox objects to wrap them.
         /// This function doesn't automatically add new entities to any entity context, callers are responsible for that.
         /// \param sourceEntities - the source set of entities to clone
@@ -140,12 +152,14 @@ namespace AzToolsFramework
         /// \param entitiesToReplace contains entity Ids to be replaced.
         /// \param parentAfterReplacement Entity that the slice should be a child of upon replacement (If this is invalid, then the slice is free standing)
         /// \param offsetAfterReplacement offset from the parentAfterReplacement that the slice root must be moved to post replacement
+        /// \param rotationAfterReplacement rotation from the parentAfterReplacement that the slice root must be rotated to post replacement
         /// \param rootAutoCreated true if the root was auto-created for the user
         virtual void QueueSliceReplacement(const char* targetPath, 
             const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& selectedToAssetMap,
             const AZStd::unordered_set<AZ::EntityId>& entitiesToReplace,
             const AZ::EntityId& parentAfterReplacement,
             const AZ::Vector3& offsetAfterReplacement,
+            const AZ::Quaternion& rotationAfterReplacement,
             bool rootAutoCreated) = 0;
 
         /// Maps an editor Id to a runtime entity Id. Relevant only during in-editor simulation.
@@ -172,6 +186,9 @@ namespace AzToolsFramework
     public:
 
         virtual ~EditorEntityContextNotification() {};
+
+        /// Called before the context is reset.
+        virtual void PrepareForContextReset() {}
 
         /// Fired when the context is being reset.
         virtual void OnContextReset() {}
@@ -207,6 +224,9 @@ namespace AzToolsFramework
 
         //! Fired when the entity stream load has failed
         virtual void OnEntityStreamLoadFailed() {}
+
+        //! Fired when the entities needs to be focused in Entity Outliner
+        virtual void OnFocusInEntityOutliner(const AzToolsFramework::EntityIdList& /*entityIdList*/) {}
     };
 
     using EditorEntityContextNotificationBus = AZ::EBus<EditorEntityContextNotification>;

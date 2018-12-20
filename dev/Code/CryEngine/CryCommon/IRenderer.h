@@ -24,7 +24,7 @@
 struct SRenderingPassInfo;
 struct IFoliage;
 struct SRTStack;
-
+struct SFogVolumeData;
 // Callback used for DXTCompress
 typedef void (* MIPDXTcallback)(const void* buffer, size_t count, void* userData);
 
@@ -1942,7 +1942,7 @@ struct IRenderer
     virtual int GetPolygonCountByType(uint32 EFSList, EVertexCostTypes vct, uint32 z, bool bCalledFromMainThread = true) = 0;
 
     virtual void SetCloudShadowsParams(int nTexID, const Vec3& speed, float tiling, bool invert, float brightness) = 0;
-    virtual uint16 PushFogVolumeContribution(const ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo) = 0;
+    virtual uint16 PushFogVolumeContribution(const SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo) = 0;
     virtual void PushFogVolume(class CREFogVolume* pFogVolume, const SRenderingPassInfo& passInfo) = 0;
 
     virtual int GetMaxTextureSize() = 0;

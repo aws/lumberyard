@@ -14,25 +14,87 @@
 #include <SliceBuilder/Source/TraceDrillerHook.h>
 #include <SliceBuilder/Source/TypeFingerprinter.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <AzCore/Debug/Trace.h>
+#include <AzCore/std/sort.h>
 #include <AzCore/IO/IOUtils.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/Slice/SliceAssetHandler.h>
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
-#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzCore/Asset/AssetSerializer.h>
+#include <AzCore/Component/ComponentExport.h>
 #include <AzCore/Component/ComponentApplication.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/Slice/SliceCompilation.h>
 
 namespace SliceBuilder
 {
     namespace
     {
-        TypeFingerprint GetFingerprintForAllTypesInSlice(const AZ::SliceComponent& slice, const TypeFingerprinter& typeFingerprinter, AZ::SerializeContext& serializeContext)
+        TypeFingerprint CalculateFingerprintForComponentServices(AZ::SliceComponent& slice)
         {
-            return typeFingerprinter.GenerateFingerprintForAllTypesInObject(&slice);
+            TypeFingerprint result = 0;
+
+            // Ensures hash will change if a service is moved from, say, required to dependent.
+            static const size_t kRequiredServiceKey = AZ_CRC("RequiredServiceKey", 0x22e125a6);
+            static const size_t kDependentServiceKey = AZ_CRC("DependentServiceKey", 0x380e6c63);
+            static const size_t kProvidedServiceKey = AZ_CRC("ProvidedServiceKey", 0xd3cc7058);
+            static const size_t kIncompatibleServiceKey = AZ_CRC("IncompatibleServiceKey", 0x95ee560f);
+
+            // Hash service configuration for all components within the slice.
+            AZStd::vector<AZ::Entity*> entities;
+            slice.GetEntities(entities);
+            AZ::ComponentDescriptor::DependencyArrayType services;
+            for (AZ::Entity* entity : entities)
+            {
+                for (AZ::Component* component : entity->GetComponents())
+                {
+                    AZ::ComponentDescriptor* componentDescriptor = nullptr;
+                    AZ::ComponentDescriptorBus::EventResult(componentDescriptor, component->RTTI_GetType(), &AZ::ComponentDescriptorBus::Events::GetDescriptor);
+                    if (componentDescriptor)
+                    {
+                        services.clear();
+                        componentDescriptor->GetRequiredServices(services, component);
+                        AZStd::sort(services.begin(), services.end());
+                        AZStd::hash_combine(result, kRequiredServiceKey);
+                        AZStd::hash_range(result, services.begin(), services.end());
+
+                        services.clear();
+                        componentDescriptor->GetDependentServices(services, component);
+                        AZStd::sort(services.begin(), services.end());
+                        AZStd::hash_combine(result, kDependentServiceKey);
+                        AZStd::hash_range(result, services.begin(), services.end());
+
+                        services.clear();
+                        componentDescriptor->GetProvidedServices(services, component);
+                        AZStd::sort(services.begin(), services.end());
+                        AZStd::hash_combine(result, kProvidedServiceKey);
+                        AZStd::hash_range(result, services.begin(), services.end());
+
+                        services.clear();
+                        componentDescriptor->GetIncompatibleServices(services, component);
+                        AZStd::sort(services.begin(), services.end());
+                        AZStd::hash_combine(result, kIncompatibleServiceKey);
+                        AZStd::hash_range(result, services.begin(), services.end());
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        TypeFingerprint CalculateFingerprintForSlice(AZ::SliceComponent& slice, const TypeFingerprinter& typeFingerprinter, AZ::SerializeContext& serializeContext)
+        {
+            TypeFingerprint serializationFingerprint = typeFingerprinter.GenerateFingerprintForAllTypesInObject(&slice);
+            TypeFingerprint servicesFingerprint = CalculateFingerprintForComponentServices(slice);
+
+            AZStd::hash_combine(serializationFingerprint, servicesFingerprint);
+            return serializationFingerprint;
         }
     } // namespace anonymous
 
@@ -78,7 +140,7 @@ namespace SliceBuilder
         {
             if (asset.GetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
             {
-                bool isSliceDependency = (0 == (asset.GetFlags() & static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_NO_LOAD)));
+                bool isSliceDependency = (asset.GetAutoLoadBehavior() != AZ::Data::AssetLoadBehavior::NoLoad);
 
                 if (isSliceDependency)
                 {
@@ -121,9 +183,9 @@ namespace SliceBuilder
         {
             AZ::SerializeContext* context;
             AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-            TypeFingerprint sourceSliceTypeFingerprint = GetFingerprintForAllTypesInSlice(*sourcePrefab, *m_typeFingerprinter, *context);
+            TypeFingerprint sourceSliceTypeFingerprint = CalculateFingerprintForSlice(*sourcePrefab, *m_typeFingerprinter, *context);
 
-            const char* compilerVersion = "3";
+            const char* compilerVersion = "4";
 
             for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
             {
@@ -141,33 +203,6 @@ namespace SliceBuilder
 
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
     }
-
-    class ScopedProcessJobCleanup
-    {
-    public:
-        ScopedProcessJobCleanup(AZStd::function<void()> cleanupFunc)
-            : m_called(false)
-            , m_cleanupFunc(cleanupFunc)
-        {
-        }
-
-        ~ScopedProcessJobCleanup()
-        {
-            Call();
-        }
-
-        void Call()
-        {
-            if (!m_called)
-            {
-                m_called = true;
-                m_cleanupFunc();
-            }
-        }
-
-        bool m_called;
-        AZStd::function<void()> m_cleanupFunc;
-    };
 
     void SliceBuilderWorker::ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const
     {
@@ -195,8 +230,8 @@ namespace SliceBuilder
         AZ::SerializeContext* context;
         AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
 
-        AZ::Data::Asset<AZ::SliceAsset> asset;
-        asset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
+        AZ::Data::Asset<AZ::SliceAsset> sourceAsset;
+        sourceAsset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
 
         AZStd::vector<AssetBuilderSDK::ProductDependency> productDependencies;
 
@@ -205,11 +240,12 @@ namespace SliceBuilder
         {
             productDependencies.emplace_back(filterAsset.GetId(), 0);
 
-            return AZ::ObjectStream::AssetFilterSlicesOnly(filterAsset);
+            return AZ::Data::AssetFilterSourceSlicesOnly(filterAsset);
         };
 
         AZ::SliceAssetHandler assetHandler(context);
-        assetHandler.LoadAssetData(asset, &stream, assetFilter);
+        assetHandler.LoadAssetData(sourceAsset, &stream, assetFilter);
+        sourceAsset.SetHint(fullPath);
 
         // Flush asset manager events to ensure no asset references are held by closures queued on Ebuses.
         AZ::Data::AssetManager::Instance().DispatchEvents();
@@ -223,7 +259,7 @@ namespace SliceBuilder
         }
 
         // If the slice is designated as dynamic, generate the dynamic slice (.dynamicslice).
-        AZ::SliceComponent* sourceSlice = (asset.Get()) ? asset.Get()->GetComponent() : nullptr;
+        AZ::SliceComponent* sourceSlice = (sourceAsset.Get()) ? sourceAsset.Get()->GetComponent() : nullptr;
 
         if (!sourceSlice)
         {
@@ -233,181 +269,54 @@ namespace SliceBuilder
 
         if (sourceSlice->IsDynamic())
         {
-            AZStd::string dynamicSliceOutputPath;
-            AzFramework::StringFunc::Path::Join(request.m_tempDirPath.c_str(), fileNameOnly.c_str(), dynamicSliceOutputPath, true, true, true);
-            AzFramework::StringFunc::Path::ReplaceExtension(dynamicSliceOutputPath, "dynamicslice");
-
-            AZ::SliceComponent::EntityList sourceEntities;
-            sourceSlice->GetEntities(sourceEntities);
-            AZ::Entity exportSliceEntity;
-            AZ::SliceComponent* exportSlice = exportSliceEntity.CreateComponent<AZ::SliceComponent>();
-
             if (traceDrillerHook.GetErrorCount() > 0)
             {
                 AZ_Error(s_sliceBuilder, false, "Exporting of .dynamicslice for \"%s\" failed due to errors instantiating entities.", fullPath.c_str());
                 return;
             }
 
-            // For export, components can assume they're initialized, but not activated.
-            for (AZ::Entity* sourceEntity : sourceEntities)
+            AZStd::string dynamicSliceOutputPath;
+            AzFramework::StringFunc::Path::Join(request.m_tempDirPath.c_str(), fileNameOnly.c_str(), dynamicSliceOutputPath, true, true, true);
+            AzFramework::StringFunc::Path::ReplaceExtension(dynamicSliceOutputPath, "dynamicslice");
+
+            AZ::SliceComponent::EntityList sourceEntities;
+            sourceSlice->GetEntities(sourceEntities);
+
+            AZ::PlatformTagSet platformTags;
+            const AZStd::unordered_set<AZStd::string>& platformTagStrings = request.m_platformInfo.m_tags;
+            for (const AZStd::string& platformTagString : platformTagStrings)
             {
-                if (sourceEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
-                {
-                    sourceEntity->Init();
-                }
+                platformTags.insert(AZ::Crc32(platformTagString.c_str(), platformTagString.size(), true));
             }
 
-            if (traceDrillerHook.GetErrorCount() > 0)
+            // Compile the source slice into the runtime slice (with runtime components).
+            AzToolsFramework::WorldEditorOnlyEntityHandler editorOnlyEntityHandler;
+            AzToolsFramework::SliceCompilationResult sliceCompilationResult =
+                AzToolsFramework::CompileEditorSlice(sourceAsset, platformTags, *context, &editorOnlyEntityHandler);
+
+            if (!sliceCompilationResult)
             {
-                AZ_Error(s_sliceBuilder, false, "Failed to instantiate entities.");
+                AZ_Error("Slice compilation", false, "Slice compilation failed: %s", sliceCompilationResult.GetError().c_str());
                 return;
             }
 
-            // Create cleanup function to ensure all BuildGameEntity calls are matched with FinishedBuildingGameEntity calls
-            // even if we early return due to errors - we need to do this to prevent memory leaks/crashes caused by double deletions/missing deletions
-            typedef AZStd::pair<AzToolsFramework::Components::EditorComponentBase*, AZ::Entity*> EditorComponentToEntityPair;
-            AZStd::vector<EditorComponentToEntityPair> sourceComponentToBuiltGameEntityMapping;
-            auto cleanupFunc = [&sourceComponentToBuiltGameEntityMapping]()
-            {
-                // Finalize entities for export. This will remove any export components temporarily
-                // assigned by the source entity's components.
-                for (auto& sourceComponentToGameEntityPair : sourceComponentToBuiltGameEntityMapping)
-                {
-                    sourceComponentToGameEntityPair.first->FinishedBuildingGameEntity(sourceComponentToGameEntityPair.second);
-                }
-            };
-            ScopedProcessJobCleanup scopedBuildGameEntityCleanup(cleanupFunc);
+            AZ::Data::Asset<AZ::SliceAsset> exportSliceAsset = sliceCompilationResult.GetValue();
 
-            AZ::ImmutableEntityVector immutableSourceEntities;
-            immutableSourceEntities.reserve(sourceEntities.size());
-            for (AZ::Entity* entity : sourceEntities)
-            {
-                immutableSourceEntities.push_back(entity);
-            }
-
-
-            // Prepare entities for export. This involves invoking BuildGameEntity on source
-            // entity's components, targeting a separate entity for export.
-            bool entityExportSuccessful = true;
-            for (AZ::Entity* sourceEntity : sourceEntities)
-            {
-                AZ::Entity* exportEntity = aznew AZ::Entity(sourceEntity->GetId(), sourceEntity->GetName().c_str());
-                exportEntity->SetRuntimeActiveByDefault(sourceEntity->IsRuntimeActiveByDefault());
-
-                const AZ::Entity::ComponentArrayType& editorComponents = sourceEntity->GetComponents();
-                for (AZ::Component* component : editorComponents)
-                {
-                    auto* asEditorComponent =
-                        azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(component);
-
-                    if (asEditorComponent)
-                    {
-                        if (!asEditorComponent->ValidateComponentRequirements(immutableSourceEntities))
-                        {
-                            AZ_Error("Slice compilation", false, "Slice \"%s\", Entity \"%s\" for Component \"%s\"could not pass validation",
-                                fullPath.c_str(), sourceEntity->GetName().c_str(), asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str());
-                            return;
-                        }
-
-                        size_t oldComponentCount = exportEntity->GetComponents().size();
-                        asEditorComponent->BuildGameEntity(exportEntity);
-                        sourceComponentToBuiltGameEntityMapping.push_back(EditorComponentToEntityPair(asEditorComponent, exportEntity));
-                        if (exportEntity->GetComponents().size() > oldComponentCount)
-                        {
-                            AZ::Component* newComponent = exportEntity->GetComponents().back();
-                            AZ_Error("Export", asEditorComponent->GetId() != AZ::InvalidComponentId, "For entity \"%s\", component \"%s\" doesn't have a valid component id",
-                                sourceEntity->GetName().c_str(), asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str());
-                            newComponent->SetId(asEditorComponent->GetId());
-                        }
-                    }
-                    else
-                    {
-                        // The component is already runtime-ready. I.e. it is not an editor component.
-                        // Clone the component and add it to the export entity
-                        AZ::Component* clonedComponent = context->CloneObject(component);
-                        exportEntity->AddComponent(clonedComponent);
-                    }
-                }
-
-                // Pre-sort prior to exporting so it isn't required at instantiation time.
-                const AZ::Entity::DependencySortResult sortResult = exportEntity->EvaluateDependencies();
-                if (AZ::Entity::DependencySortResult::Success != sortResult)
-                {
-                    const char* sortResultError = "";
-                    switch (sortResult)
-                    {
-                    case AZ::Entity::DependencySortResult::HasCyclicDependency:
-                        sortResultError = "Cyclic dependency found";
-                        break;
-                    case AZ::Entity::DependencySortResult::MissingRequiredService:
-                        sortResultError = "Required services missing";
-                        break;
-                    case AZ::Entity::DependencySortResult::HasIncompatibleServices:
-                        sortResultError = "Incompatible services found";
-                        break;
-                    case AZ::Entity::DependencySortResult::DescriptorNotRegistered:
-                        sortResultError = "Component descriptor not registered";
-                        break;
-                    default:
-                        sortResultError = "Unknown error occurred";
-                        break;
-                    }
-
-                    AZ_Error("", false, "For slice \"%s\", Entity \"%s\" [0x%llx] dependency evaluation failed: %s. Dynamic slice cannot be generated.",
-                        fullPath.c_str(), exportEntity->GetName().c_str(), static_cast<AZ::u64>(exportEntity->GetId()),
-                        sortResultError);
-                    return;
-                }
-
-                exportSlice->AddEntity(exportEntity);
-            }
-
-            AZ::SliceComponent::EntityList exportEntities;
-            exportSlice->GetEntities(exportEntities);
-
-            if (exportEntities.size() != sourceEntities.size())
-            {
-                AZ_Error(s_sliceBuilder, false, "Entity export list size must match that of the import list.");
-                return;
-            }
-
-            AZ::ImmutableEntityVector immutableExportEntities;
-            immutableExportEntities.reserve(exportEntities.size());
-            for (AZ::Entity* entity : exportEntities)
-            {
-                immutableExportEntities.push_back(entity);
-            }
-
-            for (AZ::Entity* exportEntity : exportEntities)
-            {
-                const AZ::Entity::ComponentArrayType& gameComponents = exportEntity->GetComponents();
-                for (AZ::Component* component : gameComponents)
-                {
-                    if (!component->ValidateComponentRequirements(immutableExportEntities))
-                    {
-                        AZ_Error("Slice compilation", false, "Slice \"%s\", Entity \"%s\" for Component \"%s\"could not pass validation",
-                            fullPath.c_str(), exportEntity->GetName().c_str(), component->RTTI_GetType().ToString<AZStd::string>().c_str());
-                        return;
-                    }
-                }
-            }
+            AZ::SliceComponent::EntityList outputEntities;
+            exportSliceAsset.Get()->GetComponent()->GetEntities(outputEntities);
 
             // Save runtime slice to disk.
             // Use SaveObjectToFile because it writes to a byte stream first and then to disk
             // which is much faster than SaveObjectToStream(outputStream...) when writing large slices
-            if (AZ::Utils::SaveObjectToFile<AZ::Entity>(dynamicSliceOutputPath.c_str(), AZ::DataStream::ST_XML, &exportSliceEntity))
+            if (AZ::Utils::SaveObjectToFile<AZ::Entity>(dynamicSliceOutputPath.c_str(), AZ::DataStream::ST_XML, exportSliceAsset.Get()->GetEntity()))
             {
-                AZ_TracePrintf(s_sliceBuilder, "Output file %s\n", dynamicSliceOutputPath.c_str());
+                AZ_TracePrintf(s_sliceBuilder, "Output file %s", dynamicSliceOutputPath.c_str());
             }
             else
             {
                 AZ_Error(s_sliceBuilder, false, "Failed to open output file %s", dynamicSliceOutputPath.c_str());
                 return;
             }
-
-            // Finalize entities for export. This will remove any export components temporarily
-            // assigned by the source entity's components.
-            scopedBuildGameEntityCleanup.Call();
 
             AssetBuilderSDK::JobProduct jobProduct(dynamicSliceOutputPath);
             jobProduct.m_productAssetType = azrtti_typeid<AZ::DynamicSliceAsset>();

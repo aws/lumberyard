@@ -21,6 +21,11 @@
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
+#define EDITORPREFS_EVENTNAME "EPGEvent"
+#define EDITORPREFS_EVENTVALTOGGLE "operation"
+#define UNDOSLICESAVE_VALON "UndoSliceSaveValueOn"
+#define UNDOSLICESAVE_VALOFF "UndoSliceSaveValueOff"
+
 void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
 {
     serialize.Class<GeneralSettings>()
@@ -46,9 +51,14 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
 		->Field("RestoreViewportCamera", &GeneralSettings::m_restoreViewportCamera)
         ->Field("EnableLegacyUI", &GeneralSettings::m_enableLegacyUI);
 
-    serialize.Class<Undo>()
+    serialize.Class<Messaging>()
         ->Version(1)
-        ->Field("UndoLevels", &Undo::m_undoLevels);
+        ->Field("ShowCircularDependencyError", &Messaging::m_showCircularDependencyError);
+
+    serialize.Class<Undo>()
+        ->Version(2)
+        ->Field("UndoLevels", &Undo::m_undoLevels)
+        ->Field("UndoSliceOverrideSaves", &Undo::m_undoSliceOverrideSaveValue);;
 
     serialize.Class<DeepSelection>()
         ->Version(1)
@@ -66,6 +76,7 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
     serialize.Class<CEditorPreferencesPage_General>()
         ->Version(1)
         ->Field("General Settings", &CEditorPreferencesPage_General::m_generalSettings)
+        ->Field("Messaging", &CEditorPreferencesPage_General::m_messaging)
         ->Field("Undo", &CEditorPreferencesPage_General::m_undo)
         ->Field("Deep Selection", &CEditorPreferencesPage_General::m_deepSelection)
         ->Field("Vertex Snapping", &CEditorPreferencesPage_General::m_vertexSnapping)
@@ -117,10 +128,14 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_enableLegacyUI, "Enable Legacy UI (DEPRECATED)", "Enable the deprecated legacy UI")
                 ->Attribute(AZ::Edit::Attributes::Visibility, !isCryEntityRemovalGemPresent);
 
+        editContext->Class<Messaging>("Messaging", "")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Messaging::m_showCircularDependencyError, "Show Error: Circular dependency", "Show an error message when adding a slice instance to the target slice would create a cyclic asset dependency. All other valid overrides will be saved even if this is turned off.");
+
         editContext->Class<Undo>("Undo", "")
             ->DataElement(AZ::Edit::UIHandlers::SpinBox, &Undo::m_undoLevels, "Undo Levels", "This field specifies the number of undo levels")
             ->Attribute(AZ::Edit::Attributes::Min, 0)
-            ->Attribute(AZ::Edit::Attributes::Max, 10000);
+            ->Attribute(AZ::Edit::Attributes::Max, 10000)
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Undo::m_undoSliceOverrideSaveValue, "Undo Slice Override Saves", "Allow slice saves to be undone");
 
         editContext->Class<DeepSelection>("Deep Selection", "")
             ->DataElement(AZ::Edit::UIHandlers::SpinBox, &DeepSelection::m_deepSelectionRange, "Range", "Deep Selection Range")
@@ -140,6 +155,7 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
             ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_generalSettings, "General Settings", "General Editor Preferences")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_messaging, "Messaging", "Messaging")
             ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_undo, "Undo", "Undo Preferences")
             ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_deepSelection, "Deep Selection", "Deep Selection")
             ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_vertexSnapping, "Vertex Snapping", "Vertex Snapping")
@@ -166,6 +182,7 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.bShowTimeInConsole = m_generalSettings.m_bShowTimeInConsole;
     gSettings.bLayerDoubleClicking = m_generalSettings.m_bLayerDoubleClicking;
     gSettings.bShowDashboardAtStartup = m_generalSettings.m_showDashboard;
+    gSettings.m_showCircularDependencyError = m_messaging.m_showCircularDependencyError;
     gSettings.bAutoloadLastLevelAtStartup = m_generalSettings.m_autoLoadLastLevel;
     gSettings.stylusMode = m_generalSettings.m_stylusMode;
     gSettings.restoreViewportCamera = m_generalSettings.m_restoreViewportCamera;
@@ -184,6 +201,19 @@ void CEditorPreferencesPage_General::OnApply()
 
     //undo
     gSettings.undoLevels = m_undo.m_undoLevels;
+
+    if (gSettings.m_undoSliceOverrideSaveValue != m_undo.m_undoSliceOverrideSaveValue)
+    {
+        if (m_undo.m_undoSliceOverrideSaveValue)
+        {
+            LyMetrics_SendEvent(EDITORPREFS_EVENTNAME, { { EDITORPREFS_EVENTVALTOGGLE, UNDOSLICESAVE_VALON } });
+        }
+        else
+        {
+            LyMetrics_SendEvent(EDITORPREFS_EVENTNAME, { { EDITORPREFS_EVENTVALTOGGLE, UNDOSLICESAVE_VALOFF } });
+        }
+    }
+    gSettings.m_undoSliceOverrideSaveValue = m_undo.m_undoSliceOverrideSaveValue;
 
     //deep selection
     gSettings.deepSelectionSettings.fRange = m_deepSelection.m_deepSelectionRange;
@@ -232,8 +262,12 @@ void CEditorPreferencesPage_General::InitializeSettings()
 
     m_generalSettings.m_toolbarIconSize = gSettings.gui.nToolbarIconSize;
 
+    //Messaging
+    m_messaging.m_showCircularDependencyError = gSettings.m_showCircularDependencyError;
+
     //undo
     m_undo.m_undoLevels = gSettings.undoLevels;
+    m_undo.m_undoSliceOverrideSaveValue = gSettings.m_undoSliceOverrideSaveValue;
 
     //deep selection
     m_deepSelection.m_deepSelectionRange = gSettings.deepSelectionSettings.fRange;

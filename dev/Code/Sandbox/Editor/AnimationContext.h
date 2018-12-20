@@ -68,9 +68,12 @@ public:
     void SetTimeScale(float fScale) { m_fTimeScale = fScale; }
 
     /** Set active editing sequence.
-        @param seq New active sequence.
-    */
-    void SetSequence(CTrackViewSequence* pSequence, bool bForce, bool bNoNotify);
+        @param sequence New active sequence.
+        @param force Set to true to always run all of the new active sequence code including listeners even if the sequences is already selected.
+        @param noNotify Set to true to skip over notifying listeners when a new sequences is selected.
+        @param user Set to true if the new sequence is being selected by the user, false if set by internal system code.
+        */
+    void SetSequence(CTrackViewSequence* sequence, bool force, bool noNotify, bool user = false);
 
     /** Get currently edited sequence.
     */

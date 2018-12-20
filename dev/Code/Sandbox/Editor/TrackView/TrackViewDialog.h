@@ -242,7 +242,7 @@ private:
     bool m_bDoingUndoOperation;
     bool m_lazyInitDone;
     bool m_bEditLock;
-    bool m_newSequenceLock;
+    bool m_enteringGameOrSimModeLock = false;
 
     float m_fLastTime;
     float m_fAutoRecordStep;

@@ -1621,14 +1621,39 @@ namespace
             sData[0].f[3] = 1.0f;
             return;
         }
-
-        ColorF contrib;
-        r->GetFogVolumeContribution(pOD->m_FogVolumeContribIdx[rRP.m_nProcessThreadID], contrib);
+        SFogVolumeData fogVolData;
+        ColorF& contrib = fogVolData.fogColor;
+        r->GetFogVolumeContribution(pOD->m_FogVolumeContribIdx[rRP.m_nProcessThreadID], fogVolData);
         // Pre-multiply alpha (saves 1 instruction in pixel shader)
         sData[0].f[0] = contrib.r * (1 - contrib.a);
         sData[0].f[1] = contrib.g * (1 - contrib.a);
         sData[0].f[2] = contrib.b * (1 - contrib.a);
         sData[0].f[3] = contrib.a;
+        // Pass min & max of the aabb and cvar value.
+        sData[1].f[0] = fogVolData.avgAABBox.min.x;
+        sData[1].f[1] = fogVolData.avgAABBox.min.y;
+        sData[1].f[2] = fogVolData.avgAABBox.min.z;
+        static ICVar* pCVarFogVolumeShadingQuality = gEnv->pConsole->GetCVar("e_FogVolumeShadingQuality");
+
+        sData[1].f[3] = (pCVarFogVolumeShadingQuality->GetIVal() && fogVolData.avgAABBox.GetRadius() > 0.001f) ? 1.0f : 0.0f;
+
+        sData[2].f[0] = fogVolData.avgAABBox.max.x;
+        sData[2].f[1] = fogVolData.avgAABBox.max.y;
+        sData[2].f[2] = fogVolData.avgAABBox.max.z;
+        sData[2].f[3] = (fogVolData.avgAABBox.GetRadius() > 0.001f) ? 1.0f : 0.0f;
+
+        sData[3].f[0] = fogVolData.m_heightFallOffBasePoint.x;
+        sData[3].f[1] = fogVolData.m_heightFallOffBasePoint.y;
+        sData[3].f[2] = fogVolData.m_heightFallOffBasePoint.z;
+        sData[3].f[3] = fogVolData.m_densityOffset;
+        
+        sData[4].f[0] = fogVolData.m_heightFallOffDirScaled.x;
+        sData[4].f[1] = fogVolData.m_heightFallOffDirScaled.y;
+        sData[4].f[2] = fogVolData.m_heightFallOffDirScaled.z;
+        sData[4].f[3] = fogVolData.m_globalDensity;
+
+        sData[5].f[0] = Overlap::Point_AABB(r->GetViewParameters().vOrigin, fogVolData.avgAABBox);
+
     }
 
     NO_INLINE void sDLightsInfo(UFloat4* sData)

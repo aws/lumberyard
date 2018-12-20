@@ -413,7 +413,9 @@ struct SANDBOX_API SEditorSettings
     // Variables.
     //////////////////////////////////////////////////////////////////////////
     int undoLevels;
+    bool m_undoSliceOverrideSaveValue;
     bool bShowDashboardAtStartup;
+    bool m_showCircularDependencyError;
     bool bAutoloadLastLevelAtStartup;
     bool bMuteAudio;
     bool bEnableGameModeVR;

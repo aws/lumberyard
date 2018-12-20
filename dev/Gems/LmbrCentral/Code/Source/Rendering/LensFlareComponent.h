@@ -55,6 +55,7 @@ namespace LmbrCentral
         float m_brightness;
 
         float m_viewDistMultiplier;
+        float m_viewDistMultiplierUser; // Value set by user from UI.
         bool m_affectsThisAreaOnly;
         bool m_useVisAreas;
         bool m_indoorOnly;
@@ -81,9 +82,14 @@ namespace LmbrCentral
             return !m_syncAnimWithLight;
         }
 
+        AZ_INLINE bool ShouldViewDistanceMultiplier() {
+            return !m_attachToSun;
+        }
+        
         // Property event-handlers implemented in editor component.
         virtual AZ::u32 PropertyChanged() { return 0; }
         virtual AZ::u32 SyncAnimationChanged() { return AZ_CRC("RefreshNone", 0x98a5045b); }
+        virtual AZ::u32 AttachToSunChanged() {return AZ_CRC("RefreshNone", 0x98a5045b); }
     };
 
 

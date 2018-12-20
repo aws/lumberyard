@@ -41,6 +41,10 @@ public:
     OutlinerTreeView(QWidget* pParent = NULL);
     virtual ~OutlinerTreeView();
 
+    void setAutoExpandDelay(int delay);
+Q_SIGNALS:
+    void ItemDropped();
+
 protected:
     // Qt overrides
     void mousePressEvent(QMouseEvent* event) override;
@@ -50,9 +54,12 @@ protected:
     void focusInEvent(QFocusEvent* event) override;
     void focusOutEvent(QFocusEvent* event) override;
     void startDrag(Qt::DropActions supportedActions) override;
+    void dragMoveEvent(QDragMoveEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
 
     void drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const override;
 
+    void timerEvent(QTimerEvent* event) override;
 private:
     void processQueuedMousePressedEvent(QMouseEvent* event);
 
@@ -62,6 +69,9 @@ private:
 
     bool m_mousePressedQueued;
     QPoint m_mousePressedPos;
+
+    int m_expandOnlyDelay = -1;
+    QBasicTimer m_expandTimer;
 };
 
 #endif

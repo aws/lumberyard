@@ -161,6 +161,39 @@ namespace AzToolsFramework
             AZStd::vector<AZStd::string> m_scanFolders;
         };
 
+
+        class GetAssetSafeFoldersRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetAssetSafeFoldersRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(GetAssetSafeFoldersRequest, "{9A7951B1-257C-45F0-B334-A52A42A5A871}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            ~GetAssetSafeFoldersRequest() override = default;
+
+            unsigned int GetMessageType() const override;
+        };
+
+        class GetAssetSafeFoldersResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetAssetSafeFoldersResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(GetAssetSafeFoldersResponse, "{36C1AA51-8940-4909-A01B-19454B6312E5}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            GetAssetSafeFoldersResponse() = default;
+            explicit GetAssetSafeFoldersResponse(const AZStd::vector<AZStd::string>& assetSafeFolders);
+            explicit GetAssetSafeFoldersResponse(AZStd::vector<AZStd::string>&& assetSafeFolders);
+            ~GetAssetSafeFoldersResponse() override = default;
+
+            unsigned int GetMessageType() const override;
+
+            AZStd::vector<AZStd::string> m_assetSafeFolders;
+        };
+
         class FileInfosNotificationMessage
             : public AzFramework::AssetSystem::BaseAssetProcessorMessage
         {

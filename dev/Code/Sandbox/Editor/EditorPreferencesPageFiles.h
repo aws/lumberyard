@@ -42,6 +42,7 @@ private:
     {
         AZ_TYPE_INFO(Files, "{9952889C-2A03-4A8B-8ECB-27A2BCC9D7F6}")
 
+        bool m_autoNumberSlices;
         bool m_backupOnSave;
         int m_backupOnSaveMaxCount;
         AZStd::string m_standardTempDirectory;

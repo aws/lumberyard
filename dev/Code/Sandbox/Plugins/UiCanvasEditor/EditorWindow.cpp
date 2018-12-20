@@ -15,6 +15,7 @@
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/sort.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <LyShine/UiComponentTypes.h>
 #include <Util/PathUtil.h>
@@ -78,6 +79,7 @@ EditorWindow::UiCanvasMetadata::UiCanvasMetadata()
     : m_entityContext(nullptr)
     , m_undoStack(nullptr)
     , m_canvasChangedAndSaved(false)
+    , m_isSliceEditing(false)
 {
 }
 
@@ -406,6 +408,86 @@ void EditorWindow::OnFontsReloaded()
     OnEditorPropertiesRefreshEntireTree();
 }
 
+void EditorWindow::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket)
+{
+    // We are only interested in the first tab that is waiting for this slice asset to be instantiated.
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (canvasMetadata->m_isSliceEditing && canvasMetadata->m_sliceAssetId == sliceAssetId && !canvasMetadata->m_sliceEntityId.IsValid())
+        {
+            // This is the slice instantiation that we do automatically when a slice is opened for edit in a new tab
+
+            // Get the entityId of the top level element we have instantiated into the canvas and store it
+            AZ::EntityId sliceEntityId;
+            EBUS_EVENT_ID_RESULT(sliceEntityId, canvasMetadata->m_canvasEntityId, UiCanvasBus, GetChildElementEntityId, 0);
+            canvasMetadata->m_sliceEntityId = sliceEntityId;
+        
+            // we don't want an asterisk to show as we haven't made any changes to the slice yet
+            canvasMetadata->m_undoStack->setClean();
+
+            // Update the menus for file/save/close - the file menu will show the slice name
+            RefreshEditorMenu();
+
+            // only do this for one slice (in case of the edge case where two slice edit tabs could have been opened before either slice is instantiated)
+            break;
+        }
+    }
+
+    // Check if we have any more tabs waiting for their slice to be instantiated for edit (highly unlikely, it would be an edge case)
+    bool waitingForMoreSliceEditInstantiates = false;
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (canvasMetadata->m_isSliceEditing && !canvasMetadata->m_sliceEntityId.IsValid())
+        {
+            waitingForMoreSliceEditInstantiates = true;
+        }
+    }
+
+    if (!waitingForMoreSliceEditInstantiates)
+    {
+        UiEditorEntityContextNotificationBus::Handler::BusDisconnect();
+    }
+}
+
+void EditorWindow::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& ticket)
+{
+    // We are only interested in the first tab that is waiting for this slice asset to be instantiated.
+    // It may be impossible to get this error because, in the case of Edit Slice in New Tab, we already have the slice asset loaded
+    // so it is hard for the instantiate to fail.
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (canvasMetadata->m_isSliceEditing && canvasMetadata->m_sliceAssetId == sliceAssetId && !canvasMetadata->m_sliceEntityId.IsValid())
+        {
+            // The slice instantiation that failed is an instantiation that we do automatically when a slice is opened for edit in a new tab
+
+            // Instantiate failed so close the tab and delete this metadata
+            UnloadCanvas(canvasMetadata->m_canvasEntityId);
+
+            // only do this for one slice (in case of the edge case where two slice edit tabs could have been opened before either slice is instantiated)
+            break;
+        }
+    }
+
+    // Check if we have any more tabs waiting for their slice to be instantiated for edit (highly unlikely, it would be an edge case)
+    bool waitingForMoreSliceEditInstantiates = false;
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        if (canvasMetadata->m_isSliceEditing && !canvasMetadata->m_sliceEntityId.IsValid())
+        {
+            waitingForMoreSliceEditInstantiates = true;
+        }
+    }
+
+    if (!waitingForMoreSliceEditInstantiates)
+    {
+        UiEditorEntityContextNotificationBus::Handler::BusDisconnect();
+    }
+}
+
 void EditorWindow::DestroyCanvas(const UiCanvasMetadata& canvasMetadata)
 {
     // Submit metrics for a canvas that has changed since it was last
@@ -482,7 +564,7 @@ void EditorWindow::HandleCanvasDisplayNameChanged(const UiCanvasMetadata& canvas
 {
     // Update the tab label for the canvas
     AZStd::string tabText(canvasMetadata.m_canvasDisplayName);
-    if (!canvasMetadata.m_undoStack->isClean())
+    if (GetChangesHaveBeenMade(canvasMetadata))
     {
         tabText.append("*");
     }
@@ -614,6 +696,8 @@ bool EditorWindow::SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceA
 
         canvasMetadata.m_undoStack->setClean();
 
+        // Although the line above will call this if the clean state changed we could be doing a "Save As" of a canvas
+        // that has no unsaved changes, so the clean state would not change but we want to change the display name.
         HandleCanvasDisplayNameChanged(canvasMetadata);
 
         return true;
@@ -627,7 +711,54 @@ bool EditorWindow::SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceA
     return false;
 }
 
-void EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool changeActiveCanvasToThis)
+bool EditorWindow::SaveSlice(UiCanvasMetadata& canvasMetadata)
+{
+    // as a safeguard check that the entity still exists
+    AZ::EntityId sliceEntityId = canvasMetadata.m_sliceEntityId;
+    AZ::Entity* sliceEntity = nullptr;
+    EBUS_EVENT_RESULT(sliceEntity, AZ::ComponentApplicationBus, FindEntity, sliceEntityId);
+    if (!sliceEntity)
+    {
+        QMessageBox::critical(this, QObject::tr("Slice Push Failed"), "Slice entity not found in canvas.");
+        return false;
+    }
+
+    AZ::SliceComponent::SliceInstanceAddress sliceAddress;
+    AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, sliceEntityId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
+
+    // if false then something is wrong. The user could have done a detach slice for example
+    if (!sliceAddress.IsValid() || !sliceAddress.GetReference()->GetSliceAsset())
+    {
+        QMessageBox::critical(this, QObject::tr("Slice Push Failed"), "Slice entity no longer appears to be a slice instance.");
+        return false;
+    }
+
+    // make a list that contains the top-level instanced entity plus all of its descendants
+    AzToolsFramework::EntityIdList allEntitiesInLocalInstance;
+    allEntitiesInLocalInstance.push_back(sliceEntityId);
+    EBUS_EVENT_ID(sliceEntityId, UiElementBus, CallOnDescendantElements,
+        [&allEntitiesInLocalInstance](const AZ::EntityId id)
+        {
+            allEntitiesInLocalInstance.push_back(id);
+        }
+    );
+
+    const AZ::Outcome<void, AZStd::string> outcome = GetSliceManager()->QuickPushSliceInstance(sliceAddress, allEntitiesInLocalInstance);
+
+    if (!outcome)
+    {
+        QMessageBox::critical(
+            this,
+            QObject::tr("Slice Push Failed"), 
+            outcome.GetError().c_str());
+
+        return false;
+    }
+
+    return true;
+}
+
+bool EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool changeActiveCanvasToThis)
 {
     // Don't allow a new canvas to load if there is a context menu up since loading doesn't
     // delete the context menu. Another option is to close the context menu on canvas load,
@@ -636,7 +767,7 @@ void EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
     QWidget* widget = QApplication::activePopupWidget();
     if (widget)
     {
-        return;
+        return false;
     }
 
     AZStd::string assetIdPathname;
@@ -650,7 +781,7 @@ void EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
         {
             // Canvas to load is not in a project source folder. Report an error
             QMessageBox::critical(this, tr("Error"), tr("Failed to open %1. Please ensure the file resides in a valid source folder for the project and that the Asset Processor is running.").arg(canvasFilename));
-            return;
+            return false;
         }
 
         // Get the path to the source UI Canvas from the relative product path
@@ -661,7 +792,7 @@ void EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
         {
             // Couldn't find the source file. Report an error
             QMessageBox::critical(this, tr("Error"), tr("Failed to find the source file for UI canvas %1. Please ensure that the Asset Processor is running and that the source file exists").arg(canvasFilename));
-            return;
+            return false;
         }
     }
 
@@ -690,7 +821,7 @@ void EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
                 SetActiveCanvas(alreadyLoadedCanvas);
             }
         }
-        return;
+        return true;
     }
 
     AZ::EntityId canvasEntityId;
@@ -718,7 +849,7 @@ void EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
     if (!canvasEntityId.IsValid())
     {
         delete entityContext;
-        return;
+        return false;
     }
 
     // Add a canvas tab
@@ -778,6 +909,8 @@ void EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
     {
         UnloadCanvas(unloadCanvasEntityId);
     }
+
+    return true;
 }
 
 void EditorWindow::UnloadCanvas(AZ::EntityId canvasEntityId)
@@ -991,9 +1124,6 @@ void EditorWindow::SetActiveCanvas(AZ::EntityId canvasEntityId)
         LyShine::EntityArray childElements;
         EBUS_EVENT_ID_RESULT(childElements, m_activeCanvasEntityId, UiCanvasBus, GetChildElements);
         m_hierarchy->CreateItems(childElements);
-
-        // restore the expanded state of all items
-        m_hierarchy->ApplyElementIsExpanded();
     }
 
     m_hierarchy->clearSelection();
@@ -1209,16 +1339,35 @@ bool EditorWindow::CanUnloadCanvas(UiCanvasMetadata& canvasMetadata)
 {
     if (GetChangesHaveBeenMade(canvasMetadata))
     {
+        QString name;
+        if (canvasMetadata.m_isSliceEditing)
+        {
+            // This already has "Slice:" prepended to the slice name
+            name = canvasMetadata.m_canvasDisplayName.c_str();
+        }
+        else
+        {
+            name = tr("UI canvas %1").arg(canvasMetadata.m_canvasDisplayName.c_str());
+        }
+
         const auto defaultButton = QMessageBox::Cancel;
         int result = QMessageBox::question(this,
             tr("Changes have been made"),
-            tr("Save changes to UI canvas %1?").arg(canvasMetadata.m_canvasDisplayName.c_str()),
+            tr("Save changes to %1?").arg(name),
             (QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel),
             defaultButton);
 
         if (result == QMessageBox::Save)
         {
-            bool ok = SaveCanvasToXml(canvasMetadata, false);
+            bool ok = false;
+            if (canvasMetadata.m_isSliceEditing)
+            {
+                ok = SaveSlice(canvasMetadata);
+            }
+            else
+            {
+                ok = SaveCanvasToXml(canvasMetadata, false);
+            }
             if (!ok)
             {
                 return false;
@@ -1514,6 +1663,122 @@ AZ::EntityId EditorWindow::GetCanvasForEntityContext(const AzFramework::EntityCo
     return AZ::EntityId();
 }
 
+void EditorWindow::EditSliceInNewTab(AZ::Data::AssetId sliceAssetId)
+{
+    if (!LoadCanvas("", false))
+    {
+        return;
+    }
+
+    AZStd::string assetIdPathname;
+    EBUS_EVENT_RESULT(assetIdPathname, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, sliceAssetId);
+
+    AZStd::string sourceAssetPathName;
+    bool fullPathfound = false;
+    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(fullPathfound,
+        &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, assetIdPathname, sourceAssetPathName);
+    if (!fullPathfound)
+    {
+        sourceAssetPathName = assetIdPathname;
+    }
+
+    AZStd::string canvasDisplayName = "Slice:";
+    canvasDisplayName += GetCanvasDisplayNameFromAssetPath(sourceAssetPathName);
+
+    UiCanvasMetadata* canvasMetadata = GetActiveCanvasMetadata();
+    canvasMetadata->m_sliceAssetId = sliceAssetId;
+    canvasMetadata->m_canvasSourceAssetPathname = sourceAssetPathName;
+    canvasMetadata->m_canvasDisplayName = canvasDisplayName;
+    canvasMetadata->m_isSliceEditing = true;
+
+    HandleCanvasDisplayNameChanged(*canvasMetadata);
+
+    // instantiate the slice in the new canvas
+    AZ::Vector2 viewportPosition(-1.0f,-1.0f); // indicates no viewport position specified
+
+    AZ::Data::Asset<AZ::SliceAsset> sliceAsset;
+    sliceAsset.Create(sliceAssetId, true);
+
+    const AzFramework::EntityContextId& entityContextId = canvasMetadata->m_entityContext->GetContextId();
+
+    AzFramework::SliceInstantiationTicket ticket;
+    EBUS_EVENT_ID_RESULT(ticket, entityContextId, UiEditorEntityContextRequestBus, InstantiateEditorSlice, sliceAsset, viewportPosition);
+
+    if (ticket)
+    {
+        // Normally we are only ever waiting for one slice to instantiate for Edit Slice, but there could be an edge case where
+        // the Instantiate notification is delayed and the user does Edit Slice again.
+        if (!UiEditorEntityContextNotificationBus::Handler::BusIsConnected())
+        {
+            UiEditorEntityContextNotificationBus::Handler::BusConnect();
+        }
+    }
+}
+
+void EditorWindow::UpdateChangedStatusOnAssetChange(const AzFramework::EntityContextId& contextId, const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+{
+    AZ::EntityId canvasToUpdate = GetCanvasForEntityContext(contextId);
+    UiCanvasMetadata* canvasMetadata = GetCanvasMetadata(canvasToUpdate);
+    if (canvasMetadata->m_isSliceEditing && asset.GetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
+    {
+        // we are in slice edit mode and a slice asset has changed. This could be because we just did a save (push to slice) and the asset
+        // has been reloaded. Or it could have been pushed to in a different tab.
+        // Time to do a check to see if there are any remaining overrides on the slice being edited
+
+        AZ::SliceComponent::SliceInstanceAddress sliceAddress;
+        AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, canvasMetadata->m_sliceEntityId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
+
+        // if false then something is wrong. The user could have done a detach slice for example
+        if (!sliceAddress.IsValid())
+        {
+            return;
+        }
+
+        // as a safeguard check that the entity still exists
+        AZ::EntityId sliceEntityId = canvasMetadata->m_sliceEntityId;
+        AZ::Entity* sliceEntity = nullptr;
+        EBUS_EVENT_RESULT(sliceEntity, AZ::ComponentApplicationBus, FindEntity, sliceEntityId);
+        if (!sliceEntity)
+        {
+            return;
+        }
+
+        // make a list that contains the top-level instanced entity plus all of its descendants
+        // If entities have been removed they will not be in this list but we will spot the change because the
+        // m_children member of the parent will have changed.
+        AzToolsFramework::EntityIdList allEntitiesInLocalInstance;
+        allEntitiesInLocalInstance.push_back(sliceEntityId);
+        EBUS_EVENT_ID(sliceEntityId, UiElementBus, CallOnDescendantElements,
+            [&allEntitiesInLocalInstance](const AZ::EntityId id)
+            {
+                allEntitiesInLocalInstance.push_back(id);
+            }
+        );
+
+        // test if there are any overrides for the slice instance
+        bool hasOverrides = AzToolsFramework::SliceUtilities::DoEntitiesHaveOverrides( allEntitiesInLocalInstance );
+
+        if (!hasOverrides)
+        {
+            // if there are no overrides then call setClean on the stack
+            canvasMetadata->m_undoStack->setClean();
+        }
+    }
+}
+
+void EditorWindow::EntitiesAddedOrRemoved()
+{
+    // entities have been added or removed to/from the active canvas
+
+    UiCanvasMetadata* canvasMetadata = GetActiveCanvasMetadata();
+    if (canvasMetadata->m_isSliceEditing)
+    {
+        // If we are slice editing then it is possible that the change has removed or recreated the slice entity.
+        // The file menu changes depending on whether the slice entity is valid so update it.
+        RefreshEditorMenu();
+    }
+}
+
 void EditorWindow::OnCanvasTabCloseButtonPressed(int index)
 {
     UiCanvasMetadata* canvasMetadata = GetCanvasMetadataForTabIndex(index);
@@ -1577,10 +1842,19 @@ void EditorWindow::OnCanvasTabContextMenuRequested(const QPoint &point)
     if (tabIndex >= 0)
     {
         AZ::EntityId canvasEntityId = GetCanvasEntityIdForTabIndex(tabIndex);
+        UiCanvasMetadata *canvasMetadata = GetCanvasMetadata(canvasEntityId);
 
         QMenu menu(this);
-        menu.addAction(CreateSaveCanvasAction(canvasEntityId, true));
-        menu.addAction(CreateSaveCanvasAsAction(canvasEntityId, true));
+        if (canvasMetadata && canvasMetadata->m_isSliceEditing)
+        {
+            menu.addAction(CreateSaveSliceAction(canvasMetadata, true));
+        }
+        else
+        {
+            menu.addAction(CreateSaveCanvasAction(canvasEntityId, true));
+            menu.addAction(CreateSaveCanvasAsAction(canvasEntityId, true));
+        }
+
         menu.addAction(CreateSaveAllCanvasesAction(true));
         menu.addSeparator();
         menu.addAction(CreateCloseCanvasAction(canvasEntityId, true));
@@ -1589,7 +1863,6 @@ void EditorWindow::OnCanvasTabContextMenuRequested(const QPoint &point)
         menu.addSeparator();
 
         QAction* action = new QAction("Copy Full Path", this);
-        UiCanvasMetadata *canvasMetadata = GetCanvasMetadata(canvasEntityId);
         action->setEnabled(canvasMetadata && !canvasMetadata->m_canvasSourceAssetPathname.empty());
         QObject::connect(action,
             &QAction::triggered,

@@ -526,7 +526,7 @@ namespace AZStd
         template <typename... Args>
         AZ_FORCE_INLINE pair_iter_bool emplace(Args&&... arguments)
         {
-            return insert_impl(AZStd::forward<Args>(arguments)...);
+            return insert_impl_emplace(AZStd::forward<Args>(arguments)...);
         }
 #endif // AZ_HAS_RVALUE_REFS
 
@@ -1020,8 +1020,41 @@ namespace AZStd
             return true;
         }
 
+        template <typename T>
+        pair_iter_bool insert_impl(T&& value)
+        {
+            // try to insert (possibly existing) node with value value
+            const key_type& valueKey = Traits::key_from_value(value);
+            size_type bucketIndex = bucket_from_hash(m_hasher(valueKey));
+            vector_value_type& bucket = m_data.buckets()[bucketIndex];
+            size_type& numElements = bucket.first;
+
+            iterator insertPos, iter = bucket.second;
+            if (numElements == 0)
+            {
+                m_data.m_list.push_front(AZStd::forward<T>(value));
+                insertPos = m_data.m_list.begin();
+                bucket.second = insertPos;
+            }
+            else
+            {
+                if (!find_insert_position(valueKey, m_keyEqual, iter, numElements, AZStd::integral_constant<bool, Traits::has_multi_elements>()))
+                {
+                    // discard new list element and return existing
+                    return (pair_iter_bool(iter, false));
+                }
+
+                insertPos = m_data.m_list.insert(iter, AZStd::forward<T>(value));
+            }
+            ++numElements;
+
+            m_data.rehash_if_needed(this);
+
+            return (pair_iter_bool(insertPos, true));   // return iterator for new element
+        }
+
         template <typename... Args>
-        pair_iter_bool insert_impl(Args&&... arguments)
+        pair_iter_bool insert_impl_emplace(Args&&... arguments)
         {
             // Insert new element into the list at the beginning, and move it if appropriate
             m_data.m_list.emplace_front(AZStd::forward<Args>(arguments)...);

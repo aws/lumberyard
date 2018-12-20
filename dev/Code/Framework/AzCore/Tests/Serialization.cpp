@@ -3782,6 +3782,8 @@ namespace UnitTest
                 , m_data(data)
             {}
 
+            virtual ~RefCounted() = default;
+
             static void Reflect(SerializeContext& serializeContext)
             {
                 serializeContext.Class<RefCounted>()
@@ -3801,6 +3803,7 @@ namespace UnitTest
             }
             int m_refCount;
             //////////////////////////////////////////////////////////////////////////
+
             int m_data;
         };
 
@@ -3811,7 +3814,9 @@ namespace UnitTest
             {
             }
 
-            AZ_TYPE_INFO(Clonable, "{3E463CC3-CC78-4F21-9BE8-0B0AA10E8E26}");
+            virtual ~Clonable() = default;
+
+            AZ_RTTI(Clonable, "{3E463CC3-CC78-4F21-9BE8-0B0AA10E8E26}");
             AZ_CLASS_ALLOCATOR(Clonable, AZ::SystemAllocator, 0);
 
             static void Reflect(SerializeContext& serializeContext)
@@ -3829,6 +3834,61 @@ namespace UnitTest
             AZStd::unordered_map<int, int> m_map;
             AZStd::vector<DynamicSerializableField> m_fieldValues;
             AZStd::array<AZStd::intrusive_ptr<RefCounted>, 10> m_smartArray;
+        };
+
+        struct ClonableMutlipleInheritanceOrderingA
+            : public AZ::TickBus::Handler
+            , public RefCounted
+            , public Clonable
+        {
+            AZ_RTTI(ClonableMutlipleInheritanceOrderingA, "{4A1FA4E5-48FB-413D-876F-E6633240773A}", Clonable);
+            AZ_CLASS_ALLOCATOR(ClonableMutlipleInheritanceOrderingA, AZ::SystemAllocator, 0);
+
+            ClonableMutlipleInheritanceOrderingA() = default;
+            ~ClonableMutlipleInheritanceOrderingA() override = default;
+
+            MOCK_METHOD2(OnTick, void (float, AZ::ScriptTimePoint));
+            virtual void MyNewVirtualFunction() {}
+
+            static void Reflect(SerializeContext& serializeContext)
+            {
+                serializeContext.Class<ClonableMutlipleInheritanceOrderingA, Clonable>()
+                    ->Field("myInt0", &ClonableMutlipleInheritanceOrderingA::m_myInt0)
+                    ;
+            }
+
+            int m_myInt0 = 0;
+        };
+
+        struct ClonableMutlipleInheritanceOrderingB
+            : public Clonable
+            , public RefCounted
+            , public AZ::TickBus::Handler
+        {
+            AZ_RTTI(ClonableMutlipleInheritanceOrderingB, "{169D8A4F-6C8A-4F50-8B7B-3EE81A9948BB}", Clonable);
+            AZ_CLASS_ALLOCATOR(ClonableMutlipleInheritanceOrderingB, AZ::SystemAllocator, 0);
+
+            ClonableMutlipleInheritanceOrderingB() = default;
+            ~ClonableMutlipleInheritanceOrderingB() override = default;
+            
+            MOCK_METHOD2(OnTick, void (float, AZ::ScriptTimePoint));
+            MOCK_METHOD0(SomeVirtualFunction, void ());
+
+            virtual char MyCharSumFunction() { return m_myChar0 + m_myChar1 + m_myChar2; }
+            virtual void MyCharResetFunction() { m_myChar0 = m_myChar1 = m_myChar2 = 0; }
+
+            static void Reflect(SerializeContext& serializeContext)
+            {
+                serializeContext.Class<ClonableMutlipleInheritanceOrderingB, Clonable>()
+                    ->Field("myChar0", &ClonableMutlipleInheritanceOrderingB::m_myChar0)
+                    ->Field("myChar1", &ClonableMutlipleInheritanceOrderingB::m_myChar1)
+                    ->Field("myChar2", &ClonableMutlipleInheritanceOrderingB::m_myChar2)
+                    ;
+            }
+
+            char m_myChar0 = 0;
+            char m_myChar1 = 1;
+            char m_myChar2 = 2;
         };
 
         struct ClonableAssociativePointerContainer
@@ -3989,6 +4049,52 @@ namespace UnitTest
             }
         }
         delete cloneObj;
+    }
+
+    TEST_F(Serialization, CloneMultipleInheritance_RTTIBaseClassDiffererentOrder_KeepsCorrectOffsets)
+    {
+        using namespace Clone;
+
+        EXPECT_NE(sizeof(ClonableMutlipleInheritanceOrderingA), sizeof(ClonableMutlipleInheritanceOrderingB));
+
+        Clonable::Reflect(*m_serializeContext.get());
+        ClonableMutlipleInheritanceOrderingA::Reflect(*m_serializeContext.get());
+        ClonableMutlipleInheritanceOrderingB::Reflect(*m_serializeContext.get());
+
+        AZStd::unique_ptr<Clonable> objA(aznew ClonableMutlipleInheritanceOrderingA);
+        AZStd::unique_ptr<Clonable> objB(aznew ClonableMutlipleInheritanceOrderingB);
+
+        // sanity check that the pointer offset for the classes being used is different
+        const void* aAsBasePtr = AZ::SerializeTypeInfo<Clonable>::RttiCast(objA.get(), AZ::SerializeTypeInfo<Clonable>::GetRttiTypeId(objA.get()));
+        const void* bAsBasePtr = AZ::SerializeTypeInfo<Clonable>::RttiCast(objB.get(), AZ::SerializeTypeInfo<Clonable>::GetRttiTypeId(objB.get()));
+
+        AZStd::ptrdiff_t aOffset = (char*)objA.get() - (char*)aAsBasePtr;
+        AZStd::ptrdiff_t bOffset = (char*)objB.get() - (char*)bAsBasePtr;
+        EXPECT_NE(aOffset, 0);
+        EXPECT_EQ(bOffset, 0);
+
+        // Now clone the original objects, and store in the RTTI base type
+        AZStd::unique_ptr<Clonable> cloneObjA(m_serializeContext->CloneObject(objA.get()));
+        AZStd::unique_ptr<Clonable> cloneObjB(m_serializeContext->CloneObject(objB.get()));
+
+        // Check our pointer offsets are still different in the cloned objects
+        const void* aCloneAsBasePtr = AZ::SerializeTypeInfo<Clonable>::RttiCast(cloneObjA.get(), AZ::SerializeTypeInfo<Clonable>::GetRttiTypeId(cloneObjA.get()));
+        const void* bCloneAsBasePtr = AZ::SerializeTypeInfo<Clonable>::RttiCast(cloneObjB.get(), AZ::SerializeTypeInfo<Clonable>::GetRttiTypeId(cloneObjB.get()));
+
+        AZStd::ptrdiff_t aCloneOffset = (char*)cloneObjA.get() - (char*)aCloneAsBasePtr;
+        AZStd::ptrdiff_t bCloneOffset = (char*)cloneObjB.get() - (char*)bCloneAsBasePtr;
+        EXPECT_NE(aCloneOffset, 0);
+        EXPECT_EQ(bCloneOffset, 0);
+
+        // Check that offsets are equivalent between the clones and the original objects
+        EXPECT_EQ(aCloneOffset, aOffset);
+        EXPECT_EQ(bCloneOffset, bOffset);
+
+        m_serializeContext->EnableRemoveReflection();
+        ClonableMutlipleInheritanceOrderingB::Reflect(*m_serializeContext.get());
+        ClonableMutlipleInheritanceOrderingA::Reflect(*m_serializeContext.get());
+        Clonable::Reflect(*m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
     }
 
     /*
@@ -5177,7 +5283,7 @@ namespace UnitTest
         }
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
         ObjectToPatch* targetGenerated = patch.Apply(&sourceObj, m_serializeContext.get());
 
         // Compare the generated and original target object
@@ -5219,48 +5325,17 @@ namespace UnitTest
         obj2.m_data = 3.33f;
 
         DataPatch patch1;
-        patch1.Create(static_cast<CommonPatch*>(&obj1), static_cast<CommonPatch*>(&obj2), DataPatch::FlagsMap(), m_serializeContext.get()); // cast to base classes
+        patch1.Create(static_cast<CommonPatch*>(&obj1), static_cast<CommonPatch*>(&obj2), DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get()); // cast to base classes
         DifferentObjectToPatch* obj2Generated = patch1.Apply<DifferentObjectToPatch>(&obj1, m_serializeContext.get());
         EXPECT_EQ( obj2.m_data, obj2Generated->m_data );
 
         // \note do we need to add support for base class patching and recover for root elements with proper casting
 
-        // Combining patches
-        targetObj.m_intValue = 301;
-        targetObj.m_objectArray[0].m_data = 401;
-        targetObj.m_objectArray[1].m_data = 402;
-        targetObj.m_objectArray.pop_back(); // remove an element
-        targetObj.m_objectMap.find(5)->second->m_data = 505;
-        targetObj.m_objectMap.insert(AZStd::make_pair(6, aznew ContainedObjectNoPersistentId(406)));
-
-        DataPatch patch2;
-        patch2.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
-        patch.Apply(patch2);
-        ObjectToPatch* targetGenerated2 = patch.Apply(&sourceObj, m_serializeContext.get());
-
-        // Compare the generated and original target object
-        EXPECT_EQ( targetGenerated2->m_intValue, targetObj.m_intValue );
-        EXPECT_EQ( targetGenerated2->m_objectArray.size(), targetObj.m_objectArray.size() + 1 );
-        EXPECT_EQ( targetGenerated2->m_objectArray[0].m_data, targetObj.m_objectArray[0].m_data );
-        EXPECT_EQ( targetGenerated2->m_objectArray[0].m_persistentId, targetObj.m_objectArray[0].m_persistentId );
-        EXPECT_EQ( targetGenerated2->m_objectArray[1].m_data, targetObj.m_objectArray[1].m_data );
-        EXPECT_EQ( targetGenerated2->m_objectArray[1].m_persistentId, targetObj.m_objectArray[1].m_persistentId );
-        EXPECT_EQ( 50, targetGenerated2->m_dynamicField.Get<ContainedObjectNoPersistentId>()->m_data );
-        EXPECT_EQ( 304, targetGenerated2->m_objectArray[2].m_data );  // merged from the based patch
-        EXPECT_EQ( 4, targetGenerated2->m_objectArray[2].m_persistentId );
-        // test generic containers without persistent ID (by index)
-        EXPECT_EQ( targetGenerated2->m_objectMap.size(), targetObj.m_objectMap.size() );
-        EXPECT_EQ( targetGenerated2->m_objectMap[1]->m_data, targetObj.m_objectMap[1]->m_data );
-        EXPECT_EQ( targetGenerated2->m_objectMap[5]->m_data, targetObj.m_objectMap[5]->m_data );
-        EXPECT_EQ( targetGenerated2->m_objectMap[6]->m_data, targetObj.m_objectMap[6]->m_data );
-
         targetGenerated->m_dynamicField.DestroyData(m_serializeContext.get());
-        targetGenerated2->m_dynamicField.DestroyData(m_serializeContext.get());
         targetObj.m_dynamicField.DestroyData(m_serializeContext.get());
         sourceObj.m_dynamicField.DestroyData(m_serializeContext.get());
 
         delete targetGenerated;
-        delete targetGenerated2;
         delete obj2Generated;
 
         // test generics
@@ -5271,7 +5346,7 @@ namespace UnitTest
         targetGeneric.m_string = "Ola";
 
         DataPatch genericPatch;
-        genericPatch.Create(&sourceGeneric, &targetGeneric, DataPatch::FlagsMap(), m_serializeContext.get());
+        genericPatch.Create(&sourceGeneric, &targetGeneric, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
 
         ObjectsWithGenerics* targerGenericGenerated = genericPatch.Apply(&sourceGeneric, m_serializeContext.get());
         EXPECT_EQ( targetGeneric.m_string, targerGenericGenerated->m_string );
@@ -6261,7 +6336,7 @@ namespace UnitTest
 
         // Patch without overrides should be empty
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
         EXPECT_FALSE(patch.IsData());
     }
 
@@ -6274,11 +6349,13 @@ namespace UnitTest
         DataPatch::AddressType forceOverrideAddress;
         forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
 
-        DataPatch::FlagsMap flagsMap;
-        flagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverride);
+        DataPatch::FlagsMap sourceFlagsMap;
+
+        DataPatch::FlagsMap targetFlagsMap;
+        targetFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverrideSet);
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, flagsMap, m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, sourceFlagsMap, targetFlagsMap, m_serializeContext.get());
         EXPECT_TRUE(patch.IsData());
     }
 
@@ -6291,16 +6368,95 @@ namespace UnitTest
         DataPatch::AddressType forceOverrideAddress;
         forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
 
-        DataPatch::FlagsMap flagsMap;
-        flagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverride);
+        DataPatch::FlagsMap sourceFlagsMap;
+
+        DataPatch::FlagsMap targetFlagsMap;
+        targetFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverrideSet);
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, flagsMap, m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, sourceFlagsMap, targetFlagsMap, m_serializeContext.get());
 
         // change source after patch is created
         sourceObj.m_intValue = 5;
 
         AZStd::unique_ptr<ObjectToPatch> targetObj2(patch.Apply(&sourceObj, m_serializeContext.get()));
+        EXPECT_EQ(targetObj.m_intValue, targetObj2->m_intValue);
+    }
+
+    TEST_F(PatchingTest, ForceOverrideAndPreventOverrideBothSet_DataPatchIsEmpty)
+    {
+        using namespace Patching;
+        ObjectToPatch sourceObj;
+        ObjectToPatch targetObj;
+        targetObj.m_intValue = 43;
+
+        DataPatch::AddressType forceOverrideAddress;
+        forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
+
+        DataPatch::FlagsMap sourceFlagsMap;
+        sourceFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::PreventOverrideSet);
+
+        DataPatch::FlagsMap targetFlagsMap;
+        targetFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverrideSet);
+
+        DataPatch patch;
+        patch.Create(&sourceObj, &targetObj, sourceFlagsMap, targetFlagsMap, m_serializeContext.get());
+        EXPECT_FALSE(patch.IsData());
+    }
+
+    TEST_F(PatchingTest, PreventOverrideOnSource_BlocksValueFromPatch)
+    {
+        using namespace Patching;
+
+        // targetObj is different from sourceObj
+        ObjectToPatch sourceObj;
+
+        ObjectToPatch targetObj;
+        targetObj.m_intValue = 5;
+
+        // create patch from sourceObj -> targetObj
+        DataPatch patch;
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
+
+        // create flags that prevent m_intValue from being patched
+        DataPatch::AddressType forceOverrideAddress;
+        forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
+
+        DataPatch::FlagsMap sourceFlagsMap;
+        sourceFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::PreventOverrideSet);
+
+        DataPatch::FlagsMap targetFlagsMap;
+
+        // m_intValue should be the same as it was in sourceObj
+        AZStd::unique_ptr<ObjectToPatch> targetObj2(patch.Apply(&sourceObj, m_serializeContext.get(), ObjectStream::FilterDescriptor(), sourceFlagsMap, targetFlagsMap));
+        EXPECT_EQ(sourceObj.m_intValue, targetObj2->m_intValue);
+    }
+
+    TEST_F(PatchingTest, PreventOverrideOnTarget_DoesntAffectPatching)
+    {
+        using namespace Patching;
+
+        // targetObj is different from sourceObj
+        ObjectToPatch sourceObj;
+
+        ObjectToPatch targetObj;
+        targetObj.m_intValue = 5;
+
+        // create patch from sourceObj -> targetObj
+        DataPatch patch;
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
+
+        // create flags that prevent m_intValue from being patched, but put them on the target instead of source
+        DataPatch::AddressType forceOverrideAddress;
+        forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
+
+        DataPatch::FlagsMap sourceFlagsMap;
+
+        DataPatch::FlagsMap targetFlagsMap;
+        targetFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::PreventOverrideSet);
+
+        // m_intValue should have been patched
+        AZStd::unique_ptr<ObjectToPatch> targetObj2(patch.Apply(&sourceObj, m_serializeContext.get(), ObjectStream::FilterDescriptor(), sourceFlagsMap, targetFlagsMap));
         EXPECT_EQ(targetObj.m_intValue, targetObj2->m_intValue);
     }
 
@@ -6315,7 +6471,7 @@ namespace UnitTest
         targetObj.m_pointerInt = new AZ::s32(-1);
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
 
         ObjectWithPointer* patchedTargetObj = patch.Apply(&sourceObj, m_serializeContext.get());
         EXPECT_EQ(targetObj.m_int, patchedTargetObj->m_int);
@@ -6338,7 +6494,7 @@ namespace UnitTest
         targetObj.m_int = 23054;
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
 
         ObjectWithPointer* patchedTargetObj = patch.Apply(&sourceObj, m_serializeContext.get());
         EXPECT_EQ(targetObj.m_int, patchedTargetObj->m_int);
@@ -6360,7 +6516,7 @@ namespace UnitTest
         targetObj.m_pointerFloat = new float(3.14);
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
 
         ObjectWithMultiPointers* patchedTargetObj = patch.Apply(&sourceObj, m_serializeContext.get());
         EXPECT_EQ(targetObj.m_int, patchedTargetObj->m_int);

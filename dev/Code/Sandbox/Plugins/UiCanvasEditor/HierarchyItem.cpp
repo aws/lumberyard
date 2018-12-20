@@ -106,6 +106,7 @@ HierarchyItem::HierarchyItem(EditorWindow* editWindow,
             Qt::ItemIsDropEnabled);
 
         UpdateIcon();
+        UpdateSliceInfo();
     }
 }
 
@@ -361,6 +362,70 @@ void HierarchyItem::ReplaceElement(const AZStd::string& xml, const AZStd::unorde
         xml,
         false,
         nullptr);
+}
+
+void HierarchyItem::UpdateSliceInfo()
+{
+    // This is deliberately slightly different to the blue color used for hover, so that we can still see a change on hover
+    static const QColor sliceForegroundColor(117, 156, 254);
+
+    //determine if entity belongs to a slice
+    AZ::SliceComponent::SliceInstanceAddress sliceAddress;
+    AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, m_elementId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
+    bool isSliceEntity = sliceAddress.IsValid();
+
+    AZStd::string sliceAssetName;
+    if (isSliceEntity)
+    {
+        auto sliceReference = sliceAddress.GetReference();
+        auto sliceInstance = sliceAddress.GetInstance();
+
+        // determine slice asset name (for tooltip display)
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetName, &AZ::Data::AssetCatalogRequests::GetAssetPathById, sliceReference->GetSliceAsset().GetId());
+
+        //determine if entity parent belongs to a slice
+        AZ::EntityId parentId;
+        EBUS_EVENT_ID_RESULT(parentId, m_elementId, UiElementBus, GetParentEntityId);
+
+        AZ::SliceComponent::SliceInstanceAddress parentSliceAddress;
+        AzFramework::EntityIdContextQueryBus::EventResult(parentSliceAddress, parentId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
+
+        //we're a slice root if our parent doesn't have a slice reference or instance or our parent slice reference or instances don't match ours
+        auto parentSliceReference = parentSliceAddress.GetReference();
+        auto parentSliceInstance = parentSliceAddress.GetInstance();
+        bool isSliceRoot = !parentSliceReference || !parentSliceInstance || (sliceReference != parentSliceReference) || (sliceInstance->GetId() != parentSliceInstance->GetId());
+
+        // set the text color to the slice color
+        setForeground(0, sliceForegroundColor);
+
+        // use bold or italic to indicate whether this is the root of the slice instance or a child entity within an instance
+        auto itemFont = font(0);
+        if (isSliceRoot)
+        {
+            itemFont.setBold(true);
+        }
+        else
+        {
+            itemFont.setItalic(true);
+        }
+        setFont(0, itemFont);
+    }
+    else
+    {
+        // get the normal text color from the palette
+        auto parentWidgetPtr = static_cast<QWidget*>(m_editorWindow);
+        setForeground(0, QBrush(parentWidgetPtr->palette().color(QPalette::Text)));
+
+        // set to normal font
+        auto itemFont = font(0);
+        itemFont.setBold(false);
+        itemFont.setItalic(false);
+        setFont(0, itemFont);
+    }
+
+    // Set tooltip to indicate which slice this is part of (if any)
+    QString tooltip = !sliceAssetName.empty() ? QString("Slice asset: %1").arg(sliceAssetName.data()) : QString("Slice asset: This entity is not part of a slice.");
+    setToolTip(0, tooltip);
 }
 
 void HierarchyItem::SetNonSnappedOffsets(UiTransform2dInterface::Offsets offsets)

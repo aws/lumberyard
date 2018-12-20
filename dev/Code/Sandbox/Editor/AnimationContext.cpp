@@ -198,12 +198,12 @@ void CAnimationContext::NotifyTimeChangedListenersUsingCurrTime() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, bool bNoNotify)
+void CAnimationContext::SetSequence(CTrackViewSequence* sequence, bool force, bool noNotify, bool user)
 {
     float newSeqStartTime = .0f;
     CTrackViewSequence* pCurrentSequence = m_pSequence;
 
-    if (!bForce && pSequence == pCurrentSequence)
+    if (!force && sequence == pCurrentSequence)
     {
         return;
     }
@@ -213,9 +213,9 @@ void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, 
     m_recording = false;
     SetRecordingInternal(false);
 
-    if (pSequence)
+    if (sequence)
     {
-        newSeqStartTime = pSequence->GetTimeRange().start;
+        newSeqStartTime = sequence->GetTimeRange().start;
     }
 
     m_currTime = newSeqStartTime;
@@ -244,7 +244,7 @@ void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, 
 
         m_pSequence->UnBindFromEditorObjects();
     }
-    m_pSequence = pSequence;
+    m_pSequence = sequence;
     
     // Notify a new sequence was just selected.
     Maestro::EditorSequenceNotificationBus::Broadcast(&Maestro::EditorSequenceNotificationBus::Events::OnSequenceSelected, m_pSequence ? m_pSequence->GetSequenceComponentEntityId() : AZ::EntityId());
@@ -267,10 +267,17 @@ void CAnimationContext::SetSequence(CTrackViewSequence* pSequence, bool bForce, 
 
         m_pSequence->BindToEditorObjects();
     }
+    else if (user)
+    {
+        // If this was a sequence that was selected by the user in Track View
+        // and it was "No Sequence" clear the m_mostRecentSequenceId so the sequence
+        // will not be reselected at unwanted events like a slice reload or an undo operation.
+        m_mostRecentSequenceId.SetInvalid();
+    }
 
     ForceAnimation();
 
-    if (!bNoNotify)
+    if (!noNotify)
     {
         NotifyTimeChangedListenersUsingCurrTime();
         for (size_t i = 0; i < m_contextListeners.size(); ++i)

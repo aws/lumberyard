@@ -33,108 +33,150 @@ class SANDBOX_API CCryEditDoc
 {
     Q_OBJECT
     Q_PROPERTY(bool modified READ IsModified WRITE SetModifiedFlag);
-    Q_PROPERTY(QString pathName READ GetPathName WRITE SetPathName);
+    Q_PROPERTY(QString pathName READ GetLevelPathName WRITE SetPathName);
     Q_PROPERTY(QString title READ GetTitle WRITE SetTitle);
  
 public: // Create from serialization only
+    enum DocumentEditingMode
+    {
+        LevelEdit,
+        SliceEdit
+    };
+
     Q_INVOKABLE CCryEditDoc();
 
     virtual ~CCryEditDoc();
 
     bool IsModified() const;
     void SetModifiedFlag(bool modified);
+    // Currently it's not possible to disable one single flag and eModifiedModule is ignored
+    // if bModified is false.
+    virtual void SetModifiedModules(EModifiedModule eModifiedModule, bool boSet = true);
+    int GetModifiedModule();
 
-    QString GetPathName() const;
+    // Return level path.
+    // If a slice is being edited then the path to a placeholder level is returned.
+    QString GetLevelPathName() const;
+
+    // Set path of slice or level being edited.
     void SetPathName(const QString& pathName);
+
+    // Return slice path, if slice is open, an empty string otherwise. Use GetEditMode() to determine if a slice is open.
+    QString GetSlicePathName() const;
+
+    // Return The current type of document being edited, a level or a slice
+    // While editing a slice, a placeholder level is opened since the editor requires an open level to function.
+    // While editing a slice, saving will only affect the slice and not the placeholder level.
+    DocumentEditingMode GetEditMode() const;
+
+    // Return slice path if editing slice, level path if editing level.
+    QString GetActivePathName() const;
 
     QString GetTitle() const;
     void SetTitle(const QString& title);
 
-    static bool IsBackupOrTempLevelSubdirectory(const QString& folderName);
+    virtual bool OnNewDocument();
+    void InitEmptyLevel(int resolution = 0, int unitSize = 0, bool bUseTerrain = false);
+    void CreateDefaultLevelAssets(int resolution = 0, int unitSize = 0);
 
     bool DoSave(const QString& pathName, bool replace);
+    bool Save();
+    virtual BOOL DoFileSave();
+    bool SaveModified();
+
+    virtual bool BackupBeforeSave(bool bForce = false);
+    void SaveAutoBackup(bool bForce = false);
 
     // ClassWizard generated virtual function overrides
     virtual bool OnOpenDocument(const QString& lpszPathName);
-    // Currently it's not possible to disable one single flag and eModifiedModule is ignored
-    // if bModified is false.
-    virtual void SetModifiedModules(EModifiedModule eModifiedModule, bool boSet = true);
+
+    const bool IsLevelLoadFailed() const { return m_bLoadFailed; }
+
+    //! Marks this document as having errors.
+    void SetHasErrors() { m_hasErrors = true; }
+
+    bool IsDocumentReady() const { return m_bDocumentReady; }
+    void SetDocumentReady(bool bReady);
+
+    bool IsLevelExported() const;
+    void SetLevelExported(bool boExported = true);
+
+    BOOL CanCloseFrame();
+
+    void Hold(const QString& holdName);
+    void Fetch(const QString& holdName, bool bShowMessages = true, bool bDelHoldFolder = false);
+
+    const char* GetTemporaryLevelName() const;
+    void DeleteTemporaryLevel();
+
+    void ChangeMission();
+    //! Return currently active Mission.
+    CMission*   GetCurrentMission(bool bSkipLoadingAIWhenSyncingContent = false);
+    //! Get number of missions on Map.
+    int GetMissionCount() const { return m_missions.size(); }
+    //! Get Mission by index.
+    CMission*   GetMission(int index) const { return m_missions[index]; }
+    //! Find Mission by name.
+    CMission*   FindMission(const QString& name) const;
+    //! Makes specified mission current.
+    void SetCurrentMission(CMission* mission);
+
+    CLevelShaderCache* GetShaderCache() { return m_pLevelShaderCache; }
+    CClouds* GetClouds() { return m_pClouds; }
+    LightingSettings* GetLighting();
+    void SetWaterColor(const QColor& col) { m_waterColor = col; }
+    QColor GetWaterColor() { return m_waterColor; }
+    XmlNodeRef& GetFogTemplate() { return m_fogTemplate; }
+    XmlNodeRef& GetEnvironmentTemplate() { return m_environmentTemplate; }
+    void OnEnvironmentPropertyChanged(IVariable* pVar);
+
+    void RegisterListener(IDocListener* listener);
+    void UnregisterListener(IDocListener* listener);
+
+    void GetMemoryUsage(ICrySizer* pSizer);
+
+    static bool IsBackupOrTempLevelSubdirectory(const QString& folderName);
+protected:
+
     virtual void DeleteContents();
-    virtual BOOL DoFileSave();
-    virtual bool BackupBeforeSave(bool bForce = false);
 
     struct TOpenDocContext
     {
         CTimeValue loading_start_time;
         QString absoluteLevelPath;
+        QString absoluteSlicePath;
     };
     bool BeforeOpenDocument(const QString& lpszPathName, TOpenDocContext& context);
     bool DoOpenDocument(TOpenDocContext& context);
     virtual BOOL LoadXmlArchiveArray(TDocMultiArchive& arrXmlAr, const QString& absoluteLevelPath, const QString& levelPath);
     virtual void ReleaseXmlArchiveArray(TDocMultiArchive& arrXmlAr);
 
-
     virtual void Load(TDocMultiArchive& arrXmlAr, const QString& szFilename);
     virtual void StartStreamingLoad(){}
     virtual void SyncCurrentMissionContent(bool bRetrieve);
     virtual void RepositionVegetation();
 
-    const char* GetTemporaryLevelName() const;
-    void DeleteTemporaryLevel();
-    void InitEmptyLevel(int resolution = 0, int unitSize = 0, bool bUseTerrain = false);
-    void CreateDefaultLevelAssets(int resolution = 0, int unitSize = 0);
-    bool IsLevelExported() const;
-    void SetLevelExported(bool boExported = true);
-    int GetModifiedModule();
-    void ChangeMission();
-    bool Save();
     void Save(CXmlArchive& xmlAr);
     void Load(CXmlArchive& xmlAr, const QString& szFilename);
     void Save(TDocMultiArchive& arrXmlAr);
     bool SaveLevel(const QString& filename);
+    bool SaveSlice(const QString& filename);
     bool LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteCryFilePath);
-    bool LoadEntities(const QString& levelPakFile);
-    void Hold(const QString& holdName);
-    void Fetch(const QString& holdName, bool bShowMessages = true, bool bDelHoldFolder = false);
-    void SaveAutoBackup(bool bForce = false);
+    bool LoadEntitiesFromLevel(const QString& levelPakFile);
+    bool LoadEntitiesFromSlice(const QString& sliceFile);
     void SerializeFogSettings(CXmlArchive& xmlAr);
     virtual void SerializeViewSettings(CXmlArchive& xmlAr);
     void SerializeMissions(TDocMultiArchive& arrXmlAr, QString& currentMission, bool bPartsInXml);
     void SerializeShaderCache(CXmlArchive& xmlAr);
     void SerializeNameSelection(CXmlArchive& xmlAr);
-    LightingSettings* GetLighting();
-    void SetWaterColor(const QColor& col) { m_waterColor = col; };
-    QColor GetWaterColor() { return m_waterColor; };
     void ForceSkyUpdate();
-    BOOL CanCloseFrame();
-    void GetMemoryUsage(ICrySizer* pSizer);
-    XmlNodeRef& GetFogTemplate() { return m_fogTemplate; };
-    XmlNodeRef& GetEnvironmentTemplate() { return m_environmentTemplate; };
-    //! Return currently active Mission.
-    CMission*   GetCurrentMission(bool bSkipLoadingAIWhenSyncingContent = false);
-    //! Get number of missions on Map.
-    int GetMissionCount() const { return m_missions.size(); };
-    //! Get Mission by index.
-    CMission*   GetMission(int index) const { return m_missions[index]; };
-    //! Find Mission by name.
-    CMission*   FindMission(const QString& name) const;
-    CClouds* GetClouds() { return m_pClouds; }
-    //! Makes specified mission current.
-    void SetCurrentMission(CMission* mission);
     //! Add new mission to map.
     void AddMission(CMission* mission);
     //! Remove existing mission from map.
     void RemoveMission(CMission* mission);
-    void RegisterListener(IDocListener* listener);
-    void UnregisterListener(IDocListener* listener);
     void LogLoadTime(int time);
-    bool IsDocumentReady() const { return m_bDocumentReady; }
-    void SetDocumentReady(bool bReady);
     //! For saving binary data (voxel object)
     CXmlArchive* GetTmpXmlArch(){ return m_pTmpXmlArchHack; }
-    CLevelShaderCache* GetShaderCache() { return m_pLevelShaderCache; }
-
-    void OnEnvironmentPropertyChanged(IVariable* pVar);
 
     struct TSaveDocContext
     {
@@ -144,9 +186,6 @@ public: // Create from serialization only
     bool DoSaveDocument(const QString& lpszPathName, TSaveDocContext& context);
     bool AfterSaveDocument(const QString& lpszPathName, TSaveDocContext& context, bool bShowPrompt = true);
 
-    bool SaveModified();
-
-    virtual bool OnNewDocument();
     virtual bool OnSaveDocument(const QString& lpszPathName);
     virtual void OnFileSaveAs();
     void LoadTemplates();
@@ -159,15 +198,12 @@ public: // Create from serialization only
 
     QString GetCryIndexPath(const LPCTSTR levelFilePath);
 
-    const bool IsLevelLoadFailed() const { return m_bLoadFailed; }
-
     //////////////////////////////////////////////////////////////////////////
     // EditorEntityContextNotificationBus::Handler
     void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
     void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
     //////////////////////////////////////////////////////////////////////////
 
-private:
     QString m_strMasterCDFolder;
     bool m_bLoadFailed;
     QColor m_waterColor;
@@ -185,11 +221,13 @@ private:
     bool m_boLevelExported;
     bool m_modified;
     QString m_pathName;
+    QString m_slicePathName;
     QString m_title;
     AZ::Data::AssetId m_envProbeSliceAssetId;
     float m_terrainSize;
     const char* m_envProbeSliceFullPath;
     const float m_envProbeHeight;
+    bool m_hasErrors = false; ///< This is used to warn the user that they may lose work when they go to save.
 };
 
 class CAutoDocNotReady

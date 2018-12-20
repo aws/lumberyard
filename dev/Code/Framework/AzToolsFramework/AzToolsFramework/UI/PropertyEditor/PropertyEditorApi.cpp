@@ -155,16 +155,6 @@ namespace AzToolsFramework
                     visibility = AzToolsFramework::NodeDisplayVisibility::Visible;
                 }
             }
-
-            // Nodes marked PushableEvenIfInvisible should appear when their child nodes are being pushed
-            if (visibility != AzToolsFramework::NodeDisplayVisibility::Visible)
-            {
-                const AZ::u32 sliceFlags = SliceUtilities::GetNodeSliceFlags(node);
-                if (0 != (sliceFlags & AZ::Edit::UISliceFlags::PushableEvenIfInvisible))
-                {
-                    visibility = AzToolsFramework::NodeDisplayVisibility::Visible;
-                }
-            }
         }
 
         return visibility;

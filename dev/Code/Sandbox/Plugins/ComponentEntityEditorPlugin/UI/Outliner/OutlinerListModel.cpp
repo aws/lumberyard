@@ -18,11 +18,13 @@
 #include <QtWidgets/QStyleOption>
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QStyle>
+#include <QtWidgets/QMessageBox>
 #include <QGuiApplication>
 #include <QTimer>
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerBus.h>
+#include <AzCore/Asset/AssetTypeInfoBus.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/TransformBus.h>
@@ -30,7 +32,6 @@
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzCore/Slice/SliceAsset.h>
-#include <AzCore/std/sort.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -47,13 +48,20 @@
 #include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
 #include <AzToolsFramework/ToolsComponents/EditorLockComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/ToolsComponents/SelectionComponent.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
+
+#include "OutlinerDisplayOptionsMenu.h"
+#include "OutlinerSortFilterProxyModel.hxx"
 
 ////////////////////////////////////////////////////////////////////////////
 // OutlinerListModel
 ////////////////////////////////////////////////////////////////////////////
+
+bool OutlinerListModel::s_paintingName = false;
 
 OutlinerListModel::OutlinerListModel(QObject* parent)
     : QAbstractItemModel(parent)
@@ -168,7 +176,16 @@ QVariant OutlinerListModel::dataForAll(const QModelIndex& index, int role) const
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
         bool isSliceEntity = false;
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
-        return isSliceRoot && isSliceEntity;
+        bool isSubsliceRoot = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSubsliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSubsliceRoot);
+        return (isSliceRoot || isSubsliceRoot) && isSliceEntity;
+    }
+
+    case SliceEntityOverrideRole:
+    {
+        bool entityHasOverrides = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(entityHasOverrides, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceAnyOverrides);
+        return entityHasOverrides;
     }
 
     case SelectedRole:
@@ -215,14 +232,50 @@ QVariant OutlinerListModel::dataForName(const QModelIndex& index, int role) cons
     {
         AZStd::string name;
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(name, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetName);
-        return QString(name.data());
+        QString label{ name.data() };
+        if (s_paintingName && !m_filterString.empty())
+        {
+            // highlight characters in filter
+            int highlightTextIndex = 0;
+            do
+            {
+                highlightTextIndex = label.lastIndexOf(QString(m_filterString.c_str()), highlightTextIndex - 1, Qt::CaseInsensitive);
+                if (highlightTextIndex >= 0)
+                {
+                    const QString BACKGROUND_COLOR{ "#707070" };
+                    label.insert(highlightTextIndex + m_filterString.length(), "</span>");
+                    label.insert(highlightTextIndex, "<span style=\"background-color: " + BACKGROUND_COLOR + "\">");
+                }
+            } while(highlightTextIndex > 0);
+        }
+        return label;
     }
 
     case Qt::ToolTipRole:
     {
         AZStd::string sliceAssetName;
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(sliceAssetName, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetSliceAssetName);
-        return !sliceAssetName.empty() ? QString("Slice asset: %1").arg(sliceAssetName.data()) : QString("Slice asset: This entity is not part of a slice.");
+
+        bool isEditorOnly = false;
+        AzToolsFramework::EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, id, &AzToolsFramework::EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
+
+        QString tooltip = !sliceAssetName.empty() ? QString("Slice asset: %1").arg(sliceAssetName.data()) : QString("Slice asset: This entity is not part of a slice.");
+
+        if (isEditorOnly)
+        {
+            tooltip = QString("(%1) %2").arg(tr("Editor-only"), tooltip);
+        }
+        else
+        {
+            AZ::Entity* entity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, id);
+            if (!entity->IsRuntimeActiveByDefault())
+            {
+                tooltip = QString("(%1) %2").arg(tr("Not Active on Start"), tooltip);
+            }
+        }
+
+        return tooltip;
     }
 
     case EntityTypeRole:
@@ -231,10 +284,12 @@ QVariant OutlinerListModel::dataForName(const QModelIndex& index, int role) cons
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
         bool isSliceEntity = false;
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+        bool isSubsliceRoot = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSubsliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSubsliceRoot);
 
         if (isSliceEntity)
         {
-            return isSliceRoot ? SliceHandleType : SliceEntityType;
+            return (isSliceRoot | isSubsliceRoot) ? SliceHandleType : SliceEntityType;
         }
 
         // Guaranteed to return a valid type.
@@ -243,23 +298,82 @@ QVariant OutlinerListModel::dataForName(const QModelIndex& index, int role) cons
 
     case Qt::ForegroundRole:
     {
-        bool isSliceEntity = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
-
         // We use the parent's palette because the GUI Application palette is returning the wrong colors
         auto parentWidgetPtr = static_cast<QWidget*>(QObject::parent());
-        return QBrush(parentWidgetPtr->palette().color(isSliceEntity ? QPalette::Link : QPalette::Text));
+        return QBrush(parentWidgetPtr->palette().color(QPalette::Text));
     }
 
     case Qt::DecorationRole:
     {
-        bool isSliceEntity = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
-        return QIcon(isSliceEntity ? ":/Icons/Slice_Entity_Icon.tif" : ":/Icons/Entity_Icon.tif");
+        return GetEntityIcon(id);
     }
     }
 
     return dataForAll(index, role);
+}
+
+QVariant OutlinerListModel::GetEntityIcon(const AZ::EntityId& id) const
+{
+    AZ::Entity* entity = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, id);
+
+    // build the icon name based on the entity type and state
+    QString iconName;
+
+    bool isSliceEntity = false;
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+
+    if (isSliceEntity)
+    {
+        iconName = "Slice_Entity";
+
+        bool hasSliceEntityOverrides = false;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(hasSliceEntityOverrides, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceEntityOverrides);
+
+        if (hasSliceEntityOverrides)
+        {
+            iconName += "_Modified";
+        }
+    }
+    else
+    {
+        iconName = "Entity";
+    }
+
+    bool isEditorOnly = false;
+    AzToolsFramework::EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, id, &AzToolsFramework::EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
+
+    const bool isInitiallyActive = entity ? entity->IsRuntimeActiveByDefault() : true;
+
+    if (isEditorOnly)
+    {
+        iconName += "_Editor_Only";
+    }
+    else if (!isInitiallyActive)
+    {
+        iconName += "_Not_Active";
+    }
+
+    QPixmap entityIcon = QPixmap(QString(":/Icons/%1.svg").arg(iconName));
+
+    // Draw a circle at the bottom right corner of the icon when the entity's children have overrides.
+    bool hasSliceChildrenOverrides = false;
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(hasSliceChildrenOverrides, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceChildrenOverrides);
+
+    if (hasSliceChildrenOverrides)
+    {
+        QBitmap mask = entityIcon.mask();
+        QPainter maskPainter(&mask);
+        maskPainter.drawEllipse(entityIcon.width() - maskDiameter, entityIcon.height() - maskDiameter, maskDiameter, maskDiameter);
+        entityIcon.setMask(mask);
+
+        QPainter iconPainter(&entityIcon);
+        iconPainter.setPen(Qt::transparent);
+        iconPainter.setBrush(QBrush(circleIconColor));
+        iconPainter.drawEllipse(entityIcon.width() - circleIconDiameter, entityIcon.height() - circleIconDiameter, circleIconDiameter, circleIconDiameter);
+    }
+
+    return QIcon(entityIcon);
 }
 
 QVariant OutlinerListModel::dataForVisibility(const QModelIndex& index, int role) const
@@ -435,16 +549,12 @@ bool OutlinerListModel::canDropMimeData(const QMimeData* data, Qt::DropAction ac
 {
     if (data)
     {
-        if (parent.isValid() && row == -1 && column == -1)
+        if (canDropMimeDataForEntityIds(data, action, row, column, parent))
         {
-            if (data->hasFormat(AzToolsFramework::ComponentTypeMimeData::GetMimeType()) ||
-                data->hasFormat(AzToolsFramework::ComponentAssetMimeDataContainer::GetMimeType()))
-            {
-                return true;
-            }
+            return true;
         }
 
-        if (canDropMimeDataForEntityIds(data, action, row, column, parent))
+        if (CanDropMimeDataAssets(data, action, row, column, parent))
         {
             return true;
         }
@@ -517,11 +627,11 @@ bool OutlinerListModel::dropMimeData(const QMimeData* data, Qt::DropAction actio
         {
             return dropMimeDataComponentPalette(data, action, row, column, parent);
         }
+    }
 
-        if (data->hasFormat(AzToolsFramework::ComponentAssetMimeDataContainer::GetMimeType()))
-        {
-            return dropMimeDataComponentAssets(data, action, row, column, parent);
-        }
+    if (data->hasFormat(AzToolsFramework::AssetBrowser::AssetBrowserEntry::GetMimeType()))
+    {
+        return DropMimeDataAssets(data, action, row, column, parent);
     }
 
     if (data->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
@@ -545,7 +655,7 @@ bool OutlinerListModel::dropMimeDataComponentPalette(const QMimeData* data, Qt::
     AzToolsFramework::ComponentTypeMimeData::Get(data, classDataContainer);
 
     AZ::ComponentTypeList componentsToAdd;
-    for (auto classData : classDataContainer)
+    for (const auto& classData : classDataContainer)
     {
         if (classData)
         {
@@ -558,7 +668,7 @@ bool OutlinerListModel::dropMimeDataComponentPalette(const QMimeData* data, Qt::
 
     if (addedComponentsResult.IsSuccess())
     {
-        for (auto componentsAddedToEntity : addedComponentsResult.GetValue())
+        for (const auto& componentsAddedToEntity : addedComponentsResult.GetValue())
         {
             auto entityId = componentsAddedToEntity.first;
             AZ_Assert(entityId == dropTargetId, "Only asked to add components to one entity, the id returned is not the right one");
@@ -574,71 +684,220 @@ bool OutlinerListModel::dropMimeDataComponentPalette(const QMimeData* data, Qt::
     return false;
 }
 
-bool OutlinerListModel::dropMimeDataComponentAssets(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
+
+void OutlinerListModel::DecodeAssetMimeData(const QMimeData* data, AZStd::vector<ComponentAssetPair>& componentAssetPairs, SliceAssetList& sliceAssets) const
 {
-    (void)action;
-    (void)row;
-    (void)column;
+    using namespace AzToolsFramework;
 
-    AZ::EntityId dropTargetId = GetEntityFromIndex(parent);
-    AzToolsFramework::EntityIdList entityIds{ dropTargetId };
+    AZStd::vector<AssetBrowser::AssetBrowserEntry*> entries;
+    AssetBrowser::AssetBrowserEntry::FromMimeData(data, entries);
 
-    AzToolsFramework::ComponentAssetMimeDataContainer componentAssetContainer;
-    if (componentAssetContainer.FromMimeData(data))    //  This returns false if the mime data doesn't contain the right type.
+    AZStd::vector<const AssetBrowser::ProductAssetBrowserEntry*> products;
+    products.reserve(entries.size());
+
+    // Look at all products and determine if they have an associated component.
+    // If so, store the componentType->assetId pair.
+    for (AssetBrowser::AssetBrowserEntry* entry : entries)
     {
-        // Build up all the components we want to add
-        AZ::ComponentTypeList componentsToAdd;
-        for (auto asset : componentAssetContainer.m_assets)
+        products.clear();
+        const AssetBrowser::ProductAssetBrowserEntry* browserEntry = azrtti_cast<const AssetBrowser::ProductAssetBrowserEntry*>(entry);
+        if (browserEntry)
         {
-            AZ::Uuid componentType = asset.m_classId;
-
-            // add type for asset with known component class
-            if (!componentType.IsNull())
+            products.push_back(browserEntry);
+        }
+        else
+        {
+            entry->GetChildren<AssetBrowser::ProductAssetBrowserEntry>(products);
+        }
+        for (const auto* product : products)
+        {
+            if (product->GetAssetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
             {
-                componentsToAdd.push_back(componentType);
+                sliceAssets.push_back(product->GetAssetId());
+            }
+            else
+            {
+                bool canCreateComponent = false;
+                AZ::AssetTypeInfoBus::EventResult(canCreateComponent, product->GetAssetType(), &AZ::AssetTypeInfo::CanCreateComponent, product->GetAssetId());
+
+                AZ::TypeId componentType;
+                AZ::AssetTypeInfoBus::EventResult(componentType, product->GetAssetType(), &AZ::AssetTypeInfo::GetComponentTypeId);
+
+                if (canCreateComponent && !componentType.IsNull())
+                {
+                    componentAssetPairs.push_back(AZStd::make_pair(componentType, product->GetAssetId()));
+                }
             }
         }
+    }
+}
 
-        // Add them all at once
-        AzToolsFramework::EntityCompositionRequests::AddComponentsOutcome addComponentsOutcome = AZ::Failure(AZStd::string(""));
-        AzToolsFramework::EntityCompositionRequestBus::BroadcastResult(addComponentsOutcome, &AzToolsFramework::EntityCompositionRequests::AddComponentsToEntities, entityIds, componentsToAdd);
+bool OutlinerListModel::CanDropMimeDataAssets(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const
+{
+    (void)action;
+    (void)column;
+    (void)row;
+    (void)parent;
 
-        if (!addComponentsOutcome.IsSuccess())
+    using namespace AzToolsFramework;
+
+    if (data->hasFormat(AssetBrowser::AssetBrowserEntry::GetMimeType()))
+    {
+        ComponentAssetPairs componentAssetPairs;
+        SliceAssetList sliceAssets;
+        DecodeAssetMimeData(data, componentAssetPairs, sliceAssets);
+
+        return (!componentAssetPairs.empty() || !sliceAssets.empty());
+    }
+
+    return false;
+}
+
+bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
+{
+    using namespace AzToolsFramework;
+
+    ComponentAssetPairs componentAssetPairs;
+    SliceAssetList sliceAssets;
+    DecodeAssetMimeData(data, componentAssetPairs, sliceAssets);
+
+    ScopedUndoBatch undo("Create/Modify Entities for Asset Drop");
+
+    AZ::Vector3 viewportCenter = AZ::Vector3::CreateZero();
+    EditorRequestBus::BroadcastResult(viewportCenter, &EditorRequestBus::Events::GetWorldPositionAtViewportCenter);
+
+    for (const AZ::Data::AssetId& sliceAssetId : sliceAssets)
+    {
+        // Queue a slice instantiation for each dragged slice.
+        AZ::Data::Asset<AZ::SliceAsset> sliceAsset =
+            AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(sliceAssetId, false);
+        if (sliceAsset)
         {
+            EditorMetricsEventsBusAction editorMetricsEventsBusActionWrapper(EditorMetricsEventsBusTraits::NavigationTrigger::DragAndDrop);
+            AZStd::string idString;
+            sliceAsset.GetId().ToString(idString);
+            EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBusTraits::SliceInstantiated, AZ::Crc32(idString.c_str()));
+
+            EditorEntityContextRequestBus::Broadcast(&EditorEntityContextRequestBus::Events::InstantiateEditorSlice, sliceAsset, AZ::Transform::CreateTranslation(viewportCenter));
+        }
+    }
+
+    if (componentAssetPairs.empty())
+    {
+        return false;
+    }
+
+    QWidget* mainWindow = nullptr;
+    EditorRequests::Bus::BroadcastResult(mainWindow, &EditorRequests::GetMainWindow);
+
+    // Only resolve an existing if the drop was directly on it. Otherwise we'll create a new entity.
+    AZ::EntityId targetEntityId = (row < 0) ? GetEntityFromIndex(parent) : AZ::EntityId();
+    bool createdNewEntity = false;
+
+    // Shift modifier enables creating a child entity from the asset.
+    AZ::EntityId assignParentId;
+    if (QApplication::keyboardModifiers() & Qt::ShiftModifier)
+    {
+        assignParentId = targetEntityId;
+        targetEntityId.SetInvalid();
+    }
+
+    if (!targetEntityId.IsValid())
+    {
+        EditorRequests::Bus::BroadcastResult(targetEntityId, &EditorRequests::CreateNewEntity, assignParentId);
+        if (!targetEntityId.IsValid())
+        {
+            QMessageBox::warning(mainWindow, tr("Asset Drop Failed"), tr("A new entity could not be created for the specified asset."));
             return false;
         }
 
-        // Patch up the assets for each component added
-        auto& componentsAdded = addComponentsOutcome.GetValue()[dropTargetId].m_componentsAdded;
-        size_t componentAddedIndex = 0;
-        for (auto asset : componentAssetContainer.m_assets)
+        createdNewEntity = true;
+    }
+
+    AZ::Entity* targetEntity = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(targetEntity, &AZ::ComponentApplicationBus::Events::FindEntity, targetEntityId);
+    if (!targetEntity)
+    {
+        QMessageBox::warning(mainWindow, tr("Asset Drop Failed"), tr("Failed to locate target entity."));
+        return false;
+    }
+
+    // Batch-add all the components.
+    AZ::ComponentTypeList componentsToAdd;
+    componentsToAdd.reserve(componentAssetPairs.size());
+    for (const ComponentAssetPair& pair : componentAssetPairs)
+    {
+        const AZ::TypeId& componentType = pair.first;
+        const AZ::Data::AssetId& assetId = pair.second;
+
+        componentsToAdd.push_back(componentType);
+    }
+
+    AZStd::vector<AZ::EntityId> entityIds = { targetEntityId };
+    EntityCompositionRequests::AddComponentsOutcome addComponentsOutcome = AZ::Failure(AZStd::string());
+    EntityCompositionRequestBus::BroadcastResult(addComponentsOutcome, &EntityCompositionRequests::AddComponentsToEntities, entityIds, componentsToAdd);
+
+    if (!addComponentsOutcome.IsSuccess())
+    {
+        QMessageBox::warning(mainWindow, tr("Asset Drop Failed"), 
+            QStringLiteral("Components could not be added to the target entity \"%1\".\n\nDetails:\n%2.")
+            .arg(targetEntity->GetName().c_str())
+            .arg(addComponentsOutcome.GetError().c_str()));
+
+        if (createdNewEntity)
         {
-            auto componentAdded = componentsAdded[componentAddedIndex];
-            auto componentType = asset.m_classId;
-            auto assetId = asset.m_assetId;
+            EditorEntityContextRequestBus::Broadcast(&EditorEntityContextRequests::DestroyEditorEntity, targetEntityId);
+        }
 
-            AZ_Assert(componentType == AzToolsFramework::GetComponentTypeId(componentAdded), "Type of component added does not match the type required by asset");
+        return false;
+    }
 
-            // Add Component Metrics Event (Drag+Drop from File Browser to Entity Outliner)
-            EBUS_EVENT(AzToolsFramework::EditorMetricsEventsBus, ComponentAdded, dropTargetId, componentType);
+    // Assign asset associated with each created component.
+    const AZ::Entity::ComponentArrayType& componentsAdded = addComponentsOutcome.GetValue()[targetEntityId].m_componentsAdded;
+    for (const ComponentAssetPair& pair : componentAssetPairs)
+    {
+        const AZ::TypeId& componentType = pair.first;
+        const AZ::Data::AssetId& assetId = pair.second;
 
-            auto editorComponent = AzToolsFramework::GetEditorComponent(componentAdded);
+        // Name the entity after the first asset.
+        if (createdNewEntity && &pair == &componentAssetPairs.front())
+        {
+            AZStd::string assetPath;
+            EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, assetId);
+            if (!assetPath.empty())
+            {
+                AZStd::string entityName;
+                AzFramework::StringFunc::Path::GetFileName(assetPath.c_str(), entityName);
+                targetEntity->SetName(entityName);
+            }
+        }
+
+        AZ::Component* componentAdded = targetEntity->FindComponent(componentType);
+        if (componentAdded)
+        {
+            // Add Component Metrics Event (Drag+Drop from Asset Browser to Entity Outliner)
+            EditorMetricsEventsBus::Broadcast(&EditorMetricsEventsBus::Events::ComponentAdded, targetEntityId, componentType);
+
+            Components::EditorComponentBase* editorComponent = GetEditorComponent(componentAdded);
             if (editorComponent)
             {
                 editorComponent->SetPrimaryAsset(assetId);
             }
-
-            ++componentAddedIndex;
         }
-
-        if (IsSelected(dropTargetId))
-        {
-            EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_EntireTree_NewContent);
-        }
-        return true;
     }
 
-    return false;
+    if (createdNewEntity)
+    {
+        const AzToolsFramework::EntityIdList selection = { targetEntityId };
+        ToolsApplicationRequests::Bus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, selection);
+    }
+
+    if (IsSelected(targetEntityId))
+    {
+        ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::InvalidatePropertyDisplay, Refresh_EntireTree_NewContent);
+    }
+
+    return true;
 }
 
 bool OutlinerListModel::dropMimeDataEntities(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
@@ -691,6 +950,17 @@ bool OutlinerListModel::CanReparentEntities(const AZ::EntityId& newParentId, con
         if (!isEntityEditable)
         {
             return false;
+        }
+
+        // when in a forced sort mode, reject reordering under the same parent
+        if (m_sortMode != EntityOutliner::DisplaySortMode::Manually)
+        {
+            AZ::EntityId currentParentId;
+            AZ::TransformBus::EventResult(currentParentId, entityId, &AZ::TransformBus::Events::GetParentId);
+            if (currentParentId == newParentId)
+            {
+                return false;
+            }
         }
     }
 
@@ -746,13 +1016,20 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     // The new parent is dirty due to sort change(s)
     undo.MarkEntityDirty(AzToolsFramework::GetEntityIdForSortInfo(newParentId));
 
+    AzToolsFramework::EntityIdList processedEntityIds;
     {
         AzToolsFramework::ScopedUndoBatch undo("Reparent Entities");
 
-        for (const AZ::EntityId& entityId : selectedEntityIds)
+        for (AZ::EntityId entityId : selectedEntityIds)
         {
             AZ::EntityId oldParentId;
             EBUS_EVENT_ID_RESULT(oldParentId, entityId, AZ::TransformBus, GetParentId);
+
+            if (oldParentId != newParentId
+                && AzToolsFramework::SliceUtilities::IsReparentNonTrivial(entityId, newParentId))
+            {
+                entityId = AzToolsFramework::SliceUtilities::ReparentNonTrivialEntityHierarchy(entityId, newParentId);
+            }
 
             //  Guarding this to prevent the entity from being marked dirty when the parent doesn't change.
             EBUS_EVENT_ID(entityId, AZ::TransformBus, SetParent, newParentId);
@@ -765,6 +1042,8 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
 
             // The reparented entity is dirty due to parent change
             undo.MarkEntityDirty(entityId);
+
+            processedEntityIds.push_back(entityId);
         }
     }
 
@@ -774,7 +1053,7 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     //replace order info matching selection with bad values rather than remove to preserve layout
     for (auto& id : entityOrderArray)
     {
-        if (AZStd::find(selectedEntityIds.begin(), selectedEntityIds.end(), id) != selectedEntityIds.end())
+        if (AZStd::find(processedEntityIds.begin(), processedEntityIds.end(), id) != processedEntityIds.end())
         {
             id = AZ::EntityId();
         }
@@ -784,13 +1063,13 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     {
         //if adding to a valid parent entity, insert at the found entity location or at the head of the container
         auto insertItr = beforeEntityItr != entityOrderArray.end() ? beforeEntityItr : entityOrderArray.begin();
-        entityOrderArray.insert(insertItr, selectedEntityIds.begin(), selectedEntityIds.end());
+        entityOrderArray.insert(insertItr, processedEntityIds.begin(), processedEntityIds.end());
     }
     else
     {
         //if adding to an invalid parent entity (the root), insert at the found entity location or at the tail of the container
         auto insertItr = beforeEntityItr != entityOrderArray.end() ? beforeEntityItr : entityOrderArray.end();
-        entityOrderArray.insert(insertItr, selectedEntityIds.begin(), selectedEntityIds.end());
+        entityOrderArray.insert(insertItr, processedEntityIds.begin(), processedEntityIds.end());
     }
 
     //remove placeholder entity ids
@@ -799,6 +1078,19 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     //update order array
     AzToolsFramework::SetEntityChildOrder(newParentId, entityOrderArray);
 
+    // update the selection
+    {
+        // first select the full hierarchy to expand the clones
+        AzToolsFramework::EntityIdSet entityHierarchiesSet;
+        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(entityHierarchiesSet, &AzToolsFramework::ToolsApplicationRequestBus::Events::GatherEntitiesAndAllDescendents, processedEntityIds);
+
+        AzToolsFramework::EntityIdList entityHierarchiesList(entityHierarchiesSet.begin(), entityHierarchiesSet.end());
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, entityHierarchiesList);
+
+        // then reselect the entities that were originally selected
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, processedEntityIds);
+    }
+
     EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, AzToolsFramework::Refresh_Values);
     return true;
 }
@@ -806,8 +1098,8 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
 QMimeData* OutlinerListModel::mimeData(const QModelIndexList& indexes) const
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
-    AZ::Uuid uuid1 = AZ::AzTypeInfo<AZ::Entity>::Uuid();
-    AZ::Uuid uuid2 = AZ::AzTypeInfo<AzToolsFramework::EditorEntityIdContainer>::Uuid();
+    AZ::TypeId uuid1 = AZ::AzTypeInfo<AZ::Entity>::Uuid();
+    AZ::TypeId uuid2 = AZ::AzTypeInfo<AzToolsFramework::EditorEntityIdContainer>::Uuid();
 
     AzToolsFramework::EditorEntityIdContainer entityIdList;
     for (const QModelIndex& index : indexes)
@@ -852,6 +1144,10 @@ QStringList OutlinerListModel::mimeTypes() const
 
 void OutlinerListModel::QueueEntityUpdate(AZ::EntityId entityId)
 {
+    if (m_layoutResetQueued)
+    {
+        return;
+    }
     if (!m_entityChangeQueued)
     {
         m_entityChangeQueued = true;
@@ -885,6 +1181,10 @@ void OutlinerListModel::ProcessEntityUpdates()
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     m_entityChangeQueued = false;
+    if (m_layoutResetQueued)
+    {
+        return;
+    }
 
     {
         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:ExpandQueue");
@@ -943,11 +1243,16 @@ void OutlinerListModel::OnEntityInfoResetBegin()
 
 void OutlinerListModel::OnEntityInfoResetEnd()
 {
+    m_layoutResetQueued = true;
+    QTimer::singleShot(0, this, &OutlinerListModel::ProcessEntityInfoResetEnd);
+}
+
+void OutlinerListModel::ProcessEntityInfoResetEnd()
+{
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+    m_layoutResetQueued = false;
     endResetModel();
     m_entityChangeQueued = false;
-    m_entitySelectQueue.clear();
-    m_entityExpandQueue.clear();
     m_entityChangeQueue.clear();
     //m_entityExpansionState.clear();
     //m_entityFilteredState.clear();
@@ -972,7 +1277,7 @@ void OutlinerListModel::OnEntityInfoUpdatedAddChildEnd(AZ::EntityId parentId, AZ
     endInsertRows();
 
     //expand ancestors if a new descendant is already selected
-    if (IsSelected(childId) || HasSelectedDescendant(childId))
+    if ((IsSelected(childId) || HasSelectedDescendant(childId)) && !m_dropOperationInProgress)
     {
         ExpandAncestors(childId);
     }
@@ -1029,7 +1334,7 @@ void OutlinerListModel::OnEntityInfoUpdatedSelection(AZ::EntityId entityId, bool
     QueueAncestorUpdate(entityId);
 
     //expand ancestors upon new selection
-    if (selected)
+    if (selected && m_autoExpandEnabled)
     {
         ExpandAncestors(entityId);
     }
@@ -1370,6 +1675,10 @@ bool OutlinerListModel::FilterEntity(const AZ::EntityId& entityId)
         {
             isFilterMatch = false;
         }
+        else
+        {
+            QueueEntityUpdate(entityId);
+        }
     }
 
     // If we matched the filter string and have any component filters, make sure we match those too
@@ -1377,7 +1686,7 @@ bool OutlinerListModel::FilterEntity(const AZ::EntityId& entityId)
     {
         bool hasMatchingComponent = false;
 
-        for (AZ::Uuid& componentType : m_componentFilters)
+        for (AZ::TypeId& componentType : m_componentFilters)
         {
             if (AzToolsFramework::EntityHasComponentOfType(entityId, componentType))
             {
@@ -1412,6 +1721,16 @@ bool OutlinerListModel::IsFiltered(const AZ::EntityId& entityId) const
 {
     auto hiddenItr = m_entityFilteredState.find(entityId);
     return hiddenItr != m_entityFilteredState.end() && hiddenItr->second;
+}
+
+void OutlinerListModel::EnableAutoExpand(bool enable)
+{
+    m_autoExpandEnabled = enable;
+}
+
+void OutlinerListModel::SetDropOperationInProgress(bool inProgress)
+{
+    m_dropOperationInProgress = inProgress;
 }
 
 bool OutlinerListModel::HasSelectedDescendant(const AZ::EntityId& entityId) const
@@ -1465,7 +1784,7 @@ bool OutlinerListModel::AreAllDescendantsSameVisibleState(const AZ::EntityId& en
     {
         bool isVisibleChild = false;
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isVisibleChild, childId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
-        if (isVisible != isVisibleChild || !AreAllDescendantsSameLockState(childId))
+        if (isVisible != isVisibleChild || !AreAllDescendantsSameVisibleState(childId))
         {
             return false;
         }
@@ -1511,6 +1830,15 @@ OutlinerItemDelegate::OutlinerItemDelegate(QWidget* parent)
 
 void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
+    static const QColor sliceRootBackgroundColor(GetIEditor()->GetColorByName("SliceRootBackgroundColor"));
+    static const QColor sliceRootBorderColor(GetIEditor()->GetColorByName("SliceRootBorderColor"));
+
+    static const QColor selectedSliceRootBackgroundColor(GetIEditor()->GetColorByName("SelectedSliceRootBackgroundColor"));
+    static const QColor selectedSliceRootBorderColor(GetIEditor()->GetColorByName("SelectedSliceRootBorderColor"));
+
+    static const QColor sliceEntityColor(GetIEditor()->GetColorByName("SliceEntityColor"));
+    static const QColor sliceOverrideColor(GetIEditor()->GetColorByName("SliceOverrideColor"));
+
     // We're only using these check boxes as renderers so their actual state doesn't matter.
     // We can set it right before we draw using information from the model data.
     if (index.column() == OutlinerListModel::ColumnVisibilityToggle)
@@ -1557,112 +1885,126 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         return;
     }
 
-    QStyleOptionViewItem customOptions{ option };
+    QStyleOptionViewItem customOptions{ option }; 
     if (customOptions.state & QStyle::State_HasFocus)
     {
         //  Do not draw the focus rectangle in this column.
         customOptions.state ^= QStyle::State_HasFocus;
     }
 
+    auto backgroundBoxRect = option.rect;
+
+    backgroundBoxRect.setX(backgroundBoxRect.x() + 0.5);
+    backgroundBoxRect.setY(backgroundBoxRect.y() + 3.5);
+    backgroundBoxRect.setWidth(backgroundBoxRect.width() - 1.0);
+    backgroundBoxRect.setHeight(backgroundBoxRect.height() - 4.0);
+
+    const bool isSelected = (option.state & QStyle::State_Selected);
+    const bool isSliceRoot = index.data(OutlinerListModel::SliceBackgroundRole).value<bool>();
+
+    bool entityHasOverrides = false, childrenHaveOverrides = false, isSliceEntity = false;
+    {
+        AZ::EntityId entityId(index.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(entityHasOverrides, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceEntityOverrides);
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(childrenHaveOverrides, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceChildrenOverrides);
+    }
+    const bool sliceHasOverrides = (entityHasOverrides || childrenHaveOverrides);
+
     // Draw this Slice Handle Accent if the item is not selected before the
     // entry is drawn.
-    if (!(option.state & QStyle::State_Selected))
+    if (!isSelected)
     {
-        if (index.data(OutlinerListModel::SliceBackgroundRole).value<bool>())
+        if (isSliceRoot)
         {
-            auto boxRect = option.rect;
-
-            boxRect.setX(boxRect.x() + 0.5);
-            boxRect.setY(boxRect.y() + 3.5);
-            boxRect.setWidth(boxRect.width() - 1.0);
-            boxRect.setHeight(boxRect.height() - 4.0);
-
-            // These colors need to be moved into a style sheet in the future.
-            // The new editor design will likely include style sheet colors for
-            // slices and relevant selection of such.
-            QColor background(30, 37, 47);
-            QColor line(30, 50, 80);
-
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
-            path.addRoundedRect(boxRect, 6, 6);
-            QPen pen(line, 1);
+            path.addRoundedRect(backgroundBoxRect, 6, 6);
+            QPen pen(sliceRootBorderColor, 1);
             painter->setPen(pen);
-            painter->fillPath(path, background);
+            painter->fillPath(path, sliceRootBackgroundColor);
             painter->drawPath(path);
             painter->restore();
         }
 
         // Draw a dashed line around any visible, collapsed entry in the outliner that has
         // children underneath it currently selected.
-        if (!index.data(OutlinerListModel::ExpandedRole).template value<bool>())
+        if (!index.data(OutlinerListModel::ExpandedRole).template value<bool>()
+            && index.data(OutlinerListModel::ChildSelectedRole).template value<bool>())
         {
-            if (index.data(OutlinerListModel::ChildSelectedRole).template value<bool>())
+            QPainterPath path;
+            path.addRoundedRect(backgroundBoxRect, 6, 6);
+
+            // Get the foreground color of the current object to draw our sub-object-selected box
+            auto targetColor = index.data(Qt::ForegroundRole).value<QBrush>().color();
+            if (isSliceEntity)
             {
-                auto boxRect = option.rect;
-
-                boxRect.setX(boxRect.x() + 0.5);
-                boxRect.setY(boxRect.y() + 3.5);
-                boxRect.setWidth(boxRect.width() - 1.0);
-                boxRect.setHeight(boxRect.height() - 4.0);
-
-                QPainterPath path;
-                path.addRoundedRect(boxRect, 6, 6);
-
-                // Get the foreground color of the current object to draw our sub-object-selected box
-                auto targetColorBrush = index.data(Qt::ForegroundRole).value<QBrush>();
-                QPen pen(targetColorBrush.color(), 2);
-
-                // Alter the dash pattern available for better visual appeal
-                QVector<qreal> dashes;
-                dashes << 3 << 5;
-                pen.setStyle(Qt::PenStyle::DashLine);
-                pen.setDashPattern(dashes);
-
-                painter->save();
-                painter->setRenderHint(QPainter::Antialiasing);
-                painter->setPen(pen);
-                painter->drawPath(path);
-                painter->restore();
+                targetColor = (sliceHasOverrides ? sliceOverrideColor : sliceEntityColor);
             }
-        }
-    }
+            QPen pen(targetColor, 2);
 
-    QStyledItemDelegate::paint(painter, customOptions, index);
-
-    // Draw this Slice Handle Accent if the item is selected after the entry is drawn.
-    if (option.state & QStyle::State_Selected)
-    {
-        if (index.data(OutlinerListModel::SliceBackgroundRole).value<bool>())
-        {
-            auto boxRect = option.rect;
-
-            boxRect.setX(boxRect.x() + 0.5);
-            boxRect.setY(boxRect.y() + 3.5);
-            boxRect.setWidth(boxRect.width() - 1.0);
-            boxRect.setHeight(boxRect.height() - 4.0);
-
-            // These colors need to be moved into a style sheet in the future.
-            // The new editor design will likely include style sheet colors for
-            // slices and relevant selection of such.
-            // ----------------------------------------------------------------------
-            // The accent is drawn a very transparent blue color. to allow the entry text and icon to show through while
-            // providing a subtle accent that is distinctly different from the standard slice handle accent.
-            QColor background(0, 0, 255, 50);
-            // The accent outline is a dark blue to keep the contrast down.
-            QColor line(0, 0, 120);
+            // Alter the dash pattern available for better visual appeal
+            QVector<qreal> dashes;
+            dashes << 3 << 5;
+            pen.setStyle(Qt::PenStyle::DashLine);
+            pen.setDashPattern(dashes);
 
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing);
-            QPainterPath path;
-            path.addRoundedRect(boxRect, 6, 6);
-            QPen pen(line, 1);
             painter->setPen(pen);
-            painter->fillPath(path, background);
             painter->drawPath(path);
             painter->restore();
         }
+    }
+
+    if (index.column() == OutlinerListModel::ColumnName)
+    {
+        OutlinerListModel::s_paintingName = true;
+        // standard painter can't handle rich text so we have to handle it
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing);
+
+        QStyleOptionViewItemV4 optionV4{ customOptions };
+        initStyleOption(&optionV4, index);
+
+        // get the rich text and save for later
+        QString richText = optionV4.text;
+
+        // delete the text from the item so we can use the standard painter to draw the icon
+        optionV4.text.clear();
+        optionV4.widget->style()->drawControl(QStyle::CE_ItemViewItem, &optionV4, painter);
+
+        // Now we setup a Text Document so it can draw the rich text
+        QTextDocument textDoc;
+        textDoc.setDefaultFont(optionV4.font);
+        textDoc.setDefaultStyleSheet("body {color: " + optionV4.palette.color(QPalette::Text).name() + "}");
+        textDoc.setHtml("<body>" + richText + "</body>");
+        QRect textRect = optionV4.widget->style()->proxy()->subElementRect(QStyle::SE_ItemViewItemText, &optionV4);
+        painter->translate(textRect.topLeft());
+        textDoc.setTextWidth(textRect.width());
+        textDoc.drawContents(painter, QRectF(0, 0, textRect.width(), textRect.height()));
+
+        painter->restore();
+        OutlinerListModel::s_paintingName = false;
+    }
+    else
+    {
+        QStyledItemDelegate::paint(painter, customOptions, index);
+    }
+    // if so work out where the matched text is and a pply a highlight overlay
+    // Draw this Slice Handle Accent if the item is selected after the entry is drawn.
+    if (isSelected && isSliceRoot)
+    {
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing);
+        QPainterPath path;
+        path.addRoundedRect(backgroundBoxRect, 6, 6);
+        QPen pen(selectedSliceRootBorderColor, 1);
+        painter->setPen(pen);
+        painter->fillPath(path, selectedSliceRootBackgroundColor);
+        painter->drawPath(path);
+        painter->restore();
     }
 }
 

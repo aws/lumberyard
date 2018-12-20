@@ -75,9 +75,17 @@ namespace AzQtComponents
     signals:
         void TypeToggled(int id, bool enabled);
 
+    private slots:
+        void FilterTextChanged(const QString& newFilter);
+
     private:
+        void RepopulateDataModel();
+
         QTreeView* m_tree;
         QStandardItemModel* m_model;
+        const SearchTypeFilterList* m_unfilteredData;
+        QVector<int> m_filteredItemIndices;
+        QString m_filterString;
         bool m_settingUp = false;
     };
 

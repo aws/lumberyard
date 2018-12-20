@@ -37,6 +37,11 @@ class QAction;
 class MainWindow;
 class QSharedMemory;
 
+namespace SandboxEditor
+{
+    class StartupTraceHandler;
+}
+
 class SANDBOX_API RecentFileList
 {
 public:
@@ -163,11 +168,10 @@ public:
 
     bool OpenSetupAssistant() const;
     QString GetRootEnginePath() const;
-
     // Overrides
     // ClassWizard generated virtual function overrides
 public:
-    virtual BOOL InitInstance();
+    virtual BOOL InitInstance(SandboxEditor::StartupTraceHandler* handler);
     virtual int ExitInstance(int exitCode = 0);
     virtual BOOL OnIdle(LONG lCount);
     virtual CCryEditDoc* OpenDocumentFile(LPCTSTR lpszFileName);
@@ -179,6 +183,8 @@ public:
     // Implementation
     void OnCreateLevel();
     void OnOpenLevel();
+    void OnCreateSlice();
+    void OnOpenSlice();
     void OnAppAbout();
     void OnOnlineDocumentation();
     void OnDocumentationTutorials();
@@ -512,6 +518,7 @@ private:
 #endif
 
     CCryDocManager* m_pDocManager = nullptr;
+    SandboxEditor::StartupTraceHandler* m_traceHandler = nullptr;
 
 private:
     void OnEditHide();

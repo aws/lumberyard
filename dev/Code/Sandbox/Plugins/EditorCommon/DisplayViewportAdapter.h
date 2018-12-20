@@ -35,6 +35,7 @@ public:
     float GetScreenScaleFactor(const Vec3& position) const override;
     float GetScreenScaleFactor(const CCamera& camera, const Vec3& object_position) override;
     bool HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& hitpoint, int pixelRadius, float* pToCameraDistance = 0) const override;
+    float GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const override;
     CBaseObjectsCache* GetVisibleObjectsCache() override;
     bool IsBoundsVisible(const AABB& box) const override;
     void GetPerpendicularAxis(EAxis* axis, bool* is2D) const override;

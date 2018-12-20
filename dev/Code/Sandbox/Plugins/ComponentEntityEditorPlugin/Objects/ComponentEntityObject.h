@@ -96,6 +96,8 @@ public:
     // For now, dont allow Component entities to be grouped
     bool IsGroupable() override { return false; }
 
+    IPhysicalEntity* GetCollisionEntity() const override;
+
 
     //////////////////////////////////////////////////////////////////////////
 

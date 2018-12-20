@@ -24,6 +24,7 @@
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
 #include <AzCore/std/sort.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Entity/EntityContextBus.h>
@@ -48,7 +49,6 @@
 
 #include <LyShine/Bus/UiElementBus.h>
 
-#include "UiSlicePushWidget.h"
 #include <AzFramework/API/ApplicationAPI.h>
 
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
@@ -140,19 +140,7 @@ AZ::SliceComponent* UiSliceManager::GetRootSlice() const
 void UiSliceManager::MakeSliceFromEntities(AzToolsFramework::EntityIdList& entities, bool inheritSlices)
 {
     // expand the list of entities to include all child entities
-    for (int i = 0; i < entities.size(); ++i)
-    {
-        LyShine::EntityArray children;
-        EBUS_EVENT_ID_RESULT(children, entities[i], UiElementBus, GetChildElements);
-        for (auto child : children)
-        {
-            AZ::EntityId childId = child->GetId();
-            if (AZStd::find(entities.begin(), entities.end(), childId) == entities.end())
-            {
-                entities.push_back(childId);
-            }
-        }
-    }
+    AzToolsFramework::EntityIdSet entitiesAndDescendants = GatherEntitiesAndAllDescendents(entities);
 
     const AZStd::string slicesAssetsPath = "@devassets@/UI/Slices";
 
@@ -164,50 +152,22 @@ void UiSliceManager::MakeSliceFromEntities(AzToolsFramework::EntityIdList& entit
     char path[AZ_MAX_PATH_LEN] = { 0 };
     gEnv->pFileIO->ResolvePath(slicesAssetsPath.c_str(), path, AZ_MAX_PATH_LEN);
 
-    MakeNewSlice(entities, path, inheritSlices);
+    MakeNewSlice(entitiesAndDescendants, path, inheritSlices);
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool UiSliceManager::MakeNewSlice(
-    const AzToolsFramework::EntityIdList& entities, 
+    const AzToolsFramework::EntityIdSet& entities, 
     const char* targetDirectory, 
     bool inheritSlices, 
     AZ::SerializeContext* serializeContext)
 {
-    // Get the root slice of the canvas
-    AZ::SliceComponent* rootSlice = GetRootSlice();
-    if (!rootSlice)
-    {
-        AZ_Error("Slices", false, "Failed to retrieve root slice.");
-        return false;
-    }
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
-    AzToolsFramework::EntityIdList orderedEntityList;
-    AZ::Entity* insertBefore = nullptr;
-    AZ::Entity* commonParent = ValidateSingleRoot(entities, orderedEntityList, insertBefore);
-    if (!commonParent)
-    {
-        QMessageBox::warning(QApplication::activeWindow(),
-            QStringLiteral("Cannot Create UI Slice"),
-            QString("The slice cannot be created because there is no single element in the selection that is parent "
-                    "to all other elements in the selection."
-                    "Please make sure your slice contains only one root entity.\r\n\r\n"
-                    "You may want to create a new entity, and assign it as the parent of your existing root entities."),
-            QMessageBox::Ok);
-        return false;
-    }
-
-    // Save a reference to our currently active window since it will be
-    // temporarily null after the QFileDialog closes, which we need to
-    // be able to parent our message dialogs properly
-    QWidget* activeWindow = QApplication::activeWindow();
-    const QString saveAs = QFileDialog::getSaveFileName(nullptr, QString("Save As..."), targetDirectory, QString("Slices (*.slice)"));
-    if (saveAs.isEmpty())
+    if (entities.empty())
     {
         return false;
     }
-
-    const AZStd::string targetPath = saveAs.toUtf8().constData();
 
     if (!serializeContext)
     {
@@ -215,57 +175,69 @@ bool UiSliceManager::MakeNewSlice(
         AZ_Assert(serializeContext, "Failed to retrieve application serialize context.");
     }
 
-    // Expand the list to include children of the selected entities
-    AzToolsFramework::EntityIdSet selectedHierarchyEntities = GatherEntitiesAndAllDescendents(entities);
+    // Save a reference to our currently active window since it will be
+    // temporarily null after QFileDialogs close, which we need in order to
+    // be able to parent our message dialogs properly
+    QWidget* activeWindow = QApplication::activeWindow();
 
-    // Check for references that don't fall within the selected entity set.
-    // Give the user the option to pull in all referenced entities, or to
-    // stick with the current selection.
-    AZStd::unordered_set<AZ::EntityId> allReferencedEntities = selectedHierarchyEntities;
-    AzToolsFramework::SliceUtilities::GatherAllReferencedEntities(allReferencedEntities, *serializeContext);
-            
-    // NOTE: that AZStd::unordered_set equality operator only returns true if they are in the same order
-    // (which appears to deviate from the standard). So we have to do the comparison ourselves.
-    bool referencedEntitiesNotInSelection = (allReferencedEntities.size() > selectedHierarchyEntities.size());
-    if (!referencedEntitiesNotInSelection)
+    //
+    // Check for entity references outside of selected entities - we don't allow this in UI slices
+    //
+    AzToolsFramework::EntityIdSet entitiesToInclude = entities;
     {
-        for (const AZ::EntityId& id : allReferencedEntities)
+        AzToolsFramework::EntityIdSet allReferencedEntities;
+        bool hasExternalReferences = false;
+        AzToolsFramework::SliceUtilities::GatherAllReferencedEntitiesAndCompare(entitiesToInclude, allReferencedEntities, hasExternalReferences, *serializeContext);
+
+        if (hasExternalReferences)
         {
-            if (selectedHierarchyEntities.find(id) == selectedHierarchyEntities.end())
-            {
-                referencedEntitiesNotInSelection = true;
-                break;
-            }
+            const AZStd::string message = AZStd::string::format(
+                    "Some of the selected entities reference entities not contained in the selection and its children.\n"
+                    "UI slices cannot contain references to outside of the slice.\n");
+
+            QMessageBox::warning(activeWindow, QStringLiteral("Create Slice"),
+                    QString(message.c_str()), QMessageBox::Ok);
+
+            return false;
         }
     }
 
-    if (referencedEntitiesNotInSelection)
+    //
+    // Verify single root and generate an ordered entity list
+    //
+    AzToolsFramework::EntityIdList orderedEntityList;
+    AZ::Entity* insertBefore = nullptr;
+    AZ::Entity* commonParent = nullptr;
     {
-        const AZStd::string message = AZStd::string::format(
-                "Some of the selected entities reference entities not contained in the selection and its children.\r\n"
-                "UI slices cannot contain references to outside of the slice.\r\n");
+        commonParent = ValidateSingleRootAndGenerateOrderedEntityList(entitiesToInclude, orderedEntityList, insertBefore);
+        if (!commonParent)
+        {
+            QMessageBox::warning(activeWindow,
+                QStringLiteral("Cannot Create UI Slice"),
+                QString("The slice cannot be created because there is no single element in the selection that is parent "
+                        "to all other elements in the selection."
+                        "Please make sure your slice contains only one root entity.\n\n"
+                        "You may want to create a new entity, and assign it as the parent of your existing root entities."),
+                QMessageBox::Ok);
+            return false;
+        }
 
-        QMessageBox::warning(activeWindow, QStringLiteral("Create Slice"),
-                QString(message.c_str()), QMessageBox::Ok);
-
-        return false;
+        AZ_Assert(!orderedEntityList.empty(), "Empty orderedEntityList during UI slice creation!");
     }
 
-    // If the slice already exists, we instead want to *push* the entities to the existing
-    // asset, as opposed to creating a new one.
-    AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-    if (fileIO && fileIO->Exists(targetPath.c_str()))
+    //
+    // Determine slice asset file name/path - default to name of root entity, ask user
+    //
+    AZStd::string sliceName;
+    AZStd::string sliceFilePath;
     {
-        const AZStd::string message = AZStd::string::format(
-                "You are attempting to overwrite an existing slice: \"%s\".\r\n\r\n"
-                "This will damage instances or cascades of this slice. \r\n\r\n"
-                "Instead, either push entities/fields to the slice, or save to a different location.",
-                targetPath.c_str());
-
-        QMessageBox::warning(activeWindow, QStringLiteral("Unable to Overwrite Slice"),
-            QString(message.c_str()), QMessageBox::Ok, QMessageBox::Ok);
-
-        return false;
+        AZStd::string suggestedName = "UISlice";
+        UiElementBus::EventResult(suggestedName, orderedEntityList[0], &UiElementBus::Events::GetName);
+        if (!AzToolsFramework::SliceUtilities::QueryUserForSliceFilename(suggestedName, targetDirectory, AZ_CRC("UISliceUserSettings", 0x4f30f608), activeWindow, sliceName, sliceFilePath))
+        {
+            // User cancelled slice creation or error prevented continuation (related warning dialog boxes, if necessary, already done at this point)
+            return false;
+        }
     }
 
     //
@@ -278,14 +250,14 @@ bool UiSliceManager::MakeNewSlice(
 
         // PostSaveCallback for slice creation: kick off async replacement of source entities with an instance of the new slice.
         SliceTransaction::PostSaveCallback postSaveCallback = 
-            [this, &allReferencedEntities, &commonParent, &insertBefore]
+            [this, &entitiesToInclude, &commonParent, &insertBefore]
             (SliceTransaction::TransactionPtr transaction, const char* fullPath, const SliceTransaction::SliceAssetPtr& /*asset*/) -> void
             {
                 AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "UiSliceManager::MakeNewSlice:PostSaveCallback");
                 // Once the asset is processed and ready, we can replace the source entities with an instance of the new slice.
                 UiEditorEntityContextRequestBus::Event(m_entityContextId, 
                     &UiEditorEntityContextRequestBus::Events::QueueSliceReplacement,
-                    fullPath, transaction->GetLiveToAssetEntityIdMap(), allReferencedEntities, commonParent, insertBefore);
+                    fullPath, transaction->GetLiveToAssetEntityIdMap(), entitiesToInclude, commonParent, insertBefore);
             };
 
         SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginNewSlice(nullptr, serializeContext);
@@ -306,7 +278,7 @@ bool UiSliceManager::MakeNewSlice(
         }
 
         SliceTransaction::Result result = transaction->Commit(
-            targetPath.c_str(), 
+            sliceFilePath.c_str(), 
             nullptr, 
             postSaveCallback);
 
@@ -368,37 +340,244 @@ AzToolsFramework::EntityIdSet UiSliceManager::GatherEntitiesAndAllDescendents(co
 }
 
 //////////////////////////////////////////////////////////////////////////
+// PreSaveCallback for SliceTransactions in Slice Pushes
+// Fails pushes if: 
+// - referenced entities are not included in the slice
+// - added entities in push are not referenced as children of entities in slice
+// - any entities have become orphaned with selected push options
+// - there's more than one root entity
+AzToolsFramework::SliceUtilities::SliceTransaction::Result SlicePreSaveCallbackForUiEntities(
+    AzToolsFramework::SliceUtilities::SliceTransaction::TransactionPtr transaction, 
+    const char* fullPath, 
+    AzToolsFramework::SliceUtilities::SliceTransaction::SliceAssetPtr& asset)
+{
+    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SlicePreSaveCallbackForUiEntities");
+
+    // we want to ensure that "bad" data never gets pushed to a slice
+    // This mostly relates to the m_childEntityIdOrder array since this is something that
+    // the UI Editor manages closely and requires to be consistent.
+
+    AZ::SerializeContext* serializeContext = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+    AZ_Assert(serializeContext, "Failed to retrieve application serialize context.");
+
+    auto& assetDb = AZ::Data::AssetManager::Instance();
+    AZ::Data::Asset<AZ::SliceAsset> currentAsset = assetDb.GetAsset<AZ::SliceAsset>(transaction->GetTargetAsset().GetId(), false);
+
+    AZ::SliceComponent* clonedSliceComponent = asset.Get()->GetComponent();
+    AZ::SliceComponent* currentSliceComponent = currentAsset.Get()->GetComponent();
+
+    AZ::SliceComponent::EntityList clonedEntities;
+    clonedSliceComponent->GetEntities(clonedEntities);
+
+    AZ::SliceComponent::EntityList currentEntities;
+    currentSliceComponent->GetEntities(currentEntities);
+
+    // store a set of pairs which are the EntityId being referenced and the Entity that is referencing it
+    using ReferencedEntityPair = AZStd::pair<AZ::EntityId, AZ::Entity*>;
+    AZStd::unordered_set<ReferencedEntityPair> referencedEntities;
+
+    AZStd::unordered_set<AZ::EntityId> referencedChildEntities;
+    AZStd::unordered_set<AZ::EntityId> clonedEntityIds;
+    AZStd::unordered_set<AZ::EntityId> addedEntities;
+
+    for (auto clonedEntity : clonedEntities)
+    {
+        clonedEntityIds.insert(clonedEntity->GetId());
+
+        auto iter = AZStd::find_if(currentEntities.begin(), currentEntities.end(),
+            [clonedEntity](AZ::Entity* entity) -> bool
+            {
+                return entity->GetId() == clonedEntity->GetId();
+            });
+
+        if (iter == currentEntities.end())
+        {
+            // this clonedEntity is an addition to the slice
+            addedEntities.insert(clonedEntity->GetId());
+        }
+
+        AZ::EntityUtils::EnumerateEntityIds(clonedEntity,
+            [clonedEntity, &referencedEntities, &referencedChildEntities]
+            (const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* elementData) -> void
+            {
+                if (!isEntityId && id.IsValid())
+                {
+                    // Include this id.
+                    referencedEntities.insert({id, clonedEntity});
+
+                    // Check if this is a child reference. We can detect that because the EntityId is in the "ChildEntityId"
+                    // member of the ChildEntityIdOrderEntry struct.
+                    if (elementData && !elementData->m_editData)
+                    {
+                        if (strcmp(elementData->m_name, "ChildEntityId") == 0)
+                        {
+                            referencedChildEntities.insert(id);
+                        }
+                    }
+                }
+            }, serializeContext);
+    }
+
+    // Issue a warning if any referenced entities are not in the slice being created
+    for (auto referencedEntityPair : referencedEntities)
+    {
+        const AZ::EntityId& referencedEntityId = referencedEntityPair.first;
+
+        if (clonedEntityIds.count(referencedEntityId) == 0)
+        {
+            const AZ::SliceComponent::EntityIdToEntityIdMap& entityIdMap = transaction->GetLiveToAssetEntityIdMap();
+
+            AZ::Entity* referencingEntity = referencedEntityPair.second;
+            AZ::EntityId referencingEntityId = referencingEntity->GetId();
+            // in order to get the hierarchical name of the referencing entity we need to find the live version of the entity
+            // this requires a reverse look up in the entityIdMap
+            AZ::EntityId liveReferencingEntityId;
+            for (auto entry : entityIdMap)
+            {
+                if (entry.second == referencingEntityId)
+                {
+                    liveReferencingEntityId = entry.first;
+                    break;
+                }
+            }
+
+            AZStd::string referencingEntityName;
+            if (liveReferencingEntityId.IsValid())
+            {
+                referencingEntityName = EntityHelpers::GetHierarchicalElementName(liveReferencingEntityId);
+            }
+            else
+            {
+                // this should not happen, if it does just use the non-hierarchical name
+                referencingEntityName = referencingEntity->GetName();
+            }
+
+            // Ideally we could find a hierarchical field name like "UiButtonComponent/State Actions/Hover[2]/Color/Target" but
+            // this just finds "Target" in that example.
+            AZStd::string fieldName;
+            AZ::EntityUtils::EnumerateEntityIds(referencingEntity,
+                [&referencedEntityId, &fieldName]
+                (const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* elementData) -> void
+                {
+                    if (!isEntityId && id.IsValid() && id == referencedEntityId)
+                    {
+                        // We have found the reference to this external or deleted EntityId
+                        if (elementData)
+                        {
+                            if (elementData->m_editData)
+                            {
+                                fieldName = elementData->m_editData->m_name;
+                            }
+                            else
+                            {
+                                fieldName = elementData->m_name;
+                            }
+                        }
+                        else
+                        {
+                            fieldName = "<Unknown>";
+                        }
+                    }
+                }, serializeContext);
+
+            // see if the entity has been deleted
+            AZ::Entity* referencedEntity = nullptr;
+            EBUS_EVENT_RESULT(referencedEntity, AZ::ComponentApplicationBus, FindEntity, referencedEntityId);
+
+            if (referencedEntity)
+            {
+                AZStd::string referencedEntityName = EntityHelpers::GetHierarchicalElementName(referencedEntityId);
+                return AZ::Failure(AZStd::string::format("There are external references. "
+                    "Entity '%s' in the slice being pushed references another entity that will not be in the slice after the push. "
+                    "Referenced entity is '%s'. The name of the property field referencing it is '%s'.",
+                    referencingEntityName.c_str(), referencedEntityName.c_str(), fieldName.c_str()));
+            }
+            else
+            {
+                return AZ::Failure(AZStd::string::format("There are external references. "
+                    "Entity '%s' in the slice being pushed references another entity that will not be in the slice after the push. "
+                    "Referenced entity no longer exists, it's ID was '%s'. The name of the property field referencing it is '%s'.",
+                    referencingEntityName.c_str(), referencedEntityId.ToString().c_str(), fieldName.c_str()));
+            }
+        }
+    }
+
+    // Issue a warning if there are any added entities that are not referenced as children of entities in the slice
+    for (auto entityId : addedEntities)
+    {
+        if (referencedChildEntities.count(entityId) == 0)
+        {
+            AZStd::string name = EntityHelpers::GetHierarchicalElementName(entityId);
+            return AZ::Failure(AZStd::string::format("There are added entities that are unreferenced. "
+                "An entity is being added to the slice but it is not referenced as "
+                "the child of another entity in the slice."
+                "The added entity that is unreferenced is '%s'.", name.c_str()));
+        }
+    }
+
+    // Check for any entities in the slice that have become orphaned. This can happen is a remove if pushed
+    // but the entity removal is unchecked while the removal from the m_childEntityIdOrder array is checked
+    int parentlessEntityCount = 0;
+    for (auto entityId : clonedEntityIds)
+    {
+        if (referencedChildEntities.count(entityId) == 0)
+        {
+            // this entity is not a child of any entity
+            ++parentlessEntityCount;
+        }
+    }
+
+    // There can only be one "root" entity in a slice - i.e. one entity which is not referenced as a child of another
+    // entity in the slice
+    if (parentlessEntityCount > 1)
+    {
+        return AZ::Failure(AZStd::string::format("There is more than one root entity. "
+            "Possibly a child reference is being removed in this push but the child entity is not."));
+    }
+
+    return AZ::Success();
+}
+
+//////////////////////////////////////////////////////////////////////////
 void UiSliceManager::PushEntitiesModal(const AzToolsFramework::EntityIdList& entities, 
                         AZ::SerializeContext* serializeContext)
 {
-    AzToolsFramework::EntityIdList adjustedEntities(entities);
-
-    // First we check that the selection is valid for a push
-    if (!ValidatePushSelection(adjustedEntities, serializeContext))
+    // Use same SlicePushWidget as world entities do
+    AzToolsFramework::SlicePushWidgetConfigPtr config = AZStd::make_shared<AzToolsFramework::SlicePushWidgetConfig>();
+    config->m_defaultAddedEntitiesCheckState = true;
+    config->m_defaultRemovedEntitiesCheckState = true;
+    config->m_rootSlice = GetRootSlice();
+    AZ_Warning("UiSlicePush", config->m_rootSlice != nullptr, "Could not find root slice for Slice Push!");
+    config->m_preSaveCB = SlicePreSaveCallbackForUiEntities;
+    config->m_postSaveCB = nullptr;
+    config->m_deleteEntitiesCB = [this](const AzToolsFramework::EntityIdList& entitiesToRemove) -> void 
     {
-        return;
-    }
-
-    using UiCanvasEditor::UiSlicePushWidget;
+        EBUS_EVENT_ID(this->GetEntityContextId(), UiEditorEntityContextRequestBus, DeleteElements, entitiesToRemove);
+    };
+    config->m_isRootEntityCB = [this](const AZ::Entity* entity) -> bool 
+    {
+        return this->IsRootEntity(*entity);
+    };
 
     QDialog* dialog = new QDialog();
     QVBoxLayout* mainLayout = new QVBoxLayout();
     mainLayout->setContentsMargins(5, 5, 5, 5);
-    UiSlicePushWidget* widget = new UiSlicePushWidget(this, adjustedEntities, serializeContext);
+    AzToolsFramework::SlicePushWidget* widget = new AzToolsFramework::SlicePushWidget(entities, config, serializeContext);
     mainLayout->addWidget(widget);
-    dialog->setWindowTitle(widget->tr("Push to Slice(es)"));
+    dialog->setWindowTitle(widget->tr("Save Slice Overrides - Advanced"));
     dialog->setMinimumSize(QSize(600, 200));
     dialog->resize(QSize(1000, 600));
     dialog->setLayout(mainLayout);
 
-    QWidget::connect(widget, &UiSlicePushWidget::OnFinished, dialog,
+    QWidget::connect(widget, &AzToolsFramework::SlicePushWidget::OnFinished, dialog,
         [dialog] ()
         {
             dialog->accept();
         }
     );
 
-    QWidget::connect(widget, &UiSlicePushWidget::OnCanceled, dialog,
+    QWidget::connect(widget, &AzToolsFramework::SlicePushWidget::OnCanceled, dialog,
         [dialog] ()
         {
             dialog->reject();
@@ -445,10 +624,10 @@ void UiSliceManager::DetachSliceInstances(const AzToolsFramework::EntityIdList& 
         AZStd::vector<AZ::SliceComponent::SliceInstanceAddress> sliceInstances;
         for (const AZ::EntityId& entityId : entities)
         {
-            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+            AZ::SliceComponent::SliceInstanceAddress sliceAddress;
             EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
 
-            if (sliceAddress.first)
+            if (sliceAddress.IsValid())
             {
                 if (sliceInstances.end() == AZStd::find(sliceInstances.begin(), sliceInstances.end(), sliceAddress))
                 {
@@ -478,7 +657,7 @@ void UiSliceManager::DetachSliceInstances(const AzToolsFramework::EntityIdList& 
             AzToolsFramework::EntityIdList entitiesToDetach = entities;
             for (const AZ::SliceComponent::SliceInstanceAddress& sliceInstance : sliceInstances)
             {
-                const AZ::SliceComponent::InstantiatedContainer* instantiated = sliceInstance.second->GetInstantiated();
+                const AZ::SliceComponent::InstantiatedContainer* instantiated = sliceInstance.GetInstance()->GetInstantiated();
                 if (instantiated)
                 {
                     for (AZ::Entity* entityInSlice : instantiated->m_entities)
@@ -495,17 +674,14 @@ void UiSliceManager::DetachSliceInstances(const AzToolsFramework::EntityIdList& 
 }
 
 //////////////////////////////////////////////////////////////////////////
-AZ::Entity* UiSliceManager::ValidateSingleRoot(const AzToolsFramework::EntityIdList& liveEntities, AzToolsFramework::EntityIdList& orderedEntityList, AZ::Entity*& insertBefore)
+AZ::Entity* UiSliceManager::ValidateSingleRootAndGenerateOrderedEntityList(const AzToolsFramework::EntityIdSet& liveEntities, AzToolsFramework::EntityIdList& outOrderedEntityList, AZ::Entity*& insertBefore)
 {
     // The low-level slice component code has no limit on there being a single root element
     // in a slice. It does make it simpler to do so though. Also this is the same limitation
     // that we had with the old Prefabs in the UI Editor.
-    AZStd::unordered_set<AZ::EntityId> allEntities;
-    allEntities.insert(liveEntities.begin(), liveEntities.end());
-
     AZStd::unordered_set<AZ::EntityId> childrenOfCommonParent;
     AZ::Entity* commonParent = nullptr;
-    for (auto entity : allEntities)
+    for (auto entity : liveEntities)
     {
         AZ::Entity* parentElement = nullptr;
         EBUS_EVENT_ID_RESULT(parentElement, entity, UiElementBus, GetParent);
@@ -513,7 +689,7 @@ AZ::Entity* UiSliceManager::ValidateSingleRoot(const AzToolsFramework::EntityIdL
         if (parentElement)
         {
             // if this entities parent is not in the set then it is a top-level
-            if (allEntities.count(parentElement->GetId()) == 0)
+            if (liveEntities.count(parentElement->GetId()) == 0)
             {
                 // this is a top level element
                 if (commonParent)
@@ -547,7 +723,7 @@ AZ::Entity* UiSliceManager::ValidateSingleRoot(const AzToolsFramework::EntityIdL
 
     // ensure that the top level entities are in the order that they are children of the common parent
     // without this check they would be in the order that they were selected
-    orderedEntityList.clear();
+    outOrderedEntityList.clear();
 
     LyShine::EntityArray allChildrenOfCommonParent;
     EBUS_EVENT_ID_RESULT(allChildrenOfCommonParent, commonParent->GetId(), UiElementBus, GetChildElements);
@@ -559,7 +735,7 @@ AZ::Entity* UiSliceManager::ValidateSingleRoot(const AzToolsFramework::EntityIdL
         // then add it to the vectors so that we have an ordered list in child order
         if (childrenOfCommonParent.count(entity->GetId()) > 0)
         {
-            orderedEntityList.push_back(entity->GetId());
+            outOrderedEntityList.push_back(entity->GetId());
 
             // we are actually only supporting one child of the common parent
             // If this is it, set a flag so we can record the child immediately after it.
@@ -577,255 +753,15 @@ AZ::Entity* UiSliceManager::ValidateSingleRoot(const AzToolsFramework::EntityIdL
     }
 
     // now add the rest of the entities (that are not top-level) to the list in any order
-    for (auto entity : allEntities)
+    for (auto entity : liveEntities)
     {
         if (childrenOfCommonParent.count(entity) == 0)
         {
-            orderedEntityList.push_back(entity);
+            outOrderedEntityList.push_back(entity);
         }
     }
 
     return commonParent;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool UiSliceManager::ValidatePushSelection(AzToolsFramework::EntityIdList& entities, AZ::SerializeContext* serializeContext)
-{
-    // 1. All selected elements (and their descendants) should be part of the same prefab instance (or not in a slice)
-    // 2. None of the elements in the prefab (or their children) can contain references to elements
-    //    that will not become part of the prefab
-
-    // First check that the selected entities are all either part of the same slice or are
-    // not in a slice
-
-    AZ::SliceComponent::SliceInstance* sliceInstance = nullptr;
-    AZ::EntityId firstEntityInSliceInstance;
-
-    AzToolsFramework::EntityIdList entitiesNotInSlice;
-    for (auto entityId : entities)
-    {
-        AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
-        EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-        if (sliceAddress.second)    // the SliceInstance pointer
-        {
-            if (sliceInstance)
-            {
-                if (sliceAddress.second != sliceInstance)
-                {
-                    // We have already found an entity that is in a different slice instance
-                    AZStd::string firstName = EntityHelpers::GetHierarchicalElementName(firstEntityInSliceInstance);
-                    AZStd::string secondName = EntityHelpers::GetHierarchicalElementName(entityId);
-
-                    AZStd::string message = AZStd::string::format(
-                            "The selected entites cannot be pushed to a slice because entities from "
-                            "multiple slice instances are selected.\r\n"
-                            "Conflicting entity names are '%s' and '%s'.\r\n"
-                            "Please make sure your selection contains only elements from one slice.\r\n",
-                            firstName.c_str(), secondName.c_str());
-
-                    QMessageBox::warning(QApplication::activeWindow(),
-                        QStringLiteral("Cannot Push Selection to Slice"),
-                        message.c_str(),
-                        QMessageBox::Ok);
-                    return false;
-                }
-            }
-            else
-            {
-                // This is the first entity that is in a slice. Store a pointer to its SliceInstance.
-                sliceInstance = sliceAddress.second;
-                firstEntityInSliceInstance = entityId;
-            }
-        }
-        else
-        {
-            // This entity is not yet in a slice, add it to the list to track entities that we are adding
-            entitiesNotInSlice.push_back(entityId);
-        }
-    }
-
-    if (!sliceInstance)
-    {
-        // None of the entities were in a slice. This is not valid as there is no slice to push to.
-        // This should never happen because the menu item should be greyed out
-        QMessageBox::warning(QApplication::activeWindow(),
-            QStringLiteral("Cannot Push Selection to Slice"),
-            QString("None of the selected entities are in a slice instance."),
-            QMessageBox::Ok);
-        return false;
-    }
-
-    // Expand the list to include children of the selected entities
-    AzToolsFramework::EntityIdSet selectedHierarchyEntities = GatherEntitiesAndAllDescendents(entities);
-
-    //HiearchyMenu::SliceMenuItems explicity passes in nullptr for the SerializeContext* to UiSliceManager::PushEntitiesModal, which then invokes this function
-    if (!serializeContext)
-    {
-        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-        AZ_Assert(serializeContext, "Failed to retrieve application serialize context.");
-    }
-
-    // Check for references that don't fall within the selected entity set.
-    // Give the user the option to pull in all referenced entities, or to
-    // stick with the current selection.
-    AZStd::unordered_set<AZ::EntityId> allReferencedEntities = selectedHierarchyEntities;
-    AzToolsFramework::SliceUtilities::GatherAllReferencedEntities(allReferencedEntities, *serializeContext);
-            
-    // Check that all referenced entities are in the selection, in the UI system it is
-    // generally true that entities can only reference other entities that are children
-    for (const AZ::EntityId& id : allReferencedEntities)
-    {
-        if (selectedHierarchyEntities.find(id) == selectedHierarchyEntities.end())
-        {
-            // We found a referenced entity that is not in the selection
-            AZ::Entity* referencedEntity = nullptr;
-            EBUS_EVENT_RESULT(referencedEntity, AZ::ComponentApplicationBus, FindEntity, id);
-            AZStd::string message;
-            if (referencedEntity)
-            {
-                AZStd::string name = EntityHelpers::GetHierarchicalElementName(id);
-                message = AZStd::string::format(
-                        "Some of the selected entities reference entities not contained in the selection "
-                        "and its children. UI slices cannot contain references to outside of the slice.\r\n\r\n"
-                        "For example, entity '%s' is referenced but is not in the selection or its children.",
-                        name.c_str());
-            }
-            else
-            {
-                message = AZStd::string::format(
-                        "Some of the selected entities reference entities which no longer exist. "
-                        "UI slices cannot contain references to outside of the slice.");
-            }
-
-            QMessageBox::warning(QApplication::activeWindow(), QStringLiteral("Cannot Push to Slice"),
-                    QString(message.c_str()), QMessageBox::Ok);
-
-            return false;
-        }
-    }
-
-    // do another check, now that we have a list of the selected entities and all descendants,
-    // make sure that all of these entities are either in the same slice or not in a slice
-    // This is fairly restrictive but, since we do not yet support pushing a new slice instance into an
-    // existing slice instance, it seems reasonable. Better to be too restrictive than to allow
-    // invalid slices with dangling references.
-    for (auto entityId : selectedHierarchyEntities)
-    {
-        AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
-        EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-        if (sliceAddress.second)
-        {
-            if (sliceAddress.second != sliceInstance)
-            {
-                AZStd::string firstName = EntityHelpers::GetHierarchicalElementName(firstEntityInSliceInstance);
-                AZStd::string secondName = EntityHelpers::GetHierarchicalElementName(entityId);
-
-                const AZStd::string message = AZStd::string::format(
-                        "The selected entities cannot be pushed to a slice because entities from "
-                        "multiple slice instances are selected or are the children of selected entities.\r\n"
-                        "Conflicting entity names are '%s' and '%s'.\r\n"
-                        "Please make sure your selection and its children contain only elements from one slice.\r\n",
-                        firstName.c_str(), secondName.c_str());
-                QMessageBox::warning(QApplication::activeWindow(),
-                    QStringLiteral("Cannot Push Selection to Slice"),
-                    message.c_str(),
-                    QMessageBox::Ok);
-                return false;
-            }
-        }
-    }
-
-    // if there are selected entities that are not in the slice then they will be added to the slice
-    // but this means that their parent must be in the slice and their parent must be in the selection
-    // so that the m_children array gets pushed
-    AzToolsFramework::EntityIdList parentsToAddToSelection;
-    for (auto entityId : entitiesNotInSlice)
-    {
-        AZ::Entity* parentElement = nullptr;
-        EBUS_EVENT_ID_RESULT(parentElement, entityId, UiElementBus, GetParent);
-        while (parentElement)
-        {
-            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
-            EBUS_EVENT_ID_RESULT(sliceAddress, parentElement->GetId(), AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-            if (sliceAddress.second)
-            {
-                if (sliceAddress.second == sliceInstance)
-                {
-                    // parentElement is in the same slice as the one we are pushing to
-                    // this is a good thing
-                    break;
-                }
-                else
-                {
-                    AZStd::string name = EntityHelpers::GetHierarchicalElementName(entityId);
-
-                    AZStd::string message = AZStd::string::format(
-                        "Selected entity '%s' is not in the slice and does not have an ancestor in the slice.\r\n"
-                        "An Entity cannot be pushed to a slice if it doesn't have a parent in the slice.\r\n",
-                        name.c_str());
-
-                    QMessageBox::warning(QApplication::activeWindow(), QStringLiteral("Cannot Push to Slice"),
-                            QString(message.c_str()), QMessageBox::Ok);
-
-                    return false;
-                }
-            }
-
-            // If the other tests pass then this parent should be added to the selection so that its m_children 
-            // array is pushed.
-            parentsToAddToSelection.push_back(parentElement->GetId());
-
-            EBUS_EVENT_ID_RESULT(parentElement, parentElement->GetId(), UiElementBus, GetParent);
-        }
-
-        if (!parentElement)
-        {
-            AZStd::string name = EntityHelpers::GetHierarchicalElementName(entityId);
-
-            AZStd::string message = AZStd::string::format(
-                "Selected entity '%s' is not in the slice and does not have an ancestor in the slice.\r\n"
-                "An Entity cannot be pushed to a slice if it doesn't have a parent in the slice.\r\n",
-                name.c_str());
-
-            QMessageBox::warning(QApplication::activeWindow(), QStringLiteral("Cannot Push to Slice"),
-                    QString(message.c_str()), QMessageBox::Ok);
-
-            return false;
-        }
-
-        // add this parent (the one we broke out of the loop on)
-        parentsToAddToSelection.push_back(parentElement->GetId());
-    }
-
-    // now add any entities in parentsToAddToSelection that are not already in 'entities' to the list
-    for (auto parentToAdd : parentsToAddToSelection)
-    {
-        if (AZStd::find(entities.begin(), entities.end(), parentToAdd) == entities.end())
-        {
-            entities.push_back(parentToAdd);
-        }
-    }
-
-    return true;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool UiSliceManager::RootEntityTransforms(AZ::Data::Asset<AZ::SliceAsset>& targetSlice, const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& liveToAssetIdMap)
-{
-    AZ::SliceComponent::EntityList sliceEntities;
-    targetSlice.Get()->GetComponent()->GetEntities(sliceEntities);
-
-    // here we need to set the parent of the top-level elements to be null
-    AZ::SliceComponent::EntityList topLevelEntities;
-    GetTopLevelEntities(sliceEntities, topLevelEntities);
-
-    AZ::u32 rootEntityCount = 0;
-    for (AZ::Entity* entity : topLevelEntities)
-    {
-        // do something with offsets?
-    }
-
-    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -835,27 +771,174 @@ void UiSliceManager::SetEntityContextId(AzFramework::EntityContextId entityConte
 }
 
 //////////////////////////////////////////////////////////////////////////
-AZ::Entity* UiSliceManager::FindAncestorInTargetSlice(const AZ::Data::Asset<AZ::SliceAsset>& targetSlice,
-    const AZ::SliceComponent::EntityAncestorList& ancestors)
+AZ::Outcome<void, AZStd::string> UiSliceManager::PushEntitiesBackToSlice(const AzToolsFramework::EntityIdList& entityIdList, const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset)
 {
-    //  Locate target ancestor entity in slice asset.
-    for (const AZ::SliceComponent::Ancestor& ancestor : ancestors)
+    return AzToolsFramework::SliceUtilities::PushEntitiesBackToSlice(entityIdList, sliceAsset, SlicePreSaveCallbackForUiEntities);
+}
+
+//////////////////////////////////////////////////////////////////////////
+AZ::Outcome<void, AZStd::string> UiSliceManager::QuickPushSliceInstance(const AZ::SliceComponent::SliceInstanceAddress& sliceAddress,
+    const AzToolsFramework::EntityIdList& entityIdList)
+{
+    // we cannot use SliceUtilities::PushEntitiesBackToSlice because that does not handle adds or deletes
+
+    using AzToolsFramework::SliceUtilities::SliceTransaction;
+
+    const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset = sliceAddress.GetReference()->GetSliceAsset();
+    if (!sliceAsset)
     {
-        if (ancestor.m_sliceAddress.first->GetSliceAsset().GetId() == targetSlice.GetId())
+        return AZ::Failure(AZStd::string::format("Asset \"%s\" with id %s is not loaded, or is not a slice.",
+            sliceAsset.GetHint().c_str(), 
+            sliceAsset.GetId().ToString<AZStd::string>().c_str()));
+    }
+
+    // Not all entities in the list need to be part of the slice instance being pushed (sliceAddress) since we could
+    // be pushing a new instance into the slice. However, it is an error if there is a second instance of the same slice
+    // asset that we are pushing to in the entity set
+    for (AZ::EntityId entityId : entityIdList)
+    {
+        AZ::SliceComponent::SliceInstanceAddress entitySliceAddress;
+        EBUS_EVENT_ID_RESULT(entitySliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+
+        if (entitySliceAddress.IsValid() && entitySliceAddress.GetReference()->GetSliceAsset() == sliceAsset)
         {
-            AZ::SliceComponent::EntityList entitiesInSlice;
-            targetSlice.Get()->GetComponent()->GetEntities(entitiesInSlice);
-            for (AZ::Entity* entityInSlice : entitiesInSlice)
+            if (entitySliceAddress != sliceAddress)
             {
-                if (entityInSlice->GetId() == ancestor.m_entity->GetId())
-                {
-                    return entityInSlice;
-                }
+                // error there is a second instance of the same slice asset in the set
+                return AZ::Failure(AZStd::string::format("Entity with id %s is part of a different slice instance of the same slice asset. A slice cannot contain an instance of itself.",
+                    entityId.ToString().c_str()));
             }
         }
     }
 
-    return nullptr;
+    // Make a transaction targeting the specified slice and add all the entities in this set.
+    SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginSlicePush(sliceAsset);
+    if (transaction)
+    {
+        AzToolsFramework::EntityIdList entitiesBeingAdded;
+
+        for (AZ::EntityId entityId : entityIdList)
+        {
+            AZ::SliceComponent::SliceInstanceAddress entitySliceAddress;
+            EBUS_EVENT_ID_RESULT(entitySliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+
+            // Check if this slice is in the slice instance being pushed
+            if (entitySliceAddress == sliceAddress)
+            {
+                const SliceTransaction::Result result = transaction->UpdateEntity(entityId);
+                if (!result)
+                {
+                    return AZ::Failure(AZStd::string::format("Failed to add entity with Id %s to slice transaction for \"%s\". Slice push aborted.\n\nError:\n%s",
+                        entityId.ToString().c_str(),
+                        sliceAsset.GetHint().c_str(),
+                        result.GetError().c_str()));
+                }
+            }
+            else
+            {
+                // This entity is not in a slice, treat it as an add
+                SliceTransaction::Result result = transaction->AddEntity(entityId, SliceTransaction::SliceAddEntityFlags::DiscardSliceAncestry);
+                if (!result)
+                {
+                    return AZ::Failure(AZStd::string::format("Failed to add entity with Id %s to slice transaction for \"%s\". Slice push aborted.\n\nError:\n%s",
+                        entityId.ToString().c_str(),
+                        sliceAsset.GetHint().c_str(),
+                        result.GetError().c_str()));
+                }
+
+                entitiesBeingAdded.push_back(entityId);
+            }
+        }
+
+        // Check for any entity removals
+        // We know the slice instance details, compare the entities it contains to the entities
+        // contained in the underlying asset. If it's missing any entities that exist in the asset,
+        // we can removal the entity from the base slice.
+        AZStd::unordered_set<AZ::EntityId> uniqueRemovedEntities;
+        AZ::SliceComponent::EntityAncestorList ancestorList;
+        AZ::SliceComponent::EntityList assetEntities;
+        const AZ::SliceComponent::SliceInstanceAddress& instanceAddr = sliceAddress;
+        if (instanceAddr.IsValid() && instanceAddr.GetReference()->GetSliceAsset() && 
+            instanceAddr.GetInstance()->GetInstantiated())
+        {
+            const AZ::SliceComponent::EntityList& instanceEntities = instanceAddr.GetInstance()->GetInstantiated()->m_entities;
+            assetEntities.clear();
+            instanceAddr.GetReference()->GetSliceAsset().Get()->GetComponent()->GetEntities(assetEntities);
+            if (assetEntities.size() > instanceEntities.size())
+            {
+                // The removed entity is already gone from the instance's map, so we have to do a reverse-lookup
+                // to pin down which specific entities have been removed in the instance vs the asset.
+                for (auto assetEntityIter = assetEntities.begin(); assetEntityIter != assetEntities.end(); ++assetEntityIter)
+                {
+                    AZ::Entity* assetEntity = (*assetEntityIter);
+                    const AZ::EntityId assetEntityId = assetEntity->GetId();
+
+                    if (uniqueRemovedEntities.end() != uniqueRemovedEntities.find(assetEntityId))
+                    {
+                        continue;
+                    }
+
+                    // Iterate over the entities left in the instance and if none of them have this
+                    // asset entity as its ancestor, then we want to remove it.
+                    // \todo - Investigate ways to make this non-linear time. Tricky since removed entities
+                    // obviously aren't maintained in any maps.
+                    bool foundAsAncestor = false;
+                    for (const AZ::Entity* instanceEntity : instanceEntities)
+                    {
+                        ancestorList.clear();
+                        instanceAddr.GetReference()->GetInstanceEntityAncestry(instanceEntity->GetId(), ancestorList, 1);
+                        if (!ancestorList.empty() && ancestorList.begin()->m_entity == assetEntity)
+                        {
+                            foundAsAncestor = true;
+                            break;
+                        }
+                    }
+
+                    if (!foundAsAncestor)
+                    {
+                        // Grab ancestors, which determines which slices the removal can be pushed to.
+                        uniqueRemovedEntities.insert(assetEntityId);
+                    }
+                }
+
+                for (AZ::EntityId entityToRemove : uniqueRemovedEntities)
+                {
+                    SliceTransaction::Result result = transaction->RemoveEntity(entityToRemove);
+                    if (!result)
+                    {
+                        return AZ::Failure(AZStd::string::format("Failed to add entity with Id %s to slice transaction for \"%s\" for removal. Slice push aborted.\n\nError:\n%s",
+                            entityToRemove.ToString().c_str(),
+                            sliceAsset.GetHint().c_str(),
+                            result.GetError().c_str()));
+                        break;
+                    }
+                }
+            }
+        }
+
+        const SliceTransaction::Result result = transaction->Commit(
+            sliceAsset.GetId(),
+            SlicePreSaveCallbackForUiEntities, 
+            nullptr);
+
+        if (result)
+        {
+            // Successful commit
+            // Remove any entities that were succesfully pushed into a slice (since they'll be brought to life through slice reloading)
+            EBUS_EVENT_ID(this->GetEntityContextId(), UiEditorEntityContextRequestBus, DeleteElements, entitiesBeingAdded);
+        }
+        else
+        {
+            AZStd::string sliceAssetPath;
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(sliceAssetPath, &AZ::Data::AssetCatalogRequests::GetAssetPathById, sliceAsset.GetId());
+
+            return AZ::Failure(AZStd::string::format("Failed to to save slice \"%s\". Slice push aborted.\n\nError:\n%s",
+                sliceAssetPath.c_str(),
+                result.GetError().c_str()));
+        }
+    }
+
+    return AZ::Success();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -875,78 +958,6 @@ AZStd::string UiSliceManager::MakeTemporaryFilePathForSave(const char* targetFil
     tempPath.append(".slicetemp");
 
     return tempPath;
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool UiSliceManager::SaveSlice(const AZ::Data::Asset<AZ::SliceAsset>& slice,
-    const char* fullPath,
-    AZ::SerializeContext* serializeContext)
-{
-    AZ_Assert(slice.Get(), "Invalid asset provided, or asset is not created.");
-
-    AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
-    AZ_Assert(fileIO, "File IO is not initialized.");
-
-    if (!serializeContext)
-    {
-        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-        AZ_Assert(serializeContext, "Failed to retrieve application serialize context.");
-    }
-
-    // Write to a temporary location, and later move to the target location.
-    const AZStd::string tempFilePath = MakeTemporaryFilePathForSave(fullPath);
-
-    AZ::IO::FileIOStream fileStream(tempFilePath.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary);
-    if (fileStream.IsOpen())
-    {
-        bool saved = AZ::Utils::SaveObjectToStream(fileStream, AZ::DataStream::ST_XML, slice.Get()->GetEntity(), serializeContext);
-        fileStream.Close();
-        if (saved)
-        {
-            // Copy scratch file to target location.
-            const bool targetFileExists = fileIO->Exists(fullPath);
-            const bool removedTargetFile = fileIO->Remove(fullPath);
-
-            if (targetFileExists && !removedTargetFile)
-            {
-                QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
-                    QApplication::tr("Failed to Save Slice"),
-                    QApplication::tr("Unable to modify existing target slice file. Please make the slice writeable and try again: \"%1\".").arg(fullPath));
-                return false;
-            }
-
-            AZ::IO::Result renameResult = fileIO->Rename(tempFilePath.c_str(), fullPath);
-            if (!renameResult)
-            {
-                QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
-                    QApplication::tr("Failed to Save Slice"),
-                    QApplication::tr("Unable to move temporary slice file to target location: \"%1\".").arg(fullPath));
-                fileIO->Remove(tempFilePath.c_str());
-                return false;
-            }
-
-            // Bump the slice asset up in the asset processor's queue.
-            EBUS_EVENT(AzFramework::AssetSystemRequestBus, GetAssetStatus, fullPath);
-            return true;
-        }
-        else
-        {
-            QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
-                QApplication::tr("Failed to Save Slice"),
-                QApplication::tr("Unable to save slice to a temporary file at location: \"%1\".").arg(tempFilePath.c_str()));
-            return false;
-        }
-
-    }
-    else
-    {
-        QMessageBox::warning(AzToolsFramework::GetActiveWindow(),
-            QApplication::tr("Failed to Save Slice"),
-            QApplication::tr("Unable to create temporary slice file at location: \"%1\".").arg(tempFilePath.c_str()));
-        return false;
-    }
-
-    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -496,6 +496,16 @@ namespace GraphCanvas
         QGraphicsView::keyPressEvent(event);
     }
 
+    void GraphCanvasGraphicsView::contextMenuEvent(QContextMenuEvent *event)
+    {
+        if (event->reason() == QContextMenuEvent::Mouse)
+        {
+            // invoke the context menu in mouseReleaseEvent, otherwise we cannot drag with right mouse button
+            return;
+        }
+        QGraphicsView::contextMenuEvent(event);
+    }
+
     void GraphCanvasGraphicsView::mousePressEvent(QMouseEvent* event)
     {
         if (event->button() == Qt::RightButton || event->button() == Qt::MiddleButton)
@@ -511,7 +521,13 @@ namespace GraphCanvas
 
     void GraphCanvasGraphicsView::mouseMoveEvent(QMouseEvent* event)
     {
-        if (m_checkForDrag && isInteractive())
+        if ((event->buttons() & (Qt::RightButton | Qt::MiddleButton)) == Qt::NoButton)
+        {
+            // it might be that the mouse button already was released but the mouseReleaseEvent
+            // was sent somewhere else (context menu)
+            m_checkForDrag = false;
+        }
+        else if (m_checkForDrag && isInteractive())
         {
             event->accept();
 
@@ -540,6 +556,16 @@ namespace GraphCanvas
     
     void GraphCanvasGraphicsView::mouseReleaseEvent(QMouseEvent* event)
     {
+        if (event->button() == Qt::RightButton)
+        {
+            // If we move less than ~0.5% in both directions, we'll consider it an unintended move
+            if ((m_initialClick - event->pos()).manhattanLength() <= (width() * 0.005f + height() * 0.005f))
+            {
+                QContextMenuEvent ce(QContextMenuEvent::Mouse, event->pos(), event->globalPos(), event->modifiers());
+                QGraphicsView::contextMenuEvent(&ce);
+                return;
+            }
+        }
         if (event->button() == Qt::RightButton || event->button() == Qt::MiddleButton)
         {
             m_checkForDrag = false;

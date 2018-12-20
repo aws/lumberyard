@@ -247,6 +247,7 @@ private:
 
         m_pParamDecalTS = "g_mDecalTS";
         m_pParamDecalDiffuse = "g_DecalDiffuse";
+        m_pParamDecalAngleAttenuation = "g_DecalAngleAttenuation";
         m_pParamDecalSpecular = "g_DecalSpecular";
         m_pParamDecalMipLevels = "g_DecalMipLevels";
         m_pParamDecalEmissive = "g_DecalEmissive";
@@ -393,6 +394,7 @@ private:
 
     CCryNameR m_pParamDecalTS;
     CCryNameR m_pParamDecalDiffuse;
+    CCryNameR m_pParamDecalAngleAttenuation;
     CCryNameR m_pParamDecalSpecular;
     CCryNameR m_pParamDecalMipLevels;
     CCryNameR m_pParamDecalEmissive;

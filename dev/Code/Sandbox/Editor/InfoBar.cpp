@@ -333,16 +333,21 @@ void CInfoBar::OnVectorUpdate(bool followTerrain)
     {
         if (obj)
         {
-            Quat qrot = AZQuaternionToLYQuaternion(AZ::ConvertEulerDegreesToQuaternion(LYVec3ToAZVec3(v)));
+            AZ::Vector3 av = LYVec3ToAZVec3(v);
+            AZ::Transform tr = AZ::ConvertEulerDegreesToTransformPrecise(av);
+            Matrix34 lyTransform = AZTransformToLYTransform(tr);
+
+            AffineParts newap;
+            newap.SpectralDecompose(lyTransform);
 
             if (referenceCoordSys == COORDS_WORLD)
             {
-                tm = Matrix34::Create(ap.scale, qrot, ap.pos);
+                tm = Matrix34::Create(ap.scale, newap.rot, ap.pos);
                 obj->SetWorldTM(tm);
             }
             else
             {
-                obj->SetRotation(qrot);
+                obj->SetRotation(newap.rot);
             }
         }
         else

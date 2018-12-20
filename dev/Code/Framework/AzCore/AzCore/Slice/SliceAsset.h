@@ -93,7 +93,14 @@ namespace AZ
 
     /// @deprecated Use DynamicSliceAsset.
     using DynamicPrefabAsset = DynamicSliceAsset;
-}
+
+    namespace Data
+    {
+        /// Asset filter helper for stripping all assets except slices.
+        bool AssetFilterSourceSlicesOnly(const AZ::Data::Asset<AZ::Data::AssetData>& asset);
+    }
+
+} // namespace AZ
 
 #endif // AZCORE_SLICE_ASSET_H
 #pragma once

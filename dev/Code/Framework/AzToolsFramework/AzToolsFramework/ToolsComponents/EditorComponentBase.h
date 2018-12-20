@@ -38,7 +38,7 @@ namespace AZ
 namespace AzToolsFramework
 {
     namespace Components
-    {
+    {        
         class SelectionComponent;
 
         /**
@@ -199,18 +199,11 @@ namespace AzToolsFramework
              * that you create should be attached to the game entity that is 
              * provided to this function. If you do not need to create a game  
              * component, you do not need to override this function. 
+             * The provided component to the gameEntity is dynamically generated and owned by the
+             * gameEntity and should be deallocated appropriately.
              * @param gameEntity A pointer to the game entity.
              */
             virtual void BuildGameEntity(AZ::Entity* /*gameEntity*/) {}
-
-            /**
-             * Called by the slice builder after the game entity is saved, right  
-             * before deleting the game entity. If you want to retain ownership   
-             * of a component that you gave to the game entity using BuildGameEntity(),  
-             * remove the component from the game entity here.
-             * @param gameEntity A pointer to the game entity.
-             */
-            virtual void FinishedBuildingGameEntity(AZ::Entity* /*gameEntity*/) {}
 
             /**
              * Implement this function to support dragging and dropping an asset 

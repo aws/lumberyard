@@ -25,7 +25,7 @@ namespace AzToolsFramework
     using DynamicEditDataProvider = AZStd::function<const AZ::Edit::ElementData*(const void* /*objectPtr*/, const AZ::SerializeContext::ClassData* /*classData*/)>;
 
     class InstanceDataHierarchy;
-
+    class ComponentEditor;
     /*
      * InstanceDataNode contains mapping of a class' structure
      * to a list of instances of such class for editing purposes.
@@ -246,7 +246,7 @@ namespace AzToolsFramework
 
         /// Builds the intersecting hierarchy using all the root instances added.
         /// If a comparison instance is set, nodes will also be flagged based on detected deltas (\ref ComparisonFlags).
-        void Build(AZ::SerializeContext* sc, unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider = DynamicEditDataProvider());
+        void Build(AZ::SerializeContext* sc, unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider = DynamicEditDataProvider(), ComponentEditor* editorParent = nullptr);
 
         /// Re-compares root instance against specified Compare instance and updates node flags accordingly.
         /// \return true if all instances match the comparison instance.

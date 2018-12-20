@@ -26,6 +26,16 @@ namespace RoadsAndRivers
         m_material.SetAssetPath(s_baseRoadMaterial);
     }
 
+    Road& Road::operator=(const Road& rhs)
+    {
+        SplineGeometry::operator=(rhs);
+
+        m_material = rhs.m_material;
+        m_ignoreTerrainHoles = rhs.m_ignoreTerrainHoles;
+
+        return *this;
+    }
+
     void Road::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -103,9 +113,9 @@ namespace RoadsAndRivers
         return nullptr;
     }
 
-    void Road::SetMaterialHandle(LmbrCentral::MaterialHandle handle)
+    void Road::SetMaterialHandle(const LmbrCentral::MaterialHandle& materialHandle)
     {
-        SetMaterial(handle.m_material);
+        SetMaterial(materialHandle.m_material);
     }
 
     LmbrCentral::MaterialHandle Road::GetMaterialHandle()
@@ -184,6 +194,10 @@ namespace RoadsAndRivers
         LmbrCentral::SplineComponentRequestBus::EventResult(spline, m_entityId, &LmbrCentral::SplineComponentRequests::GetSpline);
 
         AZ_Assert(spline != nullptr, "[Road::GenerateRenderNodes()] Spline must be attached for the road to work");
+        if (!spline)
+        {
+            return;
+        }
 
         const int MAX_TRAPEZOIDS_IN_CHUNK = 16;
         int chunksCount = geometrySectors.size() / MAX_TRAPEZOIDS_IN_CHUNK + 1;

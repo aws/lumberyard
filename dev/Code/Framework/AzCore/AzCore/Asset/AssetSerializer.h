@@ -35,25 +35,38 @@ namespace AZ {
         : public SerializeContext::IDataSerializer
     {
     public:
-        /// Store the class data into a stream.
+        // Store the class data into a stream.
         size_t Save(const void* classPtr, IO::GenericStream& stream, bool isDataBigEndian = false) override;
 
-        /// Convert binary data to text
+        // Convert binary data to text
         size_t DataToText(IO::GenericStream& in, IO::GenericStream& out, bool isDataBigEndian /*= false*/) override;
 
-        /// Convert text data to binary, to support loading old version formats. We must respect text version if the text->binary format has changed!
+        // Convert text data to binary, to support loading old version formats. We must respect text version if the text->binary format has changed!
         size_t TextToData(const char* text, unsigned int textVersion, IO::GenericStream& stream, bool isDataBigEndian /*= false*/) override;
 
-        /// Load the class data from a stream.
+        // Load the class data from a stream.
         bool Load(void* classPtr, IO::GenericStream& stream, unsigned int version, bool isDataBigEndian /*= false*/) override;
+
+        // Extended load function that enables asset filtering behavior.
+        bool LoadWithFilter(void* classPtr, IO::GenericStream& stream, unsigned int version, const Data::AssetFilterCB& assetFilterCallback, bool isDataBigEndian = false);
+
+        // Optimized clone operation for asset references that bypasses asset lookup if source is already populated.
+        void Clone(const void* sourcePtr, void* destPtr);
 
         bool CompareValueData(const void* lhs, const void* rhs) override;
 
         // Even though Asset<T> is a template class, we don't actually care about its underlying asset type
         // during serialization, so all types will share the same instance of the serializer.
         static AssetSerializer  s_serializer;
-    };
 
+    private:
+
+        /// Called after we are done writing to the instance pointed by classPtr.
+        void PostSerializeAssetReference(AZ::Data::Asset<AZ::Data::AssetData>& asset, const Data::AssetFilterCB& assetFilterCallback);
+
+        // Upgrade legacy Ids.
+        void RemapLegacyIds(AZ::Data::Asset<AZ::Data::AssetData>& asset);
+    };
     /*
      * Generic serialization descriptor for all Assets of all types.
      */

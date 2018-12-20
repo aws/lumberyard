@@ -29,6 +29,16 @@ struct IDisplayViewport
     virtual float GetScreenScaleFactor(const Vec3& position) const = 0;
     virtual float GetScreenScaleFactor(const CCamera& camera, const Vec3& object_position) = 0;
     virtual bool HitTestLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& hitpoint, int pixelRadius, float* pToCameraDistance = 0) const = 0;
+
+    /**
+     * Gets the distance of the point on screen to the line defined by the two points, converted to screenspace.
+     * @param lineP1 The first point of the line, in world space.
+     * @param lineP2 The second point of the line, in world space.
+     * @param point The point to check the distance from the line. This point is in screen space.
+     * @return The distance of the point to the line.
+    */
+    virtual float GetDistanceToLine(const Vec3& lineP1, const Vec3& lineP2, const QPoint& point) const = 0;
+
     virtual CBaseObjectsCache* GetVisibleObjectsCache() = 0;
 
     enum EAxis

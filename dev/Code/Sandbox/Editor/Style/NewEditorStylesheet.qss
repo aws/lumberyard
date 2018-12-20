@@ -263,7 +263,20 @@ AzToolsFramework--ReflectedPropertyEditor[ComponentBlock="true"]
 }
 
 /* Style for visualizing property values overridden from their prefab values */
-AzToolsFramework--PropertyRowWidget[IsOverridden="true"] QLabel
+AzToolsFramework--PropertyRowWidget QLabel#Name
+{
+    color: @TextColor;
+    padding: 0 0 0 5;
+}
+
+/* Style for visualizing property values overridden from their prefab values */
+AzToolsFramework--PropertyRowWidget QWidget
+{
+    color: @MenuEnabledTextColor;
+}
+
+/* Style for visualizing property values overridden from their prefab values */
+AzToolsFramework--PropertyRowWidget[IsOverridden="true"] QLabel#Name
 {
     font-family: "Open Sans Extrabold";
     font-weight: bold;
@@ -449,10 +462,17 @@ AzToolsFramework--ComponentEditorHeader #Background[readOnly=false]
     background-image: none;
 }
 
-AzToolsFramework--ComponentEditorHeader #Title
+AzToolsFramework--ComponentEditorHeader #Title[IsOverridden="false"]
 {
     font-weight: bold;
     background-color: transparent;
+}
+
+AzToolsFramework--ComponentEditorHeader #Title[IsOverridden="true"]
+{
+    font-weight: bold;
+    background-color: transparent;
+    color: @MenuItemSelectedColor;
 }
 
 AzToolsFramework--ComponentEditorHeader #Expander
@@ -522,30 +542,45 @@ QLabel #NumOverrides
     font-size:30px; 
 }
 
-QWidget#QuickPushOption
+QWidget#SliceHierarchyMenuItem
 {
     background-color: transparent;
 }
 
-QWidget#QuickPushOption QLabel
+QWidget#SliceHierarchyMenuItem QLabel
 {
     background-color: transparent;
     color: @MenuEnabledTextColor;
 }
 
-QWidget#QuickPushOption QLabel:disabled
+QWidget#SliceHierarchyMenuItem QLabel:disabled
 {
     background-color: transparent;
     color: @MenuDisabledTextColor;
 }
 
-QWidget#QuickPushOption QLabel#NumOverrides
+QWidget#SliceHierarchyMenuItem QLabel#NumOverrides
 {
     background-color: transparent;
-    color: @MenuItemSelectedColor;;
+    color: @MenuItemSelectedColor;
 }
 
-QWidget#QuickPushOption QLabel:hover
+QWidget#SliceHierarchyMenuItem QLabel#ContextLabelEnabled
+{
+    color: @MenuEnabledTextColor;
+}
+
+QWidget#SliceHierarchyMenuItem QMessageBox#ContextWarning QLabel
+{
+    color: @MenuEnabledTextColor;
+}
+
+QWidget#SliceHierarchyMenuItem QMessageBox#ContextWarning QLabel:hover
+{
+    color: @MenuEnabledTextColor;
+}
+
+QWidget#SliceHierarchyMenuItem QLabel:hover
 {
     color: @LinkColor;
 }
@@ -1089,6 +1124,17 @@ QLineEdit[inputValid="false"]:focus
 
 QWidget#ViewportTitleDlgContainer, QWidget#ViewportTitleDlgContainer QWidget {
     background-color: rgba(47, 46, 46, 217);
+}
+
+QLineEdit#filteredSearchWidget
+{
+    selection-background-color: rgb(233, 99, 0);
+    background: #6e7071;
+    background-image: url(:/stylesheet/img/search.png);
+    background-repeat: no-repeat;
+    background-position: left;
+    padding: 2 2 2 24;
+    color: rgb(255, 255, 255);
 }
 
 /*****************************************************************************
@@ -2321,6 +2367,11 @@ AzQtComponents--CardHeader #Help
     selection-color: transparent;
     selection-background-color: transparent;
     image: url(:/Cards/img/UI20/Cards/help.png);
+}
+
+AzQtComponents--CardHeader #Help:hover
+{
+    image: url(:/Cards/img/UI20/Cards/help_hover.png);
 }
 
 .separator

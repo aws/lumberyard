@@ -170,6 +170,16 @@ namespace AZ
         /*@}*/
 
         //===============================================================
+        // Interpolation
+        //===============================================================
+
+        /**
+         * Linear interpolation between this color and a destination.
+         * @return (*this)*(1-t) + dest*t
+         */
+        const Color Lerp(const Color& dest, const VectorFloat& t) const;
+
+        //===============================================================
         // Dot products
         //===============================================================
 

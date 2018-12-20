@@ -23,6 +23,10 @@
         ]
     },
     "auto": {
+        "Root": [
+            "AzToolsFrameworkModule.h",
+            "AzToolsFrameworkModule.cpp"
+        ],
         "API": [
             "API/ToolsApplicationAPI.h",
             "API/EditorAssetSystemAPI.h",
@@ -186,9 +190,11 @@
             "Entity/EditorEntityModelBus.h",
             "Entity/EditorEntityModelComponent.cpp",
             "Entity/EditorEntityModelComponent.h",
+            "Entity/EditorEntityRuntimeActivationBus.h",
             "Entity/EditorEntitySortBus.h",
             "Entity/EditorEntitySortComponent.cpp",
-            "Entity/EditorEntitySortComponent.h"
+            "Entity/EditorEntitySortComponent.h",
+            "Entity/EditorEntityTransformBus.h"
         ],
         "Manipulators": [
             "Manipulators/AngularManipulator.cpp",
@@ -250,6 +256,8 @@
             "Slice/SliceDataFlagsCommand.cpp",
             "Slice/SliceUtilities.h",
             "Slice/SliceUtilities.cpp",
+            "Slice/SliceCompilation.h",
+            "Slice/SliceCompilation.cpp",
             "Slice/SliceTransaction.cpp",
             "Slice/SliceTransaction.h",
             "Slice/SliceDependencyBrowserComponent.h",
@@ -292,6 +300,9 @@
             "ToolsComponents/EditorDisabledCompositionComponent.h",
             "ToolsComponents/EditorDisabledCompositionComponent.cpp",
             "ToolsComponents/EditorDisabledCompositionBus.h",
+            "ToolsComponents/EditorOnlyEntityComponent.h",
+            "ToolsComponents/EditorOnlyEntityComponent.cpp",
+            "ToolsComponents/EditorOnlyEntityComponentBus.h",
             "ToolsComponents/EditorEntityIdContainer.cpp",
             "ToolsComponents/EditorEntityIdContainer.h",
             "ToolsComponents/EditorEntityIconComponent.h",
@@ -429,6 +440,12 @@
         "UI/Slice": [
             "UI/Slice/SlicePushWidget.cpp",
             "UI/Slice/SlicePushWidget.hxx",
+            "UI/Slice/SliceOverridesNotificationWindow.cpp",
+            "UI/Slice/SliceOverridesNotificationWindow.hxx",
+            "UI/Slice/SliceOverridesNotificationWindowManager.cpp",
+            "UI/Slice/SliceOverridesNotificationWindowManager.hxx",
+            "UI/Slice/NotificationWindow.ui",
+            "UI/Slice/Constants.h",
             "UI/Slice/SliceRelationshipWidget.cpp",
             "UI/Slice/SliceRelationshipWidget.hxx"
         ],

@@ -20,6 +20,7 @@ namespace Audio
 class MicrophoneSystemComponent_Wrapper
 {
 public:
+    virtual ~MicrophoneSystemComponent_Wrapper() {};
     virtual bool InitializeDevice() = 0;
     virtual void ShutdownDevice() = 0;
     virtual bool StartSession() = 0;

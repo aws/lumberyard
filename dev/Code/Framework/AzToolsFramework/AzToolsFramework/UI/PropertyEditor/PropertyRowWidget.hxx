@@ -16,6 +16,9 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QLayout>
 #include <QtWidgets/QPushButton>
 #include <QtCore/QPointer>
 #include <QtCore/QElapsedTimer>
@@ -23,17 +26,9 @@
 
 #pragma once
 
-class QHBoxLayout;
-class QSpacerItem;
-class QWidget;
-
-namespace AzQtComponents
-{
-    class ElidingLabel;
-}
-
 namespace AzToolsFramework
 {
+
     class PropertyHandlerBase;
     class PropertyAttributeReader;
     // the purpose of a Property Row Widget is to house the user's property GUI
@@ -91,6 +86,8 @@ namespace AzToolsFramework
         void RefreshAttributesFromNode(bool initial);
         void ConsumeAttribute(AZ::u32 attributeName, PropertyAttributeReader& reader, bool initial, QString* descriptionOut=nullptr, bool* foundDescriptionOut=nullptr);
 
+        void SetReadOnlyQueryFunction(const ReadOnlyQueryFunction& readOnlyQueryFunction);
+
         /// Repaint the control style, which is required any time object properties used
         /// by .qss are modified.
         void RefreshStyle();
@@ -120,6 +117,11 @@ namespace AzToolsFramework
 
         void HideContent();
 
+        void UpdateIndicator(const char* imagePath);
+
+        void SetFilterString(const AZStd::string& str);
+
+        static QString MakeFilterHighlightedName(const QString& name, const QString& filter);
     protected:
         int CalculateLabelWidth() const;
 
@@ -142,9 +144,12 @@ namespace AzToolsFramework
 
         QWidget* m_leftAreaContainer;
 
-        AzQtComponents::ElidingLabel* m_nameLabel;
-        AzQtComponents::ElidingLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
-        InstanceDataNode* m_sourceNode = nullptr;
+        QLabel* m_indicatorLabel;
+        QLabel* m_nameLabel;
+        QLabel* m_defaultLabel; // if there is no handler, we use a m_defaultLabel label
+        InstanceDataNode* m_sourceNode;
+
+        QString m_currentFilterString;
 
         struct ChangeNotification
         {
@@ -178,7 +183,10 @@ namespace AzToolsFramework
 
         bool m_isSelected = false;
         bool m_selectionEnabled = false;
-        bool m_readOnly = false; //holds whether the ReadOnly attribute was set
+        bool m_readOnly = false; // whether widget is currently read-only
+        bool m_readOnlyDueToAttribute = false; // holds whether the ReadOnly attribute was set
+        bool m_readOnlyDueToFunction = false; // holds whether m_readOnlyQueryFunction evaluates to true
+        ReadOnlyQueryFunction m_readOnlyQueryFunction; // customizable function that can say a property is read-only
 
         QElapsedTimer m_clickStartTimer;
         QPoint m_clickPos;
@@ -210,6 +218,7 @@ namespace AzToolsFramework
 
         void createContainerButtons();
 
+        void UpdateReadOnlyState();
         void UpdateEnabledState();
 
     signals:

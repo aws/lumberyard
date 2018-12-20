@@ -49,7 +49,7 @@ namespace LmbrCentral
         bool IsMaterialOwnerReady();
         void SetMaterial(MaterialPtr);
         MaterialPtr GetMaterial();
-        void SetMaterialHandle(MaterialHandle);
+        void SetMaterialHandle(const MaterialHandle& materialHandle);
         MaterialHandle GetMaterialHandle();
         void SetMaterialParamVector4(const AZStd::string& /*name*/, const AZ::Vector4& /*value*/, int /*materialId = 1*/);
         void SetMaterialParamVector3(const AZStd::string& /*name*/, const AZ::Vector3& /*value*/, int /*materialId = 1*/);

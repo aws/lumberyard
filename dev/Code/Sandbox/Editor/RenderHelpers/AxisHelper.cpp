@@ -18,6 +18,8 @@
 #include "Include/IDisplayViewport.h"
 #include "Include/HitContext.h"
 #include "Util/Math.h"
+#include "EditTool.h"
+#include "IObjectManager.h"
 #include <Cry_Geo.h>
 
 const float kPlaneScale = 0.3f;
@@ -25,8 +27,6 @@ const float kBoldLine3D = 4.f;
 const float kBoldLine2D = 2.f;
 const float kSelectionBallScale = 0.05f;
 const float kRotateCircleRadiusScale = 0.2f;
-
-const int kHitRadius = 4;
 
 //////////////////////////////////////////////////////////////////////////
 CAxisHelper::CAxisHelper()
@@ -624,8 +624,6 @@ bool CAxisHelper::HitTest(const Matrix34& worldTM, const SGizmoParameters& setup
     Vec3 y(0, m_size, 0);
     Vec3 z(0, 0, m_size);
 
-    float hitDist = 0.01f * m_fScreenScale;
-
     Vec3 pos = m_matrix.GetTranslation();
 
     Vec3 intPoint;
@@ -655,7 +653,6 @@ bool CAxisHelper::HitTest(const Matrix34& worldTM, const SGizmoParameters& setup
     Vec3 planeY = y * kPlaneScale;
     Vec3 planeZ = z * kPlaneScale;
 
-    int hitRadius = kHitRadius;
     int axis = 0;
 
     Sphere testSphere(pos, m_size * kSelectionBallScale);
@@ -663,48 +660,75 @@ bool CAxisHelper::HitTest(const Matrix34& worldTM, const SGizmoParameters& setup
     {
         axis = AXIS_TERRAIN;
     }
-    else if (hc.view->HitTestLine(pos, pos + x, hc.point2d, hitRadius))
+    else
     {
-        axis = AXIS_X;
-    }
-    else if (hc.view->HitTestLine(pos, pos + y, hc.point2d, hitRadius))
-    {
-        axis = AXIS_Y;
-    }
-    else if (hc.view->HitTestLine(pos, pos + z, hc.point2d, hitRadius))
-    {
-        axis = AXIS_Z;
-    }
-    else if (m_nModeFlags == MOVE_MODE)
-    {
-        // If only in move mode.
-        if (hc.view->HitTestLine(p1, p1 - planeX, hc.point2d, hitRadius))
+        // Bring the screen scale to roughly 0-1 range.
+        const float screenScale = 0.01f * m_fScreenScale;
+        // Start the closestAxis value at the maximum selection radius based on the user's settings, multiplied
+        // by a scalar based on the screen's resolution.
+        float closestAxis = GetIEditor()->GetObjectManager()->GetAxisHelperHitRadius() * screenScale;
+
+        float distanceToAxis = hc.view->GetDistanceToLine(pos, pos + x, hc.point2d);
+        if(distanceToAxis < closestAxis)
         {
-            axis = AXIS_XY;
+            axis = AXIS_X;
+            closestAxis = distanceToAxis;
         }
-        else if (hc.view->HitTestLine(p1, p1 - planeY, hc.point2d, hitRadius))
+        distanceToAxis = hc.view->GetDistanceToLine(pos, pos + y, hc.point2d);
+        if(distanceToAxis < closestAxis)
         {
-            axis = AXIS_XY;
+            axis = AXIS_Y;
+            closestAxis = distanceToAxis;
         }
-        else if (hc.view->HitTestLine(p2, p2 - planeX, hc.point2d, hitRadius))
+        distanceToAxis = hc.view->GetDistanceToLine(pos, pos + z, hc.point2d);
+        if(distanceToAxis < closestAxis)
         {
-            axis = AXIS_XZ;
+            axis = AXIS_Z;
+            closestAxis = distanceToAxis;
         }
-        else if (hc.view->HitTestLine(p2, p2 - planeZ, hc.point2d, hitRadius))
+        if (m_nModeFlags == MOVE_MODE)
         {
-            axis = AXIS_XZ;
-        }
-        else if (hc.view->HitTestLine(p3, p3 - planeY, hc.point2d, hitRadius))
-        {
-            axis = AXIS_YZ;
-        }
-        else if (hc.view->HitTestLine(p3, p3 - planeZ, hc.point2d, hitRadius))
-        {
-            axis = AXIS_YZ;
-        }
-        if (axis != 0)
-        {
-            hc.manipulatorMode = 1;
+            // If only in move mode.
+            distanceToAxis = hc.view->GetDistanceToLine(p1, p1 - planeX, hc.point2d);
+            if(distanceToAxis < closestAxis)
+            {
+                axis = AXIS_XY;
+                closestAxis = distanceToAxis;
+            }
+            distanceToAxis = hc.view->GetDistanceToLine(p1, p1 - planeY, hc.point2d);
+            if(distanceToAxis < closestAxis)
+            {
+                axis = AXIS_XY;
+                closestAxis = distanceToAxis;
+            }
+            distanceToAxis = hc.view->GetDistanceToLine(p2, p2 - planeX, hc.point2d);
+            if(distanceToAxis < closestAxis)
+            {
+                axis = AXIS_XZ;
+                closestAxis = distanceToAxis;
+            }
+            distanceToAxis = hc.view->GetDistanceToLine(p2, p2 - planeZ, hc.point2d);
+            if(distanceToAxis < closestAxis)
+            {
+                axis = AXIS_XZ;
+                closestAxis = distanceToAxis;
+            }
+            distanceToAxis = hc.view->GetDistanceToLine(p3, p3 - planeY, hc.point2d);
+            if(distanceToAxis < closestAxis)
+            {
+                axis = AXIS_YZ;
+                closestAxis = distanceToAxis;
+            }
+            distanceToAxis = hc.view->GetDistanceToLine(p3, p3 - planeZ, hc.point2d);
+            if(distanceToAxis < closestAxis)
+            {
+                axis = AXIS_YZ;
+                closestAxis = distanceToAxis;
+            }
+            if (axis != 0)
+            {
+                hc.manipulatorMode = 1;
+            }
         }
     }
 

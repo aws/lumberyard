@@ -218,16 +218,16 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
     AZStd::vector<AZ::SliceComponent::SliceInstanceAddress> sliceInstances;
     for (const AZ::EntityId& entityId : selectedEntities)
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+        AZ::SliceComponent::SliceInstanceAddress sliceAddress;
         EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
 
-        if (sliceAddress.first)
+        if (sliceAddress.IsValid())
         {
             if (sliceInstances.end() == AZStd::find(sliceInstances.begin(), sliceInstances.end(), sliceAddress))
             {
                 if (sliceInstances.empty())
                 {
-                    sliceAddress.first->GetInstanceEntityAncestry(entityId, referenceAncestors);
+                    sliceAddress.GetReference()->GetInstanceEntityAncestry(entityId, referenceAncestors);
                 }
 
                 sliceInstances.push_back(sliceAddress);
@@ -241,10 +241,17 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
     {
         if (showMask & Show::kPushToSlice)
         {
+            // Push slice action currently acts on entities and all descendants, so include those as part of the selection
+            AzToolsFramework::EntityIdSet selectedTransformHierarchyEntities =
+                hierarchy->GetEditorWindow()->GetSliceManager()->GatherEntitiesAndAllDescendents(selectedEntities);
+
+            AzToolsFramework::EntityIdList selectedPushEntities;
+            selectedPushEntities.insert(selectedPushEntities.begin(), selectedTransformHierarchyEntities.begin(), selectedTransformHierarchyEntities.end());
+
             QAction* action = addAction(QObject::tr("&Push to Slice..."));
-            QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedEntities]
+            QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedPushEntities]
                 {
-                    hierarchy->GetEditorWindow()->GetSliceManager()->PushEntitiesModal(selectedEntities, nullptr);
+                    hierarchy->GetEditorWindow()->GetSliceManager()->PushEntitiesModal(selectedPushEntities, nullptr);
                 }
             );
         }
@@ -288,9 +295,10 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
                 }
                 QAction* action = addAction(detachEntitiesActionText);
                 QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedDetachEntities]
-                {
-                    hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceEntities(selectedDetachEntities);
-                }
+                    {
+                        hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceEntities(selectedDetachEntities);
+                        hierarchy->UpdateSliceInfo();
+                    }
                 );
             }
 
@@ -307,11 +315,54 @@ void HierarchyMenu::SliceMenuItems(HierarchyWidget* hierarchy,
                 }
                 QAction* action = addAction(detachSlicesActionText);
                 QObject::connect(action, &QAction::triggered, hierarchy, [hierarchy, selectedEntities]
-
-                {
-                    hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceInstances(selectedEntities);
-                }
+                    {
+                        hierarchy->GetEditorWindow()->GetSliceManager()->DetachSliceInstances(selectedEntities);
+                        hierarchy->UpdateSliceInfo();
+                    }
                 );
+            }
+
+            // Edit slice in new tab
+            {
+                QMenu* menu = addMenu("Edit slice in new tab");
+
+                // Catalog all unique slices to which any of the selected entities are associated (anywhere in their ancestry).
+                // This is used to make a menu allowing any of them to be edited in a new tab
+                AZStd::vector<AZ::Data::AssetId> slicesAddedToMenu;
+                AZ::SliceComponent::EntityAncestorList tempAncestors;
+
+                for (AZ::EntityId entityId : selectedEntities)
+                {
+                    AZ::SliceComponent::SliceInstanceAddress sliceAddress;
+                    AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
+
+                    if (sliceAddress.IsValid())
+                    {
+                        tempAncestors.clear();
+                        sliceAddress.GetReference()->GetInstanceEntityAncestry(entityId, tempAncestors);
+
+                        for (const AZ::SliceComponent::Ancestor& ancestor : tempAncestors)
+                        {
+                            const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset = ancestor.m_sliceAddress.GetReference()->GetSliceAsset();
+
+                            // If this slice has not already been added to the menu then add it.
+                            if (slicesAddedToMenu.end() == AZStd::find(slicesAddedToMenu.begin(), slicesAddedToMenu.end(), sliceAsset.GetId()))
+                            {
+                                const AZStd::string& assetPath = sliceAsset.GetHint();
+                                slicesAddedToMenu.push_back(sliceAsset.GetId());
+
+                                QAction* action = menu->addAction(assetPath.c_str());
+                                QObject::connect(action, &QAction::triggered, [this, hierarchy, sliceAsset]
+                                    {
+                                        hierarchy->GetEditorWindow()->EditSliceInNewTab(sliceAsset.GetId());
+                                    }
+                                );
+                            }
+                        }
+                    }
+                }
+
+
             }
         }
 

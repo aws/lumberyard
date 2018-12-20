@@ -121,9 +121,26 @@ namespace AzQtComponents
         m_titleLabel->setVisible(!title.isEmpty());
     }
 
+    void CardHeader::refreshTitle()
+    {
+        m_titleLabel->style()->unpolish(m_titleLabel);
+        m_titleLabel->style()->polish(m_titleLabel);
+        m_titleLabel->update();
+    }
+
+    void CardHeader::setTitleProperty(const char *name, const QVariant &value)
+    {
+        m_titleLabel->setProperty(name, value);
+    }
+
     QString CardHeader::title() const
     {
         return m_titleLabel->text();
+    }
+
+    QLabel* CardHeader::titleLabel() const
+    {
+        return m_titleLabel;
     }
 
     void CardHeader::setIcon(const QIcon& icon)

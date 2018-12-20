@@ -42,7 +42,10 @@ namespace AzQtComponents
 
         /// Set a title. Passing an empty string will hide the widget.
         void setTitle(const QString& title);
+        void refreshTitle();
+        void setTitleProperty(const char *name, const QVariant &value);
         QString title() const;
+        QLabel* titleLabel() const;
 
         /// Set an icon. Passing a null icon will hide the icon.
         void setIcon(const QIcon& icon);

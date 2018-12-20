@@ -99,7 +99,7 @@ namespace AZ
 
                 // Gems can be removed, causing the setting for manifest objects in the the Gem to not be registered. Instead of failing
                 //      to load the entire manifest, just ignore those values.
-                ObjectStream::FilterDescriptor loadFilter(AZ::ObjectStream::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+                ObjectStream::FilterDescriptor loadFilter(&AZ::Data::AssetFilterNoAssetLoading, ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
                 return Utils::LoadObjectFromStreamInPlace<SceneManifest>(stream, *this, context, loadFilter);
             }
             

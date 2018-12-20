@@ -223,6 +223,9 @@ namespace AzToolsFramework
         // This is called when our transform changes directly, or our parent's has changed.
         void TransformComponent::OnTransformChanged(const AZ::Transform& /*parentLocalTM*/, const AZ::Transform& parentWorldTM)
         {
+            m_localTransformDirty = true;
+            m_worldTransformDirty = true;
+
             if (GetEntity())
             {
                 SetDirty();
@@ -295,7 +298,12 @@ namespace AzToolsFramework
 
         const AZ::Transform& TransformComponent::GetLocalTM()
         {
-            m_localTransformCache = GetLocalTranslationTM() * GetLocalRotationTM() * GetLocalScaleTM();
+            if (m_localTransformDirty)
+            {
+                m_localTransformCache = GetLocalTranslationTM() * GetLocalRotationTM() * GetLocalScaleTM();
+                m_localTransformDirty = false;
+            }
+
             return m_localTransformCache;
         }
 
@@ -326,7 +334,12 @@ namespace AzToolsFramework
 
         const AZ::Transform& TransformComponent::GetWorldTM()
         {
-            m_worldTransformCache = GetParentWorldTM() * GetLocalTM();
+            if (m_worldTransformDirty)
+            {
+                m_worldTransformCache = GetParentWorldTM() * GetLocalTM();
+                m_worldTransformDirty = false;
+            }
+
             return m_worldTransformCache;
         }
 
@@ -1120,7 +1133,7 @@ namespace AzToolsFramework
                     Field("Translate", &EditorTransform::m_translate)->
                     Field("Rotate", &EditorTransform::m_rotate)->
                     Field("Scale", &EditorTransform::m_scale)->
-                    Version(1);
+                    Version(2);
 
                 serializeContext->Class<Components::TransformComponent, EditorComponentBase>()->
                     Field("Parent Entity", &TransformComponent::m_parentEntityId)->
@@ -1185,6 +1198,7 @@ namespace AzToolsFramework
                         DataElement(0, &EditorTransform::m_rotate, "Rotate", "Local Rotation (Relative to parent) in degrees.")->
                             Attribute(AZ::Edit::Attributes::Step, 0.1f)->
                             Attribute(AZ::Edit::Attributes::Suffix, " deg")->
+                            Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushableOnSliceRoot)->
                         DataElement(0, &EditorTransform::m_scale, "Scale", "Local Scale")->
                             Attribute(AZ::Edit::Attributes::Step, 0.1f)->
                             Attribute(AZ::Edit::Attributes::Min, 0.01f)

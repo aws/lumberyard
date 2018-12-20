@@ -747,8 +747,9 @@ struct SRenderPipeline
     threadID m_nProcessThreadID;
     SThreadInfo m_TI[RT_COMMAND_BUF_COUNT];
     SThreadInfo m_OldTI[MAX_RECURSION_LEVELS];
-    CThreadSafeRendererContainer<ColorF> m_fogVolumeContibutions[RT_COMMAND_BUF_COUNT];
-
+    // SFogVolumeData container will be used to accumulate the fog volume influences.
+    CThreadSafeRendererContainer<SFogVolumeData> m_fogVolumeContibutionsData[RT_COMMAND_BUF_COUNT];
+   
     uint32 m_PersFlags1;        // Persistent flags - never reset
     uint32 m_PersFlags2;          // Persistent flags - never reset
     int m_FlagsPerFlush;          // Flags which resets for each shader flush
@@ -1028,7 +1029,7 @@ public:
             }
             pSizer->AddObject(m_SysVertexPool[i]);
             pSizer->AddObject(m_SysIndexPool[i]);
-            pSizer->AddObject(m_fogVolumeContibutions[i]);
+            pSizer->AddObject(m_fogVolumeContibutionsData[i]);
         }
         pSizer->AddObject(m_RIs);
         pSizer->AddObject(m_RTStats);

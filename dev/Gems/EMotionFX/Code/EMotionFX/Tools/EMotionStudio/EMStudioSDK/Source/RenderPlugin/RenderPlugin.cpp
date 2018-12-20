@@ -634,13 +634,13 @@ namespace EMStudio
                 for (i = 0; i < numViewWidgets; ++i)
                 {
                     RenderWidget* current = mViewWidgets[i]->GetRenderWidget();
-                    current->ViewCloseup(sceneAABB, flightTime);
+                    current->ViewCloseup(selectedInstancesOnly, flightTime);
                 }
             }
             // only apply it to the given view widget
             else
             {
-                renderWidget->ViewCloseup(sceneAABB, flightTime);
+                renderWidget->ViewCloseup(selectedInstancesOnly, flightTime);
             }
         }
     }

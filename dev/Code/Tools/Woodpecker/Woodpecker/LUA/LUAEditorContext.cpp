@@ -2309,7 +2309,7 @@ namespace LUAEditor
     void Context::Reflect(AZ::ReflectContext* reflection)
     {
         AzToolsFramework::LogPanel::BaseLogPanel::Reflect(reflection);
-        AzToolsFramework::QTreeViewStateSaver::Reflect(reflection);
+        AzToolsFramework::QTreeViewWithStateSaving::Reflect(reflection);
 
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
         if (serializeContext)

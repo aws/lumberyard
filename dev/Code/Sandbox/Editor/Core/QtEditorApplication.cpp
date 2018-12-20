@@ -161,6 +161,28 @@ namespace
                     }
                 }
                 break;
+
+                case QEvent::MouseButtonPress:
+                case QEvent::MouseButtonRelease:
+                case QEvent::MouseButtonDblClick:
+                case QEvent::MouseMove:
+                {
+#ifdef AZ_PLATFORM_APPLE
+                    auto widget = qobject_cast<QWidget*>(obj);
+                    if (widget && widget->graphicsProxyWidget() != nullptr)
+                    {
+                        QMouseEvent* me = static_cast<QMouseEvent*>(e);
+                        QWidget* target = qApp->widgetAt(QCursor::pos());
+                        if (target)
+                        {
+                            QMouseEvent ev(me->type(), target->mapFromGlobal(QCursor::pos()), me->button(), me->buttons(), me->modifiers());
+                            qApp->notify(target, &ev);
+                            return true;
+                        }
+                    }
+#endif
+                }
+                break;
             }
 
             return false;

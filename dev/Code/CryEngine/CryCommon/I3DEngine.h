@@ -1112,6 +1112,29 @@ protected:
 
 #pragma pack(push, 16)
 
+struct SFogVolumeData
+{
+    AABB avgAABBox;
+    ColorF fogColor;
+    int m_volumeType;
+    Vec3 m_heightFallOffBasePoint;
+    float m_densityOffset;
+    Vec3 m_heightFallOffDirScaled;
+    float m_globalDensity;
+   
+    SFogVolumeData() : 
+        avgAABBox(AABB::RESET),
+        m_globalDensity(0.0f),
+        m_densityOffset(0.0f),
+        m_volumeType(0),
+        m_heightFallOffBasePoint(Vec3(0, 0, 0)),
+        m_heightFallOffDirScaled(Vec3(0, 0, 0)),
+        fogColor(ColorF(1.0f, 1.0f, 1.0f, 1.0f))
+    {
+    }
+
+};
+
 // Summary:
 //     Light volumes data
 
@@ -1700,7 +1723,7 @@ struct I3DEngine
 
     virtual void GetPrecacheRoundIds(int pRoundIds[MAX_STREAM_PREDICTION_ZONES]) = 0;
 
-    virtual void TraceFogVolumes(const Vec3& worldPos, ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo) = 0;
+    virtual void TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality) = 0;
 
     // Attempts to import a macro texture file at filepath, and fills out the provided configuration with data from the file. Returns true if successful.
     virtual bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const = 0;

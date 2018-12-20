@@ -465,6 +465,7 @@ void BatchApplicationManager::InitAssetRequestHandler()
     m_connectionManager->RegisterService(AssetJobLogRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(SourceAssetInfoRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(GetScanFoldersRequest::MessageType(), serviceRedirectHandler);
+    m_connectionManager->RegisterService(GetAssetSafeFoldersRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(RegisterSourceAssetRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(UnregisterSourceAssetRequest::MessageType(), serviceRedirectHandler);
     m_connectionManager->RegisterService(SaveAssetCatalogRequest::MessageType(), serviceRedirectHandler);
@@ -701,15 +702,22 @@ void BatchApplicationManager::ShutdownBuilderManager()
 bool BatchApplicationManager::InitAssetDatabase()
 {
     AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler::BusConnect();
-    m_assetDatabaseConnection = new AssetProcessor::AssetDatabaseConnection();
-    return m_assetDatabaseConnection->OpenDatabase();
+    // create or upgrade the asset database here, so that it is already good for the rest of the application and the rest
+    // of the application does not have to worry about a failure to upgrade or create it.
+    AssetProcessor::AssetDatabaseConnection database;
+    if (!database.OpenDatabase())
+    {
+        return false;
+    }
+
+    database.CloseDatabase();
+
+    return true;
 }
 
 void BatchApplicationManager::ShutDownAssetDatabase()
 {
     AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Handler::BusDisconnect();
-    delete m_assetDatabaseConnection;
-    m_assetDatabaseConnection = nullptr;
 }
 
 void BatchApplicationManager::InitFileProcessor() 
@@ -728,10 +736,6 @@ void BatchApplicationManager::ShutDownFileProcessor()
     m_fileProcessor.reset();
 }
 
-AzToolsFramework::AssetDatabase::AssetDatabaseConnection* BatchApplicationManager::GetAssetDatabaseConnection() const
-{
-    return m_assetDatabaseConnection;
-}
 
 // IMPLEMENTATION OF -------------- AzToolsFramework::AssetDatabase::AssetDatabaseRequests::Bus::Listener
 bool BatchApplicationManager::GetAssetDatabaseLocation(AZStd::string& location)

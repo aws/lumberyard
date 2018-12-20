@@ -240,6 +240,8 @@ private:
     void DrawTimeLineInFrames(QPainter* dc, const QRect& rc, const QColor& lineCol, const QColor& textCol, double step);
     void DrawTimeLineInSeconds(QPainter* dc, const QRect& rc, const QColor& lineCol, const QColor& textCol, double step);
 
+    static bool CompareKeyHandleByTime(const CTrackViewKeyHandle &a, const CTrackViewKeyHandle &b);
+
     QBrush m_bkgrBrush;
     QBrush m_bkgrBrushEmpty;
     QBrush m_selectedBrush;

@@ -34,6 +34,7 @@ namespace LmbrCentral
                 Field("Depth", &DecalConfiguration::m_depth)->
                 Field("Offset", &DecalConfiguration::m_position)->
                 Field("Opacity", &DecalConfiguration::m_opacity)->
+                Field("Angle Attenuation", &DecalConfiguration::m_angleAttenuation)->
                 Field("Deferred", &DecalConfiguration::m_deferred)->
                 Field("DeferredString", &DecalConfiguration::m_deferredString)->
                 Field("Max View Distance", &DecalConfiguration::m_maxViewDist)->
@@ -212,9 +213,9 @@ namespace LmbrCentral
         return m_materialBusHandler->GetMaterial();
     }
 
-    void DecalComponent::SetMaterialHandle(MaterialHandle m)
+    void DecalComponent::SetMaterialHandle(const MaterialHandle& materialHandle)
     {
-        m_materialBusHandler->SetMaterialHandle(m);
+        m_materialBusHandler->SetMaterialHandle(materialHandle);
     }
 
     MaterialHandle DecalComponent::GetMaterialHandle()

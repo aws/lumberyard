@@ -37,7 +37,11 @@
             "SystemFile.cpp",
             "TickBusTest.cpp",
             "TestTypes.h",
+            "UUIDTests.cpp",
             "XML.cpp"
+        ],
+        "AzCore/Math": [
+            "Math/QuaternionTests.cpp"
         ],
         "AZStd": [
             "AZStd/Algorithms.cpp",

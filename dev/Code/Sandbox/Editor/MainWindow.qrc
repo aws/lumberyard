@@ -83,26 +83,40 @@
     <file>res/editor_icon.ico</file>
   </qresource>
   <qresource prefix="/Icons">
-      <file alias="Entity_Icon.tif">res/Entity_Icon.tif</file>
-      <file alias="Slice_Entity_Icon.tif">res/Slice_Entity_Icon.tif</file>
-      <file alias="Slice_Handle_Icon.tif">res/Slice_Handle_Icon.tif</file>
-      <file alias="Broken_Slice_Handle_Icon.tif">res/Broken_Slice_Handle_Icon.tif</file>
+      <file alias="Eye.svg">res/Eye.svg</file>
+      <file alias="Eye_Open.tif">res/Eye_Open.tif</file>
+      <file alias="Eye_Open_Hidden">res/Eye_Open_Hidden.tif</file>
+      <file alias="Eye_Open_Hover.tif">res/Eye_Open_Hover.tif</file>
+      <file alias="Eye_Partial_Open.tif">res/Eye_Partial_Open.tif</file>
+      <file alias="Eye_Partial_Slash.tif">res/Eye_Partial_Slash.tif</file>
+      <file alias="Eye_Slash.tif">res/Eye_Slash.tif</file>
+      <file alias="Eye_Slash_Hidden.tif">res/Eye_Slash_Hidden.tif</file>
+      <file alias="Eye_Slash_Hover.tif">res/Eye_Slash_Hover.tif</file>
       <file alias="Padlock.svg">res/Padlock.svg</file>
       <file alias="Padlock_Disabled.tif">res/Padlock_Disabled.tif</file>
       <file alias="Padlock_Disabled_Hover.tif">res/Padlock_Disabled_Hover.tif</file>
       <file alias="Padlock_Enabled.tif">res/Padlock_Enabled.tif</file>
       <file alias="Padlock_Enabled_Hover.tif">res/Padlock_Enabled_Hover.tif</file>
-      <file alias="Eye.svg">res/Eye.svg</file>
-      <file alias="Eye_Open.tif">res/Eye_Open.tif</file>
-      <file alias="Eye_Open_Hidden">res/Eye_Open_Hidden.tif</file>
-      <file alias="Eye_Open_Hover.tif">res/Eye_Open_Hover.tif</file>
-      <file alias="Eye_Slash_Hidden.tif">res/Eye_Slash_Hidden.tif</file>
-      <file alias="Eye_Slash_Hover.tif">res/Eye_Slash_Hover.tif</file>
-      <file alias="Eye_Slash.tif">res/Eye_Slash.tif</file>
-      <file alias="Eye_Partial_Open.tif">res/Eye_Partial_Open.tif</file>
-      <file alias="Eye_Partial_Slash.tif">res/Eye_Partial_Slash.tif</file>
       <file alias="Padlock_Partial_Disabled.tif">res/Padlock_Partial_Disabled.tif</file>
       <file alias="Padlock_Partial_Enabled.tif">res/Padlock_Partial_Enabled.tif</file>
+
+      <file alias="Entity.svg">res/Entity.svg</file>
+      <file alias="Entity_Editor_Only.svg">res/Entity_Editor_Only.svg</file>
+      <file alias="Entity_Not_Active.svg">res/Entity_Not_Active.svg</file>
+
+      <file alias="Slice_Entity.svg">res/Slice_Entity.svg</file>
+      <file alias="Slice_Entity_Editor_Only.svg">res/Slice_Entity_Editor_Only.svg</file>
+      <file alias="Slice_Entity_Not_Active.svg">res/Slice_Entity_Not_Active.svg</file>
+      <file alias="Slice_Entity_Modified.svg">res/Slice_Entity_Modified.svg</file>
+      <file alias="Slice_Entity_Modified_Editor_Only.svg">res/Slice_Entity_Modified_Editor_Only.svg</file>
+      <file alias="Slice_Entity_Modified_Not_Active.svg">res/Slice_Entity_Modified_Not_Active.svg</file>
+
+      <file alias="Slice_Handle.svg">res/Slice_Handle.svg</file>
+      <file alias="Slice_Handle_Editor_Only.svg">res/Slice_Handle_Editor_Only.svg</file>
+      <file alias="Slice_Handle_Not_Active.svg">res/Slice_Handle_Not_Active.svg</file>
+      <file alias="Slice_Handle_Modified.svg">res/Slice_Handle_Modified.svg</file>
+      <file alias="Slice_Handle_Modified_Editor_Only.svg">res/Slice_Handle_Modified_Editor_Only.svg</file>
+      <file alias="Slice_Handle_Modified_Not_Active.svg">res/Slice_Handle_Modified_Not_Active.svg</file>
   </qresource>
   <qresource>
     <file>res/Preferences_00.png</file>

@@ -269,11 +269,27 @@ void UiDynamicLayoutComponent::SetPrototypeElementActive(bool active)
         {
             if (active)
             {
-                child->Activate();
+                if (child->GetState() != AZ::Entity::ES_ACTIVE)
+                {
+                    child->Activate();
+                }
+                else
+                {
+                    AZ_Warning("UiDynamicLayoutComponent", false, "Entity %s [%s] is already activated, which is not expected. Make sure you are not calling SetNumChildElements from a Script Activate function.",
+                        child->GetName().c_str(), child->GetId().ToString().c_str());
+                }
             }
             else
             {
-                child->Deactivate();
+                if (child->GetState() == AZ::Entity::ES_ACTIVE)
+                {
+                    child->Deactivate();
+                }
+                else
+                {
+                    AZ_Warning("UiDynamicLayoutComponent", false, "Entity %s [%s] is already deactivated, which is not expected.",
+                        child->GetName().c_str(), child->GetId().ToString().c_str());
+                }
             }
         }
     }

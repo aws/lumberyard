@@ -21,6 +21,7 @@
             "ComponentEntityDebugPrinter.cpp"
         ],
         "UI": [
+            "UI/ComponentEntityEditorOutlinerWindow.qrc",
             "UI/QComponentEntityEditorMainWindow.h",
             "UI/QComponentEntityEditorMainWindow.cpp",
             "UI/QComponentEntityEditorOutlinerWindow.h",
@@ -46,6 +47,9 @@
 
         ],
         "UI/Outliner" : [
+            "UI/Outliner/OutlinerDisplayOptionsMenu.h",
+            "UI/Outliner/OutlinerDisplayOptionsMenu.cpp",
+            "UI/Outliner/OutlinerDisplayOptionsMenu.ui",
             "UI/Outliner/OutlinerTreeView.hxx",
             "UI/Outliner/OutlinerTreeView.cpp",
             "UI/Outliner/OutlinerWidget.hxx",

@@ -21,6 +21,7 @@
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <AzFramework/Entity/EntityContextBus.h>
 
 #include <AzQtComponents/Components/Widgets/CardHeader.h>
 #include <AzQtComponents/Components/Widgets/CardNotification.h>
@@ -143,7 +144,7 @@ namespace AzToolsFramework
         m_propertyEditor = aznew ReflectedPropertyEditor(this);
         m_propertyEditor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         m_propertyEditor->setObjectName(ComponentEditorConstants::kPropertyEditorId);
-        m_propertyEditor->Setup(context, notifyTarget, false, ComponentEditorConstants::kPropertyLabelWidth);
+        m_propertyEditor->Setup(context, notifyTarget, false, ComponentEditorConstants::kPropertyLabelWidth, this);
         m_propertyEditor->SetHideRootProperties(true);
         m_propertyEditor->setProperty("ComponentBlock", true); // used by stylesheet
         m_savedKeySeed = AZ_CRC("WorldEditorEntityEditor_Component", 0x926c865f);
@@ -468,6 +469,26 @@ namespace AzToolsFramework
     void ComponentEditor::QueuePropertyEditorInvalidation(PropertyModificationRefreshLevel refreshLevel)
     {
         m_propertyEditor->QueueInvalidation(refreshLevel);
+    }
+
+    void ComponentEditor::SetComponentOverridden(const bool overridden)
+    {
+        auto entityId = m_components[0]->GetEntityId();
+        AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddress;
+
+        AzFramework::EntityIdContextQueryBus::EventResult(sliceInstanceAddress, entityId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
+        auto sliceInstance = sliceInstanceAddress.GetInstance();
+
+        if (sliceInstance)
+        {
+            GetHeader()->setTitleProperty("IsOverridden", overridden);
+            GetHeader()->RefreshTitle();
+        }
+        else
+        {
+            GetHeader()->setTitleProperty("IsOverridden", false);
+            GetHeader()->RefreshTitle();
+        }
     }
 
     void ComponentEditor::SetComponentType(const AZ::Component& componentInstance)

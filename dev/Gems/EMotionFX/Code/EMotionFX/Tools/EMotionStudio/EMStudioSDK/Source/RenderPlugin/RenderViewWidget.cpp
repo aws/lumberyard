@@ -274,15 +274,13 @@ namespace EMStudio
 
     void RenderViewWidget::OnShowSelected()
     {
-        MCore::AABB sceneAABB = mPlugin->GetSceneAABB(true);
-        mRenderWidget->ViewCloseup(sceneAABB, DEFAULT_FLIGHT_TIME);
+        mRenderWidget->ViewCloseup(true, DEFAULT_FLIGHT_TIME);
     }
 
 
     void RenderViewWidget::OnShowEntireScene()
     {
-        MCore::AABB sceneAABB = mPlugin->GetSceneAABB(false);
-        mRenderWidget->ViewCloseup(sceneAABB, DEFAULT_FLIGHT_TIME);
+        mRenderWidget->ViewCloseup(false, DEFAULT_FLIGHT_TIME);
     }
 
 
@@ -299,8 +297,7 @@ namespace EMStudio
 
         if (followInstance && GetIsCharacterFollowModeActive() && mRenderWidget)
         {
-            MCore::AABB sceneAABB = mPlugin->GetSceneAABB(true);
-            mRenderWidget->ViewCloseup(sceneAABB, DEFAULT_FLIGHT_TIME, 1);
+            mRenderWidget->ViewCloseup(true, DEFAULT_FLIGHT_TIME, 1);
         }
     }
 

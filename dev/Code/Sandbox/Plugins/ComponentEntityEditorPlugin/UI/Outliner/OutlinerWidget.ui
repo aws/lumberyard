@@ -35,16 +35,33 @@
    <property name="bottomMargin">
     <number>0</number>
    </property>
-    <item>
-      <layout class="QHBoxLayout" name="m_horizontalLayout_search">
-        <property name="spacing">
-          <number>0</number>
-        </property>
-        <item>
-          <widget class="AzQtComponents::FilteredSearchWidget" name="m_searchWidget" native="true"/>
-        </item>
-      </layout>
-    </item>
+   <item>
+    <layout class="QHBoxLayout" name="m_horizontalLayout_search">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="AzQtComponents::FilteredSearchWidget" name="m_searchWidget" native="true"/>
+     </item>
+     <item alignment="Qt::AlignTop">
+       <widget class="QPushButton" name="m_display_options" native="true">
+       <property name="styleSheet">
+        <string notr="true">QPushButton::menu-indicator{ image:  url(none.jpg); }</string>
+       </property>
+       <property name="icon">
+        <iconset resource="resources.qrc">
+         <normaloff>:/stylesheet/img/menu.png</normaloff>:/stylesheet/img/menu.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>25</width>
+         <height>21</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
    <item>
     <widget class="QScrollArea" name="m_objectList">
      <property name="focusPolicy">
@@ -103,12 +120,12 @@
    <header>UI/Outliner/OutlinerTreeView.hxx</header>
    <container>1</container>
   </customwidget>
-   <customwidget>
-     <class>AzQtComponents::FilteredSearchWidget</class>
-     <extends>QWidget</extends>
-     <header>AzQtComponents/Components/FilteredSearchWidget.h</header>
-     <container>1</container>
-   </customwidget>
+  <customwidget>
+   <class>AzQtComponents::FilteredSearchWidget</class>
+   <extends>QWidget</extends>
+   <header>AzQtComponents/Components/FilteredSearchWidget.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <resources/>
  <connections/>

@@ -3707,6 +3707,10 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             m_env.pLog = startupParams.pLog;
         }
 
+        // The log backup system expects the version number to be the first line of the log
+        // so we log this immediately after setting the log filename
+        LogVersion();
+
         //here we should be good to ask Crypak to do something
 
         //#define GEN_PAK_CDR_CRC

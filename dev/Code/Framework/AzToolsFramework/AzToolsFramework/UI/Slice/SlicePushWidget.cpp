@@ -42,13 +42,40 @@
 #include <AzToolsFramework/UI/Slice/SlicePushWidget.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <AzToolsFramework/UI/UICore/ClickableLabel.hxx>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
-#include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/Entity/EditorEntitySortComponent.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
+
 
 namespace AzToolsFramework
 {
+    /**
+     * Applies the style sheet loaded from the passed in QSS file to the passed in widget.
+     * \param widget The widget to apply the style sheet to.
+     * \param resourcePath The style sheet to load and apply to the widget.
+     */
+    void ApplyStyleSheet(QWidget* widget, QString resourcePath)
+    {
+        if (widget == nullptr)
+        {
+            return;
+        }
+        QFile file(resourcePath);
+        if (!file.open(QFile::ReadOnly))
+        {
+            AZ_Warning("Slice Push", 
+                false, 
+                "Could not apply style sheet at path '%s' to the Slice Push Widget.",
+                resourcePath.toLatin1().data());
+            return;
+        }
+        QString styleSheetContents = QLatin1String(file.readAll());
+        widget->setStyleSheet(styleSheetContents);
+    }
+
     /**
      * Simple overlay control for when no data changes are present.
      */
@@ -151,8 +178,7 @@ namespace AzToolsFramework
             , m_entity(nullptr)
             , m_entityItem(nullptr)
             , m_node(nullptr)
-            , m_isEntityRemoval(false)
-            , m_isEntityAdd(false)
+            , m_slicePushType(SlicePushType::Changed)
         {
             setSizeHint(0, QSize(0, kRowSize));
         }
@@ -162,8 +188,7 @@ namespace AzToolsFramework
             , m_entity(nullptr)
             , m_entityItem(nullptr)
             , m_node(nullptr)
-            , m_isEntityRemoval(false)
-            , m_isEntityAdd(false)
+            , m_slicePushType(SlicePushType::Changed)
         {
             setSizeHint(0, QSize(0, kRowSize));
         }
@@ -197,7 +222,7 @@ namespace AzToolsFramework
             FieldTreeItem* item = new FieldTreeItem(static_cast<QTreeWidget*>(nullptr), type);
             item->m_entity = assetEntityToRemove;
             item->m_entityItem = item;
-            item->m_isEntityRemoval = true;
+            item->m_slicePushType = SlicePushType::Removed;
             item->m_sliceAddress = sliceAddress;
             item->m_selectedAsset = targetAsset.GetId();
             return item;
@@ -208,14 +233,15 @@ namespace AzToolsFramework
             FieldTreeItem* item = new FieldTreeItem(static_cast<QTreeWidget*>(nullptr), type);
             item->m_entity = entity;
             item->m_entityItem = item;
-            item->m_isEntityAdd = true;
+            item->m_slicePushType = SlicePushType::Added;
             item->m_node = &item->m_hierarchy;
             return item;
         }
 
         bool IsPushableItem() const 
         {
-            return m_isEntityAdd || m_isEntityRemoval || childCount() == 0; // Either entity add/removal, or leaf item (for updates)
+            // Either entity add/removal, or leaf item (for updates)
+            return m_slicePushType == SlicePushType::Added || m_slicePushType == SlicePushType::Removed || childCount() == 0;
         }
 
         bool AllLeafNodesShareSelectedAsset(AZ::Data::AssetId targetAssetId) const
@@ -244,7 +270,7 @@ namespace AzToolsFramework
         {
             if (IsPushableItem())
             {
-                if (m_isEntityRemoval)
+                if (m_slicePushType == FieldTreeItem::SlicePushType::Removed)
                 {
                     return true; // Removal of entities is guaranteed to be pushable.
                 }
@@ -285,11 +311,13 @@ namespace AzToolsFramework
         // Entity associated with this node, or the entity parent of this node.
         AZ::Entity* m_entity;
 
-        // Set if this an entity removal from the target slice.
-        bool m_isEntityRemoval;
-
-        // Set if this a potential entity addition to an existing slice.
-        bool m_isEntityAdd;
+        enum class SlicePushType : int
+        {
+            Changed, // for entities with changes in itself and/or its components
+            Added, // for entities that are newly added to the target slice
+            Removed // for entities that are removed from the target slice
+        };
+        SlicePushType m_slicePushType;
 
         // For entity-level items only, contains slice ancestor list.
         AZ::SliceComponent::EntityAncestorList m_ancestors;
@@ -302,13 +330,73 @@ namespace AzToolsFramework
         FieldTreeItem* m_entityItem;
     };
 
+    namespace Internal
+    {
+        /**
+         * Check/uncheck all top level items of the same FieldTreeItem::SlicePushType.
+         */
+        void CheckAllItemsBySlicePushType(QTreeWidget* fieldTree, FieldTreeItem::SlicePushType slicePushType, Qt::CheckState checked)
+        {
+            for (int topLevelIndex = 0; topLevelIndex < fieldTree->topLevelItemCount(); ++topLevelIndex)
+            {
+                FieldTreeItem* item = static_cast<FieldTreeItem*>(fieldTree->topLevelItem(topLevelIndex));
+                if (item->m_slicePushType == slicePushType && !item->isDisabled())
+                {
+                    item->setCheckState(0, checked);
+                }
+            }
+        }
+
+        /**
+         * Test if all top level items of the same FieldTreeItem::SlicePushType have the same Qt::CheckState.
+         */
+        Qt::CheckState TestCheckStateOfAllTopLevelItemsBySlicePushType(QTreeWidget* fieldTree, FieldTreeItem::SlicePushType slicePushType)
+        {
+            int checkedNum = 0;
+            int slicePushTypeItemNum = 0;
+            for (int topLevelIndex = 0; topLevelIndex < fieldTree->topLevelItemCount(); ++topLevelIndex)
+            {
+                FieldTreeItem* item = static_cast<FieldTreeItem*>(fieldTree->topLevelItem(topLevelIndex));
+                if (item->m_slicePushType == slicePushType)
+                {
+                    slicePushTypeItemNum++;
+                    Qt::CheckState itemCheckState = item->checkState(0);
+                    if (itemCheckState == Qt::CheckState::Checked)
+                    {
+                        checkedNum++;
+                    }
+                }
+            }
+
+            if (checkedNum == 0)
+            {
+                return Qt::CheckState::Unchecked;
+            }
+            else if (checkedNum == slicePushTypeItemNum)
+            {
+                return Qt::CheckState::Checked;
+            }
+            else
+            {
+                return Qt::CheckState::PartiallyChecked;
+            }
+        }
+    } // namespace Internal
+
     //=========================================================================
     // SlicePushWidget
     //=========================================================================
-    SlicePushWidget::SlicePushWidget(const EntityIdList& entities, AZ::SerializeContext* serializeContext, QWidget* parent)
+    SlicePushWidget::SlicePushWidget(const EntityIdList& entities, const SlicePushWidgetConfigPtr& config, AZ::SerializeContext* serializeContext, QWidget* parent)
         : QWidget(parent)
+        , m_config(config)
     {
+        const int defaultContentsMargin = 5;
+
+        AZ_Assert(m_config != nullptr, "SlicePushWidget created without configuration!");
+
         QVBoxLayout* layout = new QVBoxLayout();
+        // The warning foldout goes to the edge of the slice push widget.
+        layout->setContentsMargins(0, 0, 0, 0);
 
         // Window layout:
         // ===============================================
@@ -377,9 +465,12 @@ namespace AzToolsFramework
         m_iconRemovedDataItem = QIcon(":/PropertyEditor/Resources/removed_data_item.png");
         m_iconSliceItem = QIcon(":/PropertyEditor/Resources/slice_item.png");
         m_iconWarning = QIcon(":/PropertyEditor/Resources/warning.png");
+        m_iconOpen = QIcon(":/PropertyEditor/Resources/open_arrow.png");
+        m_iconClosed = QIcon(":/PropertyEditor/Resources/close_arrow.png");
 
         // Main splitter contains left & right widgets (the two trees).
         QSplitter* splitter = new QSplitter();
+        splitter->setContentsMargins(defaultContentsMargin, defaultContentsMargin, defaultContentsMargin, defaultContentsMargin);
 
         QWidget* leftWidget = new QWidget();
         QVBoxLayout* leftLayout = new QVBoxLayout();
@@ -416,25 +507,43 @@ namespace AzToolsFramework
             {
                 imageChanged->setPixmap(m_iconChangedDataItem.pixmap(m_iconChangedDataItem.availableSizes().first()));
             }
-            QLabel* labelChanged = new QLabel(tr("Changed"));
+            m_checkboxAllChangedItems = new QCheckBox("Changed", this);
+            m_checkboxAllChangedItems->setLayoutDirection(Qt::LayoutDirection::RightToLeft);
+            connect(m_checkboxAllChangedItems, &QCheckBox::stateChanged, this, [this](int state)
+            {
+                Internal::CheckAllItemsBySlicePushType(m_fieldTree, FieldTreeItem::SlicePushType::Changed, Qt::CheckState(state));
+            });
+
             QLabel* imageAdded = new QLabel();
             if (!m_iconNewDataItem.availableSizes().empty())
             {
                 imageAdded->setPixmap(m_iconNewDataItem.pixmap(m_iconNewDataItem.availableSizes().first()));
             }
-            QLabel* labelAdded = new QLabel(tr("Added"));
+            m_checkboxAllAddedItems = new QCheckBox("Added", this);
+            m_checkboxAllAddedItems->setLayoutDirection(Qt::LayoutDirection::RightToLeft);
+            connect(m_checkboxAllAddedItems, &QCheckBox::stateChanged, this, [this](int state)
+            {
+                Internal::CheckAllItemsBySlicePushType(m_fieldTree, FieldTreeItem::SlicePushType::Added, Qt::CheckState(state));
+            });
+
             QLabel* imageRemoved = new QLabel();
             if (!m_iconRemovedDataItem.availableSizes().empty())
             {
                 imageRemoved->setPixmap(m_iconRemovedDataItem.pixmap(m_iconRemovedDataItem.availableSizes().first()));
             }
-            QLabel* labelRemoved = new QLabel(tr("Removed"));
+            m_checkboxAllRemovedItems = new QCheckBox("Removed", this);
+            m_checkboxAllRemovedItems->setLayoutDirection(Qt::LayoutDirection::RightToLeft);
+            connect(m_checkboxAllRemovedItems, &QCheckBox::stateChanged, this, [this](int state)
+            {
+                Internal::CheckAllItemsBySlicePushType(m_fieldTree, FieldTreeItem::SlicePushType::Removed, Qt::CheckState(state));
+            });
+
             bottomLegendAndButtonsLayout->addWidget(imageChanged, 0);
-            bottomLegendAndButtonsLayout->addWidget(labelChanged, 0);
+            bottomLegendAndButtonsLayout->addWidget(m_checkboxAllChangedItems, 0);
             bottomLegendAndButtonsLayout->addWidget(imageAdded, 0);
-            bottomLegendAndButtonsLayout->addWidget(labelAdded, 0);
+            bottomLegendAndButtonsLayout->addWidget(m_checkboxAllAddedItems, 0);
             bottomLegendAndButtonsLayout->addWidget(imageRemoved, 0);
-            bottomLegendAndButtonsLayout->addWidget(labelRemoved, 0);
+            bottomLegendAndButtonsLayout->addWidget(m_checkboxAllRemovedItems, 0);
         }
 
         // Create/populate button box.
@@ -456,10 +565,14 @@ namespace AzToolsFramework
         }
 
         m_bottomLayout = new QVBoxLayout();
+        m_bottomLayout->setContentsMargins(defaultContentsMargin, defaultContentsMargin, defaultContentsMargin, defaultContentsMargin);
         m_bottomLayout->setAlignment(Qt::AlignBottom);
         m_bottomLayout->addLayout(bottomLegendAndButtonsLayout);
 
+        CreateWarningLayout();
+
         // Add everything to main layout.
+        layout->addWidget(m_warningWidget, 0);
         layout->addWidget(splitter, 1);
         layout->addLayout(m_bottomLayout, 0);
 
@@ -469,6 +582,15 @@ namespace AzToolsFramework
         setLayout(layout);
 
         Setup(entities, serializeContext);
+
+        FinalizeWarningLayout();
+
+        // Only test m_checkboxAllChangedItems, the other two CheckBoxes are defaulted to unchecked.
+        Qt::CheckState checkStateOfChangedItems = Internal::TestCheckStateOfAllTopLevelItemsBySlicePushType(m_fieldTree, FieldTreeItem::SlicePushType::Changed);
+        if (checkStateOfChangedItems == Qt::CheckState::Checked)
+        {
+            m_checkboxAllChangedItems->setCheckState(Qt::CheckState::Checked);
+        }
     }
     
     //=========================================================================
@@ -476,6 +598,196 @@ namespace AzToolsFramework
     //=========================================================================
     SlicePushWidget::~SlicePushWidget()
     {
+    }
+
+    void SlicePushWidget::CreateWarningLayout()
+    {
+        QVBoxLayout* warningLayout = new QVBoxLayout();
+        warningLayout->setContentsMargins(0, 0, 0, 0);
+        warningLayout->setAlignment(Qt::AlignBottom);
+
+        CreateWarningLayoutHeader(warningLayout);
+        CreateWarningFoldout(warningLayout);
+
+        m_warningWidget = new QWidget();
+        ApplyStyleSheet(m_warningWidget, ":/PropertyEditor/Resources/DarkBackgroundStyle.qss");
+        m_warningWidget->setLayout(warningLayout);
+    }
+
+    void SlicePushWidget::CreateWarningLayoutHeader(QVBoxLayout* warningLayout)
+    {
+        if (!warningLayout)
+        {
+            return;
+        }
+        const int lineHeight = 1;
+        const int foldoutImageSize = 24;
+        // The left margin of the warning header should be pushed in to the right a bit, by design.
+        const int warningHeaderLeftMargin = 24;
+        const int warningHeaderMargins = 3;
+
+        // The warning layout is separated from the rest of the slice push widget by a thin line on the top and bottom.
+        QWidget* topHorizontalLine = new QWidget();
+        topHorizontalLine->setFixedHeight(lineHeight);
+        topHorizontalLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        // The top warning line is a brighter color to help draw the eye to the warning bar.
+        ApplyStyleSheet(topHorizontalLine, ":/PropertyEditor/Resources/WarningAccentColor.qss");
+        QHBoxLayout* topWarningLayout = new QHBoxLayout();
+        topWarningLayout->setContentsMargins(warningHeaderLeftMargin, warningHeaderMargins, warningHeaderMargins, warningHeaderMargins);
+
+        // The warning layout header has a warning triangle, a warning header message, and a details label and foldout that can
+        // be clicked to view additional information about warnings.
+
+        QLabel* warningIcon = new QLabel();
+        warningIcon->setAlignment(Qt::AlignLeft);
+        warningIcon->setPixmap(m_iconWarning.pixmap(m_iconWarning.availableSizes().first()));
+        warningIcon->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+        // The warning title should be replaced later with a specific number of missing references, seed it with something useful in case that fails.
+        m_warningTitle = new QLabel(tr("One or more slice files have missing file references. Cancel to update your references or \"Save...\" to remove the missing references."));
+        m_warningTitle->setAlignment(Qt::AlignLeft);
+        m_warningTitle->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+        // The word "Details" should also be clickable to expand and see details, in addition to the foldout arrow.
+        ClickableLabel* detailsLabel = new ClickableLabel();
+        detailsLabel->setText(tr("Details"));
+        detailsLabel->setAlignment(Qt::AlignRight);
+        detailsLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+        connect(detailsLabel, &ClickableLabel::clicked, this, &SlicePushWidget::OnToggleWarningClicked);
+
+        // The foldout arrow should be clickable to expand and see the detailed warning messages.
+        m_toggleWarningButton = new ClickableLabel();
+        m_toggleWarningButton->setPixmap(m_iconClosed.pixmap(m_iconClosed.availableSizes().first()));
+        m_toggleWarningButton->setFixedSize(foldoutImageSize, foldoutImageSize);
+        m_toggleWarningButton->setAlignment(Qt::AlignCenter);
+        m_toggleWarningButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        connect(m_toggleWarningButton, &ClickableLabel::clicked, this, &SlicePushWidget::OnToggleWarningClicked);
+        
+        // Add all of the widgets in order to the layout.
+        topWarningLayout->addWidget(warningIcon, Qt::AlignLeft);
+        topWarningLayout->addWidget(m_warningTitle, Qt::AlignLeft);
+        topWarningLayout->addWidget(detailsLabel, Qt::AlignRight);
+        topWarningLayout->addWidget(m_toggleWarningButton, Qt::AlignRight);
+
+        // The warning layout header is separated on the bottom by a thin line from the rest of the window.
+        QWidget* bottomHorizontalLine = new QWidget();
+        bottomHorizontalLine->setFixedHeight(lineHeight);
+        bottomHorizontalLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        ApplyStyleSheet(bottomHorizontalLine, ":/PropertyEditor/Resources/LightBackgroundStyle.qss");
+
+        // Add everything to the warning layout.
+        warningLayout->addWidget(topHorizontalLine);
+        warningLayout->addLayout(topWarningLayout);
+        warningLayout->addWidget(bottomHorizontalLine);
+    }
+
+    void SlicePushWidget::CreateWarningFoldout(QVBoxLayout* warningLayout)
+    {
+        // The warning foldout contains a scrollable list of warning messages.
+        // It has two columns, the first is the slice file that has an error in it.
+        // The second column is the associated warning message.
+        // This entire section of the warning header can be hidden away or shown using the details button
+        // on the warning header.
+        m_warningFoldout = new QWidget();
+
+        QVBoxLayout* warningFoldoutLayout = new QVBoxLayout();
+        warningFoldoutLayout->setContentsMargins(0, 0, 0, 0);
+
+        m_warningMessages = new QTreeWidget();
+        m_warningMessages->setUniformRowHeights(true);
+        m_warningMessages->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+        // There are two columns for the warning list, the first is the slice file with an error, and the second is the message.
+        m_warningMessages->setColumnCount(2);
+        // The warning display can't really have things dragged and dropped into it or out of it.
+        m_warningMessages->setDragDropMode(QAbstractItemView::DragDropMode::NoDragDrop);
+        m_warningMessages->setDragEnabled(false);
+        // The slice file name column should be resizable, so assets buried deep in a directory structure don't
+        // eat up all of the visible space and hide away the warning message.
+        m_warningMessages->header()->setSectionResizeMode(0, QHeaderView::Interactive);
+        // Have the warning message fill up the rest of the available view.
+        m_warningMessages->header()->setSectionResizeMode(1, QHeaderView::Stretch);
+
+        ApplyStyleSheet(m_warningMessages, ":/PropertyEditor/Resources/WarningMessageHighlight.qss");
+        QStringList headerLabels;
+        headerLabels << tr("Slice file");
+        headerLabels << tr("Description");
+        m_warningMessages->setHeaderLabels(headerLabels);
+
+        // When the user clicks on a warning message, the slice push widget's tree view should scroll to show the
+        // associated entity, and select that entity.
+        connect(m_warningMessages,
+            &QTreeWidget::itemSelectionChanged,
+            this, [this]() { this->OnWarningMessageSelectionChanged(); });
+
+        warningFoldoutLayout->addWidget(m_warningMessages, 0);
+        // The warning list has a maximum size, to allow the rest of the slice push widget to expand to fill the space.
+        // Include a stretch here to help keep the warning message list from over-growing.
+        warningFoldoutLayout->addStretch(1);
+
+        m_warningFoldout->setLayout(warningFoldoutLayout);
+        m_warningFoldout->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Maximum);
+
+        // The detailed view of the warnings are hidden by default.
+        m_warningFoldout->hide();
+
+        warningLayout->addWidget(m_warningFoldout);
+    }
+
+    void SlicePushWidget::FinalizeWarningLayout()
+    {
+        // The SlicePushWidget UI had to be built before building the treeview of pushable content.
+        // Once that treeview of pushable content has been built, the final warning count will have been generated.
+        // At this point, the detailed warning view's final size can be determined, and the warning header can be finalized.
+        const int warningMessageCount = m_warningMessages->topLevelItemCount();
+
+        if (warningMessageCount == 0)
+        {
+            m_warningWidget->hide();
+            return;
+        }
+
+        // Update the warning header to display the number of slices with invalid references.
+        m_warningTitle->setText(tr("%1 missing reference(s). To update your references, click Cancel. To remove the missing references, click Save.").arg(
+            m_entityToSliceComponentWithInvalidReferences.size()));
+
+        // Include a bit of padding when generating the height of the warning message treeview so the bottom elements
+        // don't sit uncomfortably close to the rest of the slice push widget.
+        const int padding = 6;
+
+        // Start building the final display height of the tree view, start with the size of the header and the padding.
+        int finalHeight = m_warningMessages->header()->height() + padding;
+
+        // Clamp the treeview to a maximum number of elements to display. If there are less warnings than this, then the warning
+        // view shouldn't take up empty space. If there are more warnings than this, let the scroll view handle it. The rest
+        // of the height of the slice push widget should be used by the interface for pushing slices, and not all of these warnings.
+        const int maxItemsDisplayedAtOnce = 5;
+        int itemsToDisplay = warningMessageCount < maxItemsDisplayedAtOnce ? warningMessageCount : maxItemsDisplayedAtOnce;
+        // Check the height of each row to get an exact height. Generally the row heights will be the same, but this allows
+        // for some flexibility, in case a long message causes the text to wrap and the cell to grow in height.
+        for(int i = 0; i < itemsToDisplay; ++i)
+        {
+            QTreeWidgetItem* row = m_warningMessages->topLevelItem(i);
+            QRect rowRect = m_warningMessages->visualItemRect(row);
+            finalHeight += rowRect.height();
+        }
+        m_warningMessages->setMaximumHeight(finalHeight);
+    }
+
+    void SlicePushWidget::OnWarningMessageSelectionChanged()
+    {
+        QList<QTreeWidgetItem*> selectedItems = m_warningMessages->selectedItems();
+        if (selectedItems.size() <= 0)
+        {
+            return;
+        }
+        AZStd::unordered_map<QTreeWidgetItem*, FieldTreeItem*>::iterator entityTreeItem =
+            m_warningsToEntityTree.find(selectedItems[0]);
+        if (entityTreeItem == m_warningsToEntityTree.end())
+        {
+            return;
+        }
+        m_fieldTree->scrollToItem(entityTreeItem->second);
+        m_fieldTree->setCurrentItem(entityTreeItem->second);
     }
 
     //=========================================================================
@@ -521,7 +833,7 @@ namespace AzToolsFramework
                 AZStd::vector<SliceAssetPtr> validSliceAssets = GetValidTargetAssetsForField(*item);
                 if (!validSliceAssets.empty())
                 {
-                    item->m_selectedAsset = validSliceAssets.front().GetId();
+                    item->m_selectedAsset = validSliceAssets.back().GetId();
 
                     AZStd::string sliceAssetPath;
                     EBUS_EVENT_RESULT(sliceAssetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, item->m_selectedAsset);
@@ -536,7 +848,7 @@ namespace AzToolsFramework
                         {
                             item->setIcon(0, m_iconRemovedDataItem);
                         }
-                        else if (item->m_sliceAddress.first) // Changed data vs. slice
+                        else if (item->m_sliceAddress.IsValid()) // Changed data vs. slice
                         {
                             item->setIcon(0, m_iconChangedDataItem);
                         }
@@ -589,7 +901,18 @@ namespace AzToolsFramework
     {
         for (const auto& sliceAddress : m_sliceInstances)
         {
-            AZ::Data::AssetBus::MultiHandler::BusConnect(sliceAddress.first->GetSliceAsset().GetId());
+            AZ::Data::AssetBus::MultiHandler::BusConnect(sliceAddress.GetReference()->GetSliceAsset().GetId());
+        }
+    }
+
+    //=========================================================================
+    // SlicePushWidget::StopAssetMonitoring
+    //=========================================================================
+    void SlicePushWidget::StopAssetMonitoring()
+    {
+        for (const auto& sliceAddress : m_sliceInstances)
+        {
+            AZ::Data::AssetBus::MultiHandler::BusDisconnect(sliceAddress.GetReference()->GetSliceAsset().GetId());
         }
     }
 
@@ -607,7 +930,7 @@ namespace AzToolsFramework
             auto& ancestor = *iter;
             if (item.AllLeafNodesArePushableToThisAncestor(*ancestor.m_entity))
             {
-                validSliceAssets.push_back(ancestor.m_sliceAddress.first->GetSliceAsset());
+                validSliceAssets.push_back(ancestor.m_sliceAddress.GetReference()->GetSliceAsset());
             }
         }
 
@@ -624,7 +947,7 @@ namespace AzToolsFramework
                     for (auto iter = pItem->m_ancestors.begin(); iter != pItem->m_ancestors.end(); ++iter)
                     {
                         auto& ancestor = *iter;
-                        const AZ::Data::AssetId& sliceAssetId = ancestor.m_sliceAddress.first->GetSliceAsset().GetId();
+                        const AZ::Data::AssetId& sliceAssetId = ancestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId();
 
                         auto assetCompare =
                             [ &sliceAssetId ] (const SliceAssetPtr& asset)
@@ -634,7 +957,7 @@ namespace AzToolsFramework
 
                         if (validSliceAssets.end() == AZStd::find_if(validSliceAssets.begin(), validSliceAssets.end(), assetCompare))
                         {
-                            validSliceAssets.push_back(ancestor.m_sliceAddress.first->GetSliceAsset());
+                            validSliceAssets.push_back(ancestor.m_sliceAddress.GetReference()->GetSliceAsset());
                         }
                     }
                 }
@@ -660,11 +983,11 @@ namespace AzToolsFramework
 
             bool isLeaf = (item->childCount() == 0);
 
-            if (item->m_isEntityRemoval)
+            if (item->m_slicePushType == FieldTreeItem::SlicePushType::Removed)
             {
                 m_infoLabel->setText(QString("Remove entity \"%1\" from slice:").arg(item->m_entity->GetName().c_str()));
             }
-            else if (item->m_isEntityAdd)
+            else if (item->m_slicePushType == FieldTreeItem::SlicePushType::Added)
             {
                 m_infoLabel->setText(QString("Add entity \"%1\" %2to slice:").arg(item->m_entity->GetName().c_str()).arg((isLeaf && item->parent() == nullptr) ? "" : "and its hierarchy "));
             }
@@ -699,13 +1022,35 @@ namespace AzToolsFramework
 
                 SliceTargetTreeItem* sliceItem = new SliceTargetTreeItem(sliceAsset, m_sliceTree);
 
-                for (size_t space = 0; space < level; ++space)
-                {
-                    itemText.insert(0, "    ");
+                QWidget* widget = new QWidget(this);
+                QHBoxLayout* advancedPushRowLayout = new QHBoxLayout(this);
+                widget->setLayout(advancedPushRowLayout);
+
+                if (level > 0)
+                {        
+                    QLabel* indentLabel = new QLabel(this);
+                    int LShapeIconWidgetWidth = advancedPushRowLayout->contentsMargins().left() + SliceUtilities::GetLShapeIconSize().width() + advancedPushRowLayout->contentsMargins().right();
+                    int indentLabelWidth = SliceUtilities::GetSliceHierarchyMenuIdentationPerLevel() + static_cast<int>(level - 1) * LShapeIconWidgetWidth;
+                    indentLabel->setFixedSize(indentLabelWidth, SliceUtilities::GetSliceItemHeight());
+                    advancedPushRowLayout->addWidget(indentLabel);
+
+                    // Add the L shape icon to show the slice hierarchy
+                    QLabel* lShapeIconLabel = new QLabel(this);
+                    lShapeIconLabel->setPixmap(QPixmap(SliceUtilities::GetLShapeIconPath()));
+                    lShapeIconLabel->setFixedSize(SliceUtilities::GetLShapeIconSize());
+                    advancedPushRowLayout->addWidget(lShapeIconLabel);
                 }
 
-                sliceItem->setText(1, itemText.c_str());
-                sliceItem->setIcon(1, m_iconSliceItem);
+                QLabel* iconLabel = new QLabel(this);
+                QIcon sliceChangedItemIcon(SliceUtilities::GetSliceItemChangedIconPath());
+                iconLabel->setPixmap(sliceChangedItemIcon.pixmap(SliceUtilities::GetSliceItemIconSize()));
+                iconLabel->setFixedSize(SliceUtilities::GetSliceItemIconSize());
+                advancedPushRowLayout->addWidget(iconLabel);
+
+                QLabel* sliceLabel = new QLabel(itemText.c_str(), this);
+                advancedPushRowLayout->addWidget(sliceLabel);
+
+                m_sliceTree->setItemWidget(sliceItem, 1, widget);
 
                 const QString tooltip =
                     tr("Check to save field \"") + item->text(0) + tr("\" to asset \"") + assetPath.c_str() + "\".";
@@ -751,6 +1096,8 @@ namespace AzToolsFramework
 
         FieldTreeItem* fieldItem = static_cast<FieldTreeItem*>(item);
 
+        FieldTreeItem::SlicePushType fieldItemSlicePushType = fieldItem->m_slicePushType;
+
         const Qt::CheckState checkState = fieldItem->checkState(0);
 
         m_fieldTree->blockSignals(true);
@@ -778,21 +1125,22 @@ namespace AzToolsFramework
         // from being added whose parents aren't also added. You can't add a child item and not its parent
         // For removals, we need to sync "unchecked" state up the tree and prevent any parents
         // from being removed whose children aren't also being removed. No orphaning.
-        if (fieldItem->m_isEntityAdd || fieldItem->m_isEntityRemoval)
+        if (fieldItem->m_slicePushType == FieldTreeItem::SlicePushType::Added 
+            || fieldItem->m_slicePushType == FieldTreeItem::SlicePushType::Removed)
         {
             FieldTreeItem* hierarchyRootItem = fieldItem;
             FieldTreeItem* currentItem = hierarchyRootItem;
             while (currentItem != nullptr)
             {
                 hierarchyRootItem = currentItem;
-                if (fieldItem->m_isEntityAdd)
+                if (fieldItem->m_slicePushType == FieldTreeItem::SlicePushType::Added)
                 {
                     if (checkState == Qt::CheckState::Checked)
                     {
                         currentItem->setCheckState(0, checkState);
                     }
                 }
-                else if (fieldItem->m_isEntityRemoval)
+                else if (fieldItem->m_slicePushType == FieldTreeItem::SlicePushType::Removed)
                 {
                     if (checkState == Qt::CheckState::Unchecked)
                     {
@@ -820,14 +1168,14 @@ namespace AzToolsFramework
                     verificationStack.pop_back();
 
                     FieldTreeItem* parentItem = static_cast<FieldTreeItem*>(pItem->parent());
-                    if (pItem->m_isEntityAdd)
+                    if (fieldItem->m_slicePushType == FieldTreeItem::SlicePushType::Added)
                     {
                         if (parentItem->checkState(0) == Qt::CheckState::Unchecked)
                         {
                             pItem->setCheckState(0, Qt::CheckState::Unchecked);
                         }
                     }
-                    else if (pItem->m_isEntityRemoval)
+                    else if (fieldItem->m_slicePushType == FieldTreeItem::SlicePushType::Removed)
                     {
                         if (parentItem->checkState(0) == Qt::CheckState::Checked)
                         {
@@ -840,6 +1188,33 @@ namespace AzToolsFramework
                         verificationStack.push_back(static_cast<FieldTreeItem*>(pItem->child(i)));
                     }
                 }
+            }
+        }
+
+        // Test if all items of a FieldTreeItem::SlicePushType have the same Qt::CheckState, if so set their check-all CheckBox to the same state.
+        // If the Qt::CheckState of all items are mixed, leave their check-all CheckBox with its original state.
+        Qt::CheckState allItemsCheckState = Internal::TestCheckStateOfAllTopLevelItemsBySlicePushType(m_fieldTree, fieldItemSlicePushType);
+        if (allItemsCheckState != Qt::CheckState::PartiallyChecked)
+        {
+            switch (fieldItemSlicePushType)
+            {
+            case AzToolsFramework::FieldTreeItem::SlicePushType::Changed:
+                m_checkboxAllChangedItems->blockSignals(true);
+                m_checkboxAllChangedItems->setCheckState(allItemsCheckState);
+                m_checkboxAllChangedItems->blockSignals(false);
+                break;
+            case AzToolsFramework::FieldTreeItem::SlicePushType::Added:
+                m_checkboxAllAddedItems->blockSignals(true);
+                m_checkboxAllAddedItems->setCheckState(allItemsCheckState);
+                m_checkboxAllAddedItems->blockSignals(false);
+                break;
+            case AzToolsFramework::FieldTreeItem::SlicePushType::Removed:
+                m_checkboxAllRemovedItems->blockSignals(true);
+                m_checkboxAllRemovedItems->setCheckState(allItemsCheckState);
+                m_checkboxAllRemovedItems->blockSignals(false);
+                break;
+            default:
+                break;
             }
         }
 
@@ -867,7 +1242,8 @@ namespace AzToolsFramework
 
             FieldTreeItem* currentItem = static_cast<FieldTreeItem*>(m_fieldTree->selectedItems().front());
             AZStd::vector<FieldTreeItem*> stack;
-            if (currentItem->m_isEntityAdd || currentItem->m_isEntityRemoval)
+            if (currentItem->m_slicePushType == FieldTreeItem::SlicePushType::Added
+                || currentItem->m_slicePushType == FieldTreeItem::SlicePushType::Removed)
             {
                 // Adds/removals have their entire hierarchy synced
                 FieldTreeItem* highestLevelParent = currentItem;
@@ -898,11 +1274,11 @@ namespace AzToolsFramework
                     item->setText(1, assetPath.c_str());
 
                     QString tooltip;
-                    if (item->m_isEntityRemoval)
+                    if (item->m_slicePushType == FieldTreeItem::SlicePushType::Removed)
                     {
                         tooltip = QString("Entity \"%1\" will be deleted from asset \"%2\".").arg(item->text(0)).arg(assetPath.c_str());
                     }
-                    else if (item->m_isEntityAdd)
+                    else if (item->m_slicePushType == FieldTreeItem::SlicePushType::Added)
                     {
                         tooltip = QString("Entity \"%1\" will be added to asset \"%2\".").arg(item->text(0)).arg(assetPath.c_str());
                     }
@@ -928,6 +1304,81 @@ namespace AzToolsFramework
     //=========================================================================
     void SlicePushWidget::OnPushClicked()
     {
+        // If there were no invalid references, the warning check can be skipped.
+        if (m_entityToSliceComponentWithInvalidReferences.size() > 0)
+        {
+            // Track the number of uniquely referenced invalid slices by using their asset hint in an unordered_set.
+            AZStd::unordered_set<AZStd::string> invalidReferences;
+            AZStd::unordered_set<AZ::SliceAsset*> targetSlicesWithInvalidReferences;
+
+            auto& assetDb = AZ::Data::AssetManager::Instance();
+
+            // Search through all of the field items to find what is selected.
+            for (QTreeWidgetItemIterator itemIter(m_fieldTree); *itemIter; ++itemIter)
+            {
+                FieldTreeItem* item = static_cast<FieldTreeItem*>(*itemIter);
+                // Look for each item that has been marked to push.
+                if (item->IsPushableItem() && item->checkState(0) == Qt::Checked && item->m_entity != nullptr)
+                {
+                    // Check if this item was previously marked as having an invalid reference.
+                    AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent*>::iterator invalidReferenceIterator =
+                        m_entityToSliceComponentWithInvalidReferences.find(item->m_entity->GetId());
+                    if (invalidReferenceIterator != m_entityToSliceComponentWithInvalidReferences.end())
+                    {
+                        // Grab the slice component that had invalid references associated with this field item.
+                        AZ::SliceComponent* sliceComponent = invalidReferenceIterator->second;
+                        if (sliceComponent == nullptr)
+                        {
+                            AZ_Error("SlicePushWidget", 
+                                false,
+                                "Could not find SliceComponet for entity %s. This entity's slice references may not update correctly.",
+                                item->m_entity != nullptr ? item->m_entity->GetName().c_str() : "not found");
+                            continue;
+                        }
+                        const AZStd::list<AZ::SliceComponent::SliceReference> &invalidSlices = sliceComponent->GetInvalidSlices();
+                        if (invalidSlices.size() > 0)
+                        {
+                            // Count the unique assets that will be modified in this push.
+                            SliceAssetPtr targetSlice = assetDb.GetAsset<AZ::SliceAsset>(item->m_selectedAsset, false);
+                            // SliceAssetPtr doesn't work as a key in sets, so grab the raw pointer out of it.
+                            targetSlicesWithInvalidReferences.insert(targetSlice.Get());
+                            // Count the unique references that exist to invalid slices.
+                            for (const AZ::SliceComponent::SliceReference& sliceReference : invalidSlices)
+                            {
+                                AZStd::string referencedAssetHint = sliceReference.GetSliceAsset().GetHint();
+                                invalidReferences.insert(referencedAssetHint);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // At least one selected item to push has an invalid reference, verify that
+            // the user actually wants to remove these references as part of this push.
+            if (targetSlicesWithInvalidReferences.size() > 0)
+            {
+                SliceUtilities::InvalidSliceReferencesWarningResult warningResult =
+                    SliceUtilities::DisplayInvalidSliceReferencesWarning(
+                        this,
+                        targetSlicesWithInvalidReferences.size(),
+                        invalidReferences.size(),
+                        /*showDetailsButton*/ false);
+
+                switch (warningResult)
+                {
+                case SliceUtilities::InvalidSliceReferencesWarningResult::Save:
+                    // Save selected, continue with the push.
+                    break;
+                case SliceUtilities::InvalidSliceReferencesWarningResult::Cancel:
+                    // Cancel selected, bail.
+                    return;
+                default:
+                    // Somehow the user clicked a button that isn't save or cancel, treat it as cancel.
+                    // The warning popup window will already have marked this as an error, so do not throw another error.
+                    return;
+                }
+            }
+        }
         if (PushSelectedFields())
         {
             emit OnFinished();
@@ -943,16 +1394,36 @@ namespace AzToolsFramework
     }
 
     //=========================================================================
+    // SlicePushWidget::OnToggleWarningClicked
+    //=========================================================================
+    void SlicePushWidget::OnToggleWarningClicked()
+    {
+        if (m_warningFoldout->isHidden())
+        {
+            m_toggleWarningButton->setPixmap(m_iconOpen.pixmap(m_iconOpen.availableSizes().first()));
+            m_warningFoldout->show();
+        }
+        else
+        {
+            m_toggleWarningButton->setPixmap(m_iconClosed.pixmap(m_iconClosed.availableSizes().first()));
+            m_warningFoldout->hide();
+        }
+    }
+
+    //=========================================================================
     // SlicePushWidget::PopulateFieldTree
     //=========================================================================
     void SlicePushWidget::PopulateFieldTree(const EntityIdList& entities)
     {
-        // Gather full hierarchy for analysis.
         EntityIdSet processEntityIds;
-        EBUS_EVENT_RESULT(processEntityIds, ToolsApplicationRequests::Bus, GatherEntitiesAndAllDescendents, entities);
+        for (const AZ::EntityId& id : entities)
+        {
+            processEntityIds.insert(id);
+        }
 
         EntityIdSet unpushableEntityIds;
-        PopulateFieldTreeAddedEntities(processEntityIds, unpushableEntityIds);
+        EntityIdSet pushableNewChildEntityIds;
+        PopulateFieldTreeAddedEntities(processEntityIds, unpushableEntityIds, pushableNewChildEntityIds);
 
         // Add a root item for each entity:
         // - Pre-calculate the IDH for each entity, comparing against all ancestors.
@@ -969,12 +1440,21 @@ namespace AzToolsFramework
             if (entity)
             {
                 AZ::SliceComponent::EntityAncestorList referenceAncestors;
-                AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+                AZ::SliceComponent::SliceInstanceAddress sliceAddress;
                 EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
 
-                AZ::SliceComponent::EntityAncestorList ancestors;
-                if (sliceAddress.first)
+                AZ::SliceComponent::EntityAncestorList entitySliceAncestors;
+                if (sliceAddress.IsValid())
                 {
+                    // If a new slice instance is being added to a slice we do not want any changes to its current ancestor
+                    // to show up in this dialog. Any local changes will already be pushed into the slice that the addition is
+                    // pushed to. We also do not want removals of entities from the new instance being pushed to show up
+                    // for the same reason.
+                    if (pushableNewChildEntityIds.find(entityId) != pushableNewChildEntityIds.end())
+                    {
+                        continue;
+                    }
+
                     // Pre-gather all unique referenced assets.
                     if (m_sliceInstances.end() == AZStd::find(m_sliceInstances.begin(), m_sliceInstances.end(), sliceAddress))
                     {
@@ -988,7 +1468,7 @@ namespace AzToolsFramework
                         continue;
                     }
 
-                    sliceAddress.first->GetInstanceEntityAncestry(entityId, ancestors);
+                    sliceAddress.GetReference()->GetInstanceEntityAncestry(entityId, entitySliceAncestors);
                 }
                 else
                 {
@@ -1003,19 +1483,19 @@ namespace AzToolsFramework
 
                 // Use immediate ancestor as comparison instance.
                 AZ::Entity* compareClone = nullptr;
-                if (!ancestors.empty())
+                if (!entitySliceAncestors.empty())
                 {
-                    const AZ::SliceComponent::Ancestor& ancestor = ancestors.front();
+                    const AZ::SliceComponent::Ancestor& entitySliceAncestor = entitySliceAncestors.front();
 
                     tempCompareEntities.push_back(
-                        AzToolsFramework::SliceUtilities::CloneSliceEntityForComparison(*ancestor.m_entity, *sliceAddress.second, *m_serializeContext));
+                        AzToolsFramework::SliceUtilities::CloneSliceEntityForComparison(*entitySliceAncestor.m_entity, *sliceAddress.GetInstance(), *m_serializeContext));
 
                     compareClone = tempCompareEntities.back().get();
                     entityItem->m_hierarchy.AddComparisonInstance<AZ::Entity>(compareClone);
                 }
 
                 entityItem->m_hierarchy.Build(m_serializeContext, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
-                entityItem->m_ancestors = AZStd::move(ancestors);
+                entityItem->m_ancestors = AZStd::move(entitySliceAncestors);
                 entityItem->m_sliceAddress = sliceAddress;
                 
                 entityItem->setText(0, QString("%1 (changed)").arg(entity->GetName().c_str()));
@@ -1032,27 +1512,29 @@ namespace AzToolsFramework
                 // and if available the comparison instance root. We check the comparison because it's the asset
                 // version of the slice - the live version may have a parentId to it (slice is childed to another entity)
                 // which would fail the RootEntity check, but the clone will be free of those modifications
-                const bool isRootEntity = SliceUtilities::IsRootEntity(*entity) || (compareClone && SliceUtilities::IsRootEntity(*compareClone));
+                AZ_Assert(m_config->m_isRootEntityCB, "No IsRootEntity callback configured!");
+                const bool isRootEntity = m_config->m_isRootEntityCB(entity) || (compareClone && m_config->m_isRootEntityCB(compareClone));
                 bool entityHasPushableChanges = false;
 
                 //
                 // Recursively traverse IDH and add all modified fields to the tree.
                 //
 
-                for (InstanceDataNode& childNode : entityItem->m_hierarchy.GetChildren())
+                // Add the children in reverse order to the stack so that they get popped of it in the original order.
+                // Otherwise we see the children in the wrong order in the dialog (which looks bad for vector elements)
+                // and it actually causes bugs because we end up committing vector elements in reverse order which fails
+                // for multiple adds (when not using persistent IDs)
+                AZStd::list<InstanceDataNode>& children = entityItem->m_hierarchy.GetChildren();
+                for (auto hierarchyItemChild = children.rbegin(); hierarchyItemChild != children.rend(); ++hierarchyItemChild)
                 {
-                    nodeStack.push_back(&childNode);
+                    InstanceDataNode& child = *hierarchyItemChild;
+                    nodeStack.push_back(&child);
                 }
 
                 while (!nodeStack.empty())
                 {
-                    AzToolsFramework::InstanceDataNode* node = nodeStack.back();
+                    InstanceDataNode* node = nodeStack.back();
                     nodeStack.pop_back();
-
-                    if (!SliceUtilities::IsNodePushable(*node, isRootEntity))
-                    {
-                        continue;
-                    }
 
                     // Determine if this node should be pushed and not displayed (which applies to all child nodes)
                     // Because they are hidden pushes (used by hidden editor-only components that users shouldn't
@@ -1082,19 +1564,41 @@ namespace AzToolsFramework
                         {
                             entityItem->m_hiddenAutoPushNodes.insert(node);
                         }
+                    }
 
-                        if (hidden)
+                    if (!SliceUtilities::IsNodePushable(*node, isRootEntity))
+                    {
+                        continue;
+                    }
+
+                    // This works around bugs in the serialization system where multiple changes to a container being pushed in one transaction
+                    // would cause addresses to be re-generated, causing the cached addresses for other changes in the transaction to resolve incorrectly.
+                    // This also provides a cleaner interface, often times the interface for changes to containers wouldn't match what users expected.
+                    // This also prevents users from creating strange situations in slices, by making big changes to a container and only partially pushing those changes.
+                    const bool isContainer = node->GetClassMetadata()->m_container != nullptr;
+                    bool childrenHavePersistentId = true;
+                    if (isContainer && node->GetChildren().size() > 0)
+                    {
+                        // Check if the first child of this container has a persistent ID.
+                        InstanceDataNode& firstChild = node->GetChildren().front();
+                        childrenHavePersistentId = firstChild.GetClassMetadata() &&
+                            firstChild.GetClassMetadata()->GetPersistentId(*m_serializeContext);
+                    }
+                    // Only add children as individual items if they have persistent IDs.
+                    if (childrenHavePersistentId)
+                    {
+                        // Add the children in reverse order to the stack so that they get popped of it in the original order
+                        for (auto riter = node->GetChildren().rbegin(); riter != node->GetChildren().rend(); ++riter)
                         {
-                            continue;
+                            InstanceDataNode& child = *riter;
+                            nodeStack.push_back(&child);
                         }
                     }
-
-                    for (InstanceDataNode& childNode : node->GetChildren())
-                    {
-                        nodeStack.push_back(&childNode);
-                    }
-
-                    if (node->HasChangesVersusComparison(false))
+                    // If this node is a container, and the children do not have persistent IDs, then
+                    // check for changes in the node recursively. This will make it so any changes to
+                    // the contents of a container force the entire container to be pushed.
+                    const bool checkForChangesRecursively = isContainer && !childrenHavePersistentId;
+                    if (node->HasChangesVersusComparison(checkForChangesRecursively))
                     {
                         AZStd::vector<AzToolsFramework::InstanceDataNode*> walkStack;
                         walkStack.push_back(node);
@@ -1153,6 +1657,52 @@ namespace AzToolsFramework
                     }
                 }
 
+                const bool hasInvalidReferences = ProcessInvalidReferences(entityItem);
+                if (hasInvalidReferences)
+                {
+                    // if the slice entity has invalid reference(s), the child sort order needs to be converted into
+                    // a hidden auto push otherwise it can easily get out of sync 
+                    using NodeItemPair = AZStd::pair<AzToolsFramework::InstanceDataNode*, FieldTreeItem*>;
+                    using EditorEntitySortComponent = AzToolsFramework::Components::EditorEntitySortComponent;
+
+                    auto childSortNodeItem = AZStd::find_if(nodeItemMap.begin(), nodeItemMap.end(),
+                        [](NodeItemPair pair)
+                        {
+                            return (pair.first->GetClassMetadata() 
+                                && pair.first->GetClassMetadata()->m_typeId == AZ::AzTypeInfo<EditorEntitySortComponent>::Uuid());
+                        });
+                    if (childSortNodeItem != nodeItemMap.end())
+                    {
+                        entityItem->m_hiddenAutoPushNodes.insert(childSortNodeItem->first);
+
+                        QTreeWidgetItem* removeWidget = childSortNodeItem->second;
+                        while (removeWidget)
+                        {
+                            nodeItemMap.erase(AZStd::remove_if(nodeItemMap.begin(), nodeItemMap.end(),
+                                [removeWidget](NodeItemPair pair)
+                                {
+                                    return (pair.second == removeWidget);
+                                }),
+                                nodeItemMap.end());
+
+                            QTreeWidgetItem* parent = removeWidget->parent();
+                            delete removeWidget;
+                            removeWidget = nullptr;
+
+                            if (parent && parent != entityItem && parent->childCount() == 0)
+                            {
+                                removeWidget = parent;
+                            }
+                        }
+                    }
+
+                    if (nodeItemMap.size() == 1)
+                    {
+                        entityItem->setText(0, QString(tr("%1 (invalid references will be removed)")).arg(entity->GetName().c_str()));
+                        entityHasPushableChanges = true;
+                    }
+                }
+
                 if (!entityHasPushableChanges)
                 {
                     // Don't display the entity if no pushable changes were present.
@@ -1162,6 +1712,53 @@ namespace AzToolsFramework
         }
 
         PopulateFieldTreeRemovedEntities();
+    }
+
+    void SlicePushWidget::AddWarning(FieldTreeItem* entityItem, const QString& sliceFile, const QString& message)
+    {
+        if (entityItem == nullptr)
+        {
+            return;
+        }
+        QStringList messageList;
+
+        messageList << sliceFile;
+        messageList << message;
+        QTreeWidgetItem* warningItem = new QTreeWidgetItem(messageList);
+        m_warningMessages->insertTopLevelItem(0, warningItem);
+        m_warningsToEntityTree[warningItem] = entityItem;
+    }
+
+    bool SlicePushWidget::ProcessInvalidReferences(FieldTreeItem* entityItem)
+    {
+        if (entityItem == nullptr)
+        {
+            return false;
+        }
+        bool result = false;
+        for (const AZ::SliceComponent::Ancestor& ancestor : entityItem->m_ancestors)
+        {
+            SliceAssetPtr sliceAsset = ancestor.m_sliceAddress.GetReference()->GetSliceAsset();
+            AZ::SliceComponent* referencedComponent = sliceAsset.Get()->GetComponent();
+            const AZ::SliceComponent::SliceList& invalidSlices = referencedComponent->GetInvalidSlices();
+            
+            for (const AZ::SliceComponent::SliceReference& sliceReference : invalidSlices)
+            {
+                QString referencedAssetHint = sliceReference.GetSliceAsset().GetHint().c_str();
+                AddWarning(
+                    entityItem,
+                    QString(sliceAsset.GetHint().c_str()),
+                    tr("The %1 entity references an invalid slice: %2.").arg(
+                        entityItem->m_entity->GetName().c_str(),
+                        referencedAssetHint));
+                result = true;
+            }
+            if (result && entityItem->m_entity)
+            {
+                m_entityToSliceComponentWithInvalidReferences[entityItem->m_entity->GetId()] = referencedComponent;
+            }
+        }
+        return result;
     }
 
     using GetParentIdCB = AZStd::function<AZ::EntityId(const AZ::EntityId& entityId, FieldTreeItem* fieldTreeItem)>;
@@ -1189,117 +1786,33 @@ namespace AzToolsFramework
     //=========================================================================
     // SlicePushWidget::PopulateFieldTreeAddedEntities
     //=========================================================================
-    void SlicePushWidget::PopulateFieldTreeAddedEntities(const EntityIdSet& entities, EntityIdSet& unpushableNewChildEntityIds)
+    void SlicePushWidget::PopulateFieldTreeAddedEntities(const EntityIdSet& entities, EntityIdSet& unpushableNewChildEntityIds, EntityIdSet& pushableNewChildEntityIds)
     {
         AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>> newChildEntityIdAncestorPairs;
         AZStd::unordered_map<AZ::EntityId, FieldTreeItem*> entityToFieldTreeItemMap;
 
         bool hasUnpushableSliceEntityAdditions = false;
+        AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList> sliceAncestryMapping;
+        AzToolsFramework::EntityIdList entityIdList;
         for (const AZ::EntityId& entityId : entities)
         {
+            entityIdList.emplace_back(entityId);
+        }
+
+        pushableNewChildEntityIds = SliceUtilities::GetPushableNewChildEntityIds(entityIdList, unpushableNewChildEntityIds, sliceAncestryMapping, newChildEntityIdAncestorPairs, hasUnpushableSliceEntityAdditions);
+
+        for (const AZ::EntityId& entityId : unpushableNewChildEntityIds)
+        {
             AZ::Entity* entity = nullptr;
-            EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
 
-            if (entity)
-            {
-                AZ::SliceComponent::SliceInstanceAddress entitySliceAddress(nullptr, nullptr);
-                EBUS_EVENT_ID_RESULT(entitySliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-
-                // Determine which slice ancestry this entity should be considered for addition to, currently determined by the nearest
-                // transform ancestor entity in the current selection of entities.
-                AZ::SliceComponent::EntityAncestorList sliceAncestryToPushTo;
-                AZ::SliceComponent::SliceInstanceAddress transformAncestorSliceAddress(nullptr, nullptr);
-                AZ::EntityId parentId;
-                AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, entityId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
-                while (parentId.IsValid())
-                {
-                    // If we find a transform ancestor that's not part of the selected entities
-                    // before we find a transform ancestor that has a relevant slice to consider 
-                    // pushing this entity to, we skip the consideration of this entity for addition 
-                    // because that would mean trying to add the entity to something we don't have selected
-                    if (entities.find(parentId) == entities.end())
-                    {
-                        break;
-                    }
-
-                    AZ::Entity* parentEntity = nullptr;
-                    AZ::ComponentApplicationBus::BroadcastResult(parentEntity, &AZ::ComponentApplicationRequests::FindEntity, parentId);
-                    if (!parentEntity)
-                    {
-                        break;
-                    }
-
-                    EBUS_EVENT_ID_RESULT(transformAncestorSliceAddress, parentId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-                    if (transformAncestorSliceAddress.first && transformAncestorSliceAddress != entitySliceAddress)
-                    {
-                        transformAncestorSliceAddress.first->GetInstanceEntityAncestry(parentId, sliceAncestryToPushTo);
-                        break;
-                    }
-                    AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, parentId, &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
-                }
-
-                // No slice ancestry found in any selected transform ancestors, so we don't have any slice to push
-                // this entity to - skip it
-                if (sliceAncestryToPushTo.empty())
-                {
-                    continue;
-                }
-
-                if (entitySliceAddress.first)
-                {
-                    // This is an entity that already belongs to a slice, need to verify it's a valid add
-                    if (entitySliceAddress == transformAncestorSliceAddress)
-                    {
-                        // Entity shares slice instance address with transform ancestor, so it doesn't need to be added - it's already there!
-                        continue;
-                    }
-
-                    if (!SliceUtilities::CheckSliceAdditionCyclicDependencySafe(entitySliceAddress, transformAncestorSliceAddress))
-                    {
-                        // Adding this entity's slice instance to the target slice would create a cyclic asset dependency which is strictly not allowed
-                        hasUnpushableSliceEntityAdditions = true;
-                        unpushableNewChildEntityIds.insert(entityId);
-
-                        FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
-                        item->setText(0, QString("%1 (added, unsaveable [see (A) below])").arg(entity->GetName().c_str()));
-                        item->setIcon(0, m_iconNewDataItem);
-                        item->m_ancestors = AZStd::move(sliceAncestryToPushTo);
-                        item->setCheckState(0, Qt::CheckState::Unchecked);
-                        item->setDisabled(true);
-                        entityToFieldTreeItemMap[entity->GetId()] = item;
-                    }
-                    else
-                    {
-                        // Otherwise, this is a slice-owned entity that we want to push.
-                        // At this point we have verified that it'd be safe to push to the immediate slice instance,
-                        // but in the PushWidget the user will have the option of pushing to any slice asset
-                        // in the sliceAncestryToPushTo. We need to check each ancestry entry and cull out any
-                        // pushes that would result in cyclic asset dependencies.
-                        // Example: Slice1 contains Slice2. I have a separate instance of Slice2, call it Slice2b. 
-                        // It is valid to push Slice2b to Slice1, since Slice1 would then have two instances of Slice2.
-                        // But it would be invalid to push the addition of Slice2b to Slice2, since then Slice2 would
-                        // reference itself.
-                        for (auto ancestorIt = sliceAncestryToPushTo.begin(); ancestorIt != sliceAncestryToPushTo.end(); ++ancestorIt)
-                        {
-                            const AZ::SliceComponent::SliceInstanceAddress& targetInstanceAddress = ancestorIt->m_sliceAddress;
-                            if (!SliceUtilities::CheckSliceAdditionCyclicDependencySafe(entitySliceAddress, targetInstanceAddress))
-                            {
-                                // Once you find one invalid ancestor, all the rest will be as well
-                                sliceAncestryToPushTo.erase(ancestorIt, sliceAncestryToPushTo.end());
-                                break;
-                            }
-                        }
-                        newChildEntityIdAncestorPairs.emplace_back(entityId, AZStd::move(sliceAncestryToPushTo));
-                    }
-
-                    continue;
-                }
-                else
-                {
-                    // This is an entity that doesn't belong to a slice yet, consider it for addition
-                    newChildEntityIdAncestorPairs.emplace_back(entityId, AZStd::move(sliceAncestryToPushTo));
-                }
-            }
+            FieldTreeItem* item = FieldTreeItem::CreateEntityAddItem(entity);
+            item->setText(0, QString("%1 (added, unsaveable [see (A) below])").arg(entity->GetName().c_str()));
+            item->setIcon(0, m_iconNewDataItem);
+            item->m_ancestors = AZStd::move(sliceAncestryMapping[entityId]);
+            item->setCheckState(0, Qt::CheckState::Unchecked);
+            item->setDisabled(true);
+            entityToFieldTreeItemMap[entity->GetId()] = item;
         }
 
         bool hasUnpushableTransformDescendants = false;
@@ -1352,8 +1865,7 @@ namespace AzToolsFramework
                 item->setIcon(0, m_iconNewDataItem);
                 item->m_ancestors = AZStd::move(ancestors);
 
-                // By default, adds are not checked.
-                item->setCheckState(0, Qt::CheckState::Unchecked);
+                item->setCheckState(0, m_config->m_defaultAddedEntitiesCheckState ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
                 entityToFieldTreeItemMap[entity->GetId()] = item;
             }
         }
@@ -1393,84 +1905,34 @@ namespace AzToolsFramework
     void SlicePushWidget::PopulateFieldTreeRemovedEntities()
     {
         AZStd::unordered_map<AZ::EntityId, FieldTreeItem*> entityToFieldTreeItemMap;
-
-        // For all slice instances we encountered, compare the entities it contains to the entities
-        // contained in the underlying asset. If it's missing any entities that exist in the asset,
-        // we can add fields to allow removal of the entity from the base slice.
-        AZStd::unordered_set<AZ::EntityId> uniqueRemovedEntities;
-        AZ::SliceComponent::EntityAncestorList ancestorList;
-        AZ::SliceComponent::EntityList assetEntities;
-        for (const AZ::SliceComponent::SliceInstanceAddress& instanceAddr : m_sliceInstances)
+        SliceUtilities::IdToEntityMapping assetEntityIdtoAssetEntityMapping;
+        SliceUtilities::IdToInstanceAddressMapping assetEntityIdtoInstanceAddressMapping;
+        AZStd::unordered_set<AZ::EntityId> uniqueRemovedEntities = SliceUtilities::GetUniqueRemovedEntities(m_sliceInstances, assetEntityIdtoAssetEntityMapping, assetEntityIdtoInstanceAddressMapping);
+        for (const AZ::EntityId& entityId : uniqueRemovedEntities)
         {
-            if (instanceAddr.first && instanceAddr.first->GetSliceAsset() && 
-                instanceAddr.second && instanceAddr.second->GetInstantiated())
+            AZ::SliceComponent::SliceInstanceAddress instanceAddr = assetEntityIdtoInstanceAddressMapping[entityId];
+            AZ::Entity* assetEntity = assetEntityIdtoAssetEntityMapping[entityId];
+
+            // Create field entry to remove this entity from the asset.
+            FieldTreeItem* item = FieldTreeItem::CreateEntityRemovalItem(assetEntity, instanceAddr.GetReference()->GetSliceAsset(), instanceAddr);
+            item->setText(0, QString("%1 (deleted)").arg(assetEntity->GetName().c_str()));
+            item->setIcon(0, m_iconRemovedDataItem);
+            item->setCheckState(0, m_config->m_defaultRemovedEntitiesCheckState ? Qt::CheckState::Checked : Qt::CheckState::Unchecked);
+            item->m_ancestors.push_back(AZ::SliceComponent::Ancestor(assetEntity, instanceAddr));
+
+            AZ::SliceComponent::SliceInstanceAddress assetInstanceAddress = instanceAddr.GetReference()->GetSliceAsset().Get()->GetComponent()->FindSlice(entityId);
+            if (assetInstanceAddress.IsValid())
             {
-                const AZ::SliceComponent::EntityList& instanceEntities = instanceAddr.second->GetInstantiated()->m_entities;
-                assetEntities.clear();
-                instanceAddr.first->GetSliceAsset().Get()->GetComponent()->GetEntities(assetEntities);
-                if (assetEntities.size() > instanceEntities.size())
-                {
-                    // The removed entity is already gone from the instance's map, so we have to do a reverse-lookup
-                    // to pin down which specific entities have been removed in the instance vs the asset.
-                    for (auto assetEntityIter = assetEntities.begin(); assetEntityIter != assetEntities.end(); ++assetEntityIter)
-                    {
-                        AZ::Entity* assetEntity = (*assetEntityIter);
-                        const AZ::EntityId assetEntityId = assetEntity->GetId();
-
-                        if (uniqueRemovedEntities.end() != uniqueRemovedEntities.find(assetEntityId))
-                        {
-                            continue;
-                        }
-
-                        // Iterate over the entities left in the instance and if none of them have this
-                        // asset entity as its ancestor, then we want to remove it.
-                        // \todo - Investigate ways to make this non-linear time. Tricky since removed entities
-                        // obviously aren't maintained in any maps.
-                        bool foundAsAncestor = false;
-                        for (const AZ::Entity* instanceEntity : instanceEntities)
-                        {
-                            ancestorList.clear();
-                            instanceAddr.first->GetInstanceEntityAncestry(instanceEntity->GetId(), ancestorList, 1);
-                            if (!ancestorList.empty() && ancestorList.begin()->m_entity == assetEntity)
-                            {
-                                foundAsAncestor = true;
-                                break;
-                            }
-                        }
-
-                        if (!foundAsAncestor)
-                        {
-                            // Grab ancestors, which determines which slices the removal can be pushed to.
-                            uniqueRemovedEntities.insert(assetEntityId);
-
-                            // Create field entry to remove this entity from the asset.
-                            FieldTreeItem* item = FieldTreeItem::CreateEntityRemovalItem(assetEntity, instanceAddr.first->GetSliceAsset(), instanceAddr);
-                            item->setText(0, QString("%1 (deleted)").arg(assetEntity->GetName().c_str()));
-                            item->setIcon(0, m_iconRemovedDataItem);
-
-                            // By default, removals are not checked for push.
-                            item->setCheckState(0, Qt::CheckState::Unchecked);
-
-                            item->m_ancestors.push_back(AZ::SliceComponent::Ancestor(assetEntity, instanceAddr));
-
-                            AZ::SliceComponent::SliceInstanceAddress assetInstanceAddress = instanceAddr.first->GetSliceAsset().Get()->GetComponent()->FindSlice(assetEntityId);
-                            if (assetInstanceAddress.first)
-                            {
-                                assetInstanceAddress.first->GetInstanceEntityAncestry(assetEntityId, item->m_ancestors);
-                            }
-                            else
-                            {
-                                // This is a loose entity of the slice
-                                instanceAddr.first->GetInstanceEntityAncestry(assetEntityId, item->m_ancestors);
-                            }
-
-                            entityToFieldTreeItemMap[assetEntityId] = item;
-                        }
-                    }
-                }
+                assetInstanceAddress.GetReference()->GetInstanceEntityAncestry(entityId, item->m_ancestors);
             }
-        }
+            else
+            {
+                // This is a loose entity of the slice
+                instanceAddr.GetReference()->GetInstanceEntityAncestry(entityId, item->m_ancestors);
+            }
 
+            entityToFieldTreeItemMap[entityId] = item;
+        }
 
         // We set up the "removal tree" so that you can see the removal transform hierarchy you're pushing in the push widget
         auto getParentIdCB = [](const AZ::EntityId& entityId, FieldTreeItem* fieldTreeItem) -> AZ::EntityId
@@ -1592,8 +2054,8 @@ namespace AzToolsFramework
         // This is an approximate measurement of how much this slice proliferates within the currently-loaded level.
         // Down the line we'll actually query the asset DB's dependency tree, summing up instances.
 
-        AZ::SliceComponent* levelSlice = nullptr;
-        EBUS_EVENT_RESULT(levelSlice, EditorEntityContextRequestBus, GetEditorRootSlice);
+        AZ::SliceComponent* levelSlice = m_config->m_rootSlice;
+        AZ_Warning("SlicePush", levelSlice, "SlicePushWidget::CalculateReferenceCount could not find root slice, displayed counts will be inaccurate!");
         size_t instanceCount = 0;
         AZ::Data::AssetBus::EnumerateHandlersId(assetId,
             [&instanceCount, assetId, levelSlice] (AZ::Data::AssetEvents* handler) -> bool
@@ -1671,7 +2133,7 @@ namespace AzToolsFramework
         }
 
         QString pushError;
-        EntityIdList entitiesToRemove;
+        AZStd::unordered_map<AZ::Data::AssetId, EntityIdList> entitiesToRemove; // collection of entities to remove per slice asset transaction completed
 
         // Iterate over selected fields and synchronize data to target.
         QTreeWidgetItemIterator itemIter(m_fieldTree);
@@ -1685,7 +2147,7 @@ namespace AzToolsFramework
                     SliceTransaction::TransactionPtr transaction = transactionMap[item->m_selectedAsset];
 
                     // Add entity
-                    if (item->m_isEntityAdd)
+                    if (item->m_slicePushType == FieldTreeItem::SlicePushType::Added)
                     {
                         AZ::EntityId parentId;
                         AZ::SliceEntityHierarchyRequestBus::EventResult(parentId, item->m_entity->GetId(), &AZ::SliceEntityHierarchyRequestBus::Events::GetSliceEntityParentId);
@@ -1695,7 +2157,7 @@ namespace AzToolsFramework
                             break;
                         }
 
-                        entitiesToRemove.push_back(item->m_entity->GetId());
+                        entitiesToRemove[item->m_selectedAsset].push_back(item->m_entity->GetId());
                         SliceTransaction::Result result = transaction->AddEntity(item->m_entity);
                         if (!result)
                         {
@@ -1705,13 +2167,13 @@ namespace AzToolsFramework
                         }
                     }
                     // Remove entity
-                    else if (item->m_isEntityRemoval)
+                    else if (item->m_slicePushType == FieldTreeItem::SlicePushType::Removed)
                     {
                         // Need to provide the transaction with the correct entity to remove based on target slice asset
                         AZ::Entity* removalEntity = item->m_entity;
                         for (auto& ancestor : item->m_ancestors)
                         {
-                            if (ancestor.m_sliceAddress.first->GetSliceAsset().GetId() == item->m_selectedAsset)
+                            if (ancestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId() == item->m_selectedAsset)
                             {
                                 removalEntity = ancestor.m_entity;
                             }
@@ -1741,9 +2203,9 @@ namespace AzToolsFramework
                         {
                             // We also need to ensure we're only pushing hidden pushes to the direct slice ancestor of the entity; we don't want to
                             // be pushing things like component order to an ancestor that wouldn't have the same components
-                            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+                            AZ::SliceComponent::SliceInstanceAddress sliceAddress;
                             EBUS_EVENT_ID_RESULT(sliceAddress, entityRootItem->m_entity->GetId(), AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-                            if (item->m_selectedAsset == sliceAddress.first->GetSliceAsset().GetId())
+                            if (item->m_selectedAsset == sliceAddress.GetReference()->GetSliceAsset().GetId())
                             {
                                 for (auto& hiddenAutoPushNode : entityRootItem->m_hiddenAutoPushNodes)
                                 {
@@ -1768,26 +2230,76 @@ namespace AzToolsFramework
             return false;
         }
 
+        // If multiple slices are being pushed to and an error ocurrs in the commit of the second or later commits then the asset monitoring
+        // would report a spurious error. Fix by stopping the asset monitoring before the commits are started
+        // (and turning it back on if we go back to the dialog after an error).
+        StopAssetMonitoring();
+
         // Commit all transactions.
+        int transactionIndex = 0;
         for (auto& transactionPair : transactionMap)
         {
+            ScopedUndoBatch undoBatch("Slice Push (Advanced)");
+
             SliceTransaction::TransactionPtr& transaction = transactionPair.second;
+
+            bool undoSliceOverrideValue;
+            AzToolsFramework::EditorRequests::Bus::BroadcastResult(undoSliceOverrideValue, &AzToolsFramework::EditorRequests::GetUndoSliceOverrideSaveValue);
+            AZ::u32 sliceCommitFlags = 0;
+
+            if (!undoSliceOverrideValue)
+            {
+                sliceCommitFlags = SliceTransaction::SliceCommitFlags::DisableUndoCapture;
+            }
+
             SliceTransaction::Result result = transaction->Commit(
                 transactionPair.first,
-                SliceUtilities::SlicePreSaveCallbackForWorldEntities, 
-                nullptr);
+                m_config->m_preSaveCB, 
+                m_config->m_postSaveCB,
+                sliceCommitFlags);
 
-            if (!result)
+            if (result)
             {
+                // Successful commit
+                // Remove any entities that were successfully pushed into a slice (since they'll be brought to life through slice reloading)
+                if (m_config->m_deleteEntitiesCB)
+                {
+                    m_config->m_deleteEntitiesCB(entitiesToRemove[transactionPair.first]);
+                }
+            }
+            else
+            {
+                // Unsuccessful commit
+                AZStd::string sliceAssetPath;
+                EBUS_EVENT_RESULT(sliceAssetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, transactionPair.first);
+                if (sliceAssetPath.empty())
+                {
+                    sliceAssetPath = transactionPair.first.ToString<AZStd::string>();
+                }
+
                 QMessageBox::warning(this, QStringLiteral("Cannot Push to Slice"),
                                      QString("Unable to commit changes for slice asset %1.\r\n\r\nDetails:\r\n%2")
-                                     .arg(transactionPair.first.ToString<AZStd::string>().c_str()).arg(result.GetError().c_str()),
+                                     .arg(sliceAssetPath.c_str()).arg(result.GetError().c_str()),
                                      QMessageBox::Ok);
-            }
-        }
 
-        // Remove any entities that are now owned by other slices.
-        EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, DeleteEntities, entitiesToRemove);
+                if (transactionIndex == 0)
+                {
+                    // If our first transaction fails, we want to return false so that the Push widget remains open and the user
+                    // has the chance to reconfigure and repush the changes. So, we restart the asset monitoring as the widget
+                    // is not going away.
+                    SetupAssetMonitoring();
+                    return false;
+                }
+                else
+                {
+                    // If we're failing on a transaction after the first, we need to return true so that the PushWidget closes 
+                    // since there will now have been changes that will make the previous configuration of the widget invalid.
+                    return true;
+                }
+            }
+
+            ++transactionIndex;
+        }
 
         return true;
     }

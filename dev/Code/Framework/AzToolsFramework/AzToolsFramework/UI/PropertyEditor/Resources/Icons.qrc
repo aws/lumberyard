@@ -3,7 +3,13 @@
         <file>point_hand.png</file>
         <file>cross-circle-small.png</file>
         <file>cross-small.png</file>
+        <file>close_arrow.png</file>
+        <file>DarkBackgroundStyle.qss</file>
+        <file>error_link_state.png</file>
+        <file>LightBackgroundStyle.qss</file>
         <file>list-add-small.png</file>
+        <file>no_save_available_icon.png</file>
+        <file>open_arrow.png</file>
         <file>group_closed.png</file>
         <file>group_open.png</file>
         <file>tool_cancel.png</file>
@@ -14,12 +20,18 @@
         <file>Browse_on.png</file>
         <file>edit-asset.png</file>
         <file>slice_item.png</file>
+        <file>Slice_Handle_Modified.svg</file>
+        <file>l_shape.png</file>
         <file>changed_data_item.png</file>
         <file>new_data_item.png</file>
         <file>removed_data_item.png</file>
         <file>menu_ico.png</file>
         <file>error_icon.png</file>
+        <file>save_fail.png</file>
+        <file>save_succeed.png</file>
         <file>warning.png</file>
+        <file>WarningAccentColor.qss</file>
+        <file>WarningMessageHighlight.qss</file>
         <file>search.png</file>
         <file>close.png</file>
         <file>disabled_header.png</file>
@@ -27,5 +39,8 @@
         <file alias="EntityPicker">eye_dropper.png</file>
         <file>pin_button.png</file>
         <file>pin_header.png</file>
+        <file>locked.png</file>
+        <file>hidden.png</file>
+        <file>Slice_Entity.svg</file>
     </qresource>
 </RCC>

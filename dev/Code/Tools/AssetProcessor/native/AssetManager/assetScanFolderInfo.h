@@ -22,7 +22,17 @@ namespace AssetProcessor
     class ScanFolderInfo
     {
     public:
-        ScanFolderInfo(QString path, QString displayName, QString portableKey, QString prefix, bool isRoot, bool recurseSubFolders, AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms = AZStd::vector<AssetBuilderSDK::PlatformInfo>{}, int order = 0, AZ::s64 scanFolderID = 0)
+        ScanFolderInfo(
+            QString path,
+            QString displayName,
+            QString portableKey,
+            QString prefix,
+            bool isRoot,
+            bool recurseSubFolders,
+            AZStd::vector<AssetBuilderSDK::PlatformInfo> platforms = AZStd::vector<AssetBuilderSDK::PlatformInfo>{},
+            int order = 0,
+            AZ::s64 scanFolderID = 0,
+            bool canSaveNewAssets = false)
             : m_scanPath(path)
             , m_displayName(displayName)
             , m_portableKey (portableKey)
@@ -32,6 +42,7 @@ namespace AssetProcessor
             , m_order(order)
             , m_scanFolderID(scanFolderID)
             , m_platforms(platforms)
+            , m_canSaveNewAssets(canSaveNewAssets)
         {
             // note that m_scanFolderID is 0 unless its filled in from the DB.
         }
@@ -62,6 +73,11 @@ namespace AssetProcessor
         bool RecurseSubFolders() const
         {
             return m_recurseSubFolders;
+        }
+
+        bool CanSaveNewAssets() const
+        {
+            return m_canSaveNewAssets;
         }
 
         int GetOrder() const
@@ -95,7 +111,8 @@ namespace AssetProcessor
         QString m_outputPrefix; // the output prefix to target results into (eg, put things in a certain subfolder of @assets@ rather than the relative to assets itself)
         QString m_portableKey; // a key that remains the same even if the asset database is moved from computer to computer.
         bool m_isRoot = false; // is it 'the' root folder?
-        bool m_recurseSubFolders = true; 
+        bool m_recurseSubFolders = true;
+        bool m_canSaveNewAssets = false; // Tracks if it is safe to save new assets in this folder.
         int m_order = 0;
         AZ::s64 m_scanFolderID = 0; // this is filled in by the database - don't modify it.
         AZStd::vector<AssetBuilderSDK::PlatformInfo> m_platforms; // This contains the list of platforms that are enabled for the particular scanfolder

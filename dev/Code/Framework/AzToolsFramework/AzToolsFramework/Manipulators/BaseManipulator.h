@@ -17,6 +17,7 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Manipulators/ManipulatorBus.h>
+#include <AzCore/std/smart_ptr/enable_shared_from_this.h>
 
 namespace AzFramework
 {
@@ -51,6 +52,7 @@ namespace AzToolsFramework
      * The base class for manipulators, providing interfaces for users of manipulators to talk to.
      */
     class BaseManipulator
+        :public AZStd::enable_shared_from_this<BaseManipulator>
     {
     public:
         AZ_RTTI(BaseManipulator, "{3D1CD58D-C589-464C-BC9A-480D59341AB4}");

@@ -498,7 +498,7 @@ namespace UnitTest
                     if (entity)
                     {
                         AZ::SliceComponent::SliceInstanceAddress sliceAddress = rootSlice->FindSlice(entity);
-                        if (sliceAddress.first)
+                        if (sliceAddress.IsValid())
                         {
                             // This entity already belongs to a slice instance, so inherit that instance (the whole thing for now).
                             if (sliceInstances.end() == AZStd::find(sliceInstances.begin(), sliceInstances.end(), sliceAddress))
@@ -517,7 +517,7 @@ namespace UnitTest
 
                 for (AZ::SliceComponent::SliceInstanceAddress& info : sliceInstances)
                 {
-                    info = newSlice->AddSliceInstance(info.first, info.second);
+                    info = newSlice->AddSliceInstance(info.GetReference(), info.GetInstance());
                 }
 
                 const QString saveAs = QFileDialog::getSaveFileName(nullptr,
@@ -534,9 +534,9 @@ namespace UnitTest
                 }
 
                 // Reclaim slices.
-                for (const AZ::SliceComponent::SliceInstanceAddress& info : sliceInstances)
+                for (AZ::SliceComponent::SliceInstanceAddress& info : sliceInstances)
                 {
-                    rootSlice->AddSliceInstance(info.first, info.second);
+                    rootSlice->AddSliceInstance(info.GetReference(), info.GetInstance());
                 }
 
                 ++sliceCounter;

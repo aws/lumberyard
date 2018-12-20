@@ -13,18 +13,24 @@
 
 #pragma once
 
-#ifdef PLATFORM_WINDOWS
-    #pragma warning(disable : 4251)
+#ifdef LINK_LY_IDENTITY_DYNAMICALLY
+    #if defined(_MSC_VER) // <- always set by the Visual Studio compilers, which use __declspec
+        #pragma warning(disable : 4251)
 
-    #ifdef LINK_LY_IDENTITY_DYNAMICALLY
         #ifdef LY_IDENTITY_EXPORTS
             #define LY_IDENTITY_API __declspec(dllexport)
         #else
             #define LY_IDENTITY_API __declspec(dllimport)
         #endif /* LY_IDENTITY_EXPORTS */
-    #else
-        #define LY_IDENTITY_API
+    #elif defined(_WIN32) && defined(__clang__)
+        #ifdef LY_IDENTITY_EXPORTS
+            #define LY_IDENTITY_API __attribute__ ((dllexport))
+        #else
+            #define LY_IDENTITY_API __attribute__ ((dllimport))
+        #endif /* LY_IDENTITY_EXPORTS */
+    #else /* _MSC_VER */
+        #define LY_IDENTITY_API __attribute__ ((visibility("default")))
     #endif
-#else /* PLATFORM_WINDOWS */
+#else
     #define LY_IDENTITY_API
 #endif

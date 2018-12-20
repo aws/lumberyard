@@ -112,10 +112,15 @@ namespace AzFramework
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzFramework);
 
-        AZ_Assert(m_rootAsset, "The context has not been initialized.");
+        AZ_Assert(m_rootAsset && m_rootAsset.Get(), "The context has not been initialized.");
 
         AZ::Entity* rootEntity = new AZ::Entity();
         rootEntity->CreateComponent<AZ::SliceComponent>();
+
+        if (m_rootAsset.Get()->GetEntity() != nullptr)
+        {
+            OnRootSlicePreDestruction();
+        }
 
         // Manually create an asset to hold the root slice.
         m_rootAsset.Get()->SetData(rootEntity, rootEntity->FindComponent<AZ::SliceComponent>());
@@ -168,6 +173,7 @@ namespace AzFramework
     {
         if (m_rootAsset)
         {
+            PrepareForContextReset();
             while (!m_queuedSliceInstantiations.empty())
             {
                 // clear out the remaining instantiations in a conservative manner, assuming that callbacks such as OnSliceInstantiationFailed
@@ -385,7 +391,6 @@ namespace AzFramework
             HandleEntityRemoved(entity->GetId());
 
             rootSlice->GetComponent()->RemoveEntity(entity);
-
             return true;
         }
 
@@ -469,13 +474,13 @@ namespace AzFramework
     //=========================================================================
     // InstantiateSlice
     //=========================================================================
-    SliceInstantiationTicket EntityContext::InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper)
+    SliceInstantiationTicket EntityContext::InstantiateSlice(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const AZ::IdUtils::Remapper<AZ::EntityId>::IdMapper& customIdMapper, const AZ::Data::AssetFilterCB& assetLoadFilter)
     {
         if (asset.GetId().IsValid())
         {
             const SliceInstantiationTicket ticket(m_contextId, ++m_nextSliceTicket);
             m_queuedSliceInstantiations.emplace_back(asset, ticket, customIdMapper);
-            m_queuedSliceInstantiations.back().m_asset.QueueLoad();
+            m_queuedSliceInstantiations.back().m_asset.QueueLoad(assetLoadFilter);
 
             AZ::Data::AssetBus::MultiHandler::BusConnect(asset.GetId());
 
@@ -518,11 +523,11 @@ namespace AzFramework
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzFramework);
 
-        AZ_Assert(sourceInstance.second, "Source slice instance is invalid.");
+        AZ_Assert(sourceInstance.IsValid(), "Source slice instance is invalid.");
 
-        AZ::SliceComponent::SliceInstance* newInstance = sourceInstance.first->CloneInstance(sourceInstance.second, sourceToCloneEntityIdMap);
+        AZ::SliceComponent::SliceInstance* newInstance = sourceInstance.GetReference()->CloneInstance(sourceInstance.GetInstance(), sourceToCloneEntityIdMap);
 
-        return AZ::SliceComponent::SliceInstanceAddress(sourceInstance.first, newInstance);
+        return AZ::SliceComponent::SliceInstanceAddress(sourceInstance.GetReference(), newInstance);
     }
 
     //=========================================================================
@@ -751,17 +756,18 @@ namespace AzFramework
                         // --------------------------- do not refer to 'instantiating' after the above call, it has been destroyed ------------
                         
                         bool isSliceInstantiated = false;
-                        if (instance.second)
-                        {
-                            AZ_Assert(instance.second->GetInstantiated(), "Failed to instantiate root slice!");
 
-                            if (instance.second->GetInstantiated() &&
-                                ValidateEntitiesAreValidForContext(instance.second->GetInstantiated()->m_entities))
+                        if (instance.IsValid())
+                        {
+                            AZ_Assert(instance.GetInstance()->GetInstantiated(), "Failed to instantiate root slice!");
+
+                            if (instance.GetInstance()->GetInstantiated() &&
+                                ValidateEntitiesAreValidForContext(instance.GetInstance()->GetInstantiated()->m_entities))
                             {
                                 EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSlicePreInstantiate, cachedAssetId, instance);
                                 SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSlicePreInstantiate, cachedAssetId, instance);
 
-                                HandleEntitiesAdded(instance.second->GetInstantiated()->m_entities);
+                                HandleEntitiesAdded(instance.GetInstance()->GetInstantiated()->m_entities);
 
                                 EntityContextEventBus::Event(m_eventBusPtr, &EntityContextEventBus::Events::OnSliceInstantiated, cachedAssetId, instance);
                                 SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiated, cachedAssetId, instance);

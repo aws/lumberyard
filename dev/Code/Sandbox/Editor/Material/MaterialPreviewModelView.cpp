@@ -17,8 +17,9 @@
 
 #include "qevent.h"
 
-MaterialPreviewModelView::MaterialPreviewModelView(QWidget* parent)
+MaterialPreviewModelView::MaterialPreviewModelView(QWidget* parent, bool enableIdleUpdate)
     : CPreviewModelView(parent)
+    , m_enableIdleUpdate(enableIdleUpdate)
 {}
 
 MaterialPreviewModelView::~MaterialPreviewModelView()
@@ -51,13 +52,24 @@ void MaterialPreviewModelView::SetMaterial(_smart_ptr<IMaterial> material)
     }
 }
 
+void MaterialPreviewModelView::resizeEvent(QResizeEvent* event)
+{
+    if (m_enableIdleUpdate)
+    {
+        CPreviewModelView::resizeEvent(event);
+    }
+}
+
 void MaterialPreviewModelView::OnEditorNotifyEvent(EEditorNotifyEvent event)
 {
     switch (event)
     {
     case eNotify_OnIdleUpdate:
     {
-        Update();
+        if (m_enableIdleUpdate)
+        {
+            Update();
+        }
         break;
     }
     default:

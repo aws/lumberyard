@@ -35,6 +35,7 @@
 #include <AzToolsFramework/ToolsComponents/EditorSelectionAccentSystemComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorEntityIconComponentBus.h>
 
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
@@ -119,6 +120,15 @@ void CComponentEntityObject::AssignEntity(AZ::Entity* entity, bool destroyOld)
     if (entity)
     {
         m_entityId = entity->GetId();
+
+        // Use the entity id to generate a GUID for this CEO because we need it to stay consistent for systems that register by GUID such as undo/redo since our own undo/redo system constantly recreates CEOs
+        GUID entityBasedGUID;
+        entityBasedGUID.Data1 = 0;
+        entityBasedGUID.Data2 = 0;
+        entityBasedGUID.Data3 = 0;
+        static_assert(sizeof(m_entityId) >= sizeof(entityBasedGUID.Data4), "The data contained in entity Id should fit inside Data4, if not switch to some other method of conversion to GUID");
+        memcpy(&entityBasedGUID.Data4, &m_entityId, sizeof(entityBasedGUID.Data4));
+        GetObjectManager()->ChangeObjectId(GetId(), entityBasedGUID);
 
         // Synchronize sandbox name to new entity's name.
         {
@@ -223,6 +233,18 @@ void CComponentEntityObject::SetSelected(bool bSelect)
             EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, MarkEntityDeselected, m_entityId);
         }
     }
+
+    AzToolsFramework::EntityIdList entities;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(entities, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+    if (entities.size() == 0)
+    {
+        GetIEditor()->Notify(eNotify_OnEntitiesDeselected);
+    }
+    else
+    {
+        GetIEditor()->Notify(eNotify_OnEntitiesSelected);
+    }
 }
 
 void CComponentEntityObject::SetHighlight(bool bHighlight)
@@ -245,6 +267,22 @@ IRenderNode* CComponentEntityObject::GetEngineNode() const
         return renderNodeHandler->GetRenderNode();
     }
     return nullptr;
+}
+
+IPhysicalEntity* CComponentEntityObject::GetCollisionEntity() const
+{
+    IPhysicalEntity* result = nullptr;
+
+    LmbrCentral::CryPhysicsComponentRequestBus::EventResult(
+        result,
+        m_entityId,
+        &LmbrCentral::CryPhysicsComponentRequestBus::Events::GetPhysicalEntity);
+
+    if (result == nullptr)
+    {
+        result = CEntityObject::GetCollisionEntity();
+    }
+    return result;
 }
 
 void CComponentEntityObject::OnEntityNameChanged(const AZStd::string& name)

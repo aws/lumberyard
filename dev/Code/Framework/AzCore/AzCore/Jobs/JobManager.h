@@ -101,9 +101,6 @@ namespace AZ
         //called internally by Job class to suspend itself until child jobs are complete
         AZ_FORCE_INLINE void SuspendJobUntilReady(Job* job) { m_impl.SuspendJobUntilReady(job); }
 
-        //called internally by Job class when a suspended job is now ready to be resumed
-        AZ_FORCE_INLINE void NotifySuspendedJobReady(Job* job) { m_impl.NotifySuspendedJobReady(job); }
-
         //called internally by Job class to start a job and then assist in processing until it is complete
         AZ_FORCE_INLINE void StartJobAndAssistUntilComplete(Job* job) { m_impl.StartJobAndAssistUntilComplete(job); }
 

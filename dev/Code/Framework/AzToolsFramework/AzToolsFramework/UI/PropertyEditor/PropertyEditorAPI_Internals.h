@@ -12,8 +12,6 @@
 #ifndef PROPERTYEDITORAPI_INTERNALS_H
 #define PROPERTYEDITORAPI_INTERNALS_H
 
-#include <QtCore/qobject.h>
-
 #include "InstanceDataHierarchy.h"
 
 // this header contains internal template magics for the way properties work
@@ -317,9 +315,7 @@ namespace AzToolsFramework
 
         virtual void WriteGUIValuesIntoProperty_Internal(QWidget* widget, InstanceDataNode* node) override
         {
-            // use internal RTTI cast:
-            WidgetType* wid = qobject_cast<WidgetType*>(widget);
-            AZ_Assert(wid, "Invalid class cast - this is not the right kind of widget!");
+            WidgetType* wid = static_cast<WidgetType*>(widget);
 
             const AZ::Uuid& actualUUID = node->GetClassMetadata()->m_typeId;
             const AZ::Uuid& desiredUUID = GetHandledType();
@@ -347,9 +343,7 @@ namespace AzToolsFramework
 
         virtual void ReadValuesIntoGUI_Internal(QWidget* widget, InstanceDataNode* node) override
         {
-            // use internal RTTI cast:
-            WidgetType* wid = qobject_cast<WidgetType*>(widget);
-            AZ_Assert(wid, "Invalid class cast - this is not the right kind of widget!");
+            WidgetType* wid = static_cast<WidgetType*>(widget);
 
             const AZ::Uuid& actualUUID = node->GetClassMetadata()->m_typeId;
             const AZ::Uuid& desiredUUID = GetHandledType();
@@ -369,23 +363,20 @@ namespace AzToolsFramework
 
         virtual QWidget* GetFirstInTabOrder_Internal(QWidget* widget) override
         {
-            WidgetType* wid = qobject_cast<WidgetType*>(widget);
-            AZ_Assert(wid, "Invalid class cast - this is not the right kind of widget!");
+            WidgetType* wid = static_cast<WidgetType*>(widget);
             return GetFirstInTabOrder(wid);
         }
 
         virtual void UpdateWidgetInternalTabbing_Internal(QWidget* widget) override
         {
-            WidgetType* wid = qobject_cast<WidgetType*>(widget);
-            AZ_Assert(wid, "Invalid class cast - this is not the right kind of widget!");
+            WidgetType* wid = static_cast<WidgetType*>(widget);
             return UpdateWidgetInternalTabbing(wid);
         }
 
 
         virtual QWidget* GetLastInTabOrder_Internal(QWidget* widget) override
         {
-            WidgetType* wid = qobject_cast<WidgetType*>(widget);
-            AZ_Assert(wid, "Invalid class cast - this is not the right kind of widget!");
+            WidgetType* wid = static_cast<WidgetType*>(widget);
             return GetLastInTabOrder(wid);
         }
     };

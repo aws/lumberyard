@@ -380,7 +380,12 @@ def delete_stack(context, args):
                         parameters=old_params,
                         capabilities=['CAPABILITY_IAM'],
                         template_body=json.dumps(old_template, indent=4, sort_keys=True),
-                        throw_failed_resources=True
+                        throw_failed_resources=True,
+                        pending_resource_status=context.stack.get_pending_resource_status(
+                            deployment_stack_id,
+                            new_template=old_template,
+                            new_parameter_values=old_params
+                        )
                     )
 
             context.stack.delete(deployment_stack_id)

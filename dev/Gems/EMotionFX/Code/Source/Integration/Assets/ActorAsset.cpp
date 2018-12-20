@@ -342,10 +342,13 @@ namespace EMotionFX
                         UpdateDynamicSkin(useLodIndex, prim);
                     }
 
-                    IRenderMesh* renderMesh = m_renderMeshesPerLOD[useLodIndex][prim];
-                    if (renderMesh)
+                    if (useLodIndex < m_renderMeshesPerLOD.size() && prim < m_renderMeshesPerLOD[useLodIndex].size())
                     {
-                        renderMesh->Render(rParams, pObj, pMaterial, passInfo);
+                        IRenderMesh* renderMesh = m_renderMeshesPerLOD[useLodIndex][prim];
+                        if (renderMesh)
+                        {
+                            renderMesh->Render(rParams, pObj, pMaterial, passInfo);
+                        }
                     }
                 }
             }

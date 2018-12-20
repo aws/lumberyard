@@ -84,6 +84,8 @@ namespace AzToolsFramework
                     }
                 });
             connect(m_scTimer, &QTimer::timeout, this, &AssetBrowserTreeView::OnUpdateSCThumbnailsList);
+
+            AssetBrowserViewRequestBus::Handler::BusConnect();
         }
 
         AssetBrowserTreeView::~AssetBrowserTreeView() = default;

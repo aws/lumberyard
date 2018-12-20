@@ -767,7 +767,7 @@ public:
     virtual void ClearAllPrecachePoints();
     virtual void GetPrecacheRoundIds(int pRoundIds[MAX_STREAM_PREDICTION_ZONES]);
 
-    virtual void TraceFogVolumes(const Vec3& worldPos, ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo);
+    virtual void TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality);
 
     virtual Vec3 GetSunColor() const;
     virtual float GetSSAOAmount() const;

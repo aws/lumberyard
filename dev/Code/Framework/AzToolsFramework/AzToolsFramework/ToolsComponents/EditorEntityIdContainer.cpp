@@ -19,9 +19,16 @@
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/IO/ByteContainerStream.h>
 
+#include <QString>
 
 namespace AzToolsFramework
 {
+    const QString& EditorEntityIdContainer::GetMimeType()
+    {
+        static QString mimeType = QStringLiteral("editor/entityidlist");
+        return mimeType;
+    }
+
     void EditorEntityIdContainer::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);

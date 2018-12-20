@@ -49,7 +49,12 @@ namespace AzToolsFramework
         // EntityId -> Slice Info
         virtual AZStd::string GetSliceAssetName() const = 0;
         virtual bool IsSliceEntity() const = 0;
+        virtual bool IsSubsliceEntity() const = 0;
         virtual bool IsSliceRoot() const = 0;
+        virtual bool IsSubsliceRoot() const = 0;
+        virtual bool HasSliceEntityOverrides() const = 0;
+        virtual bool HasSliceChildrenOverrides() const = 0;
+        virtual bool HasSliceAnyOverrides() const = 0;
 
         // EntityId -> Order Info
         virtual AZ::u64 GetIndexForSorting() const = 0;

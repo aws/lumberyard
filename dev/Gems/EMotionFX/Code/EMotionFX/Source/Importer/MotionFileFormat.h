@@ -47,6 +47,7 @@ namespace EMotionFX
         };
 
         // motion file header
+        // (not aligned)
         struct Motion_Header
         {
             uint8 mFourcc[4];   // must be "MOT " or "MOTW"
@@ -57,6 +58,7 @@ namespace EMotionFX
 
         
         // information chunk
+        // (not aligned)
         struct Motion_Info
         {
             uint32  mMotionExtractionMask;      // motion extraction mask
@@ -65,6 +67,7 @@ namespace EMotionFX
         };
 
         // information chunk
+        // (not aligned)
         struct Motion_Info2
         {
             uint32  mMotionExtractionFlags;     // motion extraction flags
@@ -73,6 +76,7 @@ namespace EMotionFX
         };
 
         // skeletal submotion
+        // (aligned)       
         struct Motion_SkeletalSubMotion
         {
             File16BitQuaternion mPoseRot;       // initial pose rotation
@@ -94,6 +98,7 @@ namespace EMotionFX
 
 
         // a 3D vector key
+        // (aligned)
         struct Motion_Vector3Key
         {
             FileVector3     mValue;     // the value
@@ -102,6 +107,7 @@ namespace EMotionFX
 
 
         // a quaternion key
+        // (aligned)
         struct Motion_QuaternionKey
         {
             FileQuaternion  mValue;     // the value
@@ -110,6 +116,7 @@ namespace EMotionFX
 
 
         // a 16-bit compressed quaternion key
+        // (aligned)
         struct Motion_16BitQuaternionKey
         {
             File16BitQuaternion mValue; // the value
@@ -118,6 +125,7 @@ namespace EMotionFX
 
 
         // regular submotion header
+        // (aligned)
         struct Motion_SubMotions
         {
             uint32  mNumSubMotions;// the number of skeletal motions
@@ -128,6 +136,7 @@ namespace EMotionFX
 
 
         // wavelet submotion mapping entry
+        // (not aligned)
         struct Motion_WaveletMapping
         {
             uint16  mPosIndex;
@@ -137,6 +146,7 @@ namespace EMotionFX
 
 
         // wavelet skeletal submotions header
+        // (not aligned)
         struct Motion_WaveletInfo
         {
             uint32  mNumChunks;
@@ -177,6 +187,7 @@ namespace EMotionFX
 
 
         // skeletal submotion
+        // (aligned)
         struct Motion_WaveletSkeletalSubMotion
         {
             File16BitQuaternion mPoseRot;       // initial pose rotation
@@ -192,6 +203,7 @@ namespace EMotionFX
 
 
         // skeletal submotion
+        // (aligned)
         struct Motion_WaveletMorphSubMotion
         {
             float   mPoseWeight;
@@ -202,6 +214,7 @@ namespace EMotionFX
 
 
         // a wavelet compressed chunk
+        // (aligned)
         struct Motion_WaveletChunk
         {
             float       mRotQuantScale;
@@ -227,6 +240,7 @@ namespace EMotionFX
 
 
         // morph sub motion
+        // (aligned)
         struct Motion_MorphSubMotion
         {
             float   mPoseWeight;// pose weight to use in case no animation data is present
@@ -242,6 +256,7 @@ namespace EMotionFX
 
 
         // a uint16 key
+        // (not aligned)
         struct Motion_UnsignedShortKey
         {
             float   mTime;  // the time in seconds
@@ -249,6 +264,7 @@ namespace EMotionFX
         };
 
 
+        // (aligned)
         struct Motion_MorphSubMotions
         {
             uint32  mNumSubMotions;
@@ -258,6 +274,7 @@ namespace EMotionFX
 
 
         // a motion event version 4
+        // (not aligned)
         struct FileMotionEvent
         {
             float   mStartTime;
@@ -269,6 +286,7 @@ namespace EMotionFX
 
 
         // motion event track
+        // (not aligned)
         struct FileMotionEventTrack
         {
             uint32  mNumEvents;
@@ -287,6 +305,7 @@ namespace EMotionFX
 
 
         // a motion event table
+        // (aligned)
         struct FileMotionEventTable
         {
             uint32  mNumTracks;

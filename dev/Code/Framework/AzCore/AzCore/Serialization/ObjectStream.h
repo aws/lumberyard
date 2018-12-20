@@ -173,11 +173,6 @@ namespace AZ
         template<typename T>
         bool WriteClass(const T* obj, const char* elemName = nullptr);
 
-        /// Default asset filter obeys the Asset<> holder's load flags.
-        static bool AssetFilterDefault(const Data::Asset<Data::AssetData>& asset);
-
-        /// SlicesOnly filter ignores all asset references except for slices.
-        static bool AssetFilterSlicesOnly(const Data::Asset<Data::AssetData>& asset);
 
         /// Filter ignores all asset references except for the specified classes.
         template<typename T>
@@ -185,10 +180,6 @@ namespace AZ
 
         template<typename T0, typename T1, typename... Args>
         static bool AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset);
-
-        /// NoAssetLoading filter ignores all asset references.
-        static bool AssetFilterNoAssetLoading(const Data::Asset<Data::AssetData>& asset);
-
     protected:
         ObjectStream(SerializeContext* sc)
             : m_sc(sc)   { AZ_Assert(m_sc, "Creating an object stream with sc = NULL is pointless!"); }
@@ -234,7 +225,7 @@ namespace AZ
         const bool isValidAsset = asset.GetType() == AzTypeInfo<T>::Uuid();
         if (isValidAsset)
         {
-            return AssetFilterDefault(asset);
+            return 0 == (asset.GetFlags() & static_cast<u8>(AZ::Data::AssetLoadBehavior::NoLoad));
         }
 
         return false;

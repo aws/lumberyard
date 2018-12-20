@@ -46,7 +46,7 @@
             "tooltip" : "rungameToolTip",
             "tags" : ["rungame"],
             "categories" : ["role"],
-            "hosts" : [ "windows" ],
+            "hosts" : [ "windows", "macOS" ],
             "default" : true
         },
         {

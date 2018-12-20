@@ -160,8 +160,6 @@
             "UiEditorEntityContextBus.h",
             "UiSliceManager.cpp",
             "UiSliceManager.h",
-            "UiSlicePushWidget.cpp",
-            "UiSlicePushWidget.h",
             "UIVectorPropertyHandlerBase.h",
             "UndoStack.cpp",
             "UndoStack.h",

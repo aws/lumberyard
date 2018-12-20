@@ -507,6 +507,33 @@ namespace Audio
             m_nInitBankID = AK_INVALID_BANK_ID;
         }
 
+#if defined(INCLUDE_WWISE_IMPL_PRODUCTION_CODE)
+        // Set up memory pool information...
+        AkInt32 numPools = AK::MemoryMgr::GetNumPools();
+        m_debugMemoryPoolInfo.reserve(numPools);
+
+        g_audioImplLogger_wwise.Log(eALT_COMMENT, "Number of AK Memory Pools: %d", numPools);
+
+        for (AkInt32 poolId = 0; poolId < numPools; ++poolId)
+        {
+            eResult = AK::MemoryMgr::CheckPoolId(poolId);
+            if (IS_WWISE_OK(eResult))
+            {
+                AudioImplMemoryPoolInfo poolInfo;
+
+                AkOSChar* poolName = AK::MemoryMgr::GetPoolName(poolId);
+                char* nameTemp = nullptr;
+                CONVERT_OSCHAR_TO_CHAR(poolName, nameTemp);
+                AKPLATFORM::SafeStrCpy(poolInfo.m_poolName, nameTemp, AZ_ARRAY_SIZE(poolInfo.m_poolName));
+                poolInfo.m_poolId = poolId;
+
+                g_audioImplLogger_wwise.Log(eALT_COMMENT, "Found Wwise Memory Pool: %d - '%s'", poolId, poolInfo.m_poolName);
+
+                m_debugMemoryPoolInfo.push_back(poolInfo);
+            }
+        }
+#endif // INCLUDE_WWISE_IMPL_PRODUCTION_CODE
+
         return eARS_SUCCESS;
     }
 
@@ -1616,6 +1643,36 @@ namespace Audio
         oMemoryInfo.nSecondaryPoolUsedSize = 0;
         oMemoryInfo.nSecondaryPoolAllocations = 0;
     #endif // PROVIDE_WWISE_IMPL_SECONDARY_POOL
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    AZStd::vector<AudioImplMemoryPoolInfo> CAudioSystemImpl_wwise::GetMemoryPoolInfo()
+    {
+#if defined(INCLUDE_WWISE_IMPL_PRODUCTION_CODE)
+        // Update pools...
+        for (auto& poolInfo : m_debugMemoryPoolInfo)
+        {
+            AKRESULT akResult = AK::MemoryMgr::CheckPoolId(poolInfo.m_poolId);
+            if (IS_WWISE_OK(akResult))
+            {
+                AK::MemoryMgr::PoolStats poolStats;
+                akResult = AK::MemoryMgr::GetPoolStats(poolInfo.m_poolId, poolStats);
+                if (IS_WWISE_OK(akResult))
+                {
+                    poolInfo.m_memoryReserved = poolStats.uReserved;
+                    poolInfo.m_memoryUsed = poolStats.uUsed;
+                    poolInfo.m_peakUsed = poolStats.uPeakUsed;
+                    poolInfo.m_numAllocs = poolStats.uAllocs;
+                    poolInfo.m_numFrees = poolStats.uFrees;
+                }
+            }
+        }
+
+        // return the pool infos...
+        return m_debugMemoryPoolInfo;
+#else
+        return AZStd::vector<AudioImplMemoryPoolInfo>();
+#endif // INCLUDE_WWISE_IMPL_PRODUCTION_CODE
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -200,6 +200,8 @@ namespace AzToolsFramework
         virtual void RequestWrite(QWidget* editorGUI) = 0;
         virtual void RequestRefresh(PropertyModificationRefreshLevel) = 0;
 
+        virtual void AddElementsToParentContainer(QWidget* editorGUI, size_t numElements, const InstanceDataNode::FillDataClassCallback& fillDataCallback) = 0;
+
         // Invokes a Property Notification without writing modifying the property
         virtual void RequestPropertyNotify(QWidget* editorGUI) = 0;
 
@@ -277,7 +279,27 @@ namespace AzToolsFramework
      * \param node - instance data hierarchy node for which display name should be determined.
      */
     AZStd::string GetNodeDisplayName(const InstanceDataNode& node);
-    
+
+    /**
+     * A function that evaluates whether a property node is read-only.
+     * This can be used to make a property read-only when that can't be
+     * accomplished through attributes on the node.
+     */
+    using ReadOnlyQueryFunction = AZStd::function<bool(const InstanceDataNode*)>;
+
+    /**
+     * A function that evaluates whether a property node is hidden.
+     * This can be used to make a property hidden when that can't be
+     * accomplished through attributes on the node.
+     */
+    using HiddenQueryFunction = AZStd::function<bool(const InstanceDataNode*)>;
+
+    /**
+     * A function that evaluates whether a property node should display an indicator
+     * and if so, which indicator.  Return nullptr if you don't want an indicator to show
+     */
+    using IndicatorQueryFunction = AZStd::function<const char*(const InstanceDataNode*)>;
+
 } // namespace AzToolsFramework
 
 namespace AZ

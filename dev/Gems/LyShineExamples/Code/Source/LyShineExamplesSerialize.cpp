@@ -92,18 +92,10 @@ namespace LyShineExamplesSerialize
                     auto editInfo = ec->Class<UiCustomImageInterface::UVRect>(0, "");
                     editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "UVRect")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly);
-                    editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_left, "Left", "The lower X UV coordinate.")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_top, "Top", "The higher Y UV coordinate.")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_right, "Right", "The higher X UV coordinate.")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
-                    editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_bottom, "Bottom", "The lower Y UV coordinate.")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show)
-                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
+                    editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_left, "Left", "The lower X UV coordinate.");
+                    editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_top, "Top", "The higher Y UV coordinate.");
+                    editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_right, "Right", "The higher X UV coordinate.");
+                    editInfo->DataElement(0, &UiCustomImageInterface::UVRect::m_bottom, "Bottom", "The lower Y UV coordinate.");
                 }
             }
 

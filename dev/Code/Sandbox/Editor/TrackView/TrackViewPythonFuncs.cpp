@@ -100,10 +100,13 @@ namespace
 
     void PyTrackViewSetCurrentSequence(const char* name)
     {
-        const CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        CTrackViewSequence* pSequence = GetSequenceByEntityIdOrName(pSequenceManager, name);
-        CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
-        pAnimationContext->SetSequence(pSequence, false, false);
+        const CTrackViewSequenceManager* sequenceManager = GetIEditor()->GetSequenceManager();
+        CTrackViewSequence* sequence = GetSequenceByEntityIdOrName(sequenceManager, name);
+        CAnimationContext* animationContext = GetIEditor()->GetAnimation();
+        bool force = false;
+        bool noNotify = false;
+        bool user = true;
+        animationContext->SetSequence(sequence, force, noNotify, user);
     }
 
     int PyTrackViewGetNumSequences()

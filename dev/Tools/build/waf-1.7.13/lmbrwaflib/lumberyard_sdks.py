@@ -50,7 +50,6 @@ def should_link_aws_native_sdk_statically(bld):
 
     if ((platform != 'project_generator' and bld.is_variant_monolithic(platform, configuration)) or
         any(substring in platform for substring in [
-            'darwin',
             'ios',
             'linux',
             'android',

@@ -114,19 +114,24 @@ def to_list(obj):
         yield obj
 
 
-def subprocess_with_timeout(command, timeout_sec, delay=1.0):
+def subprocess_with_timeout(command, timeout_sec, cwd=None, delay=1.0):
     """
     Runs a command in a subprocess and times out if the subprocess exceeds timeout_sec in execution time
     :param command: command to be run
     :param timeout_sec: total timeout length, in seconds
+    :param cwd: desired cwd for the command to run in
     :param delay: delay between checks for timeout
     :return:
     """
     deadline = time.time() + timeout_sec
 
-    task = subprocess.Popen(command)
+    if cwd:
+        task = subprocess.Popen(command, cwd=cwd)
+    else:
+        task = subprocess.Popen(command)
 
     while task.poll() is None:
+        # print 'Waiting on call: ' + str(command)
         if time.time() > deadline:
             task.terminate()
             raise SubprocessTimeoutException("Subprocess timed out after {} seconds.".format(timeout_sec))

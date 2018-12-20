@@ -627,6 +627,20 @@ namespace AssetProcessor
         return true;
     }
 
+    bool AssetCatalog::GetAssetSafeFolders(AZStd::vector<AZStd::string>& assetSafeFolders)
+    {
+        int scanFolderCount = m_platformConfig->GetScanFolderCount();
+        for (int scanFolderIndex = 0; scanFolderIndex < scanFolderCount; ++scanFolderIndex)
+        {
+            AssetProcessor::ScanFolderInfo& scanFolder = m_platformConfig->GetScanFolderAt(scanFolderIndex);
+            if (scanFolder.CanSaveNewAssets())
+            {
+                assetSafeFolders.push_back(scanFolder.ScanPath().toUtf8().constData());
+            }
+        }
+        return true;
+    }
+
     bool ConvertDatabaseProductPathToProductFileName(QString dbPath, QString& productFileName)
     {
         QString gameName = AssetUtilities::ComputeGameName();

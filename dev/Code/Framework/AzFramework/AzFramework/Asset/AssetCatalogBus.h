@@ -28,6 +28,9 @@ namespace AzFramework
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
         //////////////////////////////////////////////////////////////////////////
 
+        /// Game/runtime notification for when catalog is loaded and it's possible to resolve asset Ids.
+        virtual void OnCatalogLoaded(const char* /*catalogFile*/) {}
+
         /// Notifies listeners that an existing asset has changed on disk (reload has not yet occurred).
         virtual void OnCatalogAssetChanged(const AZ::Data::AssetId& /*assetId*/) {}
 

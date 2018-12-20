@@ -2168,8 +2168,17 @@ LUA_API const Node* lua_getDummyNode()
                     {
                         lua_pop(lua, 2); // pop class table and the non table value (should be nil)
 
-                        // since we handle generic pointers elsewhere this should be an asset
-                        AZ_Assert(false, "We should always have metatable as this function is called for reflected types, we handle this outside");
+                        ScriptContext* scriptContext = ScriptContext::FromNativeContext(lua);
+                        AZ_Error("ScriptContext", scriptContext, "Unable to get the lua ScriptContext");
+
+                        if (scriptContext)
+                        {
+                            scriptContext->Error(ScriptContext::ErrorType::Error, 
+                                true /*print callstack*/, 
+                                "Object has type Id %s, which is not reflected to the BehaviorContext, or it has the Script::Attributes::Ignore attribute assigned. Nil will be returned.",
+                                typeId.ToString<AZStd::string>().c_str());
+                        }
+
                         lua_pushnil(lua);
                         return;
                     }

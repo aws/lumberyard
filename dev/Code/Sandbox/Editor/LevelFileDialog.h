@@ -19,7 +19,7 @@
 #include <QScopedPointer>
 
 namespace Ui {
-    class Dialog;
+    class LevelFileDialog;
 }
 
 class LevelTreeModel;
@@ -62,7 +62,7 @@ private:
     QString GetEnteredPath() const;
     QString GetFileName(QString levelPath);
 
-    QScopedPointer<Ui::Dialog> ui;
+    QScopedPointer<Ui::LevelFileDialog> ui;
     QString m_fileName;
     QString m_filter;
     const bool m_bOpenDialog;

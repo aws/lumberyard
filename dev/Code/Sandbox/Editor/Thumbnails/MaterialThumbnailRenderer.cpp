@@ -97,6 +97,9 @@ bool MaterialThumbnailRenderer::Render(QPixmap& thumbnail, AZ::Data::AssetId ass
     m_previewControl->Update(true);
     m_previewControl->repaint();
     CImageEx img;
+    m_previewControl->show();
+    // ensure all the initial (might be first time show) event handling is done for m_previewControl
+    QCoreApplication::sendPostedEvents(m_previewControl.get());
     m_previewControl->GetImageOffscreen(img, QSize(thumbnailSize, thumbnailSize));
     m_previewControl->hide();
 

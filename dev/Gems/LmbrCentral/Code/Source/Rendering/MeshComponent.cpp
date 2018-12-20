@@ -45,6 +45,17 @@ namespace LmbrCentral
 
     //////////////////////////////////////////////////////////////////////////
 
+    AZ::BehaviorParameterOverrides CreateMaterialIdDetails(AZ::BehaviorContext* behaviorContext)
+    {
+        return{ "MaterialID", "The ID of a Material slot to access, if the Owner has multiple Materials. IDs start at 1.", behaviorContext->MakeDefaultValue(1) };
+    }
+
+    AZStd::array<AZ::BehaviorParameterOverrides, 2> GetMaterialParamArgs(AZ::BehaviorContext* behaviorContext)
+    {
+        AZ::BehaviorParameterOverrides getParamNameDetails = { "ParamName", "The name of the Material param to return" };
+        return{ { getParamNameDetails, CreateMaterialIdDetails(behaviorContext) } };
+    }
+
     void MeshComponent::Reflect(AZ::ReflectContext* context)
     {
         MeshComponentRenderNode::Reflect(context);
@@ -67,14 +78,9 @@ namespace LmbrCentral
                 ->Event("GetVisibility", &MeshComponentRequestBus::Events::GetVisibility)
                 ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility");
 
-            const AZStd::unique_ptr<AZ::BehaviorDefaultValue> paramMaterialIdDetailsDefaultValue(behaviorContext->MakeDefaultValue(1));
-
             const char* setMaterialParamTooltip = "Sets a Material param value for the given Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.";
             const char* getMaterialParamTooltip = "Returns a Material param value for the given Entity";
             AZ::BehaviorParameterOverrides setParamNameDetails = { "ParamName", "The name of the Material param to set" };
-            AZ::BehaviorParameterOverrides getParamNameDetails = { "ParamName", "The name of the Material param to return" };
-            AZ::BehaviorParameterOverrides paramMaterialIdDetails = { "MaterialID", "The ID of a Material slot to access, if the Owner has multiple Materials. IDs start at 1.", paramMaterialIdDetailsDefaultValue.get() };
-            const AZStd::array<AZ::BehaviorParameterOverrides, 2> getMaterialParamArgs = { { getParamNameDetails, paramMaterialIdDetails } };
             const char* newValueTooltip = "The new value to apply";
 
             behaviorContext->EBus<MaterialOwnerRequestBus>("MaterialOwnerRequestBus", nullptr, "Includes functions for Components that have a Material such as Mesh Component, Decal Component, etc.")
@@ -85,21 +91,21 @@ namespace LmbrCentral
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Sets an Entity's Material")
                 ->Event("GetMaterial", &MaterialOwnerRequestBus::Events::GetMaterialHandle)
                     ->Attribute(AZ::Script::Attributes::ToolTip, "Returns an Entity's current Material")
-                ->Event("SetParamVector4", &MaterialOwnerRequestBus::Events::SetMaterialParamVector4, { { setParamNameDetails, { "Vector4", newValueTooltip }, paramMaterialIdDetails } })
+                ->Event("SetParamVector4", &MaterialOwnerRequestBus::Events::SetMaterialParamVector4, { { setParamNameDetails, { "Vector4", newValueTooltip }, CreateMaterialIdDetails(behaviorContext) } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
-                ->Event("SetParamVector3", &MaterialOwnerRequestBus::Events::SetMaterialParamVector3, { { setParamNameDetails, { "Vector3", newValueTooltip }, paramMaterialIdDetails } })
+                ->Event("SetParamVector3", &MaterialOwnerRequestBus::Events::SetMaterialParamVector3, { { setParamNameDetails, { "Vector3", newValueTooltip }, CreateMaterialIdDetails(behaviorContext) } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
-                ->Event("SetParamColor", &MaterialOwnerRequestBus::Events::SetMaterialParamColor,     { { setParamNameDetails, { "Color"  , newValueTooltip }, paramMaterialIdDetails } })
+                ->Event("SetParamColor", &MaterialOwnerRequestBus::Events::SetMaterialParamColor,     { { setParamNameDetails, { "Color"  , newValueTooltip }, CreateMaterialIdDetails(behaviorContext) } })
                     ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
-                ->Event("SetParamNumber", &MaterialOwnerRequestBus::Events::SetMaterialParamFloat,    { { setParamNameDetails, { "Number" , newValueTooltip }, paramMaterialIdDetails } }) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
+                ->Event("SetParamNumber", &MaterialOwnerRequestBus::Events::SetMaterialParamFloat,    { { setParamNameDetails, { "Number" , newValueTooltip }, CreateMaterialIdDetails(behaviorContext) } }) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
                     ->Attribute(AZ::Script::Attributes::ToolTip, setMaterialParamTooltip)
-                ->Event("GetParamVector4", &MaterialOwnerRequestBus::Events::GetMaterialParamVector4, getMaterialParamArgs)
+                ->Event("GetParamVector4", &MaterialOwnerRequestBus::Events::GetMaterialParamVector4, GetMaterialParamArgs(behaviorContext))
                     ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip)
-                ->Event("GetParamVector3", &MaterialOwnerRequestBus::Events::GetMaterialParamVector3, getMaterialParamArgs)
+                ->Event("GetParamVector3", &MaterialOwnerRequestBus::Events::GetMaterialParamVector3, GetMaterialParamArgs(behaviorContext))
                     ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip)
-                ->Event("GetParamColor", &MaterialOwnerRequestBus::Events::GetMaterialParamColor,     getMaterialParamArgs)
+                ->Event("GetParamColor", &MaterialOwnerRequestBus::Events::GetMaterialParamColor, GetMaterialParamArgs(behaviorContext))
                     ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip)
-                ->Event("GetParamNumber", &MaterialOwnerRequestBus::Events::GetMaterialParamFloat,    getMaterialParamArgs) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
+                ->Event("GetParamNumber", &MaterialOwnerRequestBus::Events::GetMaterialParamFloat, GetMaterialParamArgs(behaviorContext)) // Using ParamNumber instead of ParamFloat because in Script Canvas all primitives are just "numbers"
                     ->Attribute(AZ::Script::Attributes::ToolTip, getMaterialParamTooltip);
 
             behaviorContext->EBus<MaterialOwnerNotificationBus>("MaterialOwnerNotificationBus", nullptr, "Provides notifications from Components that have a Material such as Mesh Component, Decal Component, etc.")
@@ -246,7 +252,7 @@ namespace LmbrCentral
         , m_lodDistanceScaled(FLT_MAX / (SMeshLodInfo::s_nMaxLodCount + 1))  // defualt overflow prevention - it is scaled by (SMeshLodInfo::s_nMaxLodCount + 1)
         , m_isRegisteredWithRenderer(false)
         , m_objectMoved(false)
-        , m_meshAsset(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_QUEUE_LOAD))
+        , m_meshAsset(AZ::Data::AssetLoadBehavior::QueueLoad)
         , m_visible(true)
     {
         m_localBoundingBox.Reset();
@@ -1003,9 +1009,9 @@ namespace LmbrCentral
         return m_materialBusHandler->GetMaterial();
     }
 
-    void MeshComponent::SetMaterialHandle(MaterialHandle m)
+    void MeshComponent::SetMaterialHandle(const MaterialHandle& materialHandle)
     {
-        m_materialBusHandler->SetMaterialHandle(m);
+        m_materialBusHandler->SetMaterialHandle(materialHandle);
     }
 
     MaterialHandle MeshComponent::GetMaterialHandle()

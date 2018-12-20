@@ -34,7 +34,7 @@ export class SWFConfigurationComponent {
     private configurationProperties: { name: string, type: string }[] = [];
 
     private buildResults: Object[];
-    private selectAllResults: boolean;
+    private selectAllResults: boolean = false;
 
     private mode: Mode = Mode.Show;
     private SwfModes: any;
@@ -112,9 +112,8 @@ export class SWFConfigurationComponent {
     **/
     public selectAll(): void {
         for (let result of this.buildResults) {
-            result["isSelected"] = !this.selectAllResults;
+            result["isSelected"] = this.selectAllResults;
         }
-        this.selectAllResults = !this.selectAllResults;
     }
 
     /**

@@ -17,7 +17,6 @@
 #include "TrackViewSequence.h"
 #include <Maestro/Types/AnimNodeType.h>
 #include <Maestro/Bus/EditorSequenceComponentBus.h>
-#include <AzCore/std/sort.h>
 
 ////////////////////////////////////////////////////////////////////////////
 void CTrackViewKeyConstHandle::GetKey(IKey* pKey) const
@@ -278,12 +277,6 @@ void CTrackViewKeyBundle::SelectKeys(const bool bSelected)
     {
         GetKey(i).Select(bSelected);
     }
-}
-
-////////////////////////////////////////////////////////////////////////////
-void CTrackViewKeyBundle::SortKeysByTime()
-{
-    AZStd::sort(m_keys.begin(), m_keys.end(), CompareByTime);
 }
 
 //////////////////////////////////////////////////////////////////////////

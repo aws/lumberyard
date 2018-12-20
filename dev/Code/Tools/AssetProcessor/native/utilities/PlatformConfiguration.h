@@ -53,6 +53,9 @@ namespace AssetProcessor
 
         GemInformation() = default;
         GemInformation(const char* identifier, const char* absolutePath, const char* relativePath, const char* displayName, bool isGameGem, bool assetOnlyGem);
+
+        static QString GetGemAssetFolder() { return QString("Assets"); }
+        static AZStd::string GemDirectoryFolderName() { return AZStd::string("Gems"); }
     };
 
     //! The data about a particular recognizer, including all platform specs.

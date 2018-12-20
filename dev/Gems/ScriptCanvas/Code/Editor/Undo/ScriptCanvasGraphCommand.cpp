@@ -192,7 +192,7 @@ namespace ScriptCanvasEditor
         DeleteOldGraphData(oldData);
 
         UndoData restoreData;
-        bool restoreSuccess = AZ::Utils::LoadObjectFromStreamInPlace(byteStream, restoreData, serializeContext, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
+        bool restoreSuccess = AZ::Utils::LoadObjectFromStreamInPlace(byteStream, restoreData, serializeContext, AZ::ObjectStream::FilterDescriptor(AZ::Data::AssetFilterNoAssetLoading));
         if (restoreSuccess)
         {
             ActivateRestoredGraphData(restoreData);

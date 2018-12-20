@@ -321,7 +321,16 @@ CTrackViewTrackPropsDlg::CTrackViewTrackPropsDlg(QWidget* parent /* = 0 */)
     , ui(new Ui::CTrackViewTrackPropsDlg)
 {
     ui->setupUi(this);
+
+    // Use editingFinished and a custom signal stepByFinished (and not valueChanged)
+    // so the time will be updated when the user finishes editing the time field (hits enter)
+    // or if the arrow keys (or mouse click on the arrow buttons) in the spinner box are
+    // pressed. Don't just use valueChanged because we don't want intermediate values
+    // like 1 as the user is typing 10 to register as updates to the key values. Keys
+    // are identified by time, so the keys jumping around like that can stomp existing keys
+    // that happen to live at the intermediate values.
     connect(ui->TIME, SIGNAL(editingFinished()), this, SLOT(OnUpdateTime()));
+    connect(ui->TIME, SIGNAL(stepByFinished()), this, SLOT(OnUpdateTime()));
 }
 
 CTrackViewTrackPropsDlg::~CTrackViewTrackPropsDlg()

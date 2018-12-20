@@ -34,7 +34,6 @@ namespace EMStudio
     const char* RenderOptions::s_tangentsScaleOptionName = "tangentsScale";
     const char* RenderOptions::s_nodeOrientationScaleOptionName = "nodeOrientationScale";
     const char* RenderOptions::s_scaleBonesOnLengthOptionName = "scaleBonesOnLength";
-    const char* RenderOptions::s_renderBonesOnlyOptionName = "renderBonesOnly";
     const char* RenderOptions::s_nearClipPlaneDistanceOptionName = "nearClipPlaneDistance";
     const char* RenderOptions::s_farClipPlaneDistanceOptionName = "farClipPlaneDistance";
     const char* RenderOptions::s_FOVOptionName = "fieldOfView";
@@ -84,7 +83,6 @@ namespace EMStudio
         , m_tangentsScale(1.0f)
         , m_nodeOrientationScale(1.0f)
         , m_scaleBonesOnLength(true)
-        , m_renderBonesOnly(false)
         , m_mainLightIntensity(1.0f)
         , m_mainLightAngleA(0.0f)
         , m_mainLightAngleB(0.0f)
@@ -233,7 +231,6 @@ namespace EMStudio
 
         settings->setValue(s_nodeOrientationScaleOptionName, (double)m_nodeOrientationScale);
         settings->setValue(s_scaleBonesOnLengthOptionName, m_scaleBonesOnLength);
-        settings->setValue(s_renderBonesOnlyOptionName, m_renderBonesOnly);
 
         settings->setValue(s_mainLightIntensityOptionName, (double)m_mainLightIntensity);
         settings->setValue(s_mainLightAngleAOptionName, (double)m_mainLightAngleA);
@@ -301,7 +298,6 @@ namespace EMStudio
 
         options.m_nodeOrientationScale = (float)settings->value(s_nodeOrientationScaleOptionName, (double)options.m_nodeOrientationScale).toDouble();
         options.m_scaleBonesOnLength = settings->value(s_scaleBonesOnLengthOptionName, options.m_scaleBonesOnLength).toBool();
-        options.m_renderBonesOnly = settings->value(s_renderBonesOnlyOptionName, options.m_renderBonesOnly).toBool();
 
         options.m_rimIntensity = (float)settings->value(s_rimIntensityOptionName, (double)options.m_rimIntensity).toDouble();
         options.m_rimAngle = (float)settings->value(s_rimAngleOptionName, (double)options.m_rimAngle).toDouble();
@@ -348,7 +344,6 @@ namespace EMStudio
             ->Field(s_tangentsScaleOptionName, &RenderOptions::m_tangentsScale)
             ->Field(s_nodeOrientationScaleOptionName, &RenderOptions::m_nodeOrientationScale)
             ->Field(s_scaleBonesOnLengthOptionName, &RenderOptions::m_scaleBonesOnLength)
-            ->Field(s_renderBonesOnlyOptionName, &RenderOptions::m_renderBonesOnly)
             ->Field(s_nearClipPlaneDistanceOptionName, &RenderOptions::m_nearClipPlaneDistance)
             ->Field(s_farClipPlaneDistanceOptionName, &RenderOptions::m_farClipPlaneDistance)
             ->Field(s_FOVOptionName, &RenderOptions::m_FOV)
@@ -422,8 +417,6 @@ namespace EMStudio
                 ->Attribute(AZ::Edit::Attributes::Max, 1000.0f)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_scaleBonesOnLength, "Scale bones on length", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnScaleBonesOnLengthChangedCallback)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_renderBonesOnly, "Render bones only", "")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRenderBonesOnlyChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_nearClipPlaneDistance, "Near clip plane distance", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnNearClipPlaneDistanceChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
@@ -574,15 +567,6 @@ namespace EMStudio
         {
             m_scaleBonesOnLength = scaleBonesOnLenght;
             OnScaleBonesOnLengthChangedCallback();
-        }
-    }
-
-    void RenderOptions::SetRenderBonesOnly(bool renderBonesOnly)
-    {
-        if (renderBonesOnly != m_renderBonesOnly)
-        {
-            m_renderBonesOnly = renderBonesOnly;
-            OnRenderBonesOnlyChangedCallback();
         }
     }
 
@@ -1036,11 +1020,6 @@ namespace EMStudio
     void RenderOptions::OnScaleBonesOnLengthChangedCallback() const
     {
         PluginOptionsNotificationsBus::Event(s_scaleBonesOnLengthOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_scaleBonesOnLengthOptionName);
-    }
-
-    void RenderOptions::OnRenderBonesOnlyChangedCallback() const
-    {
-        PluginOptionsNotificationsBus::Event(s_renderBonesOnlyOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_renderBonesOnlyOptionName);
     }
 
     void RenderOptions::OnNearClipPlaneDistanceChangedCallback() const

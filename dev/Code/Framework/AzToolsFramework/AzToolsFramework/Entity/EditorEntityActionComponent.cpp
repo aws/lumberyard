@@ -93,11 +93,16 @@ namespace AzToolsFramework
                 AZ::ComponentDescriptor::DependencyArrayType providedServices;
                 componentDescriptor->GetProvidedServices(providedServices, component);
 
-                for (auto& providedService : providedServices)
+                for (AZ::ComponentDescriptor::DependencyArrayType::iterator providedService = providedServices.begin();
+                    providedService != providedServices.end(); ++providedService)
                 {
+                    AZ::EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(
+                        providedService, 
+                        providedServices,
+                        component ? component->GetEntity() : nullptr);
                     for (auto existingComponent : existingComponents)
                     {
-                        if (IsComponentIncompatibleWithService(existingComponent, providedService))
+                        if (IsComponentIncompatibleWithService(existingComponent, *providedService))
                         {
                             return true;
                         }
@@ -354,6 +359,8 @@ namespace AzToolsFramework
                     // If entity is not active now, something failed hardcore
                     AZ_Assert(entity->GetState() == AZ::Entity::ES_ACTIVE, "Failed to reactivate entity even after scrubbing on component removal");
                 }
+
+                EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityComponentEnabled, entity->GetId(), componentId);
             }
         }
 
@@ -408,6 +415,8 @@ namespace AzToolsFramework
                     // If entity is not active now, something failed hardcore
                     AZ_Assert(entity->GetState() == AZ::Entity::ES_ACTIVE, "Failed to reactivate entity even after scrubbing on component removal");
                 }
+
+                EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityComponentDisabled, entity->GetId(), componentId);
             }
         }
 
@@ -452,6 +461,8 @@ namespace AzToolsFramework
                         entity->Deactivate();
                     }
 
+                    AZ::ComponentId removedComponentId = componentToRemove->GetId();
+
                     if (RemoveComponentFromEntityAndContainers(entity, componentToRemove))
                     {
                         removedComponents.push_back(componentToRemove);
@@ -469,6 +480,8 @@ namespace AzToolsFramework
                         // If entity is not active now, something failed hardcore
                         AZ_Assert(entity->GetState() == AZ::Entity::ES_ACTIVE, "Failed to reactivate entity even after scrubbing on component removal");
                     }
+
+                    EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityComponentRemoved, entity->GetId(), removedComponentId);
                 }
 
                 for (auto removedComponent : removedComponents)
@@ -644,6 +657,8 @@ namespace AzToolsFramework
                 addComponentsResults.m_componentsAdded.push_back(component);
 
                 undo.MarkEntityDirty(entity->GetId());
+
+                EntityCompositionNotificationBus::Broadcast(&EntityCompositionNotificationBus::Events::OnEntityComponentAdded, entity->GetId(), component->GetId());
             }
 
             // Run the scrubber!

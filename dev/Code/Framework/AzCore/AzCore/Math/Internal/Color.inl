@@ -206,6 +206,11 @@ namespace AZ
     AZ_MATH_FORCE_INLINE bool Color::IsGreaterThan(const Color& rhs) const      { return (GetR() > rhs.GetR()) && (GetG() > rhs.GetG()) && (GetB() > rhs.GetB()) && (GetA() > rhs.GetA()); }
     AZ_MATH_FORCE_INLINE bool Color::IsGreaterEqualThan(const Color& rhs) const { return (GetR() >= rhs.GetR()) && (GetG() >= rhs.GetG()) && (GetB() >= rhs.GetB()) && (GetA() >= rhs.GetA()); }
 
+    AZ_MATH_FORCE_INLINE const Color Color::Lerp(const Color& dest, const VectorFloat& t) const
+    {
+        return Color(m_color.Lerp(dest.m_color, t));
+    }
+
     AZ_MATH_FORCE_INLINE const VectorFloat Color::Dot(const Color& rhs) const
     {
         return (m_color.Dot(rhs.m_color));

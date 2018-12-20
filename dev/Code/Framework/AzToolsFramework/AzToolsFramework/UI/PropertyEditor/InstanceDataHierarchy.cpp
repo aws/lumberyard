@@ -24,7 +24,7 @@
 #include <AzCore/Math/Crc.h>
 
 #include <AzCore/Serialization/EditContextConstants.inl>
-
+#include "ComponentEditor.hxx"
 #include "PropertyEditorAPI.h"
 
 namespace
@@ -492,7 +492,7 @@ namespace AzToolsFramework
     }
 
     //-----------------------------------------------------------------------------
-    void InstanceDataHierarchy::Build(AZ::SerializeContext* sc, unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider)
+    void InstanceDataHierarchy::Build(AZ::SerializeContext* sc, unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider, ComponentEditor* editorParent)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -508,15 +508,21 @@ namespace AzToolsFramework
         m_context = sc;
         m_comparisonHierarchies.clear();
 
+        AZ::SerializeContext::EnumerateInstanceCallContext callContext(
+            AZStd::bind(&InstanceDataHierarchy::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, dynamicEditDataProvider),
+            AZStd::bind(&InstanceDataHierarchy::EndNode, this),
+            sc,
+            AZ::SerializeContext::ENUM_ACCESS_FOR_READ,
+            nullptr
+        );
+
         sc->EnumerateInstanceConst(
-            m_rootInstances[0].m_instance
+            &callContext
+            , m_rootInstances[0].m_instance
             , m_rootInstances[0].m_classId
-            , AZStd::bind(&InstanceDataHierarchy::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, dynamicEditDataProvider)
-            , AZStd::bind(&InstanceDataHierarchy::EndNode, this)
-            , accessFlags
             , nullptr
             , nullptr
-            );
+        );
 
         for (size_t i = 1; i < m_rootInstances.size(); ++i)
         {
@@ -524,18 +530,21 @@ namespace AzToolsFramework
             m_isMerging = true;
             m_matched = false;
             sc->EnumerateInstanceConst(
-                m_rootInstances[i].m_instance
+                &callContext
+                , m_rootInstances[i].m_instance
                 , m_rootInstances[i].m_classId
-                , AZStd::bind(&InstanceDataHierarchy::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, dynamicEditDataProvider)
-                , AZStd::bind(&InstanceDataHierarchy::EndNode, this)
-                , accessFlags
                 , nullptr
                 , nullptr
-                );
+            );
         }
 
-        RefreshComparisonData(accessFlags, dynamicEditDataProvider);        
+        bool dataIdentical = RefreshComparisonData(accessFlags, dynamicEditDataProvider);
         FixupEditData();
+
+        if (editorParent)
+        {
+            editorParent->SetComponentOverridden(!dataIdentical);
+        }
     }
 
     //-----------------------------------------------------------------------------
@@ -1187,21 +1196,41 @@ namespace AzToolsFramework
 
                 if (!valueComparisonFunction(sourceNode, targetNode))
                 {
+                    // This is a leaf element (has a direct serializer), so it's a data change.
+                    tempSourceBuffer.clear();
+                    tempTargetBuffer.clear();
+                    AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8> > sourceStream(&tempSourceBuffer), targetStream(&tempTargetBuffer);
+                    targetNode->m_classData->m_serializer->Save(targetNode->GetInstance(0), targetStream);
+                    sourceNode->m_classData->m_serializer->Save(sourceNode->GetInstance(0), sourceStream);
+
                     changedNodeCallback(sourceNode, targetNode, tempSourceBuffer, tempTargetBuffer);
                 }
             }
             else
             {
                 // This isn't a container; just drill down on child elements.
-                auto targetElementIt = targetNode->m_children.begin();
-                auto sourceElementIt = sourceNode->m_children.begin();
-                while (targetElementIt != targetNode->m_children.end())
+                if (targetNode->m_children.size() == sourceNode->m_children.size())
                 {
-                    CompareHierarchies(&(*sourceElementIt), &(*targetElementIt), tempSourceBuffer, tempTargetBuffer, valueComparisonFunction, context,
-                        newNodeCallback, removedNodeCallback, changedNodeCallback);
+                    auto targetElementIt = targetNode->m_children.begin();
+                    auto sourceElementIt = sourceNode->m_children.begin();
+                    while (targetElementIt != targetNode->m_children.end())
+                    {
+                        CompareHierarchies(&(*sourceElementIt), &(*targetElementIt), tempSourceBuffer, tempTargetBuffer, valueComparisonFunction, context,
+                            newNodeCallback, removedNodeCallback, changedNodeCallback);
 
-                    ++sourceElementIt;
-                    ++targetElementIt;
+                        ++sourceElementIt;
+                        ++targetElementIt;
+                    }
+                }
+                else
+                {
+                    AZ_Error("Serializer", targetNode->m_children.size() == sourceNode->m_children.size(),
+                        "Non-container elements have mismatched sub-element counts. This a recoverable error, "
+                        "but the entire sub-hierarchy will be considered differing as no further drill-down is possible.");
+
+                    tempSourceBuffer.clear();
+                    tempTargetBuffer.clear();
+                    changedNodeCallback(sourceNode, targetNode, tempSourceBuffer, tempTargetBuffer);
                 }
             }
         }
@@ -1346,10 +1375,16 @@ namespace AzToolsFramework
                         {
                             matchedChild = true;
 
-                            if (!targetChild.GetClassMetadata() || targetChild.GetClassMetadata()->m_serializer != sourceChild.GetClassMetadata()->m_serializer)
+                            if (!targetChild.GetClassMetadata() || targetChild.GetClassMetadata()->m_typeId != sourceChild.GetClassMetadata()->m_typeId)
                             {
-                                AZ_Error("Serializer", false, "Nodes with same identifier are not of the same serializable type: types \"%s\" and \"%s\".",
-                                    sourceChild.GetClassMetadata()->m_name, targetChild.GetClassMetadata()->m_name);
+                                AZStd::string sourceTypeId;
+                                AZStd::string targetTypeId;
+
+                                sourceChild.GetClassMetadata()->m_typeId.ToString(sourceTypeId);
+                                targetChild.GetClassMetadata()->m_typeId.ToString(targetTypeId);
+
+                                AZ_Error("Serializer", false, "Nodes with same identifier are not of the same serializable type: types \"%s\" : %s and \"%s\" : %s.",
+                                    sourceChild.GetClassMetadata()->m_name, sourceTypeId.c_str(), targetChild.GetClassMetadata()->m_name, targetTypeId.c_str());
                                 return false;
                             }
 
@@ -1457,7 +1492,7 @@ namespace AzToolsFramework
                         sourceStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
 
                         bool loadedFromStream = AZ::Utils::LoadObjectFromStreamInPlace(
-                            sourceStream, context, sourceChildToAdd->GetClassMetadata(), targetPointer, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading));
+                            sourceStream, context, sourceChildToAdd->GetClassMetadata(), targetPointer, AZ::ObjectStream::FilterDescriptor(AZ::Data::AssetFilterNoAssetLoading));
                         (void)loadedFromStream;
                         AZ_Assert(loadedFromStream, "Failed to copy element to target.");
 

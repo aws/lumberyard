@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.16.0.0", 
+            "default_value": "1.17.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -391,8 +391,8 @@
         {
             "long_form": "--win-vs2017-vswhere-args", 
             "attribute": "win_vs2017_vswhere_args", 
-            "default_value": "-version [15.7.4,15.9]", 
-            "description": "The arguments to pass to vswhere when locating vs2017 executables"
+            "default_value": "-version [15.7.27703.2035,15.9.28307.108]", 
+            "description": "The arguments to pass to vswhere when locating vs2017 executables. The default maximum is the last version that Lumberyard was tested against before release. The default minimum is the last known ABI incompatiblity for Lumberyard builds."
         }, 
         {
             "long_form": "--win-vs2017-winkit", 
@@ -411,6 +411,12 @@
             "attribute": "win_vs2015_winkit", 
             "default_value": "", 
             "description": "The windows kit that vs2015 builds windows targets against"
+        }, 
+        {
+            "long_form": "--win-enable-clang-for-windows", 
+            "attribute": "win_enable_clang_for_windows", 
+            "default_value": "False", 
+            "description": "Enables building and configuring with Clang for Windows"
         }
     ], 
     "Android Options": [

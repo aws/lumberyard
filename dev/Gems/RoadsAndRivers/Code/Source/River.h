@@ -52,7 +52,7 @@ namespace RoadsAndRivers
         void SetMaterial(_smart_ptr<IMaterial> material) override;
         _smart_ptr<IMaterial> GetMaterial() override;
 
-        void SetMaterialHandle(LmbrCentral::MaterialHandle handle) override;
+        void SetMaterialHandle(const LmbrCentral::MaterialHandle& materialHandle) override;
         LmbrCentral::MaterialHandle GetMaterialHandle() override;
 
         // RiverRequestsBus handler

@@ -103,7 +103,7 @@ namespace AzToolsFramework
         // If slice-owned, extract the data we need to restore it.
         AZ::SliceComponent::SliceInstanceAddress sliceInstanceAddr;
         EBUS_EVENT_ID_RESULT(sliceInstanceAddr, m_entityID, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-        if (sliceInstanceAddr.first)
+        if (sliceInstanceAddr.IsValid())
         {
             AZ::SliceComponent* rootSlice = nullptr;
             EBUS_EVENT_RESULT(rootSlice, EditorEntityContextRequestBus, GetEditorRootSlice);
@@ -167,7 +167,7 @@ namespace AzToolsFramework
 
         bool success = AZ::ObjectStream::LoadBlocking(&memoryStream, *serializeContext,
             AZStd::bind(&LoadEntity, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &entity),
-            AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading),
+            AZ::ObjectStream::FilterDescriptor(AZ::Data::AssetFilterNoAssetLoading),
             inplaceLoadRootInfoCB);
         (void)success;
         AZ_Assert(success, "Unable to serialize entity for undo/redo");

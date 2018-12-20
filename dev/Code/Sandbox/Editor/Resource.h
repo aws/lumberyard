@@ -383,7 +383,19 @@
 #define ID_PANEL_LAYERS_SAVE_EXTERNAL_LAYERS       34198
 #define ID_TV_SYNC_TO_BASE                         34199
 #define ID_TV_SYNC_FROM_BASE                       34200
+#ifdef ENABLE_SLICE_EDITOR
+#define ID_FILE_NEW_SLICE                          34201
+#define ID_FILE_OPEN_SLICE                         34202
+#endif
+#define ID_FILE_SAVE_SELECTED_SLICE                34203
+#define ID_FILE_SAVESETTINGS                       34204
+#define ID_FILE_SAVE_SLICE_TO_ROOT                 34205
+#define ID_SET_TIME_TO_KEY                         34206
+#define ID_TOGGLE_SCRUB_UNITS                      34207
+#define ID_TOGGLE_PREVIEW_UNITS                    34208
 #define ID_FILE_EXPORTOCCLUSIONMESH                34209
+#define ID_MANN_RELOAD_ANIMS                       34210
+#define ID_FILE_ANIMDBEDITOR                       34211
 #define ID_AI_NAVIGATION_DISPLAY_AGENT             34212
 #define ID_AI_NAVIGATION_SELECT_DISPLAY_AGENT_RANGE_BEGIN 34213
 #define ID_AI_NAVIGATION_SELECT_DISPLAY_AGENT_RANGE_END 34313

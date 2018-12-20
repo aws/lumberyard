@@ -835,12 +835,15 @@ namespace AzToolsFramework
 
         void ScriptEditorComponent::BuildGameEntity(AZ::Entity* gameEntity)
         {
-            gameEntity->AddComponent(&m_scriptComponent);
-        }
+            AZ::SerializeContext* context = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            if (!context)
+            {
+                AZ_Error("ScriptEditorComponent", false, "Can't get serialize context from component application.");
+                return;
+            }
 
-        void ScriptEditorComponent::FinishedBuildingGameEntity(AZ::Entity* gameEntity)
-        {
-            gameEntity->RemoveComponent(&m_scriptComponent);
+            gameEntity->AddComponent(context->CloneObject(&m_scriptComponent));
         }
 
         void ScriptEditorComponent::SetPrimaryAsset(const AZ::Data::AssetId& assetId)

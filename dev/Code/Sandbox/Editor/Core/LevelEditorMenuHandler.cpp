@@ -25,6 +25,7 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/AssetEditor/AssetEditorBus.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 
 #include <LyMetricsProducer/LyMetricsAPI.h>
 #include <AzQtComponents/Components/SearchLineEdit.h>
@@ -95,6 +96,30 @@ namespace
         else if (e == eNotify_OnEndNewScene || e == eNotify_OnEndLoad)
         {
             action->setDisabled(false);
+        }
+    }
+
+    void HideActionWhileEntitiesDeselected(QAction* action, EEditorNotifyEvent editorNotifyEvent)
+    {
+        if (action == nullptr)
+        {
+            return;
+        }
+
+        switch (editorNotifyEvent)
+        {
+        case eNotify_OnEntitiesDeselected:
+        {
+            action->setVisible(false);
+            break;
+        }
+        case eNotify_OnEntitiesSelected:
+        {
+            action->setVisible(true);
+            break;
+        }
+        default:
+            break;
         }
     }
 
@@ -285,15 +310,43 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
     auto fileMenu = m_actionManager->AddMenu(tr("&File"));
     connect(fileMenu, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::OnUpdateOpenRecent);
 
-    // New
+    // New level
     auto fileNew = fileMenu.AddAction(ID_FILE_NEW);
     GetIEditor()->RegisterNotifyListener(new EditorListener(fileNew, [fileNew](EEditorNotifyEvent e) {
         DisableActionWhileLevelChanges(fileNew, e);
     }));
-    // Open...
+    // Open level...
     auto fileOpenLevel = fileMenu.AddAction(ID_FILE_OPEN_LEVEL);
     GetIEditor()->RegisterNotifyListener(new EditorListener(fileOpenLevel, [fileOpenLevel](EEditorNotifyEvent e) {
         DisableActionWhileLevelChanges(fileOpenLevel, e);
+    }));
+
+#ifdef ENABLE_SLICE_EDITOR
+    // New slice
+    auto fileNewSlice = fileMenu.AddAction(ID_FILE_NEW_SLICE);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileNewSlice, [fileNewSlice](EEditorNotifyEvent e) {
+        DisableActionWhileLevelChanges(fileNewSlice, e);
+    }));
+
+    // Open slice...
+    auto fileOpenSlice = fileMenu.AddAction(ID_FILE_OPEN_SLICE);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileOpenSlice, [fileOpenSlice](EEditorNotifyEvent e) {
+        DisableActionWhileLevelChanges(fileOpenSlice, e);
+    }));
+#endif
+
+    // Save Selected Slice
+    auto saveSelectedSlice = fileMenu.AddAction(ID_FILE_SAVE_SELECTED_SLICE);
+    saveSelectedSlice->setVisible(false);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(saveSelectedSlice, [saveSelectedSlice](EEditorNotifyEvent e) {
+        HideActionWhileEntitiesDeselected(saveSelectedSlice, e);
+    }));
+
+    // Save Slice to Root
+    auto saveSliceToRoot = fileMenu.AddAction(ID_FILE_SAVE_SLICE_TO_ROOT);
+    saveSliceToRoot->setVisible(false);
+    GetIEditor()->RegisterNotifyListener(new EditorListener(saveSliceToRoot, [saveSliceToRoot](EEditorNotifyEvent e) {
+        HideActionWhileEntitiesDeselected(saveSliceToRoot, e);
     }));
 
     // Open Recent
@@ -419,6 +472,13 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
 
     // Invert Selection
     editMenu.AddAction(ID_EDIT_INVERTSELECTION);
+
+    // Select Slice Root
+    if (!m_selectSliceRootMenu)
+    {
+        m_selectSliceRootMenu = editMenu.AddMenu(QObject::tr("Select root"));
+        m_selectSliceRootMenu->setEnabled(false);
+    }
 
     editMenu.AddSeparator();
 
@@ -648,6 +708,8 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     keyboardCustomizationMenu.AddAction(ID_TOOLS_CUSTOMIZEKEYBOARD);
     keyboardCustomizationMenu.AddAction(ID_TOOLS_EXPORT_SHORTCUTS);
     keyboardCustomizationMenu.AddAction(ID_TOOLS_IMPORT_SHORTCUTS);
+
+    m_editmenu = editMenu;
 
     return editMenu;
 }
@@ -1478,6 +1540,26 @@ void LevelEditorMenuHandler::OnUpdateMacrosMenu()
     else
     {
         m_macrosMenu->setEnabled(true);
+    }
+}
+
+void LevelEditorMenuHandler::SetupSliceSelectMenu(AZ::EntityId id)
+{
+    if (id.IsValid())
+    {
+        if (SliceUtilities::PopulateSliceSelectSubMenu(id, m_selectSliceRootMenu))
+        {
+            m_selectSliceRootMenu->setEnabled(true);
+        }
+        else
+        {
+            m_selectSliceRootMenu->setEnabled(false);
+        }
+    }
+    else
+    {
+        m_selectSliceRootMenu->clear();
+        m_selectSliceRootMenu->setEnabled(false);
     }
 }
 

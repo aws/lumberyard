@@ -208,7 +208,7 @@ bool UiEditorEntityContext::CloneUiEntities(const AZStd::vector<AZ::EntityId>& s
 {
     resultEntities.clear();
 
-    AZ::SliceComponent::InstantiatedContainer sourceObjects;
+    AZ::SliceComponent::InstantiatedContainer sourceObjects(false);
     for (const AZ::EntityId& id : sourceEntities)
     {
         AZ::Entity* entity = nullptr;
@@ -232,8 +232,7 @@ bool UiEditorEntityContext::CloneUiEntities(const AZStd::vector<AZ::EntityId>& s
 
     AddUiEntities(resultEntities);
 
-    sourceObjects.m_entities.clear();
-    clonedObjects->m_entities.clear();
+    clonedObjects->m_deleteEntitiesOnDestruction = false;
     delete clonedObjects;
 
     return true;
@@ -255,8 +254,7 @@ bool UiEditorEntityContext::SupportsViewportEntityIdPicking()
 AZ::SliceComponent::SliceInstanceAddress UiEditorEntityContext::CloneEditorSliceInstance(
     AZ::SliceComponent::SliceInstanceAddress sourceInstance)
 {
-    // RMP_REVISIT: Not sure yet if we need this for UI slices
-    return AZ::SliceComponent::SliceInstanceAddress(nullptr, nullptr);
+    return AZ::SliceComponent::SliceInstanceAddress();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -378,12 +376,10 @@ void UiEditorEntityContext::DetachSliceEntities(const AzToolsFramework::EntityId
 
     for (const AZ::EntityId& entityId : entities)
     {
-        AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+        AZ::SliceComponent::SliceInstanceAddress sliceAddress;
         EBUS_EVENT_ID_RESULT(sliceAddress, entityId, AzFramework::EntityIdContextQueryBus, GetOwningSlice);
 
-        AZ::SliceComponent::SliceReference* sliceReference = sliceAddress.first;
-        AZ::SliceComponent::SliceInstance* sliceInstance = sliceAddress.second;
-        if (sliceReference && sliceInstance)
+        if (sliceAddress.IsValid())
         {
             AZ::Entity* entity = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
@@ -391,7 +387,7 @@ void UiEditorEntityContext::DetachSliceEntities(const AzToolsFramework::EntityId
 
             if (entity)
             {
-                if (sliceReference->GetSliceComponent()->RemoveEntity(entityId, false)) // Remove from current slice instance without deleting
+                if (sliceAddress.GetReference()->GetSliceComponent()->RemoveEntity(entityId, false)) // Remove from current slice instance without deleting
                 {
                     GetRootSlice()->AddEntity(entity); // Add back as loose entity
                 }
@@ -478,7 +474,15 @@ void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAs
     {
         if (instantiatingIter->first.GetId() == sliceAssetId)
         {
-            const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+            const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
+
+            if (entities.size() == 0)
+            {
+                // if there are no entities there was an error with the instantiation
+                UiEditorEntityContextNotificationBus::Broadcast(&UiEditorEntityContextNotificationBus::Events::OnSliceInstantiationFailed, sliceAssetId, ticket);
+                m_instantiatingSlices.erase(instantiatingIter);
+                break;
+            }
 
             // Initialize the new entities and create a set of all the top-level entities.
             AZStd::unordered_set<AZ::Entity*> topLevelEntities;
@@ -570,9 +574,6 @@ void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAs
             QTreeWidgetItemRawPtrQList selectedItems = hierarchyWidget->selectedItems();
 
             // use an undoable command to create the elements from the slice
-            // RMP_REVISIT: Is there some part of the root slice's SliceComponent that changes and needs to be undone?
-            // i.e. the undo will remove the entities added for the instance but if the root slice
-            // tracks all the prefab instances it may need to have the change undone also.
             CommandHierarchyItemCreateFromData::Push(m_editorWindow->GetActiveStack(),
                 hierarchyWidget,
                 selectedItems,
@@ -587,6 +588,8 @@ void UiEditorEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAs
                 "Instantiate Slice");
 
             m_instantiatingSlices.erase(instantiatingIter);
+
+            EBUS_EVENT(UiEditorEntityContextNotificationBus, OnSliceInstantiated, sliceAssetId, sliceAddress, ticket);
 
             break;
         }
@@ -628,7 +631,7 @@ void UiEditorEntityContext::OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> as
             // Note that we do not add the entity to the context/rootSlice using AddEntity here.
             // This is because it has already been added to the root slice as a prefab instance.
             // Instead we call HandleEntitiesAdded which just adds it to the context
-            if (address.first)
+            if (address.IsValid())
             {
                 HandleEntitiesAdded({request.m_entity});
             }
@@ -703,6 +706,11 @@ void UiEditorEntityContext::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData>
 
         HierarchyHelpers::SetSelectedItems(hierarchy, &selectedEntities);
     }
+
+    // We want to update the status for any tabs being used to edit slices.
+    // If that tab has just done a push, we want to check at this point whether there are any differences between the
+    // reloaded asset and the instance.
+    m_editorWindow->UpdateChangedStatusOnAssetChange(GetContextId(), asset);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -793,14 +801,14 @@ void UiEditorEntityContext::QueuedSliceReplacement::Finalize(
     AZ::SliceComponent::EntityAncestorList ancestors;
     AZStd::unordered_map<AZ::EntityId, AZ::EntityId> remapIds;
 
-    const auto& newEntities = instanceAddress.second->GetInstantiated()->m_entities;
+    const auto& newEntities = instanceAddress.GetInstance()->GetInstantiated()->m_entities;
 
     // Store mapping between live Ids we're out to remove, and the ones now provided by
     // the slice instance, so we can fix up references on any still-external entities.
     for (const AZ::Entity* newEntity : newEntities)
     {
         ancestors.clear();
-        instanceAddress.first->GetInstanceEntityAncestry(newEntity->GetId(), ancestors, 1);
+        instanceAddress.GetReference()->GetInstanceEntityAncestry(newEntity->GetId(), ancestors, 1);
                 
         AZ_Error("EditorEntityContext", !ancestors.empty(), "Failed to locate ancestor for newly created slice entity.");
         if (!ancestors.empty())

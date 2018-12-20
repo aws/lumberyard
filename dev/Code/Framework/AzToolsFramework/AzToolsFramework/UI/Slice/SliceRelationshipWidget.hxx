@@ -14,6 +14,7 @@
 
 #include <QtWidgets/QWidget>
 #include <AzToolsFramework/Slice/SliceDependencyBrowserBus.h>
+#include <AzToolsFramework/UI/Slice/SliceRelationshipBus.h>
 
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -28,6 +29,7 @@ namespace AzToolsFramework
     class SliceRelationshipWidget
         : public QWidget
         , private SliceDependencyBrowserNotificationsBus::Handler
+        , private SliceRelationshipRequestBus::Handler
     {
         Q_OBJECT
 
@@ -39,6 +41,11 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // SliceDependencyBrowserNotificationsBus::Handler
         void OnSliceRelationshipModelUpdated(const AZStd::shared_ptr<SliceRelationshipNode>& focusNode) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // SliceRelationshipRequestBus::Handler
+        void OnSliceRelationshipViewRequested(const AZ::Data::AssetId& assetId) override;
         //////////////////////////////////////////////////////////////////////////
 
         void closeEvent(QCloseEvent* event) override;

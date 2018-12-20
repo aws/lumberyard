@@ -72,22 +72,18 @@
 #include "IEditorImpl.h"
 #include "StartupLogoDialog.h"
 #include "DisplaySettings.h"
-
-#include "ObjectCloneTool.h"
-
+#include "EquipPackDialog.h"
+#include "GameEngine.h"
+#include "LayersSelectDialog.h"
 #include "Mission.h"
 #include "MissionSelectDialog.h"
-
-#include "EquipPackDialog.h"
-
+#include "ObjectCloneTool.h"
+#include "StartupTraceHandler.h"
+#include "ThumbnailGenerator.h"
+#include "ToolsConfigPage.h"
+#include "TrackView/TrackViewDialog.h"
 #include "Undo/Undo.h"
 
-#include "ThumbnailGenerator.h"
-#include "LayersSelectDialog.h"
-#include "ToolsConfigPage.h"
-
-#include "TrackView/TrackViewDialog.h"
-#include "GameEngine.h"
 
 #include "AI/AIManager.h"
 #include "AI/GenerateSpawners.h"
@@ -278,6 +274,7 @@
 
 static const char defaultFileExtension[] = ".ly";
 static const char oldFileExtension[] = ".cry";
+static const char sliceFileExtension[] = ".slice";
 
 static const char lumberyardEditorClassName[] = "LumberyardEditorClass";
 static const char lumberyardApplicationName[] = "LumberyardApplication";
@@ -412,13 +409,13 @@ namespace
         }
 
         auto previousDocument = GetIEditor()->GetDocument();
-        QString previousPathName = (previousDocument != nullptr) ? previousDocument->GetPathName() : "";
+        QString previousPathName = (previousDocument != nullptr) ? previousDocument->GetLevelPathName() : "";
         auto newDocument = CCryEditApp::instance()->OpenDocumentFile(levelPath.toUtf8().data());
 
         // the underlying document pointer doesn't change, so we can't check that; use the path name's instead
 
         bool result = true;
-        if (newDocument == nullptr || newDocument->IsLevelLoadFailed() || (newDocument->GetPathName() == previousPathName))
+        if (newDocument == nullptr || newDocument->IsLevelLoadFailed() || (newDocument->GetLevelPathName() == previousPathName))
         {
             result = false;
         }
@@ -751,6 +748,10 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_TOOLBAR_WIDGET_REDO, OnRedo)
     ON_COMMAND(ID_RELOAD_TEXTURES, OnReloadTextures)
     ON_COMMAND(ID_FILE_OPEN_LEVEL, OnOpenLevel)
+#ifdef ENABLE_SLICE_EDITOR
+    ON_COMMAND(ID_FILE_NEW_SLICE, OnCreateSlice)
+    ON_COMMAND(ID_FILE_OPEN_SLICE, OnOpenSlice)
+#endif
     ON_COMMAND(ID_TERRAIN_COLLISION, OnTerrainCollision)
     ON_COMMAND(ID_RESOURCES_GENERATECGFTHUMBNAILS, OnGenerateCgfThumbnails)
     ON_COMMAND(ID_AI_GENERATEALL, OnAIGenerateAll)
@@ -2077,7 +2078,6 @@ CCryEditDoc* CCrySingleDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName, BOOL 
 
 CCryEditDoc* CCrySingleDocTemplate::OpenDocumentFile(LPCTSTR lpszPathName, BOOL bAddToMRU, BOOL bMakeVisible)
 {
-    //((CCryEditApp*)AfxGetApp())->m_pDocManager->CloseAllDocuments(true);
     CCryEditDoc* pCurDoc = GetIEditor()->GetDocument();
 
     if (pCurDoc)
@@ -2124,7 +2124,7 @@ CCrySingleDocTemplate::Confidence CCrySingleDocTemplate::MatchDocType(LPCTSTR lp
     CCryEditDoc* pDoc = GetIEditor()->GetDocument();
     if (pDoc)
     {
-        QString prevPathName = pDoc->GetPathName();
+        QString prevPathName = pDoc->GetLevelPathName();
         // all we need to know here is whether it is the same file as before.
         if (!prevPathName.isEmpty())
         {
@@ -2141,13 +2141,14 @@ CCrySingleDocTemplate::Confidence CCrySingleDocTemplate::MatchDocType(LPCTSTR lp
     // see if it matches our default suffix
     const QString strFilterExt = defaultFileExtension;
     const QString strOldFilterExt = oldFileExtension;
+    const QString strSliceFilterExt = sliceFileExtension;
 
     // see if extension matches
     assert(strFilterExt[0] == '.');
     QString strDot = "." + Path::GetExt(lpszPathName);
     if (!strDot.isEmpty())
     {
-        if(strDot == strFilterExt || strDot == strOldFilterExt)
+        if(strDot == strFilterExt || strDot == strOldFilterExt || strDot == strSliceFilterExt)
         {
             return yesAttemptNative; // extension matches, looks like ours
         }
@@ -2510,73 +2511,74 @@ void CCryEditApp::InitLevel(const CEditCommandLineInfo& cmdInfo)
 
         if (!skipStartupUIProcess.value)
         {
-        do
-        {
-            isLevelNameValid = false;
-            doLevelNeedLoading = true;
-            if (gSettings.bShowDashboardAtStartup
-                && !cmdInfo.m_bRunPythonScript
-                && !GetIEditor()->IsInMatEditMode()
-                && !m_bConsoleMode
-                && !m_bSkipWelcomeScreenDialog
-                && !m_bPreviewMode
-                && !autoloadLastLevel)
+            do
             {
-                WelcomeScreenDialog wsDlg(MainWindow::instance());
-                wsDlg.SetRecentFileList(GetRecentFileList());
-                wsDlg.exec();
-                levelName = wsDlg.GetLevelPath();
-            }
-            else if (autoloadLastLevel
-                     && GetRecentFileList()
-                     && GetRecentFileList()->GetSize())
-            {
-                levelName = GetRecentFileList()->m_arrNames[0];
-            }
-
-            if (levelName.isEmpty())
-            {
-                break;
-            }
-            if (levelName == "new")
-            {
-                //implies that the user has clicked the create new level option
-                bool wasCreateLevelOperationCancelled = false;
-                bool isNewLevelCreationSuccess = false;
-                // This will show the new level dialog until a valid input has been entered by the user or until the user click cancel
-                while (!isNewLevelCreationSuccess && !wasCreateLevelOperationCancelled)
-                {
-                    isNewLevelCreationSuccess = CreateLevel(wasCreateLevelOperationCancelled);
-                    if (isNewLevelCreationSuccess == true)
-                    {
-                        doLevelNeedLoading = false;
-                        isLevelNameValid = true;
-                    }
-                }
-                ;
-            }
-            else
-            {
-                //implies that the user wants to open an existing level
+                isLevelNameValid = false;
                 doLevelNeedLoading = true;
-                isLevelNameValid = true;
+                if (gSettings.bShowDashboardAtStartup
+                    && !cmdInfo.m_bRunPythonScript
+                    && !GetIEditor()->IsInMatEditMode()
+                    && !m_bConsoleMode
+                    && !m_bSkipWelcomeScreenDialog
+                    && !m_bPreviewMode
+                    && !autoloadLastLevel)
+                {
+                    WelcomeScreenDialog wsDlg(MainWindow::instance());
+                    wsDlg.SetRecentFileList(GetRecentFileList());
+                    wsDlg.exec();
+                    levelName = wsDlg.GetLevelPath();
+                }
+                else if (autoloadLastLevel
+                         && GetRecentFileList()
+                         && GetRecentFileList()->GetSize())
+                {
+                    levelName = GetRecentFileList()->m_arrNames[0];
+                }
+
+                if (levelName.isEmpty())
+                {
+                    break;
+                }
+                if (levelName == "new")
+                {
+                    //implies that the user has clicked the create new level option
+                    bool wasCreateLevelOperationCancelled = false;
+                    bool isNewLevelCreationSuccess = false;
+                    // This will show the new level dialog until a valid input has been entered by the user or until the user click cancel
+                    while (!isNewLevelCreationSuccess && !wasCreateLevelOperationCancelled)
+                    {
+                        isNewLevelCreationSuccess = CreateLevel(wasCreateLevelOperationCancelled);
+                        if (isNewLevelCreationSuccess == true)
+                        {
+                            doLevelNeedLoading = false;
+                            isLevelNameValid = true;
+                        }
+                    }
+                    ;
+                }
+                else if (levelName == "new slice")
+                {
+                    QMessageBox::warning(AzToolsFramework::GetActiveWindow(), "Not implemented", "New Slice is not yet implemented.");
+                }
+                else
+                {
+                    //implies that the user wants to open an existing level
+                    doLevelNeedLoading = true;
+                    isLevelNameValid = true;
+                }
+            } while (!isLevelNameValid);// if we reach here and levelName is not valid ,it implies that the user has clicked cancel on the create new level dialog
+
+            // load level
+            if (doLevelNeedLoading && !levelName.isEmpty())
+            {
+                QString str;
+                str = tr("Loading level %1 ...").arg(levelName);
+                OutputStartupMessage(str);
+
+                OpenDocumentFile(levelName.toUtf8().data());
             }
-        } while (!isLevelNameValid);// if we reach here and levelName is not valid ,it implies that the user has clicked cancel on the create new level dialog
-
-        // load level
-        if (doLevelNeedLoading && !levelName.isEmpty())
-        {
-            QString str;
-            str = tr("Loading level %1 ...").arg(levelName);
-            OutputStartupMessage(str);
-
-            // create an empty doc for doc template other than default template, such as ".scry", to avoid frame shutdown due to open failed
-            //m_pDocManager->GetBestTemplate(levelName)->OpenDocumentFile(NULL);
-
-            OpenDocumentFile(levelName.toUtf8().data());
         }
     }
-}
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2638,11 +2640,11 @@ void CCryEditApp::RunInitPythonScript(CEditCommandLineInfo& cmdInfo)
 
 /////////////////////////////////////////////////////////////////////////////
 // CCryEditApp initialization
-BOOL CCryEditApp::InitInstance()
+BOOL CCryEditApp::InitInstance(SandboxEditor::StartupTraceHandler* handler)
 {
     QElapsedTimer startupTimer;
     startupTimer.start();
-
+    m_traceHandler = handler;
     InitDirectory();
 
     // create / attach to the environment:
@@ -4596,7 +4598,7 @@ void CCryEditApp::OnObjectSetHeight()
             }
             pos.z = z + height;
             wtm.SetTranslation(pos);
-            obj->SetWorldTM(wtm);
+            obj->SetWorldTM(wtm, eObjectUpdateFlags_UserInput);
         }
         GetIEditor()->SetModifiedFlag();
         GetIEditor()->SetModifiedModule(eModifiedBrushes);
@@ -4637,6 +4639,12 @@ void CCryEditApp::OnViewSwitchToGame()
     if (IsInPreviewMode())
     {
         return;
+    }
+    // close all open menus
+    auto activePopup = qApp->activePopupWidget();
+    if (qobject_cast<QMenu*>(activePopup))
+    {
+        activePopup->hide();
     }
     // TODO: Add your command handler code here
     bool inGame = !GetIEditor()->IsInGameMode();
@@ -4971,7 +4979,7 @@ void CCryEditApp::OnAlignToGrid()
             tm = obj->GetWorldTM();
             Vec3 snaped = gSettings.pGrid->Snap(tm.GetTranslation());
             tm.SetTranslation(snaped);
-            obj->SetWorldTM(tm);
+            obj->SetWorldTM(tm, eObjectUpdateFlags_UserInput);
             obj->OnEvent(EVENT_ALIGN_TOGRID);
         }
     }
@@ -5391,7 +5399,7 @@ void CCryEditApp::OnLockSelection()
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnEditLevelData()
 {
-    auto dir = QFileInfo(GetIEditor()->GetDocument()->GetPathName()).dir();
+    auto dir = QFileInfo(GetIEditor()->GetDocument()->GetLevelPathName()).dir();
     CFileUtil::EditTextFile(dir.absoluteFilePath("LevelData.xml").toUtf8().data());
 }
 
@@ -5838,6 +5846,7 @@ void CCryEditApp::OnAINavigationEnableContinuousUpdate()
     CAIManager* pAIMgr = GetIEditor()->GetAI();
     pAIMgr->EnableNavigationContinuousUpdate(!gSettings.bNavigationContinuousUpdate);
     gSettings.bNavigationContinuousUpdate = pAIMgr->GetNavigationContinuousUpdateState();
+    gSettings.Save();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -6210,6 +6219,12 @@ bool CCryEditApp::CreateLevel(bool& wasCreateLevelOperationCancelled)
 }
 
 //////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnCreateSlice()
+{
+    QMessageBox::warning(AzToolsFramework::GetActiveWindow(), "Not implemented", "New Slice is not yet implemented.");
+}
+
+//////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnOpenLevel()
 {
     CLevelFileDialog levelFileDialog(true);
@@ -6217,6 +6232,20 @@ void CCryEditApp::OnOpenLevel()
     if (levelFileDialog.exec() == QDialog::Accepted)
     {
         OpenDocumentFile(levelFileDialog.GetFileName().toUtf8().data());
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+void CCryEditApp::OnOpenSlice()
+{
+    QString fileName = QFileDialog::getOpenFileName(MainWindow::instance(),
+        tr("Open Slice"),
+        Path::GetEditingGameDataFolder().c_str(),
+        tr("Slice (*.slice)"));
+
+    if (!fileName.isEmpty())
+    {
+        OpenDocumentFile(fileName.toUtf8().data());
     }
 }
 
@@ -6244,7 +6273,25 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
     {
         // in this case, we set bAddToMRU to always be true because adding files to the MRU list
         // automatically culls duplicate and normalizes paths anyway
+        bool wasTraceHandlerConnected = false;
+        if (m_traceHandler)
+        {
+            wasTraceHandlerConnected = m_traceHandler->IsConnectedToMessageBus();
+            m_traceHandler->StartCollection();
+        }
         m_pDocManager->OpenDocumentFile(lpszFileName, true);
+        if (m_traceHandler)
+        {
+            if (m_traceHandler->HasAnyErrors())
+            {
+                doc->SetHasErrors();
+            }
+            m_traceHandler->EndCollectionAndShowCollectedErrors();
+            if (!wasTraceHandlerConnected)
+            {
+                m_traceHandler->DisconnectFromMessageBus();
+            }
+        }
     }
 
     if (bTriggerConsole)
@@ -6254,6 +6301,19 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
     LoadTagLocations();
 
     MainWindow::instance()->menuBar()->setEnabled(true);
+
+    if (doc->GetEditMode() == CCryEditDoc::DocumentEditingMode::SliceEdit)
+    {
+        // center camera on entities in slice
+        if (ActionManager* actionManager = MainWindow::instance()->GetActionManager())
+        {
+            GetIEditor()->GetUndoManager()->Suspend();
+            actionManager->GetAction(ID_EDIT_SELECTALL)->trigger();
+            actionManager->GetAction(ID_GOTO_SELECTED)->trigger();
+            actionManager->GetAction(ID_EDIT_SELECTNONE)->trigger();
+            GetIEditor()->GetUndoManager()->Resume();
+        }
+    }
 
     // If the legacy UI is disabled, and we have legacy entities in our level,
     // then we need to prompt the user with the option to convert their entities
@@ -6519,7 +6579,7 @@ void CCryEditApp::TagLocation(int index)
 void CCryEditApp::SaveTagLocations()
 {
     // Save to file.
-    QString filename = QFileInfo(GetIEditor()->GetDocument()->GetPathName()).dir().absoluteFilePath("tags.txt");
+    QString filename = QFileInfo(GetIEditor()->GetDocument()->GetLevelPathName()).dir().absoluteFilePath("tags.txt");
     QFile f(filename);
     if (f.open(QFile::WriteOnly))
     {
@@ -6571,7 +6631,7 @@ void CCryEditApp::GotoTagLocation(int index)
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::LoadTagLocations()
 {
-    QString filename = QFileInfo(GetIEditor()->GetDocument()->GetPathName()).dir().absoluteFilePath("tags.txt");
+    QString filename = QFileInfo(GetIEditor()->GetDocument()->GetLevelPathName()).dir().absoluteFilePath("tags.txt");
     // Load tag locations from file.
 
     ZeroStruct(m_tagLocations);
@@ -8707,67 +8767,7 @@ private:
     int m_argc;
 };
 
-// Class to display errors during startup.
-// This class stops handling errors once the regular UI is ready
-class StartupTraceHandler
-    : public AZ::Debug::TraceMessageBus::Handler
-{
-public:
-    StartupTraceHandler()
-    {
-        BusConnect();
-    }
 
-    virtual bool OnPreAssert(const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message) 
-    { 
-        ShowMessageBox(message);
-        return true; 
-    }
-    virtual bool OnException(const char* message) 
-    { 
-        ShowMessageBox(message);
-        return true; 
-    }
-    virtual bool OnPreError(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message) 
-    { 
-        ShowMessageBox(message);
-        return true; 
-    }
-
-private:
-    void ShowMessageBox(const QString& message)
-    {
-        QString titleString = QObject::tr("Error");
-
-        // Queue message box to run on the UI thread to avoid a cross-thread dependency.
-        auto crossPlatformShowMessageFunc = [message, titleString]()
-        {
-            QMessageBox msg(QMessageBox::Critical, titleString, message, QMessageBox::Ok);
-            msg.exec();
-        };
-
-        if (gEnv && gEnv->mMainThreadId == CryGetCurrentThreadId())
-        {
-            crossPlatformShowMessageFunc();
-        }
-        else
-        {
-#ifdef AZ_PLATFORM_WINDOWS
-            // On Windows, use the standard message box when in the non-ui thread, so that the thread still blocks
-            // waiting for user input, and thus allows a developer to attach a debugger and break here to get a useful
-            // callstack.
-            // Requires WinUser.h above; if this changes, please remove that as well.
-            std::wstring messageBuffer = message.toStdWString();
-            std::wstring titleBuffer = titleString.toStdWString();
-            MessageBoxW(NULL, messageBuffer.data(), titleBuffer.data(), MB_OK);
-#else
-            // On other platforms, queue and send to the main thread. Less than ideal, but the best way to prevent race conditions
-            // and other problems caused by message boxes being launched in the non-ui thread.
-            AZ::TickBus::QueueFunction(crossPlatformShowMessageFunc);
-#endif
-        }
-    }
-};
 
 int SANDBOX_API CryEditMain(int argc, char* argv[])
 {
@@ -8815,7 +8815,7 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
     Editor::EditorQtApplication app(commandLine.GetArgC(), commandLine.GetArgV());
 
     // Hook the trace bus to catch errors, boot the AZ app after the QApplication is up
-    StartupTraceHandler traceHandler;
+    SandboxEditor::StartupTraceHandler traceHandler;
     int ret = 0;
 
     // open a scope to contain the AZToolsApp instance;
@@ -8836,11 +8836,11 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
 
         int exitCode = 0;
 
-        if (CCryEditApp::instance()->InitInstance())
+    if (CCryEditApp::instance()->InitInstance(&traceHandler))
         {
             app.EnableOnIdle();
 
-            traceHandler.BusDisconnect(); // no longer needed, Qt can take over from here
+            traceHandler.DisconnectFromMessageBus(); // no longer needed, Qt can take over from here
             ret = app.exec();
         }
         else

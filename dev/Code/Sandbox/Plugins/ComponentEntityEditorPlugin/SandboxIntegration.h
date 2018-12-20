@@ -16,6 +16,8 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/HyperGraphBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <AzToolsFramework/UI/Slice/SliceOverridesNotificationWindowManager.hxx>
+#include <AzToolsFramework/UI/Slice/SliceOverridesNotificationWindow.hxx>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzCore/Slice/SliceBus.h>
 #include <AzCore/Slice/SliceComponent.h>
@@ -125,6 +127,9 @@ private:
     AZ::EntityId CreateNewEntityAtPosition(const AZ::Vector3& /*pos*/, AZ::EntityId parentId = AZ::EntityId()) override;
     QWidget* GetMainWindow() override;
     IEditor* GetEditor() override;
+    bool GetUndoSliceOverrideSaveValue() override;
+    bool GetShowCircularDependencyError() override;
+    void SetShowCircularDependencyError(const bool& showCircularDependencyError) override;
     void SetEditTool(const char* tool) override;
     void LaunchLuaEditor(const char* files) override;
     bool IsLevelDocumentOpen() override;
@@ -137,6 +142,11 @@ private:
     void ClosePinnedInspector(AzToolsFramework::EntityPropertyEditor* editor) override;
     AZStd::vector<AZStd::string> GetAgentTypes() override;
     void GoToSelectedOrHighlightedEntitiesInViewports() override;
+    void GoToSelectedEntitiesInViewports() override;
+    AZ::Vector3 GetWorldPositionAtViewportCenter() override;
+    void ClearRedoStack() override;
+
+    //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::EditorEvents::Bus::Handler overrides
@@ -242,8 +252,6 @@ private:
         AZ::SliceComponent::EntityAncestorList ancestors,
         AZ::Data::AssetId targetAncestorId,
         bool affectEntireHierarchy);
-    void ContextMenu_DetachSliceEntities(AzToolsFramework::EntityIdList entities);
-    void ContextMenu_DetachSliceInstances(AzToolsFramework::EntityIdList entities);
     void ContextMenu_Duplicate();
     void ContextMenu_DeleteSelected();
     void ContextMenu_ResetToSliceDefaults(AzToolsFramework::EntityIdList entities);
@@ -285,12 +293,13 @@ private:
 private:
     void SetupFileExtensionMap();
     void SetupSliceContextMenu(QMenu* menu);
-    void SetupSliceContextMenu_Push(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::u32 numEntitiesInSlices);
+    void SetupSliceContextMenu_Modify(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::u32 numEntitiesInSlices);
     void SetupFlowGraphContextMenu(QMenu* menu);
     void SetupScriptCanvasContextMenu(QMenu* menu);
+    void SaveSlice(const bool& QuickPushToFirstLevel);
+    void GetEntitiesInSlices(const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32& entitiesInSlices, AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances);
 
-    //! \return whether user confirmed detach, false if cancelled
-    bool ConfirmDialog_Detach(const QString& title, const QString& text);
+    void GoToEntitiesInViewports(const AzToolsFramework::EntityIdList& entityIds);
 
     typedef AZStd::unordered_map<AZ::u32, IFileUtil::ECustomFileType> ExtensionMap;
     ExtensionMap m_extensionToFileType;
@@ -300,6 +309,8 @@ private:
 
     int m_inObjectPickMode;
     short m_startedUndoRecordingNestingLevel;   // used in OnBegin/EndUndo to ensure we only accept undo's we started recording
+
+    AzToolsFramework::SliceOverridesNotificationWindowManager* m_notificationWindowManager;
 
     DisplayContext* m_dc;
 
@@ -333,17 +344,22 @@ public:
 
     void Undo(bool bUndo = true) override
     {
-        if (bUndo)
+        // Always run the undo even if the flag was set to false, that just means that undo wasn't expressly desired, but can be used in cases of canceling the current super undo.
+
+        // Restore previous focus after applying the undo.
+        QPointer<QWidget> w = QApplication::focusWidget();
+
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::UndoPressed);
+
+        // Slice the redo stack if this wasn't due to explicit undo command
+        if (!bUndo)
         {
-            // Restore previous focus after applying the undo.
-            QPointer<QWidget> w = QApplication::focusWidget();
+            AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::FlushRedo);
+        }
 
-            EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, UndoPressed);
-
-            if (!w.isNull())
-            {
-                w->setFocus(Qt::OtherFocusReason);
-            }
+        if (!w.isNull())
+        {
+            w->setFocus(Qt::OtherFocusReason);
         }
     }
 
@@ -352,7 +368,7 @@ public:
         // Restore previous focus after applying the undo.
         QPointer<QWidget> w = QApplication::focusWidget();
 
-        EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, RedoPressed);
+        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::RedoPressed);
 
         if (!w.isNull())
         {

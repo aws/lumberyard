@@ -137,6 +137,7 @@ namespace AzToolsFramework
 
         m_pColorDialog = new QColorDialog(m_color, this);
         m_pColorDialog->setOption(QColorDialog::NoButtons);
+        m_pColorDialog->setOption(QColorDialog::DontUseNativeDialog);
         connect(m_pColorDialog, SIGNAL(currentColorChanged(QColor)), this, SLOT(onSelected(QColor)));
 
         // Position the picker around cursor.

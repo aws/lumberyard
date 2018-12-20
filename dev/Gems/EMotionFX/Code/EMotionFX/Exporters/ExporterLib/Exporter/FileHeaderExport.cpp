@@ -26,6 +26,7 @@ namespace ExporterLib
     {
         // the header information
         EMotionFX::FileFormat::Actor_Header header;
+        memset(&header, 0, sizeof(EMotionFX::FileFormat::Actor_Header));
         header.mFourcc[0] = 'A';
         header.mFourcc[1] = 'C';
         header.mFourcc[2] = 'T';
@@ -63,6 +64,7 @@ namespace ExporterLib
         chunkHeader.mVersion        = 2;
 
         EMotionFX::FileFormat::Actor_Info2 infoChunk;
+        memset(&infoChunk, 0, sizeof(EMotionFX::FileFormat::Actor_Info2));
         infoChunk.mNumLODs                      = numLODLevels;
         infoChunk.mMotionExtractionNodeIndex    = motionExtractionNodeIndex;
         infoChunk.mRetargetRootNodeIndex        = retargetRootNodeIndex;
@@ -92,7 +94,8 @@ namespace ExporterLib
 
         SaveString(sourceApp, file, targetEndianType);
         SaveString(orgFileName, file, targetEndianType);
-        SaveString(GetCompilationDate(), file, targetEndianType);
+        // Save an empty string as the compilation date (Don't need that information anymore).
+        SaveString("", file, targetEndianType);
         SaveString(actorName, file, targetEndianType);
     }
 
@@ -101,6 +104,7 @@ namespace ExporterLib
     {
         // the header information
         EMotionFX::FileFormat::Motion_Header header;
+        memset(&header, 0, sizeof(EMotionFX::FileFormat::Motion_Header));
 
         header.mFourcc[0]   = 'M';
         header.mFourcc[1]   = 'O';
@@ -142,6 +146,8 @@ namespace ExporterLib
         chunkHeader.mVersion      = 2;
 
         EMotionFX::FileFormat::Motion_Info2 infoChunk;
+        memset(&infoChunk, 0, sizeof(EMotionFX::FileFormat::Motion_Info2));
+
         infoChunk.mMotionExtractionFlags    = motion->GetMotionExtractionFlags();
         infoChunk.mMotionExtractionNodeIndex= MCORE_INVALIDINDEX32; // not used anymore
         infoChunk.mUnitType                 = static_cast<uint8>(motion->GetUnitType());

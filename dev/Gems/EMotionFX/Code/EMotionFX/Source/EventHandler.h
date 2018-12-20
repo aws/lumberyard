@@ -283,8 +283,6 @@ namespace EMotionFX
 
         virtual void OnScaleActorData(Actor* actor, float scaleFactor)                                                                      { MCORE_UNUSED(actor); MCORE_UNUSED(scaleFactor); }
         virtual void OnScaleMotionData(Motion* motion, float scaleFactor)                                                                   { MCORE_UNUSED(motion); MCORE_UNUSED(scaleFactor); }
-        virtual void OnScaleAnimGraphData(AnimGraph* animGraph, float scaleFactor)                                                       { MCORE_UNUSED(animGraph); MCORE_UNUSED(scaleFactor); }
-
 
     protected:
         /**

@@ -95,7 +95,7 @@ namespace EMotionFX
             , m_renderSkeleton(false)
             , m_renderCharacter(true)
             , m_skinningMethod(SkinningMethod::DualQuat)
-            , m_actorAsset(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_NO_LOAD))
+            , m_actorAsset(AZ::Data::AssetLoadBehavior::NoLoad)
         {
         }
 

@@ -864,15 +864,30 @@ void MainWindow::InitActions()
     }
 
     // File actions
-    am->AddAction(ID_FILE_NEW, tr("New")).SetShortcut(tr("Ctrl+N")).Connect(&QAction::triggered, [cryEdit]()
+    am->AddAction(ID_FILE_NEW, tr("New Level")).SetShortcut(tr("Ctrl+N")).Connect(&QAction::triggered, [cryEdit]()
     {
         cryEdit->OnCreateLevel();
     })
         .SetMetricsIdentifier("MainEditor", "NewLevel");
-    am->AddAction(ID_FILE_OPEN_LEVEL, tr("Open...")).SetShortcut(tr("Ctrl+O"))
+    am->AddAction(ID_FILE_OPEN_LEVEL, tr("Open Level...")).SetShortcut(tr("Ctrl+O"))
         .SetMetricsIdentifier("MainEditor", "OpenLevel")
         .SetStatusTip(tr("Open an existing level"))
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateFileOpen);
+#ifdef ENABLE_SLICE_EDITOR
+    am->AddAction(ID_FILE_NEW_SLICE, tr("New Slice"))
+        .SetMetricsIdentifier("MainEditor", "NewSlice")
+        .SetStatusTip(tr("Create a new slice"));
+    am->AddAction(ID_FILE_OPEN_SLICE, tr("Open Slice..."))
+        .SetMetricsIdentifier("MainEditor", "OpenSlice")
+        .SetStatusTip(tr("Open an existing slice"));
+#endif
+    am->AddAction(ID_FILE_SAVE_SELECTED_SLICE, tr("Save selected slice")).SetShortcut(tr("Alt+S"))
+        .SetMetricsIdentifier("MainEditor", "SaveSliceToFirstLevelRoot")
+        .SetStatusTip(tr("Save the selected slice to the first level root"));
+    am->AddAction(ID_FILE_SAVE_SLICE_TO_ROOT, tr("Save Slice to root")).SetShortcut(tr("Ctrl+Alt+S"))
+        .SetMetricsIdentifier("MainEditor", "SaveSliceToTopLevelRoot")
+        .SetStatusTip(tr("Save the selected slice to the top level root"));
+
     am->AddAction(ID_FILE_SAVE_LEVEL, tr("&Save")).SetShortcut(tr("Ctrl+S"))
         .SetStatusTip(tr("Save the current level"))
         .SetMetricsIdentifier("MainEditor", "SaveLevel")
@@ -1252,6 +1267,7 @@ void MainWindow::InitActions()
     am->AddAction(ID_SELECT_AXIS_SNAPTOALL, tr("Follow terrain and snap to objects"))
         .SetIcon(EditorProxyStyle::icon("Follow_terrain"))
         .SetApplyHoverEffect()
+        .SetShortcut(tr("Ctrl+6"))
         .SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "ToggleSnapToObjectsAndTerrain")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelectAxisSnapToAll);
@@ -2872,6 +2888,11 @@ void MainWindow::MatEditSend(int param)
     }
 }
 
+void MainWindow::SetSelectedEntity(AZ::EntityId& id)
+{
+    m_levelEditorMenuHandler->SetupSliceSelectMenu(id);
+}
+
 #ifdef Q_OS_WIN
 bool MainWindow::nativeEventFilter(const QByteArray &eventType, void *message, long *)
 {
@@ -2970,7 +2991,20 @@ void MainWindow::ConnectivityStateChanged(const AzToolsFramework::SourceControlS
 
 void MainWindow::OnGotoSelected()
 {
-    EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, GoToSelectedOrHighlightedEntitiesInViewports);
+    AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequestBus::Events::GoToSelectedEntitiesInViewports);
+}
+
+void MainWindow::OnGotoSliceRoot()
+{
+    int numViews = GetIEditor()->GetViewManager()->GetViewCount();
+    for (int i = 0; i < numViews; ++i)
+    {
+        CViewport* viewport = GetIEditor()->GetViewManager()->GetView(i);
+        if (viewport)
+        {
+            viewport->CenterOnSliceInstance();
+        }
+    }
 }
 
 void MainWindow::ShowCustomizeToolbarDialog()

@@ -1202,5 +1202,107 @@ namespace UnitTest
     }
     BENCHMARK(Benchmark_UnorderedMapThrash);
 #endif
-}
+} // namespace UnitTest
 
+#if defined(HAVE_BENCHMARK)
+namespace Benchmark
+{
+    const int kNumInsertions = 10000;
+    const int kModuloForDuplicates = 10;
+
+    struct A
+    {
+        int m_int = 0;
+    };
+
+    using UnorderedMap = AZStd::unordered_map<int, A>;
+    using AZStd::make_pair;
+
+    // BM_UnorderedMap_InsertUniqueViaXXX: benchmark filling a map with unique values
+    static void BM_UnorderedMap_InsertUniqueViaInsert(::benchmark::State& state)
+    {
+        while (state.KeepRunning())
+        {
+            UnorderedMap map;
+            for (int mapKey = 0; mapKey < kNumInsertions; ++mapKey)
+            {
+                A& a = map.insert(make_pair(mapKey, A{})).first->second;
+                a.m_int += 1;
+            }
+        }
+    }
+    BENCHMARK(BM_UnorderedMap_InsertUniqueViaInsert);
+
+    static void BM_UnorderedMap_InsertUniqueViaEmplace(::benchmark::State& state)
+    {
+        while (state.KeepRunning())
+        {
+            UnorderedMap map;
+            for (int mapKey = 0; mapKey < kNumInsertions; ++mapKey)
+            {
+                A& a = map.emplace(mapKey, A()).first->second;
+                a.m_int += 1;
+            }
+        }
+    }
+    BENCHMARK(BM_UnorderedMap_InsertUniqueViaEmplace);
+
+    static void BM_UnorderedMap_InsertUniqueViaBracket(::benchmark::State& state)
+    {
+        while (state.KeepRunning())
+        {
+            UnorderedMap map;
+            for (int mapKey = 0; mapKey < kNumInsertions; ++mapKey)
+            {
+                A& a = map[mapKey];
+                a.m_int += 1;
+            }
+        }
+    }
+    BENCHMARK(BM_UnorderedMap_InsertUniqueViaBracket);
+
+    // BM_UnorderedMap_InsertDuplicatesViaXXX: benchmark filling a map with keys that repeat
+    static void BM_UnorderedMap_InsertDuplicatesViaInsert(::benchmark::State& state)
+    {
+        while (state.KeepRunning())
+        {
+            UnorderedMap map;
+            for (int mapKey = 0; mapKey < kNumInsertions; ++mapKey)
+            {
+                A& a = map.insert(make_pair(mapKey % kModuloForDuplicates, A())).first->second;
+                a.m_int += 1;
+            }
+        }
+    }
+    BENCHMARK(BM_UnorderedMap_InsertDuplicatesViaInsert);
+
+    static void BM_UnorderedMap_InsertDuplicatesViaEmplace(::benchmark::State& state)
+    {
+        while (state.KeepRunning())
+        {
+            UnorderedMap map;
+            for (int mapKey = 0; mapKey < kNumInsertions; ++mapKey)
+            {
+                A& a = map.emplace(mapKey % kModuloForDuplicates, A{}).first->second;
+                a.m_int += 1;
+            }
+        }
+    }
+    BENCHMARK(BM_UnorderedMap_InsertDuplicatesViaEmplace);
+
+    static void BM_UnorderedMap_InsertDuplicatesViaBracket(::benchmark::State& state)
+    {
+        while (state.KeepRunning())
+        {
+            UnorderedMap map;
+            for (int mapKey = 0; mapKey < kNumInsertions; ++mapKey)
+            {
+                A& a = map[mapKey % kModuloForDuplicates];
+                a.m_int += 1;
+            }
+        }
+    }
+    BENCHMARK(BM_UnorderedMap_InsertDuplicatesViaBracket);
+
+} // namespace Benchmark
+#endif // HAVE_BENCHMARK

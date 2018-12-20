@@ -32,6 +32,7 @@ class EditorWindow
     , public UiEditorDLLBus::Handler
     , public UiEditorChangeNotificationBus::Handler
     , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler
+    , public UiEditorEntityContextNotificationBus::Handler
     , public FontNotificationBus::Handler
 {
     Q_OBJECT
@@ -83,6 +84,11 @@ public: // member functions
     void OnFontsReloaded() override;
     // ~FontNotifications
 
+    // UiEditorEntityContextNotificationBus
+    void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket) override;
+    void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& ticket) override;
+    // ~UiEditorEntityContextNotificationBus
+        
     AZ::EntityId GetCanvas();
 
     HierarchyWidget* GetHierarchy();
@@ -132,6 +138,15 @@ public: // member functions
 
     QMenu* createPopupMenu() override;
     AZ::EntityId GetCanvasForEntityContext(const AzFramework::EntityContextId& contextId);
+
+    //! Open a new tab and instantiate the given slice asset for editing in a special slice editing mode
+    void EditSliceInNewTab(AZ::Data::AssetId sliceAssetId);
+
+    //! Called if an asset has changed and been reloaded (used to detect if slice being edited is different to the one on disk)
+    void UpdateChangedStatusOnAssetChange(const AzFramework::EntityContextId& contextId, const AZ::Data::Asset<AZ::Data::AssetData>& asset);
+
+    //! Called when any entities have been added to or removed from the active canvas
+    void EntitiesAddedOrRemoved();
 
 signals:
 
@@ -191,6 +206,12 @@ private: // types
         bool m_canvasChangedAndSaved;
         //! State of the viewport and other panes (zoom, pan, scroll, selection, ...)
         UiCanvasEditState m_canvasEditState;
+        //! This is true when the canvas tab was opened in order to edit a slice
+        bool m_isSliceEditing;
+        //! If m_isSliceEditing is true this is the Asset ID of the slice instance that is being edited
+        AZ::Data::AssetId m_sliceAssetId;
+        //! If m_isSliceEditing is true this is the entityId of the one slice instance that is being edited
+        AZ::EntityId m_sliceEntityId;
     };
 
 private: // member functions
@@ -203,6 +224,9 @@ private: // member functions
     //! forceAskingForFilename should only be true for "Save As...", not "Save".
     bool SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceAskingForFilename);
 
+    //! Saves a slice tab to its slice with a quick push
+    bool SaveSlice(UiCanvasMetadata& canvasMetadata);
+
     // Called from menu or shortcut key events
     void NewCanvas();
     void OpenCanvas(const QString& canvasFilename);
@@ -211,7 +235,7 @@ private: // member functions
     void CloseAllCanvases();
     void CloseAllOtherCanvases(AZ::EntityId canvasEntityId);
 
-    void LoadCanvas(const QString& canvasFilename, bool autoLoad, bool changeActiveCanvasToThis = true);
+    bool LoadCanvas(const QString& canvasFilename, bool autoLoad, bool changeActiveCanvasToThis = true);
     bool CanUnloadCanvas(UiCanvasMetadata& canvasMetadata);
     void UnloadCanvas(AZ::EntityId canvasEntityId);
     void UnloadCanvases(const AZStd::vector<AZ::EntityId>& canvasEntityIds);
@@ -249,6 +273,7 @@ private: // member functions
 
     QAction* CreateSaveCanvasAction(AZ::EntityId canvasEntityId, bool forContextMenu = false);
     QAction* CreateSaveCanvasAsAction(AZ::EntityId canvasEntityId, bool forContextMenu = false);
+    QAction* CreateSaveSliceAction(UiCanvasMetadata *canvasMetadata, bool forContextMenu = false);
     QAction* CreateSaveAllCanvasesAction(bool forContextMenu = false);
     QAction* CreateCloseCanvasAction(AZ::EntityId canvasEntityId, bool forContextMenu = false);
     QAction* CreateCloseAllOtherCanvasesAction(AZ::EntityId canvasEntityId, bool forContextMenu = false);

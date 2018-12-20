@@ -74,7 +74,7 @@ namespace ScriptCanvas
         if (m_runtimeAsset.GetId().IsValid())
         {
             auto& assetManager = AZ::Data::AssetManager::Instance();
-            m_runtimeAsset = assetManager.GetAsset(m_runtimeAsset.GetId(), azrtti_typeid<RuntimeAsset>(), true, &AZ::ObjectStream::AssetFilterDefault, false);
+            m_runtimeAsset = assetManager.GetAsset(m_runtimeAsset.GetId(), azrtti_typeid<RuntimeAsset>(), true, nullptr, false);
             AZ::Data::AssetBus::Handler::BusConnect(m_runtimeAsset.GetId());
         }
     }
@@ -377,7 +377,7 @@ namespace ScriptCanvas
             if (runtimeAsset.GetId().IsValid())
             {
                 auto& assetManager = AZ::Data::AssetManager::Instance();
-                m_runtimeAsset = assetManager.GetAsset(runtimeAsset.GetId(), azrtti_typeid<RuntimeAsset>(), true, &AZ::ObjectStream::AssetFilterDefault, false);
+                m_runtimeAsset = assetManager.GetAsset(runtimeAsset.GetId(), azrtti_typeid<RuntimeAsset>(), true, nullptr, false);
                 AZ::Data::AssetBus::Handler::BusConnect(m_runtimeAsset.GetId());
             }
         }

@@ -35,11 +35,18 @@ namespace RoadsAndRivers
     {
     public:
         AZ_RTTI(Road, "{1D3FAF38-C5AE-4ADA-8423-DC0D6C4A11AF}", SplineGeometry);
-        AZ_CLASS_ALLOCATOR_DECL
+        AZ_CLASS_ALLOCATOR_DECL;
 
-            using RoadRenderNode = SectorRenderNode<IRoadRenderNode>;
+        using RoadRenderNode = SectorRenderNode<IRoadRenderNode>;
 
         Road();
+
+        // Added to prevent ebus handler propagation and subsequent crash per LY-89510
+        // Todo: Replace this with a better solution - LY-89733
+        Road(const Road&) = delete;
+        Road(Road&&) = delete;
+        Road& operator=(const Road& rhs);
+        Road& operator=(Road&&) = delete;
 
         static void Reflect(AZ::ReflectContext* context);
         void Activate(AZ::EntityId entityId) override;
@@ -49,7 +56,7 @@ namespace RoadsAndRivers
         void SetMaterial(_smart_ptr<IMaterial> material) override;
         _smart_ptr<IMaterial> GetMaterial() override;
 
-        void SetMaterialHandle(LmbrCentral::MaterialHandle handle) override;
+        void SetMaterialHandle(const LmbrCentral::MaterialHandle& materialHandle) override;
         LmbrCentral::MaterialHandle GetMaterialHandle() override;
 
         // RoadRequestBus

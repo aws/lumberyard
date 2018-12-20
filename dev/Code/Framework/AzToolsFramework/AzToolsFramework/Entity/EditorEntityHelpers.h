@@ -121,11 +121,19 @@ namespace AzToolsFramework
 
     EntityIdList GetEntityChildOrder(const AZ::EntityId parentId);
 
-    void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, std::list<AZ::u64>& location);
+    void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, AZStd::list<AZ::u64>& location);
 
     void SortEntitiesByLocationInHierarchy(EntityIdList& entityIds);
+
+    /// Return root slice containing this entity
+    AZ::SliceComponent* GetEntityRootSlice(AZ::EntityId entityId);
 
     bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType);
     bool IsComponentWithServiceRegistered(const AZ::Crc32& serviceId);
 
+    /// Clones the passed in set of instantiated entities. Note that this will have unexpected results
+    /// if given any entities that are not instantiated.
+    /// @param entitiesToClone The container of entities to clone.
+    /// @return True if anything was cloned, false if no cloning occured.
+    bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone);
 }; // namespace AzToolsFramework

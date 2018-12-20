@@ -64,7 +64,7 @@ namespace SliceBuilder
         {
             if (asset.GetType() == AZ::AzTypeInfo<AZ::SliceAsset>::Uuid())
             {
-                bool isSliceDependency = (0 == (asset.GetFlags() & static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_NO_LOAD)));
+                bool isSliceDependency = (asset.GetAutoLoadBehavior() != AZ::Data::AssetLoadBehavior::NoLoad);
 
                 if (isSliceDependency)
                 {
@@ -151,13 +151,14 @@ namespace SliceBuilder
         {
             productDependencies.emplace_back(filterAsset.GetId(), 0);
 
-            return AZ::ObjectStream::AssetFilterSlicesOnly(filterAsset);
+            return AZ::Data::AssetFilterSourceSlicesOnly(filterAsset);
         };
 
         // Serialize in the canvas from the stream. This uses the LyShineSystemComponent to do it because
         // it does some complex support for old canvas formats
         UiSystemToolsInterface::CanvasAssetHandle* canvasAsset = nullptr;
         UiSystemToolsBus::BroadcastResult(canvasAsset, &UiSystemToolsInterface::LoadCanvasFromStream, stream, AZ::ObjectStream::FilterDescriptor(assetFilter, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
+        
         if (!canvasAsset)
         {
             AZ_Error(s_uiSliceBuilder, false, "Compiling UI canvas \"%s\" failed to load canvas from stream.", fullPath.c_str());
@@ -207,7 +208,7 @@ namespace SliceBuilder
             AZ::Data::Asset<AZ::SliceAsset> asset;
             asset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
             AZ::SliceAssetHandler assetHandler(context);
-            if (!assetHandler.LoadAssetData(asset, &prefabStream, AZ::ObjectStream::AssetFilterSlicesOnly))
+            if (!assetHandler.LoadAssetData(asset, &prefabStream, &AZ::Data::AssetFilterSourceSlicesOnly))
             {
                 AZ_Error(s_uiSliceBuilder, false, "Failed to load the serialized Slice Asset.");
                 UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
@@ -392,40 +393,6 @@ namespace SliceBuilder
                     AZ_Error(s_uiSliceBuilder, false, "Failed to open output file %s", outputPath.c_str());
                     UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
                     return;
-                }
-
-                // Finalize entities for export. This will remove any export components temporarily
-                // assigned by the source entity's components.
-                auto sourceIter = sourceEntities.begin();
-                auto exportIter = exportEntities.begin();
-                for (; sourceIter != sourceEntities.end(); ++sourceIter, ++exportIter)
-                {
-                    AZ::Entity* sourceEntity = *sourceIter;
-                    AZ::Entity* exportEntity = *exportIter;
-
-                    const AZ::Entity::ComponentArrayType& editorComponents = sourceEntity->GetComponents();
-                    for (AZ::Component* component : editorComponents)
-                    {
-                        auto* asEditorComponent =
-                            azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(component);
-
-                        if (asEditorComponent)
-                        {
-                            asEditorComponent->FinishedBuildingGameEntity(exportEntity);
-                        }
-                    }
-                }
-
-                // Do the same for the canvas entity
-                for (AZ::Component* canvasEntityComponent : editorCanvasComponents)
-                {
-                    auto* asEditorComponent =
-                        azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(canvasEntityComponent);
-
-                    if (asEditorComponent)
-                    {
-                        asEditorComponent->FinishedBuildingGameEntity(&exportCanvasEntity);
-                    }
                 }
 
                 AssetBuilderSDK::JobProduct jobProduct(outputPath);

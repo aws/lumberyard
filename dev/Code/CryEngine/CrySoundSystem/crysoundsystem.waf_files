@@ -18,6 +18,7 @@
             "ATLComponents.h",
             "ATLEntities.h",
             "ATLUtils.h",
+            "ATLUtils.cpp",
             "AudioInternalInterfaces.h",
             "AudioProxy.h",
             "AudioSystem.h",

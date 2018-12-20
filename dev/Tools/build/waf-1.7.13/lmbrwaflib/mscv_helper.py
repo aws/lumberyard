@@ -497,7 +497,7 @@ def setup_msvc(conf, versions, arch = False):
                         return compiler,revision,p1,p2,p3
                 except KeyError: continue
         except KeyError: continue
-    conf.fatal('msvc: Impossible to find a valid architecture for building (in setup_msvc)')
+    conf.fatal('msvc: Could not find a valid Visual Studio installation for building.')
 
     
 MSVC_INSTALLED_VERSIONS = {}
@@ -610,19 +610,30 @@ def gather_msvc_2017_versions(conf, windows_kit, versions):
         version_string = ''
         path_string = ''
         try:
-            version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + conf.options.win_vs2017_vswhere_args.split())
+            vs_where_args = conf.options.win_vs2017_vswhere_args.lower().split()
+            version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args)
+            if not version_string:
+                try:
+                    version_arg_index = vs_where_args.index('-version')
+                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs_where_args[version_arg_index + 1]))
+                    Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
+                    del vs_where_args[version_arg_index : version_arg_index + 2]
+                    version_string = subprocess.check_output([vswhere_exe, '-property', 'installationVersion'] + vs_where_args)
+                except ValueError:
+                    pass
+
             version_parts = version_string.split('.')
             version_string = version_parts[0]
-            path_string = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + conf.options.win_vs2017_vswhere_args.split())
+            path_string = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs_where_args)
             path_string = path_string[:len(path_string)-2]
             vc_paths.append((version_string, path_string))
         except:
             pass
 
     for version, vc_path in vc_paths:
+        Logs.info('[INFO] Using Visual Studio version {} installed at: {}'.format(version_string, path_string))
         conf.gather_msvc_2017_targets(versions, version, windows_kit, vc_path)
     pass
-
 
 @conf
 def gather_msvc_2017_targets(conf, versions, version, windows_kit, vc_path):

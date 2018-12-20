@@ -12,17 +12,94 @@
 #include "EditorEntityHelpers.h"
 
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/TransformBus.h>
 #include <AzCore/Debug/Profiler.h>
+#include <AzCore/std/algorithm.h>
 #include <AzCore/RTTI/AttributeReader.h>
+#include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextBus.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 
 #include <AzCore/std/sort.h>
 
 namespace AzToolsFramework
 {
+    namespace Internal
+    {
+        /// Internal helper function for CloneInstantiatedEntities. Performs the initial cloning of the given set of entities if they
+        /// are slice or subslice entities, recursively. Populates a list of loose entities to clone as it traverses the duplication set.
+        /// @param duplicationSet The set of entities to clone.
+        /// @param out_allEntityClones Output parameter populated with all cloned entities.
+        /// @param out_sourceToCloneEntityIdMap Output parameter populated with a map from all source entities to cloned entities.
+        /// @param out_looseEntitiesToClone Output parameter populated with all not yet cloned entities that are not associated with a slice.
+        ///         This will be used after slices are cloned to clone these entities.
+        void CloneSliceEntitiesAndChildren(
+            const EntityIdSet& duplicationSet,
+            EntityList& out_allEntityClones,
+            AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap,
+            EntityIdList& out_looseEntitiesToClone);
+
+        /// Internal helper function for CloneInstantiatedEntities. Updates entity ID references in all cloned entities based on
+        /// the given entity ID map. This handles cases like entity transform parents, entity attachments, and entity ID references
+        /// in scripting components. This will update all references in the pool of cloned entities to reference other cloned
+        /// entities, if they were previously referencing any of the source entities.
+        /// @param inout_allEntityClones The collection of entities that have been cloned and should have entity references updated
+        ///         based on the given map.
+        /// @param sourceToCloneEntityIdMap A map of entity IDs to update in the given clone list, any references to key will be
+        ///         changed to a referenec to value instead.
+        void UpdateClonedEntityReferences(
+            AZ::SliceComponent::InstantiatedContainer& inout_allEntityClones,
+            const AZ::SliceComponent::EntityIdToEntityIdMap& sourceToCloneEntityIdMap);
+
+        /// Internal helper function for CloneInstantiatedEntities. Selects all cloned entities, and updates the undo stack with
+        /// information on all cloned entities.
+        /// @param allEntityClones The collection of all entities that were cloned.
+        /// @param undoBatch The undo batch used for tracking the cloning operation.
+        void UpdateUndoStackAndSelectClonedEntities(
+            const EntityList& allEntityClones,
+            ScopedUndoBatch& undoBatch);
+
+        /// Internal helper function for CloneInstantiatedEntities. If the given entity identified by the ancestor list is a slice root, clone it.
+        /// @param ancestors The entity to clone if it is a slice root entity, tracked through its ancestry.
+        /// @param out_allEntityClones Output parameter populated with all cloned entities.
+        /// @param out_sourceToCloneEntityIdMap Output parameter populated with a map from all source entities to cloned entities.
+        /// @return True if the passed in entity was cloned, false if not.
+        bool CloneIfSliceRoot(
+            const AZ::SliceComponent::EntityAncestorList& ancestors,
+            EntityList& out_allEntityClones,
+            AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap);
+
+        /// Internal helper function for CloneInstantiatedEntities. If the given entity identified by the slice address and
+        /// ancestor list is a subslice root, clone it.
+        /// @param owningSliceAddress The slice address that owns this entity. This is necessary to clone the subslice.
+        /// @param ancestors The entity to clone if it is a subslice root entity, tracked through its ancestry.
+        /// @param out_allEntityClones Output parameter populated with all cloned entities.
+        /// @param out_sourceToCloneEntityIdMap Output parameter populated with a map from all source entities to cloned entities.
+        /// @return True if the passed in entity was cloned, false if not.
+        bool CloneIfSubsliceRoot(
+            const AZ::SliceComponent::SliceInstanceAddress& owningSliceAddress,
+            const AZ::SliceComponent::EntityAncestorList& ancestors,
+            EntityList& out_allEntityClones,
+            AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap);
+        
+        /// Internal helper function for CloneInstantiatedEntities. Clones the given entity collection as loose entities.
+        /// @param duplicationList The collection of entities to clone.
+        /// @param out_allEntityClones Output parameter populated with all cloned entities.
+        /// @param out_sourceToCloneEntityIdMap Output parameter populated with a map from all source entities to cloned entities.
+        /// @param out_clonedLooseEntities Output parameter populated with all cloned loose entities.
+        void CloneLooseEntities(
+            const EntityIdList& duplicationList,
+            EntityList& out_allEntityClones,
+            AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap,
+            EntityList& out_clonedLooseEntities);
+
+    } // namespace Internal
+
+
     AZ::Entity* GetEntityById(const AZ::EntityId& entityId)
     {
         AZ_Assert(entityId.IsValid(), "Invalid EntityId provided.");
@@ -119,7 +196,7 @@ namespace AzToolsFramework
     Components::EditorComponentDescriptor* GetEditorComponentDescriptor(const AZ::Component* component)
     {
         Components::EditorComponentDescriptor* editorComponentDescriptor = nullptr;
-        AzToolsFramework::Components::EditorComponentDescriptorBus::EventResult(editorComponentDescriptor, component->RTTI_GetType(), &AzToolsFramework::Components::EditorComponentDescriptor::GetEditorDescriptor);
+        Components::EditorComponentDescriptorBus::EventResult(editorComponentDescriptor, component->RTTI_GetType(), &Components::EditorComponentDescriptor::GetEditorDescriptor);
         return editorComponentDescriptor;
     }
 
@@ -215,7 +292,7 @@ namespace AzToolsFramework
         }
         entityOrderArray.insert(entityOrderArray.begin() + sortIndex, childId);
         // Push the final array back to the sort component
-        AzToolsFramework::SetEntityChildOrder(parentId, entityOrderArray);
+        SetEntityChildOrder(parentId, entityOrderArray);
     }
 
     void RemoveEntityIdFromSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId)
@@ -272,7 +349,7 @@ namespace AzToolsFramework
     }
 
     //build an address based on depth and order of entities
-    void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, std::list<AZ::u64>& location)
+    void GetEntityLocationInHierarchy(const AZ::EntityId& entityId, AZStd::list<AZ::u64>& location)
     {
         if(entityId.IsValid())
         {
@@ -290,15 +367,33 @@ namespace AzToolsFramework
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         //cache locations for faster sort
-        AZStd::unordered_map<AZ::EntityId, std::list<AZ::u64>> locations;
+        AZStd::unordered_map<AZ::EntityId, AZStd::list<AZ::u64>> locations;
         for (auto entityId : entityIds)
         {
             GetEntityLocationInHierarchy(entityId, locations[entityId]);
         }
         AZStd::sort(entityIds.begin(), entityIds.end(), [&locations](const AZ::EntityId& e1, const AZ::EntityId& e2) {
             //sort by container contents
-            return locations[e1] < locations[e2];
+            const auto& locationsE1 = locations[e1];
+            const auto& locationsE2 = locations[e2];
+            return AZStd::lexicographical_compare(locationsE1.begin(), locationsE1.end(), locationsE2.begin(), locationsE2.end());
         });
+    }
+
+    AZ::SliceComponent* GetEntityRootSlice(AZ::EntityId entityId)
+    {
+        if (entityId.IsValid())
+        {
+            AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
+            AzFramework::EntityIdContextQueryBus::EventResult(contextId, entityId, &AzFramework::EntityIdContextQueryBus::Events::GetOwningContextId);
+            if (!contextId.IsNull())
+            {
+                AZ::SliceComponent* rootSlice = nullptr;
+                AzFramework::EntityContextRequestBus::EventResult(rootSlice, contextId, &AzFramework::EntityContextRequestBus::Events::GetRootSlice);
+                return rootSlice;
+            }
+        }
+        return nullptr;
     }
 
     bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType)
@@ -357,5 +452,308 @@ namespace AzToolsFramework
         }
         return result;
     }
+
+    bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone)
+    {
+        EditorMetricsEventsBus::Broadcast(
+            &EditorMetricsEventsBus::Events::EntitiesAboutToBeCloned);
+        ScopedUndoBatch undoBatch("Clone Selection");
+
+        // Track the mapping of source to cloned entity. This both helps make sure that an entity is not accidentally
+        // cloned twice, as well as provides the information needed to remap entity references.
+        AZ::SliceComponent::EntityIdToEntityIdMap sourceToCloneEntityIdMap;
+        // Track every entity that has been cloned in the container type that AZ::EntityUtils::ReplaceEntityRefs uses.
+        AZ::SliceComponent::InstantiatedContainer allEntityClonesContainer(false);
+        // Loose entities can all be cloned at once, so track each one found while looking for slice instances to clone.
+        EntityIdList looseEntitiesToClone;
+
+        // Clone the entities.
+        Internal::CloneSliceEntitiesAndChildren(
+            entitiesToClone,
+            allEntityClonesContainer.m_entities,
+            sourceToCloneEntityIdMap,
+            looseEntitiesToClone);
+        // All entities cloned so far are slice entities, so store those in a container to use for adding to the editor.
+        EntityList clonedSliceEntities(allEntityClonesContainer.m_entities.begin(), allEntityClonesContainer.m_entities.end());
+        // Capture all cloned loose entities, so they can be added to the editor.
+        EntityList clonedLooseEntities;
+
+        Internal::CloneLooseEntities(
+            looseEntitiesToClone,
+            allEntityClonesContainer.m_entities,
+            sourceToCloneEntityIdMap,
+            clonedLooseEntities);
+        
+        // Update any references cloned entities have to each other.
+        Internal::UpdateClonedEntityReferences(allEntityClonesContainer, sourceToCloneEntityIdMap);
+
+        // Add the cloned entities to the editor, which will also activate them.
+        EditorEntityContextRequestBus::Broadcast(
+            &EditorEntityContextRequests::AddEditorEntities,
+            clonedLooseEntities);
+        EditorEntityContextRequestBus::Broadcast(
+            &EditorEntityContextRequests::AddEditorSliceEntities,
+            clonedSliceEntities);
+
+        // Make sure an undo operation will delete all of these cloned entities.
+        // Also replace the selection with the entities that have been cloned.
+        Internal::UpdateUndoStackAndSelectClonedEntities(allEntityClonesContainer.m_entities, undoBatch);
+
+        EditorMetricsEventsBus::Broadcast(
+            &EditorMetricsEventsBus::Events::EntitiesCloned);
+        return !allEntityClonesContainer.m_entities.empty();
+    }
+
+    namespace Internal
+    {
+        void CloneSliceEntitiesAndChildren(
+            const EntityIdSet& duplicationSet,
+            EntityList& out_allEntityClones,
+            AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap,
+            EntityIdList& out_looseEntitiesToClone)
+        {
+            for (const AZ::EntityId& entityId : duplicationSet)
+            {
+                AZ::SliceComponent::SliceInstanceAddress owningSliceAddress;
+                AzFramework::EntityIdContextQueryBus::EventResult(
+                    owningSliceAddress,
+                    entityId,
+                    &AzFramework::EntityIdContextQueries::GetOwningSlice);
+                AZ::SliceComponent::EntityAncestorList ancestors;
+                bool hasInstanceEntityAncestors = false;
+                if (owningSliceAddress.IsValid())
+                {
+                    hasInstanceEntityAncestors = owningSliceAddress.first->GetInstanceEntityAncestry(entityId, ancestors);
+                }
+                AZ::SliceComponent::SliceInstanceAddress sourceSliceInstance;
+
+                // Don't clone if this entity has already been cloned.
+                if (out_sourceToCloneEntityIdMap.find(entityId) != out_sourceToCloneEntityIdMap.end())
+                {
+                }
+                // Slice roots take first priority when cloning.
+                else if (hasInstanceEntityAncestors &&
+                    CloneIfSliceRoot(
+                        ancestors,
+                        out_allEntityClones,
+                        out_sourceToCloneEntityIdMap))
+                {
+                }
+                // Subslice roots take second priority.
+                else if (hasInstanceEntityAncestors &&
+                    CloneIfSubsliceRoot(
+                        owningSliceAddress,
+                        ancestors,
+                        out_allEntityClones,
+                        out_sourceToCloneEntityIdMap))
+                {
+                }
+                else
+                {
+                    // If this wasn't a slice root or subslice root, clone it as a loose entity.
+                    out_looseEntitiesToClone.push_back(entityId);
+                }
+
+                // Search through all the children of this entity for anything that needs to be cloned.
+                // Slice instance entities that are not subslice roots will have been cloned already
+                // when the slice root was cloned or the subslice root was cloned. Entities may exist
+                // in the hierarchy that weren't cloned if they are entities that have a slice instance entity
+                // as a parent, but the entity itself is not part of that slice instance.
+                EntityIdList children;
+                AZ::TransformBus::EventResult(
+                    /*result*/ children,
+                    /*address*/ entityId,
+                    &AZ::TransformBus::Events::GetChildren);
+
+                EntityIdSet childrenSet;
+                for (const AZ::EntityId& child : children)
+                {
+                    childrenSet.insert(child);
+                }
+                CloneSliceEntitiesAndChildren(
+                    childrenSet,
+                    out_allEntityClones,
+                    out_sourceToCloneEntityIdMap,
+                    out_looseEntitiesToClone);
+            }
+        }
+
+        void UpdateClonedEntityReferences(
+            AZ::SliceComponent::InstantiatedContainer& inout_allEntityClones,
+            const AZ::SliceComponent::EntityIdToEntityIdMap& sourceToCloneEntityIdMap)
+        {
+            // Update all cloned entities to reference other cloned entities, if any references were to entities that were cloned.
+            // This includes parenting. If Parent and Child are two cloned entities, and Child is a transform child of Parent,
+            // this will update that reference, so that Child (Clone) is now a child of Parent (Clone).
+            // It will also include other entity references. If Entity A has an entity reference in Script Canvas to Entity B,
+            // and both are cloned, then Entity A (Clone)'s Script Canvas entity reference will now be to Unrelated Entity B (Clone).
+            // If only Entity A was cloned, then Entity B will not be in the mapping, and Entity A (Clone) will continue to reference Entity B.
+            AZ::EntityUtils::ReplaceEntityRefs(&inout_allEntityClones,
+                [&sourceToCloneEntityIdMap](const AZ::EntityId& originalId, bool /*isEntityId*/) -> AZ::EntityId
+            {
+                auto findIt = sourceToCloneEntityIdMap.find(originalId);
+                if (findIt == sourceToCloneEntityIdMap.end())
+                {
+                    return originalId; // entityId is not being remapped
+                }
+                else
+                {
+                    return findIt->second; // return the remapped id
+                }
+            });
+        }
+
+        void UpdateUndoStackAndSelectClonedEntities(
+            const EntityList& allEntityClones,
+            ScopedUndoBatch &undoBatch)
+        {
+            EntityIdList selectEntities;
+            selectEntities.reserve(allEntityClones.size());
+            for (AZ::Entity* newEntity : allEntityClones)
+            {
+                AZ::EntityId entityId = newEntity->GetId();
+                selectEntities.push_back(entityId);
+
+                // Make sure all cloned entities are contained within the currently active undo batch command.
+                EntityCreateCommand* command = aznew EntityCreateCommand(
+                    static_cast<UndoSystem::URCommandID>(entityId));
+                command->Capture(newEntity);
+                command->SetParent(undoBatch.GetUndoBatch());
+
+                EditorMetricsEventsBus::Broadcast(
+                    &EditorMetricsEventsBus::Events::EntityCreated,
+                    entityId);
+            }
+            // Clear selection and select everything we cloned.
+            ToolsApplicationRequestBus::Broadcast(&ToolsApplicationRequests::SetSelectedEntities, selectEntities);
+        }
+
+        bool CloneIfSliceRoot(
+            const AZ::SliceComponent::EntityAncestorList& ancestors,
+            EntityList& out_allEntityClones,
+            AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap)
+        {
+            // This entity can't be a slice root if it has no ancestors.
+            if (ancestors.size() <= 0)
+            {
+                return false;
+            }
+            // This entity is a slice root if it is the root entity of the first ancestor.
+            if (!ancestors[0].m_entity || !SliceUtilities::IsRootEntity(*ancestors[0].m_entity))
+            {
+                return false;
+            }
+
+            AZ::SliceComponent::EntityIdToEntityIdMap sourceToCloneSliceEntityIdMap;
+            AZ::SliceComponent::SliceInstanceAddress newInstance;
+            EditorEntityContextRequestBus::BroadcastResult(
+                newInstance,
+                &EditorEntityContextRequests::CloneEditorSliceInstance,
+                ancestors[0].m_sliceAddress,
+                sourceToCloneSliceEntityIdMap);
+
+            if (!newInstance.IsValid())
+            {
+                AZ_Warning(
+                    "Cloning",
+                    false,
+                    "Unable to clone slice instance, check your duplicated entity selection and verify it contains the entities you expect to see.");
+                return false;
+            }
+            
+            for (AZ::Entity* clone : newInstance.GetInstance()->GetInstantiated()->m_entities)
+            {
+                out_allEntityClones.push_back(clone);
+            }
+            for (const AZStd::pair<AZ::EntityId, AZ::EntityId>& sourceIdToCloneId : sourceToCloneSliceEntityIdMap)
+            {
+                out_sourceToCloneEntityIdMap.insert(sourceIdToCloneId);
+            }
+            return true;
+        }
+
+        bool CloneIfSubsliceRoot(
+            const AZ::SliceComponent::SliceInstanceAddress& owningSliceAddress,
+            const AZ::SliceComponent::EntityAncestorList& ancestors,
+            EntityList& out_allEntityClones,
+            AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap)
+        {
+            bool result = false;
+            // This entity can't be a subslice root if there was only one ancestor.
+            if (ancestors.size() <= 1)
+            {
+                return result;
+            }
+
+            AZStd::vector<AZ::SliceComponent::SliceInstanceAddress> sourceSubSliceAncestry;
+
+
+            AZ::SliceComponent::EntityAncestorList::const_iterator ancestorIter = ancestors.begin();
+            // Skip the first, that would be a regular slice root and not a subslice root, which was already checked.
+            ++ancestorIter;
+            for (ancestorIter; ancestorIter != ancestors.end(); ++ancestorIter)
+            {
+                const AZ::SliceComponent::Ancestor& ancestor = *ancestorIter;
+                if (!ancestor.m_entity || !SliceUtilities::IsRootEntity(*ancestor.m_entity))
+                {
+                    // This entity was not the root entity of this slice, so add the slice to the ancestor
+                    // list and move on to the next ancestor.
+                    sourceSubSliceAncestry.push_back(ancestor.m_sliceAddress);
+                    continue;
+                }
+
+                // This entity has been verified to be a subslice root at this point, so clone the entity's subslice instance.
+                AZ::SliceComponent::SliceInstanceAddress clonedAddress;
+                AZ::SliceComponent::EntityIdToEntityIdMap sourceToCloneSliceEntityIdMap;
+                EditorEntityContextRequestBus::BroadcastResult(
+                    clonedAddress,
+                    &EditorEntityContextRequests::CloneSubSliceInstance,
+                    owningSliceAddress,
+                    sourceSubSliceAncestry,
+                    ancestor.m_sliceAddress,
+                    &sourceToCloneSliceEntityIdMap);
+                
+                for (AZ::Entity* instanceEntity : clonedAddress.GetInstance()->GetInstantiated()->m_entities)
+                {
+                    out_allEntityClones.push_back(instanceEntity);
+                }
+                for (const AZStd::pair<AZ::EntityId, AZ::EntityId>& sourceIdToCloneId : sourceToCloneSliceEntityIdMap)
+                {
+                    out_sourceToCloneEntityIdMap.insert(sourceIdToCloneId);
+                }
+
+                // Only perform one clone, and priortize the first found ancestor, which will track against
+                // the rest of the ancestors automatically.
+                result = true;
+                break;
+            }
+            return result;
+        }
+
+        void CloneLooseEntities(
+            const EntityIdList& duplicationList,
+            EntityList& out_allEntityClones,
+            AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap,
+            EntityList& out_clonedLooseEntities)
+        {
+            AZ::SliceComponent::EntityIdToEntityIdMap looseSourceToCloneEntityIdMap;
+            EntityList looseEntityClones;
+            EditorEntityContextRequestBus::Broadcast(
+                &EditorEntityContextRequests::CloneEditorEntities,
+                duplicationList,
+                looseEntityClones,
+                looseSourceToCloneEntityIdMap);
+
+            AZ_Error("Clone", looseEntityClones.size() == duplicationList.size(), "Cloned entity set is a different size from the source entity set.");
+
+            out_allEntityClones.insert(out_allEntityClones.end(), looseEntityClones.begin(), looseEntityClones.end());
+            out_clonedLooseEntities.insert(out_clonedLooseEntities.end(), looseEntityClones.begin(), looseEntityClones.end());
+
+            for (int entityIndex = 0; entityIndex < looseEntityClones.size(); ++entityIndex)
+            {
+                out_sourceToCloneEntityIdMap[duplicationList[entityIndex]] = looseEntityClones[entityIndex]->GetId();
+            }
+        }
+    } // namespace Internal
 
 } // namespace AzToolsFramework

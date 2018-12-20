@@ -13,6 +13,7 @@
 #include "EditorTriggerAreaComponent.h"
 
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 
 namespace LmbrCentral
 { //=========================================================================
@@ -93,12 +94,15 @@ namespace LmbrCentral
             m_gameComponent.AddExcludedTagInternal(AZ::Crc32(excludedTag.c_str()));
         }
 
-        gameEntity->AddComponent(&m_gameComponent);
-    }
+        AZ::SerializeContext* context = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!context)
+        {
+            AZ_Error("EditorTriggerAreaComponent", false, "Can't get serialize context from component application.");
+            return;
+        }
 
-    void EditorTriggerAreaComponent::FinishedBuildingGameEntity(AZ::Entity* gameEntity)
-    {
-        gameEntity->RemoveComponent(&m_gameComponent);
+        gameEntity->AddComponent(context->CloneObject(&m_gameComponent));
     }
 
     static bool ClassConverters::ConvertOldTriggerAreaComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& node)

@@ -851,6 +851,8 @@ void CVars::Init()
         "LOD distance ratio for objects");
     REGISTER_CVAR(e_LodFaceAreaTargetSize, 0.005f, VF_NULL,
         "Threshold used for LOD computation.");
+    REGISTER_CVAR(e_FogVolumeShadingQuality, 0, VF_NULL,
+        "Fog Volume Shading Quality 0: standard, 1:high (better fog volume interaction)");
     DefineConstFloatCVar(e_LodCompMaxSize, VF_NULL,
         "Affects LOD selection for big objects, small number will switch more objects into lower LOD");
     REGISTER_CVAR(e_ViewDistRatio, 60.0f, VF_CVARGRP_IGNOREINREALVAL,

@@ -585,6 +585,12 @@ namespace EMotionFX
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
         AZ_Assert(uniqueData, "Unique data not found for blend space 2D node '%s'.", GetName());
 
+        const MotionSet* activeMotionSet = animGraphInstance->GetMotionSet();
+        if (!activeMotionSet)
+        {
+            return;
+        }
+
         const size_t motionIndex = FindMotionIndexByMotionId(m_motions, motionId);
         if (motionIndex == MCORE_INVALIDINDEX32)
         {

@@ -2680,12 +2680,17 @@ namespace AzQtComponents
                 continue;
             }
 
-            // Retrieve the names of all the tabs, which correspond to their dock widget object names (view pane names)
+            // Retrieve the names of dock widgets tabbed inside the tab widget
+            // which will be what is matched against when restoring the state
             QStringList tabNames;
             int numTabs = tabWidget->count();
             for (int i = 0; i < numTabs; ++i)
             {
-                tabNames.append(tabWidget->tabText(i));
+                QWidget* tabbedWidget = tabWidget->widget(i);
+                if (tabbedWidget)
+                {
+                    tabNames.append(tabbedWidget->objectName());
+                }
             }
 
             // Retrieve the main window for the tab widget so that we can see if it

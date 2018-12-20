@@ -123,9 +123,9 @@ namespace LmbrCentral
         return material;
     }
 
-    void MaterialOwnerRequestBusHandlerImpl::SetMaterialHandle(MaterialHandle m)
+    void MaterialOwnerRequestBusHandlerImpl::SetMaterialHandle(const MaterialHandle& materialHandle)
     {
-        SetMaterial(m.m_material);
+        SetMaterial(materialHandle.m_material);
     }
 
     MaterialHandle MaterialOwnerRequestBusHandlerImpl::GetMaterialHandle()

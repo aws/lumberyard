@@ -472,7 +472,7 @@ HVect spect_decomp(HMatrix S, HMatrix U)
             int q = nxt[p];
             fabsOffDi = fabs(OffD[i]);
             g = 100.0 * fabsOffDi;
-            if (fabsOffDi > 0.0)
+            if (fabsOffDi > AZ_FLT_EPSILON)
             {
                 h = Diag[q] - Diag[p];
                 fabsh = fabs(h);

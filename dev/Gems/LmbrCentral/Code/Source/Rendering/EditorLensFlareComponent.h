@@ -44,7 +44,8 @@ namespace LmbrCentral
         // Overrides from LensFlareConfiguration
         AZ::u32 PropertyChanged() override;
         AZ::u32 SyncAnimationChanged() override;
-
+        AZ::u32 AttachToSunChanged() override;
+    
         // Overrides from LightSettingsNotificationBus
         void AnimationSettingsChanged() override;
 

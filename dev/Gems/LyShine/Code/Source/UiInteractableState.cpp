@@ -140,8 +140,7 @@ void UiInteractableStateColor::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
             editInfo->DataElement("ComboBox", &UiInteractableStateColor::m_targetEntity, "Target", "The target element.")
-                ->Attribute("EnumValues", &UiInteractableStateColor::PopulateTargetEntityList)
-                ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
+                ->Attribute("EnumValues", &UiInteractableStateColor::PopulateTargetEntityList);
             editInfo->DataElement("Color", &UiInteractableStateColor::m_color, "Color", "The color tint.");
         }
     }
@@ -236,8 +235,7 @@ void UiInteractableStateAlpha::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
             editInfo->DataElement("ComboBox", &UiInteractableStateAlpha::m_targetEntity, "Target", "The target element.")
-                ->Attribute("EnumValues", &UiInteractableStateAlpha::PopulateTargetEntityList)
-                ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
+                ->Attribute("EnumValues", &UiInteractableStateAlpha::PopulateTargetEntityList);
             editInfo->DataElement("Slider", &UiInteractableStateAlpha::m_alpha, "Alpha", "The opacity.");
         }
     }
@@ -395,7 +393,6 @@ void UiInteractableStateSprite::Reflect(AZ::ReflectContext* context)
 
             editInfo->DataElement("ComboBox", &UiInteractableStateSprite::m_targetEntity, "Target", "The target element.")
                 ->Attribute("EnumValues", &UiInteractableStateSprite::PopulateTargetEntityList)
-                ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiInteractableStateSprite::OnTargetElementChange)
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
             editInfo->DataElement("Sprite", &UiInteractableStateSprite::m_spritePathname, "Sprite", "The sprite.")
@@ -651,8 +648,7 @@ void UiInteractableStateFont::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
             editInfo->DataElement("ComboBox", &UiInteractableStateFont::m_targetEntity, "Target", "The target element.")
-                ->Attribute("EnumValues", &UiInteractableStateFont::PopulateTargetEntityList)
-                ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::UISliceFlags::PushableEvenIfInvisible);
+                ->Attribute("EnumValues", &UiInteractableStateFont::PopulateTargetEntityList);
             editInfo->DataElement("SimpleAssetRef", &UiInteractableStateFont::m_fontFilename, "Font path", "The font asset pathname.")
                 ->Attribute("ChangeNotify", &UiInteractableStateFont::OnFontPathnameChange)
                 ->Attribute("ChangeNotify", AZ_CRC("RefreshEntireTree", 0xefbc823c));

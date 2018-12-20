@@ -841,6 +841,7 @@ struct SRenderObjData
         m_pBending = nullptr;
         m_BendingPrev = nullptr;
         m_pShaderParams = nullptr;
+        m_FogVolumeContribIdx[0] = m_FogVolumeContribIdx[1] = static_cast<uint16>(-1);
 
         // The following should be changed to be something like 0xac to indicate invalid data so that by default 
         // data that was not set will break render features and will be traced (otherwise, default 0 just might pass)
@@ -3324,12 +3325,14 @@ struct SDeferredDecal
     {
         ZeroStruct(*this);
         rectTexture.w = rectTexture.h = 1.f;
+        angleAttenuation = 1.0f;
     }
 
     Matrix34 projMatrix; // defines where projection should be applied in the world
     _smart_ptr<IMaterial> pMaterial; // decal material
     float fAlpha; // transparency of decal, used mostly for distance fading
     float fGrowAlphaRef;
+    float angleAttenuation;
     RectF rectTexture; // subset of texture to render
     uint32 nFlags;
     uint8 nSortOrder; // user defined sort order

@@ -20,7 +20,7 @@
 #include <memory>
 
 #ifdef LINK_LY_METRICS_PRODUCER_DYNAMICALLY
-    #ifdef PLATFORM_WINDOWS
+    #if defined(_MSC_VER) // <- always set by the Visual Studio compilers, which use __declspec
         #pragma warning(disable : 4251)
 
         #ifdef LYMETRICS_PRODUCER_EXPORTS
@@ -28,8 +28,14 @@
         #else
             #define LY_METRICS_PRODUCER_API __declspec(dllimport)
         #endif /* LYMETRICS_EXPORTS */
-    #else /* PLATFORM_WINDOWS */
-        #define LY_METRICS_PRODUCER_API
+    #elif defined(_WIN32) && defined(__clang__)
+        #ifdef LYMETRICS_PRODUCER_EXPORTS
+            #define LY_METRICS_PRODUCER_API __attribute__ ((dllexport))
+        #else
+            #define LY_METRICS_PRODUCER_API __attribute__ ((dllimport))
+        #endif /* LYMETRICS_PRODUCER_EXPORTS */
+    #else /* _MSC_VER */
+        #define LY_METRICS_PRODUCER_API __attribute__ ((visibility("default")))
     #endif
 #else
     #define LY_METRICS_PRODUCER_API

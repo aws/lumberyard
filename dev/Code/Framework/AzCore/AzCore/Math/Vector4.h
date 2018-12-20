@@ -200,6 +200,16 @@ namespace AZ
         /*@}*/
 
         //===============================================================
+        // Interpolation
+        //===============================================================
+
+        /**
+         * Linear interpolation between this vector and a destination.
+         * @return (*this)*(1-t) + dest*t
+         */
+        const Vector4 Lerp(const Vector4& dest, const VectorFloat& t) const;
+
+        //===============================================================
         // Dot products
         //===============================================================
 

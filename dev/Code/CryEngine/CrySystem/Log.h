@@ -114,6 +114,8 @@ private: // -------------------------------------------------------------------
         void GetMemoryUsage(ICrySizer* pSizer) const {}
     };
 
+    void CheckAndPruneBackupLogs() const;
+
     bool IsError(ELogType logType) const { return logType == ELogType::eError || logType == ELogType::eErrorAlways || logType == ELogType::eWarning || logType == ELogType::eWarningAlways; }
 
     //helper function to pass calls to LogString... to the main thread, returns false if you are on the main thread already, in which case just process the work.

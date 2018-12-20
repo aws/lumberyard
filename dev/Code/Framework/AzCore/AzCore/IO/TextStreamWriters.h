@@ -14,6 +14,7 @@
 
 #include <AzCore/base.h>
 #include <AzCore/IO/GenericStreams.h>
+#include <AzCore/std/containers/vector.h>
 
 namespace AZ
 {
@@ -25,25 +26,73 @@ namespace AZ
         class RapidXMLStreamWriter
         {
         public:
-            RapidXMLStreamWriter(IO::GenericStream* stream)
-                : m_stream(stream)
-                , m_errorCount(0) {}
-
-            RapidXMLStreamWriter& operator*() { return *this; }
-            RapidXMLStreamWriter& operator++() { return *this; }
-            RapidXMLStreamWriter& operator++(int) { return *this; }
-            RapidXMLStreamWriter& operator=(char c)
+            class PrintIterator
             {
-                IO::SizeType bytes = m_stream->Write(1, &c);
-                if (bytes != 1)
+            public:
+                PrintIterator(RapidXMLStreamWriter* writer)
+                    : m_writer(writer)
                 {
-                    AZ_Error("Serializer", false, "Failed writing 1 byte to stream!");
-                    ++m_errorCount;
                 }
-                return *this;
+
+                PrintIterator(const PrintIterator& it)
+                    : m_writer(it.m_writer)
+                {
+                }
+
+                PrintIterator& operator=(const PrintIterator& rhs) = default;
+
+                PrintIterator& operator*() { return *this; }
+                PrintIterator& operator++() { return *this; }
+                PrintIterator& operator++(int) { return *this; }
+                PrintIterator& operator=(char c)
+                {
+                    if (m_writer->m_cache.size() == m_writer->m_cache.capacity())
+                    {
+                        m_writer->FlushCache();
+                    }
+                    m_writer->m_cache.push_back(c);
+                    return *this;
+                }
+            private:
+                RapidXMLStreamWriter* m_writer;
+            };
+
+            RapidXMLStreamWriter(IO::GenericStream* stream, size_t writeCacheSize = 128 * 1024)
+                : m_stream(stream)
+                , m_errorCount(0) 
+            {
+                m_cache.reserve(writeCacheSize);
+            }
+
+            ~RapidXMLStreamWriter()
+            {
+                FlushCache();
+            }
+
+            RapidXMLStreamWriter(const RapidXMLStreamWriter&) = delete;
+            RapidXMLStreamWriter& operator=(const RapidXMLStreamWriter&) = delete;
+
+            void FlushCache()
+            {
+                if (!m_cache.empty())
+                {
+                    IO::SizeType bytes = m_stream->Write(m_cache.size(), m_cache.data());
+                    if (bytes != m_cache.size())
+                    {
+                        AZ_Error("Serializer", false, "Failed writing %d byte(s) to stream, wrote only %d bytes!", m_cache.size(), bytes);
+                        ++m_errorCount;
+                    }
+                    m_cache.clear();
+                }
+            }
+
+            PrintIterator Iterator()
+            {
+                return PrintIterator(this);
             }
 
             IO::GenericStream* m_stream;
+            AZStd::vector<AZ::u8> m_cache;
             int m_errorCount;
         };
 
@@ -55,30 +104,54 @@ namespace AZ
         public:
             typedef char Ch;    //!< Character type. Only support char.
 
-            RapidJSONStreamWriter(AZ::IO::GenericStream* stream)
+            RapidJSONStreamWriter(AZ::IO::GenericStream* stream, size_t writeCacheSize = 128 * 1024)
                 : m_stream(stream)
             {
+                m_cache.reserve(writeCacheSize);
+            }
+
+            ~RapidJSONStreamWriter()
+            {
+                FlushCache();
             }
 
             RapidJSONStreamWriter(const RapidJSONStreamWriter&) = delete;
             RapidJSONStreamWriter& operator=(const RapidJSONStreamWriter&) = delete;
 
+            void FlushCache()
+            {
+                if (!m_cache.empty())
+                {
+                    IO::SizeType bytes = m_stream->Write(m_cache.size(), m_cache.data());
+                    if (bytes != m_cache.size())
+                    {
+                        AZ_Error("Serializer", false, "Failed writing %d byte(s) to stream, wrote only %d bytes!", m_cache.size(), bytes);
+                    }
+                    m_cache.clear();
+                }
+            }
+
             void Put(char c)
             {
-                m_stream->Write(1, &c);
+                if (m_cache.size() == m_cache.capacity())
+                {
+                    FlushCache();
+                }
+                m_cache.push_back(c);
             }
 
             void PutN(char c, size_t n)
             {
                 while (n > 0)
                 {
-                    m_stream->Write(1, &c);
+                    Put(c); // if this is common we can optimize the write to the cache
                     --n;
                 }
             }
 
             void Flush()
             {
+                FlushCache();
             }
 
             // Not implemented
@@ -110,6 +183,7 @@ namespace AZ
             }
 
             AZ::IO::GenericStream* m_stream;
+            AZStd::vector<AZ::u8> m_cache;
         };
     }   // namespace IO
 }   // namespace AZ

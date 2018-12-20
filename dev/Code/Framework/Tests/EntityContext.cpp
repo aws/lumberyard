@@ -132,7 +132,7 @@ namespace UnitTest
             (void)sliceAssetId;
             (void)instance;
             ++m_prefabSuccesses;
-            prefabResults = instance.second->GetInstantiated()->m_entities;
+            prefabResults = instance.GetInstance()->GetInstantiated()->m_entities;
         }
 
         void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId)

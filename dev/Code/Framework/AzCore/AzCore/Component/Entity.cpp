@@ -13,6 +13,7 @@
 
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/EntityBus.h>
+#include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TransformBus.h>
 
@@ -588,6 +589,7 @@ namespace AZ
                 subComponentDescriptor->GetProvidedServices(provided, (*componentIt));
                 for (auto providedIt = provided.begin(); providedIt != provided.end(); ++providedIt)
                 {
+                    EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(providedIt, provided, this);
                     for (auto incompatibleIt = incompatible.begin(); incompatibleIt != incompatible.end(); ++incompatibleIt)
                     {
                         if (*providedIt == *incompatibleIt)
@@ -1232,9 +1234,7 @@ namespace AZ
             {
                 IncompatibleServiceInfo& incompatibleInfo = incompatibleServiceInfos[incompatible]; // creates entry if not already there
 
-                // Protect against a component listing the same incompatibility multiple times
-                // Note - We don't need to do this check for provided/dependent/required services,
-                //   because the algorithm deals with duplicates for those cases.
+                // protect against a component listing the same incompatibility multiple times
                 if (incompatibleInfo.m_anyComponentIncompatibleWithService != &componentInfo)
                 {
                     ++incompatibleInfo.m_componentsIncompatibleWithServiceCount;
@@ -1246,9 +1246,14 @@ namespace AZ
             servicesTmp.clear();
             componentInfo.m_descriptor->GetProvidedServices(servicesTmp, componentInfo.m_component);
             componentInfo.m_providesAnyServices |= !servicesTmp.empty();
-            for (ComponentServiceType providedService : servicesTmp)
+            for (AZ::ComponentDescriptor::DependencyArrayType::iterator providedService = servicesTmp.begin();
+                providedService != servicesTmp.end(); ++providedService)
             {
-                ProvidedServiceInfo& serviceInfo = providedServiceInfos[providedService]; // intentionally create entry if not already there
+                AZ::EntityUtils::RemoveDuplicateServicesOfAndAfterIterator(
+                    providedService, 
+                    servicesTmp, 
+                    componentInfo.m_component->GetEntity());
+                ProvidedServiceInfo& serviceInfo = providedServiceInfos[*providedService]; // intentionally creates entry if not already there
                 ++serviceInfo.m_componentsProvidingServiceCount;
                 serviceInfo.m_anyComponentProvidingService = &componentInfo;
             }

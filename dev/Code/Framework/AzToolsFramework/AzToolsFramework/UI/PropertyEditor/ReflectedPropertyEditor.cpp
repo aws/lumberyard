@@ -22,9 +22,65 @@
 #include <QtWidgets/QVBoxLayout>
 #include <QtCore/QTimer>
 #include <QtCore/QSet>
+#include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
 
 namespace AzToolsFramework
 {
+    const AZ::SerializeContext::ClassData* CreateContainerElementSelectClassCallback(const AZ::Uuid& classId, const AZ::Uuid& typeId, AZ::SerializeContext* context)
+    {
+        AZStd::vector<const AZ::SerializeContext::ClassData*> derivedClasses;
+        context->EnumerateDerived(
+            [&derivedClasses]
+        (const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& /*knownType*/) -> bool
+        {
+            derivedClasses.push_back(classData);
+            return true;
+        },
+            classId,
+            typeId
+            );
+
+        if (derivedClasses.empty())
+        {
+            const AZ::SerializeContext::ClassData* classData = context->FindClassData(typeId);
+            const char* className = classData ?
+                (classData->m_editData ? classData->m_editData->m_name : classData->m_name)
+                : "<unknown>";
+
+            QMessageBox mb(QMessageBox::Information,
+                QObject::tr("Select Class"),
+                QObject::tr("No classes could be found that derive from \"%1\".").arg(className),
+                QMessageBox::Ok);
+            mb.exec();
+            return nullptr;
+        }
+
+        QStringList derivedClassNames;
+        for (auto& derivedClass : derivedClasses)
+        {
+            const char* derivedClassName = derivedClass->m_editData ? derivedClass->m_editData->m_name : derivedClass->m_name;
+            derivedClassNames.push_back(derivedClassName);
+        }
+
+        bool ok;
+        QString item = QInputDialog::getItem(nullptr, QObject::tr("Class to create"), QObject::tr("Classes"), derivedClassNames, 0, false, &ok);
+        if (!ok)
+        {
+            return nullptr;
+        }
+
+        // Reverse lookup the derived class from the class name selected
+        for (int derivedClassNameIndex = 0; derivedClassNameIndex < derivedClassNames.size(); ++derivedClassNameIndex)
+        {
+            if (derivedClassNames[derivedClassNameIndex] == item)
+            {
+                return derivedClasses[derivedClassNameIndex];
+            }
+        }
+
+        return nullptr;
+    }
+
     // Internal bus used so that instances of the reflected property editor in different
     // dlls/shared libs still work and communicate when refreshes are required
     class InternalReflectedPropertyEditorEvents
@@ -92,6 +148,7 @@ namespace AzToolsFramework
         ReflectedPropertyEditor*            m_editor;
         AZ::SerializeContext*               m_context;
         IPropertyEditorNotify*              m_ptrNotify;
+        ComponentEditor*                    m_editorParent;
         InstanceDataHierarchyList           m_instances; ///< List of instance sets to display, other one can aggregate other instances.
         InstanceDataHierarchy::ValueComparisonFunction m_valueComparisonFunction;
         ReflectedPropertyEditor::WidgetList m_widgets;
@@ -154,6 +211,10 @@ namespace AzToolsFramework
         bool m_hasFilteredOutNodes = false;
 
         AZStd::unordered_map<InstanceDataNode*, bool> m_nodeFilteredOutState;
+
+        ReadOnlyQueryFunction   m_readOnlyQueryFunction;
+        HiddenQueryFunction     m_hiddenQueryFunction;
+        IndicatorQueryFunction  m_indicatorQueryFunction;
         
         // Offset to add to size hint. Used to leave a border around the widget
         QSize m_sizeHintOffset;
@@ -171,6 +232,7 @@ namespace AzToolsFramework
 
         // PropertyEditorGUIMessages::Bus::Handler
         virtual void RequestWrite(QWidget* editorGUI) override;
+        virtual void AddElementsToParentContainer(QWidget* editorGUI, size_t numElements, const InstanceDataNode::FillDataClassCallback& fillDataCallback) override;
         virtual void RequestRefresh(PropertyModificationRefreshLevel) override;
         void RequestPropertyNotify(QWidget* editorGUI) override;
         void OnEditingFinished(QWidget* editorGUI) override;
@@ -239,6 +301,8 @@ namespace AzToolsFramework
         m_impl->m_propertyLabelAutoResizeMinimumWidth = 0;
 
         m_impl->m_savedStateKey = 0;
+
+        m_impl->m_editorParent = nullptr;
         setLayout(aznew QVBoxLayout());
         layout()->setSpacing(0);
         layout()->setContentsMargins(0, 0, 0, 0);
@@ -273,10 +337,11 @@ namespace AzToolsFramework
         m_impl->PropertyEditorGUIMessages::Bus::Handler::BusDisconnect();
     }
 
-    void ReflectedPropertyEditor::Setup(AZ::SerializeContext* context, IPropertyEditorNotify* pnotify, bool enableScrollbars, int propertyLabelWidth)
+    void ReflectedPropertyEditor::Setup(AZ::SerializeContext* context, IPropertyEditorNotify* pnotify, bool enableScrollbars, int propertyLabelWidth, ComponentEditor* editorParent)
     {
         m_impl->m_ptrNotify = pnotify;
         m_impl->m_context = context;
+        m_impl->m_editorParent = editorParent;
 
         m_impl->m_propertyLabelWidth = propertyLabelWidth;
 
@@ -365,6 +430,21 @@ namespace AzToolsFramework
     void ReflectedPropertyEditor::SetValueComparisonFunction(const InstanceDataHierarchy::ValueComparisonFunction& valueComparisonFunction)
     {
         m_impl->m_valueComparisonFunction = valueComparisonFunction;
+    }
+
+    void ReflectedPropertyEditor::SetReadOnlyQueryFunction(const ReadOnlyQueryFunction& readOnlyQueryFunction)
+    {
+        m_impl->m_readOnlyQueryFunction = readOnlyQueryFunction;
+    }
+
+    void ReflectedPropertyEditor::SetHiddenQueryFunction(const HiddenQueryFunction& hiddenQueryFunction)
+    {
+        m_impl->m_hiddenQueryFunction = hiddenQueryFunction;
+    }
+
+    void ReflectedPropertyEditor::SetIndicatorQueryFunction(const IndicatorQueryFunction& indicatorQueryFunction)
+    {
+        m_impl->m_indicatorQueryFunction = indicatorQueryFunction;
     }
 
     bool ReflectedPropertyEditor::HasFilteredOutNodes() const
@@ -545,6 +625,14 @@ namespace AzToolsFramework
             return;
         }
 
+        if (m_hiddenQueryFunction)
+        {
+            if (m_hiddenQueryFunction(node))
+            {
+                return;
+            }
+        }
+
         if (IsFilteredOut(node))
         {
             return;
@@ -589,6 +677,7 @@ namespace AzToolsFramework
             pWidget = CreateOrPullFromPool();
             pWidget->show();
 
+            pWidget->SetFilterString(m_editor->GetFilterString());
             pWidget->Initialize(pParent, node, depth, m_propertyLabelWidth);
             pWidget->setObjectName(pWidget->label());
             pWidget->SetSelectionEnabled(m_selectionEnabled);
@@ -617,6 +706,11 @@ namespace AzToolsFramework
 
         if (pWidget)
         {
+            if (m_indicatorQueryFunction)
+            {
+                pWidget->UpdateIndicator(m_indicatorQueryFunction(node));
+            }
+
             // Set this as a "Root" element so that our Qt stylesheet can set the labels on these rows to bold text
             pWidget->setProperty("Root", !pWidget->GetParentRow() && pWidget->HasChildRows());
 
@@ -644,7 +738,7 @@ namespace AzToolsFramework
 
         for (auto& instance : m_impl->m_instances)
         {
-            instance.Build(m_impl->m_context, AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_impl->m_dynamicEditDataProvider);
+            instance.Build(m_impl->m_context, AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_impl->m_dynamicEditDataProvider, m_impl->m_editorParent);
             m_impl->FilterNode(instance.GetRootNode(), filter);
             m_impl->AddProperty(instance.GetRootNode(), NULL, 0);
         }
@@ -700,6 +794,16 @@ namespace AzToolsFramework
         m_impl->AdjustLabelWidth();
 
         setUpdatesEnabled(true);
+    }
+
+    void ReflectedPropertyEditor::SetFilterString(AZStd::string str)
+    {
+        m_currentFilterString = str;
+    }
+
+    AZStd::string ReflectedPropertyEditor::GetFilterString()
+    {
+        return m_currentFilterString;
     }
 
     bool ReflectedPropertyEditor::Impl::FilterNode(InstanceDataNode* node, const char* filter)
@@ -769,6 +873,11 @@ namespace AzToolsFramework
                 pWidget->OnValuesUpdated();
             }
             pWidget->RefreshAttributesFromNode(false);
+
+            if (m_impl->m_indicatorQueryFunction)
+            {
+                pWidget->UpdateIndicator(m_impl->m_indicatorQueryFunction(pWidget->GetNode()));
+            }
         }
 
         m_impl->m_queuedRefreshLevel = Refresh_None;
@@ -778,7 +887,12 @@ namespace AzToolsFramework
     {
         for (InstanceDataHierarchy& instance : m_impl->m_instances)
         {
-            instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_impl->m_dynamicEditDataProvider);
+            bool dataIdentical = instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_impl->m_dynamicEditDataProvider);
+
+            if (m_impl->m_editorParent)
+            {
+                m_impl->m_editorParent->SetComponentOverridden(!dataIdentical);
+            }
         }
 
         for (auto it = m_impl->m_userWidgetsToData.begin(); it != m_impl->m_userWidgetsToData.end(); ++it)
@@ -847,6 +961,8 @@ namespace AzToolsFramework
             );
 
             QObject::connect(newWidget, &PropertyRowWidget::onRequestedSelection, m_editor, &ReflectedPropertyEditor::SelectInstance);
+
+            newWidget->SetReadOnlyQueryFunction(m_readOnlyQueryFunction);
         }
         else
         {
@@ -1116,8 +1232,13 @@ namespace AzToolsFramework
                 {
                     for (InstanceDataHierarchy& instance : m_instances)
                     {
-                        instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
+                        bool dataIdentical = instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_dynamicEditDataProvider);
                         widget->OnValuesUpdated();
+
+                        if (m_editorParent)
+                        {
+                            m_editorParent->SetComponentOverridden(!dataIdentical);
+                        }
                     }
                 }
 
@@ -1125,6 +1246,44 @@ namespace AzToolsFramework
             }
         }
     }
+
+    void ReflectedPropertyEditor::Impl::AddElementsToParentContainer(QWidget* editorGUI, size_t numElements, const InstanceDataNode::FillDataClassCallback& fillDataCallback)
+    {
+        if (numElements == 0 || !editorGUI)
+        {
+            return;
+        }
+
+        auto iterUserWidgetToData = m_userWidgetsToData.find(editorGUI);
+        if (iterUserWidgetToData == m_userWidgetsToData.end())
+        {
+            return;
+        }
+
+        // get the property editor
+        auto rowWidget = m_widgets.find(iterUserWidgetToData->second);
+        if (rowWidget != m_widgets.end())
+        {
+            InstanceDataNode* myInstanceDataNode = rowWidget->first;
+            if (myInstanceDataNode)
+            {
+                InstanceDataNode* parentInstanceDataNode = myInstanceDataNode->GetParent();
+                if (parentInstanceDataNode)
+                {
+                    if (parentInstanceDataNode->GetClassMetadata() && parentInstanceDataNode->GetClassMetadata()->m_container)
+                    {
+                        for (size_t index = 0; index < numElements; index++)
+                        {
+                            parentInstanceDataNode->CreateContainerElement(CreateContainerElementSelectClassCallback, fillDataCallback);
+                        }
+
+                        m_editor->QueueInvalidation(Refresh_EntireTree);
+                    }
+                }
+            }
+        }
+    }
+
 
     void ReflectedPropertyEditor::Impl::RequestRefresh(PropertyModificationRefreshLevel level)
     {
@@ -1394,59 +1553,7 @@ namespace AzToolsFramework
         AZ_Assert(container->IsFixedSize() == false || container->IsSmartPointer(), "We can't add elements to static containers");
 
         pContainerNode->CreateContainerElement(
-            [](const AZ::Uuid& classId, const AZ::Uuid& typeId, AZ::SerializeContext* context) -> const AZ::SerializeContext::ClassData*
-            {
-                AZStd::vector<const AZ::SerializeContext::ClassData*> derivedClasses;
-                context->EnumerateDerived(
-                    [&derivedClasses]
-                    (const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& /*knownType*/) -> bool
-                    {
-                        derivedClasses.push_back(classData);
-                        return true;
-                    },
-                    classId,
-                    typeId
-                );
-
-                if (derivedClasses.empty())
-                {
-                    const AZ::SerializeContext::ClassData* classData = context->FindClassData(typeId);
-                    const char* className = classData ?
-                        (classData->m_editData ? classData->m_editData->m_name : classData->m_name)
-                        : "<unknown>";
-
-                    QMessageBox mb(QMessageBox::Information,
-                        "Select Class",
-                        QString("No classes could be found that derive from \"%1\".").arg(className),
-                        QMessageBox::Ok);
-                    mb.exec();
-                    return nullptr;
-                }
-
-                QStringList items;
-                for (size_t i = 0; i < derivedClasses.size(); ++i)
-                {
-                    const char* className = derivedClasses[i]->m_editData ? derivedClasses[i]->m_editData->m_name : derivedClasses[i]->m_name;
-                    items.push_back(className);
-                }
-
-                bool ok;
-                QString item = QInputDialog::getItem(nullptr, tr("Class to create"), tr("Classes"), items, 0, false, &ok);
-                if (!ok)
-                {
-                    return nullptr;
-                }
-
-                for (int i = 0; i < items.size(); ++i)
-                {
-                    if (items[i] == item)
-                    {
-                        return derivedClasses[i];
-                    }
-                }
-
-                return nullptr;
-            },
+            CreateContainerElementSelectClassCallback,
             [](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
             {
                 (void)noDefaultData;
@@ -1729,6 +1836,11 @@ namespace AzToolsFramework
     void ReflectedPropertyEditor::SetDynamicEditDataProvider(DynamicEditDataProvider provider)
     {
         m_impl->m_dynamicEditDataProvider = provider;
+    }
+
+    QWidget* ReflectedPropertyEditor::GetContainerWidget()
+    {
+        return m_impl->m_containerWidget;
     }
 
     void ReflectedPropertyEditor::SetSizeHintOffset(const QSize& offset)

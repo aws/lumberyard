@@ -49,6 +49,8 @@ namespace AzToolsFramework
             void OnEntityStreamLoadSuccess() override;
             //////////////////////////////////////////////////////////////////////////
         private:
+            void MarkDirtyAndSendChangedEvent();
+
             ///////////////
             // AZ::Entity
             ///////////////

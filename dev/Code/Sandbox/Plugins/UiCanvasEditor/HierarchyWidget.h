@@ -54,6 +54,9 @@ public:
 
     void ClearItemBeingHovered();
 
+    //! Update the appearance of all hierarchy items to show reflect their slice status
+    void UpdateSliceInfo();
+
 public slots:
     void DeleteSelectedItems();
     void Cut();

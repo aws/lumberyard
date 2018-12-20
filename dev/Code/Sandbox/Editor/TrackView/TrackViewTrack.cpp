@@ -614,23 +614,6 @@ void CTrackViewTrack::SelectKeys(const bool bSelected)
     m_pTrackAnimNode->GetSequence()->SubmitPendingNotifcations();
 }
 
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewTrack::SortKeysByTime()
-{
-    if (m_bIsCompoundTrack)
-    {
-        unsigned int childCount = GetChildCount();
-        for (unsigned int childIndex = 0; childIndex < childCount; ++childCount)
-        {
-            CTrackViewTrack* childTrack = static_cast<CTrackViewTrack*>(GetChild(childIndex));
-            childTrack->SortKeysByTime();
-        }
-    }
-    else
-    {
-        m_pAnimTrack->SortKeys();
-    }
-}
 
 //////////////////////////////////////////////////////////////////////////
 bool CTrackViewTrack::IsKeySelected(unsigned int keyIndex) const

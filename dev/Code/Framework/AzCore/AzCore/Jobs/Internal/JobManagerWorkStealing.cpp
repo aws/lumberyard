@@ -178,14 +178,6 @@ void JobManagerWorkStealing::SuspendJobUntilReady(Job* job)
     info->m_currentJob = job; //restore current job
 }
 
-void JobManagerWorkStealing::NotifySuspendedJobReady(Job* job)
-{
-    (void)job;
-    //Nothing to do here, a thread which has a suspended job waiting will not go to sleep, so we don't need to send
-    //any wake up events or anything. This means is possible for a thread to spin while waiting for a child to
-    //complete if there are no other jobs available, but this should be fairly rare.
-}
-
 void JobManagerWorkStealing::StartJobAndAssistUntilComplete(Job* job)
 {
     ThreadInfo* info = GetCurrentOrCreateThreadInfo();
@@ -234,10 +226,10 @@ void JobManagerWorkStealing::PrintStats()
 {
 #ifdef JOBMANAGER_ENABLE_STATS
     char str[256];
-    OutputDebugString("===================================================\n");
-    OutputDebugString("Job System Stats:\n");
-    OutputDebugString("Thread   Global jobs    Forks/dependents   Jobs done   Jobs stolen    Job time (ms)  Steal time (ms)  Total time (ms)\n");
-    OutputDebugString("------   -------------  -----------------  ----------  ------------   -------------  ---------------  ---------------\n");
+    printf("===================================================\n");
+    printf("Job System Stats:\n");
+    printf("Thread   Global jobs    Forks/dependents   Jobs done   Jobs stolen    Job time (ms)  Steal time (ms)  Total time (ms)\n");
+    printf("------   -------------  -----------------  ----------  ------------   -------------  ---------------  ---------------\n");
     for (unsigned int i = 0; i < m_threads.size(); ++i)
     {
         ThreadInfo* info = m_threads[i];
@@ -245,7 +237,6 @@ void JobManagerWorkStealing::PrintStats()
         double stealTime = 1000.0f * static_cast<double>(info->m_stealTime) / AZStd::GetTimeTicksPerSecond();
         azsnprintf(str, AZ_ARRAY_SIZE(str),  " %d:        %5d          %5d           %5d         %5d            %3.2f           %3.2f         %3.2f\n",
             i, info->m_globalJobs, info->m_jobsForked, info->m_jobsDone, info->m_jobsStolen, jobTime, stealTime, jobTime + stealTime);
-        OutputDebugString(str);
         printf(str);
     }
 #endif

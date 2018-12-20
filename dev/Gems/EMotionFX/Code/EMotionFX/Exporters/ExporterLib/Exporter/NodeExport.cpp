@@ -39,6 +39,7 @@ namespace ExporterLib
 
         // create the node chunk and copy over the information
         EMotionFX::FileFormat::Actor_Node nodeChunk;
+        memset(&nodeChunk, 0, sizeof(EMotionFX::FileFormat::Actor_Node));
 
         CopyVector(nodeChunk.mLocalPos,    position);
         CopyQuaternion(nodeChunk.mLocalQuat,   rotation);
@@ -194,6 +195,7 @@ namespace ExporterLib
 
         // the node group chunk
         EMotionFX::FileFormat::Actor_NodeGroup groupChunk;
+        memset(&groupChunk, 0, sizeof(EMotionFX::FileFormat::Actor_NodeGroup));
 
         // set the data
         groupChunk.mNumNodes            = static_cast<uint16>(numNodes);

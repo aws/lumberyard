@@ -63,6 +63,7 @@
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 
 #include <LmbrCentral/Rendering/EditorLightComponentBus.h>
@@ -99,6 +100,13 @@ static const char* kBackupOrTempFolders[] =
     "_hold", // legacy name
     "_tmpresize", // legacy name
 };
+
+static const char* kLevelPathForSliceEditing = "@devroot@/Engine/EngineAssets/LevelForSliceEditing/LevelForSliceEditing.ly";
+
+static bool IsSliceFile(const QString& filePath)
+{
+    return filePath.endsWith(".slice", Qt::CaseInsensitive);
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // CCryEditDoc construction/destruction
@@ -165,15 +173,39 @@ void CCryEditDoc::SetModifiedFlag(bool modified)
     m_modified = modified;
 }
 
-QString CCryEditDoc::GetPathName() const
+QString CCryEditDoc::GetLevelPathName() const
 {
     return m_pathName;
 }
 
 void CCryEditDoc::SetPathName(const QString& pathName)
 {
-    m_pathName = pathName;
+    if (IsSliceFile(pathName))
+    {
+        m_pathName = kLevelPathForSliceEditing;
+        m_slicePathName = pathName;
+    }
+    else
+    {
+        m_pathName = pathName;
+        m_slicePathName.clear();
+    }
     SetTitle(pathName.isEmpty() ? tr("Untitled") : PathUtil::GetFileName(pathName.toUtf8().data()).c_str());
+}
+
+QString CCryEditDoc::GetSlicePathName() const
+{
+    return m_slicePathName;
+}
+
+CCryEditDoc::DocumentEditingMode CCryEditDoc::GetEditMode() const
+{
+    return m_slicePathName.isEmpty() ? CCryEditDoc::DocumentEditingMode::LevelEdit : CCryEditDoc::DocumentEditingMode::SliceEdit;
+}
+
+QString CCryEditDoc::GetActivePathName() const
+{
+    return DocumentEditingMode() == CCryEditDoc::DocumentEditingMode::SliceEdit ? GetSlicePathName() : GetLevelPathName();
 }
 
 QString CCryEditDoc::GetTitle() const
@@ -201,7 +233,7 @@ bool CCryEditDoc::IsBackupOrTempLevelSubdirectory(const QString& folderName)
 
 bool CCryEditDoc::DoSave(const QString& pathName, bool replace)
 {
-    if (!OnSaveDocument(pathName.isEmpty() ? GetPathName() : pathName))
+    if (!OnSaveDocument(pathName.isEmpty() ? GetActivePathName() : pathName))
     {
         return false;
     }
@@ -216,7 +248,7 @@ bool CCryEditDoc::DoSave(const QString& pathName, bool replace)
 
 bool CCryEditDoc::Save()
 {
-    return OnSaveDocument(GetPathName().toUtf8().data()) == TRUE;
+    return OnSaveDocument(GetActivePathName());
 }
 
 void CCryEditDoc::ChangeMission()
@@ -232,6 +264,7 @@ void CCryEditDoc::ChangeMission()
 
 void CCryEditDoc::DeleteContents()
 {
+    m_hasErrors = false;
     SetDocumentReady(false);
 
     GetIEditor()->Notify(eNotify_OnCloseScene);
@@ -351,6 +384,8 @@ void CCryEditDoc::Load(CXmlArchive& xmlAr, const QString& szFilename)
 //////////////////////////////////////////////////////////////////////////
 void CCryEditDoc::Load(TDocMultiArchive& arrXmlAr, const QString& szFilename)
 {
+    m_hasErrors = false;
+
     // Register a unique load event
     QString fileName = Path::GetFileName(szFilename);
     QString levelHash = GetIEditor()->GetSettingsManager()->GenerateContentHash(arrXmlAr[DMAS_GENERAL]->root, fileName);
@@ -984,15 +1019,24 @@ bool CCryEditDoc::BeforeOpenDocument(const QString& lpszPathName, TOpenDocContex
     // restore directory to root.
     QDir::setCurrent(GetIEditor()->GetMasterCDFolder());
 
-    QString absoluteLevelPath = lpszPathName;
-    QFileInfo fileInfo(absoluteLevelPath);
-    QString friendlyDisplayName = fileInfo.fileName();
+    QString absolutePath = lpszPathName;
+    QFileInfo fileInfo(absolutePath);
+    QString friendlyDisplayName = Path::GetRelativePath(absolutePath, true);
     CLogFile::FormatLine("Opening level %s", friendlyDisplayName.toUtf8().data());
 
     // normalize the file path.
-    absoluteLevelPath = Path::ToUnixPath(QFileInfo(absoluteLevelPath).canonicalFilePath());
+    absolutePath = Path::ToUnixPath(QFileInfo(absolutePath).canonicalFilePath());
     context.loading_start_time = loading_start_time;
-    context.absoluteLevelPath = absoluteLevelPath;
+    if (IsSliceFile(absolutePath))
+    {
+        context.absoluteLevelPath = Path::GamePathToFullPath(kLevelPathForSliceEditing);
+        context.absoluteSlicePath = absolutePath;
+    }
+    else
+    {
+        context.absoluteLevelPath = absolutePath;
+        context.absoluteSlicePath = "";
+    }
     return TRUE;
 }
 
@@ -1036,10 +1080,25 @@ bool CCryEditDoc::DoOpenDocument(TOpenDocContext& context)
 
     ReleaseXmlArchiveArray(arrXmlAr);
 
-    // Load AZ entities for the editor.
-    if (!LoadEntities(context.absoluteLevelPath))
+    if (m_bLoadFailed)
     {
-        m_bLoadFailed = true;
+        return FALSE;
+    }
+
+    // Load AZ entities for the editor.
+    if (context.absoluteSlicePath.isEmpty())
+    {
+        if (!LoadEntitiesFromLevel(context.absoluteLevelPath))
+        {
+            m_bLoadFailed = true;
+        }
+    }
+    else
+    {
+        if (!LoadEntitiesFromSlice(context.absoluteSlicePath))
+        {
+            m_bLoadFailed = true;
+        }
     }
 
     if (m_bLoadFailed)
@@ -1068,6 +1127,7 @@ bool CCryEditDoc::OnNewDocument()
 {
     DeleteContents();
     m_pathName.clear();
+    m_slicePathName.clear();
     SetModifiedFlag(false);
     return true;
 }
@@ -1075,6 +1135,7 @@ bool CCryEditDoc::OnNewDocument()
 bool CCryEditDoc::OnSaveDocument(const QString& lpszPathName)
 {
     bool saveSuccess = false;
+    bool shouldSaveLevel = true;
     if (gEnv->IsEditorSimulationMode())
     {
         // Don't allow saving in AI/Physics mode.
@@ -1083,15 +1144,45 @@ bool CCryEditDoc::OnSaveDocument(const QString& lpszPathName)
         EBUS_EVENT_RESULT(mainWindow, AzToolsFramework::EditorRequests::Bus, GetMainWindow);
 
         QMessageBox msgBox(mainWindow);
-        msgBox.setText(mainWindow->tr("You must exit AI/Physics mode before saving."));
-        msgBox.setInformativeText(mainWindow->tr("The level will not be saved."));
+        msgBox.setText(tr("You must exit AI/Physics mode before saving."));
+        msgBox.setInformativeText(tr("The level will not be saved."));
         msgBox.setIcon(QMessageBox::Warning);
         msgBox.exec();
     }
     else
     {
+        if (m_hasErrors || m_bLoadFailed)
+        {
+            QWidget* mainWindow = nullptr;
+            AzToolsFramework::EditorRequests::Bus::BroadcastResult(
+                mainWindow,
+                &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
+
+            // Prompt the user that saving may result in data loss. Most of the time this is not desired
+            // (which is why 'cancel' is the default interaction), but this does provide users a way to still
+            // save their level if this is the only way they can solve the erroneous data.
+            QMessageBox msgBox(mainWindow);
+            msgBox.setText(tr("Your level loaded with errors, you may lose work if you save."));
+            msgBox.setInformativeText(tr("Do you want to save your changes?"));
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Cancel);
+            msgBox.setDefaultButton(QMessageBox::Cancel);
+            int result = msgBox.exec();
+            switch (result)
+            {
+            case QMessageBox::Save:
+                // The user wishes to save, so don't bail.
+                break;
+            case QMessageBox::Cancel:
+                // The user is canceling the save operation, so stop any saving from occuring.
+                shouldSaveLevel = false;
+                break;
+            }
+        }
+
         TSaveDocContext context;
-        if (BeforeSaveDocument(lpszPathName, context))
+        if (shouldSaveLevel &&
+            BeforeSaveDocument(lpszPathName, context))
         {
             DoSaveDocument(lpszPathName, context);
             saveSuccess = AfterSaveDocument(lpszPathName, context);
@@ -1143,8 +1234,14 @@ bool CCryEditDoc::DoSaveDocument(const QString& filename, TSaveDocContext& conte
             }
 
             QString normalizedPath = Path::ToUnixPath(filename);
-
-            bSaved = SaveLevel(normalizedPath);
+            if (IsSliceFile(normalizedPath))
+            {
+                bSaved = SaveSlice(normalizedPath);
+            }
+            else
+            {
+                bSaved = SaveLevel(normalizedPath);
+            }
 
             // Changes filename for this document.
             SetPathName(normalizedPath);
@@ -1166,11 +1263,11 @@ bool CCryEditDoc::AfterSaveDocument(const QString& lpszPathName, TSaveDocContext
         {
             QMessageBox::warning(QApplication::activeWindow(), QString(), QObject::tr("Save Failed"), QMessageBox::Ok);
         }
-        CLogFile::WriteLine("$4Level saving has failed.");
+        CLogFile::WriteLine("$4Document saving has failed.");
     }
     else
     {
-        CLogFile::WriteLine("$3Level successfully saved");
+        CLogFile::WriteLine("$3Document successfully saved");
         SetModifiedFlag(FALSE);
         SetModifiedModules(eModifiedNothing);
         MainWindow::instance()->ResetAutoSaveTimers();
@@ -1188,6 +1285,24 @@ static void GetUserSettingsFile(const QString& levelFolder, QString& userSetting
     userSettings = Path::Make(levelFolder, fileName);
 }
 
+static bool TryRenameFile(const QString& oldPath, const QString& newPath, int retryAttempts=10)
+{
+    QFile(newPath).setPermissions(QFile::ReadOther | QFile::WriteOther);
+    QFile::remove(newPath);
+
+    // try a few times, something can lock the file (such as virus scanner, etc).
+    for (int attempts = 0; attempts < retryAttempts; ++attempts)
+    {
+        if (QFile::rename(oldPath, newPath))
+        {
+            return true;
+        }
+
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
+    }
+
+    return false;
+}
 
 bool CCryEditDoc::SaveLevel(const QString& filename)
 {
@@ -1210,7 +1325,7 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
     BackupBeforeSave();
 
     // need to copy existing level data before saving to different folder
-    const QString oldLevelFolder = Path::GetPath(GetPathName()); // get just the folder name
+    const QString oldLevelFolder = Path::GetPath(GetLevelPathName()); // get just the folder name
     QString newLevelFolder = Path::GetPath(fullPathName);
 
     CFileUtil::CreateDirectory(newLevelFolder.toUtf8().data());
@@ -1225,7 +1340,7 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
         pIPak->Lock();
 
         const QString oldLevelPattern = QDir(oldLevelFolder).absoluteFilePath("*.*");
-        const QString oldLevelName = Path::GetFile(GetPathName());
+        const QString oldLevelName = Path::GetFile(GetLevelPathName());
         const QString oldLevelXml = Path::ReplaceExtension(oldLevelName, "xml");
         _finddata_t findData;
         intptr_t findHandle = pIPak->FindFirst(oldLevelPattern.toUtf8().data(), &findData, 0, true);
@@ -1342,26 +1457,8 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
         QFile::remove(tempSaveFile);
         return false;
     }
-    
-    QFile(fullPathName).setPermissions(QFile::ReadOther | QFile::WriteOther);
-    QFile::remove(fullPathName);
 
-    // try a few times, something can lock the file (such as virus scanner, etc).
-    bool succeeded = false;
-    for (int attempts = 0; attempts < 10; attempts++)
-    {
-        if (!QFile::rename(tempSaveFile, fullPathName))
-        {
-            AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
-        }
-        else
-        {
-            succeeded = true;
-            break;
-        }
-    }
-
-    if (!succeeded)
+    if (!TryRenameFile(tempSaveFile, fullPathName))
     {
         gEnv->pLog->LogWarning("Unable to move file %s to %s when saving", tempSaveFile.toUtf8().data(), fullPathName.toUtf8().data());
         return false;
@@ -1388,7 +1485,158 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
     return true;
 }
 
-bool CCryEditDoc::LoadEntities(const QString& levelPakFile)
+bool CCryEditDoc::SaveSlice(const QString& filename)
+{
+    using namespace AzToolsFramework::SliceUtilities;
+
+    // Gather entities from live slice in memory
+    AZ::SliceComponent* liveSlice = nullptr;
+    AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(liveSlice, &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+    if (!liveSlice)
+    {
+        gEnv->pLog->LogWarning("Slice data not found.");
+        return false;
+    }
+
+    AZStd::unordered_set<AZ::EntityId> liveEntityIds;
+    if (!liveSlice->GetEntityIds(liveEntityIds))
+    {
+        gEnv->pLog->LogWarning("Error getting entities from slice.");
+        return false;
+    }
+
+
+    // Prevent save when there are multiple root entities.
+    bool foundRootEntity = false;
+    for (AZ::EntityId entityId : liveEntityIds)
+    {
+        AZ::EntityId parentId;
+        AZ::TransformBus::EventResult(parentId, entityId, &AZ::TransformBus::Events::GetParentId);
+        if (!parentId.IsValid())
+        {
+            if (foundRootEntity)
+            {
+                gEnv->pLog->LogWarning("Cannot save a slice with multiple root entities.");
+                return false;
+            }
+
+            foundRootEntity = true;
+        }
+    }
+
+    // Find target slice asset, and check if it's the same asset we opened
+    AZ::Data::AssetId targetAssetId;
+    AZ::Data::AssetCatalogRequestBus::BroadcastResult(targetAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath, filename.toUtf8().data(), azrtti_typeid<AZ::SliceAsset>(), false);
+
+    QString openedFilepath = Path::ToUnixPath(Path::GetRelativePath(m_slicePathName, true));
+    AZ::Data::AssetId openedAssetId;
+    AZ::Data::AssetCatalogRequestBus::BroadcastResult(openedAssetId, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetIdByPath, openedFilepath.toUtf8().data(), azrtti_typeid<AZ::SliceAsset>(), false);
+
+    if (!targetAssetId.IsValid() || openedAssetId != targetAssetId)
+    {
+        gEnv->pLog->LogWarning("Slice editor can only modify existing slices. 'New Slice' and 'Save As' are not currently supported.");
+        return false;
+    }
+
+    AZ::Data::Asset<AZ::SliceAsset> sliceAssetRef = AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(targetAssetId, true, nullptr, true); // blocking load
+    if (!sliceAssetRef)
+    {
+        gEnv->pLog->LogWarning("Error loading slice: %s", filename.toUtf8().data());
+        return false;
+    }
+
+    // Get entities from target slice asset.
+    AZ::SliceComponent* assetSlice = sliceAssetRef.Get()->GetComponent();
+    if (!assetSlice)
+    {
+        gEnv->pLog->LogWarning("Error reading slice: %s", filename.toUtf8().data());
+        return false;
+    }
+
+    AZStd::unordered_set<AZ::EntityId> assetEntityIds;
+    if (!assetSlice->GetEntityIds(assetEntityIds))
+    {
+        gEnv->pLog->LogWarning("Error getting entities from slice: %s", filename.toUtf8().data());
+        return false;
+    }
+
+    AZStd::unordered_set<AZ::EntityId> entityAdds;
+    AZStd::unordered_set<AZ::EntityId> entityUpdates;
+    AZStd::unordered_set<AZ::EntityId> entityRemovals = assetEntityIds;
+
+    for (AZ::EntityId liveEntityId : liveEntityIds)
+    {
+        entityRemovals.erase(liveEntityId);
+        if (assetEntityIds.find(liveEntityId) != assetEntityIds.end())
+        {
+            entityUpdates.insert(liveEntityId);
+        }
+        else
+        {
+            entityAdds.insert(liveEntityId);
+        }
+    }
+
+    // Make a transaction targeting the specified slice
+    SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginSlicePush(sliceAssetRef);
+    if (!transaction)
+    {
+        gEnv->pLog->LogWarning("Unable to update slice: %s", filename.toUtf8().data());
+        return false;
+    }
+
+    // Tell the transaction about all adds/updates/removals
+    for (AZ::EntityId id : entityAdds)
+    {
+        SliceTransaction::Result result = transaction->AddEntity(id);
+        if (!result)
+        {
+            gEnv->pLog->LogWarning("Error adding entity with ID %s to slice: %s\n\n%s",
+                id.ToString().c_str(), filename.toUtf8().data(), result.GetError().c_str());
+            return false;
+        }
+    }
+
+    for (AZ::EntityId id : entityRemovals)
+    {
+        SliceTransaction::Result result = transaction->RemoveEntity(id);
+        if (!result)
+        {
+            gEnv->pLog->LogWarning("Error removing entity with ID %s from slice: %s\n\n%s",
+                id.ToString().c_str(), filename.toUtf8().data(), result.GetError().c_str());
+            return false;
+        }
+    }
+
+    for (AZ::EntityId id : entityUpdates)
+    {
+        SliceTransaction::Result result = transaction->UpdateEntity(id);
+        if (!result)
+        {
+            gEnv->pLog->LogWarning("Error updating entity with ID %s in slice: %s\n\n%s",
+                id.ToString().c_str(), filename.toUtf8().data(), result.GetError().c_str());
+            return false;
+        }
+    }
+
+    // Commit
+    SliceTransaction::Result commitResult = transaction->Commit(
+        targetAssetId,
+        SlicePreSaveCallbackForWorldEntities,
+        nullptr,
+        SliceTransaction::SliceCommitFlags::DisableUndoCapture);
+
+    if (!commitResult)
+    {
+        gEnv->pLog->LogWarning("Failed to to save slice \"%s\".\n\nError:\n%s",
+            filename.toUtf8().data(), commitResult.GetError().c_str());
+        return false;
+    }
+
+    return true;
+}
+
+bool CCryEditDoc::LoadEntitiesFromLevel(const QString& levelPakFile)
 {
     bool loadedSuccessfully = false;
 
@@ -1434,6 +1682,29 @@ bool CCryEditDoc::LoadEntities(const QString& levelPakFile)
     return loadedSuccessfully;
 }
 
+bool CCryEditDoc::LoadEntitiesFromSlice(const QString& sliceFile)
+{
+    bool sliceLoaded = false;
+    {
+        AZ::IO::FileIOStream sliceFileStream(sliceFile.toUtf8().data(), AZ::IO::OpenMode::ModeRead);
+        if (!sliceFileStream.IsOpen())
+        {
+            AZ_Error("Editor", false, "Failed to load entities because the file \"%s\" could not be read.", sliceFile.toUtf8().data());
+            return false;
+        }
+
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(sliceLoaded, &AzToolsFramework::EditorEntityContextRequestBus::Events::LoadFromStream, sliceFileStream);
+    }
+
+    if (!sliceLoaded)
+    {
+        AZ_Error("Editor", false, "Failed to load entities from slice file \"%s\"", sliceFile.toUtf8().data());
+        return false;
+    }
+
+    return true;
+}
+
 bool CCryEditDoc::LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteCryFilePath)
 {
     ICryPak* pIPak = GetIEditor()->GetSystem()->GetIPak();
@@ -1467,7 +1738,7 @@ bool CCryEditDoc::LoadLevel(TDocMultiArchive& arrXmlAr, const QString& absoluteC
 
 void CCryEditDoc::Hold(const QString& holdName)
 {
-    if (!IsDocumentReady())
+    if (!IsDocumentReady() || GetEditMode() == CCryEditDoc::DocumentEditingMode::SliceEdit)
     {
         return;
     }
@@ -1490,7 +1761,7 @@ void CCryEditDoc::Hold(const QString& holdName)
 
 void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHoldFolder)
 {
-    if (!IsDocumentReady())
+    if (!IsDocumentReady() || GetEditMode() == CCryEditDoc::DocumentEditingMode::SliceEdit)
     {
         return;
     }
@@ -1536,7 +1807,7 @@ void CCryEditDoc::Fetch(const QString& holdName, bool bShowMessages, bool bDelHo
     LoadLevel(arrXmlAr, holdFilename);
 
     // Load AZ entities for the editor.
-    LoadEntities(holdFilename);
+    LoadEntitiesFromLevel(holdFilename);
 
     GetIEditor()->GetGameEngine()->SetLevelPath(levelPath);
     GetIEditor()->GetTerrainManager()->GetRGBLayer()->ClosePakForLoading(); //TODO: Support hold/fetch for terrain texture and remove this line
@@ -1917,24 +2188,27 @@ void CCryEditDoc::ForceSkyUpdate()
 
 BOOL CCryEditDoc::DoFileSave()
 {
-    // If the file to save is the temporary level it should 'save as' since temporary levels will get deleted
-    const char* temporaryLevelName = GetTemporaryLevelName();
-    if (QString::compare(GetIEditor()->GetLevelName(), temporaryLevelName) == 0)
+    if (GetEditMode() == CCryEditDoc::DocumentEditingMode::LevelEdit)
     {
-        QString filename;
-        if (CCryEditApp::instance()->GetDocManager()->DoPromptFileName(filename, ID_FILE_SAVE_AS, 0, false, nullptr)
-            && !filename.isEmpty() && !QFileInfo(filename).exists())
+        // If the file to save is the temporary level it should 'save as' since temporary levels will get deleted
+        const char* temporaryLevelName = GetTemporaryLevelName();
+        if (QString::compare(GetIEditor()->GetLevelName(), temporaryLevelName) == 0)
         {
-            if (SaveLevel(filename))
+            QString filename;
+            if (CCryEditApp::instance()->GetDocManager()->DoPromptFileName(filename, ID_FILE_SAVE_AS, 0, false, nullptr)
+                && !filename.isEmpty() && !QFileInfo(filename).exists())
             {
-                DeleteTemporaryLevel();
-                QString newLevelPath = filename.left(filename.lastIndexOf('/') + 1);
-                GetIEditor()->GetDocument()->SetPathName(filename);
-                GetIEditor()->GetGameEngine()->SetLevelPath(newLevelPath);
-                return TRUE;
+                if (SaveLevel(filename))
+                {
+                    DeleteTemporaryLevel();
+                    QString newLevelPath = filename.left(filename.lastIndexOf('/') + 1);
+                    GetIEditor()->GetDocument()->SetPathName(filename);
+                    GetIEditor()->GetGameEngine()->SetLevelPath(newLevelPath);
+                    return TRUE;
+                }
             }
+            return FALSE;
         }
-        return FALSE;
     }
     if (!IsDocumentReady())
     {
@@ -2196,7 +2470,7 @@ void CCryEditDoc::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, con
 {
     if (m_envProbeSliceAssetId == sliceAssetId)
     {
-        const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+        const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
         const AZ::Uuid editorEnvProbeComponentId("{8DBD6035-583E-409F-AFD9-F36829A0655D}");
         AzToolsFramework::EntityIdList entityIdList;
         for (const AZ::Entity* entity : entities)
@@ -2237,7 +2511,7 @@ namespace
 {
     bool PySaveLevel()
     {
-        if (!GetIEditor()->GetDocument()->DoSave(GetIEditor()->GetDocument()->GetPathName(), TRUE))
+        if (!GetIEditor()->GetDocument()->DoSave(GetIEditor()->GetDocument()->GetActivePathName(), TRUE))
         {
             return false;
         }

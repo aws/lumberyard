@@ -285,7 +285,7 @@ namespace AzFramework
         }
 
         //disconnect is public and can be pounded on by an app, so protect out threads
-        bool AssetProcessorConnection::Disconnect()
+        bool AssetProcessorConnection::Disconnect(bool completeDisconnect)
         {
             // the instant we enter this function the user's intention to stop retrying is clear, and we flip this atomic to false before
             // we end up in any locks or waits.
@@ -299,6 +299,12 @@ namespace AzFramework
                 }
             }
             StartThread(m_disconnectThread);
+
+            if (completeDisconnect)
+            {
+                JoinThread(m_disconnectThread);
+            }
+
             return true;
         }
 
@@ -306,7 +312,6 @@ namespace AzFramework
         //and if retry is set, restart the connect or listen thread, before dying itself
         void AssetProcessorConnection::DisconnectThread()
         {
-
             DebugMessage("AssetProcessorConnection::DisconnectThread - Disconnecting %d", m_socket);
 
             //set join on all the other threads so they can exit asap

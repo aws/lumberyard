@@ -3,6 +3,8 @@
     {
         "Root":
         [
+            "AzGameFrameworkModule.h",
+            "AzGameFrameworkModule.cpp"
         ],
         "API":
         [

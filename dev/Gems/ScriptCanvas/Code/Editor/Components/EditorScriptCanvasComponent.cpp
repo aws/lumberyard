@@ -256,7 +256,7 @@ namespace ScriptCanvasEditor
             auto scriptCanvasAsset = AZ::Data::AssetManager::Instance().FindAsset(assetId);
             if (!scriptCanvasAsset.IsReady())
             {
-                scriptCanvasAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, ScriptCanvasAssetHandler::GetAssetTypeStatic(), true, &AZ::ObjectStream::AssetFilterDefault, false);
+                scriptCanvasAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, ScriptCanvasAssetHandler::GetAssetTypeStatic(), true, nullptr, false);
             }
             m_scriptCanvasAssetHolder.SetAsset(scriptCanvasAsset);
         }

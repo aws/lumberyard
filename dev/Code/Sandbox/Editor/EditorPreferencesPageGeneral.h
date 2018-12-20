@@ -73,11 +73,19 @@ private:
         bool m_enableLegacyUIInitialValue;
     };
 
+    struct Messaging
+    {
+        AZ_TYPE_INFO(Messaging, "{A6AD87CB-E905-409B-A2BF-C43CDCE63B0C}")
+
+        bool m_showCircularDependencyError;
+    };
+
     struct Undo
     {
         AZ_TYPE_INFO(Undo, "{A3AC0728-F132-4BF2-B122-8A631B636E81}")
 
         int m_undoLevels;
+        bool m_undoSliceOverrideSaveValue;
     };
 
     struct DeepSelection
@@ -103,6 +111,7 @@ private:
     };
 
     GeneralSettings m_generalSettings;
+    Messaging m_messaging;
     Undo m_undo;
     DeepSelection m_deepSelection;
     VertexSnapping m_vertexSnapping;

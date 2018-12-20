@@ -753,6 +753,7 @@ struct SDecalProperties
         m_radius = 1.0f;
         m_depth = 1.0f;
         m_opacity = 1.0f;
+        m_angleAttenuation = 1.0f;
         m_maxViewDist = 8000.0f;
         m_minSpec = EngineSpec::Low;
     }
@@ -774,6 +775,7 @@ struct SDecalProperties
     float m_depth;
     const char* m_pMaterialName;
     float m_opacity;
+    float m_angleAttenuation;
     float m_maxViewDist;
     EngineSpec m_minSpec;
 };

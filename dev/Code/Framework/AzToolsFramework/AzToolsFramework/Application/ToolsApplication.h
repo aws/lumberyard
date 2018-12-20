@@ -52,7 +52,7 @@ namespace AzToolsFramework
         //////////////////////////////////////////////////////////////////////////
         // AzFramework::Application
         void StartCommon(AZ::Entity* systemEntity) override;
-        void RegisterCoreComponents() override;
+        void CreateStaticModules(AZStd::vector<AZ::Module*>& outModules) override;
         bool AddEntity(AZ::Entity* entity) override;
         bool RemoveEntity(AZ::Entity* entity) override;
         const char* GetCurrentConfigurationName() const override;
@@ -73,6 +73,7 @@ namespace AzToolsFramework
         void UndoPressed() override;
         void RedoPressed() override;
         void FlushUndo() override;
+        void FlushRedo() override;
         UndoSystem::URSequencePoint* BeginUndoBatch(const char* label) override;
         UndoSystem::URSequencePoint* ResumeUndoBatch(UndoSystem::URSequencePoint* token, const char* label) override;
         void EndUndoBatch() override;
@@ -101,10 +102,12 @@ namespace AzToolsFramework
         bool FindCommonRoot(const EntityIdSet& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, EntityIdList* topLevelEntities = nullptr) override;
         bool FindCommonRootInactive(const EntityList& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, EntityList* topLevelEntities = nullptr) override;
         void FindTopLevelEntityIdsInactive(const EntityIdList& entityIdsToCheck, EntityIdList& topLevelEntityIds) override;
+        AZ::SliceComponent::SliceInstanceAddress FindCommonSliceInstanceAddress(const EntityIdList& entityIds) override;
+        AZ::EntityId GetRootEntityIdOfSliceInstance(AZ::SliceComponent::SliceInstanceAddress sliceAddress) override;
 
         bool RequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const RequestEditProgressCallback& progressCallback) override;
         void RequestEditForFile(const char* assetPath, RequestEditResultCallback resultCallback) override;
-        
+
         void EnterEditorIsolationMode() override;
         void ExitEditorIsolationMode() override;
         bool IsEditorInIsolationMode() override;

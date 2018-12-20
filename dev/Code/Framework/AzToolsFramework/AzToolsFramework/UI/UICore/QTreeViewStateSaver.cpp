@@ -534,7 +534,7 @@ namespace AzToolsFramework
 
     void QTreeViewStateSaver::Reflect(AZ::ReflectContext* context)
     {
-        QTreeViewStateSaverData::Reflect(context);
+        QTreeViewWithStateSaving::Reflect(context);
     }
 
     void QTreeViewStateSaver::VerticalScrollChanged(int newValue)
@@ -587,12 +587,14 @@ namespace AzToolsFramework
         {
             // called because Qt doesn't emit a signal on expandAll
             m_treeStateSaver->CaptureSnapshot();
+
+            delete m_treeStateSaver;
         }
     }
 
     void QTreeViewWithStateSaving::InitializeTreeViewSaving(AZ::u32 storageID)
     {
-        SetupSaver(new QTreeViewStateSaver(storageID, this));
+        SetupSaver(new QTreeViewStateSaver(storageID));
     }
 
     void QTreeViewWithStateSaving::setModel(QAbstractItemModel* newModel)
@@ -617,9 +619,19 @@ namespace AzToolsFramework
         }
     }
 
+    void QTreeViewWithStateSaving::Reflect(AZ::ReflectContext* context)
+    {
+        QTreeViewStateSaverData::Reflect(context);
+    }
+
     void QTreeViewWithStateSaving::SetupSaver(QTreeViewStateSaver* stateSaver)
     {
         Q_ASSERT(!m_treeStateSaver); // can't call InitializeSaving twice!
+        if (m_treeStateSaver)
+        {
+            m_treeStateSaver->Detach();
+            delete m_treeStateSaver;
+        }
 
         m_treeStateSaver = stateSaver;
         m_treeStateSaver->Attach(this, model(), selectionModel());

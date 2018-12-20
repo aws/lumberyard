@@ -126,6 +126,16 @@ namespace LmbrCentral
         }
     }
 
+    AZ::ExportedComponent EditorLightComponent::ExportLightComponent(AZ::Component* thisComponent, const AZ::PlatformTagSet& /*platformTags*/)
+    {
+        EditorLightComponent* editorLightComponent = static_cast<EditorLightComponent*>(thisComponent);
+
+        LightComponent* lightComponent = aznew LightComponent();
+        lightComponent->m_configuration = editorLightComponent->m_configuration;
+
+        return AZ::ExportedComponent(lightComponent, true);
+    }
+
     void EditorLightComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -138,13 +148,12 @@ namespace LmbrCentral
             serializeContext->ClassDeprecate("EditorLightComponent", "{33BB1CD4-6A33-46AA-87ED-8BBB40D94B0D}", &ClassConverters::ConvertEditorLightComponent);
 
             serializeContext->Class<EditorLightComponent, EditorComponentBase>()
-                ->Version(1)
+                ->Version(2, &EditorLightComponent::VersionConverter)
                 ->Field("EditorLightConfiguration", &EditorLightComponent::m_configuration)
                 ->Field("CubemapRegen", &EditorLightComponent::m_cubemapRegen)
                 ->Field("CubemapClear", &EditorLightComponent::m_cubemapClear)
                 ->Field("ViewCubemap", &EditorLightComponent::m_viewCubemap)
                 ->Field("UseCustomizedCubemap", &EditorLightComponent::m_useCustomizedCubemap)
-                ->Field("cubemapAsset", &EditorLightComponent::m_cubemapAsset)
             ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -165,12 +174,6 @@ namespace LmbrCentral
                     ->DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorLightComponent::m_useCustomizedCubemap, "Use customized cubemap", "Check to enable usage of customized cubemap")
                         ->Attribute(AZ::Edit::Attributes::Visibility, &EditorLightComponent::IsProbe)
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightComponent::OnCustomizedCubemapChanged)
-
-                    //asset selection
-                    ->DataElement(0, &EditorLightComponent::m_cubemapAsset, "Cubemap asset", "Cubemap file path")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorLightComponent::IsProbe)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLightComponent::OnCubemapAssetChanged)
-                        ->Attribute(AZ::Edit::Attributes::ReadOnly,&EditorLightComponent::CanGenerateCubemap)
 
                     ->DataElement("Button", &EditorLightComponent::m_cubemapRegen, "Cubemap", "Generate the associated cubemap")
                         ->Attribute(AZ::Edit::Attributes::ButtonText, &EditorLightComponent::GetGenerateCubemapButtonName)
@@ -324,6 +327,18 @@ namespace LmbrCentral
         }
     }
 
+    bool EditorLightComponent::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() <= 1)
+        {
+            if (!classElement.RemoveElementByName(AZ_CRC("cubemapAsset", 0xc10ac43b)))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
     void EditorLightConfiguration::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -343,13 +358,13 @@ namespace LmbrCentral
                       Attribute(AZ::Edit::Attributes::AutoExpand, true)->
                       Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)->
 
-                    DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_visible, "Visible", "The current visibility status of this flare")->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
-                    
-                    DataElement(0, &LightConfiguration::m_onInitially, "On initially", "The light is initially turned on.")->
-
                     ClassElement(AZ::Edit::ClassElements::Group, "General Settings")->
                         Attribute(AZ::Edit::Attributes::AutoExpand, true)->
+
+                    DataElement(AZ::Edit::UIHandlers::CheckBox, &LightConfiguration::m_visible, "Visible", "The current visibility status of this flare")->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MajorPropertyChanged)->
+
+                    DataElement(0, &LightConfiguration::m_onInitially, "On initially", "The light is initially turned on.")->
 
                     DataElement(AZ::Edit::UIHandlers::Color, &LightConfiguration::m_color, "Color", "Light color")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::MinorPropertyChanged)->
@@ -511,6 +526,15 @@ namespace LmbrCentral
                         EnumAttribute(ResolutionSetting::Res256, "256")->
                         EnumAttribute(ResolutionSetting::Res512, "512")->
                             
+                    ClassElement(AZ::Edit::ClassElements::Group, "Cubemap Generation")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProbeLightVisibility)->
+                        Attribute(AZ::Edit::Attributes::AutoExpand, true)->
+
+                    DataElement(AZ::Edit::UIHandlers::Default, &LightConfiguration::m_probeCubemap, "Cubemap asset", "Cubemap file path")->
+                        Attribute(AZ::Edit::Attributes::Visibility, &LightConfiguration::GetProbeLightVisibility)->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LightConfiguration::OnCubemapAssetChanged)->
+                        Attribute(AZ::Edit::Attributes::ReadOnly,&LightConfiguration::CanGenerateCubemap)->
+
                     ClassElement(AZ::Edit::ClassElements::Group, "Animation")->
 
                     DataElement(0, &LightConfiguration::m_animIndex, "Style", "Light animation curve ID (\"style\") as it corresponds to values in Light.cfx")->
@@ -704,6 +728,28 @@ namespace LmbrCentral
         return AZ_CRC("RefreshNone", 0x98a5045b);
     }
 
+    AZ::Crc32 EditorLightConfiguration::OnCubemapAssetChanged()
+    { 
+        if (!m_component)
+        {
+            AZ_Error("Lighting", false, "Lighting configuration has a null component, unable to change CubemapAsset");
+            return 0;
+        }
+
+        return m_component->OnCubemapAssetChanged(); 
+    }
+
+    bool EditorLightConfiguration::CanGenerateCubemap() const
+    { 
+        if (!m_component)
+        {
+            AZ_Error("Lighting", false, "Lighting configuration has a null component, unable to generate Cubemap");
+            return false;
+        }
+
+        return m_component->CanGenerateCubemap(); 
+    }
+
     EditorLightComponent::EditorLightComponent()
         : m_useCustomizedCubemap(false)
         , m_viewCubemap(false)
@@ -726,16 +772,15 @@ namespace LmbrCentral
     {
         Base::Activate();
 
+        m_configuration.SetComponent(this);
         m_configuration.m_editorEntityId = GetEntityId();
-
-        m_cubemapAsset.SetAssetPath(m_configuration.m_probeCubemap.c_str());
 
         m_light.SetEntity(GetEntityId());
         RefreshLight();
 
         if (m_configuration.m_lightType == LightConfiguration::LightType::Probe)
         {
-            m_cubemapPreview.Setup(m_configuration.m_probeCubemap.c_str());
+            m_cubemapPreview.Setup(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
             AZ::Transform transform = AZ::Transform::Identity();
             AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
@@ -812,12 +857,12 @@ namespace LmbrCentral
 
     bool EditorLightComponent::HasCubemap() const
     {
-        return !m_configuration.m_probeCubemap.empty();
+        return !m_configuration.m_probeCubemap.GetAssetPath().empty();
     }
 
     const char* EditorLightComponent::GetCubemapAssetName() const
     {
-        return m_configuration.m_probeCubemap.c_str();
+        return m_configuration.m_probeCubemap.GetAssetPath().c_str();
     }
 
 
@@ -867,30 +912,19 @@ namespace LmbrCentral
         }
     }
     
-    void EditorLightComponent::BuildGameEntity(AZ::Entity* gameEntity)
-    {
-        LightComponent* lightComponent = gameEntity->CreateComponent<LightComponent>();
-
-        if (lightComponent)
-        {
-            lightComponent->m_configuration = m_configuration;
-        }
-    }
-    
     void EditorLightComponent::SetCubemap(const AZStd::string& cubemap)
     {
-        if (cubemap != m_configuration.m_probeCubemap)
+        if (cubemap != m_configuration.m_probeCubemap.GetAssetPath())
         {
             AzToolsFramework::ScopedUndoBatch undo("Cubemap Assignment");
 
-            m_cubemapAsset.SetAssetPath(cubemap.c_str());
-            m_configuration.m_probeCubemap = m_cubemapAsset.GetAssetPath();
-            m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.c_str());
+            m_configuration.m_probeCubemap.SetAssetPath(cubemap.c_str());
+            m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
             EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, AddDirtyEntity, GetEntityId());
         }
 
-        if (m_configuration.m_probeCubemap.empty())
+        if (m_configuration.m_probeCubemap.GetAssetPath().empty())
         {
             // Since the cubemap was simply cleared, there is no need to wait for an asset to be processed.
             // Instead, refresh the light now so the output will be cleared immediately.
@@ -924,8 +958,8 @@ namespace LmbrCentral
     void EditorLightComponent::OnCatalogAssetAdded(const AZ::Data::AssetId& assetId)
     {
         AZ::Data::AssetId cmAssetId;
-        EBUS_EVENT_RESULT(cmAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, m_cubemapAsset.GetAssetPath().c_str(), 
-            m_cubemapAsset.GetAssetType(), true);
+        EBUS_EVENT_RESULT(cmAssetId, AZ::Data::AssetCatalogRequestBus, GetAssetIdByPath, m_configuration.m_probeCubemap.GetAssetPath().c_str(), 
+            m_configuration.m_probeCubemap.GetAssetType(), true);
 
         if (cmAssetId == assetId)
         {
@@ -957,31 +991,33 @@ namespace LmbrCentral
         static const int diffStrSize = 5; //string len of "_diff"
 
         const char* specularCubemap = 0;
-        string specularName(m_cubemapAsset.GetAssetPath().c_str());
+        string specularName(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
         int strIndex = specularName.find(diffExt);
         if (strIndex >= 0)
         {
             specularName = specularName.substr(0, strIndex) + specularName.substr(strIndex + diffStrSize, specularName.length());
             specularCubemap = specularName.c_str();
-            m_cubemapAsset.SetAssetPath(specularName);
+            m_configuration.m_probeCubemap.SetAssetPath(specularName);
         }
 
-        //set value back to light configuration
-        m_configuration.m_probeCubemap = m_cubemapAsset.GetAssetPath();
-        m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.c_str());
+        m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
         RefreshLight();
 
         return AZ::Edit::PropertyRefreshLevels::ValuesOnly;
     }
 
+    void EditorLightConfiguration::SetComponent(EditorLightComponent* component)
+    {
+        m_component = component;
+    }
+
     AZ::Crc32 EditorLightComponent::OnCustomizedCubemapChanged()
     {
         //clean assets
-        m_cubemapAsset.SetAssetPath("");
-        m_configuration.m_probeCubemap = m_cubemapAsset.GetAssetPath();
-        m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.c_str());
+        m_configuration.m_probeCubemap.SetAssetPath("");
+        m_cubemapPreview.UpdateTexture(m_configuration.m_probeCubemap.GetAssetPath().c_str());
 
         RefreshLight();
 

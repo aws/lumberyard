@@ -959,6 +959,18 @@ namespace Audio
         virtual void GetMemoryInfo(SAudioImplMemoryInfo& oMemoryInfo) const = 0;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
+        // <title GetMemoryPoolInfo>
+        // Summary:
+        //      Retrieve a vector of memory pool infos.  The memory pools are defined and managed by
+        //      the audio middleware.
+        // Arguments:
+        //      None
+        // See Also:
+        //      GetMemoryInfo
+        ///////////////////////////////////////////////////////////////////////////////////////////////
+        virtual AZStd::vector<AudioImplMemoryPoolInfo> GetMemoryPoolInfo() = 0;
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////
         // <title CreateAudioSource>
         // Summary:
         //		Create a new Audio Input Source as specified by a configuration.

@@ -604,10 +604,6 @@ void C3DEngine::UnloadLevel()
     stl::free_container(m_RenderingPassCameras[1]);
     stl::free_container(m_deferredRenderComponentStreamingPriorityUpdates);
 
-    for (uint i = 0; i < m_lstCustomShadowFrustums.size(); ++i)
-    {
-        m_lstCustomShadowFrustums[i].~ShadowMapFrustum();
-    }
     stl::free_container(m_lstCustomShadowFrustums);
 
     m_nWindSamplePositions = 0;
@@ -1206,12 +1202,11 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
         char szTerrainWaterMatName[256];
         cry_strcpy(szTerrainWaterMatName, GetXMLAttribText(pInputNode, "Ocean", "Material", "EngineAssets/Materials/Water/Ocean_default"));
         m_pTerrainWaterMat = szTerrainWaterMatName[0] ? GetMatMan()->LoadMaterial(szTerrainWaterMatName, false) : nullptr;
-    }
 
-
-    if (m_pTerrain)
-    {
-        m_pTerrain->InitTerrainWater(m_pTerrainWaterMat);
+        if (m_pTerrain)
+        {
+            m_pTerrain->InitTerrainWater(m_pTerrainWaterMat);
+        }
     }
 
     m_oceanWindDirection = (float) atof(GetXMLAttribText(pInputNode, "OceanAnimation", "WindDirection", "1.0"));
@@ -1342,7 +1337,7 @@ void C3DEngine::LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID)
         ITexture* pTex = 0;
         if (cloudShadowTexture[0] != '\0')
         {
-            pTex = GetRenderer()->EF_LoadTexture(cloudShadowTexture);
+            pTex = GetRenderer()->EF_LoadTexture(cloudShadowTexture, FT_DONT_STREAM);
         }
 
         m_nCloudShadowTexId = pTex ? pTex->GetTextureID() : 0;

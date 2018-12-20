@@ -119,6 +119,7 @@ namespace AzFramework
         virtual void CalculateAppRoot(const char* appRootOverride = nullptr);
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
+        void CreateStaticModules(AZStd::vector<AZ::Module*>& outModules) override;
 
         //////////////////////////////////////////////////////////////////////////
         //! ApplicationRequests::Bus::Handler

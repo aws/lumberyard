@@ -12,15 +12,29 @@
 #include "StdAfx.h"
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/ComponentExport.h>
 #include <AzCore/Slice/SliceComponent.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 #include <AzFramework/Components/EditorEntityEvents.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+
 
 namespace AzToolsFramework
 {
     namespace Components
     {
+        /**
+         * Custom export callback for GenericComponentWrapper, invoked by the slice compiler.
+         * The Wrapper component simply exports the inner template, which is the runtime/non-editor component.
+         */
+        AZ::ExportedComponent ExportTemplateComponent(AZ::Component* thisComponent, const AZ::PlatformTagSet& /*platformTags*/)
+        {
+            GenericComponentWrapper* wrapper = static_cast<GenericComponentWrapper*>(thisComponent);
+            return AZ::ExportedComponent(wrapper->GetTemplate(), false);
+        }
+
         ////////////////////////////////////////////////////////////////////////
         // GenericComponentWrapper
         ////////////////////////////////////////////////////////////////////////
@@ -38,11 +52,12 @@ namespace AzToolsFramework
                 {
                     editContext->Class<GenericComponentWrapper>("GenericComponentWrapper", "This should be hidden!")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &GenericComponentWrapper::GetDisplayName)
-                        ->Attribute(AZ::Edit::Attributes::DescriptionTextOverride, &GenericComponentWrapper::GetDisplayDescription)
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                            ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &GenericComponentWrapper::GetDisplayName)
+                            ->Attribute(AZ::Edit::Attributes::DescriptionTextOverride, &GenericComponentWrapper::GetDisplayDescription)
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                            ->Attribute(AZ::Edit::Attributes::RuntimeExportCallback, &ExportTemplateComponent)
                         ->DataElement("", &GenericComponentWrapper::m_template, "m_template", "")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20));
+                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20));
                 }
             }
         }
@@ -144,16 +159,32 @@ namespace AzToolsFramework
         {
             if (m_template)
             {
-                gameEntity->AddComponent(m_template);
+                AZ::SerializeContext* context = nullptr;
+                AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+                if (!context)
+                {
+                    AZ_Error("GenericComponentWrapper", false, "Can't get serialize context from component application.");
+                    return;
+                }
+
+                gameEntity->AddComponent(context->CloneObject(m_template));
             }
         }
 
-        void GenericComponentWrapper::FinishedBuildingGameEntity(AZ::Entity* gameEntity)
+        AZ::ComponentValidationResult GenericComponentWrapper::ValidateComponentRequirements(const AZ::ImmutableEntityVector& sliceEntities) const
         {
+            AZ::ComponentValidationResult baseClassResult = EditorComponentBase::ValidateComponentRequirements(sliceEntities);
+            if (!baseClassResult.IsSuccess())
+            {
+                return baseClassResult;
+            }
+
             if (m_template)
             {
-                gameEntity->RemoveComponent(m_template);
+                return m_template->ValidateComponentRequirements(sliceEntities);
             }
+
+            return AZ::Success();
         }
 
         void GenericComponentWrapper::DisplayEntity(bool& handled)

@@ -1899,14 +1899,25 @@ class msvs_generator(BuildContext):
             filter_name = self.get_project_vs_filter(p.name)
 
             proj = p
-            filter_list = filter_name.split('/')
+            # folder list contains folder-only names of the relative project path
+            folder_list = filter_name.split('/')
+            # filter list contains collection of all relative paths leading to project path
+            filter_list = []
+            filter = ''
+            for folder in folder_list:
+                if filter:
+                    filter += '/'
+                filter += folder
+                filter_list.append(filter)
             filter_list.reverse()
-            for f in filter_list:
-                if f in seen:
-                    proj.parent = seen[f]
+            for filter in filter_list:
+                if filter in seen:
+                    proj.parent = seen[filter]
                     break
                 else:
-                    n = proj.parent = seen[f] = self.vsnode_vsdir(self, make_uuid(f), f)
+                    # get immediate parent folder
+                    folder = filter.split('/')[-1]
+                    n = proj.parent = seen[filter] = self.vsnode_vsdir(self, make_uuid(filter), folder)
                     self.all_projects.append(n)
                     proj = n
 

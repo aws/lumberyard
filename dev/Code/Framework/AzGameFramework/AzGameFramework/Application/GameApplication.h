@@ -30,8 +30,8 @@ namespace AzGameFramework
         GameApplication();
         ~GameApplication();
 
-        void RegisterCoreComponents() override;
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
+        void CreateStaticModules(AZStd::vector<AZ::Module*>& outModules) override;
 
         static void GetGameDescriptorPath(char(&outConfigFilename)[AZ_MAX_PATH_LEN], const char* gameName)
         {

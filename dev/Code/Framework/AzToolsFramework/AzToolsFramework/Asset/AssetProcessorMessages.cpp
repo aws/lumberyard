@@ -235,6 +235,56 @@ namespace AzToolsFramework
         }
 
         //---------------------------------------------------------------------
+        unsigned int GetAssetSafeFoldersRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetProcessor::GetAssetSafeFoldersRequest", 0xf58fd05c);
+            return messageType;
+        }
+
+        unsigned int GetAssetSafeFoldersRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void GetAssetSafeFoldersRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<GetAssetSafeFoldersRequest>()
+                    ->Version(1)
+                    ->SerializeWithNoData();
+            }
+        }
+
+        //---------------------------------------------------------------------
+        GetAssetSafeFoldersResponse::GetAssetSafeFoldersResponse(const AZStd::vector<AZStd::string>& assetSafeFolders)
+            : m_assetSafeFolders(assetSafeFolders)
+        {
+        }
+
+        GetAssetSafeFoldersResponse::GetAssetSafeFoldersResponse(AZStd::vector<AZStd::string>&& assetSafeFolders)
+            : m_assetSafeFolders(AZStd::move(assetSafeFolders))
+        {
+        }
+
+        unsigned int GetAssetSafeFoldersResponse::GetMessageType() const
+        {
+            return GetAssetSafeFoldersRequest::MessageType();
+        }
+
+        void GetAssetSafeFoldersResponse::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<GetAssetSafeFoldersResponse, BaseAssetProcessorMessage>()
+                    ->Version(1)
+                    ->Field("AssetSafeFolders", &GetAssetSafeFoldersResponse::m_assetSafeFolders);
+            }
+        }
+
+        //---------------------------------------------------------------------
         void FileInfosNotificationMessage::Reflect(AZ::ReflectContext* context)
         {
             auto serialize = azrtti_cast<AZ::SerializeContext*>(context);

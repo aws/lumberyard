@@ -42,6 +42,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-environment-probe.html")
+                        ->Attribute(AZ::Edit::Attributes::RuntimeExportCallback, &EditorLightComponent::ExportLightComponent)
                     ;
             }
         }

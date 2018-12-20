@@ -715,6 +715,10 @@ void CTrackViewSequenceManager::HandleObjectPreDelete(CBaseObject* pObject)
         pAnimNode->OnEntityRemoved();
     }
 
-    GetIEditor()->Notify(eNotify_OnReloadTrackView);
+    if (numAffectedAnimNodes > 0)
+    {
+        // Only reload trackview if the object being deleted has related anim nodes.
+        GetIEditor()->Notify(eNotify_OnReloadTrackView);
+    }
 }
 

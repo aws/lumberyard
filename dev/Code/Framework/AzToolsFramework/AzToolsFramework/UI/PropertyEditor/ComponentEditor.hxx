@@ -83,6 +83,7 @@ namespace AzToolsFramework
         AZStd::vector<AZ::Component*>& GetComponents();
         const AZStd::vector<AZ::Component*>& GetComponents() const;
 
+        void SetComponentOverridden(const bool overridden);
     Q_SIGNALS:
         void OnExpansionContractionDone();
         void OnDisplayComponentEditorMenu(const QPoint& position);

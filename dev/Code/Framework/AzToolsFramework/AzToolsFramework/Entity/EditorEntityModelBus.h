@@ -21,6 +21,8 @@ namespace AzToolsFramework
     public:
         virtual ~EditorEntityModelRequests() = default;
 
+        virtual void AddToChildrenWithOverrides(const EntityIdList& parentEntityIds, const AZ::EntityId& entityId) = 0;
+        virtual void RemoveFromChildrenWithOverrides(const EntityIdList& parentEntityIds, const AZ::EntityId& entityId) = 0;
     };
     using EditorEntityModelRequestBus = AZ::EBus<EditorEntityModelRequests>;
 }

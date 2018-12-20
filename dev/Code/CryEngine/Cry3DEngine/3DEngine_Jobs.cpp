@@ -311,9 +311,9 @@ ITimeOfDay* C3DEngine::GetTimeOfDay()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void C3DEngine::TraceFogVolumes(const Vec3& worldPos, ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo)
+void C3DEngine::TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality)
 {
-    CFogVolumeRenderNode::TraceFogVolumes(worldPos, fogVolumeContrib, passInfo);
+    CFogVolumeRenderNode::TraceFogVolumes(vPos, objBBox, fogVolData, passInfo, fogVolumeShadingQuality);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

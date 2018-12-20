@@ -235,7 +235,7 @@ namespace AZ
     // Non-member functionality belonging to the AZ namespace
     Vector3 ConvertQuaternionToEulerDegrees(const AZ::Quaternion& q)
     {
-        return q.GetEulerRadians();
+        return q.GetEulerDegrees();
     }
 
     AZ::Vector3 ConvertQuaternionToEulerRadians(const AZ::Quaternion& q)

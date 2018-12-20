@@ -180,6 +180,7 @@ namespace Audio
     private:
         void DrawAudioObjectDebugInfo(IRenderAuxGeom& auxGeom);
         void DrawATLComponentDebugInfo(IRenderAuxGeom& auxGeom, float fPosX, const float fPosY);
+        void DrawImplMemoryPoolDebugInfo(IRenderAuxGeom& auxGeom, float fPosX, float fPosY);
 
         CATLDebugNameStore m_oDebugNameStore;
         CryFixedStringT<MAX_AUDIO_CONTROL_NAME_LENGTH> m_sImplementationNameString;

@@ -14,7 +14,7 @@ import logging as lg
 import os
 import subprocess
 import time
-from aztest.common import SubprocessTimeoutException
+from aztest.common import subprocess_with_timeout
 
 logger = lg.getLogger(__name__)
 
@@ -35,35 +35,7 @@ def run_cmd_in_subprocess(cmd, cwd=None, timeout=None):
     if not os.path.isabs(cmd[0]):
         cmd = (os.path.join(cwd, cmd[0]),) + cmd[1:]
 
-    deadline = None
-    if timeout:
-        deadline = time.time() + timeout
-
-    logger.info("run cmd=[" + ', '.join(cmd) + "], cwd={}".format(cwd or "<none>"))
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=cwd)
-
-    while True:
-        # read up to 50 lines, to avoid deadlocks
-        for _ in range(50):
-            line = proc.stdout.readline(400)  # limit line size to avoid blocking
-
-            if line == "":
-                break
-            logger.info(line.strip())
-
-        proc.poll()
-
-        if proc.returncode is not None:
-            logger.info("AZTestRunner returned code: {}".format(proc.returncode))
-            return proc.returncode
-
-        if timeout and time.time() > deadline:
-            proc.terminate()
-            os.system("taskkill /f /pid {}".format(proc.pid))  # ensure process is terminated
-            raise SubprocessTimeoutException("Subprocess timed out after {} seconds. If this is too short, change it "
-                                             "in the command line arguments.".format(timeout))
-
-        time.sleep(0.005)
+    return subprocess_with_timeout(cmd, timeout, cwd)
 
 
 class Scanner:

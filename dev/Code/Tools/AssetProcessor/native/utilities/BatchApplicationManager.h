@@ -78,8 +78,6 @@ public:
 
     AssetProcessor::RCController* GetRCController() const;
 
-    AzToolsFramework::AssetDatabase::AssetDatabaseConnection* GetAssetDatabaseConnection() const;
-
     ConnectionManager* GetConnectionManager() const;
     ApplicationServer* GetApplicationServer() const;
 
@@ -174,7 +172,6 @@ private:
     AssetProcessor::AssetCatalog* m_assetCatalog = nullptr;
     AssetProcessor::AssetScanner* m_assetScanner = nullptr;
     AssetProcessor::RCController* m_rcController = nullptr;
-    AssetProcessor::AssetDatabaseConnection* m_assetDatabaseConnection = nullptr;
     AssetProcessor::AssetRequestHandler* m_assetRequestHandler = nullptr;
     AssetProcessor::BuilderManager* m_builderManager = nullptr;
 

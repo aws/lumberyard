@@ -96,6 +96,14 @@ namespace AzToolsFramework
             * @param scanFolder gets appended with the found folders.
             */
             virtual bool GetScanFolders(AZStd::vector<AZStd::string>& scanFolders) = 0;
+
+            /**
+            * Populates a list with folders that are safe to store assets in.
+            * This is a subset of the scan folders.
+            * @param scanFolder gets appended with the found folders.
+            * @return false if this process fails.
+            */
+            virtual bool GetAssetSafeFolders(AZStd::vector<AZStd::string>& assetSafeFolders) = 0;
         };
         
 

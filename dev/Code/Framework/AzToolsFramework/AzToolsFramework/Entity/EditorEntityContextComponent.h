@@ -13,6 +13,7 @@
 #define AZTOOLSFRAMEWORK_EDITORENTITYCONTEXTCOMPONENT_H
 
 #include <AzCore/Math/Uuid.h>
+#include <AzCore/Math/Quaternion.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Asset/AssetCommon.h>
@@ -82,6 +83,11 @@ namespace AzToolsFramework
         void DetachSliceEntities(const AzToolsFramework::EntityIdList& entities) override;
         void ResetEntitiesToSliceDefaults(AzToolsFramework::EntityIdList entities) override;
 
+        AZ::SliceComponent::SliceInstanceAddress CloneSubSliceInstance(
+            const AZ::SliceComponent::SliceInstanceAddress& sourceSliceInstanceAddress,
+            const AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sourceSubSliceInstanceAncestry,
+            const AZ::SliceComponent::SliceInstanceAddress& sourceSubSliceInstanceAddress,
+            AZ::SliceComponent::EntityIdToEntityIdMap* out_sourceToCloneEntityIdMap) override;
 
         AzFramework::SliceInstantiationTicket InstantiateEditorSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform) override;
         AZ::SliceComponent::SliceInstanceAddress CloneEditorSliceInstance(AZ::SliceComponent::SliceInstanceAddress sourceInstance, 
@@ -108,6 +114,7 @@ namespace AzToolsFramework
             const AZStd::unordered_set<AZ::EntityId>& entitiesInSelection,
             const AZ::EntityId& parentAfterReplacement,
             const AZ::Vector3& offsetAfterReplacement,
+            const AZ::Quaternion& rotationAfterReplacement,
             bool rootAutoCreated) override;
 
         bool MapEditorIdToRuntimeId(const AZ::EntityId& editorId, AZ::EntityId& runtimeId) override;
@@ -124,6 +131,11 @@ namespace AzToolsFramework
         void OnSlicePreInstantiate(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress) override;
         void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress) override;
         void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // AzFramework::EntityContext
+        void PrepareForContextReset() override;
         //////////////////////////////////////////////////////////////////////////
         
         //////////////////////////////////////////////////////////////////////////
@@ -198,6 +210,7 @@ namespace AzToolsFramework
                 const AZStd::unordered_set<AZ::EntityId>& entitiesInSelection,
                 const AZ::EntityId& parentAfterReplacement,
                 const AZ::Vector3& offsetAfterReplacement,
+                const AZ::Quaternion& rotationAfterReplacement,
                 bool rootAutoCreated)
             {
                 m_path = path;
@@ -206,6 +219,7 @@ namespace AzToolsFramework
                 m_entitiesInSelection.insert(entitiesInSelection.begin(), entitiesInSelection.end());
                 m_parentAfterReplacement = parentAfterReplacement;
                 m_offsetAfterReplacement = offsetAfterReplacement;
+                m_rotationAfterReplacement = rotationAfterReplacement,
                 m_rootAutoCreated = rootAutoCreated;
             }
 
@@ -223,6 +237,7 @@ namespace AzToolsFramework
             AZStd::unordered_set<AZ::EntityId>                  m_entitiesInSelection;
             AZ::EntityId                                        m_parentAfterReplacement;
             AZ::Vector3                                         m_offsetAfterReplacement;
+            AZ::Quaternion                                      m_rotationAfterReplacement;
             bool                                                m_rootAutoCreated;
             AzFramework::SliceInstantiationTicket               m_ticket;
         };

@@ -160,6 +160,29 @@ bool AssetRequestHandler::InvokeHandler(AzFramework::AssetSystem::BaseAssetProce
         AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
         return true;
     }
+    else if (message->GetMessageType() == AzToolsFramework::AssetSystem::GetAssetSafeFoldersRequest::MessageType())
+    {
+        AzToolsFramework::AssetSystem::GetAssetSafeFoldersRequest* request = azrtti_cast<AzToolsFramework::AssetSystem::GetAssetSafeFoldersRequest*>(message);
+        if (!request)
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Invalid Message Type: Message is not of type %d.Incoming message type is %d.\n",
+                AzToolsFramework::AssetSystem::GetAssetSafeFoldersRequest::MessageType(), message->GetMessageType());
+            return true;
+        }
+
+        bool success = true;;
+        AZStd::vector<AZStd::string> assetSafeFolders;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(success, &AzToolsFramework::AssetSystemRequestBus::Events::GetAssetSafeFolders, assetSafeFolders);
+        if (!success)
+        {
+            AZ_TracePrintf(AssetProcessor::ConsoleChannel, "Could not acquire a list of asset safe folders from the database.");
+        }
+
+
+        AzToolsFramework::AssetSystem::GetAssetSafeFoldersResponse response(AZStd::move(assetSafeFolders));
+        AssetProcessor::ConnectionBus::Event(key.first, &AssetProcessor::ConnectionBusTraits::SendResponse, key.second, response);
+        return true;
+    }
 
     else if (message->GetMessageType() == RegisterSourceAssetRequest::MessageType())
     {

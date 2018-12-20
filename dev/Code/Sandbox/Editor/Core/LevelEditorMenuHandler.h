@@ -47,6 +47,8 @@ public:
 
     // It's used when users update the Tool Box Macro list in the Configure Tool Box Macro dialog
     void UpdateMacrosMenu();
+
+    void SetupSliceSelectMenu(AZ::EntityId selectedId);
 Q_SIGNALS:
     void ActivateAssetImporter();
 
@@ -102,6 +104,8 @@ private:
 
     QMenu* m_mostRecentLevelsMenu = nullptr;
     QMenu* m_mostRecentProjectsMenu = nullptr;
+    QMenu* m_editmenu = nullptr;
+    QMenu* m_selectSliceRootMenu = nullptr;
     ActionManager::MenuWrapper m_cloudMenu;
 
     ActionManager::MenuWrapper m_viewPanesMenu;

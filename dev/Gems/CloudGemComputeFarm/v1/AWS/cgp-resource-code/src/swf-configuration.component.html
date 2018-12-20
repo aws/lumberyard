@@ -65,7 +65,7 @@
             <thead>
                 <tr>
                     <th class="select-column">
-                        <input #selectAllSpeeches type="checkbox" [id]="'select-all'" [name]="'select-all'" [(ngModel)]="selectAllResults" (click)="selectAll()">
+                        <input #selectAllSpeeches type="checkbox" [id]="'select-all'" [name]="'select-all'" [(ngModel)]="selectAllResults" (change)="selectAll()">
                         <label [attr.for]="'select-all'"></label>
                     </th>
                     <th class="result-column">BUILD RESULT</th>

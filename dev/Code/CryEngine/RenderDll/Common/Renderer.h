@@ -1705,8 +1705,8 @@ public:
     };
     virtual void SetProfileMarker(const char* label, ESPM mode) const {};
 
-    virtual uint16 PushFogVolumeContribution(const ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo);
-    void GetFogVolumeContribution(uint16 idx, ColorF& rColor) const;
+    virtual uint16 PushFogVolumeContribution(const SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo);
+    void GetFogVolumeContribution(uint16 idx, SFogVolumeData& fogVolData) const;
     virtual void PushFogVolume(class CREFogVolume* pFogVolume, const SRenderingPassInfo& passInfo) {assert(false); }
 
     virtual int GetMaxTextureSize() { return m_MaxTextureSize; }

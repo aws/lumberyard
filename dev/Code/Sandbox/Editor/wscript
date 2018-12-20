@@ -293,4 +293,3 @@ def build(bld):
     if tsk_gen != None:
         # Copy Resource.h for Ribbon UI
         tsk_gen.create_task('copy_outputs', tsk_gen.path.make_node('Resource.h'), bld.srcnode.make_node('Editor/UI/Resource.h') )
-

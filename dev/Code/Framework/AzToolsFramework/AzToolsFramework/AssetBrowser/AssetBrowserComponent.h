@@ -65,6 +65,9 @@ namespace AzToolsFramework
             void Activate() override;
             void Deactivate() override;
             static void Reflect(AZ::ReflectContext* context);
+            static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& services);
+            static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+            static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
             //////////////////////////////////////////////////////////////////////////
             // AssetDatabaseLocationNotificationBus
@@ -103,8 +106,6 @@ namespace AzToolsFramework
 
             void PopulateAssets();
             void UpdateAssets();
-
-            static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         private:
             AZStd::shared_ptr<AssetDatabase::AssetDatabaseConnection> m_databaseConnection;
             AZStd::shared_ptr<RootAssetBrowserEntry> m_rootEntry;

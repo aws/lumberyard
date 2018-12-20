@@ -20,23 +20,16 @@
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
+#include <AzToolsFramework/AzToolsFrameworkModule.h>
 #include <AzToolsFramework/Undo/UndoSystem.h>
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/Commands/SelectionCommand.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
-#include <AzToolsFramework/ToolsComponents/EditorLockComponent.h>
-#include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
-#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
-#include <AzToolsFramework/ToolsComponents/SelectionComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorAssetMimeDataContainer.h>
 #include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
-#include <AzToolsFramework/ToolsComponents/ScriptEditorComponent.h>
-#include <AzToolsFramework/ToolsComponents/EditorSelectionAccentSystemComponent.h>
-#include <AzToolsFramework/ToolsComponents/EditorDisabledCompositionComponent.h>
-#include <AzToolsFramework/ToolsComponents/EditorPendingCompositionComponent.h>
-#include <AzToolsFramework/ToolsComponents/EditorEntityIconComponent.h>
+#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
@@ -45,7 +38,6 @@
 #include <AzToolsFramework/Archive/SevenZipComponent.h>
 #include <AzToolsFramework/Asset/AssetSystemComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
-#include <AzCore/Component/Component.h>
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 #include <AzToolsFramework/UI/UICore/QWidgetSavedState.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
@@ -57,9 +49,6 @@
 #include <AzToolsFramework/Entity/EditorEntityModelComponent.h>
 #include <AzToolsFramework/Slice/SliceDependencyBrowserComponent.h>
 #include <AzToolsFramework/UI/LegacyFramework/MainWindowSavedState.h>
-#include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
-#include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
-#include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
 
 #include <QtWidgets/QMessageBox>
 #include <QDir>
@@ -362,35 +351,11 @@ namespace AzToolsFramework
         Stop();
     }
 
-    void ToolsApplication::RegisterCoreComponents()
+    void ToolsApplication::CreateStaticModules(AZStd::vector<AZ::Module*>& outModules)
     {
-        AzFramework::Application::RegisterCoreComponents();
+        AzFramework::Application::CreateStaticModules(outModules);
 
-        RegisterComponentDescriptor(Components::TransformComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::SelectionComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::GenericComponentWrapper::CreateDescriptor());
-        RegisterComponentDescriptor(Components::GenericComponentUnwrapper::CreateDescriptor());
-        RegisterComponentDescriptor(Components::PropertyManagerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::ScriptEditorComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorSelectionAccentSystemComponent::CreateDescriptor());
-        RegisterComponentDescriptor(EditorEntityContextComponent::CreateDescriptor());
-        RegisterComponentDescriptor(SliceMetadataEntityContextComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorEntityActionComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorEntityIconComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorInspectorComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorLockComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorPendingCompositionComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorVisibilityComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorDisabledCompositionComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorEntitySortComponent::CreateDescriptor());
-        RegisterComponentDescriptor(Components::EditorEntityModelComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AssetSystem::AssetSystemComponent::CreateDescriptor());
-        RegisterComponentDescriptor(PerforceComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AzToolsFramework::SevenZipComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AzToolsFramework::SliceDependencyBrowserComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AzToolsFramework::Thumbnailer::ThumbnailerComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor());
-        RegisterComponentDescriptor(AzToolsFramework::MaterialBrowser::MaterialBrowserComponent::CreateDescriptor());
+        outModules.emplace_back(aznew AzToolsFrameworkModule);
     }
 
     AZ::ComponentTypeList ToolsApplication::GetRequiredSystemComponents() const
@@ -484,7 +449,7 @@ namespace AzToolsFramework
         AssetBrowser::SourceAssetBrowserEntry::Reflect(context);
         AssetBrowser::ProductAssetBrowserEntry::Reflect(context);
 
-        QTreeViewStateSaver::Reflect(context);
+        QTreeViewWithStateSaving::Reflect(context);
         QWidgetSavedState::Reflect(context);
         SliceUtilities::Reflect(context);
     }
@@ -563,20 +528,8 @@ namespace AzToolsFramework
         }
     }
 
-    void ToolsApplication::PostExportEntity(AZ::Entity& source, AZ::Entity& target)
+    void ToolsApplication::PostExportEntity(AZ::Entity& /*source*/, AZ::Entity& /*target*/)
     {
-        const AZ::Entity::ComponentArrayType& editorComponents = source.GetComponents();
-
-        for (AZ::Component* component : editorComponents)
-        {
-            Components::EditorComponentBase* asEditorComponent =
-                azrtti_cast<Components::EditorComponentBase*>(component);
-
-            if (asEditorComponent)
-            {
-                asEditorComponent->FinishedBuildingGameEntity(&target);
-            }
-        }
     }
 
     const char* ToolsApplication::GetCurrentConfigurationName() const
@@ -911,6 +864,59 @@ namespace AzToolsFramework
         }
     }
 
+    AZ::SliceComponent::SliceInstanceAddress ToolsApplication::FindCommonSliceInstanceAddress(const EntityIdList& entityIds)
+    {
+        AZ::SliceComponent::SliceInstanceAddress result;
+
+        if (entityIds.empty())
+        {
+            return result;
+        }
+
+        AzFramework::EntityIdContextQueryBus::EventResult(result, entityIds[0], &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
+        for (int index = 1; index < entityIds.size(); index++)
+        {   
+            AZ::SliceComponent::SliceInstanceAddress sliceAddressTemp;
+            AzFramework::EntityIdContextQueryBus::EventResult(sliceAddressTemp, entityIds[index], &AzFramework::EntityIdContextQueryBus::Events::GetOwningSlice);
+            if (sliceAddressTemp != result)
+            {
+                // Entities come from different slice instances.
+                return AZ::SliceComponent::SliceInstanceAddress();
+            }
+        }
+
+        return result;
+    }
+
+    AZ::EntityId ToolsApplication::GetRootEntityIdOfSliceInstance(AZ::SliceComponent::SliceInstanceAddress sliceAddress)
+    {
+        AZ::EntityId result;
+        if (!sliceAddress.IsValid())
+        {
+            return result;
+        }
+
+        const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset = sliceAddress.GetReference()->GetSliceAsset();
+        AZ::SliceComponent::EntityList sliceAssetEntities;
+        sliceAsset.Get()->GetComponent()->GetEntities(sliceAssetEntities);
+
+        AZ::EntityId commonRootEntityId;
+        AzToolsFramework::EntityList topLevelEntities;
+
+        FindCommonRootInactive(sliceAssetEntities, commonRootEntityId, &topLevelEntities);
+        if (!topLevelEntities.empty())
+        {
+            const AZ::SliceComponent::EntityIdToEntityIdMap& baseToInstanceEntityIdMap = sliceAddress.GetInstance()->GetEntityIdMap();
+            auto foundItr = baseToInstanceEntityIdMap.find(topLevelEntities[0]->GetId());
+            if (foundItr != baseToInstanceEntityIdMap.end())
+            {
+                result = foundItr->second;
+            }
+        }
+
+        return result;
+    }
+
     bool ToolsApplication::RequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const ToolsApplicationRequests::RequestEditProgressCallback& progressCallback)
     {
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
@@ -1056,6 +1062,14 @@ namespace AzToolsFramework
 
         m_dirtyEntities.clear();
         m_isDuringUndoRedo = false;
+    }
+
+    void ToolsApplication::FlushRedo()
+    {
+        if (m_undoStack)
+        {
+            m_undoStack->Slice();
+        }
     }
 
     UndoSystem::URSequencePoint* ToolsApplication::BeginUndoBatch(const char* label)

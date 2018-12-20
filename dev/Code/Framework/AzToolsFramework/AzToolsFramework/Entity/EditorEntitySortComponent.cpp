@@ -139,8 +139,7 @@ namespace AzToolsFramework
             {
                 m_childEntityOrderArray = entityOrderArray;
                 RebuildEntityOrderCache();
-                EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
-                m_entityOrderIsDirty = true;
+                MarkDirtyAndSendChangedEvent();
                 return true;
             }
             return false;
@@ -163,9 +162,8 @@ namespace AzToolsFramework
                     RebuildEntityOrderCache();
                 }
 
-                EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
-                m_entityOrderIsDirty = true;
-                
+                MarkDirtyAndSendChangedEvent();
+
                 // Use the ToolsApplication to mark the entity dirty, this will only do something if we already have an undo batch
                 ToolsApplicationRequestBus::Broadcast(&ToolsApplicationRequestBus::Events::AddDirtyEntity, GetEntityId());
                 
@@ -183,8 +181,7 @@ namespace AzToolsFramework
                 m_childEntityOrderArray.erase(m_childEntityOrderArray.begin() + entityItr->second);
                 RebuildEntityOrderCache();
 
-                EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
-                m_entityOrderIsDirty = true;
+                MarkDirtyAndSendChangedEvent();
 
                 // Use the ToolsApplication to mark the entity dirty, this will only do something if we already have an undo batch
                 ToolsApplicationRequestBus::Broadcast(&ToolsApplicationRequestBus::Events::AddDirtyEntity, GetEntityId());
@@ -223,8 +220,18 @@ namespace AzToolsFramework
                 }
 
                 RebuildEntityOrderCache();
+
+                m_entityOrderIsDirty = (m_childEntityOrderArray.size() != m_childEntityOrderEntryArray.size());
                 EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
             }
+        }
+
+        void EditorEntitySortComponent::MarkDirtyAndSendChangedEvent()
+        {
+            // mark the order as dirty before sending the ChildEntityOrderArrayUpdated event in order for PrepareSave to be properly handled in the case 
+            // one of the event listeners needs to build the InstanceDataHierarchy
+            m_entityOrderIsDirty = true;
+            EditorEntitySortNotificationBus::Event(GetEntityId(), &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
         }
 
         void EditorEntitySortComponent::Init()

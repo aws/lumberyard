@@ -5,6 +5,10 @@
         ]
     },
     "auto": {
+        "Root": [
+            "AzFrameworkModule.h",
+            "AzFrameworkModule.cpp"
+        ],
         "API": [
             "API/ApplicationAPI.h",
             "API/BootstrapReaderBus.h"

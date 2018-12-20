@@ -144,6 +144,7 @@ namespace Audio
         // Below data is only used when INCLUDE_WWISE_IMPL_PRODUCTION_CODE is defined!
         const char* const GetImplementationNameString() const override;
         void GetMemoryInfo(SAudioImplMemoryInfo& oMemoryInfo) const override;
+        AZStd::vector<AudioImplMemoryPoolInfo> GetMemoryPoolInfo() override;
 
         bool CreateAudioSource(const SAudioInputConfig& sourceConfig) override;
         void DestroyAudioSource(TAudioSourceId sourceId) override;
@@ -201,6 +202,7 @@ namespace Audio
 #endif // !WWISE_FOR_RELEASE
 
 #if defined(INCLUDE_WWISE_IMPL_PRODUCTION_CODE)
+        AZStd::vector<AudioImplMemoryPoolInfo> m_debugMemoryPoolInfo;
         CryFixedStringT<MAX_AUDIO_FILE_PATH_LENGTH> m_sFullImplString;
 #endif // INCLUDE_WWISE_IMPL_PRODUCTION_CODE
     };

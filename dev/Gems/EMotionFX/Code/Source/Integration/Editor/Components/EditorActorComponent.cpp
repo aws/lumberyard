@@ -138,7 +138,7 @@ namespace EMotionFX
             , m_skinningMethod(SkinningMethod::DualQuat)
             , m_attachmentType(AttachmentType::None)
             , m_attachmentJointIndex(0)
-            , m_actorAsset(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_NO_LOAD))
+            , m_actorAsset(AZ::Data::AssetLoadBehavior::NoLoad)
         {
         }
 

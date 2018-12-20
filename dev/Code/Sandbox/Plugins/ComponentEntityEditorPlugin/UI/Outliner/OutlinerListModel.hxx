@@ -19,6 +19,7 @@
 #include <QtWidgets/QCheckBox>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Component/EntityBus.h>
+#include <AzCore/Asset/AssetCommon.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/UI/SearchWidget/SearchCriteriaWidget.hxx>
 
@@ -29,6 +30,11 @@
 #include <AzToolsFramework/API/EntityCompositionNotificationBus.h>
 
 #pragma once
+
+namespace EntityOutliner
+{
+    enum class DisplaySortMode : unsigned char;
+}
 
 //! Model for items in the OutlinerTreeView.
 //! Each item represents an Entity.
@@ -67,6 +73,7 @@ public:
     {
         VisibilityRole = Qt::UserRole + 1,
         SliceBackgroundRole,
+        SliceEntityOverrideRole,
         EntityIdRole,
         EntityTypeRole,
         SelectedRole,
@@ -88,6 +95,8 @@ public:
 
     // 8 Pixels of spacing is appropriate and matches the outliner concept work from the UI team.
     static const int s_OutlinerSpacing = 8;
+
+    static bool s_paintingName;
 
     OutlinerListModel(QObject* parent = nullptr);
     ~OutlinerListModel();
@@ -119,6 +128,16 @@ public:
 
     bool FilterEntity(const AZ::EntityId& entityId);
 
+    void EnableAutoExpand(bool enable);
+
+    AZStd::string GetFilterString() const
+    {
+        return m_filterString;
+    }
+
+    void SetSortMode(EntityOutliner::DisplaySortMode sortMode) { m_sortMode = sortMode; }
+
+    void SetDropOperationInProgress(bool inProgress);
 Q_SIGNALS:
     void ExpandEntity(const AZ::EntityId& entityId, bool expand);
     void SelectEntity(const AZ::EntityId& entityId, bool select);
@@ -159,11 +178,16 @@ protected:
     void QueueAncestorUpdate(AZ::EntityId entityId);
     void QueueEntityToExpand(AZ::EntityId entityId, bool expand);
     void ProcessEntityUpdates();
+    void ProcessEntityInfoResetEnd();
     AZStd::unordered_set<AZ::EntityId> m_entitySelectQueue;
     AZStd::unordered_set<AZ::EntityId> m_entityExpandQueue;
     AZStd::unordered_set<AZ::EntityId> m_entityChangeQueue;
     bool m_entityChangeQueued;
     bool m_entityLayoutQueued;
+    bool m_dropOperationInProgress = false;
+
+    bool m_autoExpandEnabled = true;
+    bool m_layoutResetQueued = false;
 
     AZStd::string m_filterString;
     AZStd::vector<AZ::Uuid> m_componentFilters;
@@ -188,12 +212,20 @@ protected:
     void OnEntityInfoUpdatedVisibility(AZ::EntityId entityId, bool visible) override;
     void OnEntityInfoUpdatedName(AZ::EntityId entityId, const AZStd::string& name) override;
 
-    // Drag and Drop
+    // Drag/Drop of components from Component Palette.
     bool dropMimeDataComponentPalette(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent);
-    bool dropMimeDataComponentAssets(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent);
+
+    // Drag/Drop of entities.
+    bool canDropMimeDataForEntityIds(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const;
     bool dropMimeDataEntities(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent);
 
-    bool canDropMimeDataForEntityIds(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const;
+    // Drag/Drop of assets from asset browser.
+    using ComponentAssetPair = AZStd::pair<AZ::TypeId, AZ::Data::AssetId>;
+    using ComponentAssetPairs = AZStd::vector<ComponentAssetPair>;
+    using SliceAssetList = AZStd::vector<AZ::Data::AssetId>;
+    void DecodeAssetMimeData(const QMimeData* data, ComponentAssetPairs& componentAssetPairs, SliceAssetList& sliceAssets) const;
+    bool DropMimeDataAssets(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent);
+    bool CanDropMimeDataAssets(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const;
 
     QMap<int, QVariant> itemData(const QModelIndex &index) const;
     QVariant dataForAll(const QModelIndex& index, int role) const;
@@ -224,6 +256,15 @@ protected:
     void CacheSelectionIfAppropriate();
     void RestoreSelectionIfAppropriate();
     bool ShouldOverrideUnfilteredSelection();
+
+    EntityOutliner::DisplaySortMode m_sortMode;
+
+private:
+    QVariant GetEntityIcon(const AZ::EntityId& id) const;
+
+    const char* circleIconColor = "#ff7b00";
+    const int circleIconDiameter = 5;
+    const int maskDiameter = 8;  
 };
 
 // Class used to identify the visibility checkbox element for styling purposes

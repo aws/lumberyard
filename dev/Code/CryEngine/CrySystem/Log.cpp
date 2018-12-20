@@ -55,10 +55,12 @@
 #if defined(IOS) || defined(APPLETV)
 #include "SystemUtilsApple.h"
 #endif
+
 //////////////////////////////////////////////////////////////////////
 namespace LogCVars
 {
     float s_log_tick = 0;
+    int max_backup_directory_size_mb = 200; //200MB default
 };
 
 #ifndef _RELEASE
@@ -97,6 +99,9 @@ CLog::CLog(ISystem* pSystem)
 
     m_iLastHistoryItem = 0;
     memset(m_history, 0, sizeof(m_history));
+
+    CheckAndPruneBackupLogs();
+
 }
 
 void CLog::RegisterConsoleVariables()
@@ -156,6 +161,8 @@ void CLog::RegisterConsoleVariables()
         m_pLogModule = REGISTER_STRING("log_Module", "", VF_NULL, "Only show warnings from specified module");
 
         REGISTER_CVAR2("log_tick", &LogCVars::s_log_tick, LogCVars::s_log_tick, 0, "When not 0, writes tick log entry into the log file, every N seconds");
+
+        REGISTER_CVAR2("max_log_backup_mb", &LogCVars::max_backup_directory_size_mb, LogCVars::max_backup_directory_size_mb, 0, "Maximum size of backup logs to keep on disk (in MB)");
 
 #if defined(KEEP_LOG_FILE_OPEN)
         REGISTER_COMMAND("log_flush", &LogFlushFile, 0, "Flush the log file");
@@ -1354,8 +1361,59 @@ void CLog::CreateBackupFile() const
     fileSystem->CreatePath(LOG_BACKUP_PATH);
     cry_strcpy(m_sBackupFilename, bakdest.c_str());
     fileSystem->Copy(m_szFilename, bakdest);
-
 #endif // AZ_LEGACY_CRYSYSTEM_TRAIT_ALLOW_CREATE_BACKUP_LOG_FILE
+}
+
+void CLog::CheckAndPruneBackupLogs() const
+{
+    AZ::IO::FileIOBase* fileSystem = AZ::IO::FileIOBase::GetDirectInstance();
+
+    AZ::u64 totalBackupDirectorySize = 0;
+
+    struct fileInfo
+    {
+        time_t modTime;
+        AZStd::string filename;
+        AZ::u64 filesize;
+
+        fileInfo(time_t _modTime, const char* _name, AZ::u64 _size)
+        {
+            modTime = _modTime;
+            filename = _name;
+            filesize = _size;
+        }
+    };
+
+    AZStd::list<fileInfo> fileInfoList;
+
+    // Now that we've copied the new log over, lets check the size of the backup folder and trim it as necessary to keep it within appropriate limits
+    AZ::IO::Result res = fileSystem->FindFiles(LOG_BACKUP_PATH, "*.*",
+        [&totalBackupDirectorySize, &fileSystem, &fileInfoList](const char* fileName)
+    {
+        AZ::u64 size;
+        fileSystem->Size(fileName, size);
+        AZ::u64 modTime = fileSystem->ModificationTime(fileName);
+        fileInfoList.push_back(fileInfo(modTime, fileName, size));
+
+        totalBackupDirectorySize += size;
+        return true;
+    });
+
+    AZ::u64 max_size = LogCVars::max_backup_directory_size_mb;
+    max_size = max_size << 20;  // Convert from MB to bytes
+
+    if (totalBackupDirectorySize > max_size)
+    {
+        // Sort the list from lowest to highest modtime (oldest to newest logs)
+        fileInfoList.sort([](const fileInfo &a, const fileInfo&b) { return a.modTime < b.modTime; });
+
+        while (totalBackupDirectorySize > max_size && fileInfoList.size() > 0)
+        {
+            fileSystem->Remove(fileInfoList.front().filename.c_str());
+            totalBackupDirectorySize -= fileInfoList.front().filesize;
+            fileInfoList.pop_front();
+        }
+    }
 }
 
 //set the file used to log to disk

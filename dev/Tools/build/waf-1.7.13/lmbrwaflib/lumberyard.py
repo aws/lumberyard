@@ -598,7 +598,10 @@ def clear_waf_timestamp_files(conf):
     check_timestamp_files = CONFIGURE_TIMESTAMP_FILES
     for check_timestamp_file in check_timestamp_files:
         check_timestamp_node = conf.get_bintemp_folder_node().make_node(check_timestamp_file)
-        check_timestamp_node.write('')
+        if not os.path.exists(check_timestamp_node.abspath()):
+            check_timestamp_node.write('')
+        else:
+            os.utime(check_timestamp_node.abspath(), None)
 
 @conf
 def validate_build_command(bld):

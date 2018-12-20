@@ -373,6 +373,7 @@ struct CVars
     DeclareConstIntCVar(e_TerrainTextureDebug, 0);
     int e_Entities;
     int e_CoverageBuffer;
+    int e_FogVolumeShadingQuality;
     int e_ScreenShotQuality;
     DeclareConstFloatCVar(e_FoliageBranchesDamping);
     int e_levelStartupFrameNum;

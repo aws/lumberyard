@@ -500,9 +500,7 @@ namespace AZ
 
             //Write out MTL data from rapidXML then write mtl file to disk. 
             AZStd::vector<char> buffer;
-            IO::ByteContainerStream<AZStd::vector<char>> stream(&buffer);
-            IO::RapidXMLStreamWriter streamWriter(&stream);
-            rapidxml::print(streamWriter, m_mtlDoc);
+            rapidxml::print(AZStd::back_inserter(buffer), m_mtlDoc);
 
             mtlFile.Write(buffer.data(), buffer.size());
             mtlFile.Close();

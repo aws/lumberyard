@@ -20,6 +20,7 @@
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 
 #include "MeshComponent.h"
@@ -36,6 +37,7 @@ namespace LmbrCentral
     class EditorMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , public AZ::Data::AssetBus::Handler
+        , private CryPhysicsComponentRequestBus::Handler
         , private MeshComponentRequestBus::Handler
         , private MaterialOwnerRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
@@ -58,6 +60,13 @@ namespace LmbrCentral
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
+
+        // CryPhysicsComponentRequests
+        IPhysicalEntity* GetPhysicalEntity() override;
+        void GetPhysicsParameters(pe_params& outParameters) override;
+        void SetPhysicsParameters(const pe_params& parameters) override;
+        void GetPhysicsStatus(pe_status& outStatus) override;
+        void ApplyPhysicsAction(const pe_action& action, bool threadSafe) override;
 
         // MeshComponentRequestBus
         AZ::Aabb GetWorldBounds() override;

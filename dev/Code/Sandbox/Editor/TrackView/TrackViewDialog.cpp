@@ -142,7 +142,6 @@ CTrackViewDialog::CTrackViewDialog(QWidget* pParent /*=NULL*/)
 
     m_lazyInitDone = false;
     m_bEditLock = false;
-    m_newSequenceLock = false;
 
     m_pNodeForTracksToolBar = NULL;
 
@@ -898,9 +897,10 @@ void CTrackViewDialog::UpdateActions()
             m_actions[ID_TV_CREATE_LIGHT_ANIMATION_SET]->setEnabled(false);
         }    
     }
-    m_actions[ID_TOOLS_BATCH_RENDER]->setEnabled((GetIEditor()->GetMovieSystem()->GetNumSequences() > 0) ? true : false);
-    m_actions[ID_TV_ADD_SEQUENCE]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady() && !m_newSequenceLock);
-    m_actions[ID_TV_SEQUENCE_NEW]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady() && !m_newSequenceLock);
+
+    m_actions[ID_TOOLS_BATCH_RENDER]->setEnabled(GetIEditor()->GetMovieSystem()->GetNumSequences() > 0 && !m_enteringGameOrSimModeLock);
+    m_actions[ID_TV_ADD_SEQUENCE]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady() && !m_enteringGameOrSimModeLock);
+    m_actions[ID_TV_SEQUENCE_NEW]->setEnabled(GetIEditor()->GetDocument() && GetIEditor()->GetDocument()->IsDocumentReady() && !m_enteringGameOrSimModeLock);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1564,7 +1564,7 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
         break;
     case eNotify_OnBeginGameMode:
         SetEditLock(true);
-        m_newSequenceLock = true;
+        m_enteringGameOrSimModeLock = true;
         m_sequencesComboBox->setEnabled(false);
         UpdateActions();
         m_bIgnoreUpdates = true;
@@ -1580,7 +1580,7 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnEndGameMode:
         m_bIgnoreUpdates = false;
         SetEditLock(false);
-        m_newSequenceLock = false;
+        m_enteringGameOrSimModeLock = false;
         m_sequencesComboBox->setEnabled(true);
         UpdateActions();
         break;
@@ -1604,13 +1604,13 @@ void CTrackViewDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
         break;
     case eNotify_OnBeginSimulationMode:
         SetEditLock(true);
-        m_newSequenceLock = true;
+        m_enteringGameOrSimModeLock = true;
         m_sequencesComboBox->setEnabled(false);
         UpdateActions();
         break;
     case eNotify_OnEndSimulationMode:
         SetEditLock(false);
-        m_newSequenceLock = false;
+        m_enteringGameOrSimModeLock = false;
         m_sequencesComboBox->setEnabled(true);
         UpdateActions();
         break;

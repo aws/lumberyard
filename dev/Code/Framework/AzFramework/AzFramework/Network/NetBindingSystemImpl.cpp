@@ -136,9 +136,9 @@ namespace AzFramework
 
     void NetBindingSliceInstantiationHandler::OnSlicePreInstantiate(const AZ::Data::AssetId& /*sliceAssetId*/, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress)
     {
-        const auto& entityMapping = sliceAddress.second->GetEntityIdToBaseMap();
+        const auto& entityMapping = sliceAddress.GetInstance()->GetEntityIdToBaseMap();
 
-        const AZ::SliceComponent::EntityList& sliceEntities = sliceAddress.second->GetInstantiated()->m_entities;
+        const AZ::SliceComponent::EntityList& sliceEntities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
         for (AZ::Entity *sliceEntity : sliceEntities)
         {
             auto it = entityMapping.find(sliceEntity->GetId());
@@ -174,13 +174,13 @@ namespace AzFramework
     {
         SliceInstantiationResultBus::Handler::BusDisconnect();
 
-        CloseEntityMap(sliceAddress.second->GetEntityIdMap());
+        CloseEntityMap(sliceAddress.GetInstance()->GetEntityIdMap());
 
-        const AZ::SliceComponent::EntityList sliceEntities = sliceAddress.second->GetInstantiated()->m_entities;
+        const AZ::SliceComponent::EntityList sliceEntities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
         for (AZ::Entity *sliceEntity : sliceEntities)
         {
-            auto it = sliceAddress.second->GetEntityIdToBaseMap().find(sliceEntity->GetId());
-            AZ_Assert(it != sliceAddress.second->GetEntityIdToBaseMap().end(), "Failed to retrieve static entity id for a slice entity!");
+            auto it = sliceAddress.GetInstance()->GetEntityIdToBaseMap().find(sliceEntity->GetId());
+            AZ_Assert(it != sliceAddress.GetInstance()->GetEntityIdToBaseMap().end(), "Failed to retrieve static entity id for a slice entity!");
             const AZ::EntityId staticEntityId = it->second;
             const auto itUnbound = m_bindingQueue.find(staticEntityId);
             if (itUnbound == m_bindingQueue.end())
@@ -378,7 +378,7 @@ namespace AzFramework
         // If entity came from a slice, try to get the mapping from it
         AZ::SliceComponent::SliceInstanceAddress sliceInfo;
         EBUS_EVENT_ID_RESULT(sliceInfo, entityId, EntityIdContextQueryBus, GetOwningSlice);
-        AZ::SliceComponent::SliceInstance* sliceInstance = sliceInfo.second;
+        AZ::SliceComponent::SliceInstance* sliceInstance = sliceInfo.GetInstance();
         if (sliceInstance)
         {
             const auto it = sliceInstance->GetEntityIdToBaseMap().find(entityId);

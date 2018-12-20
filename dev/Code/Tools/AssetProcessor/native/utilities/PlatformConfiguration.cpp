@@ -511,9 +511,22 @@ namespace AssetProcessor
                     bool isRoot = (watchFolder.compare(normalizedRoot, Qt::CaseInsensitive) == 0);
                     recurse &= !isRoot; // root never recurses
 
+                    // New assets can be saved in any scan folder defined except for the engine root.
+                    const bool canSaveNewAssets = !isRoot;
+
                     if (!watchFolder.isEmpty())
                     {
-                        AddScanFolder(ScanFolderInfo(watchFolder, scanFolderDisplayName, scanFolderPortableKey, outputPrefix, isRoot, recurse, platforms, order));
+                        AddScanFolder(ScanFolderInfo(
+                            watchFolder,
+                            scanFolderDisplayName,
+                            scanFolderPortableKey,
+                            outputPrefix,
+                            isRoot,
+                            recurse,
+                            platforms,
+                            order,
+                            /*scanFolderId*/ 0,
+                            canSaveNewAssets));
                     }
 
                     loader.endGroup();
@@ -1098,9 +1111,11 @@ namespace AssetProcessor
         QString gameProjectRootAbsPath = gameProjectRoot.absolutePath();
         QString engineRootAbsPath = engineRoot.absolutePath();
 
+        AZStd::string gemDirectoryFolderName = GemInformation::GemDirectoryFolderName();
+
         if (!gameProjectRootAbsPath.isEmpty())
         {
-            registry->AddSearchPath({ gameProjectRootAbsPath.toUtf8().constData(), "Gems" }, false);
+            registry->AddSearchPath({ gameProjectRootAbsPath.toUtf8().constData(), gemDirectoryFolderName }, false);
         }
         else
         {
@@ -1109,7 +1124,7 @@ namespace AssetProcessor
 
         if ((!engineRootAbsPath.isEmpty()) && (engineRootAbsPath != gameProjectRootAbsPath))
         {
-            registry->AddSearchPath({ engineRootAbsPath.toUtf8().constData(), "Gems" }, false);
+            registry->AddSearchPath({ engineRootAbsPath.toUtf8().constData(), gemDirectoryFolderName }, false);
         }
 
         projectSettings = registry->CreateProjectSettings();
@@ -1242,12 +1257,12 @@ namespace AssetProcessor
             //      Output Prefix:  "" // empty string - this means put it in @assets@ as per default
             //      Is Root:        False
             //      Recursive:      True
-            QString gemFolder = gemDir.absoluteFilePath("Assets");
+            QString gemFolder = gemDir.absoluteFilePath(GemInformation::GetGemAssetFolder());
 
             // note that we normalize this gem path with slashes so that there's nothing special about it compared to other scan folders
             gemFolder = AssetUtilities::NormalizeDirectoryPath(gemFolder);
 
-            QString assetBrowserDisplayName = "Assets"; // Gems always use assets folder as their displayname...
+            QString assetBrowserDisplayName = GemInformation::GetGemAssetFolder(); // Gems always use assets folder as their displayname...
             QString portableKey = QString("gemassets-%1").arg(gemGuid);
             QString outputPrefix; // empty intentionally here
             bool isRoot = false;
@@ -1255,7 +1270,17 @@ namespace AssetProcessor
             int order = gemElement.m_isGameGem ? gemGameOrder++ : gemOrder++;
 
             AZ_TracePrintf(AssetProcessor::DebugChannel, "Adding GEM assets folder for monitoring / scanning: %s.\n", gemFolder.toUtf8().data());
-            AddScanFolder(ScanFolderInfo(gemFolder, assetBrowserDisplayName, portableKey, outputPrefix, isRoot, isRecursive, platforms, order));
+            AddScanFolder(ScanFolderInfo(
+                gemFolder,
+                assetBrowserDisplayName,
+                portableKey,
+                outputPrefix,
+                isRoot,
+                isRecursive,
+                platforms,
+                order,
+                /*scanFolderId*/ 0,
+                /*canSaveNewAssets*/ true)); // Users can create assets like slices in Gem asset folders.
 
             // add the gem folder itself for the root metadata (non-recursive)
             // note that these root folders only exist to make sure "gem.json" is in the cache at the path @root@/Gems/GemName/Gem.json

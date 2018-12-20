@@ -168,7 +168,7 @@ namespace
 
             lightParams.ReleaseCubemaps();
 
-            const AZStd::string& specularMap = configuration.m_probeCubemap;
+            const AZStd::string& specularMap = configuration.m_probeCubemap.GetAssetPath();
 
             if (!specularMap.empty())
             {

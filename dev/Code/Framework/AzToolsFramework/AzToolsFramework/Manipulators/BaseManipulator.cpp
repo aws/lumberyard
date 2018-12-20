@@ -72,9 +72,13 @@ namespace AzToolsFramework
     // attached as no active manipulator will have been set in ManipulatorManager.
     void BaseManipulator::OnLeftMouseUp(const ViewportInteraction::MouseInteraction& interaction)
     {
+        // keep a ref count of the manipulator so it does not get
+        // destroyed too early (before undo batch has been recorded)
+        AZStd::shared_ptr<BaseManipulator> current = shared_from_this();
         EndAction();
         OnLeftMouseUpImpl(interaction);
         EndUndoBatch();
+        AZ_UNUSED(current);
     }
 
     void BaseManipulator::OnRightMouseUp(const ViewportInteraction::MouseInteraction& interaction)

@@ -105,7 +105,7 @@ public:
 public:
     virtual ~CRenderViewport();
 
-    Q_INVOKABLE void InjectFakeMouseMove(int deltaX, int deltaY);
+    Q_INVOKABLE void InjectFakeMouseMove(int deltaX, int deltaY, Qt::MouseButtons buttons);
 
 public:
     virtual void Update();
@@ -142,6 +142,7 @@ public:
     virtual bool IsBoundsVisible(const AABB& box) const;
     virtual void CenterOnSelection();
     virtual void CenterOnAABB(const AABB& aabb);
+    void CenterOnSliceInstance() override;
 
     void focusOutEvent(QFocusEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;

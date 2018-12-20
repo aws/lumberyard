@@ -256,7 +256,11 @@ enum EEditorNotifyEvent
     eNotify_OnSwitchAWSDeployment,     // The AWS deployment was switched
     eNotify_OnFirstAWSUse,             // This should only be emitted once
 
-    eNotify_OnRefCoordSysChange
+    eNotify_OnRefCoordSysChange,
+
+    // Entity selection events.
+    eNotify_OnEntitiesSelected,
+    eNotify_OnEntitiesDeselected
 };
 
 // UI event handler
@@ -847,6 +851,8 @@ struct IEditor
     virtual bool FlushUndo(bool isShowMessage = false) = 0;
     //! Clear the last N number of steps in the undo stack
     virtual bool ClearLastUndoSteps(int steps) = 0;
+    //! Clear all current Redo steps in the undo stack
+    virtual bool ClearRedoStack() = 0;
     //! Retrieve current animation context.
     virtual CAnimationContext* GetAnimation() = 0;
     //! Retrieve sequence manager

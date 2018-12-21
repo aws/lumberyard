@@ -97,6 +97,7 @@ namespace EMotionFX
             void DebugDrawRoot(bool enable) override;
             bool GetRenderCharacter() const override;
             void SetRenderCharacter(bool enable) override;
+            void SetRenderNearest() override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -169,6 +170,8 @@ namespace EMotionFX
             AnimGraphAsset::AnimGraphInstancePtr            m_animGraphInstance;        ///< Live anim graph instance.
             AZStd::unique_ptr<ActorRenderNode>              m_renderNode;               ///< Actor render node.
             bool                                            m_debugDrawRoot;            ///< Enables drawing of actor root and facing.
+
+            bool                                            m_renderNearest{ false };   ///< Enables EmotionFX actor drawing in camera space.
         };
     } //namespace Integration
 

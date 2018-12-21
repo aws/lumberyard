@@ -59,6 +59,9 @@ namespace EMotionFX
             /// Enables rendering of the actor.
             virtual bool GetRenderCharacter() const = 0;
             virtual void SetRenderCharacter(bool enable) = 0;
+
+            /// Enables EmotionFX actor drawing in camera space
+            virtual void SetRenderNearest() {};
         };
 
         using ActorComponentRequestBus = AZ::EBus<ActorComponentRequests>;

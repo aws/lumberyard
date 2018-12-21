@@ -209,6 +209,8 @@ namespace EMotionFX
             SSkinningData* GetSkinningData();
             void SetSkinningMethod(SkinningMethod method);
 
+            void SetRenderNearest(bool isRenderNearest);
+
             // Determines if the morph target weights were updated since the last call.
             // It is used to avoid calling UpdateDynamicSkin if the weights have not been
             // updated.
@@ -232,6 +234,8 @@ namespace EMotionFX
             SkinningMethod                          m_skinningMethod;
 
             AZStd::vector<float>                    m_lastMorphTargetWeights;
+
+            bool                                    m_isRenderNearest{ false };
 
             // history for skinning data, needed for motion blur
             struct

@@ -987,7 +987,7 @@ CCryEditApp* CCryEditApp::instance()
 {
     return s_currentInstance;
 }
-             
+
 
 class CEditCommandLineInfo
 {
@@ -1029,7 +1029,7 @@ public:
         parser.addHelpOption();
         parser.setSingleDashWordOptionMode(QCommandLineParser::ParseAsLongOptions);
         parser.setApplicationDescription(QObject::tr("Amazon Lumberyard"));
-        // nsDocumentRevisionDebugMode is an argument that the macOS system passed into an App bundle that is being debugged. 
+        // nsDocumentRevisionDebugMode is an argument that the macOS system passed into an App bundle that is being debugged.
         // Need to include it here so that Qt argument parser does not error out.
         bool nsDocumentRevisionsDebugMode = false;
         const std::vector<std::pair<QString, bool&> > options = {
@@ -2325,7 +2325,7 @@ AZ::Outcome<void, AZStd::string> CCryEditApp::InitGameSystem(HWND hwndForInputSy
     }
 
     AZ_Assert(pGameEngine, "Game engine initialization failed, but initOutcome returned success.");
-	
+
     m_pEditor->SetGameEngine(pGameEngine);
 
     // needs to be called after CrySystem has been loaded.
@@ -2992,7 +2992,7 @@ void CCryEditApp::UnregisterEventLoopHook(IEventLoopHook* pHookToRemove)
     }
 }
 
-#if AZ_TESTS_ENABLED 
+#if AZ_TESTS_ENABLED
 #if defined(AZ_PLATFORM_WINDOWS)
 class MainArgs
 {
@@ -3207,7 +3207,7 @@ void CCryEditApp::OnDocumentationGettingStartedGuide()
 
 void CCryEditApp::OnDocumentationTutorials()
 {
-    QString webLink = tr("https://gamedev.amazon.com/forums/tutorials");
+    QString webLink = tr("https://www.youtube.com/amazongamedev");
     QDesktopServices::openUrl(QUrl(webLink));
 }
 
@@ -3715,14 +3715,14 @@ int CCryEditApp::IdleProcessing(bool bBackgroundUpdate)
     {
         GetIEditor()->GetSystem()->GetISystemEventDispatcher()->OnSystemEvent(ESYSTEM_EVENT_CHANGE_FOCUS, bActive, 0);
     #if defined(AZ_PLATFORM_WINDOWS)
-        // This is required for the audio system to be notified of focus changes in the editor.  After discussing it 
+        // This is required for the audio system to be notified of focus changes in the editor.  After discussing it
         // with the macOS team, they are working on unifying the system events between the editor and standalone
         // launcher so this is only needed on windows.
         if (bActive)
         {
             EBUS_EVENT(AzFramework::WindowsLifecycleEvents::Bus, OnSetFocus);
         }
-        else 
+        else
         {
             EBUS_EVENT(AzFramework::WindowsLifecycleEvents::Bus, OnKillFocus);
         }
@@ -3823,7 +3823,7 @@ void CCryEditApp::DisplayLevelLoadErrors()
     if (currentLevel && currentLevel->IsDocumentReady() && !m_levelErrorsHaveBeenDisplayed)
     {
         // Generally it takes a few idle updates for meshes to load and be processed by their components. This value
-        // was picked based on examining when mesh components are updated and their materials are checked for 
+        // was picked based on examining when mesh components are updated and their materials are checked for
         // errors (2 updates) plus one more for good luck.
         const int IDLE_FRAMES_TO_WAIT = 3;
         ++m_numBeforeDisplayErrorFrames;
@@ -5565,7 +5565,7 @@ void CCryEditApp::OnReloadGeometry()
     OnReloadEntityScripts();
     IRenderNode** plist = new IRenderNode*[
         max(
-            max(gEnv->p3DEngine->GetObjectsByType(eERType_Vegetation, 0), 
+            max(gEnv->p3DEngine->GetObjectsByType(eERType_Vegetation, 0),
             gEnv->p3DEngine->GetObjectsByType(eERType_Brush, 0)),
             gEnv->p3DEngine->GetObjectsByType(eERType_StaticMeshRenderComponent,0)
            )
@@ -6395,7 +6395,7 @@ void CCryEditApp::OnToggleSelection(bool hide)
             GetIEditor()->GetObjectManager()->HideObject(sel->GetObject(i), hide);
         }
     }
-    
+
 }
 
 void CCryEditApp::OnEditHide()
@@ -7700,7 +7700,7 @@ void CCryEditApp::OnUpdateSwitchToSelectedCamera(QAction* action)
     AZ::EBusAggregateResults<AZ::EntityId> cameras;
     Camera::CameraBus::BroadcastResult(cameras, &Camera::CameraRequests::GetCameras);
     bool isCameraComponentSelected = selectedEntityList.size() > 0 ? AZStd::find(cameras.values.begin(), cameras.values.end(), *selectedEntityList.begin()) != cameras.values.end() : false;
-    
+
     CViewport* pViewport = GetIEditor()->GetViewManager()->GetSelectedViewport();
     CRenderViewport* rvp = viewport_cast<CRenderViewport*>(pViewport);
     if ((qobject_cast<CCameraObject*>(pObject) || isCameraComponentSelected) && rvp)
@@ -8223,7 +8223,7 @@ void CCryEditApp::OnGotoViewportSearch()
 }
 
 RecentFileList* CCryEditApp::GetRecentFileList()
-{ 
+{
     static RecentFileList list;
     return &list;
 };
@@ -8503,8 +8503,8 @@ void CCryEditApp::OnOpenProjectConfiguratorGems()
     {
         // External project folders is in preview mode, so we cannot use Project Configurator to set it yet.  Once either Project Configurator
         // or any new GUI application supports it, replace the warning below with the launch of the tool to configure GEMS.
-        QMessageBox::warning(QApplication::activeWindow(), 
-                             QString(), 
+        QMessageBox::warning(QApplication::activeWindow(),
+                             QString(),
                              QObject::tr(
                                  "Project folders external to the engine is in preview mode.  "
                                  "Configuration of GEMS for external project folders needs to be "
@@ -8571,7 +8571,7 @@ bool CCryEditApp::IsProjectConfiguratorRunning() const
 
     if (testMem.error() != QSharedMemory::AlreadyExists)
     {
-        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), 
+        QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(),
             QString("Cannot test if ProjectConfigurator is running: Failed to create shared memory. (%0)").arg(testMem.errorString()));
         return false;
     }
@@ -8605,7 +8605,7 @@ bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
 #else
 #error Unsupported Platform for Project Configurator
 #endif
-    
+
     AZ::Outcome<AZStd::string, AZStd::string> result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveConfigToolsPath"));
     AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequestBus::Events::ResolveConfigToolsPath, projectConfigurator);
 
@@ -8714,10 +8714,10 @@ void CCryEditApp::OnOpenProceduralMaterialEditor()
 
 
 #if defined(AZ_PLATFORM_WINDOWS)
-//Due to some laptops not autoswitching to the discrete gpu correctly we are adding these 
-//dllspecs as defined in the amd and nvidia white papers to 'force on' the use of the 
-//discrete chips.  This will be overriden by users setting application profiles 
-//and may not work on older drivers or bios. In theory this should be enough to always force on 
+//Due to some laptops not autoswitching to the discrete gpu correctly we are adding these
+//dllspecs as defined in the amd and nvidia white papers to 'force on' the use of the
+//discrete chips.  This will be overriden by users setting application profiles
+//and may not work on older drivers or bios. In theory this should be enough to always force on
 //the discrete chips.
 
 //http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
@@ -8851,7 +8851,7 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
         CCryEditApp::instance()->ExitInstance(exitCode);
 
     }
-	
+
 	delete theApp;
     AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
 

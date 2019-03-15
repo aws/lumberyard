@@ -171,7 +171,7 @@ namespace AzToolsFramework
             PropertyHandlerBase* pHandlerFound = nullptr;
             while ((it != m_Handlers.end()) && (it->first == handlerName))
             {
-                if ((it->second->Priority() > highestPriorityFound) && (handlerType == it->second->GetHandledType()))
+                if ((it->second->Priority() > highestPriorityFound) && (it->second->HandlesType(handlerType)))
                 {
                     highestPriorityFound = it->second->Priority();
                     pHandlerFound = it->second;

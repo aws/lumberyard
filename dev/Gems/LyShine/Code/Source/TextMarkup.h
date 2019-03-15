@@ -27,7 +27,9 @@ namespace TextMarkup
         Text,
         Bold,
         Italic,
-        Font
+        Anchor,
+        Font,
+        Image
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +84,16 @@ namespace TextMarkup
     };
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Defines clickable regions of text (links)
+    struct AnchorTag
+        : public Tag
+    {
+        TagType GetType() const override { return TagType::Anchor; }
+        AZStd::string action;
+        AZStd::string data;
+    };
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
     //! Allows modifying font display properties, such as face and color
     struct FontTag
         : public Tag
@@ -91,6 +103,21 @@ namespace TextMarkup
         AZ::Vector3 color;
     };
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //! Contains data to display an image
+    struct ImageTag
+        : public Tag
+    {
+        TagType GetType() const override { return TagType::Image; }
+        AZStd::string m_imagePathname;
+        AZStd::string m_height; // an absolute value or a string identifying how to calculate the height
+        float m_scale;
+        AZStd::string m_vAlign;
+        float m_yOffset;
+        float m_leftPadding;
+        float m_rightPadding;
+    };
+
     //! Takes markup text and populates an markup tag tree from it.
     bool ParseMarkupBuffer(const AZStd::string& sourceBuffer, TextMarkup::Tag& markupTag, bool suppressWarnings = false);
 
@@ -98,6 +125,6 @@ namespace TextMarkup
     void CopyCharData(const AZStd::string& sourceBuffer, AZStd::string& targetBuffer);
 
 #if defined(LYSHINE_INTERNAL_UNIT_TEST)
-    void UnitTest();
+    void UnitTest(IConsoleCmdArgs* cmdArgs);
 #endif
 }

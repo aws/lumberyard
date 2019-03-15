@@ -15,9 +15,16 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
+#include "AnimGraphSyncTrack.h"
 
-#include <MCore/Source/Array.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/Outcome/Outcome.h>
 
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace EMotionFX
 {
@@ -27,6 +34,7 @@ namespace EMotionFX
     class MotionEventTrack;
     class Motion;
     class AnimGraphEventBuffer;
+    class AnimGraphSyncTrack;
 
     /**
      * The motion event table, which stores all events and their data on a memory efficient way.
@@ -39,21 +47,28 @@ namespace EMotionFX
     class EMFX_API MotionEventTable
         : public BaseObject
     {
-        AZ_CLASS_ALLOCATOR_DECL
         friend class MotionEvent;
 
     public:
-        static MotionEventTable* Create();
+        AZ_CLASS_ALLOCATOR_DECL
+        AZ_RTTI(MotionEventTable, "{DB5BF142-99BE-4026-8D3E-3E5B30C14714}", BaseObject)
+
+        MotionEventTable();
+
+        ~MotionEventTable();
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        void InitAfterLoading(Motion* motion);
 
         /**
          * Process all events within a given time range.
          * @param startTime The start time of the range, in seconds.
          * @param endTime The end time of the range, in seconds.
-         * @param actorInstance The actor instance on which to trigger the event.
          * @param motionInstance The motion instance which triggers the event.
          * @note The end time is also allowed to be smaller than the start time.
          */
-        void ProcessEvents(float startTime, float endTime, ActorInstance* actorInstance, MotionInstance* motionInstance) const;
+        void ProcessEvents(float startTime, float endTime, MotionInstance* motionInstance) const;
 
         /**
          * Extract all events within a given time range, and output them to an event buffer.
@@ -68,35 +83,29 @@ namespace EMotionFX
         /**
          * Remove all motion event tracks.
          */
-        void ReserveNumTracks(uint32 numTracks);
+        void ReserveNumTracks(size_t numTracks);
         void RemoveAllTracks(bool delFromMem = true);
-        void RemoveTrack(uint32 index, bool delFromMem = true);
+        void RemoveTrack(size_t index, bool delFromMem = true);
         void AddTrack(MotionEventTrack* track);
-        void InsertTrack(uint32 index, MotionEventTrack* track);
+        void InsertTrack(size_t index, MotionEventTrack* track);
 
-        uint32 FindTrackIndexByName(const char* trackName) const;
+        AZ::Outcome<size_t> FindTrackIndexByName(const char* trackName) const;
         MotionEventTrack* FindTrackByName(const char* trackName) const;
 
-        MCORE_INLINE uint32 GetNumTracks() const                    { return mTracks.GetLength(); }
-        MCORE_INLINE MotionEventTrack* GetTrack(uint32 index)       { return mTracks[index]; }
-        MCORE_INLINE MotionEventTrack* GetSyncTrack() const         { return mSyncTrack; }
+        size_t GetNumTracks() const                    { return m_tracks.size(); }
+        MotionEventTrack* GetTrack(size_t index) const { return m_tracks[index]; }
+        AnimGraphSyncTrack* GetSyncTrack() const       { return m_syncTrack; }
 
         void AutoCreateSyncTrack(Motion* motion);
 
         void CopyTo(MotionEventTable* targetTable, Motion* targetTableMotion);
 
     private:
-        MCore::Array<MotionEventTrack*>     mTracks;    /**< The motion event tracks. */
-        MotionEventTrack*                   mSyncTrack; /**< A shortcut to the track containing sync events. */
+        /// The motion event tracks.
+        AZStd::vector<MotionEventTrack*> m_tracks;
 
-        /**
-         * The constructor.
-         */
-        MotionEventTable();
+        /// A shortcut to the track containing sync events.
+        AnimGraphSyncTrack* m_syncTrack;
 
-        /**
-         * The destructor.
-         */
-        ~MotionEventTable();
     };
 } // namespace EMotionFX

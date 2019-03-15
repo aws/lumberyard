@@ -14,6 +14,7 @@
 #include "AnimGraphVisualNode.h"
 #include "NodeGraph.h"
 #include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphSyncTrack.h>
 #include <EMotionFX/CommandSystem/Source/CommandManager.h>
 #include "../../../../EMStudioSDK/Source/MotionEventPresetManager.h"
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
@@ -23,26 +24,44 @@
 namespace EMStudio
 {
     // constructor
-    AnimGraphVisualNode::AnimGraphVisualNode(AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node, bool syncWithEMFX)
-        : GraphNode(node->GetName())
+    AnimGraphVisualNode::AnimGraphVisualNode(const QModelIndex& modelIndex, AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node)
+        : GraphNode(modelIndex, node->GetName(), 0, 0)
     {
         mEMFXNode           = node;
-        m_id                = node->GetId();
         mCanHaveChildren    = node->GetCanHaveChildren();
         mHasVisualGraph     = node->GetHasVisualGraph();
         mPlugin             = plugin;
         SetSubTitle(node->GetPaletteName(), false);
-
-        if (syncWithEMFX)
-        {
-            Sync();
-        }
     }
 
 
     // destructor
     AnimGraphVisualNode::~AnimGraphVisualNode()
     {
+    }
+
+    void AnimGraphVisualNode::Sync()
+    {
+        SetName(mEMFXNode->GetName());
+        SetNodeInfo(mEMFXNode->GetNodeInfo());
+        
+        SetDeletable(mEMFXNode->GetIsDeletable());
+        SetBaseColor(mEMFXNode->GetVisualColor());
+        SetHasChildIndicatorColor(mEMFXNode->GetHasChildIndicatorColor());
+        SetIsCollapsed(mEMFXNode->GetIsCollapsed());
+
+        // Update position
+        UpdateRects();
+        MoveAbsolute(QPoint(mEMFXNode->GetVisualPosX(), mEMFXNode->GetVisualPosY()));
+
+        SetIsVisualized(mEMFXNode->GetIsVisualizationEnabled());
+        SetCanVisualize(mEMFXNode->GetSupportsVisualization());
+        SetIsEnabled(mEMFXNode->GetIsEnabled());
+        SetVisualizeColor(mEMFXNode->GetVisualizeColor());
+        SetHasVisualOutputPorts(mEMFXNode->GetHasVisualOutputPorts());
+        mHasVisualGraph = mEMFXNode->GetHasVisualGraph();
+
+        UpdateTextPixmap();
     }
 
 
@@ -87,16 +106,9 @@ namespace EMStudio
         painter.setBrush(bgColor2);
         painter.drawRect(rect);
 
-        // get the selected actor instance
-        EMotionFX::ActorInstance* actorInstance = CommandSystem::GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
-        if (actorInstance == nullptr)
-        {
-            return;
-        }
-
         // get the anim graph instance
-        EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
-        if (animGraphInstance == nullptr)
+        EMotionFX::AnimGraphInstance* animGraphInstance = ExtractAnimGraphInstance();
+        if (!animGraphInstance)
         {
             return;
         }
@@ -119,8 +131,10 @@ namespace EMStudio
         painter.drawRect(playRect);
 
         // draw the sync keys
-        const EMotionFX::AnimGraphSyncTrack& syncTrack = mEMFXNode->FindUniqueNodeData(animGraphInstance)->GetSyncTrack();
-        const uint32 numSyncPoints = syncTrack.GetNumEvents();
+        const EMotionFX::AnimGraphNodeData* uniqueData = mEMFXNode->FindUniqueNodeData(animGraphInstance);
+        const EMotionFX::AnimGraphSyncTrack* syncTrack = uniqueData->GetSyncTrack();
+
+        const size_t numSyncPoints = syncTrack ? syncTrack->GetNumEvents() : 0;
         if (numSyncPoints > 0)
         {
             //painter.setPen( syncPointColor );
@@ -133,15 +147,15 @@ namespace EMStudio
 
             QPoint points[3];
             QColor syncCol;
-            for (uint32 i = 0; i < numSyncPoints; ++i)
+            for (size_t i = 0; i < numSyncPoints; ++i)
             {
                 // get the event color from the preset manager
-                syncCol = presetManager->GetEventColor(syncTrack.GetEvent(i).mID);
+                syncCol = presetManager->GetEventColor(syncTrack->GetEvent(i).GetEventDatas());
 
                 painter.setPen(syncCol);
                 painter.setBrush(syncCol);
 
-                x = rect.left() + 1 + (rect.width() - 2) * (syncTrack.GetEvent(i).mTime / duration);
+                x = rect.left() + 1 + (rect.width() - 2) * (syncTrack->GetEvent(i).GetStartTime() / duration);
                 points[0] = QPoint(x, rect.top() + 1);
                 points[1] = QPoint(x + 2, rect.bottom() - 1);
                 points[2] = QPoint(x - 2, rect.bottom() - 1);
@@ -160,24 +174,7 @@ namespace EMStudio
     // extract the single selected anim graph instance
     EMotionFX::AnimGraphInstance* AnimGraphVisualNode::ExtractAnimGraphInstance() const
     {
-        // get the currently single selected actor instance
-        CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        EMotionFX::ActorInstance* actorInstance = selectionList.GetSingleActorInstance();
-        if (actorInstance == nullptr)
-        {
-            return nullptr;
-        }
-
-        if (actorInstance->GetAnimGraphInstance())
-        {
-            if (actorInstance->GetAnimGraphInstance()->GetAnimGraph() != mEMFXNode->GetAnimGraph())
-            {
-                return nullptr;
-            }
-        }
-
-        // get the anim graph instance and return it
-        return actorInstance->GetAnimGraphInstance();
+        return m_modelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_INSTANCE).value<EMotionFX::AnimGraphInstance*>();
     }
 
 
@@ -211,5 +208,3 @@ namespace EMStudio
     {}
     */
 }   // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphVisualNode.moc>

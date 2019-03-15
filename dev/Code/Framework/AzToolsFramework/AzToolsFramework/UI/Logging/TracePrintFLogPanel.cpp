@@ -35,7 +35,24 @@ namespace AzToolsFramework
 
         QWidget* TracePrintFLogPanel::CreateTab(const TabSettings& settings)
         {
-            return aznew AZTracePrintFLogTab(this, settings);
+            AZTracePrintFLogTab* newTab = aznew AZTracePrintFLogTab(this, settings);
+
+            connect(newTab, &AZTracePrintFLogTab::SelectionChanged, this, &TracePrintFLogPanel::LogLineSelected);
+
+            return newTab;
+        }
+
+        void TracePrintFLogPanel::InsertLogLine(Logging::LogLine::LogType type, const char* window, const char* message, void* userData)
+        {
+            int numTabs = GetTabWidgetCount();
+            for (int tabIndex = 0; tabIndex < numTabs; tabIndex++)
+            {
+                AZTracePrintFLogTab* currentTab = qobject_cast<AZTracePrintFLogTab*>(GetTabWidgetAtIndex(tabIndex));
+                if (currentTab)
+                {
+                    currentTab->LogTraceMessage(type, window, message, userData);
+                }
+            }
         }
 
         AZTracePrintFLogTab::AZTracePrintFLogTab(QWidget* pParent, const TabSettings& in_settings)
@@ -51,6 +68,21 @@ namespace AzToolsFramework
             addAction(actionClear);
 
             AZ::Debug::TraceMessageBus::Handler::BusConnect();
+
+            connect(m_ptrLogView->selectionModel(), &QItemSelectionModel::currentChanged, this, &AZTracePrintFLogTab::CurrentItemChanged);
+        }
+
+        void AZTracePrintFLogTab::CurrentItemChanged(const QModelIndex& current, const QModelIndex& /*previous*/)
+        {
+            RingBufferLogDataModel* pModel = qobject_cast<RingBufferLogDataModel*>(m_ptrLogView->model());
+            if (pModel)
+            {
+                // Item index could be invalid if nothing is currently selected.
+                if (current.isValid())
+                {
+                    emit SelectionChanged(pModel->GetLineFromIndex(current));
+                }
+            }
         }
 
         void AZTracePrintFLogTab::Clear()
@@ -116,7 +148,7 @@ namespace AzToolsFramework
             return false;
         }
 
-        void AZTracePrintFLogTab::LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message)
+        void AZTracePrintFLogTab::LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message, void* userData)
         {
             // note:  This is responding to a trace driller bus message
             // as such, the mutex is already locked but we could be called from any thread at all, so we buffer the lines.
@@ -132,17 +164,28 @@ namespace AzToolsFramework
                 {
                     {
                         AZStd::lock_guard<AZStd::mutex> lock(m_bufferedLinesMutex);
-                        m_bufferedLines.push(Logging::LogLine(message, window ? window : "", type, QDateTime::currentMSecsSinceEpoch()));
+                        m_bufferedLines.push(Logging::LogLine(message, window ? window : "", type, QDateTime::currentMSecsSinceEpoch(), userData));
                     }
 
-                    // if we've already queued a timer tick, don't queue another one:
-                    bool wasQueued = m_alreadyQueuedDrainMessage.exchange(true, AZStd::memory_order_acq_rel);
-                    if (!wasQueued)
-                    {
-                        QTimer::singleShot(s_delayBetweenTraceprintfUpdates, this, &AZTracePrintFLogTab::DrainMessages);
-                    }
+                    // Connect to the system tick bus here to ensure we're on the right thread for the singleShot call we want to make.
+                    // SystemTickBus's connection, disconnection and dispatch are not mutex protected and should only happen on main 
+                    // thread, so we queue it to be executed on main thread.
+                    AZ::SystemTickBus::QueueFunction([this]() {
+                        this->AZ::SystemTickBus::Handler::BusConnect();
+                    });
                 }
             }
+        }
+
+        void AZTracePrintFLogTab::OnSystemTick()
+        {
+            // if we've already queued a timer tick, don't queue another one:
+            bool wasQueued = m_alreadyQueuedDrainMessage.exchange(true, AZStd::memory_order_acq_rel);
+            if (!wasQueued)
+            {
+                QTimer::singleShot(s_delayBetweenTraceprintfUpdates, this, &AZTracePrintFLogTab::DrainMessages);
+            }
+            AZ::SystemTickBus::Handler::BusDisconnect(); // This is safe, because OnSystemTick happens on main thread.
         }
 
         AZTracePrintFLogTab::~AZTracePrintFLogTab()

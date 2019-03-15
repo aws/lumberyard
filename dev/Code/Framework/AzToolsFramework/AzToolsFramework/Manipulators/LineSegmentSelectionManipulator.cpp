@@ -45,12 +45,12 @@ namespace AzToolsFramework
 
     LineSegmentSelectionManipulator::~LineSegmentSelectionManipulator() {}
 
-    void LineSegmentSelectionManipulator::InstallLeftMouseDownCallback(MouseActionCallback onMouseDownCallback)
+    void LineSegmentSelectionManipulator::InstallLeftMouseDownCallback(const MouseActionCallback& onMouseDownCallback)
     {
         m_onLeftMouseDownCallback = onMouseDownCallback;
     }
 
-    void LineSegmentSelectionManipulator::InstallLeftMouseUpCallback(MouseActionCallback onMouseUpCallback)
+    void LineSegmentSelectionManipulator::InstallLeftMouseUpCallback(const MouseActionCallback& onMouseUpCallback)
     {
         m_onLeftMouseUpCallback = onMouseUpCallback;
     }

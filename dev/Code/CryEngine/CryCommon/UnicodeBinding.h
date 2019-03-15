@@ -532,12 +532,20 @@ namespace Unicode
             {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION UNICODEBINDING_H_SECTION_1
-#include AZ_RESTRICTED_FILE(UnicodeBinding_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/UnicodeBinding_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/UnicodeBinding_h_provo.inl"
+    #endif
 #endif
                 return ::wcsnlen(SafeCast<const wchar_t*>(ptr), len);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION UNICODEBINDING_H_SECTION_2
-#include AZ_RESTRICTED_FILE(UnicodeBinding_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/UnicodeBinding_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/UnicodeBinding_h_provo.inl"
+    #endif
 #endif
             }
         };

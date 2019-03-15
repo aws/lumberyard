@@ -84,15 +84,21 @@ void AssetScannerUnitTest::StartTest()
 
     bool doneScan = false;
 
-    connect(&scanner, &AssetScanner::FileOfInterestFound, this, [&filesFound](QString file)
+    connect(&scanner, &AssetScanner::FilesFound, this, [&filesFound](QSet<QString> fileList)
         {
-            filesFound.append(file);
+            for (QString foundFile : fileList)
+            {
+                filesFound.push_back(foundFile);
+            }
         }
         );
 
-    connect(&scanner, &AssetScanner::FolderOfInterestFound, this, [&foldersFound](QString folder)
+    connect(&scanner, &AssetScanner::FoldersFound, this, [&foldersFound](QSet<QString> folderList)
     {
-        foldersFound.append(folder);
+        for (QString foundFolder : folderList)
+        {
+            foldersFound.push_back(foundFolder);
+        }
     }
     );
 

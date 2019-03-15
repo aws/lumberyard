@@ -13,7 +13,9 @@
 
 #include <LyShine/Bus/UiVisualBus.h>
 #include <LyShine/Bus/UiRenderBus.h>
+#include <LyShine/Bus/UiTransformBus.h>
 #include <LyShine/UiComponentTypes.h>
+#include <LyShine/IRenderGraph.h>
 
 #include <LyShineExamples/UiCustomImageBus.h>
 
@@ -36,6 +38,7 @@ namespace LyShineExamples
         , public UiVisualBus::Handler
         , public UiRenderBus::Handler
         , public UiCustomImageBus::Handler
+        , public UiTransformChangeNotificationBus::Handler
     {
     public: // member functions
 
@@ -52,7 +55,7 @@ namespace LyShineExamples
         // ~UiVisualInterface
 
         // UiRenderInterface
-        void Render() override;
+        void Render(LyShine::IRenderGraph* renderGraph) override;
         // ~UiRenderInterface
 
         // UiCustomImageInterface
@@ -67,6 +70,11 @@ namespace LyShineExamples
         bool GetClamp() override;
         void SetClamp(bool clamp) override;
         // ~UiCustomImageInterface
+
+        // UiTransformChangeNotification
+        void OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTransformInterface::Rect& oldRect, const UiTransformInterface::Rect& newRect) override;
+        void OnTransformToViewportChanged() override;
+        // ~UiTransformChangeNotification
 
     private: // static member functions
 
@@ -90,13 +98,24 @@ namespace LyShineExamples
 
     private: // member functions
 
-        void RenderSprite(ITexture* texture);
-        void RenderSingleQuad(ITexture* texture, const AZ::Vector2* positions, const AZ::Vector2* uvs);
+        void RenderToCache(LyShine::IRenderGraph* renderGraph);
+        void RenderSingleQuad(LyShine::IRenderGraph* renderGraph, const AZ::Vector2* positions, const AZ::Vector2* uvs);
         bool IsPixelAligned();
 
+        //! ChangeNotify callback for sprite pathname change
         void OnSpritePathnameChange();
-        // ChangeNotify callback for color change
+
+        //! ChangeNotify callback for color change
         void OnColorChange();
+
+        //! ChangeNotify callback for other settings that need to make render cache dirty
+        void OnRenderSettingChange();
+
+        //! Mark the render graph as dirty, this should be done when any change is made affects the structure of the graph
+        void MarkRenderCacheDirty();
+
+        //! Mark the render graph as dirty, this should be done when any change is made affects the structure of the graph
+        void MarkRenderGraphDirty();
 
         // AZ::Component
         void Init() override;
@@ -119,5 +138,9 @@ namespace LyShineExamples
         ISprite* m_overrideSprite;
         AZ::Color m_overrideColor;
         float m_overrideAlpha;
+
+        // cached rendering data for performance optimization
+        IRenderer::DynUiPrimitive m_cachedPrimitive;
+        bool m_isRenderCacheDirty = true;
     };
 }

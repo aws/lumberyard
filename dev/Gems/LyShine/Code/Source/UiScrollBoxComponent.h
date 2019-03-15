@@ -16,7 +16,6 @@
 #include <LyShine/Bus/UiScrollableBus.h>
 #include <LyShine/Bus/UiInitializationBus.h>
 #include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
 #include <LyShine/Bus/UiScrollerBus.h>
 #include <LyShine/Bus/UiTransform2dBus.h>
 #include <LyShine/Bus/UiTransformBus.h>
@@ -49,6 +48,8 @@ public: // member functions
     void SetScrollOffset(AZ::Vector2 scrollOffset) override;
 
     AZ::Vector2 GetNormalizedScrollValue() override;
+
+    void ChangeContentSizeAndScrollOffset(AZ::Vector2 contentSize, AZ::Vector2 scrollOffset) override;
 
     bool HasHorizontalContentToScroll() override;
     bool HasVerticalContentToScroll() override;
@@ -279,4 +280,6 @@ private: // data
     bool m_isActive; // true when interactable can be manipulated by key input
 
     AZ::Vector2 m_pressedScrollOffset; // the original value of scrollOffset when the press occurred
+
+    AZ::Vector2 m_lastDragPoint; // the point of the last drag
 };

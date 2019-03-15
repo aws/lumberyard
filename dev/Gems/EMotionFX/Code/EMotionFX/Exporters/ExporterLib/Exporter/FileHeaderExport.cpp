@@ -142,15 +142,16 @@ namespace ExporterLib
         // chunk header
         EMotionFX::FileFormat::FileChunk chunkHeader;
         chunkHeader.mChunkID      = EMotionFX::FileFormat::MOTION_CHUNK_INFO;
-        chunkHeader.mSizeInBytes  = sizeof(EMotionFX::FileFormat::Motion_Info2);
-        chunkHeader.mVersion      = 2;
+        chunkHeader.mSizeInBytes  = sizeof(EMotionFX::FileFormat::Motion_Info3);
+        chunkHeader.mVersion      = 3;
 
-        EMotionFX::FileFormat::Motion_Info2 infoChunk;
-        memset(&infoChunk, 0, sizeof(EMotionFX::FileFormat::Motion_Info2));
+        EMotionFX::FileFormat::Motion_Info3 infoChunk;
+        memset(&infoChunk, 0, sizeof(EMotionFX::FileFormat::Motion_Info3));
 
         infoChunk.mMotionExtractionFlags    = motion->GetMotionExtractionFlags();
         infoChunk.mMotionExtractionNodeIndex= MCORE_INVALIDINDEX32; // not used anymore
         infoChunk.mUnitType                 = static_cast<uint8>(motion->GetUnitType());
+        infoChunk.mIsAdditive               = motion->GetIsAdditive() ? 1 : 0;
 
         MCore::LogDetailedInfo("- File Info");
         MCore::LogDetailedInfo("   + Exporter Compilation Date    = '%s'", GetCompilationDate());

@@ -43,7 +43,6 @@ struct MotionBlurObjectParameters
 class CMotionBlur
     : public CPostEffect
 {
-    typedef VectorMap<uintptr_t, MotionBlurObjectParameters > ObjectMap;
 public:
     CMotionBlur()
     {
@@ -105,11 +104,34 @@ public:
 private:
     friend class CMotionBlurPass;
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    //! Return the current buffer index to use (thread safe)
+    static uint32_t GetCurrentBufferIndex() 
+    { 
+        return gRenDev->GetCameraFrameID() % s_maxObjectBuffers;
+    }
+
+    //! Return the previous buffer index to use (thread safe)
+    static uint32_t GetPrevBufferIndex() 
+    { 
+        return (gRenDev->GetCameraFrameID() + s_maxObjectBuffers - 1) % s_maxObjectBuffers;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     CEffectParam* m_pRadBlurAmount, * m_pRadBlurScreenPosX, * m_pRadBlurScreenPosY, * m_pRadBlurRadius;
     CEffectParam* m_pDirectionalBlurVec;
 
-    static AZStd::unique_ptr<ObjectMap> m_Objects[3]; // triple buffering: t0: being written, t-1: current render frame, t-2: previous render frame
+    //! m_Objects contains motion blur parameters and is triple buffered
+    //! t0: being written, t-1: current render frame, t-2: previous render frame
+    static const uint32_t s_maxObjectBuffers = 3;
+    typedef VectorMap<uintptr_t, MotionBlurObjectParameters > ObjectMap;
+    static AZStd::unique_ptr<ObjectMap> m_Objects[s_maxObjectBuffers]; 
+
+    //! Thread safe double buffered fill data used to populate the m_Objects buffer
     static TSRC_ALIGN CThreadSafeRendererContainer<ObjectMap::value_type> m_FillData[RT_COMMAND_BUF_COUNT];
+
+    //! The threshold in frames at which we want to discard per-object motion data
+    static const uint32_t s_discardThreshold = 60;
 };
 
 struct DepthOfFieldParameters

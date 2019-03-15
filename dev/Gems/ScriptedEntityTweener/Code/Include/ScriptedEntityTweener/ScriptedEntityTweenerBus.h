@@ -51,6 +51,8 @@ namespace ScriptedEntityTweener
             const AZStd::string& virtualPropertyName,
             const AZStd::any& paramTarget) = 0;
             
+        //! Stop all animations on an entityId, if timelineId is specified (non-zero), only stop animations associated with the timelineId
+        virtual void Stop(int timelineId, const AZ::EntityId& entityId) = 0;
 
         //! Pause a specific animation, if timelineId is specified (non-zero), only pause for animations associated with the timelineId
         virtual void Pause(int timelineId, const AZ::EntityId& entityId, const AZStd::string& componentName, const AZStd::string& virtualPropertyName) = 0;

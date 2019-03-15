@@ -319,7 +319,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_FALSE(stateData->GetSourcesLikeSourceName("source", AzToolsFramework::AssetDatabase::AssetDatabaseConnection::Matches, sources));
 
     //trying to add a source without a valid scan folder pk should fail
-    source = SourceDatabaseEntry(234234, "SomeSource1.tif", validSourceGuid1);
+    source = SourceDatabaseEntry(234234, "SomeSource1.tif", validSourceGuid1, "");
     {
         UnitTestUtils::AssertAbsorber absorb;
         UNIT_TEST_EXPECT_FALSE(stateData->SetSource(source));
@@ -327,7 +327,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     }
 
     //setting a valid scan folder pk should allow it to be added
-    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1);
+    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1, "tEsTFingerPrint_TEST");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source));
     if (source.m_sourceID == -1)
     {
@@ -339,6 +339,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     sources.clear();
     UNIT_TEST_EXPECT_TRUE(stateData->GetSources(sources));
     UNIT_TEST_EXPECT_TRUE(sources.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(sources[0].m_analysisFingerprint == "tEsTFingerPrint_TEST");
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceName(sources, "SomeSource1.tif"));
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceID(sources, source.m_sourceID));
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceGuid(sources, source.m_sourceGuid));
@@ -357,6 +358,21 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     sources.clear();
     UNIT_TEST_EXPECT_TRUE(stateData->GetSources(sources));
     UNIT_TEST_EXPECT_TRUE(sources.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(sources[0].m_analysisFingerprint == "tEsTFingerPrint_TEST");
+    UNIT_TEST_EXPECT_TRUE(SourcesContainSourceName(sources, "SomeSource1.tif"));
+    UNIT_TEST_EXPECT_TRUE(SourcesContainSourceID(sources, source.m_sourceID));
+    UNIT_TEST_EXPECT_TRUE(SourcesContainSourceGuid(sources, source.m_sourceGuid));
+
+    // make sure that changing a field like fingerprint writes the new field to database but does not
+    // add a new entry (ie, its just modifying existing data)
+    SourceDatabaseEntry sourceWithDifferentFingerprint(source);
+    sourceWithDifferentFingerprint.m_analysisFingerprint = "otherFingerprint";
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(sourceWithDifferentFingerprint));
+    UNIT_TEST_EXPECT_TRUE(sourceWithDifferentFingerprint.m_sourceID == source.m_sourceID);
+    sources.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetSources(sources));
+    UNIT_TEST_EXPECT_TRUE(sources.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(sources[0].m_analysisFingerprint == "otherFingerprint");
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceName(sources, "SomeSource1.tif"));
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceID(sources, source.m_sourceID));
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceGuid(sources, source.m_sourceGuid));
@@ -367,6 +383,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     SourceDatabaseEntry dupeSource2(source);
     dupeSource2.m_scanFolderPK = scanfolder2.m_scanFolderID;
+    dupeSource2.m_analysisFingerprint = "new different fingerprint";
     dupeSource2.m_sourceID = -1;
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(dupeSource2));
     if (dupeSource2.m_sourceID != source.m_sourceID)
@@ -379,6 +396,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     sources.clear();
     UNIT_TEST_EXPECT_TRUE(stateData->GetSources(sources));
     UNIT_TEST_EXPECT_TRUE(sources.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(sources[0].m_analysisFingerprint == "new different fingerprint"); // verify that this column IS updated.
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceName(sources, "SomeSource1.tif"));
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceID(sources, source.m_sourceID));
     UNIT_TEST_EXPECT_TRUE(SourcesContainSourceGuid(sources, source.m_sourceGuid));
@@ -488,9 +506,9 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_FALSE(stateData->GetSources(sources));
 
     //Add two sources then delete the via container
-    SourceDatabaseEntry source2(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2);
+    SourceDatabaseEntry source2(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source2));
-    SourceDatabaseEntry source3(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3);
+    SourceDatabaseEntry source3(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source3));
 
     //get all sources, there should only the two we added
@@ -514,9 +532,9 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_FALSE(stateData->GetSources(sources));
 
     //Add two sources then delete the via removing by scan folder id
-    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2);
+    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2, "fingerprint");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source2));
-    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3);
+    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3, "fingerprint");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source3));
 
     //remove all sources for a scan folder
@@ -529,9 +547,9 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_FALSE(stateData->GetSources(sources));
 
     //Add two sources then delete the via removing the scan folder
-    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2);
+    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source2));
-    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3);
+    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source3));
 
     //remove the scan folder for these sources, the sources should cascade delete
@@ -548,11 +566,11 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     UNIT_TEST_EXPECT_TRUE(stateData->SetScanFolder(scanFolder));
 
     //Add some sources
-    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1);
+    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source));
-    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2);
+    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source2));
-    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3);
+    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source3));
     /////////////////////////////////////////////////////////////////
 
@@ -797,7 +815,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     ////////////////////////////////////////////////////////////////
     //Setup for product tests by having a some sources and jobs
-    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1);
+    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source));
 
     //Add jobs
@@ -851,7 +869,7 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
     //     someproduct1
     //        legacy ids...
 
-    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1);
+    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source));
 
     job = JobDatabaseEntry(source.m_sourceID, "jobkey1", validFingerprint1, "pc", validBuilderGuid1, statusCompleted, 6);
@@ -968,17 +986,17 @@ void AssetProcessingStateDataUnitTest::DataTest(AssetProcessor::AssetDatabaseCon
 
     ////////////////////////////////////////////////////////////////
     //Setup for product dependency tests by having a some sources and jobs
-    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1);
+    source = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource1.tif", validSourceGuid1, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source));
-    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2);
+    source2 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource2.tif", validSourceGuid2, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source2));
-    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3);
+    source3 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource3.tif", validSourceGuid3, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source3));
-    SourceDatabaseEntry source4 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource4.tif", validSourceGuid4);
+    SourceDatabaseEntry source4 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource4.tif", validSourceGuid4, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source4));
-    SourceDatabaseEntry source5 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource5.tif", validSourceGuid5);
+    SourceDatabaseEntry source5 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource5.tif", validSourceGuid5, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source5));
-    SourceDatabaseEntry source6 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource6.tif", validSourceGuid6);
+    SourceDatabaseEntry source6 = SourceDatabaseEntry(scanFolder.m_scanFolderID, "SomeSource6.tif", validSourceGuid6, "");
     UNIT_TEST_EXPECT_TRUE(stateData->SetSource(source6));
 
     //Add jobs
@@ -1297,6 +1315,191 @@ void AssetProcessingStateDataUnitTest::ExistenceTest(AssetProcessor::AssetDataba
     UNIT_TEST_EXPECT_TRUE(stateData->DataExists());
 }
 
+// test is broken out into its own function so as to be more compatible with a future GTEST-like API.
+void AssetProcessingStateDataUnitTest::BuilderInfoTest(AssetProcessor::AssetDatabaseConnection* stateData)
+{
+    using BuilderInfoEntry = AzToolsFramework::AssetDatabase::BuilderInfoEntry;
+    using BuilderInfoEntryContainer = AzToolsFramework::AssetDatabase::BuilderInfoEntryContainer;
+
+    // empty database should have no builder info:
+
+    BuilderInfoEntryContainer results;
+    auto resultGatherer = [&results](BuilderInfoEntry&& element)
+    {
+        results.push_back(AZStd::move(element));
+        return true; // returning false would stop iterating.  We want all results, so we return true.
+    };
+    
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryBuilderInfoTable(resultGatherer));
+    UNIT_TEST_EXPECT_TRUE(results.empty());
+
+    BuilderInfoEntryContainer newEntries;
+
+    newEntries.emplace_back(BuilderInfoEntry(-1, AZ::Uuid::CreateString("{648B7B06-27A3-42AC-897D-FA4557C28654}"), "Finger_Print"));
+    newEntries.emplace_back(BuilderInfoEntry(-1, AZ::Uuid::CreateString("{0B657D45-A5B0-485B-BF34-0E8779F9A482}"), "Finger_Print"));
+
+    UNIT_TEST_EXPECT_TRUE(stateData->SetBuilderInfoTable(newEntries));
+    // make sure each entry has a number assigned:
+    UNIT_TEST_EXPECT_TRUE(newEntries[0].m_builderInfoID != -1);
+    UNIT_TEST_EXPECT_TRUE(newEntries[1].m_builderInfoID != -1);
+
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryBuilderInfoTable(resultGatherer));
+    UNIT_TEST_EXPECT_TRUE(results.size() == 2);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_builderInfoID != -1);
+    UNIT_TEST_EXPECT_TRUE(results[1].m_builderInfoID != -1);
+
+    // they could be in any order, so fix that first:
+    bool isInCorrectOrder = (results[0].m_builderInfoID == newEntries[0].m_builderInfoID) && (results[1].m_builderInfoID == newEntries[1].m_builderInfoID);
+    bool isInReverseOrder = (results[1].m_builderInfoID == newEntries[0].m_builderInfoID) && (results[0].m_builderInfoID == newEntries[1].m_builderInfoID);
+
+    UNIT_TEST_EXPECT_TRUE(isInCorrectOrder || isInReverseOrder);
+
+    if (isInReverseOrder)
+    {
+        BuilderInfoEntry temp = results[0];
+        results[0] = results[1];
+        results[1] = temp;
+    }
+
+    for (size_t idx = 0; idx < 2; ++idx)
+    {
+        UNIT_TEST_EXPECT_TRUE(results[idx].m_builderUuid == newEntries[idx].m_builderUuid);
+        UNIT_TEST_EXPECT_TRUE(results[idx].m_builderInfoID == newEntries[idx].m_builderInfoID);
+        UNIT_TEST_EXPECT_TRUE(results[idx].m_analysisFingerprint == newEntries[idx].m_analysisFingerprint);
+    }
+
+    // now REPLACE the entries with fewer and make sure it actually chops it down and also replaces the fields.
+    newEntries.clear();
+    results.clear();
+    newEntries.emplace_back(BuilderInfoEntry(-1, AZ::Uuid::CreateString("{8863194A-BCB2-4A4C-A7D9-4E90D68814D4}"), "Finger_Print2"));
+    UNIT_TEST_EXPECT_TRUE(stateData->SetBuilderInfoTable(newEntries));
+    // make sure each entry has a number assigned:
+    UNIT_TEST_EXPECT_TRUE(newEntries[0].m_builderInfoID != -1);
+    UNIT_TEST_EXPECT_TRUE(stateData->QueryBuilderInfoTable(resultGatherer));
+    UNIT_TEST_EXPECT_TRUE(results.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_builderInfoID != -1);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_builderUuid == newEntries[0].m_builderUuid);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_builderInfoID == newEntries[0].m_builderInfoID);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_analysisFingerprint == newEntries[0].m_analysisFingerprint);
+}
+
+void AssetProcessingStateDataUnitTest::SourceDependencyTest(AssetProcessor::AssetDatabaseConnection* stateData)
+{
+    using SourceFileDependencyEntry = AzToolsFramework::AssetDatabase::SourceFileDependencyEntry;
+    using SourceFileDependencyEntryContainer = AzToolsFramework::AssetDatabase::SourceFileDependencyEntryContainer;
+
+    //  A depends on B, which depends on both C and D
+
+    SourceFileDependencyEntry newEntry1;  // a depends on B
+    newEntry1.m_sourceDependencyID = -1;
+    newEntry1.m_builderGuid = AZ::Uuid::CreateRandom();
+    newEntry1.m_source = "a.txt";
+    newEntry1.m_dependsOnSource = "b.txt";
+    
+    SourceFileDependencyEntry newEntry2; // b depends on C
+    newEntry2.m_sourceDependencyID = -1;
+    newEntry2.m_builderGuid = AZ::Uuid::CreateRandom();
+    newEntry2.m_source = "b.txt";
+    newEntry2.m_dependsOnSource = "c.txt";
+
+    SourceFileDependencyEntry newEntry3;  // b also depends on D
+    newEntry3.m_sourceDependencyID = -1;
+    newEntry3.m_builderGuid = AZ::Uuid::CreateRandom();
+    newEntry3.m_source = "b.txt";
+    newEntry3.m_dependsOnSource = "d.txt";
+
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSourceFileDependency(newEntry1));
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSourceFileDependency(newEntry2));
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSourceFileDependency(newEntry3));
+    
+    SourceFileDependencyEntryContainer results;
+
+    // what depends on b?  a does.
+    UNIT_TEST_EXPECT_TRUE(stateData->GetSourceFileDependenciesByDependsOnSource("b.txt", SourceFileDependencyEntry::DEP_Any, results));
+    UNIT_TEST_EXPECT_TRUE(results.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_source == "a.txt");
+    UNIT_TEST_EXPECT_TRUE(results[0].m_builderGuid == newEntry1.m_builderGuid);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_sourceDependencyID == newEntry1.m_sourceDependencyID);
+
+    // what does B depend on?
+    results.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetDependsOnSourceBySource("b.txt", SourceFileDependencyEntry::DEP_Any, results));
+    // b depends on 2 things: c and d
+    UNIT_TEST_EXPECT_TRUE(results.size() == 2);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_source == "b.txt");  // note that both of these are B, since its B that has the dependency on the others.
+    UNIT_TEST_EXPECT_TRUE(results[1].m_source == "b.txt");
+    UNIT_TEST_EXPECT_TRUE(results[0].m_dependsOnSource == "c.txt"); 
+    UNIT_TEST_EXPECT_TRUE(results[1].m_dependsOnSource == "d.txt");
+
+    // what does b depend on, but filtered to only one builder?
+    results.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->GetSourceFileDependenciesByBuilderGUIDAndSource(newEntry2.m_builderGuid, "b.txt", SourceFileDependencyEntry::DEP_SourceToSource, results));
+    // b depends on 1 thing from that builder: c
+    UNIT_TEST_EXPECT_TRUE(results.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_source == "b.txt");
+    UNIT_TEST_EXPECT_TRUE(results[0].m_dependsOnSource == "c.txt");
+
+    // make sure that we can look these up by ID (a)
+    UNIT_TEST_EXPECT_TRUE(stateData->GetSourceFileDependencyBySourceDependencyId(newEntry1.m_sourceDependencyID, results[0]));
+    UNIT_TEST_EXPECT_TRUE(results[0].m_source == "a.txt");
+    UNIT_TEST_EXPECT_TRUE(results[0].m_builderGuid == newEntry1.m_builderGuid);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_sourceDependencyID == newEntry1.m_sourceDependencyID);
+
+    // remove D, b now should only depend on C
+    results.clear();
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSourceFileDependency(newEntry3.m_sourceDependencyID));
+    UNIT_TEST_EXPECT_TRUE(stateData->GetDependsOnSourceBySource("b.txt", SourceFileDependencyEntry::DEP_Any, results));
+    UNIT_TEST_EXPECT_TRUE(results.size() == 1);
+    UNIT_TEST_EXPECT_TRUE(results[0].m_dependsOnSource == "c.txt");
+
+
+    // clean up
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSourceFileDependency(newEntry1.m_sourceDependencyID));
+    UNIT_TEST_EXPECT_TRUE(stateData->RemoveSourceFileDependency(newEntry2.m_sourceDependencyID));
+}
+
+
+void AssetProcessingStateDataUnitTest::SourceFingerprintTest(AssetProcessor::AssetDatabaseConnection* stateData)
+{
+    using SourceDatabaseEntry = AzToolsFramework::AssetDatabase::SourceDatabaseEntry;
+    using ScanFolderDatabaseEntry = AzToolsFramework::AssetDatabase::ScanFolderDatabaseEntry;
+
+          // to add a source file you have to add a scan folder first
+    ScanFolderDatabaseEntry scanFolder;
+    scanFolder.m_displayName = "test scan folder";
+    scanFolder.m_isRoot = false;
+    scanFolder.m_portableKey = "1234";
+    scanFolder.m_scanFolder = "//test//test";
+    scanFolder.m_scanFolderID = -1;
+
+    UNIT_TEST_EXPECT_TRUE(stateData->SetScanFolder(scanFolder));
+
+    SourceDatabaseEntry sourceFile1;
+    sourceFile1.m_analysisFingerprint = "12345";
+    sourceFile1.m_scanFolderPK = scanFolder.m_scanFolderID;
+    sourceFile1.m_sourceGuid = AZ::Uuid::CreateRandom();
+    sourceFile1.m_sourceName = "a.txt";
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(sourceFile1));
+    
+    SourceDatabaseEntry sourceFile2;
+    sourceFile2.m_analysisFingerprint = "54321";
+    sourceFile2.m_scanFolderPK = scanFolder.m_scanFolderID;
+    sourceFile2.m_sourceGuid = AZ::Uuid::CreateRandom();
+    sourceFile2.m_sourceName = "b.txt";
+
+    UNIT_TEST_EXPECT_TRUE(stateData->SetSource(sourceFile2));
+
+    AZStd::string resultString("garbage");
+    // its not a database error to ask for a file that does not exist:
+    UNIT_TEST_EXPECT_TRUE(stateData->QuerySourceAnalysisFingerprint("does not exist", scanFolder.m_scanFolderID, resultString));
+    // but we do expect it to empty the result:
+    UNIT_TEST_EXPECT_TRUE(resultString.empty());
+    UNIT_TEST_EXPECT_TRUE(stateData->QuerySourceAnalysisFingerprint("a.txt", scanFolder.m_scanFolderID, resultString));
+    UNIT_TEST_EXPECT_TRUE(resultString == "12345");
+    UNIT_TEST_EXPECT_TRUE(stateData->QuerySourceAnalysisFingerprint("b.txt", scanFolder.m_scanFolderID, resultString));
+    UNIT_TEST_EXPECT_TRUE(resultString == "54321");
+}
+
 void AssetProcessingStateDataUnitTest::AssetProcessingStateDataTest()
 {
     using namespace AssetProcessingStateDataUnitTestInternal;
@@ -1332,6 +1535,20 @@ void AssetProcessingStateDataUnitTest::AssetProcessingStateDataTest()
             {
                 return;
             }
+
+            BuilderInfoTest(&connection);
+            if (testsFailed)
+            {
+                return;
+            }
+
+            SourceFingerprintTest(&connection);
+            if (testsFailed)
+            {
+                return;
+            }
+
+            SourceDependencyTest(&connection);
         }
     }
     // scope ending for the QTempDir

@@ -380,7 +380,14 @@ struct STerrainNodeLeafData
         uint32 id;
     };
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Use m_TextureParams for double buffering to prevent flickering due to threading issues
+    // Only level 0 was used before.
+    TextureParams m_TextureParams[RT_COMMAND_BUF_COUNT];
+#else
     TextureParams m_TextureParams[MAX_RECURSION_LEVELS];
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
 
     int m_SurfaceAxisIndexCount[SurfaceTile::MaxSurfaceCount][4];
     PodArray<CTerrainNode*> m_Neighbors;

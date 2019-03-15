@@ -1,143 +1,100 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
 
 #pragma once
 
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Aabb.h>
 #include <AzCore/Math/Quaternion.h>
-#include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Component/Entity.h>
-
-#include <AzFramework/Physics/Base.h>
-#include <AzFramework/Physics/ShapeIdHierarchy.h>
-#include <AzFramework/Physics/CollisionFilter.h>
+#include <AzCore/std/smart_ptr/enable_shared_from_this.h>
 
 namespace Physics
 {
-    class ObjectCollisionFilter;
     class WorldBody;
     class World;
     struct RayCastRequest;
     struct RayCastResult;
 
-    /**
-     * 
-     */
-    class CollisionContactInfo
+    class WorldBodyConfiguration
     {
     public:
-        AZ::Vector3                     m_worldPointA;
-        AZ::Vector3                     m_worldPointB;
-        AZ::Vector3                     m_normal;
-        float                           m_distance;
-        ShapeIdHierarchy                m_shapeIdHierarchyA;
-        ShapeIdHierarchy                m_shapeIdHierarchyB;
-    };
+        AZ_CLASS_ALLOCATOR(WorldBodyConfiguration, AZ::SystemAllocator, 0);
+        AZ_RTTI(WorldBodyConfiguration, "{6EEB377C-DC60-4E10-AF12-9626C0763B2D}");
+        
+        WorldBodyConfiguration() = default;
+        WorldBodyConfiguration(const WorldBodyConfiguration& settings) = default;
+        virtual ~WorldBodyConfiguration() = default;
 
-    /**
-     * 
-     */
-    class CollisionEventInfo
-    {
-    public:
-        Ptr<WorldBody> m_bodyA;
-        Ptr<WorldBody> m_bodyB;
-            
-        AZStd::vector<CollisionContactInfo> m_contacts;
-
-        bool m_ignoreCollision = false; ///< Set to ignore the collision.
-    };
-
-    /**
-     * 
-     */
-    class WorldBodyCollisionEventHandler : public ReferenceBase
-    {
-    public:
-
-        friend class WorldBody;
-
-        AZ_CLASS_ALLOCATOR(WorldBodyCollisionEventHandler, AZ::SystemAllocator, 0);
-
-        virtual void OnCollision(const Ptr<WorldBody>& worldBody, CollisionEventInfo& info) = 0;
-    };
-
-    class WorldBodySettings : public ReferenceBase
-    {
-    public:
-
-        AZ_CLASS_ALLOCATOR(WorldBodySettings, AZ::SystemAllocator, 0);
-        AZ_RTTI(WorldBodySettings, "{6EEB377C-DC60-4E10-AF12-9626C0763B2D}", ReferenceBase);
+        static void Reflect(AZ::ReflectContext* context);
 
         // Basic initial settings.
-        AZ::Vector3                     m_position                  = AZ::Vector3::CreateZero();
-        AZ::Quaternion                  m_orientation               = AZ::Quaternion::CreateIdentity();
-        ObjectCollisionFilter           m_collisionFilter           = ObjectCollisionFilter();
+        AZ::Vector3 m_position = AZ::Vector3::CreateZero();
+        AZ::Quaternion m_orientation = AZ::Quaternion::CreateIdentity();
+        AZ::Vector3 m_scale = AZ::Vector3::CreateOne();
 
         // Entity/object association.
-        AZ::EntityId                    m_entityId;
-        void*                           m_customUserData            = nullptr;
+        AZ::EntityId m_entityId;
+        void* m_customUserData = nullptr;
+
+        // For debugging/tracking purposes only.
+        AZStd::string m_debugName;
     };
 
-    class WorldBody : public ReferenceBase
+    class WorldBody
+        : public AZStd::enable_shared_from_this<WorldBody>
     {
     public:
-
         AZ_CLASS_ALLOCATOR(WorldBody, AZ::SystemAllocator, 0);
-        AZ_RTTI(WorldBody, "{4F1D9B44-FC21-4E93-83F0-41B6A78D9B4B}", ReferenceBase);
+        AZ_RTTI(WorldBody, "{4F1D9B44-FC21-4E93-83F0-41B6A78D9B4B}");
 
         friend class World;
 
     public:
+        WorldBody() = default;
+        WorldBody(const WorldBodyConfiguration& /*settings*/) {};
+        virtual ~WorldBody() = default;
 
-        WorldBody();
-        WorldBody(const Ptr<WorldBodySettings>& settings);
-
-        ~WorldBody() override;
-
-        Ptr<World> GetWorld() const;
-
-        virtual void SetWorld(const Ptr<World>& world);
-
-        AZ::EntityId GetEntityId() const;
-        void SetEntityId(AZ::EntityId entityId);
+        virtual AZ::EntityId GetEntityId() const = 0;
 
         void SetUserData(void* userData);
-        void* GetUserData();
+        template<typename T>
+        T* GetUserData() const;
 
-        const AZStd::unordered_set<WorldBodyCollisionEventHandler*>& GetCollisionEventHandlers() const;
-
-        MaterialId GetMaterialIdForShapeHierarchy(const ShapeIdHierarchy& shapeIdHierarchy);
-
-        void SetShapeHierarchyMaterialMap(const Ptr<ShapeHierarchyMaterialMap>& map);
-        const Ptr<ShapeHierarchyMaterialMap>& GetShapeHierarchyMaterialMap() const;
+        virtual Physics::World* GetWorld() const = 0;
 
         virtual AZ::Transform GetTransform() const = 0;
         virtual void SetTransform(const AZ::Transform& transform) = 0;
+
         virtual AZ::Vector3 GetPosition() const = 0;
         virtual AZ::Quaternion GetOrientation() const = 0;
 
-        virtual ObjectCollisionFilter GetCollisionFilter() const = 0;
-        virtual void SetCollisionFilter(const ObjectCollisionFilter& filter) = 0;
-
         virtual AZ::Aabb GetAabb() const = 0;
-
         virtual void RayCast(const RayCastRequest& request, RayCastResult& result) const = 0;
 
-        virtual void RegisterCollisionEventHandler(const Ptr<WorldBodyCollisionEventHandler>& handler);
-        virtual void UnregisterCollisionEventHandler(const Ptr<WorldBodyCollisionEventHandler>& handler);
+        virtual AZ::Crc32 GetNativeType() const = 0;
+        virtual void* GetNativePointer() const = 0;
 
-    protected:
-
-        AZ::EntityId                                        m_entityId;
-        World*                                              m_world;
-        AZStd::unique_ptr<InternalUserData>                 m_internalUserData;
-        Ptr<ShapeHierarchyMaterialMap>                      m_shapeHierarchyMaterialMap;
-
-        AZStd::vector<Ptr<WorldBodyCollisionEventHandler>>  m_collisionEventHandlers;
+        virtual void AddedToWorld() {};
 
     private:
-        AZ_DISABLE_COPY_MOVE(WorldBody);
+        void* m_customUserData = nullptr;
     };
+
+    template<typename T>
+    T* WorldBody::GetUserData() const
+    {
+        return static_cast<T*>(m_customUserData);
+    }
     
 } // namespace Physics

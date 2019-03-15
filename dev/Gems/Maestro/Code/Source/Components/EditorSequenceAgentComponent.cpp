@@ -14,6 +14,7 @@
 #include "SequenceAgentComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>

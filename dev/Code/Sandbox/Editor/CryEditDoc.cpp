@@ -63,8 +63,10 @@
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/ToolsComponents/EditorLayerComponentBus.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
+#include <AzToolsFramework/UI/Layer/NameConflictWarning.hxx>
 
 #include <LmbrCentral/Rendering/EditorLightComponentBus.h>
 
@@ -101,7 +103,7 @@ static const char* kBackupOrTempFolders[] =
     "_tmpresize", // legacy name
 };
 
-static const char* kLevelPathForSliceEditing = "@devroot@/Engine/EngineAssets/LevelForSliceEditing/LevelForSliceEditing.ly";
+static const char* kLevelPathForSliceEditing = "EngineAssets/LevelForSliceEditing/LevelForSliceEditing.ly";
 
 static bool IsSliceFile(const QString& filePath)
 {
@@ -121,7 +123,7 @@ CCryEditDoc::CCryEditDoc()
     , m_mission(NULL)
     , m_modified(false)
     , m_envProbeHeight(200.0f)
-    , m_envProbeSliceFullPath("@devroot@/Engine/EngineAssets/Slices/DefaultLevelSetup.slice")
+    , m_envProbeSliceRelativePath("EngineAssets/Slices/DefaultLevelSetup.slice")
 {
     ////////////////////////////////////////////////////////////////////////
     // Set member variables to initial values
@@ -1194,6 +1196,12 @@ bool CCryEditDoc::OnSaveDocument(const QString& lpszPathName)
 
 bool CCryEditDoc::BeforeSaveDocument(const QString& lpszPathName, TSaveDocContext& context)
 {
+    // Don't save level data if any conflict exists
+    if (HasLayerNameConflicts())
+    {
+        return false;
+    }
+
     // Restore directory to root.
     QDir::setCurrent(GetIEditor()->GetMasterCDFolder());
 
@@ -1212,6 +1220,35 @@ bool CCryEditDoc::BeforeSaveDocument(const QString& lpszPathName, TSaveDocContex
 
     context.bSaved = bSaved;
     return TRUE;
+}
+
+bool CCryEditDoc::HasLayerNameConflicts()
+{
+    AZStd::vector<AZ::Entity*> editorEntities;
+    AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
+        &AzToolsFramework::EditorEntityContextRequestBus::Events::GetLooseEditorEntities,
+        editorEntities);
+
+    AZStd::unordered_map<AZStd::string, int> nameConflictMapping;
+    for (AZ::Entity* entity : editorEntities)
+    {
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::Event(
+            entity->GetId(),
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::UpdateLayerNameConflictMapping,
+            nameConflictMapping);
+    }
+
+    if (!nameConflictMapping.empty())
+    {
+        AzToolsFramework::Layers::NameConflictWarning* nameConflictWarning = new AzToolsFramework::Layers::NameConflictWarning(
+            MainWindow::instance(),
+            nameConflictMapping);
+        nameConflictWarning->exec();
+
+        return true;
+    }
+
+    return false;
 }
 
 bool CCryEditDoc::DoSaveDocument(const QString& filename, TSaveDocContext& context)
@@ -1306,6 +1343,7 @@ static bool TryRenameFile(const QString& oldPath, const QString& newPath, int re
 
 bool CCryEditDoc::SaveLevel(const QString& filename)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
     QWaitCursor wait;
 
     CAutoCheckOutDialogEnableForAll enableForAll;
@@ -1322,7 +1360,11 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
         return false;
     }
 
-    BackupBeforeSave();
+    {
+
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "CCryEditDoc::SaveLevel BackupBeforeSave");
+        BackupBeforeSave();
+    }
 
     // need to copy existing level data before saving to different folder
     const QString oldLevelFolder = Path::GetPath(GetLevelPathName()); // get just the folder name
@@ -1415,10 +1457,33 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
 
     CPakFile pakFile;
 
-    if (!pakFile.Open(tempSaveFile.toUtf8().data(), false))
     {
-        gEnv->pLog->LogWarning("Unable to open pack file %s for writing", tempSaveFile.toUtf8().data());
-        return false;
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "CCryEditDoc::SaveLevel Open PakFile");
+        if (!pakFile.Open(tempSaveFile.toUtf8().data(), false))
+        {
+            gEnv->pLog->LogWarning("Unable to open pack file %s for writing", tempSaveFile.toUtf8().data());
+            return false;
+        }
+    }
+
+    AZStd::vector<AZ::Entity*> editorEntities;
+    AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
+        &AzToolsFramework::EditorEntityContextRequestBus::Events::GetLooseEditorEntities,
+        editorEntities);
+
+    AZStd::vector<AZ::Entity*> layerEntities;
+    AZ::SliceComponent::SliceReferenceToInstancePtrs instancesInLayers;
+    for (AZ::Entity* entity : editorEntities)
+    {
+        AzToolsFramework::Layers::LayerResult layerSaveResult(AzToolsFramework::Layers::LayerResult::CreateSuccess());
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            layerSaveResult,
+            entity->GetId(),
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::WriteLayerAndGetEntities,
+            newLevelFolder,
+            layerEntities,
+            instancesInLayers);
+        layerSaveResult.MessageResult();
     }
 
     bool pakContentsAllSaved = false; // abort level pak save if anything within it fails
@@ -1427,12 +1492,23 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
     bool savedEntities = false;
     AZStd::vector<char> entitySaveBuffer;
     AZ::IO::ByteContainerStream<AZStd::vector<char> > entitySaveStream(&entitySaveBuffer);
-    EBUS_EVENT_RESULT(savedEntities,
-        AzToolsFramework::EditorEntityContextRequestBus,
-        SaveToStreamForEditor, entitySaveStream);
+    {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "CCryEditDoc::SaveLevel Save Entities To Stream");
+        EBUS_EVENT_RESULT(savedEntities,
+            AzToolsFramework::EditorEntityContextRequestBus,
+            SaveToStreamForEditor, entitySaveStream, layerEntities, instancesInLayers);
+    }
+
+    for (AZ::Entity* entity : editorEntities)
+    {
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::Event(
+            entity->GetId(),
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::RestoreEditorData);
+    }
 
     if (savedEntities)
     {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "CCryEditDoc::SaveLevel Updated PakFile levelEntities.editor_xml");
         pakFile.UpdateFile("LevelEntities.editor_xml", entitySaveBuffer.begin(), entitySaveBuffer.size());
 
         // Save XML archive to pak file.
@@ -1464,24 +1540,35 @@ bool CCryEditDoc::SaveLevel(const QString& filename)
         return false;
     }
 
-    // Save Heightmap and terrain data
-    GetIEditor()->GetTerrainManager()->Save();
+    {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "CCryEditDoc::SaveLevel Save Terrain");
+        // Save Heightmap and terrain data
+        GetIEditor()->GetTerrainManager()->Save();
+    }
     // Save TerrainTexture
-    GetIEditor()->GetTerrainManager()->SaveTexture();
+    {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "CCryEditDoc::SaveLevel Save Terrain Textuer");
+        GetIEditor()->GetTerrainManager()->SaveTexture();
+    }
 
     // Save vegetation
     if (GetIEditor()->GetVegetationMap())
     {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "CCryEditDoc::SaveLevel Save Vegetation");
         GetIEditor()->GetVegetationMap()->Save();
     }
 
     if (GetIEditor()->GetGameEngine()->GetIEditorGame())
     {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "CCryEditDoc::SaveLevel Level Save Complete");
         GetIEditor()->GetGameEngine()->GetIEditorGame()->OnAfterLevelSave();
     }
 
     // Commit changes to the disk.
     _flushall();
+
+    AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::OnSaveLevel);
+
     return true;
 }
 
@@ -1657,7 +1744,7 @@ bool CCryEditDoc::LoadEntitiesFromLevel(const QString& levelPakFile)
                 {
                     AZ::IO::ByteContainerStream<AZStd::vector<char> > fileStream(&fileBuffer);
 
-                    EBUS_EVENT_RESULT(loadedSuccessfully, AzToolsFramework::EditorEntityContextRequestBus, LoadFromStream, fileStream);
+                    EBUS_EVENT_RESULT(loadedSuccessfully, AzToolsFramework::EditorEntityContextRequestBus, LoadFromStreamWithLayers, fileStream, levelPakFile);
                 }
                 else
                 {
@@ -2318,7 +2405,7 @@ void CCryEditDoc::InitEmptyLevel(int resolution, int unitSize, bool bUseTerrain)
 
 void CCryEditDoc::CreateDefaultLevelAssets(int resolution, int unitSize)
 {
-    AZ::Data::AssetCatalogRequestBus::BroadcastResult(m_envProbeSliceAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, m_envProbeSliceFullPath, azrtti_typeid<AZ::SliceAsset>(), true);
+    AZ::Data::AssetCatalogRequestBus::BroadcastResult(m_envProbeSliceAssetId, &AZ::Data::AssetCatalogRequests::GetAssetIdByPath, m_envProbeSliceRelativePath, azrtti_typeid<AZ::SliceAsset>(), false);
     if (m_envProbeSliceAssetId.IsValid())
     {
         AZ::Data::Asset<AZ::Data::AssetData> asset = AZ::Data::AssetManager::Instance().GetAsset<AZ::SliceAsset>(m_envProbeSliceAssetId, false);
@@ -2472,7 +2559,8 @@ void CCryEditDoc::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, con
     {
         const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
         const AZ::Uuid editorEnvProbeComponentId("{8DBD6035-583E-409F-AFD9-F36829A0655D}");
-        AzToolsFramework::EntityIdList entityIdList;
+        AzToolsFramework::EntityIdList entityIds;
+        entityIds.reserve(entities.size());
         for (const AZ::Entity* entity : entities)
         {
             if (entity->FindComponent(editorEnvProbeComponentId))
@@ -2483,10 +2571,10 @@ void CCryEditDoc::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, con
                 // Force update the light to apply cubemap
                 LmbrCentral::EditorLightComponentRequestBus::Event(entity->GetId(), &LmbrCentral::EditorLightComponentRequests::RefreshLight);
             }
-            entityIdList.push_back(entity->GetId());
+            entityIds.push_back(entity->GetId());
         }
         //Detach instantiated env probe entities from engine slice
-        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::DetachSliceEntities, entityIdList);
+        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::DetachSliceEntities, entityIds);
         SetModifiedFlag(true);
         SetModifiedModules(eModifiedEntities);
         

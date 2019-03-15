@@ -1618,7 +1618,11 @@ struct CPhysicalEntitySerializer
                 }
             }
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(worldump_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/worldump_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/worldump_cpp_provo.inl"
+    #endif
 #endif
             
             ctx.PushState();

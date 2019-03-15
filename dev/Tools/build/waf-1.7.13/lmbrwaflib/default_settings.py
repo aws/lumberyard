@@ -332,29 +332,13 @@ def out_folder_ios(ctx, section_name, option_name, value):
     if not _is_user_input_allowed(ctx, option_name, value):
         Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
-    
+
     # GUI
     if not ctx.is_option_true('console_mode'):
         return ctx.gui_get_attribute(section_name, option_name, value)
-        
+
     _output_folder_disclaimer(ctx)
     return _get_string_value(ctx, 'Ios Output Folder', value)
-
-
-###############################################################################
-@register_attribute_callback
-def out_folder_android_armv7_gcc(ctx, section_name, option_name, value):
-    """ Configure output folder for Android ARMv7 GCC """
-    if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
-        return value
-
-    # GUI
-    if not ctx.is_option_true('console_mode'):
-        return ctx.gui_get_attribute(section_name, option_name, value)
-
-    _output_folder_disclaimer(ctx)
-    return _get_string_value(ctx, 'Android ARMv7 GCC Output Folder', value)
 
 
 ###############################################################################
@@ -707,12 +691,16 @@ def load_user_settings(ctx):
             
         # Iterate over all options in this group
         for settings in settings_list:
-            option_name     = settings['attribute']
+            option_name = settings['attribute']
+            # Start with the default value for current option stringified
             default_value = settings.get('default_value', '')
+            value = default_value
 
-            # Load the value from user settings if it is already present    
+            hasUserSettingsOption = False
             if  user_settings.has_option(section_name, option_name):
-                value = user_settings.get(section_name, settings['attribute'])
+                # Load the value from user settings if it is already present
+                hasUserSettingsOption = True
+                value = user_settings.get(section_name, option_name)
                 LOADED_OPTIONS[ option_name ] = value
             else:
                 # Add info about newly added option
@@ -721,8 +709,6 @@ def load_user_settings(ctx):
                 
                 new_options[section_name].append(option_name)
                 
-                # Load value for current option and stringify it
-                value = settings.get('default_value', '')
                 if getattr(ctx.options, option_name) != value:
                     value = getattr(ctx.options, option_name)
 
@@ -730,13 +716,13 @@ def load_user_settings(ctx):
                     value = str(value)
 
                 if  ATTRIBUTE_CALLBACKS.get(option_name, None):
-                    value = ATTRIBUTE_CALLBACKS[option_name](ctx, section_name, settings['attribute'], value)
+                    value = ATTRIBUTE_CALLBACKS[option_name](ctx, section_name, option_name, value)
 
                 (isValid, warning, error) = ctx.verify_settings_option(option_name, value)
 
                 # Add option
                 if isValid:
-                    user_settings.set( section_name, settings['attribute'], str(value) )
+                    user_settings.set( section_name, option_name, str(value) )
                     LOADED_OPTIONS[ option_name ] = value
                     write_user_settings = True
 
@@ -755,11 +741,20 @@ def load_user_settings(ctx):
                     value = getattr(ctx.options, option_name)
                     break
 
+            # Provide some information to the command line
+            if default_value != value:
+                from_location = "_WAF_/user_settings.options"
+                if bOptionSetOnCmdLine:
+                    from_location = "command line args"
+                Logs.info('default_settings: using option {}: "{}" from {} (default: "{}")'.format(option_name, value, from_location, default_value))
+            else:
+                Logs.debug('default_settings: options default {}: "{}"'.format(option_name, default_value))
+
             # Remember option for internal processing
             if bOptionSetOnCmdLine:
-                LOADED_OPTIONS[ option_name ] = value           
-            elif user_settings.has_option(section_name, option_name): # Load all settings not coming form the cmd line from the config file
-                setattr(ctx.options, option_name, user_settings.get(section_name, option_name))
+                LOADED_OPTIONS[ option_name ] = value
+            elif hasUserSettingsOption:
+                setattr(ctx.options, option_name, value)
 
     # Write user settings
     if write_user_settings:

@@ -85,10 +85,11 @@ namespace EMotionFX
 
         // get some vars
         TransformData*  transformData       = actorInstance->GetTransformData();
-        MCore::Matrix*  invBindPoseMatrices = actorInstance->GetActor()->GetInverseBindPoseGlobalMatrices().GetPtr();
-        MCore::Matrix*  globalMatrices      = transformData->GetGlobalInclusiveMatrices();
-        MCore::Matrix   invNodeTM           = globalMatrices[ node->GetNodeIndex() ];
-        invNodeTM.Inverse();
+        MCore::Matrix*  skinningMatrices    = actorInstance->GetTransformData()->GetSkinningMatrices();
+        Actor*          actor               = actorInstance->GetActor();
+
+        const Pose* bindPose = actorInstance->GetTransformData()->GetBindPose();
+        const Pose* pose = actorInstance->GetTransformData()->GetCurrentPose();
 
         AZ::Vector3  newPos, newNormal, newTangent, newBitangent;
         AZ::Vector3  vtxPos, normal, tangent, bitangent;
@@ -99,16 +100,13 @@ namespace EMotionFX
         AZ::u32*            orgVerts    = static_cast<AZ::u32*>(mMesh->FindVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
 
         // precalc the skinning matrices
-        MCore::Matrix mat;
         const uint32 numBones = mBones.GetLength();
         for (uint32 i = 0; i < numBones; i++)
         {
             const uint32 nodeIndex = mBones[i].mNodeNr;
-            mat = globalMatrices[nodeIndex];
-            mat.MultMatrix4x3(invBindPoseMatrices[nodeIndex], globalMatrices[nodeIndex]);
-            mat.MultMatrix4x3(invNodeTM);
-            mat.Normalize();
-            mBones[i].mDualQuat.FromRotationTranslation(MCore::Quaternion::ConvertFromMatrix(mat), mat.GetTranslation());
+            Transform skinTransform = actor->GetInverseBindPoseTransform(nodeIndex);
+            skinTransform.Multiply(pose->GetModelSpaceTransform(nodeIndex));
+            mBones[i].mDualQuat.FromRotationTranslation(skinTransform.mRotation, skinTransform.mPosition);
         }
 
         // find the skinning layer
@@ -179,7 +177,7 @@ namespace EMotionFX
                     newPos      = skinQuat.TransformPoint(vtxPos);
                     newNormal   = skinQuat.TransformVector(normal);
                     newTangent  = skinQuat.TransformVector(tangent);
-                    newBitangent= skinQuat.TransformVector(bitangent);
+                    newBitangent = skinQuat.TransformVector(bitangent);
                 }
                 else
                 {
@@ -187,7 +185,7 @@ namespace EMotionFX
                     newPos      = vtxPos;
                     newNormal   = normal;
                     newTangent  = tangent;
-                    newBitangent= bitangent;
+                    newBitangent = bitangent;
                 }
 
                 // output the skinned values

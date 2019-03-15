@@ -80,7 +80,7 @@ def load_win_x64_win_x64_clang_common_settings(conf):
     del v['CC']
     del v['CXX']
     del v['LINK']
-        
+
     conf.find_program('clang',    var='CC',   silent_output=True)
     conf.find_program('clang++',  var='CXX',  silent_output=True)
     conf.find_program('llvm-lib', var='AR',   silent_output=True)
@@ -93,7 +93,6 @@ def load_win_x64_win_x64_clang_common_settings(conf):
         '-msse3',
 
         '-Wno-macro-redefined',
-        '-Wno-nonportable-include-path',
         '-Wno-microsoft-cast',
         '-Wno-ignored-pragma-intrinsic', # Clang doens't need #pragma intrinsic anyway, so don't whine when one isn't recognized
     ]

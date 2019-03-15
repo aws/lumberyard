@@ -12,26 +12,32 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "CanvasHelpers.h"
 #include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/sort.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <LyShine/UiComponentTypes.h>
+#include <LyShine/Bus/UiEditorCanvasBus.h>
 #include <Util/PathUtil.h>
 #include <LyMetricsProducer/LyMetricsAPI.h>
 #include "EditorDefs.h"
+#include "ErrorDialog.h"
 #include "Settings.h"
 #include "AnchorPresets.h"
 #include "PivotPresets.h"
 #include "Animation/UiAnimViewDialog.h"
 #include "AssetTreeEntry.h"
+#include "FindEntityWidget.h"
 
 #define UICANVASEDITOR_SETTINGS_EDIT_MODE_STATE_KEY     (QString("Edit Mode State") + " " + FileHelpers::GetAbsoluteGameDir())
 #define UICANVASEDITOR_SETTINGS_EDIT_MODE_GEOM_KEY      (QString("Edit Mode Geometry") + " " + FileHelpers::GetAbsoluteGameDir())
 #define UICANVASEDITOR_SETTINGS_PREVIEW_MODE_STATE_KEY  (QString("Preview Mode State") + " " + FileHelpers::GetAbsoluteGameDir())
 #define UICANVASEDITOR_SETTINGS_PREVIEW_MODE_GEOM_KEY   (QString("Preview Mode Geometry") + " " + FileHelpers::GetAbsoluteGameDir())
 #define UICANVASEDITOR_SETTINGS_WINDOW_STATE_VERSION    (1)
+
+#define UICANVASEDITOR_ENTITY_PICKER_CURSOR             ":/Icons/EntityPickerCursor.png"
 
 namespace
 {
@@ -116,6 +122,7 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
     , m_actionsEnabledWithSelection()
     , m_pasteAsSiblingAction(nullptr)
     , m_pasteAsChildAction(nullptr)
+    , m_actionsEnabledWithAlignAllowed()
     , m_previewModeCanvasEntityId()
     , m_previewModeCanvasSize(0.0f, 0.0f)
     , m_clipboardConnection()
@@ -141,71 +148,20 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
 
     UpdatePrefabFiles();
 
+    // Create the cursor to be used when picking an element in the hierarchy or viewport during object pick mode.
+    // Uses the default hot spot which is the center of the image
+    m_entityPickerCursor = QCursor(QPixmap(UICANVASEDITOR_ENTITY_PICKER_CURSOR));
+
     // disable rendering of the editor window until we have restored the window state
     setUpdatesEnabled(false);
-
-    // Create the central widget
-    QWidget* centralWidget = new QWidget(this);
-
-    // Create a vertical layout for the central widget that will lay out a tab section widget and a viewport widget
-    QVBoxLayout* centralWidgetLayout = new QVBoxLayout(centralWidget);
-    centralWidgetLayout->setContentsMargins(0, 0, 0, 0);
-    centralWidgetLayout->setSpacing(0);
-
-    // Create a tab section widget that's a child of the central widget
-    m_canvasTabSectionWidget = new QWidget(centralWidget);
-    m_canvasTabSectionWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
-
-    // Add the tab section widget to the layout of the central widget
-    centralWidgetLayout->addWidget(m_canvasTabSectionWidget);
-
-    // Create a horizontal layout for the tab section widget that will lay out a tab bar and an add canvas button
-    QHBoxLayout* canvasTabSectionWidgetLayout = new QHBoxLayout(m_canvasTabSectionWidget);
-    canvasTabSectionWidgetLayout->setContentsMargins(0, 0, 0, 0);
-
-    // Create a canvas tab bar that's a child of the tab section widget
-    m_canvasTabBar = new QTabBar(m_canvasTabSectionWidget);
-    m_canvasTabBar->setMovable(true);
-    m_canvasTabBar->setTabsClosable(true);
-    m_canvasTabBar->setExpanding(false);
-    m_canvasTabBar->setDocumentMode(true);
-    m_canvasTabBar->setDrawBase(false);
-    m_canvasTabBar->setContextMenuPolicy(Qt::CustomContextMenu);
-
-    // Add the canvas tab bar to the layout of the tab section widget
-    canvasTabSectionWidgetLayout->addWidget(m_canvasTabBar);
-
-    // Create a "add canvas" button  that's a child of the tab section widget
-    const int addCanvasButtonPadding = 3;
-    QPushButton* addCanvasButton = new QPushButton(tr("+"), m_canvasTabSectionWidget);
-    // Get the height of the tab bar to determine the button size
-    m_canvasTabBar->addTab("Temp");
-    int tabBarHeight = m_canvasTabBar->sizeHint().height();
-    m_canvasTabBar->removeTab(0);
-    int addCanvasButtonSize = tabBarHeight - (addCanvasButtonPadding * 2);
-    addCanvasButton->setFixedSize(addCanvasButtonSize, addCanvasButtonSize);
-    addCanvasButton->setToolTip(tr("New Canvas (Ctrl+N)"));
-    QObject::connect(addCanvasButton, &QPushButton::clicked, this, [this] { NewCanvas();  });
-    QHBoxLayout* addCanvasButtonLayout = new QHBoxLayout();
-    addCanvasButtonLayout->setContentsMargins(0, addCanvasButtonPadding, addCanvasButtonPadding, addCanvasButtonPadding);
-    addCanvasButtonLayout->addWidget(addCanvasButton);
-
-    // Add the "add canvas" button to the layout of the tab section widget
-    canvasTabSectionWidgetLayout->addLayout(addCanvasButtonLayout);
-
-    connect(m_canvasTabBar, &QTabBar::tabCloseRequested, this, &EditorWindow::OnCanvasTabCloseButtonPressed);
-    connect(m_canvasTabBar, &QTabBar::currentChanged, this, &EditorWindow::OnCurrentCanvasTabChanged);
-    connect(m_canvasTabBar, &QTabBar::customContextMenuRequested, this, &EditorWindow::OnCanvasTabContextMenuRequested);
 
     // Create the viewport widget
     m_viewport = new ViewportWidget(this);
     m_viewport->GetViewportInteraction()->UpdateZoomFactorLabel();
     m_viewport->setFocusPolicy(Qt::StrongFocus);
 
-    // Add the viewport widget to the layout of the central widget 
-    centralWidgetLayout->addWidget(m_viewport);
-
-    setCentralWidget(centralWidget);
+    // Create the central widget
+    SetupCentralWidget();
 
     // Signal: Hierarchical tree -> Properties pane.
     QObject::connect(m_hierarchy,
@@ -293,8 +249,13 @@ EditorWindow::EditorWindow(QWidget* parent, Qt::WindowFlags flags)
     // Start listening for any queries on the UiEditorChangeNotificationBus
     UiEditorChangeNotificationBus::Handler::BusConnect();
 
+    // Start listening for any internal requests and notifications in the UI Editor
+    UiEditorInternalRequestBus::Handler::BusConnect();
+    UiEditorInternalNotificationBus::Handler::BusConnect();
+
     AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusConnect();
 
+    AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
     FontNotificationBus::Handler::BusConnect();
 
     // Don't draw the viewport until the window is shown
@@ -310,6 +271,7 @@ EditorWindow::~EditorWindow()
 {
     AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler::BusDisconnect();
 
+    AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
     FontNotificationBus::Handler::BusDisconnect();
 
     QObject::disconnect(m_clipboardConnection);
@@ -318,6 +280,9 @@ EditorWindow::~EditorWindow()
 
     UiEditorDLLBus::Handler::BusDisconnect();
     UiEditorChangeNotificationBus::Handler::BusDisconnect();
+
+    UiEditorInternalRequestBus::Handler::BusDisconnect();
+    UiEditorInternalNotificationBus::Handler::BusDisconnect();
 
     // This has to be disconnected, or we'll get some weird feedback loop
     // where the cleanChanged signal propagates back up to the EditorWindow's
@@ -393,6 +358,84 @@ void EditorWindow::OpenSourceCanvasFile(QString absolutePathToFile)
     OpenCanvas(absolutePathToFile);
 }
 
+AzToolsFramework::EntityIdList EditorWindow::GetSelectedEntityIds()
+{
+    EntityHelpers::EntityIdList entityIds;
+
+    if (m_hierarchy)
+    {
+        entityIds = SelectionHelpers::GetSelectedElementIds(
+            m_hierarchy,
+            m_hierarchy->selectedItems(),
+            false);
+    }
+
+    return entityIds;
+}
+
+AZ::Entity::ComponentArrayType EditorWindow::GetSelectedComponents()
+{
+    AZ::Entity::ComponentArrayType selectedComponents;
+
+    if (m_properties)
+    {
+        selectedComponents = m_properties->GetProperties()->GetSelectedComponents();
+    }
+
+    return selectedComponents;
+}
+
+AZ::EntityId EditorWindow::GetActiveCanvasEntityId()
+{
+    return GetCanvas();
+}
+
+void EditorWindow::OnSelectedEntitiesPropertyChanged()
+{
+    // This is necessary to update the PropertiesWidget.
+    m_hierarchy->SignalUserSelectionHasChanged(m_hierarchy->selectedItems());
+}
+
+void EditorWindow::OnBeginUndoableEntitiesChange()
+{
+    AZ_Assert(!m_haveValidCanvasPreChangeState && !m_haveValidEntitiesPreChangeState, "Calling BeginUndoableEntitiesChange before EndUndoableEntitiesChange");
+
+    // Check if the canvas is selected to set up the correct undo command
+    if (m_hierarchy->selectedItems().empty())
+    {
+        m_canvasUndoXml = CanvasHelpers::BeginUndoableCanvasChange(m_activeCanvasEntityId);
+        m_haveValidCanvasPreChangeState = true;
+    }
+    else
+    {
+        HierarchyClipboard::BeginUndoableEntitiesChange(this, m_preChangeState);
+        m_haveValidEntitiesPreChangeState = true;
+    }
+}
+
+void EditorWindow::OnEndUndoableEntitiesChange(const AZStd::string& commandText)
+{
+    // Check if the canvas is selected to set up the correct undo command
+    if (m_hierarchy->selectedItems().empty())
+    {
+        AZ_Assert(m_haveValidCanvasPreChangeState, "Calling EndUndoableEntitiesChange without calling BeginUndoableEntitiesChange first");
+        if (m_haveValidCanvasPreChangeState)
+        {
+            CanvasHelpers::EndUndoableCanvasChange(this, commandText.c_str(), m_canvasUndoXml);
+            m_haveValidCanvasPreChangeState = false;
+        }
+    }
+    else
+    {
+        AZ_Assert(m_haveValidEntitiesPreChangeState, "Calling EndUndoableEntitiesChange without calling BeginUndoableEntitiesChange first");
+        if (m_haveValidEntitiesPreChangeState)
+        {
+            HierarchyClipboard::EndUndoableEntitiesChange(this, commandText.c_str(), m_preChangeState);
+            m_haveValidEntitiesPreChangeState = false;
+        }
+    }
+}
+
 void EditorWindow::EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* /*entry*/)
 {
     DeleteSliceLibraryTree();
@@ -401,11 +444,6 @@ void EditorWindow::EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowser
 void EditorWindow::EntryRemoved(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* /*entry*/)
 {
     DeleteSliceLibraryTree();
-}
-
-void EditorWindow::OnFontsReloaded()
-{
-    OnEditorPropertiesRefreshEntireTree();
 }
 
 void EditorWindow::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket)
@@ -486,6 +524,31 @@ void EditorWindow::OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAsse
     {
         UiEditorEntityContextNotificationBus::Handler::BusDisconnect();
     }
+}
+
+void EditorWindow::OnEscape()
+{
+    if (GetEditorMode() == UiEditorMode::Preview && isActiveWindow())
+    {
+        ToggleEditorMode();
+    }
+}
+
+void EditorWindow::OnFontsReloaded()
+{
+    OnEditorPropertiesRefreshEntireTree();
+}
+
+bool EditorWindow::OnPreError(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message)
+{
+    AddTraceMessage(message, m_errors);
+    return true;
+}
+
+bool EditorWindow::OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message)
+{
+    AddTraceMessage(message, m_warnings);
+    return true;
 }
 
 void EditorWindow::DestroyCanvas(const UiCanvasMetadata& canvasMetadata)
@@ -587,6 +650,15 @@ bool EditorWindow::SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceA
     AZStd::string sourceAssetPathName = canvasMetadata.m_canvasSourceAssetPathname;
     AZStd::string assetIdPathname;
 
+    if (canvasMetadata.m_errorsOnLoad)
+    {
+        bool saveWithErrors = CanSaveWithErrors(canvasMetadata);
+        if (!saveWithErrors)
+        {
+            return false;
+        }
+    }
+
     if (!forceAskingForFilename)
     {
         // Before saving, make sure the file contains an extension we're expecting
@@ -682,6 +754,8 @@ bool EditorWindow::SaveCanvasToXml(UiCanvasMetadata& canvasMetadata, bool forceA
     {
         AddRecentFile(sourceAssetPathName.c_str());
 
+        canvasMetadata.m_errorsOnLoad = false;
+
         if (!canvasMetadata.m_canvasChangedAndSaved)
         {
             canvasMetadata.m_canvasChangedAndSaved = GetChangesHaveBeenMade(canvasMetadata);
@@ -758,6 +832,22 @@ bool EditorWindow::SaveSlice(UiCanvasMetadata& canvasMetadata)
     return true;
 }
 
+bool EditorWindow::CanSaveWithErrors(const UiCanvasMetadata& canvasMetadata)
+{
+    // Prompt the user that saving may result in data loss. Most of the time this is not desired
+    // (which is why 'cancel' is the default interaction), but this does provide users a way to still
+    // save their canvas if this is the only way they can solve the erroneous data
+    QMessageBox msgBox(this);
+    msgBox.setText(tr("Canvas %1 loaded with errors. You may lose work if you save.").arg(canvasMetadata.m_canvasDisplayName.c_str()));
+    msgBox.setInformativeText(tr("Do you want to save your changes?"));
+    msgBox.setIcon(QMessageBox::Warning);
+    msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Cancel);
+    msgBox.setDefaultButton(QMessageBox::Cancel);
+    int result = msgBox.exec();
+
+    return result == QMessageBox::Save;
+}
+
 bool EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool changeActiveCanvasToThis)
 {
     // Don't allow a new canvas to load if there is a context menu up since loading doesn't
@@ -828,22 +918,40 @@ bool EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
     UiEditorEntityContext* entityContext = new UiEditorEntityContext(this);
 
     // Load the canvas
+    bool errorsOnLoad = false;
     if (canvasFilename.isEmpty())
     {
         canvasEntityId = gEnv->pLyShine->CreateCanvasInEditor(entityContext);
     }
     else
     {
+        // Collect errors and warnings during the canvas load
+        AZ::Debug::TraceMessageBus::Handler::BusConnect();
+
         canvasEntityId = gEnv->pLyShine->LoadCanvasInEditor(assetIdPathname.c_str(), sourceAssetPathName.c_str(), entityContext);
+
+        // Stop receiving error and warning events
+        AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
+
         if (canvasEntityId.IsValid())
         {
             AddRecentFile(sourceAssetPathName.c_str());
+
+            CheckForOrphanedChildren(canvasEntityId);
+
+            // Show any errors and warnings that occurred during the canvas load
+            ShowTraceMessages(GetCanvasDisplayNameFromAssetPath(sourceAssetPathName));
+
+            errorsOnLoad = !m_errors.empty();
         }
         else
         {
             // There was an error loading the file. Report an error
             QMessageBox::critical(this, tr("Error"), tr("Failed to load UI canvas %1. See log for details").arg(sourceAssetPathName.c_str()));
         }
+
+        // Clear any trace messages from the canvas load
+        ClearTraceMessages();
     }
 
     if (!canvasEntityId.IsValid())
@@ -868,6 +976,7 @@ bool EditorWindow::LoadCanvas(const QString& canvasFilename, bool autoLoad, bool
     canvasMetadata->m_entityContext = entityContext;
     canvasMetadata->m_undoStack = new UndoStack(m_undoGroup);
     canvasMetadata->m_autoLoaded = autoLoad;
+    canvasMetadata->m_errorsOnLoad = errorsOnLoad;
     canvasMetadata->m_canvasChangedAndSaved = false;
 
     // Check if there is an automatically created canvas that should be unloaded.
@@ -918,6 +1027,10 @@ void EditorWindow::UnloadCanvas(AZ::EntityId canvasEntityId)
     UiCanvasMetadata* canvasMetadata = GetCanvasMetadata(canvasEntityId);
     if (canvasMetadata)
     {
+        // Stop object pick mode so that the hierarchy and viewport states are
+        // set back to normal before saving the canvas edit state
+        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+
         // Delete the canvas
         DestroyCanvas(*canvasMetadata);
 
@@ -1079,8 +1192,13 @@ void EditorWindow::SetActiveCanvas(AZ::EntityId canvasEntityId)
     // Disable previous active canvas
     if (m_activeCanvasEntityId.IsValid())
     {
-        // Disable undo stack
         UiCanvasMetadata* canvasMetadata = GetActiveCanvasMetadata();
+
+        // If the active canvas hasn't been unloaded, stop object pick mode so that the hierarchy 
+        // and viewport states are set back to normal before saving the canvas edit state
+        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+
+        // Disable undo stack
         if (canvasMetadata)
         {
             canvasMetadata->m_undoStack->setActive(false);
@@ -1128,6 +1246,8 @@ void EditorWindow::SetActiveCanvas(AZ::EntityId canvasEntityId)
 
     m_hierarchy->clearSelection();
     m_hierarchy->SetUserSelection(nullptr); // trigger a selection change so the properties updates
+
+    m_hierarchy->ActiveCanvasChanged();
 
     m_viewport->ActiveCanvasChanged();
 
@@ -1295,6 +1415,11 @@ CanvasSizeToolbarSection* EditorWindow::GetCanvasSizeToolbarSection()
 {
     AZ_Assert(m_mainToolbar, "Missing main toolbar");
     return m_mainToolbar->GetCanvasSizeToolbarSection();
+}
+
+const QCursor& EditorWindow::GetEntityPickerCursor()
+{
+    return m_entityPickerCursor;
 }
 
 void EditorWindow::OnEditorNotifyEvent(EEditorNotifyEvent ev)
@@ -1486,6 +1611,9 @@ void EditorWindow::ToggleEditorMode()
     }
     else
     {
+        // Stop object pick mode
+        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+
         m_canvasTabSectionWidget->hide();
 
         SaveModeSettings(UiEditorMode::Edit, false);
@@ -1512,6 +1640,21 @@ void EditorWindow::ToggleEditorMode()
             if (clonedCanvas)
             {
                 m_previewModeCanvasEntityId = clonedCanvas->GetId();
+            }
+            else
+            {
+                QMessageBox::critical(this, "Preview Mode Error", GetEntityContext()->GetErrorMessage().c_str());
+
+                // A zero-msec timeout will cause the single-shot timer to execute
+                // once all events currently in the queue have processed. This allows
+                // the current "preview mode toggle" to finish and then immediately 
+                // toggle back to edit mode.
+                const int queueForImmediateExecution = 0;
+                QTimer::singleShot(queueForImmediateExecution, this,
+                    [this]()
+                    {
+                        ToggleEditorMode();
+                    });
             }
         }
 
@@ -1603,6 +1746,9 @@ void EditorWindow::ReplaceEntityContext(UiEditorEntityContext* entityContext)
         canvasMetadata->m_entityContext = entityContext;
 
         m_sliceManager->SetEntityContextId(entityContext->GetContextId());
+
+        m_hierarchy->EntityContextChanged();
+        m_viewport->EntityContextChanged();
     }
 }
 
@@ -1776,6 +1922,22 @@ void EditorWindow::EntitiesAddedOrRemoved()
         // If we are slice editing then it is possible that the change has removed or recreated the slice entity.
         // The file menu changes depending on whether the slice entity is valid so update it.
         RefreshEditorMenu();
+    }
+}
+
+void EditorWindow::FontTextureHasChanged()
+{
+    // A font texture has changed since we last rendered. Force a render graph update for each loaded canvas.
+    // Only text components that actually use the affected font will actually regenerate their quads.
+    for (auto mapItem : m_canvasMetadataMap)
+    {
+        auto canvasMetadata = mapItem.second;
+        EBUS_EVENT_ID(canvasMetadata->m_canvasEntityId, UiCanvasComponentImplementationBus, MarkRenderGraphDirty);
+    }
+
+    if (GetEditorMode() == UiEditorMode::Preview)
+    {
+        EBUS_EVENT_ID(GetPreviewModeCanvas(), UiCanvasComponentImplementationBus, MarkRenderGraphDirty);
     }
 }
 
@@ -2244,42 +2406,6 @@ void EditorWindow::DeleteSliceLibraryTree()
     }
 }
 
-bool EditorWindow::event(QEvent* ev)
-{
-    if (ev->type() == QEvent::ShortcutOverride)
-    {
-        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(ev);
-        QKeySequence keySequence(keyEvent->key() | keyEvent->modifiers());
-
-        if (keySequence == UICANVASEDITOR_COORDINATE_SYSTEM_CYCLE_SHORTCUT_KEY_SEQUENCE)
-        {
-            ev->accept();
-            return true;
-        }
-        else if (keySequence == UICANVASEDITOR_SNAP_TO_GRID_TOGGLE_SHORTCUT_KEY_SEQUENCE)
-        {
-            ev->accept();
-            return true;
-        }
-    }
-
-    return QMainWindow::event(ev);
-}
-
-void EditorWindow::keyReleaseEvent(QKeyEvent* ev)
-{
-    QKeySequence keySequence(ev->key() | ev->modifiers());
-
-    if (keySequence == UICANVASEDITOR_COORDINATE_SYSTEM_CYCLE_SHORTCUT_KEY_SEQUENCE)
-    {
-        SignalCoordinateSystemCycle();
-    }
-    else if (keySequence == UICANVASEDITOR_SNAP_TO_GRID_TOGGLE_SHORTCUT_KEY_SEQUENCE)
-    {
-        SignalSnapToGridToggle();
-    }
-}
-
 void EditorWindow::paintEvent(QPaintEvent* paintEvent)
 {
     QMainWindow::paintEvent(paintEvent);
@@ -2303,6 +2429,171 @@ void EditorWindow::closeEvent(QCloseEvent* closeEvent)
     SaveEditorWindowSettings();
 
     QMainWindow::closeEvent(closeEvent);
+}
+
+void EditorWindow::SetupCentralWidget()
+{
+    QWidget* centralWidget = new QWidget(this);
+
+    // Create a vertical layout for the central widget that will lay out a tab section widget and a viewport widget
+    SetupTabbedViewportWidget(centralWidget);
+
+    setCentralWidget(centralWidget);
+}
+
+void EditorWindow::SetupTabbedViewportWidget(QWidget* parent)
+{
+    // Create a vertical layout for the central widget that will lay out a tab section widget and a viewport widget
+    QVBoxLayout* tabbedViewportLayout = new QVBoxLayout(parent);
+    tabbedViewportLayout->setContentsMargins(0, 0, 0, 0);
+    tabbedViewportLayout->setSpacing(0);
+
+    // Create a tab section widget that's a child of the central widget
+    m_canvasTabSectionWidget = new QWidget(parent);
+    m_canvasTabSectionWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+
+    // Add the tab section widget to the layout of the central widget
+    tabbedViewportLayout->addWidget(m_canvasTabSectionWidget);
+
+    // Create a horizontal layout for the tab section widget that will lay out a tab bar and an add canvas button
+    QHBoxLayout* canvasTabSectionWidgetLayout = new QHBoxLayout(m_canvasTabSectionWidget);
+    canvasTabSectionWidgetLayout->setContentsMargins(0, 0, 0, 0);
+
+    // Create a canvas tab bar that's a child of the tab section widget
+    m_canvasTabBar = new QTabBar(m_canvasTabSectionWidget);
+    m_canvasTabBar->setMovable(true);
+    m_canvasTabBar->setTabsClosable(true);
+    m_canvasTabBar->setExpanding(false);
+    m_canvasTabBar->setDocumentMode(true);
+    m_canvasTabBar->setDrawBase(false);
+    m_canvasTabBar->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Add the canvas tab bar to the layout of the tab section widget
+    canvasTabSectionWidgetLayout->addWidget(m_canvasTabBar);
+    
+    // Create a "add canvas" button  that's a child of the tab section widget
+    const int addCanvasButtonPadding = 3;
+    QPushButton* addCanvasButton = new QPushButton(tr("+"), m_canvasTabSectionWidget);
+    // Get the height of the tab bar to determine the button size
+    m_canvasTabBar->addTab("Temp");
+    int tabBarHeight = m_canvasTabBar->sizeHint().height();
+    m_canvasTabBar->removeTab(0);
+    int addCanvasButtonSize = tabBarHeight - (addCanvasButtonPadding * 2);
+    addCanvasButton->setFixedSize(addCanvasButtonSize, addCanvasButtonSize);
+    addCanvasButton->setToolTip(tr("New Canvas (Ctrl+N)"));
+    QObject::connect(addCanvasButton, &QPushButton::clicked, this, [this] { NewCanvas();  });
+    QHBoxLayout* addCanvasButtonLayout = new QHBoxLayout();
+    addCanvasButtonLayout->setContentsMargins(0, addCanvasButtonPadding, addCanvasButtonPadding, addCanvasButtonPadding);
+    addCanvasButtonLayout->addWidget(addCanvasButton);
+    
+    // Add the "add canvas" button to the layout of the tab section widget
+    canvasTabSectionWidgetLayout->addLayout(addCanvasButtonLayout);
+
+    connect(m_canvasTabBar, &QTabBar::tabCloseRequested, this, &EditorWindow::OnCanvasTabCloseButtonPressed);
+    connect(m_canvasTabBar, &QTabBar::currentChanged, this, &EditorWindow::OnCurrentCanvasTabChanged);
+    connect(m_canvasTabBar, &QTabBar::customContextMenuRequested, this, &EditorWindow::OnCanvasTabContextMenuRequested);
+
+    QWidget* viewportWithRulers = m_viewport->CreateViewportWithRulersWidget(this);
+
+    // Add the viewport widget to the layout of the central widget 
+    tabbedViewportLayout->addWidget(viewportWithRulers);
+}
+
+void EditorWindow::CheckForOrphanedChildren(AZ::EntityId canvasEntityId)
+{
+    bool result = false;
+    EBUS_EVENT_ID_RESULT(result, canvasEntityId, UiEditorCanvasBus, CheckForOrphanedElements);
+
+    if (result)
+    {
+        // There are orphaned elements. Ask the user whether to recover or remove them.
+        int result = QMessageBox::warning(this,
+            tr("Warning: Orphaned Elements"),
+            tr("This UI canvas has orphaned UI elements that are no longer in the element hierarchy.\n\n"
+               "They can either be recovered and placed under an element named RecoveredOrphans or they can be deleted.\n\n"
+                "Do you wish to recover them?"),
+            (QMessageBox::Yes | QMessageBox::No),
+            QMessageBox::Yes);
+
+        if (result == QMessageBox::Yes)
+        {
+            EBUS_EVENT_ID(canvasEntityId, UiEditorCanvasBus, RecoverOrphanedElements);
+        }
+        else
+        {
+            EBUS_EVENT_ID(canvasEntityId, UiEditorCanvasBus, RemoveOrphanedElements);
+        }
+    }
+}
+
+void EditorWindow::ShowEntitySearchModal()
+{
+    QDialog* dialog = new QDialog(this);
+    QVBoxLayout* mainLayout = new QVBoxLayout();
+    mainLayout->setContentsMargins(5, 5, 5, 5);
+    FindEntityWidget* findEntityWidget = new FindEntityWidget(m_activeCanvasEntityId, dialog);
+    mainLayout->addWidget(findEntityWidget);
+    dialog->setWindowTitle(QObject::tr("Find Elements"));
+    dialog->setMinimumSize(QSize(500, 500));
+    dialog->resize(QSize(600, 600));
+    dialog->setLayout(mainLayout);
+
+    QWidget::connect(findEntityWidget, &FindEntityWidget::OnFinished, dialog,
+        [this, dialog](AZStd::vector<AZ::EntityId> selectedEntities)
+    {
+        if (!selectedEntities.empty())
+        {
+            // Clear any selected entities in the hierarchy so that if an entity is already selected, it will still be scrolled to
+            m_hierarchy->clearSelection();
+            m_hierarchy->setCurrentItem(nullptr);
+
+            // Expand the entities to be selected in the hierarchy
+            HierarchyHelpers::ExpandItemsAndAncestors(m_hierarchy, selectedEntities);
+
+            // Select the entities in the hierarchy
+            HierarchyHelpers::SetSelectedItems(m_hierarchy, &selectedEntities);
+        }
+
+        dialog->accept();
+    }
+    );
+
+    QWidget::connect(findEntityWidget, &FindEntityWidget::OnCanceled, dialog,
+        [dialog]()
+    {
+        dialog->reject();
+    }
+    );
+
+    dialog->exec();
+    delete dialog;
+}
+
+void EditorWindow::AddTraceMessage(const char *message, AZStd::list<QString>& messageList)
+{
+    messageList.push_back(QString(message));
+}
+
+void EditorWindow::ShowTraceMessages(const AZStd::string& canvasName)
+{
+    // Display the errors and warnings in one dialog window
+    if (m_errors.size() == 0 && m_warnings.size() == 0)
+    {
+        return;
+    }
+
+    SandboxEditor::ErrorDialog errorDialog(this);
+    QString title = QString().sprintf("Error Log - %s", canvasName.c_str());
+    errorDialog.setWindowTitle(title);
+    errorDialog.AddMessages(SandboxEditor::ErrorDialog::MessageType::Error, m_errors);
+    errorDialog.AddMessages(SandboxEditor::ErrorDialog::MessageType::Warning, m_warnings);
+    errorDialog.exec();
+}
+
+void EditorWindow::ClearTraceMessages()
+{
+    m_errors.clear();
+    m_warnings.clear();
 }
 
 #include <EditorWindow.moc>

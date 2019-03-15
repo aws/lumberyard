@@ -34,7 +34,7 @@ namespace LmbrCentral
                 editContext->Class<EditorForceVolumeComponent>(
                     "Force Volume", "The force volume component is used to apply a physical force on objects within the volume")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                    ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/ForceVolume.png")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/ForceVolume.png")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

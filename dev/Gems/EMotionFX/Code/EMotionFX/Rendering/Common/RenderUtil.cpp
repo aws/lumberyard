@@ -71,8 +71,8 @@ namespace MCommon
         delete      mArrowHeadMesh;
         delete      mFont;
 
-        // get rid of the global space positions
-        mGlobalPositions.Clear();
+        // get rid of the world space positions
+        mWorldSpacePositions.Clear();
     }
 
 
@@ -398,50 +398,35 @@ namespace MCommon
 
 
     // render a simple line based skeleton
-    void RenderUtil::RenderSimpleSkeleton(EMotionFX::ActorInstance* actorInstance, MCore::Array<uint32>* visibleNodeIndices, MCore::Array<uint32>* selectedNodeIndices, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor, bool directlyRender)
+    void RenderUtil::RenderSimpleSkeleton(EMotionFX::ActorInstance* actorInstance, const AZStd::unordered_set<AZ::u32>* visibleJointIndices,
+        const AZStd::unordered_set<AZ::u32>* selectedJointIndices, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor,
+        float jointSphereRadius, bool directlyRender)
     {
-        // get the actor it is an instance from
-        EMotionFX::Actor* actor = actorInstance->GetActor();
+        const EMotionFX::Actor* actor = actorInstance->GetActor();
+        const EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
+        const EMotionFX::Pose* pose = actorInstance->GetTransformData()->GetCurrentPose();
 
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = actorInstance->GetTransformData()->GetGlobalInclusiveMatrices();
-
-        EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
-
-        // for all nodes in the actor
         const uint32 numNodes = actorInstance->GetNumEnabledNodes();
         for (uint32 n = 0; n < numNodes; ++n)
         {
-            EMotionFX::Node*    curNode     = skeleton->GetNode(actorInstance->GetEnabledNode(n));
-            const uint32        nodeIndex   = curNode->GetNodeIndex();
+            const EMotionFX::Node* joint = skeleton->GetNode(actorInstance->GetEnabledNode(n));
+            const AZ::u32 jointIndex = joint->GetNodeIndex();
 
-            // skip root nodes, you could also use curNode->IsRootNode()
-            // but we use the parent index here, as we will reuse it
-            uint32 parentIndex = curNode->GetParentIndex();
-            if (parentIndex == MCORE_INVALIDINDEX32)
+            if (!visibleJointIndices || visibleJointIndices->empty() ||
+                (visibleJointIndices->find(jointIndex) != visibleJointIndices->end()))
             {
-                continue;
-            }
+                const AZ::Vector3 currentJointPos = pose->GetWorldSpaceTransform(jointIndex).mPosition;
+                const bool jointSelected = selectedJointIndices->find(jointIndex) != selectedJointIndices->end();
 
-            // check if the node is visible
-            if (visibleNodeIndices == NULL ||
-                (visibleNodeIndices->GetIsEmpty()) ||
-                (visibleNodeIndices->GetIsEmpty() == false && visibleNodeIndices->Find(nodeIndex) != MCORE_INVALIDINDEX32))
-            {
-                // draw a line between the current node and its parent node
-                // here we first calculate the start and end position of the line, which are just the global space positions of the nodes
-                AZ::Vector3 startPos = globalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
-                AZ::Vector3 endPos    = globalMatrices[ parentIndex ].GetTranslation();
+                const AZ::u32 parentIndex = joint->GetParentIndex();
+                if (parentIndex != MCORE_INVALIDINDEX32)
+                {
+                    const bool parentSelected = selectedJointIndices->find(parentIndex) != selectedJointIndices->end();
+                    const AZ::Vector3 parentJointPos = pose->GetWorldSpaceTransform(parentIndex).mPosition;
+                    RenderLine(currentJointPos, parentJointPos, parentSelected ? selectedColor : color);
+                }
 
-                // finally draw the line
-                if (selectedNodeIndices != NULL && selectedNodeIndices->GetIsEmpty() == false && selectedNodeIndices->Find(parentIndex) != MCORE_INVALIDINDEX32)
-                {
-                    RenderLine(startPos, endPos, selectedColor);
-                }
-                else
-                {
-                    RenderLine(startPos, endPos, color);
-                }
+                RenderSphere(currentJointPos, jointSphereRadius, jointSelected ? selectedColor : color);
             }
         }
 
@@ -453,32 +438,28 @@ namespace MCommon
 
 
     // render object orientated bounding  boxes for all enabled nodes inside the actor instance
-    void RenderUtil::RenderOBBs(EMotionFX::ActorInstance* actorInstance, MCore::Array<uint32>* visibleNodeIndices, MCore::Array<uint32>* selectedNodeIndices, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor, bool directlyRender)
+    void RenderUtil::RenderOBBs(EMotionFX::ActorInstance* actorInstance, const AZStd::unordered_set<AZ::u32>* visibleJointIndices, const AZStd::unordered_set<AZ::u32>* selectedJointIndices, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor, bool directlyRender)
     {
         AZ::Vector3 p[8];
 
         // get the actor it is an instance from
-        EMotionFX::Actor* actor = actorInstance->GetActor();
-        EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
-
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = actorInstance->GetTransformData()->GetGlobalInclusiveMatrices();
+        const EMotionFX::Actor* actor = actorInstance->GetActor();
+        const EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
+        const EMotionFX::Pose* pose = actorInstance->GetTransformData()->GetCurrentPose();
 
         // iterate through all enabled nodes
         MCore::RGBAColor tempColor;
         const uint32 numEnabled = actorInstance->GetNumEnabledNodes();
         for (uint32 i = 0; i < numEnabled; ++i)
         {
-            EMotionFX::Node*    node        = skeleton->GetNode(actorInstance->GetEnabledNode(i));
-            const uint32        nodeIndex   = node->GetNodeIndex();
+            const EMotionFX::Node* joint = skeleton->GetNode(actorInstance->GetEnabledNode(i));
+            const AZ::u32 jointIndex = joint->GetNodeIndex();
 
-            // check if the node is visible
-            if ((visibleNodeIndices == NULL) ||
-                (visibleNodeIndices->GetIsEmpty()) ||
-                (visibleNodeIndices->GetIsEmpty() == false && visibleNodeIndices->Find(nodeIndex) != MCORE_INVALIDINDEX32))
+            if (!visibleJointIndices || visibleJointIndices->empty() ||
+                (visibleJointIndices->find(jointIndex) != visibleJointIndices->end()))
             {
-                const MCore::OBB&   obb         = actor->GetNodeOBB(node->GetNodeIndex());
-                MCore::Matrix       globalTM    = globalMatrices[ node->GetNodeIndex() ];
+                const MCore::OBB& obb = actor->GetNodeOBB(jointIndex);
+                EMotionFX::Transform worldTransform = pose->GetWorldSpaceTransform(jointIndex);
 
                 // skip the OBB if it isn't valid
                 if (obb.CheckIfIsValid() == false)
@@ -487,7 +468,7 @@ namespace MCommon
                 }
 
                 // check if the current bone is selected and set the color according to it
-                if (selectedNodeIndices != NULL && selectedNodeIndices->GetIsEmpty() == false && selectedNodeIndices->Find(nodeIndex) != MCORE_INVALIDINDEX32)
+                if (selectedJointIndices && selectedJointIndices->find(jointIndex) != selectedJointIndices->end())
                 {
                     tempColor = selectedColor;
                 }
@@ -497,14 +478,10 @@ namespace MCommon
                 }
 
                 obb.CalcCornerPoints(p);
-                p[0] *= globalTM;
-                p[1] *= globalTM;
-                p[2] *= globalTM;
-                p[3] *= globalTM;
-                p[4] *= globalTM;
-                p[5] *= globalTM;
-                p[6] *= globalTM;
-                p[7] *= globalTM;
+                for (uint32 a = 0; a < 8; a++)
+                {
+                    p[a] = worldTransform.TransformPoint(p[a]);
+                }
 
                 // render
                 RenderLine(p[0], p[1], tempColor);
@@ -532,7 +509,7 @@ namespace MCommon
 
 
     // render wireframe mesh
-    void RenderUtil::RenderWireframe(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender, float offsetScale)
+    void RenderUtil::RenderWireframe(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender, float offsetScale)
     {
         // check if the mesh is valid and skip the node in case it's not
         if (mesh == NULL)
@@ -560,8 +537,8 @@ namespace MCommon
             {
                 indexA = indices[curIndex + i];
                 indexB = (i < numPolyVerts - 1) ? indices[curIndex + i + 1] : indices[curIndex];
-                posA = (AZ::Vector3(positions[indexA]) + AZ::Vector3(normals[indexA]) * scale) * globalTM;
-                posB = (AZ::Vector3(positions[indexB]) + AZ::Vector3(normals[indexB]) * scale) * globalTM;
+                posA = (AZ::Vector3(positions[indexA]) + AZ::Vector3(normals[indexA]) * scale) * worldTM;
+                posB = (AZ::Vector3(positions[indexB]) + AZ::Vector3(normals[indexB]) * scale) * worldTM;
                 RenderLine(posA, posB, color);
             }
 
@@ -576,9 +553,9 @@ namespace MCommon
                 b       = indices[j+1];
                 c       = indices[j+2];
 
-                posA    = (positions[a] + normals[a] * 0.005f) * globalTM;
-                posB    = (positions[b] + normals[b] * 0.005f) * globalTM;
-                posC    = (positions[c] + normals[c] * 0.005f) * globalTM;
+                posA    = (positions[a] + normals[a] * 0.005f) * worldTM;
+                posB    = (positions[b] + normals[b] * 0.005f) * worldTM;
+                posC    = (positions[c] + normals[c] * 0.005f) * worldTM;
 
                 RenderLine( posA, posB, color );
                 RenderLine( posB, posC, color );
@@ -593,7 +570,7 @@ namespace MCommon
 
 
     // render vertex and face normals
-    void RenderUtil::RenderNormals(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM, bool vertexNormals, bool faceNormals, float vertexNormalsScale, float faceNormalsScale, const MCore::RGBAColor& colorVertexNormals, const MCore::RGBAColor& colorFaceNormals, bool directlyRender)
+    void RenderUtil::RenderNormals(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, bool vertexNormals, bool faceNormals, float vertexNormalsScale, float faceNormalsScale, const MCore::RGBAColor& colorVertexNormals, const MCore::RGBAColor& colorFaceNormals, bool directlyRender)
     {
         // check if the mesh is valid and skip the node in case it's not
         if (mesh == NULL)
@@ -607,7 +584,7 @@ namespace MCommon
             return;
         }
 
-        PrepareForMesh(mesh, globalTM);
+        PrepareForMesh(mesh, worldTM);
 
         AZ::PackedVector3f* normals     = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
         uint32*         indices     = (uint32*)mesh->GetIndices();
@@ -631,9 +608,9 @@ namespace MCommon
                 indexB = indices[ polyStartIndex + 1 ];
                 indexC = indices[ polyStartIndex + 2 ];
 
-                posA = mGlobalPositions[ indexA ];
-                posB = mGlobalPositions[ indexB ];
-                posC = mGlobalPositions[ indexC ];
+                posA = mWorldSpacePositions[ indexA ];
+                posB = mWorldSpacePositions[ indexB ];
+                posC = mWorldSpacePositions[ indexC ];
 
                 normalDir   = (posB - posA).Cross(posC - posA).GetNormalized();
 
@@ -641,7 +618,7 @@ namespace MCommon
                 normalPos = AZ::Vector3::CreateZero();
                 for (uint32 v = 0; v < numPolyVerts; ++v)
                 {
-                    normalPos += mGlobalPositions[ indices[polyStartIndex + v] ];
+                    normalPos += mWorldSpacePositions[ indices[polyStartIndex + v] ];
                 }
                 normalPos /= (float)numPolyVerts;
 
@@ -657,8 +634,8 @@ namespace MCommon
             AZ::Vector3 normal;
             for (uint32 j = 0; j < numVertices; ++j)
             {
-                normal = globalTM.Mul3x3(AZ::Vector3(normals[j])) * vertexNormalsScale;
-                RenderLine(mGlobalPositions[j], mGlobalPositions[j] + normal, colorVertexNormals);
+                normal = worldTM.Mul3x3(AZ::Vector3(normals[j])) * vertexNormalsScale;
+                RenderLine(mWorldSpacePositions[j], mWorldSpacePositions[j] + normal, colorVertexNormals);
             }
         }
 
@@ -670,7 +647,7 @@ namespace MCommon
 
 
     // render tangents and bitangents of the mesh
-    void RenderUtil::RenderTangents(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM, float scale, const MCore::RGBAColor& colorTangents, const MCore::RGBAColor& mirroredBitangentColor, const MCore::RGBAColor& colorBitangent, bool directlyRender)
+    void RenderUtil::RenderTangents(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, float scale, const MCore::RGBAColor& colorTangents, const MCore::RGBAColor& mirroredBitangentColor, const MCore::RGBAColor& colorBitangent, bool directlyRender)
     {
         // check if the mesh is valid and skip the node in case it's not
         if (mesh == NULL)
@@ -687,7 +664,7 @@ namespace MCommon
 
         AZ::PackedVector3f* bitangents = static_cast<AZ::PackedVector3f*>(mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_BITANGENTS));
 
-        PrepareForMesh(mesh, globalTM);
+        PrepareForMesh(mesh, worldTM);
 
         AZ::PackedVector3f* normals = (AZ::PackedVector3f*)mesh->FindVertexData(EMotionFX::Mesh::ATTRIB_NORMALS);
         const uint32 numVertices = mesh->GetNumVertices();
@@ -697,27 +674,27 @@ namespace MCommon
         for (uint32 i = 0; i < numVertices; ++i)
         {
             orgTangent.Set(tangents[i].GetX(), tangents[i].GetY(), tangents[i].GetZ());
-            tangent = globalTM.Mul3x3(orgTangent).GetNormalized();
+            tangent = worldTM.Mul3x3(orgTangent).GetNormalized();
 
             if (bitangents)
             {
-                bitangent= AZ::Vector3(bitangents[i]);
+                bitangent = AZ::Vector3(bitangents[i]);
             }
             else
             {
                 bitangent = tangents[i].GetW() * (AZ::Vector3(normals[i]).Cross(orgTangent));
             }
-            bitangent = globalTM.Mul3x3(bitangent).GetNormalized();
+            bitangent = worldTM.Mul3x3(bitangent).GetNormalized();
 
-            RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (tangent * scale), colorTangents);
+            RenderLine(mWorldSpacePositions[i], mWorldSpacePositions[i] + (tangent * scale), colorTangents);
 
             if (tangents[i].GetW() < 0.0f)
             {
-                RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (bitangent * scale), mirroredBitangentColor);
+                RenderLine(mWorldSpacePositions[i], mWorldSpacePositions[i] + (bitangent * scale), mirroredBitangentColor);
             }
             else
             {
-                RenderLine(mGlobalPositions[i], mGlobalPositions[i] + (bitangent * scale), colorBitangent);
+                RenderLine(mWorldSpacePositions[i], mWorldSpacePositions[i] + (bitangent * scale), colorBitangent);
             }
         }
 
@@ -729,7 +706,7 @@ namespace MCommon
 
 
     // precalculate data for rendering for the given mesh
-    void RenderUtil::PrepareForMesh(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM)
+    void RenderUtil::PrepareForMesh(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM)
     {
         // check if we have already prepared for the given mesh
         if (mCurrentMesh == mesh)
@@ -745,15 +722,15 @@ namespace MCommon
         AZ::PackedVector3f* positions   = (AZ::PackedVector3f*)mCurrentMesh->FindVertexData(EMotionFX::Mesh::ATTRIB_POSITIONS);
 
         // check if the vertices fits in our buffer
-        if (mGlobalPositions.GetLength() < numVertices)
+        if (mWorldSpacePositions.GetLength() < numVertices)
         {
-            mGlobalPositions.Resize(numVertices);
+            mWorldSpacePositions.Resize(numVertices);
         }
 
-        // pre-calculate the global space positions
+        // pre-calculate the world space positions
         for (uint32 i = 0; i < numVertices; ++i)
         {
-            mGlobalPositions[i] = AZ::Vector3(positions[i]) * globalTM;
+            mWorldSpacePositions[i] = AZ::Vector3(positions[i]) * worldTM;
         }
     }
 
@@ -763,15 +740,16 @@ namespace MCommon
     {
         // get the transform data
         EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
+        const EMotionFX::Pose* pose = transformData->GetCurrentPose();
 
         const uint32            nodeIndex       = node->GetNodeIndex();
         const uint32            parentIndex     = node->GetParentIndex();
-        const AZ::Vector3       nodeGlobalPos   = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
+        const AZ::Vector3       nodeWorldPos    = pose->GetWorldSpaceTransform(nodeIndex).mPosition;
 
         if (parentIndex != MCORE_INVALIDINDEX32)
         {
-            const AZ::Vector3       parentGlobalPos = transformData->GetGlobalInclusiveMatrix(parentIndex).GetTranslation();
-            const AZ::Vector3       bone            = parentGlobalPos - nodeGlobalPos;
+            const AZ::Vector3       parentWorldPos  = pose->GetWorldSpaceTransform(parentIndex).mPosition;
+            const AZ::Vector3       bone            = parentWorldPos - nodeWorldPos;
             const float             boneLength      = MCore::SafeLength(bone);
 
             // 10% of the bone length is the sphere size
@@ -783,54 +761,51 @@ namespace MCommon
 
 
     // render the advanced skeleton
-    void RenderUtil::RenderSkeleton(EMotionFX::ActorInstance* actorInstance, const MCore::Array<uint32>& boneList, MCore::Array<uint32>* visibleNodeIndices, MCore::Array<uint32>* selectedNodeIndices, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor)
+    void RenderUtil::RenderSkeleton(EMotionFX::ActorInstance* actorInstance, const MCore::Array<uint32>& boneList, const AZStd::unordered_set<AZ::u32>* visibleJointIndices, const AZStd::unordered_set<AZ::u32>* selectedJointIndices, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor)
     {
         // check if our render util supports rendering meshes, if not render the fallback skeleton using lines only
         if (GetIsMeshRenderingSupported() == false)
         {
-            RenderSimpleSkeleton(actorInstance, visibleNodeIndices, selectedNodeIndices, color, selectedColor, true);
+            RenderSimpleSkeleton(actorInstance, visibleJointIndices, selectedJointIndices, color, selectedColor, true);
             return;
         }
 
         // get the actor it is an instance from
         EMotionFX::Actor* actor = actorInstance->GetActor();
-        EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
-
-        // get the transform data
         EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
+        const EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
+        const EMotionFX::Pose* pose = transformData->GetCurrentPose();
 
         // iterate through all enabled nodes
         MCore::RGBAColor tempColor;
         const uint32 numEnabled = actorInstance->GetNumEnabledNodes();
         for (uint32 i = 0; i < numEnabled; ++i)
         {
-            EMotionFX::Node*    node            = skeleton->GetNode(actorInstance->GetEnabledNode(i));
-            const uint32        nodeIndex       = node->GetNodeIndex();
-            const uint32        parentIndex     = node->GetParentIndex();
+            EMotionFX::Node* joint = skeleton->GetNode(actorInstance->GetEnabledNode(i));
+            const AZ::u32 jointIndex = joint->GetNodeIndex();
+            const AZ::u32 parentIndex = joint->GetParentIndex();
 
             // check if this node has a parent and is a bone, if not skip it
-            if (parentIndex == MCORE_INVALIDINDEX32 || boneList.Find(nodeIndex) == MCORE_INVALIDINDEX32)
+            if (parentIndex == MCORE_INVALIDINDEX32 || boneList.Find(jointIndex) == MCORE_INVALIDINDEX32)
             {
                 continue;
             }
 
-            // check if the node is visible
-            if ((visibleNodeIndices == NULL) ||
-                (visibleNodeIndices->GetIsEmpty()) ||
-                (visibleNodeIndices->GetIsEmpty() == false && visibleNodeIndices->Find(nodeIndex) != MCORE_INVALIDINDEX32))
+            if (!visibleJointIndices || visibleJointIndices->empty() ||
+                (visibleJointIndices->find(jointIndex) != visibleJointIndices->end()))
             {
-                const AZ::Vector3       nodeGlobalPos       = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
-                const AZ::Vector3       parentGlobalPos     = transformData->GetGlobalInclusiveMatrix(parentIndex).GetTranslation();
-                const AZ::Vector3       bone                = parentGlobalPos - nodeGlobalPos;
+                const AZ::Vector3       nodeWorldPos        = pose->GetWorldSpaceTransform(jointIndex).mPosition;
+                const AZ::Vector3       parentWorldPos      = pose->GetWorldSpaceTransform(parentIndex).mPosition;
+                const AZ::Vector3       bone                = parentWorldPos - nodeWorldPos;
                 const AZ::Vector3       boneDirection       = MCore::SafeNormalize(bone);
                 const float             boneLength          = MCore::SafeLength(bone);
-                const float             boneScale           = GetBoneScale(actorInstance, node);
+                const float             boneScale           = GetBoneScale(actorInstance, joint);
                 const float             parentBoneScale     = GetBoneScale(actorInstance, skeleton->GetNode(parentIndex));
                 const float             cylinderSize        = boneLength - boneScale - parentBoneScale;
-                const AZ::Vector3       boneStartPosition   = nodeGlobalPos + boneDirection * boneScale;
+                const AZ::Vector3       boneStartPosition   = nodeWorldPos + boneDirection * boneScale;
 
                 // check if the current bone is selected and set the color according to it
-                if (selectedNodeIndices != NULL && selectedNodeIndices->GetIsEmpty() == false && selectedNodeIndices->Find(parentIndex) != MCORE_INVALIDINDEX32)
+                if (selectedJointIndices && selectedJointIndices->find(jointIndex) != selectedJointIndices->end())
                 {
                     tempColor = selectedColor;
                 }
@@ -841,53 +816,39 @@ namespace MCommon
 
                 // render the bone cylinder, the cylinder will be directed towards the node's parent and must fit between the spheres
                 RenderCylinder(boneScale, parentBoneScale, cylinderSize, boneStartPosition, boneDirection, tempColor);
-
-                // check if the current bone is selected and set the color according to it
-                if (selectedNodeIndices != NULL && selectedNodeIndices->GetIsEmpty() == false && selectedNodeIndices->Find(nodeIndex) != MCORE_INVALIDINDEX32)
-                {
-                    tempColor = selectedColor;
-                }
-                else
-                {
-                    tempColor = color;
-                }
-
-                // render the joint sphere
-                RenderSphere(nodeGlobalPos, boneScale, tempColor);
+                RenderSphere(nodeWorldPos, boneScale, tempColor);
             }
         }
     }
 
 
     // render node orientations
-    void RenderUtil::RenderNodeOrientations(EMotionFX::ActorInstance* actorInstance, const MCore::Array<uint32>& boneList, MCore::Array<uint32>* visibleNodeIndices, MCore::Array<uint32>* selectedNodeIndices, float scale, bool scaleBonesOnLength)
+    void RenderUtil::RenderNodeOrientations(EMotionFX::ActorInstance* actorInstance, const MCore::Array<uint32>& boneList, const AZStd::unordered_set<AZ::u32>* visibleJointIndices, const AZStd::unordered_set<AZ::u32>* selectedJointIndices, float scale, bool scaleBonesOnLength)
     {
         // get the actor and the transform data
         const float unitScale = 1.0f / (float)MCore::Distance::ConvertValue(1.0f, MCore::Distance::UNITTYPE_METERS, EMotionFX::GetEMotionFX().GetUnitType());
-        EMotionFX::Actor*           actor           = actorInstance->GetActor();
-        EMotionFX::Skeleton*        skeleton        = actor->GetSkeleton();
-        EMotionFX::TransformData*   transformData   = actorInstance->GetTransformData();
-        const float                 constPreScale   = scale * unitScale * 3.0f;
+        const EMotionFX::Actor*         actor           = actorInstance->GetActor();
+        const EMotionFX::Skeleton*      skeleton        = actor->GetSkeleton();
+        const EMotionFX::TransformData* transformData   = actorInstance->GetTransformData();
+        const EMotionFX::Pose*          pose            = transformData->GetCurrentPose();
+        const float                     constPreScale   = scale * unitScale * 3.0f;
         AxisRenderingSettings axisRenderingSettings;
 
-
-        // iterate through all enabled nodes
         const uint32 numEnabled = actorInstance->GetNumEnabledNodes();
         for (uint32 i = 0; i < numEnabled; ++i)
         {
-            EMotionFX::Node*    node            = skeleton->GetNode(actorInstance->GetEnabledNode(i));
-            const uint32        nodeIndex       = node->GetNodeIndex();
-            const uint32        parentIndex     = node->GetParentIndex();
+            EMotionFX::Node* joint = skeleton->GetNode(actorInstance->GetEnabledNode(i));
+            const AZ::u32 jointIndex = joint->GetNodeIndex();
+            const AZ::u32 parentIndex = joint->GetParentIndex();
 
-            // check if the node is visible
-            if ((visibleNodeIndices == NULL) ||
-                (visibleNodeIndices->GetIsEmpty()) ||
-                (visibleNodeIndices->GetIsEmpty() == false && visibleNodeIndices->Find(nodeIndex) != MCORE_INVALIDINDEX32))
+            if (!visibleJointIndices || visibleJointIndices->empty() ||
+                (visibleJointIndices->find(jointIndex) != visibleJointIndices->end()))
             {
                 // either scale the bones based on their length or use the normal size
-                if (scaleBonesOnLength && parentIndex != MCORE_INVALIDINDEX32 && boneList.Find(nodeIndex) != MCORE_INVALIDINDEX32)
+                if (scaleBonesOnLength && parentIndex != MCORE_INVALIDINDEX32 && boneList.Find(jointIndex) != MCORE_INVALIDINDEX32)
                 {
-                    axisRenderingSettings.mSize = GetBoneScale(actorInstance, node) * constPreScale * 50.0f;
+                    static const float axisBoneScale = 50.0f;
+                    axisRenderingSettings.mSize = GetBoneScale(actorInstance, joint) * constPreScale * axisBoneScale;
                 }
                 else
                 {
@@ -895,7 +856,7 @@ namespace MCommon
                 }
 
                 // check if the current bone is selected and set the color according to it
-                if (selectedNodeIndices != NULL && selectedNodeIndices->GetIsEmpty() == false && selectedNodeIndices->Find(nodeIndex) != MCORE_INVALIDINDEX32)
+                if (selectedJointIndices && selectedJointIndices->find(jointIndex) != selectedJointIndices->end())
                 {
                     axisRenderingSettings.mSelected = true;
                 }
@@ -904,12 +865,7 @@ namespace MCommon
                     axisRenderingSettings.mSelected = false;
                 }
 
-                // set the global space matrix
-                //axisRenderingSettings.mGlobalTM   = transformData->GetLocalMatrices()[nodeIndex];
-                //axisRenderingSettings.mGlobalTM.SetTranslation( transformData->GetGlobalMatrices()[nodeIndex].GetTranslation() );
-                axisRenderingSettings.mGlobalTM = transformData->GetGlobalInclusiveMatrices()[nodeIndex];
-
-                // axis rendering
+                axisRenderingSettings.mWorldTM = pose->GetWorldSpaceTransform(jointIndex).ToMatrix();
                 RenderLineAxis(axisRenderingSettings);
             }
         }
@@ -917,11 +873,12 @@ namespace MCommon
 
 
     // visualize the actor bind pose
-    void RenderUtil::RenderBindPose(EMotionFX::ActorInstance* actorInstance, const MCore::Array<MCore::Matrix>& globalSpaceBindPoseMatrices, const MCore::RGBAColor& color, bool directlyRender)
+    void RenderUtil::RenderBindPose(EMotionFX::ActorInstance* actorInstance, const MCore::RGBAColor& color, bool directlyRender)
     {
         // get the actor it is an instance from
         EMotionFX::Actor*       actor       = actorInstance->GetActor();
         EMotionFX::Skeleton*    skeleton    = actor->GetSkeleton();
+        const EMotionFX::Pose*  pose        = actorInstance->GetTransformData()->GetCurrentPose();
 
         AxisRenderingSettings axisRenderingSettings;
 
@@ -929,12 +886,13 @@ namespace MCommon
         const uint32 numEnabled = actorInstance->GetNumEnabledNodes();
         for (uint32 i = 0; i < numEnabled; ++i)
         {
-            EMotionFX::Node*    node            = skeleton->GetNode(actorInstance->GetEnabledNode(i));
-            const uint32        nodeIndex       = node->GetNodeIndex();
+            EMotionFX::Node*    node        = skeleton->GetNode(actorInstance->GetEnabledNode(i));
+            const uint32        nodeIndex   = node->GetNodeIndex();
 
             // render node orientation
+            const EMotionFX::Transform worldTransform = pose->GetWorldSpaceTransform(nodeIndex);
             axisRenderingSettings.mSize     = GetBoneScale(actorInstance, node) * 5.0f;
-            axisRenderingSettings.mGlobalTM = globalSpaceBindPoseMatrices[nodeIndex];
+            axisRenderingSettings.mWorldTM  = worldTransform.ToMatrix();
             RenderLineAxis(axisRenderingSettings);// line based axis rendering
 
             // skip root nodes for the line based skeleton rendering, you could also use curNode->IsRootNode()
@@ -942,13 +900,8 @@ namespace MCommon
             uint32 parentIndex = node->GetParentIndex();
             if (parentIndex != MCORE_INVALIDINDEX32)
             {
-                // draw a line between the current node and its parent node
-                // here we first calculate the start and end position of the line, which are just the global space positions of the nodes
-                AZ::Vector3 startPos     = globalSpaceBindPoseMatrices[ nodeIndex ].GetTranslation();
-                AZ::Vector3 endPos       = globalSpaceBindPoseMatrices[ parentIndex ].GetTranslation();
-
-                // finally draw the line
-                RenderLine(startPos, endPos, color);
+                const AZ::Vector3 endPos = pose->GetWorldSpaceTransform(parentIndex).mPosition;
+                RenderLine(worldTransform.mPosition, endPos, color);
             }
         }
 
@@ -1109,23 +1062,23 @@ namespace MCommon
     // render the given cylinder
     void RenderUtil::RenderCylinder(float baseRadius, float topRadius, float length, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color)
     {
-        MCore::Matrix globalTM;
+        MCore::Matrix worldTM;
 
         // rotate the cylinder to the desired direction
         if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(direction, AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::epsilon) == false)
         {
-            globalTM.SetRotationMatrixAxisAngle(AZ::Vector3(-1.0f, 0.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(-1.0f, 0.0f, 0.0f))));
+            worldTM.SetRotationMatrixAxisAngle(AZ::Vector3(-1.0f, 0.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(-1.0f, 0.0f, 0.0f))));
         }
         else
         {
-            globalTM.SetRotationMatrix(MCore::Quaternion(0.0f, 0.0f, MCore::Math::DegreesToRadians(180.0f)));
+            worldTM.SetRotationMatrix(MCore::Quaternion(0.0f, 0.0f, MCore::Math::DegreesToRadians(180.0f)));
         }
 
         // set the cylinder to the given position
-        globalTM.SetTranslation(position);
+        worldTM.SetTranslation(position);
 
         // render the cylinder
-        RenderCylinder(baseRadius, topRadius, length, color, globalTM);
+        RenderCylinder(baseRadius, topRadius, length, color, worldTM);
     }
 
 
@@ -1228,7 +1181,7 @@ namespace MCommon
     // render the given sphere
     void RenderUtil::RenderSphere(const AZ::Vector3& position, float radius, const MCore::RGBAColor& color)
     {
-        // setup the global space matrix of the sphere
+        // setup the world space matrix of the sphere
         MCore::Matrix sphereMatrix;
         sphereMatrix.SetScaleMatrix(AZ::Vector3(radius, radius, radius));
         sphereMatrix.SetTranslation(position);
@@ -1239,7 +1192,7 @@ namespace MCommon
 
 
     // render a circle using the RenderLine and RenderTriangles function
-    void RenderUtil::RenderCircle(const MCore::Matrix& globalTM, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle, float endAngle, bool fillCircle, const MCore::RGBAColor& fillColor, bool cullFaces, const AZ::Vector3& camRollAxis)
+    void RenderUtil::RenderCircle(const MCore::Matrix& worldTM, float radius, uint32 numSegments, const MCore::RGBAColor& color, float startAngle, float endAngle, bool fillCircle, const MCore::RGBAColor& fillColor, bool cullFaces, const AZ::Vector3& camRollAxis)
     {
         // if culling is enabled but cam roll axis has not been set return without rendering
         if (cullFaces && camRollAxis == AZ::Vector3::CreateZero())
@@ -1273,20 +1226,20 @@ namespace MCommon
             AZ::Vector3 pos1(x1, y1, 0.0f);
             AZ::Vector3 pos2(x2, y2, 0.0f);
 
-            // perform global transformation
-            pos1 = globalTM.Mul3x3(pos1) + globalTM.GetTranslation();
-            pos2 = globalTM.Mul3x3(pos2) + globalTM.GetTranslation();
+            // perform world transformation
+            pos1 = worldTM.Mul3x3(pos1) + worldTM.GetTranslation();
+            pos2 = worldTM.Mul3x3(pos2) + worldTM.GetTranslation();
 
             // render line segment
             if (cullFaces == false ||
-                MCore::InRange(MCore::Math::ACos((pos2 - globalTM.GetTranslation()).GetNormalized().Dot(camRollAxis)), MCore::Math::halfPi - (MCore::Math::halfPi / 18.0f), MCore::Math::pi))
+                MCore::InRange(MCore::Math::ACos((pos2 - worldTM.GetTranslation()).GetNormalized().Dot(camRollAxis)), MCore::Math::halfPi - (MCore::Math::halfPi / 18.0f), MCore::Math::pi))
             {
                 RenderLine(pos1, pos2, color);
             }
 
             if (fillCircle)
             {
-                RenderTriangle(globalTM.GetTranslation(), pos2, pos1, fillColor);
+                RenderTriangle(worldTM.GetTranslation(), pos2, pos1, fillColor);
             }
         }
     }
@@ -1362,7 +1315,7 @@ namespace MCommon
     // render a cube
     void RenderUtil::RenderCube(const AZ::Vector3& size, const AZ::Vector3& position, const MCore::RGBAColor& color)
     {
-        // setup the global space matrix of the cube
+        // setup the world space matrix of the cube
         MCore::Matrix cubeMatrix;
         cubeMatrix.SetScaleMatrix(size);
         cubeMatrix.SetTranslation(position);
@@ -1464,51 +1417,53 @@ namespace MCommon
     // render the given arrow head
     void RenderUtil::RenderArrowHead(float height, float radius, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color)
     {
-        MCore::Matrix globalTM;
+        MCore::Matrix worldTM;
 
         // rotate the arrow head to the desired direction
         if (MCore::Compare<AZ::Vector3>::CheckIfIsClose(direction, AZ::Vector3(0.0f, -1.0f, 0.0f), MCore::Math::epsilon) == false)
         {
-            globalTM.SetRotationMatrixAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(0.0f, 1.0f, 0.0f))));
+            worldTM.SetRotationMatrixAxisAngle(AZ::Vector3(0.0f, 1.0f, 0.0f).Cross(direction), MCore::Math::ACos(direction.Dot(AZ::Vector3(0.0f, 1.0f, 0.0f))));
         }
         else
         {
-            globalTM.SetRotationMatrix(MCore::Quaternion(MCore::Math::DegreesToRadians(180.0f), 0.0f, 0.0f));
+            worldTM.SetRotationMatrix(MCore::Quaternion(MCore::Math::DegreesToRadians(180.0f), 0.0f, 0.0f));
         }
 
         // translate the arrow head to the given position
-        globalTM.SetTranslation(position);
+        worldTM.SetTranslation(position);
 
         // render the arrow head
-        RenderArrowHead(height, radius, color, globalTM);
+        RenderArrowHead(height, radius, color, worldTM);
+    }
+
+
+    void RenderUtil::RenderArrow(float size, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color)
+    {
+        const float arrowHeadRadius = size * 0.1f;
+        const float arrowHeadHeight = size * 0.3f;
+        const float axisCylinderRadius = size * 0.02f;
+        const float axisCylinderHeight = size * 0.7f + arrowHeadHeight * 0.25f;
+
+        RenderCylinder(axisCylinderRadius, axisCylinderRadius, axisCylinderHeight, position, direction, color);
+        RenderArrowHead(arrowHeadHeight, arrowHeadRadius, position + direction * (axisCylinderHeight - 0.25f * arrowHeadHeight), direction, color);
     }
 
 
     // render mesh based axis
     void RenderUtil::RenderAxis(float size, const AZ::Vector3& position, const AZ::Vector3& right, const AZ::Vector3& up, const AZ::Vector3& forward)
     {
-        const float                     zeroSphereRadius    = size * 0.075f;
-        const float                     arrowHeadRadius     = size * 0.1f;
-        const float                     arrowHeadHeight     = size * 0.3f;
-        const float                     axisCylinderRadius  = size * 0.02f;
-        const float                     axisCylinderHeight  = size * 0.7f + arrowHeadHeight * 0.25f;
-        static const MCore::RGBAColor   xAxisColor(1.0f, 0.0f, 0.0f);
-        static const MCore::RGBAColor   yAxisColor(0.0f, 1.0f, 0.0f);
-        static const MCore::RGBAColor   zAxisColor(0.0f, 0.0f, 1.0f);
-        static const MCore::RGBAColor   centerColor(0.5f, 0.5f, 0.5f);
+        const float zeroSphereRadius = size * 0.075f;
+        static const MCore::RGBAColor xAxisColor(1.0f, 0.0f, 0.0f);
+        static const MCore::RGBAColor yAxisColor(0.0f, 1.0f, 0.0f);
+        static const MCore::RGBAColor zAxisColor(0.0f, 0.0f, 1.0f);
+        static const MCore::RGBAColor centerColor(0.5f, 0.5f, 0.5f);
 
         // render zero/center sphere
-        RenderSphere(position, zeroSphereRadius, centerColor);
+        RenderSphere(position, size, centerColor);
 
-        // render cylinder axis
-        RenderCylinder(axisCylinderRadius, axisCylinderRadius, axisCylinderHeight, position, right, xAxisColor);
-        RenderCylinder(axisCylinderRadius, axisCylinderRadius, axisCylinderHeight, position, up, yAxisColor);
-        RenderCylinder(axisCylinderRadius, axisCylinderRadius, axisCylinderHeight, position, forward, zAxisColor);
-
-        // render axis arrow heads
-        RenderArrowHead(arrowHeadHeight, arrowHeadRadius, position + right * (axisCylinderHeight - 0.25f * arrowHeadHeight), right, xAxisColor);
-        RenderArrowHead(arrowHeadHeight, arrowHeadRadius, position + up * (axisCylinderHeight - 0.25f * arrowHeadHeight), up, yAxisColor);
-        RenderArrowHead(arrowHeadHeight, arrowHeadRadius, position + forward * (axisCylinderHeight - 0.25f * arrowHeadHeight), forward, zAxisColor);
+        RenderArrow(size, position, right, xAxisColor);
+        RenderArrow(size, position, up, yAxisColor);
+        RenderArrow(size, position, forward, zAxisColor);
     }
 
 
@@ -1530,13 +1485,13 @@ namespace MCommon
     void RenderUtil::RenderLineAxis(const AxisRenderingSettings& settings)
     {
         const float             size                = settings.mSize;
-        const MCore::Matrix&    globalTM            = settings.mGlobalTM;
+        const MCore::Matrix&    worldTM             = settings.mWorldTM;
         const AZ::Vector3&      cameraRight         = settings.mCameraRight;
         const AZ::Vector3&      cameraUp            = settings.mCameraUp;
         const float             arrowHeadRadius     = size * 0.1f;
         const float             arrowHeadHeight     = size * 0.3f;
         const float             axisHeight          = size * 0.7f;
-        const AZ::Vector3       position            = globalTM.GetTranslation();
+        const AZ::Vector3       position            = worldTM.GetTranslation();
 
         if (settings.mRenderXAxis)
         {
@@ -1553,8 +1508,8 @@ namespace MCommon
                 xSelectedColor = xAxisColor;
             }
 
-            const AZ::Vector3       xAxisDir = (AZ::Vector3(size, 0.0f, 0.0f) * globalTM - position).GetNormalized();
-            const AZ::Vector3       xAxisArrowStart = position + xAxisDir * axisHeight;
+            const AZ::Vector3 xAxisDir = (AZ::Vector3(size, 0.0f, 0.0f) * worldTM - position).GetNormalized();
+            const AZ::Vector3 xAxisArrowStart = position + xAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, xAxisArrowStart, xAxisDir, xSelectedColor);
             RenderLine(position, xAxisArrowStart, xAxisColor);
 
@@ -1581,7 +1536,7 @@ namespace MCommon
                 ySelectedColor = yAxisColor;
             }
 
-            const AZ::Vector3       yAxisDir = (AZ::Vector3(0.0f, size, 0.0f) * globalTM - position).GetNormalized();
+            const AZ::Vector3       yAxisDir = (AZ::Vector3(0.0f, size, 0.0f) * worldTM - position).GetNormalized();
             const AZ::Vector3       yAxisArrowStart = position + yAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, yAxisArrowStart, yAxisDir, ySelectedColor);
             RenderLine(position, yAxisArrowStart, yAxisColor);
@@ -1610,7 +1565,7 @@ namespace MCommon
                 zSelectedColor = zAxisColor;
             }
 
-            const AZ::Vector3       zAxisDir = (AZ::Vector3(0.0f, 0.0f, size) * globalTM - position).GetNormalized();
+            const AZ::Vector3       zAxisDir = (AZ::Vector3(0.0f, 0.0f, size) * worldTM - position).GetNormalized();
             const AZ::Vector3       zAxisArrowStart = position + zAxisDir * axisHeight;
             RenderArrowHead(arrowHeadHeight, arrowHeadRadius, zAxisArrowStart, zAxisDir, zSelectedColor);
             RenderLine(position, zAxisArrowStart, zAxisColor);
@@ -1766,7 +1721,7 @@ namespace MCommon
                 actorInstance->CalcNodeBasedAABB(&boundingBox);
             }
 
-            // make sure the actor instance is covered in our global bounding box
+            // make sure the actor instance is covered in our world bounding box
             finalAABB.Encapsulate(boundingBox);
         }
 
@@ -1775,12 +1730,12 @@ namespace MCommon
 
 
     // visualize the trajectory
-    void RenderUtil::RenderTrajectory(const MCore::Matrix& globalTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale)
+    void RenderUtil::RenderTrajectory(const MCore::Matrix& worldTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale)
     {
         // get the position and some direction vectors of the trajectory node matrix
-        const AZ::Vector3 center        = globalTM.GetTranslation();
-        const AZ::Vector3 forward       = globalTM.GetRight().GetNormalized();
-        const AZ::Vector3 right         = globalTM.GetForward().GetNormalized();
+        const AZ::Vector3 center        = worldTM.GetTranslation();
+        const AZ::Vector3 forward       = worldTM.GetRight().GetNormalized();
+        const AZ::Vector3 right         = worldTM.GetForward().GetNormalized();
         const float trailWidthHalf      = 0.5f;
         const float trailLengh          = 2.0f;
         const float arrowWidthHalf      = 1.5f;
@@ -1841,12 +1796,12 @@ namespace MCommon
             return;
         }
 
-        // get the global TM for the trajectory
-        EMotionFX::Transform transform = actorInstance->GetTransformData()->GetCurrentPose()->GetGlobalTransformInclusive(nodeIndex).ProjectedToGroundPlane();
-        MCore::Matrix globalTM = transform.ToMatrix();
+        // get the world TM for the trajectory
+        EMotionFX::Transform transform = actorInstance->GetTransformData()->GetCurrentPose()->GetWorldSpaceTransform(nodeIndex).ProjectedToGroundPlane();
+        MCore::Matrix worldTM = transform.ToMatrix();
 
         // pass it down to the real rendering function
-        RenderTrajectory(globalTM, innerColor, borderColor, scale);
+        RenderTrajectory(worldTM, innerColor, borderColor, scale);
     }
 
 
@@ -1882,16 +1837,16 @@ namespace MCommon
         const float arrowLength             = 1.5f;
         const AZ::Vector3 liftFromGround(0.0f, 0.0f, 0.0001f);
 
-        const MCore::Matrix trajectoryGlobalTM = actorInstance->GetGlobalTransform().ToMatrix();
+        const MCore::Matrix trajectoryWorldTM = actorInstance->GetWorldSpaceTransform().ToMatrix();
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         // Render arrow head
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         // get the position and some direction vectors of the trajectory node matrix
-        MCore::Matrix  globalTM = traceParticles[numTraceParticles - 1].mGlobalTM;
-        AZ::Vector3 right = trajectoryGlobalTM.GetRight().GetNormalized();
-        AZ::Vector3 center = trajectoryGlobalTM.GetTranslation();
-        AZ::Vector3 forward = trajectoryGlobalTM.GetForward().GetNormalized();
+        MCore::Matrix  worldTM = traceParticles[numTraceParticles - 1].mWorldTM;
+        AZ::Vector3 right = trajectoryWorldTM.GetRight().GetNormalized();
+        AZ::Vector3 center = trajectoryWorldTM.GetTranslation();
+        AZ::Vector3 forward = trajectoryWorldTM.GetForward().GetNormalized();
         AZ::Vector3 up(0.0f, 0.0f, 1.0f);
 
         AZ::Vector3 vertices[7];
@@ -1947,17 +1902,17 @@ namespace MCommon
             float normalizedDistance = (float)i / numTraceParticles;
 
             // get the start and end point of the line segment and calculate the delta between them
-            globalTM    = traceParticles[i].mGlobalTM;
-            a           = globalTM.GetTranslation();
-            b           = traceParticles[i - 1].mGlobalTM.GetTranslation();
-            right       = globalTM.GetRight().GetNormalized();
+            worldTM    = traceParticles[i].mWorldTM;
+            a           = worldTM.GetTranslation();
+            b           = traceParticles[i - 1].mWorldTM.GetTranslation();
+            right       = worldTM.GetRight().GetNormalized();
 
             if (i > 1 && i < numTraceParticles - 3)
             {
-                const AZ::Vector3 deltaA = traceParticles[i - 2].mGlobalTM.GetTranslation() - traceParticles[i - 1].mGlobalTM.GetTranslation();
-                const AZ::Vector3 deltaB = traceParticles[i - 1].mGlobalTM.GetTranslation() - traceParticles[i    ].mGlobalTM.GetTranslation();
-                const AZ::Vector3 deltaC = traceParticles[i    ].mGlobalTM.GetTranslation() - traceParticles[i + 1].mGlobalTM.GetTranslation();
-                const AZ::Vector3 deltaD = traceParticles[i + 1].mGlobalTM.GetTranslation() - traceParticles[i + 2].mGlobalTM.GetTranslation();
+                const AZ::Vector3 deltaA = traceParticles[i - 2].mWorldTM.GetTranslation() - traceParticles[i - 1].mWorldTM.GetTranslation();
+                const AZ::Vector3 deltaB = traceParticles[i - 1].mWorldTM.GetTranslation() - traceParticles[i    ].mWorldTM.GetTranslation();
+                const AZ::Vector3 deltaC = traceParticles[i    ].mWorldTM.GetTranslation() - traceParticles[i + 1].mWorldTM.GetTranslation();
+                const AZ::Vector3 deltaD = traceParticles[i + 1].mWorldTM.GetTranslation() - traceParticles[i + 2].mWorldTM.GetTranslation();
                 AZ::Vector3 delta = deltaA + deltaB + deltaC + deltaD;
                 delta = MCore::SafeNormalize(delta);
 
@@ -2001,10 +1956,6 @@ namespace MCommon
             oldRight = vertices[3];
         }
 
-        // Debug info.
-        //RenderLine( projectedTransform.mPosition, projectedTransform.mPosition + trajectoryGlobalTM.GetRow(1), MCore::RGBAColor(1.0f, 1.0f, 0.0f) );
-        //RenderLine( actorInstance->GetGlobalPosition(), actorInstance->GetGlobalPosition() + actorInstance->GetGlobalTransform().mRotation.CalcForwardAxis(), MCore::RGBAColor(0.0f, 1.0f, 0.0f) );
-
         // make sure we render all lines within one call and with the correct render flags set
         RenderLines();
     }
@@ -2027,7 +1978,7 @@ namespace MCommon
     // render the name of the given node at the node position
     void RenderUtil::RenderText(const char* text, uint32 textSize, const AZ::Vector3& globalPos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color)
     {
-        // project the node global position to the screen space
+        // project the node world space position to the screen space
         const AZ::Vector3 projectedPoint = Project(globalPos, camera->GetViewProjMatrix(), screenWidth, screenHeight);
 
         // perform clipping and make sure the node is actually visible, if not skip rendering its name
@@ -2042,47 +1993,49 @@ namespace MCommon
         }
 
         // render the text
-        RenderText(projectedPoint.GetX() * m_devicePixelRatio, projectedPoint.GetY() * m_devicePixelRatio, text, color, static_cast<float>(textSize), true);
+        RenderText(projectedPoint.GetX(), projectedPoint.GetY(), text, color, static_cast<float>(textSize), true);
     }
 
 
     // render node names for all enabled nodes
-    void RenderUtil::RenderNodeNames(EMotionFX::ActorInstance* actorInstance, Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor, const MCore::Array<uint32>& visibleNodeIndices, const MCore::Array<uint32>& selectedNodeIndices)
+    void RenderUtil::RenderNodeNames(EMotionFX::ActorInstance* actorInstance, Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor, const AZStd::unordered_set<AZ::u32>& visibleJointIndices, const AZStd::unordered_set<AZ::u32>& selectedJointIndices)
     {
-        EMotionFX::Actor*           actor           = actorInstance->GetActor();
-        EMotionFX::Skeleton*        skeleton        = actor->GetSkeleton();
-        EMotionFX::TransformData*   transformData   = actorInstance->GetTransformData();
-        const uint32    numEnabledNodes = actorInstance->GetNumEnabledNodes();
+        const EMotionFX::Actor* actor = actorInstance->GetActor();
+        const EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
+        const EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
+        const EMotionFX::Pose* pose = transformData->GetCurrentPose();
+        const AZ::u32 numEnabledNodes = actorInstance->GetNumEnabledNodes();
 
-        // get the number of enabled nodes and iterate through them
         for (uint32 i = 0; i < numEnabledNodes; ++i)
         {
-            EMotionFX::Node*    node        = skeleton->GetNode(actorInstance->GetEnabledNode(i));
-            const uint32        nodeIndex   = node->GetNodeIndex();
-            AZ::Vector3         globalPos   = transformData->GetGlobalInclusiveMatrix(nodeIndex).GetTranslation();
+            const EMotionFX::Node* joint = skeleton->GetNode(actorInstance->GetEnabledNode(i));
+            const AZ::u32 jointIndex = joint->GetNodeIndex();
+            const AZ::Vector3 worldPos = pose->GetWorldSpaceTransform(jointIndex).mPosition;
 
             // check if the current enabled node is along the visible nodes and render it if that is the case
-            if ((visibleNodeIndices.GetIsEmpty()) ||
-                (visibleNodeIndices.GetIsEmpty() == false && visibleNodeIndices.Find(nodeIndex) != MCORE_INVALIDINDEX32))
+            if (visibleJointIndices.empty() ||
+                (visibleJointIndices.find(jointIndex) != visibleJointIndices.end()))
             {
-                // is the current node selected?
-                if (selectedNodeIndices.GetIsEmpty() == false && selectedNodeIndices.Find(nodeIndex) != MCORE_INVALIDINDEX32)
+                MCore::RGBAColor finalColor;
+                if (selectedJointIndices.find(jointIndex) != selectedJointIndices.end())
                 {
-                    RenderText(node->GetName(), 11, globalPos, camera, screenWidth, screenHeight, selectedColor);
+                    finalColor = selectedColor;
                 }
                 else
                 {
-                    RenderText(node->GetName(), 11, globalPos, camera, screenWidth, screenHeight, color);
+                    finalColor = color;
                 }
+
+                RenderText(joint->GetName(), 11, worldPos, camera, screenWidth, screenHeight, finalColor);
             }
         }
     }
 
 
-    void RenderUtil::RenderWireframeBox(const AZ::Vector3& dimensions, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender)
+    void RenderUtil::RenderWireframeBox(const AZ::Vector3& dimensions, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender)
     {
-        AZ::Vector3 min = AZ::Vector3(-dimensions.GetX()*0.5f, -dimensions.GetY()*0.5f, -dimensions.GetZ()*0.5f);
-        AZ::Vector3 max = AZ::Vector3( dimensions.GetX()*0.5f,  dimensions.GetY()*0.5f,  dimensions.GetZ()*0.5f);
+        AZ::Vector3 min = AZ::Vector3(-dimensions.GetX() * 0.5f, -dimensions.GetY() * 0.5f, -dimensions.GetZ() * 0.5f);
+        AZ::Vector3 max = AZ::Vector3(dimensions.GetX() * 0.5f,  dimensions.GetY() * 0.5f,  dimensions.GetZ() * 0.5f);
 
         AZ::Vector3 p[8];
         p[0].Set(min.GetX(), min.GetY(), min.GetZ());
@@ -2096,7 +2049,7 @@ namespace MCommon
 
         for (int i = 0; i < 8; ++i)
         {
-            p[i] = p[i] * globalTM;
+            p[i] = p[i] * worldTM;
         }
 
         RenderLine(p[0], p[1], color);
@@ -2121,7 +2074,7 @@ namespace MCommon
     }
 
 
-    void RenderUtil::RenderWireframeSphere(float radius, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender)
+    void RenderUtil::RenderWireframeSphere(float radius, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender)
     {
         const float stepSize = AZ::Constants::TwoPi / m_wireframeSphereSegmentCount;
 
@@ -2135,16 +2088,16 @@ namespace MCommon
             x2 = radius * cosf(i + stepSize);
             y2 = radius * sinf(i + stepSize);
 
-            pos1 = AZ::Vector3(x1, y1, 0.0f) * globalTM;
-            pos2 = AZ::Vector3(x2, y2, 0.0f) * globalTM;
+            pos1 = AZ::Vector3(x1, y1, 0.0f) * worldTM;
+            pos2 = AZ::Vector3(x2, y2, 0.0f) * worldTM;
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(x1, 0.0f, y1) * globalTM;
-            pos2 = AZ::Vector3(x2, 0.0f, y2) * globalTM;
+            pos1 = AZ::Vector3(x1, 0.0f, y1) * worldTM;
+            pos2 = AZ::Vector3(x2, 0.0f, y2) * worldTM;
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(0.0f, x1, y1) * globalTM;
-            pos2 = AZ::Vector3(0.0f, x2, y2) * globalTM;
+            pos1 = AZ::Vector3(0.0f, x1, y1) * worldTM;
+            pos2 = AZ::Vector3(0.0f, x2, y2) * worldTM;
             RenderLine(pos1, pos2, color);
         }
 
@@ -2157,7 +2110,7 @@ namespace MCommon
 
     // The capsule caps (for one aligned vertically) are rendered as one horizontal full circle (around y) and two vertically aligned half circles around the x and z axes.
     // The end points of these half circles connect the bottom cap to the top cap (the cylinder part in the middle).
-    void RenderUtil::RenderWireframeCapsule(float radius, float height, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender)
+    void RenderUtil::RenderWireframeCapsule(float radius, float height, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender)
     {
         float stepSize = AZ::Constants::TwoPi / m_wireframeSphereSegmentCount;
         const float cylinderHeight = height - 2.0f * radius;
@@ -2176,12 +2129,12 @@ namespace MCommon
             x2 = radius * cosf(i + stepSize);
             y2 = radius * sinf(i + stepSize);
 
-            pos1 = AZ::Vector3(x1, y1,  halfCylinderHeight) * globalTM;
-            pos2 = AZ::Vector3(x2, y2,  halfCylinderHeight) * globalTM;
+            pos1 = AZ::Vector3(x1, y1,  halfCylinderHeight) * worldTM;
+            pos2 = AZ::Vector3(x2, y2,  halfCylinderHeight) * worldTM;
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(x1, y1, -halfCylinderHeight) * globalTM;
-            pos2 = AZ::Vector3(x2, y2, -halfCylinderHeight) * globalTM;
+            pos1 = AZ::Vector3(x1, y1, -halfCylinderHeight) * worldTM;
+            pos2 = AZ::Vector3(x2, y2, -halfCylinderHeight) * worldTM;
             RenderLine(pos1, pos2, color);
         }
 
@@ -2196,35 +2149,35 @@ namespace MCommon
             y2 = radius * sinf(i + stepSize);
 
             // Upper cap
-            pos1 = AZ::Vector3(x1, 0.0f, y1 + halfCylinderHeight) * globalTM;
-            pos2 = AZ::Vector3(x2, 0.0f, y2 + halfCylinderHeight) * globalTM;
+            pos1 = AZ::Vector3(x1, 0.0f, y1 + halfCylinderHeight) * worldTM;
+            pos2 = AZ::Vector3(x2, 0.0f, y2 + halfCylinderHeight) * worldTM;
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(0.0f, x1, y1 + halfCylinderHeight) * globalTM;
-            pos2 = AZ::Vector3(0.0f, x2, y2 + halfCylinderHeight) * globalTM;
+            pos1 = AZ::Vector3(0.0f, x1, y1 + halfCylinderHeight) * worldTM;
+            pos2 = AZ::Vector3(0.0f, x2, y2 + halfCylinderHeight) * worldTM;
             RenderLine(pos1, pos2, color);
 
             // Lower cap
-            pos1 = AZ::Vector3(x1, 0.0f, -y1 - halfCylinderHeight) * globalTM;
-            pos2 = AZ::Vector3(x2, 0.0f, -y2 - halfCylinderHeight) * globalTM;
+            pos1 = AZ::Vector3(x1, 0.0f, -y1 - halfCylinderHeight) * worldTM;
+            pos2 = AZ::Vector3(x2, 0.0f, -y2 - halfCylinderHeight) * worldTM;
             RenderLine(pos1, pos2, color);
 
-            pos1 = AZ::Vector3(0.0f, x1, -y1 - halfCylinderHeight) * globalTM;
-            pos2 = AZ::Vector3(0.0f, x2, -y2 - halfCylinderHeight) * globalTM;
+            pos1 = AZ::Vector3(0.0f, x1, -y1 - halfCylinderHeight) * worldTM;
+            pos2 = AZ::Vector3(0.0f, x2, -y2 - halfCylinderHeight) * worldTM;
             RenderLine(pos1, pos2, color);
         }
 
         // Draw cap connectors (cylinder height)
         startAngle = 0.0f;
         endAngle = AZ::Constants::TwoPi + std::numeric_limits<float>::epsilon();
-        stepSize = AZ::Constants::Pi * 0.5f;
+        stepSize = AZ::Constants::Pi* 0.5f;
         for (float i = startAngle; i < endAngle; i += stepSize)
         {
             x1 = radius * cosf(i);
             y1 = radius * sinf(i);
 
-            pos1 = AZ::Vector3(x1, y1,  halfCylinderHeight) * globalTM;
-            pos2 = AZ::Vector3(x1, y1, -halfCylinderHeight) * globalTM;
+            pos1 = AZ::Vector3(x1, y1,  halfCylinderHeight) * worldTM;
+            pos2 = AZ::Vector3(x1, y1, -halfCylinderHeight) * worldTM;
             RenderLine(pos1, pos2, color);
         }
 

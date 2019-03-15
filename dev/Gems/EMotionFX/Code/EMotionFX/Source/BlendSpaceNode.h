@@ -28,7 +28,8 @@ namespace EMotionFX
         enum EBlendSpaceEventMode : AZ::u8
         {
             BSEVENTMODE_ALL_ACTIVE_MOTIONS = 0,
-            BSEVENTMODE_MOST_ACTIVE_MOTION = 1
+            BSEVENTMODE_MOST_ACTIVE_MOTION = 1,
+            BSEVENTMODE_NONE               = 2
         };
 
         enum ECalculationMethod : AZ::u8
@@ -91,6 +92,7 @@ namespace EMotionFX
         };
 
     public:
+        BlendSpaceNode();
         BlendSpaceNode(AnimGraph* animGraph, const char* name);
 
         //! Compute the position of the motion in blend space.
@@ -113,7 +115,7 @@ namespace EMotionFX
         struct MotionInfo
         {
             MotionInstance*     m_motionInstance;
-            AnimGraphSyncTrack  m_syncTrack;
+            AnimGraphSyncTrack* m_syncTrack;
             uint32              m_syncIndex;
             float               m_playSpeed;
             float               m_currentTime; // current play time (NOT normalized)
@@ -143,7 +145,7 @@ namespace EMotionFX
         void DoTopDownUpdate(AnimGraphInstance* animGraphInstance, ESyncMode syncMode,
             AZ::u32 masterIdx, MotionInfos& motionInfos, bool motionsHaveSyncTracks);
         void DoPostUpdate(AnimGraphInstance* animGraphInstance, AZ::u32 masterIdx, BlendInfos& blendInfos, MotionInfos& motionInfos,
-            EBlendSpaceEventMode eventFilterMode, AnimGraphRefCountedData* data);
+            EBlendSpaceEventMode eventFilterMode, AnimGraphRefCountedData* data, bool inPlace);
 
         void RewindMotions(MotionInfos& motionInfos);
 
@@ -151,7 +153,7 @@ namespace EMotionFX
 
         static void ClearMotionInfos(MotionInfos& motionInfos);
         static void AddMotionInfo(MotionInfos& motionInfos, MotionInstance* motionInstance);
-        
+
         static bool DoAllMotionsHaveSyncTracks(const MotionInfos& motionInfos);
 
         static void DoClipBasedSyncOfMotionsToMaster(AZ::u32 masterIdx, MotionInfos& motionInfos);
@@ -165,9 +167,12 @@ namespace EMotionFX
 
         static const char* s_eventModeAllActiveMotions;
         static const char* s_eventModeMostActiveMotion;
+        static const char* s_eventModeNone;
 
-        bool mInteractiveMode;// true when the user is changing the current point by dragging in GUI
-        bool m_retarget;
+    protected:
+        bool mInteractiveMode = false;// true when the user is changing the current point by dragging in GUI
+        bool m_retarget = true;
+        bool m_inPlace = false;
     };
 
     //================  Inline implementations ====================================

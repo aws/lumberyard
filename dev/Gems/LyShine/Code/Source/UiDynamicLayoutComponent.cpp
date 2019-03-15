@@ -194,6 +194,7 @@ void UiDynamicLayoutComponent::Reflect(AZ::ReflectContext* context)
                     "A component that clones the prototype element and resizes the layout. The first child element acts as the prototype element.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiDynamicLayout.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiDynamicLayout.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))

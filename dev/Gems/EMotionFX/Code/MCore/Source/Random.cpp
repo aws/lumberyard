@@ -15,6 +15,26 @@
 
 namespace MCore
 {
+    unsigned int LcgRandom::GetRandom()
+    {
+        m_seed = (m_seed * 0x5DEECE66DLL + 0xBLL) & ((1LL << 48) - 1);
+        return static_cast<unsigned int>(m_seed >> 16);
+    }
+
+    float LcgRandom::GetRandomFloat()
+    {
+        unsigned int r = GetRandom();
+        r &= 0x007fffff; //sets mantissa to random bits
+        r |= 0x3f800000; //result is in [1,2), uniformly distributed
+        union
+        {
+            float f;
+            unsigned int i;
+        } u;
+        u.i = r;
+        return u.f - 1.0f;
+    }
+
     // returns a random direction vector
     AZ::Vector3 Random::RandDirVecF()
     {

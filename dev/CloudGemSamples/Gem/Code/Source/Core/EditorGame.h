@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #pragma once
 
@@ -14,20 +25,21 @@ namespace LYGame
     {
     public:
         EditorGame();
-        virtual ~EditorGame() {}
+        ~EditorGame() override {}
 
         //////////////////////////////////////////////////////////////////////////
         //! IEditorGame
-        virtual bool Init(ISystem* system, IGameToEditorInterface* gameToEditorInterface) override;
-        virtual void Shutdown() override;
-        virtual bool SetGameMode(bool isInGame) override;
-        virtual IEntity* GetPlayer() override;
-        virtual void SetPlayerPosAng(Vec3 position, Vec3 viewDirection) override;
-        virtual void HidePlayer(bool hide) override;
-        virtual void OnBeforeLevelLoad() override;
-        virtual void OnAfterLevelLoad(const char* levelName, const char* levelFolder) override;
-        virtual IFlowSystem* GetIFlowSystem() override;
-        virtual IGameTokenSystem* GetIGameTokenSystem() override;
+        bool Init(ISystem* system, IGameToEditorInterface* gameToEditorInterface) override;
+        void Shutdown() override;
+        bool SetGameMode(bool isInGame) override;
+        IEntity* GetPlayer() override;
+        void SetPlayerPosAng(Vec3 position, Vec3 viewDirection) override;
+        void HidePlayer(bool hide) override;
+        void OnBeforeLevelLoad() override;
+        void OnAfterLevelLoad(const char* levelName, const char* levelFolder) override;
+        void OnCloseLevel() override;
+        IFlowSystem* GetIFlowSystem() override;
+        IGameTokenSystem* GetIGameTokenSystem() override;
         //////////////////////////////////////////////////////////////////////////
 
     protected:

@@ -87,6 +87,8 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Max, 255)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_castShadows, "Cast shadows", "Casts shadows.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_lodBoundingBoxBased, "LOD based on Bounding Boxes", "LOD based on Bounding Boxes.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &MeshComponentRenderNode::MeshRenderOptions::m_useVisAreas, "Use VisAreas", "Allow VisAreas to control this component's visibility.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &MeshComponentRenderNode::MeshRenderOptions::OnMinorChanged)
 
@@ -156,6 +158,7 @@ namespace LmbrCentral
         // Note we are purposely connecting to buses before calling m_mesh.CreateMesh().
         // m_mesh.CreateMesh() can result in events (eg: OnMeshCreated) that we want receive.
         MaterialOwnerRequestBus::Handler::BusConnect(m_entity->GetId());
+        RenderBoundsRequestBus::Handler::BusConnect(m_entity->GetId());
         MeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
         MeshComponentNotificationBus::Handler::BusConnect(m_entity->GetId());
         LegacyMeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
@@ -181,6 +184,7 @@ namespace LmbrCentral
     {
         CryPhysicsComponentRequestBus::Handler::BusDisconnect();
         MaterialOwnerRequestBus::Handler::BusDisconnect();
+        RenderBoundsRequestBus::Handler::BusDisconnect();
         MeshComponentRequestBus::Handler::BusDisconnect();
         MeshComponentNotificationBus::Handler::BusDisconnect();
         LegacyMeshComponentRequestBus::Handler::BusDisconnect();

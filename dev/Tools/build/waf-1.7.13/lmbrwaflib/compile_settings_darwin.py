@@ -74,6 +74,7 @@ def load_darwin_common_settings(conf):
     v['CFLAGS'] += [ '-isysroot' + sdk_path, ]
     v['CXXFLAGS'] += [ '-isysroot' + sdk_path, ]
     v['LINKFLAGS'] += [ '-isysroot' + sdk_path, ]
+    v['ISYSROOT'] = sdk_path
 
     # Since we only support a single darwin target (clang-64bit), we specify all tools directly here    
     v['AR'] = 'ar'

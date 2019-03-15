@@ -26,7 +26,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION THREADINFO_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(ThreadInfo_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ThreadInfo_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ThreadInfo_cpp_provo.inl"
+    #endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////
@@ -100,7 +104,11 @@ void SThreadInfo::CloseThreadHandles(const TThreads& threads)
 ////////////////////////////////////////////////////////////////////////////
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION THREADINFO_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(ThreadInfo_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ThreadInfo_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ThreadInfo_cpp_provo.inl"
+    #endif
 #elif defined(LINUX) || defined(APPLE)
 void SThreadInfo::GetCurrentThreads(TThreadInfo& threadsOut)
 {

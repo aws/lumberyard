@@ -62,6 +62,12 @@ namespace UnitTest
         q4 = AZ::Quaternion::CreateShortestArc(Vector3(1.0f, 0.0f, 0.0f), Vector3(0.0f, 1.0f, 0.0f));
         EXPECT_TRUE((q4 * Vector3(0.0f, 0.0f, 1.0f)).IsClose(Vector3(0.0f, 0.0f, 1.0f)));  //perpendicular vector should be unaffected
         EXPECT_TRUE((q4 * Vector3(0.0f, -1.0f, 0.0f)).IsClose(Vector3(1.0f, 0.0f, 0.0f))); //make sure we rotate the right direction, i.e. actually shortest arc
+        v2 = (v1 + Vector3(1e-5f, 1e-5f, 1e-5f)).GetNormalized(); // test almost parallel vectors
+        q5 = AZ::Quaternion::CreateShortestArc(v1, v2);
+        EXPECT_TRUE(v2.IsClose(q5 * v1, 1e-3f));
+        v2 = (-v1 + Vector3(1e-5f, 1e-5f, 1e-5f)).GetNormalized(); // test almost anti-parallel vectors
+        q6 = AZ::Quaternion::CreateShortestArc(v1, v2);
+        EXPECT_TRUE(v2.IsClose(q6 * v1, 1e-3f));
 
         //Get/Set
         q1.SetX(10.0f);

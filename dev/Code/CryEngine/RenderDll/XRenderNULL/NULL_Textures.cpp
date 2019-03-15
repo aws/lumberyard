@@ -42,6 +42,13 @@ bool CNULLRenderer::EF_PrecacheResource(ITexture* pTP, float fDist, float fTimeT
     return false;
 }
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+bool CTexture::RenderToTexture(int handle, const CCamera& camera, AzRTT::RenderContextId contextId)
+{
+    return true;
+}
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
 bool CTexture::RenderEnvironmentCMHDR(int size, Vec3& Pos, TArray<unsigned short>& vecData)
 {
     return true;

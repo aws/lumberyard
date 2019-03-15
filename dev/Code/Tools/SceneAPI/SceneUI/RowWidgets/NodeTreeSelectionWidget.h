@@ -38,13 +38,15 @@ namespace AZ
             {
                 class NodeTreeSelectionWidget;
             }
-            class NodeTreeSelectionWidget : public QWidget
+
+            class SCENE_UI_API NodeTreeSelectionWidget : public QWidget
             {
                 Q_OBJECT
             public:
                 AZ_CLASS_ALLOCATOR_DECL
 
                 explicit NodeTreeSelectionWidget(QWidget* parent);
+                ~NodeTreeSelectionWidget() override;
 
                 void SetList(const DataTypes::ISceneNodeSelectionList& list);
                 void CopyListTo(DataTypes::ISceneNodeSelectionList& target);
@@ -64,7 +66,7 @@ namespace AZ
                 void SelectButtonClicked();
                 void ListChangesAccepted();
                 void ListChangesCanceled();
-
+                virtual void ResetNewTreeWidget(const Containers::Scene& scene);
                 size_t CalculateSelectedCount();
                 size_t CalculateTotalCount();
 

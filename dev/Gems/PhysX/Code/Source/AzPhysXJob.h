@@ -17,9 +17,7 @@
 
 namespace PhysX
 {
-    /**
-    * Handles PhysX tasks in the Lumberyard job scheduler.
-    */
+    /// Handles PhysX tasks in the Lumberyard job scheduler.
     class AzPhysXJob
         : public AZ::Job
     {

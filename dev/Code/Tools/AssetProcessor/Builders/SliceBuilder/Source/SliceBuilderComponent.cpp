@@ -23,16 +23,40 @@
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogBus.h>
 
+#include <SliceBuilder/Source/TypeFingerprinter.h>
+
 namespace SliceBuilder
 {
     void BuilderPluginComponent::Activate()
     {
         // Register Slice Builder
         m_sliceBuilder.reset(aznew SliceBuilderWorker);
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        AZ_Assert(serializeContext, "SerializeContext not found");
+
+        TypeCollection types;
+
+        serializeContext->EnumerateDerived(
+            [&types]
+                (const AZ::SerializeContext::ClassData* classData, const AZ::Uuid& /*knownType*/)
+                {
+                    if (!classData->m_azRtti->IsAbstract())
+                    {
+                        types.insert(classData->m_typeId);
+                    }
+                    return true;
+                },
+            azrtti_typeid<AZ::Component>(), azrtti_typeid<AZ::Component>());
+
+        TypeFingerprinter fingerprinter(*serializeContext);
+        TypeFingerprint allComponents = fingerprinter.GenerateFingerprintForAllTypes(types);
+        AZStd::string builderAnalysisFingerprint = AZStd::string::format("%llu", allComponents);
 
         AssetBuilderSDK::AssetBuilderDesc builderDescriptor;
         builderDescriptor.m_name = "Slice Builder";
         builderDescriptor.m_version = 1;
+        builderDescriptor.m_analysisFingerprint = builderAnalysisFingerprint;
         builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.slice", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = SliceBuilderWorker::GetUUID();
         builderDescriptor.m_createJobFunction = AZStd::bind(&SliceBuilderWorker::CreateJobs, m_sliceBuilder.get(), AZStd::placeholders::_1, AZStd::placeholders::_2);
@@ -44,6 +68,7 @@ namespace SliceBuilder
         AssetBuilderSDK::AssetBuilderDesc uiBuilderDescriptor;
         uiBuilderDescriptor.m_name = "UI Slice Builder";
         uiBuilderDescriptor.m_version = 1;
+        uiBuilderDescriptor.m_analysisFingerprint = builderAnalysisFingerprint;
         uiBuilderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.uicanvas", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         uiBuilderDescriptor.m_busId = UiSliceBuilderWorker::GetUUID();
         uiBuilderDescriptor.m_createJobFunction = AZStd::bind(&UiSliceBuilderWorker::CreateJobs, &m_uiSliceBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);

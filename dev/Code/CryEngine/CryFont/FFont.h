@@ -25,11 +25,11 @@
 #include <Cry_Math.h>
 #include <Cry_Color.h>
 #include <CryString.h>
+#include "CryFont.h"
 
 #include <AzCore/std/parallel/mutex.h>
 
 struct ISystem;
-class CCryFont;
 class CFontTexture;
 
 
@@ -38,6 +38,39 @@ class CFFont
     , public IFFont_RenderProxy
 {
 public:
+    //! Determines how characters of different sizes should be handled during render.
+    enum class SizeBehavior
+    {
+        Scale,      //!< Default behavior; glyphs rendered at different sizes are rendered on scaled geometry
+        Rerender    //!< Similar to Scale, but the glyph in the font texture is re-rendered to match the target
+                    //!< size, as long as the size isn't greater than the maximum glyph/slot resolution as
+                    //!< configured for the font texture in the font XML.
+    };
+
+    //! The hinting visual algorithm to be used (when hinting is enabled)
+    enum class HintStyle
+    {
+        Normal, //!< Default hinting behavior provided by font renderer
+        Light   //!< Produces fuzzier glyphs but more accurately tracks glyph shape
+    };
+
+    //! Chooses whether hinting info should be obtained from the font, turned off entirely, or automatically generated
+    enum class HintBehavior
+    {
+        Default,    //!< Obtain hinting data from font itself
+        AutoHint,   //!< Procedurally derive hinting information from glyph
+        NoHinting,  //!< Disable hinting entirely
+    };
+
+    //! Simple struct used to communicate font hinting parameters to font renderer.
+    struct FontHintParams
+    {
+        FontHintParams() : hintStyle(HintStyle::Normal), hintBehavior(HintBehavior::Default) { }
+
+        HintStyle hintStyle;
+        HintBehavior hintBehavior;
+    };
+
     struct SRenderingPass
     {
         ColorB m_color;
@@ -104,8 +137,18 @@ public:
     virtual unsigned int GetEffectId(const char* pEffectName) const;
     virtual unsigned int GetNumEffects() const;
     virtual const char* GetEffectName(unsigned int effectId) const;
-    virtual void AddCharsToFontTexture(const char* pChars) override;
+    virtual Vec2 GetMaxEffectOffset(unsigned int effectId) const;
+    virtual bool DoesEffectHaveTransparency(unsigned int effectId) const;
+    virtual void AddCharsToFontTexture(const char* pChars, int glyphSizeX = ICryFont::defaultGlyphSizeX, int glyphSizeY = ICryFont::defaultGlyphSizeY) override;
     virtual Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDrawContext& ctx) const override;
+    virtual float GetAscender(const STextDrawContext& ctx) const override;
+    virtual float GetBaseline(const STextDrawContext& ctx) const override;
+
+    virtual uint32 GetNumQuadsForText(const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx);
+    virtual uint32 WriteTextQuadsToBuffers(SVF_P2F_C4B_T2F_F4B* verts, uint16* indices, uint32 maxQuads, float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx);
+    virtual int GetFontTextureId();
+    virtual uint32 GetFontTextureVersion();
+
     virtual float GetSizeRatio() const override { return m_sizeRatio; }
 
 public:
@@ -126,9 +169,17 @@ public:
 private:
     virtual ~CFFont();
 
-    void Prepare(const char* pStr, bool updateTexture);
+    void Prepare(const char* pStr, bool updateTexture, const Vec2i& glyphSize = CCryFont::defaultGlyphSize);
     void DrawStringUInternal(float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx);
     Vec2 GetTextSizeUInternal(const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx);
+
+    using AddFunction = AZStd::function<void(const Vec3&, const Vec3&, const Vec3&, const Vec3&, const Vec2&, const Vec2&, const Vec2&, const Vec2&, uint32)>;
+    using BeginPassFunction = AZStd::function<void(const SRenderingPass* pPass)>;
+    
+    //! This function is used by both RenderCallback and WriteTextQuadsToBuffers
+    //! To do this is takes two function pointers that implement the appropriate AddQuad and BeginPass behavior
+    void CreateQuadsForText(float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx,
+        AddFunction AddQuad, BeginPassFunction BeginPass);
 
     struct TextScaleInfoInternal
     {
@@ -152,7 +203,8 @@ private:
     size_t m_fontBufferSize;
     unsigned char* m_pFontBuffer;
 
-    int m_texID;
+    int m_texID;    
+    uint32 m_textureVersion;
 
     ISystem* m_pSystem;
 
@@ -173,6 +225,8 @@ private:
     bool m_monospacedFont; //!< True if this font is fixed/monospaced, false otherwise (obtained from FreeType)
 
     float m_sizeRatio = IFFontConstants::defaultSizeRatio;
+    SizeBehavior m_sizeBehavior = SizeBehavior::Scale;   //!< Changes how glyphs rendered at different sizes are rendered.
+    FontHintParams m_fontHintParams; //!< How the font should be hinted when its loaded and rendered to the font texture
 };
 
 #endif

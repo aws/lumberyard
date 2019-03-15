@@ -17,10 +17,47 @@
 #include "Field.h"
 #include "Method.h"
 #include "Namespace.h"
+#include "Output.h"
 
 namespace CodeGenerator
 {
     class IWriter;
+
+    template <typename DeclType>
+    bool ContainsIgnoreAnnotation(DeclType* decl)
+    {
+        bool shouldBeIgnored = false;
+        bool hasOtherAnnotations = false;
+        for (auto attrIt = decl->template specific_attr_begin<clang::AnnotateAttr>(); attrIt != decl->template specific_attr_end<clang::AnnotateAttr>(); ++attrIt)
+        {
+            const clang::AnnotateAttr* attr = clang::dyn_cast<clang::AnnotateAttr>(*attrIt);
+            if (!attr)
+            {
+                continue;
+            }
+
+            // Always skip AZCG_IGNORE
+            if (attr->getAnnotation().contains("AZCG_IGNORE"))
+            {
+                shouldBeIgnored = true;
+            }
+            else
+            {
+                hasOtherAnnotations = true;
+            }
+        }
+
+        // We should not have ignored items with other annotations (likely a double annotation)
+        if (shouldBeIgnored && hasOtherAnnotations)
+        {
+            auto& sourceManager = decl->getASTContext().getSourceManager();
+            auto presumedLocation = sourceManager.getPresumedLoc(decl->getLocation());
+            auto fileName = presumedLocation.getFilename();
+            auto lineNumber = presumedLocation.getLine();
+            Output::Error("\n%s(%d): Error - Found annotations on an item marked as AZCG_IGNORE. This likely means there are multiple annotation macros used for one item which is unsupported.", fileName, lineNumber);
+        }
+        return shouldBeIgnored;
+    }
 
     //! Object refers to either a class or a struct.
     //! This class will write out all the object's details: base classes, fields, methods, etc.
@@ -31,6 +68,31 @@ namespace CodeGenerator
     public:
         using Declaration<T>::WriteNameType;
         using Declaration<T>::WriteName;
+
+        void WriteBases(T* decl, IWriter* writer)
+        {
+            writer->WriteString("bases");
+            writer->BeginArray();
+
+            for (auto baseIt = decl->bases_begin(); baseIt != decl->bases_end(); ++baseIt)
+            {
+                clang::CXXRecordDecl* baseDecl = baseIt->getType()->getAsCXXRecordDecl();
+                if (baseDecl)
+                {
+                    // Store both the class name and the qualified name.
+                    writer->Begin();
+                    WriteName(baseDecl, writer);
+
+                    // Deep dive to get full base chains
+                    WriteBases(baseDecl, writer);
+
+                    writer->End();
+                }
+            }
+
+            writer->EndArray();
+        }
+
         bool Write(T* decl, IWriter* writer) override
         {
             writer->Begin();
@@ -44,21 +106,7 @@ namespace CodeGenerator
                 namespaces.Write(decl, writer);
 
                 // Base objects
-                writer->WriteString("bases");
-                writer->BeginArray();
-
-                for (auto baseIt = decl->bases_begin(); baseIt != decl->bases_end(); ++baseIt)
-                {
-                    clang::CXXRecordDecl* baseDecl = baseIt->getType()->getAsCXXRecordDecl();
-                    if (baseDecl)
-                    {
-                        // Store both the class name and the qualified name.
-                        writer->Begin();
-                        WriteName(baseDecl, writer);
-                        writer->End();
-                    }
-                }
-                writer->EndArray();
+                WriteBases(decl, writer);
 
                 // Fields
                 writer->WriteString("fields");
@@ -66,6 +114,11 @@ namespace CodeGenerator
                 {
                     for (auto fieldIt = decl->field_begin(); fieldIt != decl->field_end(); ++fieldIt)
                     {
+                        // Skip ignored fields
+                        if (ContainsIgnoreAnnotation(*fieldIt))
+                        {
+                            continue;
+                        }
                         Field<clang::FieldDecl> field;
                         field.Write(*fieldIt, writer);
                     }
@@ -78,6 +131,10 @@ namespace CodeGenerator
                 {
                     for (auto methodIt = decl->method_begin(); methodIt != decl->method_end(); ++methodIt)
                     {
+                        if (ContainsIgnoreAnnotation(*methodIt))
+                        {
+                            continue;
+                        }
                         Method<clang::CXXMethodDecl> method;
                         method.Write(*methodIt, writer);
                     }

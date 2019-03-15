@@ -15,11 +15,16 @@
 
 #include "Animation/UiEditorAnimationBus.h"
 #include "UiEditorDLLBus.h"
+#include "UiEditorInternalBus.h"
 #include "UiEditorEntityContext.h"
+#include "UiSliceManager.h"
+#include "ViewportInteraction.h"
 #include <QList>
 #include <QMetaObject>
 
+#include <AzCore/Debug/TraceMessageBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <LyShine/Bus/UiEditorChangeNotificationBus.h>
 
 #include <IFont.h>
@@ -31,9 +36,13 @@ class EditorWindow
     , public IEditorNotifyListener
     , public UiEditorDLLBus::Handler
     , public UiEditorChangeNotificationBus::Handler
+    , public UiEditorInternalRequestBus::Handler
+    , public UiEditorInternalNotificationBus::Handler
     , public AzToolsFramework::AssetBrowser::AssetBrowserModelNotificationBus::Handler
     , public UiEditorEntityContextNotificationBus::Handler
+    , public AzToolsFramework::EditorEvents::Bus::Handler
     , public FontNotificationBus::Handler
+    , public AZ::Debug::TraceMessageBus::Handler
 {
     Q_OBJECT
 
@@ -75,20 +84,40 @@ public: // member functions
     void OnEditorPropertiesRefreshEntireTree() override;
     // ~UiEditorChangeNotificationBus
 
+    // UiEditorInternalRequestBus
+    AzToolsFramework::EntityIdList GetSelectedEntityIds();
+    AZ::Entity::ComponentArrayType GetSelectedComponents();
+    AZ::EntityId GetActiveCanvasEntityId();
+    // ~UiEditorInternalRequestBus
+
+    // UiEditorInternalNotificationBus
+    virtual void OnSelectedEntitiesPropertyChanged();
+    virtual void OnBeginUndoableEntitiesChange();
+    virtual void OnEndUndoableEntitiesChange(const AZStd::string& commandText);
+    // ~UiEditorInternalNotificationBus
+
     // AssetBrowserModelNotificationBus
     void EntryAdded(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
     void EntryRemoved(const AzToolsFramework::AssetBrowser::AssetBrowserEntry* entry) override;
     // ~AssetBrowserModelNotificationBus
-
-    // FontNotifications
-    void OnFontsReloaded() override;
-    // ~FontNotifications
 
     // UiEditorEntityContextNotificationBus
     void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& ticket) override;
     void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& ticket) override;
     // ~UiEditorEntityContextNotificationBus
         
+    // EditorEvents
+    void OnEscape() override;
+    // ~EditorEvents
+
+    // FontNotifications
+    void OnFontsReloaded() override;
+    // ~FontNotifications
+    // TraceMessageEvents
+    bool OnPreError(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message) override;
+    bool OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* /*message*/) override;
+    // ~TraceMessageEvents
+
     AZ::EntityId GetCanvas();
 
     HierarchyWidget* GetHierarchy();
@@ -101,6 +130,8 @@ public: // member functions
     NewElementToolbarSection* GetNewElementToolbarSection();
     CoordinateSystemToolbarSection* GetCoordinateSystemToolbarSection();
     CanvasSizeToolbarSection* GetCanvasSizeToolbarSection();
+
+    const QCursor& GetEntityPickerCursor();
 
     bool CanExitNow();
 
@@ -148,6 +179,14 @@ public: // member functions
     //! Called when any entities have been added to or removed from the active canvas
     void EntitiesAddedOrRemoved();
 
+    //! Called when any font texture has changed since the last render.
+    //! Forces a render graph update for each loaded canvas
+    void FontTextureHasChanged();
+
+    void RefreshEditorMenu();
+
+    void ShowEntitySearchModal();
+
 signals:
 
     void EditorModeChanged(UiEditorMode mode);
@@ -156,8 +195,6 @@ signals:
 
 protected:
 
-    bool event(QEvent* ev) override;
-    void keyReleaseEvent(QKeyEvent* ev) override;
     void paintEvent(QPaintEvent* paintEvent) override;
     void closeEvent(QCloseEvent* closeEvent) override;
 
@@ -202,6 +239,8 @@ private: // types
         UndoStack* m_undoStack;
         //! Specifies whether this canvas was automatically loaded or loaded by the user
         bool m_autoLoaded;
+        //! Specified whether there were any errors on canvas load
+        bool m_errorsOnLoad;
         //! Specifies whether a canvas has been modified and saved since it was loaded/created
         bool m_canvasChangedAndSaved;
         //! State of the viewport and other panes (zoom, pan, scroll, selection, ...)
@@ -226,6 +265,9 @@ private: // member functions
 
     //! Saves a slice tab to its slice with a quick push
     bool SaveSlice(UiCanvasMetadata& canvasMetadata);
+
+    //! Check whether a canvas save should occur even though there were errors on load
+    bool CanSaveWithErrors(const UiCanvasMetadata& canvasMetadata);
 
     // Called from menu or shortcut key events
     void NewCanvas();
@@ -253,7 +295,7 @@ private: // member functions
 
     void UpdateActionsEnabledState();
 
-    void RefreshEditorMenu();
+    void SetupShortcuts();
 
     //! Check if the given toolbar should only be shown in preview mode
     bool IsPreviewModeToolbar(const QToolBar* toolBar);
@@ -261,6 +303,7 @@ private: // member functions
     //! Check if the given dockwidget should only be shown in preview mode
     bool IsPreviewModeDockWidget(const QDockWidget* dockWidget);
 
+    QAction* AddMenuAction(const QString& text, bool enabled, QMenu* menu,  AZStd::function<void (bool)> function);
     void AddMenu_File();
     void AddMenuItems_Edit(QMenu* menu);
     void AddMenu_Edit();
@@ -302,6 +345,15 @@ private: // member functions
 
     void HandleCanvasDisplayNameChanged(const UiCanvasMetadata& canvasMetadata);
 
+    void SetupCentralWidget();
+    void SetupTabbedViewportWidget(QWidget* parent);
+
+    void CheckForOrphanedChildren(AZ::EntityId canvasEntityId);
+
+    void AddTraceMessage(const char *message, AZStd::list<QString>& messageList);
+    void ShowTraceMessages(const AZStd::string& canvasName);
+    void ClearTraceMessages();
+
 private slots:
     // Called when the clean state of the active undo stack changes
     void CleanChanged(bool clean);
@@ -339,11 +391,18 @@ private: // data
 
     IFileUtil::FileArray m_prefabFiles;
 
+    //! Values for setting up undoable canvas/entity changes
+    SerializeHelpers::SerializedEntryList m_preChangeState;
+    bool m_haveValidEntitiesPreChangeState = false;
+    AZStd::string m_canvasUndoXml;
+    bool m_haveValidCanvasPreChangeState = false;
+
     //! This is used to change the enabled state
     //! of these actions as the selection changes.
     QList<QAction*> m_actionsEnabledWithSelection;
     QAction* m_pasteAsSiblingAction;
     QAction* m_pasteAsChildAction;
+    QList<QAction*> m_actionsEnabledWithAlignAllowed;
 
     AZ::EntityId m_previewModeCanvasEntityId;
 
@@ -358,6 +417,12 @@ private: // data
     AZ::EntityId m_activeCanvasEntityId;
 
     int m_newCanvasCount;
+
+    AZStd::list<QString> m_errors; // the list of errors that occured while loading a canvas
+    AZStd::list<QString> m_warnings; // the list of warnings that occured while loading a canvas
+
+    // Cursor used when picking an element in the hierarchy or viewport during object pick mode
+    QCursor m_entityPickerCursor;
 };
 
 Q_DECLARE_METATYPE(EditorWindow::UiCanvasTabMetadata);

@@ -66,7 +66,7 @@ namespace EMotionFX
         AnimGraphStateMachine();
         ~AnimGraphStateMachine();
 
-        void Reinit() override;
+        void RecursiveReinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
@@ -80,6 +80,7 @@ namespace EMotionFX
 
         const char* GetPaletteName() const override                     { return "State Machine"; }
         AnimGraphObject::ECategory GetPaletteCategory() const override { return AnimGraphObject::CATEGORY_SOURCES; }
+        bool GetIsDeletable() const override;
         bool GetCanActAsState() const override                          { return true; }
         bool GetHasVisualGraph() const override                         { return true; }
         bool GetCanHaveChildren() const override                        { return true; }
@@ -91,6 +92,8 @@ namespace EMotionFX
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override             { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 
         void RecursiveCollectObjects(MCore::Array<AnimGraphObject*>& outObjects) const override;
+
+        void RecursiveCollectObjectsOfType(const AZ::TypeId& objectType, AZStd::vector<AnimGraphObject*>& outObjects) const override;
 
         //----------------------------------------------------------------------------------------------------------------------------
 
@@ -105,21 +108,21 @@ namespace EMotionFX
          * Get the number of transitions inside this state machine. This includes all kinds of transitions, so also wildcard transitions.
          * @result The number of transitions inside the state machine.
          */
-        MCORE_INLINE uint32 GetNumTransitions() const                               { return static_cast<uint32>(mTransitions.size()); }
+        size_t GetNumTransitions() const                                            { return mTransitions.size(); }
 
         /**
          * Get a pointer to the state machine transition of the given index.
          * @param[in] index The index of the transition to return.
          * @result A pointer to the state machine transition at the given index.
          */
-        MCORE_INLINE AnimGraphStateTransition* GetTransition(uint32 index) const   { return mTransitions[index]; }
+        AnimGraphStateTransition* GetTransition(size_t index) const                 { return mTransitions[index]; }
 
         /**
          * Remove the state machine transition at the given index.
          * @param[in] transitionIndex The index of the transition to remove.
          * @param delFromMem Set to true (default) when you wish to also delete the specified transition from memory.
          */
-        void RemoveTransition(uint32 transitionIndex, bool delFromMem = true);
+        void RemoveTransition(size_t transitionIndex, bool delFromMem = true);
 
         /**
          * Remove all transitions from the state machine and also get rid of the allocated memory. This will automatically be called in the state machine destructor.
@@ -130,17 +133,17 @@ namespace EMotionFX
 
         /**
          * Find the transition index for the given transition id.
-         * @param[in] transitionID The identification number to search for.
-         * @result The index of the transition. MCORE_INVALIDINDEX32 in case no transition has been found.
+         * @param[in] transitionId The identification number to search for.
+         * @result The index of the transition.
          */
-        uint32 FindTransitionIndexByID(uint32 transitionID) const;
+        AZ::Outcome<size_t> FindTransitionIndexById(AnimGraphNodeId transitionId) const;
 
         /**
          * Find the transition by the given transition id.
-         * @param[in] transitionID The identification number to search for.
+         * @param[in] transitionId The identification number to search for.
          * @result A pointer to the transition. nullptr in case no transition has been found.
          */
-        AnimGraphStateTransition* FindTransitionByID(uint32 transitionID) const;
+        AnimGraphStateTransition* FindTransitionById(AnimGraphNodeId transitionId) const;
 
         /**
          * Find the transition index by comparing pointers.
@@ -228,6 +231,7 @@ namespace EMotionFX
 
         void RecursiveSetUniqueDataFlag(AnimGraphInstance* animGraphInstance, uint32 flag, bool enabled) override;
         void RecursiveCollectActiveNodes(AnimGraphInstance* animGraphInstance, MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType) const override;
+        void RecursiveCollectActiveNetTimeSyncNodes(AnimGraphInstance* animGraphInstance, AZStd::vector<AnimGraphNode*>* outNodes) const override;
 
         //----------------------------------------------------------------------------------------------------------------------------
 

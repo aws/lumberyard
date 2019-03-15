@@ -66,7 +66,7 @@ namespace EMStudio
         MCORE_MEMORYOBJECTCATEGORY(NodeHierarchyWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
-        NodeHierarchyWidget(QWidget* parent, bool useSingleSelection);
+        NodeHierarchyWidget(QWidget* parent, bool useSingleSelection, bool useDefaultMinWidth = true);
         virtual ~NodeHierarchyWidget();
 
         void SetSelectionMode(bool useSingleSelection);

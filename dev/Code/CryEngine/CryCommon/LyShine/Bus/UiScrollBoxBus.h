@@ -64,6 +64,9 @@ public: // member functions
     //! Get the scroll value from 0 - 1
     virtual AZ::Vector2 GetNormalizedScrollValue() = 0;
 
+    //! Change content size and scroll offset, and handle the changes
+    virtual void ChangeContentSizeAndScrollOffset(AZ::Vector2 contentSize, AZ::Vector2 scrollOffset) = 0;
+
     //! Get whether there is content to scroll horizontally
     virtual bool HasHorizontalContentToScroll() = 0;
 

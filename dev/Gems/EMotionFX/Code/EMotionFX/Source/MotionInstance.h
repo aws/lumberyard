@@ -256,6 +256,9 @@ namespace EMotionFX
          */
         EMotionBlendMode GetBlendMode() const;
 
+        bool GetIsInPlace() const;
+        void SetIsInPlace(bool inPlace);
+
         /**
          * Returns the current weight of the layer.
          * This weight is in range of [0..1], where 0 means no influence and 1 means full influence.
@@ -853,32 +856,16 @@ namespace EMotionFX
         void AddEventHandler(MotionInstanceEventHandler* eventHandler);
 
         /**
-         * Find the index for the given event handler.
-         * @param[in] eventHandler A pointer to the event handler to search.
-         * @return The index of the event handler, or MCORE_INVALIDINDEX32 in case the event handler has not been found.
-         */
-        uint32 FindEventHandlerIndex(MotionInstanceEventHandler* eventHandler) const;
-
-        /**
          * Remove the given event handler.
          * Even if the function returns false, if delFromMem is set to true it will delete the handler from memory.
          * @param eventHandler A pointer to the event handler to remove.
-         * @param delFromMem When set to true, the event handler will be deleted from memory automatically when removing it.
          */
-        bool RemoveEventHandler(MotionInstanceEventHandler* eventHandler, bool delFromMem = true);
-
-        /**
-         * Remove the event handler at the given index.
-         * @param index The index of the event handler to remove.
-         * @param delFromMem When set to true, the event handler will be deleted from memory automatically when removing it.
-         */
-        void RemoveEventHandler(uint32 index, bool delFromMem = true);
+        void RemoveEventHandler(MotionInstanceEventHandler* eventHandler);
 
         /**
          * Remove all motion event handlers from this motion instance.
-         * @param delFromMem Set to true when you want them to be deleted from memory as well.
          */
-        void RemoveAllEventHandlers(bool delFromMem = true);
+        void RemoveAllEventHandlers();
 
         /**
          * Get the event handler at the given index.
@@ -1012,7 +999,7 @@ namespace EMotionFX
         void CalcRelativeTransform(Node* rootNode, float curTime, float oldTime, Transform* outTransform) const;
         bool ExtractMotion(Transform& outTrajectoryDelta);
         void CalcGlobalTransform(const MCore::Array<uint32>& hierarchyPath, float timeValue, Transform* outTransform) const;
-        void CalcNewTimeAfterUpdate(float timePassed, float* outNewTime, float* outPassedTime, float* outTotalPlayTime, float* outTimeDifToEnd, uint32* outNumLoops, bool* outHasLooped, bool* outFrozenInLastFrame);
+        void CalcNewTimeAfterUpdate(float timePassed, float* outNewTime);
         void ResetTimes();
 
         MotionInstancePool::SubPool* GetSubPool() const;
@@ -1036,7 +1023,8 @@ namespace EMotionFX
         float               mEventWeightThreshold;  /**< If the weight of the motion instance is below this value, the events won't get processed (default = 0.0f). */
         float               mTimeDifToEnd;          /**< The time it takes until we reach the loop point in the motion. This also takes the playback direction into account (backward or forward play). */
         float               mFreezeAtTime;          /**< Freeze at a given time offset in seconds. The current play time would continue running though, and a blend out would be triggered, unlike the mFreezeAtLastFrame. Set to negative value to disable. Default=-1.*/
-        MCore::Array<MotionInstanceEventHandler*>   mEventHandlers;         /**< The event handler to use to process events. */
+        using EventHandlerVector = AZStd::vector<MotionInstanceEventHandler*>;
+        AZStd::vector<EventHandlerVector> m_eventHandlersByEventType; /**< The event handler to use to process events organized by EventTypes. */
         MCore::Array<MCore::Compressed8BitFloat>    mNodeWeights;   /**< The node weights, one for each node, or an empty array length when disabled. */
         uint32              mCacheHits;             /**< The number of cache hits in the last update. */
         uint32              mCacheMisses;           /**< The number of cache misses in the last update. */
@@ -1050,7 +1038,7 @@ namespace EMotionFX
         ActorInstance*      mActorInstance;         /**< The actor instance where we are playing this motion instance on. */
         void*               mCustomData;            /**< The custom data pointer, which is nullptr on default. */
         EMotionBlendMode    mBlendMode;             /**< The motion blend mode [default=BLENDMODE_OVERWRITE]. */
-        uint16              mBoolFlags;             /**< The boolean flags mask. */
+        uint32              mBoolFlags;             /**< The boolean flags mask. */
         EPlayMode           mPlayMode;              /**< The motion playback mode [default=PLAYMODE_FORWARD]. */
         MotionGroup*        mMotionGroup;           /**< The motion group (which can be empty in case no motion group is used). */
         MotionInstancePool::SubPool* mSubPool;      /**< The subpool this motion instance is part of, or nullptr when it isn't part of any subpool. */
@@ -1080,7 +1068,7 @@ namespace EMotionFX
             BOOL_ISOWNEDBYRUNTIME       = 1 << 15,  /**< Is motion owned by the engine runtime? */
 #endif // EMFX_DEVELOPMENT_BUILD
 
-                //BOOL_AUTOMOTIONEXTRACT        = 1 << 16   /**< Is auto motion extraction mode enabled? (in auto mode the trajectory node doesnt need keyframes). */
+            BOOL_INPLACE                = 1 << 16   /** Is in place animation enabled? */
         };
 
         /**
@@ -1104,20 +1092,20 @@ namespace EMotionFX
          * Enable boolean flags.
          * @param flag The flags to enable.
          */
-        MCORE_INLINE void EnableFlag(uint16 flag)                   { mBoolFlags |= flag; }
+        MCORE_INLINE void EnableFlag(uint32 flag)                   { mBoolFlags |= flag; }
 
         /**
          * Disable boolean flags.
          * @param flag The flags to disable.
          */
-        MCORE_INLINE void DisableFlag(uint16 flag)                  { mBoolFlags &= ~flag; }
+        MCORE_INLINE void DisableFlag(uint32 flag)                  { mBoolFlags &= ~flag; }
 
         /**
          * Enable or disable specific flags.
          * @param flag The flags to modify.
          * @param enabled Set to true to enable the flags, or false to disable them.
          */
-        MCORE_INLINE void SetFlag(uint16 flag, bool enabled)
+        MCORE_INLINE void SetFlag(uint32 flag, bool enabled)
         {
             if (enabled)
             {

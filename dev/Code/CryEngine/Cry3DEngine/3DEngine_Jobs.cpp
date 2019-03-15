@@ -71,10 +71,6 @@
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-CryCriticalSection g_cCheckCreateRNTmpData;
-
-///////////////////////////////////////////////////////////////////////////////
 void C3DEngine::CheckAddLight(CDLight* pLight, const SRenderingPassInfo& passInfo)
 {
     if (pLight->m_Id < 0)
@@ -156,9 +152,9 @@ bool C3DEngine::IsTessellationAllowed(const CRenderObject* pObj, const SRenderin
 ///////////////////////////////////////////////////////////////////////////////
 void C3DEngine::CreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo)
 {
-    // g_cCheckCreateRNTmpData lock scope
+    // m_checkCreateRNTmpData lock scope
     {
-        AUTO_LOCK(g_cCheckCreateRNTmpData);
+        AUTO_LOCK(m_checkCreateRNTmpData);
         FUNCTION_PROFILER_3DENGINE;
 
         if (*ppInfo)
@@ -248,6 +244,15 @@ void C3DEngine::RenderRenderNode_ShadowPass(IShadowCaster* pShadowCaster, const 
     Get3DEngine()->CheckCreateRNTmpData(&pRenderNode->m_pRNTmpData, pRenderNode, passInfo);
 
     int wantedLod = pRenderNode->m_pRNTmpData->userData.nWantedLod;
+
+    if (GetCVars()->e_LodForceUpdate && m_pObjManager)
+    {
+        const Vec3 vCamPos = passInfo.GetCamera().GetPosition();
+        const AABB objBox = pRenderNode->GetBBoxVirtual();
+        float fDistance = sqrt_tpl(Distance::Point_AABBSq(vCamPos, objBox)) * passInfo.GetZoomFactor();
+        wantedLod = m_pObjManager->GetObjectLOD(pRenderNode, fDistance);
+    }
+
     if (pRenderNode->GetShadowLodBias() != IRenderNode::SHADOW_LODBIAS_DISABLE)
     {
         if (passInfo.IsShadowPass() && (pRenderNode->GetDrawFrame(0) < (passInfo.GetFrameID() - 10)))

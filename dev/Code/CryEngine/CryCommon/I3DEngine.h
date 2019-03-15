@@ -1751,6 +1751,17 @@ struct I3DEngine
     virtual float GetTerrainZ(int x, int y) = 0;
 
     // Summary:
+    //     Gets the terrain surfaceid.
+    // Notes:
+    //     Only values between 0 and WORLD_SIZE.
+    // Arguments:
+    //     x - X coordinate of the location
+    //     y - Y coordinate of the location
+    // Return Value:
+    //     An int which indicates the surface id
+    virtual int GetTerrainSurfaceId(int x, int y) = 0;
+
+    // Summary:
     //     Gets the terrain hole flag for a specified location.
     // Notes:
     //     Only values between 0 and WORLD_SIZE.
@@ -2533,6 +2544,9 @@ struct SRenderingPassInfo
         GEOM_CACHES = BIT(17),
         DISABLE_RENDER_CHUNK_MERGE = BIT(18),
         GPU_PARTICLE_COLLISION_CUBEMAP = BIT(19),
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        RENDER_SCENE_TO_TEXTURE = BIT(20),
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
         // below are precombined flags
         STATIC_OBJECTS = BRUSHES | VEGETATION,
@@ -2559,6 +2573,9 @@ struct SRenderingPassInfo
     EShadowMapType GetShadowMapType() const;
     bool IsDisableRenderChunkMerge() const;
     bool IsGPUParticleCubemapPass() const;
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    bool IsRenderSceneToTexturePass() const;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     bool IsAuxWindow() const;
 
@@ -2684,6 +2701,14 @@ inline bool SRenderingPassInfo::IsGPUParticleCubemapPass() const
 {
     return (m_nRenderingFlags & GPU_PARTICLE_COLLISION_CUBEMAP) != 0;
 }
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+///////////////////////////////////////////////////////////////////////////////
+inline bool SRenderingPassInfo::IsRenderSceneToTexturePass() const
+{
+    return (m_nRenderingFlags & RENDER_SCENE_TO_TEXTURE) != 0;
+}
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
 ///////////////////////////////////////////////////////////////////////////////
 inline bool SRenderingPassInfo::IsCachedShadowPass() const

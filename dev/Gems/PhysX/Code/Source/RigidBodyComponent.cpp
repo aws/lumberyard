@@ -11,187 +11,498 @@
 */
 
 #include <PhysX_precompiled.h>
-#include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Transform.h>
-#include <PhysXRigidBodyComponent.h>
-#include <PhysXMathConversion.h>
-#include <Include/PhysX/PhysXColliderComponentBus.h>
+#include <AzFramework/Physics/World.h>
+#include <AzFramework/Entity/GameEntityContextBus.h>
+#include <PhysX/ColliderComponentBus.h>
+#include <PhysX/MathConversion.h>
+#include <Source/RigidBodyComponent.h>
+#include <Source/Shape.h>
+#include <Source/RigidBody.h>
 
 namespace PhysX
 {
-    void PhysXRigidBodyComponent::Reflect(AZ::ReflectContext* context)
+    void RigidBodyComponent::Reflect(AZ::ReflectContext* context)
     {
-        PhysXRigidBody::Reflect(context);
+        RigidBody::Reflect(context);
 
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<PhysXRigidBodyComponent, AZ::Component>()
+            serializeContext->Class<RigidBodyComponent, AZ::Component>()
                 ->Version(1)
-                ->Field("PhysXRigidBody", &PhysXRigidBodyComponent::m_rigidBody)
+                ->Field("RigidBodyConfiguration", &RigidBodyComponent::m_configuration)
+                ->Field("RigidBody", &RigidBodyComponent::m_rigidBody)
             ;
         }
 
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
+            behaviorContext->EBus<Physics::RigidBodyRequestBus>("RigidBodyRequestBus")
+                ->Event("EnablePhysics", &Physics::RigidBodyRequests::EnablePhysics)
+                ->Event("DisablePhysics", &RigidBodyRequests::DisablePhysics)
+                ->Event("IsPhysicsEnabled", &RigidBodyRequests::IsPhysicsEnabled)
+                ->Event("GetCenterOfMassWorld", &RigidBodyRequests::GetCenterOfMassWorld)
+                ->Event("GetCenterOfMassLocal", &RigidBodyRequests::GetCenterOfMassLocal)
+                ->Event("GetMass", &RigidBodyRequests::GetMass)
+                ->Event("GetInverseMass", &RigidBodyRequests::GetInverseMass)
+                ->Event("SetMass", &RigidBodyRequests::SetMass)
+                ->Event("SetCenterOfMassOffset", &RigidBodyRequests::SetCenterOfMassOffset)
+
+                ->Event("GetLinearVelocity", &RigidBodyRequests::GetLinearVelocity)
+                ->Event("SetLinearVelocity", &RigidBodyRequests::SetLinearVelocity)
+                ->Event("GetAngularVelocity", &RigidBodyRequests::GetAngularVelocity)
+                ->Event("SetAngularVelocity", &RigidBodyRequests::SetAngularVelocity)
+
+                ->Event("GetLinearVelocityAtWorldPoint", &RigidBodyRequests::GetLinearVelocityAtWorldPoint)
+                ->Event("ApplyLinearImpulse", &RigidBodyRequests::ApplyLinearImpulse)
+                ->Event("ApplyLinearImpulseAtWorldPoint", &RigidBodyRequests::ApplyLinearImpulseAtWorldPoint)
+                ->Event("ApplyAngularImpulse", &RigidBodyRequests::ApplyAngularImpulse)
+
+                ->Event("GetLinearDamping", &RigidBodyRequests::GetLinearDamping)
+                ->Event("SetLinearDamping", &RigidBodyRequests::SetLinearDamping)
+                ->Event("GetAngularDamping", &RigidBodyRequests::GetAngularDamping)
+                ->Event("SetAngularDamping", &RigidBodyRequests::SetAngularDamping)
+
+                ->Event("IsAwake", &RigidBodyRequests::IsAwake)
+                ->Event("ForceAsleep", &RigidBodyRequests::ForceAsleep)
+                ->Event("ForceAwake", &RigidBodyRequests::ForceAwake)
+                ->Event("GetSleepThreshold", &RigidBodyRequests::GetSleepThreshold)
+                ->Event("SetSleepThreshold", &RigidBodyRequests::SetSleepThreshold)
+
+                ->Event("IsKinematic", &RigidBodyRequests::IsKinematic)
+                ->Event("SetKinematic", &RigidBodyRequests::SetKinematic)
+                ->Event("SetKinematicTarget", &RigidBodyRequests::SetKinematicTarget)
+
+                ->Event("SetGravityEnabled", &RigidBodyRequests::SetGravityEnabled)
+                ->Event("SetSimulationEnabled", &RigidBodyRequests::SetSimulationEnabled)
+
+                ->Event("GetAabb", &RigidBodyRequests::GetAabb)
+            ;
+
+            behaviorContext->Class<RigidBodyComponent>()->RequestBus("RigidBodyRequestBus");
         }
     }
 
-    PhysXRigidBodyComponent::PhysXRigidBodyComponent(const PhysXRigidBodyConfiguration& config)
-    {
-        m_rigidBody.SetConfig(config);
-    }
-
-    void PhysXRigidBodyComponent::Init()
+    RigidBodyComponent::RigidBodyComponent(const Physics::RigidBodyConfiguration& config)
+        : m_configuration(config)
     {
     }
 
-    void PhysXRigidBodyComponent::Activate()
+    void RigidBodyComponent::Init()
     {
-        // Get necessary information from transform and shape buses and create PhysXRigidBody
+    }
+
+    void RigidBodyComponent::SetupConfiguration()
+    {
+        // Get necessary information from the components and fill up the configuration structure
+        auto entityId = GetEntityId();
+
         AZ::Transform lyTransform = AZ::Transform::CreateIdentity();
-        AZ::TransformBus::EventResult(lyTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
-        m_rigidBody.SetScale(lyTransform.ExtractScaleExact());
+        AZ::TransformBus::EventResult(lyTransform, entityId, &AZ::TransformInterface::GetWorldTM);
+        AZ::Vector3 scale = lyTransform.ExtractScaleExact();
+        m_configuration.m_position = lyTransform.GetPosition();
+        m_configuration.m_orientation = AZ::Quaternion::CreateFromTransform(lyTransform);
+        m_configuration.m_entityId = entityId;
+        m_configuration.m_debugName = GetEntity()->GetName();
+    }
 
-        Physics::Ptr<Physics::ShapeConfiguration> shapeConfig = nullptr;
-        PhysXColliderComponentRequestBus::EventResult(shapeConfig, GetEntityId(),
-            &PhysXColliderComponentRequests::GetShapeConfigFromEntity);
+    void RigidBodyComponent::Activate()
+    {
+        AZ::TransformBus::EventResult(m_staticTransformAtActivation, GetEntityId(), &AZ::TransformInterface::IsStaticTransform);
 
-        m_rigidBody.SetShape(shapeConfig);
-        m_rigidBody.SetTransform(lyTransform);
-        m_rigidBody.SetEntity(GetEntity());
-        auto pxRigidActor = m_rigidBody.CreatePhysXActor();
+        if (m_staticTransformAtActivation)
+        {
+            AZ_Warning("PhysX Rigid Body Component", false, "It is not valid to have a PhysX Rigid Body Component "
+                "when the Transform Component is marked static.  Entity \"%s\" will behave as a static rigid body.",
+                GetEntity()->GetName().c_str());
+
+            // If we never connect to the rigid body request bus, then that bus will have no handler and we will behave
+            // as if there were no rigid body component, i.e. a static rigid body will be created, which is the behaviour
+            // we want if the transform component static checkbox is ticked.
+            return;
+        }
+
+        AzFramework::EntityContextId gameContextId = AzFramework::EntityContextId::CreateNull();
+        AzFramework::GameEntityContextRequestBus::BroadcastResult(gameContextId, &AzFramework::GameEntityContextRequestBus::Events::GetGameEntityContextId);
+
+        // Determine if we're currently instantiating a slice
+        // During slice instantiation, it's possible this entity will be activated before its parent. To avoid this, we want to wait to enable physics
+        // until the entire slice has been instantiated. To do so, we start listening to the EntityContextEventBus for an OnSliceInstantiated event
+        AZ::Data::AssetId instantiatingAsset;
+        instantiatingAsset.SetInvalid();
+        AzFramework::EntityContextRequestBus::EventResult(instantiatingAsset, gameContextId, &AzFramework::EntityContextRequestBus::Events::CurrentlyInstantiatingSlice);
+
+        if (instantiatingAsset.IsValid())
+        {
+            // Start listening for game context events
+            if (!gameContextId.IsNull())
+            {
+                AzFramework::EntityContextEventBus::Handler::BusConnect(gameContextId);
+            }
+        }
+        else
+        {
+            EnablePhysics();
+        }
+
+        Physics::RigidBodyRequestBus::Handler::BusConnect(GetEntityId());
+    }
+
+    void RigidBodyComponent::Deactivate()
+    {
+        if (m_staticTransformAtActivation)
+        {
+            return;
+        }
+
+        Physics::RigidBodyRequestBus::Handler::BusDisconnect();
+
+        DisablePhysics();
+    }
+
+    void RigidBodyComponent::OnTick(float deltaTime, AZ::ScriptTimePoint /*currentTime*/)
+    {
+        if (m_configuration.m_interpolateMotion)
+        {
+            AZ::Vector3 newPosition = AZ::Vector3::CreateZero();
+            AZ::Quaternion newRotation = AZ::Quaternion::CreateIdentity();
+            m_interpolator->GetInterpolated(newPosition, newRotation, deltaTime);
+
+            AZ::Transform interpolatedTransform = AZ::Transform::CreateFromQuaternionAndTranslation(newRotation, newPosition);
+            interpolatedTransform.MultiplyByScale(m_initialScale);
+            AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, interpolatedTransform);
+        }
+    }
+
+    int RigidBodyComponent::GetTickOrder()
+    {
+        return AZ::ComponentTickBus::TICK_PHYSICS;
+    }
+
+    void RigidBodyComponent::OnPostPhysicsUpdate(float fixedDeltaTime, Physics::World* world)
+    {
+        // if it's kinematic, something else is moving it,
+        // so its physics position is updated by the entity transform
+        // hence no need to update the entity transform from physics.
+        if (!IsPhysicsEnabled() || m_rigidBody->IsKinematic())
+        {
+            return;
+        }
+
+        if (m_world == world)
+        {
+            if (m_configuration.m_interpolateMotion)
+            {
+                AZ::Transform transform = m_rigidBody->GetTransform();
+                m_interpolator->SetTarget(transform.GetTranslation(), m_rigidBody->GetOrientation(), fixedDeltaTime);
+            }
+            else
+            {
+                AZ::Transform transform = m_rigidBody->GetTransform();
+
+                // Maintain scale (this must be precise).
+                AZ::Transform entityTransform = AZ::Transform::Identity();
+                AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+                transform.MultiplyByScale(m_initialScale);
+
+                AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, transform);
+            }
+        }
+    }
+
+    void RigidBodyComponent::OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world)
+    {
+        // Note: OnTransformChanged is not safe at the moment due to TransformComponent design flaw.
+        // It is called when the parent entity is activated after the children causing rigid body
+        // to move through the level instantly.
+        if (IsPhysicsEnabled() && m_rigidBody->IsKinematic())
+        {
+            m_rigidBody->SetKinematicTarget(world);
+        }
+    }
+
+    void RigidBodyComponent::EnablePhysics()
+    {
+        if (IsPhysicsEnabled())
+        {
+            return;
+        }
+
+        SetupConfiguration();
+
+        AZStd::shared_ptr<Physics::RigidBody> createdRigidBody;
+        Physics::SystemRequestBus::BroadcastResult(createdRigidBody, &Physics::SystemRequests::CreateRigidBody, m_configuration);
+        m_rigidBody = AZStd::static_pointer_cast<RigidBody>(createdRigidBody);
 
         // Add actor to scene
-        PhysXSystemRequestBus::Broadcast(&PhysXSystemRequests::AddActor, *pxRigidActor);
+        AZStd::shared_ptr<Physics::World> world = nullptr;
+        Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
+        m_world = world.get();
+
+        ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [this](ColliderComponentRequests* handler)
+        {
+            m_rigidBody->AddShape(handler->GetShape());
+            return true;
+        });
+
+        m_rigidBody->SetKinematic(m_configuration.m_kinematic);
+
+        world->AddBody(*m_rigidBody);
+
+        m_interpolator = std::make_unique<TransformForwardTimeInterpolator>();
 
         // Listen to the PhysX system for events concerning this entity.
-        EntityPhysXEventBus::Handler::BusConnect(GetEntityId());
+        Physics::SystemNotificationBus::Handler::BusConnect();
+        AZ::TickBus::Handler::BusConnect();
+        AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
 
-        AzFramework::PhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
+        AZ::Transform transform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+
+        AZ::Quaternion rotation = AZ::Quaternion::CreateIdentity();
+        AZ::TransformBus::EventResult(rotation, GetEntityId(), &AZ::TransformInterface::GetWorldRotationQuaternion);
+
+        m_interpolator->Reset(transform.GetPosition(), rotation);
+
+        m_initialScale = transform.ExtractScaleExact();
+
+        m_rigidBody->UpdateCenterOfMassAndInertia(m_configuration.m_computeCenterOfMass, m_configuration.m_centerOfMassOffset, m_configuration.m_computeInertiaTensor, m_configuration.m_inertiaTensor);
+
+        Physics::RigidBodyNotificationBus::Event(GetEntityId(), &Physics::RigidBodyNotificationBus::Events::OnPhysicsEnabled);
     }
 
-    void PhysXRigidBodyComponent::Deactivate()
+    void RigidBodyComponent::DisablePhysics()
     {
-        AzFramework::PhysicsComponentRequestBus::Handler::BusDisconnect();
-        EntityPhysXEventBus::Handler::BusDisconnect();
-        m_rigidBody.ReleasePhysXActor();
+        m_rigidBody->ReleasePhysXActor();
+        m_world = nullptr;
+
+        Physics::RigidBodyNotificationBus::Event(GetEntityId(), &Physics::RigidBodyNotificationBus::Events::OnPhysicsDisabled);
+        AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
+        Physics::SystemNotificationBus::Handler::BusDisconnect();
+        AZ::TickBus::Handler::BusDisconnect();
     }
 
-    void PhysXRigidBodyComponent::OnPostStep()
+    bool RigidBodyComponent::IsPhysicsEnabled() const
     {
-        // Inform the TransformComponent that we've been moved by the PhysX system
-        m_rigidBody.GetTransformUpdateFromPhysX();
-        AZ::Transform transform = m_rigidBody.GetTransform();
-
-        // Maintain scale (this must be precise).
-        AZ::Transform entityTransform = AZ::Transform::Identity();
-        AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
-        transform.MultiplyByScale(entityTransform.ExtractScaleExact());
-
-        AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, transform);
+        return m_rigidBody != nullptr && m_rigidBody->GetNativePointer() != nullptr;
     }
 
-    void PhysXRigidBodyComponent::EnablePhysics()
+    void RigidBodyComponent::ApplyLinearImpulse(const AZ::Vector3& impulse)
     {
-        AZ_Warning("PhysXRigidBodyComponent", false, "EnablePhysics() not implemented.");
+        m_rigidBody->ApplyLinearImpulse(impulse);
     }
 
-    void PhysXRigidBodyComponent::DisablePhysics()
+    void RigidBodyComponent::ApplyLinearImpulseAtWorldPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldSpacePoint)
     {
-        AZ_Warning("PhysXRigidBodyComponent", false, "DisablePhysics() not implemented.");
+        m_rigidBody->ApplyLinearImpulseAtWorldPoint(impulse, worldSpacePoint);
     }
 
-    bool PhysXRigidBodyComponent::IsPhysicsEnabled()
+    void RigidBodyComponent::ApplyAngularImpulse(const AZ::Vector3& impulse)
     {
-        AZ_Warning("PhysXRigidBodyComponent", false, "IsPhysicsEnabled() not implemented.");
-        return true;
+        m_rigidBody->ApplyAngularImpulse(impulse);
     }
 
-    void PhysXRigidBodyComponent::AddImpulse(const AZ::Vector3& impulse)
+    AZ::Vector3 RigidBodyComponent::GetLinearVelocity() const
     {
-        m_rigidBody.ApplyLinearImpulse(impulse);
+        return m_rigidBody->GetLinearVelocity();
     }
 
-    void PhysXRigidBodyComponent::AddImpulseAtPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldSpacePoint)
+    void RigidBodyComponent::SetLinearVelocity(const AZ::Vector3& velocity)
     {
-        m_rigidBody.ApplyLinearImpulseAtWorldPoint(impulse, worldSpacePoint);
+        m_rigidBody->SetLinearVelocity(velocity);
     }
 
-    void PhysXRigidBodyComponent::AddAngularImpulse(const AZ::Vector3& impulse)
+    AZ::Vector3 RigidBodyComponent::GetAngularVelocity() const
     {
-        m_rigidBody.ApplyAngularImpulse(impulse);
+        return m_rigidBody->GetAngularVelocity();
     }
 
-    AZ::Vector3 PhysXRigidBodyComponent::GetVelocity()
+    void RigidBodyComponent::SetAngularVelocity(const AZ::Vector3& angularVelocity)
     {
-        return m_rigidBody.GetLinearVelocity();
+        m_rigidBody->SetAngularVelocity(angularVelocity);
     }
 
-    void PhysXRigidBodyComponent::SetVelocity(const AZ::Vector3& velocity)
+    AZ::Vector3 RigidBodyComponent::GetLinearVelocityAtWorldPoint(const AZ::Vector3& worldPoint) const
     {
-        m_rigidBody.SetLinearVelocity(velocity);
+        return m_rigidBody->GetLinearVelocityAtWorldPoint(worldPoint);
     }
 
-    AZ::Vector3 PhysXRigidBodyComponent::GetAngularVelocity()
+    AZ::Vector3 RigidBodyComponent::GetCenterOfMassWorld() const
     {
-        return m_rigidBody.GetAngularVelocity();
+        return m_rigidBody->GetCenterOfMassWorld();
     }
 
-    void PhysXRigidBodyComponent::SetAngularVelocity(const AZ::Vector3& angularVelocity)
+    AZ::Vector3 RigidBodyComponent::GetCenterOfMassLocal() const
     {
-        m_rigidBody.SetAngularVelocity(angularVelocity);
+        return m_rigidBody->GetCenterOfMassLocal();
     }
 
-    float PhysXRigidBodyComponent::GetMass()
+    AZ::Matrix3x3 RigidBodyComponent::GetInverseInertiaWorld() const
     {
-        return m_rigidBody.GetMass();
+        return m_rigidBody->GetInverseInertiaWorld();
     }
 
-    void PhysXRigidBodyComponent::SetMass(float mass)
+    AZ::Matrix3x3 RigidBodyComponent::GetInverseInertiaLocal() const
     {
-        m_rigidBody.SetMass(mass);
+        return m_rigidBody->GetInverseInertiaLocal();
     }
 
-    float PhysXRigidBodyComponent::GetLinearDamping()
+    float RigidBodyComponent::GetMass() const
     {
-        return m_rigidBody.GetLinearDamping();
+        return m_rigidBody->GetMass();
     }
 
-    void PhysXRigidBodyComponent::SetLinearDamping(float damping)
+    float RigidBodyComponent::GetInverseMass() const
     {
-        m_rigidBody.SetLinearDamping(damping);
+        return m_rigidBody->GetInverseMass();
     }
 
-    float PhysXRigidBodyComponent::GetAngularDamping()
+    void RigidBodyComponent::SetMass(float mass)
     {
-        return m_rigidBody.GetAngularDamping();
+        m_rigidBody->SetMass(mass);
     }
 
-    void PhysXRigidBodyComponent::SetAngularDamping(float damping)
+    void RigidBodyComponent::SetCenterOfMassOffset(const AZ::Vector3& comOffset)
     {
-        m_rigidBody.SetAngularDamping(damping);
+        m_rigidBody->SetCenterOfMassOffset(comOffset);
     }
 
-    float PhysXRigidBodyComponent::GetSleepThreshold()
+    float RigidBodyComponent::GetLinearDamping() const
     {
-        return m_rigidBody.GetSleepThreshold();
+        return m_rigidBody->GetLinearDamping();
     }
 
-    void PhysXRigidBodyComponent::SetSleepThreshold(float threshold)
+    void RigidBodyComponent::SetLinearDamping(float damping)
     {
-        m_rigidBody.SetSleepThreshold(threshold);
+        m_rigidBody->SetLinearDamping(damping);
     }
 
-    AZ::Aabb PhysXRigidBodyComponent::GetAabb()
+    float RigidBodyComponent::GetAngularDamping() const
     {
-        return m_rigidBody.GetAabb();
+        return m_rigidBody->GetAngularDamping();
     }
 
-    Physics::RigidBody* PhysXRigidBodyComponent::GetRigidBody()
+    void RigidBodyComponent::SetAngularDamping(float damping)
     {
-        return &m_rigidBody;
+        m_rigidBody->SetAngularDamping(damping);
     }
 
+    bool RigidBodyComponent::IsAwake() const
+    {
+        return m_rigidBody->IsAwake();
+    }
+
+    void RigidBodyComponent::ForceAsleep()
+    {
+        m_rigidBody->ForceAsleep();
+    }
+
+    void RigidBodyComponent::ForceAwake()
+    {
+        m_rigidBody->ForceAwake();
+    }
+
+    bool RigidBodyComponent::IsKinematic() const
+    {
+        return m_rigidBody->IsKinematic();
+    }
+
+    void RigidBodyComponent::SetKinematic(bool kinematic)
+    {
+        m_rigidBody->SetKinematic(kinematic);
+    }
+
+    void RigidBodyComponent::SetKinematicTarget(const AZ::Transform& targetPosition)
+    {
+        m_rigidBody->SetKinematicTarget(targetPosition);
+    }
+
+    void RigidBodyComponent::SetGravityEnabled(bool enabled)
+    {
+        m_rigidBody->SetGravityEnabled(enabled);
+    }
+
+    void RigidBodyComponent::SetSimulationEnabled(bool enabled)
+    {
+        m_rigidBody->SetSimulationEnabled(enabled);
+    }
+
+    float RigidBodyComponent::GetSleepThreshold() const
+    {
+        return m_rigidBody->GetSleepThreshold();
+    }
+
+    void RigidBodyComponent::SetSleepThreshold(float threshold)
+    {
+        m_rigidBody->SetSleepThreshold(threshold);
+    }
+
+    AZ::Aabb RigidBodyComponent::GetAabb() const
+    {
+        return m_rigidBody->GetAabb();
+    }
+
+    Physics::RigidBody* RigidBodyComponent::GetRigidBody()
+    {
+        return m_rigidBody.get();
+    }
+
+    void RigidBodyComponent::OnSliceInstantiated(const AZ::Data::AssetId&, const AZ::SliceComponent::SliceInstanceAddress&)
+    {
+        EnablePhysics();
+        AzFramework::EntityContextEventBus::Handler::BusDisconnect();
+    }
+
+    void RigidBodyComponent::OnSliceInstantiationFailed(const AZ::Data::AssetId& /*sliceAssetId*/)
+    {
+        // Enable physics even in the case of instantiation failure. If we've made it this far, the
+        // entity is valid and should be activated normally.
+        EnablePhysics();
+        AzFramework::EntityContextEventBus::Handler::BusDisconnect();
+    }
+
+    void TransformForwardTimeInterpolator::Reset(const AZ::Vector3& position, const AZ::Quaternion& rotation)
+    {
+        m_currentRealTime = m_currentFixedTime = 0.0f;
+        m_integralTime = 0;
+
+        m_targetTranslation = AZ::LinearlyInterpolatedSample<AZ::Vector3>();
+        m_targetRotation = AZ::LinearlyInterpolatedSample<AZ::Quaternion>();
+
+        m_targetTranslation.SetNewTarget(position, 1);
+        m_targetTranslation.GetInterpolatedValue(1);
+
+        m_targetRotation.SetNewTarget(rotation, 1);
+        m_targetRotation.GetInterpolatedValue(1);
+    }
+
+    void TransformForwardTimeInterpolator::SetTarget(const AZ::Vector3& position, const AZ::Quaternion& rotation, float fixedDeltaTime)
+    {
+        m_currentFixedTime += fixedDeltaTime;
+        AZ::u32 currentIntegral = FloatToIntegralTime(m_currentFixedTime + fixedDeltaTime * 2.0f);
+
+        m_targetTranslation.SetNewTarget(position, currentIntegral);
+        m_targetRotation.SetNewTarget(rotation, currentIntegral);
+
+        static const float resetTimeThreshold = 1.0f;
+
+        if (m_currentFixedTime > resetTimeThreshold)
+        {
+            m_currentFixedTime -= resetTimeThreshold;
+            m_currentRealTime -= resetTimeThreshold;
+            m_integralTime += static_cast<AZ::u32>(FloatToIntegralResolution * resetTimeThreshold);
+        }
+    }
+
+    void TransformForwardTimeInterpolator::GetInterpolated(AZ::Vector3& position, AZ::Quaternion& rotation, float realDeltaTime)
+    {
+        m_currentRealTime += realDeltaTime;
+
+        AZ::u32 currentIntegral = FloatToIntegralTime(m_currentRealTime);
+
+        position = m_targetTranslation.GetInterpolatedValue(currentIntegral);
+        rotation = m_targetRotation.GetInterpolatedValue(currentIntegral);
+    }
 } // namespace PhysX

@@ -17,6 +17,7 @@
 #include <AzCore/Component/Entity.h>
 #include <MathConversion.h>
 #include <LmbrCentral/Rendering/MeshAsset.h>
+#include <LmbrCentral/Animation/AttachmentComponentBus.h>
 
 namespace LmbrCentral
 {
@@ -113,6 +114,16 @@ namespace LmbrCentral
         m_ownerId.SetInvalid();
     }
 
+    AZ::EntityId BoneFollower::GetTargetEntityId()
+    {
+        return m_targetId;
+    }
+
+    AZ::Transform BoneFollower::GetOffset()
+    {
+        return m_targetOffset;
+    }
+
     void BoneFollower::Attach(AZ::EntityId targetId, const char* targetBoneName, const AZ::Transform& offset)
     {
         AZ_Assert(m_ownerId.IsValid(), "BoneFollower must be Activated to use.")
@@ -147,7 +158,6 @@ namespace LmbrCentral
 
         AZ::TransformBus::EventResult(m_cachedOwnerTransform, m_ownerId, &AZ::TransformBus::Events::GetWorldTM); // owner query will always succeed
 
-        // connect to buses that let us follow target
         MeshComponentNotificationBus::Handler::BusConnect(m_targetId); // fires OnMeshCreated if asset is already ready
         AZ::TransformNotificationBus::Handler::BusConnect(m_targetId);
         if (m_targetCanAnimate)
@@ -160,7 +170,7 @@ namespace LmbrCentral
         UpdateOwnerTransformIfNecessary();
 
         // alert others that we've attached
-        AttachmentComponentNotificationBus::Event(m_ownerId, &AttachmentComponentNotificationBus::Events::OnAttached, m_targetId);
+        AttachmentComponentNotificationBus::Event(m_targetId, &AttachmentComponentNotificationBus::Events::OnAttached, m_ownerId);
     }
 
     void BoneFollower::Detach()
@@ -170,7 +180,7 @@ namespace LmbrCentral
         if (m_targetId.IsValid())
         {
             // alert others that we're detaching
-            EBUS_EVENT_ID(m_ownerId, AttachmentComponentNotificationBus, OnDetached, m_targetId);
+            EBUS_EVENT_ID(m_targetId, AttachmentComponentNotificationBus, OnDetached, m_ownerId);
 
             MeshComponentNotificationBus::Handler::BusDisconnect();
             AZ::TransformNotificationBus::Handler::BusDisconnect(m_targetId);
@@ -180,6 +190,10 @@ namespace LmbrCentral
         }
     }
 
+    const char* BoneFollower::GetJointName()
+    {
+        return m_targetBoneName.c_str();
+    }
 
     void BoneFollower::SetAttachmentOffset(const AZ::Transform& offset)
     {
@@ -288,6 +302,28 @@ namespace LmbrCentral
     int BoneFollower::GetTickOrder()
     {
         return AZ::TICK_ATTACHMENT;
+    }
+
+    void BoneFollower::Reattach(bool detachFirst)
+    {
+#ifdef AZ_ENABLE_TRACING
+        AZ::Entity* ownerEntity = nullptr;
+        AZ::Entity* targetEntity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(ownerEntity, &AZ::ComponentApplicationBus::Events::FindEntity, m_ownerId);
+        AZ::ComponentApplicationBus::BroadcastResult(targetEntity, &AZ::ComponentApplicationBus::Events::FindEntity, m_targetId);
+        AZ_TracePrintf("BoneFollower", "Reattaching entity '%s' to entity '%s'", ownerEntity ? ownerEntity->GetName().c_str() : "", 
+                                                                                 targetEntity ? targetEntity->GetName().c_str() : "");
+#endif
+
+        if (m_targetId.IsValid() && detachFirst)
+        {
+            AttachmentComponentNotificationBus::Event(m_targetId, &AttachmentComponentNotificationBus::Events::OnDetached, m_ownerId);
+        }
+
+        if (m_targetId != m_ownerId)
+        {
+            AttachmentComponentNotificationBus::Event(m_targetId, &AttachmentComponentNotificationBus::Events::OnAttached, m_ownerId);
+        }
     }
 
     //=========================================================================

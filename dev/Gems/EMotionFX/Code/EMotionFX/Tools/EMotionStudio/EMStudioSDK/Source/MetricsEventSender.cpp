@@ -221,12 +221,12 @@ namespace EMStudio
         LyMetrics_AddAttribute(eventId, "NumAnimatedSubMotions", tempString.c_str());
 
         EMotionFX::MotionEventTable* eventTable = motion->GetEventTable();
-        uint32 numEventTracks = 0;
-        uint32 numTotalEvents = 0;
+        size_t numEventTracks = 0;
+        size_t numTotalEvents = 0;
         if (eventTable)
         {
             numEventTracks = eventTable->GetNumTracks();
-            for (uint32 i = 0; i < numEventTracks; ++i)
+            for (size_t i = 0; i < numEventTracks; ++i)
             {
                 const EMotionFX::MotionEventTrack* eventTrack = eventTable->GetTrack(i);
 

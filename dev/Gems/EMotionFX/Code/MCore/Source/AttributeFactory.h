@@ -12,11 +12,11 @@
 
 #pragma once
 
-// include the required headers
+#include <AzCore/std/containers/vector.h>
 #include "StandardHeaders.h"
 #include "MemoryManager.h"
-#include "Array.h"
 #include "Attribute.h"
+
 
 namespace MCore
 {
@@ -29,23 +29,18 @@ namespace MCore
         AttributeFactory();
         ~AttributeFactory();
 
-        //
         void UnregisterAllAttributes(bool delFromMem = true);
         void RegisterAttribute(Attribute* attribute);
         void UnregisterAttribute(Attribute* attribute, bool delFromMem = true);
         void RegisterStandardTypes();
 
-        MCORE_INLINE uint32 GetNumRegisteredAttributes() const                  { return mRegistered.GetLength(); }
-        MCORE_INLINE Attribute* GetRegisteredAttribute(uint32 index) const      { return mRegistered[index]; }
+        size_t GetNumRegisteredAttributes() const                  { return mRegistered.size(); }
+        Attribute* GetRegisteredAttribute(uint32 index) const      { return mRegistered[index]; }
 
         uint32 FindAttributeIndexByType(uint32 typeID) const;
-        uint32 FindAttributeIndexByTypeString(const char* typeString) const;
-
         Attribute* CreateAttributeByType(uint32 typeID) const;
-        Attribute* CreateAttributeByTypeString(const char* typeString) const;
-        Attribute* CreateAttributeByAttribute(const Attribute* attributeType) const;
 
     private:
-        MCore::Array<Attribute*>    mRegistered;
+        AZStd::vector<Attribute*> mRegistered;
     };
 }   // namespace MCore

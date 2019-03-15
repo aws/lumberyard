@@ -112,12 +112,15 @@ namespace AzToolsFramework
     AZ::EntityId GetEntityIdForSortInfo(const AZ::EntityId parentId);
 
     void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, bool forceAddToBack = false);
+    void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, const AZ::EntityId beforeEntity);
 
-    void RecoverEntitySortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, AZ::u64 sortIndex);
+    // returns true if the restore modified the sort order, false otherwise
+    bool RecoverEntitySortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, AZ::u64 sortIndex);
 
     void RemoveEntityIdFromSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId);
 
-    void SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children);
+    // returns true if the order was updated, false otherwise
+    bool SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children);
 
     EntityIdList GetEntityChildOrder(const AZ::EntityId parentId);
 
@@ -128,12 +131,24 @@ namespace AzToolsFramework
     /// Return root slice containing this entity
     AZ::SliceComponent* GetEntityRootSlice(AZ::EntityId entityId);
 
-    bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType);
+    bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType, bool checkPendingComponents = false, bool checkDisabledComponents = false);
     bool IsComponentWithServiceRegistered(const AZ::Crc32& serviceId);
 
     /// Clones the passed in set of instantiated entities. Note that this will have unexpected results
     /// if given any entities that are not instantiated.
     /// @param entitiesToClone The container of entities to clone.
+    /// @param clonedEntities An output parameter containing the IDs of all cloned entities.
     /// @return True if anything was cloned, false if no cloning occured.
-    bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone);
+    bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone, EntityIdSet& clonedEntities);
+
+    /// Clones the passed in set of instantiated entities. Note that this will have unexpected results
+    /// if given any entities that are not instantiated.
+    /// @param entitiesToClone The container of entities to clone.
+    /// @return True if anything was cloned, false if no cloning occured.
+    inline bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone)
+    {
+        EntityIdSet unusedClonedEntities;
+        return CloneInstantiatedEntities(entitiesToClone, unusedClonedEntities);
+    }
+
 }; // namespace AzToolsFramework

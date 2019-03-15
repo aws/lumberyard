@@ -23,6 +23,7 @@
 #include <AzCore/Slice/SliceComponent.h>
 #include <LegacyEntityConversion/LegacyEntityConversionBus.h>
 
+#include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
 // Sandbox imports.
@@ -82,6 +83,7 @@ class SandboxIntegrationManager
     , private AzToolsFramework::EditorRequests::Bus::Handler
     , private AzToolsFramework::EditorPickModeRequests::Bus::Handler
     , private AzToolsFramework::EditorEvents::Bus::Handler
+    , private AzFramework::AssetCatalogEventBus::Handler
     , private AzFramework::EntityDebugDisplayRequestBus::Handler
     , private AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , private AzToolsFramework::HyperGraphRequestBus::Handler
@@ -98,10 +100,20 @@ public:
 private:
 
     //////////////////////////////////////////////////////////////////////////
+    // AssetCatalogEventBus::Handler
+    void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
+    void OnCatalogAssetRemoved(const AZ::Data::AssetId& assetId) override;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::ToolsApplicationEvents::Bus::Handler overrides
     void OnBeginUndo(const char* label) override;
     void OnEndUndo(const char* label, bool changed) override;
-
+    void EntityParentChanged(
+        AZ::EntityId entityId,
+        AZ::EntityId newParentId,
+        AZ::EntityId oldParentId) override;
+    void OnSaveLevel() override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -125,6 +137,7 @@ private:
     AZ::EntityId CreateNewEntity(AZ::EntityId parentId = AZ::EntityId()) override;
     AZ::EntityId CreateNewEntityAsChild(AZ::EntityId parentId) override;
     AZ::EntityId CreateNewEntityAtPosition(const AZ::Vector3& /*pos*/, AZ::EntityId parentId = AZ::EntityId()) override;
+    AzFramework::EntityContextId GetEntityContextId() override;
     QWidget* GetMainWindow() override;
     IEditor* GetEditor() override;
     bool GetUndoSliceOverrideSaveValue() override;
@@ -143,7 +156,9 @@ private:
     AZStd::vector<AZStd::string> GetAgentTypes() override;
     void GoToSelectedOrHighlightedEntitiesInViewports() override;
     void GoToSelectedEntitiesInViewports() override;
+    bool CanGoToSelectedEntitiesInViewports() override;
     AZ::Vector3 GetWorldPositionAtViewportCenter() override;
+    void InstantiateSliceFromAssetId(const AZ::Data::AssetId& assetId) override;
     void ClearRedoStack() override;
 
     //////////////////////////////////////////////////////////////////////////
@@ -156,6 +171,10 @@ private:
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::EditorEntityContextNotificationBus::Handler
     void OnContextReset() override;
+    void OnSliceInstantiated(
+        const AZ::Data::AssetId& sliceAssetId,
+        const AZ::SliceComponent::SliceInstanceAddress& sliceAddress,
+        const AzFramework::SliceInstantiationTicket& ticket) override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -244,6 +263,8 @@ private:
 
     // Context menu handlers.
     void ContextMenu_NewEntity();
+    AZ::EntityId ContextMenu_NewLayer();
+    void ContextMenu_SaveLayers(const AZStd::unordered_set<AZ::EntityId>& layers);
     void ContextMenu_MakeSlice(AzToolsFramework::EntityIdList entities);
     void ContextMenu_InheritSlice(AzToolsFramework::EntityIdList entities);
     void ContextMenu_InstantiateSlice();
@@ -262,7 +283,7 @@ private:
     void ContextMenu_AddFlowGraph(AZ::EntityId entities);
     void ContextMenu_RemoveFlowGraph(AZ::EntityId entityId, IFlowGraph* flowgraph);
 
-    void MakeSliceFromEntities(const AzToolsFramework::EntityIdList& entities, bool inheritSlices);
+    void MakeSliceFromEntities(const AzToolsFramework::EntityIdList& entities, bool inheritSlices, bool setAsDynamic);
 
     void GetSelectedEntities(AzToolsFramework::EntityIdList& entities);
     void GetSelectedOrHighlightedEntities(AzToolsFramework::EntityIdList& entities);
@@ -292,6 +313,8 @@ private:
 
 private:
     void SetupFileExtensionMap();
+    // Right click context menu when a layer is included in the selection.
+    void SetupLayerContextMenu(QMenu* menu);
     void SetupSliceContextMenu(QMenu* menu);
     void SetupSliceContextMenu_Modify(QMenu* menu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::u32 numEntitiesInSlices);
     void SetupFlowGraphContextMenu(QMenu* menu);
@@ -301,6 +324,24 @@ private:
 
     void GoToEntitiesInViewports(const AzToolsFramework::EntityIdList& entityIds);
 
+    bool CanGoToEntityOrChildren(const AZ::EntityId& entityId) const;
+
+    // This struct exists to help handle the error case where slice assets are 
+    // accidentally deleted from disk but their instances are still in the editing level.
+    struct SliceAssetDeletionErrorInfo
+    {
+        SliceAssetDeletionErrorInfo() = default;
+
+        SliceAssetDeletionErrorInfo(AZ::Data::AssetId assetId, AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>>&& entityRestoreInfos) 
+            : m_assetId(assetId)
+            , m_entityRestoreInfos(AZStd::move(entityRestoreInfos))
+        { }
+
+        AZ::Data::AssetId m_assetId;
+        AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>> m_entityRestoreInfos;
+    };
+
+private:
     typedef AZStd::unordered_map<AZ::u32, IFileUtil::ECustomFileType> ExtensionMap;
     ExtensionMap m_extensionToFileType;
 
@@ -315,6 +356,11 @@ private:
     DisplayContext* m_dc;
 
     AZStd::unique_ptr<class ComponentEntityDebugPrinter> m_entityDebugPrinter;
+
+    AZStd::vector<SliceAssetDeletionErrorInfo> m_sliceAssetDeletionErrorRestoreInfos;
+
+    // Tracks new entities that have not yet been saved.
+    AZStd::unordered_set<AZ::EntityId> m_unsavedEntities;
 
     const AZStd::string m_defaultComponentIconLocation = "Editor/Icons/Components/Component_Placeholder.png";
     const AZStd::string m_defaultComponentViewportIconLocation = "Editor/Icons/Components/Viewport/Component_Placeholder.png";

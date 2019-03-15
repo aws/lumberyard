@@ -57,7 +57,7 @@ namespace AssetProcessor
         int NumberOfPendingCriticalJobsPerPlatform(QString platform);
 
         void SetSystemRoot(const QDir& systemRoot);
-        int NumberOfPendingCopyJobsPerPlatform(QString platform);
+        int NumberOfPendingJobsPerPlatform(QString platform);
         bool IsIdle();
         bool IsPriorityCopyJob(AssetProcessor::RCJob* rcJob);
     Q_SIGNALS:
@@ -91,6 +91,7 @@ namespace AssetProcessor
         void OnRequestCompileGroup(AssetProcessor::NetworkRequestID groupID, QString platform, QString searchTerm, bool isStatusRequest = true);
 
         void DispatchJobs();
+        void DispatchJobsImpl();
 
         //! Pause or unpause dispatching, only necessary on startup to avoid thrashing and make sure no jobs jump the gun.
         void SetDispatchPaused(bool pause);
@@ -107,6 +108,7 @@ namespace AssetProcessor
         bool m_dispatchingJobs = false;
         bool m_shuttingDown = false;
         bool m_dispatchingPaused = true;// dispatching starts out paused.
+        bool m_dispatchJobsQueued = false;
 
         QMap<QString, int> m_jobsCountPerPlatform;// This stores the count of jobs per platform in the RC Queue
         QMap<QString, int> m_pendingCriticalJobsPerPlatform;// This stores the count of pending critical jobs per platform in the RC Queue

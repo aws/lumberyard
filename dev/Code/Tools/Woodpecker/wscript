@@ -27,6 +27,7 @@ def build(bld):
                                        'AzFramework',
                                        'AzToolsFramework',
                                        'GridMateForTools',
+                                       'AzQtComponents',
                                        'ToolsCrashHandler'] + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity']),
         uselib                      = ['QTANGLE',
                                        'QTMAIN',
@@ -43,6 +44,7 @@ def build(bld):
         # Platform Specific
         msvc_cxxflags           = [
             '/W4', # warning level
+            '/wd4251', # warning caused by QVector and QMap; disabling in this project because it's not useful
         ],
         win_lib                 = [ 'shell32' ],
         darwin_uselib           = [ 'AWS_CPP_SDK_CORE',
@@ -92,6 +94,7 @@ def build(bld):
         # Platform Specific
         msvc_cxxflags           = [
             '/W4', # warning level
+            '/wd4251', # warning caused by QVector and QMap; disabling in this project because it's not useful
             ],
         darwin_uselib           = [ 'AWS_CPP_SDK_CORE',
                                     'AWS_CPP_SDK_COGNITO_IDENTITY',

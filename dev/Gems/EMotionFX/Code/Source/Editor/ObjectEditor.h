@@ -20,7 +20,11 @@
 
 // Forward declarations
 namespace AZ { class SerializeContext; }
-namespace AzToolsFramework { class ReflectedPropertyEditor; }
+namespace AzToolsFramework
+{
+    class ReflectedPropertyEditor;
+    class IPropertyEditorNotify;
+}
 
 namespace EMotionFX
 {
@@ -30,13 +34,20 @@ namespace EMotionFX
         Q_OBJECT
 
     public:
-        ObjectEditor(AZ::SerializeContext* serializeContext, QWidget* parent);
+        ObjectEditor(AZ::SerializeContext* serializeContext, QWidget* parent = nullptr);
+        ObjectEditor(AZ::SerializeContext* serializeContext, AzToolsFramework::IPropertyEditorNotify* notify, QWidget* parent = nullptr);
         ~ObjectEditor();
 
         void AddInstance(void* object, const AZ::TypeId& objectTypeId);
         void ClearInstances(bool invalidateImmediately);
 
+        void InvalidateAll();
+        void InvalidateValues();
+
+        void* GetObject() { return m_object; }
+
     private:
+        void*                                       m_object;
         AzToolsFramework::ReflectedPropertyEditor*  m_propertyEditor;
         static const int                            m_propertyLabelWidth;
     };

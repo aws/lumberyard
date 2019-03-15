@@ -59,6 +59,8 @@ namespace AzToolsFramework
         void PauseTreeViewSaving();
         void UnpauseTreeViewSaving();
 
+        virtual bool IsIndexExpandedByDefault(const QModelIndex& index) const;
+
         bool IsTreeViewSavingReady() const { return m_treeStateSaver != nullptr; }
 
         // These are overridden so that this class knows when the models change
@@ -86,6 +88,7 @@ namespace AzToolsFramework
 
     public:
         static void Reflect(AZ::ReflectContext* context);
+        void ApplySnapshot() const;
 
     private:
 
@@ -103,8 +106,6 @@ namespace AzToolsFramework
 
         void WriteStateTo(QSet<QString>& target);
         void ReadStateFrom(QSet<QString>& source);
-
-        void ApplySnapshot() const;
 
         void Detach();
 
@@ -132,8 +133,9 @@ namespace AzToolsFramework
         QPointer<QAbstractItemModel> m_dataModel;
         QPointer<QItemSelectionModel> m_selectionModel;
         AZStd::intrusive_ptr<QTreeViewStateSaverData> m_data;
+        bool m_defaultToExpandIndexes = false;
 
         Q_DISABLE_COPY(QTreeViewStateSaver)
     };
-}
+} //namespace AzToolsFramework
 

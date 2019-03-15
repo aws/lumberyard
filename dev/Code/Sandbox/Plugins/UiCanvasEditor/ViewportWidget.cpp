@@ -19,17 +19,26 @@
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 #include <AzFramework/Input/Devices/Keyboard/InputDeviceKeyboard.h>
 
+#include <LyShine/Bus/UiEditorCanvasBus.h>
+
 #include "ViewportNudge.h"
 #include "ViewportPivot.h"
 #include "ViewportSnap.h"
 #include "ViewportElement.h"
+#include "RulerWidget.h"
+#include "CanvasHelpers.h"
 
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_KEY         "ViewportWidget::m_drawElementBordersFlags"
 #define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_DEFAULT     ( ViewportWidget::DrawElementBorders_Unselected )
 
+#define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_RULERS_KEY                  "ViewportWidget::m_rulersVisible"
+#define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_RULERS_DEFAULT              ( false )
+
+#define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_GUIDES_KEY                  "ViewportWidget::m_guidesVisible"
+#define UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_GUIDES_DEFAULT              ( false )
+
 namespace
 {
-    // Persistence.
     uint32 GetDrawElementBordersFlags()
     {
         QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
@@ -53,6 +62,60 @@ namespace
 
         settings.setValue(UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_ELEMENT_BORDERS_KEY,
             flags);
+
+        settings.endGroup();
+    }
+
+    bool GetPersistentRulerVisibility()
+    {
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
+
+        settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
+
+        bool result = settings.value(UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_RULERS_KEY,
+                UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_RULERS_DEFAULT).toBool();
+
+        settings.endGroup();
+
+        return result;
+    }
+
+    // Persistence.
+    void SetPersistentRulerVisibility(bool rulersVisible)
+    {
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
+
+        settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
+
+        settings.setValue(UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_RULERS_KEY,
+            rulersVisible);
+
+        settings.endGroup();
+    }
+
+    bool GetPersistentGuideVisibility()
+    {
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
+
+        settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
+
+        bool result = settings.value(UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_GUIDES_KEY,
+                UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_GUIDES_DEFAULT).toBool();
+
+        settings.endGroup();
+
+        return result;
+    }
+
+    // Persistence.
+    void SetPersistentGuideVisibility(bool guidesVisible)
+    {
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, AZ_QCOREAPPLICATION_SETTINGS_ORGANIZATION_NAME);
+
+        settings.beginGroup(UICANVASEDITOR_NAME_SHORT);
+
+        settings.setValue(UICANVASEDITOR_SETTINGS_VIEWPORTWIDGET_DRAW_GUIDES_KEY,
+            guidesVisible);
 
         settings.endGroup();
     }
@@ -141,6 +204,8 @@ ViewportWidget::ViewportWidget(EditorWindow* parent)
     , m_canvasRenderIsEnabled(true)
     , m_updateTimer(this)
     , m_previewCanvasScale(1.0f)
+    , m_rulersVisible(GetPersistentRulerVisibility())
+    , m_guidesVisible(GetPersistentGuideVisibility())
 {
     QObject::connect(this,
         SIGNAL(SignalRender(const SRenderContext&)),
@@ -160,7 +225,11 @@ ViewportWidget::ViewportWidget(EditorWindow* parent)
         SetSettings(tweakedSettings);
     }
 
+    SetUseArrowsForNavigation(false);
+
     UpdateViewportBackground();
+
+    SetupShortcuts();
 
     // Setup a timer for the maximum refresh rate we want.
     // Refresh is actually triggered by interaction events and by the IdleUpdate. This avoids the UI
@@ -168,6 +237,31 @@ ViewportWidget::ViewportWidget(EditorWindow* parent)
     QObject::connect(&m_updateTimer, SIGNAL(timeout()), this, SLOT(RefreshTick()));
     const int kUpdateIntervalInMillseconds = 1000 / 60;   // 60 Hz
     m_updateTimer.start(kUpdateIntervalInMillseconds);
+
+    // listen to the editor window for changes in mode. When in preview mode hide the rulers.
+    QObject::connect(parent,
+        &EditorWindow::EditorModeChanged,
+        [this](UiEditorMode mode)
+        {
+            if (mode == UiEditorMode::Preview)
+            {
+                m_rulersVisible = false;
+            }
+            else
+            {
+                m_rulersVisible = GetPersistentRulerVisibility();
+            }
+
+            ApplyRulerVisibility();
+        });
+
+    FontNotificationBus::Handler::BusConnect();
+}
+
+ViewportWidget::~ViewportWidget()
+{
+    EditorPickModeRequests::Bus::Handler::BusDisconnect();
+    FontNotificationBus::Handler::BusDisconnect();
 }
 
 ViewportInteraction* ViewportWidget::GetViewportInteraction()
@@ -212,6 +306,24 @@ void ViewportWidget::ActiveCanvasChanged()
     }
 
     m_viewportInteraction->InitializeToolbars();
+
+    EntityContextChanged();
+}
+
+void ViewportWidget::EntityContextChanged()
+{
+    if (m_inObjectPickMode)
+    {
+        StopObjectPickMode();
+    }
+
+    // Disconnect from the PickModeRequests bus and reconnect with the new entity context
+    EditorPickModeRequests::Bus::Handler::BusDisconnect();
+    UiEditorEntityContext* context = m_editorWindow->GetEntityContext();
+    if (context)
+    {
+        EditorPickModeRequests::Bus::Handler::BusConnect(context->GetContextId());
+    }
 }
 
 void ViewportWidget::Refresh()
@@ -237,6 +349,74 @@ void ViewportWidget::SetRedrawEnabled(bool enabled)
     m_canvasRenderIsEnabled = enabled;
 }
 
+void ViewportWidget::PickItem(AZ::EntityId entityId)
+{
+    EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, OnPickModeSelect, entityId);
+
+    EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+}
+
+QWidget* ViewportWidget::CreateViewportWithRulersWidget(QWidget* parent)
+{
+    QWidget* viewportWithRulersWidget = new QWidget(parent);
+
+    QGridLayout* viewportWithRulersLayout = new QGridLayout(viewportWithRulersWidget);
+    viewportWithRulersLayout->setContentsMargins(0, 0, 0, 0);
+    viewportWithRulersLayout->setSpacing(0);
+
+    m_rulerHorizontal = new RulerWidget(RulerWidget::Orientation::Horizontal, viewportWithRulersWidget, m_editorWindow);
+    m_rulerVertical = new RulerWidget(RulerWidget::Orientation::Vertical, viewportWithRulersWidget, m_editorWindow);
+
+    m_rulerCorner = new QWidget();
+    m_rulerCorner->setBackgroundRole(QPalette::Window);
+
+    viewportWithRulersLayout->addWidget(m_rulerCorner,0,0);
+    viewportWithRulersLayout->addWidget(m_rulerHorizontal,0,1);
+    viewportWithRulersLayout->addWidget(m_rulerVertical,1,0);
+    viewportWithRulersLayout->addWidget(this,1,1);
+
+    ApplyRulerVisibility();
+
+    return viewportWithRulersWidget;
+}
+
+void ViewportWidget::ShowRulers(bool show)
+{
+    if (show != m_rulersVisible)
+    {
+        m_rulersVisible = show;
+        ApplyRulerVisibility();
+        SetPersistentRulerVisibility(m_rulersVisible);
+    }
+}
+
+void ViewportWidget::RefreshRulers()
+{
+    if (m_rulersVisible)
+    {
+        m_rulerHorizontal->update();
+        m_rulerVertical->update();
+    }
+}
+
+void ViewportWidget::SetRulerCursorPositions(const QPoint& globalPos)
+{
+    if (m_rulersVisible)
+    {
+        m_rulerHorizontal->SetCursorPos(globalPos);
+        m_rulerVertical->SetCursorPos(globalPos);
+    }
+}
+
+void ViewportWidget::ShowGuides(bool show)
+{
+    if (show != m_guidesVisible)
+    {
+        m_guidesVisible = show;
+        SetPersistentGuideVisibility(m_guidesVisible);
+    }
+}
+
 void ViewportWidget::contextMenuEvent(QContextMenuEvent* e)
 {
     if (m_editorWindow->GetCanvas().IsValid())
@@ -254,9 +434,10 @@ void ViewportWidget::contextMenuEvent(QContextMenuEvent* e)
                 HierarchyMenu::Show::kDeleteElement |
                 HierarchyMenu::Show::kNewSlice |
                 HierarchyMenu::Show::kNew_InstantiateSlice |
-                HierarchyMenu::Show::kPushToSlice,
+                HierarchyMenu::Show::kPushToSlice |
+                HierarchyMenu::Show::kEditorOnly |
+                HierarchyMenu::Show::kFindElements,
                 true,
-                nullptr,
                 &pos);
 
             contextMenu.exec(e->globalPos());
@@ -365,6 +546,8 @@ void ViewportWidget::mouseMoveEvent(QMouseEvent* ev)
         // in Edit mode just send input to ViewportInteraction
         m_viewportInteraction->MouseMoveEvent(&scaledEvent,
             m_editorWindow->GetHierarchy()->selectedItems());
+
+        SetRulerCursorPositions(ev->globalPos());
     }
     else // if (editorMode == UiEditorMode::Preview)
     {
@@ -441,8 +624,6 @@ void ViewportWidget::wheelEvent(QWheelEvent* ev)
 
 bool ViewportWidget::event(QEvent* ev)
 {
-    bool result = QWidget::event(ev);
-
     if (ev->type() == QEvent::ShortcutOverride)
     {
         // When a shortcut is matched, Qt's event processing sends out a shortcut override event
@@ -451,18 +632,41 @@ bool ViewportWidget::event(QEvent* ev)
         // handler. In our case this causes a problem in preview mode for the Key_Delete event.
         // So, if we are preview mode avoid treating Key_Delete as a shortcut.
 
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(ev);
+        int key = keyEvent->key();
+
+        // Override the space bar shortcut so that the key gets handled by the viewport's KeyPress/KeyRelease
+        // events when the viewport has the focus. The space bar is set up as a shortcut in order to give the
+        // viewport the focus and activate the space bar when another widget has the focus. Once the shortcut
+        // is pressed and focus is given to the viewport, the viewport takes over handling the space bar via
+        // the KeyPress/KeyRelease events
+        if (key == Qt::Key_Space)
+        {
+            ev->accept();
+            return true;
+        }
+
         UiEditorMode editorMode = m_editorWindow->GetEditorMode();
         if (editorMode == UiEditorMode::Preview)
         {
-            QKeyEvent* keyEvent = static_cast<QKeyEvent*>(ev);
-            if (keyEvent->key() == Qt::Key_Delete)
+            switch (key)
+            {
+            case Qt::Key_Delete:
+                // Ignore nudge shortcuts in preview mode so that the KeyPressEvent will be sent
+            case Qt::Key_Up:
+            case Qt::Key_Down:
+            case Qt::Key_Left:
+            case Qt::Key_Right:
             {
                 ev->accept();
                 return true;
             }
+            break;
+            };
         }
     }
-
+    
+    bool result = QWidget::event(ev);
     return result;
 }
 
@@ -472,18 +676,15 @@ void ViewportWidget::keyPressEvent(QKeyEvent* event)
     if (editorMode == UiEditorMode::Edit)
     {
         // in Edit mode just send input to ViewportInteraction
-        m_viewportInteraction->KeyPressEvent(event);
+        bool handled = m_viewportInteraction->KeyPressEvent(event);
+        if (!handled)
+        {
+            QViewport::keyPressEvent(event);
+        }
     }
     else // if (editorMode == UiEditorMode::Preview)
     {
         // In Preview mode convert the event into a game input event and send to canvas
-        // unless it is the escape key which quits preview mode
-        if (event->key() == Qt::Key_Escape)
-        {
-            m_editorWindow->ToggleEditorMode();
-            return;
-        }
-
         AZ::EntityId canvasEntityId = m_editorWindow->GetPreviewModeCanvas();
         if (canvasEntityId.IsValid())
         {
@@ -516,7 +717,11 @@ void ViewportWidget::keyReleaseEvent(QKeyEvent* event)
     if (editorMode == UiEditorMode::Edit)
     {
         // in Edit mode just send input to ViewportInteraction
-        m_viewportInteraction->KeyReleaseEvent(event);
+        bool handled = m_viewportInteraction->KeyReleaseEvent(event);
+        if (!handled)
+        {
+            QViewport::keyReleaseEvent(event);
+        }
     }
     else if (editorMode == UiEditorMode::Preview)
     {
@@ -569,6 +774,31 @@ void ViewportWidget::resizeEvent(QResizeEvent* ev)
     QViewport::resizeEvent(ev);
 }
 
+void ViewportWidget::StartObjectPickMode()
+{
+    m_inObjectPickMode = true;
+    m_viewportInteraction->StartObjectPickMode();
+}
+
+void ViewportWidget::StopObjectPickMode()
+{
+    if (m_inObjectPickMode)
+    {
+        m_inObjectPickMode = false;
+        m_viewportInteraction->StopObjectPickMode();
+    }
+}
+
+void ViewportWidget::OnFontsReloaded()
+{
+    m_fontTextureHasChanged = true;
+}
+
+void ViewportWidget::OnFontTextureUpdated(IFFont* font)
+{
+    m_fontTextureHasChanged = true;
+}
+
 QPointF ViewportWidget::WidgetToViewport(const QPointF & point) const
 {
     return point * WidgetToViewportFactor();
@@ -576,6 +806,13 @@ QPointF ViewportWidget::WidgetToViewport(const QPointF & point) const
 
 void ViewportWidget::RenderEditMode()
 {
+    if (m_fontTextureHasChanged)
+    {
+        // A font texture has changed since we last rendered. Force a render graph update for each loaded canvas
+        m_editorWindow->FontTextureHasChanged();
+        m_fontTextureHasChanged = false;
+    }
+
     AZ::EntityId canvasEntityId = m_editorWindow->GetCanvas();
     if (!canvasEntityId.IsValid())
     {
@@ -605,10 +842,10 @@ void ViewportWidget::RenderEditMode()
     EBUS_EVENT_ID(canvasEntityId, UiCanvasBus, SetTargetCanvasSize, false, canvasSize);
 
     // Update this canvas (must be done after SetTargetCanvasSize)
-    EBUS_EVENT_ID(canvasEntityId, UiCanvasBus, UpdateCanvas, GetLastFrameTime(), false);
+    EBUS_EVENT_ID(canvasEntityId, UiEditorCanvasBus, UpdateCanvasInEditorViewport, GetLastFrameTime(), false);
 
     // Render this canvas
-    EBUS_EVENT_ID(canvasEntityId, UiCanvasBus, RenderCanvas, false, viewportSize, false);
+    EBUS_EVENT_ID(canvasEntityId, UiEditorCanvasBus, RenderCanvasInEditorViewport, false, viewportSize);
 
     // Draw borders around selected and unselected UI elements in the viewport
     // depending on the flags in m_drawElementBordersFlags
@@ -618,8 +855,12 @@ void ViewportWidget::RenderEditMode()
         selectedItems,
         m_drawElementBordersFlags);
 
-    // Draw primary gizmos
+    // Draw primary gizmos and guide lines
     m_viewportInteraction->Draw(draw2d, selection);
+
+    // Draw any interaction display for the rulers that is in the viewport
+    m_rulerHorizontal->DrawForViewport(draw2d);
+    m_rulerVertical->DrawForViewport(draw2d);
 
     // Draw secondary gizmos
     if (ViewportInteraction::InteractionMode::ROTATE == m_viewportInteraction->GetMode())
@@ -635,25 +876,79 @@ void ViewportWidget::RenderEditMode()
             ViewportHelpers::DrawRotationValue(element, m_viewportInteraction.get(), m_viewportPivot.get(), draw2d);
         }
     }
-    else if (selectedItems.size() == 1 &&
-             ViewportInteraction::InteractionMode::MOVE == m_viewportInteraction->GetMode())
+    else if (ViewportInteraction::InteractionMode::MOVE == m_viewportInteraction->GetMode() ||
+              ViewportInteraction::InteractionMode::ANCHOR == m_viewportInteraction->GetMode())
     {
-        // Draw the anchors only if there is exactly one selected element and we're in Move mode
-        auto selectedElement = selectedItems.front()->GetElement();
+        // Draw the anchors only if we're in Anchor or Move mode
+
+        // We draw extra anchor related data when we are in the middle of an interaction
         bool leftButtonIsActive = m_viewportInteraction->GetLeftButtonIsActive();
         bool spaceBarIsActive = m_viewportInteraction->GetSpaceBarIsActive();
+        bool isInteracting = leftButtonIsActive && !spaceBarIsActive &&
+            m_viewportInteraction->GetInteractionType() != ViewportInteraction::InteractionType::NONE &&
+            m_viewportInteraction->GetInteractionType() != ViewportInteraction::InteractionType::GUIDE;
+
         ViewportHelpers::SelectedAnchors highlightedAnchors = m_viewportInteraction->GetGrabbedAnchors();
-        m_viewportAnchor->Draw(draw2d,
-            selectedElement,
-            leftButtonIsActive,
-            leftButtonIsActive && !spaceBarIsActive,
-            highlightedAnchors);
+
+        // These flags affect what parts of the anchor display is drawn
+        bool drawUnTransformedRect = false;
+        bool drawAnchorLines = false;
+        bool drawLinesToParent = false;
+
+        bool anchorInteractionEnabled = m_viewportInteraction->GetMode() == ViewportInteraction::InteractionMode::ANCHOR && selectedItems.size() == 1;
+
+        if (isInteracting)
+        {
+            if (m_viewportInteraction->GetMode() == ViewportInteraction::InteractionMode::MOVE)
+            {
+                // when interacting in move mode (changing offsets) we draw the anchor lines from the anchor to the element
+                // and also draw a faint untransformed rect around the element
+                drawUnTransformedRect = true;
+                drawAnchorLines = true;
+            }
+            else
+            {
+                // when interacting in anchor mode we draw lines from the anchor to the parent rect
+                drawLinesToParent = true;
+            }
+        }
+        else
+        {
+            // not interacting but could be hovering over anchors
+            if (highlightedAnchors.Any())
+            {
+                // if the anchors are highlighted (whether actually moving or not) we want to draw distance
+                // lines from the anchor to the edges of it's parent rect. In this case we do NOT want to
+                // draw the lines from the anchor to this element's rect or pivot
+                drawLinesToParent = true;
+            }
+        }
+
+        // for all the top level selected elements, draw the anchors
+        LyShine::EntityArray selectedElements = SelectionHelpers::GetTopLevelSelectedElements(m_editorWindow->GetHierarchy(), selection);
+        for (auto element : selectedElements)
+        {
+            m_viewportAnchor->Draw(draw2d,
+                element,
+                drawUnTransformedRect,
+                drawAnchorLines,
+                drawLinesToParent,
+                anchorInteractionEnabled,
+                highlightedAnchors);
+        }
     }
 }
 
 void ViewportWidget::RenderPreviewMode()
 {
     AZ::EntityId canvasEntityId = m_editorWindow->GetPreviewModeCanvas();
+
+    if (m_fontTextureHasChanged)
+    {
+        // A font texture has changed since we last rendered. Force a render graph update for each loaded canvas
+        m_editorWindow->FontTextureHasChanged();
+        m_fontTextureHasChanged = false;
+    }
 
     // Rather than scaling to exactly fit we try to draw at one of these preset scale factors
     // to make it it bit more obvious that the canvas size is changing
@@ -702,7 +997,7 @@ void ViewportWidget::RenderPreviewMode()
         EBUS_EVENT_ID(canvasEntityId, UiCanvasBus, SetTargetCanvasSize, true, canvasSize);
 
         // Update this canvas (must be done after SetTargetCanvasSize)
-        EBUS_EVENT_ID(canvasEntityId, UiCanvasBus, UpdateCanvas, GetLastFrameTime(), true);
+        EBUS_EVENT_ID(canvasEntityId, UiEditorCanvasBus, UpdateCanvasInEditorViewport, GetLastFrameTime(), true);
 
         // Execute events that have been queued during the canvas update
         gEnv->pLyShine->ExecuteQueuedEvents();
@@ -735,15 +1030,162 @@ void ViewportWidget::RenderPreviewMode()
 
         // clear the stencil buffer before rendering each canvas - required for masking
         // NOTE: the FRT_CLEAR_IMMEDIATE is required since we will not be setting the render target
-        ColorF viewportBackgroundColor(0, 0, 0, 0); // if clearing color we want to set alpha to zero also
-        gEnv->pRenderer->ClearTargetsImmediately(FRT_CLEAR_STENCIL, viewportBackgroundColor);
+        // We also clear the color to a mid grey so that we can see the bounds of the canvas
+        ColorF viewportBackgroundColor(0.5f, 0.5f, 0.5f, 0); // if clearing color we want to set alpha to zero also
+        gEnv->pRenderer->ClearTargetsImmediately(FRT_CLEAR, viewportBackgroundColor);
+
+        // Render a black rectangle covering the canvas area. This allows the canvas bounds to be visible when the canvas size is
+        // not exactly the same as the viewport size
+        AZ::Vector2 topLeftInViewportSpace = CanvasHelpers::GetViewportPoint(canvasEntityId, AZ::Vector2(0.0f, 0.0f));
+        AZ::Vector2 bottomRightInViewportSpace = CanvasHelpers::GetViewportPoint(canvasEntityId, canvasSize);
+        AZ::Vector2 sizeInViewportSpace = bottomRightInViewportSpace - topLeftInViewportSpace;
+        Draw2dHelper draw2d;
+        int texId = gEnv->pRenderer->GetBlackTextureId();
+        draw2d.DrawImage(texId, topLeftInViewportSpace, sizeInViewportSpace);
 
         // Render this canvas
         // NOTE: the displayBounds param is always false. If we wanted a debug option to display the bounds
         // in preview mode we would need to render the deferred primitives after this call so that they
         // show up in the correct viewport
-        EBUS_EVENT_ID(canvasEntityId, UiCanvasBus, RenderCanvas, true, viewportSize, false);
+        EBUS_EVENT_ID(canvasEntityId, UiEditorCanvasBus, RenderCanvasInEditorViewport, true, viewportSize);
     }
 }
+
+void ViewportWidget::SetupShortcuts()
+{
+    // Actions with shortcuts are created instead of direct shortcuts because the shortcut dispatcher only looks for matching actions
+
+    // Create nudge shortcuts that are active across the entire UI Editor window. Any widgets (such as the spin box widget) that
+    // handle the same keys and want the shortcut to be ignored need to handle that with a shortcut override event.
+    // In preview mode, the nudge shortcuts are ignored via the shortcut override event. KeyPressEvents are sent instead,
+    // and passed along to the canvas
+
+    // Nudge up
+    {
+        QAction* action = new QAction("Up", this);
+        action->setShortcut(QKeySequence(Qt::Key_Up));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            m_viewportInteraction->Nudge(ViewportInteraction::NudgeDirection::Up, ViewportInteraction::NudgeSpeed::Slow);
+        });
+        addAction(action);
+    }
+
+    // Nudge up fast
+    {
+        QAction* action = new QAction("Up Fast", this);
+        action->setShortcut(QKeySequence(Qt::SHIFT + Qt::Key_Up));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            m_viewportInteraction->Nudge(ViewportInteraction::NudgeDirection::Up, ViewportInteraction::NudgeSpeed::Fast);
+        });
+        addAction(action);
+    }
+
+    // Nudge down
+    {
+        QAction* action = new QAction("Down", this);
+        action->setShortcut(QKeySequence(Qt::Key_Down));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            m_viewportInteraction->Nudge(ViewportInteraction::NudgeDirection::Down, ViewportInteraction::NudgeSpeed::Slow);
+        });
+        addAction(action);
+    }
+
+    // Nudge down fast
+    {
+        QAction* action = new QAction("Down Fast", this);
+        action->setShortcut(QKeySequence(Qt::SHIFT + Qt::Key_Down));       
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            m_viewportInteraction->Nudge(ViewportInteraction::NudgeDirection::Down, ViewportInteraction::NudgeSpeed::Fast);
+        });
+        addAction(action);
+    }
+
+    // Nudge left
+    {
+        QAction* action = new QAction("Left", this);
+        action->setShortcut(QKeySequence(Qt::Key_Left));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            m_viewportInteraction->Nudge(ViewportInteraction::NudgeDirection::Left, ViewportInteraction::NudgeSpeed::Slow);
+        });
+        addAction(action);
+    }
+
+    // Nudge left fast
+    {
+        QAction* action = new QAction("Left Fast", this);
+        action->setShortcut(QKeySequence(Qt::SHIFT + Qt::Key_Left));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            m_viewportInteraction->Nudge(ViewportInteraction::NudgeDirection::Left, ViewportInteraction::NudgeSpeed::Fast);
+        });
+        addAction(action);
+    }
+
+    // Nudge right
+    {
+        QAction* action = new QAction("Right", this);
+        action->setShortcut(QKeySequence(Qt::Key_Right));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            m_viewportInteraction->Nudge(ViewportInteraction::NudgeDirection::Right, ViewportInteraction::NudgeSpeed::Slow);
+        });
+        addAction(action);
+    }
+
+    // Nudge right fast
+    {
+        QAction* action = new QAction("Right Fast", this);
+        action->setShortcut(QKeySequence(Qt::SHIFT + Qt::Key_Right));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            m_viewportInteraction->Nudge(ViewportInteraction::NudgeDirection::Right, ViewportInteraction::NudgeSpeed::Fast);
+        });
+        addAction(action);
+    }
+
+    // Give the viewport focus and activate the space bar
+    {
+        QAction* action = new QAction("Viewport Focus", this);
+        action->setShortcut(QKeySequence(Qt::Key_Space));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            setFocus();
+            m_viewportInteraction->ActivateSpaceBar();
+        });
+        addAction(action);
+    }
+}
+
+void ViewportWidget::ApplyRulerVisibility()
+{
+    // Since we are using a grid layout, setting the width of the corner widget (the square at the top left of the grid)
+    // determines whether the rulers are zero size or not.
+    int rulerBreadth = (m_rulersVisible) ? RulerWidget::GetRulerBreadth() : 0;
+    m_rulerCorner->setFixedSize(rulerBreadth, rulerBreadth);
+}
+
 
 #include <ViewportWidget.moc>

@@ -16,7 +16,26 @@
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
+#include "AlignToolbarSection.h"
+#include "ViewportAlign.h"
+#include "CanvasHelpers.h"
+#include "GuideHelpers.h"
+#include <LyShine/Bus/UiEditorCanvasBus.h>
+
 static const bool debugViewUndoStack = false;
+
+QAction* EditorWindow::AddMenuAction(const QString& text, bool enabled, QMenu* menu,  AZStd::function<void (bool)> function)
+{
+    QAction* action = new QAction(text, this);
+    action->setEnabled(enabled);
+    QObject::connect(action,
+        &QAction::triggered,
+        function);
+    menu->addAction(action);
+    addAction(action);  // Also add the action to the window until the shortcut dispatcher can find the menu action
+    m_actionsEnabledWithSelection.push_back(action);
+    return action;
+}
 
 void EditorWindow::EditorMenu_Open(QString optional_selectedFile)
 {
@@ -59,20 +78,18 @@ void EditorWindow::AddMenu_File()
     {
         QAction* action = new QAction("&New Canvas", this);
         action->setShortcut(QKeySequence::New);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         QObject::connect(action,
             &QAction::triggered,
             this,
             &EditorWindow::NewCanvas);
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     // Load a canvas.
     {
         QAction* action = new QAction("&Open Canvas...", this);
         action->setShortcut(QKeySequence::Open);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         QObject::connect(action,
             &QAction::triggered,
             this,
@@ -81,7 +98,7 @@ void EditorWindow::AddMenu_File()
                 EditorMenu_Open("");
             });
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     bool canvasLoaded = GetCanvas().IsValid();
@@ -96,7 +113,7 @@ void EditorWindow::AddMenu_File()
         {
             QAction *action = CreateSaveSliceAction(canvasMetadata);
             menu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
     }
     else
@@ -112,7 +129,7 @@ void EditorWindow::AddMenu_File()
         {
             QAction* action = CreateSaveCanvasAsAction(GetCanvas());
             menu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
     }
 
@@ -120,7 +137,7 @@ void EditorWindow::AddMenu_File()
     {
         QAction* action = CreateSaveAllCanvasesAction();
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     menu->addSeparator();
@@ -133,7 +150,7 @@ void EditorWindow::AddMenu_File()
 
         // This menu option is always available to the user
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     menu->addSeparator();
@@ -142,21 +159,21 @@ void EditorWindow::AddMenu_File()
     {
         QAction* action = CreateCloseCanvasAction(GetCanvas());
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     // Close all canvases
     {
         QAction* action = CreateCloseAllCanvasesAction();
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     // Close all but the active canvas
     {
         QAction* action = CreateCloseAllOtherCanvasesAction(GetCanvas());
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     menu->addSeparator();
@@ -182,7 +199,7 @@ void EditorWindow::AddMenu_File()
                         EditorMenu_Open(fileName);
                     });
                 recentMenu->addAction(action);
-                addAction(action);
+                addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
             }
         }
 
@@ -201,7 +218,7 @@ void EditorWindow::AddMenu_File()
                     RefreshEditorMenu();
                 });
             menu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
     }
 }
@@ -212,9 +229,8 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
     {
         QAction* action = GetUndoGroup()->createUndoAction(this);
         action->setShortcut(QKeySequence::Undo);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     // Redo.
@@ -229,11 +245,10 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
             action->setShortcuts(QList<QKeySequence>{QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_Z),
                                                      QKeySequence(Qt::META + Qt::SHIFT + Qt::Key_Z),
                                                      QKeySequence(QKeySequence::Redo)});
-            action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         }
 
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     bool canvasLoaded = GetCanvas().IsValid();
@@ -244,14 +259,13 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
     {
         QAction* action = new QAction("Select &All", this);
         action->setShortcut(QKeySequence::SelectAll);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         action->setEnabled(canvasLoaded);
         QObject::connect(action,
             &QAction::triggered,
             GetHierarchy(),
             &HierarchyWidget::selectAll);
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     menu->addSeparator();
@@ -263,14 +277,13 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
     {
         QAction* action = new QAction("Cu&t", this);
         action->setShortcut(QKeySequence::Cut);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         action->setEnabled(itemsAreSelected);
         QObject::connect(action,
             &QAction::triggered,
             GetHierarchy(),
             &HierarchyWidget::Cut);
         menu->addAction(action);
-        addAction(action);  // Qt::WidgetWithChildrenShortcut works on the associated widget, not parent widget. The associated widget is a menu, and menus don't have focus, so also add the action to the window
+        addAction(action);  // Also add the action to the window until the shortcut dispatcher can find the menu action
 
         m_actionsEnabledWithSelection.push_back(action);
     }
@@ -279,14 +292,13 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
     {
         QAction* action = new QAction("&Copy", this);
         action->setShortcut(QKeySequence::Copy);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         action->setEnabled(itemsAreSelected);
         QObject::connect(action,
             &QAction::triggered,
             GetHierarchy(),
             &HierarchyWidget::Copy);
         menu->addAction(action);
-        addAction(action);  // Qt::WidgetWithChildrenShortcut works on the associated widget, not parent widget. The associated widget is a menu, and menus don't have focus, so also add the action to the window
+        addAction(action);  // Also add the action to the window until the shortcut dispatcher can find the menu action
 
         m_actionsEnabledWithSelection.push_back(action);
     }
@@ -297,14 +309,13 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
         {
             QAction* action = new QAction(itemsAreSelected ? "&Paste as sibling" : "&Paste", this);
             action->setShortcut(QKeySequence::Paste);
-            action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
             action->setEnabled(canvasLoaded && thereIsContentInTheClipboard);
             QObject::connect(action,
                 &QAction::triggered,
                 GetHierarchy(),
                 &HierarchyWidget::PasteAsSibling);
             menu->addAction(action);
-            addAction(action);  // Qt::WidgetWithChildrenShortcut works on the associated widget, not parent widget. The associated widget is a menu, and menus don't have focus, so also add the action to the window
+            addAction(action);  // Also add the action to the window until the shortcut dispatcher can find the menu action
 
             m_pasteAsSiblingAction = action;
         }
@@ -315,7 +326,6 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
             {
                 action->setShortcuts(QList<QKeySequence>{QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_V),
                                                          QKeySequence(Qt::META + Qt::SHIFT + Qt::Key_V)});
-                action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
             }
             action->setEnabled(canvasLoaded && thereIsContentInTheClipboard && itemsAreSelected);
             QObject::connect(action,
@@ -323,7 +333,7 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
                 GetHierarchy(),
                 &HierarchyWidget::PasteAsChild);
             menu->addAction(action);
-            addAction(action);  // Qt::WidgetWithChildrenShortcut works on the associated widget, not parent widget. The associated widget is a menu, and menus don't have focus, so also add the action to the window
+            addAction(action);  // Also add the action to the window until the shortcut dispatcher can find the menu action
 
             m_pasteAsChildAction = action;
         }
@@ -352,7 +362,24 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
                 undoView->show();
             });
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
+    }
+
+    menu->addSeparator();
+
+    // Find elements
+    {
+        QAction* action = new QAction("&Find Elements...", this);
+        action->setShortcut(QKeySequence::Find);
+        action->setEnabled(canvasLoaded);
+        QObject::connect(action,
+            &QAction::triggered,
+            [this](bool checked)
+        {
+            ShowEntitySearchModal();
+        });
+        menu->addAction(action);
+        addAction(action);  // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     menu->addSeparator();
@@ -361,16 +388,45 @@ void EditorWindow::AddMenuItems_Edit(QMenu* menu)
     {
         QAction* action = new QAction("Delete", this);
         action->setShortcut(QKeySequence::Delete);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         action->setEnabled(itemsAreSelected);
         QObject::connect(action,
             &QAction::triggered,
             GetHierarchy(),
             [this]() { GetHierarchy()->DeleteSelectedItems(); });
         menu->addAction(action);
-        addAction(action);  // Qt::WidgetWithChildrenShortcut works on the associated widget, not parent widget. The associated widget is a menu, and menus don't have focus, so also add the action to the window
+        addAction(action);  // Also add the action to the window until the shortcut dispatcher can find the menu action
 
         m_actionsEnabledWithSelection.push_back(action);
+    }
+
+    // Add Align sub-menu
+    {
+        QMenu* alignMenu = menu->addMenu("Align");
+
+        auto viewport = canvasLoaded ? GetViewport() : nullptr;
+        bool enabled = viewport && itemsAreSelected && ViewportAlign::IsAlignAllowed(this);
+
+        // Add each sub-menu item. Store the QActions so that we can enable/disable them when align is allowed or not.
+        {
+            m_actionsEnabledWithAlignAllowed.push_back(
+                AddMenuAction("Top Edges", enabled, alignMenu,
+                    [this](bool checked) { ViewportAlign::AlignSelectedElements(this, ViewportAlign::AlignType::VerticalTop); } ));
+            m_actionsEnabledWithAlignAllowed.push_back(
+                AddMenuAction("Vertical Centers", enabled, alignMenu,
+                    [this](bool checked) { ViewportAlign::AlignSelectedElements(this, ViewportAlign::AlignType::VerticalCenter); } ));
+            m_actionsEnabledWithAlignAllowed.push_back(
+                AddMenuAction("Bottom Edges", enabled, alignMenu,
+                    [this](bool checked) { ViewportAlign::AlignSelectedElements(this, ViewportAlign::AlignType::VerticalBottom); } ));
+            m_actionsEnabledWithAlignAllowed.push_back(
+                AddMenuAction("Left Edges", enabled, alignMenu,
+                    [this](bool checked) { ViewportAlign::AlignSelectedElements(this, ViewportAlign::AlignType::HorizontalLeft); } ));
+            m_actionsEnabledWithAlignAllowed.push_back(
+                AddMenuAction("Horizontal Centers", enabled, alignMenu,
+                    [this](bool checked) { ViewportAlign::AlignSelectedElements(this, ViewportAlign::AlignType::HorizontalCenter); } ));
+            m_actionsEnabledWithAlignAllowed.push_back(
+                AddMenuAction("Right Edges", enabled, alignMenu,
+                    [this](bool checked) { ViewportAlign::AlignSelectedElements(this, ViewportAlign::AlignType::HorizontalRight); } ));
+        }
     }
 }
 
@@ -395,7 +451,6 @@ void EditorWindow::AddMenu_View()
         {
             QAction* action = new QAction("Zoom &In", this);
             action->setShortcut(QKeySequence::ZoomIn);
-            action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
             action->setEnabled(canvasLoaded);
             QObject::connect(action,
                 &QAction::triggered,
@@ -405,14 +460,13 @@ void EditorWindow::AddMenu_View()
                     GetViewport()->GetViewportInteraction()->IncreaseCanvasToViewportScale();
                 });
             menu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
 
         // Zoom out
         {
             QAction* action = new QAction("Zoom &Out", this);
             action->setShortcut(QKeySequence::ZoomOut);
-            action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
             action->setEnabled(canvasLoaded);
             QObject::connect(action,
                 &QAction::triggered,
@@ -422,7 +476,7 @@ void EditorWindow::AddMenu_View()
                     GetViewport()->GetViewportInteraction()->DecreaseCanvasToViewportScale();
                 });
             menu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
 
         // Zoom to fit
@@ -431,7 +485,6 @@ void EditorWindow::AddMenu_View()
             {
                 action->setShortcuts(QList<QKeySequence>{QKeySequence(Qt::CTRL + Qt::Key_0),
                                                          QKeySequence(Qt::META + Qt::Key_0)});
-                action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
             }
             action->setEnabled(canvasLoaded);
             QObject::connect(action,
@@ -442,7 +495,7 @@ void EditorWindow::AddMenu_View()
                     GetViewport()->GetViewportInteraction()->CenterCanvasInViewport();
                 });
             menu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
 
         // Actual size
@@ -451,7 +504,6 @@ void EditorWindow::AddMenu_View()
             {
                 action->setShortcuts(QList<QKeySequence>{QKeySequence(Qt::CTRL + Qt::Key_1),
                                                          QKeySequence(Qt::META + Qt::Key_1)});
-                action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
             }
             action->setEnabled(canvasLoaded);
             QObject::connect(action,
@@ -464,7 +516,7 @@ void EditorWindow::AddMenu_View()
                     GetViewport()->GetViewportInteraction()->ResetCanvasToViewportScale();
                 });
             menu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
     }
 
@@ -499,6 +551,80 @@ void EditorWindow::AddMenu_View()
 
     menu->addSeparator();
 
+    // Add menu item to hide/show the rulers
+    {
+        QAction* action = new QAction("&Rulers", this);
+        action->setCheckable(true);
+        action->setChecked(GetViewport() ? GetViewport()->AreRulersShown() : false);
+        action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_R));
+        action->setEnabled(canvasLoaded);
+        QObject::connect(action,
+            &QAction::triggered,
+            [this](bool checked)
+            {
+                // Set the visibility of the rulers
+                GetViewport()->ShowRulers(checked);
+            });
+        menu->addAction(action);
+        addAction(action);
+    }
+
+    // Add menu item to hide/show the guides
+    {
+        QAction* action = new QAction("&Guides", this);
+        action->setCheckable(true);
+        action->setChecked(GetViewport() ? GetViewport()->AreGuidesShown() : false);
+        action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Semicolon));
+        action->setEnabled(canvasLoaded);
+        QObject::connect(action,
+            &QAction::triggered,
+            [this](bool checked)
+            {
+                // Set the visibility of the guides
+                GetViewport()->ShowGuides(checked);
+            });
+        menu->addAction(action);
+        addAction(action);
+    }
+
+    // Add menu item to lock the guides
+    {
+        QAction* action = new QAction("Lock Guides", this);
+        action->setCheckable(true);
+        action->setChecked(GuideHelpers::AreGuidesLocked(GetCanvas()));
+        action->setEnabled(canvasLoaded);
+        QObject::connect(action,
+            &QAction::triggered,
+            [this](bool checked)
+            {
+                // Set whether the guides are locked
+                AZStd::string canvasUndoXml = CanvasHelpers::BeginUndoableCanvasChange(GetCanvas());
+                GuideHelpers::SetGuidesAreLocked(GetCanvas(), checked);
+                CanvasHelpers::EndUndoableCanvasChange(this, "toggle guides locked", canvasUndoXml);
+            });
+        menu->addAction(action);
+        addAction(action);
+    }
+
+    // Add menu item to clear the guides
+    {
+        QAction* action = new QAction("Clear Guides", this);
+        action->setEnabled(canvasLoaded);
+        QObject::connect(action,
+            &QAction::triggered,
+            [this](bool checked)
+            {
+                // Clear guides
+                AZStd::string canvasUndoXml = CanvasHelpers::BeginUndoableCanvasChange(GetCanvas());            
+                EBUS_EVENT_ID(GetCanvas(), UiEditorCanvasBus, RemoveAllGuides);
+                CanvasHelpers::EndUndoableCanvasChange(this, "clear guides", canvasUndoXml);
+            });
+        menu->addAction(action);
+        addAction(action);
+    }
+
+    menu->addSeparator();
+
     // Add sub-menu to control which elements have borders drawn on them
     {
         QMenu* drawElementBordersMenu = menu->addMenu("Draw &Borders on Unselected Elements");
@@ -520,7 +646,7 @@ void EditorWindow::AddMenu_View()
                     RefreshEditorMenu();
                 });
             drawElementBordersMenu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
 
         // Add option to include visual elements.
@@ -537,7 +663,7 @@ void EditorWindow::AddMenu_View()
                     viewport->ToggleDrawElementBorders(ViewportWidget::DrawElementBorders_Visual);
                 });
             drawElementBordersMenu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
 
         // Add option to include parent elements.
@@ -554,7 +680,7 @@ void EditorWindow::AddMenu_View()
                     viewport->ToggleDrawElementBorders(ViewportWidget::DrawElementBorders_Parent);
                 });
             drawElementBordersMenu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
 
         // Add option to include hidden elements.
@@ -571,11 +697,29 @@ void EditorWindow::AddMenu_View()
                     viewport->ToggleDrawElementBorders(ViewportWidget::DrawElementBorders_Hidden);
                 });
             drawElementBordersMenu->addAction(action);
-            addAction(action);
+            addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
         }
     }
 
     AddMenu_View_LanguageSetting(menu);
+
+    // Reload all fonts
+    {
+        QAction* action = new QAction("Reload All Fonts", this);
+        {
+            action->setShortcuts(QList<QKeySequence>{QKeySequence(Qt::CTRL + Qt::Key_L),
+                QKeySequence(Qt::META + Qt::Key_L)});
+        }
+        action->setEnabled(canvasLoaded);
+        QObject::connect(action,
+            &QAction::triggered,
+            [this](bool checked)
+        {
+            gEnv->pCryFont->ReloadAllFonts();
+        });
+        menu->addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
+    }
 }
 
 void EditorWindow::AddMenu_View_LanguageSetting(QMenu* viewMenu)
@@ -688,14 +832,13 @@ void EditorWindow::AddMenu_Preview()
 
         QAction* action = new QAction(menuItemName, this);
         action->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_P));
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         action->setEnabled(GetCanvas().IsValid());
         QObject::connect(action,
             &QAction::triggered,
             this,
             &EditorWindow::ToggleEditorMode);
         menu->addAction(action);
-        addAction(action);  // Qt::WidgetWithChildrenShortcut works on the associated widget, not parent widget. The associated widget is a menu, and menus don't have focus, so also add the action to the window
+        addAction(action);  // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 }
 
@@ -754,7 +897,7 @@ void EditorWindow::AddMenu_Help()
                 QDesktopServices::openUrl(QUrl(documentationUrl));
             });
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     // Tutorials
@@ -769,7 +912,7 @@ void EditorWindow::AddMenu_Help()
                 QDesktopServices::openUrl(QUrl(tutorualsUrl));
             });
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     // Forum
@@ -784,7 +927,7 @@ void EditorWindow::AddMenu_Help()
                 QDesktopServices::openUrl(QUrl(forumUrl));
             });
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 
     // Give Us Feedback
@@ -800,7 +943,7 @@ void EditorWindow::AddMenu_Help()
                 dialog.exec();
             });
         menu->addAction(action);
-        addAction(action);
+        addAction(action); // Also add the action to the window until the shortcut dispatcher can find the menu action
     }
 }
 
@@ -822,6 +965,13 @@ void EditorWindow::UpdateActionsEnabledState()
     {
         m_pasteAsChildAction->setEnabled(thereIsContentInTheClipboard && itemsAreSelected);
     }
+
+    bool alignAllowed = ViewportAlign::IsAlignAllowed(this);
+    for (QAction* action : m_actionsEnabledWithAlignAllowed)
+    {
+        action->setEnabled(alignAllowed);
+    }
+    GetModeToolbar()->GetAlignToolbarSection()->SetIsEnabled(alignAllowed);
 }
 
 void EditorWindow::RefreshEditorMenu()
@@ -829,6 +979,7 @@ void EditorWindow::RefreshEditorMenu()
     m_actionsEnabledWithSelection.clear();
     m_pasteAsSiblingAction = nullptr;
     m_pasteAsChildAction = nullptr;
+    m_actionsEnabledWithAlignAllowed.clear();
 
     auto actionList = actions();
     for (QAction* action : actionList)
@@ -853,6 +1004,40 @@ void EditorWindow::RefreshEditorMenu()
         AddMenu_Preview();
         AddMenu_Help();
     }
+
+    // Lastly, set up shortcuts that aren't on the menu since all actions were removed above
+    SetupShortcuts();
+}
+
+void EditorWindow::SetupShortcuts()
+{
+    // Actions with shortcuts are created instead of direct shortcuts because the shortcut dispatcher only looks for matching actions
+
+    // Cycle coordinate system
+    {
+        QAction* action = new QAction("Coordinate System Cycle", this);
+        action->setShortcut(QKeySequence(UICANVASEDITOR_COORDINATE_SYSTEM_CYCLE_SHORTCUT_KEY_SEQUENCE));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            SignalCoordinateSystemCycle();
+        });
+        addAction(action);
+    }
+
+    // Toggle Snap to Grid
+    {
+        QAction* action = new QAction("Snap to Grid Toggle", this);
+        action->setShortcut(QKeySequence(UICANVASEDITOR_SNAP_TO_GRID_TOGGLE_SHORTCUT_KEY_SEQUENCE));
+        QObject::connect(action,
+            &QAction::triggered,
+            [this]()
+        {
+            SignalSnapToGridToggle();
+        });
+        addAction(action);
+    }
 }
 
 QAction* EditorWindow::CreateSaveCanvasAction(AZ::EntityId canvasEntityId, bool forContextMenu)
@@ -872,7 +1057,6 @@ QAction* EditorWindow::CreateSaveCanvasAction(AZ::EntityId canvasEntityId, bool 
     if (!forContextMenu && !canvasFilename.empty())
     {
         action->setShortcut(QKeySequence::Save);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     }
     // If there's no filename,
     // we want the menu to be visible, but disabled.
@@ -919,7 +1103,6 @@ QAction* EditorWindow::CreateSaveCanvasAsAction(AZ::EntityId canvasEntityId, boo
     if (!forContextMenu && canvasFilename.empty())
     {
         action->setShortcut(QKeySequence::Save);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     }
     action->setEnabled(canvasMetadata);
 
@@ -1039,7 +1222,6 @@ QAction* EditorWindow::CreateCloseCanvasAction(AZ::EntityId canvasEntityId, bool
     if (!forContextMenu)
     {
         action->setShortcut(QKeySequence::Close);
-        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     }
     action->setEnabled(canvasEntityId.IsValid());
     QObject::connect(action,

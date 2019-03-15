@@ -31,6 +31,7 @@
 #include <QThread>
 #include <QWheelEvent>
 #include <QMutexLocker>
+#include <QMessageBox>
 
 #include "ui_ImageUserDialog.h"
 #include "ui_ChooseResolutionDialog.h"
@@ -662,6 +663,7 @@ void CImageUserDialog::CreateDialogItems()
 
         m_ui->previewMode->setCurrentIndex(0);     // first 0 is setting the used template
     }
+
 }
 
 
@@ -1740,6 +1742,9 @@ void CImageUserDialog::InitDialog()
 
     UpdateWindowTitle();
     TriggerUpdatePreview(true);
+
+    // Show deprecate warning
+    QMessageBox::information(m_hWindow, QString("Warning"), QString("RC Open Image is going to be deprecated soon. Use ImageProcessing Gem instead."), QMessageBox::StandardButton::Ok);
 
     // bringing the dialog to the top (otherwise, if a key is in pressed state
     // during launching RC from Photoshop, the dialog will be occluded

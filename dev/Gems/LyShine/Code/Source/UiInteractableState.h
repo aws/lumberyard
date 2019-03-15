@@ -12,7 +12,6 @@
 #pragma once
 
 #include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
 #include <LyShine/Bus/UiInteractableStatesBus.h>
 #include <LyShine/Bus/UiImageBus.h>
 #include <LyShine/IDraw2d.h>
@@ -27,8 +26,6 @@
 #include <LyShine/UiAssetTypes.h>
 
 #include <IFont.h>
-
-#include "UiImageComponent.h"
 
 // Forward declarations
 class ISprite;
@@ -168,8 +165,10 @@ protected: // member functions
     void OnTargetElementChange();
     void LoadSpriteFromTargetElement();
 
+    using AZu32ComboBoxVec = AZStd::vector<AZStd::pair<AZ::u32, AZStd::string> >;
+
     //! Returns a string representation of the indices used to index sprite-sheet types.
-    UiImageComponent::AZu32ComboBoxVec PopulateIndexStringList() const;
+    AZu32ComboBoxVec PopulateIndexStringList() const;
 
 protected: // data
     AZ::EntityId m_targetEntity;

@@ -17,13 +17,13 @@
 
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/base.h>
-#include <AzQtComponents/Components/FilteredSearchWidget.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
 #include <AzToolsFramework/UI/SearchWidget/SearchWidgetTypes.hxx>
+#include "OutlinerSearchWidget.h"
 
 #include <QWidget>
 #include <QtGui/QIcon>
@@ -80,6 +80,8 @@ private:
     void resizeEvent(QResizeEvent* event) override;
 
     QString FindCommonSliceAssetName(const AZStd::vector<AZ::EntityId>& entityList) const;
+
+    AzFramework::EntityContextId GetPickModeEntityContextId();
 
     // EntityHighlightMessages
     virtual void EntityHighlightRequested(AZ::EntityId) override;
@@ -161,7 +163,7 @@ private:
 
     AZ::EntityId GetEntityIdFromIndex(const QModelIndex& index) const;
     QModelIndex GetIndexFromEntityId(const AZ::EntityId& entityId) const;
-    void ExtractEntityIdsFromSelection(const QItemSelection& selection, AzToolsFramework::EntityIdSet& entityIdSet) const;
+    void ExtractEntityIdsFromSelection(const QItemSelection& selection, AzToolsFramework::EntityIdList& entityIdList) const;
 
     //////////////////////////////////////////////////////////////////////////
     // AzToolsFramework::OutlinerModelNotificationBus::Handler

@@ -16,6 +16,14 @@
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Serialization/ObjectStream.h>
 
+namespace AZ
+{
+    namespace IO
+    {
+        class FileIOStream;
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Bus interface for tools to talk to the LyShine system
 //! It is valid to use this bus from resource compilers or the UI Editor

@@ -47,6 +47,7 @@ namespace AzQtComponents
 
     signals:
         void flavorChanged();
+        void onFocus(); // Required for focus dependent custom widgets, e.g. ConfigStringLineEditCtrl.
 
     private:
         void validateEntry();

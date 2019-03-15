@@ -147,6 +147,8 @@ namespace AzToolsFramework
         virtual ViewportInteraction::CameraState GetCameraState() = 0;
         virtual bool GridSnappingEnabled() = 0;
         virtual float GridSize() = 0;
+        virtual bool AngleSnappingEnabled() = 0;
+        virtual float AngleStep() = 0;
         virtual AZ::Vector3 PickSurface(const AZ::Vector2& point) = 0;
         virtual float TerrainHeight(const AZ::Vector2& position) = 0;
     };

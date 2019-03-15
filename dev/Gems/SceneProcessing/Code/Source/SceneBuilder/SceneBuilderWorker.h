@@ -51,7 +51,7 @@ namespace SceneBuilder
         void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response);
 
         void ShutDown() override;
-        
+        const char* GetFingerprint() const;
         static AZ::Uuid GetUUID();
 
     protected:
@@ -63,5 +63,6 @@ namespace SceneBuilder
         AZ::u32 BuildSubId(const AZ::SceneAPI::Events::ExportProduct& product) const;
 
         bool m_isShuttingDown = false;
+        mutable AZStd::string m_cachedFingerprint;
     };
 } // namespace SceneBuilder

@@ -97,13 +97,13 @@ namespace EMStudio
         //buttonsLayout->addWidget(mSaveButton);
         //buttonsLayout->addWidget(mConfigButton);
 
-        connect(mRecordButton, SIGNAL(released()), this, SLOT(OnRecordButton()));
-        connect(mPlayButton, SIGNAL(released()), this, SLOT(OnPlayButton()));
-        connect(mFirstFrameButton, SIGNAL(released()), this, SLOT(OnFirstFrameButton()));
-        connect(mPrevFrameButton, SIGNAL(released()), this, SLOT(OnPrevFrameButton()));
-        connect(mNextFrameButton, SIGNAL(released()), this, SLOT(OnNextFrameButton()));
-        connect(mLastFrameButton, SIGNAL(released()), this, SLOT(OnLastFrameButton()));
-        connect(mClearButton, SIGNAL(released()), this, SLOT(OnClearButton()));
+        connect(mRecordButton, &QPushButton::released, this, &RecorderWidget::OnRecordButton);
+        connect(mPlayButton, &QPushButton::released, this, &RecorderWidget::OnPlayButton);
+        connect(mFirstFrameButton, &QPushButton::released, this, &RecorderWidget::OnFirstFrameButton);
+        connect(mPrevFrameButton, &QPushButton::released, this, &RecorderWidget::OnPrevFrameButton);
+        connect(mNextFrameButton, &QPushButton::released, this, &RecorderWidget::OnNextFrameButton);
+        connect(mLastFrameButton, &QPushButton::released, this, &RecorderWidget::OnLastFrameButton);
+        connect(mClearButton, &QPushButton::released, this, &RecorderWidget::OnClearButton);
 
         //connect(mOpenButton, SIGNAL(released()), this, SLOT(OnOpenButton()));
         //connect(mSaveButton, SIGNAL(released()), this, SLOT(OnSaveButton()));
@@ -160,7 +160,7 @@ namespace EMStudio
         TimeViewPlugin* timeViewPlugin = GetTimeViewPlugin();
         if (timeViewPlugin)
         {
-            connect(timeViewPlugin, SIGNAL(ManualTimeChangeStart(float)), this, SLOT(OnTimeChangeStart(float)));
+            connect(timeViewPlugin, &TimeViewPlugin::ManualTimeChangeStart, this, &RecorderWidget::OnTimeChangeStart);
         }
     }
 

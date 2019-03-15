@@ -19,27 +19,41 @@ static const float fastNudgePixelDistance = 10.0f;
 static const float slowNudgeRotationDegrees = 1.0f;
 static const float fastNudgeRotationDegrees = 10.0f;
 
-void ViewportNudge::KeyReleaseEvent(
+void ViewportNudge::Nudge(
     EditorWindow* editorWindow,
     ViewportInteraction::InteractionMode interactionMode,
     ViewportWidget* viewport,
-    QKeyEvent* ev,
+    ViewportInteraction::NudgeDirection direction,
+    ViewportInteraction::NudgeSpeed speed,
     const QTreeWidgetItemRawPtrQList& selectedItems,
     ViewportInteraction::CoordinateSystem coordinateSystem,
     const AZ::Uuid& transformComponentType)
 {
-    if (interactionMode == ViewportInteraction::InteractionMode::MOVE)
-    {
-        if ((ev->key() != Qt::Key_Up) &&
-            (ev->key() != Qt::Key_Right) &&
-            (ev->key() != Qt::Key_Down) &&
-            (ev->key() != Qt::Key_Left))
-        {
-            // Ignore this event.
-            return;
-        }
+    bool isMoveOrAnchorMode = interactionMode == ViewportInteraction::InteractionMode::MOVE || interactionMode == ViewportInteraction::InteractionMode::ANCHOR;
 
-        float translation = (ev->modifiers().testFlag(Qt::ShiftModifier) ? fastNudgePixelDistance : slowNudgePixelDistance);
+    if (isMoveOrAnchorMode)
+    {
+        float translation = slowNudgePixelDistance;
+        switch (speed)
+        {
+        case ViewportInteraction::NudgeSpeed::Fast:
+        {
+            translation = fastNudgePixelDistance;
+        }
+        break;
+
+        case ViewportInteraction::NudgeSpeed::Slow:
+        {
+            translation = slowNudgePixelDistance;
+        }
+        break;
+
+        default:
+        {
+            AZ_Assert(0, "Unknown speed");
+        }
+        break;
+        }
 
         // Translate.
         {
@@ -50,31 +64,34 @@ void ViewportNudge::KeyReleaseEvent(
                 return;
             }
 
-            editorWindow->GetProperties()->BeforePropertyModified(nullptr);
+            SerializeHelpers::SerializedEntryList preChangeState;
+            HierarchyClipboard::BeginUndoableEntitiesChange(editorWindow, preChangeState);
 
             for (auto element : topLevelSelectedElements)
             {
                 AZ::Vector2 deltaInCanvasSpace(0.0f, 0.0f);
-                if (ev->key() == Qt::Key_Up)
+                if (direction == ViewportInteraction::NudgeDirection::Up)
                 {
                     deltaInCanvasSpace.SetY(-translation);
                 }
-                else if (ev->key() == Qt::Key_Down)
+                else if (direction == ViewportInteraction::NudgeDirection::Down)
                 {
                     deltaInCanvasSpace.SetY(translation);
                 }
-                else if (ev->key() == Qt::Key_Left)
+                else if (direction == ViewportInteraction::NudgeDirection::Left)
                 {
                     deltaInCanvasSpace.SetX(-translation);
                 }
-                else if (ev->key() == Qt::Key_Right)
+                else if (direction == ViewportInteraction::NudgeDirection::Right)
                 {
                     deltaInCanvasSpace.SetX(translation);
                 }
                 else
                 {
-                    AZ_Assert(0, "Unexpected key.");
+                    AZ_Assert(0, "Unexpected direction.");
                 }
+
+                AZ::EntityId parentEntityId = EntityHelpers::GetParentElement(element->GetId())->GetId();
 
                 AZ::Vector2 deltaInLocalSpace;
                 if (coordinateSystem == ViewportInteraction::CoordinateSystem::LOCAL)
@@ -83,18 +100,18 @@ void ViewportNudge::KeyReleaseEvent(
                 }
                 else // if (coordinateSystem == ViewportInteraction::CoordinateSystem::VIEW)
                 {
-                    AZ::Matrix4x4 transform;
-                    EBUS_EVENT_ID(EntityHelpers::GetParentElement(element)->GetId(), UiTransformBus, GetTransformFromCanvasSpace, transform);
-                    AZ::Vector3 deltaInLocalSpace3 = transform.Multiply3x3(EntityHelpers::MakeVec3(deltaInCanvasSpace));
-                    deltaInLocalSpace = AZ::Vector2(deltaInLocalSpace3.GetX(), deltaInLocalSpace3.GetY());
+                    // compute the delta to move in local space (i.e. relative to the parent)
+                    deltaInLocalSpace = EntityHelpers::TransformDeltaFromCanvasToLocalSpace(parentEntityId, deltaInCanvasSpace);
                 }
 
-                // Get.
-                UiTransform2dInterface::Offsets offsets;
-                EBUS_EVENT_ID_RESULT(offsets, element->GetId(), UiTransform2dBus, GetOffsets);
-
-                // Set.
-                EBUS_EVENT_ID(element->GetId(), UiTransform2dBus, SetOffsets, (offsets + deltaInLocalSpace));
+                if (interactionMode == ViewportInteraction::InteractionMode::MOVE)
+                {
+                    EntityHelpers::MoveByLocalDeltaUsingOffsets(element->GetId(), deltaInLocalSpace);
+                }
+                else if (interactionMode == ViewportInteraction::InteractionMode::ANCHOR)
+                {
+                    EntityHelpers::MoveByLocalDeltaUsingAnchors(element->GetId(), parentEntityId, deltaInLocalSpace, true);
+                }
 
                 // Update.
                 EBUS_EVENT_ID(element->GetId(), UiElementChangeNotificationBus, UiElementPropertyChanged);
@@ -103,27 +120,49 @@ void ViewportNudge::KeyReleaseEvent(
             // Tell the Properties panel to update
             editorWindow->GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_Values, &transformComponentType);
 
-            editorWindow->GetProperties()->AfterPropertyModified(nullptr);
+            HierarchyClipboard::EndUndoableEntitiesChange(editorWindow, "nudge move", preChangeState);
         }
     }
     else if (interactionMode == ViewportInteraction::InteractionMode::ROTATE)
     {
         float rotationDirection = 1.0f;
-        float rotationDeltaInDegrees = (ev->modifiers().testFlag(Qt::ShiftModifier) ? fastNudgeRotationDegrees : slowNudgeRotationDegrees);
+
+        float rotationDeltaInDegrees = slowNudgeRotationDegrees;
+        switch (speed)
         {
-            if ((ev->key() == Qt::Key_Up) ||
-                (ev->key() == Qt::Key_Left))
+        case ViewportInteraction::NudgeSpeed::Fast:
+        {
+            rotationDeltaInDegrees = fastNudgeRotationDegrees;
+        }
+        break;
+
+        case ViewportInteraction::NudgeSpeed::Slow:
+        {
+            rotationDeltaInDegrees = slowNudgeRotationDegrees;
+        }
+        break;
+
+        default:
+        {
+            AZ_Assert(0, "Unknown speed");
+        }
+        break;
+        }
+
+        {
+            if (direction == ViewportInteraction::NudgeDirection::Up ||
+                (direction == ViewportInteraction::NudgeDirection::Left))
             {
                 rotationDirection = -1.0f;
             }
-            else if ((ev->key() == Qt::Key_Down) ||
-                     (ev->key() == Qt::Key_Right))
+            else if ((direction == ViewportInteraction::NudgeDirection::Down) ||
+                     (direction == ViewportInteraction::NudgeDirection::Right))
             {
                 rotationDirection = 1.0f;
             }
             else
             {
-                // Ignore this event.
+                AZ_Assert(0, "Unexpected direction.");
                 return;
             }
         }
@@ -137,7 +176,8 @@ void ViewportNudge::KeyReleaseEvent(
                 return;
             }
 
-            editorWindow->GetProperties()->BeforePropertyModified(nullptr);
+            SerializeHelpers::SerializedEntryList preChangeState;
+            HierarchyClipboard::BeginUndoableEntitiesChange(editorWindow, preChangeState);
 
             for (auto element : topLevelSelectedElements)
             {
@@ -155,7 +195,7 @@ void ViewportNudge::KeyReleaseEvent(
             // Tell the Properties panel to update
             editorWindow->GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_Values, &transformComponentType);
 
-            editorWindow->GetProperties()->AfterPropertyModified(nullptr);
+            HierarchyClipboard::EndUndoableEntitiesChange(editorWindow, "nudge rotate", preChangeState);
         }
     }
 }

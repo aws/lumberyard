@@ -18,6 +18,8 @@
 #include <QTime>
 #include <QCoreApplication>
 
+#include <AzCore/std/parallel/thread.h>
+
 UnitTestRegistry* UnitTestRegistry::s_first = nullptr;
 
 UnitTestRegistry::UnitTestRegistry(const char* name)
@@ -43,6 +45,18 @@ void UnitTestRun::SetName(const char* name)
 
 namespace UnitTestUtils
 {
+    void SleepForMinimumFileSystemTime()
+    {
+        // note that on OSX, the file system has a resolution of 1 second, and since we're using modtime for a bunch of things, 
+        // not the actual hash files, we have to wait different amount depending on the OS.
+#ifdef AZ_PLATFORM_WINDOWS
+        int milliseconds = 1;
+#else
+        int milliseconds = 1001;
+#endif
+        AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(milliseconds));
+    }
+
     bool CreateDummyFile(const QString& fullPathToFile, QString contents)
     {
         QFileInfo fi(fullPathToFile);

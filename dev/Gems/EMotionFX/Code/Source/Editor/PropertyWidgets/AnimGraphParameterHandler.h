@@ -13,7 +13,6 @@
 #pragma once
 
 #include <EMotionFX/Source/AnimGraph.h>
-#include <EMotionFX/Source/BlendTreeParameterNode.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <QWidget>
 #include <QPushButton>
@@ -21,25 +20,35 @@
 
 namespace EMotionFX
 {
+    class ObjectAffectedByParameterChanges;
+
+    // Picker that allows to select one or more parameters (depending on mask mode) and affect the ports of the node
+    // This Picker and its handlers are used by the BlendTreeParameterNode and the AnimGraphReferenceNode.
+    //
     class AnimGraphParameterPicker
         : public QWidget
     {
         Q_OBJECT
     public:
         AZ_CLASS_ALLOCATOR_DECL
+        
+        AnimGraphParameterPicker(QWidget* parent,  bool singleSelection = false, bool parameterMaskMode = false);
+        void SetAnimGraph(AnimGraph* animGraph) { m_animGraph = animGraph; }
+        void SetObjectAffectedByParameterChanges(ObjectAffectedByParameterChanges* affectedObject);
 
-        AnimGraphParameterPicker(QWidget* parent, bool singleSelection = false, bool parameterMaskMode = false);
-        void SetAnimGraph(AnimGraph* animGraph);
-        void SetParameterNode(BlendTreeParameterNode* parameterNode); // Needed only when parameter mask mode is enabled.
+        // Called to initialize the parameter names in the UI from values in the object
+        void InitializeParameterNames(const AZStd::vector<AZStd::string>& parameterNames);
 
-        void SetParameterNames(const AZStd::vector<AZStd::string>& parameterNames);
+        // Called when the UI wants to update the parameter names
+        void UpdateParameterNames(const AZStd::vector<AZStd::string>& parameterNames);
+
         const AZStd::vector<AZStd::string>& GetParameterNames() const;
 
         void SetSingleParameterName(const AZStd::string& parameterName);
         const AZStd::string GetSingleParameterName() const;
 
     signals:
-        void ParametersChanged();
+        void ParametersChanged(const AZStd::vector<AZStd::string>& newParameters);
 
     private slots:
         void OnPickClicked();
@@ -49,14 +58,14 @@ namespace EMotionFX
     private:
         void UpdateInterface();
 
-        bool                            m_parameterMaskMode;
         AnimGraph*                      m_animGraph;
-        BlendTreeParameterNode*         m_parameterNode; // Needed only when parameter mask mode is enabled.
+        ObjectAffectedByParameterChanges* m_affectedByParameterChanges;
         AZStd::vector<AZStd::string>    m_parameterNames;
         QPushButton*                    m_pickButton;
         QPushButton*                    m_resetButton;
         QPushButton*                    m_shrinkButton;
         bool                            m_singleSelection;
+        bool                            m_parameterMaskMode;
     };
 
 

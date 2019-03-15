@@ -336,6 +336,10 @@ public:
         bool());
     MOCK_METHOD1(SetAssertVisible,
         void(bool bAssertVisble));
+    MOCK_METHOD1(SetConsoleDrawEnabled,
+        void(bool enabled));
+    MOCK_METHOD1(SetUIDrawEnabled,
+        void(bool enabled));
     MOCK_METHOD0(GetApplicationInstance,
         int());
     MOCK_METHOD0(GetCurrentUpdateTimeStats,

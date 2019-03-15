@@ -123,13 +123,11 @@ namespace EMotionFX
             OutputFeathering(animGraphInstance, uniqueData);
         }
 
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 
@@ -225,9 +223,9 @@ namespace EMotionFX
             {
                 const float finalWeight = blendWeight /* * uniqueData->mWeights[n]*/;
                 const uint32 nodeIndex = uniqueData->mMask[n];
-                transform = outputLocalPose.GetLocalTransform(nodeIndex);
-                transform.Blend(localMaskPose.GetLocalTransform(nodeIndex), finalWeight);
-                outputLocalPose.SetLocalTransform(nodeIndex, transform);
+                transform = outputLocalPose.GetLocalSpaceTransform(nodeIndex);
+                transform.Blend(localMaskPose.GetLocalSpaceTransform(nodeIndex), finalWeight);
+                outputLocalPose.SetLocalSpaceTransform(nodeIndex, transform);
             }
         }
     }
@@ -242,6 +240,12 @@ namespace EMotionFX
         const Actor* actor = actorInstance->GetActor();
         AnimGraphRefCountedData* nodeAData = nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData();
         AnimGraphRefCountedData* nodeBData = nodeB ? nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
+
+        if (!nodeAData)
+        {
+            AZ_Assert(false, "BlendTreeBlend2Node::UpdateMotionExtraction %s has no RefCountedData", nodeA->GetName());
+            return;
+        }
 
         Transform delta;
         Transform deltaMirrored;

@@ -20,6 +20,7 @@ namespace AZ
         {
             const static AZ::Crc32 EditorData = AZ_CRC("EditorData", 0xf44f1a1d);
             const static AZ::Crc32 Group = AZ_CRC("Group", 0x6dc044c5);
+            const static AZ::Crc32 UIElement = AZ_CRC("UIElement", 0x4fb5a8e3);
         }
 
         namespace Attributes
@@ -27,6 +28,9 @@ namespace AZ
             //! AddableByUser : a bool which determines if the component can be added by the user.
             //! Setting this to false effectively hides the component from views where user can create components.
             const static AZ::Crc32 AddableByUser = AZ_CRC("AddableByUser", 0x181bc2f4);
+            //! RemoveableByUser : A bool which determines if the component can be removed by the user.
+            //! Setting this to false prevents the user from removing this component. Default behavior is removeable by user.
+            const static AZ::Crc32 RemoveableByUser = AZ_CRC("RemoveableByUser", 0x32c7fd50);
             const static AZ::Crc32 AppearsInAddComponentMenu = AZ_CRC("AppearsInAddComponentMenu", 0x53790e31);
             const static AZ::Crc32 AutoExpand = AZ_CRC("AutoExpand", 0x306ff5c0);
             const static AZ::Crc32 ButtonText = AZ_CRC("ButtonText", 0x79fe5d8b);
@@ -35,6 +39,7 @@ namespace AZ
 
             //! Container attributes
             const static AZ::Crc32 ContainerCanBeModified = AZ_CRC("ContainerCanBeModified", 0xd9948f69);
+            const static AZ::Crc32 ShowAsKeyValuePairs = AZ_CRC("ShowAsKeyValuePairs", 0xefb4b240);
             const static AZ::Crc32 StringList = AZ_CRC("StringList", 0xdf80b99c);
 
             const static AZ::Crc32 ValueText = AZ_CRC("ValueText", 0x251534d1);
@@ -69,6 +74,8 @@ namespace AZ
 
             const static AZ::Crc32 NameLabelOverride = AZ_CRC("NameLabelOverride", 0x9ff79cab);
             const static AZ::Crc32 ChildNameLabelOverride = AZ_CRC("ChildNameLabelOverride", 0x73dd2909);
+            // Container attribute that is used to override labels for its elements given the index of the element
+            const static AZ::Crc32 IndexedChildNameLabelOverride = AZ_CRC("IndexedChildNameLabelOverride", 0x5f313ac2);
             const static AZ::Crc32 DescriptionTextOverride = AZ_CRC("DescriptionTextOverride", 0x608b64a8);
 
             const static AZ::Crc32 PrimaryAssetType = AZ_CRC("PrimaryAssetType", 0xa400a5ce);
@@ -105,6 +112,8 @@ namespace AZ
             
             const static AZ::Crc32 RequiredService = AZ_CRC("RequiredService", 0x4d7d0865);
             const static AZ::Crc32 IncompatibleService = AZ_CRC("IncompatibleService", 0x06a52aa9);
+
+            const static AZ::Crc32 MaxLength = AZ_CRC("MaxLength", 0x385c7325);
 
             /**
             * Specifies the URL to load for a component
@@ -194,6 +203,8 @@ namespace AZ
         namespace InternalAttributes
         {
             const static AZ::Crc32 EnumValue = AZ_CRC("EnumValue", 0xe4f32eed);
+            const static AZ::Crc32 EnumType = AZ_CRC("EnumType", 0xb177e1b5);
+            const static AZ::Crc32 ElementInstances = AZ_CRC("ElementInstances", 0x38163ba4);
         }
 
         /**
@@ -208,7 +219,7 @@ namespace AZ
         }
 
         /**
-         * Specifies the visiblity setting for a particular property.
+         * Specifies the visibility setting for a particular property.
          */
         namespace PropertyVisibility
         {
@@ -227,6 +238,7 @@ namespace AZ
             const static AZ::u32 HideOnAdd                  = 1 << 5;   ///< When property/field/component class is being added to an entity, hide from Push Widget display
             const static AZ::u32 HideOnChange               = 1 << 6;   ///< When property/field/component class is being changed on an entity, hide from Push Widget display
             const static AZ::u32 HideOnRemove               = 1 << 7;   ///< When property/field/component class is being removed on an entity, hide from Push Widget display
+            const static AZ::u32 HideAllTheTime             = 1 << 8;   ///< Hide property/field/component class from Push Widget display all the time
         }
 
     } // namespace Edit

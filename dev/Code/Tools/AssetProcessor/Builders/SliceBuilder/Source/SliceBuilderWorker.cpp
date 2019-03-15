@@ -185,14 +185,14 @@ namespace SliceBuilder
             AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
             TypeFingerprint sourceSliceTypeFingerprint = CalculateFingerprintForSlice(*sourcePrefab, *m_typeFingerprinter, *context);
 
-            const char* compilerVersion = "4";
+            const char* compilerVersion = "6";
 
             for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
             {
                 AssetBuilderSDK::JobDescriptor jobDescriptor;
                 jobDescriptor.m_priority = 0;
                 jobDescriptor.m_critical = true;
-                jobDescriptor.m_jobKey = "RC Slice";
+                jobDescriptor.m_jobKey = "Dynamic Slice";
                 jobDescriptor.SetPlatformIdentifier(info.m_identifier.c_str());
                 jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion)
                     .append(AZStd::string::format("|%llu", static_cast<uint64_t>(sourceSliceTypeFingerprint)));
@@ -289,10 +289,17 @@ namespace SliceBuilder
                 platformTags.insert(AZ::Crc32(platformTagString.c_str(), platformTagString.size(), true));
             }
 
-            // Compile the source slice into the runtime slice (with runtime components).
-            AzToolsFramework::WorldEditorOnlyEntityHandler editorOnlyEntityHandler;
+            // Compile the source slice into the runtime slice (with runtime components). Note that
+            // we may be handling either world or UI entities, so we need handlers for both.
+            AzToolsFramework::WorldEditorOnlyEntityHandler worldEditorOnlyEntityHandler;
+            AzToolsFramework::UiEditorOnlyEntityHandler uiEditorOnlyEntityHandler;
+            AzToolsFramework::EditorOnlyEntityHandlers handlers =
+            {
+                &worldEditorOnlyEntityHandler,
+                &uiEditorOnlyEntityHandler,
+            };
             AzToolsFramework::SliceCompilationResult sliceCompilationResult =
-                AzToolsFramework::CompileEditorSlice(sourceAsset, platformTags, *context, &editorOnlyEntityHandler);
+                AzToolsFramework::CompileEditorSlice(sourceAsset, platformTags, *context, handlers);
 
             if (!sliceCompilationResult)
             {

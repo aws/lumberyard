@@ -89,6 +89,7 @@ namespace EMotionFX
             float GetBlendInTime() const override;
             void BlendOutTime(float time) override;
             float GetBlendOutTime() const override;
+            void PlayMotion() override;
 
             // EditorSimpleMotionComponentRequestBus::Handler
             void SetPreviewInEditor(bool enable) override;
@@ -98,7 +99,6 @@ namespace EMotionFX
         private:
             EditorSimpleMotionComponent(const EditorSimpleMotionComponent&) = delete;
 
-            void UpdateAndPlayMotionInstance();
             void RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance);
             void BuildGameEntity(AZ::Entity* gameEntity) override;
             void VerifyMotionAssetState();

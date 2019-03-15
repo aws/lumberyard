@@ -22,9 +22,11 @@
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/containers/map.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzFramework/Asset/AssetRegistry.h>
 #include <AzCore/Math/Crc.h>
+#include <native/AssetManager/assetScanFolderInfo.h>
 
 namespace AssetProcessor
 {
@@ -50,6 +52,10 @@ namespace AssetProcessor
     //! a shared convenience typedef for Escalating Jobs
     //! The first element is the jobRunKey of the job and the second element is the escalation
     typedef QList<QPair<AZ::s64, int> > JobIdEscalationList;
+
+    //! A map which is used to keep absolute paths --> Database Paths of source files.
+    //! This is intentionally a map (not unordered_map) in order to ensure order is stable, and to eliminate duplicates.
+    typedef AZStd::map<AZStd::string, AZStd::string> SourceFilesForFingerprintingContainer;
 
     enum AssetScanningStatus
     {
@@ -143,39 +149,6 @@ namespace AssetProcessor
         }
 
         JobEntry() = default;
-        JobEntry(const JobEntry& other) = default;
-        
-        JobEntry& operator=(const JobEntry& other) = default;
-
-        // vs2013 compat:  No auto-generation of move operations
-        JobEntry(JobEntry&& other)
-        {
-            if (this != &other)
-            {
-                *this = std::move(other);
-            }
-        }
-        
-        JobEntry& operator=(JobEntry&& other)
-        {
-            if (this != &other)
-            {
-                m_watchFolderPath = std::move(other.m_watchFolderPath);
-                m_databaseSourceName = std::move(other.m_databaseSourceName);
-                m_pathRelativeToWatchFolder = std::move(other.m_pathRelativeToWatchFolder);
-                m_builderGuid = std::move(other.m_builderGuid);
-                m_platformInfo = std::move(other.m_platformInfo);
-                m_sourceFileUUID = std::move(other.m_sourceFileUUID);
-                m_jobKey = std::move(other.m_jobKey);
-                m_computedFingerprint = std::move(other.m_computedFingerprint);
-                m_computedFingerprintTimeStamp = std::move(other.m_computedFingerprintTimeStamp);
-                m_jobRunKey = std::move(other.m_jobRunKey);
-                m_checkExclusiveLock = std::move(other.m_checkExclusiveLock);
-                m_addToDatabase = std::move(other.m_addToDatabase);
-            }
-            return *this;
-        }
-
         JobEntry(QString watchFolderPath, QString relativePathToFile, QString databaseSourceName, const AZ::Uuid& builderGuid, const AssetBuilderSDK::PlatformInfo& platformInfo, QString jobKey, AZ::u32 computedFingerprint, AZ::u64 jobRunKey, const AZ::Uuid &sourceUuid, bool addToDatabase = true)
             : m_watchFolderPath(watchFolderPath)
             , m_pathRelativeToWatchFolder(relativePathToFile)
@@ -194,19 +167,34 @@ namespace AssetProcessor
     //! This is an internal structure that hold all the information related to source file Dependency
     struct SourceFileDependencyInternal
     {
-        AZStd::string m_sourceWatchFolder;
-        AZStd::string m_relativeSourcePath;
+        AZStd::string m_sourceWatchFolder;   // this is the absolute path to the watch folder.
+        AZStd::string m_relativeSourcePath;  // this is a pure relative path, not a database path
         AZ::Uuid m_sourceUUID;
         AZ::Uuid m_builderId;
-        AZStd::string m_relativeSourceFileDependencyPath;
-        AssetBuilderSDK::SourceFileDependency m_sourceFileDependency;
+        AssetBuilderSDK::SourceFileDependency m_sourceFileDependency; // this is the raw data captured from the builder.
 
         AZStd::string ToString() const
         {
-            return AZStd::string::format(" %s %s %s", m_sourceUUID.ToString<AZStd::string>().c_str(), m_builderId.ToString<AZStd::string>().c_str(), m_relativeSourceFileDependencyPath.c_str());
+            return AZStd::string::format(" %s %s %s", m_sourceUUID.ToString<AZStd::string>().c_str(), m_builderId.ToString<AZStd::string>().c_str(), m_relativeSourcePath.c_str());
         }
     };
+    //! JobDependencyInternal is an internal structure that is used to store job dependency related info
+    //! for later processing once we have resolved all the job dependency.
+    struct JobDependencyInternal
+    {
+        JobDependencyInternal(const AssetBuilderSDK::JobDependency& jobDependency)
+            :m_jobDependency(jobDependency)
+        {
+        }
 
+        AZStd::set<AZ::Uuid> m_builderUuidList;// ordered set because we have to use dependent jobs fingerprint in some sorted order.
+        AssetBuilderSDK::JobDependency m_jobDependency;
+
+        AZStd::string ToString() const
+        {
+            return AZStd::string::format("%s %s %s", m_jobDependency.m_sourceFile.m_sourceFileDependencyPath.c_str(), m_jobDependency.m_jobKey.c_str(), m_jobDependency.m_platformIdentifier.c_str());
+        }
+    };
     //! JobDetails is an internal structure that is used to store job related information by the Asset Processor
     //! Its heavy, since it contains the parameter map and the builder desc so is expensive to copy and in general only used to create jobs
     //! After which, the Job Entry is used to track and identify jobs.
@@ -214,13 +202,15 @@ namespace AssetProcessor
     {
     public:
         JobEntry m_jobEntry;
-        QString m_extraInformationForFingerprinting;
+        AZStd::string m_extraInformationForFingerprinting;
+        const ScanFolderInfo* m_scanFolder; // the scan folder info the file was found in
         QString m_destinationPath; // the final folder that will be where your products are placed if you give relative path names
         // destinationPath will be a cache folder.  If you tell it to emit something like "blah.dds"
         // it will put it in (destinationPath)/blah.dds for example
+        AZStd::vector<JobDependencyInternal> m_jobDependencyList;
 
-        AZStd::vector<SourceFileDependencyInternal> m_sourceFileDependencyList;
-        AZStd::vector<AZStd::string> m_fingerprintFilesList;
+        // which files to include in the fingerprinting. (Not including job dependencies)
+        SourceFilesForFingerprintingContainer m_fingerprintFiles;
 
         bool m_critical = false;
         int m_priority = -1;
@@ -238,10 +228,114 @@ namespace AssetProcessor
 
         // indicates a succeeded createJob and clears out any autoFail failures
         bool m_autoSucceed = false;
+        AZStd::string ToString() const
+        {
+            return QString("%1 %2 %3").arg(m_jobEntry.m_databaseSourceName, m_jobEntry.m_platformInfo.m_identifier.c_str(), m_jobEntry.m_jobKey).toUtf8().data();
+        }
+
+        bool operator==(const JobDetails& rhs) const
+        {
+            return ((m_jobEntry.m_databaseSourceName == rhs.m_jobEntry.m_databaseSourceName) &&
+                (m_jobEntry.m_platformInfo.m_identifier == rhs.m_jobEntry.m_platformInfo.m_identifier) &&
+                (m_jobEntry.m_jobKey == rhs.m_jobEntry.m_jobKey) &&
+                m_jobEntry.m_builderGuid == rhs.m_jobEntry.m_builderGuid);
+        }
 
         JobDetails() = default;
     };
+ 
+    //! JobDesc struct is used for identifying jobs that need to be processed again 
+    //! because of job dependency declared on them by other jobs  
+    struct JobDesc
+    {
+        AZStd::string m_databaseSourceName;
+        AZStd::string m_jobKey;
+        AZStd::string m_platformIdentifier;
+
+        bool operator==(const JobDesc& rhs) const
+        {
+            return m_databaseSourceName == rhs.m_databaseSourceName 
+                && m_platformIdentifier == rhs.m_platformIdentifier
+                && m_jobKey == rhs.m_jobKey;
+        }
+
+        JobDesc(const AZStd::string& databaseSourceName, const AZStd::string& jobKey, const AZStd::string& platformIdentifier)
+            : m_databaseSourceName(databaseSourceName)
+            , m_jobKey(jobKey)
+            , m_platformIdentifier(platformIdentifier)
+        {
+        }
+
+        AZStd::string ToString() const
+        {
+            return AZStd::string::format("%s %s %s", m_databaseSourceName.c_str(), m_platformIdentifier.c_str(), m_jobKey.c_str());
+        }
+    };
+
+    //! JobIndentifier is an internal structure that store all the data that can uniquely identify a job 
+    struct JobIndentifier
+    {
+        JobDesc m_jobDesc;
+
+        AZ::Uuid m_builderUuid = AZ::Uuid::CreateNull();
+
+        bool operator==(const JobIndentifier& rhs) const
+        {
+            return (m_jobDesc == rhs.m_jobDesc) && (m_builderUuid == rhs.m_builderUuid);
+        }
+
+        JobIndentifier(const JobDesc& jobDesc, const AZ::Uuid builderUuid)
+            : m_jobDesc(jobDesc)
+            , m_builderUuid(builderUuid)
+        {
+        }
+    };
 } // namespace AssetProcessor
+
+namespace AZStd
+{
+    template<>
+    struct hash<AssetProcessor::JobDetails>
+    {
+        using argument_type = AssetProcessor::JobDetails;
+        using result_type = size_t;
+
+        result_type operator() (const argument_type& jobDetails) const
+        {
+            size_t h = 0;
+            hash_combine(h, jobDetails.ToString());
+            hash_combine(h, jobDetails.m_jobEntry.m_builderGuid);
+            return h;
+        }
+    };
+    template<>
+    struct hash<AssetProcessor::JobDesc>
+    {
+        using argument_type = AssetProcessor::JobDesc;
+        using result_type = size_t;
+
+        result_type operator() (const argument_type& jobDesc) const
+        {
+            size_t h = 0;
+            hash_combine(h, jobDesc.ToString());
+            return h;
+        }
+    };
+    template<>
+    struct hash<AssetProcessor::JobIndentifier>
+    {
+        using argument_type = AssetProcessor::JobIndentifier;
+        using result_type = size_t;
+
+        result_type operator() (const argument_type& jobIndentifier) const
+        {
+            size_t h = 0;
+            hash_combine(h, jobIndentifier.m_jobDesc);
+            hash_combine(h, jobIndentifier.m_builderUuid);
+            return h;
+        }
+    };
+}
 
 Q_DECLARE_METATYPE(AssetBuilderSDK::ProcessJobResponse)
 Q_DECLARE_METATYPE(AssetProcessor::JobEntry)

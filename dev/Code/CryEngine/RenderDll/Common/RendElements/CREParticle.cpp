@@ -500,7 +500,11 @@ bool CRenderer::EF_GetParticleListAndBatchFlags(uint32& nBatchFlags, int& nList,
     if (!(pRO->m_ObjFlags & FOB_ALLOW_TESSELLATION))
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CREParticle_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CREParticle_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CREParticle_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

@@ -313,8 +313,8 @@ void CNULLRenderer::GetViewport(int* x, int* y, int* width, int* height) const
 {
     *x = 0;
     *y = 0;
-    *width = m_width;
-    *height = m_height;
+    *width = GetWidth();
+    *height = GetHeight();
 }
 
 void CNULLRenderer::SetViewport(int x, int y, int width, int height, int id)
@@ -467,12 +467,17 @@ bool CNULLRenderer::DestroyRenderTarget(int nHandle)
     return true;
 }
 
+bool CNULLRenderer::ResizeRenderTarget(int nHandle, int nWidth, int nHeight)
+{
+    return true;
+}
+
 bool CNULLRenderer::SetRenderTarget(int nHandle, SDepthTexture* pDepthSurf)
 {
     return true;
 }
 
-SDepthTexture* CNULLRenderer::CreateDepthSurface(int nWidth, int nHeight)
+SDepthTexture* CNULLRenderer::CreateDepthSurface(int nWidth, int nHeight, bool shaderResourceView)
 {
     return nullptr;
 }
@@ -498,6 +503,11 @@ IColorGradingController* CNULLRenderer::GetIColorGradingController()
 IStereoRenderer* CNULLRenderer::GetIStereoRenderer()
 {
     return m_pNULLStereoRenderer;
+}
+
+ITexture* CNULLRenderer::Create2DTexture(const char* name, int width, int height, int numMips, int flags, unsigned char* data, ETEX_Format format)
+{
+    return nullptr;
 }
 
 //=========================================================================================
@@ -624,7 +634,7 @@ void CRenderer::BeginSpawningShadowGeneratingRendItemJobs(int nThreadID)
 {
 }
 
-void CRenderer::EndSpawningGeneratingRendItemJobs(int nThreadID)
+void CRenderer::EndSpawningGeneratingRendItemJobs()
 {
 }
 

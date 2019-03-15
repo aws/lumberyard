@@ -69,14 +69,26 @@ namespace EMotionFX
                 return m_rules;
             }
             
+            // The scene node selection list are supposed to store all the nodes that we want to export for this group.
+            // If you left any mesh, the sub mtl file that belongs to this mesh won't be generated in the mtl and dccmtl file.
             AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& ActorGroup::GetSceneNodeSelectionList()
             {
-                return m_nodeSelectionList;
+                return m_allNodeSelectionList;
             }
 
             const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& ActorGroup::GetSceneNodeSelectionList() const
             {
-                return m_nodeSelectionList;
+                return m_allNodeSelectionList;
+            }
+
+            AZ::SceneAPI::DataTypes::ISceneNodeSelectionList & ActorGroup::GetBaseNodeSelectionList()
+            {
+                return m_baseNodeSelectionList;
+            }
+
+            const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList & ActorGroup::GetBaseNodeSelectionList() const
+            {
+                return m_baseNodeSelectionList;
             }
 
             const AZStd::string & ActorGroup::GetSelectedRootBone() const
@@ -100,10 +112,12 @@ namespace EMotionFX
 
                 serializeContext->Class<IActorGroup, AZ::SceneAPI::DataTypes::ISceneNodeGroup>()->Version(2, SceneNodeVersionConverter);
 
-                serializeContext->Class<ActorGroup, IActorGroup>()->Version(3, ActorVersionConverter)
+                serializeContext->Class<ActorGroup, IActorGroup>()->Version(4, ActorVersionConverter)
                     ->Field("name", &ActorGroup::m_name)
                     ->Field("selectedRootBone", &ActorGroup::m_selectedRootBone)
-                    ->Field("nodeSelectionList", &ActorGroup::m_nodeSelectionList)
+                    // In version 4, we stores the reflected node list on the base mesh list. 
+                    // The all mesh list is populated in the actor group behavior, so we don't reflect it in the serialization context.
+                    ->Field("nodeSelectionList", &ActorGroup::m_baseNodeSelectionList)
                     ->Field("id", &ActorGroup::m_id)
                     ->Field("rules", &ActorGroup::m_rules);
 
@@ -112,18 +126,19 @@ namespace EMotionFX
                 {
                     editContext->Class<ActorGroup>("Actor group", "Configure actor data exporting.")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute("AutoExpand", true)
-                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
+                            ->Attribute("AutoExpand", true)
+                            ->Attribute(AZ::Edit::Attributes::NameLabelOverride, "")
                         ->DataElement(AZ_CRC("ManifestName", 0x5215b349), &ActorGroup::m_name, "Name actor",
                             "Name for the group. This name will also be used as the name for the generated file.")
-                        ->Attribute("FilterType", IActorGroup::TYPEINFO_Uuid())
+                            ->Attribute("FilterType", IActorGroup::TYPEINFO_Uuid())
                         ->DataElement("NodeListSelection", &ActorGroup::m_selectedRootBone, "Select root bone", "The root bone of the animation that will be exported.")
-                        ->Attribute("ClassTypeIdFilter", AZ::SceneAPI::DataTypes::IBoneData::TYPEINFO_Uuid())
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &ActorGroup::m_nodeSelectionList, "Select meshes", "Select the meshes to be included in the actor.")
-                        ->Attribute("FilterName", "meshes")
-                        ->Attribute("FilterType", AZ::SceneAPI::DataTypes::IMeshData::TYPEINFO_Uuid())
+                            ->Attribute("ClassTypeIdFilter", AZ::SceneAPI::DataTypes::IBoneData::TYPEINFO_Uuid())
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &ActorGroup::m_baseNodeSelectionList, "Select base meshes", "Select the base meshes to be included in the actor. These meshes belong to LOD 0.")
+                            ->Attribute("FilterName", "meshes")
+                            ->Attribute("NarrowSelection", true)
+                            ->Attribute("FilterType", AZ::SceneAPI::DataTypes::IMeshData::TYPEINFO_Uuid())
                         ->DataElement(AZ::Edit::UIHandlers::Default, &ActorGroup::m_rules, "", "Add or remove rules to fine-tune the export process.")
-                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20));
+                            ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20));
                 }
             }
 

@@ -42,8 +42,8 @@ WIN_HWND CNULLRenderer::Init(int x, int y, int width, int height, unsigned int c
 
     FX_SetWireframeMode(R_SOLID_MODE);
 
-    m_width = width;
-    m_height = height;
+    SetWidth(width);
+    SetHeight(height);
     m_backbufferWidth = width;
     m_backbufferHeight = height;
     m_Features |= RFT_HW_NVIDIA;

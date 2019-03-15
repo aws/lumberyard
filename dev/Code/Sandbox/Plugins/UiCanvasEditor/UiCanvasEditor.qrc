@@ -1,6 +1,24 @@
 <RCC>
   <qresource prefix="/">
     <file>AppData/size_presets.json</file>
+    <file>Icons/AlignHCenterDefault.png</file>
+    <file>Icons/AlignHCenterDisabled.png</file>
+    <file>Icons/AlignHCenterHover.png</file>
+    <file>Icons/AlignHLeftDefault.png</file>
+    <file>Icons/AlignHLeftDisabled.png</file>
+    <file>Icons/AlignHLeftHover.png</file>
+    <file>Icons/AlignHRightDefault.png</file>
+    <file>Icons/AlignHRightDisabled.png</file>
+    <file>Icons/AlignHRightHover.png</file>
+    <file>Icons/AlignVBottomDefault.png</file>
+    <file>Icons/AlignVBottomDisabled.png</file>
+    <file>Icons/AlignVBottomHover.png</file>
+    <file>Icons/AlignVCenterDefault.png</file>
+    <file>Icons/AlignVCenterDisabled.png</file>
+    <file>Icons/AlignVCenterHover.png</file>
+    <file>Icons/AlignVTopDefault.png</file>
+    <file>Icons/AlignVTopDisabled.png</file>
+    <file>Icons/AlignVTopHover.png</file>
     <file>Icons/AnchorIcon00Default.tif</file>
     <file>Icons/AnchorIcon00Hover.tif</file>
     <file>Icons/AnchorIcon00Selected.tif</file>
@@ -50,14 +68,26 @@
     <file>Icons/AnchorIcon15Hover.tif</file>
     <file>Icons/AnchorIcon15Selected.tif</file>
     <file>Icons/delete.png</file>
-    <file>Icons/MoveIcon.png</file>
+    <file>Icons/EntityPickerCursor.png</file>
+    <file>Icons/ModeAnchorDefault.png</file>
+    <file>Icons/ModeAnchorDisabled.png</file>
+    <file>Icons/ModeAnchorHover.png</file>
+    <file>Icons/ModeMoveDefault.png</file>
+    <file>Icons/ModeMoveDisabled.png</file>
+    <file>Icons/ModeMoveHover.png</file>
+    <file>Icons/ModeResizeDefault.png</file>
+    <file>Icons/ModeResizeDisabled.png</file>
+    <file>Icons/ModeResizeHover.png</file>
+    <file>Icons/ModeRotateDefault.png</file>
+    <file>Icons/ModeRotateDisabled.png</file>
+    <file>Icons/ModeRotateHover.png</file>
+    <file>Icons/ModeSelectionDefault.png</file>
+    <file>Icons/ModeSelectionDisabled.png</file>
+    <file>Icons/ModeSelectionHover.png</file>
     <file>Icons/PivotIconDefault.tif</file>
     <file>Icons/PivotIconHover.tif</file>
     <file>Icons/PivotIconSelected.tif</file>
     <file>Icons/PreviewStart.png</file>
     <file>Icons/PreviewStop.png</file>
-    <file>Icons/ResizeIcon.png</file>
-    <file>Icons/RotateIcon.png</file>
-    <file>Icons/SelectionIcon.png</file>
   </qresource>
 </RCC>

@@ -32,6 +32,7 @@ namespace AzToolsFramework
                 m_translate = AZ::Vector3::CreateZero();
                 m_scale = AZ::Vector3::CreateOne();
                 m_rotate = AZ::Vector3::CreateZero();
+                m_locked = false;
             }
 
             static EditorTransform Identity()
@@ -42,6 +43,7 @@ namespace AzToolsFramework
             AZ::Vector3 m_translate; //! Translation in engine units (meters)
             AZ::Vector3 m_scale;
             AZ::Vector3 m_rotate; //! Rotation in degrees
+            bool m_locked;
         };
 
         //////////////////////////////////////////////////////////////////////////
@@ -64,6 +66,8 @@ namespace AzToolsFramework
             virtual void TranslateBy(const AZ::Vector3&) = 0;
             virtual void RotateBy(const AZ::Vector3&) = 0;
             virtual void ScaleBy(const AZ::Vector3&) = 0;
+
+            virtual bool IsTransformLocked() = 0;
         };
     } // namespace Components
 } // namespace AzToolsFramework

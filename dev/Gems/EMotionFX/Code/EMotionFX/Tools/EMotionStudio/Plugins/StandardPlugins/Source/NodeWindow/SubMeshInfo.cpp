@@ -25,7 +25,8 @@ namespace EMStudio
 
     SubMeshInfo::SubMeshInfo(EMotionFX::Actor* actor, unsigned int lodLevel, EMotionFX::SubMesh* subMesh)
     {
-        m_materialName = actor->GetMaterial(lodLevel, subMesh->GetMaterial())->GetNameString();
+        // In EMFX studio, we are not using the subMesh index - they all uses the default material.
+        m_materialName = actor->GetMaterial(lodLevel, 0)->GetNameString();
         m_verticesCount = subMesh->GetNumVertices();
         m_indicesCount = subMesh->GetNumIndices();
         m_polygonsCount = subMesh->GetNumPolygons();

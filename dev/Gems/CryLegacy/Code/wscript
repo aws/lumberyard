@@ -57,16 +57,16 @@ def build(bld):
         # Testing
         test_all_uselib     = ['AWS_CPP_SDK_GAMELIFT', 'AWS_CPP_SDK_CORE']
     )
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = [
-            'Source/CryAction/{0}/cryaction_{0}.waf_files'.format(p),
-            'Source/CryAISystem/{0}/cryaisystem_{0}.waf_files'.format(p),
-            'Source/CryAnimation/{0}/cryanimation_{0}.waf_files'.format(p),
-            'Source/CryScriptSystem/ScriptBindings/{0}/cryscriptsystem_{0}.waf_files'.format(p),
-            'Source/Input/{0}/crylegacy_{0}.waf_files'.format(p),
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = [
+            'Source/CryAction/{0}/cryaction_{1}.waf_files'.format(p0, p1),
+            'Source/CryAISystem/{0}/cryaisystem_{1}.waf_files'.format(p0, p1),
+            'Source/CryAnimation/{0}/cryanimation_{1}.waf_files'.format(p0, p1),
+            'Source/CryScriptSystem/ScriptBindings/{0}/cryscriptsystem_{1}.waf_files'.format(p0, p1),
+            'Source/Input/{0}/crylegacy_{1}.waf_files'.format(p0, p1),
         ]
         kw['win_file_list'] += [
-            'Source/CryAction/{0}/cryaction_tools_{0}.waf_files'.format(p),
-            'Source/Input/{0}/crylegacy_tools_{0}.waf_files'.format(p)
+            'Source/CryAction/{0}/cryaction_tools_{1}.waf_files'.format(p0, p1),
+            'Source/Input/{0}/crylegacy_tools_{1}.waf_files'.format(p0, p1)
         ]
     bld.DefineGem(**kw)

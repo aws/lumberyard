@@ -531,11 +531,30 @@ class ProjectInfo(StackInfo):
     def deployments(self):
         if self.__deployment_infos is None:
             deployment_infos = []
-            for deployment_name, deployment_settings in self.project_settings.get('deployment', {}).iteritems():
+
+            deployments = self.project_settings.get('deployment', {})
+            if (deployments == {}):
+                # project-settings.json was removed in Version 2 of the cloud project settings.
+                # Each deployment is stored in a seperate json file with the suffix 'dstack'.
+                s3_client = aws_utils.ClientWrapper(self.session.client("s3"))
+                res = s3_client.list_objects_v2(Bucket = self.configuration_bucket, Prefix = "dstack.deployment.")
+                cloud_deployments = res.get('Contents', {})
+
+                for deployment in cloud_deployments:
+                    name = deployment['Key']
+                    prefix, group, deployment_name, ext = name.split('.')
+
+                    # Skip over dstack.deployment.*.json file. This file contains the default resource group settings.
+                    if deployment_name != '*':
+                        deployment_settings = json.load(s3_client.get_object(Bucket=self.configuration_bucket, Key=name)["Body"])
+                        deployments[deployment_name] = deployment_settings
+
+            for deployment_name, deployment_settings in deployments.iteritems():
                 deployment_stack_arn = deployment_settings.get('DeploymentStackId')
                 deployment_access_stack_arn = deployment_settings.get('DeploymentAccessStackId')
                 if deployment_stack_arn:
                     deployment_infos.append(DeploymentInfo(self.stack_manager, deployment_stack_arn, deployment_access_stack_arn=deployment_access_stack_arn, session=self.session, project_info=self))
+            
             self.__deployment_infos = deployment_infos
         return self.__deployment_infos
 

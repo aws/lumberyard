@@ -50,28 +50,29 @@ CObjectCloneTool::CObjectCloneTool()
 {
     m_pClassDesc = &g_cloneClassDesc;
     m_bSetConstrPlane = true;
-    //m_bSetCapture = false;
 
     GetIEditor()->SuperBeginUndo();
 
     GetIEditor()->BeginUndo();
-    SetStatusText("Left click to clone object");
-    m_selection = 0;
+    m_selection = nullptr;
     if (!GetIEditor()->GetSelection()->IsEmpty())
     {
         QWaitCursor wait;
         CloneSelection();
         m_selection = GetIEditor()->GetSelection();
         m_origin = m_selection->GetCenter();
-        //CViewport * view = GetIEditor()->GetViewManager()->GetActiveViewport();
-        //if(view)
-        //{
-        //  view->SetCapture();
-        //  m_bSetCapture = true;
-        //}
     }
     GetIEditor()->AcceptUndo("Clone");
     GetIEditor()->BeginUndo();
+
+    if (!gSettings.deepSelectionSettings.bStickDuplicate)
+    {
+        SetStatusText("Clone object at the same location");
+    }
+    else
+    {
+        SetStatusText("Left click to clone object");
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -79,8 +80,6 @@ CObjectCloneTool::~CObjectCloneTool()
 {
     EndUndoBatch();
 
-    //if(m_bSetCapture)
-    //  ReleaseCapture();
     if (GetIEditor()->IsUndoRecording())
     {
         GetIEditor()->SuperCancelUndo();

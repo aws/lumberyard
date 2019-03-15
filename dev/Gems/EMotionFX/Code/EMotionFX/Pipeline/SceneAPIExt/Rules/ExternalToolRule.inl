@@ -30,7 +30,7 @@ namespace EMotionFX
         namespace Rule
         {
             template<class RuleClass, class ReflectableData>
-            bool LoadGromGroup<RuleClass, ReflectableData>(const AZ::SceneAPI::DataTypes::IGroup& group, ReflectableData& outData)
+            bool LoadGromGroup(const AZ::SceneAPI::DataTypes::IGroup& group, ReflectableData& outData)
             {
                 AZStd::shared_ptr<RuleClass> rule = group.GetRuleContainerConst().FindFirstByType<RuleClass>();
                 if (!rule)
@@ -46,7 +46,7 @@ namespace EMotionFX
 
 
             template<class RuleClass, class ReflectableData>
-            void SaveToGroup<RuleClass, ReflectableData>(AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IGroup& group, const ReflectableData& data)
+            void SaveToGroup(AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IGroup& group, const ReflectableData& data)
             {
                 namespace SceneEvents = AZ::SceneAPI::Events;
                 AZ::SceneAPI::Containers::RuleContainer& rules = group.GetRuleContainer();
@@ -70,7 +70,7 @@ namespace EMotionFX
 
 
             template<class RuleClass, class ReflectableData>
-            void RemoveRuleFromGroup<RuleClass, ReflectableData>(AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IGroup& group)
+            void RemoveRuleFromGroup(AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IGroup& group)
             {
                 namespace SceneEvents = AZ::SceneAPI::Events;
                 AZ::SceneAPI::Containers::RuleContainer& rules = group.GetRuleContainer();

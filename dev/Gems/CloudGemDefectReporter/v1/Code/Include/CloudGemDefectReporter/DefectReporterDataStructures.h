@@ -115,6 +115,7 @@ namespace CloudGemDefectReporter
         void SetReportID(int reportID) { m_reportID = reportID; }
         const MetricsList& GetMetrics() const { return m_metrics; }
         const AttachmentList& GetAttachments() const { return m_attachments; }
+        void ClearAttachments() { m_attachments.clear(); }
 
         static void Reflect(AZ::ReflectContext* context);
 

@@ -26,7 +26,11 @@
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ProfileTelemetryComponent_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ProfileTelemetryComponent_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ProfileTelemetryComponent_cpp_provo.inl"
+    #endif
 #endif
 
 namespace

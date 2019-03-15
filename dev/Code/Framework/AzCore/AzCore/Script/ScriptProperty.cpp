@@ -52,11 +52,13 @@ namespace AZ
                 AZ::ScriptValue<typename AZStd::iterator_traits<Iterator>::value_type>::StackPush(lua, *first);
                 lua_rawseti(lua, -2, static_cast<int>(i+1));
             }
-
-            return true;
+        }
+        else
+        {
+            lua_newtable(lua);
         }
 
-        return false;
+        return true;
     }
 
     ///////////////////
@@ -246,6 +248,11 @@ namespace AZ
         return retVal;
     }
 
+    bool ScriptPropertyBoolean::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const
+    {
+        return context.IsBoolean(valueIndex);
+    }
+
     AZ::ScriptPropertyBoolean* ScriptPropertyBoolean::Clone(const char* name) const
     {
         return aznew AZ::ScriptPropertyBoolean(name ? name : m_name.c_str(),m_value);
@@ -312,6 +319,11 @@ namespace AZ
         }
 
         return retVal;
+    }
+
+    bool ScriptPropertyNumber::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const
+    {
+        return context.IsNumber(valueIndex);
     }
 
     AZ::ScriptPropertyNumber* ScriptPropertyNumber::Clone(const char* name) const
@@ -381,6 +393,11 @@ namespace AZ
         }
 
         return retVal;
+    }
+
+    bool ScriptPropertyString::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const
+    {
+        return context.IsString(valueIndex);
     }
 
     AZ::ScriptPropertyString* ScriptPropertyString::Clone(const char* name) const
@@ -499,6 +516,11 @@ namespace AZ
         }
 
         return retVal;
+    }
+
+    bool ScriptPropertyGenericClass::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const
+    {
+        return context.IsRegisteredClass(valueIndex);
     }
 
     AZ::ScriptPropertyGenericClass* ScriptPropertyGenericClass::Clone(const char* name) const
@@ -775,6 +797,11 @@ namespace AZ
         return AZ::SerializeGenericTypeInfo< AZStd::vector<bool> >::GetClassTypeId();
     }
 
+    bool ScriptPropertyBooleanArray::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const 
+    {
+        return IsBooleanArray(context,valueIndex);
+    }
+
     AZ::ScriptPropertyBooleanArray* ScriptPropertyBooleanArray::Clone(const char* name) const
     {
         AZ::ScriptPropertyBooleanArray* clonedValue = aznew AZ::ScriptPropertyBooleanArray(name ? name : m_name.c_str());
@@ -896,6 +923,11 @@ namespace AZ
         return AZ::SerializeGenericTypeInfo< AZStd::vector<double> >::GetClassTypeId();
     }
 
+    bool ScriptPropertyNumberArray::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const 
+    {
+        return IsNumberArray(context,valueIndex);
+    }
+
     AZ::ScriptPropertyNumberArray* ScriptPropertyNumberArray::Clone(const char* name) const
     {
         AZ::ScriptPropertyNumberArray* clonedValue = aznew ScriptPropertyNumberArray(name ? name : m_name.c_str());
@@ -1015,6 +1047,11 @@ namespace AZ
     const AZ::Uuid& ScriptPropertyStringArray::GetDataTypeUuid() const
     {
         return AZ::SerializeGenericTypeInfo< AZStd::vector<AZStd::string> >::GetClassTypeId();
+    }
+
+    bool ScriptPropertyStringArray::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const 
+    {
+        return IsStringArray(context,valueIndex);
     }
 
     AZ::ScriptPropertyStringArray* ScriptPropertyStringArray::Clone(const char* name) const
@@ -1180,6 +1217,11 @@ namespace AZ
         m_elementTypeId = elementTypeId;
     }
 
+    bool ScriptPropertyGenericClassArray::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const 
+    {
+        return IsGenericClassArray(context,valueIndex);
+    }
+
     AZ::ScriptPropertyGenericClassArray* ScriptPropertyGenericClassArray::Clone(const char* name) const
     {
         AZ::ScriptPropertyGenericClassArray* clonedValue = aznew ScriptPropertyGenericClassArray(name ? name : m_name.c_str());
@@ -1290,6 +1332,11 @@ namespace AZ
         return AZ::SerializeTypeInfo<AZ::Data::Asset<AZ::Data::AssetData> >::GetUuid();
     }
 
+    bool ScriptPropertyAsset::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const
+    {
+        return context.IsRegisteredClass(valueIndex);
+    }
+
     AZ::ScriptPropertyAsset* ScriptPropertyAsset::Clone(const char* name) const
     {
         AZ::ScriptPropertyAsset* clonedValue = aznew ScriptPropertyAsset(name ? name : m_name.c_str());
@@ -1334,6 +1381,11 @@ namespace AZ
     const AZ::Uuid& ScriptPropertyEntityRef::GetDataTypeUuid() const
     {
         return AZ::SerializeTypeInfo<AZ::EntityId>::GetUuid();
+    }
+
+    bool ScriptPropertyEntityRef::DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const
+    {
+        return context.IsRegisteredClass(valueIndex);
     }
 
     AZ::ScriptPropertyEntityRef* ScriptPropertyEntityRef::Clone(const char* name) const

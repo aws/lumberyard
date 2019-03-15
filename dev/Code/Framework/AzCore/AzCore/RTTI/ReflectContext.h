@@ -170,7 +170,8 @@ namespace AZ
     typedef AZStd::pair<AttributeId, Attribute*> AttributePair;
     typedef AZStd::vector<AttributePair> AttributeArray;
 
-    inline Attribute* FindAttribute(AttributeId id, const AttributeArray& attrArray)
+    template<typename ContainerType>
+    inline Attribute* FindAttribute(AttributeId id, const ContainerType& attrArray)
     {
         for (const AttributePair& attrPair : attrArray)
         {

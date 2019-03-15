@@ -63,7 +63,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_1
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #else
 #if defined(WIN32) || defined(WIN64) || defined(LINUX) || defined(APPLE)
 #define RENDERERDEFS_H_TRAIT_SUPPORT_BAKED_MESHES_AND_DECALS 1
@@ -104,7 +108,11 @@
 
 #define D3DHWSHADER_H_TRAIT_DEFINE_D3D_BLOB 0
 
+#if defined(OPENGL) || defined(CRY_USE_METAL)
+#define D3DHWSHADERCOMPILING_CPP_TRAIT_VERTEX_FORMAT 1
+#else
 #define D3DHWSHADERCOMPILING_CPP_TRAIT_VERTEX_FORMAT 0
+#endif
 
 #if defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
 #define D3DRENDERRE_CPP_TRAIT_MFDRAW_SETDEPTHSURF 1
@@ -221,7 +229,11 @@ namespace detail
 
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_6
-    #include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 
 #if defined(OPENGL) && (defined(DEBUG) || defined(_DEBUG))
@@ -244,7 +256,11 @@ namespace Lumberyard
 // enable support for D3D11.1 features if the platform supports it
 #if defined(AZ_RESTRICTED_PLATFORM)
 #   define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_2
-#   include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -274,7 +290,11 @@ namespace Lumberyard
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 # define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_7
-# include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 
 #ifdef ENABLE_SCUE_VALIDATION
@@ -340,7 +360,11 @@ enum EVerifyType
     #define EXCLUDE_SQUISH_SDK
 #elif defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_8
-    #include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #elif defined(IOS)
     #define EXCLUDE_SQUISH_SDK
 #elif defined(APPLETV)
@@ -370,7 +394,11 @@ enum EVerifyType
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_3
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 
 #if !defined(NULL_RENDERER)
@@ -382,7 +410,11 @@ enum EVerifyType
 // Direct3D11 includes
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_9
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -409,7 +441,11 @@ typedef uintptr_t SOCKET;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_4
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #elif defined(WIN32) || defined(WIN64)
 #include "d3d11.h"
 #endif
@@ -435,7 +471,11 @@ typedef uintptr_t SOCKET;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_5
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 
 #if !defined(_RELEASE) || defined(ENABLE_STATOSCOPE_RELEASE)
@@ -454,7 +494,11 @@ typedef uintptr_t SOCKET;
 // on repeated accesses.
 #if defined(AZ_RESTRICTED_PLATFORM)
 # define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_10
-# include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -471,7 +515,11 @@ typedef uintptr_t SOCKET;
 //  GPU won't be used to update buffer content but it will be used to perform defragmentation.
 #if defined(AZ_RESTRICTED_PLATFORM)
 # define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_11
-# include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 # undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -516,7 +564,11 @@ typedef uintptr_t SOCKET;
 # define FEATURE_SILHOUETTE_POM
 #elif defined(AZ_RESTRICTED_PLATFORM)
 # define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_12
-# include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #elif defined(LINUX)
 # define FEATURE_SILHOUETTE_POM
 #elif defined(APPLE)
@@ -525,7 +577,11 @@ typedef uintptr_t SOCKET;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_13
-    #include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 
 #if !defined(_RELEASE) && !defined(NULL_RENDERER) && RENDERERDEFS_H_TRAIT_SUPPORT_D3D_DEBUG_RUNTIME && !defined(OPENGL)
@@ -536,7 +592,11 @@ typedef uintptr_t SOCKET;
 #   define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #   define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_14
-#   include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #   undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -557,7 +617,11 @@ typedef uintptr_t SOCKET;
 #   elif defined(DEVICE_SUPPORTS_D3D11_1)
 #       if defined(AZ_RESTRICTED_PLATFORM)
 #           define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_15
-#           include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+            #if defined(AZ_PLATFORM_XENIA)
+                #include "Xenia/RendererDefs_h_xenia.inl"
+            #elif defined(AZ_PLATFORM_PROVO)
+                #include "Provo/RendererDefs_h_provo.inl"
+            #endif
 #       endif
 #       if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #           undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -572,7 +636,7 @@ typedef uintptr_t SOCKET;
 #       endif
 #   else
         typedef IDXGIFactory1           DXGIFactory;
-#       if !defined(ANDROID) && !defined(APPLE)
+#       if !defined(ANDROID) && !defined(APPLE) && !defined(LINUX)
             typedef IDXGIDevice1        DXGIDevice;
 #       endif
         typedef IDXGIAdapter1           DXGIAdapter;
@@ -589,7 +653,11 @@ typedef ID3D11Resource          D3DResource;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_16
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -633,7 +701,11 @@ typedef interface ID3DXConstTable*  LPD3DXCONSTANTTABLE;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_19
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -771,7 +843,11 @@ inline eRenderPrimitiveType GetInternalPrimitiveType(PublicRenderPrimitiveType t
 #       define SUPPORT_FLEXIBLE_INDEXBUFFER // supports 16 as well as 32 bit indices AND index buffer bind offset
 #   elif defined(AZ_RESTRICTED_PLATFORM)
 #       define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_17
-#       include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+#       if defined(AZ_PLATFORM_XENIA)
+#           include "Xenia/RendererDefs_h_xenia.inl"
+#       elif defined(AZ_PLATFORM_PROVO)
+#           include "Provo/RendererDefs_h_provo.inl"
+#       endif
 #   elif defined(LINUX)
 #       define SUPPORT_FLEXIBLE_INDEXBUFFER // supports 16 as well as 32 bit indices AND index buffer bind offset
 #   elif defined(APPLE)
@@ -802,16 +878,17 @@ extern ISystem* iSystem;
 #   define VOLUMETRIC_FOG_SHADOWS
 #endif
 
-#if (defined(WIN32) || defined(WIN64)) && !(defined(OPENGL) && defined(RELEASE))
-#if !defined(CRY_USE_DX12)
+#if ((defined(AZ_PLATFORM_WINDOWS) && !defined(OPENGL)) || defined(AZ_PLATFORM_APPLE_OSX)) && !defined(CRY_USE_DX12) && !defined(RELEASE)
 #   define ENABLE_NULL_D3D11DEVICE
 #endif
-#endif
-
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_18
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 
 
@@ -832,7 +909,11 @@ extern ISystem* iSystem;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERERDEFS_H_SECTION_20
-#include AZ_RESTRICTED_FILE(RendererDefs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RendererDefs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RendererDefs_h_provo.inl"
+    #endif
 #endif
 
 #if defined(_RELEASE)

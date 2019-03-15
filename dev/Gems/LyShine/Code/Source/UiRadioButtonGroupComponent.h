@@ -16,7 +16,6 @@
 #include <LyShine/Bus/UiRadioButtonGroupBus.h>
 #include <LyShine/Bus/UiRadioButtonGroupCommunicationBus.h>
 #include <LyShine/Bus/UiInitializationBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
 #include <LyShine/UiComponentTypes.h>
 
 #include <AzCore/Serialization/SerializeContext.h>

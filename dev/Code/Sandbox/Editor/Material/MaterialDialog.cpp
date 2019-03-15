@@ -882,7 +882,6 @@ void CMaterialUI::GetTextureResources(SInputShaderResources& sr, int tex, int pr
         {
             sr.m_TexturesResourcesMap.erase(EFTT_SMOOTHNESS);
         }
-
         // EFTT_CUSTOM_SECONDARY is the 2nd normal
         if (tex == EFTT_CUSTOM_SECONDARY)
         {
@@ -892,6 +891,7 @@ void CMaterialUI::GetTextureResources(SInputShaderResources& sr, int tex, int pr
     }
     texFilename = Path::ToUnixPath(texFilename);
 
+    // Clear any texture resource that has no associated file
     if (texFilename.size() > AZ_MAX_PATH_LEN)
     {
         AZ_Error("Material Editor", false, "Texture path exceeds the maximium allowable length of %d.", AZ_MAX_PATH_LEN);

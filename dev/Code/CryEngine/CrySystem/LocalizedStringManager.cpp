@@ -1577,7 +1577,7 @@ bool CLocalizedStringsManager::LocalizeStringInternal(const char* pStr, size_t l
         }
 
         // find the end of the label
-        const char* pLabelEnd = strpbrk(pLabel, " \n\t\r");
+        const char* pLabelEnd = strpbrk(pLabel, " !\"#$%&\'()*+,./:;<=>\?[\\]^`{|}~\n\t\r");
         if (!pLabelEnd)
         {
             pLabelEnd = pEnd;

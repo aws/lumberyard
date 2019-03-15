@@ -21,6 +21,7 @@
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Quaternion.h>
+#include <AzCore/std/containers/stack.h>
 #include <AzCore/std/sort.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
@@ -46,6 +47,7 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/UI/Slice/SlicePushWidget.hxx>
+#include <AzToolsFramework/UI/Slice/SliceRelationshipBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
@@ -283,7 +285,7 @@ namespace AzToolsFramework
             * \param selectedEntities The selected entities.
             * \param sliceInstances The slice instances affected by the selected entity set.
             */
-            void addDetachSliceInstanceAction(QMenu* detachMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances);
+            void addDetachSliceInstanceAction(QMenu* detachMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::SliceComponent::SliceInstanceAddressSet& sliceInstances);
 
             /**
             * \brief Get the selected entities belong to slice instances.
@@ -291,7 +293,7 @@ namespace AzToolsFramework
             * \param entitiesInSlices [OUT] The selected entities belong to slice instances.
             * \param sliceInstances [OUT] The slice instances affected by the selected entity set.
             */
-            void GetEntitiesInSlices(const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32& entitiesInSlices, AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances);
+            void GetEntitiesInSlices(const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32& entitiesInSlices, AZ::SliceComponent::SliceInstanceAddressSet& sliceInstances);
 
         } // namespace Internal
 
@@ -536,6 +538,7 @@ namespace AzToolsFramework
         bool MakeNewSlice(const AzToolsFramework::EntityIdSet& entities, 
                           const char* targetDirectory, 
                           bool inheritSlices, 
+                          bool setAsDynamic,
                           AZ::SerializeContext* serializeContext)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -714,7 +717,14 @@ namespace AzToolsFramework
                             parentAfterReplacement, positionAfterReplacement, rotationAfterReplacement, wasRootAutoCreated);
                     };
 
-                SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginNewSlice(nullptr, serializeContext);
+                AZ::u32 creationFlags = 0;
+
+                if (setAsDynamic)
+                {
+                    creationFlags |= SliceTransaction::CreateAsDynamic;
+                }
+
+                SliceTransaction::TransactionPtr transaction = SliceTransaction::BeginNewSlice(nullptr, serializeContext, creationFlags);
 
                 // Add entities
                 {
@@ -1015,7 +1025,7 @@ namespace AzToolsFramework
                         }
                     }
                 }
-                
+
                 // We know the slice instance details, compare the entities it contains to the entities
                 // contained in the underlying asset. If it's missing any entities that exist in the asset,
                 // we can remove the entity from the base slice.
@@ -1098,8 +1108,7 @@ namespace AzToolsFramework
             const AzToolsFramework::EntityIdList& entityIdList,
             EntityIdSet& unpushableNewChildEntityIds,
             AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>& sliceAncestryMapping,
-            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs,
-            bool& hasUnpushableSliceEntityAdditions)
+            AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>>& newChildEntityIdAncestorPairs)
         {
             AZStd::unordered_set<AZ::EntityId> pushableNewChildEntityIds;
 
@@ -1169,7 +1178,6 @@ namespace AzToolsFramework
                     if (!SliceUtilities::CheckSliceAdditionCyclicDependencySafe(entitySliceAddress, transformAncestorSliceAddress))
                     {
                         // Adding this entity's slice instance to the target slice would create a cyclic asset dependency which is strictly not allowed
-                        hasUnpushableSliceEntityAdditions = true;
                         unpushableNewChildEntityIds.insert(entityId);
                     }
                     else
@@ -1214,7 +1222,7 @@ namespace AzToolsFramework
         }
 
         AZStd::unordered_set<AZ::EntityId> GetUniqueRemovedEntities(
-            const AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances, 
+            const AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances,
             IdToEntityMapping& assetEntityIdtoAssetEntityMapping,
             IdToInstanceAddressMapping& assetEntityIdtoInstanceAddressMapping)
         {
@@ -1373,7 +1381,7 @@ namespace AzToolsFramework
                     transformComponent->SetParent(AZ::EntityId());
                     AZ::Vector3 scale = transformComponent->GetLocalScale();
                     transformComponent->SetWorldTranslation(AZ::Vector3::CreateZero());
-                    transformComponent->SetRotation(AZ::Vector3::CreateZero());
+                    transformComponent->SetLocalRotation(AZ::Vector3::CreateZero());
                     transformComponent->SetLocalScale(scale);
                 }
             }
@@ -1525,7 +1533,7 @@ namespace AzToolsFramework
             Internal::PopulateQuickPushMenu(outerMenu, inputEntities, nullptr, headerText);
         }
 
-        void PopulateSliceSubMenus(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, SliceSelectedCallback sliceSelectedCallback)
+        void PopulateSliceSubMenus(QMenu& outerMenu, const AzToolsFramework::EntityIdList& inputEntities, SliceSelectedCallback sliceSelectedCallback, SliceSelectedCallback sliceRelationshipViewCallback)
         {
             // The find slice menu only works with a single entity selected.
             if (inputEntities.size() != 1)
@@ -1555,7 +1563,14 @@ namespace AzToolsFramework
                 return;
             }
 
+            const AZ::SliceComponent::SliceReference* sliceReference = ancestors.at(0).m_sliceAddress.GetReference();
+
             PopulateFindSliceMenu(outerMenu, selectedEntity, ancestors, sliceSelectedCallback);
+
+            if (sliceReference)
+            {
+                PopulateSliceRelationshipViewMenu(outerMenu, selectedEntity, ancestors, sliceRelationshipViewCallback);
+            }
 
             outerMenu.addSeparator();
 
@@ -1565,6 +1580,63 @@ namespace AzToolsFramework
             {
                 outerMenu.addMenu(selectMenu);
             }
+        }
+
+        QWidgetAction* MakeSliceMenuItem(const AZ::EntityId& /*selectedEntity*/, const AZ::SliceComponent::Ancestor& ancestor, QMenu* menu, int indentation, const QPixmap icon, QString tooltip, AZ::Data::AssetId& sliceAssetId)
+        {
+            const AZ::SliceComponent::SliceReference* sliceReference = ancestor.m_sliceAddress.GetReference();
+            if (!sliceReference)
+            {
+                return nullptr;;
+            }
+            sliceAssetId = sliceReference->GetSliceAsset().GetId();
+
+            // Grab the path to the asset so the name can be found.
+            AZStd::string sliceAssetPath;
+            AZ::Data::AssetCatalogRequestBus::BroadcastResult(
+                sliceAssetPath,
+                &AZ::Data::AssetCatalogRequestBus::Handler::GetAssetPathById,
+                sliceAssetId);
+
+            // Grab the file name of the slice to use as the slice's title in the menu.
+            AZStd::string sliceAssetName;
+            AzFramework::StringFunc::Path::GetFullFileName(sliceAssetPath.c_str(), sliceAssetName);
+            if (sliceAssetName.empty())
+            {
+                AZ_Warning("PopulateFindSliceMenu", false, "Failed to determine path/name for slice with id %s", sliceAssetId.ToString<AZStd::string>().c_str());
+                return nullptr;
+            }
+
+            // Build the menu item. A QWidgetAction is used instead of a QAction to allow the ancestry 
+            // hierarchy to be represented by indenting each ancestor under the previous.
+            // The layout for each row is: [QLabel Indent][QLabel Slice Icon][QLabel Slice Name]
+
+            // Create the container for the row: A WidgetAction to attach to the menu, 
+            // the base Widget to contain the horizontal layout, and the horizontal layout.
+            QWidgetAction* findAction = new QWidgetAction(menu);
+            QWidget* sliceLayoutWidget = new QWidget(menu);
+            sliceLayoutWidget->setObjectName("SliceHierarchyMenuItem");
+            QHBoxLayout* sliceLayout = new QHBoxLayout(sliceLayoutWidget);
+            findAction->setDefaultWidget(sliceLayoutWidget);
+
+            // A label with a fixed size is used to indent instead of margins on the
+            // QHBoxLayout because this matches the QuickPush menu.
+            QLabel* indentLabel = new QLabel(menu);
+            indentLabel->setFixedSize(indentation, GetSliceItemHeight());
+            sliceLayout->addWidget(indentLabel);
+
+            // Use the SliceIcon to visually reinforce that this is a slice file.
+            QLabel* iconLabel = new QLabel(menu);
+            iconLabel->setPixmap(icon);
+            iconLabel->setFixedSize(GetSliceItemIconSize());
+            sliceLayout->addWidget(iconLabel);
+
+            // Use the filename without the path as the label for this menu icon, to match the QuickPush menu's behavior.
+            QLabel* sliceLabel = new QLabel(sliceAssetName.c_str(), menu);
+            sliceLabel->setToolTip(tooltip);
+            sliceLayout->addWidget(sliceLabel);
+
+            return findAction;
         }
 
         void PopulateFindSliceMenu(QMenu& outerMenu, const AZ::EntityId& selectedEntity, const AZ::SliceComponent::EntityAncestorList& ancestors, SliceSelectedCallback sliceSelectedCallback)
@@ -1577,75 +1649,64 @@ namespace AzToolsFramework
             AZ::u32 indentation = 0;
             for (const AZ::SliceComponent::Ancestor& ancestor : ancestors)
             {
-                const AZ::SliceComponent::SliceReference* sliceReference = ancestor.m_sliceAddress.GetReference();
-                if (!sliceReference)
+                AZ::Data::AssetId sliceAssetId;
+                QWidgetAction* action = MakeSliceMenuItem(selectedEntity, ancestor, findSliceMenu, indentation, sliceItemIcon, QObject::tr("Selects this slice in the Asset Browser."), sliceAssetId);
+                
+                if (action)
                 {
-                    AZ_Warning("PopulateFindSliceMenu", "Entity with ID %s has a an invalid slice reference.", selectedEntity.ToString().c_str());
-                    continue;
+                    // Connect the action to select this slice in the AssetBrowser when it is clicked.
+                    QObject::connect(action, &QAction::triggered,
+                        [sliceSelectedCallback, sliceAssetId]
+                    {
+                        sliceSelectedCallback();
+                        AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Broadcast(
+                            &AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Events::ClearFilter);
+
+                        AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Broadcast(
+                            &AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Events::SelectProduct,
+                            sliceAssetId);
+                    });
+                    findSliceMenu->addAction(action);
+
+                    // Grow the indentation size for the next step in the hierarchy.
+                    indentation += GetSliceHierarchyMenuIdentationPerLevel();
                 }
-                const AZ::Data::AssetId sliceAssetId = sliceReference->GetSliceAsset().GetId();
-
-                // Grab the path to the asset so the name can be found.
-                AZStd::string sliceAssetPath;
-                AZ::Data::AssetCatalogRequestBus::BroadcastResult(
-                    sliceAssetPath,
-                    &AZ::Data::AssetCatalogRequestBus::Handler::GetAssetPathById,
-                    sliceAssetId);
-
-                // Grab the file name of the slice to use as the slice's title in the menu.
-                AZStd::string sliceAssetName;
-                AzFramework::StringFunc::Path::GetFullFileName(sliceAssetPath.c_str(), sliceAssetName);
-                if (sliceAssetName.empty())
-                {
-                    AZ_Warning("PopulateFindSliceMenu", false, "Failed to determine path/name for slice with id %s", sliceAssetId.ToString<AZStd::string>().c_str());
-                    continue;
-                }
-
-                // Build the menu item. A QWidgetAction is used instead of a QAction to allow the ancestry 
-                // hierarchy to be represented by indenting each ancestor under the previous.
-                // The layout for each row is: [QLabel Indent][QLabel Slice Icon][QLabel Slice Name]
-
-                // Create the container for the row: A WidgetAction to attach to the menu, 
-                // the base Widget to contain the horizontal layout, and the horizontal layout.
-                QWidgetAction* findAction = new QWidgetAction(findSliceMenu);
-                QWidget* sliceLayoutWidget = new QWidget(findSliceMenu);
-                sliceLayoutWidget->setObjectName("SliceHierarchyMenuItem");
-                QHBoxLayout* sliceLayout = new QHBoxLayout(sliceLayoutWidget);
-                findAction->setDefaultWidget(sliceLayoutWidget);
-
-                // A label with a fixed size is used to indent instead of margins on the
-                // QHBoxLayout because this matches the QuickPush menu.
-                QLabel* indentLabel = new QLabel(findSliceMenu);
-                indentLabel->setFixedSize(indentation, GetSliceItemHeight());
-                sliceLayout->addWidget(indentLabel);
-
-                // Use the SliceIcon to visually reinforce that this is a slice file.
-                QLabel* iconLabel = new QLabel(findSliceMenu);
-                iconLabel->setPixmap(sliceItemIcon);
-                iconLabel->setFixedSize(GetSliceItemIconSize());
-                sliceLayout->addWidget(iconLabel);
-
-                // Use the filename without the path as the label for this menu icon, to match the QuickPush menu's behavior.
-                QLabel* sliceLabel = new QLabel(sliceAssetName.c_str(), findSliceMenu);
-                sliceLabel->setToolTip(QObject::tr("Selects this slice in the Asset Browser."));
-                sliceLayout->addWidget(sliceLabel);
-
-                // Connect the action to select this slice in the AssetBrowser when it is clicked.
-                QObject::connect(findAction, &QAction::triggered,
-                    [sliceSelectedCallback, sliceAssetId]
-                {
-                    sliceSelectedCallback();
-                    AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Broadcast(
-                        &AzToolsFramework::AssetBrowser::AssetBrowserViewRequestBus::Events::SelectProduct,
-                        sliceAssetId);
-                });
-                findSliceMenu->addAction(findAction);
-
-                // Grow the indentation size for the next step in the hierarchy.
-                indentation += GetSliceHierarchyMenuIdentationPerLevel();
             }
 
             findSliceMenu->setTitle(QObject::tr("Find slice in Asset Browser"));
+            outerMenu.addMenu(findSliceMenu);
+        }
+
+        void PopulateSliceRelationshipViewMenu(QMenu& outerMenu, const AZ::EntityId& selectedEntity, const AZ::SliceComponent::EntityAncestorList& ancestors, SliceSelectedCallback sliceSelectedCallback)
+        {
+            (void)selectedEntity;
+            QMenu* findSliceMenu = new QMenu(&outerMenu);
+            QPixmap sliceItemIcon(GetSliceItemIconPath());
+
+            // Track how many ancestors deep the loop is, so the hierarchy can be visually represented.
+            AZ::u32 indentation = 0;
+            for (const AZ::SliceComponent::Ancestor& ancestor : ancestors)
+            {
+                AZ::Data::AssetId sliceAssetId;
+                QWidgetAction* action = MakeSliceMenuItem(selectedEntity, ancestor, findSliceMenu, indentation, sliceItemIcon, QObject::tr("Opens this slice in the Slice Relationship View"), sliceAssetId);
+
+                if (action)
+                {
+                    // Connect the action to select this slice in the AssetBrowser when it is clicked.
+                    QObject::connect(action, &QAction::triggered,
+                        [sliceSelectedCallback, sliceAssetId]
+                    {
+                        sliceSelectedCallback();
+                        AzToolsFramework::SliceRelationshipRequestBus::Broadcast(&AzToolsFramework::SliceRelationshipRequests::OnSliceRelationshipViewRequested, sliceAssetId);
+                    });
+                    findSliceMenu->addAction(action);
+
+                    // Grow the indentation size for the next step in the hierarchy.
+                    indentation += GetSliceHierarchyMenuIdentationPerLevel();
+                }
+            }
+
+            findSliceMenu->setTitle(QObject::tr("Open in Slice Relationship View"));
             outerMenu.addMenu(findSliceMenu);
         }
 
@@ -1799,10 +1860,10 @@ namespace AzToolsFramework
         void PopulateDetachMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AZStd::string& headerText)
         {
             AZ::u32 entitiesInSlices;
-            AZStd::vector<AZ::SliceComponent::SliceInstanceAddress> sliceInstances;
+            AZ::SliceComponent::SliceInstanceAddressSet sliceInstances;
             Internal::GetEntitiesInSlices(selectedEntities, entitiesInSlices, sliceInstances);
             // Offer slice-related options if any selected entities belong to slice instances.
-            if (0 == entitiesInSlices)
+            if (sliceInstances.empty())
             {
                 return;
             }
@@ -2652,7 +2713,7 @@ namespace AzToolsFramework
             AZStd::unordered_map<AZ::Data::AssetId, int>& pushableChangesPerAsset,
             AZStd::vector<AZ::Data::AssetId>& sliceDisplayOrder,
             AZStd::unordered_map<AZ::Data::AssetId, AZStd::vector<EntityAncestorPair>>& assetEntityAncestorMap,
-            bool& hasUnpushableSliceEntityAdditions)
+            EntityIdSet& unpushableEntityIds)
         {
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
@@ -2663,10 +2724,9 @@ namespace AzToolsFramework
             }
 
             numRelevantEntitiesInSlices = 0;
-            EntityIdSet unpushableEntityIds;
             AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList> sliceAncestryMapping;
             AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>> newChildEntityIdAncestorPairs;
-            AZStd::unordered_set<AZ::EntityId> pushableNewChildEntityIds = GetPushableNewChildEntityIds(inputEntities, unpushableEntityIds, sliceAncestryMapping, newChildEntityIdAncestorPairs, hasUnpushableSliceEntityAdditions);
+            AZStd::unordered_set<AZ::EntityId> pushableNewChildEntityIds = GetPushableNewChildEntityIds(inputEntities, unpushableEntityIds, sliceAncestryMapping, newChildEntityIdAncestorPairs);
             for (const AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>& newChildEntityIdAncestorPair: newChildEntityIdAncestorPairs)
             {
                 entitiesToAdd.insert(newChildEntityIdAncestorPair.first);
@@ -2691,7 +2751,6 @@ namespace AzToolsFramework
             IdToInstanceAddressMapping assetEntityIdtoInstanceAddressMapping;
             entitiesToRemove = GetUniqueRemovedEntities(sliceInstances, assetEntityIdtoAssetEntityMapping, assetEntityIdtoInstanceAddressMapping);
 
-            AZStd::vector<AZStd::unique_ptr<AZ::Entity>> temporaryEntities;
             AZ::SliceComponent::EntityAncestorList tempAncestors;
 
             for (AZ::EntityId entityId : inputEntities)
@@ -2724,8 +2783,7 @@ namespace AzToolsFramework
                         AZ_Error("Slice", compareClone.get(), "Failed to clone entity for slice comparison.");
                         if (compareClone)
                         {
-                            temporaryEntities.emplace_back(AZStd::move(compareClone));
-                            entityAncestors.emplace_back(AZStd::make_pair(entityId, temporaryEntities.back().get()));
+                            entityAncestors.emplace_back(entityId, compareClone.release());
                         }
 
                         // Maintain a display-order array of slice assets.
@@ -2787,12 +2845,12 @@ namespace AzToolsFramework
                     if (!isPathSafeForAssets)
                     {
                         // Put an error in the console, so the log files have info about this error, or the user can look up the error after dismissing it.
-                        AZStd::string errorMessage = "You can only save slices where your game project can access them. Save your slice to your game project's folder.\n\n"
-                            "You can also review and update your valid save folders in the AssetProcessorPlatformConfig.ini file.";
+                        AZStd::string errorMessage = "You can save slices only to your game project folder or the Gems folder. Update the location and try again.\n\n"
+                            "You can also review and update your save locations in the AssetProcessorPlatformConfig.ini file.";
                         AZ_Error("Slice", false, errorMessage.c_str());
 
                         QString learnMoreLink(QObject::tr("https://docs.aws.amazon.com/console/lumberyard/slices/save"));
-                        QString learnMoreDescription(QObject::tr("<a href='%1'>Learn more</a>").arg(learnMoreLink));
+                        QString learnMoreDescription(QObject::tr(" <a href='%1'>Learn more</a>").arg(learnMoreLink));
 
                         // Display a pop-up, the logs are easy to miss. This will make sure a user who encounters this error immediately knows their slice save has failed.
                         QMessageBox msgBox(activeWindow);
@@ -3148,9 +3206,6 @@ namespace AzToolsFramework
                     return AZ::Failure(AZStd::string::format("Could not find common transform root between selected entities."));
                 }
 
-                // Slice root cannot be editor-only.
-                EditorOnlyEntityComponentRequestBus::Event(rootEntityId, &EditorOnlyEntityComponentRequests::SetIsEditorOnlyEntity, false);
-
                 sliceRootParentEntityId = commonRoot;
                 sliceRootPositionAfterReplacement = sliceRootTranslation;
                 sliceRootRotationAfterReplacement = sliceRootRotation;
@@ -3178,10 +3233,10 @@ namespace AzToolsFramework
                 target.AddRootInstance<AZ::Entity>(const_cast<AZ::Entity*>(compareTo));
                 target.Build(&serializeContext, AZ::SerializeContext::ENUM_ACCESS_FOR_READ);
 
-                AZ::u32 numDifferences = 0;
+                AZStd::unordered_set<const InstanceDataNode*> differentNodes;
 
                 AZStd::function<void(const InstanceDataNode*)> nodeChanged =
-                    [&numDifferences, isRootEntity, fieldAddress](const InstanceDataNode* node)
+                    [&differentNodes, isRootEntity, fieldAddress](const InstanceDataNode* node)
                 {
                     if (node)
                     {
@@ -3216,7 +3271,7 @@ namespace AzToolsFramework
                             const AzToolsFramework::NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(*node, true);
                             if (visibility == AzToolsFramework::NodeDisplayVisibility::Visible)
                             {
-                                ++numDifferences;
+                                differentNodes.insert(node);
                                 break;
                             }
 
@@ -3248,7 +3303,7 @@ namespace AzToolsFramework
                     &serializeContext,
                     newCallback, removedCallback, changedCallback);
 
-                return numDifferences;
+                return static_cast<AZ::u32>(differentNodes.size());
             }
 
             //=========================================================================
@@ -3348,7 +3403,7 @@ namespace AzToolsFramework
                 AZStd::unordered_map<AZ::Data::AssetId, AZStd::vector<EntityAncestorPair>> assetEntityAncestorMap;
                 AZStd::vector<AZ::Data::AssetId> sliceDisplayOrder;
                 AZStd::unordered_map<AZ::Data::AssetId, int> pushableChangesPerAsset;
-                bool hasUnpushableSliceEntityAdditions = false;
+                EntityIdSet unpushableEntityIds;
                 bool pushableChangesAvailable = CountPushableChangesToSlice(inputEntities,
                     fieldAddress,
                     entitiesToAdd,
@@ -3357,7 +3412,7 @@ namespace AzToolsFramework
                     pushableChangesPerAsset,
                     sliceDisplayOrder,
                     assetEntityAncestorMap,
-                    hasUnpushableSliceEntityAdditions);
+                    unpushableEntityIds);
 
                 AZ::Data::AssetManager& assetManager = AZ::Data::AssetManager::Instance();
                 AZStd::string sliceAssetPath, sliceAssetName;
@@ -3402,10 +3457,10 @@ namespace AzToolsFramework
 
                         // Skip if multiple selected entities would be targeting the same ancestor within this asset.
                         bool targetConflict = false;
-                        AZStd::unordered_set<AZ::Entity*> targetEntities;
+                        AZStd::unordered_set<AZ::EntityId> targetEntities;
                         for (const EntityAncestorPair& entityAncestor : entityAncestors)
                         {
-                            auto iterPairBool = targetEntities.insert(entityAncestor.second);
+                            auto iterPairBool = targetEntities.insert(entityAncestor.second->GetId());
                             if (!iterPairBool.second)
                             {
                                 targetConflict = true;
@@ -3417,7 +3472,9 @@ namespace AzToolsFramework
                         // Limit the number of entities for which we're willing to compute differences against target
                         // slices, as doing so with large selections could induce significant context menu lag.
                         // If we exceed the limit, we simply don't show a preview of # of differences.
-                        AZ::u32 totalDifferences = pushableChangesPerAsset[sliceAssetId];
+                        AZ::u32 totalDifferences = pushableChangesPerAsset[sliceAssetId];;
+
+                        bool hasUnpushableSliceEntityAdditions = unpushableEntityIds.size() > 0;
 
                         // Each quick push option UI is a collection of up to four separate widgets:
                         // [indentation by depth] [icon] [slice name] [# overrides]
@@ -3479,6 +3536,11 @@ namespace AzToolsFramework
                         {
                             overridesText = overridesText != "" ? (overridesText + QString("<font color=\"%1\"> | </font>").arg(splitterColor)) : overridesText;
                             overridesText += QString("<i>%1 updated</i>").arg(totalDifferences);
+                        }
+                        if (hasUnpushableSliceEntityAdditions)
+                        {
+                            overridesText = overridesText != "" ? (overridesText + QString("<font color=\"%1\"> | </font>").arg(splitterColor)) : overridesText;
+                            overridesText += QString("<font color=\"%1\"><i>%2 unsavable</i></font>").arg(unsavableChangesTextColor).arg(static_cast<int>(unpushableEntityIds.size()));
                         }
 
                         if (overridesText != "")
@@ -3609,7 +3671,7 @@ namespace AzToolsFramework
 
             void QuickPushToSlice(
                 const AZ::Data::Asset<AZ::SliceAsset>& sliceAsset,
-                const AZStd::vector<AZStd::pair<AZ::EntityId, AZ::Entity*>>& entityAncestors,
+                const AZStd::vector<EntityAncestorPair>& entityAncestors,
                 const AZStd::unordered_set<AZ::EntityId>& entitiesToAdd,
                 const AZStd::unordered_set<AZ::EntityId>& entitiesToRemove,
                 const InstanceDataHierarchy::Address& pushFieldAddress,
@@ -3618,7 +3680,7 @@ namespace AzToolsFramework
                 // Calculate entity Id set.
                 AZStd::unordered_set<AZ::EntityId> pushEntities;
                 pushEntities.reserve(entityAncestors.size());
-                for (const AZStd::pair<AZ::EntityId, AZ::Entity*>& entityAncestor : entityAncestors)
+                for (const EntityAncestorPair& entityAncestor : entityAncestors)
                 {
                     pushEntities.insert(entityAncestor.first);
                 }
@@ -3784,7 +3846,7 @@ namespace AzToolsFramework
                         {
                             pushableChangesPerAsset[sliceAssetId] += Internal::CountDifferencesVersusSlice(
                                 entityAncestor.first,
-                                entityAncestor.second,
+                                entityAncestor.second.get(),
                                 serializeContext,
                                 fieldAddress);
                         }
@@ -3838,8 +3900,7 @@ namespace AzToolsFramework
                 AzToolsFramework::EntityIdSet selectedTransformHierarchyEntities;
                 AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedTransformHierarchyEntities, &AzToolsFramework::ToolsApplicationRequestBus::Events::GatherEntitiesAndAllDescendents, selectedEntities);
 
-                AzToolsFramework::EntityIdList selectedDetachEntities;
-                selectedDetachEntities.insert(selectedDetachEntities.begin(), selectedTransformHierarchyEntities.begin(), selectedTransformHierarchyEntities.end());
+                AzToolsFramework::EntityIdList selectedDetachEntities(selectedTransformHierarchyEntities.begin(), selectedTransformHierarchyEntities.end());
 
                 // A selection in Lumberyard is usually singular, but a selection can have more than one entity.
                 // No Lumberyard systems support multiple selections, or multiple different groups of selected entities.
@@ -3859,37 +3920,11 @@ namespace AzToolsFramework
                 QObject::connect(detachAction, &QAction::triggered, [selectedDetachEntities] {
                     if (!selectedDetachEntities.empty())
                     {
-                        QString title;
-                        QString body;
-                        if (selectedDetachEntities.size() == 1)
-                        {
-                            title = QObject::tr("Detach Slice Entity");
-                            body = QObject::tr("A detached entity will no longer receive pushes from its slice. The entity will be converted into a non-slice entity. This action cannot be undone.\n\n"
-                                "Are you sure you want to detach the selected entity?");
-                        }
-                        else
-                        {
-                            title = QObject::tr("Detach Slice Entities");
-                            body = QObject::tr("Detached entities no longer receive pushes from their slices. The entities will be converted into non-slice entities. This action cannot be undone.\n\n"
-                                "Are you sure you want to detach the selected entities and their transform descendants?");
-                        }
-
-                        QMessageBox questionBox(QApplication::activeWindow());
-                        questionBox.setIcon(QMessageBox::Question);
-                        questionBox.setWindowTitle(title);
-                        questionBox.setText(body);
-                        QAbstractButton* detachButton = questionBox.addButton(QObject::tr("Detach"), QMessageBox::YesRole);
-                        questionBox.addButton(QObject::tr("Cancel"), QMessageBox::NoRole);
-                        questionBox.exec();
-
-                        if (questionBox.clickedButton() == detachButton)
-                        {
-                            AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::DetachSliceEntities, selectedDetachEntities);
-                        }
+                        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::DetachSliceEntities, selectedDetachEntities);
                     }});
             }
 
-            void addDetachSliceInstanceAction(QMenu* detachMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances)
+            void addDetachSliceInstanceAction(QMenu* detachMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AZ::SliceComponent::SliceInstanceAddressSet& sliceInstances)
             {
                 QString detachSlicesActionText;
                 QString detachSlicesTooltipText;
@@ -3908,53 +3943,12 @@ namespace AzToolsFramework
                 QObject::connect(detachAllAction, &QAction::triggered, [selectedEntities, sliceInstances] {
                     if (!selectedEntities.empty())
                     {
-                        QString title;
-                        QString body;
-                        if (sliceInstances.size() == 1)
-                        {
-                            title = QObject::tr("Detach Slice Instance");
-                            body = QObject::tr("A detached instance will no longer receive pushes from its slice. All entities in the slice instance will be converted into non-slice entities. This action cannot be undone.\n\n"
-                                "Are you sure you want to detach the selected instance?");
-                        }
-                        else
-                        {
-                            title = QObject::tr("Detach Slice Instances");
-                            body = QObject::tr("Detached instances no longer receive pushes from their slices. All entities in the slice instances will be converted into non-slice entities. This action cannot be undone.\n\n"
-                                "Are you sure you want to detach the selected instances?");
-                        }
-
-                        QMessageBox questionBox(QApplication::activeWindow());
-                        questionBox.setIcon(QMessageBox::Question);
-                        questionBox.setWindowTitle(title);
-                        questionBox.setText(body);
-                        QAbstractButton* detachButton = questionBox.addButton(QObject::tr("Detach"), QMessageBox::YesRole);
-                        questionBox.addButton(QObject::tr("Cancel"), QMessageBox::NoRole);
-                        questionBox.exec();
-
-                        if (questionBox.clickedButton() == detachButton)
-                        {
-                            // Get all instantiated entities for the slice instances
-                            AzToolsFramework::EntityIdList entitiesToDetach = selectedEntities;
-                            for (const AZ::SliceComponent::SliceInstanceAddress& sliceInstance : sliceInstances)
-                            {
-                                const AZ::SliceComponent::InstantiatedContainer* instantiated = sliceInstance.GetInstance()->GetInstantiated();
-                                if (instantiated)
-                                {
-                                    for (AZ::Entity* entityInSlice : instantiated->m_entities)
-                                    {
-                                        entitiesToDetach.push_back(entityInSlice->GetId());
-                                    }
-                                }
-                            }
-
-                            // Detach the entities
-                            AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::DetachSliceEntities, entitiesToDetach);
-                        }
+                        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::DetachSliceInstances, sliceInstances);
                     }
                 });
             }
 
-            void GetEntitiesInSlices(const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32& entitiesInSlices, AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>& sliceInstances)
+            void GetEntitiesInSlices(const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32& entitiesInSlices, AZ::SliceComponent::SliceInstanceAddressSet& sliceInstances)
             {
                 // Identify all slice instances affected by the selected entity set.
                 entitiesInSlices = 0;
@@ -3965,12 +3959,8 @@ namespace AzToolsFramework
 
                     if (sliceAddress.IsValid())
                     {
+                        sliceInstances.insert(sliceAddress);
                         ++entitiesInSlices;
-
-                        if (sliceInstances.end() == AZStd::find(sliceInstances.begin(), sliceInstances.end(), sliceAddress))
-                        {
-                            sliceInstances.push_back(sliceAddress);
-                        }
                     }
                 }
             }

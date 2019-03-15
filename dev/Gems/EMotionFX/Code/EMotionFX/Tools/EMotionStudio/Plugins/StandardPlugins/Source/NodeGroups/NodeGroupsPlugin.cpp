@@ -111,7 +111,7 @@ namespace EMStudio
         ReInit();
 
         // connect the window activation signal to refresh if reactivated
-        connect(mDock, SIGNAL(visibilityChanged(bool)), this, SLOT(WindowReInit(bool)));
+        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &NodeGroupsPlugin::WindowReInit);
 
         return true;
     }

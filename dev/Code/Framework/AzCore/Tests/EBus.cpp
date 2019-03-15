@@ -2098,6 +2098,283 @@ namespace UnitTest
         AZ_TEST_STOP_ASSERTTEST(1);
     }
 
+    namespace LocklessTest
+    {
+        struct LocklessConnectorEvents
+            : public AZ::EBusTraits
+        {
+            using MutexType = AZStd::recursive_mutex;
+            static const bool LocklessDispatch = true;
+            static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
+            typedef uint32_t BusIdType;
+
+            virtual ~LocklessConnectorEvents() = default;
+            virtual void DoConnect() = 0;
+            virtual void DoDisconnect() = 0;
+        };
+
+        using LocklessConnectorBus = AZ::EBus<LocklessConnectorEvents>;
+
+        class MyEventGroup
+            : public AZ::EBusTraits
+        {
+        public:
+            using MutexType = AZStd::recursive_mutex;
+            static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
+            typedef uint32_t BusIdType;
+
+            virtual void Calculate(int x, int y, int z) = 0;
+
+            virtual ~MyEventGroup() {}
+        };
+
+        using MyEventGroupBus = AZ::EBus< MyEventGroup >;
+
+        struct DoubleEbusImpl
+            : public LocklessConnectorBus::Handler,
+            MyEventGroupBus::Handler
+        {
+            uint32_t m_id;
+            uint32_t m_val;
+            uint32_t m_maxSleep;
+
+            DoubleEbusImpl(uint32_t id, uint32_t maxSleep)
+                : m_id(id)
+                , m_val(0)
+                , m_maxSleep(maxSleep)
+            {
+                LocklessConnectorBus::Handler::BusConnect(m_id);
+            }
+
+            ~DoubleEbusImpl()
+            {
+                MyEventGroupBus::Handler::BusDisconnect();
+                LocklessConnectorBus::Handler::BusDisconnect();
+            }
+
+            void Calculate(int x, int y, int z) override
+            {
+                m_val = x + (y * z);
+                if (m_maxSleep)
+                {
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(m_val % m_maxSleep));
+                }
+            }
+            
+            virtual void DoConnect() override
+            {
+                MyEventGroupBus::Handler::BusConnect(m_id);
+            }
+
+            virtual void DoDisconnect() override
+            {
+                MyEventGroupBus::Handler::BusDisconnect();
+            }
+        };
+    }
+
+    TEST_F(EBus, MixedLocklessTest)
+    {
+        using namespace LocklessTest;
+
+        const int maxSleep = 5;
+        const size_t threadCount = 8;
+        enum : size_t { cycleCount = 500 };
+        AZStd::thread threads[threadCount];
+        AZStd::vector<int> results[threadCount];
+
+        AZStd::vector<DoubleEbusImpl> handlerList;
+
+        for (int i = 0; i < threadCount; i++)
+        {
+            handlerList.emplace_back(i, maxSleep);
+        }
+
+        auto work = [maxSleep, threadCount]()
+        {
+            char sentinel[64] = { 0 };
+            char* end = sentinel + AZ_ARRAY_SIZE(sentinel);
+            for (int i = 1; i < cycleCount; ++i)
+            {
+                uint32_t id = rand() % threadCount;
+
+                LocklessConnectorBus::Event(id, &LocklessConnectorBus::Events::DoConnect);
+
+                uint32_t ms = maxSleep ? rand() % maxSleep : 0;
+                if (ms % 3)
+                {
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(ms));
+                }
+
+                MyEventGroupBus::Event(id, &MyEventGroupBus::Events::Calculate, i, i * 2, i << 4);
+                
+                LocklessConnectorBus::Event(id, &LocklessConnectorBus::Events::DoDisconnect);
+
+                bool failed = (AZStd::find_if(&sentinel[0], end, [](char s) { return s != 0; }) != end);
+                EXPECT_FALSE(failed);
+            }
+        };
+
+        for (AZStd::thread& thread : threads)
+        {
+            thread = AZStd::thread(work);
+        }
+
+        for (AZStd::thread& thread : threads)
+        {
+            thread.join();
+        }
+    }
+
+    namespace MultithreadConnect
+    {
+        class MyEventGroup
+            : public AZ::EBusTraits
+        {
+        public:
+            using MutexType = AZStd::recursive_mutex;
+
+            virtual ~MyEventGroup() {}
+        };
+
+        typedef AZ::EBus< MyEventGroup > MyEventGroupBus;
+
+        struct MyEventGroupImpl :
+            MyEventGroupBus::Handler
+        {
+            MyEventGroupImpl()
+            {
+                
+            }
+
+            ~MyEventGroupImpl()
+            {
+                MyEventGroupBus::Handler::BusDisconnect();
+            }
+
+            virtual void DoConnect()
+            {
+                MyEventGroupBus::Handler::BusConnect();
+            }
+
+            virtual void DoDisconnect()
+            {
+                MyEventGroupBus::Handler::BusDisconnect();
+            }
+        };
+    }
+
+    TEST_F(EBus, MultithreadConnectTest)
+    {
+        using namespace MultithreadConnect;
+
+        const int maxSleep = 5;
+        const size_t threadCount = 8;
+        enum : size_t { cycleCount = 1000 };
+        AZStd::thread threads[threadCount];
+        AZStd::vector<int> results[threadCount];
+
+        MyEventGroupImpl handler;
+
+        auto work = [maxSleep, &handler]()
+        {
+            for (int i = 1; i < cycleCount; ++i)
+            {
+                handler.DoConnect();
+
+                uint32_t ms = maxSleep ? rand() % maxSleep : 0;
+                if (ms % 3)
+                {
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(ms));
+                }
+
+                handler.DoDisconnect();
+            }
+        };
+
+        for (AZStd::thread& thread : threads)
+        {
+            thread = AZStd::thread(work);
+        }
+
+        for (AZStd::thread& thread : threads)
+        {
+            thread.join();
+        }
+    }
+
+    struct LocklessNullMutexEvents
+        : public AZ::EBusTraits
+    {
+        using MutexType = AZ::NullMutex;
+        static const bool LocklessDispatch = true;
+
+        virtual ~LocklessNullMutexEvents() = default;
+        virtual void AtomicIncrement() = 0;
+    };
+
+    using LocklessNullMutexBus = AZ::EBus<LocklessNullMutexEvents>;
+
+    struct LocklessNullMutexImpl
+        : public LocklessNullMutexBus::Handler
+    {
+        AZStd::atomic<uint64_t> m_val{};
+        LocklessNullMutexImpl()
+        {
+            BusConnect();
+        }
+
+        ~LocklessNullMutexImpl()
+        {
+            BusDisconnect();
+        }
+
+        void AtomicIncrement()
+        {
+            ++m_val;
+        }
+    };
+
+    void ThrashLocklessDispatchNullMutex()
+    {
+        constexpr size_t threadCount = 8;
+        enum : size_t { cycleCount = 1000 };
+        constexpr uint64_t expectedAtomicCount = threadCount * cycleCount;
+        AZStd::thread threads[threadCount];
+
+        LocklessNullMutexImpl handler;
+
+        auto work = []()
+        {
+            for (int i = 0; i < cycleCount; ++i)
+            {
+                constexpr int maxSleep = 3;
+                uint32_t ms = rand() % maxSleep;
+                if (ms != 0)
+                {
+                    AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(ms));
+                }
+                LocklessNullMutexBus::Broadcast(&LocklessNullMutexBus::Events::AtomicIncrement);
+            }
+        };
+
+        for (AZStd::thread& thread : threads)
+        {
+            thread = AZStd::thread(work);
+        }
+
+        for (AZStd::thread& thread : threads)
+        {
+            thread.join();
+        }
+
+        EXPECT_EQ(expectedAtomicCount, static_cast<uint64_t>(handler.m_val));
+    }
+
+    TEST_F(EBus, LocklessDispatchWithNullMutex_Multithread_Thrash)
+    {
+        ThrashLocklessDispatchNullMutex();
+    }
     namespace EBusResultsTest
     {
         class ResultClass

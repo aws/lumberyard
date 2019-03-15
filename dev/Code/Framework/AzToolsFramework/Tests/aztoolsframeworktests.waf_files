@@ -3,8 +3,11 @@
         "Root": [
             "Main.cpp"
         ],
-        "AzToolsFramework" : [
-            "UndoStack.cpp"
+        "AzToolsFramework": [
+          "UndoStack.cpp"
+        ],
+        "ToolsComponents": [
+            "ToolsComponents/EditorLayerComponentTests.cpp"
         ]
     }
 }

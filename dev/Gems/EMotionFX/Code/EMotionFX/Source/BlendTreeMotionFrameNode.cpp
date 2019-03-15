@@ -93,13 +93,10 @@ namespace EMotionFX
             outputPose->InitFromBindPose(actorInstance);
 
             // visualize it
-        #ifdef EMFX_EMSTUDIOBUILD
-            if (GetCanVisualize(animGraphInstance))
+            if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
             {
                 actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
             }
-        #endif
-
             return;
         }
 
@@ -113,13 +110,10 @@ namespace EMotionFX
             outputPose->InitFromBindPose(actorInstance);
 
             // visualize it
-        #ifdef EMFX_EMSTUDIOBUILD
-            if (GetCanVisualize(animGraphInstance))
+            if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
             {
                 actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
             }
-        #endif
-
             return;
         }
 
@@ -162,12 +156,10 @@ namespace EMotionFX
         motionInstance->SetCurrentTime(oldTime);
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 

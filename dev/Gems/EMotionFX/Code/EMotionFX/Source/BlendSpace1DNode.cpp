@@ -50,15 +50,16 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendSpace1DNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
     BlendSpace1DNode::BlendSpace1DNode()
-        : BlendSpaceNode(nullptr, "")
+        : BlendSpaceNode()
         , m_evaluator(nullptr)
         , m_evaluatorType(azrtti_typeid<BlendSpaceParamEvaluatorNone>())
         , m_calculationMethod(ECalculationMethod::AUTO)
         , m_syncMode(SYNCMODE_DISABLED)
         , m_currentPositionSetInteractively(false)
     {
-        InitInputPorts(1);
+        InitInputPorts(2);
         SetupInputPortAsNumber("X", INPUTPORT_VALUE, PORTID_INPUT_VALUE);
+        SetupInputPortAsNumber("In Place", INPUTPORT_INPLACE, PORTID_INPUT_INPLACE);
 
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
@@ -218,6 +219,8 @@ namespace EMotionFX
         AnimGraphPose* motionOutPose = posePool.RequestPose(actorInstance);
         Pose& motionOutLocalPose = motionOutPose->GetPose();
 
+        const bool inPlace = GetIsInPlace(animGraphInstance);
+
         if (uniqueData->m_currentSegment.m_segmentIndex != MCORE_INVALIDINDEX32)
         {
             const AZ::u32 segIndex = uniqueData->m_currentSegment.m_segmentIndex;
@@ -225,9 +228,10 @@ namespace EMotionFX
             {
                 MotionInstance* motionInstance = uniqueData->m_motionInfos[uniqueData->m_sortedMotions[segIndex + i]].m_motionInstance;
                 motionOutPose->InitFromBindPose(actorInstance);
+                motionInstance->SetIsInPlace(inPlace);
                 motionInstance->GetMotion()->Update(&bindPose->GetPose(), &motionOutLocalPose, motionInstance);
 
-                if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled())
+                if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled() && !motionInstance->GetMotion()->GetIsAdditive())
                 {
                     motionOutLocalPose.CompensateForMotionExtractionDirect(motionInstance->GetMotion()->GetMotionExtractionFlags());
                 }
@@ -241,10 +245,11 @@ namespace EMotionFX
         {
             const AZ::u16 motionIdx = (uniqueData->m_currentPosition < uniqueData->GetRangeMin()) ? uniqueData->m_sortedMotions.front() : uniqueData->m_sortedMotions.back();
             MotionInstance* motionInstance = uniqueData->m_motionInfos[motionIdx].m_motionInstance;
+            motionInstance->SetIsInPlace(inPlace);
             motionOutPose->InitFromBindPose(actorInstance);
             motionInstance->GetMotion()->Update(&bindPose->GetPose(), &motionOutLocalPose, motionInstance);
 
-            if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled())
+            if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled() && !motionInstance->GetMotion()->GetIsAdditive())
             {
                 motionOutLocalPose.CompensateForMotionExtractionDirect(motionInstance->GetMotion()->GetMotionExtractionFlags());
             }
@@ -261,12 +266,10 @@ namespace EMotionFX
         posePool.FreePose(bindPose);
 
 
-#ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-#endif
     }
 
 
@@ -302,6 +305,8 @@ namespace EMotionFX
             {
                 UpdateIncomingNode(animGraphInstance, paramConnection->GetSourceNode(), timePassedInSeconds);
             }
+
+            UpdateIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_INPLACE), timePassedInSeconds);
         }
 
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
@@ -318,7 +323,9 @@ namespace EMotionFX
         // Set the duration and current play time etc to the master motion index, or otherwise just the first motion in the list if syncing is disabled.
         AZ::u32 motionIndex = (uniqueData->m_masterMotionIdx != MCORE_INVALIDINDEX32) ? uniqueData->m_masterMotionIdx : MCORE_INVALIDINDEX32;
         if (m_syncMode == ESyncMode::SYNCMODE_DISABLED || motionIndex == MCORE_INVALIDINDEX32)
+        {
             motionIndex = 0;
+        }
 
         UpdateBlendingInfoForCurrentPoint(*uniqueData);
 
@@ -326,13 +333,13 @@ namespace EMotionFX
 
         if (!uniqueData->m_motionInfos.empty())
         {
-            const MotionInfo& motionInfo = uniqueData->m_motionInfos[motionIndex];
-            uniqueData->SetDuration( motionInfo.m_motionInstance ? motionInfo.m_motionInstance->GetDuration() : 0.0f );
-            uniqueData->SetCurrentPlayTime( motionInfo.m_currentTime );
-            uniqueData->SetSyncTrack( motionInfo.m_syncTrack );
-            uniqueData->SetSyncIndex( motionInfo.m_syncIndex );
-            uniqueData->SetPreSyncTime( motionInfo.m_preSyncTime);
-            uniqueData->SetPlaySpeed( motionInfo.m_playSpeed );               
+            MotionInfo& motionInfo = uniqueData->m_motionInfos[motionIndex];
+            uniqueData->SetDuration(motionInfo.m_motionInstance ? motionInfo.m_motionInstance->GetDuration() : 0.0f);
+            uniqueData->SetCurrentPlayTime(motionInfo.m_currentTime);
+            uniqueData->SetSyncTrack(motionInfo.m_syncTrack);
+            uniqueData->SetSyncIndex(motionInfo.m_syncIndex);
+            uniqueData->SetPreSyncTime(motionInfo.m_preSyncTime);
+            uniqueData->SetPlaySpeed(motionInfo.m_playSpeed);
         }
     }
 
@@ -370,7 +377,8 @@ namespace EMotionFX
         data->ClearEventBuffer();
         data->ZeroTrajectoryDelta();
 
-        DoPostUpdate(animGraphInstance, uniqueData->m_masterMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, m_eventFilterMode, data);
+        const bool inPlace = GetIsInPlace(animGraphInstance);
+        DoPostUpdate(animGraphInstance, uniqueData->m_masterMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, m_eventFilterMode, data, inPlace);
     }
 
 
@@ -431,7 +439,7 @@ namespace EMotionFX
             }
         }
         uniqueData->m_allMotionsHaveSyncTracks = DoAllMotionsHaveSyncTracks(uniqueData->m_motionInfos);
-        
+
         UpdateMotionPositions(*uniqueData);
 
         SortMotionInstances(*uniqueData);
@@ -441,10 +449,20 @@ namespace EMotionFX
     }
 
 
+    bool BlendSpace1DNode::GetIsInPlace(AnimGraphInstance* animGraphInstance) const
+    {
+        EMotionFX::BlendTreeConnection* inPlaceConnection = GetInputPort(INPUTPORT_INPLACE).mConnection;
+        if (inPlaceConnection)
+        {
+            return GetInputNumberAsBool(animGraphInstance, INPUTPORT_INPLACE);
+        }
+
+        return m_inPlace;
+    }
+
+
     void BlendSpace1DNode::UpdateMotionPositions(UniqueData& uniqueData)
     {
-        const BlendSpaceManager* blendSpaceManager = GetAnimGraphManager().GetBlendSpaceManager();
-
         // Get the motion parameter evaluator.
         BlendSpaceParamEvaluator* evaluator = nullptr;
         if (m_calculationMethod == ECalculationMethod::AUTO)
@@ -458,7 +476,6 @@ namespace EMotionFX
         }
 
         // the motions in the attributes could not match the ones in the unique data. The attribute could have some invalid motions
-        const size_t motionCount = m_motions.size();
         const size_t uniqueDataMotionCount = uniqueData.m_motionInfos.size();
 
         // Iterate through all motions and calculate their location in the blend space.
@@ -481,6 +498,7 @@ namespace EMotionFX
             {
                 // Position was not set by user. Use evaluator for automatic computation.
                 MotionInstance* motionInstance = uniqueData.m_motionInfos[uniqueDataMotionIndex].m_motionInstance;
+                motionInstance->SetIsInPlace(false);
                 uniqueData.m_motionCoordinates[uniqueDataMotionIndex] = evaluator->ComputeParamValue(*motionInstance);
             }
 
@@ -517,7 +535,6 @@ namespace EMotionFX
         BlendSpaceParamEvaluator* evaluator = nullptr;
         if (m_calculationMethod == ECalculationMethod::AUTO)
         {
-            const BlendSpaceManager* blendSpaceManager = GetAnimGraphManager().GetBlendSpaceManager();
             evaluator = m_evaluator;
             if (evaluator && evaluator->IsNullEvaluator())
             {
@@ -531,7 +548,7 @@ namespace EMotionFX
             position = AZ::Vector2::CreateZero();
             return;
         }
-        
+
         // If the motion is invalid, we dont have anything to update.
         const BlendSpaceMotion& blendSpaceMotion = m_motions[motionIndex];
         if (blendSpaceMotion.TestFlag(BlendSpaceMotion::TypeFlags::InvalidMotion))
@@ -556,6 +573,7 @@ namespace EMotionFX
 
         AZ_Assert(uniqueDataMotionIndex < uniqueData->m_motionInfos.size(), "Invalid amount of motion infos in unique data");
         MotionInstance* motionInstance = uniqueData->m_motionInfos[uniqueDataMotionIndex].m_motionInstance;
+        motionInstance->SetIsInPlace(false);
         position.SetX(evaluator->ComputeParamValue(*motionInstance));
         position.SetY(0.0f);
     }
@@ -629,10 +647,11 @@ namespace EMotionFX
         {
             EMotionFX::BlendTreeConnection* paramConnection = GetInputPort(INPUTPORT_VALUE).mConnection;
 
-#ifdef EMFX_EMSTUDIOBUILD
-            // We do require the user to make connections into the value port.
-            SetHasError(animGraphInstance, (paramConnection == nullptr));
-#endif
+            if (GetEMotionFX().GetIsInEditorMode())
+            {
+                // We do require the user to make connections into the value port.
+                SetHasError(animGraphInstance, (paramConnection == nullptr));
+            }
 
             float samplePoint;
             if (paramConnection)
@@ -845,7 +864,7 @@ namespace EMotionFX
             ->Field("syncMasterMotionId", &BlendSpace1DNode::m_syncMasterMotionId)
             ->Field("eventFilterMode", &BlendSpace1DNode::m_eventFilterMode)
             ->Field("motions", &BlendSpace1DNode::m_motions)
-            ;
+        ;
 
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -856,26 +875,26 @@ namespace EMotionFX
 
         editContext->Class<BlendSpace1DNode>("Blend Space 1D", "Blend space 1D attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace1DNode::m_calculationMethod, "Calculation method", "Calculation method.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace1DNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace1DNode::Reinit)
             ->DataElement(AZ_CRC("BlendSpaceEvaluator", 0x9a3f7d07), &BlendSpace1DNode::m_evaluatorType, "Evaluator", "Evaluator for the motions.")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &BlendSpace1DNode::GetEvaluatorVisibility)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace1DNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendSpace1DNode::GetEvaluatorVisibility)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace1DNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace1DNode::m_syncMode)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ_CRC("BlendSpaceMotion", 0x9be98fb7), &BlendSpace1DNode::m_syncMasterMotionId, "Sync Master Motion", "The master motion used for motion synchronization.")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &BlendSpace1DNode::GetSyncOptionsVisibility)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace1DNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendSpace1DNode::GetSyncOptionsVisibility)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace1DNode::Reinit)
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendSpace1DNode::m_eventFilterMode)
             ->DataElement(AZ_CRC("BlendSpaceMotionContainer", 0x8025d37d), &BlendSpace1DNode::m_motions, "Motions", "Source motions for blend space")
-                ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace1DNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
-            ;
+            ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendSpace1DNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
+        ;
     }
 } // namespace EMotionFX

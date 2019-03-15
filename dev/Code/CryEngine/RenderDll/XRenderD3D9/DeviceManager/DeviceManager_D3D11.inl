@@ -284,7 +284,11 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_1
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
 
     D3D11_SUBRESOURCE_DATA* pSRD = NULL;
@@ -300,14 +304,22 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_2
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
         }
     }
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_3
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
 
     hr = gcpRendD3D->GetDevice().CreateTexture2D(&Desc, pSRD, &pD3DTex);
@@ -407,7 +419,11 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_4
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
             }
         }
@@ -415,7 +431,11 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_5
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
 
     hr = gcpRendD3D->GetDevice().CreateTexture2D(&Desc, pSRD, &pD3DTex);
@@ -505,7 +525,11 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_6
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
         }
     }
@@ -566,7 +590,11 @@ HRESULT CDeviceManager::CreateBuffer(
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_7
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #endif
 
     BufDesc.ByteWidth = nSize * elemSize;
@@ -665,7 +693,11 @@ void CDeviceManager::ExtractBasePointer(D3DBuffer* buffer, uint8*& base_ptr)
 #   if BUFFER_ENABLE_DIRECT_ACCESS
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVICEMANAGER_D3D11_INL_SECTION_8
-#include AZ_RESTRICTED_FILE(DeviceManager_D3D11_inl, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceManager_D3D11_inl_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceManager_D3D11_inl_provo.inl"
+    #endif
 #       endif
 #   else
     base_ptr = NULL;

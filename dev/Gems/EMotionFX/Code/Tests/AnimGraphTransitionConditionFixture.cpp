@@ -25,6 +25,7 @@
 #include <EMotionFX/Source/MotionSet.h>
 #include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/SkeletalMotion.h>
+#include <EMotionFX/Source/TwoStringEventData.h>
 
 namespace EMotionFX
 {
@@ -40,6 +41,8 @@ namespace EMotionFX
         mActor = Actor::Create("testActor");
         Node* rootNode = Node::Create("rootNode", mActor->GetSkeleton());
         mActor->AddNode(rootNode);
+        mActor->ResizeTransformData();
+        mActor->PostCreateInit();
 
         mAnimGraph = aznew AnimGraph();
 
@@ -59,8 +62,6 @@ namespace EMotionFX
         mStateMachine->SetEntryState(mMotionNode0);
         mStateMachine->AddTransition(mTransition);
 
-        EMotionFX::GetEventManager().RegisterEventType("TestEvent");
-
         mMotionSet = aznew MotionSet("testMotionSet");
         for (int nodeIndex = 0; nodeIndex < 2; ++nodeIndex)
         {
@@ -74,7 +75,10 @@ namespace EMotionFX
             // event will be seen as triggered inside a motion condition, but a
             // frame later, at frame 45.
             motion->GetEventTable()->AddTrack(MotionEventTrack::Create("TestEventTrack", motion));
-            motion->GetEventTable()->FindTrackByName("TestEventTrack")->AddEvent(0.73f, "TestEvent", "TestParameter", 0);
+            AZStd::shared_ptr<const TwoStringEventData> data = EMotionFX::GetEventManager().FindOrCreateEventData<TwoStringEventData>("TestEvent", "TestParameter");
+            AZStd::shared_ptr<const TwoStringEventData> rangeData = EMotionFX::GetEventManager().FindOrCreateEventData<TwoStringEventData>("TestRangeEvent", "TestParameter");
+            motion->GetEventTable()->FindTrackByName("TestEventTrack")->AddEvent(0.73f, data);
+            motion->GetEventTable()->FindTrackByName("TestEventTrack")->AddEvent(0.65f, 0.95f, rangeData);
 
             MotionSet::MotionEntry* motionEntry = aznew MotionSet::MotionEntry(motion->GetName(), motion->GetName(), motion);
             mMotionSet->AddMotionEntry(motionEntry);

@@ -15,9 +15,11 @@
 #include <AzCore/Outcome/Outcome.h>
 #include <EMotionFX/Source/AnimGraphEventBuffer.h>
 #include <EMotionFX/Source/AnimGraphObject.h>
+#include <EMotionFX/Source/AnimGraphSnapshot.h>
 #include <EMotionFX/Source/BaseObject.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <MCore/Source/Attribute.h>
+#include <MCore/Source/Random.h>
 
 
 namespace AZ
@@ -81,6 +83,10 @@ namespace EMotionFX
         MCORE_INLINE ActorInstance* GetActorInstance() const            { return mActorInstance; }
         MCORE_INLINE AnimGraph* GetAnimGraph() const                  { return mAnimGraph; }
         MCORE_INLINE MotionSet* GetMotionSet() const                    { return mMotionSet; }
+
+        void SetParentAnimGraphInstance(AnimGraphInstance* parentAnimGraphInstance);
+        MCORE_INLINE AnimGraphInstance* GetParentAnimGraphInstance() const { return m_parentAnimGraphInstance; }
+        void RemoveChildAnimGraphInstance(AnimGraphInstance* childAnimGraphInstance);
 
         bool GetParameterValueAsFloat(const char* paramName, float* outValue);
         bool GetParameterValueAsBool(const char* paramName, bool* outValue);
@@ -205,31 +211,15 @@ namespace EMotionFX
         void AddEventHandler(AnimGraphInstanceEventHandler* eventHandler);
 
         /**
-         * Find the index for the given event handler.
-         * @param[in] eventHandler A pointer to the event handler to search.
-         * @return The index of the event handler inside the event manager. MCORE_INVALIDINDEX32 in case the event handler has not been found.
-         */
-        uint32 FindEventHandlerIndex(AnimGraphInstanceEventHandler* eventHandler) const;
-
-        /**
          * Remove the given event handler.
          * @param eventHandler A pointer to the event handler to remove.
-         * @param delFromMem When set to true, the event handler will be deleted from memory automatically when removing it.
          */
-        bool RemoveEventHandler(AnimGraphInstanceEventHandler* eventHandler, bool delFromMem = true);
-
-        /**
-         * Remove the event handler at the given index.
-         * @param index The index of the event handler to remove.
-         * @param delFromMem When set to true, the event handler will be deleted from memory automatically when removing it.
-         */
-        void RemoveEventHandler(uint32 index, bool delFromMem = true);
+        void RemoveEventHandler(AnimGraphInstanceEventHandler* eventHandler);
 
         /**
          * Remove all event handlers.
-         * @param delFromMem When set to true, the event handlers will be deleted from memory automatically when removing it.
          */
-        void RemoveAllEventHandlers(bool delFromMem = true);
+        void RemoveAllEventHandlers();
 
         void OnStateEnter(AnimGraphNode* state);
         void OnStateEntering(AnimGraphNode* state);
@@ -239,6 +229,7 @@ namespace EMotionFX
         void OnEndTransition(AnimGraphStateTransition* transition);
 
         void CollectActiveAnimGraphNodes(MCore::Array<AnimGraphNode*>* outNodes, const AZ::TypeId& nodeType = AZ::TypeId::CreateNull()); // MCORE_INVALIDINDEX32 means all node types
+        void CollectActiveNetTimeSyncNodes(AZStd::vector<AnimGraphNode*>* outNodes);
 
         MCORE_INLINE uint32 GetObjectFlags(uint32 objectIndex) const                                            { return mObjectFlags[objectIndex]; }
         MCORE_INLINE void SetObjectFlags(uint32 objectIndex, uint32 flags)                                      { mObjectFlags[objectIndex] = flags; }
@@ -278,13 +269,33 @@ namespace EMotionFX
         const InitSettings& GetInitSettings() const;
         const AnimGraphEventBuffer& GetEventBuffer() const;
 
+        void AddServantGraph(AnimGraphInstance* servant, bool registerMasterInsideServant);
+        void RemoveServantGraph(AnimGraphInstance* servant, bool removeMasterFromServant);
+        AZStd::vector<AnimGraphInstance*>& GetServantGraphs();
+
+        // Network related functions
+        void CreateSnapshot(bool authoritative);
+        void SetSnapshotSerializer(AZStd::shared_ptr<Network::AnimGraphSnapshotSerializer> serializer);
+        void SetSnapshotChunkSerializer(AZStd::shared_ptr<Network::AnimGraphSnapshotChunkSerializer> serializer);
+        const AZStd::shared_ptr<AnimGraphSnapshot> GetSnapshot() const { return mSnapshot; }
+        bool IsNetworkEnabled() const { return GetSnapshot(); }
+        MCore::LcgRandom& GetLcgRandom() { return mLcgRandom;  }
+
+        void OnNetworkConnected();   
+        void OnNetworkParamUpdate(const AttributeContainer& parameters);
+        void OnNetworkActiveNodesUpdate(const AZStd::vector<AZ::u32>& activeNodes);
+        void OnNetworkMotionNodePlaytimesUpdate(const MotionNodePlaytimeContainer& motionNodePlaytimes);
+
     private:
         AnimGraph*                                          mAnimGraph;
-        ActorInstance*                                      mActorInstance;         //
+        ActorInstance*                                      mActorInstance;
+        AnimGraphInstance*                                  m_parentAnimGraphInstance; // If this anim graph instance is in a reference node, it will have a parent anim graph instance.
+        AZStd::vector<AnimGraphInstance*>                   m_childAnimGraphInstances; // If this anim graph instance contains reference nodes, the anim graph instances will be listed here.
         MCore::Array<MCore::Attribute*>                     mParamValues;           // a value for each AnimGraph parameter (the control parameters)
         AZStd::vector<AnimGraphObjectData*>                 m_uniqueDatas;          // unique object data
         MCore::Array<uint32>                                mObjectFlags;           // the object flags
-        MCore::Array<AnimGraphInstanceEventHandler*>        mEventHandlers;         /**< The event handlers to use to process events. */
+        using EventHandlerVector = AZStd::vector<AnimGraphInstanceEventHandler*>;
+        AZStd::vector<EventHandlerVector>                   m_eventHandlersByEventType; /**< The event handler to use to process events organized by EventTypes. */
         AZStd::vector<MCore::Attribute*>                    m_internalAttributes;
         MotionSet*                                          mMotionSet;             // the used motion set
         MCore::Mutex                                        mMutex;
@@ -294,6 +305,13 @@ namespace EMotionFX
         bool                                                mAutoUnregister;        /**< Specifies whether we will automatically unregister this anim graph instance set from the anim graph manager or not, when deleting this object. */
         bool                                                mEnableVisualization;
         bool                                                mRetarget;              /**< Is retargeting enabled? */
+        
+        AZStd::vector<AnimGraphInstance*>                   m_servantGraphs;
+        AZStd::vector<AnimGraphInstance*>                   m_masterGraphs;
+
+        // Network related members
+        AZStd::shared_ptr<AnimGraphSnapshot>                mSnapshot;
+        MCore::LcgRandom                                    mLcgRandom;
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                                                mIsOwnedByRuntime;
@@ -303,6 +321,11 @@ namespace EMotionFX
         ~AnimGraphInstance();
         void RecursiveSwitchToEntryState(AnimGraphNode* node);
         void RecursiveResetCurrentState(AnimGraphNode* node);
+        void RecursivePrepareNode(AnimGraphNode* node);
         void InitUniqueDatas();
+
+        void AddMasterGraph(AnimGraphInstance* master);
+        void RemoveMasterGraph(AnimGraphInstance* master);
+        AZStd::vector<AnimGraphInstance*>& GetMasterGraphs();
     };
 }   // namespace EMotionFX

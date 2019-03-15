@@ -15,6 +15,9 @@
 //  - Manage and cache glyphs, retrieving them from the renderer as needed
 
 #include "StdAfx.h"
+
+#if !defined(USE_NULLFONT_ALWAYS)
+
 #include "GlyphCache.h"
 #include "FontTexture.h"
 
@@ -162,9 +165,15 @@ int CGlyphCache::GetGlyphBitmapSize(int* pWidth, int* pHeight)
 }
 
 //-------------------------------------------------------------------------------------------------
-int CGlyphCache::PreCacheGlyph(uint32 cChar)
+void CGlyphCache::SetGlyphBitmapSize(int width, int height, float sizeRatio)
 {
-    CCacheTable::iterator pItor = m_pCacheTable.find(cChar);
+    m_pFontRenderer.SetGlyphBitmapSize(width, height, sizeRatio);
+}
+
+//-------------------------------------------------------------------------------------------------
+int CGlyphCache::PreCacheGlyph(uint32 cChar, const Vec2i& glyphSize, const CFFont::FontHintParams& fontHintParams)
+{
+    CCacheTable::iterator pItor = m_pCacheTable.find(GetCacheSlotKey(cChar, glyphSize));
 
     if (pItor != m_pCacheTable.end())
     {
@@ -182,7 +191,7 @@ int CGlyphCache::PreCacheGlyph(uint32 cChar)
 
     if (pSlot->dwUsage > 0)
     {
-        UnCacheGlyph(pSlot->cCurrentChar);
+        UnCacheGlyph(pSlot->cCurrentChar, pSlot->glyphSize);
     }
 
     if (m_pScaleBitmap)
@@ -201,7 +210,7 @@ int CGlyphCache::PreCacheGlyph(uint32 cChar)
 
         m_pScaleBitmap->Clear();
 
-        if (!m_pFontRenderer.GetGlyph(m_pScaleBitmap, &pSlot->iHoriAdvance, &pSlot->iCharWidth, &pSlot->iCharHeight, pSlot->iCharOffsetX, pSlot->iCharOffsetY, 0, 0, cChar))
+        if (!m_pFontRenderer.GetGlyph(m_pScaleBitmap, &pSlot->iHoriAdvance, &pSlot->iCharWidth, &pSlot->iCharHeight, pSlot->iCharOffsetX, pSlot->iCharOffsetY, 0, 0, cChar, fontHintParams))
         {
             return 0;
         }
@@ -213,7 +222,7 @@ int CGlyphCache::PreCacheGlyph(uint32 cChar)
     }
     else
     {
-        if (!m_pFontRenderer.GetGlyph(&pSlot->pGlyphBitmap, &pSlot->iHoriAdvance, &pSlot->iCharWidth, &pSlot->iCharHeight, pSlot->iCharOffsetX, pSlot->iCharOffsetY, 0, 0, cChar))
+        if (!m_pFontRenderer.GetGlyph(&pSlot->pGlyphBitmap, &pSlot->iHoriAdvance, &pSlot->iCharWidth, &pSlot->iCharHeight, pSlot->iCharOffsetX, pSlot->iCharOffsetY, 0, 0, cChar, fontHintParams))
         {
             return 0;
         }
@@ -226,15 +235,16 @@ int CGlyphCache::PreCacheGlyph(uint32 cChar)
 
     pSlot->dwUsage = m_dwUsage;
     pSlot->cCurrentChar = cChar;
+    pSlot->glyphSize = glyphSize;
 
-    m_pCacheTable.insert(AZStd::pair<uint32, CCacheSlot*>(cChar, pSlot));
+    m_pCacheTable.insert(AZStd::pair<CryFont::GlyphCache::CCacheTableKey, CCacheSlot*>(GetCacheSlotKey(cChar, glyphSize), pSlot));
 
     return 1;
 }
 
-int CGlyphCache::UnCacheGlyph(uint32 cChar)
+int CGlyphCache::UnCacheGlyph(uint32 cChar, const Vec2i& glyphSize)
 {
-    CCacheTable::iterator pItor = m_pCacheTable.find(cChar);
+    CCacheTable::iterator pItor = m_pCacheTable.find(GetCacheSlotKey(cChar, glyphSize));
 
     if (pItor != m_pCacheTable.end())
     {
@@ -251,9 +261,9 @@ int CGlyphCache::UnCacheGlyph(uint32 cChar)
 }
 
 //-------------------------------------------------------------------------------------------------
-int CGlyphCache::GlyphCached(uint32 cChar)
+int CGlyphCache::GlyphCached(uint32 cChar, const Vec2i& glyphSize)
 {
-    return (m_pCacheTable.find(cChar) != m_pCacheTable.end());
+    return (m_pCacheTable.find(GetCacheSlotKey(cChar, glyphSize)) != m_pCacheTable.end());
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -317,19 +327,19 @@ CCacheSlot* CGlyphCache::GetMRUSlot()
 }
 
 //-------------------------------------------------------------------------------------------------
-int CGlyphCache::GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidth, int* piHeight, AZ::s8& iCharOffsetX, AZ::s8& iCharOffsetY, uint32 cChar)
+int CGlyphCache::GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidth, int* piHeight, AZ::s32& iCharOffsetX, AZ::s32& iCharOffsetY, uint32 cChar, const Vec2i& glyphSize, const CFFont::FontHintParams& fontHintParams)
 {
-    CCacheTable::iterator pItor = m_pCacheTable.find(cChar);
+    CCacheTable::iterator pItor = m_pCacheTable.find(GetCacheSlotKey(cChar, glyphSize));
 
     if (pItor == m_pCacheTable.end())
     {
-        if (!PreCacheGlyph(cChar))
+        if (!PreCacheGlyph(cChar, glyphSize, fontHintParams))
         {
             return 0;
         }
     }
 
-    pItor = m_pCacheTable.find(cChar);
+    pItor = m_pCacheTable.find(GetCacheSlotKey(cChar, glyphSize));
 
     pItor->second->dwUsage = m_dwUsage++;
     (*pGlyph) = &pItor->second->pGlyphBitmap;
@@ -359,6 +369,12 @@ int CGlyphCache::GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidt
 Vec2 CGlyphCache::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
 {
     return m_pFontRenderer.GetKerning(leftGlyph, rightGlyph);
+}
+
+//-------------------------------------------------------------------------------------------------
+float CGlyphCache::GetAscenderToHeightRatio()
+{
+    return m_pFontRenderer.GetAscenderToHeightRatio();
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -408,3 +424,10 @@ int CGlyphCache::ReleaseSlotList()
 }
 
 //-------------------------------------------------------------------------------------------------
+CryFont::GlyphCache::CCacheTableKey CGlyphCache::GetCacheSlotKey(uint32 cChar, const Vec2i& glyphSize) const
+{
+    const Vec2i clampedGlyphSize = CFontTexture::ClampGlyphSize(glyphSize, m_iGlyphBitmapWidth, m_iGlyphBitmapHeight);
+    return CryFont::GlyphCache::CCacheTableKey(clampedGlyphSize, cChar);
+}
+
+#endif // #if !defined(USE_NULLFONT_ALWAYS)

@@ -122,6 +122,7 @@ namespace EMotionFX
             mBlendOutBeforeEnded = true;
             mCanOverwrite        = true;
             mDeleteOnZeroWeight  = true;
+            mInPlace             = false;
             mPriorityLevel       = 0;
             mStartNodeIndex      = MCORE_INVALIDINDEX32;
         }
@@ -157,5 +158,6 @@ namespace EMotionFX
         bool                mBlendOutBeforeEnded;       /**< Set to true if you want the motion to be stopped so that it exactly faded out when the motion/loop fully finished. If set to false it will fade out after the loop has completed (and starts repeating). The default is true. */
         bool                mCanOverwrite;              /**< Set to true if you want this motion to be able to delete other underlaying motion instances when this motion instance reaches a weight of 1.0.*/
         bool                mDeleteOnZeroWeight;        /**< Set to true if you wish to delete this motion instance once it reaches a weight of 0.0. */
+        bool                mInPlace;                   /**< Set to true if you want the motion to play in place. This means the root of the motion will not move. */
     };
 } // namespace EMotionFX

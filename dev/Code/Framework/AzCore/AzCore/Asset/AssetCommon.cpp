@@ -15,11 +15,32 @@
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/std/parallel/lock.h>
+#include <AzCore/std/string/conversions.h>
 
 namespace AZ
 {
     namespace Data
     {
+        AssetId AssetId::CreateString(AZStd::string_view input)
+        {
+            size_t separatorIdx = input.find(':');
+            if (separatorIdx == AZStd::string_view::npos)
+            {
+                return AssetId();
+            }
+
+            AssetId assetId;
+            assetId.m_guid = Uuid::CreateString(input.data(), separatorIdx);
+            if (assetId.m_guid.IsNull())
+            {
+                return AssetId();
+            }
+
+            assetId.m_subId = strtoul(&input[separatorIdx + 1], nullptr, 16);
+
+            return assetId;
+        }
+
         namespace AssetInternal
         {
             //=========================================================================

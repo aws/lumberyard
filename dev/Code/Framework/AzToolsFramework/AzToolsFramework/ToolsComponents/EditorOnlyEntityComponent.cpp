@@ -37,7 +37,6 @@ namespace AzToolsFramework
                         ->DataElement(AZ::Edit::UIHandlers::Default, &EditorOnlyEntityComponent::m_isEditorOnly, 
                             "Editor Only", 
                             "Marks the entity for editor-use only. If true, the entity will not be exported for use in runtime contexts (including dynamic slices).")
-                            ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushableOnSliceRoot)
                         ;
                 }
             }

@@ -23,70 +23,10 @@
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/typetraits/is_integral.h>
 
+#include <AzCore/std/string/string_view.h>
+
 namespace AZStd
 {
-    template<class Element>
-    struct char_traits;
-    /**
-     * \ref C++0x (21.2.3.1)
-     * char Traits (todo move to a separate file)
-     */
-    template<>
-    struct char_traits<char>
-    {
-        // properties of a string or stream char element
-        typedef char        char_type;
-        typedef int         int_type;
-        //typedef AZSTD_STL::streampos  pos_type;
-        //typedef AZSTD_STL::streamoff  off_type;
-        //typedef AZSTD_STL::mbstate_t  state_type;
-
-        inline static void assign(char_type& left, const char_type& right)                          { left = right; }
-        inline static bool eq(char_type left, char_type right)                                      { return left == right; }
-        inline static bool lt(char_type left, char_type right)                                      { return left < right; }
-        inline static int compare(const char_type* s1, const char_type* s2, AZStd::size_t count)    { AZ_Assert(s1 != NULL && s2 != NULL, "Invalid input!"); return ::memcmp(s1, s2, count);  }
-        inline static AZStd::size_t length(const char_type* s)                                      { AZ_Assert(s != NULL, "Invalid input!"); return ::strlen(s); }
-        inline static const char_type* find(const char_type* s, AZStd::size_t count, const char_type& ch) { AZ_Assert(s != NULL, "Invalid input!"); return (const char_type*)::memchr(s, ch, count); }
-        inline static char_type* move(char_type* dest, const char_type* src, AZStd::size_t count)   { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::memmove(dest, src, count); }
-        inline static char_type* copy(char_type* dest, const char_type* src, AZStd::size_t count)   { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::memcpy(dest, src, count); }
-        inline static char_type* assign(char_type* dest, AZStd::size_t count, char_type ch)         { AZ_Assert(dest != NULL, "Invalid input!"); return (char_type*)::memset(dest, ch, count); }
-        inline static char_type to_char_type(int_type c)                                            { return (char_type)c; }
-        inline static int_type      to_int_type(char_type c)                                        { return ((unsigned char)c); }
-        inline static bool          eq_int_type(int_type left, int_type right)                       { return left == right; }
-        inline static int_type      eof()                                                           { return (int_type) - 1; }
-        inline static int_type      not_eof(const int_type c)                                       { return (c != (int_type) - 1 ? c : !eof()); }
-    };
-
-    template<>
-    struct char_traits<wchar_t>
-    {
-        // properties of a string or stream char element
-        typedef wchar_t     char_type;
-#ifdef _WCTYPE_T_DEFINED
-        typedef wint_t      int_type;
-#else
-        typedef unsigned short int_type;
-#endif
-        //typedef AZSTD_STL::streampos  pos_type;
-        //typedef AZSTD_STL::streamoff  off_type;
-        //typedef AZSTD_STL::mbstate_t  state_type;
-
-        inline static void assign(char_type& left, const char_type& right)                          { left = right; }
-        inline static bool eq(char_type left, char_type right)                                      { return left == right; }
-        inline static bool lt(char_type left, char_type right)                                      { return left < right; }
-        inline static int compare(const char_type* s1, const char_type* s2, AZStd::size_t count)    { AZ_Assert(s1 != NULL && s2 != NULL, "Invalid input!"); return ::wmemcmp(s1, s2, count); }
-        inline static AZStd::size_t length(const char_type* s)                                      { AZ_Assert(s != NULL, "Invalid input!"); return ::wcslen(s); }
-        inline static const char_type* find(const char_type* s, AZStd::size_t count, const char_type& ch) { AZ_Assert(s != NULL, "Invalid input!"); return (const char_type*)::wmemchr(s, ch, count); }
-        inline static char_type* move(char_type* dest, const char_type* src, AZStd::size_t count)   { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::wmemmove(dest, src, count); }
-        inline static char_type* copy(char_type* dest, const char_type* src, AZStd::size_t count)  { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::wmemcpy(dest, src, count); }
-        inline static char_type* assign(char_type* dest, AZStd::size_t count, char_type ch)     { AZ_Assert(dest != NULL, "Invalid input!"); return (char_type*)::wmemset(dest, ch, count); }
-        inline static char_type to_char_type(int_type c)                                        { return (char_type)c; }
-        inline static int_type      to_int_type(char_type c)                                        { return ((unsigned char)c); }
-        inline static bool          eq_int_type(int_type left, int_type right)                       { return left == right; }
-        inline static int_type      eof()                                                           { return (int_type) - 1; }
-        inline static int_type      not_eof(const int_type c)                                       { return (c != (int_type) - 1 ? c : !eof()); }
-    };
-
     /**
      *
      * Based on dinkumware (VC9) implementation. There are many improvements and extensions.
@@ -226,10 +166,20 @@ namespace AZStd
             assign(rhs, rhsOffset, count);
         }
 
+        basic_string(AZStd::basic_string_view<Element, Traits> view, const Allocator& alloc = Allocator())
+            : basic_string(view.begin(), view.end(), alloc)
+        {
+        }
+
         inline ~basic_string()
         {
             // destroy the string
             deallocate_memory(m_data, 0, typename allocator_type::allow_memory_leaks());
+        }
+
+        operator AZStd::basic_string_view<Element, Traits>() const
+        {
+            return AZStd::basic_string_view<Element, Traits>(data(), size());
         }
 
         inline iterator begin()             { return iterator(AZSTD_CHECKED_ITERATOR(iterator_impl, SSO_BUF_SIZE <= m_capacity ? m_data : m_buffer)); }
@@ -249,6 +199,7 @@ namespace AZStd
 #if defined(AZ_HAS_RVALUE_REFS)
         inline this_type& operator=(this_type&& rhs) { return assign(AZStd::forward<this_type>(rhs)); }
 #endif // AZ_HAS_RVALUE_REFS
+        inline this_type& operator=(AZStd::basic_string_view<Element, Traits> view) { return assign(view); }
         inline this_type& operator=(const_pointer ptr)          { return assign(ptr); }
         inline this_type& operator=(Element ch)             { return assign(1, ch); }
         inline this_type& operator+=(const this_type& rhs)      { return append(rhs); }
@@ -341,6 +292,11 @@ namespace AZStd
         inline this_type& assign(const this_type& rhs)
         {
             return assign(rhs, 0, npos);
+        }
+
+        inline this_type& assign(basic_string_view<Element, Traits> view)
+        {
+            return assign(view.data(), view.size());
         }
 
 #if defined(AZ_HAS_RVALUE_REFS)
@@ -1223,6 +1179,37 @@ namespace AZStd
             return (ans != 0 ? (int)ans : count < ptrCount ? -1 : count == ptrCount ? 0 : +1);
         }
 
+        // starts_with
+        bool starts_with(AZStd::basic_string_view<Element, Traits> prefix) const
+        {
+            return AZStd::basic_string_view<Element, Traits>(data(), size()).starts_with(prefix);
+        }
+
+        bool starts_with(value_type prefix) const
+        {
+            return AZStd::basic_string_view<Element, Traits>(data(), size()).starts_with(prefix);
+        }
+
+        bool starts_with(const_pointer prefix) const
+        {
+            return AZStd::basic_string_view<Element, Traits>(data(), size()).starts_with(prefix);
+        }
+
+        // ends_with
+        bool ends_with(AZStd::basic_string_view<Element, Traits> suffix) const
+        {
+            return AZStd::basic_string_view<Element, Traits>(data(), size()).ends_with(suffix);
+        }
+
+        bool ends_with(value_type suffix) const
+        {
+            return AZStd::basic_string_view<Element, Traits>(data(), size()).ends_with(suffix);
+        }
+
+        bool ends_with(const_pointer suffix) const
+        {
+            return AZStd::basic_string_view<Element, Traits>(data(), size()).ends_with(suffix);
+        }
 
         inline void pop_back()
         {
@@ -1889,26 +1876,6 @@ namespace AZStd
     template<class T>
     struct hash;
 
-    /// For string hashing we are using FNV-1a algorithm with 32 and 64 bit versions.
-    template<class RandomAccessIterator>
-    AZ_FORCE_INLINE AZStd::size_t hash_string(RandomAccessIterator first, AZStd::size_t length)
-    {
-#ifdef AZ_OS64
-        size_t hash = 14695981039346656037ULL;
-        const size_t fnvPrime = 1099511628211ULL;
-#else
-        size_t hash = 2166136261U;
-        const size_t fnvPrime = 16777619U;
-#endif
-        const char* cptr = reinterpret_cast<const char*>(&(*first));
-        for (; length; --length)
-        {
-            hash ^= static_cast<size_t>(*cptr++);
-            hash *= fnvPrime;
-        }
-        return hash;
-    }
-
     template<class Element, class Traits, class Allocator>
     struct hash< basic_string< Element, Traits, Allocator> >
     {
@@ -1919,6 +1886,14 @@ namespace AZStd
             return hash_string(value.begin(), value.length());
         }
     };
+
+    // Implements the extension method of AZStd::basic_string_view::to_string
+    template<class Element, class Traits>
+    template<class Allocator>
+    basic_string<Element, Traits, Allocator> basic_string_view<Element, Traits>::to_string(Allocator alloc) const
+    {
+        return basic_string<Element, Traits, Allocator>(*this, alloc);
+    }
 } // namespace AZStd
 
 #endif // AZSTD_STRING_H

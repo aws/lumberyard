@@ -34,19 +34,13 @@ namespace EMStudio
 {
     MotionEventPresetsWidget::MotionEventPresetsWidget(QWidget* parent, MotionEventsPlugin* plugin)
         : QWidget(parent)
+        , mTableWidget(nullptr)
+        , mAddButton(nullptr)
+        , mRemoveButton(nullptr)
+        , mClearButton(nullptr)
+        , mPlugin(plugin)
     {
-        mTableWidget    = nullptr;
-        mAddButton      = nullptr;
-        mRemoveButton   = nullptr;
-        mClearButton    = nullptr;
-        mPlugin         = plugin;
-        
         Init();
-    }
-
-
-    MotionEventPresetsWidget::~MotionEventPresetsWidget()
-    {
     }
 
 
@@ -59,42 +53,25 @@ namespace EMStudio
         layout->setSpacing(2);
 
         // create the table widget
-        mTableWidget    = new DragTableWidget(0, 4, nullptr);
+        mTableWidget = new DragTableWidget(0, 2, nullptr);
         mTableWidget->setCornerButtonEnabled(false);
         mTableWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
         mTableWidget->setContextMenuPolicy(Qt::DefaultContextMenu);
-        mTableWidget->setDragEnabled(true);
 
         // set the table to row single selection
         mTableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
         mTableWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-        // set header items for the table
-        QTableWidgetItem* colorHeaderItem = new QTableWidgetItem("Color");
-        QTableWidgetItem* eventTypeHeaderItem = new QTableWidgetItem("Type");
-        QTableWidgetItem* eventParameterHeaderItem = new QTableWidgetItem("Parameter");
-        QTableWidgetItem* eventMirrorTypeHeaderItem = new QTableWidgetItem("Mirror Type");
-        colorHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        eventTypeHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        eventParameterHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        eventMirrorTypeHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-
-        mTableWidget->setHorizontalHeaderItem(0, colorHeaderItem);
-        mTableWidget->setHorizontalHeaderItem(1, eventTypeHeaderItem);
-        mTableWidget->setHorizontalHeaderItem(2, eventParameterHeaderItem);
-        mTableWidget->setHorizontalHeaderItem(3, eventMirrorTypeHeaderItem);
-
         QHeaderView* horizontalHeader = mTableWidget->horizontalHeader();
-        mTableWidget->setColumnWidth(0, 39);
         horizontalHeader->setStretchLastSection(true);
 
         // create buttons
-        mAddButton      = new QPushButton();
-        mRemoveButton   = new QPushButton();
-        mClearButton    = new QPushButton();
-        mLoadButton     = new QPushButton();
-        mSaveButton     = new QPushButton();
-        mSaveAsButton   = new QPushButton();
+        mAddButton = new QPushButton();
+        mRemoveButton = new QPushButton();
+        mClearButton = new QPushButton();
+        mLoadButton = new QPushButton();
+        mSaveButton = new QPushButton();
+        mSaveAsButton = new QPushButton();
 
         EMStudioManager::MakeTransparentButton(mAddButton,     "/Images/Icons/Plus.png",       "Add new motion event preset");
         EMStudioManager::MakeTransparentButton(mRemoveButton,  "/Images/Icons/Minus.png",      "Remove selected motion event presets");
@@ -122,14 +99,28 @@ namespace EMStudio
         setLayout(layout);
 
         // connect the signals and the slots
-        connect(mAddButton, SIGNAL(clicked()), this, SLOT(AddMotionEventPreset()));
-        connect(mRemoveButton, SIGNAL(clicked()), this, SLOT(RemoveMotionEventPresets()));
-        connect(mClearButton, SIGNAL(clicked()), this, SLOT(ClearMotionEventPresetsButton()));
-        connect(mLoadButton, SIGNAL(clicked()), this, SLOT(LoadPresets()));
-        connect(mSaveButton, SIGNAL(clicked()), this, SLOT(SavePresets()));
-        connect(mSaveAsButton, SIGNAL(clicked()), this, SLOT(SaveWithDialog()));
-        connect(mTableWidget, SIGNAL(itemChanged(QTableWidgetItem*)), this, SLOT(UpdateMotionEventPreset(QTableWidgetItem*)));
-        connect(mTableWidget, SIGNAL(itemSelectionChanged()), this, SLOT(SelectionChanged()));
+        connect(mAddButton, &QPushButton::clicked, this, &MotionEventPresetsWidget::AddMotionEventPreset);
+        connect(mRemoveButton, &QPushButton::clicked, this, &MotionEventPresetsWidget::RemoveMotionEventPresets);
+        connect(mClearButton, &QPushButton::clicked, this, &MotionEventPresetsWidget::ClearMotionEventPresetsButton);
+        connect(mLoadButton, &QPushButton::clicked, [this]() { this->LoadPresets(); /* use lambda so that we get the default value for the showDialog parameter */ });
+        connect(mSaveButton, &QPushButton::clicked, [this]() { this->SavePresets(); });
+        connect(mSaveAsButton, &QPushButton::clicked, this, &MotionEventPresetsWidget::SaveWithDialog);
+        connect(mTableWidget, &MotionEventPresetsWidget::DragTableWidget::itemSelectionChanged, this, &MotionEventPresetsWidget::SelectionChanged);
+        connect(mTableWidget, &QTableWidget::cellDoubleClicked, this, [this](int row, int column)
+        {
+            AZ_UNUSED(column);
+            MotionEventPreset* preset = GetEventPresetManager()->GetPreset(row);
+            MotionEventPresetCreateDialog createDialog(*preset, this);
+            if (createDialog.exec() == QDialog::Accepted)
+            {
+                *preset = createDialog.GetPreset();
+
+                GetEventPresetManager()->SetDirtyFlag(true);
+                ReInit();
+                mPlugin->FireColorChangedSignal();
+            }
+        });
+
 
         // initialize everything
         ReInit();
@@ -142,25 +133,19 @@ namespace EMStudio
     {
         // clear the table widget
         mTableWidget->clear();
-        mTableWidget->setColumnCount(4);
+        mTableWidget->setColumnCount(2);
 
         const size_t numEventPresets = GetEventPresetManager()->GetNumPresets();
         mTableWidget->setRowCount(static_cast<int>(numEventPresets));
 
         // set header items for the table
         QTableWidgetItem* colorHeaderItem = new QTableWidgetItem("Color");
-        QTableWidgetItem* eventTypeHeaderItem = new QTableWidgetItem("Type");
-        QTableWidgetItem* eventParameterHeaderItem = new QTableWidgetItem("Parameter");
-        QTableWidgetItem* eventMirrorTypeHeaderItem = new QTableWidgetItem("Mirror Type");
+        QTableWidgetItem* presetNameHeaderItem = new QTableWidgetItem("Name");
         colorHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        eventTypeHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        eventParameterHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        eventMirrorTypeHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+        presetNameHeaderItem->setTextAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 
         mTableWidget->setHorizontalHeaderItem(0, colorHeaderItem);
-        mTableWidget->setHorizontalHeaderItem(1, eventTypeHeaderItem);
-        mTableWidget->setHorizontalHeaderItem(2, eventParameterHeaderItem);
-        mTableWidget->setHorizontalHeaderItem(3, eventMirrorTypeHeaderItem);
+        mTableWidget->setHorizontalHeaderItem(1, presetNameHeaderItem);
 
         mTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
         mTableWidget->setColumnWidth(0, 39);
@@ -174,58 +159,27 @@ namespace EMStudio
             }
 
             // create table items
-            const MCore::RGBAColor color = motionEventPreset->GetEventColor();
-
-            QTableWidgetItem* tableItemColor            = new QTableWidgetItem();
-            QTableWidgetItem* tableItemEventType        = new QTableWidgetItem(motionEventPreset->GetEventType().c_str());
-            QTableWidgetItem* tableItemEventParameter   = new QTableWidgetItem(motionEventPreset->GetEventParameter().c_str());
-            QTableWidgetItem* tableItemEventMirrorType  = new QTableWidgetItem(motionEventPreset->GetMirrorType().c_str());
+            QPixmap colorPixmap(16, 16);
+            const QColor eventColor(motionEventPreset->GetEventColor());
+            colorPixmap.fill(eventColor);
+            QTableWidgetItem* tableItemColor = new QTableWidgetItem(QIcon(colorPixmap), "");
+            QTableWidgetItem* tableItemPresetName = new QTableWidgetItem(motionEventPreset->GetName().c_str());
 
             AZStd::string whatsThisString = AZStd::string::format("%i", i);
             tableItemColor->setWhatsThis(whatsThisString.c_str());
-            tableItemColor->setTextColor(QColor(0, 0, 0, 0));
-            tableItemEventType->setWhatsThis(whatsThisString.c_str());
-            tableItemEventParameter->setWhatsThis(whatsThisString.c_str());
-            tableItemEventMirrorType->setWhatsThis(whatsThisString.c_str());
+            tableItemPresetName->setWhatsThis(whatsThisString.c_str());
 
             // set backgroundcolor of the row
-            const QColor backgroundColor(color.r * 100, color.g * 100, color.b * 100, 50);
+            QColor backgroundColor(eventColor);
+            backgroundColor.setAlpha(50);
             tableItemColor->setBackgroundColor(backgroundColor);
-            tableItemEventType->setBackgroundColor(backgroundColor);
-            tableItemEventParameter->setBackgroundColor(backgroundColor);
-            tableItemEventMirrorType->setBackgroundColor(backgroundColor);
+            tableItemPresetName->setBackgroundColor(backgroundColor);
 
-            // create color label
-            MysticQt::ColorLabel* colorLabel = new MysticQt::ColorLabel(motionEventPreset->GetEventColor(), motionEventPreset);
-            colorLabel->setText(whatsThisString.c_str());
-
-            // needed to have the color label of width 13px, no explanation why it's needed here to use 15px
-            colorLabel->setFixedWidth(15);
-
-            connect(colorLabel, SIGNAL(ColorChangeEvent()), this, SLOT(ReInit()));
-            connect(colorLabel, SIGNAL(ColorChangeEvent(const QColor&)), this, SLOT(OnPresetColorChanged(const QColor&)));
-
-            QWidget* colorLayoutWidget = new QWidget();
-            colorLayoutWidget->setStyleSheet("#colorLayoutWidget{ background: transparent; margin-top: 1px; margin-bottom: 1px; margin-left: 2px }"); // 2px needed to be used here, no explanation why
-            QHBoxLayout* colorLayout = new QHBoxLayout();
-            colorLayout->setAlignment(Qt::AlignCenter);
-            colorLayout->setMargin(0);
-            colorLayout->setSpacing(0);
-            colorLayout->addWidget(colorLabel);
-            colorLayoutWidget->setLayout(colorLayout);
-
-            mTableWidget->setCellWidget(i, 0, colorLayoutWidget);
             mTableWidget->setItem(i, 0, tableItemColor);
-            mTableWidget->setItem(i, 1, tableItemEventType);
-            mTableWidget->setItem(i, 2, tableItemEventParameter);
-            mTableWidget->setItem(i, 3, tableItemEventMirrorType);
+            mTableWidget->setItem(i, 1, tableItemPresetName);
 
-            if (motionEventPreset->GetIsDefault())
-            {
-                tableItemEventType->setFlags(tableItemEventType->flags() ^ Qt::ItemIsEditable);
-                tableItemEventMirrorType->setFlags(tableItemEventMirrorType->flags() ^ Qt::ItemIsEditable);
-                tableItemEventParameter->setFlags(tableItemEventParameter->flags() ^ Qt::ItemIsEditable);
-            }
+            // Editing will be handled in the double click signal handler
+            tableItemPresetName->setFlags(tableItemPresetName->flags() ^ Qt::ItemIsEditable);
         }
 
         // set the vertical header not visible
@@ -249,7 +203,6 @@ namespace EMStudio
         
         // update the interface
         UpdateInterface();
-        emit UpdateTimeView();
     }
 
 
@@ -279,16 +232,14 @@ namespace EMStudio
 
     void MotionEventPresetsWidget::AddMotionEventPreset()
     {
-        const uint32 color = MCore::GenerateColor();
-
-        MotionEventPresetCreateDialog createDialog(this, "", "", "", color);
+        MotionEventPresetCreateDialog createDialog(MotionEventPreset(), this);
         if (createDialog.exec() == QDialog::Rejected)
         {
             return;
         }
 
         // add the preset
-        MotionEventPreset* motionEventPreset = new MotionEventPreset(createDialog.GetEventType(), createDialog.GetParameter(), createDialog.GetMirrorType(), createDialog.GetColor());
+        MotionEventPreset* motionEventPreset = aznew MotionEventPreset(AZStd::move(createDialog.GetPreset()));
         GetEventPresetManager()->AddPreset(motionEventPreset);
 
         // reinit the dialog
@@ -302,22 +253,6 @@ namespace EMStudio
 
         // reinit the dialog
         ReInit();
-    }
-
-
-    void MotionEventPresetsWidget::OnPresetColorChanged(const QColor& newColor)
-    {
-        MCORE_UNUSED(newColor);
-
-        MysticQt::ColorLabel* colorLabel = qobject_cast<MysticQt::ColorLabel*>(sender());
-        MotionEventPreset* motionEventPreset = (MotionEventPreset*)colorLabel->GetDataObject();
-        motionEventPreset->SetEventColor(colorLabel->GetRGBAColor().ToInt());
-
-        // reinit the dialog
-        ReInit();
-
-        // fire the color changed signal
-        mPlugin->FireColorChangedSignal();
     }
 
 
@@ -389,43 +324,6 @@ namespace EMStudio
         mTableWidget->selectAll();
         RemoveMotionEventPresets();
         UpdateInterface();
-    }
-
-
-    void MotionEventPresetsWidget::UpdateMotionEventPreset(QTableWidgetItem* item)
-    {
-        // get the motion event to update
-        const int id = item->whatsThis().toInt();
-        MotionEventPreset* motionEventPreset = GetEventPresetManager()->GetPreset(id);
-
-        if (motionEventPreset == nullptr)
-        {
-            return;
-        }
-
-        switch (item->column())
-        {
-        case 0:
-            break;
-        case 1:
-            motionEventPreset->SetEventType(FromQtString(item->text()).c_str());
-            break;
-        case 2:
-            motionEventPreset->SetEventParameter(FromQtString(item->text()).c_str());
-            break;
-        case 3:
-            motionEventPreset->SetMirrorType(FromQtString(item->text()).c_str());
-            break;
-        default:
-            break;
-        }
-
-        // set edit flag to true
-        GetEventPresetManager()->SetDirtyFlag(true);
-        UpdateInterface();
-
-        // update the time view
-        emit UpdateTimeView();
     }
 
 

@@ -26,6 +26,12 @@ namespace LmbrCentral
         AZ_COMPONENT(RigidPhysicsComponent, AzFramework::RigidPhysicsComponentTypeId, PhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            PhysicsComponent::GetProvidedServices(provided);
+            provided.push_back(AZ_CRC("RigidPhysicsService", 0xc03b426c));
+        }
+
         RigidPhysicsComponent() = default;
         ~RigidPhysicsComponent() override = default;
 

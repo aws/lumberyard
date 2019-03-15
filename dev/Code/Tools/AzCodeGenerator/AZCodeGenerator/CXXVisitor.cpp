@@ -57,6 +57,12 @@ namespace CodeGenerator
 
     bool CXXVisitor::IsInFileOfInterest(clang::Decl* decl)
     {
+        // Check for AZCG_IGNORE annotation first, skip anything that has it
+        if (ContainsIgnoreAnnotation(decl))
+        {
+            return false;
+        }
+
         auto& sourceManager = decl->getASTContext().getSourceManager();
 
         // Always accept decls from the main file

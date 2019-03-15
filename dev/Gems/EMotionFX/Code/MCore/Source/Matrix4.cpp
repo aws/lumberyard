@@ -1532,8 +1532,8 @@ namespace MCore
         MMAT(v, 2, 2) = TMAT(2, 2);
         MMAT(v, 2, 3) = TMAT(3, 2);
         MMAT(v, 3, 0) = TMAT(0, 3);
-        MMAT(v, 3, 1) = TMAT(3, 1);
-        MMAT(v, 3, 2) = TMAT(3, 2);
+        MMAT(v, 3, 1) = TMAT(1, 3);
+        MMAT(v, 3, 2) = TMAT(2, 3);
         MMAT(v, 3, 3) = TMAT(3, 3);
 
         *this = v;

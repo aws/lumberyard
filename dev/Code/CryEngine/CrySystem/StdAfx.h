@@ -24,7 +24,6 @@
 #include <fcntl.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include <AzCore/PlatformRestrictedFileDef.h>
 #undef AZ_RESTRICTED_SECTION
 #define STDAFX_H_SECTION_1 1
 #define STDAFX_H_SECTION_2 2
@@ -32,7 +31,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_1
-#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StdAfx_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StdAfx_h_provo.inl"
+    #endif
 #elif defined(LINUX) // Scrubber friendly negated define pattern
 #elif !defined(APPLE)
     #include <memory.h>
@@ -47,7 +50,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_2
-#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StdAfx_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StdAfx_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

@@ -41,24 +41,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="AzQtComponents::FilteredSearchWidget" name="m_searchWidget" native="true"/>
-     </item>
-     <item alignment="Qt::AlignTop">
-       <widget class="QPushButton" name="m_display_options" native="true">
-       <property name="styleSheet">
-        <string notr="true">QPushButton::menu-indicator{ image:  url(none.jpg); }</string>
-       </property>
-       <property name="icon">
-        <iconset resource="resources.qrc">
-         <normaloff>:/stylesheet/img/menu.png</normaloff>:/stylesheet/img/menu.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>25</width>
-         <height>21</height>
-        </size>
-       </property>
-      </widget>
+      <widget class="AzQtComponents::OutlinerSearchWidget" name="m_searchWidget" native="true"/>
      </item>
     </layout>
    </item>
@@ -66,6 +49,12 @@
     <widget class="QScrollArea" name="m_objectList">
      <property name="focusPolicy">
       <enum>Qt::ClickFocus</enum>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <property name="lineWidth">
+      <number>0</number>
      </property>
      <property name="sizeAdjustPolicy">
       <enum>QAbstractScrollArea::AdjustToContents</enum>
@@ -78,8 +67,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>380</width>
-        <height>685</height>
+        <width>382</width>
+        <height>705</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -121,9 +110,9 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>AzQtComponents::FilteredSearchWidget</class>
+   <class>AzQtComponents::OutlinerSearchWidget</class>
    <extends>QWidget</extends>
-   <header>AzQtComponents/Components/FilteredSearchWidget.h</header>
+   <header>UI/Outliner/OutlinerSearchWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -1390,20 +1390,6 @@ WINDOWS_RC_QT_DLLS = [
     "Qt5Widgets",
 ]
 
-WINDOWS_LMBRSETUP_QT_DLLS = [
-    "Qt5Core",
-    "Qt5Gui",
-    "Qt5Network",
-    "Qt5Qml",
-    "Qt5Quick",
-    "Qt5Svg",
-    "Qt5Widgets",
-    "Qt5Concurrent",
-    "Qt5WinExtras",
-    "libEGL",
-    "libGLESv2"
-]
-
 WINDOWS_MAIN_QT_DLLS = [
     "Qt5Core",
     "Qt5Gui",

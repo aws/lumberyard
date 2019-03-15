@@ -316,6 +316,7 @@ namespace EMotionFX
 
     // shared file format chunk processors
     EMFX_CHUNKPROCESSOR(ChunkProcessorMotionEventTrackTable,   FileFormat::SHARED_CHUNK_MOTIONEVENTTABLE,      1)
+    EMFX_CHUNKPROCESSOR(ChunkProcessorMotionEventTrackTable2,  FileFormat::SHARED_CHUNK_MOTIONEVENTTABLE,      2)
 
     // Actor file format chunk processors
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorMesh,                 FileFormat::ACTOR_CHUNK_MESH,                 1)
@@ -335,10 +336,12 @@ namespace EMotionFX
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorNodeMotionSources,    FileFormat::ACTOR_CHUNK_NODEMOTIONSOURCES,    1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorAttachmentNodes,      FileFormat::ACTOR_CHUNK_ATTACHMENTNODES,      1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorActorMaterialAttributeSet, FileFormat::ACTOR_CHUNK_MATERIALATTRIBUTESET, 1)
+    EMFX_CHUNKPROCESSOR(ChunkProcessorActorPhysicsSetup,         FileFormat::ACTOR_CHUNK_PHYSICSSETUP,         1)
 
     // Motion skeletal motion file format chunk processors
     EMFX_CHUNKPROCESSOR(ChunkProcessorMotionInfo,                     FileFormat::MOTION_CHUNK_INFO,                 1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorMotionInfo2,                    FileFormat::MOTION_CHUNK_INFO,                 2)
+    EMFX_CHUNKPROCESSOR(ChunkProcessorMotionInfo3,                    FileFormat::MOTION_CHUNK_INFO,                 3)
     EMFX_CHUNKPROCESSOR(ChunkProcessorMotionSubMotions,               FileFormat::MOTION_CHUNK_SUBMOTIONS,           1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorMotionWaveletInfo,              FileFormat::MOTION_CHUNK_WAVELETINFO,          1)
     EMFX_CHUNKPROCESSOR(ChunkProcessorMotionMorphSubMotions,          FileFormat::MOTION_CHUNK_MORPHSUBMOTIONS,      1)

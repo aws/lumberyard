@@ -394,7 +394,11 @@ namespace ATG
 	// Desc: Gets the wave file format.
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION WAVEFILE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(WaveFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/WaveFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/WaveFile_cpp_provo.inl"
+    #endif
 #endif
 	//--------------------------------------------------------------------------------------
 	HRESULT WaveFileMemory::GetFormat( WAVEFORMATEXTENSIBLE* pwfxFormat ) const
@@ -404,7 +408,11 @@ namespace ATG
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION WAVEFILE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(WaveFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/WaveFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/WaveFile_cpp_provo.inl"
+    #endif
 #endif
 		assert( dwValidSize <= sizeof(WAVEFORMATEXTENSIBLE) );
 

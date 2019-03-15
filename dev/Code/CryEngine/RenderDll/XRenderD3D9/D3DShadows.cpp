@@ -32,7 +32,11 @@
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(D3DShadows_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DShadows_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DShadows_cpp_provo.inl"
+    #endif
 #endif
 
 namespace
@@ -456,6 +460,14 @@ void CD3D9Renderer::PrepareShadowGenForFrustumNonJobs(const int nFlags)
                 nRenderingFlags |= SRenderingPassInfo::DISABLE_RENDER_CHUNK_MERGE;
             }
 #endif
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+            if (IsRenderToTextureActive())
+            {
+                // the shadow render pass needs to know if we are rendering to texture
+                nRenderingFlags |= SRenderingPassInfo::RENDER_SCENE_TO_TEXTURE;
+            }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
             // create a matching rendering pass info for shadows
             SRenderingPassInfo passInfo = SRenderingPassInfo::CreateShadowPassRenderingInfo(tmpCamera, pCurFrustum->m_Flags, pCurFrustum->nShadowMapLod,

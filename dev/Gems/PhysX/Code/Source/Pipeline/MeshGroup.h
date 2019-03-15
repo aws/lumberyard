@@ -19,19 +19,24 @@
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISceneNodeGroup.h>
 #include <SceneAPI/SceneData/ManifestBase/SceneNodeSelectionList.h>
 
+namespace AZ
+{
+    class ReflectContext;
+}
+
 namespace PhysX
 {
     namespace Pipeline
     {
-        class PhysXMeshGroup
+        class MeshGroup
             : public AZ::SceneAPI::DataTypes::ISceneNodeGroup
         {
         public:
-            AZ_RTTI(PhysXMeshGroup, "{5B03C8E6-8CEE-4DA0-A7FA-CD88689DD45B}", AZ::SceneAPI::DataTypes::ISceneNodeGroup);
+            AZ_RTTI(MeshGroup, "{5B03C8E6-8CEE-4DA0-A7FA-CD88689DD45B}", AZ::SceneAPI::DataTypes::ISceneNodeGroup);
             AZ_CLASS_ALLOCATOR_DECL
 
-            PhysXMeshGroup();
-            ~PhysXMeshGroup() override = default;
+            MeshGroup();
+            ~MeshGroup() override = default;
 
             const AZStd::string& GetName() const override;
             void SetName(const AZStd::string& name);
@@ -62,23 +67,25 @@ namespace PhysX
             bool GetShiftVertices() const;
             AZ::u32 GetGaussMapLimit() const;
 
-            // Trimesh only params
+            // TriMesh only params
             bool GetWeldVertices() const;
+            void SetWeldVertices(bool weldVertices);
             bool GetDisableCleanMesh() const;
             bool GetForce32BitIndices() const;
             bool GetSuppressTriangleMeshRemapTable() const;
             bool GetBuildTriangleAdjacencies() const;
             float GetMeshWeldTolerance() const;
+            void SetMeshWeldTolerance(float weldTolerance);
             AZ::u32 GetNumTrisPerLeaf() const;
 
         protected:
             static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
-            AZ::SceneAPI::SceneData::SceneNodeSelectionList     m_nodeSelectionList;
-            AZ::SceneAPI::Containers::RuleContainer             m_rules;
-            AZStd::string                                       m_name;
-            AZ::Uuid                                            m_id;
-            bool                                                m_exportAsConvex = false;
+            AZ::SceneAPI::SceneData::SceneNodeSelectionList m_nodeSelectionList;
+            AZ::SceneAPI::Containers::RuleContainer m_rules;
+            AZStd::string m_name;
+            AZ::Uuid m_id;
+            bool m_exportAsConvex = false;
 
             // Convex mesh parameters
             float m_areaTestEpsilon;
@@ -90,7 +97,7 @@ namespace PhysX
             bool m_shiftVertices;
             AZ::u32 m_gaussMapLimit;
 
-            // Trimesh parameters
+            // TriMesh parameters
             bool m_weldVertices;
             bool m_disableCleanMesh;
             bool m_force32BitIndices;
@@ -102,5 +109,5 @@ namespace PhysX
             //Shared
             bool m_buildGPUData = false;
         };
-    } // namespace Pipeline
-} // namespace PhysX
+    }
+}

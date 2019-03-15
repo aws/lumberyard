@@ -16,12 +16,16 @@ from aztest.common import DEFAULT_OUTPUT_PATH
 def aztest_add_subparsers(subparsers):
     pytest_subparser = subparsers.add_parser(
         "pytest", description="runs only python tests through py.test, forwarding all arguments except --output-path"
-                              " to pytest",
+                              "& --module-timeout to pytest",
         help='runs only python tests through py.test',  # help for parent parser
         add_help=False,  # suppress subparser-targeted help to pass help argument on to pytest
         usage="%(prog)s [--output-path PATH] <pytest-args ...>"  # help for --output-path errors
     )
     pytest_subparser.add_argument(
         '--output-path', required=False, default=DEFAULT_OUTPUT_PATH
+    )
+    pytest_subparser.add_argument(
+        '--module-timeout', type=int, required=False, default=300,
+        help='Duration in seconds before aborting and marking a test module as a failure'
     )
     pytest_subparser.set_defaults(func=pytest_runner.run_pytest)

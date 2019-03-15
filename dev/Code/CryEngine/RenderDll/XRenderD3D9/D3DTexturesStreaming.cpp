@@ -61,7 +61,11 @@ bool CTexture::IsStillUsedByGPU()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -77,7 +81,11 @@ bool CTexture::StreamPrepare_Platform()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #endif
 #endif
 
 void CTexture::StreamExpandMip(const void* vpRawData, int nMip, int nBaseMipOffset, int nSideDelta)
@@ -130,7 +138,11 @@ void STexStreamOutState::CopyMips()
         const int nNumMips = tp->GetNumMipsNonVirtual() - m_nStartMip;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -222,7 +234,11 @@ int CTexture::StreamTrim(int nToMip)
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #endif
 #endif
             // it is a sync operation anyway, so we do it in the render thread
             CTexture::StreamCopyMipsTexToTex(m_pFileTexMips->m_pPoolItem, 0 + nOldMipOffset, pNewPoolItem, 0, nNumMips);
@@ -560,7 +576,11 @@ void CTexture::StreamApplyDeferred(ID3D11CommandList* pCmdList)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #endif
 #endif
 
 // Just remove item from the texture object and keep Item in Pool list for future use
@@ -634,7 +654,11 @@ void CTexture::StreamAssignPoolItem(STexPoolItem* pItem, int nMinMip)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #endif
 #endif
 
     SAFE_RELEASE(m_pDevTexture);
@@ -817,7 +841,11 @@ void CTexture::StreamCopyMipsTexToTex(STexPoolItem* pSrcItem, int nMipSrc, STexP
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURESSTREAMING_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(D3DTexturesStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexturesStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexturesStreaming_cpp_provo.inl"
+    #endif
 #endif
 
 // Debug routines /////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -20,6 +20,7 @@
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/CommandManagerCallback.h>
 #include <MysticQt/Source/RecentFiles.h>
+#include <Editor/ActorEditorBus.h>
 
 #include <QMainWindow>
 #include <QAbstractNativeEventFilter>
@@ -73,6 +74,7 @@ namespace EMStudio
     class EMSTUDIO_API MainWindow
         : public QMainWindow
         , private PluginOptionsNotificationsBus::Router
+        , public EMotionFX::ActorEditorRequestBus::Handler
     {
         Q_OBJECT
         MCORE_MEMORYOBJECTCATEGORY(MainWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
@@ -144,6 +146,9 @@ namespace EMStudio
         void LoadDefaultLayout();
 
     private:
+        // ActorEditorRequests
+        EMotionFX::ActorInstance* GetSelectedActorInstance() override;
+
         void BroadcastSelectionNotifications();
         EMotionFX::Actor*           m_prevSelectedActor;
         EMotionFX::ActorInstance*   m_prevSelectedActorInstance;
@@ -203,7 +208,6 @@ namespace EMStudio
         void showEvent(QShowEvent* event) override;
 
         void OnOptionChanged(const AZStd::string& optionChanged) override;
-        void OnUnitTypeOptionChanged();
 
         UndoMenuCallback*                       m_undoMenuCallback;
 
@@ -245,6 +249,7 @@ namespace EMStudio
             /// CommandManagerCallback implementation
             void OnPreExecuteCommand(MCore::CommandGroup* group, MCore::Command* command, const MCore::CommandLine& commandLine) override;
             void OnPostExecuteCommand(MCore::CommandGroup* /*group*/, MCore::Command* /*command*/, const MCore::CommandLine& /*commandLine*/, bool /*wasSuccess*/, const AZStd::string& /*outResult*/) override { }
+            void OnPreUndoCommand(MCore::Command* command, const MCore::CommandLine& commandLine);
             void OnPreExecuteCommandGroup(MCore::CommandGroup* /*group*/, bool /*undo*/) override { }
             void OnPostExecuteCommandGroup(MCore::CommandGroup* /*group*/, bool /*wasSuccess*/) override { }
             void OnAddCommandToHistory(uint32 /*historyIndex*/, MCore::CommandGroup* /*group*/, MCore::Command* /*command*/, const MCore::CommandLine& /*commandLine*/) override { }

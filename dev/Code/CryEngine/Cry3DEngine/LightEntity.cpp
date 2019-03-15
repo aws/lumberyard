@@ -146,7 +146,14 @@ void CLightEntity::SetMatrix(const Matrix34& mat)
         SetBBox(AABB::CreateAABBfromOBB(wp, obb));
     }
     m_light.SetPosition(wp);
+    
+    // Updating light properties here can permanently set our m_bShadowCaster to false if e_shadows is 0 so preserve it.
+    // really updating the matrix shouldn't change our shadow casting property and we should probably make a new function 
+    // to update matrix related properties instead of calling SetLightProperties
+    bool isShadowCaster = m_bShadowCaster;
     SetLightProperties(m_light);
+    m_bShadowCaster = isShadowCaster;
+
     Get3DEngine()->RegisterEntity(this);
 
     if (!memcmp(&m_Matrix, &mat, sizeof(Matrix34)))
@@ -595,6 +602,13 @@ void CLightEntity::InitShadowFrustum_SUN_Conserv(ShadowMapFrustum* pFr, int dwAl
     pFr->fFrustrumSize =  1.0f / (fGSMBoxSize * (float)Get3DEngine()->m_fGsmRange);
     pFr->nUpdateFrameId = passInfo.GetFrameID();
     pFr->bIncrementalUpdate = false;
+
+    // setup the frustum main frustum plane before calculating frustum bounds and blending
+    CCamera& FrustCam = pFr->FrustumPlanes[0] = CCamera();
+    Matrix34A mat = Matrix33::CreateRotationVDir(-vLightDir);
+    mat.SetTranslation(pFr->vLightSrcRelPos + pFr->vProjTranslation);
+    FrustCam.SetMatrixNoUpdate(mat);
+    FrustCam.SetFrustum(256, 256, pFr->fFOV * (gf_PI / 180.0f), pFr->fNearDist, pFr->fFarDist);
 
     GetGsmFrustumBounds(passInfo.GetCamera(), pFr);
 
@@ -1395,17 +1409,6 @@ void CLightEntity::FillFrustumCastersList_SUN(ShadowMapFrustum* pFr, int dwAllow
         return;
     }
 
-    // setup camera
-
-    CCamera& FrustCam = pFr->FrustumPlanes[0] = CCamera();
-    Vec3 vLightDir = -pFr->vLightSrcRelPos.normalized();
-
-    Matrix34A mat;
-    mat = Matrix33::CreateRotationVDir(vLightDir);
-    mat.SetTranslation(pFr->vLightSrcRelPos + pFr->vProjTranslation);
-    FrustCam.SetMatrixNoUpdate(mat);
-    FrustCam.SetFrustum(256, 256, pFr->fFOV * (gf_PI / 180.0f), pFr->fNearDist, pFr->fFarDist);
-
     if (!lstCastersHull.Count()) // make hull first time it is needed
     {
         MakeShadowCastersHullSun(lstCastersHull, passInfo);
@@ -1569,13 +1572,20 @@ void CLightEntity::OnCasterDeleted(IShadowCaster* pCaster)
     for (int nGsmId = 0; nGsmId < MAX_GSM_LODS_NUM; nGsmId++)
     {
         ShadowMapFrustum* pFr = m_pShadowMapInfo->pGSM[nGsmId];
-        if (pFr && pFr->pCastersList)
+        if (pFr)
         {
-            pFr->pCastersList->Delete(pCaster);
-        }
-        if (pFr && pFr->pShadowCacheData)
-        {
-            pFr->pShadowCacheData->mProcessedCasters.erase(pCaster);
+            if (pFr->pCastersList)
+            {
+                pFr->pCastersList->Delete(pCaster);
+            }
+            if (pFr->pJobExecutedCastersList)
+            {
+                pFr->pJobExecutedCastersList->Delete(pCaster);
+            }
+            if (pFr->pShadowCacheData)
+            {
+                pFr->pShadowCacheData->mProcessedCasters.erase(pCaster);
+            }
         }
     }
 }

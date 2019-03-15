@@ -720,12 +720,12 @@ def ConfigureTaskGenerator(ctx, kw):
         kw['name'] = target
 
     # Deal with restricted platforms
-    for p in ctx.env['RESTRICTED_PLATFORMS']:
-        restricted_filelist_kw = '{}_file_list'.format(p)
+    for p0, p1, p2, p3 in ctx.env['RESTRICTED_PLATFORMS']:
+        restricted_filelist_kw = '{}_file_list'.format(p3)
 
         # Unless the caller has overridden, look to see if we can automatically attach any waf_files for the platform
         if restricted_filelist_kw not in kw:
-            waf_file = os.path.join(p, '{0}_{1}.waf_files'.format(target.lower(), p))
+            waf_file = os.path.join(p0, '{0}_{1}.waf_files'.format(target.lower(), p1))
             script_dir = os.path.dirname(ctx.cur_script.abspath())
             if os.path.exists(os.path.join(script_dir, waf_file)):
                 append_kw_entry(kw, restricted_filelist_kw, waf_file)
@@ -736,9 +736,9 @@ def ConfigureTaskGenerator(ctx, kw):
             script_root, script_ext = os.path.splitext(script_base)
             restricted_script_filename = ''
             if len(script_ext) > 0:
-                restricted_script_filename = os.path.join(script_dir, p, '{0}_{1}.{2}'.format(script_root, p, script_ext))
+                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}.{2}'.format(script_root, p1, script_ext))
             else:
-                restricted_script_filename = os.path.join(script_dir, p, '{0}_{1}'.format(script_root, p))
+                restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_root, p1))
             if os.path.exists(restricted_script_filename):
 
                 # Open the script and look for the specific function name passed in. If we find it, call it with our parameters
@@ -858,6 +858,10 @@ def ConfigureTaskGenerator(ctx, kw):
 
     if ctx.is_monolithic_build():
         append_kw_entry(kw, 'defines',[ '_LIB', 'AZ_MONOLITHIC_BUILD' ])
+        
+    if kw.get('inject_copyright', True):
+        append_kw_entry(kw,'features',[ 'generate_rc_file' ])
+
 
 def RunTaskGenerator(ctx, build_type, *k, **kw ):
 
@@ -1196,7 +1200,7 @@ def BuildTaskGenerator(ctx, kw):
 
     # if we're restricting to a platform, only build it if appropriate:
     if 'platforms' in kw:
-        platforms_allowed = ctx.preprocess_platform_list(kw['platforms'], True)   # this will be a list like [ 'android_armv7_gcc', 'android_armv7_clang' ]
+        platforms_allowed = ctx.preprocess_platform_list(kw['platforms'], True)   # this will be a list like [ 'android_armv7_clang', 'android_armv8_clang' ]
         if len(platforms_allowed) > 0:
             if current_platform not in platforms_allowed:
                 Logs.debug('lumberyard: disabled module %s because it is only for platforms %s, we are not currently building that platform.'
@@ -1328,13 +1332,6 @@ def CryEngineModule(ctx, *k, **kw):
         kw['is_cryengine_module'] = True
         return MonolithicBuildModule(ctx, getattr(ctx, 'game_project', None), *k, **kw)
 
-    # Determine if we need to generate an rc file (for versioning) based on this being a windows platform and
-    # there exists a resource.h file in the file list content.
-    if ctx.env['PLATFORM'].startswith('win') and 'file_list_content' in kw:
-        has_resource_h = find_file_in_content_dict(kw['file_list_content'],'resource.h')
-        if has_resource_h:
-            append_kw_entry(kw,'features',['generate_rc_file'])     # Always Generate RC files for Engine DLLs
-
     if ctx.env['PLATFORM'] == 'ios' or ctx.env['PLATFORM'] == 'appletv':
         kw['mac_bundle']        = True                                      # Always create a Mac Bundle on darwin
 
@@ -1408,7 +1405,7 @@ def CryEngineStaticLibrary(ctx, *k, **kw):
 
     if (is_monolithic_build(ctx)):
         append_kw_entry(kw, 'defines',[ 'AZ_MONOLITHIC_BUILD' ])
-        
+
     append_kw_entry(kw,'features',['c', 'cxx', 'cstlib', 'cxxstlib', 'use'])
 
     return RunTaskGenerator(ctx, 'stlib', *k, **kw)
@@ -1586,7 +1583,9 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
     if not BuildTaskGenerator(ctx, kw_per_launcher):
         return None
 
-    is_android = ctx.is_android_platform(ctx.env['PLATFORM'])
+    # include the android studio command in the check for android otherwise the tgen is
+    # incorrectly tagged as a program
+    is_android = ctx.is_android_platform(ctx.env['PLATFORM']) or ctx.cmd == 'android_studio'
     is_monolithic = is_monolithic_build(ctx)
 
     if is_android and not ctx.get_android_settings(project):
@@ -1595,7 +1594,6 @@ def CryLauncher_Impl(ctx, project, *k, **kw_per_launcher):
 
     kw_per_launcher['idx']              = kw_per_launcher['idx'] + (1000 * (ctx.project_idx(project) + 1));
     # Setup values for Launcher Projects
-    append_kw_entry(kw_per_launcher,'features',[ 'generate_rc_file' ])
     kw_per_launcher['resource_path']        = ctx.launch_node().make_node(ctx.game_code_folder(project) + '/Resources')
     kw_per_launcher['project_name']         = project
     kw_per_launcher['output_file_name']     = ctx.get_executable_name( project )
@@ -1685,7 +1683,6 @@ def CryDedicatedserver_Impl(ctx, project, *k, **kw_per_launcher):
 
     kw_per_launcher['idx']          = kw_per_launcher['idx'] + (1000 * (ctx.project_idx(project) + 1));
 
-    append_kw_entry(kw_per_launcher,'features',[ 'generate_rc_file' ])
     kw_per_launcher['is_dedicated_server']          = True
     kw_per_launcher['resource_path']                = ctx.launch_node().make_node(ctx.game_code_folder(project) + '/Resources')
     kw_per_launcher['project_name']                 = project
@@ -1814,7 +1811,6 @@ def CryEditor(ctx, *k, **kw):
     SetupRunTimeLibraries(ctx, kw)
 
     # Additional Editor-specific settings
-    append_kw_entry(kw,'features',[ 'generate_rc_file' ])
     append_kw_entry(kw,'defines',[ 'SANDBOX_EXPORTS' ])
 
     if ctx.is_windows_platform(ctx.env['PLATFORM']):
@@ -1870,7 +1866,6 @@ def CryEditorLib(ctx, *k, **kw):
     AppendCommonModules(ctx,kw)
 
     # Additional Editor-specific settings
-    append_kw_entry(kw,'features',[ 'generate_rc_file' ])
     append_kw_entry(kw,'defines',[ 'SANDBOX_EXPORTS' ])
 
     kw['enable_rtti'] = [ True ]
@@ -2167,13 +2162,6 @@ def CryEditorCommon(ctx, *k, **kw):
 
     if ctx.env['PLATFORM'] == 'darwin_x64':
         append_kw_entry(kw,'linkflags',['-install_name', '@rpath/lib'+kw['output_file_name']+'.dylib'])
-
-    # Determine if we need to generate an rc file (for versioning) based on this being a windows platform and
-    # there exists a resource.h file in the file list content.
-    if ctx.env['PLATFORM'].startswith('win') and 'file_list_content' in kw:
-        has_resource_h = find_file_in_content_dict(kw['file_list_content'],'resource.h')
-        if has_resource_h:
-            append_kw_entry(kw,'features',['generate_rc_file'])     # Always Generate RC files for Engine DLLs
 
     return RunTaskGenerator(ctx, 'shlib', *k, **kw)
 

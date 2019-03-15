@@ -141,7 +141,7 @@ void CAnimScreenFaderNode::Animate(SAnimContext& ac)
             continue;
         }
 
-        if (ac.bSingleFrame)
+        if (ac.singleFrame)
         {
             m_lastActivatedKey = -1;
         }

@@ -102,5 +102,19 @@ namespace AZ
 
 } // namespace AZ
 
+namespace AZStd
+{
+    // hash specialization
+    template <>
+    struct hash<AZ::Data::Asset<AZ::SliceAsset>>
+    {
+        using argument_type = AZ::Uuid;
+        using result_type = size_t;
+        size_t operator()(const AZ::Data::Asset<AZ::SliceAsset>& asset) const
+        {
+            return asset.GetId().m_guid.GetHash();
+        }
+    };
+}
 #endif // AZCORE_SLICE_ASSET_H
 #pragma once

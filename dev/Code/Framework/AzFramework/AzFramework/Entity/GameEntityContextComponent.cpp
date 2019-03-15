@@ -478,8 +478,7 @@ namespace AzFramework
                 if (transformComponent)
                 {
                     // Non-root entities will be positioned relative to their parents.
-                    // NOTE: The second expression (parentId == entity->Id) is needed only due to backward data compatibility.
-                    if (!transformComponent->GetParentId().IsValid() || transformComponent->GetParentId() == entity->GetId())
+                    if (!transformComponent->GetParentId().IsValid())
                     {
                         // Note: Root slice entity always has translation at origin, so this maintains scale & rotation.
                         transformComponent->SetWorldTM(instantiating.m_transform * transformComponent->GetWorldTM());

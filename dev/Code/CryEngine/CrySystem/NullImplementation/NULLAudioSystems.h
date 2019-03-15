@@ -54,17 +54,13 @@ namespace Audio
     public:
         CNULLAudioSystem()
         {
-        #if defined(DEDICATED_SERVER)
             AudioSystemRequestBus::Handler::BusConnect();
             AudioSystemThreadSafeRequestBus::Handler::BusConnect();
-        #endif // DEDICATED_SERVER
         }
         ~CNULLAudioSystem() override
         {
-        #if defined(DEDICATED_SERVER)
             AudioSystemRequestBus::Handler::BusDisconnect();
             AudioSystemThreadSafeRequestBus::Handler::BusDisconnect();
-        #endif // DEDICATED_SERVER
         }
 
         bool Initialize() override { return true; }

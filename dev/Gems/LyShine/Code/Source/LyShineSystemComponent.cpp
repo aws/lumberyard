@@ -14,6 +14,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include "LyShineSystemComponent.h"
@@ -25,8 +26,10 @@
 #include "UiElementComponent.h"
 #include "UiTransform2dComponent.h"
 #include "UiImageComponent.h"
+#include "UiImageSequenceComponent.h"
 #include "UiTextComponent.h"
 #include "UiButtonComponent.h"
+#include "UiMarkupButtonComponent.h"
 #include "UiCheckboxComponent.h"
 #include "UiDraggableComponent.h"
 #include "UiDropTargetComponent.h"
@@ -44,6 +47,7 @@
 #include "UiLayoutRowComponent.h"
 #include "UiLayoutGridComponent.h"
 #include "UiParticleEmitterComponent.h"
+#include "UiFlipbookAnimationComponent.h"
 #include "UiRadioButtonComponent.h"
 #include "UiRadioButtonGroupComponent.h"
 #include "UiTooltipComponent.h"
@@ -171,6 +175,7 @@ namespace LyShine
         LyShineRequestBus::Handler::BusConnect();
         UiSystemBus::Handler::BusConnect();
         UiSystemToolsBus::Handler::BusConnect();
+        UiFrameworkBus::Handler::BusConnect();
 
         // register all the component types internal to the LyShine module
         // These are registered in the order we want them to appear in the Add Component menu
@@ -178,8 +183,10 @@ namespace LyShine
         RegisterComponentTypeForMenuOrdering(UiElementComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiTransform2dComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiImageComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiImageSequenceComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiTextComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiButtonComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiMarkupButtonComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiCheckboxComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiRadioButtonComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiRadioButtonGroupComponent::RTTI_Type());
@@ -203,6 +210,7 @@ namespace LyShine
         RegisterComponentTypeForMenuOrdering(UiDynamicLayoutComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiDynamicScrollBoxComponent::RTTI_Type());
         RegisterComponentTypeForMenuOrdering(UiParticleEmitterComponent::RTTI_Type());
+        RegisterComponentTypeForMenuOrdering(UiFlipbookAnimationComponent::RTTI_Type());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -210,6 +218,7 @@ namespace LyShine
     {
         UiSystemBus::Handler::BusDisconnect();
         UiSystemToolsBus::Handler::BusDisconnect();
+        UiFrameworkBus::Handler::BusDisconnect();
         LyShineRequestBus::Handler::BusDisconnect();
 
         LyShineAllocatorScope::DeactivateAllocators();
@@ -292,10 +301,13 @@ namespace LyShine
         UiCanvasFileObject* canvasFileObject = static_cast<UiCanvasFileObject*>(canvas);
         AZ::Entity* oldRootSliceEntity = canvasFileObject->m_rootSliceEntity;
         AZ::SliceComponent* oldSliceComponent = oldRootSliceEntity->FindComponent<AZ::SliceComponent>();
-        delete oldRootSliceEntity;
-        AZ::Entity* newRootSliceEntity = aznew AZ::Entity;
+        AZ::EntityId idToReuse = oldRootSliceEntity->GetId();
+        
+        AZ::Entity* newRootSliceEntity = aznew AZ::Entity(idToReuse, AZStd::to_string(static_cast<AZ::u64>(idToReuse)).c_str());
         newRootSliceEntity->AddComponent(newSliceComponent);
         canvasFileObject->m_rootSliceEntity = newRootSliceEntity;
+
+        delete oldRootSliceEntity;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -312,6 +324,77 @@ namespace LyShine
         delete canvasFileObject->m_canvasEntity;
         delete canvasFileObject->m_rootSliceEntity;
         delete canvasFileObject;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool LyShineSystemComponent::HasUiElementComponent(AZ::Entity* entity)
+    {
+        return entity->FindComponent<UiElementComponent>() != nullptr;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void LyShineSystemComponent::AddEditorOnlyEntity(AZ::Entity* editorOnlyEntity, EntityIdSet& editorOnlyEntities)
+    {
+        // All descendents of an editor-only entity are considered editor-only also.
+        // Iterate through all the descedents of the given entity and add their IDs
+        // to the list of editor-only entities.
+        AZStd::vector<AZ::Entity*> childEntities = { editorOnlyEntity };
+        while (!childEntities.empty())
+        {
+            AZ::Entity* parentEntity = childEntities.back();
+            childEntities.pop_back();
+            editorOnlyEntities.insert(parentEntity->GetId());
+
+            UiElementComponent* elementComponent = parentEntity->FindComponent<UiElementComponent>();
+            if (elementComponent)
+            {
+                int numChildren = elementComponent->GetNumChildElements();
+                for (int i = 0; i < numChildren; ++i)
+                {
+                    childEntities.push_back(elementComponent->GetChildElement(i));
+                }
+            }
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void LyShineSystemComponent::HandleEditorOnlyEntities(const EntityList& exportSliceEntities, const EntityIdSet& editorOnlyEntityIds)
+    {
+        AZStd::unordered_map<AZ::EntityId, AZStd::vector<AZ::EntityId>> parentToChildren;
+
+        // Build a map of entity Ids to their parent Ids, for faster lookup during processing.
+        for (AZ::Entity* exportParentEntity : exportSliceEntities)
+        {
+            AZ::EntityId exportParentId = exportParentEntity->GetId();
+
+            UiElementComponent* exportParentComponent = exportParentEntity->FindComponent<UiElementComponent>();
+            if (!exportParentComponent)
+            {
+                continue;
+            }
+
+            // Map the child entities to the parent ID
+            int numChildElements = exportParentComponent->GetNumChildElements();
+            for (int exportChildIndex = 0; exportChildIndex < numChildElements; ++exportChildIndex)
+            {
+                AZ::EntityId childExportEntity = exportParentComponent->GetChildEntityId(exportChildIndex);
+                parentToChildren[exportParentEntity->GetId()].push_back(childExportEntity);
+            }
+        }
+
+        // Remove editor-only entities from parent hierarchy
+        for (AZ::Entity* exportParentEntity : exportSliceEntities)
+        {
+            for (AZ::EntityId exportChildEntity : parentToChildren[exportParentEntity->GetId()])
+            {
+                const bool childIsEditorOnly = editorOnlyEntityIds.end() != editorOnlyEntityIds.find(exportChildEntity);
+                if (childIsEditorOnly)
+                {
+                    UiElementComponent* exportParentComponent = exportParentEntity->FindComponent<UiElementComponent>();
+                    exportParentComponent->RemoveChild(exportChildEntity);
+                }
+            }
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

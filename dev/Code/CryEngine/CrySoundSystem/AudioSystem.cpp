@@ -52,7 +52,11 @@ namespace Audio
         threadDesc.m_name = "Audio Thread";
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(AudioSystem_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AudioSystem_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AudioSystem_cpp_provo.inl"
+    #endif
     #endif
 
         auto threadFunc = AZStd::bind(&CAudioThread::Run, this);

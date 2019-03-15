@@ -65,7 +65,7 @@ namespace EMStudio
         mCategoriesWidget->setMinimumHeight(5 * iconSize + 5 * spacing);
         mCategoriesWidget->setSpacing(spacing);
         mCategoriesWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-        connect(mCategoriesWidget, SIGNAL(currentItemChanged(QListWidgetItem*, QListWidgetItem*)),   this, SLOT(ChangePage(QListWidgetItem*, QListWidgetItem*)));
+        connect(mCategoriesWidget, &QListWidget::currentItemChanged,   this, &PreferencesWindow::ChangePage);
 
         // create the stacked widget, this one will store all the different property browsers for the categories
         mStackedWidget = new QStackedWidget();

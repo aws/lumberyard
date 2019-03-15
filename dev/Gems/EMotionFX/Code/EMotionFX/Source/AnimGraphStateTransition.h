@@ -13,9 +13,10 @@
 #pragma once
 
 #include <AzCore/RTTI/ReflectContext.h>
-#include <EMotionFX/Source/AnimGraphNodeId.h>
-#include "EMotionFXConfig.h"
-#include "AnimGraphObject.h"
+#include <EMotionFX/Source/AnimGraphObjectIds.h>
+#include <EMotionFX/Source/AnimGraphObject.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/TriggerActionSetup.h>
 
 
 namespace EMotionFX
@@ -24,6 +25,7 @@ namespace EMotionFX
     class AnimGraphInstance;
     class AnimGraphStateMachine;
     class AnimGraphTransitionCondition;
+    class AnimGraphTriggerAction;
     class AnimGraphStateMachine;
     class Transform;
     class Pose;
@@ -100,6 +102,7 @@ namespace EMotionFX
         virtual ~AnimGraphStateTransition();
 
         void Reinit() override;
+        void RecursiveReinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
@@ -151,13 +154,13 @@ namespace EMotionFX
          * Get the unique identification number for the transition.
          * @return The unique identification number.
          */
-        MCORE_INLINE uint32 GetID() const                                                       { return mID; }
+        AnimGraphConnectionId GetId() const                                                         { return m_id; }
 
         /**
          * Set the unique identification number for the transition.
          * @param[in] id The unique identification number.
          */
-        void SetID(uint32 id);
+        void SetId(AnimGraphConnectionId id)                                                        { m_id = id; }
 
         /**
          * Set if the transition is a wildcard transition or not. A wildcard transition is a transition that will be used in case there is no other path from the current
@@ -194,11 +197,11 @@ namespace EMotionFX
 
         bool CanWildcardTransitionFrom(AnimGraphNode* sourceNode) const;
 
+        AnimGraphStateMachine* GetStateMachine() const;
+
         MCORE_INLINE size_t GetNumConditions() const                                            { return mConditions.size(); }
         MCORE_INLINE AnimGraphTransitionCondition* GetCondition(size_t index) const            { return mConditions[index]; }
         size_t FindConditionIndex(AnimGraphTransitionCondition* condition) const;
-
-        AnimGraphStateMachine* GetStateMachine() const;
 
         void AddCondition(AnimGraphTransitionCondition* condition);
         void InsertCondition(AnimGraphTransitionCondition* condition, size_t index);
@@ -206,6 +209,9 @@ namespace EMotionFX
         void RemoveCondition(size_t index, bool delFromMem = true);
         void RemoveAllConditions(bool delFromMem = true);
         void ResetConditions(AnimGraphInstance* animGraphInstance);
+
+        TriggerActionSetup& GetTriggerActionSetup() { return m_actionSetup; }
+        const TriggerActionSetup& GetTriggerActionSetup() const { return m_actionSetup; }
 
         void SetGroups(const AZStd::vector<AZStd::string>& groups);
         void SetStateIds(const AZStd::vector<AnimGraphNodeId>& stateIds);
@@ -230,11 +236,12 @@ namespace EMotionFX
         AZStd::vector<AnimGraphTransitionCondition*>    mConditions;
         StateFilterLocal                                m_allowTransitionsFrom;
 
+        TriggerActionSetup                              m_actionSetup;
         AnimGraphNode*                                  mSourceNode;
         AnimGraphNode*                                  mTargetNode;
         AZ::u64                                         m_sourceNodeId;
         AZ::u64                                         m_targetNodeId;
-        uint32                                          mID;                        /**< The unique identification number. */
+        AZ::u64                                         m_id;                        /**< The unique identification number. */
 
         float                                           m_transitionTime;
         float                                           m_easeInSmoothness;

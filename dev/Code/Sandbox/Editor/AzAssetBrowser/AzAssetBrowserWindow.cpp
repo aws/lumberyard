@@ -55,12 +55,19 @@ AzAssetBrowserWindow::AzAssetBrowserWindow(QWidget* parent)
 
     connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal,
         m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
+    connect(m_filterModel.data(), &AssetBrowserFilterModel::filterChanged, this, [this]()
+    {
+        const bool hasFilter = !m_ui->m_searchWidget->GetFilterString().isEmpty();
+        const bool selectFirstFilteredIndex = false;
+        m_ui->m_assetBrowserTreeViewWidget->UpdateAfterFilter(hasFilter, selectFirstFilteredIndex);
+    });
     connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal,
         this, &AzAssetBrowserWindow::SelectionChangedSlot);
     connect(m_ui->m_searchParametersWidget, &SearchParametersWidget::ClearAllSignal, this,
         [=]() { m_ui->m_searchWidget->ClearAssetTypeFilter(); });
     connect(m_ui->m_assetBrowserTreeViewWidget, &QAbstractItemView::doubleClicked, this, &AzAssetBrowserWindow::DoubleClickedItem);
 
+    connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::ClearStringFilter, m_ui->m_searchWidget, &SearchWidget::ClearStringFilter);
     m_ui->m_assetBrowserTreeViewWidget->LoadState("AssetBrowserTreeView_main");
 }
 

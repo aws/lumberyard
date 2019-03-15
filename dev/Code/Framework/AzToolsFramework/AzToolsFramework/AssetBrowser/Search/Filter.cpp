@@ -247,7 +247,7 @@ namespace AzToolsFramework
             }
 
             // entry's name matches search pattern
-            if (StringMatch(m_filterString, entry->GetDisplayName().c_str()))
+            if (StringMatch(m_filterString, entry->GetDisplayName()))
             {
                 return true;
             }

@@ -35,11 +35,9 @@ namespace EMotionFX
                 // Start EMotionFX allocator.
                 EMotionFX::Integration::EMotionFXAllocator::Descriptor allocatorDescriptor;
                 allocatorDescriptor.m_custom = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
-                AZ::AllocatorInstance<EMotionFX::Integration::EMotionFXAllocator>::Create();
+                AZ::AllocatorInstance<EMotionFX::Integration::EMotionFXAllocator>::Create(allocatorDescriptor);
 
                 MCore::Initializer::InitSettings coreSettings;
-                coreSettings.mNumThreads = 0;
-
                 if (!MCore::Initializer::Init(&coreSettings))
                 {
                     AZ_Error("EMotionFX", false, "Failed to initialize EMotion FX SDK Core");

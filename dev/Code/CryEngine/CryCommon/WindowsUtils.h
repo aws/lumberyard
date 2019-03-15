@@ -14,7 +14,11 @@
 #pragma once
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(WindowsUtils_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/WindowsUtils_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/WindowsUtils_h_provo.inl"
+    #endif
 #elif defined(WIN32)
 #include "CryWindows.h"
 #include "IRenderer.h"

@@ -14,16 +14,15 @@
 #include "StdAfx.h"
 #include "TrackViewNodes.h"
 #include "TrackViewAnimNode.h"
-#include "TrackViewUndo.h"
 #include "TrackViewSequenceManager.h"
 #include "AnimationContext.h"
 
 #include <IMovieSystem.h>
 
 #include "Util/BoostPythonHelpers.h"
-#include "Maestro/Types/AnimNodeType.h"
-#include "Maestro/Types/AnimParamType.h"
-#include "Maestro/Types/AnimValueType.h"
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Types/AnimParamType.h>
+#include <Maestro/Types/AnimValueType.h>
 
 namespace
 {
@@ -204,30 +203,22 @@ namespace
 
     void PyTrackViewAddSelectedEntities()
     {
-        CAnimationContext* pAnimationContext = GetIEditor()->GetAnimation();
-        CTrackViewSequence* pSequence = pAnimationContext->GetSequence();
-        if (!pSequence)
+        CAnimationContext* animationContext = GetIEditor()->GetAnimation();
+        CTrackViewSequence* sequence = animationContext->GetSequence();
+        if (!sequence)
         {
             throw std::runtime_error("No sequence is active");
         }
 
-        CUndo undo("Add entities to TrackView");
+        AZStd::vector<AnimParamType> tracks = {
+            AnimParamType::Position,
+            AnimParamType::Rotation
+        };
 
-        // Create Position, Rotation and Event by default to preserve compatibility with
-        // existing scripts.
-        IMovieSystem* pMovieSystem = GetIEditor()->GetMovieSystem();
-        DynArray<unsigned int> trackCount(pMovieSystem->GetEntityNodeParamCount(), 0);
-        for (int i = 0; i < trackCount.size(); ++i)
-        {
-            CAnimParamType paramType = pMovieSystem->GetEntityNodeParamType(i);
-            if (paramType == AnimParamType::Position || paramType == AnimParamType::Rotation || paramType == AnimParamType::Event)
-            {
-                trackCount[i] = 1;
-            }
-        }
-
-        pSequence->AddSelectedEntities(trackCount);
-        pSequence->BindToEditorObjects();
+        AzToolsFramework::ScopedUndoBatch undoBatch("Add entities to Track View");
+        sequence->AddSelectedEntities(tracks);
+        sequence->BindToEditorObjects();
+        undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
     }
 
     void PyTrackViewAddLayerNode()

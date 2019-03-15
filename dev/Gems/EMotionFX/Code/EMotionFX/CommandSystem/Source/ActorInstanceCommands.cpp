@@ -120,7 +120,7 @@ namespace CommandSystem
         mPreviouslyUsedID = newInstance->GetID();
 
         // setup the position, rotation and scale
-        AZ::Vector3 newPos = newInstance->GetLocalPosition();
+        AZ::Vector3 newPos = newInstance->GetLocalSpaceTransform().mPosition;
         if (parameters.CheckIfHasParameter("xPos"))
         {
             newPos.SetX(parameters.GetValueAsFloat("xPos", this));
@@ -133,10 +133,9 @@ namespace CommandSystem
         {
             newPos.SetZ(parameters.GetValueAsFloat("zPos", this));
         }
-        newInstance->SetLocalPosition(newPos);
-
-        newInstance->SetLocalRotation(rot);
-        newInstance->SetLocalScale(scale);
+        newInstance->SetLocalSpacePosition(newPos);
+        newInstance->SetLocalSpaceRotation(rot);
+        newInstance->SetLocalSpaceScale(scale);
 
         // add the actor instance to the selection
         if (select)
@@ -274,24 +273,24 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("pos"))
         {
             AZ::Vector3 value       = parameters.GetValueAsVector3("pos", this);
-            mOldPosition            = actorInstance->GetLocalPosition();
-            actorInstance->SetLocalPosition(value);
+            mOldPosition            = actorInstance->GetLocalSpaceTransform().mPosition;
+            actorInstance->SetLocalSpacePosition(value);
         }
 
         // set the rotation
         if (parameters.CheckIfHasParameter("rot"))
         {
             AZ::Vector4 value   = parameters.GetValueAsVector4("rot", this);
-            mOldRotation            = actorInstance->GetLocalRotation();
-            actorInstance->SetLocalRotation(MCore::Quaternion(value.GetX(), value.GetY(), value.GetZ(), value.GetW()));
+            mOldRotation        = actorInstance->GetLocalSpaceTransform().mRotation;
+            actorInstance->SetLocalSpaceRotation(MCore::Quaternion(value.GetX(), value.GetY(), value.GetZ(), value.GetW()));
         }
 
         // set the scale
         if (parameters.CheckIfHasParameter("scale"))
         {
             AZ::Vector3 value       = parameters.GetValueAsVector3("scale", this);
-            mOldScale               = actorInstance->GetLocalScale();
-            actorInstance->SetLocalScale(value);
+            mOldScale               = actorInstance->GetLocalSpaceTransform().mScale;
+            actorInstance->SetLocalSpaceScale(value);
         }
 
         // set the LOD level
@@ -318,18 +317,6 @@ namespace CommandSystem
             actorInstance->SetRender(value);
         }
 
-        // set the attachment fast updating flag
-        if (parameters.CheckIfHasParameter("attachmentFastUpdate"))
-        {
-            EMotionFX::Attachment* attachment = actorInstance->GetSelfAttachment();
-            if (attachment)
-            {
-                const bool value            = parameters.GetValueAsBool("attachmentFastUpdate", this);
-                mOldAttachmentFastUpdate    = attachment->GetAllowFastUpdates();
-                attachment->SetAllowFastUpdates(value);
-            }
-        }
-
         // mark the workspace as dirty
         mOldWorkspaceDirtyFlag = GetCommandManager()->GetWorkspaceDirtyFlag();
         GetCommandManager()->SetWorkspaceDirtyFlag(true);
@@ -354,19 +341,19 @@ namespace CommandSystem
         // set the position
         if (parameters.CheckIfHasParameter("pos"))
         {
-            actorInstance->SetLocalPosition(mOldPosition);
+            actorInstance->SetLocalSpacePosition(mOldPosition);
         }
 
         // set the rotation
         if (parameters.CheckIfHasParameter("rot"))
         {
-            actorInstance->SetLocalRotation(mOldRotation);
+            actorInstance->SetLocalSpaceRotation(mOldRotation);
         }
 
         // set the scale
         if (parameters.CheckIfHasParameter("scale"))
         {
-            actorInstance->SetLocalScale(mOldScale);
+            actorInstance->SetLocalSpaceScale(mOldScale);
         }
 
         // set the LOD level
@@ -387,16 +374,6 @@ namespace CommandSystem
             actorInstance->SetRender(mOldDoRender);
         }
 
-        // set the attachment fast updating flag
-        if (parameters.CheckIfHasParameter("attachmentFastUpdate"))
-        {
-            EMotionFX::Attachment* attachment = actorInstance->GetSelfAttachment();
-            if (attachment)
-            {
-                attachment->SetAllowFastUpdates(mOldAttachmentFastUpdate);
-            }
-        }
-
         // restore the workspace dirty flag
         GetCommandManager()->SetWorkspaceDirtyFlag(mOldWorkspaceDirtyFlag);
 
@@ -415,7 +392,6 @@ namespace CommandSystem
         GetSyntax().AddParameter("lodLevel", "The LOD level. Values higher than [GetNumLODLevels()-1] will be clamped to the maximum LOD.", MCore::CommandSyntax::PARAMTYPE_INT, "0");
         GetSyntax().AddParameter("isVisible", "The visibility flag. In case of true the actor instance is getting updated, in case of false the OnUpdate() will be skipped.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
         GetSyntax().AddParameter("doRender", "This flag specifies if the actor instance is getting rendered or not. In case of true the actor instance is rendered, in case of false it will not be visible.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
-        GetSyntax().AddParameter("attachmentFastUpdate", "This flag specifies if the actor instance is allowed to get updated quickly in case it is an attachment. In case of true the actor instance attachment is getting updated in the fast mode, in case of false it will be updated in the normal way.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
     }
 
 
@@ -457,23 +433,12 @@ namespace CommandSystem
         }
 
         // store the old values before removing the instance
-        mOldPosition            = actorInstance->GetLocalPosition();
-        mOldRotation            = actorInstance->GetLocalRotation();
-        mOldScale               = actorInstance->GetLocalScale();
+        mOldPosition            = actorInstance->GetLocalSpaceTransform().mPosition;
+        mOldRotation            = actorInstance->GetLocalSpaceTransform().mRotation;
+        mOldScale               = actorInstance->GetLocalSpaceTransform().mScale;
         mOldLODLevel            = actorInstance->GetLODLevel();
         mOldIsVisible           = actorInstance->GetIsVisible();
         mOldDoRender            = actorInstance->GetRender();
-
-        // fast update flag for the self attachment
-        EMotionFX::Attachment* attachment = actorInstance->GetSelfAttachment();
-        if (attachment)
-        {
-            mOldAttachmentFastUpdate = attachment->GetAllowFastUpdates();
-        }
-        else
-        {
-            mOldAttachmentFastUpdate = false;
-        }
 
         // remove the actor instance from the selection
         if (GetCommandManager()->GetLockSelection())
@@ -517,16 +482,15 @@ namespace CommandSystem
         commandString = AZStd::string::format("CreateActorInstance -actorID %i -actorInstanceID %i", mOldActorID, actorInstanceID);
         commandGroup.AddCommandString(commandString.c_str());
 
-        commandString = AZStd::string::format("AdjustActorInstance -actorInstanceID %i -pos \"%s\" -rot \"%s\" -scale \"%s\" -lodLevel %d -isVisible \"%s\" -doRender \"%s\" -attachmentFastUpdate \"%s\"",
-            actorInstanceID,
-            AZStd::to_string(mOldPosition).c_str(),
-            AZStd::to_string(AZ::Vector4(mOldRotation.x, mOldRotation.y, mOldRotation.z, mOldRotation.w)).c_str(),
-            AZStd::to_string(mOldScale).c_str(),
-            mOldLODLevel,
-            AZStd::to_string(mOldIsVisible).c_str(),
-            AZStd::to_string(mOldDoRender).c_str(),
-            AZStd::to_string(mOldAttachmentFastUpdate).c_str()
-            );
+        commandString = AZStd::string::format("AdjustActorInstance -actorInstanceID %i -pos \"%s\" -rot \"%s\" -scale \"%s\" -lodLevel %d -isVisible \"%s\" -doRender \"%s\"",
+                actorInstanceID,
+                AZStd::to_string(mOldPosition).c_str(),
+                AZStd::to_string(AZ::Vector4(mOldRotation.x, mOldRotation.y, mOldRotation.z, mOldRotation.w)).c_str(),
+                AZStd::to_string(mOldScale).c_str(),
+                mOldLODLevel,
+                AZStd::to_string(mOldIsVisible).c_str(),
+                AZStd::to_string(mOldDoRender).c_str()                
+                );
         commandGroup.AddCommandString(commandString);
 
         // execute the command group
@@ -566,17 +530,17 @@ namespace CommandSystem
         }
 
         // get the transformation values
-        const AZ::Vector3& pos              = actorInstance->GetLocalPosition();
-        const AZ::Vector3& scale            = actorInstance->GetLocalScale();
-        const MCore::Quaternion& rotQuat    = actorInstance->GetLocalRotation();
+        const AZ::Vector3& pos              = actorInstance->GetLocalSpaceTransform().mPosition;
+        const AZ::Vector3& scale            = actorInstance->GetLocalSpaceTransform().mScale;
+        const MCore::Quaternion& rotQuat    = actorInstance->GetLocalSpaceTransform().mRotation;
         const AZ::Vector4 rot               = AZ::Vector4(rotQuat.x, rotQuat.y, rotQuat.z, rotQuat.w);
 
         // create the command
         const AZStd::string command = AZStd::string::format("CreateActorInstance -actorID %i -xPos %f -yPos %f -zPos %f -xScale %f -yScale %f -zScale %f -rot \"%s\"",
-            actorInstance->GetActor()->GetID(),
-            static_cast<float>(pos.GetX()), static_cast<float>(pos.GetY()), static_cast<float>(pos.GetZ()),
-            static_cast<float>(scale.GetX()), static_cast<float>(scale.GetY()), static_cast<float>(scale.GetZ()),
-            AZStd::to_string(rot).c_str());
+                actorInstance->GetActor()->GetID(),
+                static_cast<float>(pos.GetX()), static_cast<float>(pos.GetY()), static_cast<float>(pos.GetZ()),
+                static_cast<float>(scale.GetX()), static_cast<float>(scale.GetY()), static_cast<float>(scale.GetZ()),
+                AZStd::to_string(rot).c_str());
 
         // execute the command or add it to the given command group
         if (commandGroup == nullptr)

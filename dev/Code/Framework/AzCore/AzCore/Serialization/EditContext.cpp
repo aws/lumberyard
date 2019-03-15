@@ -68,6 +68,20 @@ namespace AZ
         }
     }
 
+    //=========================================================================
+    // GetEnumElementData
+    //=========================================================================
+    const Edit::ElementData* EditContext::GetEnumElementData(const AZ::Uuid& enumId) const
+    {
+        auto enumIt = m_enumData.find(enumId);
+        const Edit::ElementData* data = nullptr;
+        if (enumIt != m_enumData.end())
+        {
+            data = &enumIt->second;
+        }
+        return data;
+    }
+
     namespace Edit
     {
         void GetComponentUuidsWithSystemComponentTag(

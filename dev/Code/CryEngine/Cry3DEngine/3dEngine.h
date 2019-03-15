@@ -699,6 +699,7 @@ public:
     virtual float GetTerrainElevation(float x, float y, int nSID = GetDefSID());
     virtual float GetTerrainElevation3D(Vec3 vPos);
     virtual float GetTerrainZ(int x, int y);
+    virtual int GetTerrainSurfaceId(int x, int y);
     virtual bool GetTerrainHole(int x, int y);
     virtual int GetHeightMapUnitSize();
     virtual int GetTerrainSize();
@@ -1315,11 +1316,15 @@ public:
     PodArray<ShadowMapFrustum> m_lstCustomShadowFrustums;
     int m_nCustomShadowFrustumCount;
 
+    CryCriticalSection m_checkCreateRNTmpData;
     CThreadSafeRendererContainer<SFrameInfo> m_elementFrameInfo;
     CRNTmpData m_LTPRootFree, m_LTPRootUsed;
     void CreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo);
-    ILINE void CheckCreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo)
+    void CheckCreateRNTmpData(CRNTmpData** ppInfo, IRenderNode* pRNode, const SRenderingPassInfo& passInfo)
     {
+        // Lock to avoid a situation where two threads simultaneously find that *ppinfo is null,
+        // which would result in two CRNTmpData objects for the same owner which eventually leads to a crash
+        AUTO_LOCK(m_checkCreateRNTmpData);
         if (CRNTmpData* tmpData = (*ppInfo))
         {
             m_elementFrameInfo[tmpData->nFrameInfoId].nLastUsedFrameId = passInfo.GetMainFrameID();
@@ -1411,9 +1416,9 @@ public:
 
         void GarbageCollect();
 
+        CryCriticalSection m_Mutex;
     private:
         CThreadSafeRendererContainer<SPhysAreaNodeProxy> m_Proxies;
-        CryCriticalSection m_Mutex;
         PodArray<SAreaChangeRecord> m_DirtyAreas;
     };
 

@@ -14,24 +14,72 @@
 
 #include "CommandSystemConfig.h"
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/optional.h>
 #include <MCore/Source/Command.h>
 #include <MCore/Source/CommandGroup.h>
 #include <MCore/Source/Endian.h>
 #include <EMotionFX/Source/Motion.h>
 #include <EMotionFX/Source/MotionInstance.h>
-#include <EMotionFX/Source/PlayBackInfo.h>
 
+
+namespace EMotionFX
+{
+    class AnimGraph;
+    class AnimGraphInstance;
+}
 
 namespace CommandSystem
 {
+    class MotionIdCommandMixin
+    {
+    public:
+        AZ_RTTI(CommandSystem::MotionIdCommandMixin, "{968E9513-3159-4469-B5FA-97D0920456E3}")
+        AZ_CLASS_ALLOCATOR_DECL
+
+        virtual ~MotionIdCommandMixin() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        bool SetCommandParameters(const MCore::CommandLine& parameters);
+
+        void SetMotionID(int32 motionID) { m_motionID = motionID; }
+    protected:
+        int32 m_motionID = 0;
+    };
+
     // Adjust motion command.
-    MCORE_DEFINECOMMAND_START(CommandAdjustMotion, "Adjust motion", true)
+    class DEFINECOMMAND_API CommandAdjustMotion
+        : public MCore::Command, public MotionIdCommandMixin
+    {
+    public:
+        AZ_RTTI(CommandSystem::CommandAdjustMotion, "{A8977553-4011-4BEB-97C8-6AE44B07C7A8}", MCore::Command, MotionIdCommandMixin)
+        AZ_CLASS_ALLOCATOR_DECL
+
+        CommandAdjustMotion(MCore::Command * orgCommand = nullptr);
+        ~CommandAdjustMotion() override = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        bool Execute(const MCore::CommandLine & parameters, AZStd::string & outResult) override;
+        bool Undo(const MCore::CommandLine & parameters, AZStd::string & outResult) override;
+        void InitSyntax() override;
+        bool SetCommandParameters(const MCore::CommandLine& parameters) override;
+        bool GetIsUndoable() const override { return true; }
+        const char* GetHistoryName() const override { return "Adjust motion"; }
+        const char* GetDescription() const override;
+        MCore::Command* Create() override { return aznew CommandAdjustMotion(this); }
+
+        void SetMotionExtractionFlags(const EMotionFX::EMotionExtractionFlags flags) { m_extractionFlags = flags; }
+
     private:
-        bool                                mOldDirtyFlag;
-        EMotionFX::EMotionExtractionFlags   mOldExtractionFlags;
-        AZStd::string                       mOldName;
-        AZStd::string                       mOldMotionExtractionNodeName;
-    MCORE_DEFINECOMMAND_END
+        AZStd::optional<bool> m_dirtyFlag;
+        bool mOldDirtyFlag;
+        AZStd::optional<EMotionFX::EMotionExtractionFlags> m_extractionFlags;
+        EMotionFX::EMotionExtractionFlags mOldExtractionFlags;
+        AZStd::optional<AZStd::string> m_name;
+        AZStd::string mOldName;
+        AZStd::string mOldMotionExtractionNodeName;
+    };
 
 
     // Remove motion command.
@@ -64,11 +112,13 @@ namespace CommandSystem
     public:
         struct UndoObject
         {
-            EMotionFX::ActorInstance*   mActorInstance;     /**< The old selected actor on which the motion got started. */
-            EMotionFX::MotionInstance*  mMotionInstance;    /**< The old motion instance to be stopped by the undo process. */
+            EMotionFX::ActorInstance*       m_actorInstance = nullptr;         /**< The old selected actor on which the motion got started. */
+            EMotionFX::MotionInstance*      m_motionInstance = nullptr;        /**< The old motion instance to be stopped by the undo process. */
+            EMotionFX::AnimGraph*           m_animGraph = nullptr;             /**< The old anim graph that was playing on the actor instance before playing the motion. */
+            EMotionFX::AnimGraphInstance*   m_animGraphInstance = nullptr;     /**< The old anim graph instance. This pointer won't be valid anymore at undo but is needed for the anim graph model callbacks. */
         };
         
-        MCore::Array<UndoObject> mOldData;      /**< Array of undo items. Each item means we started a motion on an actor and have to stop it again in the undo process. */
+        AZStd::vector<UndoObject> m_oldData; /**< Array of undo items. Each item means we started a motion on an actor and have to stop it again in the undo process. */
     
         static void CommandParametersToPlaybackInfo(MCore::Command* command, const MCore::CommandLine& parameters, EMotionFX::PlayBackInfo* outPlaybackInfo);
         static AZStd::string PlayBackInfoToCommandParameters(EMotionFX::PlayBackInfo* playbackInfo);

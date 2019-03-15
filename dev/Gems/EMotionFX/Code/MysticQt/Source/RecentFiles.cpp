@@ -134,6 +134,8 @@ namespace MysticQt
         AZStd::string cacheFolder = EMotionFX::GetEMotionFX().GetAssetCacheFolder();
         AzFramework::StringFunc::Path::Normalize(sourceFolder);
         AzFramework::StringFunc::Path::Normalize(cacheFolder);
+        AzFramework::StringFunc::Strip(sourceFolder, AZ_CORRECT_FILESYSTEM_SEPARATOR, true, false, true);
+        AzFramework::StringFunc::Strip(cacheFolder, AZ_CORRECT_FILESYSTEM_SEPARATOR, true, false, true);
 
         int recentFilesAdded = 0;
         QString menuItemText;
@@ -144,24 +146,26 @@ namespace MysticQt
             const QFileInfo fileInfo(m_recentFiles[i]);
             folder = fileInfo.absolutePath().toUtf8().data();
             AzFramework::StringFunc::Path::Normalize(folder);
+            AzFramework::StringFunc::Strip(folder, AZ_CORRECT_FILESYSTEM_SEPARATOR, true, false, true);
 
             // Skip files that are not part of the current game directory.
-            if (!AzFramework::StringFunc::Path::IsASuperFolderOfB(sourceFolder.c_str(), folder.c_str()) && !AzFramework::StringFunc::Path::IsASuperFolderOfB(cacheFolder.c_str(), folder.c_str()))
+            if (sourceFolder == folder
+                || AzFramework::StringFunc::Path::IsASuperFolderOfB(sourceFolder.c_str(), folder.c_str())
+                || cacheFolder == folder
+                || AzFramework::StringFunc::Path::IsASuperFolderOfB(cacheFolder.c_str(), folder.c_str()))
             {
-                continue;
+                menuItemText = QString("&%1 %2").arg(i + 1).arg(fileInfo.fileName());
+
+                QAction* action = new QAction(m_recentFilesMenu);
+                action->setText(menuItemText);
+                action->setData(m_recentFiles[i]);
+                action->setToolTip(m_recentFiles[i]);
+
+                m_recentFilesMenu->addAction(action);
+                recentFilesAdded++;
+
+                connect(action, &QAction::triggered, this, &MysticQt::RecentFiles::OnRecentFileSlot);
             }
-            
-            menuItemText = QString("&%1 %2").arg(i + 1).arg(fileInfo.fileName());
-
-            QAction* action = new QAction(m_recentFilesMenu);
-            action->setText(menuItemText);
-            action->setData(m_recentFiles[i]);
-            action->setToolTip(m_recentFiles[i]);
-
-            m_recentFilesMenu->addAction(action);
-            recentFilesAdded++;
-
-            connect(action, SIGNAL(triggered()), this, SLOT(OnRecentFileSlot()));
         }
 
         if (recentFilesAdded > 0)

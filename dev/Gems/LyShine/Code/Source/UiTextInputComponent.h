@@ -12,7 +12,6 @@
 #pragma once
 
 #include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
 #include <LyShine/Bus/UiTextInputBus.h>
 #include <LyShine/Bus/UiInitializationBus.h>
 #include <LyShine/UiComponentTypes.h>
@@ -52,9 +51,9 @@ public: // member functions
     void LostActiveStatus() override;
     // ~UiInteractableInterface
 
-    // UiUpdateInterface
+    // UiCanvasUpdateNotification
     void Update(float deltaTime) override;
-    // ~UiUpdateInterface
+    // ~UiCanvasUpdateNotification
 
     // UiInitializationInterface
     void InGamePostActivate() override;

@@ -141,7 +141,11 @@ void CD3DGPUTimer::Start(const char* name)
         m_bStarted = true;
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GPUTimer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GPUTimer_cpp_provo.inl"
+    #endif
 #endif
     }
 #endif
@@ -159,7 +163,11 @@ void CD3DGPUTimer::Stop()
         m_bWaiting = true;
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GPUTimer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GPUTimer_cpp_provo.inl"
+    #endif
 #endif
     }
 #endif
@@ -193,7 +201,11 @@ void CD3DGPUTimer::UpdateTime()
         }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GPUTimer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GPUTimer_cpp_provo.inl"
+    #endif
 #endif
 
         if (!m_bWaiting)
@@ -231,7 +243,11 @@ void CD3DGPUTimer::Release()
     SAFE_RELEASE(m_pQueryFreq);
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GPUTimer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GPUTimer_cpp_provo.inl"
+    #endif
 #endif
     m_bInitialized = false;
     m_bWaiting = false;
@@ -256,7 +272,11 @@ bool CD3DGPUTimer::Init()
         }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GPUTIMER_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(GPUTimer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GPUTimer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GPUTimer_cpp_provo.inl"
+    #endif
 #endif
 
         EBUS_EVENT(AZ::Debug::EventTraceDrillerSetupBus, SetThreadName, EventTrace::GpuThreadId, EventTrace::GpuThreadName);

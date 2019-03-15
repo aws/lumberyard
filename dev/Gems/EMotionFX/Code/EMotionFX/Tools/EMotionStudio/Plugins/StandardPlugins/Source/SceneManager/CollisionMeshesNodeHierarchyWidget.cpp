@@ -49,7 +49,7 @@ namespace EMStudio
         displayLayout->addWidget(new QLabel("LOD:"));
 
         mLODSpinBox = new MysticQt::IntSpinBox();
-        connect(mLODSpinBox, SIGNAL(valueChanged(int)), this, SLOT(LODSpinBoxValueChanged(int)));
+        connect(mLODSpinBox, static_cast<void (MysticQt::IntSpinBox::*)(int)>(&MysticQt::IntSpinBox::valueChanged), this, &CollisionMeshesNodeHierarchyWidget::LODSpinBoxValueChanged);
         displayLayout->addWidget(mLODSpinBox);
 
         QWidget* spacerWidget = new QWidget();
@@ -91,10 +91,10 @@ namespace EMStudio
 
         // connect the context menu
         mHierarchy->setContextMenuPolicy(Qt::CustomContextMenu);
-        connect(mHierarchy, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(TreeContextMenu(const QPoint&)));
+        connect(mHierarchy, &QTreeWidget::customContextMenuRequested, this, &CollisionMeshesNodeHierarchyWidget::TreeContextMenu);
 
         // connect when the selection changed
-        connect(mHierarchy, SIGNAL(itemSelectionChanged()), this, SLOT(UpdateSelection()));
+        connect(mHierarchy, &QTreeWidget::itemSelectionChanged, this, &CollisionMeshesNodeHierarchyWidget::UpdateSelection);
 
         layout->addLayout(displayLayout);
         layout->addWidget(mHierarchy);

@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/RTTI/RTTI.h>
 #include <MCore/Source/StandardHeaders.h>
 #include <MCore/Source/Endian.h>
 #include <MCore/Source/CommandGroup.h>
@@ -25,8 +26,9 @@ namespace EMStudio
         MCORE_MEMORYOBJECTCATEGORY(Workspace, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
+        AZ_RTTI(Workspace, "{D6572E20-C504-426A-88FF-5D2AEA830BB2}")
         Workspace();
-        ~Workspace();
+        virtual ~Workspace();
 
         bool Save(const char* filename = nullptr, bool updateFileName = true, bool updateDirtyFlag = true);
         bool Load(const char* filename, MCore::CommandGroup* commandGroup);

@@ -123,14 +123,14 @@ inline bool IsModPath(const char* originalPath)
 }
 #endif
 
-namespace
+namespace CryPakInternal
 {
-    // Utility function to de-alias pak file opening and file-within-pak opening
-    // if the file specified was an absolute path but it points at one of the aliases, de-alias it and replace it with that alias.
-    // this works around problems where the level editor is in control but still mounts asset packs (ie, level.pak mounted as @assets@)
-    // it is assumed that the path is already converted to forward slashes, lowcased, and normalized
-    string ConvertAbsolutePathToAliasedPath(const char* sourcePath, const char* aliasToLookFor = "@devassets@", const char* aliasToReplaceWith = "@assets@")
+    AZ::Outcome<string, AZStd::string> ConvertAbsolutePathToAliasedPath(const char* sourcePath, const char* aliasToLookFor, const char* aliasToReplaceWith)
     {
+        if (sourcePath != nullptr && strlen(sourcePath) >= AZ_MAX_PATH_LEN)
+        {
+            return AZ::Failure<AZStd::string>("Cannot convert path to aliased path, sourcePath is longer than AZ_MAX_PATH_LEN");
+        }
         if ((aliasToLookFor) && (aliasToReplaceWith) && (sourcePath) && (AZ::IO::FileIOBase::GetDirectInstance()))
         {
             char unaliasedPath[AZ_MAX_PATH_LEN + PathUtil::maxAliasLength] = { 0 };
@@ -145,11 +145,11 @@ namespace
 
                     if (strlen(sourcePath) == strlen(alias))
                     {
-                        return unaliasedPath;
+                        return AZ::Success<string>(unaliasedPath);
                     }
 
                     azstrcat(unaliasedPath, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength, sourcePath + (strlen(alias) + strlen(CRY_NATIVE_PATH_SEPSTR)));
-                    return unaliasedPath;
+                    return AZ::Success<string>(unaliasedPath);
                 }
             }
             else if (azstrnicmp(sourcePath, aliasToLookFor, strlen(aliasToLookFor)) == 0)  // we also check to see if it starts with the alias instead of its absolute path
@@ -159,14 +159,14 @@ namespace
 
                 if (strlen(sourcePath) == strlen(aliasToLookFor))
                 {
-                    return unaliasedPath;
+                    return AZ::Success<string>(unaliasedPath);
                 }
 
                 azstrcat(unaliasedPath, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength, sourcePath + (strlen(aliasToLookFor) + strlen(CRY_NATIVE_PATH_SEPSTR)));
-                return unaliasedPath;
+                return AZ::Success<string>(unaliasedPath);
             }
         }
-        return sourcePath;
+        return AZ::Success<string>(sourcePath);
     }
 }
 
@@ -180,11 +180,11 @@ public:
     CResourceList() { m_iter = m_set.end(); };
     ~CResourceList() {};
 
-    static stack_string UnifyFilename(const char* sResourceFile)
+    static AZ::Outcome<stack_string, AZStd::string> UnifyFilename(const char* sResourceFile)
     {
         if (!sResourceFile)
         {
-            return ".";
+            return AZ::Success<stack_string>(".");
         }
         stack_string filename = sResourceFile;
         // Ideally the convert to alias call would be unnecessary - if we use aliases in all cases coming into our file open operations.
@@ -192,20 +192,29 @@ public:
         AZ::IO::FileIOBase::GetInstance()->ConvertToAlias(filename.m_strBuf, filename.capacity());
         
         // And convert from @devassets@ to @assets@
-        filename = ConvertAbsolutePathToAliasedPath(filename.c_str());
+        AZ::Outcome<string, AZStd::string> pathConversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(filename.c_str());
+        if (!pathConversionResult.IsSuccess())
+        {
+            return AZ::Failure(pathConversionResult.GetError());
+        }
+        filename = pathConversionResult.GetValue();
         filename.replace('\\', '/');
 #if !defined(AZ_PLATFORM_APPLE)
         filename.MakeLower();
 #endif
-        return filename;
+        return AZ::Success(filename);
     }
 
     virtual void Add(const char* sResourceFile)
     {
-        stack_string filename = UnifyFilename(sResourceFile);
-
+        AZ::Outcome<stack_string,AZStd::string> filename = UnifyFilename(sResourceFile);
+        if (!filename.IsSuccess())
+        {
+            AZ_Error("CryPak", false, filename.GetError().c_str());
+            return;
+        }
         CryAutoLock<CryCriticalSection> lock(m_lock);
-        m_set.insert(filename);
+        m_set.insert(filename.GetValue());
     }
     virtual void Clear()
     {
@@ -215,10 +224,16 @@ public:
     }
     virtual bool IsExist(const char* sResourceFile)
     {
-        stack_string filename = UnifyFilename(sResourceFile);
+        AZ::Outcome<stack_string, AZStd::string> filename = UnifyFilename(sResourceFile);
+
+        if (!filename.IsSuccess())
+        {
+            AZ_Error("CryPak", false, filename.GetError().c_str());
+            return false;
+        }
 
         CryAutoLock<CryCriticalSection> lock(m_lock);
-        if (m_set.find(CONST_TEMP_STRING(filename.c_str())) != m_set.end())
+        if (m_set.find(CONST_TEMP_STRING(filename.GetValue().c_str())) != m_set.end())
         {
             return true;
         }
@@ -919,7 +934,11 @@ CCryPak::~CCryPak()
         }
     }
 
-    SAFE_DELETE(m_pWidget);
+    if (gEnv && gEnv->pSystem && gEnv->pSystem->GetPerfHUD() && m_pWidget)
+    {
+        gEnv->pSystem->GetPerfHUD()->RemoveWidget(m_pWidget);
+        m_pWidget = nullptr;
+    }
 
     CRY_ASSERT_MESSAGE(m_cachedFileRawDataSet.empty(), "All PakFile cached raw data instances not closed");
 }
@@ -1762,9 +1781,15 @@ ZipDir::FileEntry* CCryPak::FindPakFileEntry(const char* szPath, unsigned int& n
     LOADING_TIME_PROFILE_SECTION;
 
 
-    string unaliasedPath = ConvertAbsolutePathToAliasedPath(szPath);
+    AZ::Outcome<string, AZStd::string> unaliasedPath = CryPakInternal::ConvertAbsolutePathToAliasedPath(szPath);
 
-    unsigned nNameLen = static_cast<unsigned>(unaliasedPath.size());
+    if (!unaliasedPath.IsSuccess())
+    {
+        AZ_Error("CryPak", false, unaliasedPath.GetError().c_str());
+        return nullptr;
+    }
+
+    unsigned nNameLen = static_cast<unsigned>(unaliasedPath.GetValue().size());
     AUTO_READLOCK(m_csZips);
     // scan through registered pak files and try to find this file
     for (ZipArray::reverse_iterator itZip = m_arrZips.rbegin(); itZip != m_arrZips.rend(); ++itZip)
@@ -1784,11 +1809,11 @@ ZipDir::FileEntry* CCryPak::FindPakFileEntry(const char* szPath, unsigned int& n
         size_t nRootCompLength = itZip->strBindRoot.length();
         const char* const cpRoot = itZip->strBindRoot.c_str();
 
-        if (nNameLen > nRootCompLength  && !memcmp(cpRoot, unaliasedPath.c_str(), nRootCompLength))
+        if (nNameLen > nRootCompLength  && !memcmp(cpRoot, unaliasedPath.GetValue().c_str(), nRootCompLength))
         {
             nBindRootLen = nRootCompLength;
 
-            ZipDir::FileEntry* pFileEntry = itZip->pZip->FindFile(unaliasedPath.c_str() + nBindRootLen);
+            ZipDir::FileEntry* pFileEntry = itZip->pZip->FindFile(unaliasedPath.GetValue().c_str() + nBindRootLen);
             if (pFileEntry)
             {
                 if (pZip)
@@ -1796,8 +1821,6 @@ ZipDir::FileEntry* CCryPak::FindPakFileEntry(const char* szPath, unsigned int& n
                     *pZip = itZip->pZip;
                 }
 
-                //if (pZip)
-                //CryLog( "Zip [%s] %s",itZip->pZip->GetFilePath(),unaliasedPath.c_str() );
                 nArchiveFlags = itZip->pArchive->GetFlags();
                 return pFileEntry;
             }
@@ -2347,7 +2370,13 @@ bool CCryPak::LoadPakToMemory(const char* pName, ICryPak::EInMemoryPakLocation n
     CryPathString pakFile = pName;
     pakFile.MakeLower();
 
-    pakFile = ConvertAbsolutePathToAliasedPath(pakFile.c_str());
+    AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(pakFile.c_str());
+    if (!conversionResult.IsSuccess())
+    {
+        AZ_Error("CryPak", false, conversionResult.GetError().c_str());
+        return false;
+    }
+    pakFile = conversionResult.GetValue();
     unsigned int index = 0;
     if (pakFile[index] != '@') // if unaliased, we need to alias it, since paks are using 'full paths' which are in fact aliased
     {
@@ -2475,7 +2504,14 @@ bool CCryPak::OpenPackCommon(const char* szBindRoot, const char* szFullPath, uns
     }
 
     // Note this will replace @devassets@ with @assets@ to provide a proper bind root for the paks
-    desc.strBindRoot = ConvertAbsolutePathToAliasedPath(desc.strBindRoot.c_str());
+    AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(desc.strBindRoot.c_str());
+    if (!conversionResult.IsSuccess())
+    {
+        AZ_Error("CryPak", false, conversionResult.GetError().c_str());
+        return false;
+    }
+
+    desc.strBindRoot = conversionResult.GetValue();
 
     // hold the lock from the point we query the zip array,
     // so we don't end up adding a given pak twice

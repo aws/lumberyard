@@ -96,6 +96,7 @@ namespace EMStudio
             ~EventHandler() {}
 
             // overloaded
+            const AZStd::vector<EMotionFX::EventTypes> GetHandledEventTypes() const override { return { EMotionFX::EVENT_TYPE_ON_DRAW_LINE, EMotionFX::EVENT_TYPE_ON_DRAW_TRIANGLE, EMotionFX::EVENT_TYPE_ON_DRAW_TRIANGLES }; }
             MCORE_INLINE void OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)                                                                                                                                      { mWidget->AddLine(posA, posB, color); }
             MCORE_INLINE void OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)         { mWidget->AddTriangle(posA, posB, posC, normalA, normalB, normalC, color); }
             MCORE_INLINE void OnDrawTriangles()                                                                                                                                                                                                     { mWidget->RenderTriangles(); }
@@ -118,9 +119,6 @@ namespace EMStudio
         MCORE_INLINE void ClearTriangles()                                                                  { mTriangles.Clear(false); }
         void RenderTriangles();
 
-        // event handler
-        MCORE_INLINE EventHandler* GetEventHandler() const                                                  { return mEventHandler; }
-
         // helper rendering functions
         void RenderActorInstances();
         void RenderGrid();
@@ -134,6 +132,7 @@ namespace EMStudio
         MCORE_INLINE MCommon::Camera* GetCamera() const                                                     { return mCamera; }
         MCORE_INLINE CameraMode GetCameraMode() const                                                       { return mCameraMode; }
         MCORE_INLINE void SetSkipFollowCalcs(bool skipFollowCalcs)                                          { mSkipFollowCalcs = skipFollowCalcs; }
+        void ViewCloseup(const MCore::AABB& aabb, float flightTime, uint32 viewCloseupWaiting = 5);
         void ViewCloseup(bool selectedInstancesOnly, float flightTime, uint32 viewCloseupWaiting = 5);
         void SwitchCamera(CameraMode mode);
 
@@ -160,7 +159,7 @@ namespace EMStudio
         RenderViewWidget*                       mViewWidget;
         MCore::Array<Line>                      mLines;
         MCore::Array<Triangle>                  mTriangles;
-        EventHandler*                           mEventHandler;
+        EventHandler                            mEventHandler;
 
         MCore::Array<EMotionFX::ActorInstance*> mSelectedActorInstances;
 
@@ -180,7 +179,7 @@ namespace EMStudio
 
         // used for closeup camera flights
         uint32                                  mViewCloseupWaiting;
-        bool                                    mViewClosupSelectedInstancesOnly;
+        MCore::AABB                             mViewCloseupAABB;
         float                                   mViewCloseupFlightTime;
 
         // manipulator helper data

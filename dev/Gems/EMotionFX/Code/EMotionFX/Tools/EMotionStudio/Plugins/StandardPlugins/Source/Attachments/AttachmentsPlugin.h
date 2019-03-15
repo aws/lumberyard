@@ -86,7 +86,6 @@ namespace EMStudio
         CommandClearAttachmentsCallback*            mClearAttachmentsCallback;
         CommandAdjustActorCallback*                 mAdjustActorCallback;
 
-        QWidget*                                    mWaitingForAttachmentWidget;
         QWidget*                                    mNoSelectionWidget;
         MysticQt::DialogStack*                      mDialogStack;
         AttachmentsWindow*                          mAttachmentsWindow;

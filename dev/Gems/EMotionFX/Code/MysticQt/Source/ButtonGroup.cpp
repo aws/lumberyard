@@ -270,7 +270,7 @@ namespace MysticQt
                 button->setCheckable(true);
                 button->setMinimumHeight(22);
                 button->setMaximumHeight(22);
-                connect(button, SIGNAL(clicked()), this, SLOT(OnButtonPressed()));
+                connect(button, &QPushButton::clicked, this, &MysticQt::ButtonGroup::OnButtonPressed);
 
                 // prepare and set the style sheet
                 PrepareStyleSheet(&styleModString, numRows, numColumns, i, j);

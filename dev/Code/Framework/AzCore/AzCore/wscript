@@ -62,9 +62,9 @@ def build(bld):
         linux_file_list     = ['azcore_linux.waf_files', 'std/azstd_linux.waf_files'],
         linux_includes      = ['/usr/include/libcxxabi'],
     )
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = [
-            '{0}/azcore_{0}.waf_files'.format(p),
-            'std/{0}/azstd_{0}.waf_files'.format(p),
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = [
+            '{0}/azcore_{1}.waf_files'.format(p0, p1),
+            'std/{0}/azstd_{1}.waf_files'.format(p0, p1),
         ]
     bld.CryEngineStaticLibrary(**kw)

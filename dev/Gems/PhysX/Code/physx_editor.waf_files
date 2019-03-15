@@ -1,8 +1,62 @@
 {
-    "none": {
-        "Source": [
-            "Source/PhysX_precompiled.cpp",
-            "Source/PhysX_precompiled.h"
+    "auto": {
+       "Include": [
+            "Include/PhysX/EditorRigidBodyRequestBus.h"
+        ],
+        "Source/Components": [
+            "Source/EditorRigidBodyComponent.cpp",
+            "Source/EditorRigidBodyComponent.h",
+            "Source/EditorColliderComponent.cpp",
+            "Source/EditorColliderComponent.h",
+            "Source/EditorTerrainComponent.cpp",
+            "Source/EditorTerrainComponent.h",
+            "Source/EditorSystemComponent.cpp",
+            "Source/EditorSystemComponent.h"
+        ],
+        "Source/Pipeline": [
+            "Source/Pipeline/MeshExporter.cpp",
+            "Source/Pipeline/MeshExporter.h",
+            "Source/Pipeline/MeshGroup.cpp",
+            "Source/Pipeline/MeshGroup.h",
+            "Source/Pipeline/MeshBehavior.cpp",
+            "Source/Pipeline/MeshBehavior.h"
+        ],
+        "Source/Pipeline/CgfMeshBuilder": [
+            "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderWorker.h",
+            "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderWorker.cpp",
+            "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.h",
+            "Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.cpp"
+        ],
+        "Editor": [
+            "Editor/ConfigurationWidget.h",
+            "Editor/ConfigurationWidget.cpp",
+            "Editor/EditorWindow.h",
+            "Editor/EditorWindow.cpp",
+            "Editor/EditorWindow.ui",
+            "Editor/SettingsWidget.h",
+            "Editor/SettingsWidget.cpp",
+            "Editor/CollisionLayersWidget.h",
+            "Editor/CollisionLayersWidget.cpp",
+            "Editor/CollisionLayerWidget.h",
+            "Editor/CollisionLayerWidget.cpp",
+            "Editor/CollisionGroupWidget.h",
+            "Editor/CollisionGroupWidget.cpp",
+            "Editor/CollisionGroupsWidget.h",
+            "Editor/CollisionGroupsWidget.cpp",
+            "Editor/PropertyTypes.h",
+            "Editor/PropertyTypes.cpp",
+            "Editor/MaterialIdWidget.h",
+            "Editor/MaterialIdWidget.cpp",
+            "Editor/EditorClassConverters.cpp",
+            "Editor/EditorClassConverters.h",
+            "Editor/PvdWidget.h",
+            "Editor/PvdWidget.cpp",
+            "Editor/InertiaPropertyHandler.h",
+            "Editor/InertiaPropertyHandler.cpp",
+            "Editor/ConfigStringLineEditCtrl.h",
+            "Editor/ConfigStringLineEditCtrl.cpp",
+            "Editor/UniqueStringContainer.h",
+            "Editor/UniqueStringContainer.cpp"
         ]
     }
 }

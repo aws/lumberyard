@@ -189,7 +189,7 @@ void CBrush::Render(const CLodValue& lodValue, const SRenderingPassInfo& passInf
             // these lists are handled earlier than GENERAL lists, thus they need to use another sync variable
             if (!passInfo.IsShadowPass() && !passInfo.IsRecursivePass() && m_bExecuteAsPreprocessJob)
             {
-                pJobExecutor = gEnv->pRenderer->GetGenerateRendItemJobExecutorPreProcess(passInfo.ThreadID());
+                pJobExecutor = gEnv->pRenderer->GetGenerateRendItemJobExecutorPreProcess();
             }
 
             if (pJobExecutor && GetCVars()->e_DebugDraw == 0)

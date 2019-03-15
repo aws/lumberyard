@@ -25,8 +25,10 @@
 #include <LyShine/Bus/UiCanvasBus.h>
 #include <LyShine/Bus/UiElementBus.h>
 #include <LyShine/Bus/UiVisualBus.h>
+#include <LyShine/Bus/UiIndexableImageBus.h>
 
 #include <IRenderer.h>
+#include "EditorPropertyTypes.h"
 #include "Sprite.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -439,19 +441,17 @@ void UiInteractableStateSprite::LoadSpriteFromTargetElement()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-UiImageComponent::AZu32ComboBoxVec UiInteractableStateSprite::PopulateIndexStringList() const
+UiInteractableStateSprite::AZu32ComboBoxVec UiInteractableStateSprite::PopulateIndexStringList() const
 {
-    // There may not be a sprite loaded for this component
-    if (m_sprite)
-    {
-        const AZ::u32 numCells = m_sprite->GetSpriteSheetCells().size();
+    int indexCount = 0;
+    EBUS_EVENT_ID_RESULT(indexCount, m_targetEntity, UiIndexableImageBus, GetImageIndexCount);
 
-        if (numCells != 0)
-        {
-            return UiImageComponent::GetEnumSpriteIndexList(0, numCells - 1, m_sprite);
-        }
+    if (indexCount > 0)
+    {
+        return LyShine::GetEnumSpriteIndexList(m_targetEntity, 0, indexCount - 1);
     }
-    return UiImageComponent::AZu32ComboBoxVec();
+
+    return LyShine::AZu32ComboBoxVec();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

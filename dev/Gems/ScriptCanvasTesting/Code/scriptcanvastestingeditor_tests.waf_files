@@ -1,0 +1,33 @@
+{
+    "auto": {
+        "Source/Framework": [
+            "Source/Framework/EntityRefTests.h",
+            "Source/Framework/ScriptCanvasTestApplication.h",
+            "Source/Framework/ScriptCanvasTestFixture.h",
+            "Source/Framework/ScriptCanvasTestFixture.cpp",
+            "Source/Framework/ScriptCanvasTestNodes.h",
+            "Source/Framework/ScriptCanvasTestNodes.cpp",
+            "Source/Framework/ScriptCanvasTestUtilities.h",
+            "Source/Framework/ScriptCanvasTestUtilities.cpp",
+            "Source/Framework/UnitTestingReporter.cpp",
+            "Source/Framework/UnitTestingReporter.h"
+        ],
+        "Tests": [
+            "Tests/ScriptCanvasTestingTest.cpp",
+            "Tests/ScriptCanvas_Async.cpp",
+            "Tests/ScriptCanvas_BehaviorContext.cpp",
+            "Tests/ScriptCanvas_Core.cpp",
+            "Tests/ScriptCanvas_ContainerSupport.cpp",
+            "Tests/ScriptCanvas_DynamicEBus.cpp",
+            "Tests/ScriptCanvas_EventHandlers.cpp",
+            "Tests/ScriptCanvas_Math.cpp",
+            "Tests/ScriptCanvas_NodeGenerics.cpp",
+            "Tests/ScriptCanvas_OutcomeAutoUnpacking.cpp",
+            "Tests/ScriptCanvas_Regressions.cpp",
+            "Tests/ScriptCanvas_StringNodes.cpp",
+            "Tests/ScriptCanvas_UnitTesting.cpp",
+            "Tests/ScriptCanvas_Variables.cpp",
+            "Tests/ScriptCanvas_VM.cpp"
+        ]
+    }
+}

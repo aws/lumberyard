@@ -481,6 +481,11 @@ namespace AZ
                 return TYPEINFO_Uuid();
             }
 
+            const Uuid& GetLegacySpecializedTypeId() const override
+            {
+                return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
+            }
+
             void Reflect(SerializeContext* serializeContext)
             {
                 if (serializeContext)
@@ -493,25 +498,21 @@ namespace AZ
                 }
             }
 
-            static GenericClassNetBindableField* Instance()
-            {
-                static GenericClassNetBindableField s_instance;
-                return &s_instance;
-            }
-
         protected:
             Internal::AzFrameworkNetBindableFieldContainer<ContainerType> m_containerStorage;
             SerializeContext::ClassData m_classData;
         };
 
-        static GenericClassInfo* GetGenericInfo()
+        using ClassInfoType = GenericClassNetBindableField;
+
+        static ClassInfoType* GetGenericInfo()
         {
-            return GenericClassNetBindableField::Instance();
+            return GetCurrentSerializeContextModule().CreateGenericClassInfo<ContainerType>();
         }
 
         static const Uuid& GetClassTypeId()
         {
-            return GenericClassNetBindableField::Instance()->GetClassData()->m_typeId;
+            return GetGenericInfo()->GetClassData()->m_typeId;
         }
     };
 
@@ -555,6 +556,11 @@ namespace AZ
                 return TYPEINFO_Uuid();
             }
 
+            const Uuid& GetLegacySpecializedTypeId() const override
+            {
+                return AZ::AzTypeInfo<ContainerType>::template Uuid<AZ::PointerRemovedTypeIdTag>();
+            }
+
             void Reflect(SerializeContext* serializeContext)
             {
                 if (serializeContext)
@@ -567,25 +573,21 @@ namespace AZ
                 }
             }
 
-            static GenericClassNetBindableBoundField* Instance()
-            {
-                static GenericClassNetBindableBoundField s_instance;
-                return &s_instance;
-            }
-
         protected:
             Internal::AzFrameworkNetBindableFieldContainer<ContainerType> m_containerStorage;
             SerializeContext::ClassData m_classData;
         };
 
-        static GenericClassInfo* GetGenericInfo()
+        using ClassInfoType = GenericClassNetBindableBoundField;
+
+        static ClassInfoType* GetGenericInfo()
         {
-            return GenericClassNetBindableBoundField::Instance();
+            return GetCurrentSerializeContextModule().CreateGenericClassInfo<ContainerType>();
         }
 
         static const Uuid& GetClassTypeId()
         {
-            return GenericClassNetBindableBoundField::Instance()->GetClassData()->m_typeId;
+            return GetGenericInfo()->GetClassData()->m_typeId;
         }
     };
 }

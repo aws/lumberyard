@@ -43,6 +43,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QTreeWidget>
 #include <QVBoxLayout>
 
 
@@ -142,20 +143,6 @@ namespace EMStudio
         mPlugin = plugin;
         mEnsureVisibility = false;
         mLockSelection = false;
-
-        // hook the callbacks to the commands
-        mCreateCallback         = new CommandCreateBlendParameterCallback(false);
-        mRemoveCallback         = new CommandRemoveBlendParameterCallback(false);
-        mAdjustCallback         = new CommandAdjustBlendParameterCallback(false);
-        mAddGroupCallback       = new CommandAnimGraphAddGroupParameterCallback(false);
-        mRemoveGroupCallback    = new CommandAnimGraphRemoveGroupParameterCallback(false);
-        mAdjustGroupCallback    = new CommandAnimGraphAdjustGroupParameterCallback(false);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphCreateParameter", mCreateCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveParameter", mRemoveCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAdjustParameter", mAdjustCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAddGroupParameter", mAddGroupCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveGroupParameter", mRemoveGroupCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAdjustGroupParameter", mAdjustGroupCallback);
 
         // add the add button
         mAddButton = new QPushButton("");
@@ -259,27 +246,31 @@ namespace EMStudio
         // set the focus policy
         setFocusPolicy(Qt::ClickFocus);
 
-        // init
-        Init();
+        // Force reinitialize in case e.g. a parameter got added or removed.
+        connect(&mPlugin->GetAnimGraphModel(), &AnimGraphModel::ParametersChanged, [this](EMotionFX::AnimGraph* animGraph)
+        {
+            if (animGraph == m_animGraph)
+            {
+                Reinit(/*forceReinit*/true);
+            }
+        });
+
+        // Reinitialize the parameter window each time the focus switches (show a different anim graph in the anim graph window).
+        // That way the parameter window will always show the parameters that belong to the currently shown anim graph.
+        connect(&mPlugin->GetAnimGraphModel(), &AnimGraphModel::FocusChanged, [this]
+        {
+            Reinit();
+        });
+
+        Reinit();
+        EMotionFX::AnimGraphNotificationBus::Handler::BusConnect();
     }
 
 
     // destructor
     ParameterWindow::~ParameterWindow()
     {
-        // unregister the command callbacks and get rid of the memory
-        GetCommandManager()->RemoveCommandCallback(mCreateCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mRemoveCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAdjustCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAddGroupCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mRemoveGroupCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAdjustGroupCallback, false);
-        delete mCreateCallback;
-        delete mRemoveCallback;
-        delete mAdjustCallback;
-        delete mAddGroupCallback;
-        delete mRemoveGroupCallback;
-        delete mAdjustGroupCallback;
+        EMotionFX::AnimGraphNotificationBus::Handler::BusDisconnect();
     }
 
 
@@ -381,7 +372,6 @@ namespace EMStudio
 
         QTreeWidgetItem* widgetItem = new QTreeWidgetItem(parentWidgetItem);
         widgetItem->setText(0, parameter->GetName().c_str());
-        widgetItem->setExpanded(true);
         widgetItem->setData(0, Qt::UserRole, QString(parameter->GetName().c_str()));
         parentWidgetItem->addChild(widgetItem);
 
@@ -398,6 +388,8 @@ namespace EMStudio
 
         if (azrtti_typeid(parameter) == azrtti_typeid<EMotionFX::GroupParameter>())
         {
+            widgetItem->setExpanded(true);
+
             const EMotionFX::GroupParameter* groupParameter = static_cast<const EMotionFX::GroupParameter*>(parameter);
 
             const AZStd::string tooltip = AZStd::string::format("%d Parameters", groupParameter->GetNumValueParameters());
@@ -417,29 +409,13 @@ namespace EMStudio
             const AZ::Outcome<size_t> parameterIndex = animGraph->FindValueParameterIndex(valueParameter);
             AZ_Assert(parameterIndex.IsSuccess(), "Expected a parameter belonging to the the anim graph");
 
-            // apply attributes for all actor instances
-            AZStd::vector<MCore::Attribute*> attributes;
-            const uint32 numInstances = GetCommandManager()->GetCurrentSelection().GetNumSelectedActorInstances();
-            for (uint32 j = 0; j < numInstances; ++j)
-            {
-                // only update actor instances using this anim graph
-                EMotionFX::AnimGraphInstance* animGraphInstance = GetCommandManager()->GetCurrentSelection().GetActorInstance(j)->GetAnimGraphInstance();
-                if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-                {
-                    attributes.emplace_back(animGraphInstance->GetParameterValue(static_cast<uint32>(parameterIndex.GetValue())));
-                }
-            }
-
             // check if the interface item needs to be read only or not
             bool isActuallyControlled, isEnabled;
             GetGamepadState(animGraph, parameter, &isActuallyControlled, &isEnabled);
 
-            // create the attribute and add it to the layout
-            const bool readOnly = (isActuallyControlled && isEnabled) || attributes.empty();
-
             ParameterWidget parameterWidget;
+            const AZStd::vector<MCore::Attribute*> attributes = GetAttributesForParameter(parameterIndex.GetValue());
             parameterWidget.m_valueParameterEditor.reset(ParameterEditorFactory::Create(animGraph, valueParameter, attributes));
-            parameterWidget.m_valueParameterEditor->setIsReadOnly(readOnly);
 
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
@@ -453,6 +429,7 @@ namespace EMStudio
             parameterWidget.m_propertyEditor->SetAutoResizeLabels(false);
             parameterWidget.m_propertyEditor->SetLeafIndentation(0);
             parameterWidget.m_propertyEditor->setStyleSheet("QFrame, .QWidget, QSlider, QCheckBox { background-color: transparent }");
+            parameterWidget.m_propertyEditor->setFixedHeight(20);
 
             parameterWidget.m_propertyEditor->AddInstance(parameterWidget.m_valueParameterEditor.get(), azrtti_typeid(parameterWidget.m_valueParameterEditor.get()));
             parameterWidget.m_propertyEditor->Setup(serializeContext, this, false, 0);
@@ -534,8 +511,7 @@ namespace EMStudio
 
     void ParameterWindow::RequestPropertyContextMenu(AzToolsFramework::InstanceDataNode*, const QPoint& point)
     {
-        EMotionFX::AnimGraph*  animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr || EMotionFX::GetRecorder().GetIsInPlayMode() || EMotionFX::GetRecorder().GetIsRecording())
+        if (!m_animGraph || EMotionFX::GetRecorder().GetIsInPlayMode() || EMotionFX::GetRecorder().GetIsRecording())
         {
             return;
         }
@@ -588,7 +564,7 @@ namespace EMStudio
             const EMotionFX::GroupParameter* parentGroup = nullptr;
             if (parameter)
             {
-                parentGroup = animGraph->FindParentGroupParameter(parameter);
+                parentGroup = m_animGraph->FindParentGroupParameter(parameter);
             }
 
             // get the number of group parameters and iterate through them
@@ -598,7 +574,7 @@ namespace EMStudio
                 const EMotionFX::GroupParameter* groupParameter = static_cast<const EMotionFX::GroupParameter*>(parameter);
                 groupParametersInCurrentParameter = groupParameter->RecursivelyGetChildGroupParameters();
             }
-            const EMotionFX::GroupParameterVector allGroupParameters = animGraph->RecursivelyGetGroupParameters();
+            const EMotionFX::GroupParameterVector allGroupParameters = m_animGraph->RecursivelyGetGroupParameters();
             for (const EMotionFX::GroupParameter* groupParameter : allGroupParameters)
             {
                 if (groupParameter != parameter
@@ -661,7 +637,7 @@ namespace EMStudio
         }
 
         // clear action
-        if (animGraph->GetNumParameters() > 0)
+        if (m_animGraph->GetNumParameters() > 0)
         {
             QAction* clearAction = menu.addAction("Clear");
             clearAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Clear.png"));
@@ -682,6 +658,11 @@ namespace EMStudio
     // triggered when pressing one of the gamepad gizmo buttons
     void ParameterWindow::OnGamepadControlToggle()
     {
+        if (!m_animGraph)
+        {
+            return;
+        }
+
         if (EMotionFX::GetRecorder().GetIsInPlayMode() && EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon)
         {
             return;
@@ -693,11 +674,11 @@ namespace EMStudio
 
         const AZStd::string attributeInfoName = button->property("attributeInfo").toString().toUtf8().data();
 
-        const EMotionFX::Parameter* parameter = mAnimGraph->FindParameterByName(attributeInfoName);
+        const EMotionFX::Parameter* parameter = m_animGraph->FindParameterByName(attributeInfoName);
         if (parameter)
         {
             // update the game controller settings
-            SetGamepadState(mAnimGraph, parameter, button->isChecked());
+            SetGamepadState(m_animGraph, parameter, button->isChecked());
 
             // update the interface
             ParameterWidgetByParameter::const_iterator paramWidgetIt = m_parameterWidgets.find(parameter);
@@ -714,20 +695,8 @@ namespace EMStudio
     void ParameterWindow::OnRecorderStateChanged()
     {
         const bool readOnly = (EMotionFX::GetRecorder().GetIsInPlayMode()); // disable when in playback mode, enable otherwise
-        if (mAnimGraph)
+        if (m_animGraph)
         {
-            const EMotionFX::ValueParameterVector& valueParameters = mAnimGraph->RecursivelyGetValueParameters();
-            for (const EMotionFX::ValueParameter* valueParameter : valueParameters)
-            {
-                // update the interface
-                ParameterWidgetByParameter::const_iterator paramWidgetIt = m_parameterWidgets.find(valueParameter);
-                if (paramWidgetIt != m_parameterWidgets.end())
-                {
-                    paramWidgetIt->second.m_valueParameterEditor->setIsReadOnly(readOnly);
-                    paramWidgetIt->second.m_propertyEditor->InvalidateAll();
-                }
-            }
-
             // update parameter values
             UpdateParameterValues();
         }
@@ -748,36 +717,54 @@ namespace EMStudio
     }
 
 
-    // create the list of parameters
-    void ParameterWindow::Init()
+    // callback function when the attribute get changed from trigger actions.
+    void ParameterWindow::OnParameterActionTriggered(const EMotionFX::ValueParameter* valueParameter)
+    {
+        ParameterWidgetByParameter::const_iterator it = m_parameterWidgets.find(valueParameter);
+        if (it != m_parameterWidgets.end())
+        {
+            it->second.m_valueParameterEditor->UpdateValue();
+            it->second.m_propertyEditor->InvalidateValues();
+        }
+    }
+
+
+    void ParameterWindow::Reinit(bool forceReinit)
     {
         mLockSelection = true;
+
+        // Early out in case we're already showing the parameters from the focused anim graph.
+        if (!forceReinit && m_animGraph == mPlugin->GetAnimGraphModel().GetFocusedAnimGraph())
+        {
+            UpdateAttributesForParameterWidgets();
+            UpdateInterface();
+            mLockSelection = false;
+            return;
+        }
+
+        m_animGraph = mPlugin->GetAnimGraphModel().GetFocusedAnimGraph();
 
         // clear the parameter tree and the widget table
         mTreeWidget->clear();
         m_parameterWidgets.clear();
 
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        mAnimGraph = animGraph;
-        if (animGraph == nullptr
-            || GetCommandManager()->GetCurrentSelection().GetNumSelectedActorInstances() > 1) // only allow one actor or none instance to be selected
+        if (!m_animGraph || GetCommandManager()->GetCurrentSelection().GetNumSelectedActorInstances() > 1) // only allow one actor or none instance to be selected
         {
-            // update the interface and return
             UpdateInterface();
             mLockSelection = false;
             return;
         }
 
         // add all parameters, this will recursively add parameters to groups
-        const EMotionFX::ParameterVector& childParameters = animGraph->GetChildParameters();
+        const EMotionFX::ParameterVector& childParameters = m_animGraph->GetChildParameters();
         for (const EMotionFX::Parameter* parameter : childParameters)
         {
-            AddParameterToInterface(animGraph, parameter, mTreeWidget->invisibleRootItem());
+            AddParameterToInterface(m_animGraph, parameter, mTreeWidget->invisibleRootItem());
         }
 
         mLockSelection = false;
 
+        UpdateAttributesForParameterWidgets();
         UpdateInterface();
     }
 
@@ -800,7 +787,7 @@ namespace EMStudio
     void ParameterWindow::OnTextFilterChanged(const QString& text)
     {
         mFilterString = text.toUtf8().data();
-        Init();
+        Reinit();
     }
 
 
@@ -820,9 +807,7 @@ namespace EMStudio
         *outMoveUpPossible = false;
         *outMoveDownPossible = false;
 
-        // get the active anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        if (!m_animGraph)
         {
             return;
         }
@@ -838,7 +823,7 @@ namespace EMStudio
         // If the parameter is the first one, we can only move up if we are in a group (this will move the parameter
         // to the parent group, making it a sibling of the group)
         // If the parameter is the last of the list, then we can move down if are in a group
-        const EMotionFX::GroupParameter* parentGroup = animGraph->FindParentGroupParameter(parameter);
+        const EMotionFX::GroupParameter* parentGroup = m_animGraph->FindParentGroupParameter(parameter);
 
         // If we have a parent group, we dont need to inspect the siblings, we can always move up/down
         if (parentGroup)
@@ -848,7 +833,7 @@ namespace EMStudio
             return;
         }
 
-        const EMotionFX::ParameterVector& siblingParameters = parentGroup ? parentGroup->GetChildParameters() : animGraph->GetChildParameters();
+        const EMotionFX::ParameterVector& siblingParameters = parentGroup ? parentGroup->GetChildParameters() : m_animGraph->GetChildParameters();
         AZ_Assert(!siblingParameters.empty(), "Expected at least one parameter (the one we are analyzing)");
 
         if (*siblingParameters.begin() != parameter)
@@ -865,9 +850,7 @@ namespace EMStudio
     // update the interface
     void ParameterWindow::UpdateInterface()
     {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr || EMotionFX::GetRecorder().GetIsInPlayMode() || EMotionFX::GetRecorder().GetIsRecording())
+        if (!m_animGraph || EMotionFX::GetRecorder().GetIsInPlayMode() || EMotionFX::GetRecorder().GetIsRecording())
         {
             mAddButton->setEnabled(false);
             mRemoveButton->setEnabled(false);
@@ -882,7 +865,7 @@ namespace EMStudio
         mAddButton->setEnabled(true);
 
         // enable the clear button in case we have more than zero parameters
-        mClearButton->setEnabled(animGraph->GetNumParameters() > 0);
+        mClearButton->setEnabled(m_animGraph->GetNumParameters() > 0);
 
         // disable the remove and edit buttton if we dont have any parameter selected
         mRemoveButton->setEnabled(true);
@@ -899,15 +882,77 @@ namespace EMStudio
 
         mMoveUpButton->setEnabled(moveUpPossible);
         mMoveDownButton->setEnabled(moveDownPossible);
+
+        bool isAnimGraphActive = mPlugin->IsAnimGraphActive(m_animGraph);
+
+        // Make the parameter widgets read-only in case they are either controlled by the gamepad or the anim graph is not running on an actor instance.
+        for (const auto& iterator : m_parameterWidgets)
+        {
+            const EMotionFX::Parameter* parameter = iterator.first;
+
+            bool isActuallyControlled, isEnabled;
+            GetGamepadState(m_animGraph, parameter, &isActuallyControlled, &isEnabled);
+            const bool isGamepadConrolled = isActuallyControlled && isEnabled;
+
+            const bool readOnly = isGamepadConrolled || !isAnimGraphActive;
+            const bool oldIsReadOnly = iterator.second.m_valueParameterEditor->IsReadOnly();
+            if (readOnly != oldIsReadOnly)
+            {
+                iterator.second.m_valueParameterEditor->setIsReadOnly(readOnly);
+                iterator.second.m_propertyEditor->InvalidateAll();
+            }
+        }
+    }
+
+
+    AZStd::vector<MCore::Attribute*> ParameterWindow::GetAttributesForParameter(size_t parameterIndex) const
+    {
+        AZStd::vector<MCore::Attribute*> result;
+
+        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+        const uint32 numActorInstances = selectionList.GetNumSelectedActorInstances();
+        for (uint32 i = 0; i < numActorInstances; ++i)
+        {
+            const EMotionFX::ActorInstance* actorInstance = selectionList.GetActorInstance(i);
+            const EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
+            if (animGraphInstance && animGraphInstance->GetAnimGraph() == m_animGraph)
+            {
+                result.emplace_back(animGraphInstance->GetParameterValue(static_cast<uint32>(parameterIndex)));
+            }
+        }
+
+        return result;
+    }
+
+    void ParameterWindow::UpdateAttributesForParameterWidgets()
+    {
+        if (!m_animGraph)
+        {
+            return;
+        }
+
+        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
+        for (const auto& iterator : m_parameterWidgets)
+        {
+            const EMotionFX::Parameter* parameter = iterator.first;
+
+            const EMotionFX::ValueParameter* valueParameter = azdynamic_cast<const EMotionFX::ValueParameter*>(parameter);
+            if (valueParameter)
+            {
+                const AZ::Outcome<size_t> parameterIndex = m_animGraph->FindValueParameterIndex(valueParameter);
+                AZ_Assert(parameterIndex.IsSuccess(), "Expected a parameter belonging to the the anim graph");
+
+                const AZStd::vector<MCore::Attribute*> attributes = GetAttributesForParameter(parameterIndex.GetValue());
+                iterator.second.m_valueParameterEditor->SetAttributes(attributes);
+            }
+        }
     }
 
 
     // add a new parameter
     void ParameterWindow::OnAddParameter()
     {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        if (!m_animGraph)
         {
             return;
         }
@@ -929,7 +974,7 @@ namespace EMStudio
         const AZStd::unique_ptr<EMotionFX::Parameter>& parameter = dialog.GetParameter();
 
         CommandSystem::ConstructCreateParameterCommand(commandString,
-            animGraph,
+            m_animGraph,
             parameter.get(),
             MCORE_INVALIDINDEX32);
         commandGroup.AddCommandString(commandString);
@@ -946,13 +991,13 @@ namespace EMStudio
             else
             {
                 // add it as sibling of the current selected parameter
-                parentGroup = mAnimGraph->FindParentGroupParameter(selectedParameter);
+                parentGroup = m_animGraph->FindParentGroupParameter(selectedParameter);
             }
         }
         if (parentGroup)
         {
             commandString = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %d -name \"%s\" -parameterNames \"%s\" -action \"add\"",
-                    animGraph->GetID(),
+                m_animGraph->GetID(),
                     parentGroup->GetName().c_str(),
                     parameter->GetName().c_str());
             commandGroup.AddCommandString(commandString);
@@ -969,16 +1014,14 @@ namespace EMStudio
     // edit a new parameter
     void ParameterWindow::OnEditButton()
     {
-        // get the selected parameter index and make sure it is valid
-        const EMotionFX::Parameter* parameter = GetSingleSelectedParameter();
-        if (!parameter)
+        if (!m_animGraph)
         {
             return;
         }
 
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        // get the selected parameter index and make sure it is valid
+        const EMotionFX::Parameter* parameter = GetSingleSelectedParameter();
+        if (!parameter)
         {
             return;
         }
@@ -1002,16 +1045,77 @@ namespace EMStudio
         const AZStd::unique_ptr<EMotionFX::Parameter>& editedParameter = dialog.GetParameter();
         const AZStd::string contents = MCore::ReflectionSerializer::Serialize(editedParameter.get()).GetValue();
 
+        const AZ::TypeId oldTypeId = azrtti_typeid(parameter);
+        const AZ::TypeId newTypeId = azrtti_typeid(editedParameter.get());
+
+        MCore::CommandGroup commandGroup;
+        if (oldTypeId != newTypeId)
+        {
+            // Add commands to remove connections from any existing port on a
+            // parameter node from this parameter
+
+            // Make a new port with the correct new type, to test the connection validity
+            EMotionFX::AnimGraphNode::Port newPort;
+            if (const EMotionFX::ValueParameter* valueParameter = azrtti_cast<EMotionFX::ValueParameter*>(editedParameter.get()))
+            {
+                newPort.mCompatibleTypes[0] = valueParameter->GetType();
+            }
+
+            // Get the list of all parameter nodes
+            MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
+            m_animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
+            const uint32 numParameterNodes = parameterNodes.GetLength();
+            for (uint32 paramNodeIndex = 0; paramNodeIndex < numParameterNodes; ++paramNodeIndex)
+            {
+                const EMotionFX::AnimGraphNode* parameterNode = parameterNodes[paramNodeIndex];
+
+                // Get the list of connections from the port whose type is
+                // being changed
+                const uint32 sourcePortIndex = parameterNode->FindOutputPortIndex(parameter->GetName().c_str());
+
+                AZStd::vector<AZStd::pair<EMotionFX::BlendTreeConnection*, EMotionFX::AnimGraphNode*>> outgoingConnectionsFromThisPort;
+                parameterNode->CollectOutgoingConnections(outgoingConnectionsFromThisPort, sourcePortIndex);
+
+                // Verify that the connection will still be valid with the new type
+                for (const auto& connection : outgoingConnectionsFromThisPort)
+                {
+                    const EMotionFX::AnimGraphNode* targetNode = connection.second;
+                    const EMotionFX::AnimGraphNode::Port& targetPort = targetNode->GetInputPort(connection.first->GetTargetPort());
+                    bool isCompatible = newPort.CheckIfIsCompatibleWith(targetPort);
+
+                    if (!isCompatible)
+                    {
+                        // Delete the connection
+                        AZStd::string removeConnectionCommand = AZStd::string::format(
+                            "AnimGraphRemoveConnection"
+                            " -animGraphID %d"
+                            " -sourceNode \"%s\""
+                            " -sourcePort %d"
+                            " -targetNode \"%s\""
+                            " -targetPort %d",
+                            m_animGraph->GetID(),
+                            parameterNode->GetName(),
+                            connection.first->GetSourcePort(),
+                            targetNode->GetName(),
+                            connection.first->GetTargetPort()
+                        );
+                        commandGroup.AddCommandString(removeConnectionCommand.c_str());
+                    }
+                }
+            }
+        }
+
         // Build the command string and execute it.
         commandString = AZStd::string::format("AnimGraphAdjustParameter -animGraphID %i -name \"%s\" -newName \"%s\" -type \"%s\" -contents {%s}",
-                animGraph->GetID(),
+            m_animGraph->GetID(),
                 oldName.c_str(),
                 editedParameter->GetName().c_str(),
                 azrtti_typeid(editedParameter.get()).ToString<AZStd::string>().c_str(),
                 contents.c_str());
+        commandGroup.AddCommandString(commandString);
 
         AZStd::string result;
-        if (!GetCommandManager()->ExecuteCommand(commandString, result))
+        if (!GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
@@ -1026,10 +1130,10 @@ namespace EMStudio
             return;
         }
 
-        // get the anim graph and clear the selection
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
+        // clear the selection
         mSelectedParameterNames.clear();
-        if (!animGraph)
+
+        if (!m_animGraph)
         {
             return;
         }
@@ -1055,14 +1159,13 @@ namespace EMStudio
             return nullptr;
         }
 
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        if (!m_animGraph)
         {
             return nullptr;
         }
 
         // find and return the index of the parameter in the anim graph
-        return animGraph->FindParameterByName(mSelectedParameterNames[0]);
+        return m_animGraph->FindParameterByName(mSelectedParameterNames[0]);
     }
 
 
@@ -1072,8 +1175,7 @@ namespace EMStudio
         if (MCore::GetLogManager().GetLogLevels() & MCore::LogCallback::LOGLEVEL_INFO)
         {
             // log the parameters and the group parameters
-            EMotionFX::AnimGraph* logAnimGraph = mPlugin->GetActiveAnimGraph();
-            const EMotionFX::ValueParameterVector& valueParameters = logAnimGraph->RecursivelyGetValueParameters();
+            const EMotionFX::ValueParameterVector& valueParameters = m_animGraph->RecursivelyGetValueParameters();
             const size_t logNumParams = valueParameters.size();
             MCore::LogInfo("=================================================");
             MCore::LogInfo("Parameters: (%i)", logNumParams);
@@ -1081,7 +1183,7 @@ namespace EMStudio
             {
                 MCore::LogInfo("Parameter #%i: Name='%s'", p, valueParameters[p]->GetName().c_str());
             }
-            const EMotionFX::GroupParameterVector groupParameters = logAnimGraph->RecursivelyGetGroupParameters();
+            const EMotionFX::GroupParameterVector groupParameters = m_animGraph->RecursivelyGetGroupParameters();
             const size_t logNumGroups = groupParameters.size();
             MCore::LogInfo("Group parameters: (%i)", logNumGroups);
             for (uint32 g = 0; g < logNumGroups; ++g)
@@ -1097,8 +1199,7 @@ namespace EMStudio
         }
 
         // check if the anim graph is valid
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        if (!m_animGraph)
         {
             return;
         }
@@ -1111,7 +1212,7 @@ namespace EMStudio
         // get the number of selected parameters and iterate through them
         for (const AZStd::string& selectedParameter : mSelectedParameterNames)
         {
-            const EMotionFX::Parameter* parameter = animGraph->FindParameterByName(selectedParameter);
+            const EMotionFX::Parameter* parameter = m_animGraph->FindParameterByName(selectedParameter);
             if (!parameter)
             {
                 continue;
@@ -1120,7 +1221,7 @@ namespace EMStudio
             {
                 // remove the group parameter
                 const EMotionFX::GroupParameter* groupParameter = static_cast<const EMotionFX::GroupParameter*>(parameter);
-                CommandSystem::RemoveGroupParameter(animGraph, groupParameter, false, &commandGroup);
+                CommandSystem::RemoveGroupParameter(m_animGraph, groupParameter, false, &commandGroup);
 
                 // check if we have selected all parameters inside the group
                 // if not we should ask if we want to remove them along with the group
@@ -1140,7 +1241,7 @@ namespace EMStudio
             }
         }
 
-        CommandSystem::BuildRemoveParametersCommandGroup(animGraph, selectedValueParameters, &commandGroup);
+        CommandSystem::BuildRemoveParametersCommandGroup(m_animGraph, selectedValueParameters, &commandGroup);
 
         if (!paramsOfSelectedGroup.empty())
         {
@@ -1155,7 +1256,7 @@ namespace EMStudio
                 AZStd::vector<AZStd::string>::const_iterator it = paramsOfSelectedGroup.begin();
                 while (it != paramsOfSelectedGroup.end())
                 {
-                    const EMotionFX::GroupParameter* groupParameter = animGraph->FindGroupParameterByName(*it);
+                    const EMotionFX::GroupParameter* groupParameter = m_animGraph->FindGroupParameterByName(*it);
                     if (groupParameter)
                     {
                         groupParameters.push_back(groupParameter);
@@ -1166,10 +1267,10 @@ namespace EMStudio
                         ++it;
                     }
                 }
-                CommandSystem::BuildRemoveParametersCommandGroup(animGraph, paramsOfSelectedGroup, &commandGroup);
+                CommandSystem::BuildRemoveParametersCommandGroup(m_animGraph, paramsOfSelectedGroup, &commandGroup);
                 for (const EMotionFX::GroupParameter* groupParameter : groupParameters)
                 {
-                    CommandSystem::RemoveGroupParameter(animGraph, groupParameter, false, &commandGroup);
+                    CommandSystem::RemoveGroupParameter(m_animGraph, groupParameter, false, &commandGroup);
                 }
             }
         }
@@ -1186,9 +1287,7 @@ namespace EMStudio
     // remove all parameters and groups
     void ParameterWindow::OnClearButton()
     {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        if (!m_animGraph)
         {
             return;
         }
@@ -1202,8 +1301,8 @@ namespace EMStudio
         MCore::CommandGroup commandGroup("Clear parameters/groups");
 
         // add the commands to remove all groups and parameters
-        CommandSystem::ClearParametersCommand(animGraph, &commandGroup);
-        CommandSystem::ClearGroupParameters(animGraph, &commandGroup);
+        CommandSystem::ClearParametersCommand(m_animGraph, &commandGroup);
+        CommandSystem::ClearGroupParameters(m_animGraph, &commandGroup);
 
         // Execute the command group.
         AZStd::string result;
@@ -1217,22 +1316,24 @@ namespace EMStudio
     // move the parameter up in the list
     void ParameterWindow::OnMoveParameterUp()
     {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
+        if (!m_animGraph)
+        {
+            return;
+        }
 
         // get the selected parameter index and make sure it is valid
         const EMotionFX::Parameter* parameter = GetSingleSelectedParameter();
         if (parameter)
         {
-            const EMotionFX::GroupParameter* parentGroup = animGraph->FindParentGroupParameter(parameter);
-            const AZ::Outcome<size_t> relativeIndex = parentGroup ? parentGroup->FindRelativeParameterIndex(parameter) : animGraph->FindRelativeParameterIndex(parameter);
+            const EMotionFX::GroupParameter* parentGroup = m_animGraph->FindParentGroupParameter(parameter);
+            const AZ::Outcome<size_t> relativeIndex = parentGroup ? parentGroup->FindRelativeParameterIndex(parameter) : m_animGraph->FindRelativeParameterIndex(parameter);
             AZ_Assert(relativeIndex.IsSuccess(), "Expected a valid index");
 
             AZStd::string commandString;
             if (relativeIndex.GetValue() != 0)
             {
                 commandString = AZStd::string::format("AnimGraphMoveParameter -animGraphID %d -name \"%s\" -index %d ",
-                    animGraph->GetID(),
+                    m_animGraph->GetID(),
                     parameter->GetName().c_str(),
                     relativeIndex.GetValue() - 1);
                 if (parentGroup)
@@ -1244,12 +1345,12 @@ namespace EMStudio
             {
                 // We need to move the parameter to the parent group and put it at the index where the parent group is
                 AZ_Assert(parentGroup, "CanMove should have restricted this option");
-                const EMotionFX::GroupParameter* grandparentGroup = animGraph->FindParentGroupParameter(parentGroup);
-                const AZ::Outcome<size_t> parentRelativeIndex = grandparentGroup ? grandparentGroup->FindRelativeParameterIndex(parentGroup) : animGraph->FindRelativeParameterIndex(parentGroup);
+                const EMotionFX::GroupParameter* grandparentGroup = m_animGraph->FindParentGroupParameter(parentGroup);
+                const AZ::Outcome<size_t> parentRelativeIndex = grandparentGroup ? grandparentGroup->FindRelativeParameterIndex(parentGroup) : m_animGraph->FindRelativeParameterIndex(parentGroup);
                 AZ_Assert(parentRelativeIndex.IsSuccess(), "Expected a valid index");
 
                 commandString = AZStd::string::format("AnimGraphMoveParameter -animGraphID %d -name \"%s\" -index %d ",
-                        animGraph->GetID(),
+                        m_animGraph->GetID(),
                         parameter->GetName().c_str(),
                         parentRelativeIndex.GetValue()); // In this case we position the parameter in the position where the parent is
                 if (grandparentGroup)
@@ -1270,23 +1371,25 @@ namespace EMStudio
     // move parameter down in the list
     void ParameterWindow::OnMoveParameterDown()
     {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
+        if (!m_animGraph)
+        {
+            return;
+        }
 
         // get the selected parameter index and make sure it is valid
         const EMotionFX::Parameter* parameter = GetSingleSelectedParameter();
         if (parameter)
         {
-            const EMotionFX::GroupParameter* parentGroup = animGraph->FindParentGroupParameter(parameter);
-            const AZ::Outcome<size_t> relativeIndex = parentGroup ? parentGroup->FindRelativeParameterIndex(parameter) : animGraph->FindRelativeParameterIndex(parameter);
-            const size_t parentParameterCount = parentGroup ? parentGroup->GetChildParameters().size() : animGraph->GetChildParameters().size();
+            const EMotionFX::GroupParameter* parentGroup = m_animGraph->FindParentGroupParameter(parameter);
+            const AZ::Outcome<size_t> relativeIndex = parentGroup ? parentGroup->FindRelativeParameterIndex(parameter) : m_animGraph->FindRelativeParameterIndex(parameter);
+            const size_t parentParameterCount = parentGroup ? parentGroup->GetChildParameters().size() : m_animGraph->GetChildParameters().size();
             AZ_Assert(relativeIndex.IsSuccess(), "Expected a valid index");
 
             AZStd::string commandString;
             if (relativeIndex.GetValue() != (parentParameterCount - 1))
             {
                 commandString = AZStd::string::format("AnimGraphMoveParameter -animGraphID %d -name \"%s\" -index %d ",
-                        animGraph->GetID(),
+                        m_animGraph->GetID(),
                         parameter->GetName().c_str(),
                         relativeIndex.GetValue() + 1);
                 if (parentGroup)
@@ -1298,12 +1401,12 @@ namespace EMStudio
             {
                 // We need to move the parameter to the parent group and put it after the index where the parent group is
                 AZ_Assert(parentGroup, "CanMove should have restricted this option");
-                const EMotionFX::GroupParameter* grandparentGroup = animGraph->FindParentGroupParameter(parentGroup);
-                const AZ::Outcome<size_t> parentRelativeIndex = grandparentGroup ? grandparentGroup->FindRelativeParameterIndex(parentGroup) : animGraph->FindRelativeParameterIndex(parentGroup);
+                const EMotionFX::GroupParameter* grandparentGroup = m_animGraph->FindParentGroupParameter(parentGroup);
+                const AZ::Outcome<size_t> parentRelativeIndex = grandparentGroup ? grandparentGroup->FindRelativeParameterIndex(parentGroup) : m_animGraph->FindRelativeParameterIndex(parentGroup);
                 AZ_Assert(parentRelativeIndex.IsSuccess(), "Expected a valid index");
 
                 commandString = AZStd::string::format("AnimGraphMoveParameter -animGraphID %d -name \"%s\" -index %d ",
-                        animGraph->GetID(),
+                        m_animGraph->GetID(),
                         parameter->GetName().c_str(),
                         parentRelativeIndex.GetValue() + 1); // In this case we position the parameter after the position where the parent is
                 if (grandparentGroup)
@@ -1332,9 +1435,7 @@ namespace EMStudio
         assert(sender()->inherits("QAction"));
         QAction* action = qobject_cast<QAction*>(sender());
 
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        if (!m_animGraph)
         {
             return;
         }
@@ -1362,18 +1463,18 @@ namespace EMStudio
 
         // target group parameter
         const AZStd::string groupParameterName = action->text().toUtf8().data();
-        const EMotionFX::GroupParameter* groupParameter = animGraph->FindGroupParameterByName(groupParameterName);
+        const EMotionFX::GroupParameter* groupParameter = m_animGraph->FindGroupParameterByName(groupParameterName);
 
         if (groupParameter)
         {
             for (const AZStd::string& selectedParameterName : mSelectedParameterNames)
             {
                 // get the selected parameter
-                const EMotionFX::Parameter* parameter = animGraph->FindParameterByName(selectedParameterName);
+                const EMotionFX::Parameter* parameter = m_animGraph->FindParameterByName(selectedParameterName);
                 if (parameter)
                 {
                     commandString = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %d -name \"%s\" -parameterNames \"%s\" -action \"add\"",
-                            animGraph->GetID(),
+                            m_animGraph->GetID(),
                             groupParameter->GetName().c_str(),
                             parameter->GetName().c_str());
                     commandGroup.AddCommandString(commandString);
@@ -1385,11 +1486,11 @@ namespace EMStudio
             for (const AZStd::string& selectedParameterName : mSelectedParameterNames)
             {
                 // get the selected parameter
-                const EMotionFX::Parameter* parameter = animGraph->FindParameterByName(selectedParameterName);
+                const EMotionFX::Parameter* parameter = m_animGraph->FindParameterByName(selectedParameterName);
                 if (parameter)
                 {
                     commandString = AZStd::string::format("AnimGraphAdjustGroupParameter -animGraphID %d -parameterNames \"%s\" -action \"clear\"",
-                            animGraph->GetID(),
+                            m_animGraph->GetID(),
                             parameter->GetName().c_str());
                     commandGroup.AddCommandString(commandString);
                 }
@@ -1427,36 +1528,38 @@ namespace EMStudio
             return;
         }
 
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
         EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
-        if (!animGraph || !animGraphInstance)
+        if (!animGraphInstance)
         {
             return;
         }
 
-        const AZ::Outcome<size_t> parameterIndex = animGraph->FindParameterIndex(parameter);
+        if (m_animGraph != animGraphInstance->GetAnimGraph())
+        {
+            return;
+        }
+
+        const AZ::Outcome<size_t> parameterIndex = m_animGraph->FindParameterIndex(parameter);
         if (parameterIndex.IsSuccess())
         {
             MCore::Attribute* instanceValue = animGraphInstance->GetParameterValue(static_cast<uint32>(parameterIndex.GetValue()));
             valueParameter->SetDefaultValueFromAttribute(instanceValue);
 
-            animGraph->SetDirtyFlag(true);
+            m_animGraph->SetDirtyFlag(true);
         }
     }
 
 
     void ParameterWindow::OnAddGroup()
     {
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        if (!m_animGraph)
         {
             return;
         }
 
         // fill in the invalid names array
         AZStd::vector<AZStd::string> invalidNames;
-        const EMotionFX::GroupParameterVector groupParameters = animGraph->RecursivelyGetGroupParameters();
+        const EMotionFX::GroupParameterVector groupParameters = m_animGraph->RecursivelyGetGroupParameters();
         for (const EMotionFX::GroupParameter* groupParameter : groupParameters)
         {
             invalidNames.push_back(groupParameter->GetName());
@@ -1475,7 +1578,7 @@ namespace EMStudio
             return;
         }
 
-        AZStd::string command = AZStd::string::format("AnimGraphAddGroupParameter -animGraphID %i -name \"%s\"", animGraph->GetID(), createWindow.GetName().c_str());
+        AZStd::string command = AZStd::string::format("AnimGraphAddGroupParameter -animGraphID %i -name \"%s\"", m_animGraph->GetID(), createWindow.GetName().c_str());
 
         const EMotionFX::GroupParameter* parentGroup = nullptr;
         const EMotionFX::Parameter* selectedParameter = GetSingleSelectedParameter();
@@ -1489,7 +1592,7 @@ namespace EMStudio
             else
             {
                 // add it as sibling of the current selected parameter
-                parentGroup = mAnimGraph->FindParentGroupParameter(selectedParameter);
+                parentGroup = m_animGraph->FindParentGroupParameter(selectedParameter);
             }
         }
         if (parentGroup)
@@ -1516,8 +1619,7 @@ namespace EMStudio
         // to see the file dirty because of the collapsed state. This setting likely should be by user and stored in a separate file.
         // The RPE supports serializing this state.
         //// get the anim graph
-        //EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        //if (animGraph == nullptr)
+        //if (!m_animGraph)
         //{
         //    return;
         //}
@@ -1537,8 +1639,7 @@ namespace EMStudio
         // to see the file dirty because of the collapsed state. This setting likely should be by user and stored in a separate file.
         // The RPE supports serializing this state.
         //// get the anim graph
-        //EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        //if (animGraph == nullptr)
+        //if (!m_animGraph)
         //{
         //    return;
         //}
@@ -1616,86 +1717,6 @@ namespace EMStudio
         }
     }
 
-
-    //----------------------------------------------------------------------------------------------------------------------------------
-    // Command callbacks
-    //----------------------------------------------------------------------------------------------------------------------------------
-
-    bool ParameterWindowCommandCallback()
-    {
-        // get the plugin object
-        EMStudioPlugin* plugin = GetPluginManager()->FindActivePlugin(AnimGraphPlugin::CLASS_ID);
-        AnimGraphPlugin* animGraphPlugin = (AnimGraphPlugin*)plugin;
-        if (plugin == nullptr)
-        {
-            return false;
-        }
-
-        EMotionFX::AnimGraph* animGraph = animGraphPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
-        {
-            return false;
-        }
-
-        //bool syncHappened = false;
-
-        // get the number of visual graphs and iterate through them
-        const uint32 numGraphs = animGraphPlugin->GetNumGraphInfos();
-        for (uint32 i = 0; i < numGraphs; ++i)
-        {
-            // get the current visual graph
-            AnimGraphPlugin::GraphInfo*    graphInfo   = animGraphPlugin->GetGraphInfo(i);
-            NodeGraph*                      visualGraph = graphInfo->mVisualGraph;
-
-            // check if the visual graph belongs to the given anim graph, if not skip it
-            if (animGraph != graphInfo->mAnimGraph)
-            {
-                continue;
-            }
-
-            // get the number of nodes inside the graph and iterate through them
-            const uint32 numNodes = visualGraph->GetNumNodes();
-            for (uint32 n = 0; n < numNodes; ++n)
-            {
-                // get the current node and check if this is a blend graph node
-                GraphNode* curNode = visualGraph->GetNode(n);
-                if (curNode->GetType() != BlendTreeVisualNode::TYPE_ID)
-                {
-                    continue;
-                }
-
-                // check if it is a parameter node and sync the node with the emfx one
-                BlendTreeVisualNode* blendTreeVisualNode = static_cast<BlendTreeVisualNode*>(curNode);
-                if (azrtti_typeid(blendTreeVisualNode->GetEMFXNode()) == azrtti_typeid<EMotionFX::BlendTreeParameterNode>())
-                {
-                    blendTreeVisualNode->Sync();
-                    //syncHappened = true;
-                }
-            }
-        }
-
-        // update the parameter window
-        animGraphPlugin->GetParameterWindow()->Init();
-        return true;
-    }
-
-    bool ParameterWindow::CommandCreateBlendParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)              { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ParameterWindowCommandCallback(); }
-    bool ParameterWindow::CommandCreateBlendParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)                 { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return true; }// internally calls the remove parameter command which calls the callback already
-
-    bool ParameterWindow::CommandRemoveBlendParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)              { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ParameterWindowCommandCallback(); }
-    bool ParameterWindow::CommandRemoveBlendParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)                 { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return true; }// internally calls the create parameter command which calls the callback already
-
-    bool ParameterWindow::CommandAdjustBlendParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)              { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ParameterWindowCommandCallback(); }
-    bool ParameterWindow::CommandAdjustBlendParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)                 { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return true; }// internally calls the adjust parameter command which calls the callback already
-
-    bool ParameterWindow::CommandAnimGraphAddGroupParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)       { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ParameterWindowCommandCallback(); }
-    bool ParameterWindow::CommandAnimGraphAddGroupParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)          { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return true; }// internally calls the remove group parameter command which calls the callback already
-
-    bool ParameterWindow::CommandAnimGraphRemoveGroupParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)    { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ParameterWindowCommandCallback(); }
-    bool ParameterWindow::CommandAnimGraphRemoveGroupParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)       { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return true; }// internally calls the create group parameter command which calls the callback already
-
-    bool ParameterWindow::CommandAnimGraphAdjustGroupParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)    { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ParameterWindowCommandCallback(); }
-    bool ParameterWindow::CommandAnimGraphAdjustGroupParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)       { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return true; }// internally calls the adjust group parameter command which calls the callback already
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterWindow.moc>

@@ -106,6 +106,8 @@ namespace AZStd
 
         AZ_FORCE_INLINE unordered_map()
             : base_type(hasher(), key_eq(), allocator_type()) {}
+        explicit unordered_map(const allocator_type& alloc)
+            : base_type(hasher(), key_eq(), alloc) {}
         AZ_FORCE_INLINE unordered_map(const unordered_map& rhs)
             : base_type(rhs) {}
         /// This constructor is AZStd extension (so we don't rehash/allocate memory)
@@ -305,6 +307,8 @@ namespace AZStd
 
         AZ_FORCE_INLINE unordered_multimap()
             : base_type(hasher(), key_eq(), allocator_type()) {}
+        explicit unordered_multimap(const allocator_type& alloc)
+            : base_type(hasher(), key_eq(), alloc){}
         AZ_FORCE_INLINE unordered_multimap(const unordered_multimap& rhs)
             : base_type(rhs) {}
         /// This constructor is AZStd extension (so we don't rehash/allocate memory)

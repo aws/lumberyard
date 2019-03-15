@@ -75,7 +75,6 @@ class CTrackViewTrack
     friend class CTrackViewKeyHandle;
     friend class CTrackViewKeyConstHandle;
     friend class CTrackViewKeyBundle;
-    friend class CAbstractUndoTrackTransaction;
 
 public:
     CTrackViewTrack(IAnimTrack* pTrack, CTrackViewAnimNode* pTrackAnimNode, CTrackViewNode* pParentNode,

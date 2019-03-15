@@ -45,58 +45,6 @@ namespace
 
     // Path to the user preferences file
     const char* s_preferencesFileName = "SetupAssistantUserPreferences.ini";
-
-    // A utility function which checks the given path starting at the root and updates the relative path to be the actual
-    // correct physical path to a file located there.
-    // for example, if you pass it "c:\lumberyard\dev" as the root and "editor\icons\whatever.ico" as the relative path
-    // it may update relativePathFromRoot to be "Editor\Icons\Whatever.ico" if such a casing is the actual physical case on disk already.
-    // if such a file does NOT exist, it returns FALSE.
-    // if the file DOES exist, it will correct the entire path, and return TRUE.
-    bool UpdateToCorrectCase(const QString& rootPath, QString& relativePathFromRoot)
-    {
-        // on windows, the file system is case insensitive and we can do a quick early check for the existence up front and return fast:
-        // on other platforms (that are case sensitive) we have no choice but to see if we can hunt down the "real" path of the file
-        // even if given multiple "wrong cases"
-#if defined(AZ_PLATFORM_WINDOWS)
-        if (!QFileInfo::exists(rootPath + "/" + relativePathFromRoot))
-        {
-            return false;
-        }
-#endif
-
-        // we have to start at the first directory and work our way up.
-        // the assumption is that rootPath is correct case already
-        // and that relativepathfromroot is normalized (forward slashes only)
-        QStringList tokenized = relativePathFromRoot.split(QChar('/'), QString::SkipEmptyParts);
-        QString validatedPath(rootPath);
-
-        bool success = true;
-
-        for (QString& element : tokenized)
-        {
-            // validate the element:
-            QStringList searchPattern;
-            searchPattern << element;
-
-            QDir checkDir(validatedPath);
-            
-            // note that this specifically does not emit the case sensitive option - so it will find it caselessly.
-            QStringList actualCasing = checkDir.entryList(searchPattern, QDir::Files|QDir::Dirs);
-            if (actualCasing.isEmpty())
-            {
-                // no such file!
-                success = false;
-                break;
-            }
-            // we found it!
-            element = actualCasing[0];
-            validatedPath = checkDir.absoluteFilePath(element); // go one step deeper.
-        }
-
-        relativePathFromRoot = tokenized.join(QChar('/'));
-
-        return success;
-    }
 }
 
 namespace AssetProcessor
@@ -483,7 +431,7 @@ namespace AssetProcessor
                     // after the ScanFolder section here, meaning the following would be in conflict:
                     // [ScanFolder My Game]
                     // [ScanFolder My Gem]
-                    // the portable key should absolutely not include the outputprefix becuase you can map
+                    // the portable key should absolutely not include the outputprefix because you can map
                     // multiple folders into the same output prefix, it is not a suitable unique identifier.
                     QString oldDisplayName = group.split(" ", QString::SkipEmptyParts)[1];
                     QString scanFolderPortableKey = QString("from-ini-file-%1").arg(oldDisplayName);
@@ -751,7 +699,7 @@ namespace AssetProcessor
         }
     }
 
-    bool PlatformConfiguration::ConvertToRelativePath(QString fullFileName, QString& relativeName, QString& scanFolderName) const
+    bool PlatformConfiguration::ConvertToRelativePath(QString fullFileName, QString& databaseSourceName, QString& scanFolderName, bool includeOutputPrefix) const
     {
         const ScanFolderInfo* info = GetScanFolderForFile(fullFileName);
         if (info)
@@ -763,21 +711,21 @@ namespace AssetProcessor
             }
             scanFolderName = info->ScanPath();
 
-            if (info->GetOutputPrefix().isEmpty())
+            if ((info->GetOutputPrefix().isEmpty())||(!includeOutputPrefix))
             {
-                relativeName = relPath;
+                databaseSourceName = relPath;
             }
             else
             {
-                relativeName = info->GetOutputPrefix();
+                databaseSourceName = info->GetOutputPrefix();
 
                 if (!relPath.isEmpty())
                 {
-                    relativeName += '/';
-                    relativeName += relPath;
+                    databaseSourceName += '/';
+                    databaseSourceName += relPath;
                 }
             }
-            relativeName.replace('\\', '/');
+            databaseSourceName.replace('\\', '/');
             scanFolderName.replace('\\', '/');
 
             return true;
@@ -811,11 +759,13 @@ namespace AssetProcessor
                 // the name is a deeper relative path, but we don't recurse this scan folder, so it can't win
                 continue;
             }
-            
-            if (UpdateToCorrectCase(scanFolderInfo.ScanPath(), tempRelativeName))
+
+            // note that we only Update To Correct Case here, because this is one of the few situations where
+            // a file with the same relative path may be overridden but different case.
+            if (AssetUtilities::UpdateToCorrectCase(scanFolderInfo.ScanPath(), tempRelativeName))
             {
                 // we have found a file in an earlier scan folder that would override this file
-                return AssetUtilities::NormalizeFilePath(QDir(scanFolderInfo.ScanPath()).absoluteFilePath(tempRelativeName));
+                return QDir(scanFolderInfo.ScanPath()).absoluteFilePath(tempRelativeName);
             }
         }
 
@@ -847,10 +797,13 @@ namespace AssetProcessor
                 continue;
             }
             QDir rooted(scanFolderInfo.ScanPath());
-            if (UpdateToCorrectCase(rooted.absolutePath(), tempRelativeName))
+            QString absolutePath = rooted.absoluteFilePath(tempRelativeName);
+            // do not call UpdateToCorrectCase here, this is an extreme hotspot in terms of how often this function is called.
+            // the only time its generally necessary to update case is when an override is found, which is generally very rare,
+            // so we save UpdateToCorrectCase for the override related functions instead of this hot path.
+            if (QFileInfo(absolutePath).exists())
             {
-                QString fullPath = rooted.absoluteFilePath(tempRelativeName);
-                return AssetUtilities::NormalizeFilePath(fullPath);
+                return AssetUtilities::NormalizeFilePath(absolutePath);
             }
         }
         return QString();

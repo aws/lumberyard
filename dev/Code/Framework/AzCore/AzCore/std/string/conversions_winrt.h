@@ -14,5 +14,9 @@
 #include <AzCore/std/string/conversions.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(conversions_winrt_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/conversions_winrt_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/conversions_winrt_h_provo.inl"
+    #endif
 #endif

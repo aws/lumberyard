@@ -52,6 +52,7 @@ namespace ScriptCanvas
         AZ_COMPONENT(RuntimeComponent, "{95BFD916-E832-4956-837D-525DE8384282}");
 
         static void Reflect(AZ::ReflectContext* context);
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         RuntimeComponent(AZ::EntityId uniqueId = AZ::Entity::MakeId());
         RuntimeComponent(AZ::Data::Asset<RuntimeAsset> runtimeAsset, AZ::EntityId uniqueId = AZ::Entity::MakeId());

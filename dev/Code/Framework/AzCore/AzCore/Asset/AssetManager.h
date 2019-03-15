@@ -254,7 +254,7 @@ namespace AZ
             void RemoveJob(AssetDatabaseJob* job);
 
             //////////////////////////////////////////////////////////////////////////
-            // AssetDatabaseBus
+            // AssetManagerBus
             void OnAssetReady(const Asset<AssetData>& asset) override;
             void OnAssetReloaded(const Asset<AssetData>& asset) override;
             void OnAssetReloadError(const Asset<AssetData>& asset) override;
@@ -401,7 +401,7 @@ namespace AZ
             virtual AssetStreamInfo GetStreamInfoForLoad(const AssetId& assetId, const AssetType& assetType) = 0;
 
             /**
-             * Same as \ref GetStreamNameForLoad but for saving. It's not typical that assets will have 'save' support,
+             * Same as \ref GetStreamInfoForLoad but for saving. It's not typical that assets will have 'save' support,
              * as they are generated from external tools, etc. But when needed, the framework provides an interface.
              */
             virtual AssetStreamInfo GetStreamInfoForSave(const AssetId& assetId, const AssetType& assetType)

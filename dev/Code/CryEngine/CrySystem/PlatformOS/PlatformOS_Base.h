@@ -15,7 +15,11 @@
 #include <CryListenerSet.h>
 #include <IGameFramework.h>
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(PlatformOS_Base_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/PlatformOS_Base_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/PlatformOS_Base_h_provo.inl"
+    #endif
 #endif
 
 class PlatformOS_Base

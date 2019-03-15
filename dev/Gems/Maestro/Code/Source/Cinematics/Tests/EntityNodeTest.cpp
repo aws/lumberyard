@@ -13,7 +13,6 @@
 
 #if !defined(_RELEASE)
 
-#include "Cinematics/EntityNode.h"
 #include "Cinematics/CharacterTrack.h"
 #include "Cinematics/CharacterTrackAnimator.h"
 

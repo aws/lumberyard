@@ -56,7 +56,7 @@ namespace LmbrCentral
         //! Handle the renderer's free resources event by nullifying m_material.
         //! This is used to prevent material handles that may have been queued for release in the next frame
         //! from having dangling pointers after the renderer has already shut down.
-        void OnRendererFreeResources() override
+        void OnRendererFreeResources(int flags) override
         {
             m_material = nullptr;
         }

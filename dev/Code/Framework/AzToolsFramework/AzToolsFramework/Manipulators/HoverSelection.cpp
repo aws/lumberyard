@@ -12,46 +12,47 @@
 
 #include "HoverSelection.h"
 
-#include <AzCore/Math/PolygonPrism.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
 #include <AzToolsFramework/Manipulators/LineSegmentSelectionManipulator.h>
-#include <AzToolsFramework/Manipulators/TranslationManipulator.h>
+#include <AzToolsFramework/Manipulators/TranslationManipulators.h>
 
 namespace AzToolsFramework
 {
     void ConfigureTranslationManipulatorAppearance3d(
-        TranslationManipulator* translationManipulator, const AZ::Vector3& localPosition)
+        TranslationManipulators* translationManipulators,
+        const AZ::Transform& localTransform)
     {
-        // setup translation manipulator (visual appearance)
-        translationManipulator->SetPosition(localPosition);
-        translationManipulator->SetAxes(
+        translationManipulators->SetLocalTransform(localTransform);
+
+        translationManipulators->SetAxes(
             AZ::Vector3::CreateAxisX(),
             AZ::Vector3::CreateAxisY(),
             AZ::Vector3::CreateAxisZ());
-        translationManipulator->ConfigurePlanarView(
+        translationManipulators->ConfigurePlanarView(
             AZ::Color(1.0f, 0.0f, 0.0f, 1.0f),
             AZ::Color(0.0f, 1.0f, 0.0f, 1.0f),
             AZ::Color(0.0f, 0.0f, 1.0f, 1.0f));
-        translationManipulator->ConfigureLinearView(
+        translationManipulators->ConfigureLinearView(
             2.0f,
             AZ::Color(1.0f, 0.0f, 0.0f, 1.0f),
             AZ::Color(0.0f, 1.0f, 0.0f, 1.0f),
             AZ::Color(0.0f, 0.0f, 1.0f, 1.0f));
-        translationManipulator->ConfigureSurfaceView(
+        translationManipulators->ConfigureSurfaceView(
             0.1f, AZ::Color(1.0f, 1.0f, 0.0f, 0.5f));
     }
 
     void ConfigureTranslationManipulatorAppearance2d(
-        TranslationManipulator* translationManipulator, const AZ::Vector2 &localPosition)
+        TranslationManipulators* translationManipulators,
+        const AZ::Transform& localTransform)
     {
-        // setup translation manipulator (visual appearance)
-        translationManipulator->SetPosition(Vector2ToVector3(localPosition));
-        translationManipulator->SetAxes(
+        translationManipulators->SetLocalTransform(localTransform);
+
+        translationManipulators->SetAxes(
             AZ::Vector3::CreateAxisX(),
             AZ::Vector3::CreateAxisY());
-        translationManipulator->ConfigurePlanarView(
+        translationManipulators->ConfigurePlanarView(
             AZ::Color(1.0f, 0.0f, 0.0f, 1.0f));
-        translationManipulator->ConfigureLinearView(
+        translationManipulators->ConfigureLinearView(
             2.0f,
             AZ::Color(1.0f, 0.0f, 0.0f, 1.0f),
             AZ::Color(0.0f, 1.0f, 0.0f, 1.0f));
@@ -95,15 +96,14 @@ namespace AzToolsFramework
         auto setupLineSegment = [this](AZ::EntityId entityId, ManipulatorManagerId managerId,
             size_t index, AZ::VariableVertices<Vertex>& vertices)
         {
-            m_lineSegmentManipulators.push_back(AZStd::make_unique<LineSegmentSelectionManipulator>(entityId));
-            AZStd::unique_ptr<LineSegmentSelectionManipulator>& lineSegmentManipulator = m_lineSegmentManipulators.back();
+            m_lineSegmentManipulators.push_back(AZStd::make_shared<LineSegmentSelectionManipulator>(entityId));
+            AZStd::shared_ptr<LineSegmentSelectionManipulator>& lineSegmentManipulator = m_lineSegmentManipulators.back();
             lineSegmentManipulator->Register(managerId);
 
             UpdateLineSegmentPosition(index, vertices, *lineSegmentManipulator);
 
             lineSegmentManipulator->InstallLeftMouseUpCallback(
-                [&vertices, index](
-                    const LineSegmentSelectionManipulator::Action& action)
+                [&vertices, index](const LineSegmentSelectionManipulator::Action& action)
             {
                 InsertVertex<Vertex>(vertices, index, AdaptVertexIn<Vertex>(action.m_localLineHitPosition));
             });

@@ -204,7 +204,7 @@ namespace AssetProcessor
 
         //! given a fileName (as a relative and which scan folder it was found in)
         //! Return either an empty string, or the canonical path to a file which overrides it
-        //! becuase of folder priority.
+        //! because of folder priority.
         //! Note that scanFolderName is only used to exit quickly
         //! If its found in any scan folder before it arrives at scanFolderName it will be considered a hit
         QString GetOverridingFile(QString relativeName, QString scanFolderName) const;
@@ -212,14 +212,16 @@ namespace AssetProcessor
         //! given a relative name, loop over folders and resolve it to a full path with the first existing match.
         QString FindFirstMatchingFile(QString relativeName) const;
 
-        //! given a fileName (as a full path), return the relative path to it and the scan folder name it was found under.
+        //! given a fileName (as a full path), return the database source name which includes the output prefix.
         //!
         //! for example
         //! c:/dev/mygame/textures/texture1.tga
         //! ----> [textures/texture1.tga] found under [c:/dev/mygame]
         //! c:/dev/engine/models/box01.mdl
         //! ----> [models/box01.mdl] found under[c:/dev/engine]
-        bool ConvertToRelativePath(QString fullFileName, QString& relativeName, QString& scanFolderName) const;
+        //! note that this does return a database source path by default, which includes the output prefix of the scan folder if present
+        //! You can override this by setting includeOutputPrefix = false;
+        bool ConvertToRelativePath(QString fullFileName, QString& databaseSourceName, QString& scanFolderName, bool includeOutputPrefix = true) const;
 
         //! given a full file name (assumed already fed through the normalization funciton), return the first matching scan folder
         const AssetProcessor::ScanFolderInfo* GetScanFolderForFile(const QString& fullFileName) const;

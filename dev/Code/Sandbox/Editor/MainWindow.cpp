@@ -940,6 +940,8 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "ExportOcclusionMesh");
     am->AddAction(ID_FILE_EDITLOGFILE, tr("Show Log File"))
         .SetMetricsIdentifier("MainEditor", "ShowLogFile");
+    am->AddAction(ID_FILE_RESAVESLICES, tr("Resave All Slices"))
+        .SetMetricsIdentifier("MainEditor", "ResaveSlices");
     am->AddAction(ID_GAME_PC_ENABLEVERYHIGHSPEC, tr("Very High")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "SetSpecPCVeryHigh")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
@@ -990,10 +992,10 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
-#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/MainWindow_cpp_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
-#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_PROVO)
+    #include "Provo/MainWindow_cpp_provo.inl"
 #endif
 #endif
     am->AddAction(ID_GAME_APPLETV_ENABLESPEC, tr("Apple TV")).SetCheckable(true)
@@ -1150,7 +1152,7 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Delete selected objects."))
         ->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     am->AddAction(ID_EDIT_CLONE, tr("Duplicate")).SetShortcut(tr("Ctrl+D"))
-        .SetMetricsIdentifier("MainEditor", "DeleteSelectedObjects")
+        .SetMetricsIdentifier("MainEditor", "DuplicateSelectedObjects")
         .SetStatusTip(tr("Duplicate selected objects."));
 
     // Modify actions
@@ -1800,7 +1802,7 @@ void MainWindow::InitActions()
         .SetApplyHoverEffect();
     }
     am->AddAction(ID_OPEN_TRACKVIEW, tr("TrackView"))
-        .SetToolTip(tr("Open TrackView"))
+        .SetToolTip(tr("Open Track View"))
         .SetIcon(EditorProxyStyle::icon("Trackview"))
         .SetApplyHoverEffect();
     am->AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, tr("Audio Controls Editor"))
@@ -1812,7 +1814,7 @@ void MainWindow::InitActions()
         .SetIcon(EditorProxyStyle::icon("Terrain"))
         .SetApplyHoverEffect();
     am->AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, tr("Terrain Texture Layers Editor"))
-        .SetToolTip(tr("Open Terrain Texture Layers Editor"))
+        .SetToolTip(tr("Open Terrain Texture Layers"))
         .SetIcon(EditorProxyStyle::icon("Terrain_Texture"))
         .SetApplyHoverEffect();
     am->AddAction(ID_PARTICLE_EDITOR, tr("Particle Editor"))
@@ -1820,7 +1822,7 @@ void MainWindow::InitActions()
         .SetIcon(EditorProxyStyle::icon("particle"))
         .SetApplyHoverEffect();
     am->AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, tr("Time of Day Editor"))
-        .SetToolTip(tr("Open Time of Day Editor"))
+        .SetToolTip(tr("Open Time of Day"))
         .SetIcon(EditorProxyStyle::icon("Time_of_Day"))
         .SetApplyHoverEffect();
     if (m_enableLegacyCryEntities)

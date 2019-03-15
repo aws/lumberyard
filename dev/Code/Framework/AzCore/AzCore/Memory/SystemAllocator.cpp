@@ -111,9 +111,9 @@ SystemAllocator::Create(const Descriptor& desc)
         }
         heapDesc.m_subAllocator = desc.m_heap.m_subAllocator;
         heapDesc.m_isPoolAllocations = desc.m_heap.m_isPoolAllocations;
-        //[DFLY][lehmille@] - Fix SystemAllocator from growing in small chunks
+        // Fix SystemAllocator from growing in small chunks
         heapDesc.m_systemChunkSize = desc.m_heap.m_systemChunkSize;
-        //[DFLY][lehmille@] - end
+
 #elif defined(AZCORE_SYS_ALLOCATOR_MALLOC)
         MallocSchema::Descriptor heapDesc;
 #else

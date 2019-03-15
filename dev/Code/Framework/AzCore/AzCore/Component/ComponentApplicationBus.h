@@ -46,35 +46,37 @@ namespace AZ
     }
 
     /**
+     * @deprecated Use EntitySystemBus
      * Event bus for dispatching component application events to listeners.
      */
-    class ComponentApplicationEvents
+    class AZ_DEPRECATED(, "The ComponentApplicationEventBus has been deprecated and will be removed in a future release. Please use the EntitySystemBus instead.")
+        ComponentApplicationEvents
         : public AZ::EBusTraits
     {
     public:
 
         /**
-         * Destroys a component application event bus.
-         */
-        virtual ~ComponentApplicationEvents() {}
-
-        /**
+         * @deprecated Use EntitySystemBus
          * Notifies listeners that an entity was added to the application.
          * @param entity The entity that was added to the application.
          */
-        virtual void OnEntityAdded(AZ::Entity* entity) { (void)entity; }
+        AZ_DEPRECATED(, "The ComponentApplicationEventBus has been deprecated and will be removed in a future release. Please use the EntitySystemBus instead.")
+        virtual void OnEntityAdded(AZ::Entity* entity) { (void)entity; };
 
         /**
+         * @deprecated Use EntitySystemBus
          * Notifies listeners that an entity was removed from the application.
          * @param entity The entity that was removed from the application.
          */
-        virtual void OnEntityRemoved(const AZ::EntityId& entityId) { (void)entityId; }
+        AZ_DEPRECATED(, "The ComponentApplicationEventBus has been deprecated and will be removed in a future release. Please use the EntitySystemBus instead.")
+        virtual void OnEntityRemoved(const AZ::EntityId& entityId) { (void)entityId; };
     };
 
     /**
+     * @deprecated Use EntitySystemBus
      * Used when dispatching a component application event. 
      */
-    typedef AZ::EBus<ComponentApplicationEvents> ComponentApplicationEventBus;
+    DEPRECATE_EBUS(ComponentApplicationEvents, ComponentApplicationEventBus, "The ComponentApplicationEventsBus has been deprecated in favor of using the EntitySystemBus in Lumberyard release 1.18");
 
     /**
      * Event bus that components use to make requests of the main application.

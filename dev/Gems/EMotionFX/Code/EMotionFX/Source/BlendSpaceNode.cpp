@@ -197,6 +197,7 @@ namespace EMotionFX
     const char* BlendSpaceNode::s_calculationModeManual = "Manually enter motion coordinates";
     const char* BlendSpaceNode::s_eventModeAllActiveMotions = "All Currently Active Motions";
     const char* BlendSpaceNode::s_eventModeMostActiveMotion = "Most Active Motion Only";
+    const char* BlendSpaceNode::s_eventModeNone = "None";
 
 
     BlendSpaceNode::MotionInfo::MotionInfo()
@@ -208,10 +209,10 @@ namespace EMotionFX
     {
     }
 
+    BlendSpaceNode::BlendSpaceNode() = default;
+
     BlendSpaceNode::BlendSpaceNode(AnimGraph* animGraph, const char* name)
         : AnimGraphNode(animGraph, name)
-        , mInteractiveMode(false)
-        , m_retarget(true)
     {
     }
 
@@ -244,13 +245,7 @@ namespace EMotionFX
             if ((syncMode == SYNCMODE_DISABLED) || (i == masterIdx))
             {
                 float newTime;
-                float passedTime;
-                float totalPlayTime;
-                float timeDifToEnd;
-                uint32 numLoops;
-                bool hasLooped = false;
-                bool frozenInLastFrame;
-                motionInstance->CalcNewTimeAfterUpdate(timePassedInSeconds, &newTime, &passedTime, &totalPlayTime, &timeDifToEnd, &numLoops, &hasLooped, &frozenInLastFrame);
+                motionInstance->CalcNewTimeAfterUpdate(timePassedInSeconds, &newTime);
 
                 motionInfo.m_currentTime = newTime;
             }
@@ -287,7 +282,7 @@ namespace EMotionFX
     }
 
     void BlendSpaceNode::DoPostUpdate(AnimGraphInstance* animGraphInstance, AZ::u32 masterIdx, BlendInfos& blendInfos, MotionInfos& motionInfos,
-        EBlendSpaceEventMode eventFilterMode, AnimGraphRefCountedData* data)
+        EBlendSpaceEventMode eventFilterMode, AnimGraphRefCountedData* data, bool inPlace)
     {
         MCORE_UNUSED(animGraphInstance);
         MCORE_UNUSED(masterIdx);
@@ -297,9 +292,10 @@ namespace EMotionFX
         {
             MotionInfo& motionInfo = motionInfos[i];
             MotionInstance* motionInstance = motionInfo.m_motionInstance;
+            motionInstance->SetIsInPlace(inPlace);
 
             const size_t indexInBlendInfos = GetIndexOfMotionInBlendInfos(blendInfos, i);
-            if (indexInBlendInfos == MCORE_INVALIDINDEX32)
+            if (indexInBlendInfos == MCORE_INVALIDINDEX32 || eventFilterMode == BSEVENTMODE_NONE)
             {
                 // It is not part of blend infos. Just update the time in this case without emitting events.
                 // We update the time even for these so that motions stay in sync.
@@ -320,7 +316,14 @@ namespace EMotionFX
             }
         }
 
-        data->GetEventBuffer().UpdateEmitters(this);
+        if (eventFilterMode == BSEVENTMODE_NONE)
+        {
+            data->GetEventBuffer().Clear();
+        }
+        else
+        {
+            data->GetEventBuffer().UpdateEmitters(this);
+        }
 
         Transform trajectoryDelta;
         Transform trajectoryDeltaAMirrored;
@@ -384,23 +387,7 @@ namespace EMotionFX
         motionInstance->SetFreezeAtLastFrame(!motionInstance->GetIsPlayingForever());
 
         MotionEventTable* eventTable = motionInstance->GetMotion()->GetEventTable();
-        const uint32 syncTracIdx = eventTable->FindTrackIndexByName("Sync");
-        if (syncTracIdx != MCORE_INVALIDINDEX32)
-        {
-            const MotionEventTrack* eventTrack = eventTable->GetTrack(syncTracIdx);
-            if (!motionInstance->GetMirrorMotion())
-            {
-                motionInfo.m_syncTrack.InitFromEventTrack(eventTrack);
-            }
-            else
-            {
-                motionInfo.m_syncTrack.InitFromEventTrackMirrored(eventTrack);
-            }
-        }
-        else
-        {
-            motionInfo.m_syncTrack.Clear();
-        }
+        motionInfo.m_syncTrack = eventTable->GetSyncTrack();
 
         motionInfo.m_playSpeed = motionInstance->GetPlaySpeed();
     }
@@ -409,7 +396,7 @@ namespace EMotionFX
     {
         for (const MotionInfo& motionInfo : motionInfos)
         {
-            if (motionInfo.m_syncTrack.GetNumEvents() == 0)
+            if (motionInfo.m_syncTrack->GetNumEvents() == 0)
             {
                 return false;
             }
@@ -452,37 +439,38 @@ namespace EMotionFX
             return;
         }
         MotionInfo& srcMotion = motionInfos[masterIdx];
-        const AnimGraphSyncTrack& srcTrack = srcMotion.m_syncTrack;
+        const AnimGraphSyncTrack* srcTrack = srcMotion.m_syncTrack;
 
         const float srcCurrentTime = srcMotion.m_currentTime;
         const bool forward = srcMotion.m_motionInstance->GetPlayMode() != PLAYMODE_BACKWARD;
 
-        uint32 srcIndexA;
-        uint32 srcIndexB;
-        if (!srcTrack.FindEventIndices(srcCurrentTime, &srcIndexA, &srcIndexB))
+        size_t srcIndexA;
+        size_t srcIndexB;
+        if (!srcTrack->FindEventIndices(srcCurrentTime, &srcIndexA, &srcIndexB))
         {
             return;
         }
         const bool srcSyncIndexChanged = srcMotion.m_syncIndex != srcIndexA;
-        srcMotion.m_syncIndex = srcIndexA;
-        const float srcDuration = srcTrack.CalcSegmentLength(srcIndexA, srcIndexB);
+        srcMotion.m_syncIndex = static_cast<uint32>(srcIndexA);
+        const float srcDuration = srcTrack->CalcSegmentLength(srcIndexA, srcIndexB);
+
         // calculate the normalized offset inside the segment
         float normalizedOffset;
         if (srcIndexA < srcIndexB) // normal case
         {
-            normalizedOffset = (srcDuration > MCore::Math::epsilon) ? (srcCurrentTime - srcTrack.GetEvent(srcIndexA).mTime) / srcDuration : 0.0f;
+            normalizedOffset = (srcDuration > MCore::Math::epsilon) ? (srcCurrentTime - srcTrack->GetEvent(srcIndexA).GetStartTime()) / srcDuration : 0.0f;
         }
         else // looping case
         {
             float timeOffset;
-            if (srcCurrentTime > srcTrack.GetEvent(0).mTime)
+            if (srcCurrentTime > srcTrack->GetEvent(0).GetStartTime())
             {
-                timeOffset = srcCurrentTime - srcTrack.GetEvent(srcIndexA).mTime;
+                timeOffset = srcCurrentTime - srcTrack->GetEvent(srcIndexA).GetStartTime();
             }
             else
             {
                 const float srcMotionDuration = srcMotion.m_motionInstance->GetDuration();
-                timeOffset = (srcMotionDuration - srcTrack.GetEvent(srcIndexA).mTime) + srcCurrentTime;
+                timeOffset = (srcMotionDuration - srcTrack->GetEvent(srcIndexA).GetStartTime()) + srcCurrentTime;
             }
 
             normalizedOffset = (srcDuration > MCore::Math::epsilon) ? timeOffset / srcDuration : 0.0f;
@@ -495,14 +483,14 @@ namespace EMotionFX
                 continue;
             }
             MotionInfo& targetMotion = motionInfos[motionIdx];
-            const AnimGraphSyncTrack& targetTrack = targetMotion.m_syncTrack;
-            uint32 startEventIndex = targetMotion.m_syncIndex;
+            const AnimGraphSyncTrack* targetTrack = targetMotion.m_syncTrack;
+            size_t startEventIndex = targetMotion.m_syncIndex;
             if (srcSyncIndexChanged)
             {
                 if (forward)
                 {
                     startEventIndex++;
-                    if (startEventIndex >= targetTrack.GetNumEvents())
+                    if (startEventIndex >= targetTrack->GetNumEvents())
                     {
                         startEventIndex = 0;
                     }
@@ -511,7 +499,7 @@ namespace EMotionFX
                 {
                     if (startEventIndex == 0)
                     {
-                        startEventIndex = targetTrack.GetNumEvents() - 1;
+                        startEventIndex = targetTrack->GetNumEvents() - 1;
                     }
                     else
                     {
@@ -521,28 +509,28 @@ namespace EMotionFX
             }
 
             // Find the matching indices in the target track.
-            uint32 targetIndexA;
-            uint32 targetIndexB;
-            if (!targetMotion.m_syncTrack.FindMatchingEvents(startEventIndex, srcTrack.GetEvent(srcIndexA).mID, srcTrack.GetEvent(srcIndexB).mID, &targetIndexA, &targetIndexB, forward))
+            size_t targetIndexA;
+            size_t targetIndexB;
+            if (!targetMotion.m_syncTrack->FindMatchingEvents(startEventIndex, srcTrack->GetEvent(srcIndexA).HashForSyncing(srcMotion.m_motionInstance->GetMirrorMotion()), srcTrack->GetEvent(srcIndexB).HashForSyncing(srcMotion.m_motionInstance->GetMirrorMotion()), &targetIndexA, &targetIndexB, forward, targetMotion.m_motionInstance->GetMirrorMotion()))
             {
-                return;
+                continue;
             }
 
-            targetMotion.m_syncIndex = targetIndexA;
+            targetMotion.m_syncIndex = static_cast<uint32>(targetIndexA);
 
             // calculate the segment lengths
-            const float targetDuration = targetTrack.CalcSegmentLength(targetIndexA, targetIndexB);
+            const float targetDuration = targetTrack->CalcSegmentLength(targetIndexA, targetIndexB);
 
             // calculate the new time in the motion
             float newTargetTime;
             if (targetIndexA < targetIndexB) // if the second segment is a non-wrapping one, so a regular non-looping case
             {
-                newTargetTime = targetTrack.GetEvent(targetIndexA).mTime + targetDuration * normalizedOffset;
+                newTargetTime = targetTrack->GetEvent(targetIndexA).GetStartTime() + targetDuration * normalizedOffset;
             }
             else // looping case
             {
                 // calculate the new play time
-                const float unwrappedTime = targetTrack.GetEvent(targetIndexA).mTime + targetDuration * normalizedOffset;
+                const float unwrappedTime = targetTrack->GetEvent(targetIndexA).GetStartTime() + targetDuration * normalizedOffset;
 
                 // if it is past the motion duration, we need to wrap around
                 const float targetMotionDuration = targetMotion.m_motionInstance->GetDuration();
@@ -619,7 +607,7 @@ namespace EMotionFX
             ->Field("motionId", &BlendSpaceMotion::m_motionId)
             ->Field("coordinates", &BlendSpaceMotion::m_coordinates)
             ->Field("typeFlags", &BlendSpaceMotion::m_typeFlags)
-            ;
+        ;
     }
 
 
@@ -634,8 +622,9 @@ namespace EMotionFX
         }
 
         serializeContext->Class<BlendSpaceNode, AnimGraphNode>()
-            ->Version(1)
+            ->Version(2)
             ->Field("retarget", &BlendSpaceNode::m_retarget)
+            ->Field("inPlace", &BlendSpaceNode::m_inPlace)
         ;
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -647,18 +636,20 @@ namespace EMotionFX
         editContext->Enum<ECalculationMethod>("", "")
             ->Value(s_calculationModeAuto, ECalculationMethod::AUTO)
             ->Value(s_calculationModeManual, ECalculationMethod::MANUAL)
-            ;
+        ;
 
         editContext->Enum<EBlendSpaceEventMode>("Event Filter Mode", "The event filter mode, which controls which events are passed further up the hierarchy.")
             ->Value(s_eventModeAllActiveMotions, EBlendSpaceEventMode::BSEVENTMODE_ALL_ACTIVE_MOTIONS)
             ->Value(s_eventModeMostActiveMotion, EBlendSpaceEventMode::BSEVENTMODE_MOST_ACTIVE_MOTION)
-            ;
+            ->Value(s_eventModeNone, EBlendSpaceEventMode::BSEVENTMODE_NONE)
+        ;
 
         editContext->Class<BlendSpaceNode>("BlendSpaceNode", "Blend space attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendSpaceNode::m_retarget, "Retarget", "Are the motions allowed to be retargeted?")
-            ;
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendSpaceNode::m_inPlace, "In place", "Is the motion in place? When enabled it will stay at the same spot and motion extractio will not have any impact.")
+        ;
     }
 } // namespace EMotionFX

@@ -52,7 +52,7 @@ namespace AzFramework
         friend class TransformReplicaChunk;
 
     public:
-        AZ_COMPONENT(TransformComponent, AZ::TransformComponentTypeId, NetBindable);
+        AZ_COMPONENT(TransformComponent, AZ::TransformComponentTypeId, NetBindable, AZ::TransformInterface);
 
         friend class AzToolsFramework::Components::TransformComponent;
 
@@ -261,6 +261,7 @@ namespace AzFramework
         AZ::Transform                           m_worldTM;                  ///< World transform including parent transform (same as localTM if no parent)
         AZ::EntityId                            m_parentId;                 ///< If valid, this transform is parented to m_parentId.
         AZ::TransformInterface*                 m_parentTM;                 ///< Cached - pointer to parent transform, to avoid extra calls. Valid only when if it's present
+        bool                                    m_parentActive;             ///< Keeps track of the state of the parent entity
         AZ::TransformNotificationBus::BusPtr    m_notificationBus;          ///< Cached bus pointer to the notification bus.
         bool                                    m_onNewParentKeepWorldTM;   ///< If set, recompute localTM instead of worldTM when parent becomes active.
         ParentActivationTransformMode           m_parentActivationTransformMode;

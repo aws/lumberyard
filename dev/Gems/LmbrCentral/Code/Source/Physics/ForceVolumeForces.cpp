@@ -42,7 +42,7 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<WorldSpaceForceRequestBus>("WorldSpaceForceRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Physics")
+                ->Attribute(AZ::Script::Attributes::Category, "Physics (Legacy)")
                 ->Event("SetDirection", &WorldSpaceForceRequestBus::Events::SetDirection)
                 ->Event("GetDirection", &WorldSpaceForceRequestBus::Events::GetDirection)
                 ->Event("SetMagnitude", &WorldSpaceForceRequestBus::Events::SetMagnitude)
@@ -81,7 +81,7 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<LocalSpaceForceRequestBus>("LocalSpaceForceRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Physics")
+                ->Attribute(AZ::Script::Attributes::Category, "Physics (Legacy)")
                 ->Event("SetDirection", &LocalSpaceForceRequestBus::Events::SetDirection)
                 ->Event("GetDirection", &LocalSpaceForceRequestBus::Events::GetDirection)
                 ->Event("SetMagnitude", &LocalSpaceForceRequestBus::Events::SetMagnitude)
@@ -118,7 +118,7 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<PointForceRequestBus>("PointForceRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Physics")
+                ->Attribute(AZ::Script::Attributes::Category, "Physics (Legacy)")
                 ->Event("SetMagnitude", &PointForceRequestBus::Events::SetMagnitude)
                 ->Event("GetMagnitude", &PointForceRequestBus::Events::GetMagnitude)
                 ;
@@ -159,7 +159,7 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<SplineFollowForceRequestBus>("SplineFollowForceRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Physics")
+                ->Attribute(AZ::Script::Attributes::Category, "Physics (Legacy)")
                 ->Event("SetDampingRatio", &SplineFollowForceRequestBus::Events::SetDampingRatio)
                 ->Event("GetDampingRatio", &SplineFollowForceRequestBus::Events::GetDampingRatio)
                 ->Event("SetFrequency", &SplineFollowForceRequestBus::Events::SetFrequency)
@@ -235,7 +235,7 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<SimpleDragForceRequestBus>("SimpleDragForceRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Physics")
+                ->Attribute(AZ::Script::Attributes::Category, "Physics (Legacy)")
                 ->Event("SetDensity", &SimpleDragForceRequestBus::Events::SetDensity)
                 ->Event("GetDensity", &SimpleDragForceRequestBus::Events::GetDensity)
                 ;
@@ -287,7 +287,7 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<LinearDampingForceRequestBus>("LinearDampingForceRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Physics")
+                ->Attribute(AZ::Script::Attributes::Category, "Physics (Legacy)")
                 ->Event("SetDamping", &LinearDampingForceRequestBus::Events::SetDamping)
                 ->Event("GetDamping", &LinearDampingForceRequestBus::Events::GetDamping)
                 ;

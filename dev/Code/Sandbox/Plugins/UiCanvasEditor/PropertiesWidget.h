@@ -50,10 +50,13 @@ public:
     // Notify the properties pane when a selected entity has been recreated
     void SelectedEntityPointersChanged();
 
-    void SetSelectedEntityDisplayNameWidget(QLabel* selectedEntityDisplayNameWidget);
+    void SetSelectedEntityDisplayNameWidget(QLineEdit* selectedEntityDisplayNameWidget);
+    void SetEditorOnlyCheckbox(QCheckBox* editorOnlyCheckbox);
 
     float GetScrollValue();
     void SetScrollValue(float scrollValue);
+
+    AZ::Entity::ComponentArrayType GetSelectedComponents();
 
 public slots:
 

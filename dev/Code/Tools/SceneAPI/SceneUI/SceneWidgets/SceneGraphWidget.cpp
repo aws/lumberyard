@@ -509,6 +509,17 @@ namespace AZ
                 m_selectedCount--;
                 return true;
             }
+
+            QCheckBox* SceneGraphWidget::GetQCheckBox()
+            {
+                return ui->m_selectAllCheckBox;
+            }
+
+            QTreeView* SceneGraphWidget::GetQTreeView()
+            {
+                return ui->m_selectionTree;
+            }
+
         } // namespace UI
     } // namespace SceneAPI
 } // namespace AZ

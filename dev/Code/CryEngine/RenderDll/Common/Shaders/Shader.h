@@ -28,12 +28,12 @@
 
 // bump this value up if you want to invalidate shader cache (e.g. changed some code or .ext file)
 // #### VIP NOTE ####: DON'T USE MORE THAN ONE DECIMAL PLACE!!!! else it doesn't work...
-#define FX_CACHE_VER       9.9f
+#define FX_CACHE_VER       10.1f
 #define FX_SER_CACHE_VER   1.0f  // Shader serialization version (FX_CACHE_VER + FX_SER_CACHE_VER)
 
 // Maximum 1 digit here
 // The version determines the parse logic in the shader cache gen, these values cannot overlap
-#define SHADER_LIST_VER 3
+#define SHADER_LIST_VER 4
 #define SHADER_SERIALISE_VER (SHADER_LIST_VER + 1)
 
 //#define SHADER_NO_SOURCES 1 // If this defined all binary shaders (.fxb) should be located in Game folder (not user)
@@ -727,6 +727,16 @@ extern uint64 g_HWSR_MaskBit[HWSR_MAX];
 #define HWSF_STORECOMBINATION     0x400
 #define HWSF_STOREDATA            0x800
 
+// Static flags
+enum EHWSSTFlag
+{
+    HWSST_Invalid = -1,
+#undef FX_STATIC_FLAG
+#define FX_STATIC_FLAG(flag) HWSST_##flag,
+#include "ShaderStaticFlags.inl"
+    HWSST_MAX
+};
+
 class CHWShader
     : public CBaseResource
 {
@@ -753,6 +763,7 @@ public:
     uint64 m_nMaskGenShader;        // Masked/Optimised m_nMaskGenFX for this specific HW shader
     uint64 m_nMaskGenFX;            // FX Shader should be parsed with this flags
     uint64 m_nMaskSetFX;            // AffectMask GL for parser tree
+    uint64 m_maskGenStatic;         // Mask for global static flags used for generating the shader.
 
     uint32 m_nPreprocessFlags;
     int m_nFrame;
@@ -814,7 +825,7 @@ public:
     static const char* mfClassString(EHWShaderClass eClass);
     static EHWShaderClass mfStringProfile(const char* profile);
     static EHWShaderClass mfStringClass(const char* szClass);
-    static void mfGenName(uint64 GLMask, uint64 RTMask, uint32 LightMask, uint32 MDMask, uint32 MDVMask, uint64 PSS, EHWShaderClass eClass, char* dstname, int nSize, byte bType);
+    static void mfGenName(uint64 GLMask, uint64 RTMask, uint32 LightMask, uint32 MDMask, uint32 MDVMask, uint64 PSS, uint64 STMask, EHWShaderClass eClass, char* dstname, int nSize, byte bType);
 
     static void mfCleanupCache();
 
@@ -1244,7 +1255,9 @@ public:
     EShaderType             m_eShaderType;                  // [Shader System TO DO] - possibly change to be data driven
 
     uint64                  m_nMaskGenFX;
+    uint64                  m_maskGenStatic;                // Static global flags used for generating the shader.
     SShaderGen*             m_ShaderGenParams;              // BitMask params used in automatic script generation
+    SShaderGen*             m_ShaderGenStaticParams;
     SShaderTexSlots*        m_ShaderTexSlots[TTYPE_MAX];    // filled out with data of the used texture slots for a given technique
                                                             // (might be NULL if this data isn't gathered)
     std::vector<CShader*>*  m_DerivedShaders;
@@ -1276,6 +1289,8 @@ public:
         , m_nRefreshFrame(0)
         , m_SourceCRC32(0)
         , m_CRC32(0)
+        , m_ShaderGenStaticParams(nullptr)
+        , m_maskGenStatic(0)
     {
         memset(m_ShaderTexSlots, 0, sizeof(m_ShaderTexSlots));
     }

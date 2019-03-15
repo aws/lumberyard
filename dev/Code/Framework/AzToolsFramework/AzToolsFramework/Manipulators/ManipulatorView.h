@@ -34,8 +34,8 @@ namespace AzToolsFramework
     class ManipulatorView
     {
     public:
-        ManipulatorView();
-        virtual ~ManipulatorView();
+        ManipulatorView() = default;
+        virtual ~ManipulatorView() = default;
 
         void SetBoundDirty(ManipulatorManagerId managerId);
         void RefreshBound(ManipulatorManagerId managerId,
@@ -52,6 +52,9 @@ namespace AzToolsFramework
         Picking::RegisteredBoundId m_boundId = Picking::InvalidBoundId; ///< Used for hit detection.
         bool m_screenSizeFixed = true; ///< Should manipulator size be adjusted based on camera distance.
         bool m_boundDirty = true; ///< Do the bounds need to be recalculated.
+
+    private:
+        AZ_DISABLE_COPY_MOVE(ManipulatorView)
     };
 
     using ManipulatorViews = AZStd::vector<AZStd::unique_ptr<ManipulatorView>>;
@@ -103,8 +106,8 @@ namespace AzToolsFramework
 
         AZ::Vector3 m_axis;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
-        float m_length;
-        float m_width;
+        float m_length = 0.0f;
+        float m_width = 0.0f;
 
     private:
         AZ::Vector3 m_cameraCorrectedAxis;
@@ -123,7 +126,7 @@ namespace AzToolsFramework
         AZ::Vector3 m_localStart;
         AZ::Vector3 m_localEnd;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
-        float m_width;
+        float m_width = 0.0f;
     };
 
     class ManipulatorViewCone
@@ -139,8 +142,8 @@ namespace AzToolsFramework
         AZ::Vector3 m_offset;
         AZ::Vector3 m_axis;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
-        float m_length;
-        float m_radius;
+        float m_length = 0.0f;
+        float m_radius = 0.0f;
 
     private:
         AZ::Vector3 m_cameraCorrectedAxis;
@@ -177,8 +180,8 @@ namespace AzToolsFramework
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
         AZ::Vector3 m_axis;
-        float m_length;
-        float m_radius;
+        float m_length = 0.0f;
+        float m_radius = 0.0f;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
 
     private:
@@ -195,7 +198,7 @@ namespace AzToolsFramework
             AzFramework::EntityDebugDisplayRequests& display, const ViewportInteraction::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
-        float m_radius;
+        float m_radius = 0.0f;
         DecideColorFn m_decideColorFn;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
     };
@@ -211,8 +214,8 @@ namespace AzToolsFramework
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
         AZ::Vector3 m_axis;
-        float m_width;
-        float m_radius;
+        float m_width = 0.0f;
+        float m_radius = 0.0f;
         AZ::Color m_color = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
     };
 
@@ -227,7 +230,7 @@ namespace AzToolsFramework
             const ViewportInteraction::MouseInteraction& mouseInteraction, ManipulatorSpace manipulatorSpace) override;
 
         AZStd::weak_ptr<const AZ::Spline> m_spline;
-        float m_width;
+        float m_width = 0.0f;
         AZ::Color m_color = AZ::Color(0.0f, 1.0f, 0.0f, 1.0f);
     };
 
@@ -250,11 +253,15 @@ namespace AzToolsFramework
      * @brief Return the world transform of the entity with uniform scale - choose
      * the largest element.
      */
-    AZ::Transform WorldFromLocalWithUniformScale(const AZ::EntityId entityId);
+    AZ::Transform WorldFromLocalWithUniformScale(AZ::EntityId entityId);
     /**
      * @brief Take a transform and return it with uniform scale - choose the largest element.
      */
     AZ::Transform TransformUniformScale(const AZ::Transform& transform);
+    /**
+     * @brief Take a transform and return it with normalized scale.
+     */
+    AZ::Transform TransformNormalizedScale(const AZ::Transform& transform);
 
     AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewQuad(
         const PlanarManipulator& planarManipulator, const AZ::Color& axis1Color,
@@ -284,7 +291,7 @@ namespace AzToolsFramework
         float length, float radius);
 
     AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewSphere(
-        const AZ::Color& color, float radius, DecideColorFn decideColor);
+        const AZ::Color& color, float radius, const DecideColorFn& decideColor);
 
     AZStd::unique_ptr<ManipulatorView> CreateManipulatorViewCircle(
         const AngularManipulator& angularManipulator, const AZ::Color& color,

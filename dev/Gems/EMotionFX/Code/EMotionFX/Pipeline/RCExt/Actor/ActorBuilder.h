@@ -111,11 +111,12 @@ namespace EMotionFX
             // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
             ActorBuilder(const ActorBuilder&) = delete;
 #endif
-            void BuildPreExportStructure(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
+            void BuildPreExportStructure(ActorBuilderContext& context, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
                 AZStd::vector<AZ::SceneAPI::Containers::SceneGraph::NodeIndex>& outNodeIndices, BoneNameEmfxIndexMap& outBoneNameEmfxIndexMap);
 
             void BuildMesh(const ActorBuilderContext& context, EMotionFX::Node* emfxNode, AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshData> meshData,
-                const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex, const BoneNameEmfxIndexMap& boneNameEmfxIndexMap, const ActorSettings& settings, const CoordinateSystemConverter& coordSysConverter);
+                const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex, const BoneNameEmfxIndexMap& boneNameEmfxIndexMap, const ActorSettings& settings, 
+                const CoordinateSystemConverter& coordSysConverter, AZ::u8 lodLevel);
 
             EMotionFX::MeshBuilderSkinningInfo* ExtractSkinningInfo(AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshData> meshData,
                 const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex, const BoneNameEmfxIndexMap& boneNameEmfxIndexMap, const ActorSettings& settings);
@@ -129,6 +130,8 @@ namespace EMotionFX
 
             void GetNodeIndicesOfSelectedMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const;
             bool GetIsMorphed(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, const AZ::SceneAPI::DataTypes::IBlendShapeRule* morphTargetRule) const;
+
+            AZStd::string_view RemoveLODSuffix(const AZStd::string_view& lodName);
 
         private:
             AZStd::shared_ptr<AZ::GFxFramework::IMaterialGroup> m_materialGroup;

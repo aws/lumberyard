@@ -56,7 +56,7 @@ namespace EMStudio
         // create the add track button
         mAddTrackButton = new QPushButton("Add Event Track");
         mAddTrackButton->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Plus.png"));
-        connect(mAddTrackButton, SIGNAL(clicked()), this, SLOT(OnAddTrackButtonClicked()));
+        connect(mAddTrackButton, &QPushButton::clicked, this, &TrackHeaderWidget::OnAddTrackButtonClicked);
 
         // add the button to the main layout
         QHBoxLayout* buttonLayout = new QHBoxLayout();
@@ -79,19 +79,19 @@ namespace EMStudio
         mNodeActivityCheckBox = new QCheckBox("Node Activity");
         mNodeActivityCheckBox->setChecked(true);
         mNodeActivityCheckBox->setCheckable(true);
-        connect(mNodeActivityCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnCheckBox(int)));
+        connect(mNodeActivityCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         recorderLayout->addWidget(mNodeActivityCheckBox);
 
         mEventsCheckBox = new QCheckBox("Motion Events");
         mEventsCheckBox->setChecked(true);
         mEventsCheckBox->setCheckable(true);
-        connect(mEventsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnCheckBox(int)));
+        connect(mEventsCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         recorderLayout->addWidget(mEventsCheckBox);
 
         mRelativeGraphCheckBox = new QCheckBox("Relative Graph");
         mRelativeGraphCheckBox->setChecked(true);
         mRelativeGraphCheckBox->setCheckable(true);
-        connect(mRelativeGraphCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnCheckBox(int)));
+        connect(mRelativeGraphCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         recorderLayout->addWidget(mRelativeGraphCheckBox);
 
         mStackWidget->Add(displayWidget, "Display", false, false, true);
@@ -107,25 +107,25 @@ namespace EMStudio
         mSortNodeActivityCheckBox = new QCheckBox("Sort Node Activity");
         mSortNodeActivityCheckBox->setChecked(false);
         mSortNodeActivityCheckBox->setCheckable(true);
-        connect(mSortNodeActivityCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnCheckBox(int)));
+        connect(mSortNodeActivityCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         vizLayout->addWidget(mSortNodeActivityCheckBox);
 
         mNodeTypeColorsCheckBox = new QCheckBox("Use Node Type Colors");
         mNodeTypeColorsCheckBox->setChecked(false);
         mNodeTypeColorsCheckBox->setCheckable(true);
-        connect(mNodeTypeColorsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnCheckBox(int)));
+        connect(mNodeTypeColorsCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         vizLayout->addWidget(mNodeTypeColorsCheckBox);
 
         mDetailedNodesCheckBox = new QCheckBox("Detailed Nodes");
         mDetailedNodesCheckBox->setChecked(false);
         mDetailedNodesCheckBox->setCheckable(true);
-        connect(mDetailedNodesCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnDetailedNodesCheckBox(int)));
+        connect(mDetailedNodesCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnDetailedNodesCheckBox);
         vizLayout->addWidget(mDetailedNodesCheckBox);
 
         mLimitGraphHeightCheckBox = new QCheckBox("Limit Graph Height");
         mLimitGraphHeightCheckBox->setChecked(true);
         mLimitGraphHeightCheckBox->setCheckable(true);
-        connect(mLimitGraphHeightCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnCheckBox(int)));
+        connect(mLimitGraphHeightCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         vizLayout->addWidget(mLimitGraphHeightCheckBox);
 
         mStackWidget->Add(vizWidget, "Visual Options", false, false, true);
@@ -141,13 +141,13 @@ namespace EMStudio
         mNodeNamesCheckBox = new QCheckBox("Show Node Names");
         mNodeNamesCheckBox->setChecked(true);
         mNodeNamesCheckBox->setCheckable(true);
-        connect(mNodeNamesCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnCheckBox(int)));
+        connect(mNodeNamesCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         contentsLayout->addWidget(mNodeNamesCheckBox);
 
         mMotionFilesCheckBox = new QCheckBox("Show Motion Files");
         mMotionFilesCheckBox->setChecked(false);
         mMotionFilesCheckBox->setCheckable(true);
-        connect(mMotionFilesCheckBox, SIGNAL(stateChanged(int)), this, SLOT(OnCheckBox(int)));
+        connect(mMotionFilesCheckBox, &QCheckBox::stateChanged, this, &TrackHeaderWidget::OnCheckBox);
         contentsLayout->addWidget(mMotionFilesCheckBox);
 
         QHBoxLayout* comboLayout = new QHBoxLayout();
@@ -158,7 +158,7 @@ namespace EMStudio
         mNodeContentsComboBox->addItem("Local Weights");
         mNodeContentsComboBox->addItem("Local Time");
         mNodeContentsComboBox->setCurrentIndex(0);
-        connect(mNodeContentsComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(OnComboBoxIndexChanged(int)));
+        connect(mNodeContentsComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &TrackHeaderWidget::OnComboBoxIndexChanged);
         comboLayout->addWidget(mNodeContentsComboBox);
         contentsLayout->addLayout(comboLayout);
 
@@ -170,7 +170,7 @@ namespace EMStudio
         mGraphContentsComboBox->addItem("Local Weights");
         mGraphContentsComboBox->addItem("Local Time");
         mGraphContentsComboBox->setCurrentIndex(0);
-        connect(mGraphContentsComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(OnComboBoxIndexChanged(int)));
+        connect(mGraphContentsComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &TrackHeaderWidget::OnComboBoxIndexChanged);
         comboLayout->addWidget(mGraphContentsComboBox);
         contentsLayout->addLayout(comboLayout);
 
@@ -245,9 +245,9 @@ namespace EMStudio
 
             HeaderTrackWidget* widget = new HeaderTrackWidget(mTrackWidget, mPlugin, this, track, i);
 
-            connect(widget, SIGNAL(TrackNameChanged(const QString&, int)), this, SLOT(OnTrackNameChanged(const QString&, int)));
-            connect(widget, SIGNAL(RemoveTrackButtonClicked(int)), this, SLOT(OnRemoveTrackButtonClicked(int)));
-            connect(widget, SIGNAL(EnabledStateChanged(bool, int)), this, SLOT(OnTrackEnabledStateChanged(bool, int)));
+            connect(widget, &HeaderTrackWidget::TrackNameChanged, this, &TrackHeaderWidget::OnTrackNameChanged);
+            connect(widget, &HeaderTrackWidget::RemoveTrackButtonClicked, this, &TrackHeaderWidget::OnRemoveTrackButtonClicked);
+            connect(widget, &HeaderTrackWidget::EnabledStateChanged, this, &TrackHeaderWidget::OnTrackEnabledStateChanged);
 
             mTrackLayout->addWidget(widget);
         }
@@ -294,10 +294,10 @@ namespace EMStudio
         mRemoveButton->setMinimumWidth(20);
         mRemoveButton->setMaximumWidth(20);
 
-        connect(mNameEdit, SIGNAL(editingFinished()), this, SLOT(NameChanged()));
-        connect(mNameEdit, SIGNAL(textEdited(const QString&)), this, SLOT(NameEdited(const QString&)));
-        connect(mRemoveButton, SIGNAL(clicked()), this, SLOT(RemoveButtonClicked()));
-        connect(mEnabledCheckbox, SIGNAL(stateChanged(int)), this, SLOT(EnabledCheckBoxChanged(int)));
+        connect(mNameEdit, &QLineEdit::editingFinished, this, &HeaderTrackWidget::NameChanged);
+        connect(mNameEdit, &QLineEdit::textEdited, this, &HeaderTrackWidget::NameEdited);
+        connect(mRemoveButton, &QPushButton::clicked, this, &HeaderTrackWidget::RemoveButtonClicked);
+        connect(mEnabledCheckbox, &QCheckBox::stateChanged, this, &HeaderTrackWidget::EnabledCheckBoxChanged);
 
         mainLayout->insertSpacing(0, 4);
         mainLayout->addWidget(mEnabledCheckbox);

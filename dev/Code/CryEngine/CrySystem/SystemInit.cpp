@@ -165,8 +165,10 @@
 
 #if defined(ANDROID)
     #include <AzCore/Android/Utils.h>
-
     #include "AndroidConsole.h"
+#if !defined(AZ_RELEASE_BUILD)
+    #include "ThermalInfoAndroid.h"
+#endif // !defined(AZ_RELEASE_BUILD)
 #endif
 
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
@@ -287,7 +289,11 @@ CUNIXConsole* pUnixConsole;
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -527,7 +533,11 @@ static ESystemConfigPlatform GetDevicePlatform()
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -560,7 +570,11 @@ static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, ESystem
         break;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
@@ -601,7 +615,11 @@ static void GetSpecConfigFileToLoad(ICVar* pVar, AZStd::string& cfgFile, ESystem
     case CONFIG_VERYHIGH_SPEC:
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
         cfgFile += "_veryhigh.cfg";
         break;
@@ -746,7 +764,11 @@ static void LoadDetectedSpec(ICVar* pVar)
         }
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
@@ -1094,7 +1116,11 @@ bool CSystem::OpenRenderLibrary(const char* t_rend, const SSystemInitParams& ini
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1290,7 +1316,11 @@ bool CSystem::OpenRenderLibrary(int type, const SSystemInitParams& initParams)
 #endif // !defined(DEDICATED_SERVER)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(DEDICATED_SERVER)
@@ -1557,7 +1587,7 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
         AZ_Assert(retVal, "Renderer failed to initialize correctly.");
         return retVal;
 #else   // WIN32
-        WIN_HWND h = m_env.pRenderer->Init(0, 0, m_rWidth->GetIVal(), m_rHeight->GetIVal(), m_rColorBits->GetIVal(), m_rDepthBits->GetIVal(), m_rStencilBits->GetIVal(), m_rFullscreen->GetIVal() ? true : false, initParams.bEditor, hinst, hwnd);
+        WIN_HWND h = m_env.pRenderer->Init(0, 0, m_rWidth->GetIVal(), m_rHeight->GetIVal(), m_rColorBits->GetIVal(), m_rDepthBits->GetIVal(), m_rStencilBits->GetIVal(), m_rFullscreen->GetIVal() ? true : false, initParams.bEditor, hinst, hwnd, false, nullptr, initParams.bShaderCacheGen);
         InitPhysicsRenderer(initParams);
 
 #if (defined(LINUX) && !defined(AZ_PLATFORM_ANDROID))
@@ -1565,12 +1595,17 @@ bool CSystem::InitRenderer(WIN_HINSTANCE hinst, WIN_HWND hwnd, const SSystemInit
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
 #else
-        if (h)
+        bool retVal = (initParams.bShaderCacheGen || h != 0);
+        if (retVal)
         {
             return true;
         }
@@ -1788,7 +1823,11 @@ bool CSystem::InitPhysics(const SSystemInitParams& initParams)
     const char* moduleName = "EngineModule_CryPhysics";
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_9
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 #if defined (AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2314,8 +2353,12 @@ bool CSystem::ConnectToAssetProcessor(const SSystemInitParams& initParams, bool 
             //however if we timeout, meaning it never negotiated then
             //we can present that information to the user
 
+            // this assumes that Asset Processor is running on LocalHost, so technically, 2000 milliseconds grace time is massive overkill
+            // but just in case its busy, we give it that much extra time
+            const int numMillisecondsToWaitForConnect = 2000;
+
             //we should be able to connect
-            while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(5000))
+            while (!engineConnection->IsConnected() && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::milliseconds(numMillisecondsToWaitForConnect))
             {
                 //update the feedback text to animate and pump every 250 milliseconds
                 if (m_pUserCallback && AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - last) >= AZStd::chrono::milliseconds(250))
@@ -2980,7 +3023,6 @@ bool CSystem::InitAudioSystem(const SSystemInitParams& initParams)
 
         if (m_bDedicatedServer)
         {
-            bAudioInitSuccess = true;
             AZ_Printf(AZ_TRACE_SYSTEM_WINDOW, "<Audio>: Running with NULL Audio System on Dedicated Server.");
         }
         else
@@ -3839,6 +3881,8 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
             CreateRendererVars(startupParams);
         }
 
+        // Need to load the engine.pak that includes the config files needed during initialization
+        m_env.pCryPak->OpenPack("@assets@", "Engine.pak");
 #if defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE_IOS)
         MobileSysInspect::LoadDeviceSpecMapping();
 #endif    
@@ -4057,6 +4101,10 @@ bool CSystem::Init(const SSystemInitParams& startupParams)
         }
 
         InlineInitializationProcessing("CSystem::Init InitRenderer");
+
+#if !defined(AZ_RELEASE_BUILD) && defined(AZ_PLATFORM_ANDROID)
+        m_thermalInfoHandler = AZStd::make_unique<ThermalInfoAndroidHandler>();
+#endif
 
         if (m_env.pCryFont)
         {
@@ -5969,7 +6017,11 @@ void CSystem::CreateSystemVars()
         int nDefaultRenderSplashScreen = 1;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_10
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
         REGISTER_CVAR2("sys_rendersplashscreen", &g_cvars.sys_rendersplashscreen, nDefaultRenderSplashScreen, VF_NULL,
             "Render the splash screen during game initialization");
@@ -6125,7 +6177,11 @@ void CSystem::CreateSystemVars()
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_11
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -6175,7 +6231,11 @@ void CSystem::CreateSystemVars()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_12
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 
     m_sys_min_step = REGISTER_FLOAT("sys_min_step", 0.01f, 0,
@@ -6388,7 +6448,11 @@ void CSystem::CreateSystemVars()
     REGISTER_CVAR2("sys_display_threads", &g_cvars.sys_display_threads, 0, 0, "Displays Thread info");
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMINIT_CPP_SECTION_13
-#include AZ_RESTRICTED_FILE(SystemInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemInit_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(WIN32)

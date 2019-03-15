@@ -12,12 +12,14 @@
 
 #pragma once
 
+#include <MCore/Source/Command.h>
 #include <EMotionFX/Source/AnimGraphObject.h>
 #include <Editor/AnimGraphEditorBus.h>
 #include <QWidget>
 
 
 QT_FORWARD_DECLARE_CLASS(QComboBox)
+QT_FORWARD_DECLARE_CLASS(QLabel)
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 
 namespace AzToolsFramework
@@ -32,9 +34,8 @@ namespace EMotionFX
     class AnimGraphEditor
         : public QWidget
         , public EMotionFX::AnimGraphEditorRequestBus::Handler
-        , public EMotionFX::AnimGraphEditorNotificationBus::Handler
     {
-        Q_OBJECT
+        Q_OBJECT //AUTOMOC
 
     public:
         AnimGraphEditor(EMotionFX::AnimGraph* animGraph, AZ::SerializeContext* serializeContext, QWidget* parent);
@@ -42,11 +43,9 @@ namespace EMotionFX
 
         // AnimGraphEditorRequests
         EMotionFX::MotionSet* GetSelectedMotionSet() override;
-
         AnimGraph* GetAnimGraph() const { return m_animGraph; }
         void SetAnimGraph(AnimGraph* animGraph);
 
-        // AnimGraphEditorNotifications
         void UpdateMotionSetComboBox() override;
 
     private slots:
@@ -55,11 +54,15 @@ namespace EMotionFX
     private:
         AZ::Outcome<uint32> GetMotionSetIndex(int comboBoxIndex) const;
 
-        AnimGraph* m_animGraph;
+        MCORE_DEFINECOMMANDCALLBACK(UpdateMotionSetComboBoxCallback)
+
+        AnimGraph*                                  m_animGraph;
+        QLabel*                                     m_filenameLabel;
         AzToolsFramework::ReflectedPropertyEditor*  m_propertyEditor;
         static const int                            m_propertyLabelWidth;
         QComboBox*                                  m_motionSetComboBox;
         static QString                              m_lastMotionSetText;
+        AZStd::vector<MCore::Command::Callback*>    m_commandCallbacks;
 
     };
 } // namespace EMotionFX

@@ -22,6 +22,7 @@
 
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 #include "SkinnedMeshComponent.h"
 
@@ -36,6 +37,7 @@ namespace LmbrCentral
     */
     class EditorSkinnedMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
+        , private RenderBoundsRequestBus::Handler
         , private MeshComponentRequestBus::Handler
         , private MaterialOwnerRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
@@ -62,13 +64,18 @@ namespace LmbrCentral
         // SkinnedMeshComponentRequestBus interface implementation
         ICharacterInstance* GetCharacterInstance() override;
 
-        // MeshComponentRequestBus interface implementation
+        // RenderBoundsRequestBus interface implementation
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // MeshComponentRequestBus interface implementation
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_mesh.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;
         bool GetVisibility() override;
+        //////////////////////////////////////////////////////////////////////////
 
         // SkeletalHierarchyRequestBus::Handler
         AZ::u32 GetJointCount() override;

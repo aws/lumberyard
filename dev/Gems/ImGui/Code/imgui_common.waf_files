@@ -1,0 +1,8 @@
+{
+    "NoUberFile": {
+        "Root": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    }
+}

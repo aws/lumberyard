@@ -16,14 +16,6 @@
 class ViewportSnap
 {
 public:
-    //! Returns the translation, in canvas space, applied to the element.
-    static AZ::Vector2 Move(HierarchyWidget* hierarchy,
-        const AZ::EntityId& canvasId,
-        ViewportInteraction::CoordinateSystem coordinateSystem,
-        const ViewportHelpers::GizmoParts& grabbedGizmoParts,
-        AZ::Entity* element,
-        const AZ::Vector2& translation);
-
     static void Rotate(HierarchyWidget* hierarchy,
         const AZ::EntityId& canvasId,
         AZ::Entity* element,

@@ -82,6 +82,7 @@ namespace AZ
             HasCyclicDependency,        ///< A cycle in component service dependencies was detected.
             HasIncompatibleServices,    ///< A component is incompatible with a service provided by another component.
             DescriptorNotRegistered,    ///< A component descriptor was not registered with the AZ::ComponentApplication.
+            MissingDescriptor,          ///< Cannot find a component's ComponentDescriptor
 
             // Deprecated values
             DSR_OK = Success,
@@ -354,14 +355,33 @@ namespace AZ
         void            InvalidateDependencies();
 
         /**
-         * Calls DependencySort() to sort an entity's components based on the dependencies
-         * among components. If all dependencies are met, the required services can be 
-         * activated before the components that depend on them. An entity will not be 
-         * activated unless the sort succeeds.
-         * @return Indicates whether the entity can determine an order in which
-         * to activate its components.
+         * Contains a failed DependencySortResult code
+         * and a detailed message that can be presented to users.
          */
-        DependencySortResult    EvaluateDependencies();
+        struct FailedSortDetails
+        {
+            DependencySortResult m_code;
+            AZStd::string m_message;
+        };
+
+        using DependencySortOutcome = AZ::Outcome<void, FailedSortDetails>;
+
+        /**
+         * Calls DependencySort() to sort an entity's components based on the dependencies
+         * among components. If all dependencies are met, the required services can be
+         * activated before the components that depend on them. An entity will not be
+         * activated unless the sort succeeds.
+         * @return A successful outcome is returned if the entity can
+         * determine an order in which to activate its components.
+         * Otherwise the failed outcome contains details on why the sort failed.
+         */
+        DependencySortOutcome EvaluateDependenciesGetDetails();
+
+        /**
+         * Same as EvaluateDependenciesGetDetails(), but if sort fails
+         * only a code is returned, there is no detailed error message.
+         */
+        DependencySortResult EvaluateDependencies();
 
         /**
          * Mark the entity to be activated by default. This is observed automatically by EntityContext,
@@ -406,10 +426,11 @@ namespace AZ
         * If all dependencies are met, the required services can be activated
         * before the components that depend on them.
         * @param components An array of components attached to the entity.
-        * @return Indicates whether the entity can determine an order in which
-        * to activate its components.
+        * @return A successful outcome is returned if the entity can
+        * determine an order in which to activate its components.
+        * Otherwise the outcome contains details on why the sort failed.
         */
-        static DependencySortResult DependencySort(ComponentArrayType& components);
+        static DependencySortOutcome DependencySort(ComponentArrayType& components);
 
     protected:
 

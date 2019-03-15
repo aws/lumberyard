@@ -16,6 +16,7 @@
 #include <IRenderer.h>
 #include <ISerialize.h>
 #include <AzFramework/API/ApplicationAPI.h>
+#include <LyShine/Bus/Sprite/UiSpriteBus.h>
 
 namespace
 {
@@ -59,6 +60,47 @@ namespace
         }
 
         return false;
+    }
+
+    bool GetAssetPaths(const string& pathname, string& spritePath, string& texturePath)
+    {
+        // the input string could be in any form. So make it normalized
+        // NOTE: it should not be a full path at this point. If called from the UI editor it will
+        // have been transformed to a game path. If being called with a hard coded path it should be a
+        // game path already - it is not good for code to be using full paths.
+        AZStd::string assetPath(pathname.c_str());
+        EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePath, assetPath);
+        string gamePath = assetPath.c_str();
+
+        // check the extension and work out the pathname of the sprite file and the texture file
+        // currently it works if the input path is either a sprite file or a texture file
+        const char* extension = PathUtil::GetExt(gamePath.c_str());
+
+        if (strcmp(extension, spriteExtension) == 0)
+        {
+            spritePath = gamePath;
+
+            // look for a texture file with the same name
+            if (!ReplaceSpriteExtensionWithTextureExtension(spritePath, texturePath))
+            {
+                gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
+                    gamePath.c_str(), "No texture file found for sprite: %s, no sprite will be used", gamePath.c_str());
+                return false;
+            }
+        }
+        else if (IsValidSpriteTextureExtension(extension))
+        {
+            texturePath = gamePath;
+            spritePath = PathUtil::ReplaceExtension(gamePath, spriteExtension);
+        }
+        else
+        {
+            gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
+                gamePath.c_str(), "Invalid file extension for sprite: %s, no sprite will be used", gamePath.c_str());
+            return false;
+        }
+
+        return true;
     }
 
     //! \brief Reads a Vec2 tuple (as a string) into an AZ::Vector2
@@ -111,8 +153,10 @@ AZStd::string CSprite::s_emptyString;
 CSprite::CSprite()
     : m_texture(nullptr)
     , m_numSpriteSheetCellTags(0)
+    , m_atlas(nullptr)
 {
     AddRef();
+    TextureAtlasNamespace::TextureAtlasNotificationBus::Handler::BusConnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +174,7 @@ CSprite::~CSprite()
     }
 
     s_loadedSprites->erase(m_pathname);
+    TextureAtlasNamespace::TextureAtlasNotificationBus::Handler::BusDisconnect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +199,7 @@ ISprite::Borders CSprite::GetBorders() const
 void CSprite::SetBorders(Borders borders)
 {
     m_borders = borders;
+    NotifyChanged();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -162,6 +208,7 @@ void CSprite::SetCellBorders(int cellIndex, Borders borders)
     if (CellIndexWithinRange(cellIndex))
     {
         m_spriteSheetCells[cellIndex].borders = borders;
+        NotifyChanged();
     }
     else
     {
@@ -172,6 +219,11 @@ void CSprite::SetCellBorders(int cellIndex, Borders borders)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ITexture* CSprite::GetTexture() const
 {
+    // Prioritize usage of an atlas
+    if (m_atlas)
+    {
+        return m_atlas->GetTexture();
+    }
     // If the sprite is associated with a render target, the sprite does not own the texture.
     // In this case, find the texture by name when it is requested.
     if (!m_texture && !m_pathname.empty())
@@ -289,6 +341,10 @@ AZ::Vector2 CSprite::GetSize() const
     ITexture* texture = GetTexture();
     if (texture)
     {
+        if (m_atlas)
+        {
+            return AZ::Vector2(static_cast<float>(m_atlasCoordinates.GetWidth()), static_cast<float>(m_atlasCoordinates.GetHeight()));
+        }
         return AZ::Vector2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
     }
     else
@@ -331,18 +387,21 @@ const ISprite::SpriteSheetCellContainer& CSprite::GetSpriteSheetCells() const
 void CSprite::SetSpriteSheetCells(const SpriteSheetCellContainer& cells)
 {
     m_spriteSheetCells = cells;
+    NotifyChanged();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CSprite::ClearSpriteSheetCells()
 {
     m_spriteSheetCells.clear();
+    NotifyChanged();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CSprite::AddSpriteSheetCell(const SpriteSheetCell& spriteSheetCell)
 {
     m_spriteSheetCells.push_back(spriteSheetCell);
+    NotifyChanged();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -355,12 +414,49 @@ AZ::Vector2 CSprite::GetCellUvSize(int cellIndex) const
         result.SetX(m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX());
         result.SetY(m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() - m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY());
     }
+    if (m_atlas)
+    {
+        result.SetX(result.GetX() * m_atlasCoordinates.GetWidth() / m_atlas->GetWidth());
+        result.SetY(result.GetY() * m_atlasCoordinates.GetHeight() / m_atlas->GetHeight());
+    }
 
     return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-const UiTransformInterface::RectPoints& CSprite::GetCellUvCoords(int cellIndex) const
+UiTransformInterface::RectPoints CSprite::GetCellUvCoords(int cellIndex) const
+{
+    if (CellIndexWithinRange(cellIndex))
+    {
+        if (m_atlas)
+        {
+            return UiTransformInterface::RectPoints(
+                static_cast<float>(m_atlasCoordinates.GetLeft() + (m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetX() * m_atlasCoordinates.GetWidth()))
+                / m_atlas->GetWidth(),
+                static_cast<float>(m_atlasCoordinates.GetLeft() + (m_spriteSheetCells[cellIndex].uvCellCoords.TopRight().GetX() * m_atlasCoordinates.GetWidth()))
+                / m_atlas->GetWidth(),
+                static_cast<float>(m_atlasCoordinates.GetTop() + (m_spriteSheetCells[cellIndex].uvCellCoords.TopLeft().GetY() * m_atlasCoordinates.GetHeight()))
+                / m_atlas->GetHeight(),
+                static_cast<float>(m_atlasCoordinates.GetTop() + (m_spriteSheetCells[cellIndex].uvCellCoords.BottomLeft().GetY() * m_atlasCoordinates.GetHeight()))
+                / m_atlas->GetHeight());
+        }
+        return m_spriteSheetCells[cellIndex].uvCellCoords;
+    }
+    else if (m_atlas)
+    {
+        return UiTransformInterface::RectPoints(
+            static_cast<float>(m_atlasCoordinates.GetLeft()) / m_atlas->GetWidth(),
+            static_cast<float>(m_atlasCoordinates.GetRight()) / m_atlas->GetWidth(),
+            static_cast<float>(m_atlasCoordinates.GetTop()) / m_atlas->GetHeight(),
+            static_cast<float>(m_atlasCoordinates.GetBottom()) / m_atlas->GetHeight());
+    }
+
+    static UiTransformInterface::RectPoints rectPoints(0.0f, 1.0f, 0.0f, 1.0f);
+    return rectPoints;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiTransformInterface::RectPoints CSprite::GetSourceCellUvCoords(int cellIndex) const
 {
     if (CellIndexWithinRange(cellIndex))
     {
@@ -407,7 +503,6 @@ ISprite::Borders CSprite::GetTextureSpaceCellUvBorders(int cellIndex) const
         const float cellNormalizedBottomBorder = GetCellUvBorders(cellIndex).m_bottom * cellHeight;
         textureSpaceBorders.m_bottom = cellNormalizedBottomBorder;
     }
-
     return textureSpaceBorders;
 }
 
@@ -428,12 +523,61 @@ void CSprite::SetCellAlias(int cellIndex, const AZStd::string& cellAlias)
     if (CellIndexWithinRange(cellIndex))
     {
         m_spriteSheetCells[cellIndex].alias = cellAlias;
+        NotifyChanged();
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool CSprite::IsSpriteSheet() const
 {
     return m_spriteSheetCells.size() > 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::OnAtlasLoaded(const TextureAtlasNamespace::TextureAtlas* atlas)
+{
+    if (!m_atlas)
+    {
+        m_atlasCoordinates = atlas->GetAtlasCoordinates(m_pathname.c_str());
+        if (m_atlasCoordinates.GetWidth() > 0)
+        {
+            m_atlas = atlas;
+            // Release the non-atlas version of the texture
+            if (m_texture)
+            {
+                // In order to avoid the texture being deleted while there are still commands on the render
+                // thread command queue that use it, we queue a command to delete the texture onto the
+                // command queue.
+                SResourceAsync* pInfo = new SResourceAsync();
+                pInfo->eClassName = eRCN_Texture;
+                pInfo->pResource = m_texture;
+                gEnv->pRenderer->ReleaseResourceAsync(pInfo);
+                m_texture = nullptr;
+            }
+            NotifyChanged();
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::OnAtlasUnloaded(const TextureAtlasNamespace::TextureAtlas* atlas)
+{
+    if (atlas == m_atlas)
+    {
+        m_atlas = nullptr;
+        TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(m_atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, m_pathname.c_str());
+        if (m_atlas)
+        {
+            m_atlasCoordinates = m_atlas->GetAtlasCoordinates(m_pathname.c_str());
+        }
+        else
+        {
+            // No replacement atlas found
+            // load the texture file
+            LoadTexture(m_texturePathname, m_pathname, m_texture);
+        }
+    }
+    NotifyChanged();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -474,41 +618,12 @@ void CSprite::Shutdown()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 CSprite* CSprite::LoadSprite(const string& pathname)
 {
-    // the input string could be in any form. So make it normalized
-    // NOTE: it should not be a full path at this point. If called from the UI editor it will
-    // have been transformed to a game path. If being called with a hard coded path it should be a
-    // game path already - it is not good for code to be using full paths.
-    AZStd::string assetPath(pathname.c_str());
-    EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePath, assetPath);
-    string gamePath = assetPath.c_str();
-
-    // check the extension and work out the pathname of the sprite file and the texture file
-    // currently it works if the input path is either a sprite file or a texture file
-    const char* extension = PathUtil::GetExt(gamePath.c_str());
-
     string spritePath;
     string texturePath;
-    if (strcmp(extension, spriteExtension) == 0)
+    bool validAssetPaths = GetAssetPaths(pathname, spritePath, texturePath);
+    
+    if (!validAssetPaths)
     {
-        spritePath = gamePath;
-
-        // look for a texture file with the same name
-        if (!ReplaceSpriteExtensionWithTextureExtension(spritePath, texturePath))
-        {
-            gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-                gamePath.c_str(), "No texture file found for sprite: %s, no sprite will be used", gamePath.c_str());
-            return nullptr;
-        }
-    }
-    else if (IsValidSpriteTextureExtension(extension))
-    {
-        texturePath = gamePath;
-        spritePath = PathUtil::ReplaceExtension(gamePath, spriteExtension);
-    }
-    else
-    {
-        gEnv->pSystem->Warning(VALIDATOR_MODULE_SHINE, VALIDATOR_WARNING, VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-            gamePath.c_str(), "Invalid file extension for sprite: %s, no sprite will be used", gamePath.c_str());
         return nullptr;
     }
 
@@ -522,21 +637,22 @@ CSprite* CSprite::LoadSprite(const string& pathname)
         return loadedSprite;
     }
 
-    // load the texture file
-    uint32 loadTextureFlags = (FT_USAGE_ALLOWREADSRGB | FT_DONT_STREAM);
-    ITexture* texture = gEnv->pRenderer->EF_LoadTexture(texturePath.c_str(), loadTextureFlags);
-
-    if (!texture || !texture->IsTextureLoaded())
+    ITexture* texture = nullptr;
+    // Try to use a texture atlas instead
+    TextureAtlasNamespace::TextureAtlas* atlas = nullptr;
+    TextureAtlasNamespace::AtlasCoordinates atlasCoordinates;
+    TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, texturePath.c_str());
+    if (atlas)
     {
-        gEnv->pSystem->Warning(
-            VALIDATOR_MODULE_SHINE,
-            VALIDATOR_WARNING,
-            VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
-            texturePath.c_str(),
-            "No texture file found for sprite: %s, no sprite will be used. "
-            "NOTE: File must be in current project or a gem.",
-            spritePath.c_str());
-        return nullptr;
+        atlasCoordinates = atlas->GetAtlasCoordinates(texturePath.c_str());
+    }
+    else
+    {
+        // load the texture file
+        if (!LoadTexture(texturePath, spritePath, texture))
+        {
+            return nullptr;
+        }
     }
 
     // create Sprite object
@@ -545,6 +661,8 @@ CSprite* CSprite::LoadSprite(const string& pathname)
     sprite->m_texture = texture;
     sprite->m_pathname = spritePath;
     sprite->m_texturePathname = texturePath;
+    sprite->m_atlas = atlas;
+    sprite->m_atlasCoordinates = atlasCoordinates;
 
     // try to load the sprite side-car file if it exists, it is optional and if it does not
     // exist we just stay with default values
@@ -553,7 +671,6 @@ CSprite* CSprite::LoadSprite(const string& pathname)
     {
         sprite->LoadFromXmlFile();
     }
-
     // add sprite to list of loaded sprites
     (*s_loadedSprites)[sprite->m_pathname] = sprite;
 
@@ -587,6 +704,46 @@ CSprite* CSprite::CreateSprite(const string& renderTargetName)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool CSprite::DoesSpriteTextureAssetExist(const AZStd::string& pathname)
+{
+    string spritePath;
+    string texturePath;
+    bool validAssetPaths = GetAssetPaths(pathname.c_str(), spritePath, texturePath);
+
+    if (!validAssetPaths)
+    {
+        return false;
+    }
+
+    // Check if the sprite is already loaded
+    auto result = s_loadedSprites->find(spritePath);
+    CSprite* loadedSprite = (result == s_loadedSprites->end()) ? nullptr : result->second;
+    if (loadedSprite)
+    {
+        return true;
+    }
+
+    // Try to use a texture atlas instead
+    TextureAtlasNamespace::TextureAtlas* atlas = nullptr;
+    TextureAtlasNamespace::AtlasCoordinates atlasCoordinates;
+    TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(atlas, &TextureAtlasNamespace::TextureAtlasRequests::FindAtlasContainingImage, texturePath.c_str());
+    if (atlas)
+    {
+        return true;
+    }
+
+    // Check if the texture asset exists
+    string ddsTexturePath = PathUtil::ReplaceExtension(texturePath, ".dds");
+    AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+    if (fileIO && fileIO->Exists(ddsTexturePath.c_str()))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void CSprite::ReplaceSprite(ISprite** baseSprite, ISprite* newSprite)
 {
     if (baseSprite)
@@ -600,6 +757,29 @@ void CSprite::ReplaceSprite(ISprite** baseSprite, ISprite* newSprite)
 
         *baseSprite = newSprite;
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool CSprite::LoadTexture(const string& texturePathname, const string& pathname, ITexture*& texture)
+{
+    uint32 loadTextureFlags = (FT_USAGE_ALLOWREADSRGB | FT_DONT_STREAM);
+    texture = gEnv->pRenderer->EF_LoadTexture(texturePathname.c_str(), loadTextureFlags);
+
+    if (!texture || !texture->IsTextureLoaded())
+    {
+        gEnv->pSystem->Warning(
+            VALIDATOR_MODULE_SHINE,
+            VALIDATOR_WARNING,
+            VALIDATOR_FLAG_FILE | VALIDATOR_FLAG_TEXTURE,
+            texturePathname.c_str(),
+            "No texture file found for sprite: %s, no sprite will be used. "
+            "NOTE: File must be in current project or a gem.",
+            pathname.c_str());
+        texture = nullptr;
+        return false;
+    }
+    texture->SetFilter(FILTER_LINEAR);
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -648,5 +828,13 @@ bool CSprite::LoadFromXmlFile()
     m_numSpriteSheetCellTags = GetNumSpriteSheetCellTags(root);
     Serialize(ser);
 
+    NotifyChanged();
+
     return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CSprite::NotifyChanged()
+{
+    EBUS_EVENT_ID(this, UiSpriteSettingsChangeNotificationBus, OnSpriteSettingsChanged);
 }

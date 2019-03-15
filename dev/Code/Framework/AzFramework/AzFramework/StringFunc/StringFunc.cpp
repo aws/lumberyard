@@ -21,7 +21,11 @@
 
 #if !defined(AZ_PLATFORM_WINDOWS)
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(StringFunc_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StringFunc_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StringFunc_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -198,6 +202,18 @@ namespace AzFramework
                     return !azstricmp(inA, inB);
                 }
             }
+        }
+
+        bool StartsWith(AZStd::string_view sourceValue, AZStd::string_view prefixValue, bool bCaseSensitive)
+        {
+            return sourceValue.size() >= prefixValue.size()
+                && Equal(sourceValue.data(), prefixValue.data(), bCaseSensitive, prefixValue.size());
+        }
+
+        bool EndsWith(AZStd::string_view sourceValue, AZStd::string_view suffixValue, bool bCaseSensitive)
+        {
+            return sourceValue.size() >= suffixValue.size()
+                && Equal(sourceValue.substr(sourceValue.size() - suffixValue.size(), AZStd::string_view::npos).data(), suffixValue.data(), bCaseSensitive, suffixValue.size());
         }
 
         size_t Find(const char* in, char c, size_t pos /*= 0*/, bool bReverse /*= false*/, bool bCaseSensitive /*= false*/)

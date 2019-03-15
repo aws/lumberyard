@@ -29,6 +29,8 @@
 #include "TrackViewSequenceManager.h"
 #include "AnimationContext.h"
 
+#include <AzCore/Component/EntityBus.h>
+
 #include <QMainWindow>
 
 class QSplitter;
@@ -44,6 +46,7 @@ class CTrackViewDialog
     , public IEditorNotifyListener
     , public ITrackViewSequenceListener
     , public ITrackViewSequenceManagerListener
+    , public AZ::EntitySystemBus::Handler
     , IUndoManagerListener
 {
     Q_OBJECT
@@ -76,9 +79,14 @@ public:
     void UpdateDopeSheetTime(CTrackViewSequence* pSequence);
 
     const CTrackViewDopeSheetBase& GetTrackViewDopeSheet() const { return *m_wndDopeSheet; }
-    const DynArray<unsigned int>& GetDefaultTracksForEntityNode() const { return m_defaultTracksForEntityNode; }
+    const AZStd::vector<AnimParamType>& GetDefaultTracksForEntityNode() const { return m_defaultTracksForEntityNode; }
 
     bool IsDoingUndoOperation() const { return m_bDoingUndoOperation; }
+
+    //////////////////////////////////////////////////////////////////////////
+    // AZ::EntitySystemBus
+    void OnEntityDestruction(const AZ::EntityId& entityId) override;
+    //~AZ::EntitySystemBus 
 
 public: // static functions
 
@@ -103,8 +111,6 @@ protected slots:
     void OnAddSelectedNode();
     void OnAddDirectorNode();
     void OnFindNode();
-    void OnCreateLightAnimationSet();
-    void OnAddLightAnimation();
 
     void OnRecord();
     void OnAutoRecord();
@@ -198,7 +204,6 @@ private:
 
     void OnSequenceAdded(CTrackViewSequence* pSequence) override;
     void OnSequenceRemoved(CTrackViewSequence* pSequence) override;
-    void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) override;
 
     virtual void BeginUndoTransaction();
     virtual void EndUndoTransaction();
@@ -253,7 +258,7 @@ private:
     std::vector<CAnimParamType> m_toolBarParamTypes;
 
     // Default tracks menu
-    DynArray<unsigned int> m_defaultTracksForEntityNode;
+    AZStd::vector<AnimParamType> m_defaultTracksForEntityNode;
 
     QHash<int, QAction*> m_actions;
     ViewMode m_lastMode = ViewMode::TrackView;

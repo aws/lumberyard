@@ -16,10 +16,12 @@
 #include <AzCore/std/typetraits/is_pointer.h>
 #include <AzCore/std/typetraits/is_const.h>
 #include <AzCore/std/typetraits/is_enum.h>
+#include <AzCore/std/typetraits/is_base_of.h>
 #include <AzCore/std/typetraits/remove_pointer.h>
 #include <AzCore/std/typetraits/remove_const.h>
 #include <AzCore/std/typetraits/remove_reference.h>
 #include <AzCore/std/typetraits/has_member_function.h>
+#include <AzCore/std/function/invoke.h>
 
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Math/Crc.h>
@@ -88,6 +90,9 @@ namespace AZStd
 
     template<class Signature>
     class function;
+
+    template<class T>
+    class optional;
 }
 
 namespace AZ
@@ -100,18 +105,50 @@ namespace AZ
     template <class T, bool IsEnum = AZStd::is_enum<T>::value>
     struct AzTypeInfo;
 
+    inline namespace TypeIdResolverTags
+    {
+        /**
+        * PointerRemovedTypeId is used to lookup TypeIds of template specializations created before the pointer typeid
+        * typeid was taken into account when generating a templates typeid.
+        * Previously an AZStd::vector<AZ::Entity> and AZStd::vector<AZ::Entity*> had the same typeid which causes incorrect
+        * Serialization data to be generated for one of the types. For example the class element for the AZStd::vector<AZ::Entity*>
+        * should have the ClassElement::FLG_POINTER set for it's elements, but would not if it was registered with the SerailizeContext
+        * last.
+        */
+        struct PointerRemovedTypeIdTag
+        {
+        };
+        /**
+        * CanonicalTypeId is used to lookup TypeIds of template specializations while taking into account that T* and T are
+        * different types and therefore requires separate TypeId values.
+        */
+        struct CanonicalTypeIdTag
+        {
+        };
+    }
+
     namespace Internal
     {
         /// Check if a class has TypeInfo declared via AZ_TYPE_INFO in its declaration
         AZ_HAS_MEMBER(AZTypeInfoIntrusive, TYPEINFO_Enable, void, ());
 
         /// Check if a class has an AzTypeInfo specialization
-        AZ_HAS_STATIC_MEMBER(AZTypeInfoSpecialized, Specialized, bool, ());
+        template<typename T, typename = void>
+        struct HasAZTypeInfoSpecialized
+            : AZStd::false_type
+        {
+        };
+
+        template<typename T>
+        struct HasAZTypeInfoSpecialized<T, AZStd::enable_if_t<AZStd::is_invocable_r<bool, decltype(&AzTypeInfo<T>::Specialized)>::value>>
+            : AZStd::true_type
+        {
+        };
 
         template <class T>
         struct HasAZTypeInfo
         {
-            static const bool value = HasAZTypeInfoSpecialized<AzTypeInfo<T, AZStd::is_enum<T>::value>>::value || HasAZTypeInfoIntrusive<T>::value;
+            static constexpr bool value = HasAZTypeInfoSpecialized<T>::value || HasAZTypeInfoIntrusive<T>::value;
             using type = typename AZStd::Utils::if_c<value, AZStd::true_type, AZStd::false_type>::type;
         };
 
@@ -156,17 +193,18 @@ namespace AZ
                 AggregateTypes<Tn...>::TypeName(buffer, bufferSize);
             }
 
+            template<typename TypeIdResolverTag = CanonicalTypeIdTag>
             static AZ::TypeId Uuid()
             {
-                const AZ::TypeId tail = AggregateTypes<Tn...>::Uuid();
+                const AZ::TypeId tail = AggregateTypes<Tn...>::template Uuid<TypeIdResolverTag>();
                 if (!tail.IsNull())
                 {
                     // Avoid accumulating a null uuid, since it affects the result.
-                    return AzTypeInfo<T1>::Uuid() + tail;
+                    return AzTypeInfo<T1>::template Uuid<TypeIdResolverTag>() + tail;
                 }
                 else
                 {
-                    return AzTypeInfo<T1>::Uuid();
+                    return AzTypeInfo<T1>::template Uuid<TypeIdResolverTag>();
                 }
             }
         };
@@ -179,6 +217,7 @@ namespace AZ
                 (void)buffer; (void)bufferSize;
             }
 
+            template<typename TypeIdResolverTag = CanonicalTypeIdTag>
             static AZ::TypeId Uuid()
             {
                 return AZ::TypeId::CreateNull();
@@ -192,6 +231,13 @@ namespace AZ
 #else
         using TypeIdHolder = AZ::TypeId;
 #endif
+
+        // Represents the "*" typeid that can be combined with non-pointer types T to form a unique T* typeid 
+        inline static const AZ::TypeId& PointerTypeId()
+        {
+            static AZ::Internal::TypeIdHolder s_uuid("{35C8A027-FE00-4769-AE36-6997CFFAF8AE}");
+            return s_uuid;
+        }
     } // namespace Internal
 
       /**
@@ -208,11 +254,21 @@ namespace AZ
     template<class T>
     struct AzTypeInfo<T, false /* is_enum */>
     {
-        AZ_STATIC_ASSERT(Internal::HasAZTypeInfoIntrusive<T>::value,
-            "You should use AZ_TYPE_INFO or AZ_RTTI in your class/struct, or use AZ_TYPE_INFO_SPECIALIZE() externally. "
-            "Make sure to include the header containing this information (usually your class header).");
-        static const char* Name() { return T::TYPEINFO_Name(); }
-        static const AZ::TypeId& Uuid() { return T::TYPEINFO_Uuid(); }
+        static const char* Name()
+        {
+            static_assert(Internal::HasAZTypeInfoIntrusive<T>::value,
+                "You should use AZ_TYPE_INFO or AZ_RTTI in your class/struct, or use AZ_TYPE_INFO_SPECIALIZE() externally. "
+                "Make sure to include the header containing this information (usually your class header).");
+            return T::TYPEINFO_Name();
+        }
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>
+        static const AZ::TypeId& Uuid()
+        {
+            static_assert(Internal::HasAZTypeInfoIntrusive<T>::value,
+                "You should use AZ_TYPE_INFO or AZ_RTTI in your class/struct, or use AZ_TYPE_INFO_SPECIALIZE() externally. "
+                "Make sure to include the header containing this information (usually your class header).");
+            return T::TYPEINFO_Uuid();
+        }
     };
 
     // Default Specialization for enums without an overload
@@ -220,6 +276,7 @@ namespace AZ
     struct AzTypeInfo<T, true /* is_enum */>
     {
         static const char* Name() { return nullptr; }
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>
         static const AZ::TypeId& Uuid() { static AZ::TypeId nullUuid = AZ::TypeId::CreateNull(); return nullUuid; }
     };
 
@@ -236,16 +293,17 @@ namespace AZ
     }
 
     // AzTypeInfo specialization helper for non intrusive TypeInfo
-#define AZ_TYPE_INFO_SPECIALIZE(_ClassName, _ClassUuid)                                      \
-    template<>                                                                               \
-    struct AzTypeInfo<_ClassName, AZStd::is_enum<_ClassName>::value>                         \
-    {                                                                                        \
-        static const char* Name() { return #_ClassName; }                                    \
-        static const AZ::TypeId& Uuid() {                                                      \
-            static AZ::Internal::TypeIdHolder s_uuid(_ClassUuid);                  \
-            return s_uuid;                                                                   \
-        }                                                                                    \
-        static bool Specialized() { return true; }                                           \
+#define AZ_TYPE_INFO_SPECIALIZE(_ClassName, _ClassUuid)               \
+    template<>                                                        \
+    struct AzTypeInfo<_ClassName, AZStd::is_enum<_ClassName>::value>  \
+    {                                                                 \
+        static const char* Name() { return #_ClassName; }             \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>     \
+        static const AZ::TypeId& Uuid() {                             \
+            static AZ::Internal::TypeIdHolder s_uuid(_ClassUuid);     \
+            return s_uuid;                                            \
+        }                                                             \
+        static bool Specialized() { return true; }                    \
     };
 
     AZ_TYPE_INFO_SPECIALIZE(char, "{3AB0037F-AF8D-48ce-BCA0-A170D18B2C03}");
@@ -285,9 +343,10 @@ namespace AZ
             }
             return typeName;
         }
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>
         static const AZ::TypeId& Uuid()
         {
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::Internal::AggregateTypes<R, Args...>::Uuid());
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::Internal::AggregateTypes<R, Args...>::template Uuid<TypeIdResolverTag>());
             return s_uuid;
         }
     };
@@ -312,9 +371,10 @@ namespace AZ
             }
             return typeName;
         }
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>
         static const AZ::TypeId& Uuid()
         {
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::Internal::AggregateTypes<R, C, Args...>::Uuid());
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::Internal::AggregateTypes<R, C, Args...>::template Uuid<TypeIdResolverTag>());
             return s_uuid;
         }
     };
@@ -341,14 +401,15 @@ namespace AZ
             }
             return typeName;
         }
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>
         static const AZ::TypeId& Uuid()
         {
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::Internal::AggregateTypes<R, C>::Uuid());
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::Internal::AggregateTypes<R, C>::template Uuid<TypeIdResolverTag>());
             return s_uuid;
         }
     };
 
-    // Helper macro to generically specialize const, volatile, pointers, etc
+    // Helper macro to generically specialize const, references, pointers, etc
 #define AZ_TYPE_INFO_SPECIALIZE_CV(_T1, _Specialization, _NamePrefix, _NameSuffix)                               \
     template<class _T1>                                                                                          \
     struct AzTypeInfo<_Specialization, false> {                                                                  \
@@ -361,8 +422,16 @@ namespace AZ
             }                                                                                                    \
             return typeName;                                                                                     \
         }                                                                                                        \
-        static const AZ::TypeId& Uuid() {                                                                          \
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<_T1>::Uuid());                    \
+        /*                                                                                                       \
+        * By default the specialization for pointer types defaults to PointerRemovedTypeIdTag                    \
+        * This allows the current use of AzTypeInfo<T*>::Uuid to still return the typeid of type                 \
+        */                                                                                                       \
+        template<typename TypeIdResolverTag = PointerRemovedTypeIdTag>                                           \
+        static const AZ::TypeId& Uuid() {                                                                        \
+            static AZ::Internal::TypeIdHolder s_uuid(                                                            \
+                !AZStd::is_same<TypeIdResolverTag, PointerRemovedTypeIdTag>::value                               \
+                && AZStd::is_pointer<_Specialization>::value ?                                                   \
+                AZ::AzTypeInfo<_T1>::template Uuid<TypeIdResolverTag>() + Internal::PointerTypeId() : AZ::AzTypeInfo<_T1>::template Uuid<TypeIdResolverTag>()); \
             return s_uuid;                                                                                       \
         }                                                                                                        \
         static bool Specialized() { return true; }                                                               \
@@ -376,7 +445,7 @@ namespace AZ
     AZ_TYPE_INFO_SPECIALIZE_CV(T, const T&&, "const ", "&&");
     AZ_TYPE_INFO_SPECIALIZE_CV(T, const T, "const ", "");
 
-    // Helper macros to generically specialize for pointers, ref, const, etc.
+    // Helper macros to generically specialize template types
 #define AZ_INTERNAL_VARIATION_SPECIALIZATION_1(_T1, _Specialization, _NamePrefix, _NameSuffix, _AddUuid)         \
     template<class _T1>                                                                                          \
     struct AzTypeInfo<_Specialization<_T1>, false> {                                                                  \
@@ -389,8 +458,12 @@ namespace AZ
             }                                                                                                    \
             return typeName;                                                                                     \
         }                                                                                                        \
-        static const AZ::TypeId& Uuid() {                                                                          \
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<_T1>::Uuid() + AZ::TypeId(_AddUuid)); \
+        /* Previous template type Ids did not distinguish between non-pointer types and pointer types arguments  \
+         to templates so the PointerRemovedTypeId function returns the typeId with pointer removed\
+        */                                                                                                       \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>                                                \
+        static const AZ::TypeId& Uuid() {                                                                        \
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<_T1>::template Uuid<TypeIdResolverTag>() + AZ::TypeId(_AddUuid));        \
             return s_uuid;                                                                                       \
         }                                                                                                        \
         static bool Specialized() { return true; }                                                               \
@@ -410,8 +483,9 @@ namespace AZ
             }                                                                                                        \
             return typeName;                                                                                         \
         }                                                                                                            \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>                                                    \
         static const AZ::TypeId& Uuid() {                                                                              \
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<_T1>::Uuid() + AZ::AzTypeInfo<_T2>::Uuid() + AZ::TypeId(_AddUuid)); \
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<_T1>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T2>::template Uuid<TypeIdResolverTag>() + AZ::TypeId(_AddUuid)); \
             return s_uuid;                                                                                           \
         }                                                                                                            \
         static bool Specialized() { return true; }                                                                   \
@@ -433,9 +507,10 @@ namespace AZ
             }                                                                                                                                       \
             return typeName;                                                                                                                        \
         }                                                                                                                                           \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>                                                                                   \
         static const AZ::TypeId& Uuid() {                                                                                                             \
             static AZ::Internal::TypeIdHolder s_uuid(                                                                 \
-                AZ::AzTypeInfo<_T1>::Uuid() + AZ::AzTypeInfo<_T2>::Uuid() + AZ::AzTypeInfo<_T3>::Uuid() + AZ::TypeId(_AddUuid));                      \
+                AZ::AzTypeInfo<_T1>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T2>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T3>::template Uuid<TypeIdResolverTag>() + AZ::TypeId(_AddUuid));                      \
             return s_uuid;                                                                                                                          \
         }                                                                                                                                           \
         static bool Specialized() { return true; }                                                                                                  \
@@ -459,9 +534,10 @@ namespace AZ
             }                                                                                                                                                                     \
             return typeName;                                                                                                                                                      \
         }                                                                                                                                                                         \
-        static const AZ::TypeId& Uuid() {                                                                                                                                           \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>                                                                                                                 \
+        static const AZ::TypeId& Uuid() {                                                                                                                                         \
             static AZ::Internal::TypeIdHolder s_uuid(                                                                                          \
-                AZ::AzTypeInfo<_T1>::Uuid() + AZ::AzTypeInfo<_T2>::Uuid() + AZ::AzTypeInfo<_T3>::Uuid() + AZ::AzTypeInfo<_T4>::Uuid() + AZ::TypeId(_AddUuid));                      \
+                AZ::AzTypeInfo<_T1>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T2>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T3>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T4>::template Uuid<TypeIdResolverTag>() + AZ::TypeId(_AddUuid));                    \
             return s_uuid;                                                                                                                                                        \
         }                                                                                                                                                                         \
         static bool Specialized() { return true; }                                                                                                                                \
@@ -487,10 +563,11 @@ namespace AZ
             }                                                                                                                     \
             return typeName;                                                                                                      \
         }                                                                                                                         \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>                                                                 \
         static const AZ::TypeId& Uuid() {                                                                                           \
             static AZ::Internal::TypeIdHolder s_uuid(                                     \
-                AZ::AzTypeInfo<_T1>::Uuid() + AZ::AzTypeInfo<_T2>::Uuid() + AZ::AzTypeInfo<_T3>::Uuid() +                         \
-                    AZ::AzTypeInfo<_T4>::Uuid() + AZ::AzTypeInfo<_T5>::Uuid() + AZ::TypeId(_AddUuid));                              \
+                AZ::AzTypeInfo<_T1>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T2>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T3>::template Uuid<TypeIdResolverTag>() +                         \
+                    AZ::AzTypeInfo<_T4>::template Uuid<TypeIdResolverTag>() + AZ::AzTypeInfo<_T5>::template Uuid<TypeIdResolverTag>() + AZ::TypeId(_AddUuid));                              \
             return s_uuid;                                                                                                        \
         }                                                                                                                         \
         static bool Specialized() { return true; }                                                                                \
@@ -508,8 +585,9 @@ namespace AZ
             }\
             return typeName; \
         } \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag> \
         static const AZ::TypeId& Uuid() { \
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::TypeId(_ClassUuid) + AZ::Internal::AggregateTypes<Args...>::Uuid()); \
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::TypeId(_ClassUuid) + AZ::Internal::AggregateTypes<Args...>::template Uuid<TypeIdResolverTag>()); \
             return s_uuid;\
         } \
         static bool Specialized() { return true; } \
@@ -529,8 +607,9 @@ namespace AZ
             }\
             return typeName; \
         } \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag>                                      \
         static const AZ::Uuid& Uuid() { \
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::Uuid(_ClassUuid) + AZ::AzTypeInfo<R>::Uuid() + AZ::Internal::AggregateTypes<Args...>::Uuid()); \
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::Uuid(_ClassUuid) + AZ::AzTypeInfo<R>::template Uuid<TypeIdResolverTag>() + AZ::Internal::AggregateTypes<Args...>::template Uuid<TypeIdResolverTag>()); \
             return s_uuid;\
         } \
         static bool Specialized() { return true; } \
@@ -549,8 +628,9 @@ namespace AZ
             }                                                                                                        \
             return typeName;                                                                                         \
         }                                                                                                            \
-        static const AZ::TypeId& Uuid() {                                                                              \
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<_T1>::Uuid() + AZ::TypeId(_AddUuid)); \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag> \
+        static const AZ::TypeId& Uuid() {                                                                            \
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<_T1>::template Uuid<TypeIdResolverTag>() + AZ::TypeId(_AddUuid)); \
             return s_uuid;                                                                                           \
         }                                                                                                            \
         static bool Specialized() { return true; }                                                                   \
@@ -586,6 +666,7 @@ namespace AZ
             } \
             return typeName; \
         } \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag> \
         static const AZ::TypeId& Uuid() { \
             static AZ::Internal::TypeIdHolder s_uuid(AZ::TypeId::CreateName(NStr(N)) + AZ::TypeId(_AddUuid)); \
             return s_uuid; \
@@ -618,8 +699,9 @@ namespace AZ
             } \
             return typeName; \
         } \
+        template<typename TypeIdResolverTag = CanonicalTypeIdTag> \
         static const AZ::TypeId& Uuid() { \
-            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<T>::Uuid() + AZ::TypeId::CreateName(NStr(N)) + AZ::TypeId(_AddUuid)); \
+            static AZ::Internal::TypeIdHolder s_uuid(AZ::AzTypeInfo<T>::template Uuid<TypeIdResolverTag>() + AZ::TypeId::CreateName(NStr(N)) + AZ::TypeId(_AddUuid)); \
             return s_uuid; \
         } \
         static bool Specialized() { return true; } \
@@ -644,6 +726,7 @@ namespace AZ
     AZ_INTERNAL_VARIATION_SPECIALIZATION_5(K, M, Hasher, Compare, Allocator, AZStd::unordered_multimap, "AZStd::unordered_multimap<", ">", "{9ED846FA-31C1-4133-B4F4-91DF9750BA96}");
     AZ_INTERNAL_VARIATION_SPECIALIZATION_1(T, AZStd::shared_ptr, "AZStd::shared_ptr<", ">", "{FE61C84E-149D-43FD-88BA-1C3DB7E548B4}");
     AZ_INTERNAL_VARIATION_SPECIALIZATION_1(T, AZStd::intrusive_ptr, "AZStd::intrusive_ptr<", ">", "{530F8502-309E-4EE1-9AEF-5C0456B1F502}");
+    AZ_INTERNAL_VARIATION_SPECIALIZATION_1(T, AZStd::optional, "AZStd::optional<", ">", "{AB8C50C0-23A7-4333-81CD-46F648938B1C}");
     AZ_INTERNAL_VARIATION_SPECIALIZATION_3(Element, Traits, Allocator, AZStd::basic_string, "AZStd::basic_string<", ">", "{C26397ED-8F60-4DF6-8320-0D0C592DA3CD}");
     AZ_INTERNAL_VARIATION_SPECIALIZATION_1(Element, AZStd::char_traits, "AZStd::char_traits<", ">", "{9B018C0C-022E-4BA4-AE91-2C1E8592DBB2}");
     AZ_INTERNAL_VARIATION_SPECIALIZATION_2(Element, Traits, AZStd::basic_string_view, "AZStd::basic_string_view<", ">", "{D348D661-6BDE-4C0A-9540-FCEA4522D497}");

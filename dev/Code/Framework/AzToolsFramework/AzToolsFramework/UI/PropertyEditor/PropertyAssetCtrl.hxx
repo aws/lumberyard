@@ -22,6 +22,7 @@
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorAssetReference.h>
+#include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 
 #include <QLabel>
 
@@ -61,6 +62,8 @@ namespace AzToolsFramework
         virtual void dragLeaveEvent(QDragLeaveEvent* event) override;
         virtual void dropEvent(QDropEvent* event) override;
 
+        virtual AssetSelectionModel GetAssetSelectionModel() { return AssetSelectionModel::AssetTypeSelection(GetCurrentAssetType()); }
+
     signals:
         void OnAssetIDChanged(AZ::Data::AssetId newAssetID);
 
@@ -80,6 +83,9 @@ namespace AzToolsFramework
         bool IsCorrectMimeData(const QMimeData* pData, AZ::Data::AssetId* pAssetId = nullptr, AZ::Data::AssetType* pAssetType = nullptr) const;
         void ClearErrorButton();
         void UpdateErrorButton(const AZStd::string& errorLog);
+        virtual const AZStd::string GetFolderSelection() const { return AZStd::string(); }
+        virtual void SetFolderSelection(const AZStd::string& /* folderPath */) {}
+        virtual void ClearAssetInternal();
 
         //////////////////////////////////////////////////////////////////////////
         // AssetSystemBus

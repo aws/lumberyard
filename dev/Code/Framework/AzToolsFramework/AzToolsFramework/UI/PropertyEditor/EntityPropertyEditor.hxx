@@ -26,6 +26,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
+#include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 #include <QtWidgets/QWidget>
 #include <QtGui/QIcon>
 #include <QComboBox>
@@ -122,6 +123,9 @@ namespace AzToolsFramework
 
         void SetSystemEntityEditor(bool isSystemEntityEditor);
 
+    Q_SIGNALS:
+        void SelectedEntityNameChanged(const AZ::EntityId& entityId, const AZStd::string& name);
+
     private:
 
         struct SharedComponentInfo
@@ -185,14 +189,16 @@ namespace AzToolsFramework
         void SortComponentsByOrder(const AZ::EntityId& entityId, AZ::Entity::ComponentArrayType& componentsOnEntity);
         void SaveComponentOrder(const AZ::EntityId& entityId, const AZ::Entity::ComponentArrayType& componentsInOrder);
 
-        void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray);
+        void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray, bool containsLayerEntity);
         void BuildSharedComponentUI(SharedComponentArray& sharedComponentArray);
         bool ComponentMatchesCurrentFilter(SharedComponentInfo& sharedComponentInfo) const;
         ComponentEditor* CreateComponentEditor();
         void UpdateEntityIcon();
         void UpdateEntityDisplay();
+        bool DoesComponentPassFilter(const AZ::Component* component) const;
         bool IsComponentRemovable(const AZ::Component* component) const;
         bool AreComponentsRemovable(const AZ::Entity::ComponentArrayType& components) const;
+        bool AreComponentsCopyable(const AZ::Entity::ComponentArrayType& components) const;
 
         void AddMenuOptionsForComponents(QMenu& menu, const QPoint& position);
         void AddMenuOptionsForFields(InstanceDataNode* fieldNode, InstanceDataNode* componentNode, const AZ::SerializeContext::ClassData* componentClassData, QMenu& menu);
@@ -205,7 +211,7 @@ namespace AzToolsFramework
 
         /// Given an InstanceDataNode, calculate a DataPatch address relative to the entity.
         /// @return true if successful.
-        bool GetEntityDataPatchAddress(const InstanceDataNode* componentFieldNode, AZ::DataPatch::AddressType& dataPatchAddressOut, AZ::EntityId* entityIdOut=nullptr) const;
+        bool GetEntityDataPatchAddress(const InstanceDataNode* componentFieldNode, AZ::DataPatch::AddressType& dataPatchAddressOut, AZ::EntityId* entityIdOut = nullptr) const;
 
         enum class AddressRootType
         {
@@ -250,6 +256,25 @@ namespace AzToolsFramework
             const QSize& size,
             const AZStd::vector<AZ::ComponentServiceType>& serviceFilter);
 
+        enum class SelectionEntityTypeInfo
+        {
+            None,
+            OnlyStandardEntities,
+            OnlyLayerEntities,
+            Mixed
+        };
+        /**
+         * Returns what kinds of entities are in the current selection. This is used because mixed selection
+         * and layer entities requires special logic in the property editor.
+         * \param selection The selected entities.
+         */
+        SelectionEntityTypeInfo GetSelectionEntityTypeInfo(const EntityIdList& selection) const;
+
+        /**
+         * Returns true if a selection matching the passed in selection informatation allows components to be added.
+         */
+        bool CanAddComponentsToSelection(const SelectionEntityTypeInfo& selectionEntityTypeInfo) const;
+
         QAction* m_actionToAddComponents;
         QAction* m_actionToDeleteComponents;
         QAction* m_actionToCutComponents;
@@ -267,6 +292,9 @@ namespace AzToolsFramework
 
         void CreateActions();
         void UpdateActions();
+
+        bool CanPasteComponentsOnSelectedEntities() const;
+        bool CanPasteComponentsOnEntity(const ComponentTypeMimeData::ClassDataContainer& classDataForComponentsToPaste, const AZ::Entity* entity) const;
 
         AZ::Entity::ComponentArrayType GetCopyableComponents() const;
         void DeleteComponents(const AZ::Entity::ComponentArrayType& components);
@@ -446,9 +474,12 @@ namespace AzToolsFramework
         AZStd::string m_filterString;
 
         // IDs of entities currently bound to this property editor.
-        AZStd::vector<AZ::EntityId> m_selectedEntityIds;
+        EntityIdList m_selectedEntityIds;
 
         ComponentFilter m_componentFilter;
+        // Tracks if a custom filter has been set. A comparison operator is not available for
+        // the filter, so it can't be checked if it's the default filter.
+        bool m_customFilterSet = false;
 
         // Pointer to entity that first entity is compared against for the purpose of rendering deltas vs. slice in the property grid.
         AZStd::unique_ptr<AZ::Entity> m_sliceCompareToEntity;

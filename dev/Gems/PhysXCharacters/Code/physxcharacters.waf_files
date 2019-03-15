@@ -1,0 +1,38 @@
+{
+    "none": {
+        "Source": [
+            "Source/PhysXCharacters_precompiled.cpp",
+            "Source/PhysXCharacters_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/PhysXCharacters/NativeTypeIdentifiers.h",
+            "Include/PhysXCharacters/SystemBus.h",
+            "Include/PhysXCharacters/CharacterControllerBus.h"
+        ],
+        "Source/System": [
+            "Source/System/Module.cpp",
+            "Source/System/SystemComponent.cpp",
+            "Source/System/SystemComponent.h"
+        ],
+        "Source/API": [
+            "Source/API/CharacterController.cpp",
+            "Source/API/CharacterController.h",
+            "Source/API/CharacterControllerCosmeticReplica.cpp",
+            "Source/API/CharacterControllerCosmeticReplica.h",
+            "Source/API/RagdollNode.cpp",
+            "Source/API/RagdollNode.h",
+            "Source/API/Ragdoll.cpp",
+            "Source/API/Ragdoll.h",
+            "Source/API/Utils.cpp",
+            "Source/API/Utils.h"
+        ],
+        "Source/Components": [
+            "Source/Components/CharacterControllerComponent.cpp",
+            "Source/Components/CharacterControllerComponent.h",
+            "Source/Components/RagdollComponent.cpp",
+            "Source/Components/RagdollComponent.h"
+        ]
+    }
+}

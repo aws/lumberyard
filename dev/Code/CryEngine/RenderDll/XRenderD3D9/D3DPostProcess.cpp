@@ -90,7 +90,11 @@ void SD3DPostEffectsUtils::ResolveRT(CTexture*& pDst, const RECT* pSrcRect)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DPOSTPROCESS_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DPostProcess_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DPostProcess_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DPostProcess_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -261,10 +265,19 @@ void SD3DPostEffectsUtils::StretchRect(CTexture* pSrc, CTexture*& pDst, bool bCl
 
     const D3DFormat dstFmt = CTexture::DeviceFormatFromTexFormat(pDst->GetDstFormat());
     const D3DFormat srcFmt = CTexture::DeviceFormatFromTexFormat(pSrc->GetDstFormat());
+
+    bool destinationBaseTextureExists = pDst->GetDevTexture() && pDst->GetDevTexture()->GetBaseTexture();
+    AZ_Error("Rendering", destinationBaseTextureExists, "'%s' used as destination texture in call to SD3DPostProcessUtils::StretchRect, but it does not have a valid device texture.", pDst->GetName());
+    bool sourceBaseTextureExists = pSrc->GetDevTexture() && pSrc->GetDevTexture()->GetBaseTexture();
+    AZ_Error("Rendering", sourceBaseTextureExists, "'%s' used as source texture in call to SD3DPostProcessUtils::StretchRect, but it does not have a valid device texture.", pSrc->GetName());
+
     if (bResample == false && gRenDev->m_RP.m_FlagsShader_RT == 0 && dstFmt == srcFmt)
     {
-        gcpRendD3D->GetDeviceContext().CopyResource(pDst->GetDevTexture()->GetBaseTexture(), pSrc->GetDevTexture()->GetBaseTexture());
-        gRenDev->m_RP.m_FlagsShader_RT = nSaveFlagsShader_RT;
+        if (sourceBaseTextureExists && destinationBaseTextureExists)
+        {
+            gcpRendD3D->GetDeviceContext().CopyResource(pDst->GetDevTexture()->GetBaseTexture(), pSrc->GetDevTexture()->GetBaseTexture());
+            gRenDev->m_RP.m_FlagsShader_RT = nSaveFlagsShader_RT;
+        }
         return;
     }
 
@@ -363,7 +376,11 @@ void SD3DPostEffectsUtils::SwapRedBlue(CTexture* pSrc, CTexture* pDst)
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DPOSTPROCESS_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DPostProcess_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DPostProcess_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DPostProcess_cpp_provo.inl"
+    #endif
 #endif
 }
 
@@ -1470,6 +1487,13 @@ void CPostEffectsMgr::End()
     const uint32 nThreadID = gRenDev->m_RP.m_nProcessThreadID;
     int recursiveLevel = SRendItem::m_RecurseLevel[nThreadID];
     assert(recursiveLevel >= 0);
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (gRenDev->m_RP.m_TI[nThreadID].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE)
+    {
+        return;
+    }
+#endif // if AZ_RTT_ENABLE
 
     gcpRendD3D->UpdatePreviousFrameMatrices();
 

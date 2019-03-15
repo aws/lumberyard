@@ -283,6 +283,9 @@ def search_maven_repos(ctx, name, group, version):
     Logs.debug('android_library: Searching %s', GOOGLE_MAIN_MAVEN_REPO)
     build_google_main_maven_repo_index()
 
+    global PROTOCOL
+    main_repo_root = '{}://{}'.format(PROTOCOL, GOOGLE_MAIN_MAVEN_REPO)
+
     if group in GOOGLE_MAIN_MAVEN_REPO_INDEX:
         repo_libs = GOOGLE_MAIN_MAVEN_REPO_INDEX[group]
         if name in repo_libs:
@@ -296,14 +299,14 @@ def search_maven_repos(ctx, name, group, version):
                 highest_useable_version = valid_versions[-1]
 
                 aar_file = '{}-{}.aar'.format(name, highest_useable_version)
-                file_url = '/'.join([ GOOGLE_MAIN_MAVEN_REPO, group_path, name, highest_useable_version, aar_file ])
+                file_url = '/'.join([ main_repo_root, group_path, name, highest_useable_version, aar_file ])
 
                 return file_url, aar_file
 
             elif version in repo_versions:
 
                 aar_file = '{}-{}.aar'.format(name, version)
-                file_url = '/'.join([ GOOGLE_MAIN_MAVEN_REPO, group_path, name, version, aar_file ])
+                file_url = '/'.join([ main_repo_root, group_path, name, version, aar_file ])
 
                 return file_url, aar_file
 
@@ -311,7 +314,6 @@ def search_maven_repos(ctx, name, group, version):
     for repo in GOOGLE_BINTRAY_MAVEN_REOPS:
         Logs.debug('android_library: Searching %s', repo)
 
-        global PROTOCOL
         repo_root = '{}://{}'.format(PROTOCOL, repo)
 
         lib_root = '/'.join([ repo_root, group_path, name ])
@@ -383,7 +385,7 @@ class android_manifest_merger(Task):
     Merges the input manifests into the "main" manifest specifed in the task generator
     '''
     color = 'PINK'
-    run_str = '${JAVA} -cp ${MANIFEST_MERGER_CLASSPATH} ${MANIFEST_MERGER_ENTRY_POINT} --main ${MAIN_MANIFEST} --libs ${LIBRARY_MANIFESTS} --out ${TGT}'
+    run_str = '${JAVA} -cp ${MANIFEST_MERGER_CLASSPATH} com.android.manifmerger.Merger --main ${MAIN_MANIFEST} --libs ${LIBRARY_MANIFESTS} --out ${TGT}'
 
     def runnable_status(self):
         result = super(android_manifest_merger, self).runnable_status()
@@ -532,10 +534,14 @@ def process_aar(self):
                     url_opener = urllib.FancyURLopener()
                     url_opener.retrieve(file_url, filename = lib_node.abspath())
                 except:
-                    bld.Fatal('[ERROR] Failed to download Android library {} from {}.'.format(self.name, file_url))
+                    bld.fatal('[ERROR] Failed to download Android library {} from {}.'.format(self.name, file_url))
 
         if not version:
-            version = os.path.splitext(aar_filename)[0].split('-')[-1]
+            name_components = os.path.splitext(aar_filename)[0].split('-')
+            for index, value in enumerate(name_components):
+                if value.split('.')[0].isdigit():
+                    version = '-'.join(name_components[index:])
+                    break
 
         self.android_studio_name = '{}:{}:{}'.format(group, self.name, version)
 

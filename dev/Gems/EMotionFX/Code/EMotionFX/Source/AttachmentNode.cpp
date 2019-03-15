@@ -23,44 +23,56 @@ namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(AttachmentNode, AttachmentAllocator, 0)
 
-    // constructor for non-deformable attachments
-    AttachmentNode::AttachmentNode(ActorInstance* attachToActorInstance, uint32 attachToNodeIndex, ActorInstance* attachment)
+    AttachmentNode::AttachmentNode(ActorInstance* attachToActorInstance, AZ::u32 attachToNodeIndex, ActorInstance* attachment, bool managedExternally)
         : Attachment(attachToActorInstance, attachment)
+        , m_attachedToNode(attachToNodeIndex)
+        , m_isManagedExternally(managedExternally)
     {
-        // make sure the node index is valid
-        MCORE_ASSERT(attachToNodeIndex < attachToActorInstance->GetNumNodes());
-        mAttachedToNode = attachToNodeIndex;
+        AZ_Assert(attachToNodeIndex < attachToActorInstance->GetNumNodes(), "Node index is out of bounds.");
     }
 
 
-    // destructor
     AttachmentNode::~AttachmentNode()
     {
     }
 
 
-    // create it
-    AttachmentNode* AttachmentNode::Create(ActorInstance* attachToActorInstance, uint32 attachToNodeIndex, ActorInstance* attachment)
+    AttachmentNode* AttachmentNode::Create(ActorInstance* attachToActorInstance, AZ::u32 attachToNodeIndex, ActorInstance* attachment, bool managedExternally)
     {
-        return aznew AttachmentNode(attachToActorInstance, attachToNodeIndex, attachment);
+        return aznew AttachmentNode(attachToActorInstance, attachToNodeIndex, attachment, managedExternally);
     }
 
 
-    // update the attachment
     void AttachmentNode::Update()
     {
-        if (mAttachment == nullptr)
+        if (!m_attachment)
         {
             return;
         }
 
-        const Transform& globalTransform = mActorInstance->GetTransformData()->GetGlobalInclusiveMatrix(mAttachedToNode);
-        mAttachment->SetParentGlobalTransform(globalTransform);
+        // Pass the parent's world space transform into the attachment.
+        if (!m_isManagedExternally)
+        {
+            const Transform worldTransform = m_actorInstance->GetTransformData()->GetCurrentPose()->GetWorldSpaceTransform(m_attachedToNode);
+            m_attachment->SetParentWorldSpaceTransform(worldTransform);
+        }
     }
 
 
     uint32 AttachmentNode::GetAttachToNodeIndex() const
     {
-        return mAttachedToNode;
+        return m_attachedToNode;
+    }
+
+
+    bool AttachmentNode::GetIsManagedExternally() const
+    {
+        return m_isManagedExternally;
+    }
+
+
+    void AttachmentNode::SetIsManagedExternally(bool managedExternally)
+    {
+        m_isManagedExternally = managedExternally;
     }
 }   // namespace EMotionFX

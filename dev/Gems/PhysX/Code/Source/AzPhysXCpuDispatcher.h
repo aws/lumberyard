@@ -12,13 +12,11 @@
 
 #pragma once
 
-#include <PhysXSystemComponent.h>
+#include <Source/SystemComponent.h>
 
 namespace PhysX
 {
-    /**
-    * CPU dispatcher which directs tasks submitted by PhysX to the lumberyard scheduling system.
-    */
+    /// CPU dispatcher which directs tasks submitted by PhysX to the Lumberyard scheduling system.
     class AzPhysXCpuDispatcher
         : public physx::PxCpuDispatcher
     {
@@ -34,8 +32,6 @@ namespace PhysX
         physx::PxU32 getWorkerCount() const override;
     };
 
-    /**
-    * Creates a CPU dispatcher which directs tasks submitted by PhysX to the lumberyard scheduling system.
-    */
+    /// Creates a CPU dispatcher which directs tasks submitted by PhysX to the Lumberyard scheduling system.
     AzPhysXCpuDispatcher* AzPhysXCpuDispatcherCreate();
 } // namespace PhysX

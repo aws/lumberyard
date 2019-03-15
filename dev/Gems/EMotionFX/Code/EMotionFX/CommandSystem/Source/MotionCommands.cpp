@@ -32,12 +32,34 @@
 
 namespace CommandSystem
 {
+    AZ_CLASS_ALLOCATOR_IMPL(MotionIdCommandMixin, EMotionFX::CommandAllocator, 0)
+    AZ_CLASS_ALLOCATOR_IMPL(CommandAdjustMotion, EMotionFX::CommandAllocator, 0)
+
     const char* CommandStopAllMotionInstances::s_stopAllMotionInstancesCmdName = "StopAllMotionInstances";
+
+    void MotionIdCommandMixin::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<MotionIdCommandMixin>()
+            ->Version(1)
+            ->Field("motionID", &MotionIdCommandMixin::m_motionID)
+        ;
+    }
+
+    bool MotionIdCommandMixin::SetCommandParameters(const MCore::CommandLine& parameters)
+    {
+        m_motionID = parameters.GetValueAsInt("motionID", MCORE_INVALIDINDEX32);
+        return true;
+    }
 
     CommandStopAllMotionInstances::CommandStopAllMotionInstances(MCore::Command* orgCommand)
         : MCore::Command(s_stopAllMotionInstancesCmdName, orgCommand)
     {
-
     }
 
     CommandStopAllMotionInstances::~CommandStopAllMotionInstances()
@@ -60,7 +82,7 @@ namespace CommandSystem
 
     AZStd::string CommandPlayMotion::PlayBackInfoToCommandParameters(EMotionFX::PlayBackInfo* playbackInfo)
     {
-        return AZStd::string::format("-blendInTime %f -blendOutTime %f -playSpeed %f -targetWeight %f -eventWeightThreshold %f -maxPlayTime %f -numLoops %i -priorityLevel %i -startNodeIndex %i -blendMode %i -playMode %i -mirrorMotion %s -mix %s -playNow %s -motionExtraction %s -retarget %s -freezeAtLastFrame %s -enableMotionEvents %s -blendOutBeforeEnded %s -canOverwrite %s -deleteOnZeroWeight %s",
+        return AZStd::string::format("-blendInTime %f -blendOutTime %f -playSpeed %f -targetWeight %f -eventWeightThreshold %f -maxPlayTime %f -numLoops %i -priorityLevel %i -startNodeIndex %i -blendMode %i -playMode %i -mirrorMotion %s -mix %s -playNow %s -motionExtraction %s -retarget %s -freezeAtLastFrame %s -enableMotionEvents %s -blendOutBeforeEnded %s -canOverwrite %s -deleteOnZeroWeight %s -inPlace %s",
             playbackInfo->mBlendInTime,
             playbackInfo->mBlendOutTime,
             playbackInfo->mPlaySpeed,
@@ -81,7 +103,8 @@ namespace CommandSystem
             AZStd::to_string(playbackInfo->mEnableMotionEvents).c_str(),
             AZStd::to_string(playbackInfo->mBlendOutBeforeEnded).c_str(),
             AZStd::to_string(playbackInfo->mCanOverwrite).c_str(),
-            AZStd::to_string(playbackInfo->mDeleteOnZeroWeight).c_str());
+            AZStd::to_string(playbackInfo->mDeleteOnZeroWeight).c_str(),
+            AZStd::to_string(playbackInfo->mInPlace).c_str());
     }
 
 
@@ -172,6 +195,10 @@ namespace CommandSystem
         {
             outPlaybackInfo->mDeleteOnZeroWeight = parameters.GetValueAsBool("deleteOnZeroWeight", command);
         }
+        if (parameters.CheckIfHasParameter("inPlace"))
+        {
+            outPlaybackInfo->mInPlace = parameters.GetValueAsBool("inPlace", command);
+        }
     }
 
 
@@ -179,11 +206,11 @@ namespace CommandSystem
     bool CommandPlayMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // clear our old data so that we start fresh in case of a redo
-        mOldData.Clear();
+        m_oldData.clear();
 
         // check if there is any actor instance selected and if not return false so that the command doesn't get called and doesn't get inside the action history
         const uint32 numSelectedActorInstances = GetCommandManager()->GetCurrentSelection().GetNumSelectedActorInstances();
-        
+
         // verify if we actually have selected an actor instance
         if (numSelectedActorInstances == 0)
         {
@@ -220,18 +247,15 @@ namespace CommandSystem
                 continue;
             }
 
+            UndoObject undoObject;
+
             // reset the anim graph instance so that the motion will actually play
-            actorInstance->SetAnimGraphInstance(nullptr);
-
-            /*      // check if it is safe to start playing a mirrored motion
-                    if (playbackInfo.mMirrorMotion && motion->GetType() == SkeletalMotion::TYPE_ID)
-                    {
-                        Actor*              actor           = actorInstance->GetActor();
-                        SkeletalMotion*     skeletalMotion  = (EMotionFX::SkeletalMotion*)motion;
-
-                        if (skeletalMotion->IsMatchingActorBindPose( actor ) == false)
-                            LogError("The bind pose from the skeletal motion does not match the one from the actor. Skinning errors might occur when using motion mirroring. Please read the motion mirroring chapter in the ArtistGuide guide. For more information or contact the support team.");
-                    }*/
+            undoObject.m_animGraphInstance = actorInstance->GetAnimGraphInstance();
+            if (undoObject.m_animGraphInstance)
+            {
+                undoObject.m_animGraph = undoObject.m_animGraphInstance->GetAnimGraph();
+                actorInstance->SetAnimGraphInstance(nullptr);
+            }
 
             // start playing the current motion
             MCORE_ASSERT(actorInstance->GetMotionSystem());
@@ -252,10 +276,9 @@ namespace CommandSystem
             }
 
             // store what we did for the undo function
-            UndoObject undoObject;
-            undoObject.mActorInstance   = actorInstance;
-            undoObject.mMotionInstance  = motionInstance;
-            mOldData.Add(undoObject);
+            undoObject.m_actorInstance = actorInstance;
+            undoObject.m_motionInstance = motionInstance;
+            m_oldData.push_back(undoObject);
         }
 
         return true;
@@ -271,11 +294,10 @@ namespace CommandSystem
         bool result = true;
 
         // iterate through all undo objects
-        const uint32 numUndoObjects = mOldData.GetLength();
-        for (uint32 i = 0; i < numUndoObjects; ++i)
+        for (const UndoObject& undoObject : m_oldData)
         {
-            EMotionFX::ActorInstance* actorInstance = mOldData[i].mActorInstance;
-            EMotionFX::MotionInstance* motionInstance   = mOldData[i].mMotionInstance;
+            EMotionFX::ActorInstance* actorInstance = undoObject.m_actorInstance;
+            EMotionFX::MotionInstance* motionInstance = undoObject.m_motionInstance;
 
             // check if the actor instance is valid
             if (EMotionFX::GetActorManager().CheckIfIsActorInstanceRegistered(actorInstance) == false)
@@ -304,35 +326,36 @@ namespace CommandSystem
     }
 
 
-#define SYNTAX_MOTIONCOMMANDS                                                                                                                                                                                                                                                                                                         \
-    GetSyntax().ReserveParameters(30);                                                                                                                                                                                                                                                                                                \
-    GetSyntax().AddRequiredParameter("filename", "The filename of the motion file to play.", MCore::CommandSyntax::PARAMTYPE_STRING);                                                                                                                                                                                                 \
-    /*GetSyntax().AddParameter( "mirrorPlaneNormal", "The motion mirror plane normal, which is (1,0,0) on default. This setting is only used when mMirrorMotion is set to true.", MCore::CommandSyntax::PARAMTYPE_VECTOR3, "(1, 0, 0)" );*/                                                                                           \
-    GetSyntax().AddParameter("blendInTime", "The time, in seconds, which it will take to fully have blended to the target weight.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.3");                                                                                                                                                    \
-    GetSyntax().AddParameter("blendOutTime", "The time, in seconds, which it takes to smoothly fadeout the motion, after it has been stopped playing.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.3");                                                                                                                                \
-    GetSyntax().AddParameter("playSpeed", "The playback speed factor. A value of 1 stands for the original speed, while for example 2 means twice the original speed.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "1.0");                                                                                                                \
-    GetSyntax().AddParameter("targetWeight", "The target weight, where 1 means fully active, and 0 means not active at all.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "1.0");                                                                                                                                                          \
-    GetSyntax().AddParameter("eventWeightThreshold", "The motion event weight threshold. If the motion instance weight is lower than this value, no motion events will be executed for this motion instance.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                                                         \
-    GetSyntax().AddParameter("maxPlayTime", "The maximum play time, in seconds. Set to zero or a negative value to disable it.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                                                                                                                                       \
-    GetSyntax().AddParameter("retargetRootOffset", "The retarget root offset. Can be used to prevent actors from floating in the air or going through the ground. Read the manual for more information.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                                                              \
-    GetSyntax().AddParameter("numLoops", "The number of times you want to play this motion. A value of EMFX_LOOPFOREVER (4294967296) means it will loop forever.", MCore::CommandSyntax::PARAMTYPE_INT, "4294967296");   /* 4294967296 == EMFX_LOOPFOREVER */                                                                         \
-    GetSyntax().AddParameter("priorityLevel", "The priority level, the higher this value, the higher priority it has on overwriting other motions.", MCore::CommandSyntax::PARAMTYPE_INT, "0");                                                                                                                                       \
-    GetSyntax().AddParameter("startNodeIndex", "The node to start the motion from, using MCORE_INVALIDINDEX32 (4294967296) to effect the whole body, or use for example the upper arm node to only play the motion on the arm.", MCore::CommandSyntax::PARAMTYPE_INT, "4294967296");   /* 4294967296 == MCORE_INVALIDINDEX32 */       \
-    GetSyntax().AddParameter("retargetRootIndex", "The retargeting root node index.", MCore::CommandSyntax::PARAMTYPE_INT, "0");                                                                                                                                                                                                      \
-    GetSyntax().AddParameter("blendMode", "The motion blend mode. Please read the MotionInstance::SetBlendMode(...) method for more information.", MCore::CommandSyntax::PARAMTYPE_INT, "0");   /* 4294967296 == MCORE_INVALIDINDEX32 */                                                                                              \
-    GetSyntax().AddParameter("playMode", "The motion playback mode. This means forward or backward playback.", MCore::CommandSyntax::PARAMTYPE_INT, "0");                                                                                                                                                                             \
-    GetSyntax().AddParameter("mirrorMotion", "Is motion mirroring enabled or not? When set to true, the mMirrorPlaneNormal is used as mirroring axis.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                               \
-    GetSyntax().AddParameter("mix", "Set to true if you want this motion to mix or not.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                                                                                             \
+#define SYNTAX_MOTIONCOMMANDS                                                                                                                                                                                                                                                                                                          \
+    GetSyntax().ReserveParameters(30);                                                                                                                                                                                                                                                                                                 \
+    GetSyntax().AddRequiredParameter("filename", "The filename of the motion file to play.", MCore::CommandSyntax::PARAMTYPE_STRING);                                                                                                                                                                                                  \
+    /*GetSyntax().AddParameter( "mirrorPlaneNormal", "The motion mirror plane normal, which is (1,0,0) on default. This setting is only used when mMirrorMotion is set to true.", MCore::CommandSyntax::PARAMTYPE_VECTOR3, "(1, 0, 0)" );*/                                                                                            \
+    GetSyntax().AddParameter("blendInTime", "The time, in seconds, which it will take to fully have blended to the target weight.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.3");                                                                                                                                                     \
+    GetSyntax().AddParameter("blendOutTime", "The time, in seconds, which it takes to smoothly fadeout the motion, after it has been stopped playing.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.3");                                                                                                                                 \
+    GetSyntax().AddParameter("playSpeed", "The playback speed factor. A value of 1 stands for the original speed, while for example 2 means twice the original speed.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "1.0");                                                                                                                 \
+    GetSyntax().AddParameter("targetWeight", "The target weight, where 1 means fully active, and 0 means not active at all.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "1.0");                                                                                                                                                           \
+    GetSyntax().AddParameter("eventWeightThreshold", "The motion event weight threshold. If the motion instance weight is lower than this value, no motion events will be executed for this motion instance.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                                                          \
+    GetSyntax().AddParameter("maxPlayTime", "The maximum play time, in seconds. Set to zero or a negative value to disable it.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                                                                                                                                        \
+    GetSyntax().AddParameter("retargetRootOffset", "The retarget root offset. Can be used to prevent actors from floating in the air or going through the ground. Read the manual for more information.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                                                               \
+    GetSyntax().AddParameter("numLoops", "The number of times you want to play this motion. A value of EMFX_LOOPFOREVER (4294967296) means it will loop forever.", MCore::CommandSyntax::PARAMTYPE_INT, "4294967296");   /* 4294967296 == EMFX_LOOPFOREVER */                                                                          \
+    GetSyntax().AddParameter("priorityLevel", "The priority level, the higher this value, the higher priority it has on overwriting other motions.", MCore::CommandSyntax::PARAMTYPE_INT, "0");                                                                                                                                        \
+    GetSyntax().AddParameter("startNodeIndex", "The node to start the motion from, using MCORE_INVALIDINDEX32 (4294967296) to effect the whole body, or use for example the upper arm node to only play the motion on the arm.", MCore::CommandSyntax::PARAMTYPE_INT, "4294967296");   /* 4294967296 == MCORE_INVALIDINDEX32 */        \
+    GetSyntax().AddParameter("retargetRootIndex", "The retargeting root node index.", MCore::CommandSyntax::PARAMTYPE_INT, "0");                                                                                                                                                                                                       \
+    GetSyntax().AddParameter("blendMode", "The motion blend mode. Please read the MotionInstance::SetBlendMode(...) method for more information.", MCore::CommandSyntax::PARAMTYPE_INT, "0");   /* 4294967296 == MCORE_INVALIDINDEX32 */                                                                                               \
+    GetSyntax().AddParameter("playMode", "The motion playback mode. This means forward or backward playback.", MCore::CommandSyntax::PARAMTYPE_INT, "0");                                                                                                                                                                              \
+    GetSyntax().AddParameter("mirrorMotion", "Is motion mirroring enabled or not? When set to true, the mMirrorPlaneNormal is used as mirroring axis.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                             \
+    GetSyntax().AddParameter("mix", "Set to true if you want this motion to mix or not.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                                                                                           \
     GetSyntax().AddParameter("playNow", "Set to true if you want to start playing the motion right away. If set to false it will be scheduled for later by inserting it into the motion queue.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                     \
-    GetSyntax().AddParameter("motionExtraction", "Set to true when you want to use motion extraction.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                                                                                                               \
-    GetSyntax().AddParameter("retarget", "Set to true if you want to enable motion retargeting. Read the manual for more information.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                                               \
-    GetSyntax().AddParameter("freezeAtLastFrame", "Set to true if you like the motion to freeze at the last frame, for example in case of a death motion.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                           \
+    GetSyntax().AddParameter("motionExtraction", "Set to true when you want to use motion extraction.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                                                                                                              \
+    GetSyntax().AddParameter("retarget", "Set to true if you want to enable motion retargeting. Read the manual for more information.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                                             \
+    GetSyntax().AddParameter("freezeAtLastFrame", "Set to true if you like the motion to freeze at the last frame, for example in case of a death motion.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                                                                                                                         \
     GetSyntax().AddParameter("enableMotionEvents", "Set to true to enable motion events, or false to disable processing of motion events for this motion instance.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                                                 \
     GetSyntax().AddParameter("blendOutBeforeEnded", "Set to true if you want the motion to be stopped so that it exactly faded out when the motion/loop fully finished. If set to false it will fade out after the loop has completed (and starts repeating). The default is true.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true"); \
     GetSyntax().AddParameter("canOverwrite", "Set to true if you want this motion to be able to delete other underlaying motion instances when this motion instance reaches a weight of 1.0.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                       \
     GetSyntax().AddParameter("deleteOnZeroWeight", "Set to true if you wish to delete this motion instance once it reaches a weight of 0.0.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");                                                                                                                                        \
-    GetSyntax().AddParameter("normalizedMotionOffset", "The normalized motion offset time to be used when the useMotionOffset flag is enabled. 0.0 means motion offset is disabled while 1.0 means the motion starts at the end of the motion.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                       \
-    GetSyntax().AddParameter("useMotionOffset", "Set to true if you wish to use the motion offset. This will start the motion from the given normalized motion offset value instead of from time=0.0. The motion instance will get paused afterwards.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
+    GetSyntax().AddParameter("normalizedMotionOffset", "The normalized motion offset time to be used when the useMotionOffset flag is enabled. 0.0 means motion offset is disabled while 1.0 means the motion starts at the end of the motion.", MCore::CommandSyntax::PARAMTYPE_FLOAT, "0.0");                                        \
+    GetSyntax().AddParameter("useMotionOffset", "Set to true if you wish to use the motion offset. This will start the motion from the given normalized motion offset value instead of from time=0.0. The motion instance will get paused afterwards.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");                             \
+    GetSyntax().AddParameter("inPlace", "Set to true if you wish to play the motion in place. The root of the skeleton will stay at its bind pose value.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
 
     // init the syntax of the command
     void CommandPlayMotion::InitSyntax()
@@ -433,6 +456,10 @@ namespace CommandSystem
         if (parameters.CheckIfHasParameter("deleteOnZeroWeight"))
         {
             motionInstance->SetDeleteOnZeroWeight(parameters.GetValueAsBool("deleteOnZeroWeight", command));
+        }
+        if (parameters.CheckIfHasParameter("inPlace"))
+        {
+            motionInstance->SetIsInPlace(parameters.GetValueAsBool("inPlace", command));
         }
     }
 
@@ -759,58 +786,61 @@ namespace CommandSystem
     }
 
 
-    // destructor
-    CommandAdjustMotion::~CommandAdjustMotion()
+    void CommandAdjustMotion::Reflect(AZ::ReflectContext* context)
     {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<CommandAdjustMotion, MCore::Command, MotionIdCommandMixin>()
+            ->Version(1)
+            ->Field("dirtyFlag", &CommandAdjustMotion::m_dirtyFlag)
+            ->Field("motionExtractionFlags", &CommandAdjustMotion::m_extractionFlags)
+            ->Field("name", &CommandAdjustMotion::m_name)
+        ;
     }
 
-    
+
     // execute
     bool CommandAdjustMotion::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        const int32 motionID = parameters.GetValueAsInt("motionID", this);
+        MCORE_UNUSED(parameters);
 
         // check if the motion with the given id exists
-        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(motionID);
+        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(m_motionID);
         if (motion == nullptr)
         {
-            outResult = AZStd::string::format("Cannot adjust motion. Motion with id='%i' does not exist.", motionID);
+            outResult = AZStd::string::format("Cannot adjust motion. Motion with id='%i' does not exist.", m_motionID);
             return false;
         }
 
         // adjust the dirty flag
-        if (parameters.CheckIfHasParameter("dirtyFlag"))
+        if (m_dirtyFlag)
         {
             mOldDirtyFlag = motion->GetDirtyFlag();
-            const bool dirtyFlag = parameters.GetValueAsBool("dirtyFlag", this);
-            motion->SetDirtyFlag(dirtyFlag);
+            motion->SetDirtyFlag(m_dirtyFlag.value());
         }
 
         // adjust the name
-        if (parameters.CheckIfHasParameter("name"))
+        if (m_name)
         {
             mOldName = motion->GetName();
-            AZStd::string name;
-            parameters.GetValue("name", this, &name);
-            motion->SetName(name.c_str());
+            motion->SetName(m_name.value().c_str());
 
             mOldDirtyFlag = motion->GetDirtyFlag();
             motion->SetDirtyFlag(true);
         }
-
 
         // Adjust the motion extraction flags.
-        if (parameters.CheckIfHasParameter("motionExtractionFlags"))
+        if (m_extractionFlags)
         {
             mOldExtractionFlags = motion->GetMotionExtractionFlags();
-            const uint32 flags = parameters.GetValueAsInt("motionExtractionFlags", this);
-            motion->SetMotionExtractionFlags( static_cast<EMotionFX::EMotionExtractionFlags>(flags) );
+            motion->SetMotionExtractionFlags(m_extractionFlags.value());
             mOldDirtyFlag = motion->GetDirtyFlag();
             motion->SetDirtyFlag(true);
         }
-
-        mOldDirtyFlag = motion->GetDirtyFlag();
-        motion->SetDirtyFlag(true);
 
         return true;
     }
@@ -819,30 +849,30 @@ namespace CommandSystem
     // undo the command
     bool CommandAdjustMotion::Undo(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
-        const int32 motionID = parameters.GetValueAsInt("motionID", this);
+        m_motionID = parameters.GetValueAsInt("motionID", this);
 
         // check if the motion with the given id exists
-        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(motionID);
+        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(m_motionID);
         if (!motion)
         {
-            outResult = AZStd::string::format("Cannot adjust motion. Motion with id='%i' does not exist.", motionID);
+            outResult = AZStd::string::format("Cannot adjust motion. Motion with id='%i' does not exist.", m_motionID);
             return false;
         }
 
         // adjust the dirty flag
-        if (parameters.CheckIfHasParameter("dirtyFlag"))
+        if (m_dirtyFlag)
         {
             motion->SetDirtyFlag(mOldDirtyFlag);
         }
 
         // adjust the name
-        if (parameters.CheckIfHasParameter("name"))
+        if (m_name)
         {
             motion->SetName(mOldName.c_str());
             motion->SetDirtyFlag(mOldDirtyFlag);
         }
 
-        if (parameters.CheckIfHasParameter("motionExtractionFlags"))
+        if (m_extractionFlags)
         {
             motion->SetMotionExtractionFlags(mOldExtractionFlags);
             motion->SetDirtyFlag(mOldDirtyFlag);
@@ -862,6 +892,28 @@ namespace CommandSystem
         GetSyntax().AddParameter("motionExtractionFlags",    "The motion extraction flags value.",                                                  MCore::CommandSyntax::PARAMTYPE_INT, "0");
     }
 
+
+    bool CommandAdjustMotion::SetCommandParameters(const MCore::CommandLine& parameters)
+    {
+        MotionIdCommandMixin::SetCommandParameters(parameters);
+        if (parameters.CheckIfHasParameter("dirtyFlag"))
+        {
+            m_dirtyFlag = true;
+        }
+
+        if (parameters.CheckIfHasParameter("name"))
+        {
+            m_name = AZStd::string();
+            parameters.GetValue("name", this, m_name.value());
+        }
+
+        if (parameters.CheckIfHasParameter("motionExtractionFlags"))
+        {
+            m_extractionFlags = static_cast<EMotionFX::EMotionExtractionFlags>(parameters.GetValueAsInt("motionExtractionFlags", this));
+        }
+
+        return true;
+    }
 
     // get the description
     const char* CommandAdjustMotion::GetDescription() const
@@ -1176,7 +1228,7 @@ namespace CommandSystem
         AZStd::vector<EMotionFX::Motion*> motionsToRemove;
         motionsToRemove.reserve(numMotions);
 
-        for (uint32 i=0; i<numMotions; ++i)
+        for (uint32 i = 0; i < numMotions; ++i)
         {
             EMotionFX::Motion* motion = EMotionFX::GetMotionManager().GetMotion(i);
 

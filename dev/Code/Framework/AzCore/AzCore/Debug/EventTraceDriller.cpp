@@ -102,9 +102,8 @@ namespace AZ
             {
                 // Main bus mutex guards m_output.
                 auto& context = EventTraceDrillerBus::GetOrCreateContext();
-                context.m_mutex.lock();
 
-                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_ThreadMutex);
+                AZStd::scoped_lock<decltype(context.m_contextMutex), decltype(m_ThreadMutex)> lock(context.m_contextMutex, m_ThreadMutex);
                 for (const auto& keyValue : m_Threads)
                 {
                     m_output->BeginTag(Crc::EventTraceDriller);
@@ -114,8 +113,6 @@ namespace AZ
                     m_output->EndTag(Crc::ThreadInfo);
                     m_output->EndTag(Crc::EventTraceDriller);
                 }
-
-                context.m_mutex.unlock();
             }
         }
 

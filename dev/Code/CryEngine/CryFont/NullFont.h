@@ -59,10 +59,18 @@ public:
     virtual unsigned int GetEffectId(const char* pEffectName) const { return 0; }
     virtual unsigned int GetNumEffects() const { return 0; }
     virtual const char* GetEffectName(unsigned int effectId) const { return nullptr; }
+    virtual Vec2 GetMaxEffectOffset(unsigned int effectId) const { return Vec2(); }
+    virtual bool DoesEffectHaveTransparency(unsigned int effectId) const { return false; }
 
-    virtual void AddCharsToFontTexture(const char* pChars) override {}
+    virtual void AddCharsToFontTexture(const char* pChars, int glyphSizeX, int glyphSizeY) override {}
     virtual Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDrawContext& ctx) const override { return Vec2(); }
+    virtual float GetAscender(const STextDrawContext& ctx) const override { return 0.0f; }
+    virtual float GetBaseline(const STextDrawContext& ctx) const override { return 0.0f; }
     virtual float GetSizeRatio() const override { return IFFontConstants::defaultSizeRatio; }
+    virtual uint32 GetNumQuadsForText(const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) { return 0; }
+    virtual uint32 WriteTextQuadsToBuffers(SVF_P2F_C4B_T2F_F4B* verts, uint16* indices, uint32 maxQuads, float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) { return 0; }
+    virtual int GetFontTextureId() { return -1; }
+    virtual uint32 GetFontTextureVersion() { return 0; }
 };
 
 class CCryNullFont
@@ -74,7 +82,7 @@ public:
     virtual IFFont* GetFont(const char* pFontName) const { return &ms_nullFont; }
     virtual FontFamilyPtr LoadFontFamily(const char* pFontFamilyName) override { CRY_ASSERT(false); return nullptr; }
     virtual FontFamilyPtr GetFontFamily(const char* pFontFamilyName) override { CRY_ASSERT(false); return nullptr; }
-    virtual void AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars) override {};
+    virtual void AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars, int glyphSizeX, int glyphSizeY) override {};
     virtual void SetRendererProperties(IRenderer* pRenderer) {}
     virtual void GetMemoryUsage(ICrySizer* pSizer) const {}
     virtual string GetLoadedFontNames() const { return ""; }

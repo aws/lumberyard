@@ -126,7 +126,7 @@ namespace GraphCanvas
         friend class SceneComponentSaveData;
 
     public:
-        AZ_COMPONENT(SceneComponent, "{3F71486C-3D51-431F-B904-DA070C7A0238}");
+        AZ_COMPONENT(SceneComponent, "{3F71486C-3D51-431F-B904-DA070C7A0238}", GraphCanvasPropertyComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         struct GraphCanvasConstructSaveData

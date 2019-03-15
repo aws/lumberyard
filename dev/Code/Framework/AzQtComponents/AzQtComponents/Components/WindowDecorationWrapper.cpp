@@ -42,9 +42,75 @@ namespace AzQtComponents
         FrameWidth = 1, // 1px black line
     };
 
-    static bool isWin10()
+    namespace
     {
-        return QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
+        bool isWin10()
+        {
+            return QSysInfo::windowsVersion() == QSysInfo::WV_WINDOWS10;
+        }
+
+        // Restores the window state from QWidget::saveGeometry
+        // Includes a workaround for restoring the maximization state correctly on Windows
+        bool RestoreWindowState(QWidget* window, QByteArray geometry)
+        {
+            if (geometry.size() < 4 || !window->restoreGeometry(geometry))
+            {
+                return false;
+            }
+
+#ifdef Q_OS_WIN
+            // Read the geometry based on the Qt format, bailing out if it's invalid
+            QDataStream stream(geometry);
+            stream.setVersion(QDataStream::Qt_4_0);
+
+            const quint32 magicNumber = 0x1D9D0CB;
+            quint32 storedMagicNumber;
+            stream >> storedMagicNumber;
+            if (storedMagicNumber != magicNumber)
+            {
+                return false;
+            }
+
+            const quint16 currentMajorVersion = 2;
+            quint16 majorVersion = 0;
+            quint16 minorVersion = 0;
+
+            stream >> majorVersion >> minorVersion;
+
+            QRect restoredFrameGeometry;
+            QRect restoredNormalGeometry;
+            qint32 restoredScreenNumber;
+            quint8 maximized;
+            quint8 fullScreen;
+            qint32 restoredScreenWidth;
+
+            stream >> restoredFrameGeometry
+                >> restoredNormalGeometry
+                >> restoredScreenNumber
+                >> maximized
+                >> fullScreen
+                >> restoredScreenWidth;
+
+            // Do fixup for maximized/fullscreen windows to ensure they match the screen size
+            if (fullScreen || maximized)
+            {
+                auto screenGeometry = qApp->desktop()->screenGeometry(restoredScreenNumber);
+                // As best I can tell, we get the window geometry wrong for the maximize case in restore because of
+                // an issue with QDesktopWidget::screenGeometry(const QPoint &p) incorrectly resolving to the wrong screen
+                // We just go ahead and set the geometry ourself to bypass the issue.
+                // QWidget::restoreGeometry already does a sanity check on restoredScreenWidth, so we can bypass that.
+                SetWindowPos(reinterpret_cast<HWND>(window->winId()),
+                    HWND_TOP,
+                    screenGeometry.x(),
+                    screenGeometry.y(),
+                    screenGeometry.width(),
+                    screenGeometry.height(),
+                    0x00);
+            }
+#endif //Q_OS_WIN
+
+            return true;
+        }
     }
 
     WindowDecorationWrapper::WindowDecorationWrapper(Options options, QWidget* parent)
@@ -486,7 +552,6 @@ namespace AzQtComponents
 
         QByteArray geo = saveGeometry();
         m_settings->setValue(m_settingsKey, geo);
-        m_settings->setValue(m_settingsKey + QStringLiteral("-wasMaximized"), isMaximized());
     }
 
     bool WindowDecorationWrapper::restoreGeometryFromSettings()
@@ -499,21 +564,9 @@ namespace AzQtComponents
         const QByteArray savedGeometry = m_settings->value(m_settingsKey).toByteArray();
         m_restoringGeometry = true;
 
-        bool wasMaximized = m_settings->value(m_settingsKey + QStringLiteral("-wasMaximized"), false).toBool();
-
-        if (savedGeometry.count() > 0)
-        {
-            QWidget::restoreGeometry(savedGeometry);
-            show();
-        }
-        else
+        if (!RestoreWindowState(this, savedGeometry))
         {
             return false;
-        }
-        
-        if (wasMaximized)
-        {
-            showMaximized();
         }
 
         adjustWidgetGeometry();

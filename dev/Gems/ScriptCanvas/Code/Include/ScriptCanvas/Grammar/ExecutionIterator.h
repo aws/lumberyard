@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/stack.h>
 #include <AzCore/std/containers/vector.h>
 #include <ScriptCanvas/Core/Core.h>

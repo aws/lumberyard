@@ -45,7 +45,7 @@ namespace AzToolsFramework
         public:
             friend class TransformComponentFactory;
 
-            AZ_COMPONENT(TransformComponent, AZ::EditorTransformComponentTypeId, EditorComponentBase, AZ::SliceEntityHierarchyInterface)
+            AZ_EDITOR_COMPONENT(TransformComponent, AZ::EditorTransformComponentTypeId, EditorComponentBase, AZ::SliceEntityHierarchyInterface, AZ::TransformInterface)
 
             TransformComponent();
             virtual ~TransformComponent();
@@ -60,6 +60,8 @@ namespace AzToolsFramework
             void Init() override;
             void Activate() override;
             void Deactivate() override;
+
+            static void PasteOverComponent(const TransformComponent* sourceComponent, TransformComponent* destinationComponent);
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
@@ -169,6 +171,7 @@ namespace AzToolsFramework
             void ScaleBy(const AZ::Vector3&) override;
             const EditorTransform& GetLocalEditorTransform() override;
             void SetLocalEditorTransform(const EditorTransform& dest) override;
+            bool IsTransformLocked() override;
 
             /// \return true if the entity is a root-level entity (has no transform parent).
             bool IsRootEntity() const { return !m_parentEntityId.IsValid(); }
@@ -209,10 +212,14 @@ namespace AzToolsFramework
             // AZ::TransformNotificationBus - Connected to parent's ID
             void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
+            void OnTransformChanged(); //convienence
+
             //////////////////////////////////////////////////////////////////////////
             // TransformHierarchyInformationBus
             void GatherChildren(AZStd::vector<AZ::EntityId>& children) override;
             //////////////////////////////////////////////////////////////////////////
+
+            void AddContextMenuActions(QMenu* menu) override;
 
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);

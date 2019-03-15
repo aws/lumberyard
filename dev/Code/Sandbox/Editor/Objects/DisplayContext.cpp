@@ -826,7 +826,7 @@ void DisplayContext::DrawLine(const Vec3& p1, const Vec3& p2, const QColor& rgb1
 //////////////////////////////////////////////////////////////////////////
 void DisplayContext::DrawLines(const AZStd::vector<Vec3>& points, const ColorF& color)
 {
-    pRenderAuxGeom->DrawLines(points.begin(), points.size(), color);
+    pRenderAuxGeom->DrawLines(points.begin(), points.size(), color, m_thickness);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -835,7 +835,7 @@ void DisplayContext::DrawDottedLine(const Vec3& p1, const Vec3& p2, const ColorF
 {
     Vec3 direction =  Vec3(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z);
     //We only draw half of a step and leave the other half empty to make it a dotted line.
-    Vec3 halfstep = (direction / numOfSteps) * 0.5f; 
+    Vec3 halfstep = (direction / numOfSteps) * 0.5f;
     Vec3 startPoint = p1;
 
     for (int stepCount = 0; stepCount < numOfSteps; stepCount++)

@@ -55,7 +55,7 @@
             "tooltip" : "runeditorToolTip",
             "tags" : ["runeditor"],
             "categories" : ["role"],
-            "hosts" : [ "windows" ],
+            "hosts" : [ "windows", "macOS" ],
             "default" : true
         },
         {
@@ -517,7 +517,7 @@
                 {
                     "hostOS": ["macOS"],
                     "source": "./$TOOLSFOLDERNAME$/Python/python.sh",
-                    "params": "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2/fbx_install_mac.py $THIRDPARTYFOLDERPATH$/FbxSdk/2016.1.2"
+                    "params": "$TOOLSFOLDERNAME$/Redistributables/FbxSdk/2016.1.2/fbx_install_mac.py \"$THIRDPARTYFOLDERPATH$/FbxSdk/2016.1.2\""
                 }
             ],
             "symlinks" :
@@ -779,8 +779,8 @@
         {
             "identifier" : "wwiseLtx",
             "name" : "wwiseLtxName",
-            "version" : "LTX 2017.2.4.6590",
-            "source" : "Wwise/LTX_2017.2.4.6590",
+            "version" : "LTX 2018.1.2.6762",
+            "source" : "Wwise/LTX_2018.1.2.6762",
             "optional" : 0,
             "description" : "wwiseLtxDescriptionSummary",
             "detailedInstructions" : "wwiseLtxDetailedInstructions",
@@ -789,25 +789,25 @@
             "symlinks" :
             [
                 {
-                    "source" : "Wwise/LTX_2017.2.4.6590/SDK",
+                    "source" : "Wwise/LTX_2018.1.2.6762/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "include/AK/AkWwiseSDKVersion.h"
                 },
                 {
                     "compilers" : ["vc120"],
-                    "source" : "Wwise/LTX_2017.2.4.6590/SDK",
+                    "source" : "Wwise/LTX_2018.1.2.6762/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc120/Release/lib/AkSoundEngine.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source" : "Wwise/LTX_2017.2.4.6590/SDK",
+                    "source" : "Wwise/LTX_2018.1.2.6762/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc140/Release/lib/AkSoundEngine.lib"
                 },
                 {
                     "compilers" : ["vc141"],
-                    "source" : "Wwise/LTX_2017.2.4.6590/SDK",
+                    "source" : "Wwise/LTX_2018.1.2.6762/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc150/Release/lib/AkSoundEngine.lib"
                 }
@@ -816,8 +816,8 @@
         {
             "identifier" : "wwise",
             "name" : "wwiseName",
-            "version" : "2017.2.4.6590",
-            "source" : "Wwise/2017.2.4.6590",
+            "version" : "2018.1.4.6807",
+            "source" : "Wwise/2018.1.4.6807",
             "optional" : 1,
             "description" : "wwiseDescriptionSummary",
             "detailedInstructions" : "wwiseDetailedInstructions",
@@ -826,25 +826,25 @@
             "symlinks" :
             [
                 {
-                    "source" : "Wwise/2017.2.4.6590/SDK",
+                    "source" : "Wwise/2018.1.4.6807/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "include/AK/AkWwiseSDKVersion.h"
                 },
                 {
                     "compilers" : ["vc120"],
-                    "source" : "Wwise/2017.2.4.6590/SDK",
+                    "source" : "Wwise/2018.1.4.6807/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc120/Release/lib/AkSoundEngine.lib"
                 },
                 {
                     "compilers" : ["vc140"],
-                    "source" : "Wwise/2017.2.4.6590/SDK",
+                    "source" : "Wwise/2018.1.4.6807/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc140/Release/lib/AkSoundEngine.lib"
                 },
                 {
                     "compilers" : ["vc141"],
-                    "source" : "Wwise/2017.2.4.6590/SDK",
+                    "source" : "Wwise/2018.1.4.6807/SDK",
                     "destination" : "$CODEFOLDERNAME$/SDKs/Wwise",
                     "exampleFile" : "x64_vc150/Release/lib/AkSoundEngine.lib"
                 }
@@ -940,61 +940,61 @@
         {
             "identifier": "AWSNativeSDK",
             "name": "AWSNativeSDKName",
-            "version": "1.4.34",
-            "source": "AWS/AWSNativeSDK/1.4.34",
+            "version": "1.4.34.1",
+            "source": "AWS/AWSNativeSDK/1.4.34.1",
             "optional": 0,
             "description": "AWSNativeSDKDescriptionSummary",
             "detailedInstructions": "AWSNativeSDKDetailedInstructions",
             "roles": [ "compilegame", "compileengine", "compilesandbox", "compileios", "compileandroid", "setuplinux" ],
             "symlinks": [
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "include/aws/core/Aws.h"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "compilers" : ["vc140", "vc141"],
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "bin/windows/intel64/vs2015/Release/aws-cpp-sdk-core.lib"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/Sandbox/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 },
                 {
                     "roles" : ["setuplinux"],
-                    "source": "AWS/AWSNativeSDK/1.4.34",
+                    "source": "AWS/AWSNativeSDK/1.4.34.1",
                     "destination": "$CODEFOLDERNAME$/Tools/SDKs/AWSNativeSDK",
                     "exampleFile": "lib/linux/intel64/Release/libaws-cpp-sdk-cognito-identity.a"
                 }
@@ -1348,6 +1348,29 @@
             ]
         },
         {
+            "identifier" : "PHYSXSDK",
+            "name" : "PHYSXSDKName",
+            "version" : "3.4.23173160",
+            "source" : "PhysX/3.4.23173160",
+            "optional" : 1,
+            "description" : "PHYSXSDKDescriptionSummary",
+            "detailedInstructions" : "PHYSXSDKDetailedInstructions",
+            "roles" : ["compilegame", "compileengine", "compilesandbox"],
+            "symlinks" :
+            [
+                {
+                    "source" : "PhysX/3.4.23173160/PhysX_3.4",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/PXSrc",
+                    "exampleFile" : "Include/PxActor.h"
+                },
+                {
+                    "source" : "PhysX/3.4.23173160/PxShared",
+                    "destination" : "$CODEFOLDERNAME$/SDKs/PhysX/PxShared",
+                    "exampleFile" : "include/foundation/Px.h"
+                }
+            ]
+        },
+        {
             "identifier": "Dyad",
             "name": "dyadName",
             "version": "0.2.0-17-amazon",
@@ -1380,8 +1403,8 @@
         {
             "identifier" : "Clang",
             "name" : "Clang",
-            "version" : "3.7",
-            "source" : "Clang/3.7",
+            "version" : "6.0.1",
+            "source" : "Clang/6.0.1",
             "optional" : 1,
             "description" : "ClangDescriptionSummary",
             "detailedInstructions" : "ClangDetailedInstructions",
@@ -1390,29 +1413,27 @@
             [
                 {
                     "compilers" : ["vc140", "vc141"],
+                    "source" : "Clang/6.0.1",
+                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/Clang",
+                    "exampleFile" : "vs2015/release/lib/clangTooling.lib"
+                },
+                {
+                    "hostOS" : ["linux"],
                     "source" : "Clang/3.7",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/Clang",
-                    "exampleFile" : "vs2015/release/bin/clang.exe"
+                    "exampleFile" : "linux_x64/release/lib/libclang.so"
                 },
                 {
-                    "optional" : 0,
-                    "hostOS" : ["linux"],
-                    "source" : "Clang/3.7/linux_x64",
-                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/Clang/linux_x64",
-                    "exampleFile" : "release/bin/clang"
-                },
-                {
-                    "optional" : 0,
                     "roles" : ["setuplinux"],
-                    "source" : "Clang/3.7/linux_x64",
-                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/Clang/linux_x64",
-                    "exampleFile" : "release/bin/clang"
+                    "source" : "Clang/6.0.1",
+                    "destination" : "$CODEFOLDERNAME$/Tools/SDKs/Clang",
+                    "exampleFile" : "linux_x64/release/lib/libclang.so"
                 },
                 {
                     "hostOS" : ["macOS"],
-                    "source" : "Clang/3.7",
+                    "source" : "Clang/6.0.1",
                     "destination" : "$CODEFOLDERNAME$/Tools/SDKs/Clang",
-                    "exampleFile" : "linux_x64/release/bin/clang"
+                    "exampleFile" : "xcode/release/lib/libclang.dylib"
                 }
             ]
         },

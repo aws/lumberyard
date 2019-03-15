@@ -16,6 +16,8 @@
 struct SRenderShaderResources;
 class CShaderResources;
 
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+
 namespace CloudsGem
 {
     class CloudParticle;
@@ -49,7 +51,7 @@ namespace CloudsGem
         inline float GetScale() { return m_fScale; }
         bool UpdateImposter(CRenderObject* pObj);
 
-        AZStd::vector<std::shared_ptr<CloudParticle>> m_particles;
+        AZStd::vector<AZStd::shared_ptr<CloudParticle>> m_particles;
         SMinMaxBox m_boundingBox;           
         bool m_bUseAnisoLighting{true};     
         Vec3 m_vLastSortViewDir{0, 0, 0};

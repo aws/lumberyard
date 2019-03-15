@@ -20,6 +20,7 @@
 #include "../../unittests/UnitTestRunner.h"
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 
 namespace AssetUtilities
@@ -818,4 +819,91 @@ TEST_F(RCBuilderTest, TestProcessRCResultFolder_WithResponseFromRC)
     ASSERT_EQ(response.m_outputProducts[1].m_legacySubIDs[1], (AZ_CRC("file.caf", 0x91277b80) & 0x0000FFFF));
 }
 
+class MockBuilderListener : public AssetBuilderSDK::AssetBuilderBus::Handler
+{
+public:
+    void RegisterBuilderInformation(const AssetBuilderSDK::AssetBuilderDesc& builderDesc) override
+    {
+        m_wasCalled = true;
+        m_result = builderDesc;
+    }
+
+    bool m_wasCalled = false;
+    AssetBuilderSDK::AssetBuilderDesc m_result;
+};
+
+
+class RCBuilderFingerprintTest
+    : public RCBuilderTest
+{
+    
+public:
+
+    // A utility function which feeds in the version and asset type to the builder, fingerprints it, and returns the fingerprint
+    AZStd::string BuildFingerprint(int versionNumber, AZ::Uuid builderProductType)
+    {
+        MockRCCompiler*                     mockRC = new MockRCCompiler();
+        TestInternalRecognizerBasedBuilder  test(mockRC);
+
+        MockRecognizerConfiguration         configuration;
+
+        AssetPlatformSpec   good_spec;
+        good_spec.m_extraRCParams = "/i";
+
+        AssetRecognizer     good;
+        good.m_name = "Good";
+        good.m_version = versionNumber;
+        good.m_patternMatcher = AssetBuilderSDK::FilePatternMatcher("*.foo", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard);
+        good.m_platformSpecs["pc"] = good_spec;
+        good.m_productAssetType = builderProductType;
+        
+        configuration.m_recognizerContainer["good"] = good;
+
+        MockBuilderListener listener;
+        listener.BusConnect();
+
+        bool initialization_result = test.Initialize(configuration);
+        listener.BusDisconnect();
+
+        EXPECT_TRUE(listener.m_wasCalled);
+        EXPECT_TRUE(initialization_result);
+
+        EXPECT_STRNE(listener.m_result.m_analysisFingerprint.c_str(), "");
+        return listener.m_result.m_analysisFingerprint;
+    }
+};
+
+TEST_F(RCBuilderFingerprintTest, DifferentVersion_Has_DifferentAnalysisFingerprint)
+{
+    AZ::Uuid uuid1 = AZ::Uuid::CreateRandom();
+    AZStd::string analysisFingerprint1 = BuildFingerprint(1, uuid1);
+    AZStd::string analysisFingerprint2 = BuildFingerprint(2, uuid1);
+    EXPECT_STRNE(analysisFingerprint1.c_str(), analysisFingerprint2.c_str());
+}
+
+TEST_F(RCBuilderFingerprintTest, DifferentAssetType_Has_DifferentAnalysisFingerprint)
+{
+    AZ::Uuid uuid1 = AZ::Uuid::CreateRandom();
+    AZ::Uuid uuid2 = AZ::Uuid::CreateRandom();
+    AZStd::string analysisFingerprint1 = BuildFingerprint(1, uuid1);
+    AZStd::string analysisFingerprint2 = BuildFingerprint(1, uuid2);
+    EXPECT_STRNE(analysisFingerprint1.c_str(), analysisFingerprint2.c_str());
+}
+
+TEST_F(RCBuilderFingerprintTest, DifferentAssetTypeAndVersion_Has_DifferentAnalysisFingerprint)
+{
+    AZ::Uuid uuid1 = AZ::Uuid::CreateRandom();
+    AZ::Uuid uuid2 = AZ::Uuid::CreateRandom();
+    AZStd::string analysisFingerprint1 = BuildFingerprint(1, uuid1);
+    AZStd::string analysisFingerprint2 = BuildFingerprint(2, uuid2);
+    EXPECT_STRNE(analysisFingerprint1.c_str(), analysisFingerprint2.c_str());
+}
+
+TEST_F(RCBuilderFingerprintTest, SameVersionAndSameType_Has_SameAnalysisFingerprint)
+{
+    AZ::Uuid uuid1 = AZ::Uuid::CreateRandom();
+    AZStd::string analysisFingerprint1 = BuildFingerprint(1, uuid1);
+    AZStd::string analysisFingerprint2 = BuildFingerprint(1, uuid1);
+    EXPECT_STREQ(analysisFingerprint1.c_str(), analysisFingerprint2.c_str());
+}
 

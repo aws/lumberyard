@@ -549,7 +549,7 @@ def get_enabled_game_project_list(ctx):
         if len(enabled_game_list)>0:
 
             # Sanity check and warn if none of the enabled game projects matchs the game folder
-            bootstrap_game_folder = ctx.get_bootstrap_game()
+            bootstrap_game_folder = ctx.get_bootstrap_game_folder()
             bootstrap_game_enabled = False
             for enabled_game in enabled_game_list:
                 project_node = _project_setting_entry(ctx, enabled_game, 'project_node', False)
@@ -572,11 +572,11 @@ def get_enabled_game_project_list(ctx):
 
 
 @conf
-def get_bootstrap_game(self, default_game='SamplesProject'):
+def get_bootstrap_game_folder(self, default_game='SamplesProject'):
     """
     :param self:            Context
-    :param default_game:    Default game to set to if we cannot read bootstrap.cfg.
-    :return: Name of the game enabled in bootstrap.cfg
+    :param default_game:    Default game folder to set to if we cannot read bootstrap.cfg.
+    :return: Name of the active game folder from bootstrap.cfg
     """
 
     game = default_game

@@ -64,7 +64,7 @@ namespace EMStudio
             m_valueTypeCombo->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             valueTypeLayout->addWidget(m_valueTypeCombo);
             valueTypeLayout->addItem(new QSpacerItem(2, 0, QSizePolicy::Fixed, QSizePolicy::Fixed));
-            connect(m_valueTypeCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(OnValueTypeChange(int)));
+        	connect(m_valueTypeCombo, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &ParameterCreateEditDialog::OnValueTypeChange);
             mainLayout->addItem(valueTypeLayout);
         }
 
@@ -104,8 +104,8 @@ namespace EMStudio
         buttonLayout->addWidget(m_createButton);
         buttonLayout->addWidget(cancelButton);
         mainLayout->addItem(buttonLayout);
-        connect(m_createButton, SIGNAL(clicked()), this, SLOT(OnValidate()));
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(m_createButton, &QPushButton::clicked, this, &ParameterCreateEditDialog::OnValidate);
+        connect(cancelButton, &QPushButton::clicked, this, &ParameterCreateEditDialog::reject);
 
         setLayout(mainLayout);
     }
@@ -258,7 +258,7 @@ namespace EMStudio
             || (m_parameter->GetName() != m_originalName && animGraph->FindParameterByName(m_parameter->GetName())))
         {
             const AZStd::string errorString = AZStd::string::format("Parameter with name '<b>%s</b>' already exists in anim graph '<b>%s</b>'.<br><br><i>Please use a unique parameter name.</i>",
-                    m_parameter->GetName(), animGraph->GetFileName());
+                    m_parameter->GetName().c_str(), animGraph->GetFileName());
             QMessageBox::warning(this, "Parameter name is not unique", errorString.c_str());
             return;
         }

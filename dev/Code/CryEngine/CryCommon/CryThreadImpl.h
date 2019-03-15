@@ -24,7 +24,11 @@
 #include <CryThreadImpl_windows.h>
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CryThreadImpl_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThreadImpl_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThreadImpl_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

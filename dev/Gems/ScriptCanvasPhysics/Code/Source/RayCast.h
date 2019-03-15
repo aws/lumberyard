@@ -108,7 +108,7 @@ namespace ScriptCanvasPhysics
 
             return RayCast(fromWorldSpacePosition, worldSpaceDirection, distance, {fromEntityId, ignoreEntityId});
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(RayCastFromEntityToEntity, "Physics/RayCast", "{ADF6E642-487E-4ADB-B930-49941A355A00}", "Returns the first hit from [fromEntityId] to [toEntityId]", "From", "To", "Ignore", "Hit Distance From Start", "Hit World-space Position", "Hit Surface Normal", "Hit EntityId");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(RayCastFromEntityToEntity, "Physics (Legacy)/RayCast", "{ADF6E642-487E-4ADB-B930-49941A355A00}", "Returns the first hit from [fromEntityId] to [toEntityId]", "From", "To", "Ignore", "Hit Distance From Start", "Hit World-space Position", "Hit Surface Normal", "Hit EntityId");
 
         AZ_INLINE HitResult RayCastFromEntityToLocalSpaceDirection(AZ::EntityId fromEntityId, ScriptCanvas::Data::Vector3Type localSpaceDirection, ScriptCanvas::Data::NumberType offsetFromOrigin, ScriptCanvas::Data::NumberType maxDistance, AZ::EntityId ignoreEntityId)
         {
@@ -124,7 +124,7 @@ namespace ScriptCanvasPhysics
 
             return RayCast(fromWorldSpacePosition, worldSpaceDirection, aznumeric_cast<float>(maxDistance), {fromEntityId, ignoreEntityId});
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RayCastFromEntityToLocalSpaceDirection, SetDefaultsForRayCastFromEntityToDirection, "Physics/RayCast", "{E972C607-8DC5-40EB-B9A8-8545CE361462}", "Returns the first hit from [fromEntityId] in the [localSpaceDirection], the ray's origin is offset along the direction by [offsetFromOrigin], and at-most [maxDistance] from the starting point", "From", "Local-space Direction", "Offset from the ray's origin in the specified direction,", "Max Distance", "Ignore", "Hit Distance From Start", "Hit World-space Position", "Hit Surface Normal", "Hit EntityId");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RayCastFromEntityToLocalSpaceDirection, SetDefaultsForRayCastFromEntityToDirection, "Physics (Legacy)/RayCast", "{E972C607-8DC5-40EB-B9A8-8545CE361462}", "Returns the first hit from [fromEntityId] in the [localSpaceDirection], the ray's origin is offset along the direction by [offsetFromOrigin], and at-most [maxDistance] from the starting point", "From", "Local-space Direction", "Offset from the ray's origin in the specified direction,", "Max Distance", "Ignore", "Hit Distance From Start", "Hit World-space Position", "Hit Surface Normal", "Hit EntityId");
 
         AZ_INLINE HitResult RayCastFromEntityToWorldSpaceDirection(AZ::EntityId fromEntityId, ScriptCanvas::Data::Vector3Type worldSpaceDirection, ScriptCanvas::Data::NumberType offsetFromOrigin, ScriptCanvas::Data::NumberType maxDistance, AZ::EntityId ignoreEntityId)
         {
@@ -137,7 +137,7 @@ namespace ScriptCanvasPhysics
 
             return RayCast(fromWorldSpacePosition, worldSpaceDirection, aznumeric_cast<float>(maxDistance), {fromEntityId, ignoreEntityId});
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RayCastFromEntityToWorldSpaceDirection, SetDefaultsForRayCastFromEntityToDirection, "Physics/RayCast", "{E74A541E-B42C-43A3-9B7C-83124DC2F257}", "Returns the first hit from [fromEntityId] in the [worldSpaceDirection], the ray's origin is offset along the direction by [offsetFromOrigin], and at-most [maxDistance] from the starting point", "From", "World-space Direction", "Offset from the ray's origin in the specified direction", "Max Distance", "Ignore", "Hit Distance From Start", "Hit World-space Position", "Hit Surface Normal", "Hit EntityId");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RayCastFromEntityToWorldSpaceDirection, SetDefaultsForRayCastFromEntityToDirection, "Physics (Legacy)/RayCast", "{E74A541E-B42C-43A3-9B7C-83124DC2F257}", "Returns the first hit from [fromEntityId] in the [worldSpaceDirection], the ray's origin is offset along the direction by [offsetFromOrigin], and at-most [maxDistance] from the starting point", "From", "World-space Direction", "Offset from the ray's origin in the specified direction", "Max Distance", "Ignore", "Hit Distance From Start", "Hit World-space Position", "Hit Surface Normal", "Hit EntityId");
 
         AZ_INLINE HitResult RayCastFromWorldSpacePositionToEntity(ScriptCanvas::Data::Vector3Type fromWorldSpacePosition,
             AZ::EntityId toEntityId,
@@ -154,7 +154,7 @@ namespace ScriptCanvasPhysics
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RayCastFromWorldSpacePositionToEntity,
             SetDefaultsForRayCastFromWorldSpacePositionToEntity,
-            "Physics/RayCast",
+            "Physics (Legacy)/RayCast",
             "{3543F7C5-42D9-4472-8DB0-B69EE8AA31C1}",
             "Returns the first hit from [fromWorldSpacePosition] to [toEntityId]",
             "Position", "Target", "Ignore",
@@ -175,7 +175,7 @@ namespace ScriptCanvasPhysics
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RayCastFromEntityToWorldSpacePosition,
             SetDefaultsForRayCastFromEntityToWorldSpacePosition,
-            "Physics/RayCast",
+            "Physics (Legacy)/RayCast",
             "{62E6F71D-6330-42EE-AC41-71CD14D1BF98}",
             "Returns the first hit from [fromEntityId] to [toWorldSpacePosition]",
             "Source", "Position", "Ignore",
@@ -193,7 +193,7 @@ namespace ScriptCanvasPhysics
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(RayCastFromWorldSpacePositionToWorldSpacePosition,
             SetDefaultsForRayCastFromWorldSpacePositionToWorldSpacePosition,
-            "Physics/RayCast",
+            "Physics (Legacy)/RayCast",
             "{F4DF407A-65E2-4ED7-9FC3-21FFFAC9CC2D}",
             "Returns the first hit between [fromWorldSpacePosition] and [toWorldSpacePosition]",
             "From", "To", "Ignore",

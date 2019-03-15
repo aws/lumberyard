@@ -42,6 +42,8 @@ namespace AZ
                 connect(ui->m_selectButton, &QPushButton::clicked, this, &NodeTreeSelectionWidget::SelectButtonClicked);
             }
 
+            NodeTreeSelectionWidget::~NodeTreeSelectionWidget() = default;
+
             void NodeTreeSelectionWidget::SetList(const DataTypes::ISceneNodeSelectionList& list)
             {
                 m_list = list.Copy();
@@ -121,7 +123,8 @@ namespace AZ
                 buttons.push_back(&acceptButton);
                 buttons.push_back(&cancelButton);
 
-                m_treeWidget.reset(aznew SceneGraphWidget(*scene, *m_list));
+                ResetNewTreeWidget(*scene);
+
                 for (const Uuid& filterType : m_filterTypes)
                 {
                     m_treeWidget->AddFilterType(filterType);
@@ -142,6 +145,11 @@ namespace AZ
                 QLabel* label = new QLabel("Finish selecting nodes to continue editing settings.");
                 label->setAlignment(Qt::AlignCenter);
                 OverlayWidget::PushLayerToContainingOverlay(this, label, m_treeWidget.get(), "Select nodes", buttons);
+            }
+
+            void NodeTreeSelectionWidget::ResetNewTreeWidget(const Containers::Scene& scene)
+            {
+                m_treeWidget.reset(aznew SceneGraphWidget(scene, *m_list));
             }
 
             void NodeTreeSelectionWidget::ListChangesAccepted()

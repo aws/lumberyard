@@ -15,15 +15,7 @@ def load_darwin_x64_ios_common_settings(conf):
     """
     Setup all compiler and linker settings shared over all darwin_x64_ios configurations
     """
-
-    common_flags = [
-        # Unless specified, OSX is generally case-preserving but case-insensitive.  Windows is the same way, however
-        # OSX seems to behave differently when it comes to casing at the OS level where a file can be showing as
-        # upper-case in Finder and Terminal, the OS can see it as lower-case.
-        '-Wno-nonportable-include-path',
-    ]
-    conf.env['CFLAGS'] += common_flags[:]
-    conf.env['CXXFLAGS'] += common_flags[:]
+    pass
 
 @conf
 def load_debug_darwin_x64_ios_settings(conf):

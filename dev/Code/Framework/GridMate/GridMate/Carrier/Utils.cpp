@@ -29,7 +29,11 @@
 
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION UTILS_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Utils_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Utils_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Utils_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
 #   include <sys/types.h>
 #   include <ifaddrs.h>
@@ -90,7 +94,11 @@ namespace GridMate
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION UTILS_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Utils_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Utils_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Utils_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -223,7 +231,11 @@ namespace GridMate
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION UTILS_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(Utils_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Utils_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Utils_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

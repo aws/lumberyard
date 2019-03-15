@@ -85,6 +85,8 @@ namespace EMotionFX
                 uniqueData->mPreviousNode = nullptr;
             }
         }
+
+        OnUpdateTriggerActionsUniqueData(animGraphInstance);
     }
 
 
@@ -139,12 +141,10 @@ namespace EMotionFX
             outputPose->InitFromBindPose(actorInstance);
 
             // visualize it
-        #ifdef EMFX_EMSTUDIOBUILD
-            if (GetCanVisualize(animGraphInstance))
+            if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
             {
                 actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
             }
-        #endif
 
             return;
         }
@@ -167,12 +167,10 @@ namespace EMotionFX
         uniqueData->mPreviousNode->DecreaseRef(animGraphInstance);
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 

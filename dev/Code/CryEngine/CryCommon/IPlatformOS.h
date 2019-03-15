@@ -32,7 +32,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_1
-#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/IPlatformOS_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/IPlatformOS_h_provo.inl"
+    #endif
 #elif defined(WIN32) || defined(WIN64)
 //#include <Lmcons.h> // this causes issues when including other windows headers later by defining PASCAL
 #endif
@@ -99,7 +103,11 @@ struct SUserPII
 };
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_2
-#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/IPlatformOS_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/IPlatformOS_h_provo.inl"
+    #endif
 #endif
 
 struct SStreamingInstallProgress
@@ -147,7 +155,11 @@ struct IPlatformOS
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_3
-#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/IPlatformOS_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/IPlatformOS_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -416,7 +428,11 @@ struct IPlatformOS
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_4
-#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/IPlatformOS_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/IPlatformOS_h_provo.inl"
+    #endif
 #endif
 
     struct ISaveReader
@@ -604,7 +620,11 @@ struct IPlatformOS
     virtual bool            UserGetName(unsigned int userIndex, IPlatformOS::TUserName& outName) const = 0;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_5
-#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/IPlatformOS_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/IPlatformOS_h_provo.inl"
+    #endif
 #endif
     // UserGetOnlineName:
     //   Get the online name of a user. Returns true on success.
@@ -661,7 +681,11 @@ struct IPlatformOS
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION IPLATFORMOS_H_SECTION_6
-#include AZ_RESTRICTED_FILE(IPlatformOS_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/IPlatformOS_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/IPlatformOS_h_provo.inl"
+    #endif
 #endif
 
     // ExtractZips:
@@ -708,7 +732,7 @@ struct IPlatformOS
 
     // KeyboardStart
     //   Starts the virtual keyboard
-    virtual bool AZ_DEPRECATED(KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback),
+    AZ_DEPRECATED(virtual bool KeyboardStart(unsigned int inUserIndex, unsigned int flags, const char* title, const char* initialInput, int maxInputLength, IVirtualKeyboardEvents* pInCallback),
         "IPlatformOS::KeyboardStart has been deprecated, use InputTextEntryRequestBus::TextEntryStart instead") 
     {
         return false;
@@ -716,14 +740,14 @@ struct IPlatformOS
 
     // KeyboardIsRunning:
     //   Returns whether the virtual keyboard is currently displayed
-    virtual bool AZ_DEPRECATED(KeyboardIsRunning(), "IPlatformOS::KeyboardIsRunning has been deprecated, use InputTextEntryRequestBus::HasTextEntryStarted instead") 
+    AZ_DEPRECATED(virtual bool KeyboardIsRunning(), "IPlatformOS::KeyboardIsRunning has been deprecated, use InputTextEntryRequestBus::HasTextEntryStarted instead")
     {
         return false; 
     }
 
     // KeyboardCancel
     //   Cancels the on screen keyboard if it is running
-    virtual bool AZ_DEPRECATED(KeyboardCancel(), "IPlatformOS::KeyboardCancel has been deprecated, use InputTextEntryRequestBus::TextEntryStop instead") 
+    AZ_DEPRECATED(virtual bool KeyboardCancel(), "IPlatformOS::KeyboardCancel has been deprecated, use InputTextEntryRequestBus::TextEntryStop instead")
     { 
         return false;
     }

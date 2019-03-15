@@ -19,32 +19,31 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
-#include <AzFramework/Physics/Action.h>
 #include <AzFramework/Physics/Character.h>
-#include <AzFramework/Physics/ColliderComponentBus.h>
-#include <AzFramework/Physics/Ghost.h>
 #include <AzFramework/Physics/RigidBody.h>
+#include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/ShapeConfiguration.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/Material.h>
+#include <AzFramework/Physics/CollisionBus.h>
 #include <foundation/PxAllocatorCallback.h>
 #include <foundation/PxErrorCallback.h>
-#include <Include/PhysX/PhysXSystemComponentBus.h>
-#include <LmbrCentral/Shape/ShapeComponentBus.h>
+#include <PhysX/SystemComponentBus.h>
+#include <PhysX/ConfigurationBus.h>
 #include <Terrain/Bus/LegacyTerrainBus.h>
-#include <PhysXWorld.h>
+#include <World.h>
+#include <Material.h>
+
+#include <CrySystemBus.h>
 
 #ifdef PHYSX_EDITOR
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #endif
 
-// for the PhysX visual debugger
-#define PVD_HOST "127.0.0.1"
-
 namespace PhysX
 {
-    /**
-    * System allocator to be used for all PhysX gem persistent allocations.
-    */
+    /// System allocator to be used for all PhysX gem persistent allocations.
     class PhysXAllocator
         : public AZ::SystemAllocator
     {
@@ -58,9 +57,7 @@ namespace PhysX
         const char* GetDescription() const override { return "PhysX general memory allocator"; }
     };
 
-    /**
-    * Implementation of the PhysX memory allocation callback interface using Lumberyard allocator.
-    */
+    /// Implementation of the PhysX memory allocation callback interface using Lumberyard allocator.
     class PxAzAllocatorCallback
         : public physx::PxAllocatorCallback
     {
@@ -78,59 +75,54 @@ namespace PhysX
         }
     };
 
-    /**
-    * Implementation of the PhysX error callback interface directing errors to Lumberyard error output.
-    */
+    /// Implementation of the PhysX error callback interface directing errors to Lumberyard error output.
     class PxAzErrorCallback
         : public physx::PxErrorCallback
     {
     public:
         virtual void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line)
         {
-            AZ_Error("PhysX", false, "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
+            switch (code)
+            {
+            case physx::PxErrorCode::eDEBUG_INFO:
+            case physx::PxErrorCode::eNO_ERROR:
+                AZ_TracePrintf("PhysX", "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
+                break;
+
+            case physx::PxErrorCode::eDEBUG_WARNING:
+            case physx::PxErrorCode::ePERF_WARNING:
+                AZ_Warning("PhysX", false, "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
+                break;
+
+            default:
+                AZ_Error("PhysX", false, "PxErrorCode %i: %s (line %i in %s)", code, message, line, file);
+                break;
+            }
         }
     };
 
-    /**
-    * Internal bus for communicating PhysX events to PhysX components.
-    */
-    class EntityPhysXEvents
-        : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
-
-        virtual ~EntityPhysXEvents() {}
-        virtual void OnPostStep() {}
-    };
-    using EntityPhysXEventBus = AZ::EBus<EntityPhysXEvents>;
-
-    /**
-    * System component for PhysX.
-    * The system component handles underlying tasks such as initialization and shutdown of PhysX, managing a Lumberyard memory allocator
-    * for PhysX allocations, scheduling for PhysX jobs, and connections to the PhysX Visual Debugger.  It also owns fundamental PhysX
-    * objects which manage worlds, rigid bodies, shapes, materials, constraints etc., and perform cooking (processing assets such as
-    * meshes and heightfields ready for use in PhysX).
-    */
-    class PhysXSystemComponent
+    /// System component for PhysX.
+    /// The system component handles underlying tasks such as initialization and shutdown of PhysX, managing a
+    /// Lumberyard memory allocator for PhysX allocations, scheduling for PhysX jobs, and connections to the PhysX
+    /// Visual Debugger.  It also owns fundamental PhysX objects which manage worlds, rigid bodies, shapes, materials,
+    /// constraints etc., and perform cooking (processing assets such as meshes and heightfields ready for use in PhysX).
+    class SystemComponent
         : public AZ::Component
-        , public AZ::TickBus::Handler
-        , public LegacyTerrain::LegacyTerrainNotificationBus::Handler
-        , public LegacyTerrain::LegacyTerrainRequestBus::Handler
-        , public PhysXSystemRequestBus::Handler
         , public Physics::SystemRequestBus::Handler
+        , public PhysX::SystemRequestsBus::Handler
+        , public ConfigurationRequestBus::Handler
 #ifdef PHYSX_EDITOR
         , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
+        , private AzToolsFramework::EditorEvents::Bus::Handler
 #endif
-        , private AZ::Data::AssetManagerNotificationBus::Handler
+        , private CrySystemEventBus::Handler
+        , private Physics::CollisionRequestBus::Handler
     {
     public:
-        AZ_COMPONENT(PhysXSystemComponent, "{85F90819-4D9A-4A77-AB89-68035201F34B}");
+        AZ_COMPONENT(SystemComponent, "{85F90819-4D9A-4A77-AB89-68035201F34B}");
 
-        PhysXSystemComponent();
-        ~PhysXSystemComponent() override = default;
+        SystemComponent();
+        ~SystemComponent() override = default;
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -139,78 +131,131 @@ namespace PhysX
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
+        static void InitializePhysXSDK();
+        static void DestroyPhysXSDK();
+
     protected:
         // Workaround for VS2013 - Delete the copy constructor and make it private
         // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
-        PhysXSystemComponent(const PhysXSystemComponent&) = delete;
+        SystemComponent(const SystemComponent&) = delete;
 
-        physx::PxDefaultAllocator       m_defaultAllocator;
-        physx::PxDefaultErrorCallback   m_errorCallback;
-        PxAzAllocatorCallback           m_azAllocator;
-        PxAzErrorCallback               m_azErrorCallback;
-        physx::PxFoundation*            m_foundation = nullptr;
-        physx::PxPhysics*               m_physics = nullptr;
-        physx::PxScene*                 m_scene = nullptr;
-        physx::PxMaterial*              m_material = nullptr;
-        physx::PxPvdTransport*          m_pvdTransport = nullptr;
-        physx::PxPvd*                   m_pvd = nullptr;
-        physx::PxCooking*               m_cooking = nullptr;
-        AzPhysXCpuDispatcher*           m_cpuDispatcher = nullptr;
+        static struct PhysXSDKGlobals
+        {
+            physx::PxDefaultAllocator m_defaultAllocator;
+            physx::PxDefaultErrorCallback m_errorCallback;
+            PxAzAllocatorCallback m_azAllocator;
+            PxAzErrorCallback m_azErrorCallback;
+            physx::PxFoundation* m_foundation = nullptr;
+            physx::PxPhysics* m_physics = nullptr;
+            physx::PxCooking* m_cooking = nullptr;
+            physx::PxPvd* m_pvd = nullptr;
+        } m_physxSDKGlobals;
 
-        // Terrain data
-        AZStd::vector<physx::PxRigidStatic*>   m_terrainTiles;
-        AZ::u32                                m_numTerrainTiles = 0;
-        AZ::u32                                m_terrainTileSize = 0;
+        physx::PxPvdTransport* m_pvdTransport = nullptr;
+        AzPhysXCpuDispatcher* m_cpuDispatcher = nullptr;
 
-        // PhysXSystemComponentRequestBus interface implementation
-        void AddActor(physx::PxActor& actor) override;
-        void RemoveActor(physx::PxActor& actor) override;
-        physx::PxScene* CreateScene( physx::PxSceneDesc& sceneDesc) override;
+        // SystemRequestsBus
+        physx::PxScene* CreateScene(physx::PxSceneDesc& sceneDesc) override;
         physx::PxConvexMesh* CreateConvexMesh(const void* vertices, AZ::u32 vertexNum, AZ::u32 vertexStride) override; // should we use AZ::Vector3* or physx::PxVec3 here?
         physx::PxConvexMesh* CreateConvexMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize) override;
         physx::PxTriangleMesh* CreateTriangleMeshFromCooked(const void* cookedMeshData, AZ::u32 bufferSize) override;
+        bool ConnectToPvd() override;
+        void DisconnectFromPvd() override;
+
+        bool CookConvexMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount) override;
+        bool CookTriangleMeshToFile(const AZStd::string& filePath, const AZ::Vector3* vertices, AZ::u32 vertexCount,
+            const AZ::u32* indices, AZ::u32 indexCount) override;
+
+        void AddColliderComponentToEntity(AZ::Entity* entity, const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration, bool addEditorComponents = false) override;
+
+        physx::PxFilterData CreateFilterData(const Physics::CollisionLayer& layer, const Physics::CollisionGroup& group) override;
+        AZStd::shared_ptr<Physics::Shape> CreateWrappedNativeShape(physx::PxShape* nativeShape) override;
+        physx::PxCooking* GetCooking() override;
+        physx::PxControllerManager* CreateControllerManager(physx::PxScene* scene) override;
+        void ReleaseControllerManager(physx::PxControllerManager* controllerManager) override;
+
+        void UpdateColliderProximityVisualization(bool enabled, const AZ::Vector3& cameraPosition, float radius) override;
+
+        // PhysX::ConfigurationRequestBus
+        const Configuration& GetConfiguration() override;
+        void SetConfiguration(const Configuration&) override;
+
+        // CrySystemEventBus
+        void OnCrySystemInitialized(ISystem&, const SSystemInitParams&) override;
+        void OnCryEditorInitialized() override;
+
+        // CollisionRequestBus
+        Physics::CollisionLayer GetCollisionLayerByName(const AZStd::string& layerName) override;
+        Physics::CollisionGroup GetCollisionGroupByName(const AZStd::string& groupName) override;
+        Physics::CollisionGroup GetCollisionGroupById(const Physics::CollisionGroups::Id& groupId) override;
 
         // AZ::Component interface implementation
         void Init() override;
         void Activate() override;
         void Deactivate() override;
 
-        // TickBus::Handler
-        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
-
-        // LegacyTerrain::LegacyTerrainEventBus::Handler
-        void SetNumTiles(const AZ::u32 numTiles, const AZ::u32 tileSize) override;
-        void UpdateTile(const AZ::u32 tileX, const AZ::u32 tileY, const AZ::u16* heightMap, const float heightMin, const float heightScale, const AZ::u32 tileSize, const AZ::u32 heightMapUnitSize) override;
-
 #ifdef PHYSX_EDITOR
-        // AzToolsFramework::EditorEntityContextNotificationBus implementation
-        void OnStartPlayInEditor() override;
-        void OnStopPlayInEditor() override;
+
+        // AztoolsFramework::EditorEvents::Bus::Handler overrides
+        void PopulateEditorGlobalContextMenu(QMenu* menu, const AZ::Vector2& point, int flags) override;
+        void NotifyRegisterViews() override;
 #endif
-        bool GetTerrainHeight(const AZ::u32 x, const AZ::u32 y, float& height) const override;
 
         // Physics::SystemRequestBus::Handler
-        Physics::Ptr<Physics::World> CreateWorldByName(const char* worldName, const Physics::Ptr<Physics::WorldSettings>& settings) override;
-        Physics::Ptr<Physics::World> CreateWorldById(AZ::u32 worldId, const Physics::Ptr<Physics::WorldSettings>& settings) override;
-        Physics::Ptr<Physics::World> FindWorldByName(const char* worldName) override;
-        Physics::Ptr<Physics::World> FindWorldById(AZ::u32 worldId) override;
-        Physics::Ptr<Physics::World> GetDefaultWorld() override;
-        bool DestroyWorldByName(const char* worldName) override;
-        bool DestroyWorldById(AZ::u32 worldId) override;
-        Physics::Ptr<Physics::RigidBody> CreateRigidBody(const Physics::Ptr<Physics::RigidBodySettings>& settings) override;
-        Physics::Ptr<Physics::Ghost> CreateGhost(const Physics::Ptr<Physics::GhostSettings>& settings) override;
-        Physics::Ptr<Physics::Character> CreateCharacter(const Physics::Ptr<Physics::CharacterSettings>& settings) override;
-        Physics::Ptr<Physics::Action> CreateBuoyancyAction(const Physics::ActionSettings& settings) override;
+        AZStd::shared_ptr<Physics::World> CreateWorld(AZ::Crc32 id) override;
+        AZStd::shared_ptr<Physics::World> CreateWorldCustom(AZ::Crc32 id, const Physics::WorldConfiguration& settings) override;
+        AZStd::shared_ptr<Physics::RigidBodyStatic> CreateStaticRigidBody(const Physics::WorldBodyConfiguration& configuration) override;
+        AZStd::shared_ptr<Physics::RigidBody> CreateRigidBody(const Physics::RigidBodyConfiguration& configuration) override;
+        AZStd::shared_ptr<Physics::Shape> CreateShape(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& configuration) override;
+        AZStd::shared_ptr<Physics::Material> CreateMaterial(const Physics::MaterialConfiguration& materialConfiguration) override;
+        AZStd::shared_ptr<Physics::Material> GetDefaultMaterial() override;
+        AZStd::vector<AZStd::shared_ptr<Physics::Material>> CreateMaterialsFromLibrary(const Physics::MaterialSelection& materialSelection) override;
 
-        using WorldMap = AZStd::unordered_map<AZ::Crc32, Physics::Ptr<PhysXWorld>>;
-        WorldMap m_worlds;
-        WorldMap m_worldsToUpdate;
+        AZStd::vector<AZ::TypeId> GetSupportedJointTypes() override;
+        AZStd::shared_ptr<Physics::JointLimitConfiguration> CreateJointLimitConfiguration(AZ::TypeId jointType) override;
+        AZStd::shared_ptr<Physics::Joint> CreateJoint(const AZStd::shared_ptr<Physics::JointLimitConfiguration>& configuration,
+            const AZStd::shared_ptr<Physics::WorldBody>& parentBody, const AZStd::shared_ptr<Physics::WorldBody>& childBody) override;
+        void GenerateJointLimitVisualizationData(
+            const Physics::JointLimitConfiguration& configuration,
+            const AZ::Quaternion& parentRotation,
+            const AZ::Quaternion& childRotation,
+            float scale,
+            AZ::u32 angularSubdivisions,
+            AZ::u32 radialSubdivisions,
+            AZStd::vector<AZ::Vector3>& vertexBufferOut,
+            AZStd::vector<AZ::u32>& indexBufferOut,
+            AZStd::vector<AZ::Vector3>& lineBufferOut,
+            AZStd::vector<bool>& lineValidityBufferOut) override;
+        AZStd::unique_ptr<Physics::JointLimitConfiguration> ComputeInitialJointLimitConfiguration(
+            const AZ::TypeId& jointLimitTypeId,
+            const AZ::Quaternion& parentWorldRotation,
+            const AZ::Quaternion& childWorldRotation,
+            const AZ::Vector3& axis,
+            const AZStd::vector<AZ::Quaternion>& exampleLocalRotations) override;
+
+        Configuration CreateDefaultConfiguration() const;
+        void LoadConfiguration();
+        void SaveConfiguration();
+        void CheckoutConfiguration();
 
         // Assets related data
         AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler>> m_assetHandlers;
+        PhysX::MaterialsManager m_materialManager;
+
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
     private:
-        bool    m_createDefaultWorld;   ///< If true, a default world will be created by the system component.
-        bool    m_enabled;              ///< If false, this component will not activate itself in the Activate() function.
+
+        bool m_enabled; ///< If false, this component will not activate itself in the Activate() function.
+        AZStd::string m_configurationPath;
+        Configuration m_configuration;
+        AZ::Vector3 m_cameraPositionCache = AZ::Vector3::CreateZero();
     };
+
+    /// Return PxCookingParams better suited for use at run-time, these parameters will improve cooking time.
+    /// Reference: https://docs.nvidia.com/gameworks/content/gameworkslibrary/physx/guide/Manual/Geometry.html#triangle-meshes
+    physx::PxCookingParams GetRealTimeCookingParams();
+    /// Return PxCookingParams better suited for use at edit-time, these parameters will
+    /// increase cooking time but improve accuracy/precision.
+    physx::PxCookingParams GetEditTimeCookingParams();
 } // namespace PhysX

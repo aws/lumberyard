@@ -343,8 +343,6 @@ protected:
         return m_cbCurrent->m_curTransMatIdx;
     }
 
-
-
     SAuxGeomCBRawData* AccessData()
     {
         return m_cbCurrent;

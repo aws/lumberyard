@@ -1,0 +1,21 @@
+{
+    "auto": {
+        "Include": [
+            "Include/ImGuiBus.h"
+        ],
+        "Implementation": [
+            "Source/ImGuiGem.cpp"
+        ],
+        "ImGui": [
+            "Source/ImGuiColorDefines.h",
+            "Source/ImGuiManager.h",
+            "Source/ImGuiManager.cpp"
+        ],
+        "LYCommonMenu": [
+            "Source/LYCommonMenu/ImGuiLYCommonMenu.h",
+            "Source/LYCommonMenu/ImGuiLYCommonMenu.cpp",
+            "Source/LYCommonMenu/ImGuiLYEntityOutliner.h",
+            "Source/LYCommonMenu/ImGuiLYEntityOutliner.cpp"
+        ]
+    }
+}

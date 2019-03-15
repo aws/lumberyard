@@ -14,14 +14,13 @@
 #include "ManipulatorManager.h"
 
 #include <AzCore/Math/IntersectSegment.h>
-#include <AzCore/Math/Internal/VectorConversions.inl>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
 {
     const AZ::Color BaseManipulator::s_defaultMouseOverColor = AZ::Color(1.0f, 1.0f, 0.0f, 1.0f); // yellow
 
-    BaseManipulator::BaseManipulator(AZ::EntityId entityId)
+    BaseManipulator::BaseManipulator(const AZ::EntityId entityId)
         : m_entityId(entityId) {}
 
     BaseManipulator::~BaseManipulator()
@@ -31,7 +30,7 @@ namespace AzToolsFramework
     }
 
     bool BaseManipulator::OnLeftMouseDown(
-        const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance)
+        const ViewportInteraction::MouseInteraction& interaction, const float rayIntersectionDistance)
     {
         if (m_onLeftMouseDownImpl)
         {
@@ -50,7 +49,7 @@ namespace AzToolsFramework
     }
 
     bool BaseManipulator::OnRightMouseDown(
-        const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance)
+        const ViewportInteraction::MouseInteraction& interaction, const float rayIntersectionDistance)
     {
         if (m_onRightMouseDownImpl)
         {
@@ -72,13 +71,9 @@ namespace AzToolsFramework
     // attached as no active manipulator will have been set in ManipulatorManager.
     void BaseManipulator::OnLeftMouseUp(const ViewportInteraction::MouseInteraction& interaction)
     {
-        // keep a ref count of the manipulator so it does not get
-        // destroyed too early (before undo batch has been recorded)
-        AZStd::shared_ptr<BaseManipulator> current = shared_from_this();
         EndAction();
         OnLeftMouseUpImpl(interaction);
         EndUndoBatch();
-        AZ_UNUSED(current);
     }
 
     void BaseManipulator::OnRightMouseUp(const ViewportInteraction::MouseInteraction& interaction)
@@ -115,7 +110,7 @@ namespace AzToolsFramework
         SetBoundsDirtyImpl();
     }
 
-    void BaseManipulator::Register(ManipulatorManagerId managerId)
+    void BaseManipulator::Register(const ManipulatorManagerId managerId)
     {
         if (Registered())
         {
@@ -123,7 +118,7 @@ namespace AzToolsFramework
         }
 
         ManipulatorManagerRequestBus::Event(managerId,
-            &ManipulatorManagerRequestBus::Events::RegisterManipulator, *this);
+            &ManipulatorManagerRequestBus::Events::RegisterManipulator, shared_from_this());
     }
 
     void BaseManipulator::Unregister()
@@ -131,7 +126,7 @@ namespace AzToolsFramework
         // if the manipulator has already been unregistered, the m_manipulatorManagerId
         // should be invalid which makes the call below a no-op.
         ManipulatorManagerRequestBus::Event(m_manipulatorManagerId,
-            &ManipulatorManagerRequestBus::Events::UnregisterManipulator, *this);
+            &ManipulatorManagerRequestBus::Events::UnregisterManipulator, this);
     }
 
     void BaseManipulator::Invalidate()
@@ -180,6 +175,33 @@ namespace AzToolsFramework
         }
     }
 
+    void Manipulators::Register(const ManipulatorManagerId manipulatorManagerId)
+    {
+        ProcessManipulators([manipulatorManagerId](BaseManipulator* manipulator)
+        {
+            manipulator->Register(manipulatorManagerId);
+        });
+    }
+
+    void Manipulators::Unregister()
+    {
+        ProcessManipulators([](BaseManipulator* manipulator)
+        {
+            if (manipulator->Registered())
+            {
+                manipulator->Unregister();
+            }
+        });
+    }
+
+    void Manipulators::SetBoundsDirty()
+    {
+        ProcessManipulators([](BaseManipulator* manipulator)
+        {
+            manipulator->SetBoundsDirty();
+        });
+    }
+
     namespace Internal
     {
         bool CalculateRayPlaneIntersectingPoint(const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
@@ -196,7 +218,8 @@ namespace AzToolsFramework
         }
 
         AZ::Vector3 TransformAxisForSpace(
-            ManipulatorSpace space, const AZ::Transform& localFromWorld, const AZ::Vector3& axis)
+            const ManipulatorSpace space, const AZ::Transform& localFromWorld,
+            const AZ::Quaternion& localRotation, const AZ::Vector3& axis)
         {
             switch (space)
             {
@@ -205,7 +228,7 @@ namespace AzToolsFramework
             case ManipulatorSpace::Local:
                 // fallthrough
             default:
-                return axis;
+                return localRotation * axis;
             }
         }
     }

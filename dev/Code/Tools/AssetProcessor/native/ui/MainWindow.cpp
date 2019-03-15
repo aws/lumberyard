@@ -45,6 +45,7 @@
 #include <QHostAddress>
 #include <QRegExpValidator>
 #include <QMessageBox>
+#include <QSettings>
 #include <native/resourcecompiler/JobsModel.h>
 
 #ifdef Q_OS_WIN
@@ -236,7 +237,31 @@ void MainWindow::Activate()
     connect(m_guiApplicationManager->GetAssetProcessorManager(), &AssetProcessor::AssetProcessorManager::JobRemoved, m_jobsModel, &AssetProcessor::JobsModel::OnJobRemoved);
     connect(m_guiApplicationManager->GetAssetProcessorManager(), &AssetProcessor::AssetProcessorManager::SourceDeleted, m_jobsModel, &AssetProcessor::JobsModel::OnSourceRemoved);
     m_jobsModel->PopulateJobsFromDatabase();
+    // Tools tab:
+    connect(ui->fullScanButton, &QPushButton::clicked, this, &MainWindow::OnRescanButtonClicked);
 
+    QSettings settings;
+    settings.beginGroup("Options");
+    bool fastAnalysModeFromSettings = settings.value("EnableFastAnalysis", QVariant(false)).toBool();
+    settings.endGroup();
+
+    QObject::connect(ui->fastAnalysisCheckBox, &QCheckBox::stateChanged, this, 
+        [this](int newCheckState)
+        {
+            bool newOption = newCheckState == Qt::Checked ? true : false;
+            m_guiApplicationManager->GetAssetProcessorManager()->SetEnableAnalysisSkippingFeature(newOption);
+            QSettings settingsInCallback;
+            settingsInCallback.beginGroup("Options");
+            settingsInCallback.setValue("EnableFastAnalysis", QVariant(newOption));
+            settingsInCallback.endGroup();
+        });
+        
+    ui->fastAnalysisCheckBox->setCheckState(fastAnalysModeFromSettings ? Qt::Checked : Qt::Unchecked);
+}
+
+void MainWindow::OnRescanButtonClicked()
+{
+    m_guiApplicationManager->Rescan();
 }
 
 void MainWindow::OnSupportClicked(bool checked)

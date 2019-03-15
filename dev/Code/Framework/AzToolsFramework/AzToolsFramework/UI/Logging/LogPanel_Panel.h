@@ -146,6 +146,9 @@ namespace AzToolsFramework
             //! by calling SetStorageID next time, to the same number, and then calling LoadState().
             void SetStorageID(AZ::u32 id);
 
+            int GetTabWidgetCount();
+            QWidget* GetTabWidgetAtIndex(int index);
+
             static void Reflect(AZ::ReflectContext* reflection);
 
         Q_SIGNALS:
@@ -199,6 +202,8 @@ namespace AzToolsFramework
             void AppendLine(Logging::LogLine& source);
             void CommitAdd();
             void Clear();
+
+            const Logging::LogLine& GetLineFromIndex(const QModelIndex& index);
 
         private:
             AZStd::ring_buffer<Logging::LogLine> m_lines;

@@ -106,6 +106,8 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <LegacyEntityConversion/LegacyEntityConversion.h>
 
+#include "ObjectManagerLegacyUndo.h"
+
 /*!
  *  Class Description used for object templates.
  *  This description filled from Xml template files.
@@ -144,249 +146,6 @@ public:
     virtual int GameCreationOrder() { return superType->GameCreationOrder(); };
 };
 
-//////////////////////////////////////////////////////////////////////////
-//! Prefab helper functions
-// Because a prefab consist of multiple object but it is defined as a single GUID,
-// we want to extract all the childs GUIDs. We need this info if we undo redo new/delete
-// operations on prefabs, since we want to NOT generate new IDs for the childs, otherwise
-// other UNDO operations depending on the guids won't work
-static void ExtractRemapingInformation(CBaseObject* pPrefab, TGUIDRemap& remapInfo)
-{
-    TBaseObjects childs;
-    pPrefab->GetAllPrefabFlagedChildren(childs);
-
-    for (size_t i = 0, count = childs.size(); i < count; ++i)
-    {
-        remapInfo.insert(std::make_pair(childs[i]->GetIdInPrefab(), childs[i]->GetId()));
-    }
-}
-
-static void RemapObjectsInPrefab(CBaseObject* pPrefab, const TGUIDRemap& remapInfo)
-{
-    IObjectManager* pObjMan = GetIEditor()->GetObjectManager();
-
-    TBaseObjects childs;
-    pPrefab->GetAllPrefabFlagedChildren(childs);
-
-    for (size_t i = 0, count = childs.size(); i < count; ++i)
-    {
-        TGUIDRemap::const_iterator it = remapInfo.find(childs[i]->GetIdInPrefab());
-        if (it != remapInfo.end())
-        {
-            pObjMan->ChangeObjectId(childs[i]->GetId(), (*it).second);
-        }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-//! Undo New Object
-class CUndoBaseObjectNew
-    : public IUndoObject
-{
-public:
-    CUndoBaseObjectNew(CBaseObject* pObj)
-    {
-        m_object = pObj;
-
-        m_isPrefab = qobject_cast<CPrefabObject*>(pObj) != nullptr;
-
-        if (m_isPrefab)
-        {
-            ExtractRemapingInformation(pObj, m_remaping);
-        }
-    }
-protected:
-    virtual int GetSize() { return sizeof(*this); }; // Return size of xml state.
-    virtual QString GetDescription() { return "New BaseObject"; };
-    virtual QString GetObjectName(){ return m_object->GetName(); };
-
-    virtual void Undo(bool bUndo)
-    {
-        if (bUndo)
-        {
-            m_redo = XmlHelpers::CreateXmlNode("Redo");
-            // Save current object state.
-            CObjectArchive ar(GetIEditor()->GetObjectManager(), m_redo, false);
-            ar.bUndo = true;
-            m_object->Serialize(ar);
-            m_object->SetLayerModified();
-        }
-
-        m_object->UpdatePrefab(eOCOT_Delete);
-
-        // Delete this object.
-        GetIEditor()->DeleteObject(m_object);
-    }
-    virtual void Redo()
-    {
-        if (m_redo)
-        {
-            IObjectManager* pObjMan = GetIEditor()->GetObjectManager();
-            {
-                CObjectArchive ar(pObjMan, m_redo, true);
-                ar.bUndo = true;
-                ar.MakeNewIds(false);
-                ar.LoadObject(m_redo, m_object);
-            }
-            pObjMan->ClearSelection();
-            pObjMan->SelectObject(m_object);
-            m_object->SetLayerModified();
-
-            if (m_isPrefab)
-            {
-                RemapObjectsInPrefab(m_object, m_remaping);
-            }
-
-            m_object->UpdatePrefab(eOCOT_Add);
-        }
-    }
-
-private:
-    CBaseObjectPtr m_object;
-    TGUIDRemap m_remaping;
-    XmlNodeRef m_redo;
-    bool m_isPrefab;
-};
-
-//////////////////////////////////////////////////////////////////////////
-//! Undo Delete Object
-class CUndoBaseObjectDelete
-    : public IUndoObject
-{
-public:
-    CUndoBaseObjectDelete(CBaseObject* pObj)
-    {
-        pObj->SetTransformDelegate(nullptr);
-        m_object = pObj;
-        // Save current object state.
-        m_undo = XmlHelpers::CreateXmlNode("Undo");
-        CObjectArchive ar(GetIEditor()->GetObjectManager(), m_undo, false);
-        ar.bUndo = true;
-        m_bSelected = m_object->IsSelected();
-        m_object->Serialize(ar);
-        m_object->SetLayerModified();
-
-        m_isPrefab = qobject_cast<CPrefabObject*>(pObj);
-
-        if (m_isPrefab)
-        {
-            ExtractRemapingInformation(m_object, m_remaping);
-        }
-    }
-protected:
-    virtual int GetSize() { return sizeof(*this); }; // Return size of xml state.
-    virtual QString GetDescription() { return "Delete BaseObject"; };
-    virtual QString GetObjectName(){ return m_object->GetName(); };
-
-    virtual void Undo(bool bUndo)
-    {
-        IObjectManager* pObjMan = GetIEditor()->GetObjectManager();
-        {
-            CObjectArchive ar(pObjMan, m_undo, true);
-            ar.bUndo = true;
-            ar.MakeNewIds(false);
-            ar.LoadObject(m_undo, m_object);
-            m_object->ClearFlags(OBJFLAG_SELECTED);
-        }
-        if (m_bSelected)
-        {
-            pObjMan->ClearSelection();
-            pObjMan->SelectObject(m_object);
-        }
-        m_object->SetLayerModified();
-
-        if (m_isPrefab)
-        {
-            RemapObjectsInPrefab(m_object, m_remaping);
-        }
-
-        m_object->UpdatePrefab(eOCOT_Add);
-    }
-    virtual void Redo()
-    {
-        // Delete this object.
-        m_object->SetLayerModified();
-        m_object->UpdatePrefab(eOCOT_Delete);
-        GetIEditor()->DeleteObject(m_object);
-    }
-
-private:
-    CBaseObjectPtr m_object;
-    XmlNodeRef m_undo;
-    TGUIDRemap m_remaping;
-    bool m_bSelected;
-    bool m_isPrefab;
-};
-
-//////////////////////////////////////////////////////////////////////////
-//! Undo Select Object
-class CUndoBaseObjectSelect
-    : public IUndoObject
-{
-public:
-    CUndoBaseObjectSelect(CBaseObject* pObj)
-    {
-        assert(pObj != 0);
-        m_guid = pObj->GetId();
-        m_bUndoSelect = pObj->IsSelected();
-    }
-protected:
-    virtual void Release() { delete this; };
-    virtual int GetSize() { return sizeof(*this); }; // Return size of xml state.
-    virtual QString GetDescription() { return "Select Object"; };
-    virtual QString GetObjectName()
-    {
-        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(m_guid);
-        if (!pObject)
-        {
-            return "";
-        }
-
-        return pObject->GetName();
-    }
-
-    virtual void Undo(bool bUndo)
-    {
-        CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(m_guid);
-        if (!pObject)
-        {
-            return;
-        }
-
-        if (bUndo)
-        {
-            m_bRedoSelect = pObject->IsSelected();
-        }
-
-        if (m_bUndoSelect)
-        {
-            GetIEditor()->GetObjectManager()->SelectObject(pObject);
-        }
-        else
-        {
-            GetIEditor()->GetObjectManager()->UnselectObject(pObject);
-        }
-    }
-    virtual void Redo()
-    {
-        if (CBaseObject* pObject = GetIEditor()->GetObjectManager()->FindObject(m_guid))
-        {
-            if (m_bRedoSelect)
-            {
-                GetIEditor()->GetObjectManager()->SelectObject(pObject);
-            }
-            else
-            {
-                GetIEditor()->GetObjectManager()->UnselectObject(pObject);
-            }
-        }
-    }
-
-private:
-    GUID m_guid;
-    bool m_bUndoSelect;
-    bool m_bRedoSelect;
-};
 
 //////////////////////////////////////////////////////////////////////////
 // CObjectManager implementation.
@@ -1445,13 +1204,6 @@ bool CObjectManager::SelectObject(CBaseObject* obj, bool bUseMask)
         }
     }
 
-    /*
-    if (GetIEditor()->IsUndoRecording() && !obj->IsSelected())
-    {
-        GetIEditor()->RecordUndo( new CUndoBaseObjectSelect(obj) );
-    }
-    */
-
     AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
 
     m_currSelection->AddObject(obj);
@@ -1476,12 +1228,6 @@ void CObjectManager::UnselectObject(CBaseObject* obj)
 {
     AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
 
-    /*
-    if (GetIEditor()->IsUndoRecording() && obj->IsSelected())
-    {
-        GetIEditor()->RecordUndo( new CUndoBaseObjectSelect(obj) );
-    }
-    */
     SetObjectSelected(obj, false);
     m_currSelection->RemoveObject(obj);
 }
@@ -1626,11 +1372,45 @@ int CObjectManager::ClearSelection()
 
     AzToolsFramework::EditorMetricsEventBusSelectionChangeHelper selectionChangeMetricsHelper;
 
+    // Make sure to unlock selection.
+    GetIEditor()->LockSelection(false);
+
     int numSel = m_currSelection->GetCount();
-    UnselectCurrent();
+
+    // Handle Undo/Redo of Component Entities
+    bool isUndoRecording = GetIEditor()->IsUndoRecording();
+    if (isUndoRecording)
+    {
+        m_processingBulkSelect = true;
+        GetIEditor()->RecordUndo(new CUndoBaseObjectClearSelection(*m_currSelection));
+    }
+
+    // Handle legacy entities separately so the selection group can be cleared safely. 
+    // This prevents every AzEntity from being removed one by one from a vector.
+    m_currSelection->RemoveAllExceptLegacySet();
+
+    // Kick off Deselect for Legacy Entities
+    for (CBaseObjectPtr legacyObject : m_currSelection->GetLegacyObjects())
+    {
+        if (isUndoRecording && legacyObject->IsSelected())
+        {
+            GetIEditor()->RecordUndo(new CUndoBaseObjectSelect(legacyObject));
+        }
+
+        SetObjectSelected(legacyObject, false);
+    }
+
+    // Legacy set is cleared
     m_defaultSelection.RemoveAll();
     m_currSelection = &m_defaultSelection;
     m_bSelectionChanged = true;
+
+    // Unselect all component entities as one bulk operation instead of individually
+    AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
+        &AzToolsFramework::ToolsApplicationRequests::SetSelectedEntities, 
+        AzToolsFramework::EntityIdList());
+
+    m_processingBulkSelect = false;
 
     if (!m_bExiting)
     {
@@ -2431,6 +2211,7 @@ void CObjectManager::FindObjectsInRect(CViewport* view, const QRect& rect, std::
         HitTestObjectAgainstRect(pObj, view, hc, guids);
     }
 }
+
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::SelectObjectsInRect(CViewport* view, const QRect& rect, bool bSelect)
 {
@@ -2450,14 +2231,47 @@ void CObjectManager::SelectObjectsInRect(CViewport* view, const QRect& rect, boo
     hc.rect = rect;
     hc.bUseSelectionHelpers = view->GetAdvancedSelectModeFlag();
 
-    CBaseObjectsCache* pDispayedViewObjects = view->GetVisibleObjectsCache();
-    int numVis = pDispayedViewObjects->GetObjectCount();
+    bool isUndoRecording = GetIEditor()->IsUndoRecording();
+    if (isUndoRecording)
+    {
+        m_processingBulkSelect = true;
+    }
+
+    CBaseObjectsCache* displayedViewObjects = view->GetVisibleObjectsCache();
+    int numVis = displayedViewObjects->GetObjectCount();
+
+    // Tracking the previous selection allows proper undo/redo functionality of additional 
+    // selections (CTRL + drag select)
+    AZStd::unordered_set<const CBaseObject*> previousSelection;
+
     for (int i = 0; i < numVis; ++i)
     {
-        CBaseObject* pObj = pDispayedViewObjects->GetObject(i);
+        CBaseObject* object = displayedViewObjects->GetObject(i);
 
-        SelectObjectInRect(pObj, view, hc, bSelect);
+        if (object->IsSelected())
+        {
+            previousSelection.insert(object);
+        }
+        else
+        {
+            // This will update m_currSelection
+            SelectObjectInRect(object, view, hc, bSelect);
+
+            // Legacy undo/redo does not go through the Ebus system and must be done individually 
+            if (isUndoRecording && object->GetType() != OBJTYPE_AZENTITY)
+            {
+                GetIEditor()->RecordUndo(new CUndoBaseObjectSelect(object, true));
+            }
+        }
     }
+
+    if (isUndoRecording && m_currSelection)
+    {
+        // Component Entities can handle undo/redo in bulk due to Ebuses
+        GetIEditor()->RecordUndo(new CUndoBaseObjectBulkSelect(previousSelection, *m_currSelection));
+    }
+
+    m_processingBulkSelect = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -3033,6 +2847,7 @@ bool CObjectManager::ConvertToType(CBaseObject* pObject, const QString& typeName
 //////////////////////////////////////////////////////////////////////////
 void CObjectManager::SetObjectSelected(CBaseObject* pObject, bool bSelect)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Editor);
     // Only select/unselect once.
     if ((pObject->IsSelected() && bSelect) || (!pObject->IsSelected() && !bSelect))
     {
@@ -3040,7 +2855,7 @@ void CObjectManager::SetObjectSelected(CBaseObject* pObject, bool bSelect)
     }
 
     // Store selection undo.
-    if (CUndo::IsRecording())
+    if (CUndo::IsRecording() && !m_processingBulkSelect)
     {
         CUndo::Record(new CUndoBaseObjectSelect(pObject));
     }

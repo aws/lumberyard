@@ -113,6 +113,21 @@ namespace LmbrCentral
          */
         size_t Size() const;
 
+        /**
+         * Returns the custom edit context data that we're using for each element in the attribute
+         * @return The custom edit context data that we're using for each element in the attribute.
+         */
+        const AZ::Edit::ElementData& GetElementEditData() const;
+
+
+        /**
+        * Sets custom edit context data to use for each element in the attribute.
+        * This can be used to set sliders, ranges, etc on the SplineAttribute that are custom to a specific component.
+        * @param elementData The ElementData for us to copy and use for this instance of the SplineAttribute.
+        */
+        void SetElementEditData(const AZ::Edit::ElementData &elementData);
+
+
     protected:
         // SplineComponentNotificationBus
         void OnVertexAdded(size_t index) override;
@@ -120,8 +135,11 @@ namespace LmbrCentral
         void OnVerticesSet(const AZStd::vector<AZ::Vector3>& vertices) override;
         void OnVerticesCleared() override;
 
+        static const AZ::Edit::ElementData* GetElementDynamicEditData(const void* handlerPtr, const void* elementPtr, const AZ::Uuid& elementType);
+
         AZ::EntityId m_entityId;
         AZStd::vector<AttributeType> m_elements; ///< The attribute data elements
+        AZ::Edit::ElementData m_elementEditData; ///< Custom editContext description to apply to each element
     };
 
     namespace SplineAttributeUtil

@@ -12,6 +12,7 @@
 
 import os, shutil
 
+from waflib.Build import BuildContext
 
 def build(bld):
 
@@ -46,6 +47,12 @@ def build(bld):
             file_list           = [ 'native_activity_glue.waf_files' ],
             export_includes     = [ 'NativeActivityGlue' ],
             android_cflags      = [ '-fvisibility=default' ],
+        )
+
+    if isinstance(bld, BuildContext):
+        bld.read_aar(
+            name = 'support-compat',
+            group = 'com.android.support'
         )
 
     bld.CryLauncher(

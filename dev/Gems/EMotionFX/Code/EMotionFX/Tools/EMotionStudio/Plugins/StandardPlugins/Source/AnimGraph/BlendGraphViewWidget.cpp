@@ -10,51 +10,27 @@
 *
 */
 
-// include required headers
-#include <MCore/Source/StandardHeaders.h>
-#include "../StandardPluginsConfig.h"
-#include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
-#include <Editor/AnimGraphEditorBus.h>
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
-#include "BlendGraphWidget.h"
-#include "BlendGraphViewWidget.h"
-#include "NodeGroupWindow.h"
-#include "BlendSpace2DNodeWidget.h"
-#include "BlendSpace1DNodeWidget.h"
-#include "AnimGraphPlugin.h"
-#include "AttributesWindow.h"
-#include "NavigateWidget.h"
-#include "ParameterWindow.h"
-#include "GraphNode.h"
-#include "NodePaletteWidget.h"
-
-// qt includes
-#include <QComboBox>
-#include <QDropEvent>
-#include <QLabel>
-#include <QMenuBar>
-#include <QTreeWidget>
-#include <QVBoxLayout>
-#include <QPushButton>
-#include <QIcon>
-#include <QSettings>
-#include <QDropEvent>
-#include <QSplitter>
-
-// emfx and core includes
-#include <MCore/Source/LogManager.h>
-#include <EMotionFX/Source/AnimGraphManager.h>
-#include <EMotionFX/Source/EMotionFXManager.h>
-#include <EMotionFX/Source/BlendSpace2DNode.h>
-#include <EMotionFX/Source/BlendSpace1DNode.h>
-#include <EMotionFX/Source/MotionSet.h>
-#include <EMotionFX/Source/MotionManager.h>
-#include <EMotionFX/Source/MotionSystem.h>
-
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
-
-// emstudio SDK
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
+#include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include <EMotionFX/Source/MotionManager.h>
+#include <EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphNodeWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphActionManager.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphViewWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendSpace1DNodeWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendSpace2DNodeWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NavigateWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NavigationHistory.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NavigationLinkWidget.h>
+#include <Editor/AnimGraphEditorBus.h>
+#include <QKeyEvent>
+#include <QPushButton>
+#include <QSplitter>
+#include <QVBoxLayout>
 
 
 namespace EMStudio
@@ -62,82 +38,17 @@ namespace EMStudio
     // constructor
     BlendGraphViewWidget::BlendGraphViewWidget(AnimGraphPlugin* plugin, QWidget* parentWidget)
         : QWidget(parentWidget)
+        , mParentPlugin(plugin)
     {
-        mSelectedAnimGraphID = MCORE_INVALIDINDEX32;
-        mParentPlugin = plugin;
-
-        // create the command callbacks and register them
-        mSaveAnimGraphCallback = new CommandSaveAnimGraphCallback(true);
-        mCreateAnimGraphCallback = new CommandCreateAnimGraphCallback(true);
-        mRemoveAnimGraphCallback = new CommandRemoveAnimGraphCallback(true);
-        mSelectCallback = new CommandSelectCallback(false);
-        mUnselectCallback = new CommandUnselectCallback(false);
-        mClearSelectionCallback = new CommandClearSelectionCallback(false);
-        mCreateMotionSetCallback = new CommandCreateMotionSetCallback(false);
-        mRemoveMotionSetCallback = new CommandRemoveMotionSetCallback(false);
-        mAdjustMotionSetCallback = new CommandAdjustMotionSetCallback(false);
-        mSaveMotionSetCallback = new CommandSaveMotionSetCallback(false);
-        mLoadMotionSetCallback = new CommandLoadMotionSetCallback(false);
-        mActivateAnimGraphCallback = new CommandActivateAnimGraphCallback(false);
-        mAnimGraphAddConditionCallback = new CommandAnimGraphAddConditionCallback(false);
-        mAnimGraphRemoveConditionCallback = new CommandAnimGraphRemoveConditionCallback(false);
-        mAnimGraphCreateConnectionCallback = new CommandAnimGraphCreateConnectionCallback(false);
-        mAnimGraphRemoveConnectionCallback = new CommandAnimGraphRemoveConnectionCallback(false);
-        mAnimGraphAdjustConnectionCallback = new CommandAnimGraphAdjustConnectionCallback(false);
-        mAnimGraphCreateNodeCallback = new CommandAnimGraphCreateNodeCallback(false);
-        mAnimGraphAdjustNodeCallback = new CommandAnimGraphAdjustNodeCallback(false);
-        mAnimGraphRemoveNodeCallback = new CommandAnimGraphRemoveNodeCallback(false);
-        mAnimGraphSetEntryStateCallback = new CommandAnimGraphSetEntryStateCallback(false);
-        mAnimGraphAdjustNodeGroupCallback = new CommandAnimGraphAdjustNodeGroupCallback(false);
-        mAnimGraphAddNodeGroupCallback = new CommandAnimGraphAddNodeGroupCallback(false);
-        mAnimGraphRemoveNodeGroupCallback = new CommandAnimGraphRemoveNodeGroupCallback(false);
-        mAnimGraphCreateParameterCallback = new CommandAnimGraphCreateParameterCallback(false);
-        mAnimGraphRemoveParameterCallback = new CommandAnimGraphRemoveParameterCallback(false);
-        mAnimGraphAdjustParameterCallback = new CommandAnimGraphAdjustParameterCallback(false);
-        mAnimGraphSwapParametersCallback = new CommandAnimGraphSwapParametersCallback(false);
-        mAnimGraphAdjustParameterGroupCallback = new CommandAnimGraphAdjustParameterGroupCallback(false);
-        mAnimGraphAddParameterGroupCallback = new CommandAnimGraphAddParameterGroupCallback(false);
-        mAnimGraphRemoveParameterGroupCallback = new CommandAnimGraphRemoveParameterGroupCallback(false);
-        GetCommandManager()->RegisterCommandCallback("SaveAnimGraph", mSaveAnimGraphCallback);
-        GetCommandManager()->RegisterCommandCallback("CreateAnimGraph", mCreateAnimGraphCallback);
-        GetCommandManager()->RegisterCommandCallback("RemoveAnimGraph", mRemoveAnimGraphCallback);
-        GetCommandManager()->RegisterCommandCallback("Select", mSelectCallback);
-        GetCommandManager()->RegisterCommandCallback("Unselect", mUnselectCallback);
-        GetCommandManager()->RegisterCommandCallback("ClearSelection", mClearSelectionCallback);
-        GetCommandManager()->RegisterCommandCallback("CreateMotionSet", mCreateMotionSetCallback);
-        GetCommandManager()->RegisterCommandCallback("RemoveMotionSet", mRemoveMotionSetCallback);
-        GetCommandManager()->RegisterCommandCallback("AdjustMotionSet", mAdjustMotionSetCallback);
-        GetCommandManager()->RegisterCommandCallback("SaveMotionSet", mSaveMotionSetCallback);
-        GetCommandManager()->RegisterCommandCallback("LoadMotionSet", mLoadMotionSetCallback);
-        GetCommandManager()->RegisterCommandCallback("ActivateAnimGraph", mActivateAnimGraphCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAddCondition", mAnimGraphAddConditionCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveCondition", mAnimGraphRemoveConditionCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphCreateConnection", mAnimGraphCreateConnectionCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveConnection", mAnimGraphRemoveConnectionCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAdjustConnection", mAnimGraphAdjustConnectionCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphCreateNode", mAnimGraphCreateNodeCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAdjustNode", mAnimGraphAdjustNodeCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveNode", mAnimGraphRemoveNodeCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphSetEntryState", mAnimGraphSetEntryStateCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAdjustNodeGroup", mAnimGraphAdjustNodeGroupCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAddNodeGroup", mAnimGraphAddNodeGroupCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveNodeGroup", mAnimGraphRemoveNodeGroupCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphCreateParameter", mAnimGraphCreateParameterCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveParameter", mAnimGraphRemoveParameterCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAdjustParameter", mAnimGraphAdjustParameterCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphSwapParameters", mAnimGraphSwapParametersCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAdjustParameterGroup", mAnimGraphAdjustParameterGroupCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphAddParameterGroup", mAnimGraphAddParameterGroupCallback);
-        GetCommandManager()->RegisterCommandCallback("AnimGraphRemoveParameterGroup", mAnimGraphRemoveParameterGroupCallback);
-
         EMotionFX::ActorEditorRequestBus::Handler::BusConnect();
     }
 
 
     void BlendGraphViewWidget::Init(BlendGraphWidget* blendGraphWidget)
     {
-        NavigateWidget*     navigateWidget = mParentPlugin->GetNavigateWidget();
-        BlendGraphWidget*   graphWidget = mParentPlugin->GetGraphWidget();
+        connect(&mParentPlugin->GetAnimGraphModel(), &AnimGraphModel::FocusChanged, this, &BlendGraphViewWidget::OnFocusChanged);
+        connect(&mParentPlugin->GetAnimGraphModel().GetSelectionModel(), &QItemSelectionModel::selectionChanged, this, &BlendGraphViewWidget::UpdateSelection);
+        connect(mParentPlugin->GetNavigationHistory(), &NavigationHistory::ChangedSteppingLimits, this, &BlendGraphViewWidget::UpdateNavigation);
 
         for (uint32 i = 0; i < NUM_OPTIONS; ++i)
         {
@@ -169,7 +80,7 @@ namespace EMStudio
 
         // file section
         CreateEntry(fileMenu, mToolbarLayout, "New", "Images/Icons/Plus.png", true, false, FILE_NEW, 0, false, false /*, QKeySequence::New*/);
-        connect(mActions[FILE_NEW], SIGNAL(triggered()), this, SLOT(OnCreateAnimGraph()));
+        connect(mActions[FILE_NEW], &QAction::triggered, this, &BlendGraphViewWidget::OnCreateAnimGraph);
 
         QPushButton* openMenuButton = new QPushButton();
         mOpenMenu = new QMenu("&Open");
@@ -194,7 +105,6 @@ namespace EMStudio
                                         border: 0px; \
                                       }");
         connect(mOpenMenu, &QMenu::aboutToShow, this, &BlendGraphViewWidget::BuildOpenMenu);
-        connect(mActions[FILE_OPEN], &QAction::triggered, mParentPlugin, &AnimGraphPlugin::OnFileOpen);
         BuildOpenMenu();
 
         QPushButton* saveMenuButton = new QPushButton();
@@ -221,18 +131,18 @@ namespace EMStudio
                                       }");
         CreateEntry(saveMenu, mToolbarLayout, "Save", "", false, false, FILE_SAVE, 0, false);
         CreateEntry(saveMenu, mToolbarLayout, "Save As", "", false, false, FILE_SAVEAS, 0, false);
-        connect(mActions[FILE_SAVEAS], SIGNAL(triggered()), mParentPlugin, SLOT(OnFileSaveAs()));
-        connect(mActions[FILE_SAVE], SIGNAL(triggered()), mParentPlugin, SLOT(OnFileSave()));
+        connect(mActions[FILE_SAVEAS], &QAction::triggered, mParentPlugin, &AnimGraphPlugin::OnFileSaveAs);
+        connect(mActions[FILE_SAVE], &QAction::triggered, mParentPlugin, &AnimGraphPlugin::OnFileSave);
 
         AddSeparator();
         // Activate Nodes Options
-        CreateEntry(selectionMenu, mToolbarLayout, "Activate Animgraph/State", "Images/AnimGraphPLugin/Play.png", true, false, SELECTION_ACTIVATESTATE, 0, false, false);
-        connect(mActions[SELECTION_ACTIVATESTATE], SIGNAL(triggered()), this, SLOT(OnActivateState()));
+        CreateEntry(selectionMenu, mToolbarLayout, "Activate Animgraph/State", "Images/AnimGraphPLugin/Play.png", true, false, ACTIVATE_ANIMGRAPH, 0, false, false);
+        connect(mActions[ACTIVATE_ANIMGRAPH], &QAction::triggered, this, &BlendGraphViewWidget::OnActivateAnimGraph);
 
         // Viz options
         AddSeparator();
         CreateEntry(selectionMenu, mToolbarLayout, "Zoom Selection", "Images/AnimGraphPlugin/ZoomSelected.png", true, false, SELECTION_ZOOMSELECTION, 0, false, false);
-        connect(mActions[SELECTION_ZOOMSELECTION], SIGNAL(triggered()), this, SLOT(ZoomSelected()));
+        connect(mActions[SELECTION_ZOOMSELECTION], &QAction::triggered, this, &BlendGraphViewWidget::ZoomSelected);
 
         // Create the viz settings dropdown button
         QPushButton* vizMenuButton = new QPushButton();
@@ -263,10 +173,10 @@ namespace EMStudio
         mActions[VISUALIZATION_GLOBALWEIGHTS] = vizMenu->addAction("Display Global Weights");
         mActions[VISUALIZATION_SYNCSTATUS] = vizMenu->addAction("Display Sync Status");
         mActions[VISUALIZATION_PLAYPOSITIONS] = vizMenu->addAction("Display Play Positions");
-        connect(mActions[VISUALIZATION_PLAYSPEEDS], SIGNAL(triggered()), this, SLOT(OnDisplayPlaySpeeds()));
-        connect(mActions[VISUALIZATION_GLOBALWEIGHTS], SIGNAL(triggered()), this, SLOT(OnDisplayGlobalWeights()));
-        connect(mActions[VISUALIZATION_SYNCSTATUS], SIGNAL(triggered()), this, SLOT(OnDisplaySyncStatus()));
-        connect(mActions[VISUALIZATION_PLAYPOSITIONS], SIGNAL(triggered()), this, SLOT(OnDisplayPlayPositions()));
+        connect(mActions[VISUALIZATION_PLAYSPEEDS], &QAction::triggered, this, &BlendGraphViewWidget::OnDisplayPlaySpeeds);
+        connect(mActions[VISUALIZATION_GLOBALWEIGHTS], &QAction::triggered, this, &BlendGraphViewWidget::OnDisplayGlobalWeights);
+        connect(mActions[VISUALIZATION_SYNCSTATUS], &QAction::triggered, this, &BlendGraphViewWidget::OnDisplaySyncStatus);
+        connect(mActions[VISUALIZATION_PLAYPOSITIONS], &QAction::triggered, this, &BlendGraphViewWidget::OnDisplayPlayPositions);
 
         AddSeparator();
 
@@ -295,8 +205,8 @@ namespace EMStudio
         // navigation section
         CreateEntry(navigationMenu, navigationLayout, "Back", "Images/AnimGraphPlugin/StepBack.png", true, false, NAVIGATION_BACK, 0, false, false);
         CreateEntry(navigationMenu, navigationLayout, "Forward", "Images/AnimGraphPlugin/StepForward.png", true, false, NAVIGATION_FORWARD, 0, false, false);
-        connect(mActions[NAVIGATION_FORWARD], SIGNAL(triggered()), this, SLOT(NavigateForward()));
-        connect(mActions[NAVIGATION_BACK], SIGNAL(triggered()), this, SLOT(NavigateBackward()));
+        connect(mActions[NAVIGATION_FORWARD], &QAction::triggered, mParentPlugin->GetNavigationHistory(), &NavigationHistory::StepForward);
+        connect(mActions[NAVIGATION_BACK], &QAction::triggered, mParentPlugin->GetNavigationHistory(), &NavigationHistory::StepBackward);
 
         AddSeparator(navigationLayout);
 
@@ -306,7 +216,7 @@ namespace EMStudio
         navigationLayout->addWidget(mNavigationLink);
 
         CreateEntry(navigationMenu, navigationLayout, "Toggle Navigation Pane", "Images/AnimGraphPlugin/HierarchyView.png", true, false, NAVIGATION_NAVPANETOGGLE, 0, false, false);
-        connect(mActions[NAVIGATION_NAVPANETOGGLE],    SIGNAL(triggered()), this, SLOT(ToggleNavigationPane()));
+        connect(mActions[NAVIGATION_NAVPANETOGGLE], &QAction::triggered, this, &BlendGraphViewWidget::ToggleNavigationPane);
 
         // add the top widget with the menu and toolbar and the gl widget to the vertical layout
         verticalLayout->addWidget(toolbarWidget);
@@ -315,174 +225,79 @@ namespace EMStudio
         
         mViewportSplitter = new QSplitter(Qt::Horizontal, this);
         mViewportSplitter->addWidget(blendGraphWidget);
-        mViewportSplitter->addWidget(navigateWidget);
+        mViewportSplitter->addWidget(mParentPlugin->GetNavigateWidget());
         mViewportSplitter->setCollapsible(0, false);
         QList<int> sizes = { this->width(), 0 };
         mViewportSplitter->setSizes(sizes);
         mViewportStack.addWidget(mViewportSplitter);
-
-        Reset();
-        Update();
+        
+        UpdateNavigation();
+        UpdateAnimGraphOptions();
+        UpdateSelection();
     }
 
 
     BlendGraphViewWidget::~BlendGraphViewWidget()
     {
-        EMotionFX::ActorEditorRequestBus::Handler::BusDisconnect();
-
         for (auto entry : mNodeTypeToWidgetMap)
         {
             AnimGraphNodeWidget* widget = entry.second;
             delete widget;
         }
-
-        // unregister and destroy the command callbacks
-        GetCommandManager()->RemoveCommandCallback(mSaveAnimGraphCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mCreateAnimGraphCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mRemoveAnimGraphCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mSelectCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mUnselectCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mClearSelectionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mCreateMotionSetCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mRemoveMotionSetCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAdjustMotionSetCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mSaveMotionSetCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mLoadMotionSetCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mActivateAnimGraphCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphAddConditionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphRemoveConditionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphCreateConnectionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphRemoveConnectionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphAdjustConnectionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphCreateNodeCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphAdjustNodeCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphRemoveNodeCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphSetEntryStateCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphAdjustNodeGroupCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphAddNodeGroupCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphRemoveNodeGroupCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphCreateParameterCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphRemoveParameterCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphAdjustParameterCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphSwapParametersCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphAdjustParameterGroupCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphAddParameterGroupCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAnimGraphRemoveParameterGroupCallback, false);
-
-        // delete callbacks
-        delete mSaveAnimGraphCallback;
-        delete mCreateAnimGraphCallback;
-        delete mRemoveAnimGraphCallback;
-        delete mSelectCallback;
-        delete mUnselectCallback;
-        delete mClearSelectionCallback;
-        delete mCreateMotionSetCallback;
-        delete mRemoveMotionSetCallback;
-        delete mAdjustMotionSetCallback;
-        delete mSaveMotionSetCallback;
-        delete mLoadMotionSetCallback;
-        delete mActivateAnimGraphCallback;
-        delete mAnimGraphAddConditionCallback;
-        delete mAnimGraphRemoveConditionCallback;
-        delete mAnimGraphCreateConnectionCallback;
-        delete mAnimGraphRemoveConnectionCallback;
-        delete mAnimGraphAdjustConnectionCallback;
-        delete mAnimGraphCreateNodeCallback;
-        delete mAnimGraphAdjustNodeCallback;
-        delete mAnimGraphRemoveNodeCallback;
-        delete mAnimGraphSetEntryStateCallback;
-        delete mAnimGraphAdjustNodeGroupCallback;
-        delete mAnimGraphAddNodeGroupCallback;
-        delete mAnimGraphRemoveNodeGroupCallback;
-        delete mAnimGraphCreateParameterCallback;
-        delete mAnimGraphRemoveParameterCallback;
-        delete mAnimGraphAdjustParameterCallback;
-        delete mAnimGraphSwapParametersCallback;
-        delete mAnimGraphAdjustParameterGroupCallback;
-        delete mAnimGraphAddParameterGroupCallback;
-        delete mAnimGraphRemoveParameterGroupCallback;
     }
 
-
-    void BlendGraphViewWidget::Update()
+    void BlendGraphViewWidget::UpdateNavigation()
     {
-        mActions[NAVIGATION_BACK]->setEnabled(mParentPlugin->CanPopHistory());
-        mActions[NAVIGATION_FORWARD]->setEnabled(mParentPlugin->CanStepForwardInHistory());
+        mActions[NAVIGATION_BACK]->setEnabled(mParentPlugin->GetNavigationHistory()->CanStepBackward());
+        mActions[NAVIGATION_FORWARD]->setEnabled(mParentPlugin->GetNavigationHistory()->CanStepForward());
 
-        mToolbarButtons[NAVIGATION_BACK]->setEnabled(mParentPlugin->CanPopHistory());
-        mToolbarButtons[NAVIGATION_FORWARD]->setEnabled(mParentPlugin->CanStepForwardInHistory());
+        mToolbarButtons[NAVIGATION_BACK]->setEnabled(mParentPlugin->GetNavigationHistory()->CanStepBackward());
+        mToolbarButtons[NAVIGATION_FORWARD]->setEnabled(mParentPlugin->GetNavigationHistory()->CanStepForward());
+    }
 
+    void BlendGraphViewWidget::UpdateAnimGraphOptions()
+    {
         // get the anim graph that is currently selected in the resource widget
         EMotionFX::AnimGraph* animGraph = mParentPlugin->GetActiveAnimGraph();
         if (animGraph == nullptr)
         {
             SetOptionEnabled(FILE_SAVE, false);
             SetOptionEnabled(FILE_SAVEAS, false);
-            SetOptionEnabled(NAVIGATION_ROOT, false);
         }
         else
         {
             SetOptionEnabled(FILE_SAVE, true);
             SetOptionEnabled(FILE_SAVEAS, true);
-            SetOptionEnabled(NAVIGATION_ROOT, true);
         }
+    }
 
-        SetOptionEnabled(NAVIGATION_PARENT, false);
-        EMotionFX::AnimGraphNode* currentAnimGraphNode = mParentPlugin->GetGraphWidget()->GetCurrentNode();
-        if (currentAnimGraphNode)
+    void BlendGraphViewWidget::UpdateSelection()
+    {
+        // do we have any selection?
+        const bool anySelection = mParentPlugin->GetAnimGraphModel().GetSelectionModel().hasSelection();
+        SetOptionEnabled(SELECTION_ZOOMSELECTION, anySelection);
+        
+        QModelIndex firstSelectedNode;
+        bool atLeastTwoNodes = false;
+        const QModelIndexList selectedIndexes = mParentPlugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
+        for (const QModelIndex& selected : selectedIndexes)
         {
-            EMotionFX::AnimGraphNode* parentNode = currentAnimGraphNode->GetParentNode();
-            if (parentNode)
+            const AnimGraphModel::ModelItemType itemType = selected.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+            if (itemType == AnimGraphModel::ModelItemType::NODE)
             {
-                SetOptionEnabled(NAVIGATION_PARENT, true);
-            }
-        }
-
-        // update the navigation link
-        mNavigationLink->Update(animGraph, currentAnimGraphNode);
-
-        // get the number of selected nodes
-        BlendGraphWidget* blendGraphWidget = mParentPlugin->GetGraphWidget();
-        NodeGraph* nodeGraph = blendGraphWidget->GetActiveGraph();
-        uint32 numSelectedNodes = 0;
-        if (nodeGraph)
-        {
-            // get the number of selected nodes
-            numSelectedNodes = nodeGraph->CalcNumSelectedNodes();
-
-            // graph not empty flag
-            const bool GraphNotEmpty = nodeGraph->GetNumNodes() > 0;
-
-            // enable the select all menu only if at least one node is in the graph
-            SetOptionEnabled(SELECTION_ZOOMSELECTION, true);
-        }
-        else
-        {
-            // select all and zoom all menus can not be enabled if one graph is not valid
-            SetOptionEnabled(SELECTION_ZOOMSELECTION, false);
-        }
-
-        SetOptionEnabled(NAVIGATION_OPENSELECTEDNODE, false);
-        if (numSelectedNodes == 1)
-        {
-            EMotionFX::AnimGraphNode* animGraphNode = blendGraphWidget->FindFirstSelectedAnimGraphNode();
-            if (animGraphNode)
-            {
-                if (animGraphNode->GetHasVisualGraph())
+                if (firstSelectedNode.isValid())
                 {
-                    SetOptionEnabled(NAVIGATION_OPENSELECTEDNODE, true);
+                    atLeastTwoNodes = true;
+                    break;
                 }
-
-                // get the parent node and check if it is valid
-                EMotionFX::AnimGraphNode* parentNode = animGraphNode->GetParentNode();
-                if (parentNode)
+                else
                 {
-                    SetOptionEnabled(NAVIGATION_PARENT, true);
+                    firstSelectedNode = selected;
                 }
             }
         }
 
-        if (numSelectedNodes > 1)
+        if (atLeastTwoNodes)
         {
             SetOptionEnabled(SELECTION_ALIGNLEFT, true);
             SetOptionEnabled(SELECTION_ALIGNRIGHT, true);
@@ -496,17 +311,6 @@ namespace EMStudio
             SetOptionEnabled(SELECTION_ALIGNTOP, false);
             SetOptionEnabled(SELECTION_ALIGNBOTTOM, false);
         }
-    }
-
-    void BlendGraphViewWidget::UpdateOpenMenu()
-    {
-        BuildOpenMenu();
-    }
-
-
-    EMotionFX::ActorInstance* BlendGraphViewWidget::GetSelectedActorInstance()
-    {
-        return GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
     }
 
     AnimGraphNodeWidget* BlendGraphViewWidget::GetWidgetForNode(const EMotionFX::AnimGraphNode* node)
@@ -541,8 +345,14 @@ namespace EMStudio
         return widget;
     }
 
-    void BlendGraphViewWidget::SetCurrentNode(EMotionFX::AnimGraphNode* node)
+    void BlendGraphViewWidget::OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent)
     {
+        if (newFocusParent == oldFocusParent)
+        {
+            // not interested if the parent didn't change
+            return;
+        }
+
         // Reset the viewports to avoid dangling pointers.
         for (auto& item : mNodeTypeToWidgetMap)
         {
@@ -550,29 +360,34 @@ namespace EMStudio
             viewport->SetCurrentNode(nullptr);
         }
 
-        AnimGraphNodeWidget* widget = GetWidgetForNode(node);
-        if (widget)
+        if (newFocusParent.isValid())
         {
-            int index = mViewportStack.indexOf(widget);
-            if (index == -1)
+            EMotionFX::AnimGraphNode* node = newFocusParent.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+            AnimGraphNodeWidget* widget = GetWidgetForNode(node);
+            if (widget)
             {
-                mViewportStack.addWidget(widget);
-                mViewportStack.setCurrentIndex(mViewportStack.count() - 1);
+                int index = mViewportStack.indexOf(widget);
+                if (index == -1)
+                {
+                    mViewportStack.addWidget(widget);
+                    mViewportStack.setCurrentIndex(mViewportStack.count() - 1);
+                }
+                else
+                {
+                    mViewportStack.setCurrentIndex(index);
+                }
+
+                widget->SetCurrentNode(node);
+                widget->SetCurrentModelIndex(newFocusParent);
             }
             else
             {
-                mViewportStack.setCurrentIndex(index);
+                // Show the default widget.
+                mViewportStack.setCurrentIndex(0);
             }
-
-            widget->SetCurrentNode(node);
-        }
-        else
-        {
-            // Show the default widget.
-            mViewportStack.setCurrentIndex(0);
         }
     }
-
+    
     void BlendGraphViewWidget::SetOptionFlag(EOptionFlag option, bool isEnabled)
     {
         const uint32 optionIndex = (uint32)option;
@@ -648,20 +463,20 @@ namespace EMStudio
             toolbarButton->setIconSize(buttonSize - QSize(2, 2));
 
             // connect the menu entry with the toolbar button
-            connect(toolbarButton, SIGNAL(clicked()), mActions[actionIndex], SLOT(trigger()));
+            connect(toolbarButton, &QPushButton::clicked, mActions[actionIndex], &QAction::trigger);
         }
     }
 
     void BlendGraphViewWidget::BuildOpenMenu()
     {        
         mOpenMenu->clear();
-//        disconnect(mActions[FILE_OPEN], SIGNAL(triggered()), mParentPlugin, SLOT(OnFileOpen()));
+
         mActions[FILE_OPEN] = mOpenMenu->addAction("Open...");
-        connect(mActions[FILE_OPEN], SIGNAL(triggered()), mParentPlugin, SLOT(OnFileOpen()));
+        connect(mActions[FILE_OPEN], &QAction::triggered, mParentPlugin, &AnimGraphPlugin::OnFileOpen);
+
         const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
         if (numAnimGraphs > 0)
         {
-//            /*mActions[FILE_OPEN] =*/ mOpenMenu->addAction("Manage AnimGraphs...");
             mOpenMenu->addSeparator();
             for (uint32 i = 0; i < numAnimGraphs; ++i)
             {
@@ -669,7 +484,7 @@ namespace EMStudio
                 if (animGraph->GetIsOwnedByRuntime() == false)
                 {
                     QString itemName = "<Unsaved Animgraph>";
-                    if (animGraph->GetFileNameString().size() > 0)
+                    if (!animGraph->GetFileNameString().empty())
                     {
                         // convert full absolute paths to friendlier relative paths + folder they're found in.
                         // GetSourceInfoBySourcePath works on relative paths and absolute paths and doesn't need to wait for
@@ -685,103 +500,20 @@ namespace EMStudio
                         }
                     }
                     QAction* openItem = mOpenMenu->addAction(itemName);
-                    connect(openItem, &QAction::triggered, this, &BlendGraphViewWidget::OpenAnimGraph);
+                    connect(openItem, &QAction::triggered, [this, animGraph]() { OpenAnimGraph(animGraph); });
                     openItem->setData(animGraph->GetID());
                 }
             }
         }
     }
 
-    void BlendGraphViewWidget::OpenAnimGraph()
+    void BlendGraphViewWidget::OpenAnimGraph(EMotionFX::AnimGraph* animGraph)
     {
-        QAction *action = qobject_cast<QAction *>(sender());
-        if (action)
+        if (animGraph)
         {
-            uint32 animGraphID = action->data().toUInt();
-            EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(animGraphID);
-
             EMotionFX::MotionSet* motionSet = nullptr;
             EMotionFX::AnimGraphEditorRequestBus::BroadcastResult(motionSet, &EMotionFX::AnimGraphEditorRequests::GetSelectedMotionSet);
-
-            ActivateAnimGraphToSelection(animGraph, motionSet);
-        }
-    }
-
-    // get the selected anim graph
-    EMotionFX::AnimGraph* BlendGraphViewWidget::GetSelectedAnimGraph()
-    {
-        // check if the ID is not valid (nothing selected or multiple selection)
-        if (mSelectedAnimGraphID == MCORE_INVALIDINDEX32)
-        {
-            return nullptr;
-        }
-
-        // get the anim graph by the ID
-        return EMotionFX::GetAnimGraphManager().FindAnimGraphByID(mSelectedAnimGraphID);
-    }
-
-
-    // activate anim graph to the selected actor instances
-    void BlendGraphViewWidget::ActivateAnimGraphToSelection(EMotionFX::AnimGraph* animGraph, EMotionFX::MotionSet* motionSet)
-    {
-        if (!animGraph)
-        {
-            return;
-        }
-
-        const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-        const uint32 numActorInstances = selectionList.GetNumSelectedActorInstances();
-
-        // Anim graph can only be activated in case there are actor instances.
-        if (numActorInstances == 0)
-        {
-            mParentPlugin->SetActiveAnimGraph(animGraph);
-            return;
-        }
-
-        MCore::CommandGroup commandGroup("Activate anim graph");
-
-        // Activate the anim graph each selected actor instance.
-        for (uint32 i = 0; i < numActorInstances; ++i)
-        {
-            EMotionFX::ActorInstance* actorInstance = selectionList.GetActorInstance(i);
-            if (actorInstance->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
-            EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
-
-            // Use the given motion set in case it is valid, elsewise use the one previously set to the actor instance.
-            uint32 motionSetId = MCORE_INVALIDINDEX32;
-            if (motionSet)
-            {
-                motionSetId = motionSet->GetID();
-            }
-            else
-            {
-                if (animGraphInstance)
-                {
-                    EMotionFX::MotionSet* animGraphInstanceMotionSet = animGraphInstance->GetMotionSet();
-                    if (animGraphInstanceMotionSet)
-                    {
-                        motionSetId = animGraphInstanceMotionSet->GetID();
-                    }
-                }
-            }
-
-            commandGroup.AddCommandString(AZStd::string::format("ActivateAnimGraph -actorInstanceID %d -animGraphID %d -motionSetID %d", actorInstance->GetID(), animGraph->GetID(), motionSetId));
-        }
-
-        if (commandGroup.GetNumCommands() > 0)
-        {
-            AZStd::string result;
-            if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
-            {
-                AZ_Error("EMotionFX", false, result.c_str());
-            }
-            mParentPlugin->SetActiveAnimGraph(animGraph);
-            mParentPlugin->SetAnimGraphRunning(true);
+            mParentPlugin->GetActionManager().ActivateGraphForSelectedActors(animGraph, motionSet);
         }
     }
 
@@ -805,56 +537,14 @@ namespace EMStudio
     }
 
 
-    void BlendGraphViewWidget::Reset()
-    {
-    }
-
-
-    void BlendGraphViewWidget::SaveOptions(QSettings* settings)
-    {
-        const uint32 numOptions = NUM_OPTIONS;
-        for (uint32 i = 0; i < numOptions; ++i)
-        {
-            QString name = QString(i);
-            if (mActions[i]->isCheckable())
-            {
-                settings->setValue(name, mActions[i]->isChecked());
-            }
-        }
-    }
-
-
-    void BlendGraphViewWidget::LoadOptions(QSettings* settings)
-    {
-        const uint32 numOptions = NUM_OPTIONS;
-        for (uint32 i = 0; i < numOptions; ++i)
-        {
-            QString name = QString(i);
-            if (mActions[i]->isCheckable())
-            {
-                const bool isEnabled = settings->value(name, mActions[i]->isChecked()).toBool();
-                SetOptionFlag((EOptionFlag)i, isEnabled);
-            }
-        }
-    }
-
-
-
     void BlendGraphViewWidget::AlignNodes(uint32 mode)
     {
         NodeGraph* nodeGraph = mParentPlugin->GetGraphWidget()->GetActiveGraph();
-        if (nodeGraph == nullptr)
+        if (!nodeGraph)
         {
             return;
         }
 
-        EMotionFX::AnimGraph* animGraph = mParentPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
-        {
-            return;
-        }
-
-        uint32 i;
         int32 alignedXPos = 0;
         int32 alignedYPos = 0;
         int32 maxGraphNodeHeight = 0;
@@ -862,94 +552,98 @@ namespace EMStudio
 
         // iterate over all graph nodes
         bool firstSelectedNode = true;
-        const uint32 numNodes = nodeGraph->GetNumNodes();
-        for (i = 0; i < numNodes; ++i)
+        const QModelIndexList selectedItems = mParentPlugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
+        AZStd::vector<GraphNode*> alignedGraphNodes;
+
+        for (const QModelIndex& selected : selectedItems)
         {
-            // get the graph and the anim graph node
-            GraphNode*                  graphNode       = nodeGraph->GetNode(i);
-            EMotionFX::AnimGraphNode*  animGraphNode  = animGraph->RecursiveFindNodeByName(graphNode->GetName());
-            if (animGraphNode == nullptr)
+            if (selected.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::NODE)
             {
-                continue;
-            }
-
-            if (graphNode->GetIsSelected())
-            {
-                const int32 xPos            = animGraphNode->GetVisualPosX();
-                const int32 yPos            = animGraphNode->GetVisualPosY();
-                const int32 graphNodeHeight = graphNode->CalcRequiredHeight();
-                const int32 graphNodeWidth  = graphNode->CalcRequiredWidth();
-
-                if (firstSelectedNode)
+                GraphNode* graphNode = nodeGraph->FindGraphNode(selected);
+                if (graphNode) // otherwise it does not belong to the current active graph
                 {
-                    alignedXPos         = xPos;
-                    alignedYPos         = yPos;
-                    maxGraphNodeHeight  = graphNodeHeight;
-                    maxGraphNodeWidth   = graphNodeWidth;
-                    firstSelectedNode   = false;
-                }
+                    alignedGraphNodes.push_back(graphNode);
 
-                if (graphNodeHeight > maxGraphNodeHeight)
-                {
-                    maxGraphNodeHeight = graphNodeHeight;
-                }
+                    EMotionFX::AnimGraphNode* animGraphNode = selected.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                    const int32 xPos = animGraphNode->GetVisualPosX();
+                    const int32 yPos = animGraphNode->GetVisualPosY();
+                    const int32 graphNodeHeight = graphNode->CalcRequiredHeight();
+                    const int32 graphNodeWidth = graphNode->CalcRequiredWidth();
 
-                if (graphNodeWidth > maxGraphNodeWidth)
-                {
-                    maxGraphNodeWidth = graphNodeWidth;
-                }
-
-                switch (mode)
-                {
-                case SELECTION_ALIGNLEFT:
-                {
-                    if (xPos < alignedXPos)
+                    if (firstSelectedNode)
                     {
                         alignedXPos = xPos;
-                    }
-                    break;
-                }
-                case SELECTION_ALIGNRIGHT:
-                {
-                    if (xPos + graphNodeWidth > alignedXPos)
-                    {
-                        alignedXPos = xPos + graphNodeWidth;
-                    }
-                    break;
-                }
-                case SELECTION_ALIGNTOP:
-                {
-                    if (yPos < alignedYPos)
-                    {
                         alignedYPos = yPos;
+                        maxGraphNodeHeight = graphNodeHeight;
+                        maxGraphNodeWidth = graphNodeWidth;
+                        firstSelectedNode = false;
                     }
-                    break;
-                }
-                case SELECTION_ALIGNBOTTOM:
-                {
-                    if (yPos + graphNodeHeight > alignedYPos)
+
+                    if (graphNodeHeight > maxGraphNodeHeight)
                     {
-                        alignedYPos = yPos + graphNodeHeight;
+                        maxGraphNodeHeight = graphNodeHeight;
                     }
-                    break;
-                }
-                default:
-                    MCORE_ASSERT(false);
+
+                    if (graphNodeWidth > maxGraphNodeWidth)
+                    {
+                        maxGraphNodeWidth = graphNodeWidth;
+                    }
+
+                    switch (mode)
+                    {
+                    case SELECTION_ALIGNLEFT:
+                    {
+                        if (xPos < alignedXPos)
+                        {
+                            alignedXPos = xPos;
+                        }
+                        break;
+                    }
+                    case SELECTION_ALIGNRIGHT:
+                    {
+                        if (xPos + graphNodeWidth > alignedXPos)
+                        {
+                            alignedXPos = xPos + graphNodeWidth;
+                        }
+                        break;
+                    }
+                    case SELECTION_ALIGNTOP:
+                    {
+                        if (yPos < alignedYPos)
+                        {
+                            alignedYPos = yPos;
+                        }
+                        break;
+                    }
+                    case SELECTION_ALIGNBOTTOM:
+                    {
+                        if (yPos + graphNodeHeight > alignedYPos)
+                        {
+                            alignedYPos = yPos + graphNodeHeight;
+                        }
+                        break;
+                    }
+                    default:
+                        MCORE_ASSERT(false);
+                    }
                 }
             }
         }
 
-        // create the command group
-        AZStd::string command;
-        AZStd::string outResult;
-        MCore::CommandGroup commandGroup("Align anim graph nodes");
-
-        // iterate over all nodes
-        for (i = 0; i < numNodes; ++i)
+        if (alignedGraphNodes.size() > 1)
         {
-            GraphNode* node = nodeGraph->GetNode(i);
+            // create the command group
+            AZStd::string command;
+            AZStd::string outResult;
+            MCore::CommandGroup commandGroup("Align anim graph nodes");
 
-            if (node->GetIsSelected())
+            const QModelIndex& modelIndex = nodeGraph->GetModelIndex();
+            EMotionFX::AnimGraphNode* parentNode = modelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+            AZ_Assert(parentNode, "Expected the parent to be a node");
+            EMotionFX::AnimGraph* animGraph = parentNode->GetAnimGraph();
+
+            // iterate over all nodes
+            for (GraphNode* node : alignedGraphNodes)
             {
                 command = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" ", animGraph->GetID(), node->GetName());
 
@@ -973,10 +667,11 @@ namespace EMStudio
 
                 commandGroup.AddCommandString(command);
             }
-        }
 
-        // execute the group command
-        GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult);
+            // execute the group command
+            GetCommandManager()->ExecuteCommandGroup(commandGroup, outResult);
+        }
+        
     }
 
     void BlendGraphViewWidget::OnCreateAnimGraph()
@@ -1009,15 +704,14 @@ namespace EMStudio
                 }
             }
 
-            // get the motion set ID
-            const uint32 motionSetID = (motionSet) ? motionSet->GetID() : MCORE_INVALIDINDEX32;
-
-            // activate on each selected actor instance
-            for (uint32 i = 0; i < numActorInstances; ++i)
+            if (motionSet)
             {
-                EMotionFX::ActorInstance* actorInstance = selectionList.GetActorInstance(i);
-                m_tempString = AZStd::string::format("ActivateAnimGraph -actorInstanceID %d -animGraphID %%LASTRESULT%% -motionSetID %d", actorInstance->GetID(), motionSetID);
-                commandGroup.AddCommandString(m_tempString);
+                // Activate anim graph on all actor instances in case there is a motion set.
+                for (uint32 i = 0; i < numActorInstances; ++i)
+                {
+                    EMotionFX::ActorInstance* actorInstance = selectionList.GetActorInstance(i);
+                    commandGroup.AddCommandString(AZStd::string::format("ActivateAnimGraph -actorInstanceID %d -animGraphID %%LASTRESULT%% -motionSetID %d", actorInstance->GetID(), motionSet->GetID()));
+                }
             }
 
             AZStd::string result;
@@ -1040,48 +734,73 @@ namespace EMStudio
     void BlendGraphViewWidget::AlignRight()         { AlignNodes(SELECTION_ALIGNRIGHT); }
     void BlendGraphViewWidget::AlignTop()           { AlignNodes(SELECTION_ALIGNTOP); }
     void BlendGraphViewWidget::AlignBottom()        { AlignNodes(SELECTION_ALIGNBOTTOM); }
-    void BlendGraphViewWidget::ZoomSelected()       { mParentPlugin->FitActiveSelectionOnScreen(); }
 
+    void BlendGraphViewWidget::ZoomSelected()
+    { 
+        BlendGraphWidget* blendGraphWidget = mParentPlugin->GetGraphWidget();
+        if (blendGraphWidget)
+        {
+            NodeGraph* nodeGraph = blendGraphWidget->GetActiveGraph();
+            if (nodeGraph)
+            {
+                // try zooming on the selection rect
+                const QRect selectionRect = nodeGraph->CalcRectFromSelection(true);
+                if (selectionRect.isEmpty() == false)
+                {
+                    nodeGraph->ZoomOnRect(selectionRect, geometry().width(), blendGraphWidget->geometry().height(), true);
+                }
+                else // zoom on the full scene
+                {
+                    nodeGraph->FitGraphOnScreen(blendGraphWidget->geometry().width(), blendGraphWidget->geometry().height(), blendGraphWidget->GetMousePos(), true);
+                }
+            }
+        }
+    }
+
+    void BlendGraphViewWidget::OnActivateAnimGraph()
+    {
+        // Activate the anim graph for visual feedback of button click.
+        EMotionFX::MotionSet* motionSet = nullptr;
+        EMotionFX::AnimGraphEditorRequestBus::BroadcastResult(motionSet, &EMotionFX::AnimGraphEditorRequests::GetSelectedMotionSet);
+        if (!motionSet)
+        {
+            // In case no motion set was selected yet, use the first available. The activate graph callback will update the UI.
+            const AZ::u32 numMotionSets = EMotionFX::GetMotionManager().GetNumMotionSets();
+            for (AZ::u32 i = 0; i < numMotionSets; ++i)
+            {
+                EMotionFX::MotionSet* currentMotionSet = EMotionFX::GetMotionManager().GetMotionSet(i);
+                if (!currentMotionSet->GetIsOwnedByRuntime())
+                {
+                    motionSet = currentMotionSet;
+                    break;
+                }
+            }
+        }
+
+        EMotionFX::AnimGraph* animGraph = mParentPlugin->GetAnimGraphModel().GetFocusedAnimGraph();
+        if (animGraph)
+        {
+            mParentPlugin->GetActionManager().ActivateGraphForSelectedActors(animGraph, motionSet);
+        }
+    }
 
     void BlendGraphViewWidget::OnActivateState()
     {
-        NavigateWidget* navigateWidget = mParentPlugin->GetNavigateWidget();
-        BlendGraphWidget* blendGraphWidget = mParentPlugin->GetGraphWidget();
-        if (!navigateWidget || !blendGraphWidget)
-        {
-            return;
-        }
-
-        EMotionFX::AnimGraph* animGraph = GetSelectedAnimGraph();
-        NodeGraph* nodeGraph = blendGraphWidget->GetActiveGraph();
-        if (!nodeGraph || !animGraph)
-        {
-            return;
-        }
-
-        // Reactivate the anim graph for visual feedback of button click.
-        EMotionFX::MotionSet* motionSet = nullptr;
-        EMotionFX::AnimGraphEditorRequestBus::BroadcastResult(motionSet, &EMotionFX::AnimGraphEditorRequests::GetSelectedMotionSet);
-        ActivateAnimGraphToSelection(animGraph, motionSet);
-
         // Transition to the selected state.
-        EMotionFX::AnimGraphNode* selectedNode = blendGraphWidget->FindFirstSelectedAnimGraphNode();
-        if (selectedNode)
+        const QModelIndexList currentModelIndexes = mParentPlugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
+        if (!currentModelIndexes.empty())
         {
-            EMotionFX::AnimGraphNode* parentNode = selectedNode->GetParentNode();
-            if (parentNode && azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+            const QModelIndex currentModelIndex = currentModelIndexes.front();
+            const AnimGraphModel::ModelItemType itemType = currentModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+            if (itemType == AnimGraphModel::ModelItemType::NODE)
             {
-                EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
-
-                // For all selected actor instances that are running the given anim graph.
-                const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
-                const AZ::u32 numSelectedActorInstances = selectionList.GetNumSelectedActorInstances();
-                for (AZ::u32 i = 0; i < numSelectedActorInstances; ++i)
+                EMotionFX::AnimGraphNode* selectedNode = currentModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                EMotionFX::AnimGraphNode* parentNode = selectedNode->GetParentNode();
+                if (parentNode && azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
                 {
-                    EMotionFX::ActorInstance* actorInstance = selectionList.GetActorInstance(i);
-                    EMotionFX::AnimGraphInstance* animGraphInstance = actorInstance->GetAnimGraphInstance();
-
-                    if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
+                    EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
+                    EMotionFX::AnimGraphInstance* animGraphInstance = currentModelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_INSTANCE).value<EMotionFX::AnimGraphInstance*>();
+                    if (animGraphInstance)
                     {
                         stateMachine->TransitionToState(animGraphInstance, selectedNode);
                     }
@@ -1091,33 +810,27 @@ namespace EMStudio
     }
 
 
-    void BlendGraphViewWidget::NavigateForward()    { mParentPlugin->HistoryStepForward(); Update(); }
-    void BlendGraphViewWidget::NavigateBackward()   { mParentPlugin->HistoryStepBack(); Update(); }
-
-
     void BlendGraphViewWidget::NavigateToRoot()
     {
-        EMotionFX::AnimGraph* animGraph = mParentPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
+        const QModelIndex nodeModelIndex = mParentPlugin->GetGraphWidget()->GetActiveGraph()->GetModelIndex();
+        if (nodeModelIndex.isValid())
         {
-            return;
+            mParentPlugin->GetAnimGraphModel().Focus(nodeModelIndex);
         }
-
-        EMotionFX::AnimGraphNode* rootNode = nullptr;
-        mParentPlugin->GetNavigateWidget()->ShowGraph(rootNode, true);
     }
 
 
     void BlendGraphViewWidget::NavigateToParent()
     {
-        EMotionFX::AnimGraphNode* animGraphNode = mParentPlugin->GetGraphWidget()->GetCurrentNode();
-        if (animGraphNode == nullptr)
+        const QModelIndex parentFocus = mParentPlugin->GetAnimGraphModel().GetParentFocus();
+        if (parentFocus.isValid())
         {
-            return;
+            QModelIndex newParentFocus = parentFocus.model()->parent(parentFocus);
+            if (newParentFocus.isValid())
+            {
+                mParentPlugin->GetAnimGraphModel().Focus(newParentFocus);
+            }
         }
-
-        EMotionFX::AnimGraphNode* parentNode = animGraphNode->GetParentNode();
-        mParentPlugin->GetNavigateWidget()->ShowGraph(parentNode, true);
     }
 
     void BlendGraphViewWidget::ToggleNavigationPane()
@@ -1140,26 +853,14 @@ namespace EMStudio
 
     void BlendGraphViewWidget::NavigateToNode()
     {
-        EMotionFX::AnimGraphNode* animGraphNode = mParentPlugin->GetGraphWidget()->FindFirstSelectedAnimGraphNode();
-        if (animGraphNode == nullptr)
+        const QModelIndexList currentModelIndexes = mParentPlugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
+        if (!currentModelIndexes.empty())
         {
-            return;
+            const QModelIndex currentModelIndex = currentModelIndexes.front();
+            mParentPlugin->GetAnimGraphModel().Focus(currentModelIndex);
         }
-
-        mParentPlugin->GetNavigateWidget()->ShowGraph(animGraphNode, true);
     }
-
-
-    // toggle visualization of processed nodes and connections
-    /*void BlendGraphViewWidget::OnShowProcessed()
-    {
-        const bool showProcessed = !mParentPlugin->GetShowProcessed();
-        mParentPlugin->SetShowProcessed( showProcessed );
-
-        SetOptionFlag( SELECTION_SHOWPROCESSED, showProcessed );
-    }*/
-
-
+    
     // toggle playspeed viz
     void BlendGraphViewWidget::OnDisplayPlaySpeeds()
     {
@@ -1203,7 +904,7 @@ namespace EMStudio
         {
         case Qt::Key_Backspace:
         {
-            NavigateBackward();
+            mParentPlugin->GetNavigationHistory()->StepBackward();
             event->accept();
             break;
         }
@@ -1230,553 +931,6 @@ namespace EMStudio
         }
     }
 
-
-    //----------------------------------------------------------------------------------------------------------------------------------
-    // command callbacks
-    //----------------------------------------------------------------------------------------------------------------------------------
-
-    bool UpdateOpenMenuBlendGraphViewWidget()
-    {
-        EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(AnimGraphPlugin::CLASS_ID);
-        if (!plugin)
-        {
-            return false;
-        }
-
-        AnimGraphPlugin* animGraphPlugin = static_cast<AnimGraphPlugin*>(plugin);
-        BlendGraphViewWidget* blendGraphViewWidget = animGraphPlugin->GetViewWidget();
-
-        animGraphPlugin->RemoveAllUnusedGraphInfos();
-        blendGraphViewWidget->UpdateOpenMenu();
-        return true;
-    }
-
-
-    bool UpdateOpenMenuAndMotionSetBlendGraphViewWidget()
-    {
-        EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(AnimGraphPlugin::CLASS_ID);
-        if (!plugin)
-        {
-            return false;
-        }
-
-        AnimGraphPlugin* animGraphPlugin = static_cast<AnimGraphPlugin*>(plugin);
-        BlendGraphViewWidget* blendGraphViewWidget = animGraphPlugin->GetViewWidget();
-
-        animGraphPlugin->RemoveAllUnusedGraphInfos();
-        blendGraphViewWidget->UpdateOpenMenu();
-        EMotionFX::AnimGraphEditorNotificationBus::Broadcast(&EMotionFX::AnimGraphEditorNotifications::UpdateMotionSetComboBox);
-        return true;
-    }
-
-
-    bool UpdateAnimGraphPluginAfterActivate()
-    {
-        EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(AnimGraphPlugin::CLASS_ID);
-        if (!plugin)
-        {
-            return false;
-        }
-
-        AnimGraphPlugin*                animGraphPlugin = static_cast<AnimGraphPlugin*>(plugin);
-        animGraphPlugin->SetAnimGraphRunning(true);
-
-        BlendGraphViewWidget*           blendGraphViewWidget = animGraphPlugin->GetViewWidget();
-        EMStudio::ParameterWindow*      parameterWindow = animGraphPlugin->GetParameterWindow();
-        EMStudio::AttributesWindow*     attributesWindow = animGraphPlugin->GetAttributesWindow();
-        EMStudio::NodeGroupWindow*      nodeGroupWindow = animGraphPlugin->GetNodeGroupWidget();
-
-        animGraphPlugin->RemoveAllUnusedGraphInfos();
-        blendGraphViewWidget->UpdateOpenMenu();
-
-        animGraphPlugin->UpdateStateMachineColors();
-
-        parameterWindow->Init();
-        nodeGroupWindow->Init();
-        return true;
-    }
-
-
-    bool UpdateMotionSetComboBoxResourceWidget()
-    {
-        EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(AnimGraphPlugin::CLASS_ID);
-        if (!plugin)
-        {
-            return false;
-        }
-
-        AnimGraphPlugin* animGraphPlugin = static_cast<AnimGraphPlugin*>(plugin);
-        BlendGraphViewWidget* blendGraphViewWidget = animGraphPlugin->GetViewWidget();
-
-        EMotionFX::AnimGraphEditorNotificationBus::Broadcast(&EMotionFX::AnimGraphEditorNotifications::UpdateMotionSetComboBox);
-        return true;
-    }
-
-
-    bool BlendGraphViewWidget::CommandSaveAnimGraphCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandSaveAnimGraphCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateOpenMenuBlendGraphViewWidget(); }
-
-
-    bool BlendGraphViewWidget::CommandActivateAnimGraphCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphPluginAfterActivate(); }
-    bool BlendGraphViewWidget::CommandActivateAnimGraphCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateAnimGraphPluginAfterActivate(); }
-
-    bool BlendGraphViewWidget::CommandCreateAnimGraphCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(commandLine);
-        CommandSystem::CommandCreateAnimGraph* createAnimGraphCommand = static_cast<CommandSystem::CommandCreateAnimGraph*>(command);
-        EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().FindAnimGraphByID(createAnimGraphCommand->mPreviouslyUsedID);
-        GetOutlinerManager()->AddItemToCategory("Anim Graphs", animGraph->GetID(), animGraph);
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandCreateAnimGraphCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateOpenMenuBlendGraphViewWidget(); }
-
-
-    bool BlendGraphViewWidget::CommandRemoveAnimGraphCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(commandLine);
-        CommandSystem::CommandRemoveAnimGraph* removeAnimGraphCommand = static_cast<CommandSystem::CommandRemoveAnimGraph*>(command);
-        for (const AZStd::pair<AZStd::string, uint32>& oldFilenameAndIds : removeAnimGraphCommand->m_oldFileNamesAndIds)
-        {
-            GetOutlinerManager()->RemoveItemFromCategory("Anim Graphs", oldFilenameAndIds.second);
-        }
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandRemoveAnimGraphCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateOpenMenuBlendGraphViewWidget(); }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAddConditionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAddConditionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveConditionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveConditionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphCreateConnectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphCreateConnectionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveConnectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveConnectionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustConnectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustConnectionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphCreateNodeCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphCreateNodeCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustNodeCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustNodeCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveNodeCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveNodeCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphSetEntryStateCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphSetEntryStateCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAddNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAddNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveNodeGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveNodeGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphCreateParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphCreateParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustParameterCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustParameterCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphSwapParametersCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphSwapParametersCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustParameterGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAdjustParameterGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAddParameterGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphAddParameterGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveParameterGroupCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandAnimGraphRemoveParameterGroupCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
-        return UpdateOpenMenuBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandSelectCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        if (CommandSystem::CheckIfHasAnimGraphSelectionParameter(commandLine) == false && CommandSystem::CheckIfHasActorSelectionParameter(commandLine) == false)
-        {
-            return true;
-        }
-        return UpdateOpenMenuAndMotionSetBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandSelectCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        if (CommandSystem::CheckIfHasAnimGraphSelectionParameter(commandLine) == false && CommandSystem::CheckIfHasActorSelectionParameter(commandLine) == false)
-        {
-            return true;
-        }
-        return UpdateOpenMenuAndMotionSetBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandUnselectCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        if (CommandSystem::CheckIfHasAnimGraphSelectionParameter(commandLine) == false && CommandSystem::CheckIfHasActorSelectionParameter(commandLine) == false)
-        {
-            return true;
-        }
-        return UpdateOpenMenuAndMotionSetBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandUnselectCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        if (CommandSystem::CheckIfHasAnimGraphSelectionParameter(commandLine) == false)
-        {
-            return true;
-        }
-        return UpdateOpenMenuAndMotionSetBlendGraphViewWidget();
-    }
-
-
-    bool BlendGraphViewWidget::CommandClearSelectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateOpenMenuAndMotionSetBlendGraphViewWidget(); }
-    bool BlendGraphViewWidget::CommandClearSelectionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateOpenMenuAndMotionSetBlendGraphViewWidget(); }
-
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////
-    // Motion set related callbacks
-    //////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    bool BlendGraphViewWidget::CommandAdjustMotionSetCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        if (commandLine.CheckIfHasParameter("newName"))
-        {
-            return UpdateMotionSetComboBoxResourceWidget();
-        }
-        return true;
-    }
-    bool BlendGraphViewWidget::CommandAdjustMotionSetCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
-    {
-        MCORE_UNUSED(command);
-        if (commandLine.CheckIfHasParameter("newName"))
-        {
-            return UpdateMotionSetComboBoxResourceWidget();
-        }
-        return true;
-    }
-    bool BlendGraphViewWidget::CommandCreateMotionSetCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateMotionSetComboBoxResourceWidget(); }
-    bool BlendGraphViewWidget::CommandCreateMotionSetCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateMotionSetComboBoxResourceWidget(); }
-    bool BlendGraphViewWidget::CommandRemoveMotionSetCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateMotionSetComboBoxResourceWidget(); }
-    bool BlendGraphViewWidget::CommandRemoveMotionSetCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateMotionSetComboBoxResourceWidget(); }
-    bool BlendGraphViewWidget::CommandSaveMotionSetCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateMotionSetComboBoxResourceWidget(); }
-    bool BlendGraphViewWidget::CommandSaveMotionSetCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateMotionSetComboBoxResourceWidget(); }
-    bool BlendGraphViewWidget::CommandLoadMotionSetCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateMotionSetComboBoxResourceWidget(); }
-    bool BlendGraphViewWidget::CommandLoadMotionSetCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine) { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateMotionSetComboBoxResourceWidget(); }
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendGraphViewWidget.moc>

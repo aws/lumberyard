@@ -12,9 +12,11 @@
 --
 ----------------------------------------------------------------------------------------------------
 
-g_timelineCounter = 0
-g_animationCallbackCounter = 0
-g_animationCallbacks = {}
+if g_timelineCounter == nil then
+	g_timelineCounter = 0
+	g_animationCallbackCounter = 0
+	g_animationCallbacks = {}
+end
 
 local ScriptedEntityTweener = {}
 
@@ -25,6 +27,9 @@ function ScriptedEntityTweener:OnActivate()
 			--UI Related
 			["opacity"] = {"UiFaderComponent", "Fade" },
 			["imgColor"] = {"UiImageComponent", "Color" },
+			["imgAlpha"] = {"UiImageComponent", "Alpha" },
+			["imgFill"] = {"UiImageComponent", "FillAmount" },
+			["imgFillAngle"] = {"UiImageComponent", "RadialFillStartAngle" },
 			["layoutMinWidth"] = {"UiLayoutCellComponent", "MinWidth" },
 			["layoutMinHeight"] = {"UiLayoutCellComponent", "MinHeight" },
 			["layoutTargetWidth"] = {"UiLayoutCellComponent", "TargetWidth" },
@@ -110,6 +115,26 @@ function ScriptedEntityTweener:OnActivate()
 			--]]
 			--Add any more custom shortcuts here,  [string] = { ComponentName, VirtualProperty }
 		}
+		self.animationEaseMethodShortcuts = 
+		{
+			["Linear"] = ScriptedEntityTweenerEasingMethod_Linear,
+			["Quad"] = ScriptedEntityTweenerEasingMethod_Quad,
+			["Cubic"] = ScriptedEntityTweenerEasingMethod_Cubic,
+			["Quart"] = ScriptedEntityTweenerEasingMethod_Quart,
+			["Quint"] = ScriptedEntityTweenerEasingMethod_Quint,
+			["Sine"] = ScriptedEntityTweenerEasingMethod_Sine,
+			["Expo"] = ScriptedEntityTweenerEasingMethod_Expo,
+			["Circ"] = ScriptedEntityTweenerEasingMethod_Circ,
+			["Elastic"] = ScriptedEntityTweenerEasingMethod_Elastic,
+			["Back"] = ScriptedEntityTweenerEasingMethod_Back,
+			["Bounce"] = ScriptedEntityTweenerEasingMethod_Bounce,
+		}
+		self.animationEaseTypeShortcuts = 
+		{
+			[1] = {"InOut", ScriptedEntityTweenerEasingType_InOut},
+			[2] = {"In", ScriptedEntityTweenerEasingType_In},
+			[3] = {"Out", ScriptedEntityTweenerEasingType_Out},
+		}
 		self.tweenerNotificationHandler = ScriptedEntityTweenerNotificationBus.Connect(self)
 		self.tickBusHandler = TickBus.Connect(self)
 		self.activationCount = 0
@@ -130,22 +155,74 @@ function ScriptedEntityTweener:OnDeactivate()
 	end
 end
 
-function ScriptedEntityTweener:StartAnimation(args)
+function ScriptedEntityTweener:Stop(id)
+	ScriptedEntityTweenerBus.Broadcast.Stop(0, id)
+end
+
+function ScriptedEntityTweener:Set(id, args)
+	self:StartAnimation(id, 0, args)
+end
+
+function ScriptedEntityTweener:Play(id, duration, args, toArgs)
+	self:StartAnimation(id, duration, args, toArgs)
+end
+
+function ScriptedEntityTweener:StartAnimation(id, duration, args, toArgs)
 	if self.animationParameterShortcuts == nil then
 		Debug.Log("ScriptedEntityTweener: Make sure to call OnActivate() and OnDeactivate() for this table when requiring this file")
 		return
 	end
-
+	if type(id) == "table" and duration == nil and args == nil and toArgs == nil then
+		--Legacy support for old API, where it was just one table passed in containing args and duration
+		args = id
+	else
+		args.id = id
+		args.duration = duration
+	end
 	if self:ValidateAnimationParameters(args) == false then
 		return
+	end
+	if toArgs then
+		--Optional toArgs, if specified, will make args behave as a Set call, before starting the animation specified in toArgs
+		self:Set(id, args)
+		self:Play(id, duration, toArgs)
+		return
+	end
+	
+	local easeMethod = args.easeMethod
+	local easeType = args.easeType
+	if args.ease then
+		--Parse shortcut ease parameter
+		if args.easeMethod then
+			Debug.Log("ScriptedEntityTweener: Warning, easeMethod will be overriden by ease parameter")
+		end
+		if args.easeType then
+			Debug.Log("ScriptedEntityTweener: Warning, easeType will be overriden by ease parameter")
+		end
+		
+		for easeName, easeValue in pairs(self.animationEaseMethodShortcuts) do
+			if string.match(args.ease, easeName) then
+				easeMethod = easeValue
+				break
+			end
+		end
+		
+		for i,easeTypeData in ipairs(self.animationEaseTypeShortcuts) do
+			local easeStr = easeTypeData[1]
+			--if ease contains this easeStr, use this type
+			if string.match(args.ease, easeStr) then
+				easeType = easeTypeData[2]
+				break
+			end
+		end
 	end
 
 	local optionalParams = 
 	{
 		timeIntoTween = args.timeIntoTween or 0, --Example: If timeIntoTween = 0.5 and duration = 1, the animation will instantly set the animation to 50% complete.
 		duration = args.duration or 0,
-		easeMethod = args.easeMethod or ScriptedEntityTweenerEasingMethod_Linear,
-		easeType =  args.easeType or ScriptedEntityTweenerEasingType_Out,
+		easeMethod = easeMethod or ScriptedEntityTweenerEasingMethod_Linear,
+		easeType =  easeType or ScriptedEntityTweenerEasingType_Out,
 		delay = args.delay or 0.0,
 		timesToPlay = args.timesToPlay or 1,
 		isFrom = args.isFrom,
@@ -218,8 +295,12 @@ function ScriptedEntityTweener:ValidateAnimationParameters(args)
 		return false
 	end
 	if args.id == nil then
-		Debug.Log("ScriptedEntityTweener: animation with no id specified" .. args)
+		Debug.Log("ScriptedEntityTweener: animation with no id specified " .. args)
 		return false
+	end
+	if not args.id:IsValid() then
+		--Fail silently
+		return
 	end
 	return true
 end
@@ -277,7 +358,16 @@ end
 
 function ScriptedEntityTweener:OnTick(deltaTime, timePoint)
 	for timelineId, timeline in pairs(self.timelineRefs) do
-		timeline.currentSeekTime = timeline.currentSeekTime + deltaTime
+		if (timeline.isPaused == false and timeline.playingSpeed ~= 0) then
+			timeline.currentSeekTime = timeline.currentSeekTime + deltaTime * timeline.playingSpeed
+			if (timeline.playingSpeed > 0 and timeline.currentSeekTime >= timeline.duration) then
+				timeline.currentSeekTime = timeline.duration
+				timeline.playingSpeed = 0
+			elseif (timeline.playingSpeed < 0 and timeline.currentSeekTime <= 0) then
+				timeline.currentSeekTime = 0
+				timeline.playingSpeed = 0
+			end
+		end
 	end
 end
 
@@ -294,14 +384,15 @@ function ScriptedEntityTweener:TimelineCreate()
 	timeline.isPaused = false
 	timeline.timelineId = self:GetUniqueTimelineId()
 	timeline.currentSeekTime = 0
+	timeline.playingSpeed = 0 -- 0 when not playing, >0 when playing forward, <0 when playing backwards
 	
 	--Gets the duration of a specific animation
 	timeline.GetDurationOfAnim = function(timelineSelf, animParams)
-		return ((animParams.duration or 0) - (animParams.timeIntoTween or 0))+ (animParams.delay or 0)
+		return ((animParams.duration or 0) - (animParams.timeIntoTween or 0)) + (animParams.delay or 0)
 	end
 	
 	--Timeline configuration functions
-	timeline.Add = function(timelineSelf, animParams, timelineParams)
+	timeline.Add = function(timelineSelf, id, duration, animParams, timelineParams)
 		--Timeline is a collection of animations
 		--Operations like play, pause, reverse, etc
 		--    Any animation is automatically added to the end of the animation.
@@ -314,6 +405,14 @@ function ScriptedEntityTweener:TimelineCreate()
 			return
 		end
 		
+		if type(id) == "table" and (duration == nil or type(duration) == "table") and animParams == nil and timelineParams == nil then
+			--Legacy support for old API, where the animParams table already contained id and duration
+			animParams = id
+			timelineParams = duration
+		else
+			animParams.id = id
+			animParams.duration = duration
+		end
 		if self:ValidateAnimationParameters(animParams) == false then
 			Debug.Log("ScriptedEntityTweener:TimelineAdd invalid animation parameters for timline uuid " .. animParams)
 			return
@@ -355,7 +454,11 @@ function ScriptedEntityTweener:TimelineCreate()
 		end
 		
 		timelineSelf.animations[#timelineSelf.animations + 1] = animParams
-		timelineSelf.duration = timelineSelf.duration + timelineSelf:GetDurationOfAnim(animParams)
+		
+		local animEndTime = animParams.timelineParams.initialStartTime + timelineSelf:GetDurationOfAnim(animParams)
+		if animEndTime > timelineSelf.duration then
+			timelineSelf.duration = animEndTime
+		end
 		
 		table.sort(timelineSelf.animations, 
 			function(first, second)
@@ -379,7 +482,7 @@ function ScriptedEntityTweener:TimelineCreate()
 			Debug.Log("Warning: TimelineLabel: label " .. labelId .. " already exists")
 		end
 		
-		timeline.labels[labelId] = labelTime
+		timelineSelf.labels[labelId] = labelTime
 	end
 	
 	--Timeline control functions
@@ -398,23 +501,35 @@ function ScriptedEntityTweener:TimelineCreate()
 		timelineSelf:Seek(startTime)
 	end
 	
-	
-	timeline.Pause = function(timelineSelf)
-		timelineSelf.isPaused = true
+	timeline.Stop = function(timelineSelf)
+		timelineSelf.playingSpeed = 0
+		timelineSelf.isPaused = false
 		for i=1, #timelineSelf.animations do
 			local animParams = timelineSelf.animations[i]
-			for componentData, paramTarget in pairs(animParams.virtualProperties) do
-				ScriptedEntityTweenerBus.Broadcast.Pause(timelineSelf.timelineId, animParams.id, componentData[1], componentData[2])
+			ScriptedEntityTweenerBus.Broadcast.Stop(timelineSelf.timelineId, animParams.id)
+		end
+	end
+	
+	timeline.Pause = function(timelineSelf)
+		if timelineSelf.isPaused == false then
+			timelineSelf.isPaused = true
+			for i=1, #timelineSelf.animations do
+				local animParams = timelineSelf.animations[i]
+				for componentData, paramTarget in pairs(animParams.virtualProperties) do
+					ScriptedEntityTweenerBus.Broadcast.Pause(timelineSelf.timelineId, animParams.id, componentData[1], componentData[2])
+				end
 			end
 		end
 	end
 	
 	timeline.Resume = function(timelineSelf)
-		timelineSelf.isPaused = false
-		for i=1, #timelineSelf.animations do
-			local animParams = timelineSelf.animations[i]
-			for componentData, paramTarget in pairs(animParams.virtualProperties) do
-				ScriptedEntityTweenerBus.Broadcast.Resume(timelineSelf.timelineId, animParams.id, componentData[1], componentData[2])
+		if timelineSelf.isPaused == true then
+			timelineSelf.isPaused = false
+			for i=1, #timelineSelf.animations do
+				local animParams = timelineSelf.animations[i]
+				for componentData, paramTarget in pairs(animParams.virtualProperties) do
+					ScriptedEntityTweenerBus.Broadcast.Resume(timelineSelf.timelineId, animParams.id, componentData[1], componentData[2])
+				end
 			end
 		end
 	end
@@ -433,6 +548,16 @@ function ScriptedEntityTweener:TimelineCreate()
 			seekTime = timelineSelf.labels[seekTime] or 0
 		end
 		
+		if seekTime < 0 then
+			seekTime = 0
+		elseif seekTime > timelineSelf.duration then
+			seekTime = timelineSelf.duration
+		end
+		
+		timelineSelf:Stop()
+		timelineSelf.isPaused = false
+		timelineSelf.playingSpeed = 1
+		
 		--Go through each animation in the timeline and configure them to play as appropriate
 		timelineSelf.currentSeekTime = seekTime
 		
@@ -441,7 +566,10 @@ function ScriptedEntityTweener:TimelineCreate()
 			local animParams = timelineSelf.animations[i]
 			
 			local prevCompletionState = runningDuration < seekTime
-			runningDuration = runningDuration + timelineSelf:GetDurationOfAnim(animParams)
+			local animEndTime = animParams.timelineParams.initialStartTime + timelineSelf:GetDurationOfAnim(animParams)
+			if animEndTime > runningDuration then
+				runningDuration = animEndTime
+			end
 			local currentCompletionState = runningDuration < seekTime
 			
 			timelineSelf:ResetRuntimeVars(animParams)
@@ -473,13 +601,47 @@ function ScriptedEntityTweener:TimelineCreate()
 			seekTime = timelineSelf.currentSeekTime
 		end
 		
+		if seekTime < 0 then
+			seekTime = 0
+		elseif seekTime > timelineSelf.duration then
+			seekTime = timelineSelf.duration
+		end
+		
+		-- Check if timeline needs to seek first
+		local seekNeeded = false
+		if seekTime > timelineSelf.currentSeekTime then
+			-- Only animations that have already played or are currently playing can be played backwards
+			seekNeeded = true
+		elseif (seekTime > 0 and seekTime < timelineSelf.duration) then
+			if (timelineSelf.playingSpeed == 0 or seekTime ~= timelineSelf.currentSeekTime) then
+				-- In order for playback to work correctly, an animation that is partially completed needs to
+				-- already be added to the tweener, and that animation needs to start playing from the same time
+				-- into the animation
+				seekNeeded = true
+			end
+		end
+
+		if seekNeeded == true then
+			timelineSelf:Seek(seekTime)
+		else
+			timelineSelf.currentSeekTime = seekTime
+		end
+				
+		if timelineSelf.isPaused then
+			timelineSelf:Resume()
+		end
+		timelineSelf.playingSpeed = -1
+		
 		local animsToPlay = {}
 		
 		local runningDuration = 0
 		for i=1, #timelineSelf.animations do
 			local animParams = timelineSelf.animations[i]
 			
-			runningDuration = runningDuration + timelineSelf:GetDurationOfAnim(animParams)
+			local animEndTime = animParams.timelineParams.initialStartTime + timelineSelf:GetDurationOfAnim(animParams)
+			if animEndTime > runningDuration then
+				runningDuration = animEndTime
+			end
 			
 			timelineSelf:ResetRuntimeVars(animParams)
 			
@@ -488,9 +650,7 @@ function ScriptedEntityTweener:TimelineCreate()
 				animParams.timelineParams.timeIntoTween = timelineSelf:GetDurationOfAnim(animParams)
 				animParams.timelineParams.seekDelayOverride = seekTime - runningDuration
 				animParams.timelineParams.reversePlaybackOverride = true
-				if not timelineSelf.isPaused then
-					animsToPlay[#animsToPlay + 1] = animParams
-				end
+				animsToPlay[#animsToPlay + 1] = animParams
 			else
 				--Current animation is either partially complete or hasn't been played
 				for componentData, paramTarget in pairs(animParams.virtualProperties) do
@@ -521,11 +681,21 @@ function ScriptedEntityTweener:TimelineCreate()
 	end
 	
 	timeline.SetSpeed = function(timelineSelf, multiplier)
-		for i=1, #timelineSelf.animations do
-			local animParams = timelineSelf.animations[i]
-			for componentData, paramTarget in pairs(animParams.virtualProperties) do
-				ScriptedEntityTweenerBus.Broadcast.SetSpeed(timelineSelf.timelineId, animParams.id, componentData[1], componentData[2], multiplier)
+		if multiplier > 0 then
+			if timelineSelf.playingSpeed > 0 then
+				timelineSelf.playingSpeed = multiplier
+			elseif timelineSelf.playingSpeed < 0 then
+				timelineSelf.playingSpeed = -multiplier
 			end
+			
+			for i=1, #timelineSelf.animations do
+				local animParams = timelineSelf.animations[i]
+				for componentData, paramTarget in pairs(animParams.virtualProperties) do
+					ScriptedEntityTweenerBus.Broadcast.SetSpeed(timelineSelf.timelineId, animParams.id, componentData[1], componentData[2], multiplier)
+				end
+			end
+		else
+			Debug.Log("ScriptedEntityTweener: Warning, SetSpeed multiplier must be greater than 0")
 		end
 	end
 	
@@ -533,6 +703,14 @@ function ScriptedEntityTweener:TimelineCreate()
 	timeline.SetCompletion = function(timelineSelf, percentage)
 		timelineSelf:Seek(timelineSelf.duration * percentage)
 	end
+	
+	timeline.GetCurrentSeekTime = function(timelineSelf)
+		return timelineSelf.currentSeekTime
+	end
+	
+	timeline.GetDuration = function(timelineSelf)
+		return timelineSelf.duration
+	end	
 	
 	self.timelineRefs[timeline.timelineId] = timeline
 	
@@ -556,13 +734,16 @@ function ScriptedEntityTweener:OnTimelineAnimationStart(timelineId, animUuid, ad
 		if animParams.timelineParams.uuidOverride == animUuid then
 			for componentData, paramTarget in pairs(animParams.virtualProperties) do
 				if componentData[1] == addressComponentName and componentData[2] == addressPropertyName then
-					animParams.timelineParams.initialValues[componentData] = ScriptedEntityTweenerBus.Broadcast.GetVirtualPropertyValue(animParams.id, componentData[1], componentData[2])
+					if animParams.duration == 0 or animParams.isFrom == true then
+						animParams.timelineParams.initialValues[componentData] = paramTarget
+					else
+						animParams.timelineParams.initialValues[componentData] = ScriptedEntityTweenerBus.Broadcast.GetVirtualPropertyValue(animParams.id, componentData[1], componentData[2])
+					end
 					break
 				end
 			end
 		end
 	end
-	
 end 
 
 return ScriptedEntityTweener

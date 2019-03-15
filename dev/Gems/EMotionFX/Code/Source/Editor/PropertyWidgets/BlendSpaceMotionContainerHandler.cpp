@@ -516,10 +516,10 @@ namespace EMotionFX
                 BlendSpaceNode::BlendSpaceMotion* blendSpaceMotion = &m_motions[i];
                 BlendSpaceMotionWidget* motionWidget = new BlendSpaceMotionWidget(blendSpaceMotion, motionsLayout, static_cast<int>(i));
 
-                connect(motionWidget->m_spinboxX, SIGNAL(valueChanged(double)), this, SLOT(OnPositionXChanged(double)));
+                connect(motionWidget->m_spinboxX, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &EMotionFX::BlendSpaceMotionContainerWidget::OnPositionXChanged);
                 if (motionWidget->m_spinboxY)
                 {
-                    connect(motionWidget->m_spinboxY, SIGNAL(valueChanged(double)), this, SLOT(OnPositionYChanged(double)));
+                    connect(motionWidget->m_spinboxY, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &EMotionFX::BlendSpaceMotionContainerWidget::OnPositionYChanged);
                 }
                 connect(motionWidget->m_restoreButton, &QPushButton::clicked, this, &BlendSpaceMotionContainerWidget::OnRestorePosition);
                 connect(motionWidget->m_removeButton, &QPushButton::clicked, [this, blendSpaceMotion]()

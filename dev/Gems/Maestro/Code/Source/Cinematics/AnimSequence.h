@@ -112,7 +112,6 @@ public:
     void Animate(const SAnimContext& ec);
     void Render();
 
-    void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bLoadEmptyTracks = true, uint32 overrideId = 0, bool bResetLightAnimSet = false);
     void InitPostLoad() override;
 
     void CopyNodes(XmlNodeRef& xmlNode, IAnimNode** pSelectedNodes, uint32 count);

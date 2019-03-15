@@ -40,6 +40,8 @@ namespace AZ
         : public ComponentBus
     {
     public:
+        AZ_RTTI(TransformInterface, "{8DD8A4E2-7F61-4A36-9169-A31F03E25FEB}");
+
         //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides - application is a singleton.
         /**
@@ -604,6 +606,14 @@ namespace AZ
         */
         virtual void OnStaticChanged( bool /*isStatic*/) { }
 
+        /**
+         * Called right before a parent change, to allow listeners to prevent the entity's parent from changing.
+         * @param parentCanChange A reference used to track if the parent can change. A result parameter is used
+         *                        instead of a return value because this is a multi-handler.
+         * @param oldParent The entity ID of the old parent. The entity ID is invalid if there was no old parent.
+         * @param newParent The entity ID of the new parent. The entity ID is invalid if there is no new parent.
+        */
+        virtual void CanParentChange(bool &parentCanChange, EntityId oldParent, EntityId newParent) { (void)parentCanChange; (void)oldParent; (void)newParent; }
 
         /**
          * Signals that the parent of the entity changed.
@@ -800,6 +810,7 @@ namespace AZ
     typedef AZ::EBus<TransformHierarchyInformation> TransformHierarchyInformationBus;
 
     /// @endcond
+
 }
 
 /// @deprecated Use AZ::EditorTransformComponentTypeId.

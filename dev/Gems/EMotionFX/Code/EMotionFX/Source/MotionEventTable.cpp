@@ -18,6 +18,8 @@
 #include "EventHandler.h"
 #include <EMotionFX/Source/Allocators.h>
 
+#include <AzCore/Serialization/SerializeContext.h>
+
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(MotionEventTable, MotionEventAllocator, 0)
@@ -26,9 +28,8 @@ namespace EMotionFX
     // constructor
     MotionEventTable::MotionEventTable()
         : BaseObject()
+        , m_syncTrack(nullptr)
     {
-        mTracks.SetMemoryCategory(EMFX_MEMCATEGORY_EVENTS);
-        mSyncTrack = nullptr;
     }
 
 
@@ -39,26 +40,41 @@ namespace EMotionFX
     }
 
 
-    // creation
-    MotionEventTable* MotionEventTable::Create()
+    void MotionEventTable::Reflect(AZ::ReflectContext* context)
     {
-        return aznew MotionEventTable();
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<MotionEventTable>()
+            ->Version(1)
+            ->Field("tracks", &MotionEventTable::m_tracks)
+            ;
     }
 
+    void MotionEventTable::InitAfterLoading(Motion* motion)
+    {
+        for (MotionEventTrack* track : m_tracks)
+        {
+            track->SetMotion(motion);
+        }
+
+        motion->SetEventTable(this);
+        AutoCreateSyncTrack(motion);
+    }
 
     // process all events within a given time range
-    void MotionEventTable::ProcessEvents(float startTime, float endTime, ActorInstance* actorInstance, MotionInstance* motionInstance) const
+    void MotionEventTable::ProcessEvents(float startTime, float endTime, MotionInstance* motionInstance) const
     {
         // process all event tracks
-        const uint32 numTracks = mTracks.GetLength();
-        for (uint32 t = 0; t < numTracks; ++t)
+        for (MotionEventTrack* track : m_tracks)
         {
-            MotionEventTrack* track = mTracks[t];
-
             // process the track's events
             if (track->GetIsEnabled())
             {
-                track->ProcessEvents(startTime, endTime, actorInstance, motionInstance);
+                track->ProcessEvents(startTime, endTime, motionInstance);
             }
         }
     }
@@ -68,11 +84,8 @@ namespace EMotionFX
     void MotionEventTable::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const
     {
         // iterate over all tracks
-        const uint32 numTracks = mTracks.GetLength();
-        for (uint32 t = 0; t < numTracks; ++t)
+        for (MotionEventTrack* track : m_tracks)
         {
-            MotionEventTrack* track = mTracks[t];
-
             // process the track's events
             if (track->GetIsEnabled())
             {
@@ -89,76 +102,75 @@ namespace EMotionFX
         // remove the tracks from memory if we want to
         if (delFromMem)
         {
-            const uint32 numTracks = mTracks.GetLength();
-            for (uint32 i = 0; i < numTracks; ++i)
+            for (MotionEventTrack* track : m_tracks)
             {
-                mTracks[i]->Destroy();
+                track->Destroy();
             }
         }
 
-        mTracks.Clear();
+        m_tracks.clear();
     }
 
 
     // remove a specific track
-    void MotionEventTable::RemoveTrack(uint32 index, bool delFromMem)
+    void MotionEventTable::RemoveTrack(size_t index, bool delFromMem)
     {
         if (delFromMem)
         {
-            mTracks[index]->Destroy();
+            m_tracks[index]->Destroy();
         }
 
-        mTracks.Remove(index);
+        m_tracks.erase(AZStd::next(m_tracks.begin(), index));
     }
 
 
     // add a new track
     void MotionEventTable::AddTrack(MotionEventTrack* track)
     {
-        mTracks.Add(track);
+        m_tracks.emplace_back(track);
     }
 
 
     // insert a track
-    void MotionEventTable::InsertTrack(uint32 index, MotionEventTrack* track)
+    void MotionEventTable::InsertTrack(size_t index, MotionEventTrack* track)
     {
-        mTracks.Insert(index, track);
+        m_tracks.insert(AZStd::next(m_tracks.begin(), index), track);
     }
 
 
     // reserve space for a given amount of tracks to prevent re-allocs
-    void MotionEventTable::ReserveNumTracks(uint32 numTracks)
+    void MotionEventTable::ReserveNumTracks(size_t numTracks)
     {
-        mTracks.Reserve(numTracks);
+        m_tracks.reserve(numTracks);
     }
 
 
     // find a track by its name
-    uint32 MotionEventTable::FindTrackIndexByName(const char* trackName) const
+    AZ::Outcome<size_t> MotionEventTable::FindTrackIndexByName(const char* trackName) const
     {
-        const uint32 numTracks = mTracks.GetLength();
-        for (uint32 i = 0; i < numTracks; ++i)
+        const size_t numTracks = m_tracks.size();
+        for (size_t i = 0; i < numTracks; ++i)
         {
-            if (mTracks[i]->GetNameString() == trackName)
+            if (m_tracks[i]->GetNameString() == trackName)
             {
-                return i;
+                return AZ::Success(i);
             }
         }
 
-        return MCORE_INVALIDINDEX32;
+        return AZ::Failure();
     }
 
 
     // find a track name
     MotionEventTrack* MotionEventTable::FindTrackByName(const char* trackName) const
     {
-        const uint32 trackIndex = FindTrackIndexByName(trackName);
-        if (trackIndex == MCORE_INVALIDINDEX32)
+        const AZ::Outcome<size_t> trackIndex = FindTrackIndexByName(trackName);
+        if (!trackIndex.IsSuccess())
         {
             return nullptr;
         }
 
-        return mTracks[trackIndex];
+        return m_tracks[trackIndex.GetValue()];
     }
 
 
@@ -169,15 +181,14 @@ namespace EMotionFX
         targetTable->RemoveAllTracks();
 
         // copy over the tracks
-        const uint32 numTracks = mTracks.GetLength();
-        targetTable->ReserveNumTracks(numTracks); // pre-alloc space
-        for (uint32 i = 0; i < numTracks; ++i)
+        targetTable->ReserveNumTracks(m_tracks.size()); // pre-alloc space
+        for (const MotionEventTrack* track : m_tracks)
         {
             // create the new track
             MotionEventTrack* newTrack = MotionEventTrack::Create(targetTableMotion);
 
             // copy its contents
-            mTracks[i]->CopyTo(newTrack);
+            track->CopyTo(newTrack);
 
             // add the new track to the target
             targetTable->AddTrack(newTrack);
@@ -189,18 +200,24 @@ namespace EMotionFX
     void MotionEventTable::AutoCreateSyncTrack(Motion* motion)
     {
         // check if the sync track is already there, if not create it
-        MotionEventTrack* syncTrack = FindTrackByName("Sync");
-        if (syncTrack == nullptr)
+        MotionEventTrack* track = FindTrackByName("Sync");
+        AnimGraphSyncTrack* syncTrack;
+        if (!track)
         {
             // create and add the sync track
-            syncTrack = MotionEventTrack::Create("Sync", motion);
+            syncTrack = aznew AnimGraphSyncTrack("Sync", motion);
             AddTrack(syncTrack);
+        }
+        else
+        {
+            syncTrack = static_cast<AnimGraphSyncTrack*>(track);
+            AZ_Assert(syncTrack, "Unable to cast MotionEventTrack named \"Sync\" to AnimGraphSyncTrack*!");
         }
 
         // make the sync track undeletable
         syncTrack->SetIsDeletable(false);
 
         // set the sync track shortcut
-        mSyncTrack = syncTrack;
+        m_syncTrack = syncTrack;
     }
 } // namespace EMotionFX

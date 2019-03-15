@@ -128,6 +128,8 @@ void DeployWorkerBase::Run()
 
 void DeployWorkerBase::StartBuildAndDeploy()
 {
+    DeployTool::Notifications::Bus::Broadcast(&DeployTool::Notifications::DeployProcessStatusChange, "Building");
+
     QObject::disconnect(m_finishedConnection);
 
     m_finishedConnection = QObject::connect(m_wafProcess,
@@ -150,6 +152,8 @@ void DeployWorkerBase::StartBuildAndDeploy()
 
 void DeployWorkerBase::StartDeploy()
 {
+    DeployTool::Notifications::Bus::Broadcast(&DeployTool::Notifications::DeployProcessStatusChange, "Deploying");
+
     QObject::disconnect(m_finishedConnection);
 
     m_finishedConnection = QObject::connect(m_wafProcess,

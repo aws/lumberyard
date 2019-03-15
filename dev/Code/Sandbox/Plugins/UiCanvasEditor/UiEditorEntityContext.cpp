@@ -17,6 +17,7 @@
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/Component/ComponentExport.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/IO/FileIO.h>
@@ -29,11 +30,14 @@
 #include <AzFramework/Entity/GameEntityContextBus.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/Slice/SliceCompilation.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <LyShine/Bus/UiElementBus.h>
 #include <LyShine/Bus/UiTransformBus.h>
+#include <LyShine/Bus/Tools/UiSystemToolsBus.h>
 #include <LyShine/UiComponentTypes.h>
 
 #include "UiEditorEntityContext.h"
@@ -42,6 +46,10 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiEditorEntityContext::UiEditorEntityContext(EditorWindow* editorWindow)
     : m_editorWindow(editorWindow)
+    , m_requiredEditorComponentTypes
+    ({
+        azrtti_typeid<AzToolsFramework::Components::EditorOnlyEntityComponent>()
+    })
 {
 }
 
@@ -99,48 +107,61 @@ void UiEditorEntityContext::DestroyUiContext()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiEditorEntityContext::SaveToStreamForGame(AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType)
 {
-    AZ::Entity targetSliceEntity;
-    AZ::SliceComponent* targetSlice = targetSliceEntity.CreateComponent<AZ::SliceComponent>();
-
-    // Prepare entities for export. This involves invoking BuildGameEntity on source
-    // entity's components, targeting a separate entity for export.
     AZ::SliceComponent::EntityList sourceEntities;
     GetRootSlice()->GetEntities(sourceEntities);
-    for (AZ::Entity* entity : sourceEntities)
+
+    // Create a source slice from our editor components.
+    AZ::Entity* sourceSliceEntity = aznew AZ::Entity();
+    AZ::SliceComponent* sourceSliceData = sourceSliceEntity->CreateComponent<AZ::SliceComponent>();
+    AZ::Data::Asset<AZ::SliceAsset> sourceSliceAsset(aznew AZ::SliceAsset());
+    sourceSliceAsset.Get()->SetData(sourceSliceEntity, sourceSliceData);
+
+    for (AZ::Entity* sourceEntity : sourceEntities)
     {
-        AZ::Entity* exportEntity = aznew AZ::Entity(entity->GetName().c_str());
-        exportEntity->SetId(entity->GetId());
-        AZ_Assert(exportEntity, "Failed to create target entity \"%s\" for export.",
-            entity->GetName().c_str());
-
-        EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, PreExportEntity,
-            *entity,
-            *exportEntity);
-
-        targetSlice->AddEntity(exportEntity);
+        sourceSliceData->AddEntity(sourceEntity);
     }
 
-    AZ::SliceComponent::EntityList targetEntities;
-    targetSlice->GetEntities(targetEntities);
+    // Emulate client flags.
+    AZ::PlatformTagSet platformTags = { AZ_CRC("renderer", 0xf199a19c) };
 
-    // Export runtime slice representing the entities in this canvas, which is a completely flat list of entities.
-    AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, streamType, &targetSliceEntity);
-
-    AZ_Assert(targetEntities.size() == sourceEntities.size(),
-        "Entity export list size must match that of the import list.");
-
-    // Finalize entities for export. This will remove any export components temporarily
-    // assigned by the source entity's components.
-    auto sourceIter = sourceEntities.begin();
-    auto targetIter = targetEntities.begin();
-    for (; sourceIter != sourceEntities.end(); ++sourceIter, ++targetIter)
+    // Compile the source slice into the runtime slice (with runtime components).
+    AzToolsFramework::UiEditorOnlyEntityHandler uiEditorOnlyEntityHandler;
+    AzToolsFramework::EditorOnlyEntityHandlers handlers =
     {
-        EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, PostExportEntity,
-            *(*sourceIter),
-            *(*targetIter));
+        &uiEditorOnlyEntityHandler,
+    };
+    AzToolsFramework::SliceCompilationResult sliceCompilationResult = CompileEditorSlice(sourceSliceAsset, platformTags, *m_serializeContext, handlers);
+
+    // Reclaim entities from the temporary source asset.
+    for (AZ::Entity* sourceEntity : sourceEntities)
+    {
+        sourceSliceData->RemoveEntity(sourceEntity, false);
     }
 
-    return true;
+    if (!sliceCompilationResult)
+    {
+        m_errorMessage = sliceCompilationResult.GetError();
+        return false;
+    }
+
+    // Export runtime slice representing the level, which is a completely flat list of entities.
+    AZ::Data::Asset<AZ::SliceAsset> exportSliceAsset = sliceCompilationResult.GetValue();
+    AZ::Entity* exportSliceAssetEntity = exportSliceAsset.Get()->GetEntity();
+    const bool saveObjectSuccess = AZ::Utils::SaveObjectToStream<AZ::Entity>(stream, streamType, exportSliceAssetEntity);
+
+    AZ::SliceComponent* sliceComponent = exportSliceAssetEntity->FindComponent<AZ::SliceComponent>();
+    AZ::SliceComponent::EntityList sliceEntities;
+
+    const bool getEntitiesSuccess = sliceComponent->GetEntities(sliceEntities);
+    const bool sliceEntitiesValid = getEntitiesSuccess && sliceEntities.size() > 0;
+
+    if (!sliceEntitiesValid)
+    {
+        AZ_Error("Save Runtime Stream", false, "Failed to export entities for runtime:\n%s", sliceCompilationResult.GetError().c_str());
+        return false;
+    }
+
+    return saveObjectSuccess;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -247,7 +268,7 @@ bool UiEditorEntityContext::DestroyUiEntity(AZ::EntityId entityId)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiEditorEntityContext::SupportsViewportEntityIdPicking()
 {
-    return false;
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -756,10 +777,78 @@ void UiEditorEntityContext::InitializeEntities(const AzFramework::EntityContext:
         }
     }
 
+    // Add required editor components to entities
+    for (AZ::Entity* entity : entities)
+    {
+        for (const auto& componentType : m_requiredEditorComponentTypes)
+        {
+            if (!entity->FindComponent(componentType))
+            {
+                entity->CreateComponent(componentType);
+            }
+        }
+    }
+
     for (AZ::Entity* entity : entities)
     {
         if (entity->GetState() == AZ::Entity::ES_INIT)
         {
+            // Always invalidate the entity dependencies when loading in the editor 
+            // (we don't know what code has changed since the last time the editor was run and the services provided/required
+            // by entities might have changed)
+            entity->InvalidateDependencies();
+
+            // Because we automatically add the EditorOnlyEntityComponent if it doesn't exist, we can encounter a situation
+            // where an entity has duplicate EditorOnlyEntityComponents if an old canvas is resaved and an old slice it uses
+            // is also resaved. See https://jira.agscollab.com/browse/LY-90580
+            // In the main editor this is handled by disabling the duplicate components, but the UI Editor doesn't use that
+            // method (the world editor allows the user to manually add incompatible components and then disable and enable
+            // them in the entity, the UI Editor still works how the world editor used to - it doesn't allow users to add
+            // incompatible components and has no way to disable/enable components in the property pane).
+            // So we do automatic recovery in the case where there are duplicate EditorOnlyEntityComponents. We have to do this
+            // before activating in order to avoid errors being reported.
+            AZ::Entity::ComponentArrayType editorOnlyEntityComponents =
+                entity->FindComponents(AzToolsFramework::Components::EditorOnlyEntityComponent::TYPEINFO_Uuid());
+            if (editorOnlyEntityComponents.size() > 1)
+            {
+                // There are duplicate EditorOnlyEntityComponents. If any of them have m_isEditorOnly set to true we will
+                // set the one we keep to true. The reasoning is that these duplicates only happen when canvases and slices
+                // are being gradually resaved to the new version with EditorOnlyEntityComponents. Since the default is false,
+                // if we find one set to true this is more likely to be one that the user specifically set that way.
+                bool isEditorOnly = false;
+                for (int i = 0; i < editorOnlyEntityComponents.size(); ++i)
+                {
+                    AzToolsFramework::Components::EditorOnlyEntityComponent* thisComponent =
+                        static_cast<AzToolsFramework::Components::EditorOnlyEntityComponent*>(editorOnlyEntityComponents[i]);
+                    if (thisComponent->IsEditorOnlyEntity())
+                    {
+                        isEditorOnly = true;
+                        break;
+                    }
+                }
+
+                // We are going to keep the first one, ensure that its value of m_isEditorOnly is set the right way
+                if (isEditorOnly)
+                {
+                    AzToolsFramework::Components::EditorOnlyEntityComponent* firstComponent =
+                        static_cast<AzToolsFramework::Components::EditorOnlyEntityComponent*>(editorOnlyEntityComponents[0]);
+                    if (!firstComponent->IsEditorOnlyEntity())
+                    {
+                        firstComponent->SetIsEditorOnlyEntity(true);
+                    }
+                }
+
+                // Now remove all the components except the first one. The first one will be the one from the most deeply nested
+                // slice. It is best to keep that one, otherwise we end up with local slice overrides deleting the components from
+                // the instanced slices which means we could ignore changes from the slice when we should not.
+                for (int i = 1; i < editorOnlyEntityComponents.size(); ++i)
+                {
+                    AZ::Component* duplicateComponent = editorOnlyEntityComponents[i];
+                    entity->RemoveComponent(duplicateComponent);
+                    delete duplicateComponent;
+                }
+            }
+
             entity->Activate();
         }
     }

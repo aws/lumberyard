@@ -31,7 +31,11 @@ DECLARE_AZ_UNIT_TEST_MAIN()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Main_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Main_cpp_provo.inl"
+    #endif
 #endif
 
 namespace AZ
@@ -75,7 +79,11 @@ public:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Main_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Main_cpp_provo.inl"
+    #endif
 #endif
 
         BusConnect();
@@ -87,7 +95,11 @@ public:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MAIN_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(Main_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Main_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Main_cpp_provo.inl"
+    #endif
 #endif
 
         AllocatorInstance<OSAllocator>::Destroy(); // used by the bus

@@ -20,6 +20,7 @@ def build(bld):
             defines    = ['WATER_GEM_EDITOR'],
             uselib     = ['QT5CORE',
                           'QT5GUI',
+                          'QT5NETWORK', # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
                           'QT5WIDGETS'],
             use        = ['AzQtComponents',
                           'EditorUI_QT',

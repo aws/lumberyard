@@ -692,21 +692,21 @@ void CRenderer::FinalizeRendItems_FindShadowFrustums(int nThreadID)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutor(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutor()
 {
-    return &m_generateRendItemJobExecutor[nThreadID];
+    return &m_generateRendItemJobExecutor;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-AZ::LegacyJobExecutor* CRenderer::GetGenerateShadowRendItemJobExecutor(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateShadowRendItemJobExecutor()
 {
-    return &m_generateShadowRendItemJobExecutor[nThreadID];
+    return &m_generateShadowRendItemJobExecutor;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutorPreProcess(int nThreadID)
+AZ::LegacyJobExecutor* CRenderer::GetGenerateRendItemJobExecutorPreProcess()
 {
-    return &m_generateRendItemPreProcessJobExecutor[nThreadID];
+    return &m_generateRendItemPreProcessJobExecutor;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -939,6 +939,14 @@ void CMotionBlur::SetupObject(CRenderObject* renderObject, const SRenderingPassI
 
     uint32 fillThreadId = passInfo.ThreadID();
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Motion blur is not yet supported in RTT passes
+    if (passInfo.IsRenderSceneToTexturePass())
+    {
+        return;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     if (passInfo.IsRecursivePass())
     {
         return;
@@ -953,9 +961,14 @@ void CMotionBlur::SetupObject(CRenderObject* renderObject, const SRenderingPassI
     renderObject->m_ObjFlags &= ~FOB_HAS_PREVMATRIX;
     if (renderObjectData->m_uniqueObjectId != 0 && renderObject->m_fDistance < CRenderer::CV_r_MotionBlurMaxViewDist)
     {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        const AZ::u32 currentFrameId = gRenDev->GetCameraFrameID();
+        const AZ::u32 bufferIndex = GetCurrentBufferIndex();
+#else
         const AZ::u32 currentFrameId = passInfo.GetMainFrameID();
+        const AZ::u32 bufferIndex = (currentFrameId) % CMotionBlur::s_maxObjectBuffers;
+#endif
         const uintptr_t objectId = renderObjectData ? renderObjectData->m_uniqueObjectId : 0;
-        const AZ::u32 bufferIndex = (currentFrameId) % 3;
         if (!m_Objects[bufferIndex])
         {
             return;
@@ -964,7 +977,11 @@ void CMotionBlur::SetupObject(CRenderObject* renderObject, const SRenderingPassI
         auto currentIt = m_Objects[bufferIndex]->find(objectId);
         if (currentIt != m_Objects[bufferIndex]->end())
         {
-            const AZ::u32 lastBufferIndex = (currentFrameId - 1) % 3;
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+            const AZ::u32 lastBufferIndex = GetPrevBufferIndex();
+#else
+            const AZ::u32 lastBufferIndex = (currentFrameId - 1) % CMotionBlur::s_maxObjectBuffers;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
             auto historyIt = m_Objects[lastBufferIndex]->find(objectId);
             if (historyIt != m_Objects[lastBufferIndex]->end())

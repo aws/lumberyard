@@ -44,12 +44,20 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_1
-#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StdAfx_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StdAfx_h_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION STDAFX_H_SECTION_2
-#include AZ_RESTRICTED_FILE(StdAfx_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StdAfx_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StdAfx_h_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_PLATFORM_APPLE_OSX)

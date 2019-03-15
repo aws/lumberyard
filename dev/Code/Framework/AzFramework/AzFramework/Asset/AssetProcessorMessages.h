@@ -55,6 +55,7 @@ namespace AzFramework
         {
         public:
             AZ_RTTI(BaseAssetProcessorMessage, "{366A7093-C57B-4514-A1BD-A6437AEF2098}");
+            explicit BaseAssetProcessorMessage(bool requireFencing = false);
             virtual ~BaseAssetProcessorMessage() {}
             //! The id of the message type, an unsigned int which can be used to identify which message it is.
             virtual unsigned int GetMessageType() const = 0;
@@ -62,7 +63,9 @@ namespace AzFramework
             //! Some asset messages might require that the requests be evaluated by the asset processor only after the OS has send it a file notification regarding that asset,
             //! Otherwise there could be a race condition and the asset request could be processed before the asset processor gets the file notification.To prevent this we create a fence file 
             //! and only evaluate the request after the asset processor picks up that fence file.We call this fencing.
-            virtual bool RequireFencing(); // override this and return true only if the request requires fencing.
+            bool RequireFencing() const;
+        private:
+            bool m_requireFencing = false;
         };
 
         //////////////////////////////////////////////////////////////////////////
@@ -78,7 +81,7 @@ namespace AzFramework
 
             NegotiationMessage() = default;
             unsigned int GetMessageType() const override;
-            int m_apiVersion = 4; // Changing the value will cause negotiation to fail between incompatible versions
+            int m_apiVersion = 6; // Changing the value will cause negotiation to fail between incompatible versions
             AZ::OSString m_identifier;
             typedef AZStd::unordered_map<unsigned int, AZ::OSString> NegotiationInfoMap;
             NegotiationInfoMap m_negotiationInfoMap;
@@ -122,12 +125,10 @@ namespace AzFramework
             AZ_RTTI(RequestAssetStatus, "{0CBE6A7C-9D19-4D41-B29C-A52476BB337A}", BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
             static unsigned int MessageType();
-
-            RequestAssetStatus() = default;
-            RequestAssetStatus(const char* sourceData, bool isStatusRequest);
+            explicit RequestAssetStatus(bool requireFencing = true);
+            RequestAssetStatus(const char* sourceData, bool isStatusRequest, bool requireFencing = true);
             unsigned int GetMessageType() const override;
             
-            bool RequireFencing() override;
             AZ::OSString m_searchTerm; // the name of an asset
             bool m_isStatusRequest = false; // if this is true, it will only query status.  if false it will actually compile it.
         };
@@ -291,6 +292,50 @@ namespace AzFramework
             bool m_found = false;
             AZ::Data::AssetInfo m_assetInfo; ///< This contains defaults such as relative path from watched folder, size, Uuid.
             AZ::OSString m_rootFolder; ///< This is the folder it was found in (the watched/scanned folder, such as gems /assets/ folder)
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+
+        class AssetInfoRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetInfoRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetInfoRequest, "{AB1468DB-99B5-4666-A619-4D3F746805A5}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            AssetInfoRequest() = default;
+
+            /**
+            * Gets information about an asset, given the assetId.
+            */
+            explicit AssetInfoRequest(const AZ::Data::AssetId& assetId);
+
+            //! You can also make a request with the relative or absolute path to the asset instead.
+            explicit AssetInfoRequest(const char* assetPath);
+
+            unsigned int GetMessageType() const override;
+
+            AZ::OSString m_assetPath; ///< At least one of AssetPath or AssetId must be non-empty.
+            AZ::Data::AssetId m_assetId;
+        };
+
+        class AssetInfoResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetInfoResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetInfoResponse, "{B217A11F-430A-40EA-AF4A-4644F5879695}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            AssetInfoResponse() = default;
+            AssetInfoResponse(const AZ::Data::AssetInfo& assetInfo);
+
+            unsigned int GetMessageType() const override;
+
+            bool m_found = false;
+            AZ::Data::AssetInfo m_assetInfo; ///< This contains defaults such as relative path from watched folder, size, Uuid.
         };
 
         //////////////////////////////////////////////////////////////////////////

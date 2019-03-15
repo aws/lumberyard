@@ -48,6 +48,7 @@
 #include <QtCore/QThread>
 
 #include <LyShine/Bus/UiElementBus.h>
+#include <LyShine/Bus/Tools/UiSystemToolsBus.h>
 
 #include <AzFramework/API/ApplicationAPI.h>
 
@@ -120,9 +121,10 @@ void UiSliceManager::MakeSliceFromSelectedItems(HierarchyWidget* hierarchy, bool
 
 bool UiSliceManager::IsRootEntity(const AZ::Entity& entity) const
 {
-    AZ::Entity* parent = nullptr;
-    EBUS_EVENT_ID_RESULT(parent, entity.GetId(), UiElementBus, GetParent);
-    return (parent == nullptr);
+    // This is only used by IsNodePushable. For the UI system, we allow the root slice
+    // to be pushed updates, so we always return false here to allow that. If the UI
+    // system ever wants to leverage NotPushableOnSliceRoot, we'll need to revisit this.
+    return false;
 }
 
 AZ::SliceComponent* UiSliceManager::GetRootSlice() const
@@ -562,12 +564,12 @@ void UiSliceManager::PushEntitiesModal(const AzToolsFramework::EntityIdList& ent
 
     QDialog* dialog = new QDialog();
     QVBoxLayout* mainLayout = new QVBoxLayout();
-    mainLayout->setContentsMargins(5, 5, 5, 5);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
     AzToolsFramework::SlicePushWidget* widget = new AzToolsFramework::SlicePushWidget(entities, config, serializeContext);
     mainLayout->addWidget(widget);
     dialog->setWindowTitle(widget->tr("Save Slice Overrides - Advanced"));
-    dialog->setMinimumSize(QSize(600, 200));
-    dialog->resize(QSize(1000, 600));
+    dialog->setMinimumSize(QSize(800, 300));
+    dialog->resize(QSize(1200, 600));
     dialog->setLayout(mainLayout);
 
     QWidget::connect(widget, &AzToolsFramework::SlicePushWidget::OnFinished, dialog,
@@ -809,6 +811,49 @@ AZ::Outcome<void, AZStd::string> UiSliceManager::QuickPushSliceInstance(const AZ
                     entityId.ToString().c_str()));
             }
         }
+    }
+
+    // Check for any invalid slices
+    bool cancelPush = false;
+    AZ::SliceComponent* assetComponent = sliceAsset.Get()->GetComponent();
+    if (assetComponent)
+    {
+        // If there are any invalid slices, warn the user and allow them to choose the next step.
+        const AZ::SliceComponent::SliceList& invalidSlices = assetComponent->GetInvalidSlices();
+        if (invalidSlices.size() > 0)
+        {
+            // Assume an invalid slice count of 1 because this is a quick push, which only has one target.
+            AzToolsFramework::SliceUtilities::InvalidSliceReferencesWarningResult invalidSliceCheckResult = AzToolsFramework::SliceUtilities::DisplayInvalidSliceReferencesWarning(QApplication::activeWindow(),
+                /*invalidSliceCount*/ 1,
+                invalidSlices.size(),
+                /*showDetailsButton*/ true);
+
+            switch (invalidSliceCheckResult)
+            {
+            case AzToolsFramework::SliceUtilities::InvalidSliceReferencesWarningResult::Details:
+            {
+                cancelPush = true;
+                PushEntitiesModal(entityIdList, nullptr);
+            }
+            break;
+            case AzToolsFramework::SliceUtilities::InvalidSliceReferencesWarningResult::Save:
+            {
+                cancelPush = false;
+            }
+            break;
+            case AzToolsFramework::SliceUtilities::InvalidSliceReferencesWarningResult::Cancel:
+            default:
+            {
+                cancelPush = true;
+            }
+            break;
+            }
+        }
+    }
+
+    if (cancelPush)
+    {
+        return AZ::Success();
     }
 
     // Make a transaction targeting the specified slice and add all the entities in this set.

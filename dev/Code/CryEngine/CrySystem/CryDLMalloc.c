@@ -19,8 +19,11 @@
 #define CRYDLMALLOC_C_SECTION_2 2
 
 #define AZ_RESTRICTED_SECTION CRYDLMALLOC_C_SECTION_1
-#include <AzCore/PlatformRestrictedFileDef.h>
-#include AZ_RESTRICTED_FILE(CryDLMalloc_c, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryDLMalloc_c_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryDLMalloc_c_provo.inl"
+    #endif
 #elif defined(_WIN32) || defined(LINUX) || defined(APPLE)
 #define TRAIT_ENABLE_DLMALLOC 1
 #endif
@@ -1567,7 +1570,11 @@ extern void*     sbrk(ptrdiff_t);
 #ifndef WIN32
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYDLMALLOC_C_SECTION_2
-#include AZ_RESTRICTED_FILE(CryDLMalloc_c, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryDLMalloc_c_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryDLMalloc_c_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

@@ -109,7 +109,12 @@ void EditorGame::OnAfterLevelLoad(const char* levelName, const char* levelFolder
     SEntityEvent startLevelEvent(ENTITY_EVENT_START_LEVEL);
     gEnv->pEntitySystem->SendEventToAll(startLevelEvent);
 
-    m_Game->GetIGameFramework()->MarkGameStarted();
+    m_Game->GetIGameFramework()->MarkGameStarted(true);
+}
+
+void EditorGame::OnCloseLevel()
+{
+    m_Game->GetIGameFramework()->MarkGameStarted(false);
 }
 
 IFlowSystem* EditorGame::GetIFlowSystem()

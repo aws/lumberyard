@@ -21,6 +21,7 @@
 #include <IXml.h>
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/smart_ptr/weak_ptr.h>
+#include <map>
 
 class CFFont;
 
@@ -31,6 +32,13 @@ class CCryFont
     friend class CFFont;
 
 public:
+
+    static const Vec2i defaultGlyphSize;    //!< Default glyph size indicates that glyphs in the font texture
+                                            //!< should be rendered at the maximum resolution supported by
+                                            //!< the font texture's glyph cell/slot configuration (configured
+                                            //!< via font XML).
+
+public:
     CCryFont(ISystem* pSystem);
     virtual ~CCryFont();
 
@@ -39,7 +47,7 @@ public:
     virtual IFFont* GetFont(const char* pFontName) const;
     virtual FontFamilyPtr LoadFontFamily(const char* pFontFamilyName) override;
     virtual FontFamilyPtr GetFontFamily(const char* pFontFamilyName) override;
-    virtual void AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars) override;
+    virtual void AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars, int glyphSizeX = ICryFont::defaultGlyphSizeX, int glyphSizeY = ICryFont::defaultGlyphSizeY) override;
     virtual void SetRendererProperties(IRenderer* pRenderer);
     virtual void GetMemoryUsage(ICrySizer* pSizer) const;
     virtual string GetLoadedFontNames() const;
@@ -89,6 +97,10 @@ private:
     ISystem* m_pSystem;
     bool m_rndPropIsRGBA;
     float m_rndPropHalfTexelOffset;
+
+    int r_persistFontFamilies = 1; //!< Persist fonts for application lifetime to prevent unnecessary work; enabled by default.
+    AZStd::vector<FontFamilyPtr> m_persistedFontFamilies; //!< Stores persisted fonts (if "persist font families" is enabled)
+
 };
 
 #endif

@@ -62,7 +62,11 @@ namespace Multiplayer
         searchParams.m_familyType = static_cast<GridMate::Driver::BSDSocketFamilyType>(params.FetchValueOrDefault<int>("gm_ipversion", GridMate::Driver::BSDSocketFamilyType::BSD_AF_INET));
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(GridMateLANServiceWrapper_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridMateLANServiceWrapper_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridMateLANServiceWrapper_cpp_provo.inl"
+    #endif
 #endif
 
         EBUS_EVENT_ID_RESULT(retVal, gridMate, GridMate::LANSessionServiceBus, StartGridSearch, searchParams);

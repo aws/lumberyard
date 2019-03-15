@@ -91,6 +91,8 @@ namespace AzQtComponents
         void setSecondaryContentWidget(QWidget* secondaryContentWidget);
         QWidget* secondaryContentWidget() const;
 
+        void hideFrame();
+
         /*!
         * Loads the Card config data from a settings object.
         */

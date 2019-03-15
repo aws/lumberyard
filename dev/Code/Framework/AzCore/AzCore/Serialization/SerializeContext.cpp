@@ -24,6 +24,7 @@
 #include <AzCore/std/functional.h>
 #include <AzCore/std/bind/bind.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/containers/stack.h>
 
 #include <AzCore/Math/MathReflection.h>
 #include <AzCore/Math/MathUtils.h>
@@ -472,6 +473,16 @@ namespace AZ
     SerializeContext::~SerializeContext()
     {
         DestroyEditContext();
+        decltype(m_perModuleSet) moduleSet = AZStd::move(m_perModuleSet);
+        for(PerModuleGenericClassInfo* module : moduleSet)
+        {
+            module->UnregisterSerializeContext(this);
+        }
+    }
+
+    void SerializeContext::CleanupModuleGenericClassInfo()
+    {
+        GetCurrentSerializeContextModule().UnregisterSerializeContext(this);
     }
 
     //=========================================================================
@@ -624,7 +635,18 @@ namespace AZ
     //=========================================================================
     GenericClassInfo* SerializeContext::FindGenericClassInfo(const Uuid& classId) const
     {
-        auto genericClassIt = m_uuidGenericMap.find(classId);
+        Uuid resolvedUuid = classId;
+        // If the classId is not in the registered typeid to GenericClassInfo Map attempt to look it up in the legacy specialization
+        // typeid map
+        if (m_uuidGenericMap.count(resolvedUuid) == 0)
+        {
+            auto foundIt = m_legacySpecializeTypeIdToTypeIdMap.find(classId);
+            if (foundIt != m_legacySpecializeTypeIdToTypeIdMap.end())
+            {
+                resolvedUuid = foundIt->second;
+            }
+        }
+        auto genericClassIt = m_uuidGenericMap.find(resolvedUuid);
         if (genericClassIt != m_uuidGenericMap.end())
         {
             return genericClassIt->second;
@@ -635,20 +657,32 @@ namespace AZ
 
     void SerializeContext::RegisterGenericClassInfo(const Uuid& classId, GenericClassInfo* genericClassInfo, const CreateAnyFunc& createAnyFunc)
     {
-        if (genericClassInfo)
+        if (!genericClassInfo)
         {
-            if (IsRemovingReflection())
+            return;
+        }
+
+        if (IsRemovingReflection())
+        {
+            RemoveGenericClassInfo(genericClassInfo);
+        }
+        else
+        {
+            // Make sure that the ModuleCleanup structure has the serializeContext set on it.
+            GetCurrentSerializeContextModule().RegisterSerializeContext(this);
+            // Find the module GenericClassInfo in the SerializeContext GenericClassInfo multimap and add if it is not part of the SerializeContext multimap
+            auto scGenericClassInfoRange = m_uuidGenericMap.equal_range(classId);
+            auto scGenericInfoFoundIt = AZStd::find_if(scGenericClassInfoRange.first, scGenericClassInfoRange.second, [genericClassInfo](const AZStd::pair<AZ::Uuid, GenericClassInfo*>& genericPair)
             {
-                RemoveClassData(genericClassInfo->GetClassData());
-                m_uuidGenericMap.erase(classId);
-                m_uuidAnyCreationMap.erase(classId);
-                m_classNameToUuid.erase(Crc32(genericClassInfo->GetClassData()->m_name));
-            }
-            else
+                return genericClassInfo == genericPair.second;
+            });
+
+            if (scGenericInfoFoundIt == scGenericClassInfoRange.second)
             {
                 m_uuidGenericMap.emplace(classId, genericClassInfo);
                 m_uuidAnyCreationMap.emplace(classId, createAnyFunc);
                 m_classNameToUuid.emplace(genericClassInfo->GetClassData()->m_name, classId);
+                m_legacySpecializeTypeIdToTypeIdMap.emplace(genericClassInfo->GetLegacySpecializedTypeId(), classId);
             }
         }
     }
@@ -800,12 +834,12 @@ namespace AZ
         m_version = rhs.m_version;
         m_dataType = rhs.m_dataType;
 
-        AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
         m_buffer = rhs.m_buffer;
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
         m_byteStream.Seek(rhs.m_byteStream.GetCurPos(), IO::GenericStream::ST_SEEK_BEGIN);
         if (rhs.m_stream == &rhs.m_byteStream)
         {
+            AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
             m_stream = &m_byteStream;
         }
         else
@@ -827,13 +861,13 @@ namespace AZ
         m_dataSize = rhs.m_dataSize;
         m_dataType = rhs.m_dataType;
 
-        AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
         m_buffer = rhs.m_buffer;
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
         m_byteStream.Seek(rhs.m_byteStream.GetCurPos(), IO::GenericStream::ST_SEEK_BEGIN);
 
         if (rhs.m_stream == &rhs.m_byteStream)
         {
+            AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
             m_stream = &m_byteStream;
         }
         else
@@ -859,6 +893,7 @@ namespace AZ
         m_dataType = rhs.m_dataType;
         if (rhs.m_stream == &rhs.m_byteStream)
         {
+            AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
             m_stream = &m_byteStream;
         }
         else
@@ -866,7 +901,6 @@ namespace AZ
             m_stream = rhs.m_stream;
         }
 
-        AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
         m_buffer = AZStd::move(rhs.m_buffer);
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
         m_byteStream.Seek(rhs.m_byteStream.GetCurPos(), IO::GenericStream::ST_SEEK_BEGIN);
@@ -900,6 +934,7 @@ namespace AZ
         m_dataType = rhs.m_dataType;
         if (rhs.m_stream == &rhs.m_byteStream)
         {
+            AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
             m_stream = &m_byteStream;
         }
         else
@@ -907,7 +942,6 @@ namespace AZ
             m_stream = rhs.m_stream;
         }
 
-        AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
 
         m_buffer = AZStd::move(rhs.m_buffer);
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
@@ -1164,7 +1198,7 @@ namespace AZ
 
         AZStd::vector<DataElementNode*> nodeStack;
         DataElementNode* topNode = this;
-        bool success;
+        bool success = false;
 
         auto beginCB = [&sc, &nodeStack, topNode, &success, errorHandler](void* ptr, const SerializeContext::ClassData* elementClassData, const SerializeContext::ClassElement* elementData) -> bool
             {
@@ -1448,6 +1482,7 @@ namespace AZ
             DataElement& rawElement = m_element;
             if (m_classData->m_serializer && rawElement.m_dataSize != 0)
             {
+                rawElement.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
                 if (rawElement.m_dataType == DataElement::DT_TEXT)
                 {
                     // convert to binary so we can load the data
@@ -2090,6 +2125,14 @@ namespace AZ
             }
         }
 
+        // If it is a container, clear it before loading the child
+        // nodes, otherwise we end up with more elements than the ones
+        // we should have
+        if (classData->m_container)
+        {
+            classData->m_container->ClearElements(destPtr, this);
+        }
+
         // push this node in the stack
         cloneData->m_parentStack.push_back();
         ObjectCloneData::ParentInfo& parentInfo = cloneData->m_parentStack.back();
@@ -2113,6 +2156,11 @@ namespace AZ
         if (classData->m_eventHandler)
         {
             classData->m_eventHandler->OnWriteEnd(dataPtr);
+        }
+        
+        if (classData->m_serializer)
+        {
+            classData->m_serializer->PostClone(dataPtr);
         }
 
         cloneData->m_parentStack.pop_back();
@@ -2275,11 +2323,10 @@ namespace AZ
 
         for (ClassElement& classElement : m_elements)
         {
-            for (auto& attributePair : classElement.m_attributes)
+            if (classElement.m_attributeOwnership == ClassElement::AttributeOwnership::Parent)
             {
-                delete attributePair.second;
+                classElement.ClearAttributes();
             }
-            classElement.m_attributes.clear();
         }
     }
 
@@ -2311,6 +2358,18 @@ namespace AZ
             }
         }
         return persistentIdFunction;
+    }
+
+    Attribute* SerializeContext::ClassData::FindAttribute(AttributeId attributeId) const
+    {
+        for (const AttributePair& attributePair : m_attributes)
+        {
+            if (attributePair.first == attributeId)
+            {
+                return attributePair.second;
+            }
+        }
+        return nullptr;
     }
 
     //=========================================================================
@@ -2395,7 +2454,7 @@ namespace AZ
     }
 
     //=========================================================================
-    // ReportError
+    // RemoveClassData
     //=========================================================================
     void SerializeContext::RemoveClassData(ClassData* classData)
     {
@@ -2405,6 +2464,37 @@ namespace AZ
         }
 
         classData->ClearAttributes();
+    }
+
+    void SerializeContext::RemoveGenericClassInfo(GenericClassInfo* genericClassInfo)
+    {
+        const Uuid& classId = genericClassInfo->GetSpecializedTypeId();
+        RemoveClassData(genericClassInfo->GetClassData());
+        // Find the module GenericClassInfo in the SerializeContext GenericClassInfo multimap and remove it from there
+        auto scGenericClassInfoRange = m_uuidGenericMap.equal_range(classId);
+        auto scGenericInfoFoundIt = AZStd::find_if(scGenericClassInfoRange.first, scGenericClassInfoRange.second, [genericClassInfo](const AZStd::pair<AZ::Uuid, GenericClassInfo*>& genericPair)
+        {
+            return genericClassInfo == genericPair.second;
+        });
+
+        if (scGenericInfoFoundIt != scGenericClassInfoRange.second)
+        {
+            m_uuidGenericMap.erase(scGenericInfoFoundIt);
+            if (m_uuidGenericMap.count(classId) == 0)
+            {
+                m_uuidAnyCreationMap.erase(classId);
+                m_classNameToUuid.erase(Crc32(genericClassInfo->GetClassData()->m_name));
+                auto legacyTypeIdRangeIt = m_legacySpecializeTypeIdToTypeIdMap.equal_range(genericClassInfo->GetLegacySpecializedTypeId());
+                for (auto legacySpecializedTypeIdIt = legacyTypeIdRangeIt.first; legacySpecializedTypeIdIt != legacyTypeIdRangeIt.second; ++legacySpecializedTypeIdIt)
+                {
+                    if (classId == legacySpecializedTypeIdIt->second)
+                    {
+                        m_legacySpecializeTypeIdToTypeIdMap.erase(classId);
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     //=========================================================================
@@ -2497,8 +2587,8 @@ namespace AZ
         SerializeContext::ErrorHandler* errorHandler)
         : m_beginElemCB(beginElemCB)
         , m_endElemCB(endElemCB)
-        , m_context(context)
         , m_accessFlags(accessFlags)
+        , m_context(context)
     {
         m_errorHandler = errorHandler ? errorHandler : &m_defaultErrorHandler;
 
@@ -2511,6 +2601,292 @@ namespace AZ
             , AZStd::placeholders::_4
         );
     }
-}   // namespace AZ
+
+    //=========================================================================
+    // ~ClassElement
+    //=========================================================================
+    SerializeContext::ClassElement::~ClassElement()
+    {
+        if (m_attributeOwnership == AttributeOwnership::Self)
+        {
+            ClearAttributes();
+        }
+    }
+
+    //=========================================================================
+    // ClassElement::operator=
+    //=========================================================================
+    SerializeContext::ClassElement& SerializeContext::ClassElement::operator=(const SerializeContext::ClassElement& other)
+    {
+        m_name = other.m_name;
+        m_nameCrc = other.m_nameCrc;
+        m_typeId = other.m_typeId;
+        m_dataSize = other.m_dataSize;
+        m_offset = other.m_offset;
+
+        m_azRtti = other.m_azRtti;
+        m_genericClassInfo = other.m_genericClassInfo;
+        m_editData = other.m_editData;
+        m_attributes = other.m_attributes;
+        // If we're a copy, we don't assume attribute ownership
+        m_attributeOwnership = AttributeOwnership::None;
+        m_flags = other.m_flags;
+
+        return *this;
+    }
+
+    //=========================================================================
+    // ClearAttributes
+    //=========================================================================
+    void SerializeContext::ClassElement::ClearAttributes()
+    {
+        for (auto& attributePair : m_attributes)
+        {
+            delete attributePair.second;
+        }
+        m_attributes.clear();
+    }
+
+    //=========================================================================
+    // FindAttribute
+    //=========================================================================
+
+    Attribute* SerializeContext::ClassElement::FindAttribute(AttributeId attributeId) const
+    {
+        for (const AttributePair& attributePair : m_attributes)
+        {
+            if (attributePair.first == attributeId)
+            {
+                return attributePair.second;
+            }
+        }
+        return nullptr;
+    }
+
+    void SerializeContext::IDataContainer::ElementsUpdated(void* instance)
+    {
+        (void)instance;
+    }
+
+    void Internal::AZStdArrayEvents::OnWriteBegin(void* classPtr)
+    {
+        (void)classPtr;
+        if (m_indices)
+        {
+            if ((reinterpret_cast<uintptr_t>(m_indices) & 1) == 1)
+            {
+                // Pointer is already in use to store an index so convert it to a stack
+                size_t previousIndex = reinterpret_cast<uintptr_t>(m_indices) >> 1;
+                Stack* stack = new Stack();
+                AZ_Assert((reinterpret_cast<uintptr_t>(stack) & 1) == 0, "Expected memory allocation to be at least 2 byte aligned.");
+                stack->push(previousIndex);
+                stack->push(0);
+                m_indices = stack;
+            }
+            else
+            {
+                Stack* stack = reinterpret_cast<Stack*>(m_indices);
+                stack->push(0);
+            }
+        }
+        else
+        {
+            // Use the pointer to just store the one counter instead of allocating memory. Using 1 bit to identify this as a regular
+            // index and not a pointer.
+            m_indices = reinterpret_cast<void*>(1);
+        }
+    }
+
+    void Internal::AZStdArrayEvents::OnWriteEnd(void* classPtr)
+    {
+        (void)classPtr;
+        if (m_indices)
+        {
+            if ((reinterpret_cast<uintptr_t>(m_indices) & 1) == 1)
+            {
+                // There was only one entry so no stack. Clear out the final bit that indicated this was an index and not a pointer.
+                m_indices = nullptr;
+            }
+            else
+            {
+                Stack* stack = reinterpret_cast<Stack*>(m_indices);
+                stack->pop();
+                if (stack->empty())
+                {
+                    delete stack;
+                    m_indices = nullptr;
+                }
+            }
+        }
+        else
+        {
+            AZ_Warning("Serialization", false, "AZStdArrayEvents::OnWriteEnd called too often.");
+        }
+
+    }
+
+    size_t Internal::AZStdArrayEvents::GetIndex() const
+    {
+        if (m_indices)
+        {
+            if ((reinterpret_cast<uintptr_t>(m_indices) & 1) == 1)
+            {
+                // The first bit is used to indicate this is a regular index instead of a pointer so shift down one to get the actual index.
+                return reinterpret_cast<uintptr_t>(m_indices) >> 1;
+            }
+            else
+            {
+                const Stack* stack = reinterpret_cast<const Stack*>(m_indices);
+                return stack->top();
+            }
+        }
+        else
+        {
+            AZ_Warning("Serialization", false, "AZStdArrayEvents is not in a valid state to return an index.");
+            return 0;
+        }
+    }
+
+    void Internal::AZStdArrayEvents::Increment()
+    {
+        if (m_indices)
+        {
+            if ((reinterpret_cast<uintptr_t>(m_indices) & 1) == 1)
+            {
+                // Increment by 2 because the first bit is used to indicate whether or not a stack is used so the real
+                //      value starts one bit later.
+                size_t index = reinterpret_cast<uintptr_t>(m_indices) + (1 << 1);
+                m_indices = reinterpret_cast<void*>(index);
+            }
+            else
+            {
+                Stack* stack = reinterpret_cast<Stack*>(m_indices);
+                stack->top()++;
+            }
+        }
+        else
+        {
+            AZ_Warning("Serialization", false, "AZStdArrayEvents is not in a valid state to increment.");
+        }
+    }
+
+    bool Internal::AZStdArrayEvents::IsEmpty() const
+    {
+        return m_indices == nullptr;
+    }
+
+    // Create the member OSAllocator and construct the unordered_map with that allocator
+    SerializeContext::PerModuleGenericClassInfo::PerModuleGenericClassInfo()
+        : m_moduleLocalGenericClassInfos(AZ::AZStdIAllocator(&m_moduleOSAllocator))
+        , m_serializeContextSet(AZ::AZStdIAllocator(&m_moduleOSAllocator))
+    {
+    }
+
+    SerializeContext::PerModuleGenericClassInfo::~PerModuleGenericClassInfo()
+    {
+        Cleanup();
+
+        // Reconstructs the module generic info map with the OSAllocator so that it the previous allocated memory is cleared
+        // Afterwards destroy the OSAllocator
+        {
+            m_moduleLocalGenericClassInfos = GenericInfoModuleMap(AZ::AZStdIAllocator(&m_moduleOSAllocator));
+            m_serializeContextSet = SerializeContextSet(AZ::AZStdIAllocator(&m_moduleOSAllocator));
+        }
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::Cleanup()
+    {
+        decltype(m_moduleLocalGenericClassInfos) genericClassInfoContainer = AZStd::move(m_moduleLocalGenericClassInfos);
+        decltype(m_serializeContextSet) serializeContextSet = AZStd::move(m_serializeContextSet);
+        // Un-reflect GenericClassInfo from each serialize context registered with the module
+        // The SerailizeContext uses the SystemAllocator so it is required to be ready in order to remove the data
+        if (AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
+        {
+            for (AZ::SerializeContext* serializeContext : serializeContextSet)
+            {
+                for (const AZStd::pair<AZ::Uuid, AZ::GenericClassInfo*>& moduleGenericClassInfoPair : genericClassInfoContainer)
+                {
+                    serializeContext->RemoveGenericClassInfo(moduleGenericClassInfoPair.second);
+                }
+
+                serializeContext->m_perModuleSet.erase(this);
+            }
+        }
+
+        // Cleanup the memory for the GenericClassInfo objects.
+        // This isn't explicitly needed as the OSAllocator owned by this class will take the memory with it.
+        for (const AZStd::pair<AZ::Uuid, AZ::GenericClassInfo*>& moduleGenericClassInfoPair : genericClassInfoContainer)
+        {
+            GenericClassInfo* genericClassInfo = moduleGenericClassInfoPair.second;
+            // Explicitly invoke the destructor and clear the memory from the module OSAllocator
+            genericClassInfo->~GenericClassInfo();
+            m_moduleOSAllocator.DeAllocate(genericClassInfo);
+        }
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::RegisterSerializeContext(AZ::SerializeContext* serializeContext)
+    {
+        m_serializeContextSet.emplace(serializeContext);
+        serializeContext->m_perModuleSet.emplace(this);
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::UnregisterSerializeContext(AZ::SerializeContext* serializeContext)
+    {
+        m_serializeContextSet.erase(serializeContext);
+        serializeContext->m_perModuleSet.erase(this);
+        for (const AZStd::pair<AZ::Uuid, AZ::GenericClassInfo*>& moduleGenericClassInfoPair : m_moduleLocalGenericClassInfos)
+        {
+            serializeContext->RemoveGenericClassInfo(moduleGenericClassInfoPair.second);
+        }
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::AddGenericClassInfo(AZ::GenericClassInfo* genericClassInfo)
+    {
+        if (!genericClassInfo)
+        {
+            AZ_Error("SerializeContext", false, "The supplied generic class info object is nullptr. It cannot be added to the SerializeContext module structure");
+            return;
+        }
+
+        m_moduleLocalGenericClassInfos.emplace(genericClassInfo->GetSpecializedTypeId(), genericClassInfo);
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::RemoveGenericClassInfo(const AZ::TypeId& genericTypeId)
+    {
+        if (genericTypeId.IsNull())
+        {
+            AZ_Error("SerializeContext", false, "The supplied generic typeidis invalid. It is not stored the SerializeContext module structure ");
+            return;
+        }
+
+        auto genericClassInfoFoundIt = m_moduleLocalGenericClassInfos.find(genericTypeId);
+        if (genericClassInfoFoundIt != m_moduleLocalGenericClassInfos.end())
+        {
+            m_moduleLocalGenericClassInfos.erase(genericClassInfoFoundIt);
+        }
+    }
+
+    AZ::GenericClassInfo* SerializeContext::PerModuleGenericClassInfo::FindGenericClassInfo(const AZ::TypeId& genericTypeId) const
+    {
+        auto genericClassInfoFoundIt = m_moduleLocalGenericClassInfos.find(genericTypeId);
+        return genericClassInfoFoundIt != m_moduleLocalGenericClassInfos.end() ? genericClassInfoFoundIt->second : nullptr;
+    }
+
+    AZ::IAllocatorAllocate& SerializeContext::PerModuleGenericClassInfo::GetAllocator()
+    {
+        return m_moduleOSAllocator;
+    }
+
+    // Take advantage of static variables being unique per dll module to clean up module specific registered classes when the module unloads 
+    SerializeContext::PerModuleGenericClassInfo& GetCurrentSerializeContextModule()
+    {
+        static SerializeContext::PerModuleGenericClassInfo s_ModuleCleanupInstance;
+        return s_ModuleCleanupInstance;
+    }
+
+
+
+
+} // namespace AZ
 
 #endif // #ifndef AZ_UNITY_BUILD

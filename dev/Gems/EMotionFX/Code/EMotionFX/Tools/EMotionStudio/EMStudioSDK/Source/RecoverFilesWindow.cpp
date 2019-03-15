@@ -212,11 +212,11 @@ namespace EMStudio
         buttonLayout->addWidget(skipRecoverButton);
         layout->addLayout(buttonLayout);
 
-        connect(recoverButton, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(skipRecoverButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(recoverButton, &QPushButton::clicked, this, &RecoverFilesWindow::accept);
+        connect(skipRecoverButton, &QPushButton::clicked, this, &RecoverFilesWindow::reject);
         
-        connect(this, SIGNAL(accepted()), this, SLOT(Accepted()));
-        connect(this, SIGNAL(rejected()), this, SLOT(Rejected()));
+        connect(this, &RecoverFilesWindow::accepted, this, &RecoverFilesWindow::Accepted);
+        connect(this, &RecoverFilesWindow::rejected, this, &RecoverFilesWindow::Rejected);
 
         setFocus();
     }

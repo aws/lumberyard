@@ -17,6 +17,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Memory/PoolAllocator.h>
+#include <AzCore/RTTI/AttributeReader.h>
 
 #include <algorithm>
 
@@ -136,6 +137,13 @@ namespace AzToolsFramework
         /// from the node's identifier up to the top of the hierarchy (Address = {[node] [nodeparent] ... [root]})
         Address ComputeAddress() const;
 
+        /// Check the element edit data, class element, and class data for the specified attribute
+        AZ::Edit::Attribute* FindAttribute(AZ::Edit::AttributeId nameCrc) const;
+
+        /// Read the value T of the specified attribute into value if it exists and shares the same value across all instances
+        template <class T>
+        bool ReadAttribute(AZ::Edit::AttributeId nameCrc, T& value, bool readChildAttributes = false) const;
+
     protected:
         typedef AZStd::vector<void*> InstanceArray;
 
@@ -198,6 +206,50 @@ namespace AzToolsFramework
         }
     }
 
+    template <class T>
+    bool InstanceDataNode::ReadAttribute(AZ::Edit::AttributeId nameCrc, T& value, bool readChildAttributes) const
+    {
+        AZ::Edit::Attribute* attribute = FindAttribute(nameCrc);
+        if (readChildAttributes)
+        {
+            if (attribute && !attribute->m_describesChildren)
+            {
+                attribute = nullptr;
+            }
+        }
+        else if (!attribute || attribute->m_describesChildren)
+        {
+            return m_parent ? m_parent->ReadAttribute(nameCrc, value, true) : false;
+        }
+
+        if (attribute)
+        {
+            T lastValue{};
+            T newValue{};
+            for (size_t i = 0, numInstances = GetNumInstances(); i < numInstances; ++i)
+            {
+                AZ::AttributeReader reader(GetInstance(i), attribute);
+                // Bail if we fail to read the attribute
+                if (!reader.Read<T>(newValue))
+                {
+                    return false;
+                }
+
+                // Bail if our instances disagree about the value
+                if (i != 0 && newValue != lastValue)
+                {
+                    return false;
+                }
+
+                lastValue = newValue;
+            }
+
+            value = newValue;
+            return true;
+        }
+        return false;
+    }
+
     /*
      * InstanceDataHierarchy contains a hierarchy of InstanceDataNodes.
      * It supports mapping of multiple root instances.
@@ -217,6 +269,12 @@ namespace AzToolsFramework
 
         InstanceDataHierarchy();
 
+        enum Flags
+        {
+            None = 0x00,
+            IgnoreKeyValuePairs = 0x01, // Don't collapse key/value pairs into single entries (useful to e.g. allow key editing)
+        };
+
         void                AddRootInstance(void* instance, const AZ::Uuid& classId);
         void                AddComparisonInstance(void* instance, const AZ::Uuid& classId);
         bool                ContainsRootInstance(const void* instance) const;
@@ -234,6 +292,10 @@ namespace AzToolsFramework
         }
 
         InstanceDataNode*   GetRootNode()   { return m_matched ? this : NULL; }
+
+        /// Sets flags that can mutate building behavior.
+        /// @see InstanceDataHierarchy::Flags
+        void SetBuildFlags(AZ::u8 flags);
 
         void FixupEditData()
         {
@@ -316,8 +378,11 @@ namespace AzToolsFramework
     protected:
         struct SupplementalEditData
         {
+            using AttributePtr = AZStd::unique_ptr<AZ::Edit::Attribute>;
+
             AZ::Edit::ElementData               m_editElementData;
             AZStd::string                       m_displayLabel;
+            AZStd::vector<AttributePtr>         m_attributes;
         };
         typedef AZStd::list<SupplementalEditData>   SupplementalEditDataContainer;
 
@@ -349,6 +414,8 @@ namespace AzToolsFramework
 
         void FixupEditData(InstanceDataNode* node, int siblingIdx);
 
+        void EnumerateUIElements(InstanceDataNode* node, DynamicEditDataProvider dynamicEditDataProvider);
+
         bool BeginNode(void* instance, const AZ::SerializeContext::ClassData* classData, const AZ::SerializeContext::ClassElement* classElement, DynamicEditDataProvider dynamicEditDataProvider);
         bool EndNode();
 
@@ -371,6 +438,7 @@ namespace AzToolsFramework
         InstanceDataArray                                       m_comparisonInstances;      ///< Optional comparison instance for Override recognition.
         AZStd::vector<AZStd::unique_ptr<InstanceDataHierarchy>> m_comparisonHierarchies;    ///< Hierarchy representing comparison instance.
         ValueComparisonFunction                                 m_valueComparisonFunction;  ///< Customizable function for comparing value nodes.
+        AZ::u8                                                  m_buildFlags = 0;           ///< Flags to customize behavior during Build.
     };
 } // namespace AZ
 

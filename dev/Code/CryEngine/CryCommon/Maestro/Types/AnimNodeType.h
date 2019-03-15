@@ -26,9 +26,9 @@
 enum class AnimNodeType
 {
     Invalid                   = 0x00,
-    Entity                    = 0x01,
+    Entity                    = 0x01,       // Legacy Cry Entities (CE is AzEntity)
     Director                  = 0x02,
-    Camera                    = 0x03,
+    Camera                    = 0x03,       // Legacy Cry Camera Object
     CVar                      = 0x04,
     ScriptVar                 = 0x05,
     Material                  = 0x06,
@@ -40,13 +40,13 @@ enum class AnimNodeType
     ColorCorrection           = 0x12,
     DepthOfField              = 0x13,
     ScreenFader               = 0x14,
-    Light                     = 0x15,
-    // HDRSetup               = 0x16,     // deprecated Jan 2016
+    Light                     = 0x15,       // Legacy Cry Light
+    // HDRSetup               = 0x16,       // deprecated Jan 2016
     ShadowSetup               = 0x17,
-    Alembic                   = 0x18,     // Used in cinebox, added so nobody uses that number
+    Alembic                   = 0x18,       // Used in cinebox, added so nobody uses that number
     GeomCache                 = 0x19,
     Environment,
-    ScreenDropsSetup,                     // deprecated Jan 2016
+    ScreenDropsSetup,                       // deprecated Jan 2016
     AzEntity,
     Component,
     Num

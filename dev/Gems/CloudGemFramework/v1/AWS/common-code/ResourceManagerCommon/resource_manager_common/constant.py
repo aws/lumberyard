@@ -93,3 +93,5 @@ PENDING_PROJECT_STACK_ID = 'PendingProjectStackId'
 PROJECT_STACK_ID = 'ProjectStackId'
 FRAMEWORK_VERSION_KEY = 'FrameworkVersion'
 
+CROSS_GEM_RESOLVER_KEY = 'CrossGemCommunicationInterfaceResolver'
+

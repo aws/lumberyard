@@ -28,8 +28,8 @@ MODLIBS=        $(LOCALMODLIBS) $(BASEMODLIBS)
 VERSION=	2.7
 srcdir=		.
 
-abs_srcdir=	/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12.xxx
-abs_builddir=	/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12.xxx
+abs_srcdir=	/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12
+abs_builddir=	/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12
 build=		x86_64-unknown-linux-gnu
 host=		x86_64-unknown-linux-gnu
 
@@ -98,7 +98,7 @@ MACHDEP=	linux2
 MULTIARCH=	x86_64-linux-gnu
 
 # Install prefix for architecture-independent files
-prefix=		/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12.xxx/../2.7.12/linux_x64
+prefix=		/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12/../2.7.12/linux_x64
 
 # Install prefix for architecture-dependent files
 exec_prefix=	${prefix}
@@ -148,7 +148,7 @@ MACOSX_DEPLOYMENT_TARGET=
 OTHER_LIBTOOL_OPT=
 
 # Environment to run shared python without installed libraries
-RUNSHARED=       LD_LIBRARY_PATH=/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12.xxx
+RUNSHARED=       LD_LIBRARY_PATH=/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12
 
 # ensurepip options
 ENSUREPIP=      no
@@ -160,7 +160,7 @@ EXEMODE=	755
 FILEMODE=	644
 
 # configure script arguments
-CONFIG_ARGS=	 '--prefix=/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12.xxx/../2.7.12/linux_x64' '--enable-unicode=ucs2' '--enable-shared'
+CONFIG_ARGS=	 '--prefix=/data/ly/johnzip/branches/CloudCanvasDev/dev/Tools/Python/Python-2.7.12/../2.7.12/linux_x64' '--enable-unicode=ucs4' '--enable-shared'
 
 
 # Subdirectories with code

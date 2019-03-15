@@ -15,6 +15,7 @@
 // include the shared structs
 #include "SharedFileFormatStructs.h"
 
+#include <AzCore/base.h>
 
 namespace EMotionFX
 {
@@ -73,6 +74,16 @@ namespace EMotionFX
             uint32  mMotionExtractionFlags;     // motion extraction flags
             uint32  mMotionExtractionNodeIndex; // motion extraction node index
             uint8   mUnitType;                  // maps to EMotionFX::EUnitType
+        };
+
+        // information chunk
+        // (not aligned)
+        struct Motion_Info3
+        {
+            uint32  mMotionExtractionFlags;     // motion extraction flags
+            uint32  mMotionExtractionNodeIndex; // motion extraction node index
+            uint8   mUnitType;                  // maps to EMotionFX::EUnitType
+            uint8   mIsAdditive;                // if the motion is an additive motion [0=false, 1=true]
         };
 
         // skeletal submotion
@@ -312,6 +323,12 @@ namespace EMotionFX
 
             // followed by:
             // FileMotionEventTrack[mNumTracks]
+        };
+
+        struct FileMotionEventTableSerialized
+        {
+            /// Use a fixed size to avoid platform-specific issues with size_t
+            AZ::u64 m_size;
         };
     } // namespace FileFormat
 }   // namespace EMotionFX

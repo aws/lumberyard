@@ -905,7 +905,7 @@ void CAnimComponentNode::Animate(SAnimContext& ac)
             continue;
         }
 
-        if (!ac.bResetting)
+        if (!ac.resetting)
         {
             if (paramType.GetType() == AnimParamType::Animation)
             {

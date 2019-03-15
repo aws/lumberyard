@@ -12,13 +12,12 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzFramework/Physics/WorldEventhandler.h>
 
-namespace PhysX
+namespace Physics
 {
-    /**
-     * Services provided by the PhysX Trigger Area Component.
-     */
-    class PhysXTriggerAreaEvents
+    /// Services provided by the PhysX Trigger Area Component.
+    class TriggerNotifications
         : public AZ::ComponentBus
     {
     public:
@@ -26,17 +25,15 @@ namespace PhysX
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual ~PhysXTriggerAreaEvents() {}
+        virtual ~TriggerNotifications() {}
 
         /// Dispatched when an entity enters a trigger. The bus message is ID'd on the triggers entity Id.
-        virtual void OnTriggerEnter(AZ::EntityId /*entityEntering*/) {};
+        virtual void OnTriggerEnter(const TriggerEvent& triggerEvent) {};
 
         /// Dispatched when an entity exits a trigger. The bus message is ID'd on the triggers entity Id.
-        virtual void OnTriggerExit(AZ::EntityId /*entityExiting*/) {};
+        virtual void OnTriggerExit(const TriggerEvent& triggerEvent) {};
     };
 
-    /**
-     * Bus to service the PhysX Trigger Area Component event group.
-     */
-    using PhysXTriggerAreaEventBus = AZ::EBus<PhysXTriggerAreaEvents>;
+    /// Bus to service the PhysX Trigger Area Component event group.
+    using TriggerNotificationBus = AZ::EBus<TriggerNotifications>;
 } // namespace PhysX

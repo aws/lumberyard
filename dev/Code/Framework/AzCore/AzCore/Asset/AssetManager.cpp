@@ -950,7 +950,8 @@ namespace AZ
             auto reloadIter = m_reloads.find(assetId);
             if (reloadIter != m_reloads.end() && reloadIter->second.GetData()->IsLoading())
             {
-                // Asset is already queued for reload.
+                // This asset may already be loading stale data. Queue this requested reload until it's finished.
+                AssetBus::QueueFunction([this, assetId]() {this->ReloadAsset(assetId); });
                 return;
             }
 

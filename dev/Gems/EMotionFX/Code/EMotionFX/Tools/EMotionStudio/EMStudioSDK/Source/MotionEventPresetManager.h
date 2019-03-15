@@ -17,54 +17,63 @@
 #include <AzCore/std/string/string.h>
 #include "EMStudioConfig.h"
 
+#include <EMotionFX/Source/Event.h>
+#include <EMotionStudio/EMStudioSDK/Source/Allocators.h>
+
 
 namespace EMStudio
 {
     class EMSTUDIO_API MotionEventPreset
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionEventPreset, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK);
     public:
-        MotionEventPreset(const AZStd::string& eventType, const AZStd::string& eventParameter, const AZStd::string& mirrorType, uint32 color, uint32 eventID = MCORE_INVALIDINDEX32);
-        ~MotionEventPreset() = default;
+        AZ_RTTI(EMStudio::MotionEventPreset, "{EDE6662A-32C4-4DE1-9EC5-19C9F506ACAE}")
+        AZ_CLASS_ALLOCATOR(MotionEventPreset, EMStudio::UIAllocator, 0)
 
-        const AZStd::string& GetEventType() const               { return mEventType; }
-        const AZStd::string& GetMirrorType() const              { return mMirrorType; }
-        const AZStd::string& GetEventParameter() const          { return mEventParameter; }
-        uint32 GetEventColor() const                            { return mColor; }
-        uint32 GetEventID() const                               { return mEventID; }
-        bool GetIsDefault() const                               { return mIsDefault; }
+        MotionEventPreset() = default;
+        MotionEventPreset(const AZStd::string& name, EMotionFX::EventDataSet&& eventDatas, AZ::Color color);
 
-        void SetEventType(const char* type)                     { mEventType = type; UpdateEventID(); }
-        void SetMirrorType(const char* type)                    { mMirrorType = type; }
-        void SetEventParameter(const char* parameter)           { mEventParameter = parameter; }
-        void SetEventColor(uint32 color)                        { mColor = color; }
-        void SetEventID(uint32 eventID)                         { mEventID = eventID; }
-        void SetIsDefault(bool isDefault)                       { mIsDefault = isDefault; }
+        virtual ~MotionEventPreset() = default;
 
-        void UpdateEventID();
+        static void Reflect(AZ::ReflectContext* context);
+
+        const EMotionFX::EventDataSet& GetEventDatas() const { return m_eventDatas; }
+        EMotionFX::EventDataSet& GetEventDatas() { return m_eventDatas; }
+        const AZStd::string& GetName() const { return m_name; }
+        AZ::u32 GetEventColor() const
+        {
+            // AZ::Color::ToU32 returns the color in format AABBGGRR, but Qt
+            // wants AARRGGBB
+            return (m_color.GetA8() << 24) | (m_color.GetR8() << 16) | (m_color.GetG8() << 8) | (m_color.GetB8());
+        }
+        bool GetIsDefault() const { return m_isDefault; }
+
+        void SetName(const AZStd::string& name) { m_name = name; }
+        void SetEventColor(AZ::u32 color) { m_color.FromU32(color); }
+        void SetIsDefault(bool isDefault) { m_isDefault = isDefault; }
 
     private:
-        uint32              mEventID;
-        AZStd::string       mEventType;
-        AZStd::string       mMirrorType;
-        AZStd::string       mEventParameter;
-        uint32              mColor;
-        bool                mIsDefault;
+        EMotionFX::EventDataSet m_eventDatas;
+        AZStd::string m_name;
+        AZ::Color m_color = AZ::Color::CreateOne();
+        bool m_isDefault = false;
     };
 
 
     class EMSTUDIO_API MotionEventPresetManager
     {
-        MCORE_MEMORYOBJECTCATEGORY(MotionEventPresetManager, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK);
     public:
+        AZ_TYPE_INFO(EMStudio::MotionEventPresetManager, "{EEDD56F6-DDBC-40E7-A280-F2FBA09A63D4}")
+
         MotionEventPresetManager();
         ~MotionEventPresetManager();
+
+        static void Reflect(AZ::ReflectContext* context);
 
         size_t GetNumPresets() const;
         bool IsEmpty() const;
         void AddPreset(MotionEventPreset* preset);
-        void RemovePreset(uint32 index);
-        MotionEventPreset* GetPreset(uint32 index) const;
+        void RemovePreset(size_t index);
+        MotionEventPreset* GetPreset(size_t index) const;
         void Clear();
 
         void Load(const AZStd::string& filename);
@@ -79,10 +88,12 @@ namespace EMStudio
         const AZStd::string& GetFileNameString() const                          { return mFileName; }
         void SetFileName(const char* filename)                                  { mFileName = filename; }
 
-        uint32 GetEventColor(const char* type, const char* parameter) const;
-        uint32 GetEventColor(uint32 eventID) const;
+        AZ::u32 GetEventColor(const EMotionFX::EventDataSet& eventDatas) const;
 
     private:
+        bool LoadLYSerializedFormat();
+        bool LoadLegacyQSettingsFormat();
+
         AZStd::vector<MotionEventPreset*>           mEventPresets;
         AZStd::string                               mFileName;
         bool                                        mDirtyFlag;

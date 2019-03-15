@@ -239,7 +239,7 @@ namespace MysticQt
 
         // add the header button in the layout
         dialogLayout->addWidget(headerButton);
-        connect(headerButton, SIGNAL(clicked()), this, SLOT(OnHeaderButton()));
+        connect(headerButton, &QPushButton::clicked, this, &MysticQt::DialogStack::OnHeaderButton);
 
         // create the frame where the dialog/widget will be inside
         QWidget* frame = new QWidget();

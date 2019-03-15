@@ -20,7 +20,11 @@
 #include <cctype>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(LocalFileIO_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/LocalFileIO_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/LocalFileIO_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_WINDOWS_X64)
 #include "LocalFileIO_win.inl"
 #elif defined(AZ_PLATFORM_ANDROID)

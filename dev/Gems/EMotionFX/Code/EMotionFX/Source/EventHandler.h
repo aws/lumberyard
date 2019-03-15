@@ -25,22 +25,97 @@
 
 namespace EMotionFX
 {
+    enum EventTypes
+    {
+        EVENT_TYPE_ON_PLAY_MOTION,
+        EVENT_TYPE_ON_DELETE_MOTION,
+
+        // Keep this block together since MotionInstance only cares about these. Also keep EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT
+        // at the beginning and EVENT_TYPE_MOTION_INSTANCE_LAST_EVENT at the end (and updated)
+        EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT,
+        EVENT_TYPE_ON_EVENT = EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT,
+        EVENT_TYPE_ON_START_MOTION_INSTANCE,
+        EVENT_TYPE_ON_DELETE_MOTION_INSTANCE,
+        EVENT_TYPE_ON_STOP,
+        EVENT_TYPE_ON_HAS_LOOPED,
+        EVENT_TYPE_ON_HAS_REACHED_MAX_NUM_LOOPS,
+        EVENT_TYPE_ON_HAS_REACHED_MAX_PLAY_TIME,
+        EVENT_TYPE_ON_IS_FROZEN_AT_LAST_FRAME,
+        EVENT_TYPE_ON_CHANGED_PAUSE_STATE,
+        EVENT_TYPE_ON_CHANGED_ACTIVE_STATE,
+        EVENT_TYPE_ON_START_BLENDING,
+        EVENT_TYPE_ON_STOP_BLENDING,
+        EVENT_TYPE_ON_QUEUE_MOTION_INSTANCE,
+        EVENT_TYPE_MOTION_INSTANCE_LAST_EVENT = EVENT_TYPE_ON_QUEUE_MOTION_INSTANCE,
+
+        EVENT_TYPE_ON_DELETE_ACTOR,
+        EVENT_TYPE_ON_DELETE_ACTOR_INSTANCE,
+        EVENT_TYPE_ON_SIMULATE_PHYSICS,
+        EVENT_TYPE_ON_CUSTOM_EVENT,
+        EVENT_TYPE_ON_DRAW_LINE,
+        EVENT_TYPE_ON_DRAW_TRIANGLE,
+        EVENT_TYPE_ON_DRAW_TRIANGLES,
+        EVENT_TYPE_ON_CREATE_ANIM_GRAPH,
+        EVENT_TYPE_ON_CREATE_ANIM_GRAPH_INSTANCE,
+        EVENT_TYPE_ON_CREATE_MOTION,
+        EVENT_TYPE_ON_CREATE_MOTION_SET,
+        EVENT_TYPE_ON_CREATE_MOTION_INSTANCE,
+        EVENT_TYPE_ON_CREATE_MOTION_SYSTEM,
+        EVENT_TYPE_ON_CREATE_ACTOR,
+        EVENT_TYPE_ON_CREATE_ACTOR_INSTANCE,
+        EVENT_TYPE_ON_POST_CREATE_ACTOR,
+        EVENT_TYPE_ON_DELETE_ANIM_GRAPH,
+        EVENT_TYPE_ON_DELETE_ANIM_GRAPH_INSTANCE,
+        EVENT_TYPE_ON_DELETE_MOTION_SET,
+        EVENT_TYPE_ON_DELETE_MOTION_SYSTEM,
+        EVENT_TYPE_ON_RAY_INTERSECTION_TEST,
+
+        // Keep this block together since AnimGraphInstance only cares about these. Also keep EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT
+        // at the beginning and EVENT_TYPE_ANIM_GRAPH_INSTANCE_LAST_EVENT at the end (and updated)
+        EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT,
+        EVENT_TYPE_ON_STATE_ENTER = EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT,
+        EVENT_TYPE_ON_STATE_ENTERING,
+        EVENT_TYPE_ON_STATE_EXIT,
+        EVENT_TYPE_ON_STATE_END,
+        EVENT_TYPE_ON_START_TRANSITION,
+        EVENT_TYPE_ON_END_TRANSITION,
+        EVENT_TYPE_ANIM_GRAPH_INSTANCE_LAST_EVENT = EVENT_TYPE_ON_END_TRANSITION,
+
+        EVENT_TYPE_ON_SET_VISUAL_MANIPULATOR_OFFSET,
+        EVENT_TYPE_ON_INPUT_PORTS_CHANGED,
+        EVENT_TYPE_ON_OUTPUT_PORTS_CHANGED,
+        EVENT_TYPE_ON_RENAMED_NODE,
+        EVENT_TYPE_ON_CREATED_NODE,
+        EVENT_TYPE_ON_REMOVE_NODE,
+        EVENT_TYPE_ON_REMOVED_CHILD_NODE,
+        EVENT_TYPE_ON_PROGRESS_START,
+        EVENT_TYPE_ON_PROGRESS_END,
+        EVENT_TYPE_ON_PROGRESS_TEXT,
+        EVENT_TYPE_ON_PROGRESS_VALUE,
+        EVENT_TYPE_ON_SUB_PROGRESS_TEXT,
+        EVENT_TYPE_ON_SUB_PROGRESS_VALUE,
+        EVENT_TYPE_ON_SCALE_ACTOR_DATA,
+        EVENT_TYPE_ON_SCALE_MOTION_DATA,
+        EVENT_TYPE_ON_SCALE_ANIM_GRAPH_DATA,
+
+        EVENT_TYPE_COUNT
+    };
+
     /**
      * The event handler, which is responsible for processing the events.
      * This class contains several methods which you can overload to perform custom things event comes up.
      * You can inherit your own event handler from this base class and add it to the event manager using EMFX_EVENTMGR.AddEventHandler(...) method
      * to make it use your custom event handler.
+     * Every event your derived class handles has to be returned by the GetHandledEventTypes method. This helps filtering
+     * the event dispatching to only the handlers that are interested about such event.
      */
     class EMFX_API EventHandler
-        : public BaseObject
     {
+    public:
         AZ_CLASS_ALLOCATOR_DECL
 
-    public:
-        /**
-         * Default creation method.
-         */
-        static EventHandler* Create();
+        EventHandler() = default;
+        virtual ~EventHandler() = default;
 
         /**
          * The main method that processes a event.
@@ -75,6 +150,11 @@ namespace EMotionFX
                 };
             */
         }
+
+        /**
+         * Event handlers need to overload this function and return the list of events they are interested about
+         */
+        virtual const AZStd::vector<EventTypes> GetHandledEventTypes() const = 0;
 
         /**
          * The event that gets triggered when a MotionSystem::PlayMotion(...) is being executed.
@@ -252,8 +332,8 @@ namespace EMotionFX
         /**
          * Perform a ray intersection test and return the intersection info.
          * The first event handler registered that sets the IntersectionInfo::mIsValid to true will be outputting to the outIntersectInfo parameter.
-         * @param start The start point, in global space.
-         * @param end The end point, in global space.
+         * @param start The start point, in world space.
+         * @param end The end point, in world space.
          * @param outIntersectInfo The resulting intersection info.
          * @result Returns true when an intersection occurred and false when no intersection occurred.
          */
@@ -265,9 +345,10 @@ namespace EMotionFX
         virtual void OnStateEnd(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)                                                   { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(state); }
         virtual void OnStartTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition)                            { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(transition); }
         virtual void OnEndTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition)                              { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(transition); }
-        virtual void Sync(AnimGraphInstance* animGraphInstance, AnimGraphNode* animGraphNode)                                                { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(animGraphNode); }
-        virtual void OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset)       { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(paramIndex); MCORE_UNUSED(offset); }
-        virtual void OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode, const AZStd::vector<AZStd::string>& newParameterMask)                                                      { MCORE_UNUSED(parameterNode); }
+        virtual void OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset)         { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(paramIndex); MCORE_UNUSED(offset); }
+
+        virtual void OnInputPortsChanged(AnimGraphNode* node, const AZStd::vector<AZStd::string>& newInputPorts, const AZStd::string& memberName, const AZStd::vector<AZStd::string>& memberValue)   { AZ_UNUSED(node); AZ_UNUSED(newInputPorts); AZ_UNUSED(memberName); AZ_UNUSED(memberValue); }
+        virtual void OnOutputPortsChanged(AnimGraphNode* node, const AZStd::vector<AZStd::string>& newOutputPorts, const AZStd::string& memberName, const AZStd::vector<AZStd::string>& memberValue) { AZ_UNUSED(node); AZ_UNUSED(newOutputPorts); AZ_UNUSED(memberName); AZ_UNUSED(memberValue); }
 
         virtual void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)                              { MCORE_UNUSED(animGraph); MCORE_UNUSED(node); MCORE_UNUSED(oldName); }
         virtual void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node)                                                            { MCORE_UNUSED(animGraph); MCORE_UNUSED(node); }
@@ -283,17 +364,6 @@ namespace EMotionFX
 
         virtual void OnScaleActorData(Actor* actor, float scaleFactor)                                                                      { MCORE_UNUSED(actor); MCORE_UNUSED(scaleFactor); }
         virtual void OnScaleMotionData(Motion* motion, float scaleFactor)                                                                   { MCORE_UNUSED(motion); MCORE_UNUSED(scaleFactor); }
-
-    protected:
-        /**
-         * The constructor.
-         */
-        EventHandler();
-
-        /**
-         * The destructor.
-         */
-        virtual ~EventHandler();
     };
 
 
@@ -302,12 +372,17 @@ namespace EMotionFX
      * This allows you to capture events triggered on a specific anim graph instance, rather than globally.
      */
     class EMFX_API AnimGraphInstanceEventHandler
-        : public BaseObject
     {
+    public:
         AZ_CLASS_ALLOCATOR_DECL
 
-    public:
-        static AnimGraphInstanceEventHandler* Create();
+        AnimGraphInstanceEventHandler() = default;
+        virtual ~AnimGraphInstanceEventHandler() = default;
+
+        /**
+         * Event handlers need to overload this function and return the list of events they are interested about
+         */
+        virtual const AZStd::vector<EventTypes> GetHandledEventTypes() const = 0;
 
         virtual void OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)                                                 { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(state); }
         virtual void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)                                              { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(state); }
@@ -315,10 +390,6 @@ namespace EMotionFX
         virtual void OnStateEnd(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)                                                   { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(state); }
         virtual void OnStartTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition)                            { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(transition); }
         virtual void OnEndTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition)                              { MCORE_UNUSED(animGraphInstance); MCORE_UNUSED(transition); }
-
-    protected:
-        AnimGraphInstanceEventHandler();
-        virtual ~AnimGraphInstanceEventHandler();
     };
 
 
@@ -327,12 +398,17 @@ namespace EMotionFX
      * This allows you to capture events triggered on a specific motion instance, rather than globally.
      */
     class EMFX_API MotionInstanceEventHandler
-        : public BaseObject
     {
+    public:
         AZ_CLASS_ALLOCATOR_DECL
 
-    public:
-        static MotionInstanceEventHandler* Create();
+        MotionInstanceEventHandler() = default;
+        virtual ~MotionInstanceEventHandler() = default;
+
+        /**
+         * Event handlers need to overload this function and return the list of events they are interested about
+        */
+        virtual const AZStd::vector<EventTypes> GetHandledEventTypes() const = 0;
 
         void SetMotionInstance(MotionInstance* motionInstance)          { mMotionInstance = motionInstance; }
         MCORE_INLINE MotionInstance* GetMotionInstance()                { return mMotionInstance; }
@@ -442,9 +518,6 @@ namespace EMotionFX
         virtual void OnQueueMotionInstance(PlayBackInfo* info)      { MCORE_UNUSED(info); }
 
     protected:
-        MotionInstance* mMotionInstance;
-
-        MotionInstanceEventHandler();
-        virtual ~MotionInstanceEventHandler();
+        MotionInstance* mMotionInstance = nullptr;
     };
 }   // namespace EMotionFX

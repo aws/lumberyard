@@ -37,6 +37,7 @@ namespace EMStudio
     class MotionEventsPlugin;
     class MotionListWindow;
     class MotionEventPresetsWidget;
+    class MotionSetsWindowPlugin;
 
     struct EventSelectionItem
     {
@@ -46,7 +47,7 @@ namespace EMStudio
         EMotionFX::MotionEventTrack* GetEventTrack();
 
         uint32                          mEventNr;// the motion event index in its track
-        uint32                          mTrackNr;// the corresponding track in which the event is in
+        size_t                          mTrackNr;// the corresponding track in which the event is in
         EMotionFX::Motion*              mMotion;// the parent motion of the event track
     };
 
@@ -168,8 +169,6 @@ namespace EMStudio
         void ReInit();
 
     public slots:
-        //void OnHSliderValueChanged(int value);
-        //void OnScaleSliderValueChanged(int value);
         void VisibilityChanged(bool visible);
         void OnSelectionChanged()                   { emit SelectionChanged(); }
         void MotionSelectionChanged();
@@ -201,10 +200,12 @@ namespace EMStudio
         MCORE_DEFINECOMMANDCALLBACK(CommandSelectCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandUnselectCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandClearSelectionCallback);
+        MCORE_DEFINECOMMANDCALLBACK(CommandRecorderClearCallback);
         CommandAdjustMotionCallback*    mAdjustMotionCallback;
         CommandSelectCallback*          mSelectCallback;
         CommandUnselectCallback*        mUnselectCallback;
         CommandClearSelectionCallback*  mClearSelectionCallback;
+        CommandRecorderClearCallback*   mRecorderClearCallback;
 
         TrackDataHeaderWidget* mTrackDataHeaderWidget;
         TrackDataWidget*    mTrackDataWidget;
@@ -216,6 +217,7 @@ namespace EMStudio
         MotionWindowPlugin*                 mMotionWindowPlugin;
         MotionEventsPlugin*                 mMotionEventsPlugin;
         MotionListWindow*                   mMotionListWindow;
+        MotionSetsWindowPlugin*             m_motionSetPlugin;
         MCore::Array<EventSelectionItem>    mSelectedEvents;
 
         EMotionFX::Recorder::ActorInstanceData* mActorInstanceData;

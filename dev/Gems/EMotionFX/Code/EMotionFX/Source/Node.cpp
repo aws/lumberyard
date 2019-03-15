@@ -10,19 +10,17 @@
 *
 */
 
-// include the required headers
 #include "Node.h"
 #include "NodeAttribute.h"
 #include "Skeleton.h"
 #include <MCore/Source/StringIdPool.h>
 #include <EMotionFX/Source/Allocators.h>
 
+
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(Node, NodeAllocator, 0)
 
-
-    // constructor
     Node::Node(const char* name, Skeleton* skeleton)
         : BaseObject()
     {
@@ -48,7 +46,6 @@ namespace EMotionFX
     }
 
 
-    // constructor
     Node::Node(uint32 nameID, Skeleton* skeleton)
         : BaseObject()
     {
@@ -66,7 +63,6 @@ namespace EMotionFX
     }
 
 
-    // destructor
     Node::~Node()
     {
         // get rid of all node attributes
@@ -521,6 +517,7 @@ namespace EMotionFX
     {
         mNodeIndex = index;
     }
+
 
 
     void Node::SetSkeletalLODLevelBits(uint32 bitValues)

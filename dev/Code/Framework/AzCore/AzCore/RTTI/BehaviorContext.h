@@ -961,6 +961,9 @@ namespace AZ
 
         virtual void Disconnect() = 0;
 
+        virtual bool IsConnected() = 0;
+        virtual bool IsConnectedId(BehaviorValueParameter* id) = 0;
+
         //const AZ::Uuid* GetIdTypeId() const = 0;
 
         template<class Hook>
@@ -1541,6 +1544,12 @@ namespace AZ
     }\
     bool Connect(AZ::BehaviorValueParameter* id = nullptr) override {\
         return AZ::Internal::EBusConnector<_Handler>::Connect(this, id);\
+    }\
+    bool IsConnected() override {\
+        return AZ::Internal::EBusConnector<_Handler>::IsConnected(this);\
+    }\
+    bool IsConnectedId(AZ::BehaviorValueParameter* id) override {\
+        return AZ::Internal::EBusConnector<_Handler>::IsConnectedId(this, id);\
     }
 
 #define AZ_EBUS_BEHAVIOR_BINDER_TEMPLATE(_Handler,_TemplateUuid,_Allocator,...)\
@@ -1564,6 +1573,12 @@ namespace AZ
     }\
     bool Connect(AZ::BehaviorValueParameter* id = nullptr) override {\
         return AZ::Internal::EBusConnector<_Handler>::Connect(this, id);\
+    }\
+    bool IsConnected() override {\
+        return AZ::Internal::EBusConnector<_Handler>::IsConnected(this);\
+    }\
+    bool IsConnectedId(AZ::BehaviorValueParameter* id) override {\
+        return AZ::Internal::EBusConnector<_Handler>::IsConnectedId(this, id);\
     }
 
  /**
@@ -1623,6 +1638,12 @@ namespace AZ
     }\
     bool Connect(AZ::BehaviorValueParameter* id = nullptr) override {\
         return AZ::Internal::EBusConnector<_Handler>::Connect(this, id);\
+    }\
+    bool IsConnected() override {\
+        return AZ::Internal::EBusConnector<_Handler>::IsConnected(this);\
+    }\
+    bool IsConnectedId(AZ::BehaviorValueParameter* id) override {\
+        return AZ::Internal::EBusConnector<_Handler>::IsConnectedId(this, id);\
     }
 
 #define AZ_EBUS_SEQ_1(_1) (_1)
@@ -4163,6 +4184,24 @@ namespace AZ
                 }
                 return false;
             }
+
+            static bool IsConnected(BusHandler* handler)
+            {
+                return handler->BusIsConnected();
+            }
+
+            static bool IsConnectedId(BusHandler* handler, BehaviorValueParameter* id)
+            {
+                if (id && id->ConvertTo<typename BusHandler::BusType::BusIdType>())
+                {
+                    return handler->BusIsConnectedId(*id->GetAsUnsafe<typename BusHandler::BusType::BusIdType>());
+                }
+                else
+                {
+                    AZ_Warning("BehaviorContext", false, "Invalid Id argument. Please make sure the type of Id is correct.");
+                    return false;
+                }
+            }
         };
 
         //////////////////////////////////////////////////////////////////////////
@@ -4174,6 +4213,18 @@ namespace AZ
                 (void)id;
                 handler->BusConnect();
                 return true;
+            }
+
+            static bool IsConnected(BusHandler* handler)
+            {
+                return handler->BusIsConnected();
+            }
+
+            static bool IsConnectedId(BusHandler* handler, BehaviorValueParameter* id)
+            {
+                (void)id;
+                AZ_Warning("BehaviorContext", false, "Function IsConnectedId is called on an EBus handler that was initially connected without Id. Please use IsConnected instead.");
+                return handler->BusIsConnected();
             }
         };
 

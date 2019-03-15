@@ -13,12 +13,14 @@
 #include "ReflectedPropertyEditor.hxx"
 #include "PropertyRowWidget.hxx"
 #include <AzCore/UserSettings/UserSettings.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Math/Sfmt.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QMenu>
+#include <QtWidgets/QDialogButtonBox>
 #include <QtWidgets/QVBoxLayout>
 #include <QtCore/QTimer>
 #include <QtCore/QSet>
@@ -154,7 +156,8 @@ namespace AzToolsFramework
         ReflectedPropertyEditor::WidgetList m_widgets;
         RowContainerType m_widgetsInDisplayOrder;
         UserWidgetToDataMap m_userWidgetsToData;
-        void AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth);
+        VisibilityCallback m_visibilityCallback;
+        void AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth, AZStd::string_view labelOverride = "");
         void CreateEditorWidget(PropertyRowWidget* pWidget);
         void ExpandChildren(PropertyRowWidget* pWidget, bool expand, bool checkWhetherChildShouldExpand);
         void UpdateExpansionState();
@@ -165,7 +168,7 @@ namespace AzToolsFramework
         PropertyRowWidget* GetOrCreateLogicalGroupWidget(InstanceDataNode* node, PropertyRowWidget* parent, int depth);
         size_t CountRowsInAllDescendents(PropertyRowWidget* pParent);
 
-        using GroupWidgetList = AZStd::unordered_map<AZ::Crc32, PropertyRowWidget*>;
+        using GroupWidgetList = AZStd::unordered_map<AZStd::pair<PropertyRowWidget*, AZStd::string>, PropertyRowWidget*>;
         GroupWidgetList m_groupWidgets;
         ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -477,14 +480,13 @@ namespace AzToolsFramework
             if (groupElementData)
             {
                 const char* groupName = groupElementData->m_description;
-                const AZ::Crc32 groupCrc(groupName);
-
-                PropertyRowWidget*& widgetEntry = m_groupWidgets[groupCrc];
+                PropertyRowWidget*& widgetEntry = m_groupWidgets[{parent, groupName}];
 
                 // Create the group's widget if we haven't already.
                 if (!widgetEntry)
                 {
                     widgetEntry = CreateOrPullFromPool();
+                    widgetEntry->SetFilterString(m_editor->GetFilterString());
                     widgetEntry->Initialize(groupName, parent, depth, m_propertyLabelWidth);
                     widgetEntry->SetLeafIndentation(m_leafIndentation);
                     widgetEntry->SetTreeIndentation(m_treeIndentation);
@@ -531,6 +533,21 @@ namespace AzToolsFramework
         }
 
         return result;
+    }
+    bool IsParentAssociativeContainer(InstanceDataNode* node)
+    {
+        return node->GetParent() && node->GetParent()->GetClassMetadata()->m_container && node->GetParent()->GetClassMetadata()->m_container->GetAssociativeContainerInterface();
+    }
+
+    bool IsPairContainer(InstanceDataNode* node)
+    {
+        AZ::SerializeContext* context{};
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+
+        const AZ::Uuid genericPairId("{9F3F5302-3390-407a-A6F7-2E011E3BB686}");
+        auto genericClassInfo = context->FindGenericClassInfo(node->GetClassMetadata()->m_typeId);
+
+        return (genericClassInfo && genericClassInfo->GetGenericTypeId() == genericPairId);
     }
 
     QSet<PropertyRowWidget*> ReflectedPropertyEditor::Impl::getTopLevelWidgets() const
@@ -617,7 +634,7 @@ namespace AzToolsFramework
         }
     }
 
-    void ReflectedPropertyEditor::Impl::AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth)
+    void ReflectedPropertyEditor::Impl::AddProperty(InstanceDataNode* node, PropertyRowWidget* pParent, int depth, AZStd::string_view labelOverride)
     {
         // Removal markers should not be displayed in the property grid.
         if (!node || node->IsRemovedVersusComparison())
@@ -639,8 +656,15 @@ namespace AzToolsFramework
         }
 
         // Evaluate editor reflection and visibility attributes for the node.
-        const NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(*node);
-        if (visibility == NodeDisplayVisibility::NotVisible)
+        NodeDisplayVisibility visibility = CalculateNodeDisplayVisibility(*node);
+        bool checkChildVisibility = visibility != NodeDisplayVisibility::NotVisible;
+
+        if (m_visibilityCallback)
+        {
+            m_visibilityCallback(node, visibility, checkChildVisibility);
+        }
+
+        if (!checkChildVisibility)
         {
             return;
         }
@@ -648,59 +672,95 @@ namespace AzToolsFramework
         
         ReflectedPropertyEditorUpdateSentinel updateSentinel(m_editor, &m_editor->m_updateDepth);
 
+        bool isParentAssociativeContainer = IsParentAssociativeContainer(node);
+        bool isAssociativeContainerPair = isParentAssociativeContainer ? IsPairContainer(node) : false;
+
         PropertyRowWidget* pWidget = nullptr;
         if (visibility == NodeDisplayVisibility::Visible || visibility == NodeDisplayVisibility::HideChildren)
         {
-            auto widgetDisplayOrder = m_widgetsInDisplayOrder.end();
-
-            // Handle anchoring to logical groups defined by ClassElement(AZ::Edit::ClassElements::Group,...).
-            PropertyRowWidget* groupWidget = GetOrCreateLogicalGroupWidget(node, pParent, depth);
-            if (groupWidget)
+            if (isParentAssociativeContainer && isAssociativeContainerPair && visibility == NodeDisplayVisibility::Visible)
             {
-                groupWidget->show();
-                pParent = groupWidget;
-                depth = groupWidget->GetDepth() + 1;
+                // For associative containers, hide the pair node itself and only show the children
+                visibility = NodeDisplayVisibility::ShowChildrenOnly;
+            }
+            else
+            {
+                auto widgetDisplayOrder = m_widgetsInDisplayOrder.end();
 
-                // Insert this node's widget after all existing properties within the group.
-                for (auto iter = m_widgetsInDisplayOrder.begin(); iter != m_widgetsInDisplayOrder.end(); ++iter)
+                // Handle anchoring to logical groups defined by ClassElement(AZ::Edit::ClassElements::Group,...).
+                PropertyRowWidget* groupWidget = GetOrCreateLogicalGroupWidget(node, pParent, depth);
+                if (groupWidget)
                 {
-                    if (*iter == groupWidget)
-                    {
-                        widgetDisplayOrder = iter;
+                    groupWidget->show();
+                    pParent = groupWidget;
+                    depth = groupWidget->GetDepth() + 1;
 
-                        // We have to allow for containers in the group so we add the total number of descendant rows
-                        AZStd::advance(widgetDisplayOrder, CountRowsInAllDescendents(groupWidget) + 1);
+                    // Insert this node's widget after all existing properties within the group.
+                    for (auto iter = m_widgetsInDisplayOrder.begin(); iter != m_widgetsInDisplayOrder.end(); ++iter)
+                    {
+                        if (*iter == groupWidget)
+                        {
+                            widgetDisplayOrder = iter;
+
+                            // We have to allow for containers in the group so we add the total number of descendant rows
+                            AZStd::advance(widgetDisplayOrder, CountRowsInAllDescendents(groupWidget) + 1);
+                        }
                     }
                 }
+
+                pWidget = CreateOrPullFromPool();
+                pWidget->show();
+
+                pWidget->SetFilterString(m_editor->GetFilterString());
+                pWidget->Initialize(pParent, node, depth, m_propertyLabelWidth);
+
+                if (labelOverride != "")
+                {
+                    pWidget->SetNameLabel(labelOverride.data());
+                }
+
+                pWidget->setObjectName(pWidget->label());
+                pWidget->SetSelectionEnabled(m_selectionEnabled);
+                pWidget->SetLeafIndentation(m_leafIndentation);
+                pWidget->SetTreeIndentation(m_treeIndentation);
+
+                m_widgets[node] = pWidget;
+                m_widgetsInDisplayOrder.insert(widgetDisplayOrder, pWidget);
+
+                if (pParent)
+                {
+                    pParent->AddedChild(pWidget);
+                }
+
+                pParent = pWidget;
+                depth += 1;
             }
-
-            pWidget = CreateOrPullFromPool();
-            pWidget->show();
-
-            pWidget->SetFilterString(m_editor->GetFilterString());
-            pWidget->Initialize(pParent, node, depth, m_propertyLabelWidth);
-            pWidget->setObjectName(pWidget->label());
-            pWidget->SetSelectionEnabled(m_selectionEnabled);
-            pWidget->SetLeafIndentation(m_leafIndentation);
-            pWidget->SetTreeIndentation(m_treeIndentation);
-
-            m_widgets[node] = pWidget;
-            m_widgetsInDisplayOrder.insert(widgetDisplayOrder, pWidget);
-
-            if (pParent)
-            {
-                pParent->AddedChild(pWidget);
-            }
-
-            pParent = pWidget;
-            depth += 1;
         }
 
         if (visibility != NodeDisplayVisibility::HideChildren)
         {
-            for (auto& childNode : node->GetChildren())
+            auto& children = node->GetChildren();
+
+            if (isParentAssociativeContainer && isAssociativeContainerPair)
             {
-                AddProperty(&childNode, pParent, depth);
+                // For pairs, show only the 2nd child and use the pair's display name (which should be the key string) as the label text
+
+                AZ_Assert(children.size() == 2, "Pair must have only two children");
+                const char* displayName = "";
+                
+                if (node->GetElementEditMetadata())
+                {
+                    displayName = node->GetElementEditMetadata()->m_name;
+                }
+                
+                AddProperty(&children.back(), pParent, depth, displayName);
+            }
+            else
+            {
+                for (auto& childNode : children)
+                {
+                    AddProperty(&childNode, pParent, depth);
+                }
             }
         }
 
@@ -817,6 +877,11 @@ namespace AzToolsFramework
             if (filter)
             {
                 isFilterMatch = NodeMatchesFilter(*node, filter) && visibility == NodeDisplayVisibility::Visible;
+
+                if (!isFilterMatch && visibility == NodeDisplayVisibility::Visible)
+                {
+                    isFilterMatch = NodeGroupMatchesFilter(*node, filter);
+                }
 
                 if (!isFilterMatch)
                 {
@@ -1344,14 +1409,29 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::OnPropertyRowRequestClear(PropertyRowWidget* widget, InstanceDataNode* node)
     {
+        AZ::SerializeContext::IDataContainer* container = node->GetClassMetadata()->m_container;
+        AZ_Assert(container->IsFixedSize() == false || container->IsSmartPointer(), "Attempted to clear elements in a static container");
+
+        bool isContainerEmpty = false;
+        for (size_t i = 0; !isContainerEmpty && i < node->GetNumInstances(); ++i)
+        {
+            isContainerEmpty = container->Size(node->GetInstance(i)) == 0;
+        }
+
+        // Bail out if the user aborts (or the container is empty, which is by definition a no-op)
+        if (isContainerEmpty ||
+            QMessageBox::question(this, 
+            QStringLiteral("Clear container?"), 
+            QStringLiteral("Are you sure you want to remove all elements from this container?")) == QMessageBox::No)
+        {
+            return;
+        }
+
         // get the property editor
         if (m_impl->m_ptrNotify)
         {
             m_impl->m_ptrNotify->BeforePropertyModified(node);
         }
-
-        AZ::SerializeContext::IDataContainer* container = node->GetClassMetadata()->m_container;
-        AZ_Assert(container->IsFixedSize() == false || container->IsSmartPointer(), "We clear elements in static containers");
 
         // make space for number of elements stored by each instance
         AZStd::vector<size_t> instanceElements(node->GetNumInstances());
@@ -1423,6 +1503,14 @@ namespace AzToolsFramework
             pContainerNode = pContainerNode->GetParent();
         }
 
+        // Check if the container is actually a PairContainer that belongs to an associative container
+        if (IsParentAssociativeContainer(pContainerNode) && IsPairContainer(pContainerNode))
+        {
+            // Go up one more level to the associative container, we'll remove the pair from that container
+            pContainerNode = pContainerNode->GetParent();
+            node = node->GetParent();
+        }
+
         AZ_Assert(pContainerNode, "Failed to locate parent container for element \"%s\" of type %s.",
             node->GetElementMetadata() ? node->GetElementMetadata()->m_name : node->GetClassMetadata()->m_name,
             node->GetClassMetadata()->m_typeId.ToString<AZStd::string>().c_str());
@@ -1437,11 +1525,21 @@ namespace AzToolsFramework
         AZ_Assert(container->IsFixedSize() == false ||
             container->IsSmartPointer(), "We can't remove elements from a fixed size container!");
 
+        // Get the node's instance list, giving the ElementInstances attribute for containers priority over the raw instance list
+        AZStd::vector<void*> nodeInstances;
+        if (!node->ReadAttribute(AZ::Edit::InternalAttributes::ElementInstances, nodeInstances))
+        {
+            for (size_t i = 0, instanceCount = node->GetNumInstances(); i < instanceCount; ++i)
+            {
+                nodeInstances.push_back((node->GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER) 
+                    ? node->GetInstanceAddress(i) 
+                    : node->GetInstance(i));
+            }
+        }
+
         size_t elementIndex = 0;
         {
-            void* elementPtr = (node->GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
-                ? node->GetInstanceAddress(0)
-                : node->FirstInstance();
+            void* elementPtr = nodeInstances.front();
 
             // find the index of the element we are about to remove
             container->EnumElements(pContainerNode->GetInstance(0), [&elementIndex, elementPtr](void* instancePointer, const AZ::Uuid& /*elementClassId*/,
@@ -1461,9 +1559,7 @@ namespace AzToolsFramework
         // pass the context as the last parameter to actually delete the related data.
         for (AZStd::size_t instanceIndex = 0; instanceIndex < pContainerNode->GetNumInstances(); ++instanceIndex)
         {
-            void* elementPtr = (node->GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
-                ? node->GetInstanceAddress(instanceIndex)
-                : node->GetInstance(instanceIndex);
+            void* elementPtr = nodeInstances[instanceIndex];
             container->RemoveElement(pContainerNode->GetInstance(instanceIndex), elementPtr, pContainerNode->GetSerializeContext());
         }
 
@@ -1505,6 +1601,45 @@ namespace AzToolsFramework
         }
 
         QueueInvalidation(Refresh_EntireTree);
+    }
+
+    // Helper functions to populate a dataPtr with a default constructed type, if it's in a list of supported, default-constructable types.
+    namespace ReflectedPropertyEditorHelper
+    {
+        template <class TDataType>
+        bool HandleDefaultValue(void* dataPtr, const AZ::Uuid& typeId)
+        {
+            if (typeId == azrtti_typeid<TDataType>() || typeId == azrtti_typeid<AZ::Internal::RValueToLValueWrapper<TDataType>>())
+            {
+                *reinterpret_cast<TDataType*>(dataPtr) = {};
+                return true;
+            }
+            return false;
+        }
+
+        template <class TDataType, class TOtherDataType, class... TRemainingDataTypes>
+        bool HandleDefaultValue(void* dataPtr, const AZ::Uuid& typeId)
+        {
+            return HandleDefaultValue<TDataType>(dataPtr, typeId) || HandleDefaultValue<TOtherDataType, TRemainingDataTypes...>(dataPtr, typeId);
+        }
+
+        // In the case of primitive numbers, initialize to 0.
+        bool HandleDefaultNumericValues(void* dataPtr, const AZ::Uuid& typeId)
+        {
+            return HandleDefaultValue<
+                double,
+                float,
+                AZ::u8,
+                char,
+                AZ::u16,
+                AZ::s16,
+                AZ::u32,
+                AZ::s32,
+                AZ::u64,
+                AZ::s64,
+                bool
+            >(dataPtr, typeId);
+        }
     }
 
     void ReflectedPropertyEditor::OnPropertyRowRequestContainerAddItem(PropertyRowWidget* widget, InstanceDataNode* pContainerNode)
@@ -1552,41 +1687,94 @@ namespace AzToolsFramework
 
         AZ_Assert(container->IsFixedSize() == false || container->IsSmartPointer(), "We can't add elements to static containers");
 
-        pContainerNode->CreateContainerElement(
-            CreateContainerElementSelectClassCallback,
-            [](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
+        auto promptForValue = [this](void* value, AZ::Uuid typeId, const char* message) -> bool
+        {
+            QDialog dialog;
+            QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+            ReflectedPropertyEditor* promptEditor = new ReflectedPropertyEditor(&dialog);
+
+            if (message)
             {
-                (void)noDefaultData;
+                // Set the edit data for the key prompt
+                AZ::Edit::ElementData syntheticData;
+                syntheticData.m_elementId = 0;
+                syntheticData.m_name = message;
+                syntheticData.m_description = "";
 
-#define HANDLE_NUMERIC(Type, defaultValue)                  \
-    if (classElement->m_typeId == azrtti_typeid<Type>()) {  \
-        *reinterpret_cast<Type*>(dataPtr) = defaultValue;   \
-    }
+                promptEditor->SetDynamicEditDataProvider([&](const void* objectPtr, const AZ::SerializeContext::ClassData* classData) -> const AZ::Edit::ElementData*
+                    {
+                        Q_UNUSED(classData)
+                        if (objectPtr == value)
+                        {
+                            return &syntheticData;
+                        }
+                        return nullptr;
+                    });
+            }
 
-                // In the case of primitive numbers, initialize to 0.
-                HANDLE_NUMERIC(double, 0.0)
-                else HANDLE_NUMERIC(float, 0.0f)
-                else HANDLE_NUMERIC(AZ::u8, 0)
-                else HANDLE_NUMERIC(char, 0)
-                else HANDLE_NUMERIC(AZ::u16, 0)
-                else HANDLE_NUMERIC(AZ::s16, 0)
-                else HANDLE_NUMERIC(AZ::u32, 0)
-                else HANDLE_NUMERIC(AZ::s32, 0)
-                else HANDLE_NUMERIC(AZ::u64, 0)
-                else HANDLE_NUMERIC(AZ::s64, 0)
-                else HANDLE_NUMERIC(bool, false)
+            // Prompt using a new ReflectedPropertyEditor to query the value
+            promptEditor->Setup(m_impl->m_context, nullptr, true);
+            promptEditor->SetVisibilityCallback([](InstanceDataNode* node, NodeDisplayVisibility& visibility, bool& checkChildVisibility)
+                {
+                    // Show all non-root nodes, we don't care that we're editing e.g. a pair of values, or a keyed value wrapper
+                    visibility = node->GetParent() ? NodeDisplayVisibility::Visible : NodeDisplayVisibility::NotVisible;
+                    checkChildVisibility = true;
+                });
+            promptEditor->AddInstance(value, typeId);
+            promptEditor->InvalidateAll();
+            promptEditor->ExpandAll();
+            promptEditor->setFixedHeight(promptEditor->GetContentHeight() + 2);
+            layout->addWidget(promptEditor);
+
+            QDialogButtonBox* buttonBox = new QDialogButtonBox;
+            buttonBox->addButton(QDialogButtonBox::Ok);
+            buttonBox->addButton(QDialogButtonBox::Cancel);
+            connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+            connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+            layout->addWidget(buttonBox);
+
+            return dialog.exec() == QDialog::Accepted;
+        };
+
+        pContainerNode->CreateContainerElement(CreateContainerElementSelectClassCallback,
+            [this, pContainerNode, promptForValue](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
+        {
+            bool handled = false;
+
+            if (noDefaultData)
+            {
+                // If we're a keyed container, go ahead and prompt for a key to insert
+                auto container = pContainerNode->GetElementMetadata() ? pContainerNode->GetElementMetadata()->m_genericClassInfo->GetClassData()->m_container : nullptr;
+                auto associativeInterface = container ? container->GetAssociativeContainerInterface() : nullptr;
+                if (associativeInterface)
+                {
+                    auto attribute = classElement->FindAttribute(AZ_CRC("KeyType", 0x15bc5303));
+                    auto attributeData = azrtti_cast<AZ::AttributeData<AZ::TypeId>*>(attribute);
+                    AZ_Assert(attributeData, "KeyType must be defined for keyed containers");
+                    auto keyId = attributeData->Get(dataPtr);
+                    auto keyPtr = associativeInterface->CreateKey();
+                    ReflectedPropertyEditorHelper::HandleDefaultNumericValues(keyPtr.get(), keyId);
+
+                    handled = promptForValue(keyPtr.get(), keyId, "New Key");
+                    
+                    if (handled)
+                    {
+                        associativeInterface->SetElementKey(dataPtr, keyPtr.get());
+                    }
+                }
                 else
                 {
-                    // copy default data from provided attribute or pop a dialog
-                    // if "noDefaultData" is set, this means the container requires valid data (like hash_tables, need a key so they can push the element).
-                    AZ_Warning("PropertyManager", !noDefaultData, "Support for adding elements to this type of container via the property editor is not yet implemented.");
-                    return false;
+                    handled = promptForValue(dataPtr, classElement->m_typeId, nullptr);
                 }
-
-#undef HANDLE_NUMERIC
-
-                return true;
             }
+            else
+            {
+                handled = ReflectedPropertyEditorHelper::HandleDefaultNumericValues(dataPtr, classElement->m_typeId);
+            }
+
+            return handled;
+        }
         );
 
         // Fire any add notifications for the container widget.
@@ -1739,8 +1927,7 @@ namespace AzToolsFramework
         const auto widgetsToExpand = m_impl->getTopLevelWidgets();
         for (auto widget : widgetsToExpand)
         {
-            const AZ::Crc32 groupCrc(widget->label().toUtf8().data());
-            bool isGroup = m_impl->m_groupWidgets.find(groupCrc) != m_impl->m_groupWidgets.end();
+            bool isGroup = m_impl->m_groupWidgets.find({ widget, widget->label().toUtf8().data() }) != m_impl->m_groupWidgets.end();
             if (!isGroup || widget->GetParentRow() == nullptr)
         {
                 widget->SetExpanded(false);
@@ -1838,6 +2025,11 @@ namespace AzToolsFramework
         m_impl->m_dynamicEditDataProvider = provider;
     }
 
+    void ReflectedPropertyEditor::SetVisibilityCallback(VisibilityCallback callback)
+    {
+        m_impl->m_visibilityCallback = callback;
+    }
+
     QWidget* ReflectedPropertyEditor::GetContainerWidget()
     {
         return m_impl->m_containerWidget;
@@ -1858,6 +2050,7 @@ namespace AzToolsFramework
         AZ_Assert(m_impl->m_instances.empty(), "This method should not be called after instances were added. Call this method before AddInstance.");
         m_impl->m_treeIndentation = indentation;
     }
+
 
     void ReflectedPropertyEditor::SetLeafIndentation(int indentation)
     {

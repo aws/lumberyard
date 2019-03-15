@@ -545,6 +545,10 @@ namespace AssetProcessor
             QString builderName = builderInfo.GetName();
             AZStd::vector<AssetBuilderSDK::AssetBuilderPattern> builderPatterns;
 
+            bool supportsCreateJobs = false;
+            // intentionaly using a set here, as we want it to be the same order each time for hashing.
+            AZStd::set<AZStd::string> fingerprintRelevantParameters;
+
             for (auto internalAssetRecognizer : *internalRecognizerList)
             {
                 // so referring to the structure explanation above, internalAssetRecognizer is 
@@ -565,16 +569,48 @@ namespace AssetProcessor
                     continue;
                 }
 
+                for (auto iteratorValue = internalAssetRecognizer->m_platformSpecsByPlatform.begin(); iteratorValue != internalAssetRecognizer->m_platformSpecsByPlatform.end(); ++iteratorValue)
+                {
+                    fingerprintRelevantParameters.insert(AZStd::string::format("%s-%s", iteratorValue.key().toUtf8().constData(), iteratorValue.value().m_extraRCParams.toUtf8().constData()));
+                }
+
+                // note that the version number must be included here, despite the builder dirty-check function taking version into account
+                // because the RC Builder is just a single builder (with version#0) that defers to these "internal" builders when called upon.
+                if (!internalAssetRecognizer->m_version.isEmpty())
+                {
+                    fingerprintRelevantParameters.insert(internalAssetRecognizer->m_version.toUtf8().constData());
+                }
+                fingerprintRelevantParameters.insert(internalAssetRecognizer->m_productAssetType.ToString<AZStd::string>());
+
                 // Register the recognizer
                 builderPatterns.push_back(internalAssetRecognizer->m_patternMatcher.GetBuilderPattern());
                 m_assetRecognizerDictionary[internalAssetRecognizer->m_paramID] = internalAssetRecognizer;
                 AZ_TracePrintf(AssetProcessor::DebugChannel, "Registering %s as a %s\n", internalAssetRecognizer->m_name.toUtf8().data(),
                     builderName.toUtf8().data());
+
+                supportsCreateJobs = supportsCreateJobs || (internalAssetRecognizer->m_supportsCreateJobs);
             }
             // Register the builder desc if its registrable
             if (builderInfo.GetType() == BuilderIdAndName::Type::REGISTERED_BUILDER)
             {
                 AssetBuilderSDK::AssetBuilderDesc builderDesc = CreateBuilderDesc(builderId, builderPatterns);
+                
+                // RC Builder also needs to include its platforms and its RC command lines so that if you change this, the jobs
+                // are re-evaluated.
+                size_t currentHash = 0;
+                for (const AZStd::string& element : fingerprintRelevantParameters)
+                {
+                    AZStd::hash_combine<AZStd::string>(currentHash, element);
+                }
+
+                builderDesc.m_analysisFingerprint = AZStd::string::format("0x%llX", currentHash);
+
+                // the "rc" builder can only emit dependencies if it has createjobs in a recognizer.
+                if (!supportsCreateJobs)
+                {
+                    // optimization: copy builder emits no dependencies since its just a copy builder.
+                    builderDesc.m_flags |= AssetBuilderSDK::AssetBuilderDesc::BF_EmitsNoDependencies;
+                }
                 AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation, builderDesc);
             }
         }

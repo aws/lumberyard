@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
@@ -101,6 +102,34 @@ namespace AzToolsFramework
     using DestructiveManipulatorRequestBus = AZ::EBus<DestructiveManipulatorRequests>;
 
     /**
+     * Provide interface for Transform manipulator requests.
+     */
+    class TransformComponentManipulatorRequests
+        : public AZ::ComponentBus
+    {
+    public:
+        using BusIdType = ManipulatorManagerId;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+
+        virtual ~TransformComponentManipulatorRequests() = default;
+        
+        enum class Mode
+        {
+            Translation,
+            Scale,
+            Rotation
+        };
+
+        /**
+         * Set what kind of transform the type that implements this bus should use.
+         */
+        virtual void SetTransformMode(ManipulatorManagerId managerId, Mode mode) = 0;
+    };
+
+    using TransformComponentManipulatorRequestBus = AZ::EBus<TransformComponentManipulatorRequests>;
+
+    /**
      * EBus interface used to send requests to ManipulatorManager.
      */
     class ManipulatorManagerRequests
@@ -120,21 +149,20 @@ namespace AzToolsFramework
         virtual ~ManipulatorManagerRequests() {}
 
         /**
-         * Register a manipulator to the Manipulator Manager.
+         * Register a manipulator with the Manipulator Manager.
+         * @param manipulator The manipulator parameter is passed as a shared_ptr so
+         * that the system responsible for managing manipulators can maintain ownership
+         * of the manipulator even if is destroyed while in use.
          */
-        virtual void RegisterManipulator(BaseManipulator& manipulator) = 0;
+        virtual void RegisterManipulator(AZStd::shared_ptr<BaseManipulator> manipulator) = 0;
 
         /**
          * Unregister a manipulator from the Manipulator Manager.
-         * After unregistering, the manipulator will be excluded from mouse hit detection and will not
-         * receive any mouse action event.
+         * After unregistering the manipulator, it will be excluded from mouse hit detection
+         * and will not receive any mouse action events. The Manipulator Manager will also
+         * relinquish ownership of the manipulator.
          */
-        virtual void UnregisterManipulator(BaseManipulator& manipulator) = 0;
-
-        /**
-         * Override what the currently bound active manipulator is, or set to nullptr.
-         */
-        virtual void SetActiveManipulator(BaseManipulator* manipulator) = 0;
+        virtual void UnregisterManipulator(BaseManipulator* manipulator) = 0;
 
         /**
          * Delete a manipulator bound.

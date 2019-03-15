@@ -44,6 +44,22 @@ namespace ScriptCanvasBuilder
     {
     }
 
+    int Worker::GetVersionNumber() const
+    {
+        return 1;
+    }
+
+    const char* Worker::GetFingerprintString() const
+    {
+        if (m_fingerprintString.empty())
+        {
+            // compute it the first time
+            const AZStd::string runtimeAssetTypeId = azrtti_typeid<ScriptCanvas::RuntimeAsset>().ToString<AZStd::string>();
+            m_fingerprintString = AZStd::string::format("%i%s", GetVersionNumber(), runtimeAssetTypeId.c_str());
+        }
+        return m_fingerprintString.c_str();
+    }
+
     void Worker::Activate()
     {
         AZ::Data::AssetType assetType(azrtti_typeid<ScriptCanvasEditor::ScriptCanvasAsset>());
@@ -116,10 +132,6 @@ namespace ScriptCanvasBuilder
         // Flush asset database events to ensure no asset references are held by closures queued on Ebuses.
         AZ::Data::AssetManager::Instance().DispatchEvents();
 
-        AZStd::string_view compilerVersion = "1";
-        const AZStd::string runtimeAssetTypeId = azrtti_typeid<ScriptCanvas::RuntimeAsset>().ToString<AZStd::string>();
-        const size_t platformCount = request.GetEnabledPlatformsCount();
-
         for (const AssetBuilderSDK::PlatformInfo& info : request.m_enabledPlatforms)
         {
             AssetBuilderSDK::JobDescriptor jobDescriptor;
@@ -127,7 +139,7 @@ namespace ScriptCanvasBuilder
             jobDescriptor.m_critical = true;
             jobDescriptor.m_jobKey = "Script Canvas";
             jobDescriptor.SetPlatformIdentifier(info.m_identifier.data());
-            jobDescriptor.m_additionalFingerprintInfo = compilerVersion.data() + runtimeAssetTypeId;
+            jobDescriptor.m_additionalFingerprintInfo = GetFingerprintString();
 
             response.m_createJobOutputs.push_back(jobDescriptor);
         }

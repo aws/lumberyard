@@ -911,7 +911,17 @@ namespace LmbrCentral
             gEnv->p3DEngine->FreeRenderNodeState(&m_cubemapPreview);
         }
     }
-    
+
+    void EditorLightComponent::BuildGameEntity(AZ::Entity* gameEntity)
+    {
+        LightComponent* lightComponent = gameEntity->CreateComponent<LightComponent>();
+
+        if (lightComponent)
+        {
+            lightComponent->m_configuration = m_configuration;
+        }
+    }
+
     void EditorLightComponent::SetCubemap(const AZStd::string& cubemap)
     {
         if (cubemap != m_configuration.m_probeCubemap.GetAssetPath())

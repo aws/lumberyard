@@ -46,9 +46,9 @@ namespace EMStudio
         layout->addLayout(buttonLayout);
         setLayout(layout);
 
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(mCancelButton, SIGNAL(clicked()), this, SLOT(reject()));
-        connect(this, SIGNAL(accepted()), this, SLOT(OnAccept()));
+        connect(mOKButton, &QPushButton::clicked, this, &ParameterSelectionWindow::accept);
+        connect(mCancelButton, &QPushButton::clicked, this, &ParameterSelectionWindow::reject);
+        connect(this, &ParameterSelectionWindow::accepted, this, &ParameterSelectionWindow::OnAccept);
         connect(mParameterWidget, &ParameterWidget::OnDoubleClicked, this, &ParameterSelectionWindow::OnDoubleClicked);
 
         // set the selection mode

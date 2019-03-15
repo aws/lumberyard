@@ -18,6 +18,8 @@
 #include "UiCanvasFileObject.h"
 #include "UiGameEntityContext.h"
 #include "UiNavigationHelpers.h"
+#include "UiRenderer.h"
+#include "LyShine.h"
 
 #include <IRenderer.h>
 #include <CryPath.h>
@@ -27,7 +29,7 @@
 #include <LyShine/Bus/UiTooltipDisplayBus.h>
 #include <LyShine/Bus/UiLayoutBus.h>
 #include <LyShine/Bus/UiEntityContextBus.h>
-#include <LyShine/IUiRenderer.h>
+#include <LyShine/Bus/UiCanvasUpdateNotificationBus.h>
 #include <LyShine/UiSerializeHelpers.h>
 
 #include <AzCore/Math/Crc.h>
@@ -55,8 +57,14 @@
 #include <LyShine/Bus/World/UiCanvasOnMeshBus.h>
 #include <LyShine/Bus/World/UiCanvasRefBus.h>
 
-// This is the memory allocation for the static data member used for the debug console variable
-AllocateConstIntCVar(UiCanvasComponent, CV_ui_DisplayElemBounds);
+#ifndef _RELEASE
+#include <LyShine/Bus/UiRenderBus.h>
+#include <LyShine/Bus/UiRenderControlBus.h>
+#include <LyShine/Bus/UiImageBus.h>
+#include <LyShine/Bus/UiTextBus.h>
+#include <LyShine/Bus/UiMaskBus.h>
+#include <LyShine/Bus/UiFaderBus.h>
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! UiCanvasNotificationBus Behavior context handler class
@@ -142,6 +150,22 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+//! UiInitializationBus Behavior context handler class
+class UiInitializationBusBehaviorHandler
+    : public UiInitializationBus::Handler
+    , public AZ::BehaviorEBusHandler
+{
+public:
+    AZ_EBUS_BEHAVIOR_BINDER(UiInitializationBusBehaviorHandler, "{2978A8A2-1A88-40C2-A299-ECA68AD1C519}", AZ::SystemAllocator,
+        InGamePostActivate);
+
+    void InGamePostActivate() override
+    {
+        Call(FN_InGamePostActivate);
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // Anonymous namespace
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
@@ -221,6 +245,12 @@ namespace
                 }
             }, context);
     }
+
+    UiRenderer* GetUiRenderer()
+    {
+        CLyShine* lyShine = static_cast<CLyShine*>(gEnv->pLyShine);
+        return lyShine->GetUiRenderer();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -228,8 +258,10 @@ namespace
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 const AZ::Vector2 UiCanvasComponent::s_defaultCanvasSize(1280.0f, 720.0f);
+const AZ::Color UiCanvasComponent::s_defaultGuideColor(0.25f,1.0f,0.25f,1.0f);
 
 bool UiCanvasComponent::s_handleHoverInputEvents = true;
+bool UiCanvasComponent::s_allowClearingHoverInteractableOnHoverInput = true;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC MEMBER FUNCTIONS
@@ -240,11 +272,9 @@ UiCanvasComponent::UiCanvasComponent()
     : m_uniqueId(0)
     , m_rootElement()
     , m_lastElementId(0)
-    , m_isPixelAligned(true)
     , m_canvasToViewportMatrix(AZ::Matrix4x4::CreateIdentity())
     , m_viewportToCanvasMatrix(AZ::Matrix4x4::CreateIdentity())
     , m_activeInteractableShouldStayActive(false)
-    , m_allowInvalidatingHoverInteractableOnHoverInput(true)
     , m_isActiveInteractablePressed(false)
     , m_lastMousePosition(-1.0f, -1.0f)
     , m_id(++s_lastCanvasId)
@@ -259,6 +289,8 @@ UiCanvasComponent::UiCanvasComponent()
     , m_isSnapEnabled(false)
     , m_snapDistance(10.0f)
     , m_snapRotationDegrees(10.0f)
+    , m_guideColor(s_defaultGuideColor)
+    , m_guidesAreLocked(false)
     , m_entityContext(nullptr)
 {
 }
@@ -267,6 +299,15 @@ UiCanvasComponent::UiCanvasComponent()
 UiCanvasComponent::~UiCanvasComponent()
 {
     m_uiAnimationSystem.RemoveAllSequences();
+
+    // remove all entries from m_elementsNeedingTransformRecompute list, can't use clear since that doesn't set the
+    // m_next pointers to null except in a debug build.
+    while (!m_elementsNeedingTransformRecompute.empty())
+    {
+        UiElementComponent& elementComponent = m_elementsNeedingTransformRecompute.front();
+        m_elementsNeedingTransformRecompute.pop_front();
+        elementComponent.m_next = nullptr;   // needed in order to be able to test if an element is in the list.
+    }
 
     if (m_entityContext)
     {
@@ -282,41 +323,9 @@ UiCanvasComponent::~UiCanvasComponent()
     {
         delete m_entityContext;
     }
-}
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::UpdateCanvas(float deltaTime, bool isInGame)
-{
-    if (isInGame)
-    {
-        // Ignore update if we're not enabled
-        if (!m_enabled)
-        {
-            return;
-        }
-
-        EBUS_EVENT_ID(m_rootElement, UiElementBus, UpdateElement, deltaTime);
-
-        // update the animation system
-        m_uiAnimationSystem.PreUpdate(deltaTime);
-        m_uiAnimationSystem.PostUpdate(deltaTime);
-    }
-
-    SendRectChangeNotificationsAndRecomputeLayouts();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::RenderCanvas(bool isInGame, AZ::Vector2 viewportSize, bool displayBounds)
-{
-    // Ignore render ops if we're not enabled
-    if (!m_enabled)
-    {
-        return;
-    }
-
-    IUiRenderer::Get()->BeginCanvasRender(viewportSize);
-    EBUS_EVENT_ID(m_rootElement, UiElementBus, RenderElement, isInGame, displayBounds);
-    IUiRenderer::Get()->EndCanvasRender();
+    // Unload any active texture atlases
+    UnloadAtlases();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -748,17 +757,7 @@ void UiCanvasComponent::FixupCreatedEntities(LyShine::EntityArray topLevelEntiti
         // Call InGamePostActivate on all the created entities
         for (auto entity : topLevelEntities)
         {
-            EBUS_EVENT_ID(entity->GetId(), UiInitializationBus, InGamePostActivate);
-
-            LyShine::EntityArray descendantElements;
-            EBUS_EVENT_ID(entity->GetId(), UiElementBus, FindDescendantElements,
-                [](const AZ::Entity*) { return true; },
-                descendantElements);
-
-            for (AZ::Entity* child : descendantElements)
-            {
-                EBUS_EVENT_ID(child->GetId(), UiInitializationBus, InGamePostActivate);
-            }
+            InGamePostActivateBottomUp(entity);
         }
     }
 }
@@ -780,12 +779,21 @@ void UiCanvasComponent::AddElement(AZ::Entity* element, AZ::Entity* parent, AZ::
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::ReinitializeElements()
 {
+    // This gets called when a canvas or a slice in the canvas is reloaded. So, for example,
+    // a Push to Slice in the editor causes a reload of that slice. It is only used in the editor.
+
     AZ::Entity* rootElement = GetRootElement();
 
     UiElementComponent* elementComponent = rootElement->FindComponent<UiElementComponent>();
     AZ_Assert(elementComponent, "No element component found on root element entity");
 
     elementComponent->FixupPostLoad(rootElement, this, nullptr, false);
+
+    // All or some elements in the UI canvas have been recreated when ReinitializeElements is called.
+    // This likely requires recompute of the transforms (in particular UiTextComponent requires this
+    // if text is being wrapped, due to its delayed initialization that relies on OnCanvasSpaceRectChanged
+    // being called).
+    EBUS_EVENT_ID(m_rootElement, UiTransformBus, SetRecomputeFlags, UiTransformInterface::Recompute::RectAndTransform);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -958,7 +966,7 @@ void UiCanvasComponent::SetCanvasToViewportMatrix(const AZ::Matrix4x4& matrix)
     {
         m_canvasToViewportMatrix = matrix;
         m_viewportToCanvasMatrix = m_canvasToViewportMatrix.GetInverseTransform();
-        EBUS_EVENT_ID(GetRootElement()->GetId(), UiTransformBus, SetRecomputeTransformFlag);
+        EBUS_EVENT_ID(GetRootElement()->GetId(), UiTransformBus, SetRecomputeFlags, UiTransformInterface::Recompute::ViewportTransformOnly);
     }
 }
 
@@ -1016,6 +1024,20 @@ bool UiCanvasComponent::GetIsPixelAligned()
 void UiCanvasComponent::SetIsPixelAligned(bool isPixelAligned)
 {
     m_isPixelAligned = isPixelAligned;
+    EBUS_EVENT_ID(GetEntityId(), UiCanvasPixelAlignmentNotificationBus, OnCanvasPixelAlignmentChange);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::GetIsTextPixelAligned()
+{
+    return m_isTextPixelAligned;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetIsTextPixelAligned(bool isTextPixelAligned)
+{
+    m_isTextPixelAligned = isTextPixelAligned;
+    EBUS_EVENT_ID(GetEntityId(), UiCanvasPixelAlignmentNotificationBus, OnCanvasTextPixelAlignmentChange);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1033,11 +1055,12 @@ bool UiCanvasComponent::GetEnabled()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::SetEnabled(bool enabled)
 {
-    const bool wasEnabled = m_enabled;
-    m_enabled = enabled;
-    if (!wasEnabled && m_enabled && m_isConsumingAllInputEvents)
+    if (m_enabled != enabled)
     {
-        EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
+        m_enabled = enabled;
+        MarkRenderGraphDirty();
+
+        EBUS_EVENT(UiCanvasEnabledStateNotificationBus, OnCanvasEnabledStateChanged, GetEntityId(), m_enabled);
     }
 }
 
@@ -1262,42 +1285,6 @@ void UiCanvasComponent::SetTooltipDisplayElement(AZ::EntityId entityId)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool UiCanvasComponent::GetIsSnapEnabled()
-{
-    return m_isSnapEnabled;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::SetIsSnapEnabled(bool enabled)
-{
-    m_isSnapEnabled = enabled;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiCanvasComponent::GetSnapDistance()
-{
-    return m_snapDistance;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::SetSnapDistance(float distance)
-{
-    m_snapDistance = distance;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-float UiCanvasComponent::GetSnapRotationDegrees()
-{
-    return m_snapRotationDegrees;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::SetSnapRotationDegrees(float degrees)
-{
-    m_snapRotationDegrees = degrees;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::ForceActiveInteractable(AZ::EntityId interactableId, bool shouldStayActive, AZ::Vector2 point)
 {
     SetHoverInteractable(interactableId);
@@ -1319,7 +1306,7 @@ void UiCanvasComponent::ForceHoverInteractable(AZ::EntityId newHoverInteractable
     if (m_hoverInteractable.IsValid())
     {
         s_handleHoverInputEvents = false;
-        m_allowInvalidatingHoverInteractableOnHoverInput = false;
+        s_allowClearingHoverInteractableOnHoverInput = false;
 
         AZ::EntityId ancestorInteractable = FindAncestorInteractable(m_hoverInteractable);
         if (ancestorInteractable.IsValid())
@@ -1337,13 +1324,57 @@ void UiCanvasComponent::ClearAllInteractables()
 {
     m_multiTouchInteractablesByTouchIndex.clear();
     ClearActiveInteractable();
-    ClearHoverInteractable();
+
+    // Clear hover interactable if last input was positional (mouse/touch)
+    if (s_handleHoverInputEvents)
+    {
+        ClearHoverInteractable();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::SetTransformsNeedRecomputeFlag()
+void UiCanvasComponent::LoadAtlases()
 {
-    m_transformsNeedRecompute = true;
+    if (m_atlases.size() > 0)
+    {
+        // Atlases already loaded
+        return;
+    }
+
+    for (int i = 0; i < m_atlasPathNames.size(); ++i)
+    {
+        const AZStd::string& atlasAssetPath = m_atlasPathNames[i].GetAssetPath();
+        if (!atlasAssetPath.empty()) // no need to print an error message for empty strings
+        {
+            TextureAtlasNamespace::TextureAtlas* atlas = nullptr;
+            TextureAtlasNamespace::TextureAtlasRequestBus::BroadcastResult(atlas, &TextureAtlasNamespace::TextureAtlasRequests::LoadAtlas, atlasAssetPath);
+            if (atlas != nullptr)
+            {
+                m_atlases.push_back(atlas);
+            }
+            else
+            {
+                AZ_Error("UI", false, "UI canvas: %s failed to load texture atlas: %s", m_pathname.c_str(), atlasAssetPath.c_str());
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::UnloadAtlases()
+{
+    while (m_atlases.size() > 0)
+    {
+        TextureAtlasNamespace::TextureAtlasRequestBus::Broadcast(&TextureAtlasNamespace::TextureAtlasRequests::UnloadAtlas, m_atlases.back());
+        m_atlases.pop_back();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::ReloadAtlases()
+{
+    UnloadAtlases();
+    LoadAtlases();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1489,18 +1520,7 @@ void UiCanvasComponent::ActiveChanged(AZ::EntityId m_newActiveInteractable, bool
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::OnPreRender()
 {
-    bool displayBounds = false;
-#ifndef EXCLUDE_DOCUMENTATION_PURPOSE
-    // If the console variable is set then display the element bounds
-    // We use deferred render for the bounds so that they draw on top of everything else
-    // this only works when running in-game
-    if (CV_ui_DisplayElemBounds)
-    {
-        displayBounds = true;
-    }
-#endif
-
-    RenderCanvasToTexture(displayBounds);
+    RenderCanvasToTexture();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1514,6 +1534,313 @@ void UiCanvasComponent::OnUiAnimationEvent(EUiAnimationEvent uiAnimationEvent, I
     {
         m_uiAnimationSystem.RemoveUiAnimationListener(pAnimSequence, this);
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::GetIsSnapEnabled()
+{
+    return m_isSnapEnabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetIsSnapEnabled(bool enabled)
+{
+    m_isSnapEnabled = enabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiCanvasComponent::GetSnapDistance()
+{
+    return m_snapDistance;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetSnapDistance(float distance)
+{
+    m_snapDistance = distance;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+float UiCanvasComponent::GetSnapRotationDegrees()
+{
+    return m_snapRotationDegrees;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetSnapRotationDegrees(float degrees)
+{
+    m_snapRotationDegrees = degrees;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZStd::vector<float> UiCanvasComponent::GetHorizontalGuidePositions()
+{
+    return m_horizontalGuidePositions;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::AddHorizontalGuide(float position)
+{
+    m_horizontalGuidePositions.push_back(position);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::RemoveHorizontalGuide(int index)
+{
+    if (index < m_horizontalGuidePositions.size())
+    {
+        m_horizontalGuidePositions.erase(m_horizontalGuidePositions.begin() + index);
+    }
+    else
+    {
+        AZ_Warning("UI", false, "Index out of range in RemoveHorizontalGuide");
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetHorizontalGuidePosition(int index, float position)
+{
+    if (index < m_horizontalGuidePositions.size())
+    {
+        m_horizontalGuidePositions[index] = position;
+    }
+    else
+    {
+        AZ_Warning("UI", false, "Index out of range in SetHorizontalGuidePosition");
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZStd::vector<float> UiCanvasComponent::GetVerticalGuidePositions()
+{
+    return m_verticalGuidePositions;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::AddVerticalGuide(float position)
+{
+    m_verticalGuidePositions.push_back(position);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::RemoveVerticalGuide(int index)
+{
+    if (index < m_verticalGuidePositions.size())
+    {
+        m_verticalGuidePositions.erase(m_verticalGuidePositions.begin() + index);
+    }
+    else
+    {
+        AZ_Warning("UI", false, "Index out of range in RemoveVerticalGuide");
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetVerticalGuidePosition(int index, float position)
+{
+    if (index < m_verticalGuidePositions.size())
+    {
+        m_verticalGuidePositions[index] = position;
+    }
+    else
+    {
+        AZ_Warning("UI", false, "Index out of range in SetVerticalGuidePosition");
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::RemoveAllGuides()
+{
+    m_horizontalGuidePositions.clear();
+    m_verticalGuidePositions.clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZ::Color UiCanvasComponent::GetGuideColor()
+{
+    return m_guideColor;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetGuideColor(const AZ::Color& color)
+{
+    m_guideColor = color;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::GetGuidesAreLocked()
+{
+    return m_guidesAreLocked;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::SetGuidesAreLocked(bool areLocked)
+{
+    m_guidesAreLocked = areLocked;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::CheckForOrphanedElements()
+{
+    AZ::SliceComponent::EntityList orphanedEntities;
+    GetOrphanedElements(orphanedEntities);
+    return !orphanedEntities.empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::RecoverOrphanedElements()
+{
+    AZ::SliceComponent::EntityList orphanedEntities;
+    GetOrphanedElements(orphanedEntities);
+
+    // we will put the orphaned elements under a top-level element called this:
+    const char* recoveredOrphansName = "RecoveredOrphans";
+
+    // If the recovered orphans element does not already at the top-level of the canvas exist then create it
+    AZ::Entity* recoveredOrphansElement = FindElementByHierarchicalName(recoveredOrphansName);
+    if (!recoveredOrphansElement)
+    {
+        recoveredOrphansElement = CreateChildElement(recoveredOrphansName);
+        recoveredOrphansElement->Deactivate();
+        recoveredOrphansElement->CreateComponent(LyShine::UiTransform2dComponentUuid);
+        recoveredOrphansElement->Activate();
+    }
+
+    // We have to find the top-level elements within the orphans and add them as children of recoveredOrphansElement.
+    // First we make a set of all the orphans that are referenced as children of other orphans.
+    AZStd::unordered_set<AZ::EntityId> referencedChildren;
+    for (AZ::Entity* orphan : orphanedEntities)
+    {
+        UiElementComponent* orphanElementComponent = orphan->FindComponent<UiElementComponent>();
+        int numChildren = orphanElementComponent->GetNumChildElements();
+        for (int i = 0; i < numChildren; ++i)
+        {
+            AZ::EntityId childId = orphanElementComponent->GetChildEntityId(i);
+            referencedChildren.insert(childId);
+        }
+    }
+
+    // Any orphans that are not in the set are top-level orphans and should be added.
+    UiElementComponent* recoveredOrphansElementComponent = recoveredOrphansElement->FindComponent<UiElementComponent>();
+    for (AZ::Entity* orphan : orphanedEntities)
+    {
+        if (referencedChildren.find(orphan->GetId()) == referencedChildren.end())
+        {
+            // First add the orphan as a child of the recoveredOrphansElement
+            recoveredOrphansElementComponent->AddChild(orphan);
+
+            // Then fixup all the parent, canvas, child pointers in the orphan and its children
+            UiElementComponent* orphanElementComponent = orphan->FindComponent<UiElementComponent>();
+            orphanElementComponent->FixupPostLoad(orphan, this, recoveredOrphansElement, false);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::RemoveOrphanedElements()
+{
+    // get the orphaned entities
+    AZ::SliceComponent::EntityList orphanedEntities;
+    GetOrphanedElements(orphanedEntities);
+
+    // remove the entities from the entity context, this will remove any slice instances and references that become empty
+    for (AZ::Entity* orphan : orphanedEntities)
+    {
+        m_entityContext->DestroyEntity(orphan);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::UpdateCanvasInEditorViewport(float deltaTime, bool isInGame)
+{
+    UpdateCanvas(deltaTime, isInGame);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::RenderCanvasInEditorViewport(bool isInGame, AZ::Vector2 viewportSize)
+{
+    GetUiRenderer()->BeginUiFrameRender();
+    RenderCanvas(isInGame, viewportSize);
+    GetUiRenderer()->EndUiFrameRender();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::MarkRenderGraphDirty()
+{
+    // It is possible that the loading screen can result in this being called while we are already
+    // rendering this canvas. We never want to set the dirty flag while rendering, if the dirty
+    // flag is not already set it could result in an incomplete renderGraph being created since
+    // the render graph will be cleared.
+    if (!m_isRendering)
+    {
+        m_renderGraph.SetDirtyFlag(true);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::UpdateCanvas(float deltaTime, bool isInGame)
+{
+    // Ignore update if we're not enabled
+    if (!m_enabled)
+    {
+        return;
+    }
+
+    if (isInGame)
+    {
+        EBUS_EVENT_ID(GetEntityId(), UiCanvasUpdateNotificationBus, Update, deltaTime);
+
+        // update the animation system
+        m_uiAnimationSystem.PreUpdate(deltaTime);
+        m_uiAnimationSystem.PostUpdate(deltaTime);
+    }
+    else
+    {
+        EBUS_EVENT_ID(GetEntityId(), UiCanvasUpdateNotificationBus, UpdateInEditor, deltaTime);
+    }
+
+    SendRectChangeNotificationsAndRecomputeLayouts();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::RenderCanvas(bool isInGame, AZ::Vector2 viewportSize)
+{
+    // Ignore render ops if we're not enabled
+    if (!m_enabled)
+    {
+        return;
+    }
+
+    // It is possible, due to the LoadScreenComponent, for this canvas to have Render called while it is rendering.
+    // This is rare but can happen because rendering of text can call FontCreateTexture which results in CreateTextureObject
+    // being called, which has a load scren update in it. Rendering the canvas to the render graph while already in the
+    // process of doing so can corrupt the render graph by adding an element to an intrusive list that is already in the
+    // list.
+    // We could prevent this at the CLyShine::Render level. But doing it here with an m_isRendering flag also allows us to
+    // check for the error condition where MarkRenderGraphDirty (which clears the render graph) is called during rendering.
+    if (m_isRendering)
+    {
+        return;
+    }
+
+    m_isRendering = true;
+
+    if (m_renderGraph.GetDirtyFlag())
+    {
+        m_renderGraph.ResetGraph();
+        EBUS_EVENT_ID(m_rootElement, UiElementBus, RenderElement, &m_renderGraph, isInGame);
+        m_renderGraph.SetDirtyFlag(false);
+        m_renderGraph.FinalizeGraph();
+    }
+
+    if (!m_renderGraph.IsEmpty())
+    {
+        GetUiRenderer()->BeginCanvasRender();
+        m_renderGraph.Render(GetUiRenderer(), viewportSize);
+        GetUiRenderer()->EndCanvasRender();
+    }
+
+    m_isRendering = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1536,11 +1863,167 @@ AZ::Vector2 UiCanvasComponent::GetTargetCanvasSize()
     return m_targetCanvasSize;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::ScheduleElementForTransformRecompute(UiElementComponent* elementComponent)
+{
+    // Do not add if already in the list
+    if (!elementComponent->m_next)
+    {
+        m_elementsNeedingTransformRecompute.push_back(*elementComponent);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::UnscheduleElementForTransformRecompute(UiElementComponent* elementComponent)
+{
+    // Do not erase if not in list
+    if (elementComponent->m_next)
+    {
+        m_elementsNeedingTransformRecompute.erase(ElementComponentSlist::const_iterator_impl(elementComponent));
+        elementComponent->m_next = nullptr;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifndef _RELEASE
+void UiCanvasComponent::GetDebugInfoInteractables(AZ::EntityId& activeInteractable, AZ::EntityId& hoverInteractable) const
+{
+    activeInteractable = m_activeInteractable;
+    hoverInteractable = m_hoverInteractable;
+}
+
+void UiCanvasComponent::GetDebugInfoNumElements(DebugInfoNumElements& info) const
+{
+    info.m_numElements = 0;
+    info.m_numEnabledElements = 0;
+    info.m_numRenderElements = 0;
+    info.m_numRenderControlElements = 0;
+    info.m_numImageElements = 0;
+    info.m_numTextElements = 0;
+    info.m_numMaskElements = 0;
+    info.m_numFaderElements = 0;
+    info.m_numInteractableElements = 0;
+    info.m_numUpdateElements = UiCanvasUpdateNotificationBus::GetNumOfEventHandlers(GetEntityId());
+
+    DebugInfoCountChildren(m_rootElement, true, info);
+}
+
+void UiCanvasComponent::GetDebugInfoRenderGraph(LyShineDebug::DebugInfoRenderGraph& info) const
+{
+    m_renderGraph.GetDebugInfoRenderGraph(info);
+}
+
+void UiCanvasComponent::DebugInfoCountChildren(const AZ::EntityId entity, bool parentEnabled, DebugInfoNumElements& info) const
+{
+    int numChildElements = 0;
+    EBUS_EVENT_ID_RESULT(numChildElements, entity, UiElementBus, GetNumChildElements);
+    info.m_numElements += numChildElements;
+    for (int i = 0; i < numChildElements; ++i)
+    {
+        AZ::EntityId child;
+        EBUS_EVENT_ID_RESULT(child, entity, UiElementBus, GetChildEntityId, i);
+
+        bool isEnabled = false;
+        EBUS_EVENT_ID_RESULT(isEnabled, child, UiElementBus, IsEnabled);
+
+        if (isEnabled && parentEnabled)
+        {
+            ++info.m_numEnabledElements;
+
+            if (UiRenderBus::FindFirstHandler(child))
+            {
+                ++info.m_numRenderElements;
+            }
+
+            if (UiRenderControlBus::FindFirstHandler(child))
+            {
+                ++info.m_numRenderControlElements;
+            }
+
+            if (UiImageBus::FindFirstHandler(child))
+            {
+                ++info.m_numImageElements;
+            }
+
+            if (UiTextBus::FindFirstHandler(child))
+            {
+                ++info.m_numTextElements;
+            }
+
+            if (UiMaskBus::FindFirstHandler(child))
+            {
+                ++info.m_numMaskElements;
+            }
+
+            if (UiFaderBus::FindFirstHandler(child))
+            {
+                ++info.m_numFaderElements;
+            }
+
+            if (UiInteractableBus::FindFirstHandler(child))
+            {
+                ++info.m_numInteractableElements;
+            }
+        }
+
+        DebugInfoCountChildren(child, isEnabled && parentEnabled, info);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::DebugReportDrawCalls(AZ::IO::HandleType fileHandle, LyShineDebug::DebugInfoDrawCallReport& reportInfo, void* context) const
+{
+    m_renderGraph.DebugReportDrawCalls(fileHandle, reportInfo, context);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::DebugDisplayElemBounds(IDraw2d* draw2d) const
+{
+    DebugDisplayChildElemBounds(draw2d, m_rootElement);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::DebugDisplayChildElemBounds(IDraw2d* draw2d, const AZ::EntityId entity) const
+{
+    AZ::u64 time = AZStd::GetTimeUTCMilliSecond();
+    uint32 fractionsOfOneSecond = time % 1000;
+    uint32 fractionsOfHalfSecond = (fractionsOfOneSecond > 500) ? 1000 - fractionsOfOneSecond : fractionsOfOneSecond;
+    float brightness = fractionsOfHalfSecond / 500.0f;
+
+    UiTransformInterface::RectPoints points;
+
+    int numChildElements = 0;
+    EBUS_EVENT_ID_RESULT(numChildElements, entity, UiElementBus, GetNumChildElements);
+    for (int i = 0; i < numChildElements; ++i)
+    {
+        AZ::EntityId child;
+        EBUS_EVENT_ID_RESULT(child, entity, UiElementBus, GetChildEntityId, i);
+
+        bool isEnabled = false;
+        EBUS_EVENT_ID_RESULT(isEnabled, child, UiElementBus, IsEnabled);
+
+        if (isEnabled)
+        {
+            EBUS_EVENT_ID(entity, UiTransformBus, GetViewportSpacePoints, points);
+
+            AZ::Color color(brightness, brightness, brightness, 1.0f);
+            draw2d->DrawLine(points.TopLeft(), points.TopRight(), color);
+            draw2d->DrawLine(points.TopRight(), points.BottomRight(), color);
+            draw2d->DrawLine(points.BottomRight(), points.BottomLeft(), color);
+            draw2d->DrawLine(points.BottomLeft(), points.TopLeft(), color);
+
+            DebugDisplayChildElemBounds(draw2d, child);
+        }
+    }
+}
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATIC MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
 {
     AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -1560,6 +2043,7 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
         // Rendering group
             ->Field("DrawOrder", &UiCanvasComponent::m_drawOrder)
             ->Field("IsPixelAligned", &UiCanvasComponent::m_isPixelAligned)
+            ->Field("IsTextPixelAligned", &UiCanvasComponent::m_isTextPixelAligned)
             ->Field("RenderToTexture", &UiCanvasComponent::m_renderToTexture)
             ->Field("RenderTargetName", &UiCanvasComponent::m_renderTargetName)
         // Input group
@@ -1574,8 +2058,15 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Field("TooltipDisplayElement", &UiCanvasComponent::m_tooltipDisplayElement)
         // Editor settings
             ->Field("SnapDistance", &UiCanvasComponent::m_snapDistance)
-            ->Field("SnapRotationDegrees", &UiCanvasComponent::m_snapRotationDegrees);
-
+            ->Field("SnapRotationDegrees", &UiCanvasComponent::m_snapRotationDegrees)
+            ->Field("HorizontalGuides", &UiCanvasComponent::m_horizontalGuidePositions)
+            ->Field("VerticalGuides", &UiCanvasComponent::m_verticalGuidePositions)
+            ->Field("GuideColor", &UiCanvasComponent::m_guideColor)
+            ->Field("GuidesLocked", &UiCanvasComponent::m_guidesAreLocked)
+        // Texture Atlases
+            ->Field("TextureAtlases", &UiCanvasComponent::m_atlasPathNames)
+            ;
+        
         AZ::EditContext* ec = serializeContext->GetEditContext();
         if (ec)
         {
@@ -1590,10 +2081,11 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             editInfo->ClassElement(AZ::Edit::ClassElements::Group, "Rendering")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true);
 
-            editInfo->DataElement(AZ::Edit::UIHandlers::Default, &UiCanvasComponent::m_drawOrder, "Draw order", "The order, relative to other canvases, in which this canvas will draw (higher numbers on top).")
-                ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
-                ->Attribute(AZ::Edit::Attributes::Max, 1000.0f);
-            editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isPixelAligned, "Is pixel aligned", "When checked, all corners of all elements will be rounded to the nearest pixel.");
+            editInfo->DataElement(AZ::Edit::UIHandlers::Default, &UiCanvasComponent::m_drawOrder, "Draw order", "The order, relative to other canvases, in which this canvas will draw (higher numbers on top).");
+            editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isPixelAligned, "Is pixel aligned", "When checked, all corners of all elements will be rounded to the nearest pixel.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiCanvasComponent::OnPixelAlignmentChange);
+            editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_isTextPixelAligned, "Is text pixel aligned", "When checked, all text will be rounded to the nearest pixel.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiCanvasComponent::OnTextPixelAlignmentChange);
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCanvasComponent::m_renderToTexture, "Render to texture", "When checked, the canvas is rendered to a texture instead of the full screen.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c));
             editInfo->DataElement(0, &UiCanvasComponent::m_renderTargetName, "Render target", "The name of the texture that is created when this canvas renders to a texture.")
@@ -1627,6 +2119,10 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::Min, 1.0f)
                 ->Attribute(AZ::Edit::Attributes::Max, 359.0f)
                 ->Attribute(AZ::Edit::Attributes::Suffix, " degrees");
+            editInfo->DataElement(AZ::Edit::UIHandlers::Default, &UiCanvasComponent::m_guideColor, "Guide color", "The color to draw the guide lines on this canvas.");
+
+            editInfo->DataElement("SimpleAssetRef", &UiCanvasComponent::m_atlasPathNames, "Texture atlases", "The texture atlases that this canvas loads.")
+                ->Attribute("ChangeNotify", &UiCanvasComponent::ReloadAtlases);
         }
     }
 
@@ -1646,6 +2142,8 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Event("CloneElement", &UiCanvasBus::Events::CloneElementEntityId)
             ->Event("GetIsPixelAligned", &UiCanvasBus::Events::GetIsPixelAligned)
             ->Event("SetIsPixelAligned", &UiCanvasBus::Events::SetIsPixelAligned)
+            ->Event("GetIsTextPixelAligned", &UiCanvasBus::Events::GetIsTextPixelAligned)
+            ->Event("SetIsTextPixelAligned", &UiCanvasBus::Events::SetIsTextPixelAligned)
             ->Event("GetEnabled", &UiCanvasBus::Events::GetEnabled)
             ->Event("SetEnabled", &UiCanvasBus::Events::SetEnabled)
             ->Event("GetIsRenderToTexture", &UiCanvasBus::Events::GetIsRenderToTexture)
@@ -1669,7 +2167,6 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
             ->Handler<UiCanvasNotificationBusBehaviorHandler>();
 
         behaviorContext->EBus<UiAnimationBus>("UiAnimationBus")
-            ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
             ->Event("StartSequence", &UiAnimationBus::Events::StartSequence)
             ->Event("StopSequence", &UiAnimationBus::Events::StopSequence)
             ->Event("AbortSequence", &UiAnimationBus::Events::AbortSequence)
@@ -1689,6 +2186,9 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
         behaviorContext->EBus<UiAnimationNotificationBus>("UiAnimationNotificationBus")
             ->Handler<UiAnimationNotificationBusBehaviorHandler>();
 
+        behaviorContext->EBus<UiInitializationBus>("UiInitializationBus")
+            ->Handler<UiInitializationBusBehaviorHandler>();
+
         behaviorContext->EBus<UiCanvasInputNotificationBus>("UiCanvasInputNotificationBus")
             ->Handler<UiCanvasInputNotificationBusBehaviorHandler>();
     }
@@ -1698,12 +2198,7 @@ void UiCanvasComponent::Reflect(AZ::ReflectContext* context)
 void UiCanvasComponent::Initialize()
 {
     s_handleHoverInputEvents = true;
-
-#ifndef EXCLUDE_DOCUMENTATION_PURPOSE
-    // Define a debug console variable that controls display of all element bounds when in game
-    DefineConstIntCVar3("ui_DisplayElemBounds", CV_ui_DisplayElemBounds, 0, VF_CHEAT,
-        "0=off, 1=display the UI element bounding boxes");
-#endif // EXCLUDE_DOCUMENTATION_PURPOSE
+    s_allowClearingHoverInteractableOnHoverInput = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1734,6 +2229,8 @@ void UiCanvasComponent::Init()
 void UiCanvasComponent::Activate()
 {
     UiCanvasBus::Handler::BusConnect(m_entity->GetId());
+    UiCanvasComponentImplementationBus::Handler::BusConnect(m_entity->GetId());
+    UiEditorCanvasBus::Handler::BusConnect(m_entity->GetId());
     UiAnimationBus::Handler::BusConnect(m_entity->GetId());
 
     // Reconnect to buses that we connect to intermittently
@@ -1755,6 +2252,8 @@ void UiCanvasComponent::Activate()
         CreateRenderTarget();
     }
 
+    LoadAtlases();
+
     m_layoutManager = new UiLayoutManager(GetEntityId());
 }
 
@@ -1762,6 +2261,8 @@ void UiCanvasComponent::Activate()
 void UiCanvasComponent::Deactivate()
 {
     UiCanvasBus::Handler::BusDisconnect();
+    UiCanvasComponentImplementationBus::Handler::BusDisconnect();
+    UiEditorCanvasBus::Handler::BusDisconnect();
     UiAnimationBus::Handler::BusDisconnect();
 
     // disconnect from any other buses we could be connected to
@@ -1783,6 +2284,8 @@ void UiCanvasComponent::Deactivate()
 
     delete m_layoutManager;
     m_layoutManager = nullptr;
+
+    m_renderGraph.ResetGraph();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1820,13 +2323,13 @@ bool UiCanvasComponent::HandleHoverInputEvent(AZ::Vector2 point)
 
     if (latestHoverInteractable.IsValid())
     {
-        m_allowInvalidatingHoverInteractableOnHoverInput = true;
+        s_allowClearingHoverInteractableOnHoverInput = true;
     }
 
     if (m_hoverInteractable.IsValid() && m_hoverInteractable != latestHoverInteractable)
     {
         // we were hovering over an interactable but now we are hovering over nothing or a different interactable
-        if (m_allowInvalidatingHoverInteractableOnHoverInput)
+        if (s_allowClearingHoverInteractableOnHoverInput)
         {
             ClearHoverInteractable();
         }
@@ -1891,7 +2394,7 @@ bool UiCanvasComponent::HandleKeyInputEvent(const AzFramework::InputChannel::Sna
                 if (m_hoverInteractable != oldHoverInteractable)
                 {
                     s_handleHoverInputEvents = false;
-                    m_allowInvalidatingHoverInteractableOnHoverInput = false;
+                    s_allowClearingHoverInteractableOnHoverInput = false;
 
                     AZ::EntityId ancestorInteractable = FindAncestorInteractable(m_hoverInteractable);
                     if (ancestorInteractable.IsValid())
@@ -1980,7 +2483,7 @@ bool UiCanvasComponent::HandleEnterInputEvent(UiNavigationHelpers::Command comma
                         SetActiveInteractable(m_hoverInteractable, shouldStayActive);
 
                         s_handleHoverInputEvents = false;
-                        m_allowInvalidatingHoverInteractableOnHoverInput = false;
+                        s_allowClearingHoverInteractableOnHoverInput = false;
 
                         m_isActiveInteractablePressed = true;
                     }
@@ -2147,7 +2650,7 @@ bool UiCanvasComponent::DeactivateInteractableByKeyInput(const AzFramework::Inpu
             SetHoverInteractable(prevActiveInteractable);
 
             s_handleHoverInputEvents = false;
-            m_allowInvalidatingHoverInteractableOnHoverInput = false;
+            s_allowClearingHoverInteractableOnHoverInput = false;
         }
 
         return true;
@@ -2213,7 +2716,7 @@ bool UiCanvasComponent::HandlePrimaryPress(AZ::Vector2 point)
 
     // Resume handling hover input events
     s_handleHoverInputEvents = true;
-    m_allowInvalidatingHoverInteractableOnHoverInput = true;
+    s_allowClearingHoverInteractableOnHoverInput = true;
 
     // Send a notification to listeners telling them who was just pressed (can be noone)
     EBUS_EVENT_ID(GetEntityId(), UiCanvasInputNotificationBus, OnCanvasPrimaryPressed, interactableEntity);
@@ -2605,7 +3108,7 @@ void UiCanvasComponent::SetFirstHoverInteractable()
             SetHoverInteractable(hoverInteractable);
 
             s_handleHoverInputEvents = false;
-            m_allowInvalidatingHoverInteractableOnHoverInput = false;
+            s_allowClearingHoverInteractableOnHoverInput = false;
 
             CheckHoverInteractableAndAutoActivate();
         }
@@ -2670,8 +3173,6 @@ UiCanvasComponent* UiCanvasComponent::CloneAndInitializeCanvas(UiEntityContext* 
         clonedCanvasEntity = AZ::Utils::LoadObjectFromStream<AZ::Entity>(canvasStream);
     }
 
-    AZ_Assert(clonedCanvasEntity && clonedRootSliceEntity, "Failed to clone canvas");
-
     if (clonedCanvasEntity && clonedRootSliceEntity)
     {
         // complete initialization of cloned entities, we assume this is NOT for editor
@@ -2690,15 +3191,20 @@ UiCanvasComponent* UiCanvasComponent::CloneAndInitializeCanvas(UiEntityContext* 
 
 void UiCanvasComponent::DeactivateElements()
 {
-    AZ::SliceComponent::EntityList entities;
+    AZ::SliceComponent::EntityIdSet entities;
     AZ::SliceComponent* rootSlice = m_entityContext->GetRootSlice();
 
-    bool result = rootSlice->GetEntities(entities);
+    bool result = rootSlice->GetEntityIds(entities);
     if (result)
     {
-        for (AZ::Entity* entity : entities)
+        for (AZ::EntityId& entityId : entities)
         {
-            if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+            // Look up the entity by ID, as sometimes one of the entities owns others
+            // that will be destroyed when it's destroyed. Since we store pointers, 
+            // those will point to freed memory.
+            AZ::Entity* entity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, entityId);
+            if (entity && entity->GetState() == AZ::Entity::ES_ACTIVE)
             {
                 entity->Deactivate();
             }
@@ -2760,7 +3266,17 @@ void UiCanvasComponent::SetTargetCanvasSizeAndUniformScale(bool isInGame, AZ::Ve
     // element transforms so force them to recompute
     if (oldTargetCanvasSize != m_targetCanvasSize || oldUniformDeviceScale != m_uniformDeviceScale)
     {
-        EBUS_EVENT_ID(GetRootElement()->GetId(), UiTransformBus, SetRecomputeTransformFlag);
+        UiTransformInterface::Recompute recompute;
+        if (oldTargetCanvasSize != m_targetCanvasSize)
+        {
+            recompute = (oldUniformDeviceScale != m_uniformDeviceScale) ? UiTransformInterface::Recompute::RectAndTransform : UiTransformInterface::Recompute::RectOnly;
+        }
+        else
+        {
+            recompute = UiTransformInterface::Recompute::TransformOnly;
+        }
+
+        EBUS_EVENT_ID(GetRootElement()->GetId(), UiTransformBus, SetRecomputeFlags, recompute);
         EBUS_EVENT(UiCanvasSizeNotificationBus, OnCanvasSizeOrScaleChange, GetEntityId());
     }
 }
@@ -2844,6 +3360,18 @@ UiCanvasComponent::EntityComboBoxVec UiCanvasComponent::PopulateTooltipDisplayEn
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::OnPixelAlignmentChange()
+{
+    EBUS_EVENT_ID(GetEntityId(), UiCanvasPixelAlignmentNotificationBus, OnCanvasPixelAlignmentChange);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::OnTextPixelAlignmentChange()
+{
+    EBUS_EVENT_ID(GetEntityId(), UiCanvasPixelAlignmentNotificationBus, OnCanvasTextPixelAlignmentChange);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::CreateRenderTarget()
 {
     if (m_canvasSize.GetX() <= 0 || m_canvasSize.GetY() <= 0)
@@ -2908,7 +3436,7 @@ void UiCanvasComponent::DestroyRenderTarget()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiCanvasComponent::RenderCanvasToTexture(bool displayBounds)
+void UiCanvasComponent::RenderCanvasToTexture()
 {
     if (m_renderTargetHandle <= 0)
     {
@@ -2918,6 +3446,8 @@ void UiCanvasComponent::RenderCanvasToTexture(bool displayBounds)
     ISystem* system = gEnv->pSystem;
     if (system && !gEnv->IsDedicated())
     {
+        GetUiRenderer()->BeginUiFrameRender();
+        
         gEnv->pRenderer->SetRenderTarget(m_renderTargetHandle, m_renderTargetDepthSurface);
 
         // clear the render target before rendering to it
@@ -2930,9 +3460,11 @@ void UiCanvasComponent::RenderCanvasToTexture(bool displayBounds)
         // we are writing to a linear texture
         gEnv->pRenderer->SetSrgbWrite(false);
 
-        RenderCanvas(true, m_canvasSize, displayBounds);
+        RenderCanvas(true, m_canvasSize);
 
         gEnv->pRenderer->SetRenderTarget(0); // restore render target
+        
+        GetUiRenderer()->EndUiFrameRender();
     }
 }
 
@@ -3005,20 +3537,22 @@ void UiCanvasComponent::SendRectChangeNotificationsAndRecomputeLayouts()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasComponent::SendRectChangeNotifications()
 {
-    // lambda that simply sends the RecomputeTransformsAndSendNotifications message to an entity
-    auto RecomputeAndNotify = [](const AZ::EntityId entity)
-        {
-            EBUS_EVENT_ID(entity, UiTransformBus, RecomputeTransformsAndSendNotifications);
-        };
 
     // While we know there are transforms that need re-computing
-    while (m_transformsNeedRecompute)
+    while (!m_elementsNeedingTransformRecompute.empty())
     {
-        // clear the flag, it may get set again if some of the notification listeners change things
-        m_transformsNeedRecompute = false;
+        // get the front element from the list and remove it from the list
+        UiElementComponent& elementComponent = m_elementsNeedingTransformRecompute.front();
+        m_elementsNeedingTransformRecompute.pop_front();
+        elementComponent.m_next = nullptr;   // needed in order to be able to test if an element is in the list.
 
-        // Recompute the transforms on all elements and sent notifications of any changes in element rects
-        EBUS_EVENT_ID(m_rootElement, UiElementBus, CallOnDescendantElements, RecomputeAndNotify);
+        // Get the transform component from the element and (if valid) recompute its transforms
+        UiTransform2dComponent* transformComponent = elementComponent.GetTransform2dComponent();
+        if (transformComponent)
+        {
+            // tell this transform to recompute (this can result in other elements being added to m_elementsNeedingTransformRecompute)
+            transformComponent->RecomputeTransformsAndSendNotifications();
+        }
     }
 }
 
@@ -3026,6 +3560,25 @@ void UiCanvasComponent::SendRectChangeNotifications()
 void UiCanvasComponent::InitializeLayouts()
 {
     m_layoutManager->ComputeLayoutForElementAndDescendants(GetRootElement()->GetId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::InGamePostActivateBottomUp(AZ::Entity* entity)
+{
+    if (!entity)
+    {
+        return;
+    }
+
+    LyShine::EntityArray childElements;
+    EBUS_EVENT_ID_RESULT(childElements, entity->GetId(), UiElementBus, GetChildElements);
+
+    for (auto child : childElements)
+    {
+        InGamePostActivateBottomUp(child);
+    }
+
+    EBUS_EVENT_ID(entity->GetId(), UiInitializationBus, InGamePostActivate);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3091,14 +3644,53 @@ AZ::Entity* UiCanvasComponent::CloneAndAddElementInternal(AZ::Entity* sourceEnti
     if (m_isLoadedInGame)
     {
         // Call InGamePostActivate on all the created entities
-        for (AZ::Entity* entity : clonedEntities)
-        {
-            EBUS_EVENT_ID(entity->GetId(), UiInitializationBus, InGamePostActivate);
-        }
+        InGamePostActivateBottomUp(clonedRootEntity);
     }
 
     return clonedRootEntity;
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasComponent::GetOrphanedElements(AZ::SliceComponent::EntityList& orphanedEntities)
+{
+    AZ::SliceComponent::EntityList entities;
+    AZ::SliceComponent* rootSlice = m_entityContext->GetRootSlice();
+
+    bool result = rootSlice->GetEntities(entities);
+
+    // We want to quickly check that every UiElement entity is referenced from the canvas.
+    // We know that at this point all referenced elements have had FixupPostLoad called but
+    // and orphans would not have had it called.
+    // This means that referenced children have a non-null parent (except the root element).
+    // We can use this data to make a list of all orphaned children.
+    for (AZ::Entity* entity : entities)
+    {
+        AZ::Entity* parent = nullptr;
+        EBUS_EVENT_ID_RESULT(parent, entity->GetId(), UiElementBus, GetParent);
+
+        if (!parent)
+        {
+            if (m_rootElement != entity->GetId())
+            {
+                // This is an entity that is not referenced by the canvas.
+                // If it has a UiElementComponent on it then it is definitely an orphan
+                UiElementComponent* elementComponent = entity->FindComponent<UiElementComponent>();
+                if (elementComponent)
+                {
+                    // Add to ths list of orphans
+                    orphanedEntities.push_back(entity);
+                }
+                else
+                {
+                    // This is some unknown entity. In theory the slice system could create such things but it does
+                    // not appear to.
+                    AZ_Warning("UI", false, "Found entity with no UiElementComponent in a UI canvas root slice.");
+                }
+            }
+        }
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // PRIVATE STATIC MEMBER FUNCTIONS
@@ -3195,7 +3787,7 @@ UiCanvasComponent*  UiCanvasComponent::LoadCanvasInternal(const string& pathname
                     {
                         // The canvas size may get reset on the first call to RenderCanvas to set the size to
                         // viewport size. So we'll recompute again on first render.
-                        EBUS_EVENT_ID(canvasComponent->GetRootElement()->GetId(), UiTransformBus, SetRecomputeTransformFlag);
+                        EBUS_EVENT_ID(canvasComponent->GetRootElement()->GetId(), UiTransformBus, SetRecomputeFlags, UiTransformInterface::Recompute::RectAndTransform);
 
                         canvasComponent->m_pathname = assetIdPathname;
                         canvasComponent->m_isLoadedInGame = !forEditor;
@@ -3269,6 +3861,9 @@ UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ
     canvasComponent->m_entityContext = entityContext;
     canvasComponent->m_entityContext->InitUiContext();
 
+    // Load atlases before initializing child components
+    canvasComponent->LoadAtlases();
+
     if (previousRemapTable)
     {
         // We are reloading a canvas and we want to use the same entity ID mapping (from editor entity to game entity) as in the previously
@@ -3341,11 +3936,6 @@ UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ
         return nullptr;
     }
 
-    AZ::SliceComponent::EntityList entities;
-    AZ::SliceComponent* rootSlice = canvasComponent->m_entityContext->GetRootSlice();
-
-    bool result = rootSlice->GetEntities(entities);
-
     // Initialize the target canvas size and uniform scale
     // This should be done before calling InGamePostActivate so that the
     // canvas space rects of the elements are accurate
@@ -3375,10 +3965,7 @@ UiCanvasComponent* UiCanvasComponent::FixupPostLoad(AZ::Entity* canvasEntity, AZ
     if (!forEditor)
     {
         // Call InGamePostActivate on all the created entities when loading in game
-        for (AZ::Entity* entity : entities)
-        {
-            EBUS_EVENT_ID(entity->GetId(), UiInitializationBus, InGamePostActivate);
-        }
+        canvasComponent->InGamePostActivateBottomUp(rootElement);
     }
 
     // Set the first hover interactable

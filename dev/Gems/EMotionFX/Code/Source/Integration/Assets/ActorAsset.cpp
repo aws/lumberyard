@@ -27,6 +27,7 @@
 
 #include <Integration/Assets/ActorAsset.h>
 #include <Integration/System/SystemCommon.h>
+#include <Integration/System/SystemComponent.h>
 
 #include <I3DEngine.h>
 #include <IRenderMesh.h>
@@ -47,7 +48,6 @@ namespace EMotionFX
             const AZ::Data::Asset<ActorAsset>& asset,
             const AZ::Transform& worldTransform)
             : m_actorInstance(actorInstance)
-            , m_worldTransform(worldTransform)
             , m_renderTransform(AZTransformToLYTransform(worldTransform))
             , m_worldBoundingBox(AABB::RESET)
             , m_entityId(entityId)
@@ -59,14 +59,14 @@ namespace EMotionFX
 
             AZStd::shared_ptr<int>& renderNodeLifetime = m_renderNodeLifetime;
             AZStd::function<void()> finalizeOnMainThread = [this, renderNodeLifetime]()
-            {
-                // RenderMesh creation must be performed on the main thread,
-                // as required by the renderer.
-                if (renderNodeLifetime.use_count() != 1)
                 {
-                    BuildRenderMeshPerLOD();
-                }
-            };
+                    // RenderMesh creation must be performed on the main thread,
+                    // as required by the renderer.
+                    if (renderNodeLifetime.use_count() != 1)
+                    {
+                        BuildRenderMeshPerLOD();
+                    }
+                };
             AZ::SystemTickBus::QueueFunction(finalizeOnMainThread);
 
             if (m_entityId.IsValid())
@@ -82,14 +82,17 @@ namespace EMotionFX
 
         ActorRenderNode::~ActorRenderNode()
         {
-            int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
-            int nList = nFrameID % 3;
-            if (m_arrSkinningRendererData[nList].nFrameID == nFrameID && m_arrSkinningRendererData[nList].pSkinningData)
+            if (gEnv)
             {
-                AZ::LegacyJobExecutor* pAsyncDataJobExecutor = m_arrSkinningRendererData[nList].pSkinningData->pAsyncDataJobExecutor;
-                if (pAsyncDataJobExecutor)
+                int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
+                int nList = nFrameID % 3;
+                if (m_arrSkinningRendererData[nList].nFrameID == nFrameID && m_arrSkinningRendererData[nList].pSkinningData)
                 {
-                    pAsyncDataJobExecutor->WaitForCompletion();
+                    AZ::LegacyJobExecutor* pAsyncDataJobExecutor = m_arrSkinningRendererData[nList].pSkinningData->pAsyncDataJobExecutor;
+                    if (pAsyncDataJobExecutor)
+                    {
+                        pAsyncDataJobExecutor->WaitForCompletion();
+                    }
                 }
             }
 
@@ -109,34 +112,35 @@ namespace EMotionFX
 
         void ActorRenderNode::SetMaterials(const ActorAsset::MaterialList& materialPerLOD)
         {
-            // Initialize materials from input paths.
-            // Once materials are converted to real AZ assets, this conversion can be completely removed.
-            m_materialPerLOD.clear();
-            m_materialPerLOD.reserve(materialPerLOD.size());
-            for (auto& materialReference : materialPerLOD)
+            if (gEnv && gEnv->p3DEngine)
             {
-                const AZStd::string& path = materialReference.GetAssetPath();
-
-                // Create render material. If it fails or isn't specified, use the material from base LOD.
-                _smart_ptr<IMaterial> material = path.empty() ? nullptr :
-                    gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(path.c_str());
-
-                if (!material && m_materialPerLOD.size() > 0)
+                // Initialize materials from input paths.
+                // Once materials are converted to real AZ assets, this conversion can be completely removed.
+                m_materialPerLOD.clear();
+                m_materialPerLOD.reserve(materialPerLOD.size());
+                for (auto& materialReference : materialPerLOD)
                 {
-                    material = m_materialPerLOD.front();
-                }
+                    const AZStd::string& path = materialReference.GetAssetPath();
 
-                m_materialPerLOD.emplace_back(material);
+                    // Create render material. If it fails or isn't specified, use the material from base LOD.
+                    _smart_ptr<IMaterial> material = path.empty() ? nullptr :
+                        gEnv->p3DEngine->GetMaterialManager()->LoadMaterial(path.c_str());
+
+                    if (!material && m_materialPerLOD.size() > 0)
+                    {
+                        material = m_materialPerLOD.front();
+                    }
+
+                    m_materialPerLOD.emplace_back(material);
+                }
             }
         }
 
         void ActorRenderNode::UpdateWorldBoundingBox()
         {
-            const MCore::AABB& emfxAabb = m_actorInstance->GetStaticBasedAABB();
-
+            const MCore::AABB& emfxAabb = m_actorInstance->GetAABB();
             m_worldBoundingBox = AABB(AZVec3ToLYVec3(emfxAabb.GetMin()), AZVec3ToLYVec3(emfxAabb.GetMax()));
-            m_worldBoundingBox.SetTransformedAABB(m_renderTransform, m_worldBoundingBox);
-
+            
             if (m_isRegisteredWithRenderer)
             {
                 gEnv->p3DEngine->RegisterEntity(this);
@@ -168,10 +172,7 @@ namespace EMotionFX
 
         void ActorRenderNode::UpdateWorldTransform(const AZ::Transform& entityTransform)
         {
-            m_worldTransform = entityTransform;
-
-            m_renderTransform = AZTransformToLYTransform(m_worldTransform);
-
+            m_renderTransform = AZTransformToLYTransform(entityTransform);
             UpdateWorldBoundingBox();
         }
 
@@ -208,7 +209,7 @@ namespace EMotionFX
 
         AZ::s32 ActorRenderNode::GetJointIndexByName(const char* jointName)
         {
-            if (m_actorInstance)
+            if (m_actorInstance && jointName)
             {
                 EMotionFX::Skeleton* skeleton = m_actorInstance->GetActor()->GetSkeleton();
                 const AZ::u32 numNodes = skeleton->GetNumNodes();
@@ -231,15 +232,44 @@ namespace EMotionFX
                 const EMotionFX::TransformData* transforms = m_actorInstance->GetTransformData();
                 if (transforms && jointIndex < transforms->GetNumTransforms())
                 {
-                    return MCore::EmfxTransformToAzTransform(transforms->GetCurrentPose()->GetGlobalTransform(jointIndex));
+                    return MCore::EmfxTransformToAzTransform(transforms->GetCurrentPose()->GetModelSpaceTransform(jointIndex));
                 }
             }
 
             return AZ::Transform::CreateIdentity();
         }
 
+        Matrix34 MCoreMatrixToCryMatrix(const MCore::Matrix& matrix)
+        {
+            return Matrix34(
+                matrix.m44[0][0],
+                matrix.m44[1][0],
+                matrix.m44[2][0],
+                matrix.m44[3][0],
+                matrix.m44[0][1],
+                matrix.m44[1][1],
+                matrix.m44[2][1],
+                matrix.m44[3][1],
+                matrix.m44[0][2],
+                matrix.m44[1][2],
+                matrix.m44[2][2],
+                matrix.m44[3][2]);
+        }
+
+        DualQuat MCoreMatrixToCryDualQuat(const MCore::Matrix& matrix)
+        {
+            Matrix34 cryMatrix = MCoreMatrixToCryMatrix(matrix);
+            cryMatrix.OrthonormalizeFast();
+            return DualQuat(cryMatrix);
+        }
+
         void ActorRenderNode::Render(const struct SRendParams& inRenderParams, const struct SRenderingPassInfo& passInfo)
         {
+            if (!SystemComponent::emfx_actorRenderEnabled)
+            {
+                return;
+            }
+
             ActorAsset* data = m_actorAsset.Get();
 
             if (!data)
@@ -260,7 +290,9 @@ namespace EMotionFX
                 return; // not ready for rendering
             }
 
-            AZ::u32 useLodIndex = 0; // \todo - choose LOD
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Animation, "ActorRenderNode::Render");
+
+            AZ::u32 useLodIndex = m_actorInstance->GetLODLevel();
 
             SRendParams rParams(inRenderParams);
             rParams.fAlpha = 1.f;
@@ -268,7 +300,7 @@ namespace EMotionFX
             const int previousObjectFlags = rParams.dwFObjFlags;
             rParams.dwFObjFlags |= FOB_DYNAMIC_OBJECT;
             rParams.pMatrix = &m_renderTransform;
-            rParams.lodValue = rParams.lodValue.LodA();
+            rParams.lodValue = useLodIndex;
 
             CRenderObject* pObj = gEnv->pRenderer->EF_GetObject_Temp(passInfo.ThreadID());
             pObj->m_fSort = rParams.fCustomSortOffset;
@@ -289,7 +321,7 @@ namespace EMotionFX
             pObj->m_II.m_Matrix = *rParams.pMatrix;
             pObj->m_nClipVolumeStencilRef = rParams.nClipVolumeStencilRef;
             pObj->m_nTextureID = rParams.nTextureID;
-            rParams.dwFObjFlags |= rParams.dwFObjFlags;
+            pObj->m_ObjFlags |= rParams.dwFObjFlags;
             rParams.dwFObjFlags &= ~FOB_NEAREST;
             pObj->m_nMaterialLayers = rParams.nMaterialLayersBlend;
             pD->m_nHUDSilhouetteParams = rParams.nHUDSilhouettesParams;
@@ -360,6 +392,7 @@ namespace EMotionFX
 
         SSkinningData* ActorRenderNode::GetSkinningData()
         {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Animation, "ActorRenderNode::GetSkinningData");
             // Get data to fill.
             const int nFrameID = gEnv->pRenderer->EF_GetSkinningPoolID();
             const int nList = nFrameID % 3;
@@ -371,12 +404,9 @@ namespace EMotionFX
                 return m_arrSkinningRendererData[nList].pSkinningData;
             }
 
-            EMotionFXPtr<EMotionFX::Actor> actorPtr = m_actorAsset.Get()->GetActor();
             const EMotionFX::TransformData* transforms = m_actorInstance->GetTransformData();
-            const MCore::Matrix* nodeMatrices = transforms->GetGlobalInclusiveMatrices();
-            const MCore::Matrix* invBindPoseMatrices = actorPtr->GetInverseBindPoseGlobalMatrices().GetPtr();
+            const MCore::Matrix* skinningMatrices = transforms->GetSkinningMatrices();
             const AZ::u32 transformCount = transforms->GetNumTransforms();
-            const AZ::Transform worldTransformInv = MCore::EmfxTransformToAzTransform(m_actorInstance->GetGlobalTransform()).GetInverseFull();
 
             SSkinningData* renderSkinningData = gEnv->pRenderer->EF_CreateSkinningData(transformCount, false, m_skinningMethod == SkinningMethod::Linear);
 
@@ -386,11 +416,7 @@ namespace EMotionFX
 
                 for (AZ::u32 transformIndex = 0; transformIndex < transformCount; ++transformIndex)
                 {
-                    const AZ::Transform bindTransform = EmfxTransformToAzTransform(invBindPoseMatrices[transformIndex]);
-                    AZ::Transform boneTransform = EmfxTransformToAzTransform(nodeMatrices[transformIndex]);
-                    boneTransform = worldTransformInv * boneTransform * bindTransform;
-
-                    renderTransforms[transformIndex] = AZTransformToLYTransform(boneTransform);
+                    renderTransforms[transformIndex] = MCoreMatrixToCryMatrix(skinningMatrices[transformIndex]);
                 }
             }
             else if (m_skinningMethod == SkinningMethod::DualQuat)
@@ -399,11 +425,7 @@ namespace EMotionFX
 
                 for (AZ::u32 transformIndex = 0; transformIndex < transformCount; ++transformIndex)
                 {
-                    const AZ::Transform bindTransform = EmfxTransformToAzTransform(invBindPoseMatrices[transformIndex]);
-                    AZ::Transform boneTransform = EmfxTransformToAzTransform(nodeMatrices[transformIndex]);
-                    boneTransform = worldTransformInv * boneTransform * bindTransform;
-
-                    renderTransforms[transformIndex] = DualQuat(AZTransformToLYTransform(boneTransform));
+                    renderTransforms[transformIndex] = MCoreMatrixToCryDualQuat(skinningMatrices[transformIndex]);
                 }
             }
 
@@ -495,8 +517,11 @@ namespace EMotionFX
         {
         }
 
-        void ActorRenderNode::SetMaterial(_smart_ptr<IMaterial> /*pMat*/)
+        void ActorRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)
         {
+            AZ_Assert(m_materialPerLOD.size() < 2, "Attempting to override actor's multiple LOD materials with a single material");
+            m_materialPerLOD.clear();
+            m_materialPerLOD.emplace_back(pMat);
         }
 
         _smart_ptr<IMaterial> ActorRenderNode::GetMaterial(Vec3* pHitPos /* = nullptr */)
@@ -693,10 +718,10 @@ namespace EMotionFX
         {
         }
 
-        ActorAsset::ActorInstancePtr ActorAsset::CreateInstance(AZ::EntityId entityId)
+        ActorAsset::ActorInstancePtr ActorAsset::CreateInstance(AZ::Entity* entity)
         {
             AZ_Assert(m_emfxActor, "Anim graph asset is not loaded");
-            ActorInstancePtr actorInstance = ActorInstancePtr::MakeFromNew(EMotionFX::ActorInstance::Create(m_emfxActor.get(), entityId));
+            ActorInstancePtr actorInstance = ActorInstancePtr::MakeFromNew(EMotionFX::ActorInstance::Create(m_emfxActor.get(), entity));
             if (actorInstance)
             {
                 actorInstance->SetIsOwnedByRuntime(true);
@@ -1029,6 +1054,11 @@ namespace EMotionFX
             // in the asset pipeline and loading it via the game, as opposed to extracting the data here.
             //
 
+            if (!gEnv)
+            {
+                return;
+            }
+
             ActorAsset* assetData = asset.Get();
             AZ_Assert(assetData, "Invalid asset data");
 
@@ -1109,7 +1139,8 @@ namespace EMotionFX
             ActorAsset* assetData = asset.GetAs<ActorAsset>();
             assetData->m_emfxActor = EMotionFXPtr<EMotionFX::Actor>::MakeFromNew(EMotionFX::GetImporter().LoadActor(
                         assetData->m_emfxNativeData.data(),
-                        assetData->m_emfxNativeData.size()));
+                        assetData->m_emfxNativeData.size(),
+                        nullptr, ""));
 
             if (!assetData->m_emfxActor)
             {

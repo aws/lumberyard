@@ -15,66 +15,46 @@
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetTypeInfoBus.h>
+#include <AzFramework/Physics/Material.h>
 
-#include <PhysXSystemComponent.h>
+namespace physx
+{
+    class PxBase;
+}
 
 namespace PhysX
 {
     namespace Pipeline
     {
-        /**
-         * Represents a PhysX mesh asset.
-         */
-        class PhysXMeshAsset
+        /// Represents a PhysX mesh asset.
+        class MeshAsset
             : public AZ::Data::AssetData
         {
         public:
-            friend class PhysXMeshAssetHandler;
+            friend class MeshAssetHandler;
 
-            AZ_CLASS_ALLOCATOR(PhysXMeshAsset, PhysXAllocator, 0);
-            AZ_RTTI(PhysXMeshAsset, "{7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB}", AZ::Data::AssetData);
+            AZ_CLASS_ALLOCATOR(MeshAsset, AZ::SystemAllocator, 0);
+            AZ_RTTI(MeshAsset, "{7A2871B9-5EAB-4DE0-A901-B0D2C6920DDB}", AZ::Data::AssetData);
 
             physx::PxBase* GetMeshData()
             {
                 return m_meshData;
             }
 
-            static const char* m_assetFileExtention;
+            const AZStd::vector<Physics::MaterialConfiguration>& GetMaterialsData() const
+            {
+                return m_materials;
+            }
+
+            const AZStd::vector<AZStd::string>& GetMaterialSlots() const
+            {
+                return m_materialSlots;
+            }
 
         private:
             physx::PxBase* m_meshData = nullptr;
-        };
-
-        /**
-         * Asset handler for loading and initializing PhysXMeshAsset assets.
-         */
-        class PhysXMeshAssetHandler
-            : public AZ::Data::AssetHandler
-            , private AZ::AssetTypeInfoBus::Handler
-        {
-        public:
-            AZ_CLASS_ALLOCATOR(PhysXMeshAssetHandler, PhysXAllocator, 0);
-
-            PhysXMeshAssetHandler();
-            ~PhysXMeshAssetHandler();
-
-            void Register();
-            void Unregister();
-
-            // AZ::Data::AssetHandler
-            AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override;
-            bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
-            bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override;
-            void DestroyAsset(AZ::Data::AssetPtr ptr) override;
-            void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override;
-
-            // AZ::AssetTypeInfoBus
-            AZ::Data::AssetType GetAssetType() const override;
-            void GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions) override;
-            const char* GetAssetTypeDisplayName() const;
-            const char* GetBrowserIcon() const override;
-            const char* GetGroup() const override;
-            AZ::Uuid GetComponentTypeId() const override;
+            AZStd::vector<Physics::MaterialConfiguration> m_materials;
+            AZStd::vector<AZStd::string> m_materialSlots;
         };
     } // namespace Pipeline
 } // namespace PhysX

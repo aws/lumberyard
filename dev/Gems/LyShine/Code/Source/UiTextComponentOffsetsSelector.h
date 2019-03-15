@@ -21,7 +21,6 @@ struct UiTextComponentOffsetsSelector
     UiTextComponentOffsetsSelector(
         const UiTextComponent::DrawBatchLines& drawBatchLines,
         const STextDrawContext& fontContext,
-        const UiTextInterface::DisplayedTextFunction& displayedTextFunction,
         float fontSize,
         int firstIndex,
         int lastIndex,
@@ -29,7 +28,6 @@ struct UiTextComponentOffsetsSelector
         int lineNumHint)
         : m_drawBatchLines(drawBatchLines)
         , m_fontContext(fontContext)
-        , m_displayedTextFunction(displayedTextFunction)
         , m_fontSize(fontSize)
         , m_maxLineHeight(0.0f)
         , m_firstIndex(firstIndex)
@@ -64,7 +62,6 @@ struct UiTextComponentOffsetsSelector
                                                                     //!< relative to the left offset.
     const UiTextComponent::DrawBatchLines& m_drawBatchLines;
     const STextDrawContext& m_fontContext;
-    const UiTextInterface::DisplayedTextFunction& m_displayedTextFunction;
     const float m_fontSize;
     float m_maxLineHeight;
     const int m_firstIndex;

@@ -49,8 +49,9 @@ namespace EMotionFX
          * @param attachToActorInstance The actor instance to attach to, for example the main character in the game.
          * @param attachToNodeIndex The node to attach to. This has to be part of the actor where the attachToActorInstance is instanced from.
          * @param attachment The actor instance that you want to attach to this node (for example a gun).
+         * @param managedExternally Specify whether the parent transform (where we are attached to) propagates into the attachment actor instance.
          */
-        static AttachmentNode* Create(ActorInstance* attachToActorInstance, uint32 attachToNodeIndex, ActorInstance* attachment);
+        static AttachmentNode* Create(ActorInstance* attachToActorInstance, AZ::u32 attachToNodeIndex, ActorInstance* attachment, bool managedExternally = false);
 
         /**
          * Get the attachment type ID.
@@ -67,18 +68,34 @@ namespace EMotionFX
         const char* GetTypeString() const override                      { return "AttachmentNode"; }
 
         /**
-         * Check if this attachment is being influenced by multiple nodes or not.
-         * This is the case for attachments such as clothing items which get influenced by multiple nodes/bones inside the actor instance they are attached to.
-         * @result Returns true if it is influenced by multiple nodes, otherwise false is returned.
+         * Check if this attachment is being influenced by multiple joints or not.
+         * This is the case for attachments such as clothing items which get influenced by multiple joints inside the actor instance they are attached to.
+         * @result Returns true if it is influenced by multiple joints, otherwise false is returned.
          */
-        bool GetIsInfluencedByMultipleNodes() const override final      { return false; }
+        bool GetIsInfluencedByMultipleJoints() const override final      { return false; }
 
         /**
          * Get the node where we attach something to.
          * This node is part of the actor from which the actor instance returned by GetAttachToActorInstance() is created.
          * @result The node index where we will attach this attachment to.
          */
-        uint32 GetAttachToNodeIndex() const;
+        AZ::u32 GetAttachToNodeIndex() const;
+
+        /**
+         * Check whether the transformations of the attachment are modified by using a parent-child relationship in forward kinematics.
+         * When external management is disbled (which it is on default), then the parent actor instance's global transform is forwarded into the attachment's
+         * actor instance. When external management is disabled, this will not happen.
+         * @result Returns true when this attachments transforms are managed externally.
+         */
+        bool GetIsManagedExternally() const;
+
+        /**
+         * Specify whether the transformations of the attachment are modified by using a parent-child relationship in forward kinematics.
+         * When external management is disbled (which it is on default), then the parent actor instance's global transform is forwarded into the attachment's
+         * actor instance. When external management is disabled, this will not happen.
+         * @param managedExternally When set to true, the parent transformation will not propagate into the attachment's actor instance transformation.
+         */
+        void SetIsManagedExternally(bool managedExternally);
 
         /**
          * The main update method.
@@ -87,15 +104,17 @@ namespace EMotionFX
 
 
     protected:
-        uint32  mAttachedToNode;    /**< The node where the attachment is linked to. */
+        AZ::u32 m_attachedToNode;       /**< The node where the attachment is linked to. */
+        bool    m_isManagedExternally;  /**< Is this attachment basically managed (transformation wise) by something else? (like an Attachment component). The default is false. */
 
         /**
          * The constructor for a regular attachment.
          * @param attachToActorInstance The actor instance to attach to (for example a cowboy).
          * @param attachToNodeIndex The node to attach to. This has to be part of the actor where the attachToActorInstance is instanced from.
          * @param attachment The actor instance that you want to attach to this node (for example a gun).
+         * @param managedExternally Specify whether the parent transform (where we are attached to) propagates into the attachment actor instance.
          */
-        AttachmentNode(ActorInstance* attachToActorInstance, uint32 attachToNodeIndex, ActorInstance* attachment);
+        AttachmentNode(ActorInstance* attachToActorInstance, AZ::u32 attachToNodeIndex, ActorInstance* attachment, bool managedExternally = false);
 
         /**
          * The destructor.

@@ -13,8 +13,8 @@
 #pragma once
 
 #include <AzCore/RTTI/RTTI.h>
-#include <EMotionFX/Source/AnimGraphNodeId.h>
-#include "EMotionFXConfig.h"
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/AnimGraphObjectIds.h>
 
 
 namespace EMotionFX
@@ -22,7 +22,6 @@ namespace EMotionFX
     // forward declarations
     class AnimGraphNode;
     class AnimGraph;
-
 
     /**
      * A connection between two nodes.
@@ -52,13 +51,13 @@ namespace EMotionFX
         MCORE_INLINE void SetSourcePort(AZ::u16 sourcePort)         { mSourcePort = sourcePort; }
         MCORE_INLINE void SetTargetPort(AZ::u16 targetPort)         { mTargetPort = targetPort; }
 
-        MCORE_INLINE AZ::u32 GetId() const                          { return mId; }
-        MCORE_INLINE void SetId(AZ::u32 id)                         { mId = id; }
+        AnimGraphConnectionId GetId() const                         { return m_id; }
+        void SetId(AnimGraphConnectionId id)                        { m_id = id; }
 
-        #ifdef EMFX_EMSTUDIOBUILD
         MCORE_INLINE void SetIsVisited(bool visited)                { mVisited = visited; }
         MCORE_INLINE bool GetIsVisited() const                      { return mVisited; }
-        #endif
+
+        AnimGraph* GetAnimGraph() const                             { return m_animGraph; }
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -66,12 +65,9 @@ namespace EMotionFX
         AnimGraph*              m_animGraph;
         AnimGraphNode*          m_sourceNode;       /**< The source node from which the incoming connection comes. */
         AZ::u64                 m_sourceNodeId;
-        AZ::u32                 mId;                /**< The unique ID value of the connection. */
+        AZ::u64                 m_id;
         AZ::u16                 mSourcePort;        /**< The source port number, so the output port number of the node where the connection comes from. */
         AZ::u16                 mTargetPort;        /**< The target port number, which is the input port number of the target node. */
-
-        #ifdef EMFX_EMSTUDIOBUILD
-        bool                mVisited;               /**< True when during updates this connection was used. */
-        #endif
+        bool                    mVisited;               /**< True when during updates this connection was used. */
     };
 } // namespace EMotionFX

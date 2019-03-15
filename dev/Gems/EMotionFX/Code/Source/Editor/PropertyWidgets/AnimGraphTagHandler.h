@@ -24,12 +24,14 @@ namespace EMotionFX
     class AnimGraphTagPicker
         : public QWidget
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
     public:
         AZ_CLASS_ALLOCATOR_DECL
 
         AnimGraphTagPicker(QWidget* parent);
         void SetAnimGraph(AnimGraph* animGraph);
+
+        void Reinit();
 
         void SetTags(const AZStd::vector<AZStd::string>& tags);
         const AZStd::vector<AZStd::string>& GetTags() const;

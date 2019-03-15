@@ -17,6 +17,7 @@
 #include <AzCore/std/string/string.h>
 #include "BaseObject.h"
 #include "VertexAttributeLayer.h"
+#include "Transform.h"
 
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Array.h>
@@ -412,18 +413,18 @@ namespace EMotionFX
 
         /**
          * Checks for an intersection between the mesh and a given ray.
-         * @param transformMatrix The transformation matrix of the mesh.
+         * @param transform The transformation of the mesh.
          * @param ray The ray to test with.
          * @result Returns true when an intersection has occurred, otherwise false.
          */
-        bool Intersects(const MCore::Matrix& transformMatrix, const MCore::Ray& ray);
+        bool Intersects(const Transform& transform, const MCore::Ray& ray);
 
         /**
          * Check for an intersection between the mesh a given ray, and calculate the closest intersection point.
          * If you do NOT need to know the intersection point, use the other Intersects method, because that one is faster, since it doesn't need to calculate
          * the closest intersection point.
          * The intersection point returned is in object space.
-         * @param transformMatrix The transformation matrix of the mesh.
+         * @param transform The transformation of the mesh.
          * @param ray The ray to test with.
          * @param outIntersect A pointer to the vector to store the intersection point in, in case of a collision (nullptr allowed).
          * @param outBaryU A pointer to a float in which the method will store the barycentric U coordinate, to be used to interpolate values on the triangle (nullptr allowed).
@@ -432,7 +433,7 @@ namespace EMotionFX
          *                   A value of nullptr is allowed, which will skip storing the resulting triangle indices.
          * @result Returns true when an intersection has occurred, otherwise false.
          */
-        bool Intersects(const MCore::Matrix& transformMatrix, const MCore::Ray& ray, AZ::Vector3* outIntersect, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outIndices = nullptr);
+        bool Intersects(const Transform& transform, const MCore::Ray& ray, AZ::Vector3* outIntersect, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outIndices = nullptr);
 
         //---------------------------------------------------
 
@@ -562,13 +563,13 @@ namespace EMotionFX
         void* FindOriginalVertexDataByName(uint32 layerID, const char* name) const;
 
         /**
-         * Calculate the axis aligned bounding box of this mesh, after transforming the positions with the provided matrix.
+         * Calculate the axis aligned bounding box of this mesh, after transforming the positions with the provided transform.
          * @param outBoundingBox The bounding box that will contain the bounds after executing this method.
-         * @param globalMatrix The global space matrix to muliply all vertex positions with.
+         * @param Transform The transformation to transform all vertex positions with.
          * @param vertexFrequency This is the for loop increase counter value. A value of 1 means every vertex will be processed
          *                        while a value of 2 means every second vertex, etc. The value must be 1 or higher.
          */
-        void CalcAABB(MCore::AABB* outBoundingBox, const MCore::Matrix& globalMatrix, uint32 vertexFrequency = 1);
+        void CalcAABB(MCore::AABB* outBoundingBox, const Transform& transform, uint32 vertexFrequency = 1);
 
         /**
          * The mesh type used to indicate if a mesh is either static, like a cube or building, cpu deformed, if it needs to be processed on the CPU, or GPU deformed if it can be processed fully on the GPU.

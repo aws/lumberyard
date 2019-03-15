@@ -198,7 +198,7 @@ namespace Visibility
         EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
 
         //Apply callbacks to VertexContainer directly
-        auto containerChanged = [this]()
+        const auto containerChanged = [this]()
         {
             UpdateVisArea();
 
@@ -213,7 +213,7 @@ namespace Visibility
             }
         };
 
-        auto vertexAdded = [this, containerChanged](size_t index)
+        const auto vertexAdded = [this, containerChanged](size_t index)
         {
             bool selected = false;
             AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
@@ -223,18 +223,17 @@ namespace Visibility
             {
                 containerChanged();
 
-                AzToolsFramework::ManipulatorManagerId managerId = AzToolsFramework::ManipulatorManagerId(1);
-                m_vertexSelection.CreateTranslationManipulator(GetEntityId(), managerId,
-                    AzToolsFramework::TranslationManipulator::Dimensions::Three,
+                m_vertexSelection.CreateTranslationManipulator(GetEntityId(), AzToolsFramework::ManipulatorManagerId(1),
+                    AzToolsFramework::TranslationManipulators::Dimensions::Three,
                     m_config.m_vertexContainer.GetVertices()[index], index,
                     AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
             }
         };
 
-        auto vertexChanged = [this]()
+        const auto vertexChanged = [this]()
         {
             UpdateVisArea();
-            m_vertexSelection.Refresh();
+            m_vertexSelection.RefreshLocal();
         };
 
         m_config.m_vertexContainer.SetCallbacks(
@@ -264,6 +263,7 @@ namespace Visibility
 
     void EditorVisAreaComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
+        m_vertexSelection.RefreshSpace(world);
         m_currentWorldTransform = world;
         UpdateVisArea();
     }
@@ -410,7 +410,7 @@ namespace Visibility
 
     void EditorVisAreaComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        VisAreaComponent* component = gameEntity->CreateComponent<VisAreaComponent>(&m_config);
+        gameEntity->CreateComponent<VisAreaComponent>(&m_config);
     }
 
     void EditorVisAreaComponent::OnSelected()
@@ -438,9 +438,8 @@ namespace Visibility
             AZStd::make_unique<AzToolsFramework::VariableVerticesVertexContainer<AZ::Vector3>>(
                 m_config.m_vertexContainer);
 
-        const AzToolsFramework::ManipulatorManagerId managerId = AzToolsFramework::ManipulatorManagerId(1);
-        m_vertexSelection.Create(GetEntityId(), managerId,
-            AzToolsFramework::TranslationManipulator::Dimensions::Three,
+        m_vertexSelection.Create(GetEntityId(), AzToolsFramework::ManipulatorManagerId(1),
+            AzToolsFramework::TranslationManipulators::Dimensions::Three,
             AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
     }
 

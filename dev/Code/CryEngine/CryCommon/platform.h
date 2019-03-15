@@ -17,7 +17,6 @@
 #pragma once
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include <AzCore/PlatformRestrictedFileDef.h>
 #undef AZ_RESTRICTED_SECTION
 #define PLATFORM_H_SECTION_1 1
 #define PLATFORM_H_SECTION_2 2
@@ -88,7 +87,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_1
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -135,7 +138,11 @@
 //      _MSC_VER                                        // Indicates MS Visual C compiler version
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_2
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -160,7 +167,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_3
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -182,7 +193,11 @@
 // We use WIN macros without _.
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_4
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -208,7 +223,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_5
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -235,7 +254,11 @@
 #if !defined(PRISIZE_T)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_6
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -252,7 +275,11 @@
 #if !defined(PRI_THREADID)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_7
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -356,7 +383,11 @@ static inline void  __dmb()
 //default stack size for threads, currently only used on pthread platforms
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_8
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -426,7 +457,11 @@ static inline void  __dmb()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_9
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -455,7 +490,11 @@ static inline void  __dmb()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_10
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 
 #if defined(MAC)
@@ -571,7 +610,11 @@ inline void CryHeapCheck()
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_11
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #elif !defined(LINUX) && !defined(APPLE) // todo: this might be readded with later xdks?
     int Result = _heapchk();
     assert(Result != _HEAPBADBEGIN);
@@ -741,7 +784,11 @@ void SetFlags(T& dest, U flags, bool b)
     #include "Linux_Win32Wrapper.h"
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_12
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 
 // Platform wrappers must be included before CryString.h
@@ -838,7 +885,11 @@ __declspec(dllimport) int __stdcall TlsSetValue(unsigned long dwTlsIndex, void* 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_13
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #elif !defined(LINUX) && !defined(APPLE)
 typedef int socklen_t;
 #endif
@@ -870,7 +921,11 @@ typedef int socklen_t;
 #if defined(_RELEASE) && !defined(RELEASE_LOGGING)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_14
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 	#endif
 #endif
 
@@ -879,7 +934,11 @@ typedef int socklen_t;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PLATFORM_H_SECTION_15
-#include AZ_RESTRICTED_FILE(platform_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/platform_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/platform_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

@@ -1,0 +1,7 @@
+{
+    "NoUberFile": {
+        "Root": [
+            "Source/ImGuiNoOpStubModule.cpp"
+        ]
+    }
+}

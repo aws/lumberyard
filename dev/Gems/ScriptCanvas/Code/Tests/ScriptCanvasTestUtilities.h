@@ -618,6 +618,7 @@ namespace ScriptCanvasTests
 
         //// EntityContextRequestBus::Handler
         AZ::SliceComponent* GetRootSlice() override { return {}; }
+        AZ::Data::AssetId CurrentlyInstantiatingSlice() override { return AZ::Data::AssetId(); }
         AZ::Entity* CreateEntity(const char* name) override;
 
         void AddEntity(AZ::Entity* entity) override;

@@ -235,7 +235,7 @@ void SpriteBorderEditor::DisplaySelectedCell(AZ::u32 cellIndex)
     // Scale-to-fit, while preserving aspect ratio.
     QRect croppedRect = m_unscaledSpriteSheet.rect();
     {
-        const UiTransformInterface::RectPoints& cellUvCoords = m_sprite->GetCellUvCoords(cellIndex);
+        const UiTransformInterface::RectPoints& cellUvCoords = m_sprite->GetSourceCellUvCoords(cellIndex);
         int minX = cellUvCoords.TopLeft().GetX() > 0.0f ? croppedRect.right() * cellUvCoords.TopLeft().GetX() : 0;
         int maxX = cellUvCoords.BottomRight().GetX() > 0.0f ? croppedRect.right() * cellUvCoords.BottomRight().GetX() : 0;
         int minY = cellUvCoords.TopLeft().GetY() > 0.0f ? croppedRect.bottom() * cellUvCoords.TopLeft().GetY() : 0;

@@ -25,9 +25,6 @@
 #pragma warning( disable : 6239 ) // (<non-zero constant> && <expression>) always evaluates to the result of <expression>
 #pragma warning( disable : 6240 ) // (<expression> && <non-zero constant>) always evaluates to the result of <expression>
 
-#define RWI_NAME_TAG "RayWorldIntersection(3dEngine)"
-#define PWI_NAME_TAG "PrimitiveWorldIntersection(3dEngine)"
-
 const int nThreadsNum = 3;
 
 #include <platform.h>

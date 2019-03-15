@@ -28,10 +28,10 @@
 #include <MysticQt/Source/MysticQtManager.h>
 #include "PluginManager.h"
 #include "LayoutManager.h"
-#include "OutlinerManager.h"
 #include "NotificationWindowManager.h"
 #include "Workspace.h"
 #include "MainWindow.h"
+#include <Source/Editor/Plugins/SkeletonOutliner/SkeletonOutlinerBus.h>
 
 // include Qt
 #include <QString>
@@ -55,6 +55,7 @@ namespace EMStudio
      *
      */
     class EMSTUDIO_API EMStudioManager
+        : private EMotionFX::SkeletonOutlinerNotificationBus::Handler
     {
         MCORE_MEMORYOBJECTCATEGORY(EMStudioManager, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
@@ -69,7 +70,6 @@ namespace EMStudio
         MainWindow* GetMainWindow();
         MCORE_INLINE PluginManager* GetPluginManager()                          { return mPluginManager; }
         MCORE_INLINE LayoutManager* GetLayoutManager()                          { return mLayoutManager; }
-        MCORE_INLINE OutlinerManager* GetOutlinerManager()                      { return mOutlinerManager; }
         MCORE_INLINE NotificationWindowManager* GetNotificationWindowManager()  { return mNotificationWindowManager; }
         MCORE_INLINE CommandSystem::CommandManager* GetCommandManager()         { return mCommandManager; }
         AZStd::string GetAppDataFolder() const;
@@ -96,11 +96,11 @@ namespace EMStudio
         void LogInfo();
 
         // in case the array is empty, all nodes are shown
-        void SetVisibleNodeIndices(const MCore::Array<uint32>& visibleNodeIndices);
-        MCore::Array<uint32>& GetVisibleNodeIndices();
+        void SetVisibleJointIndices(const MCore::Array<uint32>& visibleJointIndices);
+        const AZStd::unordered_set<AZ::u32>& GetVisibleJointIndices() const                                 { return m_visibleJointIndices; }
 
-        void SetSelectedNodeIndices(const MCore::Array<uint32>& selectedNodeIndices)            { mSelectedNodeIndices = selectedNodeIndices; }
-        MCore::Array<uint32>& GetSelectedNodeIndices()                                          { return mSelectedNodeIndices; }
+        void SetSelectedJointIndices(const MCore::Array<uint32>& selectedJointIndices);
+        const AZStd::unordered_set<AZ::u32>& GetSelectedJointIndices() const                                { return m_selectedJointIndices; }
 
         Workspace* GetWorkspace()                                                               { return &mWorkspace; }
 
@@ -120,17 +120,19 @@ namespace EMStudio
         QApplication*                       mApp;
         PluginManager*                      mPluginManager;
         LayoutManager*                      mLayoutManager;
-        OutlinerManager*                    mOutlinerManager;
         NotificationWindowManager*          mNotificationWindowManager;
         CommandSystem::CommandManager*      mCommandManager;
         AZStd::string                       mCompileDate;
-        MCore::Array<uint32>                mVisibleNodeIndices;        // node name rendering filter
-        MCore::Array<uint32>                mSelectedNodeIndices;       // node name rendering filter
+        AZStd::unordered_set<AZ::u32>       m_visibleJointIndices;
+        AZStd::unordered_set<AZ::u32>       m_selectedJointIndices;
         Workspace                           mWorkspace;
         bool                                mAutoLoadLastWorkspace;
         AZStd::string                       mHTMLLinkString;
         bool                                mAvoidRendering;
         MotionEventPresetManager*           mEventPresetManager;
+
+        // SkeletonOutlinerNotificationBus
+        void JointSelectionChanged();
 
         class EMSTUDIO_API EventProcessingCallback
             : public MCore::CommandManagerCallback
@@ -173,7 +175,6 @@ namespace EMStudio
     MCORE_INLINE MainWindow*                    GetMainWindow()                 { return gEMStudioMgr->GetMainWindow(); }
     MCORE_INLINE PluginManager*                 GetPluginManager()              { return gEMStudioMgr->GetPluginManager(); }
     MCORE_INLINE LayoutManager*                 GetLayoutManager()              { return gEMStudioMgr->GetLayoutManager(); }
-    MCORE_INLINE OutlinerManager*               GetOutlinerManager()            { return gEMStudioMgr->GetOutlinerManager(); }
     MCORE_INLINE NotificationWindowManager*     GetNotificationWindowManager()  { return gEMStudioMgr->GetNotificationWindowManager(); }
     MCORE_INLINE MotionEventPresetManager*      GetEventPresetManager()         { return gEMStudioMgr->GetEventPresetManger(); }
     MCORE_INLINE CommandSystem::CommandManager* GetCommandManager()             { return gEMStudioMgr->GetCommandManager(); }

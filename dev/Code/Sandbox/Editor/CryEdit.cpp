@@ -191,6 +191,7 @@
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
 #include <AzToolsFramework/AssetBrowser/Entries/AssetBrowserEntry.h>
 #include <AzToolsFramework/UI/Logging/TracePrintFLogPanel.h>
+#include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
@@ -231,6 +232,7 @@
 #include <QProgressBar>
 #include <QStandardItemModel>
 #include <QTreeView>
+#include <QMessageBox>
 #include <QClipboard>
 #include <QElapsedTimer>
 #include <QScopedValueRollback>
@@ -311,16 +313,18 @@ int RecentFileList::GetSize()
 void RecentFileList::GetDisplayName(QString& name, int index, const QString& curDir)
 {
     name = m_arrNames[index];
-    QFileInfo cur(curDir);
-    QFileInfo n(name);
-    if (QDir::toNativeSeparators(n.absoluteFilePath()).startsWith(QDir::toNativeSeparators(cur.absoluteFilePath())))
+
+    const QDir cur(curDir);
+    QDir fileDir(name); // actually pointing at file, first cdUp() gets us the parent dir
+    while (fileDir.cdUp())
     {
-        name = n.absoluteFilePath().mid(cur.absoluteFilePath().length());
+        if (fileDir == cur)
+        {
+            name = cur.relativeFilePath(name);
+            break;
+        }
     }
-    else
-    {
-        name = n.absoluteFilePath();
-    }
+
     name = QDir::toNativeSeparators(name);
 }
 
@@ -732,6 +736,7 @@ void CCryEditApp::RegisterActionHandlers()
     ON_COMMAND(ID_LOCK_SELECTION, OnLockSelection)
     ON_COMMAND(ID_EDIT_LEVELDATA, OnEditLevelData)
     ON_COMMAND(ID_FILE_EDITLOGFILE, OnFileEditLogFile)
+    ON_COMMAND(ID_FILE_RESAVESLICES, OnFileResaveSlices)
     ON_COMMAND(ID_FILE_EDITEDITORINI, OnFileEditEditorini)
     ON_COMMAND(ID_SELECT_AXIS_TERRAIN, OnSelectAxisTerrain)
     ON_COMMAND(ID_SELECT_AXIS_SNAPTOALL, OnSelectAxisSnapToAll)
@@ -2640,11 +2645,10 @@ void CCryEditApp::RunInitPythonScript(CEditCommandLineInfo& cmdInfo)
 
 /////////////////////////////////////////////////////////////////////////////
 // CCryEditApp initialization
-BOOL CCryEditApp::InitInstance(SandboxEditor::StartupTraceHandler* handler)
+BOOL CCryEditApp::InitInstance()
 {
     QElapsedTimer startupTimer;
     startupTimer.start();
-    m_traceHandler = handler;
     InitDirectory();
 
     // create / attach to the environment:
@@ -2757,10 +2761,6 @@ BOOL CCryEditApp::InitInstance(SandboxEditor::StartupTraceHandler* handler)
     auto initGameSystemOutcome = InitGameSystem(mainWindowWrapperHwnd);
     if (!initGameSystemOutcome.IsSuccess())
     {
-        if (!initGameSystemOutcome.GetError().empty())
-        {
-            CryMessageBox(initGameSystemOutcome.GetError().c_str(), "Initialization failed", MB_OK);
-        }
         return false;
     }
 
@@ -4204,9 +4204,18 @@ void CCryEditApp::OnEditClone()
         ((CObjectCloneTool*)tool)->Accept();
     }
 
-    GetIEditor()->SetEditTool(new CObjectCloneTool);
+    CObjectCloneTool* cloneTool = new CObjectCloneTool;
+    GetIEditor()->SetEditTool(cloneTool);
     GetIEditor()->SetModifiedFlag();
     GetIEditor()->SetModifiedModule(eModifiedBrushes);
+
+    // Accept the clone operation if users didn't choose to stick duplicated entities to the cursor
+    // This setting can be changed in the global preference of the editor
+    if (!gSettings.deepSelectionSettings.bStickDuplicate)
+    {
+        cloneTool->Accept();
+        GetIEditor()->GetSelection()->FinishChanges();
+    }
 }
 
 
@@ -5409,6 +5418,142 @@ void CCryEditApp::OnFileEditLogFile()
     CFileUtil::EditTextFile(CLogFile::GetLogFileName(), 0, IFileUtil::FILE_TYPE_SCRIPT);
 }
 
+void CCryEditApp::OnFileResaveSlices()
+{
+    AZStd::vector<AZ::Data::AssetInfo> sliceAssetInfos;
+    sliceAssetInfos.reserve(5000);
+    AZ::Data::AssetCatalogRequests::AssetEnumerationCB sliceCountCb = [&sliceAssetInfos](const AZ::Data::AssetId id, const AZ::Data::AssetInfo& info)
+    {
+        // Only add slices and nothing that has been temporarily added to the catalog with a macro in it (ie @devroot@)
+        if (info.m_assetType == azrtti_typeid<AZ::SliceAsset>() && info.m_relativePath[0] != '@')
+        {
+            sliceAssetInfos.push_back(info);
+        }
+    };
+    AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequestBus::Events::EnumerateAssets, nullptr, sliceCountCb, nullptr);
+
+    QString warningMessage = QString("Resaving all slices can be *extremely* slow depending on source control and on the number of slices in your project!\n\nYou can speed this up dramatically by checking out all your slices before starting this!\n\n Your project has %1 slices.\n\nDo you want to continue?").arg(sliceAssetInfos.size());
+
+    if (QMessageBox::Cancel == QMessageBox::warning(MainWindow::instance(), tr("!!!WARNING!!!"), warningMessage, QMessageBox::Ok | QMessageBox::Cancel, QMessageBox::Cancel))
+    {
+        return;
+    }
+
+    AZ::SerializeContext* serialize = nullptr;
+    AZ::ComponentApplicationBus::BroadcastResult(serialize, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+
+    if (!serialize)
+    {
+        AZ_TracePrintf("Resave Slices", "Couldn't get the serialize context.  Something is very wrong.  Aborting!!!");
+        return;
+    }
+
+    auto assetFilterCB = [](const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+    {
+        return false;
+    };
+
+    AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+    if (!fileIO)
+    {
+        AZ_Error("Resave Slices", false, "File IO is not initialized.");
+        return;
+    }
+
+    int numFailures = 0;
+
+    // Create a lambda for load & save logic to make the lambda below easier to read
+    auto LoadAndSaveSlice = [serialize, &assetFilterCB, &numFailures](const AZStd::string& filePath)
+    {
+        AZ::Entity* newRootEntity = nullptr;
+
+        // Read in the slice file first
+        {
+            AZ::IO::FileIOStream readStream(filePath.c_str(), AZ::IO::OpenMode::ModeRead);
+            newRootEntity = AZ::Utils::LoadObjectFromStream<AZ::Entity>(readStream, serialize, AZ::ObjectStream::FilterDescriptor(assetFilterCB));
+        }
+
+        // If we successfully loaded the file
+        if (newRootEntity)
+        {
+            if (!AZ::Utils::SaveObjectToFile(filePath, AZ::DataStream::ST_XML, newRootEntity))
+            {
+                AZ_TracePrintf("Resave Slices", "Unable to serialize the slice (%s) out to a file.  Unable to resave this slice\n", filePath.c_str());
+                numFailures++;
+            }
+        }
+        else
+        {
+            AZ_TracePrintf("Resave Slices", "Unable to read a slice (%s) file from disk.  Unable to resave this slice.\n", filePath.c_str());
+            numFailures++;
+        }
+    };
+
+    const size_t numSlices = sliceAssetInfos.size();
+    int slicesProcessed = 0;
+    int slicesRequestedForProcessing = 0;
+
+    if (numSlices > 0)
+    {
+        AzToolsFramework::ProgressShield::LegacyShowAndWait(MainWindow::instance(), tr("Checking out and resaving slices..."),
+            [numSlices, &slicesProcessed, &sliceAssetInfos, &LoadAndSaveSlice, &slicesRequestedForProcessing, &numFailures](int& current, int& max)
+            {
+                const static int numToProcessPerCall = 5;
+
+                if (slicesRequestedForProcessing < numSlices)
+                {
+                    for (int index = 0; index < numToProcessPerCall; index++)
+                    {
+                        if (slicesRequestedForProcessing < numSlices)
+                        {
+                            AZStd::string sourceFile;
+                            AzToolsFramework::AssetSystemRequestBus::Broadcast(&AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, sliceAssetInfos[slicesRequestedForProcessing].m_relativePath, sourceFile);
+
+                            AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::RequestEditForFile, sourceFile.c_str(), [&slicesProcessed, sourceFile, &LoadAndSaveSlice, &numFailures](bool success)
+                                {
+                                    slicesProcessed++;
+
+                                    if (success)
+                                    {
+                                        LoadAndSaveSlice(sourceFile);
+                                    }
+                                    else
+                                    {
+                                        AZ_TracePrintf("Resave Slices", "Unable to check a slice (%s) out of source control.  Unable to resave this slice\n", sourceFile.c_str());
+                                        numFailures++;
+                                    }
+                                }
+                            );
+                            slicesRequestedForProcessing++;
+                        }
+                    }
+                }
+
+                current = slicesProcessed;
+                max = static_cast<int>(numSlices);
+                return slicesProcessed == numSlices;
+            }
+        );
+
+        QString completeMessage;
+        if (numFailures > 0)
+        {
+            completeMessage = QString("All slices processed.  There were %1 slices that could not be resaved.  Please check the console for details.").arg(numFailures);
+        }
+        else
+        {
+            completeMessage = QString("All slices successfully process and re-saved!");
+        }
+
+        QMessageBox::information(MainWindow::instance(), tr("Re-saving complete"), completeMessage, QMessageBox::Ok);
+    }
+    else
+    {
+        QMessageBox::information(MainWindow::instance(), tr("No slices found"), tr("There were no slices found to resave."), QMessageBox::Ok);
+    }
+
+}
+
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnFileEditEditorini()
 {
@@ -6062,6 +6207,13 @@ void CCryEditApp::CloseCurrentLevel()
         {
             GetIEditor()->GetGameEngine()->SetLevelPath("");
             GetIEditor()->GetGameEngine()->SetLevelLoaded(false);
+
+            CViewManager* pViewManager = GetIEditor()->GetViewManager();
+            CViewport* pGameViewport = pViewManager ? pViewManager->GetGameViewport() : nullptr;
+            if (pGameViewport)
+            {
+                pGameViewport->SetViewTM(Matrix34::CreateIdentity());
+            }
         }
     }
 }
@@ -6271,26 +6423,16 @@ CCryEditDoc* CCryEditApp::OpenDocumentFile(LPCTSTR lpszFileName)
 
     if (GetIEditor()->GetLevelIndependentFileMan()->PromptChangedFiles())
     {
+        SandboxEditor::StartupTraceHandler openDocTraceHandler;
+        openDocTraceHandler.StartCollection();
+
         // in this case, we set bAddToMRU to always be true because adding files to the MRU list
         // automatically culls duplicate and normalizes paths anyway
-        bool wasTraceHandlerConnected = false;
-        if (m_traceHandler)
-        {
-            wasTraceHandlerConnected = m_traceHandler->IsConnectedToMessageBus();
-            m_traceHandler->StartCollection();
-        }
         m_pDocManager->OpenDocumentFile(lpszFileName, true);
-        if (m_traceHandler)
+
+        if (openDocTraceHandler.HasAnyErrors())
         {
-            if (m_traceHandler->HasAnyErrors())
-            {
-                doc->SetHasErrors();
-            }
-            m_traceHandler->EndCollectionAndShowCollectedErrors();
-            if (!wasTraceHandlerConnected)
-            {
-                m_traceHandler->DisconnectFromMessageBus();
-            }
+            doc->SetHasErrors();
         }
     }
 
@@ -6388,7 +6530,7 @@ void CCryEditApp::OnToggleSelection(bool hide)
     CSelectionGroup* sel = GetIEditor()->GetSelection();
     if (!sel->IsEmpty())
     {
-        CUndo undo(hide ? "Hide Selection" : "Show Selection");
+        AzToolsFramework::ScopedUndoBatch undo(hide ? "Hide Entity" : "Show Entity");
         for (int i = 0; i < sel->GetCount(); i++)
         {
             // Duplicated object names can exist in the case of prefab objects so passing a name as a script parameter and processing it couldn't be exact.
@@ -6420,7 +6562,7 @@ void CCryEditApp::OnUpdateEditHide(QAction* action)
 //////////////////////////////////////////////////////////////////////////
 void CCryEditApp::OnEditShowLastHidden()
 {
-    CUndo undo("Show Last Hidden");
+    AzToolsFramework::ScopedUndoBatch undo("Show Last Hidden Entity");
     GetIEditor()->GetObjectManager()->ShowLastHiddenObject();
 }
 
@@ -6430,7 +6572,7 @@ void CCryEditApp::OnEditUnhideall()
     if (QMessageBox::question(AzToolsFramework::GetActiveWindow(), QObject::tr("Unhide All"), QObject::tr("Are you sure you want to unhide all the objects?"), QMessageBox::Yes | QMessageBox::Cancel) == QMessageBox::Yes)
     {
         // Unhide all.
-        CUndo undo("Unhide All");
+        AzToolsFramework::ScopedUndoBatch undo("Unhide all Entities");
         GetIEditor()->GetObjectManager()->UnhideAll();
     }
 }
@@ -6442,7 +6584,7 @@ void CCryEditApp::OnEditFreeze()
     CSelectionGroup* sel = GetIEditor()->GetSelection();
     if (!sel->IsEmpty())
     {
-        CUndo undo("Freeze");
+        AzToolsFramework::ScopedUndoBatch undo("Lock Selected Entities");
 
         // We need to iterate over the list of selected objects in reverse order
         // because when the objects are locked, they are removed from the
@@ -6469,7 +6611,7 @@ void CCryEditApp::OnEditUnfreezeall()
     if (QMessageBox::question(AzToolsFramework::GetActiveWindow(), QObject::tr("Unlock All"), QObject::tr("Are you sure you want to unlock all the objects?"), QMessageBox::Yes | QMessageBox::Cancel) == QMessageBox::Yes)
     {
         // Unfreeze all.
-        CUndo undo("Unfreeze All");
+        AzToolsFramework::ScopedUndoBatch undo("Unlock all Entities");
         GetIEditor()->GetObjectManager()->UnfreezeAll();
     }
 }
@@ -8606,14 +8748,14 @@ bool CCryEditApp::OpenProjectConfigurator(const QString& startPage) const
 #error Unsupported Platform for Project Configurator
 #endif
     
-    AZ::Outcome<AZStd::string, AZStd::string> result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveConfigToolsPath"));
-    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequestBus::Events::ResolveConfigToolsPath, projectConfigurator);
+    AzToolsFramework::ToolsApplicationRequests::ResolveToolPathOutcome result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveConfigToolsPath"));
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequests::ResolveConfigToolsPath, projectConfigurator);
 
     if (!result.IsSuccess())
     {
         QMessageBox::warning(QApplication::activeWindow(),
             QString(),
-            QObject::tr("Unable to find Project Configurator executable (%1). Please make sure its installed or built and try again.")
+            QObject::tr("Unable to find Project Configurator executable (%1). Please make sure it's installed or built and try again.")
             .arg(projectConfigurator));
         return false;
     }
@@ -8641,8 +8783,8 @@ bool CCryEditApp::OpenSetupAssistant() const
 #error Unsupported Platform for Project Configurator
 #endif
 
-    AZ::Outcome<AZStd::string, AZStd::string> result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveConfigToolsPath"));
-    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequestBus::Events::ResolveConfigToolsPath, setupAssistant);
+    AzToolsFramework::ToolsApplicationRequests::ResolveToolPathOutcome result = AZ::Failure(AZStd::string("No responders have been installed to execute to ResolveConfigToolsPath"));
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(result, &AzToolsFramework::ToolsApplicationRequests::ResolveConfigToolsPath, setupAssistant);
 
     if (!result.IsSuccess())
     {
@@ -8815,7 +8957,6 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
     Editor::EditorQtApplication app(commandLine.GetArgC(), commandLine.GetArgV());
 
     // Hook the trace bus to catch errors, boot the AZ app after the QApplication is up
-    SandboxEditor::StartupTraceHandler traceHandler;
     int ret = 0;
 
     // open a scope to contain the AZToolsApp instance;
@@ -8836,11 +8977,15 @@ int SANDBOX_API CryEditMain(int argc, char* argv[])
 
         int exitCode = 0;
 
-    if (CCryEditApp::instance()->InitInstance(&traceHandler))
+        BOOL didCryEditStart = CCryEditApp::instance()->InitInstance();
+        AZ_Error("Editor", didCryEditStart, "CryEditor did not initialize correctly, and will close."
+            "\nThis could be because of incorrectly configured components, or missing required gems."
+            "\nSee other errors for more details.");
+
+        if (didCryEditStart)
         {
             app.EnableOnIdle();
 
-            traceHandler.DisconnectFromMessageBus(); // no longer needed, Qt can take over from here
             ret = app.exec();
         }
         else

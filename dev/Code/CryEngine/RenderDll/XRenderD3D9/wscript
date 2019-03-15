@@ -35,28 +35,33 @@ def build(bld):
     ]
 
     restricted_scripts = {}
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        platform_wscript = os.path.join(bld.path.abspath(), p, 'wscript_{0}'.format(p))
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        platform_wscript = os.path.join(bld.path.abspath(), p0, 'wscript_{0}'.format(p1))
         if os.path.exists(platform_wscript):
-            restricted_scripts[p] = run_path(platform_wscript)
+            restricted_scripts[p3] = run_path(platform_wscript)
 
     configurations_dx11 = ['debug', 'debug_test', 'profile', 'profile_test']
     configurations_dx12 = ['debug', 'debug_test', 'profile', 'profile_test']
+    monolithic_configs = ['performance', 'release']
     extended = False
-    if 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
+    if bld.env['PLATFORM'] == 'project_generator':
+        configurations_dx11.extend(monolithic_configs)
+        configurations_dx12.extend(monolithic_configs)
+        extended = True
+    elif 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
         extended = True
         if not getattr(bld, 'has_dx12', None) or not bld.has_dx12():
             Logs.warn('win_build_renderer == DX12 but machine cant compile for DX12, reverting to DX11')
-            configurations_dx11.extend(['performance', 'release'])
+            configurations_dx11.extend(monolithic_configs)
         else:
-            configurations_dx12.extend(['performance', 'release'])
+            configurations_dx12.extend(monolithic_configs)
     else:
         for p in restricted_scripts:
             if 'restricted_dx12_configuration' in restricted_scripts[p]:
                 if restricted_scripts[p]['restricted_dx12_configuration'](bld, configurations_dx12):
                     extended = True
     if not extended:
-        configurations_dx11.extend(['performance', 'release'])
+        configurations_dx11.extend(monolithic_configs)
 
     kw = dict(
         #==============================

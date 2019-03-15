@@ -162,7 +162,7 @@ namespace Water
 
         m_enabled = false;
         AZ::OceanEnvironmentBus::Handler::BusDisconnect();
-        WaterOceanComponentData_UpdateOceanBuoyancy(m_general.m_height);
+        WaterOceanComponentData_UpdateOceanBuoyancy(AZ::OceanConstants::s_HeightMin);
 
         // turn off ocean and delete it
         I3DEngine* engine = GetISystem() ? GetISystem()->GetI3DEngine() : nullptr;

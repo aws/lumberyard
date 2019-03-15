@@ -20,7 +20,6 @@
 #include "Viewport.h"
 #include "VegetationMap.h"
 #include "Terrain/TerrainManager.h"
-#include "TrackView/TrackViewUndo.h"
 #include "CryEditDoc.h"
 #include "MainWindow.h"
 

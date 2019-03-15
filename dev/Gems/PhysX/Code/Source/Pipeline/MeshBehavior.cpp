@@ -30,55 +30,53 @@
 #include <SceneAPI/SceneData/Groups/MeshGroup.h>
 #include <SceneAPI/SceneCore/Containers/Utilities/SceneGraphUtilities.h>
 
-#include <Pipeline/PhysXMeshBehavior.h>
-#include <Pipeline/PhysXMeshGroup.h>
+#include <Source/Pipeline/MeshBehavior.h>
+#include <Source/Pipeline/MeshGroup.h>
 
 namespace PhysX
 {
     namespace Pipeline
     {
-        using namespace AZ;
-
-        void PhysXMeshBehavior::Activate()
+        void MeshBehavior::Activate()
         {
             AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler::BusConnect();
             AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusConnect();
         }
 
-        void PhysXMeshBehavior::Deactivate()
+        void MeshBehavior::Deactivate()
         {
             AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusDisconnect();
             AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler::BusDisconnect();
         }
 
-        void PhysXMeshBehavior::Reflect(ReflectContext* context)
+        void MeshBehavior::Reflect(AZ::ReflectContext* context)
         {
-            PhysXMeshGroup::Reflect(context);
+            MeshGroup::Reflect(context);
 
-            SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context);
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
             if (serializeContext)
             {
-                serializeContext->Class<PhysXMeshBehavior, BehaviorComponent>()->Version(1);
+                serializeContext->Class<MeshBehavior, BehaviorComponent>()->Version(1);
             }
         }
 
-        void PhysXMeshBehavior::GetCategoryAssignments(CategoryRegistrationList& categories, const AZ::SceneAPI::Containers::Scene& scene)
+        void MeshBehavior::GetCategoryAssignments(CategoryRegistrationList& categories, const AZ::SceneAPI::Containers::Scene& scene)
         {
             if (AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IMeshData>(scene, false))
             {
-                categories.emplace_back("PhysX", PhysXMeshGroup::TYPEINFO_Uuid());
+                categories.emplace_back("PhysX", MeshGroup::TYPEINFO_Uuid());
             }
         }
 
-        void PhysXMeshBehavior::InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target)
+        void MeshBehavior::InitializeObject(const AZ::SceneAPI::Containers::Scene& scene, AZ::SceneAPI::DataTypes::IManifestObject& target)
         {
-            if (!target.RTTI_IsTypeOf(PhysXMeshGroup::TYPEINFO_Uuid()))
+            if (!target.RTTI_IsTypeOf(MeshGroup::TYPEINFO_Uuid()))
             {
                 return;
             }
 
-            PhysXMeshGroup* group = azrtti_cast<PhysXMeshGroup*>(&target);
-            group->SetName(AZ::SceneAPI::DataTypes::Utilities::CreateUniqueName<PhysXMeshGroup>(scene.GetName(), scene.GetManifest()));
+            MeshGroup* group = azrtti_cast<MeshGroup*>(&target);
+            group->SetName(AZ::SceneAPI::DataTypes::Utilities::CreateUniqueName<MeshGroup>(scene.GetName(), scene.GetManifest()));
 
             const AZ::SceneAPI::Containers::SceneGraph& graph = scene.GetGraph();
 
@@ -91,7 +89,7 @@ namespace PhysX
             {
                 AZ::SceneAPI::Containers::SceneGraph::NodeIndex nodeIndex = graph.ConvertToNodeIndex(iter.GetBaseIterator());
 
-                AZStd::set<Crc32> types;
+                AZStd::set<AZ::Crc32> types;
                 AZ::SceneAPI::Events::GraphMetaInfoBus::Broadcast(&AZ::SceneAPI::Events::GraphMetaInfoBus::Events::GetVirtualTypes, types, scene, nodeIndex);
 
                 if (types.count(AZ_CRC("PhysicsMesh", 0xc75d4ff1)) == 1)
@@ -101,7 +99,7 @@ namespace PhysX
             }
         }
 
-        AZ::SceneAPI::Events::ProcessingResult PhysXMeshBehavior::UpdateManifest(AZ::SceneAPI::Containers::Scene& scene, ManifestAction action,
+        AZ::SceneAPI::Events::ProcessingResult MeshBehavior::UpdateManifest(AZ::SceneAPI::Containers::Scene& scene, ManifestAction action,
             RequestingApplication /*requester*/)
         {
             if (action == ManifestAction::ConstructDefault)
@@ -118,18 +116,18 @@ namespace PhysX
             }
         }
 
-        AZ::SceneAPI::Events::ProcessingResult PhysXMeshBehavior::BuildDefault(AZ::SceneAPI::Containers::Scene& scene) const
+        AZ::SceneAPI::Events::ProcessingResult MeshBehavior::BuildDefault(AZ::SceneAPI::Containers::Scene& scene) const
         {
             if (!AZ::SceneAPI::Utilities::DoesSceneGraphContainDataLike<AZ::SceneAPI::DataTypes::IMeshData>(scene, true))
             {
                 return AZ::SceneAPI::Events::ProcessingResult::Ignored;
             }
 
-            AZStd::shared_ptr<PhysXMeshGroup> group = AZStd::make_shared<PhysXMeshGroup>();
+            AZStd::shared_ptr<MeshGroup> group = AZStd::make_shared<MeshGroup>();
 
             // This is a group that's generated automatically so may not be saved to disk but would need to be recreated
             //      in the same way again. To guarantee the same uuid, generate a stable one instead.
-            group->OverrideId(AZ::SceneAPI::DataTypes::Utilities::CreateStableUuid(scene, PhysXMeshGroup::TYPEINFO_Uuid()));
+            group->OverrideId(AZ::SceneAPI::DataTypes::Utilities::CreateStableUuid(scene, MeshGroup::TYPEINFO_Uuid()));
 
             EBUS_EVENT(AZ::SceneAPI::Events::ManifestMetaInfoBus, InitializeObject, scene, *group);
             scene.GetManifest().AddEntry(AZStd::move(group));
@@ -137,13 +135,13 @@ namespace PhysX
             return AZ::SceneAPI::Events::ProcessingResult::Success;
         }
 
-        AZ::SceneAPI::Events::ProcessingResult PhysXMeshBehavior::UpdatePhysXMeshGroups(AZ::SceneAPI::Containers::Scene& scene) const
+        AZ::SceneAPI::Events::ProcessingResult MeshBehavior::UpdatePhysXMeshGroups(AZ::SceneAPI::Containers::Scene& scene) const
         {
             bool updated = false;
             AZ::SceneAPI::Containers::SceneManifest& manifest = scene.GetManifest();
             auto valueStorage  = manifest.GetValueStorage();
-            auto view = AZ::SceneAPI::Containers::MakeDerivedFilterView<PhysXMeshGroup>(valueStorage);
-            for (PhysXMeshGroup& group : view)
+            auto view = AZ::SceneAPI::Containers::MakeDerivedFilterView<MeshGroup>(valueStorage);
+            for (MeshGroup& group : view)
             {
                 if (group.GetName().empty())
                 {
@@ -156,5 +154,5 @@ namespace PhysX
 
             return updated ? AZ::SceneAPI::Events::ProcessingResult::Success : AZ::SceneAPI::Events::ProcessingResult::Ignored;
         }
-    } // namespace Pipeline
-} // namespace PhysX
+    } // namespace SceneAPI
+} // namespace AZ

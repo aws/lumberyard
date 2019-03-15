@@ -51,6 +51,7 @@
                 "libtommath.a"
             ]
         },
+        "orbis_vs2017": "@orbis_vs2015",
         "darwin_x64": {
             "libpath": [
                 "lib/mac"
@@ -75,7 +76,7 @@
                 "libtommath.a"
             ]
         },
-        "android_armv7_gcc": {
+        "android_armv7_clang": {
             "libpath": [
                 "lib/android-armeabi-v7a"
             ],
@@ -83,7 +84,6 @@
                 "libtommath.a"
             ]
         },
-        "android_armv7_clang": "@android_armv7_gcc",
         "android_armv8_clang": {
             "libpath": [
                 "lib/android-arm64-v8a"

@@ -27,12 +27,20 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_1
-#include AZ_RESTRICTED_FILE(ImageExtensionHelper_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ImageExtensionHelper_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ImageExtensionHelper_h_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION IMAGEEXTENSIONHELPER_H_SECTION_2
-#include AZ_RESTRICTED_FILE(ImageExtensionHelper_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ImageExtensionHelper_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ImageExtensionHelper_h_provo.inl"
+    #endif
 #endif
 
 #ifndef MAKEFOURCC
@@ -160,9 +168,9 @@ namespace CImageExtensionHelper
         // we're unable to use native enums because of TypeInfo(), so we use DWORD instead.
         DWORD /*DXGI_FORMAT*/ dxgiFormat;
         DWORD /*D3D10_RESOURCE_DIMENSION*/ resourceDimension;
-        UINT miscFlag;
-        UINT arraySize;
-        UINT reserved;
+        unsigned int miscFlag;
+        unsigned int arraySize;
+        unsigned int reserved;
 
         AUTO_STRUCT_INFO
     };

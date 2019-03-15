@@ -285,7 +285,7 @@ bool MannequinConfigFileHelper::CreateNewConfig(AZStd::string& generatedPreviewF
             while (count < g_maxAssetFileCompileTries)
             {
                 AzFramework::AssetSystem::AssetStatus status = AzFramework::AssetSystem::AssetStatus_Unknown;
-                EBUS_EVENT_RESULT(status, AzFramework::AssetSystemRequestBus, GetAssetStatus, assetPath);
+                EBUS_EVENT_RESULT(status, AzFramework::AssetSystemRequestBus, GetAssetStatus_FlushIO, assetPath);
                 if (status == AzFramework::AssetSystem::AssetStatus_Compiled)
                 {
                     success = true;

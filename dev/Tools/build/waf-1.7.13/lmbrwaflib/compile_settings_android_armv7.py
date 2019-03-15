@@ -9,10 +9,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 import os
-from waflib.Configure import conf
+
 from cry_utils import append_to_unique_list
 
+from waflib.Configure import conf
 
+
+################################################################
 ################################################################
 @conf
 def load_android_armv7_common_settings(conf):
@@ -21,36 +24,12 @@ def load_android_armv7_common_settings(conf):
     """
 
     env = conf.env
+    env['ANDROID_ARCH'] = 'armeabi-v7a'
+
     ndk_root = env['ANDROID_NDK_HOME']
+    ndk_rev = env['ANDROID_NDK_REV_MAJOR']
 
-    # common settings for all android armv7 builds
-    platform_root_compile = os.path.join(ndk_root, 'platforms', env['ANDROID_NDK_PLATFORM'], 'arch-arm')
-    platform_root_link = platform_root_compile
-
-    if conf.is_using_android_unified_headers():
-        platform_root_compile = os.path.join(ndk_root, 'sysroot')
-
-    env['INCLUDES'] += [
-        os.path.join(platform_root_compile, 'usr', 'include'),
-    ]
-
-    system_root = '--sysroot={}'.format(platform_root_compile)
-
-    common_flags = [
-        system_root,
-
-        '-mfloat-abi=softfp',       # float ABI: hardware code gen, soft calling convention
-        '-mfpu=neon',               # enable neon, implies -mfpu=VFPv3-D32
-    ]
-
-    if conf.is_using_android_unified_headers():
-        system_arch = os.path.join(platform_root_compile, 'usr', 'include', 'arm-linux-androideabi')
-        common_flags += [
-            '-isystem', system_arch,
-        ]
-
-    env['CFLAGS'] += common_flags[:]
-    env['CXXFLAGS'] += common_flags[:]
+    is_ndk_19_plus = (ndk_rev >= 19)
 
     defines = [
         'LINUX32',
@@ -58,30 +37,54 @@ def load_android_armv7_common_settings(conf):
     ]
     append_to_unique_list(env['DEFINES'], defines)
 
-    env['LIBPATH'] += [
-        os.path.join(platform_root_link, 'usr', 'lib')
+    common_flags = [
+        '-mfloat-abi=softfp',       # float ABI: hardware code gen, soft calling convention
+        '-mfpu=neon',               # enable neon, implies -mfpu=VFPv3-D32
     ]
 
-    system_root = '--sysroot={}'.format(platform_root_link)
-
-    env['LINKFLAGS'] += [
-        system_root,
-
+    link_flags = [
         '-Wl,--fix-cortex-a8',  # required to fix a bug in some Cortex-A8 implementations for neon support
         '-Wl,--icf=safe',       # removes duplicate code
     ]
 
-    env['ANDROID_ARCH'] = 'armeabi-v7a'
+    if is_ndk_19_plus:
+        common_flags += [
+            '-mthumb',
+            '-fpic'
+        ]
+
+    else:
+        platform_root_compile = os.path.join(ndk_root, 'sysroot')
+        platform_root_link = os.path.join(ndk_root, 'platforms', env['ANDROID_NDK_PLATFORM'], 'arch-arm')
+
+        env['INCLUDES'] += [
+            os.path.join(platform_root_compile, 'usr', 'include'),
+        ]
+
+        common_flags = [
+            '--sysroot={}'.format(platform_root_compile),
+            '-isystem', os.path.join(platform_root_compile, 'usr', 'include', 'arm-linux-androideabi'),
+        ] + common_flags
+
+        env['LIBPATH'] += [
+            os.path.join(platform_root_link, 'usr', 'lib')
+        ]
+
+        link_flags = [ '--sysroot={}'.format(platform_root_link) ] + link_flags
 
 
-################################################################
+    env['CFLAGS'] += common_flags[:]
+    env['CXXFLAGS'] += common_flags[:]
+
+    env['LINKFLAGS'] += link_flags[:]
+
+
 @conf
 def load_debug_android_armv7_settings(conf):
     """
     Setup all compiler and linker settings shared over all android armv7 configurations
     for the "debug" configuration
     """
-
     conf.load_android_armv7_common_settings()
 
     # required 3rd party libs that need to be included in the apk
@@ -91,14 +94,12 @@ def load_debug_android_armv7_settings(conf):
     ]
 
 
-################################################################
 @conf
 def load_profile_android_armv7_settings(conf):
     """
     Setup all compiler and linker settings shared over all android armv7 configurations
     for the "profile" configuration
     """
-
     conf.load_android_armv7_common_settings()
 
     # required 3rd party libs that need to be included in the apk
@@ -108,24 +109,20 @@ def load_profile_android_armv7_settings(conf):
     ]
 
 
-################################################################
 @conf
 def load_performance_android_armv7_settings(conf):
     """
     Setup all compiler and linker settings shared over all android armv7 configurations
     for the "performance" configuration
     """
-
     conf.load_android_armv7_common_settings()
 
 
-################################################################
 @conf
 def load_release_android_armv7_settings(conf):
     """
     Setup all compiler and linker settings shared over all android armv7 configurations
     for the "release" configuration
     """
-
     conf.load_android_armv7_common_settings()
 

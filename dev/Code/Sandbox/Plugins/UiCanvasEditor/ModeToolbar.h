@@ -16,6 +16,7 @@
 class EditorWindow;
 class QActionGroup;
 class QAction;
+class AlignToolbarSection;
 
 class ModeToolbar
     : public QToolBar
@@ -28,12 +29,17 @@ public:
 
     void SetCheckedItem(int index);
 
+    AlignToolbarSection* GetAlignToolbarSection()
+    {
+        return m_alignToolbarSection.get();
+    }
+
 private:
 
     void AddModes(EditorWindow* parent);
 
-    void AddPixmapToIcon(QIcon& icon, QIcon::Mode iconMode, QColor color);
-
     QActionGroup* m_group;
     QAction* m_previousAction;
+
+    std::unique_ptr<AlignToolbarSection> m_alignToolbarSection;
 };

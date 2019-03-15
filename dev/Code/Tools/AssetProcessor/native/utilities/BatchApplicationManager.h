@@ -96,7 +96,8 @@ public:
     void UnRegisterBuilderDescriptor(const AZ::Uuid& builderId) override;
 
     //! AssetProcessor::AssetBuilderInfoBus Interface
-    void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList);
+    void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList) override;
+    void GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList) override;
 
     //! TraceMessageBus Interface
     bool OnError(const char* window, const char* message) override;
@@ -107,10 +108,15 @@ public:
 
     void RemoveOldTempFolders();
 
+    void Rescan();
+
 Q_SIGNALS:
     void CheckAssetProcessorManagerIdleState();
     void ConnectionStatusMsg(QString message);
-    public Q_SLOTS:
+
+    void OnBuildersRegistered();
+
+public Q_SLOTS:
     void OnAssetProcessorManagerIdleState(bool isIdle);
 
 protected:

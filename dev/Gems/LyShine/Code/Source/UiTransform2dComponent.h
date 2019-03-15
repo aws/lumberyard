@@ -20,6 +20,9 @@
 
 #include <AzCore/Component/Component.h>
 
+// Only needed for internal unit-testing
+#include <LyShine.h>
+
 class UiCanvasComponent;
 class UiElementComponent;
 
@@ -92,13 +95,12 @@ public: // member functions
     bool IsPointInRect(AZ::Vector2 point) final;
     bool BoundsAreOverlappingRect(const AZ::Vector2& bound0, const AZ::Vector2& bound1) final;
 
-    void SetRecomputeTransformFlag() final;
+    void SetRecomputeFlags(Recompute recompute) final;
 
     bool HasCanvasSpaceRectChanged() final;
     bool HasCanvasSpaceSizeChanged() final;
     bool HasCanvasSpaceRectChangedByInitialization() final;
     void NotifyAndResetCanvasSpaceRectChange() final;
-    void RecomputeTransformsAndSendNotifications() final;
     // ~UiTransformInterface
 
     // UiTransform2dInterface
@@ -116,6 +118,13 @@ public: // member functions
     // UiAninmateEntityInterface
     void PropertyValuesChanged() override;
     // ~UiAninmateEntityInterface
+
+    //! This is called from the canvas component during the update if the element was scheduled for a transform recompute
+    void RecomputeTransformsAndSendNotifications();
+
+#if defined(LYSHINE_INTERNAL_UNIT_TEST)
+    static void UnitTest(CLyShine* lyshine, IConsoleCmdArgs* cmdArgs);
+#endif
 
 public:  // static member functions
 
@@ -163,8 +172,14 @@ protected: // member functions
     //! Helper function to get the canvas component for canvas containing this element
     UiCanvasComponent* GetCanvasComponent() const;
 
-    //! If m_recomputeTransform is true then recompute the transform and clear it
-    void RecomputeTransformIfNeeded();
+    //! ChangeNotify function for when a transform property is changed
+    void OnTransformPropertyChanged();
+
+    //! If m_recomputeTransformToViewport is true then recompute the transform and clear the flag
+    void RecomputeTransformToViewportIfNeeded();
+
+    //! If m_recomputeTransformToCanvasSpace is true then recompute the transform and clear the flag
+    void RecomputeTransformToCanvasSpaceIfNeeded();
 
 private: // member functions
 
@@ -207,8 +222,11 @@ private: // data
     float m_rotation;
     AZ::Vector2 m_scale;
 
-    //! Cached transform to viewport space. Gets recalculated if the m_recomputeTransform dirty flag is set
+    //! Cached transform to viewport space. Gets recalculated if the m_recomputeTransformToViewport dirty flag is set
     AZ::Matrix4x4 m_transformToViewport;
+
+    //! Cached transform to canvas space. Gets recalculated if the m_recomputeTransformToCanvasSpace dirty flag is set
+    AZ::Matrix4x4 m_transformToCanvasSpace;
 
     //! Cached rect in CanvasNoScaleRotateSpace.
     //! Gets recalculated if the m_recomputeCanvasSpaceRect dirty flag is set
@@ -229,8 +247,11 @@ private: // data
     //! If this is set then the canvas uniform scale is applied in addition to m_scale
     bool m_scaleToDevice;
 
-    //! If this is true, then the transform stored in m_transform is dirty and needs to be recomputed
-    bool m_recomputeTransform;
+    //! If this is true, then the transform stored in m_transformToViewport is dirty and needs to be recomputed
+    bool m_recomputeTransformToViewport;
+
+    //! If this is true, then the transform stored in m_transformToCanvasSpace is dirty and needs to be recomputed
+    bool m_recomputeTransformToCanvasSpace;
 
     bool m_recomputeCanvasSpaceRect;
 

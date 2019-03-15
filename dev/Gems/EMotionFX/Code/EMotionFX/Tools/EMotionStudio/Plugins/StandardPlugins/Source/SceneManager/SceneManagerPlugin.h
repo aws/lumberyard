@@ -26,8 +26,6 @@ QT_FORWARD_DECLARE_CLASS(QPushButton)
 
 namespace EMStudio
 {
-    class OutlinerCategoryCallback;
-
     class SaveDirtyActorFilesCallback
         : public SaveDirtyFilesCallback
     {
@@ -49,6 +47,10 @@ namespace EMStudio
         bool GetIsPostProcessed() const override                                            { return false; }
         const char* GetExtension() const override                                           { return "actor"; }
         const char* GetFileType() const override                                            { return "actor"; }
+        const AZ::Uuid GetFileRttiType() const override
+        {
+            return azrtti_typeid<EMotionFX::Actor>();
+        }
 
         void GetDirtyFileNames(AZStd::vector<AZStd::string>* outFileNames, AZStd::vector<ObjectPointer>* outObjects) override;
         int SaveDirtyFiles(const AZStd::vector<AZStd::string>& filenamesToSave, const AZStd::vector<ObjectPointer>& objects, MCore::CommandGroup* commandGroup) override;
@@ -121,8 +123,6 @@ namespace EMStudio
         CommandScaleActorDataCallback*          mScaleActorDataCallback;
 
         SaveDirtyActorFilesCallback*            mDirtyFilesCallback;
-        OutlinerCategoryCallback*               mOutlinerCategoryCallback;
-        EMotionFX::EventHandler*                mEventHandler;
 
         ActorsWindow*                           mActorsWindow;
         ActorPropertiesWindow*                  mActorPropsWindow;

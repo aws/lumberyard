@@ -19,13 +19,14 @@ import re
 import traceback
 
 from waflib import Logs, Options, Utils, Configure, ConfigSet, Errors
-from waflib.TaskGen import feature, before_method
+from waflib.TaskGen import taskgen_method
 from waflib.Configure import conf, ConfigurationContext
 from waflib.Build import BuildContext, CleanContext, Context
 from waflib import Node
 from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, PLATFORM_CONFIGURATION_FILTER, PLATFORMS, CONFIGURATIONS, LUMBERYARD_ENGINE_PATH
 from utils import parse_json_file
 from third_party import ThirdPartySettings
+from branch_spec import get_supported_configurations
 
 UNSUPPORTED_PLATFORM_CONFIGURATIONS = set()
 
@@ -69,7 +70,6 @@ REGEX_PATH_ALIAS = re.compile('@(.+)@')
 
 # list of platforms that have a deploy command registered
 DEPLOYABLE_PLATFORMS = [
-    'android_armv7_gcc',
     'android_armv7_clang',
     'android_armv8_clang'
 ]
@@ -93,7 +93,6 @@ LMBR_WAFLIB_MODULES = [
         # and it is before these modules then the subclass/feature does not get
         # wrapped and the header dependency information is printed to the
         # screen.
-        'gccdeps',
         'clangdeps',
         'msvs:win32', # msvcdeps implicitly depends on this module, so load it first
         'msvcdeps:win32',
@@ -152,7 +151,6 @@ LMBR_WAFLIB_DATA_DRIVEN_MODULES = [
 PLATFORM_COMPILE_SETTINGS = [
     'compile_settings_cryengine',
     'compile_settings_msvc',
-    'compile_settings_gcc',
     'compile_settings_clang',
     'compile_settings_windows',
     'compile_settings_linux',
@@ -163,7 +161,6 @@ PLATFORM_COMPILE_SETTINGS = [
     'compile_settings_android',
     'compile_settings_android_armv7',
     'compile_settings_android_armv8',
-    'compile_settings_android_gcc',
     'compile_settings_android_clang',
     'compile_settings_ios',
     'compile_settings_appletv',
@@ -388,7 +385,7 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
             conf.remove_platform_from_available_platforms(platform)
             continue
 
-        Logs.info('[INFO] Configure "%s - [%s]"' % (platform, ', '.join(conf.get_supported_configurations(platform))))
+        Logs.info('[INFO] Configure "%s - [%s]"' % (platform, ', '.join(get_supported_configurations(platform))))
         conf.load(compile_rule_script, tooldir=[LMBR_WAF_TOOL_DIR])
 
         conf.tp.validate_local(platform)
@@ -411,7 +408,7 @@ def load_compile_rules_for_supported_platforms(conf, platform_configuration_filt
         if not hasattr(conf,'InvalidUselibs'):
             setattr(conf,'InvalidUselibs',set())
 
-        for supported_configuration in conf.get_supported_configurations():
+        for supported_configuration in get_supported_configurations():
             # if the platform isn't going to generate a build command, don't require that the configuration exists either
             if platform in platform_configuration_filter:
                 if supported_configuration not in platform_configuration_filter[platform]:
@@ -527,13 +524,15 @@ def process_custom_configure_commands(conf):
     # Android target platform commands
     if any(platform for platform in conf.get_supported_platforms() if platform.startswith('android')):
 
-        # this is required for building any android projects. It adds the Android launchers
-        # to the list of build directories
-        android_builder_func = getattr(conf, 'create_and_add_android_launchers_to_build', None)
-        if android_builder_func != None and android_builder_func():
-            SUBFOLDERS.append(conf.get_android_project_absolute_path())
+        # build the base Android projects required for generating their respective APKs
+        android_builder_func = getattr(conf, 'create_base_android_projects', None)
+        if not android_builder_func:
+            conf.fatal('[ERROR] Failed to find required Android builder function - create_base_android_projects')
 
-        # rebuild the project if invoked from android studio or sepcifically requested to do so
+        if not android_builder_func():
+            conf.fatal('[ERROR] Failed to generate the base projects required to build Android')
+
+        # rebuild the project if invoked from android studio or specifically requested to do so
         if conf.options.from_android_studio or conf.is_option_true('generate_android_studio_projects_automatically'):
             if 'build' in Options.commands:
                 build_cmd_idx = Options.commands.index('build')
@@ -1179,6 +1178,14 @@ def process_additional_code_folders(ctx):
     if len(additional_code_folders)>0:
         ctx.recurse(additional_code_folders)
 
+    if any(platform for platform in ctx.get_supported_platforms() if platform.startswith('android')):
+
+        process_android_func = getattr(ctx, 'process_android_projects', None)
+        if not process_android_func:
+            ctx.fatal('[ERROR] Failed to find required Android process function - process_android_projects')
+
+        process_android_func()
+
 
 @conf
 def Path(ctx, path):
@@ -1299,3 +1306,34 @@ def ThirdPartyPath(ctx, third_party_identifier, path=''):
 
     processed_path = os.path.normpath(os.path.join(resolved_path, path))
     return processed_path
+
+
+@taskgen_method
+def get_validated_resource_compiler_subfolder(tg, rc_platform, rc_configuration, sanity_check_files=['rc.exe']):
+    """
+    Determine the relative bin folder for the resource compiler relative to the current engine root directory
+    
+    :param tg:                  The current taskgen object
+    :param rc_platform:         The expected target platform used to build rc.exe
+    :param rc_configuration:    The expected target configuration used to build rc.exe
+    :param sanity_check_files:  List of files to do a sanity check on the path
+    :return:    The folder name, relative to the dev/ root
+    """
+    
+    output_folder = tg.bld.get_output_folders(rc_platform, rc_configuration)[0]
+    rc_bin_subfolder_node = output_folder.make_node('rc')
+    rc_bin_subfolder_abs = rc_bin_subfolder_node.abspath()
+
+    if not os.path.isdir(rc_bin_subfolder_abs):
+        raise Errors.WafError("Unable to locate '{0}'. Make sure that you have built rc.exe using the build_{1}_{2} and the 'all' spec: "
+                              "'lmbr_waf build_{1}_{2} -p all'".format(rc_bin_subfolder_abs, rc_platform, rc_configuration))
+    
+    for sanity_check_file in sanity_check_files:
+        sanity_check_file_abs = os.path.join(rc_bin_subfolder_abs, sanity_check_file)
+        if not os.path.isfile(sanity_check_file_abs):
+            raise Errors.WafError("Unable to locate '{0}'. Make sure that you have built rc.exe using the build_{1}_{2} "
+                                  "and the 'all' spec: 'lmbr_waf build_{1}_{2} -p all'".format(sanity_check_file_abs, rc_platform, rc_configuration))
+    subfolder = rc_bin_subfolder_node.path_from(tg.bld.path)
+    return subfolder
+    
+

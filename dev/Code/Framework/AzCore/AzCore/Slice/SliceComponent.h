@@ -14,6 +14,7 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/EntityUtils.h>
+#include <AzCore/Outcome/Outcome.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/Serialization/DataPatch.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
@@ -39,6 +40,9 @@ namespace AZ
         class SliceReference;
         class SliceInstance;
 
+        using SliceInstancePtrSet = AZStd::unordered_set<SliceInstance*>;
+        using SliceReferenceToInstancePtrs = AZStd::unordered_map<SliceReference*, SliceInstancePtrSet>;
+        using SliceAssetToSliceInstancePtrs = AZStd::unordered_map<Data::Asset<SliceAsset>, SliceInstancePtrSet>;
         /**
          * Points to a specific instantiation of a nested slice.
          */
@@ -77,6 +81,7 @@ namespace AZ
             SliceInstance* m_instance = nullptr; ///< The specific instantiation of the nested slice
         };
 
+        using SliceInstanceAddressSet = AZStd::unordered_set<SliceInstanceAddress>;
         using EntityList = AZStd::vector<Entity*>;
         using EntityIdToEntityIdMap = AZStd::unordered_map<EntityId, EntityId>;
         using SliceInstanceToSliceInstanceMap = AZStd::unordered_map<SliceInstanceAddress, SliceInstanceAddress>;
@@ -150,9 +155,17 @@ namespace AZ
             const DataPatch::FlagsMap& GetEntityDataFlags(EntityId entityId) const;
 
             /// Set all data flags for this entity.
-            /// Addresses should be relative the entity.
+            /// Addresses should be relative to the entity.
             /// @return True if flags are set. False if IsValidEntity fails.
             bool SetEntityDataFlags(EntityId entityId, const DataPatch::FlagsMap& dataFlags);
+
+            /// Set all data flags for this entity.
+            /// Addresses should be relative to the entity.
+            /// Should only be used during the Undo process
+            /// Does not check IsValidEntity, as an entity is never valid during the undo process, only after
+            /// @entityId the Id of the entity you wish to perform an undo action on
+            /// @dataFlags the data flags you wish to map to the given entity Id
+            void SetEntityDataFlagsForUndo(EntityId entityId, const DataPatch::FlagsMap& dataFlags);
 
             /// Clear all data flags for this entity.
             /// @return True if flags are cleared. False if IsValidEntity fails.
@@ -218,6 +231,7 @@ namespace AZ
             AZ_TYPE_INFO(InstantiatedContainer, "{05038EF7-9EF7-40D8-A29B-503D85B85AF8}");
 
             InstantiatedContainer(bool deleteEntitiesOnDestruction = true);
+            InstantiatedContainer(SliceComponent* sourceComponent, bool deleteEntitiesOnDestruction = true);
             ~InstantiatedContainer();
 
             void DeleteEntities();
@@ -247,6 +261,12 @@ namespace AZ
             EntityRestoreInfo()
             {}
 
+            /**
+             * @param asset The source slice asset of the slice instance containing the to-be-restored entity.
+             * @param instanceId The Id of the slice instance that manages local data patches for its entities, including the entity in question.
+             * @param ancestorId The Id of the entity defined in the source slice asset, that is the immediate ancestor of the to-be-restored entity. 
+             * @param dataFlags A copy of the slice instance data flags before the entity is removed.
+             */
             EntityRestoreInfo(const Data::Asset<SliceAsset>& asset, const SliceInstanceId& instanceId, const EntityId& ancestorId, const DataPatch::FlagsMap& dataFlags)
                 : m_assetId(asset.GetId())
                 , m_instanceId(instanceId)
@@ -260,7 +280,7 @@ namespace AZ
             }
 
             Data::AssetId       m_assetId;
-            SliceInstanceId    m_instanceId;
+            SliceInstanceId     m_instanceId;
             EntityId            m_ancestorId;
             DataPatch::FlagsMap m_dataFlags;
         };
@@ -280,6 +300,13 @@ namespace AZ
             SliceInstance(SliceInstance&& rhs);
             SliceInstance(const SliceInstance& rhs);
             ~SliceInstance();
+            SliceInstance& operator=(const SliceInstance& rhs);
+
+            /// Clears the instantiated container. Used when layers are borrowing and returning slice instances.
+            void ClearInstantiated()
+            {
+                m_instantiated = nullptr;
+            }
 
             /// Returns pointer to the instantiated entities. Null if the slice was not instantiated.
             const InstantiatedContainer* GetInstantiated() const
@@ -387,14 +414,29 @@ namespace AZ
 
             /** 
              * Clones an existing slice instance
-             * \param instance Source slice instance to be cloned
-             * \param sourceToCloneEntityIdMap [out] The map between source entity ids and clone entity ids
-             * \return A clone of \ref instance
+             * @param instance Source slice instance to be cloned
+             * @param sourceToCloneEntityIdMap [out] The map between source entity ids and clone entity ids
+             * @return A clone of \ref instance
              */
             SliceInstance* CloneInstance(SliceInstance* instance, EntityIdToEntityIdMap& sourceToCloneEntityIdMap);
 
+            /**
+             * Restores ownership of the passed in slice instance to this SliceReference, and clears the passed
+             * in slice instance. This is used primarily by the layer system, to allow layers to briefly take
+             * ownership of slice instances that are saved to those layers.
+             * \param cachedInstance A valid, cached slice instance that used to be owned by this reference.
+            */
+            void RestoreAndClearCachedInstance(SliceInstance& cachedInstance);
+
             /// Locates an instance by Id.
             SliceInstance* FindInstance(const SliceInstanceId& instanceId);
+
+            /** 
+             * Remove a slice instance.
+             * @param itr The iterator to the slice instance to remove.
+             * @return The iterator following the last removed slice instance.
+             */
+            SliceReference::SliceInstances::iterator RemoveInstance(SliceInstances::iterator itr);
 
             /// Removes an instance of the slice.
             bool RemoveInstance(SliceInstance* instance);
@@ -404,6 +446,9 @@ namespace AZ
 
             /// Retrieves the list of instances for this reference.
             const SliceInstances& GetInstances() const;
+
+            /// Retrieves the list of instances for this reference.
+            SliceInstances& GetInstances() { return m_instances; }
 
             /// Retrieves the underlying asset pointer.
             const Data::Asset<SliceAsset>& GetSliceAsset() const { return m_asset; }
@@ -423,7 +468,13 @@ namespace AZ
             /// Compute data patch for all instances
             void ComputeDataPatch();
 
+            /// Compute data patch for an individual instance
+            void ComputeDataPatch(SliceInstance* instance);
         protected:
+
+            /// Internal only function that computes the data patch for the given instance.
+            /// This assumes that the instance has already been verified to be related to this slice.
+            void ComputeDataPatchForInstanceKnownToReference(SliceInstance& instance, SerializeContext* serializeContext, InstantiatedContainer& sourceContainer);
 
             /// Creates a new Id'd instance slot internally, but does not instantiate it.
             SliceInstance* CreateEmptyInstance(const SliceInstanceId& instanceId = SliceInstanceId::CreateRandom());
@@ -449,6 +500,8 @@ namespace AZ
 
             Data::Asset<SliceAsset> m_asset; ///< Asset reference to a dependent slice reference
         };
+
+        using SliceAssetToSliceInstances = AZStd::unordered_map<Data::Asset<SliceAsset>, SliceReference::SliceInstances>;
 
         using SliceList = AZStd::list<SliceReference>; // we use list as we need stable iterators
 
@@ -504,9 +557,38 @@ namespace AZ
         bool GetEntities(EntityList& entities);
 
         /**
-        * Adds the IDs of all non-metadata entities, including the ones based on instances, to the provided set.
-        * @param entities An entity ID set to add the IDs to
+         * Erases all entities passed in from this slice's m_entities list of loose, owned entities.
+         * @param entities The list of entities to erase.
         */
+        void EraseEntities(const EntityList& entities);
+
+        /**
+         * Adds the passed in entities to become owned and tracked by this slice. Used by the layer system
+         * to return entities that were briefly borrowed from the root slice.
+         * entities The list of entitites to add to this slice.
+         */
+        void AddEntities(const EntityList& entities);
+
+        /**
+         * Clears the m_entities list for this slice and replaces it with the passed in entity list.
+         * Used by the layer system to return entities it borrowed. Used as a performance shortcut, the
+         * layer system will have already retrieved a complete list of all entities managed by this slice.
+         * @param entities The list of entities to replace m_entities with.
+         */
+        void ReplaceEntities(const EntityList& entities);
+
+        /**
+         * Adds the passed in slice instances to this slice. Used by the layer system on load, when a layer
+         * is loaded, it may contain one or more slice instances. This allows layers to populate the root slice
+         * with those instances.
+         * @param sliceInstances instances that will be given to this slice. It will be empty after this operation completes.
+         */
+        void AddSliceInstances(SliceAssetToSliceInstancePtrs& sliceInstances);
+        
+        /**
+         * Adds the IDs of all non-metadata entities, including the ones based on instances, to the provided set.
+         * @param entities An entity ID set to add the IDs to
+         */
         bool GetEntityIds(EntityIdSet& entities);
 
         /**
@@ -522,8 +604,11 @@ namespace AZ
         */
         bool GetMetadataEntityIds(EntityIdSet& entities);
 
-        /// Returns list of all slices and their instantiated entities (for this slice node)
+        /// Returns list of all slices and their instantiated entities (for this slice component)
         const SliceList& GetSlices() const;
+
+        /// Returns list of all slices and their instantiated entities (for this slice component)
+        SliceList& GetSlices() { return m_slices; }
 
         /**
         * Returns the list of slice references associated with this slice that could not be loaded.
@@ -591,6 +676,12 @@ namespace AZ
 
         /// Same as \ref RemoveEntity but by using entityId
         bool RemoveEntity(EntityId entityId, bool isDeleteEntity = true, bool isRemoveEmptyInstance = true);
+
+        /*
+        * Removes an entity not associated with a slice instance.
+        * Developed for the specific needs of the Undo system. For all general use, call RemoveEntity instead.
+        */
+        void RemoveLooseEntity(EntityId entityId);
 
         /**
          * Returns the slice information about an entity, if it belongs to the component and is in a slice.
@@ -772,6 +863,20 @@ namespace AZ
         */
         void InitMetadata();
 
+        /**
+         * Removes the passed in instances from this slice, and caches them to restore later.
+         * Used by the layer system so layers can briefly take ownership of these instances.
+         * This allows the level slice to save with only slice instances and references
+         * unique to the level, and allows layers to save slices instances and references to themselves.
+         * instancesToRemove The collection of instances that should be removed from this slice.
+         */
+        void RemoveAndCacheInstances(const SliceReferenceToInstancePtrs& instancesToRemove);
+
+        /**
+         * Restores slice instances that were cached when RemoveAndCacheInstances was called.
+         */
+        void RestoreCachedInstances();
+
     protected:
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
         // Workaround for VS2013 - Delete the copy constructor and make it private
@@ -821,6 +926,7 @@ namespace AZ
         */
         void CleanMetadataAssociations();
         
+
         /// Returns the entity info map (and builds it if necessary).
         const EntityInfoMap& GetEntityInfoMap() const;
 
@@ -828,7 +934,7 @@ namespace AZ
         SliceReference* AddOrGetSliceReference(const Data::Asset<SliceAsset>& sliceAsset);
 
         /// Removes a slice reference (and all instances) by iterator.
-        void RemoveSliceReference(SliceComponent::SliceList::iterator sliceReferenceIt);
+        SliceComponent::SliceList::iterator RemoveSliceReference(SliceComponent::SliceList::iterator sliceReferenceIt);
 
         /// Utility function to apply a EntityIdToEntityIdMap to a EntityIdToEntityIdMap (the mapping will override values in the destination)
         static void ApplyEntityMapId(EntityIdToEntityIdMap& destination, const EntityIdToEntityIdMap& mapping);
@@ -852,6 +958,8 @@ namespace AZ
         EntityList m_entities;  ///< Entities that are new (not based on a slice).
 
         SliceList m_slices; ///< List of base slices and their instances in the world
+        SliceAssetToSliceInstances m_cachedSliceInstances; ///< Slice instances saved in layers on the root slice are cached here during the serialization process.
+        SliceList m_cachedSliceReferences; ///< Slice references saved in layers on the root slice are cached here during the serialization process.
         SliceList m_invalidSlices; ///< List of slice references that did not load correctly.
 
         AZ::Entity m_metadataEntity; ///< Entity for attaching slice metadata components
@@ -883,6 +991,69 @@ namespace AZ
 
     /// @deprecated Use SliceComponent.
     using PrefabComponent = SliceComponent;
+
+    namespace EntityUtils
+    {
+        // This class provides unrestricted access to the Entity's ID.
+        class EntityIdAccessor final : public AZ::Entity
+        {
+        public:
+            void ForceSetId(AZ::EntityId id)
+            {
+                m_id = id;
+            }
+        };
+
+        // Optimized specialization for InstantiatedContainers.
+        template<>
+        inline unsigned int ReplaceEntityIds(SliceComponent::InstantiatedContainer* container, const EntityIdMapper& mapper, SerializeContext* /*context*/)
+        {
+            unsigned int replaced = 0;
+
+            if (container)
+            {
+                // We know where EntityIds are defined in an InstantiatedContainer,
+                // we don't need to use SerializeContext to search for them.
+                for (SliceComponent::EntityList* entityList : { &container->m_entities, &container->m_metadataEntities })
+                {
+                    for (Entity* entity : *entityList)
+                    {
+                        EntityId newId = mapper(entity->GetId(), true);
+
+                        // Note: entity->SetId(newId) can't be used on entities that have been initialized.
+                        // We get around the safety checks in Entity::SetId() using the little hack below.
+                        // This is needed because slices momentarily remap their entities' IDs during serialization
+                        // (but immediately put them back the way there were).
+                        // The "cleaner" way to do this would be to make temporary clones of the entities
+                        // and perform remapping on the clones, but that would be much less performant.
+                        static_cast<EntityIdAccessor*>(entity)->ForceSetId(newId);
+
+                        ++replaced;
+                    }
+                }
+            }
+
+            return replaced;
+        }
+    } // namespace EntityUtils
+
+    namespace IdUtils
+    {
+        // Optimized specialization for InstantiatedContainers.
+        template<>
+        template<>
+        inline unsigned int Remapper<EntityId>::ReplaceIdsAndIdRefs(SliceComponent::InstantiatedContainer* container, const Remapper<EntityId>::IdMapper& mapper, SerializeContext* context)
+        {
+            unsigned int replaced = EntityUtils::ReplaceEntityIds(container,
+                [&mapper](const EntityId& originalId, bool isEntityId) { return mapper(originalId, isEntityId, &Entity::MakeId);  },
+                context);
+
+            replaced += RemapIds(container, mapper, context, false);
+
+            return replaced;
+        }
+    } // namespace IdUtils
+
 } // namespace AZ
 
 namespace AZStd

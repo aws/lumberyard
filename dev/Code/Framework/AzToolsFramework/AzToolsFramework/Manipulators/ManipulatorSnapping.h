@@ -31,7 +31,7 @@ namespace AzToolsFramework
         const AZ::Vector3& worldSurfacePosition, const AZ::Transform& worldFromLocal, int viewportId, float gridSize);
 
     /**
-     * Wrapper for snapping enabled bus call.
+     * Wrapper for grid snapping enabled bus call.
      */
     bool GridSnapping(int viewportId);
 
@@ -39,6 +39,36 @@ namespace AzToolsFramework
      * Wrapper for grid size bus call.
      */
     float GridSize(int viewportId);
+
+    /**
+     * Wrapper for angle snapping enabled bus call.
+     */
+    bool AngleSnapping(int viewportId);
+
+    /**
+     * Wrapper for angle snapping increment bus call.
+     * @return Angle in degrees
+     */
+    float AngleStep(int viewporId);
+
+    /**
+     * Round to x number of significant digits.
+     * @param value Number to round.
+     * @param exponent Precision to use when rounding.
+     */
+    inline float Round(const float value, const float exponent)
+    {
+        const float precision = std::powf(10.0f, exponent);
+        return roundf(value * precision) / precision;
+    }
+
+    /**
+     * Round to 3 significant digits (3 digits common useage).
+     */
+    inline float Round3(const float value)
+    {
+        return Round(value, 3.0f);
+    }
 
     /**
      * Util to return sign of floating point number.

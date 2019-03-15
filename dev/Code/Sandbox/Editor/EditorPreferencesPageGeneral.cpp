@@ -29,7 +29,7 @@
 void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
 {
     serialize.Class<GeneralSettings>()
-        ->Version(1)
+        ->Version(2)
         ->Field("PreviewPanel", &GeneralSettings::m_previewPanel)
         ->Field("TreeBrowserPanel", &GeneralSettings::m_treeBrowserPanel)
         ->Field("ApplyConfigSpec", &GeneralSettings::m_applyConfigSpec)
@@ -38,7 +38,6 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("FreezeReadOnly", &GeneralSettings::m_freezeReadOnly)
         ->Field("FrozenSelectable", &GeneralSettings::m_frozenSelectable)
         ->Field("ConsoleBackgroundColorTheme", &GeneralSettings::m_consoleBackgroundColorTheme)
-        ->Field("ShowDashboard", &GeneralSettings::m_showDashboard)
         ->Field("AutoloadLastLevel", &GeneralSettings::m_autoLoadLastLevel)
         ->Field("ShowTimeInConsole", &GeneralSettings::m_bShowTimeInConsole)
         ->Field("ToolbarIconSize", &GeneralSettings::m_toolbarIconSize)
@@ -52,7 +51,8 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("EnableLegacyUI", &GeneralSettings::m_enableLegacyUI);
 
     serialize.Class<Messaging>()
-        ->Version(1)
+        ->Version(2)
+        ->Field("ShowDashboard", &Messaging::m_showDashboard)
         ->Field("ShowCircularDependencyError", &Messaging::m_showCircularDependencyError);
 
     serialize.Class<Undo>()
@@ -61,8 +61,9 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("UndoSliceOverrideSaves", &Undo::m_undoSliceOverrideSaveValue);;
 
     serialize.Class<DeepSelection>()
-        ->Version(1)
-        ->Field("DeepSelectionRange", &DeepSelection::m_deepSelectionRange);
+        ->Version(2)
+        ->Field("DeepSelectionRange", &DeepSelection::m_deepSelectionRange)
+        ->Field("StickDuplicate", &DeepSelection::m_stickDuplicate);
 
     serialize.Class<VertexSnapping>()
         ->Version(1)
@@ -73,6 +74,10 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Version(1)
         ->Field("EnableMetricsTracking", &MetricsSettings::m_enableMetricsTracking);
 
+    serialize.Class<SliceSettings>()
+        ->Version(1)
+        ->Field("DynamicByDefault", &SliceSettings::m_slicesDynamicByDefault);
+
     serialize.Class<CEditorPreferencesPage_General>()
         ->Version(1)
         ->Field("General Settings", &CEditorPreferencesPage_General::m_generalSettings)
@@ -80,7 +85,8 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         ->Field("Undo", &CEditorPreferencesPage_General::m_undo)
         ->Field("Deep Selection", &CEditorPreferencesPage_General::m_deepSelection)
         ->Field("Vertex Snapping", &CEditorPreferencesPage_General::m_vertexSnapping)
-        ->Field("Metrics Settings", &CEditorPreferencesPage_General::m_metricsSettings);
+        ->Field("Metrics Settings", &CEditorPreferencesPage_General::m_metricsSettings)
+        ->Field("Slice Settings", &CEditorPreferencesPage_General::m_sliceSettings);
 
 
 
@@ -110,7 +116,6 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &GeneralSettings::m_consoleBackgroundColorTheme, "Console Background", "Console Background")
                 ->EnumAttribute(SEditorSettings::ConsoleColorTheme::Light, "Light")
                 ->EnumAttribute(SEditorSettings::ConsoleColorTheme::Dark, "Dark")
-            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_showDashboard, "Show Welcome to Lumberyard at startup", "Show Welcome to Lumberyard at startup")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_autoLoadLastLevel, "Auto-load last level at startup", "Auto-load last level at startup")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &GeneralSettings::m_bShowTimeInConsole, "Show Time In Console", "Show Time In Console")
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &GeneralSettings::m_toolbarIconSize, "Toolbar Icon Size", "Toolbar Icon Size")
@@ -129,6 +134,7 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
                 ->Attribute(AZ::Edit::Attributes::Visibility, !isCryEntityRemovalGemPresent);
 
         editContext->Class<Messaging>("Messaging", "")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Messaging::m_showDashboard, "Show Welcome to Lumberyard at startup", "Show Welcome to Lumberyard at startup")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Messaging::m_showCircularDependencyError, "Show Error: Circular dependency", "Show an error message when adding a slice instance to the target slice would create a cyclic asset dependency. All other valid overrides will be saved even if this is turned off.");
 
         editContext->Class<Undo>("Undo", "")
@@ -137,8 +143,9 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
             ->Attribute(AZ::Edit::Attributes::Max, 10000)
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Undo::m_undoSliceOverrideSaveValue, "Undo Slice Override Saves", "Allow slice saves to be undone");
 
-        editContext->Class<DeepSelection>("Deep Selection", "")
-            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &DeepSelection::m_deepSelectionRange, "Range", "Deep Selection Range")
+        editContext->Class<DeepSelection>("Selection", "")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &DeepSelection::m_stickDuplicate, "Stick duplicate to cursor", "Stick duplicate to cursor")
+            ->DataElement(AZ::Edit::UIHandlers::SpinBox, &DeepSelection::m_deepSelectionRange, "Deep selection range", "Deep Selection Range")
             ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
             ->Attribute(AZ::Edit::Attributes::Max, 1000.0f);
 
@@ -151,15 +158,19 @@ void CEditorPreferencesPage_General::Reflect(AZ::SerializeContext& serialize)
         editContext->Class<MetricsSettings>("Metrics", "")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &MetricsSettings::m_enableMetricsTracking, "Enable Metrics Tracking", "Enable Metrics Tracking");
 
+        editContext->Class<SliceSettings>("Slices", "")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &SliceSettings::m_slicesDynamicByDefault, "New Slices Dynamic By Default", "When creating slices, they will be set to dynamic by default");
+
         editContext->Class<CEditorPreferencesPage_General>("General Editor Preferences", "Class for handling General Editor Preferences")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
             ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_generalSettings, "General Settings", "General Editor Preferences")
             ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_messaging, "Messaging", "Messaging")
             ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_undo, "Undo", "Undo Preferences")
-            ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_deepSelection, "Deep Selection", "Deep Selection")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_deepSelection, "Selection", "Selection")
             ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_vertexSnapping, "Vertex Snapping", "Vertex Snapping")
-            ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_metricsSettings, "Metrics", "Metrics Settings");
+            ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_metricsSettings, "Metrics", "Metrics Settings")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &CEditorPreferencesPage_General::m_sliceSettings, "Slices", "Slice Settings");
     }
 }
 
@@ -181,7 +192,7 @@ void CEditorPreferencesPage_General::OnApply()
     gSettings.consoleBackgroundColorTheme = m_generalSettings.m_consoleBackgroundColorTheme;
     gSettings.bShowTimeInConsole = m_generalSettings.m_bShowTimeInConsole;
     gSettings.bLayerDoubleClicking = m_generalSettings.m_bLayerDoubleClicking;
-    gSettings.bShowDashboardAtStartup = m_generalSettings.m_showDashboard;
+    gSettings.bShowDashboardAtStartup = m_messaging.m_showDashboard;
     gSettings.m_showCircularDependencyError = m_messaging.m_showCircularDependencyError;
     gSettings.bAutoloadLastLevelAtStartup = m_generalSettings.m_autoLoadLastLevel;
     gSettings.stylusMode = m_generalSettings.m_stylusMode;
@@ -217,6 +228,7 @@ void CEditorPreferencesPage_General::OnApply()
 
     //deep selection
     gSettings.deepSelectionSettings.fRange = m_deepSelection.m_deepSelectionRange;
+    gSettings.deepSelectionSettings.bStickDuplicate = m_deepSelection.m_stickDuplicate;
 
     //vertex snapping
     gSettings.vertexSnappingSettings.vertexCubeSize = m_vertexSnapping.m_vertexCubeSize;
@@ -228,6 +240,9 @@ void CEditorPreferencesPage_General::OnApply()
         gSettings.sMetricsSettings.bEnableMetricsTracking = m_metricsSettings.m_enableMetricsTracking;
         LyMetrics_OnOptOutStatusChange(gSettings.sMetricsSettings.bEnableMetricsTracking);
     }
+
+    //slices
+    gSettings.sliceSettings.dynamicByDefault = m_sliceSettings.m_slicesDynamicByDefault;
 
     // If the legacy UI toggle was changed, inform the user they need to restart
     // the Editor in order for the change to take effect
@@ -250,7 +265,6 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_consoleBackgroundColorTheme = gSettings.consoleBackgroundColorTheme;
     m_generalSettings.m_bShowTimeInConsole = gSettings.bShowTimeInConsole;
     m_generalSettings.m_bLayerDoubleClicking = gSettings.bLayerDoubleClicking;
-    m_generalSettings.m_showDashboard = gSettings.bShowDashboardAtStartup;
     m_generalSettings.m_autoLoadLastLevel = gSettings.bAutoloadLastLevelAtStartup;
     m_generalSettings.m_stylusMode = gSettings.stylusMode;
     m_generalSettings.m_restoreViewportCamera = gSettings.restoreViewportCamera;
@@ -263,6 +277,7 @@ void CEditorPreferencesPage_General::InitializeSettings()
     m_generalSettings.m_toolbarIconSize = gSettings.gui.nToolbarIconSize;
 
     //Messaging
+    m_messaging.m_showDashboard = gSettings.bShowDashboardAtStartup;
     m_messaging.m_showCircularDependencyError = gSettings.m_showCircularDependencyError;
 
     //undo
@@ -271,6 +286,7 @@ void CEditorPreferencesPage_General::InitializeSettings()
 
     //deep selection
     m_deepSelection.m_deepSelectionRange = gSettings.deepSelectionSettings.fRange;
+    m_deepSelection.m_stickDuplicate = gSettings.deepSelectionSettings.bStickDuplicate;
 
     //vertex snapping
     m_vertexSnapping.m_vertexCubeSize = gSettings.vertexSnappingSettings.vertexCubeSize;
@@ -278,4 +294,7 @@ void CEditorPreferencesPage_General::InitializeSettings()
 
     //metrics
     m_metricsSettings.m_enableMetricsTracking = gSettings.sMetricsSettings.bEnableMetricsTracking;
+
+    //slices
+    m_sliceSettings.m_slicesDynamicByDefault = gSettings.sliceSettings.dynamicByDefault;
 }

@@ -45,7 +45,6 @@ def build(bld):
         'Code/Tools/AzCodeGenerator/Scripts/debug.py'
     ]
 
-    output_folder_vs2013 = ['Tools/AzCodeGenerator/bin/vc120/']
     output_folder_vs2015 = ['Tools/AzCodeGenerator/bin/vc140/']
     output_folder_vs2017 = ['Tools/AzCodeGenerator/bin/vc141/']
     output_folder_darwin = ['Tools/AzCodeGenerator/bin/osx/']
@@ -62,6 +61,8 @@ def build(bld):
 
         use                 = ['RAPIDJSON', 'CLANG'],
         features            = ['EmbeddedPython'],
+
+        win_lib = [ 'version' ],
 
         source_artifacts_include = source_artifacts,
 
@@ -81,7 +82,6 @@ def build(bld):
         linux_x64_linkflags=linux_x64_linkflags,
         linux_x64_rpath=linux_x64_rpath,
 
-        win_x64_vs2013_output_folder=output_folder_vs2013,
         win_x64_vs2015_output_folder=output_folder_vs2015,
         win_x64_vs2017_output_folder=output_folder_vs2017,
         darwin_x64_output_folder=output_folder_darwin,
@@ -89,5 +89,4 @@ def build(bld):
 
         ndebug_output_file_name='AzCodeGenerator',
         debug_output_file_name='AzCodeGeneratorD',
-
     )

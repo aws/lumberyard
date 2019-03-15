@@ -40,7 +40,7 @@ namespace LUAEditor
                 ->Field("m_font", &SyntaxStyleSettings::m_font)
                 ->Field("m_fontSize", &SyntaxStyleSettings::m_fontSize)
                 ->Field("m_tabSize", &SyntaxStyleSettings::m_tabSize)
-
+                ->Field("m_useSpacesInsteadOfTabs", &SyntaxStyleSettings::m_useSpacesInsteadOfTabs)
 
                 ->Field("m_textColor", &SyntaxStyleSettings::m_textColor)
                 ->Field("m_textSelectedColor", &SyntaxStyleSettings::m_textSelectedColor)
@@ -50,6 +50,8 @@ namespace LUAEditor
                 ->Field("m_textUnfocusedBackgroundColor", &SyntaxStyleSettings::m_textUnfocusedBackgroundColor)
                 ->Field("m_textReadOnlyFocusedBackgroundColor", &SyntaxStyleSettings::m_textReadOnlyFocusedBackgroundColor)
                 ->Field("m_textReadOnlyUnfocusedBackgroundColor", &SyntaxStyleSettings::m_textReadOnlyUnfocusedBackgroundColor)
+
+                ->Field("m_textWhitespaceColor", &SyntaxStyleSettings::m_textWhitespaceColor)
 
                 ->Field("m_breakpointFocusedBackgroundColor", &SyntaxStyleSettings::m_breakpointFocusedBackgroundColor)
                 ->Field("m_breakpointUnocusedBackgroundColor", &SyntaxStyleSettings::m_breakpointUnfocusedBackgroundColor)
@@ -94,6 +96,9 @@ namespace LUAEditor
                     ->DataElement(AZ::Edit::UIHandlers::Default, &SyntaxStyleSettings::m_tabSize, "Tab Size", "")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SyntaxStyleSettings::OnFontChange)
 
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SyntaxStyleSettings::m_useSpacesInsteadOfTabs, "Use Spaces instead of Tabs", "")
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SyntaxStyleSettings::OnFontChange)
+
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Editing")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
 
@@ -114,6 +119,9 @@ namespace LUAEditor
                     ->DataElement(AZ::Edit::UIHandlers::Color, &SyntaxStyleSettings::m_textReadOnlyFocusedBackgroundColor, "Read Only Focused Background", "")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SyntaxStyleSettings::OnColorChange)
                     ->DataElement(AZ::Edit::UIHandlers::Color, &SyntaxStyleSettings::m_textReadOnlyUnfocusedBackgroundColor, "Read Only Background", "")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SyntaxStyleSettings::OnColorChange)
+
+                    ->DataElement(AZ::Edit::UIHandlers::Color, &SyntaxStyleSettings::m_textWhitespaceColor, "Whitespace Color", "")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SyntaxStyleSettings::OnColorChange)
 
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Interface")

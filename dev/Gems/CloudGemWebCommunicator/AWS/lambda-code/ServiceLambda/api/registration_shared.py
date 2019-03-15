@@ -28,7 +28,7 @@ iot_data = boto3.client('iot-data')
 default_connection_type = 'OPENSSL'
 
 def get_endpoint_and_port(connection_type):
-    endpoint_response = iot_client.describe_endpoint()
+    endpoint_response = iot_client.describe_endpoint(endpointType='iot:Data-ATS')
     
     if connection_type == 'OPENSSL':
         endpoint_port = 8883

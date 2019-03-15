@@ -34,10 +34,12 @@ public:
     void SelectionChanged(HierarchyItemRawPtrList* items);
     void SelectedEntityPointersChanged();
     bool IsCanvasSelected() { return m_isCanvasSelected; }
+    AZ::Entity::ComponentArrayType GetSelectedComponents();
 
     void RequestPropertyContextMenu(AzToolsFramework::InstanceDataNode* node, const QPoint& globalPos);
 
-    void SetSelectedEntityDisplayNameWidget(QLabel* selectedEntityDisplayNameWidget);
+    void SetSelectedEntityDisplayNameWidget(QLineEdit* selectedEntityDisplayNameWidget);
+    void SetEditorOnlyCheckbox(QCheckBox* editorOnlyCheckbox);
 
 private:
 
@@ -64,6 +66,14 @@ private:
         AZ::Component* m_compareInstance;
     };
 
+    // Widget overrides
+    void resizeEvent(QResizeEvent* event) override;
+    void contextMenuEvent(QContextMenuEvent* event) override;
+    bool eventFilter(QObject* object, QEvent* event) override;
+
+    bool HandleSelectionEvents(QObject* object, QEvent* event);
+    bool m_selectionEventAccepted; // ensure selection logic executes only once per click since eventFilter may execute multiple times for a single click
+
     // A collection of SharedComponentInfo.
     // The map is keyed on the component-type.
     // In the case of /ref GenericComponentWrapper,
@@ -74,21 +84,66 @@ private:
 
     void BuildSharedComponentList(ComponentTypeMap&, const AzToolsFramework::EntityIdList& entitiesShown);
     void BuildSharedComponentUI(ComponentTypeMap&, const AzToolsFramework::EntityIdList& entitiesShown);
-    AzToolsFramework::ReflectedPropertyEditor* CreatePropertyEditor();
+    AzToolsFramework::ComponentEditor* CreateComponentEditor(const AZ::Component& componentInstance);
+
+    // Helper functions for selecting components
+    bool DoesOwnFocus() const;
+    QRect GetWidgetGlobalRect(const QWidget* widget) const;
+    bool DoesIntersectWidget(const QRect& globalRect, const QWidget* widget) const;
+    bool DoesIntersectSelectedComponentEditor(const QRect& globalRect) const;
+    bool DoesIntersectNonSelectedComponentEditor(const QRect& globalRect) const;
+
+    void ClearComponentEditorSelection();
+    void SelectRangeOfComponentEditors(const AZ::s32 index1, const AZ::s32 index2, bool selected = true);
+    void SelectIntersectingComponentEditors(const QRect& globalRect, bool selected = true);
+    void ToggleIntersectingComponentEditors(const QRect& globalRect);
+    AZ::s32 GetComponentEditorIndex(const AzToolsFramework::ComponentEditor* componentEditor) const;
+    AZStd::vector<AzToolsFramework::ComponentEditor*> GetIntersectingComponentEditors(const QRect& globalRect) const;
+
+    // Create actions to add/remove/cut/copy/paste components
+    void CreateActions();
+
+    // Update states
+    void UpdateActions();
+    void UpdateOverlay();
+    void UpdateInternalState();
+
+    // Called when an action to add a component was triggered
+    void OnAddComponent();
+
+    // Context menu helpers
+    void OnDisplayUiComponentEditorMenu(const QPoint& position);
+    void ShowContextMenu(const QPoint& position);
 
     void Update();
-
-    void SetHeightOfContentRect();
+    void UpdateEditorOnlyCheckbox();
 
     PropertiesWidget* m_propertiesWidget;
     EditorWindow* m_editorWindow;
 
     QWidget* m_containerWidget;
+    QWidget* m_componentListContents;
     QVBoxLayout* m_rowLayout;
-    QLabel* m_selectedEntityDisplayNameWidget;
+    QLineEdit* m_selectedEntityDisplayNameWidget;
+    QCheckBox* m_editorOnlyCheckbox; //!< Checkbox associated with the value of the selected entities' "editor only component" value
 
-    using ComponentPropertyEditorMap = AZStd::unordered_map<AZ::Uuid, AZStd::vector<AzToolsFramework::ReflectedPropertyEditor*>>;
+    QAction* m_actionToAddComponents;
+    QAction* m_actionToDeleteComponents;
+    QAction* m_actionToCutComponents;
+    QAction* m_actionToCopyComponents;
+    QAction* m_actionToPasteComponents;
+
+    // We require an overlay widget to act as a canvas to draw on top of everything in the properties pane
+    // so that we can draw outside of the component editors' bounds
+    friend class PropertyContainerOverlay;
+    class PropertyContainerOverlay* m_overlay = nullptr;
+
+    using ComponentPropertyEditorMap = AZStd::unordered_map<AZ::Uuid, AZStd::vector<AzToolsFramework::ComponentEditor*>>;
     ComponentPropertyEditorMap m_componentEditorsByType;
+
+    using ComponentEditorVector = AZStd::vector<AzToolsFramework::ComponentEditor*>;
+    ComponentEditorVector m_componentEditors; // list of component editors in order shown
+    AZ::s32 m_componentEditorLastSelectedIndex;
 
     bool m_selectionHasChanged;
     AZStd::vector<AZ::EntityId> m_selectedEntities;

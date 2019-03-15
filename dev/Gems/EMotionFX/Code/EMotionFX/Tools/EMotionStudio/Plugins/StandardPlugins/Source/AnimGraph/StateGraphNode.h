@@ -10,24 +10,23 @@
 *
 */
 
-#ifndef __EMSTUDIO_STATEGRAPHNODE_H
-#define __EMSTUDIO_STATEGRAPHNODE_H
+#pragma once
 
-// include required headers
-#include <MCore/Source/StandardHeaders.h>
-#include "../StandardPluginsConfig.h"
-#include <EMotionFX/Source/AnimGraphNode.h>
-#include <EMotionFX/Source/AnimGraphStateMachine.h>
-#include <EMotionFX/Source/AnimGraphStateTransition.h>
-#include "AnimGraphVisualNode.h"
-#include "NodeConnection.h"
-#include <QStaticText>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphVisualNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeConnection.h>
 
-class AnimGraphPlugin;
 
+namespace EMotionFX
+{
+    class AnimGraphStateMachine;
+    class AnimGraphStateTransition;
+}
 
 namespace EMStudio
 {
+    class AnimGraphPlugin;
+
     class StateConnection
         : public NodeConnection
     {
@@ -37,7 +36,7 @@ namespace EMStudio
         {
             TYPE_ID = 0x00000002
         };
-        StateConnection(EMotionFX::AnimGraphStateMachine* stateMachine, GraphNode* sourceNode, GraphNode* targetNode, const QPoint& startOffset, const QPoint& endOffset, bool isWildcardConnection, uint32 transitionID);
+        StateConnection(const QModelIndex& modelIndex, GraphNode* sourceNode, GraphNode* targetNode, bool isWildcardConnection);
         ~StateConnection();
 
         void Render(QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor) override;
@@ -52,22 +51,12 @@ namespace EMStudio
 
         EMotionFX::AnimGraphTransitionCondition* FindCondition(const QPoint& mousePos);
 
-        void SetEndOffset(const QPoint& point)      { mEndOffset = point; }
-        void SetStartOffset(const QPoint& point)    { mStartOffset = point; }
-
-        QPoint GetStartOffset() const               { return mStartOffset; }
-        QPoint GetEndOffset() const                 { return mEndOffset; }
-
         bool GetIsWildcardTransition() const override       { return mIsWildcardConnection; }
 
     private:
-        void RenderConditions(QPainter* painter, QPen* pen, QBrush* brush, QPoint& start, QPoint& end);
+        void RenderConditionsAndActions(EMotionFX::AnimGraphInstance* animGraphInstance, QPainter* painter, QPen* pen, QBrush* brush, QPoint& start, QPoint& end);
 
-        QPoint                                  mStartOffset;
-        QPoint                                  mEndOffset;
         bool                                    mIsWildcardConnection;
-        EMotionFX::AnimGraphStateMachine*      mStateMachine;
-        EMotionFX::AnimGraphStateTransition*   mTransition;
     };
 
 
@@ -83,8 +72,10 @@ namespace EMStudio
             TYPE_ID = 0x00000003
         };
 
-        StateGraphNode(AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node);
+        StateGraphNode(const QModelIndex& modelIndex, AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node);
         ~StateGraphNode();
+
+        void Sync() override;
 
         void Render(QPainter& painter, QPen* pen, bool renderShadow) override;
         void RenderVisualizeRect(QPainter& painter, const QColor& bgColor, const QColor& bgColor2) override;
@@ -96,15 +87,8 @@ namespace EMStudio
         QRect CalcInputPortRect(uint32 portNr) override;
         QRect CalcOutputPortRect(uint32 portNr) override;
 
-        bool RemoveConnection(uint32 targetPortNr, GraphNode* sourceNode, uint32 sourcePortNr, uint32 connectionID) override;
-
-        void SyncWithEMFX() override;
-
         void UpdateTextPixmap() override;
 
         uint32 GetType() const override                     { return StateGraphNode::TYPE_ID; }
     };
 }   // namespace EMStudio
-
-
-#endif

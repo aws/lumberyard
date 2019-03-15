@@ -1,0 +1,17 @@
+def build(bld):
+
+    bld.DefineGem(
+        file_list         = ['physxdebug.waf_files'],
+        defines           = ['IMGUI_ENABLED'],
+        pch               = "Source/PhysXDebug_precompiled.cpp",
+        use               = ['ImGui'],
+        uselib            = ['PHYSX_SDK'],
+            editor = dict(
+                platforms         = ['win','darwin'],
+                defines           = ['PHYSXDEBUG_GEM_EDITOR', 'IMGUI_ENABLED'],
+                includes          = [bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                                     bld.Path('Code/Sandbox/Editor')],
+                use               = ['ImGui'],
+                uselib            = ['PHYSX_SDK']
+            )
+    )

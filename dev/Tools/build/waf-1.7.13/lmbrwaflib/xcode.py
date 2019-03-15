@@ -17,6 +17,7 @@ $ waf configure xcode_ios
 $ waf configure xcode_mac
 $ waf configure xcode_appletv
 """
+from branch_spec import get_supported_configurations
 
 from waflib import Context, TaskGen, Build, Utils, Logs
 from waflib.TaskGen import feature, after_method
@@ -668,7 +669,7 @@ class xcode_mac(xcode):
         return 'darwin_x64'
 
     def get_target_configurations(self):
-        return self.get_supported_configurations()
+        return get_supported_configurations('darwin_x64')
 
     def get_xcode_project_name(self):
         return self.get_mac_project_name()
@@ -706,11 +707,7 @@ class xcode_ios(xcode):
         return 'ios'
 
     def get_target_configurations(self):
-        supported_configurations = []
-        for config in self.get_supported_configurations():
-            if not ('_dedicated' in config):
-                supported_configurations.append(config)
-        return supported_configurations
+        return get_supported_configurations('ios')
 
     def get_settings(self):
         settings = xcode.get_settings(self)
@@ -762,17 +759,13 @@ class xcode_appletv(xcode):
     cmd = 'xcode_appletv'
 
     def get_target_platforms(self):
-            return [ 'appletv' ]
+        return [ 'appletv' ]
 
     def get_target_platform_name(self):
         return 'appletv'
 
     def get_target_configurations(self):
-        supported_configurations = []
-        for config in self.get_supported_configurations():
-            if not ('_dedicated' in config):
-                supported_configurations.append(config)
-        return supported_configurations
+        return get_supported_configurations('appletv')
 
     def get_settings(self):
         settings = xcode.get_settings(self)

@@ -91,7 +91,7 @@ namespace EMotionFX
         // set the memory categories
         mMotionLinks.SetMemoryCategory(EMFX_MEMCATEGORY_MOTIONS_MOTIONLINKS);
         mNodeWeights.SetMemoryCategory(EMFX_MEMCATEGORY_MOTIONS_MOTIONINSTANCES);
-        mEventHandlers.SetMemoryCategory(EMFX_MEMCATEGORY_EVENTHANDLERS);
+        m_eventHandlersByEventType.resize(EVENT_TYPE_MOTION_INSTANCE_LAST_EVENT - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT + 1);
 
         GetEventManager().OnCreateMotionInstance(this);
     }
@@ -182,6 +182,7 @@ namespace EMotionFX
         SetClipStartTime        (info.mClipStartTime);
         SetClipEndTime          (info.mClipEndTime);
         SetFreezeAtTime         (info.mFreezeAtTime);
+        SetIsInPlace            (info.mInPlace);
 
         if (info.mClipEndTime <= MCore::Math::epsilon && mMotion)
         {
@@ -289,32 +290,21 @@ namespace EMotionFX
 
 
     // update the time values based on the motion playback settings
-    void MotionInstance::CalcNewTimeAfterUpdate(float timePassed, float* outNewTime, float* outPassedTime, float* outTotalPlayTime, float* outTimeDifToEnd, uint32* outNumLoops, bool* outHasLooped, bool* outFrozenInLastFrame)
+    void MotionInstance::CalcNewTimeAfterUpdate(float timePassed, float* outNewTime)
     {
         // init defaults
         *outNewTime         = mCurrentTime;
-        *outPassedTime      = mPassedTime;
-        *outTotalPlayTime   = mTotalPlayTime;
-        *outTimeDifToEnd    = mTimeDifToEnd;
-        *outNumLoops        = mCurLoops;
-        *outHasLooped       = GetHasLooped();
-        *outFrozenInLastFrame = GetIsFrozen();
 
         // if we're dealing with a grouped motion
         if (!mMotion)
         {
-            *outPassedTime       = timePassed * mPlaySpeed;
-            *outTotalPlayTime   += MCore::Math::Abs(timePassed);
             return;
         }
-
-        bool hasLooped = false;
 
         // if we are playing forward
         if (mPlayMode == PLAYMODE_FORWARD)
         {
-            *outPassedTime = timePassed * mPlaySpeed;
-            float currentTime = mCurrentTime + *outPassedTime;
+            float currentTime = mCurrentTime + timePassed * mPlaySpeed;
 
             float maxTime = mClipEndTime;////mMotion->GetMaxTime()
             if (maxTime > mMotion->GetMaxTime())
@@ -323,16 +313,11 @@ namespace EMotionFX
                 mClipEndTime = maxTime;
             }
 
-            *outTotalPlayTime += MCore::Math::Abs(timePassed);
-
             // check and handle the bounds of the current playtime, to make it loop etc
             if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
             {
                 if (currentTime >= maxTime)
                 {
-                    *outNumLoops = *outNumLoops + 1;
-                    hasLooped = true;
-
                     if (maxTime > 0.0f)
                     {
                         currentTime = mClipStartTime + MCore::Math::SafeFMod(currentTime - mClipStartTime, maxTime - mClipStartTime);
@@ -356,10 +341,7 @@ namespace EMotionFX
                 // if we passed the end of the motion, keep it there
                 if (currentTime >= maxTime)
                 {
-                    *outNumLoops = *outNumLoops + 1;
-                    hasLooped = true;
-
-                    if (*outNumLoops >= mMaxLoops)
+                    if ((mCurLoops + 1) >= mMaxLoops)
                     {
                         if (!GetFreezeAtLastFrame())
                         {
@@ -374,24 +356,12 @@ namespace EMotionFX
                         }
                         else
                         {
-                            *outNumLoops = mMaxLoops - 1;
                             currentTime = maxTime;
-                            *outPassedTime = 0.0f;
-                            hasLooped = false;
-
-                            if (!GetIsFrozen())
-                            {
-                                *outFrozenInLastFrame = true;
-                                //mMotion->GetEventTable().ProcessEvents(mCurrentTime, maxTime+0.00001f, mActorInstance, this);
-                                //EnableFlag( BOOL_ISFROZENATLASTFRAME );
-                                //GetEventManager().OnIsFrozenAtLastFrame( this );
-                            }
                         }
                     }
                     else
                     {
                         //DisableFlag( BOOL_ISFROZENATLASTFRAME );
-                        *outFrozenInLastFrame = false;
 
                         if (maxTime > 0.0f)
                         {
@@ -423,14 +393,10 @@ namespace EMotionFX
 
             // set updated, validated values again
             *outNewTime = currentTime;
-
-            // time difference till the loop point
-            *outTimeDifToEnd = mClipEndTime - *outNewTime;
         }
         else // backward playback mode
         {
-            *outPassedTime = -(timePassed * mPlaySpeed);
-            float currentTime   = mCurrentTime + *outPassedTime;
+            float currentTime   = mCurrentTime - (timePassed * mPlaySpeed);
             float maxTime       = mClipEndTime;
             if (maxTime > mMotion->GetMaxTime())
             {
@@ -438,15 +404,11 @@ namespace EMotionFX
                 mClipEndTime = maxTime;
             }
 
-            *outTotalPlayTime += MCore::Math::Abs(timePassed);
-
             // check and handle the bounds of the current playtime, to make it loop etc
             if (mMaxLoops == EMFX_LOOPFOREVER) // if it's looping forever
             {
                 if (currentTime < mClipStartTime)
                 {
-                    hasLooped = true;
-                    *outNumLoops = *outNumLoops + 1;
                     currentTime = maxTime + (currentTime - mClipStartTime);
                 }
 
@@ -463,10 +425,7 @@ namespace EMotionFX
                 // if we passed the end of the motion
                 if (currentTime <= mClipStartTime)
                 {
-                    *outNumLoops = *outNumLoops + 1;
-                    hasLooped = true;
-
-                    if (*outNumLoops >= mMaxLoops)
+                    if ((mCurLoops + 1) >= mMaxLoops)
                     {
                         if (!GetFreezeAtLastFrame())
                         {
@@ -474,24 +433,12 @@ namespace EMotionFX
                         }
                         else
                         {
-                            *outNumLoops = *outNumLoops - 1;
                             currentTime = mClipStartTime;
-                            *outPassedTime = 0.0f;
-                            hasLooped = false;
-
-                            if (!GetIsFrozen())
-                            {
-                                //mMotion->GetEventTable().ProcessEvents(mClipStartTime, mCurrentTime, mActorInstance, this);
-                                //EnableFlag( BOOL_ISFROZENATLASTFRAME );
-                                //GetEventManager().OnIsFrozenAtLastFrame( this );
-                                *outFrozenInLastFrame = true;
-                            }
                         }
                     }
                     else
                     {
                         //DisableFlag( BOOL_ISFROZENATLASTFRAME );
-                        *outFrozenInLastFrame = false;
                         currentTime = maxTime + currentTime;
                     }
                 }
@@ -515,15 +462,7 @@ namespace EMotionFX
 
             // copy over the current time
             *outNewTime = currentTime;
-
-            // time difference to the loop point
-            *outTimeDifToEnd = mCurrentTime - mClipStartTime;
         }
-
-        // trigger the OnMotionInstanceHasLooped event
-        //if (hasLooped)
-        //GetEventManager().OnHasLooped( this );
-        *outHasLooped = hasLooped;
     }
 
 
@@ -616,7 +555,7 @@ namespace EMotionFX
 
                                 if (!GetIsFrozen())
                                 {
-                                    mMotion->GetEventTable()->ProcessEvents(mCurrentTime, maxTime + 0.00001f, mActorInstance, this);
+                                    mMotion->GetEventTable()->ProcessEvents(mCurrentTime, maxTime + 0.00001f, this);
                                     EnableFlag(BOOL_ISFROZENATLASTFRAME);
                                     GetEventManager().OnIsFrozenAtLastFrame(this);
                                 }
@@ -720,7 +659,7 @@ namespace EMotionFX
 
                             if (!GetIsFrozen())
                             {
-                                mMotion->GetEventTable()->ProcessEvents(mClipStartTime, mCurrentTime, mActorInstance, this);
+                                mMotion->GetEventTable()->ProcessEvents(mClipStartTime, mCurrentTime, this);
                                 EnableFlag(BOOL_ISFROZENATLASTFRAME);
                                 GetEventManager().OnIsFrozenAtLastFrame(this);
                             }
@@ -890,12 +829,12 @@ namespace EMotionFX
                 // if we're playing forward
                 if (mPlayMode == PLAYMODE_FORWARD)
                 {
-                    mMotion->GetEventTable()->ProcessEvents(oldTimeValue, mClipEndTime + 0.0001f, mActorInstance, this);
+                    mMotion->GetEventTable()->ProcessEvents(oldTimeValue, mClipEndTime + 0.0001f, this);
                     oldTimeValue = mClipStartTime;
                 }
                 else // we're playing backward
                 {
-                    mMotion->GetEventTable()->ProcessEvents(mClipStartTime - 0.0001f, oldTimeValue, mActorInstance, this);
+                    mMotion->GetEventTable()->ProcessEvents(mClipStartTime - 0.0001f, oldTimeValue, this);
                     oldTimeValue = mClipEndTime;
                 }
             }
@@ -922,7 +861,7 @@ namespace EMotionFX
                 }
 
                 // process the events
-                mMotion->GetEventTable()->ProcessEvents(oldTimeValue, curTimeValue, mActorInstance, this);
+                mMotion->GetEventTable()->ProcessEvents(oldTimeValue, curTimeValue, this);
             }
         }
     }
@@ -1456,71 +1395,39 @@ namespace EMotionFX
     // add a given event handler
     void MotionInstance::AddEventHandler(MotionInstanceEventHandler* eventHandler)
     {
+        AZ_Assert(eventHandler, "Expected non-null event handler");
         eventHandler->SetMotionInstance(this);
-        mEventHandlers.Add(eventHandler);
-    }
 
-
-    // find a given event handler
-    uint32 MotionInstance::FindEventHandlerIndex(MotionInstanceEventHandler* eventHandler) const
-    {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        for (const EventTypes eventType : eventHandler->GetHandledEventTypes())
         {
-            if (mEventHandlers[i] == eventHandler)
-            {
-                return i;
-            }
+            AZ_Assert(AZStd::find(m_eventHandlersByEventType[eventType - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT].begin(), m_eventHandlersByEventType[eventType - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT].end(), eventHandler) == m_eventHandlersByEventType[eventType - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT].end(),
+                "Event handler already added to manager");
+            m_eventHandlersByEventType[eventType - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT].emplace_back(eventHandler);
         }
-
-        return MCORE_INVALIDINDEX32;
     }
 
 
     // remove a given handler from memory
-    bool MotionInstance::RemoveEventHandler(MotionInstanceEventHandler* eventHandler, bool delFromMem)
+    void MotionInstance::RemoveEventHandler(MotionInstanceEventHandler* eventHandler)
     {
-        const uint32 index = mEventHandlers.Find(eventHandler);
-        if (index == MCORE_INVALIDINDEX32)
+        for (const EventTypes eventType : eventHandler->GetHandledEventTypes())
         {
-            if (delFromMem)
-            {
-                eventHandler->Destroy();
-            }
-
-            return false;
+            EventHandlerVector& eventHandlers = m_eventHandlersByEventType[eventType - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+            eventHandlers.erase(AZStd::remove(eventHandlers.begin(), eventHandlers.end(), eventHandler), eventHandlers.end());
         }
-
-        RemoveEventHandler(index, delFromMem);
-        return true;
-    }
-
-
-    // remove an event handler by index
-    void MotionInstance::RemoveEventHandler(uint32 index, bool delFromMem)
-    {
-        if (delFromMem)
-        {
-            mEventHandlers[index]->Destroy();
-        }
-
-        mEventHandlers.Remove(index);
     }
 
 
     //  remove all event handlers
-    void MotionInstance::RemoveAllEventHandlers(bool delFromMem)
+    void MotionInstance::RemoveAllEventHandlers()
     {
-        if (delFromMem)
+#ifdef DEBUG
+        for (const EventHandlerVector& eventHandlers : m_eventHandlersByEventType)
         {
-            const uint32 numEventHandlers = mEventHandlers.GetLength();
-            for (uint32 i = 0; i < numEventHandlers; ++i)
-            {
-                mEventHandlers[i]->Destroy();
-            }
+            AZ_Assert(eventHandlers.empty(), "Expected all events to be removed");
         }
-
-        mEventHandlers.Clear();
+#endif
+        m_eventHandlersByEventType.clear();
     }
 
     //--------------------
@@ -1528,10 +1435,10 @@ namespace EMotionFX
     // on a motion event
     void MotionInstance::OnEvent(const EventInfo& eventInfo)
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_EVENT - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnEvent(eventInfo);
+            eventHandler->OnEvent(eventInfo);
         }
     }
 
@@ -1539,10 +1446,10 @@ namespace EMotionFX
     // when this motion instance starts
     void MotionInstance::OnStartMotionInstance(PlayBackInfo* info)
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_MOTION_INSTANCE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStartMotionInstance(info);
+            eventHandler->OnStartMotionInstance(info);
         }
     }
 
@@ -1550,10 +1457,10 @@ namespace EMotionFX
     // when this motion instance gets deleted
     void MotionInstance::OnDeleteMotionInstance()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_MOTION_INSTANCE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteMotionInstance();
+            eventHandler->OnDeleteMotionInstance();
         }
     }
 
@@ -1561,10 +1468,10 @@ namespace EMotionFX
     // when this motion instance is stopped
     void MotionInstance::OnStop()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STOP - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStop();
+            eventHandler->OnStop();
         }
     }
 
@@ -1572,10 +1479,10 @@ namespace EMotionFX
     // when it has looped
     void MotionInstance::OnHasLooped()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_LOOPED - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnHasLooped();
+            eventHandler->OnHasLooped();
         }
     }
 
@@ -1583,10 +1490,10 @@ namespace EMotionFX
     // when it reached the maximimum number of loops
     void MotionInstance::OnHasReachedMaxNumLoops()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_REACHED_MAX_NUM_LOOPS - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnHasReachedMaxNumLoops();
+            eventHandler->OnHasReachedMaxNumLoops();
         }
     }
 
@@ -1594,10 +1501,10 @@ namespace EMotionFX
     // when it has reached the maximimum playback time
     void MotionInstance::OnHasReachedMaxPlayTime()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_REACHED_MAX_PLAY_TIME - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnHasReachedMaxPlayTime();
+            eventHandler->OnHasReachedMaxPlayTime();
         }
     }
 
@@ -1605,10 +1512,10 @@ namespace EMotionFX
     // when it is frozen in the last frame
     void MotionInstance::OnIsFrozenAtLastFrame()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_IS_FROZEN_AT_LAST_FRAME - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnIsFrozenAtLastFrame();
+            eventHandler->OnIsFrozenAtLastFrame();
         }
     }
 
@@ -1616,10 +1523,10 @@ namespace EMotionFX
     // when the pause state changes
     void MotionInstance::OnChangedPauseState()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CHANGED_PAUSE_STATE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnChangedPauseState();
+            eventHandler->OnChangedPauseState();
         }
     }
 
@@ -1627,10 +1534,10 @@ namespace EMotionFX
     // when the active state changes
     void MotionInstance::OnChangedActiveState()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CHANGED_ACTIVE_STATE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnChangedActiveState();
+            eventHandler->OnChangedActiveState();
         }
     }
 
@@ -1638,10 +1545,10 @@ namespace EMotionFX
     // when it starts blending in or out
     void MotionInstance::OnStartBlending()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_BLENDING - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStartBlending();
+            eventHandler->OnStartBlending();
         }
     }
 
@@ -1649,10 +1556,10 @@ namespace EMotionFX
     // when it stops blending
     void MotionInstance::OnStopBlending()
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STOP_BLENDING - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStopBlending();
+            eventHandler->OnStopBlending();
         }
     }
 
@@ -1660,10 +1567,10 @@ namespace EMotionFX
     // when the motion instance is queued
     void MotionInstance::OnQueueMotionInstance(PlayBackInfo* info)
     {
-        const uint32 numHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numHandlers; ++i)
+        EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_QUEUE_MOTION_INSTANCE - EVENT_TYPE_MOTION_INSTANCE_FIRST_EVENT];
+        for (MotionInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnQueueMotionInstance(info);
+            eventHandler->OnQueueMotionInstance(info);
         }
     }
 
@@ -1685,7 +1592,7 @@ namespace EMotionFX
     }
 
 
-    // calculate a global space transformation for a given node by sampling the motion at a given time
+    // calculate a world space transformation for a given node by sampling the motion at a given time
     void MotionInstance::CalcGlobalTransform(const MCore::Array<uint32>& hierarchyPath, float timeValue, Transform* outTransform) const
     {
         Actor*      actor = mActorInstance->GetActor();
@@ -1830,8 +1737,8 @@ namespace EMotionFX
         // Calculate the difference between the first frame of the motion and the bind pose transform.
         TransformData* transformData = mActorInstance->GetTransformData();
         const Pose* bindPose = transformData->GetBindPose();
-        MCore::Quaternion permBindPoseRotDiff = firstFrameTransform.mRotation * bindPose->GetLocalTransform(motionExtractionNodeIndex).mRotation.Conjugated();
-        AZ::Vector3 permBindPosePosDiff = bindPose->GetLocalTransform(motionExtractionNodeIndex).mPosition - firstFrameTransform.mPosition;
+        MCore::Quaternion permBindPoseRotDiff = firstFrameTransform.mRotation * bindPose->GetLocalSpaceTransform(motionExtractionNodeIndex).mRotation.Conjugated();
+        AZ::Vector3 permBindPosePosDiff = bindPose->GetLocalSpaceTransform(motionExtractionNodeIndex).mPosition - firstFrameTransform.mPosition;
         permBindPoseRotDiff.x = 0.0f;
         permBindPoseRotDiff.y = 0.0f;
         permBindPoseRotDiff.Normalize();
@@ -1866,7 +1773,7 @@ namespace EMotionFX
         AZ::Vector3 rotatedPos = rotation * (trajectoryDelta.mPosition - bindPosePosDiff);
 
         // Calculate the real trajectory delta, taking into account the actor instance rotation.
-        outTrajectoryDelta.mPosition = mActorInstance->GetLocalRotation() * rotatedPos;
+        outTrajectoryDelta.mPosition = mActorInstance->GetLocalSpaceTransform().mRotation * rotatedPos;
         outTrajectoryDelta.mRotation = trajectoryDelta.mRotation * bindPoseRotDiff;
 
         if (mBoolFlags & MotionInstance::BOOL_ISFIRSTREPOSUPDATE)
@@ -2010,11 +1917,12 @@ namespace EMotionFX
     void MotionInstance::SetClipStartTime(float timeInSeconds)                  { mClipStartTime = timeInSeconds; }
     float MotionInstance::GetClipEndTime() const                                { return mClipEndTime; }
     void MotionInstance::SetClipEndTime(float timeInSeconds)                    { mClipEndTime = timeInSeconds; }
-    MotionInstanceEventHandler* MotionInstance::GetEventHandler(uint32 index) const     { return mEventHandlers[index]; }
-    uint32 MotionInstance::GetNumEventHandlers() const                          { return mEventHandlers.GetLength(); }
     MotionLink* MotionInstance::GetMotionLinks() const                          { return mMotionLinks.GetPtr(); }
     float MotionInstance::GetFreezeAtTime() const                               { return mFreezeAtTime; }
     void MotionInstance::SetFreezeAtTime(float timeInSeconds)                   { mFreezeAtTime = timeInSeconds; }
+    bool MotionInstance::GetIsInPlace() const                                   { return (mBoolFlags & BOOL_INPLACE) != 0; }
+    void MotionInstance::SetIsInPlace(bool inPlace)                             { SetFlag(BOOL_INPLACE, inPlace); }
+
     float MotionInstance::GetNodeWeight(uint32 nodeIndex) const
     {
         if (mNodeWeights.GetLength())

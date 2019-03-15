@@ -18,9 +18,10 @@ namespace PhysX
 {
     namespace NativeTypeIdentifiers
     {
-        static const AZ::Crc32 PhysXWorld = AZ_CRC("PhysXWorld", 0x87c3e7ad);
-        static const AZ::Crc32 PhysXRigidBody = AZ_CRC("PhysXRigidBody", 0xb2dcf053);
-        static const AZ::Crc32 PhysXGhost = AZ_CRC("PhysXGhost", 0xbee7664f);
-        static const AZ::Crc32 PhysXCharacter = AZ_CRC("PhysXCharacter", 0x21ea2dd0);
+        static const AZ::Crc32 World = AZ_CRC("PhysXWorld", 0x87c3e7ad);
+        static const AZ::Crc32 RigidBody = AZ_CRC("PhysXRigidBody", 0xb2dcf053);
+        static const AZ::Crc32 RigidBodyStatic = AZ_CRC("PhysXRigidBodyStatic", 0xe8b62e7e);
+        static const AZ::Crc32 ArticulationLink = AZ_CRC("PhysXArticulationLink", 0x3181634c);
+        static const AZ::Crc32 D6Joint = AZ_CRC("PhysXD6Joint", 0xff42ecdd);
     } // namespace NativeTypeIdentifiers
 } // namespace PhysX

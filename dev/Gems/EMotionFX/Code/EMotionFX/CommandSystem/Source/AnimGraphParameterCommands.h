@@ -47,10 +47,6 @@ namespace CommandSystem
         AZStd::string   mOldName;
         AZStd::string   mOldContents;
         bool            mOldDirtyFlag;
-
-    public:
-        void UpdateTransitionConditions(EMotionFX::AnimGraph* animGraph, const AZStd::string& oldParameterName, const AZStd::string& newParameterName);
-        void RenameParameterNodePorts(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* startNode, const AZStd::string& oldName, const AZStd::string& newName);
     MCORE_DEFINECOMMAND_END
 
 
@@ -59,9 +55,6 @@ namespace CommandSystem
         AZStd::string   mOldParent;
         size_t          mOldIndex;
         bool            mOldDirtyFlag;
-
-    public:
-        static void RelinkConnections(EMotionFX::AnimGraph* animGraph, const AZ::Outcome<size_t>& valueIndexBeforeMove, const AZ::Outcome<size_t>& valueIndexAfterMove);
     MCORE_DEFINECOMMAND_END
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,12 +81,8 @@ namespace CommandSystem
 
     COMMANDSYSTEM_API bool BuildRemoveParametersCommandGroup(EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& parameterNamesToRemove, MCore::CommandGroup* commandGroup = nullptr);
     COMMANDSYSTEM_API void ClearParametersCommand(EMotionFX::AnimGraph* animGraph, MCore::CommandGroup* commandGroup = nullptr);
-    COMMANDSYSTEM_API void RecreateOldParameterMaskConnections(EMotionFX::AnimGraph* animGraph, const AZStd::vector<ParameterConnectionItem>& oldParameterConnections, MCore::CommandGroup* commandGroup, const AZStd::vector<AZStd::string>& newParameterMask);
-    COMMANDSYSTEM_API void RecreateOldConnections(EMotionFX::AnimGraph* animGraph, const AZStd::vector<ParameterConnectionItem>& oldParameterConnections, MCore::CommandGroup* commandGroup, const AZStd::vector<AZStd::string>& parametersToBeRemoved);
 
     // Construct the create parameter command string using the the given information.
     COMMANDSYSTEM_API void ConstructCreateParameterCommand(AZStd::string& outResult, EMotionFX::AnimGraph* animGraph, const EMotionFX::Parameter* parameter, uint32 insertAtIndex = MCORE_INVALIDINDEX32);
-
-    void RewireConnectionsForParameterNodesAfterParameterIndexChange(EMotionFX::AnimGraph* animGraph, const EMotionFX::ValueParameterVector& valueParametersBeforeChange, const EMotionFX::ValueParameterVector& valueParametersAfterChange);
 
 } // namespace CommandSystem

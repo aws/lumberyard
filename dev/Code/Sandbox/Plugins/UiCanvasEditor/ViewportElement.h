@@ -40,16 +40,6 @@ public:
         const AZ::Vector2& point,
         const AZ::Vector2& iconSize);
 
-    //! Transform an element when clicking and dragging in the viewport
-    //! Returns the translation, in canvas space, applied to the element.
-    static void Move(HierarchyWidget* hierarchy,
-        const QTreeWidgetItemRawPtrQList& selectedItems,
-        AZ::Entity* activeElement,
-        const AZ::EntityId& canvasId,
-        ViewportInteraction::CoordinateSystem coordinateSystem,
-        ViewportHelpers::GizmoParts grabbedGizmoParts,
-        ViewportInteraction::InteractionType interactionType,
-        const AZ::Vector3& mouseTranslation);
     static void ResizeDirectly(HierarchyWidget* hierarchy,
         const AZ::EntityId& canvasId,
         const ViewportHelpers::ElementEdges& grabbedEdges,

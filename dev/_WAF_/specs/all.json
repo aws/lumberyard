@@ -66,6 +66,7 @@
         "TranslationBuilder",
         "UiCanvasEditor",
         "DeploymentTool",
+        "ProjectSettingsTool",
         "CrySCompileServer",
         "CryXML",
         "DBAPI",

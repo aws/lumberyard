@@ -16,6 +16,8 @@
 #include <Woodpecker/Driller/FilteredListView.moc>
 #include <Woodpecker/Driller/ui_FilteredListView.h>
 
+#include <AzCore/std/containers/set.h>
+
 #include <qtextdocument.h>
 
 namespace Driller

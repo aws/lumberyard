@@ -20,15 +20,15 @@ namespace PhysX
 {
     namespace Pipeline
     {
-        class PhysXMeshBehavior
+        class MeshBehavior
             : public AZ::SceneAPI::SceneCore::BehaviorComponent
             , public AZ::SceneAPI::Events::ManifestMetaInfoBus::Handler
             , public AZ::SceneAPI::Events::AssetImportRequestBus::Handler
         {
         public:
-            AZ_COMPONENT(PhysXMeshBehavior, "{B6AFB216-2A49-402F-A2B1-C3A17812D53F}", AZ::SceneAPI::SceneCore::BehaviorComponent);
+            AZ_COMPONENT(MeshBehavior, "{B6AFB216-2A49-402F-A2B1-C3A17812D53F}", AZ::SceneAPI::SceneCore::BehaviorComponent);
 
-            ~PhysXMeshBehavior() override = default;
+            ~MeshBehavior() override = default;
 
             void Activate() override;
             void Deactivate() override;

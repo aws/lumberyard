@@ -23,7 +23,6 @@
 
 namespace EMStudio
 {
-    const char* GUIOptions::s_unitTypeOptionName = "unitType";
     const char* GUIOptions::s_maxRecentFilesOptionName = "maxRecentFiles";
     const char* GUIOptions::s_maxHistoryItemsOptionName = "maxHistoryItems";
     const char* GUIOptions::s_notificationVisibleTimeOptionName = "notificationVisibleTime";
@@ -35,8 +34,7 @@ namespace EMStudio
     const char* GUIOptions::s_applicationModeOptionName = "applicationMode";
      
     GUIOptions::GUIOptions()
-        : m_unitType(MCore::Distance::UNITTYPE_METERS)
-        , m_maxRecentFiles(16)
+        : m_maxRecentFiles(16)
         , m_maxHistoryItems(256)
         , m_notificationVisibleTime(5)
         , m_autoSaveInterval(10)
@@ -48,7 +46,6 @@ namespace EMStudio
 
     GUIOptions& GUIOptions::operator=(const GUIOptions& other)
     {
-        SetUnitType(other.GetUnitType());
         SetMaxRecentFiles(other.GetMaxRecentFiles());
         SetMaxHistoryItems(other.GetMaxHistoryItems());
         SetNotificationInvisibleTime(other.GetNotificationInvisibleTime());
@@ -64,8 +61,6 @@ namespace EMStudio
     void GUIOptions::Save(QSettings& settings, QMainWindow& mainWindow)
     {
         settings.beginGroup("EMotionFX");
-
-        settings.setValue("unitType", MCore::Distance::UnitTypeToString(m_unitType));
 
         // Save the maximum number of items in the command history
         settings.setValue(s_maxHistoryItemsOptionName, m_maxHistoryItems);
@@ -109,9 +104,6 @@ namespace EMStudio
     {
         GUIOptions options;
         settings.beginGroup("EMotionFX");
-
-        QString unitTypeString = settings.value("unitType", "meters").toString();
-        MCore::Distance::StringToUnitType(unitTypeString.toUtf8().data(), &options.m_unitType);
 
         // Read the maximum number of items in the command history
         QVariant tmpVariant = settings.value(s_maxHistoryItemsOptionName);
@@ -225,7 +217,6 @@ namespace EMStudio
 
         serializeContext->Class<GUIOptions>()
             ->Version(1)
-            ->Field(s_unitTypeOptionName, &GUIOptions::m_unitType)
             ->Field(s_maxRecentFilesOptionName, &GUIOptions::m_maxRecentFiles)
             ->Field(s_maxHistoryItemsOptionName, &GUIOptions::m_maxHistoryItems)
             ->Field(s_notificationVisibleTimeOptionName, &GUIOptions::m_notificationVisibleTime)
@@ -247,17 +238,6 @@ namespace EMStudio
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                 ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                 ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &GUIOptions::m_unitType, "One unit is one", "")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnUnitTypeChangedCallback)
-                ->EnumAttribute(MCore::Distance::UNITTYPE_INCHES, "inch")
-                ->EnumAttribute(MCore::Distance::UNITTYPE_FEET, "feet")
-                ->EnumAttribute(MCore::Distance::UNITTYPE_YARDS, "yard")
-                ->EnumAttribute(MCore::Distance::UNITTYPE_MILES, "mile")
-                ->EnumAttribute(MCore::Distance::UNITTYPE_MILLIMETERS, "millimeter")
-                ->EnumAttribute(MCore::Distance::UNITTYPE_CENTIMETERS, "centimeter")
-                ->EnumAttribute(MCore::Distance::UNITTYPE_DECIMETERS, "decimeter")
-                ->EnumAttribute(MCore::Distance::UNITTYPE_METERS, "meter")
-                ->EnumAttribute(MCore::Distance::UNITTYPE_KILOMETERS, "kilometer")
             ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_maxRecentFiles, "Maximum recent files", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnMaxRecentFilesChangedCallback)
                 ->Attribute(AZ::Edit::Attributes::Min, 1)
@@ -285,15 +265,6 @@ namespace EMStudio
             ->DataElement(AZ::Edit::UIHandlers::Default, &GUIOptions::m_autoLoadLastWorkspace, "Auto load last workspace", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &GUIOptions::OnAutoLoadLastWorkspaceChangedCallback)
             ;
-    }
-
-    void GUIOptions::SetUnitType(MCore::Distance::EUnitType unitType)
-    {
-        if (unitType != m_unitType)
-        {
-            m_unitType = unitType;
-            OnUnitTypeChangedCallback();
-        }
     }
 
     void GUIOptions::SetMaxRecentFiles(int maxRecentFiles)
@@ -375,12 +346,6 @@ namespace EMStudio
             m_applicationMode = applicationMode;
             OnApplicationModeChangedCallback();
         }
-    }
-
-    void GUIOptions::OnUnitTypeChangedCallback() const
-    {
-        
-        PluginOptionsNotificationsBus::Event(s_unitTypeOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_unitTypeOptionName);
     }
 
     void GUIOptions::OnMaxRecentFilesChangedCallback() const

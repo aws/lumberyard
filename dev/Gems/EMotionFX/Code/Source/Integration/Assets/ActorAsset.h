@@ -107,7 +107,7 @@ namespace EMotionFX
             ~ActorAsset() override;
 
             typedef EMotionFXPtr<EMotionFX::ActorInstance> ActorInstancePtr;
-            ActorInstancePtr CreateInstance(AZ::EntityId entityId);
+            ActorInstancePtr CreateInstance(AZ::Entity* entity);
 
             EMotionFXPtr<EMotionFX::Actor> GetActor() const { return m_emfxActor; }
 
@@ -221,7 +221,6 @@ namespace EMotionFX
             AZ::Data::Asset<ActorAsset>             m_actorAsset;
             EMotionFXPtr<EMotionFX::ActorInstance>  m_actorInstance;
 
-            AZ::Transform                           m_worldTransform;
             Matrix34                                m_renderTransform;
             AABB                                    m_worldBoundingBox;
             AZ::EntityId                            m_entityId;

@@ -349,7 +349,7 @@ namespace EMotionFX
         // create the actor reading from memory
         Actor* result = LoadActor(fileBuffer, fileSize, settings, filename.c_str());
 
-        // delete the filebuffer again
+        // delete the file buffer again
         MCore::Free(fileBuffer);
 
         // check if it worked :)
@@ -753,7 +753,7 @@ namespace EMotionFX
             // Open the memory file again as CheckFileType() is closing it at the end.
             memFile.Open(memoryStart, lengthInBytes);
             EMotionFX::MotionSet* motionSet = LoadMotionSet(&memFile, settings);
-            if (settings) 
+            if (settings)
             {
                 motionSet->SetIsOwnedByRuntime(settings->m_isOwnedByRuntime);
             }
@@ -1113,6 +1113,7 @@ namespace EMotionFX
 
         // shared processors
         RegisterChunkProcessor(aznew ChunkProcessorMotionEventTrackTable());
+        RegisterChunkProcessor(aznew ChunkProcessorMotionEventTrackTable2());
 
         // Actor file format
         RegisterChunkProcessor(aznew ChunkProcessorActorMesh());
@@ -1132,10 +1133,12 @@ namespace EMotionFX
         RegisterChunkProcessor(aznew ChunkProcessorActorNodeMotionSources());
         RegisterChunkProcessor(aznew ChunkProcessorActorAttachmentNodes());
         RegisterChunkProcessor(aznew ChunkProcessorActorMaterialAttributeSet());
+        RegisterChunkProcessor(aznew ChunkProcessorActorPhysicsSetup());
 
         // Motion file format
         RegisterChunkProcessor(aznew ChunkProcessorMotionInfo());
         RegisterChunkProcessor(aznew ChunkProcessorMotionInfo2());
+        RegisterChunkProcessor(aznew ChunkProcessorMotionInfo3());
         RegisterChunkProcessor(aznew ChunkProcessorMotionSubMotions());
         RegisterChunkProcessor(aznew ChunkProcessorMotionWaveletInfo());
         RegisterChunkProcessor(aznew ChunkProcessorMotionMorphSubMotions());
@@ -1546,9 +1549,9 @@ namespace EMotionFX
             if (animGraph)
             {
                 animGraph->SetFileName(filename.c_str());
-                animGraph->RemoveInvalidConnections();
+                animGraph->RemoveInvalidConnections();  // Remove connections that have nullptr source node's, which happens when connections point to unknown nodes.
             }
-            
+
             return animGraph;
         }
 
@@ -1601,6 +1604,7 @@ namespace EMotionFX
         if (result)
         {
             result->SetFileName(filename.c_str());
+            result->RemoveInvalidConnections();  // Remove connections that have nullptr source node's, which happens when connections point to unknown nodes.
         }
 
         // delete the filebuffer again
@@ -1621,8 +1625,6 @@ namespace EMotionFX
                 MCore::LogInfo("  + Loading successfully finished");
             }
         }
-
-        result->RemoveInvalidConnections();
 
         // return the result
         return result;

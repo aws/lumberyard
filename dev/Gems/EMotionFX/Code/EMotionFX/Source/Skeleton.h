@@ -52,6 +52,15 @@ namespace EMotionFX
          * @return A pointer to the node, returns nullptr when not found.
          */
         Node* FindNodeByName(const char* name) const;
+        Node* FindNodeByName(const AZStd::string& name) const;
+
+        /**
+         * Find a joint's index and pointer by name.
+         * @param name The name of the joint, non case sensitive.
+         * @param outIndex This will contain the resulting index, or MCORE_INVALIDINDEX32 in case not found.
+         * @result This returns a pointer to the joint or nullptr when not found. In case of a nullptr, the outIndex will be set to MCORE_INVALIDINDEX32 as well.
+         */
+        Node* FindNodeAndIndexByName(const AZStd::string& name, AZ::u32& outIndex) const;
 
         /**
          * Search for a node by name (non case sensitive), returns nullptr when no node can be found.
@@ -133,35 +142,6 @@ namespace EMotionFX
          * method will return a value of zero.
          */
         void RemoveAllRootNodes();
-
-        /**
-         * Calculate the local space matrix for a given node, from a set of local space transforms (separated position/rotation/scale/scalerotation).
-         * @param nodeIndex The node to calculate the local space matrix for. This must be in range of [0..Actor::GetNumNodes()-1].
-         * @param localTransforms The local space transformations of all nodes. You can get those with the Actor::GetTransformData().GetOrgTransforms() for example.
-         * @param outMatrix The matrix to store the resulting local space matrix in.
-         */
-        void CalcLocalSpaceMatrix(uint32 nodeIndex, const Transform* localTransforms, MCore::Matrix* outMatrix);
-
-        /**
-         * Calculate the local space matrices for all nodes, in bind pose. Bind pose is the pose in which the actor has been exported from the art package.
-         * @param outLocalMatrices The array of matrices that will contain the local space matrices for all nodes. This array will automatically be resized to contain Actor::GetNumNodes() matrices.
-         */
-        void CalcBindPoseLocalMatrices(MCore::Array<MCore::Matrix>& outLocalMatrices);
-
-        /**
-         * Calculate the global space matrices from a set of local space matrices.
-         * @param localMatrices The local space matrices. This array must contain Actor::GetNumNodes() matrices.
-         * @param outGlobalMatrices The array of global space matrices to write the results in. The array will automatically be resized to the right number of elements by this method.
-         */
-        void CalcGlobalMatrices(const MCore::Array<MCore::Matrix>& localMatrices, MCore::Array<MCore::Matrix>& outGlobalMatrices);
-
-        /**
-         * Calculate the global space matrices of the bind pose of this actor.
-         * The bind pose is the pose in which the actor has been exported from the art package.
-         * The number of matrices inside this array will be equal to Actor::GetNumNodes() after execution of this method.
-         * @param outGlobalMatrices The array of matrices to write the resulting global space matries in. The array will automatically be resized to the number of nodes inside this actor.
-         */
-        void CalcBindPoseGlobalMatrices(MCore::Array<MCore::Matrix>& outGlobalMatrices);
 
         void LogNodes();
         uint32 CalcHierarchyDepthForNode(uint32 nodeIndex) const;

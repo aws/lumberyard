@@ -36,10 +36,24 @@
 		"CTableRowOdd" : "#ffededed",
 		"CTableRowEven" : "#ffffffff",
 		"SliceRootBackgroundColor" : "#1E252F",
-		"SliceRootBorderColor" : "#1E3250",
-		"SelectedSliceRootBackgroundColor" : "rgba(0, 0, 255, 120)",
-		"SelectedSliceRootBorderColor" : "#000078",
+		"SliceRootNameColor" : "#FFFFFF",
+		"SelectedSliceRootBackgroundColor" : "#47487B",
+		"SelectedSliceRootBorderColor" : "#2F306D",
 		"SliceEntityColor" : "#4285F4",
-		"SliceOverrideColor" : "#FF7B00"
+		"SliceOverrideColor" : "#FF7B00",
+		"LayerBackgroundColor" : "#2F2F2F",
+		"LayerChildBackgroundColor": "#333333",
+		"LayerBorderTop": "#515151",
+		"LayerBorderBottom": "#252525",
+		"LayerMenuSelected": "#424242",
+		"LayerMenuDisabled" : "#A0A0A0",
+		"NewLayerDefaultColor": "#515151",
+		"HierarchyLinesSlices": "#425E88",
+		"HierarchyLinesSlicesSelected": "#5779AB",
+		"HierarchyLinesNonSliceEntities": "#5C5C5C",
+		"HierarchyLinesNonSliceEntitiesSelected": "#7B7B7B",
+		"OutlinerSelectionColor": "#565A5B",
+		"LayerBGSelectionColor": "#444545",
+		"LayerChildBGSelectionColor":  "#464747"
 	}
 }

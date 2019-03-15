@@ -59,7 +59,11 @@ long CD3D9Renderer::FX_SetVertexDeclaration(int StreamMask, const AZ::Vertex::Fo
     SOnDemandD3DVertexDeclarationCache* pDeclCache = &m_RP.m_D3DVertexDeclarationCache[(StreamMask & 0xff) >> 1][bMorph || bInstanced][declCacheCRC];
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(D3DFXPipeline_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DFXPipeline_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DFXPipeline_cpp_provo.inl"
+    #endif
 #endif
 #endif
 
@@ -1753,6 +1757,14 @@ void CD3D9Renderer::FX_CommitStates(const SShaderTechnique* pTech, const SShader
             rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_ALPHABLEND];
         }
     }
+
+    // Enable position invariant flag to disable fast math on certain vertex shader operations that affect position calculations.
+    // This fixes issues with geometry that renders in both z-prepass and any other pass from having precision
+    // issues when executing different vertex shaders and expecting the same position output results.
+    if (rRP.m_RIs[0][0]->nBatchFlags & FB_ZPREPASS)
+    {
+        rRP.m_FlagsShader_MDV |= MDV_POSITION_INVARIANT;
+    }
 }
 
 //=====================================================================================
@@ -2128,19 +2140,26 @@ bool CD3D9Renderer::FX_PopRenderTarget(int nTarget)
 //////////////////////////////////////////////////////////////////////////
 // REFACTOR BEGIN: (bethelz) Move scratch depth pool into its own class.
 
-SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool bAA)
+SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool bAA, bool shaderResourceView)
 {
     assert(m_pRT->IsRenderThread());
 
     SDepthTexture* pSrf = NULL;
+    D3D11_TEXTURE2D_DESC desc;
     uint32 i;
     int nBestX = -1;
     int nBestY = -1;
     for (i = 0; i < m_TempDepths.Num(); i++)
     {
         pSrf = m_TempDepths[i];
-        if (!pSrf->bBusy)
+        if (!pSrf->bBusy && pSrf->pSurf)
         {
+            // verify that this texture supports binding as a shader resource if requested
+            pSrf->pTarget->GetDesc(&desc);
+            if (shaderResourceView && !(desc.BindFlags & D3D11_BIND_SHADER_RESOURCE))
+            {
+                continue;
+            }
             if (pSrf->nWidth == nWidth && pSrf->nHeight == nHeight)
             {
                 nBestX = i;
@@ -2183,6 +2202,12 @@ SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool b
         for (i = 0; i < m_TempDepths.Num(); i++)
         {
             pSrf = m_TempDepths[i];
+            // verify that this texture supports binding as a shader resource if requested
+            pSrf->pTarget->GetDesc(&desc);
+            if (shaderResourceView && !(desc.BindFlags & D3D11_BIND_SHADER_RESOURCE))
+            {
+                continue;
+            }
             if (pSrf->nWidth >= nWidth && pSrf->nHeight >= nHeight && !pSrf->bBusy)
             {
                 break;
@@ -2196,7 +2221,7 @@ SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool b
 
     if (i == m_TempDepths.Num())
     {
-        pSrf = CreateDepthSurface(nWidth, nHeight);
+        pSrf = CreateDepthSurface(nWidth, nHeight, shaderResourceView);
         if (pSrf != nullptr)
         {
             if (pSrf->pSurf != nullptr)
@@ -2206,6 +2231,7 @@ SDepthTexture* CD3D9Renderer::FX_GetDepthSurface(int nWidth, int nHeight, bool b
             else
             {
                 DestroyDepthSurface(pSrf);
+                pSrf = nullptr;
             }
         }
     }
@@ -2433,7 +2459,7 @@ void CD3D9Renderer::FX_DrawInstances(CShader* ef, SShaderPass* slw, int nRE, uin
         for (i = 0; i < rRP.m_CustomVD.Num(); i++)
         {
             vd = rRP.m_CustomVD[i];
-            if (vd->StreamMask == StreamMask && rRP.m_CurVFormat == vd->VertexFormat && vd->InstAttrMask == nInstAttrMask)
+            if (vd->StreamMask == StreamMask && rRP.m_CurVFormat == vd->VertexFormat && vd->InstAttrMask == nInstAttrMask && vd->m_vertexShader == CHWShader_D3D::s_pCurInstVS)
             {
                 break;
             }
@@ -2447,6 +2473,7 @@ void CD3D9Renderer::FX_DrawInstances(CShader* ef, SShaderPass* slw, int nRE, uin
             vd->VertexFormat = rRP.m_CurVFormat;
             vd->InstAttrMask = nInstAttrMask;
             vd->m_pDeclaration = NULL;
+            vd->m_vertexShader = CHWShader_D3D::s_pCurInstVS;
 
             // Copy the base vertex format declaration
             SOnDemandD3DVertexDeclaration Decl;
@@ -5193,6 +5220,14 @@ bool CD3D9Renderer::FX_DrawToRenderTarget(CShader* pShader, CShaderResources* pR
 
             bMakeEnvironmentTexture = (!pEnvTex->m_pTex || pEnvTex->m_pTex->GetFormat() != eTF);
         }
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        // do not re-create the environment texture for the RTT pass for now, just use the existing one.
+        if (m_RP.m_TI[nThreadList].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE && pEnvTex->m_pTex)
+        {
+            bMakeEnvironmentTexture = false;
+        }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
         // clamping to a reasonable texture size
         if (nWidth < 32)

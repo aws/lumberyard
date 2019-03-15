@@ -56,12 +56,20 @@ public:
         eI_DurationAfter,
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(FlowClipCaptureNodes_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/FlowClipCaptureNodes_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/FlowClipCaptureNodes_cpp_provo.inl"
+    #endif
 #endif
         eI_ClipId,
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(FlowClipCaptureNodes_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/FlowClipCaptureNodes_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/FlowClipCaptureNodes_cpp_provo.inl"
+    #endif
 #endif
         eI_LocalizedClipName,
         eI_Metadata,
@@ -80,11 +88,11 @@ public:
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(FlowClipCaptureNodes_cpp, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/FlowClipCaptureNodes_cpp_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION FLOWCLIPCAPTURENODES_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(FlowClipCaptureNodes_cpp, TOOLS_SUPPORT_PROVO)
+    #include "Provo/FlowClipCaptureNodes_cpp_provo.inl"
 #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)

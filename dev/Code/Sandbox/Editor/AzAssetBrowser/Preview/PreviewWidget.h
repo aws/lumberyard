@@ -28,6 +28,7 @@ namespace AzToolsFramework
     namespace AssetBrowser
     {
         class ProductAssetBrowserEntry;
+        class SourceAssetBrowserEntry;
         class AssetBrowserEntry;
     }
 }
@@ -73,8 +74,16 @@ private:
     CImageEx m_previewImageUpdated;
     TextureType m_textureType;
     QString m_fileinfo;
+    QString m_fileinfoAlphaTexture;
 
     bool DisplayProduct(const AzToolsFramework::AssetBrowser::ProductAssetBrowserEntry* product);
+    void DisplaySource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* source);
+
+    QString GetFileSize(const char* path);
+
+    bool DisplayTextureLegacy(const char* fullImagePath);
+    bool DisplayTextureProductModern(const char* fullProductImagePath);
+
     void UpdateTextureType();
 
     static bool FileInfoCompare(const FileInfo& f1, const FileInfo& f2);

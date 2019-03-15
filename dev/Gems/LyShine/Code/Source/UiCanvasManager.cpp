@@ -26,7 +26,6 @@
 #include <LyShine/Bus/UiNavigationBus.h>
 #include <LyShine/Bus/UiTooltipDisplayBus.h>
 #include <LyShine/Bus/UiEntityContextBus.h>
-#include <LyShine/IUiRenderer.h>
 #include <LyShine/UiSerializeHelpers.h>
 
 #include <AzCore/Math/Crc.h>
@@ -45,6 +44,7 @@
 #include <AzCore/Asset/AssetManagerBus.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Input/Channels/InputChannel.h>
+#include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
 
 #include "Animation/UiAnimationSystem.h"
 
@@ -52,6 +52,9 @@
 #include <LyShine/Bus/World/UiCanvasOnMeshBus.h>
 #include <LyShine/Bus/World/UiCanvasRefBus.h>
 
+#ifndef _RELEASE
+#include <AzFramework/IO/LocalFileIO.h>
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Anonymous namespace
@@ -86,6 +89,8 @@ UiCanvasManager::UiCanvasManager()
 {
     UiCanvasManagerBus::Handler::BusConnect();
     UiCanvasOrderNotificationBus::Handler::BusConnect();
+    UiCanvasEnabledStateNotificationBus::Handler::BusConnect();
+    FontNotificationBus::Handler::BusConnect();
     AzFramework::AssetCatalogEventBus::Handler::BusConnect();
 }
 
@@ -94,6 +99,8 @@ UiCanvasManager::~UiCanvasManager()
 {
     UiCanvasManagerBus::Handler::BusDisconnect();
     UiCanvasOrderNotificationBus::Handler::BusDisconnect();
+    UiCanvasEnabledStateNotificationBus::Handler::BusDisconnect();
+    FontNotificationBus::Handler::BusDisconnect();
     AzFramework::AssetCatalogEventBus::Handler::BusDisconnect();
 
     // destroy ALL the loaded canvases, whether loaded in game or in Editor
@@ -106,6 +113,9 @@ UiCanvasManager::~UiCanvasManager()
     {
         delete canvas->GetEntity();
     }
+
+    AZ_Assert(m_recursionGuardCount == 0, "Destroying the UiCanvasManager while it is processing canvases");
+    DeleteCanvasesQueuedForDeletion();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -196,6 +206,59 @@ UiCanvasManager::CanvasEntityList UiCanvasManager::GetLoadedCanvases()
 void UiCanvasManager::OnCanvasDrawOrderChanged(AZ::EntityId canvasEntityId)
 {
     SortCanvasesByDrawOrder();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::OnCanvasEnabledStateChanged(AZ::EntityId canvasEntityId, bool enabled)
+{
+    if (enabled)
+    {
+        bool isConsumingAllInputEvents = false;
+        EBUS_EVENT_ID_RESULT(isConsumingAllInputEvents, canvasEntityId, UiCanvasBus, GetIsConsumingAllInputEvents);
+        if (isConsumingAllInputEvents)
+        {
+            EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
+        }
+    }
+
+    // Update hover state for loaded canvases
+    m_generateMousePositionInputEvent = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::GenerateMousePositionInputEvent()
+{
+    const AzFramework::InputDevice* mouseDevice = AzFramework::InputDeviceRequests::FindInputDevice(AzFramework::InputDeviceMouse::Id);
+    if (mouseDevice && mouseDevice->IsConnected())
+    {
+        // Create a game input event for the system cursor position
+        const AzFramework::InputChannel::Snapshot inputSnapshot(AzFramework::InputDeviceMouse::SystemCursorPosition,
+            AzFramework::InputDeviceMouse::Id,
+            AzFramework::InputChannel::State::Updated);
+
+        // Get the current system cursor viewport position
+        AZ::Vector2 systemCursorPositionNormalized(0.0f, 0.0f);
+        AzFramework::InputSystemCursorRequestBus::EventResult(systemCursorPositionNormalized,
+            AzFramework::InputDeviceMouse::Id,
+            &AzFramework::InputSystemCursorRequests::GetSystemCursorPositionNormalized);
+        AZ::Vector2 cursorViewportPos(systemCursorPositionNormalized.GetX() * m_latestViewportSize.GetX(),
+            systemCursorPositionNormalized.GetY() * m_latestViewportSize.GetY());
+
+        // Handle the input event
+        HandleInputEventForLoadedCanvases(inputSnapshot, cursorViewportPos, AzFramework::ModifierKeyMask::None, true);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::OnFontsReloaded()
+{
+    m_fontTextureHasChanged = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::OnFontTextureUpdated(IFFont* font)
+{
+    m_fontTextureHasChanged = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -350,6 +413,13 @@ AZ::EntityId UiCanvasManager::ReloadCanvasFromXml(const AZStd::string& xmlString
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasManager::ReleaseCanvas(AZ::EntityId canvasEntityId, bool forEditor)
 {
+    // if we are currently processing canvases for input handling or update then defer the deletion of the canvas
+    if (!forEditor && m_recursionGuardCount > 0)
+    {
+        ReleaseCanvasDeferred(canvasEntityId);
+        return;
+    }
+
     AZ::Entity* canvasEntity = nullptr;
     EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntityId);
     AZ_Assert(canvasEntity, "Canvas entity not found by ID");
@@ -372,6 +442,9 @@ void UiCanvasManager::ReleaseCanvas(AZ::EntityId canvasEntityId, bool forEditor)
                 delete canvasEntity;
 
                 EBUS_EVENT(UiCanvasManagerNotificationBus, OnCanvasUnloaded, canvasEntityId);
+
+                // Update hover state for loaded canvases
+                m_generateMousePositionInputEvent = true;
             }
         }
     }
@@ -402,15 +475,14 @@ void UiCanvasManager::ReleaseCanvasDeferred(AZ::EntityId canvasEntityId)
 
             EBUS_EVENT(UiCanvasManagerNotificationBus, OnCanvasUnloaded, canvasEntityId);
 
-            // Queue UI canvas deletion until next tick. This prevents deleting a UI canvas from an active entity within that UI canvas
-            AZStd::function<void()> destroyCanvas = [canvasEntityId]()
-            {
-                AZ::Entity* queuedCanvasEntity = nullptr;
-                EBUS_EVENT_RESULT(queuedCanvasEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntityId);
-                delete queuedCanvasEntity;
-            };
+            // Queue UI canvas deletion. This is because this function could have been triggered in input processing of
+            // a component within the canvas. i.e. there could be a member function of the canvas or one of it's child entities
+            // on the callstack. Unfortunately, just delaying until the next tick is not enough - pressing a button could cause
+            // unloading of an entire level which could flush the tick bus. So we have to use our own queue.
+            QueueCanvasForDeletion(canvasEntityId);
 
-            AZ::TickBus::QueueFunction(destroyCanvas);
+            // Update hover state for loaded canvases
+            m_generateMousePositionInputEvent = true;
         }
     }
 }
@@ -443,11 +515,27 @@ void UiCanvasManager::SetTargetSizeForLoadedCanvases(AZ::Vector2 viewportSize)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiCanvasManager::UpdateLoadedCanvases(float deltaTime)
 {
-    // Update all the canvases loaded in game
-    for (auto canvas : m_loadedCanvases)
+    // make a temporary copy of the list in case the update code ends up releasing or loading canvases during iterating over the list
+    auto loadedCanvases = m_loadedCanvases;
+
+    // Update all the canvases loaded in game.
+    // It is unlikely this will call out to client code that could remove a canvas but we have no
+    // control over what custom components do so we increment the count that will defer all canvas deletion 
+    m_recursionGuardCount++;
+    if (m_generateMousePositionInputEvent)
+    {
+        // Update hover state for loaded canvases
+        m_generateMousePositionInputEvent = false;
+        GenerateMousePositionInputEvent();
+    }
+    for (auto canvas : loadedCanvases)
     {
         canvas->UpdateCanvas(deltaTime, true);
     }
+    m_recursionGuardCount--;
+
+    // If not being called recursively from other canvas processing then immediately do any deferred canvas deletes
+    DeleteCanvasesQueuedForDeletion();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -456,16 +544,18 @@ void UiCanvasManager::RenderLoadedCanvases()
     // Render all the canvases loaded in game
     // canvases loaded in editor are rendered by the viewport window
 
-    bool displayBounds = false;
-#ifndef EXCLUDE_DOCUMENTATION_PURPOSE
-    // If the console variable is set then display the element bounds
-    // We use deferred render for the bounds so that they draw on top of everything else
-    // this only works when running in-game
-    if (UiCanvasComponent::CV_ui_DisplayElemBounds)
+    // If any font texture has changed we force all canvases to rebuild the render graph. Individual text components
+    // that use this font will also have got the notification and will have set a flag in their render cache
+    // to indicate that the font texture has changed. This allows them to regenerate the quads with no reallocation.
+    if (m_fontTextureHasChanged)
     {
-        displayBounds = true;
+        for (auto canvas : m_loadedCanvases)
+        {
+            canvas->MarkRenderGraphDirty();
+        }
+
+        m_fontTextureHasChanged = false;
     }
-#endif
 
     // clear the stencil buffer before rendering the loaded canvases - required for masking
     // NOTE: We want to use ClearTargetsImmediately instead of ClearTargetsLater since we will not be setting the render target
@@ -479,7 +569,7 @@ void UiCanvasManager::RenderLoadedCanvases()
             // Rendering in game full screen so the viewport size and target canvas size are the same
             AZ::Vector2 viewportSize = canvas->GetTargetCanvasSize();
 
-            canvas->RenderCanvas(true, viewportSize, displayBounds);
+            canvas->RenderCanvas(true, viewportSize);
         }
     }
 }
@@ -508,11 +598,33 @@ void UiCanvasManager::DestroyLoadedCanvases(bool keepCrossLevelCanvases)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::OnLoadScreenUnloaded()
+{
+    // Mark all render graphs dirty in case the loaded canvases were already rendered before their textures were
+    // done loading. This happens when a load screen is being rendered during a level load. When other canvases
+    // associated with the level are loaded, they also get rendered by the UiLoadScreenComponent, but their texture
+    // loading is delayed until further down the level load process. Once a canvas is rendered, its render graph's
+    // dirty flag is cleared, so the render graph needs to be marked dirty again after the textures are loaded
+    for (auto canvas : m_loadedCanvases)
+    {
+        canvas->MarkRenderGraphDirty();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiCanvasManager::HandleInputEventForLoadedCanvases(const AzFramework::InputChannel& inputChannel)
 {
-    // reverse iterate over the loaded canvases so that the front most canvas gets first chance to
-    // handle the event
-    bool areAnyInWorldInputCanvasesLoaded = false;
+    // Ignore the individual mouse movement input channels.
+    // X, Y are handled through the SystemCursorPosition input channel.
+    // Z (scroll wheel) functionality is not currently supported on the canvas level
+    const AzFramework::InputChannelId& inputChannelId = inputChannel.GetInputChannelId();
+    if (inputChannelId == AzFramework::InputDeviceMouse::Movement::X
+        || inputChannelId == AzFramework::InputDeviceMouse::Movement::Y
+        || inputChannelId == AzFramework::InputDeviceMouse::Movement::Z
+        )
+    {
+        return false;
+    }
 
     // Take a snapshot of the input channel instead of just passing through the channel itself.
     // This is necessary because UI input is currently simulated in the editor's UI Preview mode
@@ -537,7 +649,34 @@ bool UiCanvasManager::HandleInputEventForLoadedCanvases(const AzFramework::Input
         modifierKeyStates->GetActiveModifierKeys() :
         AzFramework::ModifierKeyMask::None;
 
-    for (auto iter = m_loadedCanvases.rbegin(); iter != m_loadedCanvases.rend(); ++iter)
+    bool handled = HandleInputEventForLoadedCanvases(inputSnapshot, viewportPos, activeModifierKeys, positionData2D ? true : false);
+    return handled;
+}
+
+bool UiCanvasManager::HandleInputEventForLoadedCanvases(const AzFramework::InputChannel::Snapshot& inputSnapshot,
+    const AZ::Vector2& viewportPos,
+    AzFramework::ModifierKeyMask activeModifierKeys,
+    bool isPositional)
+{
+    bool handled = false;
+
+    if (isPositional)
+    {
+        m_generateMousePositionInputEvent = false;
+    }
+
+    // make a temporary copy of the list in case the input handling ends up releasing or loading canvases during iterating over the list
+    auto loadedCanvases = m_loadedCanvases;
+
+    // reverse iterate over the loaded canvases so that the front most canvas gets first chance to
+    // handle the event
+    bool areAnyInWorldInputCanvasesLoaded = false;
+
+    // HandleInputEvent is likely to call user code and scripts that could potentially cause a canvas to be released.
+    // Setting this flag will cause any canvas deletions to be deferred. Due to the weird behavior when switching levels this function
+    // (HandleInputEventForLoadedCanvases) can actually be called recursively because it can flush the input events.
+    m_recursionGuardCount++;
+    for (auto iter = loadedCanvases.rbegin(); iter != loadedCanvases.rend(); ++iter)
     {
         UiCanvasComponent* canvas = *iter;
 
@@ -550,21 +689,26 @@ bool UiCanvasManager::HandleInputEventForLoadedCanvases(const AzFramework::Input
 
         if (canvas->HandleInputEvent(inputSnapshot, &viewportPos, activeModifierKeys))
         {
-            return true;
+            handled = true;
+            break;
         }
     }
+    m_recursionGuardCount--;
+
+    // If not being called recursively from other canvas processing then immediately do any deferred canvas deletes
+    DeleteCanvasesQueuedForDeletion();
 
     // if there are any canvases loaded that are rendering to texture we handle them seperately after the screen canvases
     // only do this for input events that are actually associated with a position
-    if (areAnyInWorldInputCanvasesLoaded && positionData2D)
+    if (!handled && areAnyInWorldInputCanvasesLoaded && isPositional)
     {
         if (HandleInputEventForInWorldCanvases(inputSnapshot, viewportPos))
         {
-            return true;
+            handled = true;
         }
     }
 
-    return false;
+    return handled;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -793,8 +937,570 @@ AZ::EntityId UiCanvasManager::LoadCanvasInternal(const string& assetIdPathname, 
             {
                 EBUS_EVENT(UiCanvasBus, ClearAllInteractables);
             }
+
+            // Update hover state for loaded canvases
+            m_generateMousePositionInputEvent = true;
         }
     }
 
     return (canvasComponent) ? canvasComponent->GetEntityId() : AZ::EntityId();
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::QueueCanvasForDeletion(AZ::EntityId canvasEntityId)
+{
+    m_canvasesQueuedForDeletion.push_back(canvasEntityId);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::DeleteCanvasesQueuedForDeletion()
+{
+    // In weird cases like level unload HandleInputEventForLoadedCanvases can get called recursively
+    // so do not delete any canvases until there is no recursion
+    if (m_recursionGuardCount == 0)
+    {
+        for (auto canvasEntityId : m_canvasesQueuedForDeletion)
+        {
+            AZ::Entity* canvasEntity = nullptr;
+            EBUS_EVENT_RESULT(canvasEntity, AZ::ComponentApplicationBus, FindEntity, canvasEntityId);
+            delete canvasEntity;
+        }
+
+        m_canvasesQueuedForDeletion.clear();
+    }
+}
+
+#ifndef _RELEASE
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::DebugDisplayCanvasData(int setting) const
+{
+    bool onlyShowEnabledCanvases = (setting == 2) ? true : false;
+
+    IDraw2d* draw2d = Draw2dHelper::GetDraw2d();
+
+    draw2d->BeginDraw2d(false);
+
+    float xOffset = 20.0f;
+    float yOffset = 20.0f;
+    float xSpacing = 20.0f;
+
+    const int elementNameFieldLength = 20;
+
+    float opacity = 1.0f;
+
+    int blackTexture = gEnv->pRenderer->GetBlackTextureId();
+    float textOpacity = 1.0f;
+    float backgroundRectOpacity = 0.75f;
+
+    const AZ::Vector3 white(1,1,1);
+    const AZ::Vector3 grey(.5,.5,.5);
+    const AZ::Vector3 red(1,0.3,0.3);
+    const AZ::Vector3 blue(0.3,0.3,1);
+
+    // If the viewport is narrow then a font size of 16 might be too large, so we use a size between 12 and 16 depending
+    // on the viewport width.
+    float fontSize(draw2d->GetViewportWidth() / 75.f);
+    fontSize = AZ::GetClamp(fontSize, 12.f, 16.f);
+    const float lineSpacing = fontSize;
+
+    // local function to write a line of text (with a background rect) and increment Y offset
+    AZStd::function<void(const char*, const AZ::Vector3&)> WriteLine = [&](const char* buffer, const AZ::Vector3& color)
+    {
+        IDraw2d::TextOptions textOptions = draw2d->GetDefaultTextOptions();
+        textOptions.color = color;
+        AZ::Vector2 textSize = draw2d->GetTextSize(buffer, fontSize, &textOptions);
+        AZ::Vector2 rectTopLeft = AZ::Vector2(xOffset - 2, yOffset);
+        AZ::Vector2 rectSize = AZ::Vector2(textSize.GetX() + 4, lineSpacing);
+        draw2d->DrawImage(blackTexture, rectTopLeft, rectSize, backgroundRectOpacity);
+        draw2d->DrawText(buffer, AZ::Vector2(xOffset, yOffset), fontSize, textOpacity, &textOptions);
+        yOffset += lineSpacing;
+    };
+
+    char buffer[200];
+
+    sprintf_s(buffer, "There are %d loaded UI canvases", static_cast<int>(m_loadedCanvases.size()));
+    WriteLine(buffer, white);
+
+    sprintf_s(buffer, "NN: %20s %2s %2s %2s %11s %5s %5s %5s %5s %5s %5s %5s %5s %5s %5s %20s %20s",
+        "Name", "En", "Po", "Na", "DrawOrder",
+        "nElem", "nEnab", "nRend", "nRCtl", "nImg", "nText", "nMask", "nFadr", "nIntr", "nUpdt", "ActiveInt", "HoverInt");
+    WriteLine(buffer, white);
+
+    int totalEnabled = 0;
+    int totalPositionalInputs = 0;
+    int totalNavigable = 0;
+    int totalElements = 0;
+    int totalEnabledElements = 0;
+    int totalEnabledRenderables = 0;
+    int totalEnabledRCtls = 0;
+    int totalEnabledImages = 0;
+    int totalEnabledTexts = 0;
+    int totalEnabledMasks = 0;
+    int totalEnabledFaders = 0;
+    int totalEnabledIntrs = 0;
+    int totalEnabledUpdates = 0;
+
+    int i = 0;
+    for (auto canvas : m_loadedCanvases)
+    {
+        // Name
+        const string& pathname = canvas->GetPathname();
+        size_t lastDot = pathname.find_last_of(".");
+        size_t lastSlash = pathname.find_last_of("/");
+        string leafName = pathname;
+        if (lastDot > lastSlash)
+        {
+            leafName = pathname.substr(lastSlash+1, lastDot-lastSlash-1);
+        }
+        leafName = leafName.substr(0, 20);
+
+        // Enabled
+        bool isCanvasEnabled = canvas->GetEnabled();
+        if (onlyShowEnabledCanvases && !isCanvasEnabled)
+        {
+            continue;
+        }
+        const char* enabledString = isCanvasEnabled ? "Y" : "N";
+        totalEnabled += isCanvasEnabled ? 1 : 0;
+        
+        bool posEnabled = canvas->GetIsPositionalInputSupported();
+        const char* posEnabledString = posEnabled ? "Y" : "N";
+        totalPositionalInputs += posEnabled ? 1 : 0;
+
+        bool navEnabled = canvas->GetIsNavigationSupported();
+        const char* navEnabledString = navEnabled ? "Y" : "N";
+        totalNavigable += navEnabled ? 1 : 0;
+
+        // Draw order
+        int drawOrder = canvas->GetDrawOrder();
+
+        // Active and hover
+        AZ::EntityId activeInteractableId;
+        AZ::EntityId hoverInteractableId;
+        canvas->GetDebugInfoInteractables(activeInteractableId, hoverInteractableId);
+
+        AZStd::string activeInteractableName = "None";
+        AZStd::string hoverInteractableName = "None";
+        if (activeInteractableId.IsValid())
+        {
+            activeInteractableName = DebugGetElementName(activeInteractableId, elementNameFieldLength);
+        }
+        if (hoverInteractableId.IsValid())
+        {
+            hoverInteractableName = DebugGetElementName(hoverInteractableId, elementNameFieldLength);
+        }
+
+        // Num elements
+        UiCanvasComponent::DebugInfoNumElements info;
+        canvas->GetDebugInfoNumElements(info);
+
+        sprintf_s(buffer, "%2d: %20s %2s %2s %2s %11d %5d %5d %5d %5d %5d %5d %5d %5d %5d %5d %20s %20s",
+            i, leafName.c_str(),
+            enabledString, posEnabledString, navEnabledString,
+            drawOrder,
+            info.m_numElements, info.m_numEnabledElements,
+            info.m_numRenderElements, info.m_numRenderControlElements,
+            info.m_numImageElements, info.m_numTextElements,
+            info.m_numMaskElements, info.m_numFaderElements,
+            info.m_numInteractableElements,info.m_numUpdateElements,
+            activeInteractableName.c_str(), hoverInteractableName.c_str());
+
+        const AZ::Vector3& color = isCanvasEnabled ? white : grey;
+        WriteLine(buffer, color);
+
+        ++i;
+
+        totalElements += info.m_numElements;
+        totalEnabledElements += info.m_numEnabledElements;
+        totalEnabledRenderables += info.m_numRenderElements;
+        totalEnabledRCtls += info.m_numRenderControlElements;
+        totalEnabledImages += info.m_numImageElements;
+        totalEnabledTexts += info.m_numTextElements;
+        totalEnabledMasks += info.m_numMaskElements;
+        totalEnabledFaders += info.m_numFaderElements;
+        totalEnabledIntrs += info.m_numInteractableElements;
+        totalEnabledUpdates += info.m_numUpdateElements;
+    }
+
+    sprintf_s(buffer, "Totals: %16s %2d %2d %2d %11s %5d %5d %5d %5d %5d %5d %5d %5d %5d %5d",
+        "",
+        totalEnabled, totalPositionalInputs, totalNavigable,
+        "",
+        totalElements, totalEnabledElements,
+        totalEnabledRenderables, totalEnabledRCtls,
+        totalEnabledImages, totalEnabledTexts,
+        totalEnabledMasks, totalEnabledFaders,
+        totalEnabledIntrs, totalEnabledUpdates);
+
+    WriteLine(buffer, red);
+
+    draw2d->EndDraw2d();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::DebugDisplayDrawCallData() const
+{
+    IDraw2d* draw2d = Draw2dHelper::GetDraw2d();
+
+    draw2d->BeginDraw2d(false);
+
+    float xOffset = 20.0f;
+    float yOffset = 20.0f;
+    float xSpacing = 20.0f;
+
+    float opacity = 1.0f;
+
+    int blackTexture = gEnv->pRenderer->GetBlackTextureId();
+    float textOpacity = 1.0f;
+    float backgroundRectOpacity = 0.75f;
+    const float lineSpacing = 20.0f;
+
+    const AZ::Vector3 white(1,1,1);
+    const AZ::Vector3 red(1,0.3,0.3);
+    const AZ::Vector3 blue(0.3,0.3,1);
+    const AZ::Vector3 green(0.3,1,0.3);
+    const AZ::Vector3 yellow(0.7,0.7,0.2);
+        
+    // local function to write a line of text (with a background rect) and increment Y offset
+    AZStd::function<void(const char*, const AZ::Vector3&)> WriteLine = [&](const char* buffer, const AZ::Vector3& color)
+    {
+        IDraw2d::TextOptions textOptions = draw2d->GetDefaultTextOptions();
+        textOptions.color = color;
+        AZ::Vector2 textSize = draw2d->GetTextSize(buffer, 16, &textOptions);
+        AZ::Vector2 rectTopLeft = AZ::Vector2(xOffset - 2, yOffset);
+        AZ::Vector2 rectSize = AZ::Vector2(textSize.GetX() + 4, lineSpacing);
+        draw2d->DrawImage(blackTexture, rectTopLeft, rectSize, backgroundRectOpacity);
+        draw2d->DrawText(buffer, AZ::Vector2(xOffset, yOffset), 16, textOpacity, &textOptions);
+        yOffset += lineSpacing;
+    };
+        
+    char buffer[200];
+
+    sprintf_s(buffer, "NN: %20s %5s   %5s %5s %5s %5s %5s   %5s %5s %5s %5s %5s %5s",
+        "Canvas name", "nDraw",   "nPrim", "nTris", "nMask", "nRTs", "nUTex",   "XMask", "XRT", "XBlnd", "XSrgb", "XMaxV", "XTex");
+    WriteLine(buffer, blue);
+
+    int totalRenderNodes = 0;
+    int totalPrimitives = 0;
+    int totalTriangles = 0;
+    int totalMasks = 0;
+    int totalRTs = 0;
+    int totalDueToMask = 0;
+    int totalDueToRT = 0;
+    int totalDueToBlendMode = 0;
+    int totalDueToSrgb = 0;
+    int totalDueToMaxVerts = 0;
+    int totalDueToTextures = 0;
+
+    int i = 0;
+    for (auto canvas : m_loadedCanvases)
+    {
+        // Name
+        const string& pathname = canvas->GetPathname();
+        size_t lastDot = pathname.find_last_of(".");
+        size_t lastSlash = pathname.find_last_of("/");
+        string leafName = pathname;
+        if (lastDot > lastSlash)
+        {
+            leafName = pathname.substr(lastSlash+1, lastDot-lastSlash-1);
+        }
+
+        // Enabled
+        bool isCanvasEnabled = canvas->GetEnabled();
+        if (!isCanvasEnabled)
+        {
+            continue;
+        }
+
+        // Num elements
+        LyShineDebug::DebugInfoRenderGraph info;
+        canvas->GetDebugInfoRenderGraph(info);
+
+        sprintf_s(buffer, "%2d: %20s %5d   %5d %5d %5d %5d %5d   %5d %5d %5d %5d %5d %5d",
+            i, leafName.c_str(),
+            info.m_numRenderNodes,
+            info.m_numPrimitives, info.m_numTriangles,
+            info.m_numMasks, info.m_numRTs, info.m_numUniqueTextures,
+            info.m_numNodesDueToMask, info.m_numNodesDueToRT,
+            info.m_numNodesDueToBlendMode, info.m_numNodesDueToSrgb,
+            info.m_numNodesDueToMaxVerts, info.m_numNodesDueToTextures);
+
+        AZ::u64 timeSinceBuiltMs = AZStd::GetTimeUTCMilliSecond() - info.m_timeGraphLastBuiltMs;
+        if (timeSinceBuiltMs > 1000)
+        {
+            timeSinceBuiltMs = 1000;
+        }
+        float percentageOfSecSinceLastBuilt = static_cast<float>(timeSinceBuiltMs) / 1000.0f;
+
+        AZ::Vector3 color;
+        if (info.m_wasBuiltThisFrame)
+        {
+            color = white; // white used if the render graph was rebuilt this frame
+        }
+        else
+        {
+            if (info.m_isReusingRenderTargets)
+            {
+                color = yellow;  // yellow used if the render graph was  not rebuilt and render targets were reused
+            }
+            else
+            {
+                color = green;  // green used if render graph not regenerated this frame and no render targets reused
+            }
+
+            // When the render graph switches to not being built each frame we take 1 second to interpolate from white to
+            // the desired color, otherwise it is not possible to see when the rendergraph gets rebuilt at high frame rates
+            color = white + (color - white) * percentageOfSecSinceLastBuilt;
+        }
+
+        WriteLine(buffer, color);
+        ++i;
+
+        totalRenderNodes += info.m_numRenderNodes;
+        totalPrimitives += info.m_numPrimitives;
+        totalTriangles += info.m_numTriangles;
+        totalMasks += info.m_numMasks;
+        totalRTs += info.m_numRTs;
+        totalDueToMask += info.m_numNodesDueToMask;
+        totalDueToRT += info.m_numNodesDueToRT;
+        totalDueToBlendMode += info.m_numNodesDueToBlendMode;
+        totalDueToSrgb += info.m_numNodesDueToSrgb;
+        totalDueToMaxVerts += info.m_numNodesDueToMaxVerts;
+        totalDueToTextures += info.m_numNodesDueToTextures;
+    }
+
+    sprintf_s(buffer, "Totals:                  %5d   %5d %5d %5d %5d         %5d %5d %5d %5d %5d %5d",
+        totalRenderNodes,
+        totalPrimitives, totalTriangles, totalMasks, totalRTs,
+        totalDueToMask, totalDueToRT,
+        totalDueToBlendMode, totalDueToSrgb,
+        totalDueToMaxVerts, totalDueToTextures);
+
+    WriteLine(buffer, red);
+
+    draw2d->EndDraw2d();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+AZStd::string UiCanvasManager::DebugGetElementName(AZ::EntityId entityId, int maxLength) const
+{
+    AZStd::string name = "None";
+    AZ::Entity* entity = nullptr;
+    EBUS_EVENT_RESULT(entity, AZ::ComponentApplicationBus, FindEntity, entityId);
+    if (entity)
+    {
+        name = entity->GetName();
+        if (name.length() < maxLength)
+        {
+            AZ::Entity* parent = nullptr;
+            EBUS_EVENT_ID_RESULT(parent, entityId, UiElementBus, GetParent);
+            if (parent)
+            {
+                name = parent->GetName() + "/" + name;
+                if (name.length() > maxLength)
+                {
+                    AZStd::string maxString = name.substr(name.length() - maxLength);
+                    name = maxString;
+                }
+            }
+        }
+    }
+
+    return name;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::DebugReportDrawCalls(const AZStd::string& name) const
+{
+    AZStd::string logFolder = AZStd::string::format("@log@/LyShine");
+    AZ::IO::LocalFileIO::GetInstance()->CreatePath(logFolder.c_str());
+
+    AZStd::string logFileLeafName = "DrawCallReport";
+    if (!name.empty())
+    {
+        logFileLeafName += "_";
+        logFileLeafName += name;
+    }
+    AZStd::string logFile = AZStd::string::format("%s/%s.txt", logFolder.c_str(), logFileLeafName.c_str());
+
+    AZ::IO::HandleType logHandle;
+    AZ::IO::Result result = AZ::IO::LocalFileIO::GetInstance()->Open(logFile.c_str(), AZ::IO::OpenMode::ModeWrite, logHandle);
+    if (!result)
+    {
+        AZ_TracePrintf("UI", "Failed to open file for Draw Call Report at %s\n", logFile.c_str());
+        return;
+    }
+
+    AZStd::string logLine = AZStd::string::format("Draw call report for \'%s\'\r\n", name.c_str());
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+
+    logLine = AZStd::string::format("Output by the ui_ReportDrawCalls console command\r\n\r\n");
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+
+    int numEnabledCanvases = 0;
+    for (auto canvas : m_loadedCanvases)
+    {
+        if (canvas->GetEnabled())
+        {
+            numEnabledCanvases++;
+        }
+    }
+
+    logLine = AZStd::string::format("There are %d loaded UI canvases, %d of which are enabled.\r\nThe below report only includes the enabled canvases\r\n",
+        m_loadedCanvases.size(), numEnabledCanvases);
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+
+    LyShineDebug::DebugInfoDrawCallReport reportInfo;
+
+    for (auto canvas : m_loadedCanvases)
+    {
+        // Check enabled
+        bool isCanvasEnabled = canvas->GetEnabled();
+        if (!isCanvasEnabled)
+        {
+            continue;
+        }
+
+        // Name of canvas
+        const string& pathname = canvas->GetPathname();
+        logLine = "\r\n=====================================================================================\r\n";
+        AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+        logLine = AZStd::string::format("Canvas: %s\r\n", pathname.c_str());
+        AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+        logLine = "=====================================================================================\r\n\r\n";
+        AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+
+        // Get canvas summary data
+        LyShineDebug::DebugInfoRenderGraph renderGraphInfo;
+        canvas->GetDebugInfoRenderGraph(renderGraphInfo);
+
+        // Output a summary report
+        if (renderGraphInfo.m_numRenderNodes > 0)
+        {
+            logLine = AZStd::string::format("Canvas has %d draw calls and %d primitives with a total of %d triangles\r\n",
+                renderGraphInfo.m_numRenderNodes, renderGraphInfo.m_numPrimitives, renderGraphInfo.m_numTriangles);
+            AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+            logLine = AZStd::string::format("There are %d unique textures used, %d mask render nodes and %d render target render nodes\r\n",
+                renderGraphInfo.m_numUniqueTextures, renderGraphInfo.m_numMasks, renderGraphInfo.m_numRTs);
+            AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+            logLine = AZStd::string::format(
+                "Extra draw calls caused by... Masks: %d, RenderTargets: %d, BlendModes: %d, Srgb: %d, MaxVerts: %d, MaxTextures: %d\r\n\r\n",
+                renderGraphInfo.m_numNodesDueToMask, renderGraphInfo.m_numNodesDueToRT,
+                renderGraphInfo.m_numNodesDueToBlendMode,
+                renderGraphInfo.m_numNodesDueToSrgb, renderGraphInfo.m_numNodesDueToMaxVerts, renderGraphInfo.m_numNodesDueToTextures);
+            AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+        }
+
+        // output the details on each draw call and gather info for all canvases
+        canvas->DebugReportDrawCalls(logHandle, reportInfo, canvas);
+    }
+
+    AZStd::string fontTexturePrefix = "$AutoFont";
+
+    logLine = "\r\n\r\n--------------------------------------------------------------------------------------------\r\n";
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+    logLine = AZStd::string::format("Textures used on multiple canvases that are causing extra draw calls\r\n");
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+    logLine = "--------------------------------------------------------------------------------------------\r\n\r\n";
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+
+    for (LyShineDebug::DebugInfoTextureUsage& reportTextureUsage : reportInfo.m_textures)
+    {
+        if (reportTextureUsage.m_numCanvasesUsed > 1 &&
+            reportTextureUsage.m_numDrawCallsWhereExceedingMaxTextures)
+        {
+            AZStd::string textureName = reportTextureUsage.m_texture->GetName();
+            if (textureName.compare(0, fontTexturePrefix.length(), fontTexturePrefix) != 0)
+            {
+                logLine = AZStd::string::format("%s\r\n", textureName.c_str());
+                AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+            }
+        }
+    }
+
+    logLine = "\r\n\r\n--------------------------------------------------------------------------------------------\r\n";
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+    logLine = AZStd::string::format("Per canvas report of textures used on only that canvas that are causing extra draw calls\r\n");
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+    logLine = "--------------------------------------------------------------------------------------------\r\n\r\n";
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+
+    for (auto canvas : m_loadedCanvases)
+    {
+        // Check enabled
+        bool isCanvasEnabled = canvas->GetEnabled();
+        if (!isCanvasEnabled)
+        {
+            continue;
+        }
+
+        bool loggedCanvasHeader = false;
+        for (LyShineDebug::DebugInfoTextureUsage& reportTextureUsage : reportInfo.m_textures)
+        {
+            if (reportTextureUsage.m_numCanvasesUsed == 1 &&
+                reportTextureUsage.m_lastContextUsed == canvas &&
+                reportTextureUsage.m_numDrawCallsWhereExceedingMaxTextures)
+            {
+                AZStd::string textureName = reportTextureUsage.m_texture->GetName();
+
+                // exclude font textures
+                if (textureName.compare(0, fontTexturePrefix.length(), fontTexturePrefix) != 0)
+                {
+                    if (!loggedCanvasHeader)
+                    {
+                        const string& pathname = canvas->GetPathname();
+                        logLine = AZStd::string::format("\r\nCanvas: %s\r\n\r\n", pathname.c_str());
+                        AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+                        loggedCanvasHeader = true;
+                    }
+
+                    logLine = AZStd::string::format("%s\r\n", textureName.c_str());
+                    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+                }
+            }
+        }
+    }
+
+    logLine = "\r\n--------------------------------------------------------------------------------------------\r\n";
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+    logLine = "End of report\r\n";
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+    logLine = "--------------------------------------------------------------------------------------------\r\n";
+    AZ::IO::LocalFileIO::GetInstance()->Write(logHandle, logLine.c_str(), logLine.size());
+
+    AZ::IO::LocalFileIO::GetInstance()->Close(logHandle);
+
+    AZ_TracePrintf("UI", "Wrote Draw Call Report to %s\n", logFile.c_str());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiCanvasManager::DebugDisplayElemBounds(int canvasIndexFilter) const
+{
+    IDraw2d* draw2d = Draw2dHelper::GetDraw2d();
+
+    draw2d->BeginDraw2d(false);
+
+    int canvasIndex = 0;
+    for (auto canvas : m_loadedCanvases)
+    {
+        // Enabled
+        bool isCanvasEnabled = canvas->GetEnabled();
+        if (!isCanvasEnabled)
+        {
+            continue;
+        }
+
+        // filter canvas index
+        if (canvasIndexFilter == -1 || canvasIndexFilter == canvasIndex)
+        {
+            // Display the elem bounds
+            canvas->DebugDisplayElemBounds(draw2d);
+        }
+
+        ++canvasIndex;  // only increments for enabled canvases so index matches "ui_DisplayCanvasData 2"
+    }
+
+    draw2d->EndDraw2d();
+}
+
+#endif

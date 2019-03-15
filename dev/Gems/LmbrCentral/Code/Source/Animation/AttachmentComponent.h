@@ -68,6 +68,7 @@ namespace LmbrCentral
         : public AttachmentComponentRequestBus::Handler
         , public AZ::TransformNotificationBus::Handler
         , public MeshComponentNotificationBus::Handler
+        , public AZ::Data::AssetBus::Handler
         , public AZ::TickBus::Handler
     {
     public:
@@ -76,9 +77,13 @@ namespace LmbrCentral
 
         ////////////////////////////////////////////////////////////////////////
         // AttachmentComponentRequests
+        void Reattach(bool detachFirst);
         void Attach(AZ::EntityId targetId, const char* targetBoneName, const AZ::Transform& offset) override;
         void Detach() override;
         void SetAttachmentOffset(const AZ::Transform& offset) override;
+        const char* GetJointName() override;
+        AZ::EntityId GetTargetEntityId() override;
+        AZ::Transform GetOffset() override;
         ////////////////////////////////////////////////////////////////////////
 
     private:

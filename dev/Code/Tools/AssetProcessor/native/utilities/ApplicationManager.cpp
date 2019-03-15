@@ -60,8 +60,8 @@
 
 #include <string.h> // for base  strcpy
 #include <AzFramework/Asset/AssetCatalogComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
-#include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <LyShine/UiAssetTypes.h>
 
@@ -143,6 +143,7 @@ AZ::ComponentTypeList AssetProcessorAZApplication::GetRequiredSystemComponents()
             || *iter == azrtti_typeid<AzFramework::AssetCatalogComponent>() // AP will use its own AssetCatalogComponent
             || *iter == AZ::Uuid("{624a7be2-3c7e-4119-aee2-1db2bdb6cc89}") // ScriptDebugAgent
             || *iter == AZ::Uuid("{CAF3A025-FAC9-4537-B99E-0A800A9326DF}") // InputSystemComponent
+            || *iter == azrtti_typeid<AssetProcessor::ToolsAssetCatalogComponent>()
            ) 
         {
             // AP does not require the above components to be active
@@ -154,7 +155,6 @@ AZ::ComponentTypeList AssetProcessorAZApplication::GetRequiredSystemComponents()
         }
     }
 
-    components.push_back(azrtti_typeid<AssetProcessor::ToolsAssetCatalogComponent>());
 
     return components;
 }
@@ -163,8 +163,7 @@ void AssetProcessorAZApplication::RegisterCoreComponents()
 {
     AzToolsFramework::ToolsApplication::RegisterCoreComponents();
 
-    RegisterComponentDescriptor(AssetProcessor::ToolsAssetCatalogComponent::CreateDescriptor());
-    RegisterComponentDescriptor(AzToolsFramework::Components::GenericComponentUnwrapper::CreateDescriptor());
+    RegisterComponentDescriptor(AzToolsFramework::EditorEntityFixupComponent::CreateDescriptor());
     RegisterComponentDescriptor(AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor());
 }
 

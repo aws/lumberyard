@@ -2852,7 +2852,11 @@ namespace SharedPtr
         static const int numThreads = 4;
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SMARTPTR_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(SmartPtr_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SmartPtr_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SmartPtr_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
         static int const n = 1024 * 1024;
         static const int numThreads = 16;
@@ -2875,7 +2879,11 @@ namespace SharedPtr
             desc.m_heap.m_numMemoryBlocks = 1;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SMARTPTR_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(SmartPtr_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SmartPtr_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SmartPtr_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE)
             desc.m_heap.m_memoryBlocksByteSize[0] = 800 * 1024 * 1024;
 #elif defined(AZ_PLATFORM_ANDROID)

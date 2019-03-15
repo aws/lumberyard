@@ -18,6 +18,7 @@
 #include "Actor.h"
 #include "ActorInstance.h"
 #include "AnimGraphAttributeTypes.h"
+#include <EMotionFX/Source/EMotionFXManager.h>
 
 namespace EMotionFX
 {
@@ -73,12 +74,10 @@ namespace EMotionFX
         outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 

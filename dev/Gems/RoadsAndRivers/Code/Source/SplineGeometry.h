@@ -33,6 +33,7 @@ namespace RoadsAndRivers
         AZ_RTTI(SplineGeometryWidthModifier, "{F69CC9C6-5B29-4C17-8028-3167165F9EC7}");
         AZ_CLASS_ALLOCATOR_DECL
 
+        SplineGeometryWidthModifier();
         virtual ~SplineGeometryWidthModifier() = default;
         static void Reflect(AZ::ReflectContext* context);
 
@@ -47,6 +48,7 @@ namespace RoadsAndRivers
         float GetMaximumWidth() const { return m_widthInterpolator.GetMaximumWidth() + m_globalWidth; }
 
     private:
+        static const float s_maxWidth;
         AZ::EntityId m_entityId;
         LmbrCentral::SplineAttribute<float> m_variableWidth;
         float m_globalWidth = 5.0f;

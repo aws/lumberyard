@@ -275,6 +275,8 @@ SEditorSettings::SEditorSettings()
 
     sMetricsSettings.bEnableMetricsTracking = true;
 
+    sliceSettings.dynamicByDefault = false;
+
     bEnableUI2 = false;
 
     new QtApplicationListener(); // Deletes itself when it's done.
@@ -704,6 +706,7 @@ void SEditorSettings::Save()
     // Deep Selection Settings
     //////////////////////////////////////////////////////////////////////////
     SaveValue("Settings", "DeepSelectionNearness", deepSelectionSettings.fRange);
+    SaveValue("Settings", "StickDuplicate", deepSelectionSettings.bStickDuplicate);
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -747,6 +750,10 @@ void SEditorSettings::Save()
     //////////////////////////////////////////////////////////////////////////
     SaveValue("Settings\\Metrics", "EnableMetricsTracking",    sMetricsSettings.bEnableMetricsTracking);
 
+    //////////////////////////////////////////////////////////////////////////
+    // Slice settings
+    //////////////////////////////////////////////////////////////////////////
+    SaveValue("Settings\\Slices", "DynamicByDefault", sliceSettings.dynamicByDefault);
 
     //////////////////////////////////////////////////////////////////////////
     // UI 2.0 Settings
@@ -1001,6 +1008,7 @@ void SEditorSettings::Load()
     // Deep Selection Settings
     //////////////////////////////////////////////////////////////////////////
     LoadValue("Settings", "DeepSelectionNearness", deepSelectionSettings.fRange);
+    LoadValue("Settings", "StickDuplicate", deepSelectionSettings.bStickDuplicate);
 
     //////////////////////////////////////////////////////////////////////////
     // Object Highlight Colors
@@ -1059,6 +1067,11 @@ void SEditorSettings::Load()
     // Metrics settings
     //////////////////////////////////////////////////////////////////////////
     LoadValue("Settings\\Metrics", "EnableMetricsTracking",    sMetricsSettings.bEnableMetricsTracking);
+
+    //////////////////////////////////////////////////////////////////////////
+    // Slice settings
+    //////////////////////////////////////////////////////////////////////////
+    LoadValue("Settings\\Slices", "DynamicByDefault", sliceSettings.dynamicByDefault);
 
     //////////////////////////////////////////////////////////////////////////
     // UI 2.0 Settings

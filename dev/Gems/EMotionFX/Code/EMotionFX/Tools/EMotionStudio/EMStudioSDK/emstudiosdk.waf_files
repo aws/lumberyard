@@ -29,8 +29,6 @@
             "Source/MetricsEventSender.h",
             "Source/MotionEventPresetManager.cpp",
             "Source/MotionEventPresetManager.h",
-            "Source/OutlinerManager.cpp",
-            "Source/OutlinerManager.h",
             "Source/PluginManager.cpp",
             "Source/PluginManager.h",
             "Source/PluginOptions.cpp",

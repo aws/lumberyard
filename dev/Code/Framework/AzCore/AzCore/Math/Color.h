@@ -48,6 +48,9 @@ namespace AZ
         ///Creates a vector with all components set to one, more efficient than calling Color(1.0f)
         static const Color CreateOne();
 
+        ///Sets components from rgba
+        static const Color CreateFromRgba(u8 r, u8 g, u8 b, u8 a);
+
         ///Sets components from an array of 4 floats, stored in xyzw order
         static const Color CreateFromFloat4(const float* values);
 

@@ -33,6 +33,8 @@ namespace ScriptCanvasBuilder
         Worker();
         ~Worker();
 
+        int GetVersionNumber() const;
+        const char* GetFingerprintString() const;
 
         //! Asset Builder Callback Functions
         void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response) const;
@@ -54,5 +56,8 @@ namespace ScriptCanvasBuilder
         
         AZStd::unique_ptr<AZ::Data::AssetHandler> m_editorAssetHandler;
         AZStd::unique_ptr<AZ::Data::AssetHandler> m_runtimeAssetHandler;
+
+        // cached on first time query
+        mutable AZStd::string m_fingerprintString;
     };
 }

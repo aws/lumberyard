@@ -29,6 +29,7 @@
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialAsset.h>
 #include <LmbrCentral/Rendering/MeshAsset.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 namespace LmbrCentral
 {
@@ -189,6 +190,7 @@ namespace LmbrCentral
             AZ::u32 m_lodRatio; //!< Controls LOD distance ratio.
             bool m_useVisAreas; //!< Allow VisAreas to control this component's visibility.
             bool m_castShadows; //!< Casts shadows.
+            bool m_lodBoundingBoxBased; //!< LOD based on Bounding Boxes.
             bool m_rainOccluder; //!< Occludes raindrops.
             bool m_affectNavmesh; //!< Cuts out of the navmesh.
             bool m_affectDynamicWater; //!< Affects dynamic water (ripples).
@@ -274,6 +276,9 @@ namespace LmbrCentral
         //! Computed first LOD distance (the following are multiplies of the index)
         float m_lodDistanceScaled;
 
+        //! Scale we need to multiply the distance by.
+        float m_lodDistanceScaleValue;
+
         //! Identifies whether we've already registered our node with the renderer.
         bool m_isRegisteredWithRenderer;
 
@@ -289,6 +294,7 @@ namespace LmbrCentral
         , public MaterialOwnerRequestBus::Handler
         , public RenderNodeRequestBus::Handler
         , public LegacyMeshComponentRequestBus::Handler
+        , public RenderBoundsRequestBus::Handler
     {
     public:
         friend class EditorMeshComponent;
@@ -305,9 +311,13 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // MeshComponentRequestBus interface implementation
+        // RenderBoundsRequestBus interface implementation
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // MeshComponentRequestBus interface implementation
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_meshRenderNode.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;

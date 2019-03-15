@@ -17,25 +17,33 @@
 #define CRYINCLUDE_CRYFONT_GLYPHCACHE_H
 #pragma once
 
+#if !defined(USE_NULLFONT_ALWAYS)
+
 #include <vector>
 #include "GlyphBitmap.h"
 #include "FontRenderer.h"
+#include "CryFont.h"
 #include <StlUtils.h>
 
-//! A glyph cache slot. Used to store glyph information read from FreeType.
+//! Glyph cache slots store the bitmap buffer and glyph metadata from FreeType.
+//!
+//! This bitmap buffer is eventually copied to a CFontTexture texture buffer.
+//! A glyph cache slot bitmap buffer only holds a single glyph, whereas the 
+//! CFontTexture stores multiple glyphs in a grid (row/col) format.
 typedef struct CCacheSlot
 {
+    Vec2i           glyphSize = CCryFont::defaultGlyphSize; //!< The render resolution of the glyph in the glyph bitmap
     unsigned int    dwUsage;
     int             iCacheSlot;
-    int             iHoriAdvance;   //!< Advance width. See FT_Glyph_Metrics::horiAdvance.
+    int             iHoriAdvance;                           //!< Advance width. See FT_Glyph_Metrics::horiAdvance.
     uint32          cCurrentChar;
 
-    uint8           iCharWidth;     //!< Glyph width (in pixel)
-    uint8           iCharHeight;    //!< Glyph height (in pixel)
-    AZ::s8          iCharOffsetX;   //!< Glyph's left-side bearing (in pixels). See FT_GlyphSlotRec::bitmap_left.
-    AZ::s8          iCharOffsetY;   //!< Glyph's top bearing (in pixels). See FT_GlyphSlotRec::bitmap_top.
+    uint8           iCharWidth;                             //!< Glyph width (in pixel)
+    uint8           iCharHeight;                            //!< Glyph height (in pixel)
+    AZ::s32         iCharOffsetX;                           //!< Glyph's left-side bearing (in pixels). See FT_GlyphSlotRec::bitmap_left.
+    AZ::s32         iCharOffsetY;                           //!< Glyph's top bearing (in pixels). See FT_GlyphSlotRec::bitmap_top.
 
-    CGlyphBitmap    pGlyphBitmap;   //!< Contains a buffer storing a copy of the glyph from FreeType
+    CGlyphBitmap    pGlyphBitmap;                           //!< Contains a buffer storing a copy of the glyph from FreeType
 
     void            Reset()
     {
@@ -57,11 +65,40 @@ typedef struct CCacheSlot
     }
 } CCacheSlot;
 
+namespace CryFont
+{
+    namespace GlyphCache
+    {
+        //! Height and width pair for glyph size mapping
+        typedef Vec2i                                               CCacheTableGlyphSizeType;
 
-typedef AZStd::unordered_map<uint32, CCacheSlot*>          CCacheTable;
+        //! Pair for mapping a height and width size to a UTF32 character/glyph
+        typedef AZStd::pair<CCacheTableGlyphSizeType, uint32>       CCacheTableKey;
 
-typedef std::vector<CCacheSlot*>                       CCacheSlotList;
-typedef std::vector<CCacheSlot*>::iterator             CCacheSlotListItor;
+        //! Hasher for glyph cache table keys (glyphsize-char code pair)
+        //!
+        //! Instead of creating our own custom hash, the types are broken down to their
+        //! native types (ints) and passed to existing hashes that handle those types.
+        struct HashGlyphCacheTableKey
+        {
+            typedef CCacheTableKey                  ArgumentType;
+            typedef AZStd::size_t                   ResultType;
+            typedef AZStd::pair<int32, int32>       Int32Pair;
+            typedef AZStd::pair<Int32Pair, uint32>  Int32PairU32Pair;
+            ResultType operator()(const ArgumentType& value) const
+            {
+                AZStd::hash<Int32PairU32Pair> pairHash;
+                return pairHash(Int32PairU32Pair(Int32Pair(value.first.x, value.first.y), value.second));
+            }
+        };
+    }
+}
+
+//! Maps size-speicifc UTF32 glyphs to their corresponding cache slots
+typedef AZStd::unordered_map<CryFont::GlyphCache::CCacheTableKey, CCacheSlot*, CryFont::GlyphCache::HashGlyphCacheTableKey> CCacheTable;
+
+typedef std::vector<CCacheSlot*>            CCacheSlotList;
+typedef std::vector<CCacheSlot*>::iterator  CCacheSlotListItor;
 
 
 #ifdef WIN64
@@ -74,6 +111,10 @@ typedef std::vector<CCacheSlot*>::iterator             CCacheSlotListItor;
 //! This cache is used to associate font glyph info (read from FreeType) with
 //! UTF32 codepoints. Ultimately the glyph info will be read into a font texture
 //! (CFontTexture) to avoid future FreeType lookups.
+//!
+//! If a CFontTexture is missing a glyph that is currently stored in the glyph 
+//! cache, the cached data can be returned instead of having to be rendered from
+//! FreeType again.
 //!
 //! \sa CFontTexture
 class CGlyphCache
@@ -93,10 +134,11 @@ public:
     FT_Encoding GetEncoding() { return m_pFontRenderer.GetEncoding(); };
 
     int GetGlyphBitmapSize(int* pWidth, int* pHeight);
+    void SetGlyphBitmapSize(int width, int height, float sizeRatio);
 
-    int PreCacheGlyph(uint32 cChar);
-    int UnCacheGlyph(uint32 cChar);
-    int GlyphCached(uint32 cChar);
+    int PreCacheGlyph(uint32 cChar, const Vec2i& glyphSize = CCryFont::defaultGlyphSize, const CFFont::FontHintParams& glyphFlags = CFFont::FontHintParams());
+    int UnCacheGlyph(uint32 cChar, const Vec2i& glyphSize = CCryFont::defaultGlyphSize);
+    int GlyphCached(uint32 cChar, const Vec2i& glyphSize = CCryFont::defaultGlyphSize);
 
     CCacheSlot* GetLRUSlot();
     CCacheSlot* GetMRUSlot();
@@ -113,7 +155,7 @@ public:
     //! glyph cache or FreeType.
     //!
     //! \sa CFontRenderer::GetGlyph, CFontTexture::UpdateSlot
-    int GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidth, int* piHeight, AZ::s8& iCharOffsetX, AZ::s8& iCharOffsetY, uint32 cChar);
+    int GetGlyph(CGlyphBitmap** pGlyph, int* piHoriAdvance, int* piWidth, int* piHeight, AZ::s32& iCharOffsetX, AZ::s32& iCharOffsetY, uint32 cChar, const Vec2i& glyphSize = CCryFont::defaultGlyphSize, const CFFont::FontHintParams& glyphFlags = CFFont::FontHintParams());
 
     void GetMemoryUsage(ICrySizer* pSizer) const
     {
@@ -127,7 +169,12 @@ public:
 
     Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph);
 
+    float GetAscenderToHeightRatio();
+
 private:
+
+    //! Returns a key for the cache table where the given char is mapped at the given size.
+    CryFont::GlyphCache::CCacheTableKey GetCacheSlotKey(uint32 cChar, const Vec2i& glyphSize = CCryFont::defaultGlyphSize) const;
 
     int             CreateSlotList(int iListSize);
     int             ReleaseSlotList();
@@ -147,5 +194,7 @@ private:
 
     unsigned int    m_dwUsage;
 };
+
+#endif // #if !defined(USE_NULLFONT_ALWAYS)
 
 #endif // CRYINCLUDE_CRYFONT_GLYPHCACHE_H

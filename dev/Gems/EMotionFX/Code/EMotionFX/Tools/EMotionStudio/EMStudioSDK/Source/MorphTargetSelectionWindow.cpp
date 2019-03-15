@@ -46,9 +46,9 @@ namespace EMStudio
         layout->addLayout(buttonLayout);
         setLayout(layout);
 
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(mCancelButton, SIGNAL(clicked()), this, SLOT(reject()));
-        connect(mListWidget, SIGNAL(itemSelectionChanged()), this, SLOT(OnSelectionChanged()));
+        connect(mOKButton, &QPushButton::clicked, this, &MorphTargetSelectionWindow::accept);
+        connect(mCancelButton, &QPushButton::clicked, this, &MorphTargetSelectionWindow::reject);
+        connect(mListWidget, &QListWidget::itemSelectionChanged, this, &MorphTargetSelectionWindow::OnSelectionChanged);
     }
 
 

@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "Source/Components": [
+            "Source/Components/EditorCharacterControllerComponent.cpp",
+            "Source/Components/EditorCharacterControllerComponent.h"
+        ]
+    }
+}

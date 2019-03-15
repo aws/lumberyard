@@ -661,7 +661,11 @@ namespace AZ
     //=========================================================================
     bool ComponentApplication::AddEntity(Entity* entity)
     {
-        EBUS_EVENT(ComponentApplicationEventBus, OnEntityAdded, entity);
+        AZ_Error("ComponentApplication", entity, "Input entity is null, cannot add entity");
+        if (!entity)
+        {
+            return false;
+        }
 
         return m_entities.insert(AZStd::make_pair(entity->GetId(), entity)).second;
     }
@@ -672,7 +676,11 @@ namespace AZ
     //=========================================================================
     bool ComponentApplication::RemoveEntity(Entity* entity)
     {
-        EBUS_EVENT(ComponentApplicationEventBus, OnEntityRemoved, entity->GetId());
+        AZ_Error("ComponentApplication", entity, "Input entity is null, cannot remove entity");
+        if (!entity)
+        {
+            return false;
+        }
 
         return (m_entities.erase(entity->GetId()) == 1);
     }
@@ -964,7 +972,11 @@ namespace AZ
         }
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ComponentApplication_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ComponentApplication_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ComponentApplication_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

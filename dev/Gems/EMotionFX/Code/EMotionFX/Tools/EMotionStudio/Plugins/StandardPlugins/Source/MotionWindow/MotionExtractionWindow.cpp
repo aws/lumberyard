@@ -72,7 +72,7 @@ namespace EMStudio
         mFlagsWidget->setMaximumHeight(MOTIONEXTRACTIONWINDOW_HEIGHT);
 
         mCaptureHeight = new QCheckBox("Capture Height Changes");
-        connect(mCaptureHeight, SIGNAL(clicked()), this, SLOT(OnMotionExtractionFlagsUpdated()));
+        connect(mCaptureHeight, &QCheckBox::clicked, this, &MotionExtractionWindow::OnMotionExtractionFlagsUpdated);
 
         QVBoxLayout* layout = new QVBoxLayout();
         layout->setAlignment(Qt::AlignTop);
@@ -98,7 +98,7 @@ namespace EMStudio
         warningLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
 
         mWarningSelectNodeLink = new MysticQt::LinkWidget("Click here to setup the Motion Extraction node", mWarningWidget);
-        connect(mWarningSelectNodeLink, SIGNAL(clicked()), this, SLOT(OnSelectMotionExtractionNode()));
+        connect(mWarningSelectNodeLink, &MysticQt::LinkWidget::clicked, this, &MotionExtractionWindow::OnSelectMotionExtractionNode);
 
         // create and fill the layout
         QVBoxLayout* layout = new QVBoxLayout();
@@ -131,7 +131,7 @@ namespace EMStudio
 
         // create the node selection windows
         mMotionExtractionNodeSelectionWindow = new NodeSelectionWindow(this, true);
-        connect((const QObject*)mMotionExtractionNodeSelectionWindow->GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnMotionExtractionNodeSelected(MCore::Array<SelectionItem>)));
+        connect(mMotionExtractionNodeSelectionWindow->GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &MotionExtractionWindow::OnMotionExtractionNodeSelected);
 
         // set some layout for our window
         mMainVerticalLayout = new QVBoxLayout();

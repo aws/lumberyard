@@ -18,10 +18,12 @@
 #include "Attachment.h"
 #include "WaveletCache.h"
 #include "EMotionFXManager.h"
-#include <MCore/Source/Job.h>
-#include <MCore/Source/JobList.h>
-#include <MCore/Source/JobManager.h>
 #include <EMotionFX/Source/Allocators.h>
+
+#include <AzCore/Jobs/JobFunction.h>
+#include <AzCore/Jobs/JobCompletion.h>
+#include <AzCore/Jobs/JobManagerBus.h>
+#include <AzCore/Jobs/JobContext.h>
 
 
 namespace EMotionFX
@@ -65,37 +67,6 @@ namespace EMotionFX
     {
         MCORE_UNUSED(outStep);
         MCORE_UNUSED(instance);
-        /*
-            //Array<Actor::Dependency> toAdd;   // TODO: make this a class member to prevent reallocs?
-            const uint32 numStepDependencies = outStep->mDependencies.GetLength();
-
-            // for all actor dependencies
-            const uint32 numActorDependencies = instance->GetNumDependencies();
-            for (uint32 a=0; a<numActorDependencies; ++a)
-            {
-                Actor::Dependency* actorDependency = instance->GetDependency(a);
-
-                // check if this dependency is already inside the step, if not add it
-                bool found = false;
-                for (uint32 i=0; i<numStepDependencies && !found; ++i)
-                {
-                    //if (actorDependency->mActor == outStep->mDependencies[i].mActor)
-                        //found = true;
-
-                    if (actorDependency->mAnimGraph)
-                        if (actorDependency->mAnimGraph == outStep->mDependencies[i].mAnimGraph)
-                            found = true;
-                }
-
-                if (found == false)
-                    outStep->mDependencies.Add( *actorDependency );
-                    //toAdd.Add( *actorDependency );
-            }
-
-            // add all dependencies that need to be added
-            //for (uint32 n=0; n<toAdd.GetLength(); ++n)
-                //outStep->mDependencies.Add( toAdd[n] );
-        */
     }
 
 
@@ -104,25 +75,6 @@ namespace EMotionFX
     {
         MCORE_UNUSED(instance);
         MCORE_UNUSED(step);
-        /*  // iterate through all actor instance dependencies
-            const uint32 numDependencies = instance->GetNumDependencies();
-            for (uint32 i=0; i<numDependencies; ++i)
-            {
-                // iterate through all step dependencies
-                const uint32 numStepDependencies = step->mDependencies.GetLength();
-                for (uint32 a=0; a<numStepDependencies; ++a)
-                {
-                    // if there is a dependency on the same actor
-                    //if (step->mDependencies[a].mActor == instance->GetDependency(i)->mActor)
-                        //return true;
-
-                    // if there is a dependency on the same animgraph
-                    if (step->mDependencies[a].mAnimGraph)
-                        if (step->mDependencies[a].mAnimGraph == instance->GetDependency(i)->mAnimGraph)
-                            return true;
-                }
-            }
-        */
         return false;
     }
 
@@ -134,10 +86,10 @@ namespace EMotionFX
         const uint32 numSteps = mSteps.GetLength();
         for (uint32 i = 0; i < numSteps; ++i)
         {
-            MCore::LogInfo("STEP %.3d - %d", i, mSteps[i].mActorInstances.GetLength());
+            AZ_Printf("EMotionFX", "STEP %.3d - %d", i, mSteps[i].mActorInstances.GetLength());
         }
 
-        MCore::LogInfo("---------");
+        AZ_Printf("EMotionFX", "---------");
     }
 
 
@@ -177,7 +129,6 @@ namespace EMotionFX
             mCleanTimer = 0.0f;
             RemoveEmptySteps();
             numSteps = mSteps.GetLength();
-            //Print();
         }
 
         //-----------------------------------------------------------
@@ -196,23 +147,11 @@ namespace EMotionFX
             rootInstance->RecursiveSetIsVisible(rootInstance->GetIsVisible());
         }
 
-        /*  // make sure parents of attachments are updated as well
-            const uint32 numActorInstances = actorManager.GetNumActorInstances();
-            for (uint32 i=0; i<numActorInstances; ++i)
-            {
-                ActorInstance* actorInstance = actorManager.GetActorInstance(i);
-                if (actorInstance->GetIsVisible())
-                    actorInstance->RecursiveSetIsVisibleTowardsRoot( true );
-            }*/
-
         // reset stats
         mNumUpdated.SetValue(0);
         mNumVisible.SetValue(0);
         mNumSampled.SetValue(0);
 
-        // build one big job list with sync points inside
-        MCore::JobList* jobList = MCore::JobList::Create();
-        MCore::GetJobManager().GetJobPool().Lock();
         for (uint32 s = 0; s < numSteps; ++s)
         {
             const ScheduleStep& currentStep = mSteps[s];
@@ -225,6 +164,7 @@ namespace EMotionFX
             }
 
             // process the actor instances in the current step in parallel
+            AZ::JobCompletion jobCompletion;           
             for (uint32 c = 0; c < numStepEntries; ++c)
             {
                 ActorInstance* actorInstance = currentStep.mActorInstances[c];
@@ -233,51 +173,47 @@ namespace EMotionFX
                     continue;
                 }
 
-                MCore::Job* newJob = MCore::Job::CreateWithoutLock( [this, timePassedInSeconds, actorInstance](const MCore::Job* job)
+                AZ::JobContext* jobContext = nullptr;
+                AZ::Job* job = AZ::CreateJobFunction([this, timePassedInSeconds, actorInstance]()
+                {
+                    AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Animation, "MultiThreadScheduler::Execute::ActorInstanceUpdateJob");
+
+                    const AZ::u32 threadIndex = AZ::JobContext::GetGlobalContext()->GetJobManager().GetWorkerThreadId();                    
+                    actorInstance->SetThreadIndex(threadIndex);
+
+                    const bool isVisible = actorInstance->GetIsVisible();
+                    if (isVisible)
+                    {
+                        mNumVisible.Increment();
+                    }
+
+                    // check if we want to sample motions
+                    bool sampleMotions = false;
+                    actorInstance->SetMotionSamplingTimer(actorInstance->GetMotionSamplingTimer() + timePassedInSeconds);
+                    if (actorInstance->GetMotionSamplingTimer() >= actorInstance->GetMotionSamplingRate())
+                    {
+                        sampleMotions = true;
+                        actorInstance->SetMotionSamplingTimer(0.0f);
+
+                        if (isVisible)
                         {
-                            actorInstance->SetThreadIndex(job->GetThreadIndex());
+                            mNumSampled.Increment();
+                        }
+                    }
 
-                            const bool isVisible = actorInstance->GetIsVisible();
-                            if (isVisible)
-                            {
-                                mNumVisible.Increment();
-                            }
+                    // update the actor instance
+                    actorInstance->UpdateTransformations(timePassedInSeconds, isVisible, sampleMotions);
+                    GetWaveletCache().Shrink();
+                }, true, jobContext);
 
-                            // check if we want to sample motions
-                            bool sampleMotions = false;
-                            actorInstance->SetMotionSamplingTimer(actorInstance->GetMotionSamplingTimer() + timePassedInSeconds);
-                            if (actorInstance->GetMotionSamplingTimer() >= actorInstance->GetMotionSamplingRate())
-                            {
-                                sampleMotions = true;
-                                actorInstance->SetMotionSamplingTimer(0.0f);
-
-                                if (isVisible)
-                                {
-                                    mNumSampled.Increment();
-                                }
-                            }
-
-                            // update the actor instance
-                            actorInstance->UpdateTransformations(timePassedInSeconds, isVisible, sampleMotions);
-                            GetWaveletCache().Shrink();
-                        });
-                jobList->AddJob(newJob);
+                job->SetDependent(&jobCompletion);               
+                job->Start();
 
                 mNumUpdated.Increment();
             }
 
-            // wait for all actor instances in this step to be finished
-            if (s < numSteps - 1)
-            {
-                jobList->AddSyncPointWithoutLock();
-            }
+            jobCompletion.StartAndWaitForCompletion();
         } // for all steps
-
-        // execute the jobs list and wait for it to finish
-        MCore::GetJobManager().GetJobPool().Unlock();
-        MCore::ExecuteJobList(jobList);
-
-        //  MCore::LogInfo("numUpdated=%d   -   numVisible=%d   -    numSampled=%d", mNumUpdated.GetValue(), mNumVisible.GetValue(), mNumSampled.GetValue());
     }
 
 
@@ -344,8 +280,6 @@ namespace EMotionFX
                 RecursiveInsertActorInstance(attachment, outStep + 1);
             }
         }
-
-        //Print();
     }
 
 
@@ -353,7 +287,6 @@ namespace EMotionFX
     uint32 MultiThreadScheduler::RemoveActorInstance(ActorInstance* actorInstance, uint32 startStep)
     {
         MCore::LockGuardRecursive guard(mMutex);
-        //MCore::LogInfo("Remove %x", actorInstance);
 
         // for all scheduler steps, starting from the specified start step number
         const uint32 numSteps = mSteps.GetLength();
@@ -372,10 +305,6 @@ namespace EMotionFX
                 {
                     AddDependenciesToStep(mSteps[s].mActorInstances[i], &mSteps[s]);
                 }
-
-                // automatically clean up empty steps
-                //if (numInstances == 0)
-                //mSteps.Remove(s);
 
                 // assume that there is only one of the same actor instance in the whole schedule
                 return s;

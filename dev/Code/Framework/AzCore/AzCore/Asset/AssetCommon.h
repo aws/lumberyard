@@ -20,6 +20,7 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/std/typetraits/is_base_of.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/string/string_view.h>
 
 #if defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 #   include <stdio.h> // for snprintf
@@ -72,6 +73,8 @@ namespace AZ
 
             template<class StringType>
             void ToString(StringType& result) const;
+
+            static AssetId CreateString(AZStd::string_view input);
 
             Uuid m_guid;
             u32  m_subId;   ///< To allow easier and more consistent asset guid, we can provide asset sub ID. (i.e. Guid is a cubemap texture, subId is the index of the side)

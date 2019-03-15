@@ -15,6 +15,11 @@
 #include <AzCore/Math/Vector2.h>
 #include <LyShine/UiBase.h>
 
+namespace LyShine
+{
+    class IRenderGraph;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiElementInterface
     : public AZ::ComponentBus
@@ -24,13 +29,10 @@ public: // member functions
     //! Deleting an element will remove it from its parent and delete its child elements and components
     virtual ~UiElementInterface() {}
 
-    //! Update the element and its child elements and components
-    virtual void UpdateElement(float deltaTime) = 0;
-
-    //! Render the element and its child elements and components
+    //! Render the element and its child elements and components, this is done by adding primitives to the render graph
+    //! \param renderGraph, the render graph being added to
     //! \param isInGame, true if element being rendered in game (or preview), false if being render in edit mode
-    //! \param displayBounds, when true, a debug display of the element's bounds will be displayed also
-    virtual void RenderElement(bool isInGame, bool displayBounds) = 0;
+    virtual void RenderElement(LyShine::IRenderGraph* renderGraph, bool isInGame) = 0;
 
     //! Retrieves the identifier of this element.
     virtual LyShine::ElementId GetElementId() = 0;
@@ -55,6 +57,10 @@ public: // member functions
 
     //! Get the specified child entity Id, index must be less than GetNumChildElements()
     virtual AZ::EntityId GetChildEntityId(int index) = 0;
+
+    //! Get the specified child's UiElementInterface, index must be less than GetNumChildElements()
+    //! and the element must be fully initialized
+    virtual UiElementInterface* GetChildElementInterface(int index) = 0;
 
     //! Get the index of the specified child element
     virtual int GetIndexOfChild(const AZ::Entity* child) = 0;
@@ -139,6 +145,7 @@ public: // member functions
     //! Enabled/disabled
     virtual bool IsEnabled() = 0;
     virtual void SetIsEnabled(bool isEnabled) = 0;
+    virtual bool GetAreElementAndAncestorsEnabled() = 0;
 
     //! This can be used to disable the render without disabling the update/interaction.
     //! This is used internally by components that temporarily disable rendering of other elements (though they preserve the existing value).
@@ -179,6 +186,15 @@ public: // member functions
 
     //! Notify listeners that the element is being destroyed
     virtual void OnUiElementBeingDestroyed() {}
+
+    //! Notify listeners that the element has been fixed up (canvas and parent for the element have been set)
+    virtual void OnUiElementFixup(AZ::EntityId /*canvasEntityId*/, AZ::EntityId /*parentEntityId*/) {}
+
+    //! Notify listeners that the element has been enabled or disabled (the flag on this element was changed)
+    virtual void OnUiElementEnabledChanged(bool /*isEnabled*/) {}
+
+    //! Notify listeners that the element has been enabled or disabled either directly or to a change to an ancestors enabled flag
+    virtual void OnUiElementAndAncestorsEnabledChanged(bool /*areElementAndAncestorsEnabled*/) {}
 };
 
 typedef AZ::EBus<UiElementNotifications> UiElementNotificationBus;

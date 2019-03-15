@@ -18,7 +18,7 @@ def build(bld):
 
         editor = dict(
             features    = ['qt5'],
-            uselib      = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+            uselib      = ['QT5CORE','QT5GUI','QT5WIDGETS', 'QT5NETWORK'], # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
             defines     = ['CAMERA_EDITOR',],
             includes    = [bld.Path('Code/CryEngine/CryAction'),
                            bld.Path('Code/Sandbox/Plugins/EditorCommon'),

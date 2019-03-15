@@ -39,26 +39,23 @@ namespace PhysX
 {
     namespace Pipeline
     {
-        class PhysXMeshGroup;
+        class MeshGroup;
 
-        class PhysXMeshExporter
+        class MeshExporter
             : public AZ::SceneAPI::SceneCore::ExportingComponent
         {
         public:
-            AZ_COMPONENT(PhysXMeshExporter, "{4EA8B035-064D-456F-A9BA-0CDA40E9B84C}", AZ::SceneAPI::SceneCore::ExportingComponent);
+            AZ_COMPONENT(MeshExporter, "{4EA8B035-064D-456F-A9BA-0CDA40E9B84C}", AZ::SceneAPI::SceneCore::ExportingComponent);
 
-            PhysXMeshExporter();
-            ~PhysXMeshExporter() override = default;
+            MeshExporter();
+            ~MeshExporter() override = default;
 
             static void Reflect(AZ::ReflectContext* context);
 
             AZ::SceneAPI::Events::ProcessingResult ProcessContext(AZ::SceneAPI::Events::ExportEventContext& context) const;
 
         private:
-            void WriteToFile(const void* assetData, AZ::u32 assetDataSize, const AZStd::string& filename, const Pipeline::PhysXMeshGroup& pxMeshGroup) const;
-            bool ValidateCookedConvexMesh(void* assetData, AZ::u32 assetDataSize) const;
-            bool ValidateCookedTriangleMesh(void* assetData, AZ::u32 assetDataSize) const;
-            AZ::SceneAPI::Events::ProcessingResult ExportMeshObject(AZ::SceneAPI::Events::ExportEventContext& context, const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshData>& meshToExport, const AZStd::string& nodePath, const Pipeline::PhysXMeshGroup& pxMeshGroup) const;
+            AZ::SceneAPI::Events::ProcessingResult ExportMeshObject(AZ::SceneAPI::Events::ExportEventContext& context, const AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMeshData>& meshToExport, const AZStd::string& nodePath, const Pipeline::MeshGroup& pxMeshGroup) const;
 
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
             // Workaround for VS2013 - Delete the copy constructor and make it private

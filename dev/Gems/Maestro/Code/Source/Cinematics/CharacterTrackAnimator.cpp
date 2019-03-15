@@ -234,7 +234,7 @@ bool CCharacterTrackAnimator::CheckTimeJumpingOrOtherChanges(const SAnimContext&
                                                                 ICharacterInstance* pCharacter, int layer, int trackIndex, SAnimState& animState)
 {
     bool bEditing = gEnv->IsEditor() && gEnv->IsEditorGameMode() == false;
-    bool bJustJumped = ec.bSingleFrame && bEditing == false;
+    bool bJustJumped = ec.singleFrame && bEditing == false;
     if (bJustJumped)
     {
         animState.m_jumpTime[trackIndex] = ec.time;

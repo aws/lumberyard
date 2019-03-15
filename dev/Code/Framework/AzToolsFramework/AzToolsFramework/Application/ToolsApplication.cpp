@@ -26,13 +26,13 @@
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/Commands/SelectionCommand.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
-#include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/ToolsComponents/EditorAssetMimeDataContainer.h>
 #include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityContextComponent.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextComponent.h>
 #include <AzToolsFramework/Entity/EditorEntityActionComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityFixupComponent.h>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
 #include <AzToolsFramework/SourceControl/PerforceComponent.h>
 #include <AzToolsFramework/Archive/SevenZipComponent.h>
@@ -365,8 +365,8 @@ namespace AzToolsFramework
         components.insert(components.end(), {
                 azrtti_typeid<EditorEntityContextComponent>(),
                 azrtti_typeid<SliceMetadataEntityContextComponent>(),
+                azrtti_typeid<EditorEntityFixupComponent>(),
                 azrtti_typeid<Components::EditorEntityActionComponent>(),
-                azrtti_typeid<Components::GenericComponentUnwrapper>(),
                 azrtti_typeid<Components::PropertyManagerComponent>(),
                 azrtti_typeid<AzFramework::TargetManagementComponent>(),
                 azrtti_typeid<AssetSystem::AssetSystemComponent>(),
@@ -551,15 +551,30 @@ namespace AzToolsFramework
         EntityIdList::iterator foundIter = AZStd::find(m_selectedEntities.begin(), m_selectedEntities.end(), entityId);
         if (foundIter == m_selectedEntities.end())
         {
-            EBUS_EVENT(ToolsApplicationEvents::Bus, BeforeEntitySelectionChanged);
+            ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::BeforeEntitySelectionChanged);
 
             m_selectedEntities.push_back(entityId);
-
-            EBUS_EVENT_ID(entityId, EntitySelectionEvents::Bus, OnSelected);
+            EntitySelectionEvents::Bus::Event(entityId, &EntitySelectionEvents::OnSelected);
 
             const AzToolsFramework::EntityIdList newlySelectedEntities = { entityId };
             ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, newlySelectedEntities, AzToolsFramework::EntityIdList());
         }
+    }
+
+    void ToolsApplication::MarkEntitiesSelected(const EntityIdList& entitiesToSelect)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::BeforeEntitySelectionChanged);
+
+        for (AZ::EntityId entityId : entitiesToSelect)
+        {
+            AZ_Assert(entityId.IsValid(), "Invalid entity Id being marked as selected.");
+            m_selectedEntities.push_back(entityId);
+            EntitySelectionEvents::Bus::Event(entityId, &EntitySelectionEvents::OnSelected);
+        }
+
+        ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, entitiesToSelect, EntityIdList());
     }
 
     void ToolsApplication::MarkEntityDeselected(AZ::EntityId entityId)
@@ -569,13 +584,43 @@ namespace AzToolsFramework
         if (foundIter != m_selectedEntities.end())
         {
             AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "ToolsApplication::MarkEntityDeselected:Deselect");
-            EBUS_EVENT(ToolsApplicationEvents::Bus, BeforeEntitySelectionChanged);
+            ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::BeforeEntitySelectionChanged);
             m_selectedEntities.erase(foundIter);
 
-            EBUS_EVENT_ID(entityId, EntitySelectionEvents::Bus, OnDeselected);
+            EntitySelectionEvents::Bus::Event(entityId, &EntitySelectionEvents::OnDeselected);
             AzToolsFramework::EntityIdList newlyDeselectedEntities = { entityId };
             ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, AzToolsFramework::EntityIdList(), newlyDeselectedEntities);
         }
+    }
+
+    void ToolsApplication::MarkEntitiesDeselected(const EntityIdList& entitiesToDeselect)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::BeforeEntitySelectionChanged);
+
+        EntityIdSet entitySetToDeselect(entitiesToDeselect.begin(), entitiesToDeselect.end());
+
+        for (auto selectedEntityIt = m_selectedEntities.begin(); selectedEntityIt != m_selectedEntities.end(); )
+        {
+            auto foundIt = entitySetToDeselect.find(*selectedEntityIt);
+            if (foundIt == entitySetToDeselect.end())
+            {
+                // not trying to deselect this entity, advance iterator
+                ++selectedEntityIt;
+            }
+            else
+            {
+                EntitySelectionEvents::Bus::Event(*selectedEntityIt, &EntitySelectionEvents::OnDeselected);
+
+                // swap with last element and pop back to avoid moving all vector elements, don't advance iterator
+                // the order of m_selectedEntities does not matter
+                AZStd::iter_swap(selectedEntityIt, m_selectedEntities.rbegin());
+                m_selectedEntities.pop_back();
+            }
+        }
+
+        ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, EntityIdList(), entitiesToDeselect);
     }
 
     void ToolsApplication::SetEntityHighlighted(AZ::EntityId entityId, bool highlighted)
@@ -612,6 +657,7 @@ namespace AzToolsFramework
         // * Calculate selection/deselection delta so we can notify specific entities only on change.
         // * Filter any duplicates.
 
+        // Filter out any invalid or non-selectable entities
         EntityIdList selectedEntitiesFiltered;
         selectedEntitiesFiltered.reserve(selectedEntities.size());
         for (AZ::EntityId nowSelectedId : selectedEntities)
@@ -627,6 +673,7 @@ namespace AzToolsFramework
         EntityIdList newlySelectedIds;
         EntityIdList newlyDeselectedIds;
 
+        // Populate list of newly selected entities
         for (AZ::EntityId nowSelectedId : selectedEntitiesFiltered)
         {
             auto alreadySelectedIter = AZStd::find(m_selectedEntities.begin(), m_selectedEntities.end(), nowSelectedId);
@@ -637,6 +684,7 @@ namespace AzToolsFramework
             }
         }
 
+        // Populate list of newly deselected entities
         for (AZ::EntityId currentlySelectedId : m_selectedEntities)
         {
             auto stillSelectedIter = AZStd::find(selectedEntitiesFiltered.begin(), selectedEntitiesFiltered.end(), currentlySelectedId);
@@ -647,9 +695,10 @@ namespace AzToolsFramework
             }
         }
 
+        // Apply selection changes in bulk
         if (!newlySelectedIds.empty() || !newlyDeselectedIds.empty())
         {
-            EBUS_EVENT(ToolsApplicationEvents::Bus, BeforeEntitySelectionChanged);
+            ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::BeforeEntitySelectionChanged);
 
             m_selectedEntities.clear();
 
@@ -665,12 +714,12 @@ namespace AzToolsFramework
 
             for (AZ::EntityId id : newlySelectedIds)
             {
-                EBUS_EVENT_ID(id, EntitySelectionEvents::Bus, OnSelected);
+                EntitySelectionEvents::Bus::Event(id, &EntitySelectionEvents::OnSelected);
             }
 
             for (AZ::EntityId id : newlyDeselectedIds)
             {
-                EBUS_EVENT_ID(id, EntitySelectionEvents::Bus, OnDeselected);
+                EntitySelectionEvents::Bus::Event(id, &EntitySelectionEvents::OnDeselected);
             }
 
             ToolsApplicationEvents::Bus::Broadcast(&ToolsApplicationEvents::AfterEntitySelectionChanged, newlySelectedIds, newlyDeselectedIds);
@@ -714,6 +763,69 @@ namespace AzToolsFramework
     {
         const EntityIdSet entitiesAndDescendants = GatherEntitiesAndAllDescendents(entities);
         Internal::DeleteEntities(entitiesAndDescendants);
+    }
+
+    bool ToolsApplication::DetachEntities(const AZStd::vector<AZ::EntityId>& entitiesToDetach, AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>>& restoreInfos)
+    {
+        AZStd::vector<AZStd::pair<AZ::Entity*, AZ::SliceComponent::SliceReference*>> pendingSliceChanges;
+
+        AZ::SliceComponent* editorRootSlice = nullptr;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(editorRootSlice, &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+        AZ_Assert(editorRootSlice, "Failed to retrieve editor root slice.");
+
+        // Gather desired changes without modifying slices or entities 
+        for (const AZ::EntityId& entityId : entitiesToDetach)
+        {
+            AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+            AzFramework::EntityIdContextQueryBus::EventResult(sliceAddress, entityId, &AzFramework::EntityIdContextQueries::GetOwningSlice);
+
+            AZ::SliceComponent::SliceReference* sliceReference = sliceAddress.first;
+            AZ::SliceComponent::SliceInstance* sliceInstance = sliceAddress.second;
+            if (!sliceReference || !sliceInstance)
+            {
+                AZ_Error("DetachSliceEntity", false, "Entity with Id %s is not part of a slice. \"Detach\" action cancelled. No slices or entities were modified.", entityId.ToString().c_str());
+                return false;
+            }
+
+            AZ::Entity* entity = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
+            AZ_Error("DetachSliceEntity", entity, "Unable to find entity for Entity Id %s. \"Detach\" action cancelled. No slices or entities were modified.", entityId.ToString().c_str());
+            if (!entity)
+            {
+                return false;
+            }
+
+            AZ::SliceComponent::EntityRestoreInfo restoreInfo;
+            if (editorRootSlice->GetEntityRestoreInfo(entityId, restoreInfo))
+            {
+                restoreInfos.emplace_back(entityId, restoreInfo);
+                pendingSliceChanges.emplace_back(entity, sliceReference);
+            }
+            else
+            {
+                AZ_Error("DetachSliceEntity", entity, "Failed to prepare restore information for entity of Id %s. \"Detach\" action cancelled. No slices or entities were modified.", entityId.ToString().c_str());
+                return false;
+            }
+        }
+
+        // Apply pending changes
+        for (AZStd::pair<AZ::Entity*, AZ::SliceComponent::SliceReference*>& pendingSliceChange : pendingSliceChanges)
+        {
+            // Remove entity from current slice instance without deleting the entity. Delete slice instance if the detached entity is the last one 
+            // in the slice instance. The slice instance will be reconstructed upon undo.
+            bool success = pendingSliceChange.second->GetSliceComponent()->RemoveEntity(pendingSliceChange.first->GetId(), false, true);
+            if (success)
+            {
+                editorRootSlice->AddEntity(pendingSliceChange.first); // Add back as loose entity
+            }
+            else
+            {
+                AZ_Error("DetachSliceEntity", success, "Entity with Id %s could not be removed from the slice. The Slice Instance is now in an unknown state, and saving it may result in data loss.", pendingSliceChange.first->GetId().ToString().c_str());
+            }
+        }
+
+        EditorEntityContextNotificationBus::Broadcast(&EditorEntityContextNotification::OnEditorEntitiesSliceOwnershipChanged, entitiesToDetach);
+        return true;
     }
 
     bool ToolsApplication::FindCommonRoot(const AzToolsFramework::EntityIdSet& entitiesToBeChecked, AZ::EntityId& commonRootEntityId
@@ -917,6 +1029,19 @@ namespace AzToolsFramework
         return result;
     }
 
+    bool ToolsApplication::CheckSourceControlConnectionAndRequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const ToolsApplicationRequests::RequestEditProgressCallback& progressCallback)
+    {
+        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+        SourceControlState state = SourceControlState::Disabled;
+        SourceControlConnectionRequestBus::BroadcastResult(state, &SourceControlConnectionRequestBus::Events::GetSourceControlState);
+        if (state != SourceControlState::Active && (!fileIO || fileIO->IsReadOnly(assetPath)))
+        {
+            return false;
+        }
+
+        return RequestEditForFileBlocking(assetPath, progressMessage, progressCallback);
+    }
+
     bool ToolsApplication::RequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const ToolsApplicationRequests::RequestEditProgressCallback& progressCallback)
     {
         AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
@@ -984,6 +1109,20 @@ namespace AzToolsFramework
         );
     }
 
+    void ToolsApplication::CheckSourceControlConnectionAndRequestEditForFile(const char* assetPath, RequestEditResultCallback resultCallback)
+    {
+        AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+        SourceControlState state = SourceControlState::Disabled;
+        SourceControlConnectionRequestBus::BroadcastResult(state, &SourceControlConnectionRequestBus::Events::GetSourceControlState);
+        if (state != SourceControlState::Active && (!fileIO || fileIO->IsReadOnly(assetPath)))
+        {
+            resultCallback(false);
+            return;
+        }
+
+        RequestEditForFile(assetPath, resultCallback);
+    }
+
     void ToolsApplication::DeleteEntities(const EntityIdList& entities)
     {
         Internal::DeleteEntities(entities);
@@ -998,6 +1137,38 @@ namespace AzToolsFramework
         }
 
         m_dirtyEntities.insert(entityId);
+
+        // Check if this dirty entity is in a layer by walking up its parenting hierarchy.
+        // If it's in a layer, mark that layer as having unsaved changes.
+        do
+        {
+            bool isLayerEntity = false;
+            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+                isLayerEntity,
+                entityId,
+                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+            if (isLayerEntity)
+            {
+                AzToolsFramework::Layers::EditorLayerComponentRequestBus::Event(
+                    entityId,
+                    &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::MarkLayerWithUnsavedChanges);
+                break;
+            }
+            AZ::EntityId parentId;
+            AZ::TransformBus::EventResult(
+                parentId,
+                entityId,
+                &AZ::TransformBus::Events::GetParentId);
+            if (entityId == parentId)
+            {
+                // Stop when the first parent layer is found.
+                // If this layer is nested in another layer, only the most immediate
+                // layer should be marked as dirty. Layer hierarchy and parenting is
+                // mostly for visual organization, entities only exist in one layer on disk.
+                break;
+            }
+            entityId = parentId;
+        } while (entityId.IsValid());
     }
 
     int ToolsApplication::RemoveDirtyEntity(AZ::EntityId entityId)
@@ -1193,6 +1364,10 @@ namespace AzToolsFramework
             return;
         }
 
+        // If the current undo batch has commands in it, then we have to check that we do not add duplicates
+        // However if it starts out empty, we can just add things straight from the Set to the undo batch
+        bool mustCheckDuplicates = !m_currentBatchUndo->GetChildren().empty();
+
         for (AZ::EntityId entityId : m_dirtyEntities)
         {
             AZ::Entity* entity = nullptr;
@@ -1200,14 +1375,20 @@ namespace AzToolsFramework
 
             if (entity)
             {
-                // see if it needs updating in the list:
-                EntityStateCommand* state = azdynamic_cast<EntityStateCommand*>(m_currentBatchUndo->Find(
-                    static_cast<AZ::u64>(entityId), AZ::AzTypeInfo<EntityStateCommand>::Uuid()));
+                EntityStateCommand* state = nullptr;
+
+                if (mustCheckDuplicates)
+                {
+                    // Check if this entity is already in the current undo batch
+                    state = azdynamic_cast<EntityStateCommand*>(m_currentBatchUndo->Find(
+                        static_cast<AZ::u64>(entityId), AZ::AzTypeInfo<EntityStateCommand>::Uuid()));
+                }
 
                 if (!state)
                 {
                     state = aznew EntityStateCommand(static_cast<AZ::u64>(entityId));
                     state->SetParent(m_currentBatchUndo);
+
                     // capture initial state of entity (before undo)
                     state->Capture(entity, true);
                 }
@@ -1367,7 +1548,7 @@ namespace AzToolsFramework
         entity->Activate();
     }
 
-    AZ::Outcome<AZStd::string, AZStd::string> ToolsApplication::ResolveConfigToolsPath(const char* toolApplicationName) const
+    AzToolsFramework::ToolsApplicationRequests::ResolveToolPathOutcome ToolsApplication::ResolveConfigToolsPath(const char* toolApplicationName) const
     {
         if (!GetExecutableFolder() || !GetEngineRoot())
         {

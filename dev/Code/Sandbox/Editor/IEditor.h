@@ -489,9 +489,6 @@ struct ITrackViewSequenceManager
     //! Only intended for use with scripting or other cases where a user provides a name.
     virtual CTrackViewSequence* GetSequenceByName(QString name) const = 0;
 
-    //! Get the legacy sequence with the given name. There can only be one legacy sequence with a given name.
-    virtual CTrackViewSequence* GetLegacySequenceByName(QString name) const = 0;
-
     //! Get the sequence with the given EntityId. For legacy support, legacy sequences can be found by giving
     //! the sequence ID in the lower 32 bits of the EntityId.
     virtual CTrackViewSequence* GetSequenceByEntityId(const AZ::EntityId& entityId) const = 0;
@@ -499,8 +496,6 @@ struct ITrackViewSequenceManager
     virtual void OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence) = 0;
 
     virtual void OnSequenceActivated(const AZ::EntityId& entityId) = 0;
-
-    virtual void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) = 0;
 };
 
 //! Interface to expose TrackViewSequence functionality to SequenceComponent

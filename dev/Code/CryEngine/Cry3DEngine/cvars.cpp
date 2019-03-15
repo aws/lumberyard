@@ -810,6 +810,8 @@ void CVars::Init()
         "Use geometric mean of faces area to compute LOD");
     DefineConstIntCVar(e_LodsForceUse, 1, VF_NULL,
         "Force using LODs even if triangle count do not suit");
+    DefineConstFloatCVar(e_LodBoundingBoxDistanceMultiplier, VF_CHEAT,
+        "e_LodBoundingBoxDistanceMultiplier ");
 
     REGISTER_CVAR(e_SQTestDelay, 5.f, VF_NULL,
         "Time to stabilize the system before camera movements");
@@ -875,6 +877,8 @@ void CVars::Init()
         "Min LOD for objects");
     REGISTER_CVAR(e_CharLodMin, 0, VF_NULL,
         "Min LOD for character objects");
+    REGISTER_CVAR(e_LodForceUpdate, 0, VF_NULL,
+        "When active, recalculate object LOD when rendering instead of using LOD calculated during previous frame.");
     REGISTER_CVAR(e_LodMax, MAX_STATOBJ_LODS_NUM - 1, VF_CHEAT,
         "Max LOD for objects");
     DefineConstIntCVar(e_LodMinTtris, 300, VF_CHEAT,

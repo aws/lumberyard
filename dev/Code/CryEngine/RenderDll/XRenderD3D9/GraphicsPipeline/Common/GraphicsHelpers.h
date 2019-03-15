@@ -54,7 +54,11 @@ public:
 
         gcpRendD3D.GetDeviceContext().Unmap(m_constantBuffer, 0);
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(GraphicsHelpers_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GraphicsHelpers_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GraphicsHelpers_h_provo.inl"
+    #endif
 #endif
     }
     void Bind()

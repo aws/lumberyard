@@ -22,52 +22,65 @@
 #include <EMotionFX/CommandSystem/Source/LODCommands.h>
 #include <EMotionFX/CommandSystem/Source/MetaData.h>
 #include <EMotionFX/Exporters/ExporterLib/Exporter/Exporter.h>
+#include <EMotionFX/CommandSystem/Source/MotionCommands.h>
+#include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>
 
+#include <AzCore/Serialization/Utils.h>
 
 namespace CommandSystem
 {
 
-    AZStd::string MetaData::GenerateMotionMetaData(EMotionFX::Motion* motion)
+    AZStd::vector<MCore::Command*> MetaData::GenerateMotionMetaData(EMotionFX::Motion* motion)
     {
+        AZStd::vector<MCore::Command*> commands;
+
         if (!motion)
         {
             AZ_Error("EMotionFX", false, "Cannot generate meta data for motion. Motion invalid.");
-            return "";
+            return commands;
         }
 
-        AZStd::string metaDataString;
-
         // Save event tracks including motion events.
-        EMotionFX::MotionEventTable* motionEventTable = motion->GetEventTable();
-        metaDataString += AZStd::string::format("AdjustMotion -motionID $(MOTIONID) -motionExtractionFlags %d\n", motion->GetMotionExtractionFlags());
-        metaDataString += "ClearMotionEvents -motionID $(MOTIONID)\n";
+        CommandAdjustMotion* adjustMotionCommand = aznew CommandAdjustMotion();
+        adjustMotionCommand->SetMotionExtractionFlags(motion->GetMotionExtractionFlags());
+        commands.emplace_back(adjustMotionCommand);
 
-        const AZ::u32 numEventTracks = motionEventTable->GetNumTracks();
-        for (AZ::u32 i = 0; i < numEventTracks; ++i)
+        const size_t eventTrackCount = motion->GetEventTable()->GetNumTracks();
+        for (size_t trackIndex = 0; trackIndex < eventTrackCount; ++trackIndex)
         {
-            EMotionFX::MotionEventTrack* eventTrack = motionEventTable->GetTrack(i);
+            const EMotionFX::MotionEventTrack* track = motion->GetEventTable()->GetTrack(trackIndex);
 
-            metaDataString += AZStd::string::format("CreateMotionEventTrack -motionID $(MOTIONID) -eventTrackName \"%s\"\n", eventTrack->GetName());
-            metaDataString += AZStd::string::format("AdjustMotionEventTrack -motionID $(MOTIONID) -eventTrackName \"%s\" -enabled %s\n", eventTrack->GetName(), AZStd::to_string(eventTrack->GetIsEnabled()).c_str());
+            CommandCreateMotionEventTrack* createMotionEventTrackCommand = aznew CommandCreateMotionEventTrack();
+            createMotionEventTrackCommand->SetEventTrackName(track->GetName());
+            commands.emplace_back(createMotionEventTrackCommand);
 
-            const AZ::u32 numMotionEvents = eventTrack->GetNumEvents();
-            for (AZ::u32 j = 0; j < numMotionEvents; ++j)
+            const size_t eventCount = track->GetNumEvents();
+            for (size_t eventIndex = 0; eventIndex < eventCount; ++eventIndex)
             {
-                EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(j);
-                metaDataString += AZStd::string::format("CreateMotionEvent -motionID $(MOTIONID) -eventTrackName \"%s\" ", eventTrack->GetName());
-                metaDataString += AZStd::string::format("-startTime %f -endTime %f ", motionEvent.GetStartTime(), motionEvent.GetEndTime());
-                metaDataString += AZStd::string::format("-eventType \"%s\" -parameters \"%s\" ", motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).c_str());
-                metaDataString += AZStd::string::format("-mirrorType \"%s\"\n", motionEvent.GetMirrorEventTypeString());
+                const EMotionFX::MotionEvent& event = track->GetEvent(eventIndex);
+                CommandCreateMotionEvent* createMotionEventCommand = aznew CommandCreateMotionEvent();
+                commands.emplace_back(createMotionEventCommand);
+                createMotionEventCommand->SetEventTrackName(track->GetName());
+                createMotionEventCommand->SetStartTime(event.GetStartTime());
+                createMotionEventCommand->SetEndTime(event.GetEndTime());
+                createMotionEventCommand->SetEventDatas(event.GetEventDatas());
             }
         }
 
-        return metaDataString;
+        return commands;
     }
 
 
-    bool MetaData::ApplyMetaDataOnMotion(EMotionFX::Motion* motion, const AZStd::string& metaDataString)
+    bool MetaData::ApplyMetaDataOnMotion(EMotionFX::Motion* motion, const AZStd::vector<MCore::Command*>& metaDataCommands)
     {
-        return ApplyMetaData(motion->GetID(), "$(MOTIONID)", metaDataString);
+        for (MCore::Command* command : metaDataCommands)
+        {
+            if (MotionIdCommandMixin* motionIdCommand = azrtti_cast<MotionIdCommandMixin*>(command))
+            {
+                motionIdCommand->SetMotionID(motion->GetID());
+            }
+        }
+        return ApplyMetaData(metaDataCommands);
     }
 
 
@@ -284,6 +297,23 @@ namespace CommandSystem
             return false;
         }
 
+        return true;
+    }
+
+    bool MetaData::ApplyMetaData(const AZStd::vector<MCore::Command*>& metaDataCommands)
+    {
+        AZStd::string outResult;
+        for (MCore::Command* command : metaDataCommands)
+        {
+            if (!GetCommandManager()->ExecuteCommand(command, outResult, /*addToHistory =*/ false))
+            {
+                if (!outResult.empty())
+                {
+                    MCore::LogError(outResult.c_str());
+                }
+                return false;
+            }
+        }
         return true;
     }
 

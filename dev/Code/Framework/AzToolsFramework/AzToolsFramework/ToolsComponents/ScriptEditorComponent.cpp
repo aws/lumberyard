@@ -134,6 +134,7 @@ namespace AzToolsFramework
         void ScriptEditorComponent::Deactivate()
         {
             AZ::Data::AssetBus::Handler::BusDisconnect();
+            ClearDataElements();
         }
 
         //=========================================================================
@@ -490,9 +491,33 @@ namespace AzToolsFramework
                         int defaultValueIndex = 0;
                         if (propertyTable.PushTableElement(AzFramework::ScriptComponent::DefaultFieldName, &defaultValueIndex))  // Is this a value or a group
                         {
-                            // If the property is new, try creating it
+                            bool needToCreateProperty = false;
                             AZ::ScriptProperty* groupProperty = group.GetProperty(propertyName);
                             if (!groupProperty)
+                            {
+                                needToCreateProperty = true;
+                            }
+                            else
+                            {
+                                if (groupProperty->DoesTypeMatch(propertyTable, defaultValueIndex))
+                                {
+                                    needToCreateProperty = false;
+                                }
+                                else
+                                {
+                                    if (auto itr = AZStd::find(group.m_properties.begin(), group.m_properties.end(), groupProperty))
+                                    {
+                                        if (itr != group.m_properties.end())
+                                        { 
+                                            delete *itr;
+                                            group.m_properties.erase(itr);
+                                        }
+                                    }
+                                    needToCreateProperty = true;
+                                }
+                            }
+
+                            if (needToCreateProperty)
                             {
                                 if (AZ::ScriptProperty* scriptProperty = propertyTable.ConstructScriptProperty(defaultValueIndex, propertyName, restrictToPropertyArrays))
                                 {
@@ -861,8 +886,13 @@ namespace AzToolsFramework
         {
             AZ::Data::AssetBus::Handler::BusDisconnect();
 
-            m_scriptComponent.m_properties.Clear();
-            ClearDataElements();
+            // Only clear properties and data elements if the asset we're changing to is not the same one we already had set on our scriptComponent
+            // The only time we shouldn't do this is when someone has set the same script on the component through the editor
+            if (m_scriptAsset != m_scriptComponent.GetScript())
+            {
+                m_scriptComponent.m_properties.Clear();
+                ClearDataElements();
+            }
 
             if (m_scriptAsset.GetId().IsValid())
             {
@@ -923,7 +953,7 @@ namespace AzToolsFramework
 
             if (script)
             {
-                bool outcome = false;
+                 bool outcome = false;
                 AZStd::string folderFoundIn;
                 AZ::Data::AssetInfo assetInfo;
 

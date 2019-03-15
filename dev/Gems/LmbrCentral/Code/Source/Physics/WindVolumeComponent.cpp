@@ -54,7 +54,7 @@ namespace LmbrCentral
         {
             behaviorContext->EBus<WindVolumeRequestBus>("WindVolumeRequestBus")
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
-                ->Attribute(AZ::Script::Attributes::Category, "Physics")
+                ->Attribute(AZ::Script::Attributes::Category, "Physics (Legacy)")
                 ->Event("SetFalloff", &WindVolumeRequestBus::Events::SetFalloff)
                 ->Event("GetFalloff", &WindVolumeRequestBus::Events::GetFalloff)
                 ->Event("SetSpeed", &WindVolumeRequestBus::Events::SetSpeed)

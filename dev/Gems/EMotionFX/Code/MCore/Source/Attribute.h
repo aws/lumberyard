@@ -19,6 +19,14 @@
 #include "Stream.h"
 #include <AzCore/std/string/string.h>
 
+namespace EMotionFX
+{
+    namespace Network
+    {
+        class AnimGraphSnapshotChunkSerializer;
+    }
+}
+
 namespace MCore
 {
     // forward declarations
@@ -71,6 +79,8 @@ namespace MCore
         virtual uint32 GetDataSize() const = 0;         // data only
 
         Attribute& operator=(const Attribute& other);
+
+        virtual void NetworkSerialize(EMotionFX::Network::AnimGraphSnapshotChunkSerializer&) {};
 
     protected:
         uint32      mTypeID;    /**< The unique type ID of the attribute class. */

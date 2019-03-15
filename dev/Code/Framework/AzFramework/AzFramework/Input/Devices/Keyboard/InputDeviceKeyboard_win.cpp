@@ -199,6 +199,11 @@ namespace AzFramework
         {
             // Process raw event queues once each frame while this thread's message queue has focus
             ProcessRawEventQueues();
+            if (!hadFocus)
+            {
+                // If we just gained focus, reset state after processing any events that are queued so that we don't have stale state lying around
+                ResetInputChannelStates();
+            }
         }
         else if (hadFocus)
         {

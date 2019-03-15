@@ -88,15 +88,12 @@ namespace AZ
 
                         if (newId != *originalIdPtr)
                         {
-                            // notify the first non container parent about the modification
-                            int parentToNotifyAboutWrite = parentStack.empty() ? -1 : static_cast<int>(parentStack.size()) - 1;
-
                             if (parentStack.size() >= 1)
                             {
-                                // check when the ID is in a container that will need to change as a result of the UUID changing, keep in mind that is ONLY 
-                                // covering basic cases and internal containers. We can't guess if UUID is used in a complex function that affects the container
-                                // or any other side effect. If this become the case, we can Reflect a function to handle when we remap UUID (or any field) 
-                                // reflect it during the serialization and react anytime we change the content on the UUID, via the OnWriteBegin/OnWriteEnd events
+                                // check when the ID is in a container that will need to change as a result of the ID changing, keep in mind that is ONLY 
+                                // covering basic cases and internal containers. We can't guess if ID is used in a complex function that affects the container
+                                // or any other side effect. If this become the case, we can Reflect a function to handle when we remap ID (or any field) 
+                                // reflect it during the serialization and react anytime we change the content on the ID, via the OnWriteBegin/OnWriteEnd events
                                 StackDataType& parentInfo = parentStack.back();
                                 GenericClassInfo* genericClassInfo = context->FindGenericClassInfo(parentInfo.m_classData->m_typeId);
                                 if (genericClassInfo && genericClassInfo->GetGenericTypeId() == IdUtils::s_GenericClassPairID)
@@ -106,12 +103,11 @@ namespace AZ
                                         StackDataType& pairContainerInfo = parentStack[parentStack.size() - 2];
                                         if (pairContainerInfo.m_classData->m_container)
                                         {
-                                            // make sure the UUID is the first element in the pair, as this is what associative containers care about, the rest is a payload
+                                            // make sure the ID is the first element in the pair, as this is what associative containers care about, the rest is a payload
                                             // we can skip this check, but it helps avoiding extra work on a high level)
                                             if (parentInfo.m_elementData->m_genericClassInfo->GetTemplatedTypeId(0) == classData->m_typeId)
                                             {
                                                 pairContainerInfo.m_isModifiedContainer = true; // we will modify the container
-                                                parentToNotifyAboutWrite = parentStack.size() >= 3 ? static_cast<int>(parentStack.size()) - 3 : -1; // if the container has a parent
                                             }
                                         }
                                     }
@@ -119,42 +115,10 @@ namespace AZ
                                 else if (parentInfo.m_classData->m_container)
                                 {
                                     parentInfo.m_isModifiedContainer = true; // we will modify this container
-                                    parentToNotifyAboutWrite = parentStack.size() >= 2 ? static_cast<int>(parentStack.size()) - 2 : -1; // if the container has a parent
                                 }
-                            }
-
-                            void* objectPtr = nullptr;
-                            AZ::SerializeContext::IEventHandler* eventHandler = nullptr;
-                            if (parentToNotifyAboutWrite != -1 && parentStack[parentToNotifyAboutWrite].m_classData->m_eventHandler)
-                            {
-                                objectPtr = parentStack[parentToNotifyAboutWrite].m_dataPtr;
-                                eventHandler = parentStack[parentToNotifyAboutWrite].m_classData->m_eventHandler;
-                                const AZ::SerializeContext::ClassElement* parentToNotifyClassElement = parentStack[parentToNotifyAboutWrite].m_elementData;
-                                if (parentToNotifyClassElement && parentToNotifyClassElement->m_flags & SerializeContext::ClassElement::FLG_POINTER)
-                                {
-                                    objectPtr = *(void**)(objectPtr);
-                                    if (objectPtr && parentToNotifyClassElement->m_azRtti)
-                                    {
-                                        AZ::Uuid actualClassId = parentToNotifyClassElement->m_azRtti->GetActualUuid(objectPtr);
-                                        if (actualClassId != parentToNotifyClassElement->m_typeId)
-                                        {
-                                            objectPtr = parentToNotifyClassElement->m_azRtti->Cast(objectPtr, actualClassId);
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (objectPtr)
-                            {
-                                eventHandler->OnWriteBegin(objectPtr);
                             }
 
                             *originalIdPtr = newId;
-
-                            if (objectPtr)
-                            {
-                                eventHandler->OnWriteEnd(objectPtr);
-                            }
 
                             replaced++;
                         }

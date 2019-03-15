@@ -1,0 +1,175 @@
+{
+    "name": "physx_sdk",
+    "source": "@3P:PHYSXSDK@",
+    "description": "NVidia PhysX physics simulation backend.",
+    "defines": [],
+    "non_release_only": "False",
+    "lib_required": "True",
+    "includes": ["PhysX_3.4/Include", "PxShared/include"],
+    "aliases": {
+        "lib_names": [
+            "PhysX3CharacterKinematic",
+            "PhysX3Cooking",
+            "PhysX3",
+            "PxPvdSDK",
+            "PxFoundation",
+            "PhysX3Common"
+        ],
+        "lib_names_ext": [
+            "LowLevel",
+            "LowLevelAABB",
+            "LowLevelCloth",
+            "LowLevelDynamics",
+            "LowLevelParticles",
+            "SimulationController",
+            "PhysX3Vehicle",
+            "PhysX3Extensions",
+            "SceneQuery"
+        ],
+        "lib_names_monolithic": [
+            "PsFastXml",
+            "PxTask",
+            "${lib_names}",
+            "${lib_names_ext}"
+        ],
+        "lib_names_win": [
+            "PsFastXml",
+            "PxTask",
+            "${lib_names}"
+        ],
+        "lib_names_linux": [
+            "PsFastXml",
+            "PxTask",
+            "PxCudaContextManager",
+            "${lib_names_ext}"
+        ],
+        "lib_names_shared_sys": [
+            "glut32",
+            "nvToolsExt64_1",
+            "PhysXDevice64"
+        ],
+        "lib_names_shared": [
+            "PhysX3Gpu",
+            "${lib_names}"
+        ],
+        "lib_paths": [
+            "PhysX_3.4/",
+            "PxShared/"
+        ]
+    },
+    "platform": {
+        "win_x64_vs2015": {
+            "importlibpath": ["${lib_paths}lib/vc14win64"],
+            "sharedlibpath": ["${lib_paths}bin/vc14win64"],
+            "import_debug": [
+                "${lib_names_win}DEBUG_x64.lib",
+                "${lib_names_ext}DEBUG.lib"
+            ],
+            "import_release": [
+                "${lib_names_win}PROFILE_x64.lib",
+                "${lib_names_ext}PROFILE.lib"
+            ],
+            "shared_debug": [
+                "${lib_names_shared_sys}.dll",
+                "${lib_names_shared}DEBUG_x64.dll"
+            ],
+            "shared_release": [
+                "${lib_names_shared_sys}.dll",
+                "${lib_names_shared}PROFILE_x64.dll"
+            ]
+        },
+        "win_x64_vs2017": "@win_x64_vs2015",
+        "linux_x64": {
+            "ccflags": [
+              "-Wno-return-type-c-linkage"
+            ],
+            "linux_lib": [""],
+            
+            "importlibpath": ["${lib_paths}/lib/linux64", "${lib_paths}/bin/linux64"],
+            "sharedlibpath": ["${lib_paths}/bin/linux64"],
+            "import_debug": [
+                "lib${lib_names_linux}DEBUG.a",
+                "lib${lib_names_shared}DEBUG_x64.so"
+            ],
+            "import_release": [
+                "lib${lib_names_linux}PROFILE.a",
+                "lib${lib_names_shared}PROFILE_x64.so"
+            ],
+            "shared_debug": [
+                "${lib_names_shared}DEBUG_x64.so"
+            ],
+            "shared_release": [
+                "${lib_names_shared}PROFILE_x64.so"
+            ]
+        },
+        "darwin_x64": {
+            "importlibpath": ["${lib_paths}/lib/osx64"],
+            "import_debug": [
+                "lib${lib_names_monolithic}DEBUG.a"
+            ],
+            "import_release": [
+                "lib${lib_names_monolithic}PROFILE.a"
+            ]
+        },
+        "ios": {
+            "importlibpath": ["${lib_paths}/lib/ios64"],
+            "import_debug": [
+                "lib${lib_names_monolithic}DEBUG.a"
+            ],	
+            "import_release": [
+                "lib${lib_names_monolithic}PROFILE.a"
+            ]
+        },
+        "android_armv7_gcc": {
+            "importlibpath": ["${lib_paths}/lib/android-armv7"],
+            "import_debug": [
+                "lib${lib_names_monolithic}DEBUG.a"
+            ],
+            "import_release": [
+                "lib${lib_names_monolithic}PROFILE.a"
+            ]
+        },
+        "android_armv7_clang": "@android_armv7_gcc",
+        "android_armv8_gcc": {
+            "importlibpath": ["${lib_paths}/lib/android-armv8"],
+            "import_debug": [
+                "lib${lib_names_monolithic}DEBUG.a"
+            ],
+            "import_release": [
+                "lib${lib_names_monolithic}PROFILE.a"
+            ]
+        },
+        "android_armv8_clang": "@android_armv8_gcc",
+        "durango_vs2015": {
+            "libpath": ["${lib_paths}/lib/vc14xboxone"],
+            "importlibpath": ["${lib_paths}/lib/vc14xboxone"],
+            "lib": [
+                "${lib_names_monolithic}PROFILE.lib"
+            ],
+            "import_debug": [
+                "${lib_names_monolithic}DEBUG.lib"
+            ],
+            "import_release": [
+                "${lib_names_monolithic}PROFILE.lib"
+            ]
+        },
+        "durango_vs2017": "@durango_vs2015",
+        "orbis_vs2015": {
+            "ccflags": [
+              "-Wno-return-type-c-linkage"
+            ],
+            "libpath": ["${lib_paths}/lib/vc14ps4"],
+            "importlibpath": ["${lib_paths}/lib/vc14ps4"],
+            "lib": [
+                "lib${lib_names_monolithic}PROFILE.a"
+            ],
+            "import_debug": [
+                "lib${lib_names_monolithic}DEBUG.a"
+            ],
+            "import_release": [
+                "lib${lib_names_monolithic}PROFILE.a"
+            ]
+        },
+        "orbis_vs2017": "@orbis_vs2015"
+    }
+}

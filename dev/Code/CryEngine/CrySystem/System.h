@@ -32,6 +32,7 @@
 #include "RenderBus.h"
 
 #include <LoadScreenBus.h>
+#include <ThermalInfo.h>
 
 struct IConsoleCmdArgs;
 class CServerThrottle;
@@ -69,7 +70,11 @@ namespace minigui
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_1
-#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_h_provo.inl"
+    #endif
 #else
 #if defined(WIN32) || defined(LINUX) || defined(APPLE)
 #define AZ_LEGACY_CRYSYSTEM_TRAIT_ALLOW_CREATE_BACKUP_LOG_FILE 1
@@ -312,7 +317,11 @@ struct SSystemCVars
     int sys_display_threads;
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_2
-#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_h_provo.inl"
+    #endif
 #endif
 };
 extern SSystemCVars g_cvars;
@@ -804,7 +813,11 @@ private:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_3
-#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_h_provo.inl"
+    #endif
 #elif defined(WIN32)
     bool GetWinGameFolder(char* szMyDocumentsPath, int maxPathSize);
 #endif
@@ -840,6 +853,8 @@ public:
         cryAsyncMemcpyDelegate(dst, src, size, nFlags, sync);
 #endif
     }
+    virtual void SetConsoleDrawEnabled(bool enabled) { m_bDrawConsole = enabled; }
+    virtual void SetUIDrawEnabled(bool enabled) { m_bDrawUI = enabled; }
 
     // -------------------------------------------------------------
 
@@ -910,6 +925,8 @@ private: // ------------------------------------------------------
     bool                                    m_hasJustResumed;           // Has resume game just been called
     bool                                    m_expectingMapCommand;
 #endif
+    bool                                    m_bDrawConsole;              //!< Set to true if OK to draw the console.
+    bool                                    m_bDrawUI;                   //!< Set to true if OK to draw UI.
 
     std::map<CCryNameCRC, WIN_HMODULE> m_moduleDLLHandles;
 
@@ -1052,7 +1069,11 @@ private: // ------------------------------------------------------
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEM_H_SECTION_4
-#include AZ_RESTRICTED_FILE(System_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/System_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/System_h_provo.inl"
+    #endif
 #endif
 
     ICVar* m_sys_audio_disable;
@@ -1277,6 +1298,8 @@ protected: // -------------------------------------------------------------
     std::vector<IWindowMessageHandler*> m_windowMessageHandlers;
     bool m_initedOSAllocator = false;
     bool m_initedSysAllocator = false;
+
+    AZStd::unique_ptr<ThermalInfoHandler> m_thermalInfoHandler;
 };
 
 /*extern static */ bool QueryModuleMemoryInfo(SCryEngineStatsModuleInfo& moduleInfo, int index);

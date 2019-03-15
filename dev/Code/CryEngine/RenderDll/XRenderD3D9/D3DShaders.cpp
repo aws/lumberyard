@@ -516,6 +516,7 @@ void* CHWShader_D3D::GetVSDataForDecl(const D3D11_INPUT_ELEMENT_DESC* pDecl, int
     Ident.m_MDMask = 0;
     Ident.m_MDVMask = 0;
     Ident.m_GLMask = 0;
+    Ident.m_STMask = 0;
 
     SHWSInstance* pI = pVS->m_pCurInst;
 
@@ -603,6 +604,49 @@ bool CD3D9Renderer::FX_SetFPMode()
     return bRes;
 }
 
+bool CD3D9Renderer::FX_SetUIMode()
+{
+    assert (gRenDev->m_pRT->IsRenderThread());
+
+    if (!(m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags & RBPF_FP_DIRTY) && CShaderMan::s_ShaderUI == m_RP.m_pShader)
+    {
+        return true;
+    }
+    if (m_bDeviceLost)
+    {
+        return false;
+    }
+    m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags &= ~RBPF_FP_DIRTY;
+    m_RP.m_pCurObject = m_RP.m_pIdendityRenderObject;
+    CShader* pSh = CShaderMan::s_ShaderUI;
+    if (!pSh || !pSh->m_HWTechniques.Num())
+    {
+        return false;
+    }
+    m_RP.m_FlagsShader_LT = m_RP.m_TI[m_RP.m_nProcessThreadID].m_eCurColorOp | (m_RP.m_TI[m_RP.m_nProcessThreadID].m_eCurAlphaOp << 8) | (m_RP.m_TI[m_RP.m_nProcessThreadID].m_eCurColorArg << 16) | (m_RP.m_TI[m_RP.m_nProcessThreadID].m_eCurAlphaArg << 24);
+    m_RP.m_FlagsShader_LT |= (m_RP.m_TI[m_RP.m_nProcessThreadID].m_sRGBWrite ? 1 : 0) << 22;
+
+    if (CTexture::s_TexStages[0].m_DevTexture && CTexture::s_TexStages[0].m_DevTexture->IsCube())
+    {
+        m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_CUBEMAP0];
+    }
+    else
+    {
+        m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_CUBEMAP0];
+    }
+
+    m_RP.m_pShader = pSh;
+    m_RP.m_pCurTechnique = pSh->m_HWTechniques[0];
+
+    bool bRes = pSh->FXBegin(&m_RP.m_nNumRendPasses, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
+    if (!bRes)
+    {
+        return false;
+    }
+    bRes = pSh->FXBeginPass(0);
+    FX_Commit();
+    return bRes;
+}
 
 void CShaderMan::mfCheckObjectDependParams(std::vector<SCGParam>& PNoObj, std::vector<SCGParam>& PObj, EHWShaderClass eSH, CShader* pFXShader)
 {

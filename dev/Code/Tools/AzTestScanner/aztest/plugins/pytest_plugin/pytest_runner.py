@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 PYTEST_RESULT_FILENAME = "pytest_results"
 XML_EXTENSION = ".xml"
+PYTEST_ARTIFACT_FOLDER_NAME = "Test_Results"
 
 
 def run_pytest(known_args, extra_args):
@@ -32,13 +33,20 @@ def run_pytest(known_args, extra_args):
     :raises: CalledProcessError if pytest detects failures (returning a non-zero return code)
     :raises: SubprocessTimeoutException if pytest times out
     """
+    timeout_sec = 1200  # 20 minutes
+    if known_args.module_timeout:
+        timeout_sec = int(known_args.module_timeout)
+        print 'Setting module timeout to {0}'.format(known_args.module_timeout)
+    else:
+        print 'No timeout set, using default of 1200 seconds (20 minutes).'
+
     xunit_command = _get_xunit_command(known_args.output_path)
-    argument_call = [sys.executable, "-B", "-m", "pytest", "--cache-clear", "-c", "lmbr_test_pytest.ini", xunit_command]
+    argument_call = [sys.executable, "-B", "-m", "pytest", "--cache-clear", "-c",
+                     "lmbr_test_pytest.ini", xunit_command]
     argument_call.extend(extra_args)
     log.info("Invoking pytest")
     log.info(argument_call)
 
-    timeout_sec = 1200  # 20 minutes
     try:
         # raise on failure
         return_code = subprocess_with_timeout(argument_call, timeout_sec)
@@ -48,10 +56,10 @@ def run_pytest(known_args, extra_args):
         log.error("Pytest timed out after {} seconds.".format(timeout_sec))
         raise ste
 
-
-
 def _get_xunit_command(output_path):
     timestamp = clean_timestamp(datetime.now().isoformat())
     full_filename = "{}_{}{}".format(PYTEST_RESULT_FILENAME, timestamp, XML_EXTENSION)
+    folder_name = "{}_{}".format(PYTEST_ARTIFACT_FOLDER_NAME, timestamp)
     output_file = os.path.join(output_path, full_filename)
-    return "--junitxml={}".format(output_file)
+    output_folder = os.path.join(output_path, folder_name)
+    return "--junitxml={} --logs_path={}".format(output_file, output_folder)

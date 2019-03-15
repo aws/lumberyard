@@ -26,6 +26,10 @@ public:
     void AssetProcessingStateDataTest();
     void ExistenceTest(AssetProcessor::AssetDatabaseConnection* stateData);
     void DataTest(AssetProcessor::AssetDatabaseConnection* stateData);
+    void BuilderInfoTest(AssetProcessor::AssetDatabaseConnection* stateData);
+    void SourceDependencyTest(AssetProcessor::AssetDatabaseConnection* stateData);
+    void SourceFingerprintTest(AssetProcessor::AssetDatabaseConnection* stateData);
+
     virtual void StartTest() override;
     virtual int UnitTestPriority() const override { return -10; } // other classes depend on this one
 

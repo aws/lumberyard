@@ -95,6 +95,7 @@ UiScrollBoxComponent::UiScrollBoxComponent()
     , m_isDragging(false)
     , m_isActive(false)
     , m_pressedScrollOffset(0.0f, 0.0f)
+    , m_lastDragPoint(0.0f, 0.0f)
 {
 }
 
@@ -126,9 +127,17 @@ void UiScrollBoxComponent::SetScrollOffset(AZ::Vector2 scrollOffset)
     if (scrollOffset != m_scrollOffset)
     {
         DoSetScrollOffset(scrollOffset);
-        DoChangedActions();
+
+        // Reset drag info
+        if (m_isDragging)
+        {
+            m_pressedScrollOffset = m_scrollOffset;
+            m_pressedPoint = m_lastDragPoint;
+        }
 
         NotifyScrollersOnValueChanged();
+
+        DoChangedActions();
     }
 }
 
@@ -139,6 +148,84 @@ AZ::Vector2 UiScrollBoxComponent::GetNormalizedScrollValue()
     bool result = ScrollOffsetToNormalizedScrollValue(m_scrollOffset, normalizedScrollValueOut);
 
     return normalizedScrollValueOut;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBoxComponent::ChangeContentSizeAndScrollOffset(AZ::Vector2 contentSize, AZ::Vector2 scrollOffset)
+{
+    if (m_contentEntity.IsValid())
+    {
+        AZ::Vector2 prevScrollOffset = m_scrollOffset;
+
+        // Get current content size
+        AZ::Vector2 prevContentSize(0.0f, 0.0f);
+        EBUS_EVENT_ID_RESULT(prevContentSize, m_contentEntity, UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
+
+        // Resize content element
+        if (prevContentSize != contentSize)
+        {
+            UiTransform2dInterface::Offsets offsets;
+            EBUS_EVENT_ID_RESULT(offsets, m_contentEntity, UiTransform2dBus, GetOffsets);
+
+            AZ::Vector2 pivot;
+            EBUS_EVENT_ID_RESULT(pivot, m_contentEntity, UiTransformBus, GetPivot);
+
+            AZ::Vector2 sizeDiff = contentSize - prevContentSize;
+
+            if (sizeDiff.GetX() != 0.0f)
+            {
+                offsets.m_left -= sizeDiff.GetX() * pivot.GetX();
+                offsets.m_right += sizeDiff.GetX() * (1.0f - pivot.GetX());
+            }
+            if (sizeDiff.GetY() != 0.0f)
+            {
+                offsets.m_top -= sizeDiff.GetY() * pivot.GetY();
+                offsets.m_bottom += sizeDiff.GetY() * (1.0f - pivot.GetY());
+            }
+
+            EBUS_EVENT_ID(m_contentEntity, UiTransform2dBus, SetOffsets, offsets);
+        }
+
+        // Adjust scroll offset
+        if (m_scrollOffset != scrollOffset)
+        {
+            DoSetScrollOffset(scrollOffset);
+        }
+
+        // Reset drag info
+        if (m_isDragging)
+        {
+            m_pressedScrollOffset = m_scrollOffset;
+            m_pressedPoint = m_lastDragPoint;
+        }
+
+        // Handle content size change which also handles snapping/constraining
+        if (prevContentSize != contentSize)
+        {
+            ContentOrParentSizeChanged();
+        }
+        else
+        {
+            if (prevScrollOffset != m_scrollOffset)
+            {
+                NotifyScrollersOnValueChanged();
+            }
+
+            if (DoSnap())
+            {
+                // Reset drag info
+                if (m_isDragging)
+                {
+                    m_pressedScrollOffset = m_scrollOffset;
+                    m_pressedPoint = m_lastDragPoint;
+                }
+
+                NotifyScrollersOnValueChanged();
+
+                DoChangedActions();
+            }
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -524,7 +611,7 @@ void UiScrollBoxComponent::OnValueChangingByScroller(float value)
     AZ::Vector2 newScrollOffsetOut;
     bool result = ScrollerValueToScrollOffsets(scroller, value, newScrollOffsetOut);
 
-    if (result)
+    if (result && m_scrollOffset != newScrollOffsetOut)
     {
         DoSetScrollOffset(newScrollOffsetOut);
         DoChangingActions();
@@ -541,19 +628,30 @@ void UiScrollBoxComponent::OnValueChangedByScroller(float value)
 
     if (result)
     {
-        DoSetScrollOffset(newScrollOffsetOut);
-        DoSnap();
-        DoChangedActions();
+        AZ::Vector2 prevScrollOffset = m_scrollOffset;
 
-        // Snapping could have caused the scroll offsets to change, so notify scrollers
-        NotifyScrollersOnValueChanged();
+        if (m_scrollOffset != newScrollOffsetOut)
+        {
+            DoSetScrollOffset(newScrollOffsetOut);
+        }
+
+        if (DoSnap())
+        {
+            // Snapping/constraining caused the scroll offsets to change, so notify scrollers
+            NotifyScrollersOnValueChanged();
+        }
+
+        if (m_scrollOffset != prevScrollOffset)
+        {
+            DoChangedActions();
+        }
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiScrollBoxComponent::InGamePostActivate()
 {
-    if (m_hScrollBarEntity.IsValid())
+    if (m_hScrollBarEntity.IsValid() && m_isHorizontalScrollingEnabled)
     {
         // Set this entity as the scrollable entity of the scroller
         EBUS_EVENT_ID(m_hScrollBarEntity, UiScrollerBus, SetScrollableEntity, GetEntityId());
@@ -561,7 +659,7 @@ void UiScrollBoxComponent::InGamePostActivate()
         UiScrollerToScrollableNotificationBus::MultiHandler::BusConnect(m_hScrollBarEntity);
     }
 
-    if (m_vScrollBarEntity.IsValid())
+    if (m_vScrollBarEntity.IsValid() && m_isVerticalScrollingEnabled)
     {
         // Set this entity as the scrollable entity of the scroller
         EBUS_EVENT_ID(m_vScrollBarEntity, UiScrollerBus, SetScrollableEntity, GetEntityId());
@@ -616,10 +714,10 @@ bool UiScrollBoxComponent::HandleReleased(AZ::Vector2 point)
 
         UiInteractableComponent::TriggerReleasedAction();
 
+        NotifyScrollersOnValueChanged();
+
         // NOTE: when we have inertia/rubber-banding these actions should occur when snap is finished
         DoChangedActions();
-
-        NotifyScrollersOnValueChanged();
     }
 
     m_isPressed = false;
@@ -773,11 +871,12 @@ bool UiScrollBoxComponent::HandleKeyInputBegan(const AzFramework::InputChannel::
         if (newScrollOffset != m_scrollOffset)
         {
             DoSetScrollOffset(newScrollOffset);
+
+            NotifyScrollersOnValueChanged();
+
             DoChangingActions();
 
             DoChangedActions();
-
-            NotifyScrollersOnValueChanged();
         }
 
         result = true;
@@ -837,12 +936,15 @@ void UiScrollBoxComponent::InputPositionUpdate(AZ::Vector2 point)
                 newScrollOffset = ConstrainOffset(newScrollOffset, contentParentEntity);
             }
 
+            m_lastDragPoint = point;
+
             if (newScrollOffset != m_scrollOffset)
             {
                 DoSetScrollOffset(newScrollOffset);
-                DoChangingActions();
 
                 NotifyScrollersOnValueChanging();
+
+                DoChangingActions();
             }
         }
     }
@@ -887,6 +989,7 @@ bool UiScrollBoxComponent::OfferDragHandOff(AZ::EntityId currentActiveInteractab
         m_isPressed = true;
         m_pressedPoint = startPoint;
         m_pressedScrollOffset = m_scrollOffset;
+        m_lastDragPoint = m_pressedPoint;
 
         // tell the canvas that this is now the active interacatable
         EBUS_EVENT_ID(currentActiveInteractable, UiInteractableActiveNotificationBus, ActiveChanged, GetEntityId(), false);
@@ -920,10 +1023,10 @@ void UiScrollBoxComponent::LostActiveStatus()
             // handle snapping
             DoSnap();
 
+            NotifyScrollersOnValueChanged();
+
             // NOTE: when we have inertia/rubber-banding these actions should occur when snap is finished
             DoChangedActions();
-
-            NotifyScrollersOnValueChanged();
         }
 
         m_isDragging = false;
@@ -1092,12 +1195,12 @@ void UiScrollBoxComponent::Deactivate()
     UiInitializationBus::Handler::BusDisconnect(GetEntityId());
     UiTransformChangeNotificationBus::MultiHandler::BusDisconnect();
 
-    if (m_hScrollBarEntity.IsValid())
+    if (m_hScrollBarEntity.IsValid() && m_isHorizontalScrollingEnabled)
     {
         UiScrollerToScrollableNotificationBus::MultiHandler::BusDisconnect(m_hScrollBarEntity);
     }
 
-    if (m_vScrollBarEntity.IsValid())
+    if (m_vScrollBarEntity.IsValid() && m_isVerticalScrollingEnabled)
     {
         UiScrollerToScrollableNotificationBus::MultiHandler::BusDisconnect(m_vScrollBarEntity);
     }
@@ -1167,6 +1270,7 @@ void UiScrollBoxComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiScrollBoxComponent>("ScrollBox", "An interactable component for scrolling a child element.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiScrollBox.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiScrollBox.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
@@ -1998,8 +2102,10 @@ bool UiScrollBoxComponent::IsHorizontalScrollBarOnBottom()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiScrollBoxComponent::UpdateScrollBarVisiblity()
 {
-    if ((m_hScrollBarEntity.IsValid() && (m_hScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
-        || (m_vScrollBarEntity.IsValid() && (m_vScrollBarVisibility != ScrollBarVisibility::AlwaysShow)))
+    bool updateHorizontalScrollBar = m_hScrollBarEntity.IsValid() && m_isHorizontalScrollingEnabled && (m_hScrollBarVisibility != ScrollBarVisibility::AlwaysShow);
+    bool updateVerticalScrollBar = m_vScrollBarEntity.IsValid() && m_isVerticalScrollingEnabled && (m_vScrollBarVisibility != ScrollBarVisibility::AlwaysShow);
+
+    if (updateHorizontalScrollBar || updateVerticalScrollBar)
     {
         // Set scrollbar visibility based on whether there is scrollable content
 
@@ -2018,24 +2124,14 @@ void UiScrollBoxComponent::UpdateScrollBarVisiblity()
             UiTransformInterface::Rect contentRect = GetAxisAlignedContentRect();
             AZ::Vector2 contentSize = contentRect.GetSize();
 
-            // Get height of horizontal scrollbar
-            AZ::Vector2 hScrollBarSize;
-            EBUS_EVENT_ID_RESULT(hScrollBarSize, m_hScrollBarEntity, UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
-            float hScrollBarHeight = hScrollBarSize.GetY();
-
-            // Get width of vertical scrollbar
-            AZ::Vector2 vScrollBarSize;
-            EBUS_EVENT_ID_RESULT(vScrollBarSize, m_vScrollBarEntity, UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
-            float vScrollBarWidth = vScrollBarSize.GetX();
-
             // First check if none of the hideable scrollbars are needed
             bool needHScrollBar = false;
             bool needVScrollBar = false;
-            if (m_hScrollBarEntity.IsValid() && (m_hScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
+            if (updateHorizontalScrollBar)
             {
                 needHScrollBar = (contentSize.GetX() > parentSize.GetX());
             }
-            if (m_vScrollBarEntity.IsValid() && (m_vScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
+            if (updateVerticalScrollBar)
             {
                 needVScrollBar = (contentSize.GetY() > parentSize.GetY());
             }
@@ -2050,8 +2146,13 @@ void UiScrollBoxComponent::UpdateScrollBarVisiblity()
                 // Next, check if only a horizontal scrollbar is needed
                 AZ::Vector2 supposedParentSize = parentSize;
 
-                if (m_hScrollBarEntity.IsValid() && (m_hScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
+                if (updateHorizontalScrollBar && (m_hScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
                 {
+                    // Get height of horizontal scrollbar
+                    AZ::Vector2 hScrollBarSize;
+                    EBUS_EVENT_ID_RESULT(hScrollBarSize, m_hScrollBarEntity, UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
+                    float hScrollBarHeight = hScrollBarSize.GetY();
+
                     supposedParentSize.SetY(supposedParentSize.GetY() - hScrollBarHeight);
                 }
 
@@ -2065,8 +2166,13 @@ void UiScrollBoxComponent::UpdateScrollBarVisiblity()
                     // Next, check if only a vertical scrollbar is needed
                     supposedParentSize = parentSize;
 
-                    if (m_vScrollBarEntity.IsValid() && (m_vScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
+                    if (updateVerticalScrollBar && (m_vScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
                     {
+                        // Get width of vertical scrollbar
+                        AZ::Vector2 vScrollBarSize;
+                        EBUS_EVENT_ID_RESULT(vScrollBarSize, m_vScrollBarEntity, UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
+                        float vScrollBarWidth = vScrollBarSize.GetX();
+
                         supposedParentSize.SetX(supposedParentSize.GetX() - vScrollBarWidth);
                     }
 
@@ -2085,11 +2191,11 @@ void UiScrollBoxComponent::UpdateScrollBarVisiblity()
             }
 
             // Set enabled property on the scrollbars
-            if (m_hScrollBarEntity.IsValid() && (m_hScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
+            if (updateHorizontalScrollBar)
             {
                 EBUS_EVENT_ID(m_hScrollBarEntity, UiElementBus, SetIsEnabled, showHScrollBar);
             }
-            if (m_vScrollBarEntity.IsValid() && (m_vScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
+            if (updateVerticalScrollBar)
             {
                 EBUS_EVENT_ID(m_vScrollBarEntity, UiElementBus, SetIsEnabled, showVScrollBar);
             }
@@ -2102,7 +2208,7 @@ void UiScrollBoxComponent::UpdateScrollBarAnchorsAndOffsets()
 {
     // Set scrollbar anchors and offsets based on the other scrollbar's visibility
 
-    if (m_hScrollBarEntity.IsValid() && (m_hScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
+    if (m_hScrollBarEntity.IsValid() && m_isHorizontalScrollingEnabled && (m_hScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
     {
         // Set anchors
         UiTransform2dInterface::Anchors anchors;
@@ -2117,7 +2223,10 @@ void UiScrollBoxComponent::UpdateScrollBarAnchorsAndOffsets()
         EBUS_EVENT_ID_RESULT(offsets, m_hScrollBarEntity, UiTransform2dBus, GetOffsets);
 
         bool isVScrollBarEnabled = false;
-        EBUS_EVENT_ID_RESULT(isVScrollBarEnabled, m_vScrollBarEntity, UiElementBus, IsEnabled);
+        if (m_vScrollBarEntity.IsValid() && m_isVerticalScrollingEnabled)
+        {
+            EBUS_EVENT_ID_RESULT(isVScrollBarEnabled, m_vScrollBarEntity, UiElementBus, IsEnabled);
+        }
 
         if (isVScrollBarEnabled)
         {
@@ -2145,7 +2254,7 @@ void UiScrollBoxComponent::UpdateScrollBarAnchorsAndOffsets()
         EBUS_EVENT_ID(m_hScrollBarEntity, UiTransform2dBus, SetOffsets, offsets);
     }
 
-    if (m_vScrollBarEntity.IsValid() && (m_vScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
+    if (m_vScrollBarEntity.IsValid() && m_isVerticalScrollingEnabled && (m_vScrollBarVisibility != ScrollBarVisibility::AlwaysShow))
     {
         // Set anchors
         UiTransform2dInterface::Anchors anchors;
@@ -2160,7 +2269,10 @@ void UiScrollBoxComponent::UpdateScrollBarAnchorsAndOffsets()
         EBUS_EVENT_ID_RESULT(offsets, m_vScrollBarEntity, UiTransform2dBus, GetOffsets);
 
         bool isHScrollBarEnabled = false;
-        EBUS_EVENT_ID_RESULT(isHScrollBarEnabled, m_hScrollBarEntity, UiElementBus, IsEnabled);
+        if (m_hScrollBarEntity.IsValid() && m_isHorizontalScrollingEnabled)
+        {
+            EBUS_EVENT_ID_RESULT(isHScrollBarEnabled, m_hScrollBarEntity, UiElementBus, IsEnabled);
+        }
 
         if (isHScrollBarEnabled)
         {
@@ -2192,8 +2304,8 @@ void UiScrollBoxComponent::UpdateScrollBarAnchorsAndOffsets()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiScrollBoxComponent::UpdateContentParentOffsets(bool checkScrollBarVisibility)
 {
-    if ((m_hScrollBarEntity.IsValid() && (m_hScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
-        || (m_vScrollBarEntity.IsValid() && (m_vScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport)))
+    if ((m_hScrollBarEntity.IsValid() && m_isHorizontalScrollingEnabled && (m_hScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
+        || (m_vScrollBarEntity.IsValid() && m_isVerticalScrollingEnabled && (m_vScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport)))
     {
         // Set content parent offsets based on scrollbar visibility
 
@@ -2204,7 +2316,7 @@ void UiScrollBoxComponent::UpdateContentParentOffsets(bool checkScrollBarVisibil
             UiTransform2dInterface::Offsets offsets;
             EBUS_EVENT_ID_RESULT(offsets, contentParentEntity->GetId(), UiTransform2dBus, GetOffsets);
 
-            if (m_hScrollBarEntity.IsValid() && (m_hScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
+            if (m_hScrollBarEntity.IsValid() && m_isHorizontalScrollingEnabled && (m_hScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
             {
                 bool isHScrollBarEnabled = false;
                 if (checkScrollBarVisibility)
@@ -2236,7 +2348,7 @@ void UiScrollBoxComponent::UpdateContentParentOffsets(bool checkScrollBarVisibil
                 }
             }
 
-            if (m_vScrollBarEntity.IsValid() && (m_vScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
+            if (m_vScrollBarEntity.IsValid() && m_isVerticalScrollingEnabled && (m_vScrollBarVisibility == ScrollBarVisibility::AutoHideAndResizeViewport))
             {
                 bool isVScrollBarEnabled = false;
                 if (checkScrollBarVisibility)
@@ -2299,10 +2411,21 @@ void UiScrollBoxComponent::ContentOrParentSizeChanged()
 
     if (DoSnap())
     {
+        // Reset drag info
+        if (m_isDragging)
+        {
+            m_pressedScrollOffset = m_scrollOffset;
+            m_pressedPoint = m_lastDragPoint;
+        }
+
+        NotifyScrollersOnValueChanged();
+
         DoChangedActions();
     }
-
-    NotifyScrollersOnValueChanged();
+    else
+    {
+        NotifyScrollersOnValueChanged();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

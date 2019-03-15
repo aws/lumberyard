@@ -92,7 +92,7 @@ namespace EMStudio
         mTableWidget->setContextMenuPolicy(Qt::DefaultContextMenu);
 
         // set the column count
-        mTableWidget->setColumnCount(7);
+        mTableWidget->setColumnCount(6);
 
         // set header items for the table
         mTableWidget->setHorizontalHeaderItem(0, new QTableWidgetItem("Vis"));
@@ -100,8 +100,7 @@ namespace EMStudio
         mTableWidget->setHorizontalHeaderItem(2, new QTableWidgetItem("Name"));
         mTableWidget->setHorizontalHeaderItem(3, new QTableWidgetItem("IsSkin"));
         mTableWidget->setHorizontalHeaderItem(4, new QTableWidgetItem("Node"));
-        mTableWidget->setHorizontalHeaderItem(5, new QTableWidgetItem("Fast"));
-        mTableWidget->setHorizontalHeaderItem(6, new QTableWidgetItem("Nodes"));
+        mTableWidget->setHorizontalHeaderItem(5, new QTableWidgetItem("Nodes"));
 
         // set the horizontal header alignement
         horizontalHeader->setDefaultAlignment(Qt::AlignVCenter | Qt::AlignLeft);
@@ -203,16 +202,16 @@ namespace EMStudio
         mNodeSelectionWindow = new NodeSelectionWindow(this, true);
 
         // connect the controls to the slots
-        connect(mTableWidget,                          SIGNAL(itemSelectionChanged()), this, SLOT(OnSelectionChanged()));
-        connect(mOpenAttachmentButton,                 SIGNAL(clicked()),              this, SLOT(OnOpenAttachmentButtonClicked()));
-        connect(mOpenDeformableAttachmentButton,       SIGNAL(clicked()),              this, SLOT(OnOpenDeformableAttachmentButtonClicked()));
-        connect(mRemoveButton,                         SIGNAL(clicked()),              this, SLOT(OnRemoveButtonClicked()));
-        connect(mClearButton,                          SIGNAL(clicked()),              this, SLOT(OnClearButtonClicked()));
-        connect(mNodeSelectionWindow->GetNodeHierarchyWidget(),                        SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnAttachmentNodesSelected(MCore::Array<SelectionItem>)));
-        connect(mNodeSelectionWindow,                                                  SIGNAL(rejected()),             this, SLOT(OnCancelAttachmentNodeSelection()));
-        connect(mNodeSelectionWindow->GetNodeHierarchyWidget()->GetTreeWidget(),       SIGNAL(itemSelectionChanged()), this, SLOT(OnNodeChanged()));
-        connect(mEscapeShortcut, SIGNAL(activated()), this, SLOT(OnEscapeButtonPressed()));
-        connect(mCancelSelectionButton, SIGNAL(clicked()), this, SLOT(OnEscapeButtonPressed()));
+        connect(mTableWidget,                          &QTableWidget::itemSelectionChanged, this, &AttachmentsWindow::OnSelectionChanged);
+        connect(mOpenAttachmentButton,                 &QPushButton::clicked,              this, &AttachmentsWindow::OnOpenAttachmentButtonClicked);
+        connect(mOpenDeformableAttachmentButton,       &QPushButton::clicked,              this, &AttachmentsWindow::OnOpenDeformableAttachmentButtonClicked);
+        connect(mRemoveButton,                         &QPushButton::clicked,              this, &AttachmentsWindow::OnRemoveButtonClicked);
+        connect(mClearButton,                          &QPushButton::clicked,              this, &AttachmentsWindow::OnClearButtonClicked);
+        connect(mNodeSelectionWindow->GetNodeHierarchyWidget(),                        static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &AttachmentsWindow::OnAttachmentNodesSelected);
+        connect(mNodeSelectionWindow,                                                  &NodeSelectionWindow::rejected,             this, &AttachmentsWindow::OnCancelAttachmentNodeSelection);
+        connect(mNodeSelectionWindow->GetNodeHierarchyWidget()->GetTreeWidget(),       &QTreeWidget::itemSelectionChanged, this, &AttachmentsWindow::OnNodeChanged);
+        connect(mEscapeShortcut, &QShortcut::activated, this, &AttachmentsWindow::OnEscapeButtonPressed);
+        connect(mCancelSelectionButton, &QPushButton::clicked, this, &AttachmentsWindow::OnEscapeButtonPressed);
 
         // reinit the window
         ReInit();
@@ -260,7 +259,7 @@ namespace EMStudio
             uint32                      attachedToNodeIndex = MCORE_INVALIDINDEX32;
             EMotionFX::Node*            attachedToNode      = nullptr;
 
-            if (attachment->GetIsInfluencedByMultipleNodes() == false)
+            if (!attachment->GetIsInfluencedByMultipleJoints())
             {
                 attachedToNodeIndex = static_cast<EMotionFX::AttachmentNode*>(attachment)->GetAttachToNodeIndex();
             }
@@ -275,7 +274,7 @@ namespace EMStudio
             QTableWidgetItem* tableItemID           = new QTableWidgetItem(mTempString.c_str());
             AzFramework::StringFunc::Path::GetFileName(attachmentActor->GetFileNameString().c_str(), mTempString);
             QTableWidgetItem* tableItemName         = new QTableWidgetItem(mTempString.c_str());
-            mTempString = attachment->GetIsInfluencedByMultipleNodes() ? "Yes" : "No";
+            mTempString = attachment->GetIsInfluencedByMultipleJoints() ? "Yes" : "No";
             QTableWidgetItem* tableItemDeformable   = new QTableWidgetItem(mTempString.c_str());
             mTempString = AZStd::string::format("%i", attachmentInstance->GetNumNodes());
             QTableWidgetItem* tableItemNumNodes     = new QTableWidgetItem(mTempString.c_str());
@@ -288,7 +287,7 @@ namespace EMStudio
                 MysticQt::LinkWidget* nodeSelectionButton = new MysticQt::LinkWidget(attachedToNode->GetName());
                 nodeSelectionButton->setStyleSheet("text-align: left;");
                 mTableWidget->setCellWidget(i, 4, nodeSelectionButton);
-                connect(nodeSelectionButton, SIGNAL(clicked()), this, SLOT(OnSelectNodeButtonClicked()));
+                connect(nodeSelectionButton, &MysticQt::LinkWidget::clicked, this, &AttachmentsWindow::OnSelectNodeButtonClicked);
             }
 
             // create the checkboxes
@@ -297,24 +296,16 @@ namespace EMStudio
             isVisibleCheckBox->setProperty("attachmentInstanceID", attachmentInstance->GetID());
             isVisibleCheckBox->setChecked(true);
 
-            QCheckBox* allowFastUpdatesCheckBox = new QCheckBox();
-            allowFastUpdatesCheckBox->setProperty("attachmentInstanceID", attachmentInstance->GetID());
-            allowFastUpdatesCheckBox->setStyleSheet("background: transparent; padding-left: 9px;");
-            allowFastUpdatesCheckBox->setChecked(attachment->GetAllowFastUpdates());
-            allowFastUpdatesCheckBox->setMaximumWidth(51);
-
             // add table items to the current row
             mTableWidget->setCellWidget(i, 0, isVisibleCheckBox);
             mTableWidget->setItem(i, 1, tableItemID);
             mTableWidget->setItem(i, 2, tableItemName);
             mTableWidget->setItem(i, 3, tableItemDeformable);
             mTableWidget->setItem(i, 4, tableItemNodeName);
-            mTableWidget->setCellWidget(i, 5, allowFastUpdatesCheckBox);
-            mTableWidget->setItem(i, 6, tableItemNumNodes);
+            mTableWidget->setItem(i, 5, tableItemNumNodes);
 
             // connect the controls to the functions
-            connect(isVisibleCheckBox,         SIGNAL(stateChanged(int)), this, SLOT(OnVisibilityChanged(int)));
-            connect(allowFastUpdatesCheckBox,  SIGNAL(stateChanged(int)), this, SLOT(OnFastUpdatesChanged(int)));
+            connect(isVisibleCheckBox,         &QCheckBox::stateChanged, this, &AttachmentsWindow::OnVisibilityChanged);
 
             // set the row height
             mTableWidget->setRowHeight(i, 21);
@@ -394,8 +385,8 @@ namespace EMStudio
                 attachmentAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
                 deformableAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
 
-                connect(attachmentAction, SIGNAL(triggered()), this, SLOT(OnDroppedAttachmentsActors()));
-                connect(deformableAction, SIGNAL(triggered()), this, SLOT(OnDroppedDeformableActors()));
+                connect(attachmentAction, &QAction::triggered, this, &AttachmentsWindow::OnDroppedAttachmentsActors);
+                connect(deformableAction, &QAction::triggered, this, &AttachmentsWindow::OnDroppedDeformableActors);
 
                 // show the menu at the given position
                 menu.exec(mapToGlobal(event->pos()));
@@ -478,7 +469,7 @@ namespace EMStudio
         }
 
         // select the old actorinstance
-        commandGroup.AddCommandString("ClearSelection");
+        commandGroup.AddCommandString("Unselect -actorInstanceID SELECT_ALL -actorID SELECT_ALL");
         commandGroup.AddCommandString(AZStd::string::format("Select -actorinstanceID %i", mActorInstance->GetID()).c_str());
 
         // execute the command group
@@ -830,27 +821,6 @@ namespace EMStudio
         }
 
         return GetNodeNameFromTableRow(items[0]->row());
-    }
-
-
-    // called when fast updates changed
-    void AttachmentsWindow::OnFastUpdatesChanged(int fastUpdates)
-    {
-        MCORE_UNUSED(fastUpdates);
-
-        // get the sender widget
-        QCheckBox* widget = (QCheckBox*)(QWidget*)sender();
-        if (widget == nullptr)
-        {
-            return;
-        }
-
-        // get the id from the checkbox
-        const int id = widget->property("attachmentInstanceID").toInt();
-
-        // execute visible command
-        AZStd::string outResult;
-        GetCommandManager()->ExecuteCommand(AZStd::string::format("AdjustActorInstance -actorInstanceID %d -attachmentFastUpdate %s", id, AZStd::to_string(widget->isChecked()).c_str()), outResult);
     }
 
 

@@ -192,7 +192,7 @@ namespace AZ
     bool ObjectStream::WriteClass(const T* obj, const char* elemName)
     {
         (void)elemName;
-        AZ_Assert(!AZStd::is_pointer<T>::value, "Cannot serialize pointer-to-pointer as root element! This makes no sense!");
+        static_assert(!AZStd::is_pointer<T>::value, "Cannot serialize pointer-to-pointer as root element! This makes no sense!");
         // Call SaveClass with the potential pointer to derived class fully resolved.
         const void* classPtr = SerializeTypeInfo<T>::RttiCast(obj, SerializeTypeInfo<T>::GetRttiTypeId(obj));
         const Uuid& classId = SerializeTypeInfo<T>::GetUuid(obj);
@@ -225,7 +225,7 @@ namespace AZ
         const bool isValidAsset = asset.GetType() == AzTypeInfo<T>::Uuid();
         if (isValidAsset)
         {
-            return 0 == (asset.GetFlags() & static_cast<u8>(AZ::Data::AssetLoadBehavior::NoLoad));
+            return asset.GetAutoLoadBehavior() != AZ::Data::AssetLoadBehavior::NoLoad;
         }
 
         return false;

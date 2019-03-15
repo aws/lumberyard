@@ -823,6 +823,9 @@ namespace AZ
         /// Perform a full garbage collect step, this can be slow prefer GargabeCollectStep for runtime garbage collect
         void GarbageCollect();
 
+        /// Return the amount of memory used, in bytes
+        size_t GetMemoryUsage() const;
+
         /**
          *  Step the garbage collector. There is no exact number that works in all cases, tune this number for optimal 
          * performance in your app.

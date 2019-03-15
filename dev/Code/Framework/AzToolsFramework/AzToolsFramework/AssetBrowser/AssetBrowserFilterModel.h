@@ -38,6 +38,10 @@ namespace AzToolsFramework
 
             //asset type filtering
             void SetFilter(FilterConstType filter);
+            void FilterUpdatedSlotImmediate();
+
+        Q_SIGNALS:
+            void filterChanged();
 
             //////////////////////////////////////////////////////////////////////////
             //QSortFilterProxyModel

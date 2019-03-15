@@ -12,7 +12,7 @@
 #include "StdAfx.h"
 #include "PropertyStringLineEditCtrl.hxx"
 #include "PropertyQTConstants.h"
-#include <QtWidgets/QLineEdit>
+#include <AzQtComponents/Components/StyledLineEdit.h>
 #include <QtWidgets/QHBoxLayout>
 #include <QFocusEvent>
 
@@ -24,7 +24,7 @@ namespace AzToolsFramework
         // create the gui, it consists of a layout, and in that layout, a text field for the value
         // and then a slider for the value.
         QHBoxLayout* pLayout = new QHBoxLayout(this);
-        m_pLineEdit = new QLineEdit(this);
+        m_pLineEdit = new AzQtComponents::StyledLineEdit(this);
 
         pLayout->setSpacing(4);
         pLayout->setContentsMargins(1, 0, 1, 0);
@@ -41,11 +41,7 @@ namespace AzToolsFramework
         setFocusProxy(m_pLineEdit);
         setFocusPolicy(m_pLineEdit->focusPolicy());
 
-        connect(m_pLineEdit, SIGNAL(textChanged(const QString&)), this, SLOT(onChildLineEditValueChange(const QString&)));
-        connect(m_pLineEdit, &QLineEdit::editingFinished, this, [this]()
-        {
-            PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, this);
-        });
+        ConnectWidgets();
     };
 
     void PropertyStringLineEditCtrl::setValue(AZStd::string& value)
@@ -102,6 +98,15 @@ namespace AzToolsFramework
         // There's only one QT widget on this property.
     }
 
+    void PropertyStringLineEditCtrl::ConnectWidgets()
+    {
+        connect(m_pLineEdit, SIGNAL(textChanged(const QString&)), this, SLOT(onChildLineEditValueChange(const QString&)));
+        connect(m_pLineEdit, &QLineEdit::editingFinished, this, [this]()
+        {
+            PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, this);
+        });
+    }
+
     QWidget* StringPropertyLineEditHandler::CreateGUI(QWidget* pParent)
     {
         PropertyStringLineEditCtrl* newCtrl = aznew PropertyStringLineEditCtrl(pParent);
@@ -114,10 +119,18 @@ namespace AzToolsFramework
 
     void StringPropertyLineEditHandler::ConsumeAttribute(PropertyStringLineEditCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
-        Q_UNUSED(GUI);
-        Q_UNUSED(attrib);
-        Q_UNUSED(attrValue);
         Q_UNUSED(debugName);
+
+        GUI->blockSignals(true);
+        int value;
+        if (attrib == AZ::Edit::Attributes::MaxLength)
+        {
+            if (attrValue->Read<int>(value))
+            {
+                GUI->setMaxLen(value);
+            }
+        }
+        GUI->blockSignals(false);
     }
 
     void StringPropertyLineEditHandler::WriteGUIValuesIntoProperty(size_t index, PropertyStringLineEditCtrl* GUI, property_t& instance, InstanceDataNode* node)

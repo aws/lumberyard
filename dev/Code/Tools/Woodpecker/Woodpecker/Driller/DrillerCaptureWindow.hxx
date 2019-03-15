@@ -16,6 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/vector.h>
 
 #include "DrillerNetworkMessages.h"

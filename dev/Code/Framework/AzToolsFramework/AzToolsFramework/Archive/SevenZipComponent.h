@@ -16,6 +16,7 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/conditional_variable.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/unordered_set.h>
 
 #include <AzToolsFramework/Archive/ArchiveAPI.h>

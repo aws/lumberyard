@@ -31,8 +31,8 @@ def build(bld):
 
         win_x64_clang_enable_rtti = True,
     )
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = ['source/{0}/aws_native_sdk_init_{0}.waf_files'.format(p)]
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = ['source/{0}/aws_native_sdk_init_{1}.waf_files'.format(p0, p1)]
     bld.CryEngineStaticLibrary(**kw)
 
     kw = dict(
@@ -51,6 +51,6 @@ def build(bld):
 
         win_x64_clang_enable_rtti = True,
     )
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = ['source/{0}/aws_native_sdk_init_{0}.waf_files'.format(p)]
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = ['source/{0}/aws_native_sdk_init_{1}.waf_files'.format(p0, p1)]
     bld.CryEngineStaticLibrary(**kw)

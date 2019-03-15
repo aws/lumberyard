@@ -13,6 +13,7 @@
 
 #include "EditorCommon.h"
 #include <AzToolsFramework/ToolsComponents/ScriptEditorComponent.h>
+#include "CanvasHelpers.h"
 
 #define UICANVASEDITOR_PROPERTIES_UPDATE_DELAY_IN_MILLISECONDS  (100)
 
@@ -30,8 +31,8 @@ PropertiesWidget::PropertiesWidget(EditorWindow* editorWindow,
         QVBoxLayout* vbLayout = new QVBoxLayout();
         setLayout(vbLayout);
 
-        vbLayout->setContentsMargins(0, 0, 0, 0);
-        vbLayout->setSpacing(0);
+        vbLayout->setContentsMargins(4, 4, 4, 4);
+        vbLayout->setSpacing(4);
 
         vbLayout->addWidget(m_propertiesContainer);
     }
@@ -108,9 +109,14 @@ void PropertiesWidget::SelectedEntityPointersChanged()
     m_propertiesContainer->SelectedEntityPointersChanged();
 }
 
-void PropertiesWidget::SetSelectedEntityDisplayNameWidget(QLabel * selectedEntityDisplayNameWidget)
+void PropertiesWidget::SetSelectedEntityDisplayNameWidget(QLineEdit * selectedEntityDisplayNameWidget)
 {
     m_propertiesContainer->SetSelectedEntityDisplayNameWidget(selectedEntityDisplayNameWidget);
+}
+
+void PropertiesWidget::SetEditorOnlyCheckbox(QCheckBox* editorOnlyCheckbox)
+{
+    m_propertiesContainer->SetEditorOnlyCheckbox(editorOnlyCheckbox);
 }
 
 float PropertiesWidget::GetScrollValue()
@@ -126,6 +132,11 @@ void PropertiesWidget::SetScrollValue(float scrollValue)
     }
 }
 
+AZ::Entity::ComponentArrayType PropertiesWidget::GetSelectedComponents()
+{
+    return m_propertiesContainer->GetSelectedComponents();
+}
+
 void PropertiesWidget::Refresh(AzToolsFramework::PropertyModificationRefreshLevel refreshLevel, const AZ::Uuid* componentType)
 {
     m_propertiesContainer->Refresh(refreshLevel, componentType);
@@ -135,18 +146,11 @@ void PropertiesWidget::BeforePropertyModified(AzToolsFramework::InstanceDataNode
 {
     if (m_propertiesContainer->IsCanvasSelected())
     {
-        m_canvasUndoXml.clear();
-        EBUS_EVENT_ID_RESULT(m_canvasUndoXml, m_editorWindow->GetCanvas(), UiCanvasBus, SaveToXmlString);
-        AZ_Assert(!m_canvasUndoXml.empty(), "Failed to serialize");
+        m_canvasUndoXml = CanvasHelpers::BeginUndoableCanvasChange(m_editorWindow->GetCanvas());
     }
     else
     {
-        // This is used to save the "before" undo data.
-        HierarchyClipboard::Serialize(m_editorWindow->GetHierarchy(),
-            m_editorWindow->GetHierarchy()->selectedItems(),
-            nullptr,
-            m_preValueChanges,
-            true);
+        HierarchyClipboard::BeginUndoableEntitiesChange(m_editorWindow, m_preValueChanges);
     }
 }
 
@@ -154,29 +158,12 @@ void PropertiesWidget::AfterPropertyModified(AzToolsFramework::InstanceDataNode*
 {
     if (m_propertiesContainer->IsCanvasSelected())
     {
-        AZStd::string canvasRedoXml;
-        EBUS_EVENT_ID_RESULT(canvasRedoXml, m_editorWindow->GetCanvas(), UiCanvasBus, SaveToXmlString);
-        AZ_Assert(!canvasRedoXml.empty(), "Failed to serialize");
-
-        CommandCanvasPropertiesChange::Push(m_editorWindow->GetActiveStack(), m_canvasUndoXml, canvasRedoXml, m_editorWindow);
+        CanvasHelpers::EndUndoableCanvasChange(m_editorWindow, "canvas properties change", m_canvasUndoXml);
     }
     else
     {
-        // This is used to save the "after" undo data.
-        CommandPropertiesChange::Push(m_editorWindow->GetActiveStack(),
-            m_editorWindow->GetHierarchy(),
-            m_preValueChanges);
-
-        // We've consumed m_preValueChanges.
+        HierarchyClipboard::EndUndoableEntitiesChange(m_editorWindow, "properties change", m_preValueChanges);
         m_preValueChanges.clear();
-
-        // Notify other systems (e.g. Animation) for each UI entity that changed
-        LyShine::EntityArray selectedElements = SelectionHelpers::GetTopLevelSelectedElements(
-                m_editorWindow->GetHierarchy(), m_editorWindow->GetHierarchy()->selectedItems());
-        for (auto element : selectedElements)
-        {
-            EBUS_EVENT_ID(element->GetId(), UiElementChangeNotificationBus, UiElementPropertyChanged);
-        }
     }
 
     // trigger the viewport window to refresh (it may be a long delay if it waits for an editor idle message)

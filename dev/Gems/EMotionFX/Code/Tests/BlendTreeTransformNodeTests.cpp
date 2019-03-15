@@ -20,6 +20,7 @@
 #include <EMotionFX/Source/BlendTreeParameterNode.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/Parameter/FloatSliderParameter.h>
+#include <EMotionFX/Source/Parameter/ParameterFactory.h>
 
 
 namespace EMotionFX
@@ -36,10 +37,24 @@ namespace EMotionFX
             m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
 
             m_transformNode = aznew BlendTreeTransformNode();
+            m_transformNode->SetTargetNodeName("rootNode");
+            m_transformNode->SetMinTranslation(AZ::Vector3::CreateZero());
+            m_transformNode->SetMaxTranslation(AZ::Vector3(10.0f, 0.0f, 0.0f));
+
             m_blendTree->AddChildNode(m_transformNode);
             BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
             m_blendTree->AddChildNode(finalNode);
-            finalNode->AddConnection(m_transformNode, BlendTreeTransformNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+            finalNode->AddUnitializedConnection(m_transformNode, BlendTreeTransformNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+
+            {
+                Parameter* parameter = ParameterFactory::Create(azrtti_typeid<FloatSliderParameter>());
+                parameter->SetName("translate_amount");
+                m_animGraph->AddParameter(parameter);
+            }
+
+            BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
+            m_blendTree->AddChildNode(parameterNode);
+            m_transformNode->AddUnitializedConnection(parameterNode, 0, BlendTreeTransformNode::PORTID_INPUT_TRANSLATE_AMOUNT);
         }
 
         BlendTree* m_blendTree;
@@ -61,20 +76,6 @@ namespace EMotionFX
     // Set some values to validate that the node is transforming the root
     TEST_F(BlendTreeTransformNodeTests, EvalauteTranslationBlending)
     {
-        m_transformNode->SetTargetNodeName("rootNode");
-        m_transformNode->SetMinTranslation(AZ::Vector3::CreateZero());
-        m_transformNode->SetMaxTranslation(AZ::Vector3(10.0f, 0.0f, 0.0f));
-        m_transformNode->OnUpdateUniqueData(m_animGraphInstance);
-
-        AddValueParameter(azrtti_typeid<FloatSliderParameter>(), "translate_amount");
-
-        BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
-        m_blendTree->AddChildNode(parameterNode);
-        parameterNode->InitAfterLoading(m_animGraph);
-        parameterNode->OnUpdateUniqueData(m_animGraphInstance);
-        m_transformNode->AddConnection(parameterNode, 0, BlendTreeTransformNode::PORTID_INPUT_TRANSLATE_AMOUNT);
-        m_animGraph->Reinit();
-        
         MCore::AttributeFloat* translate_amount = m_animGraphInstance->GetParameterValueChecked<MCore::AttributeFloat>(0);
 
         translate_amount->SetValue(0.0f);

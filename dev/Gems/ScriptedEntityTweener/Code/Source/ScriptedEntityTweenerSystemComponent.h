@@ -70,6 +70,7 @@ namespace ScriptedEntityTweener
             const AZStd::string& virtualPropertyName,
             const AZStd::any& paramTarget) override;
 
+        void Stop(int timelineId, const AZ::EntityId& entityId) override;
         void Pause(int timelineId, const AZ::EntityId& entityId, const AZStd::string& componentName, const AZStd::string& virtualPropertyName) override;
         void Resume(int timelineId, const AZ::EntityId& entityId, const AZStd::string& componentName, const AZStd::string& virtualPropertyName) override;
         void SetPlayDirectionReversed(int timelineId, const AZ::EntityId& entityId, const AZStd::string& componentName, const AZStd::string& virtualPropertyName, bool rewind) override;
@@ -83,6 +84,7 @@ namespace ScriptedEntityTweener
         ////////////////////////////////////////////////////////////////////////
         // AZ::TickBus
         void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+        int GetTickOrder() override;
         ////////////////////////////////////////////////////////////////////////
 
     private:

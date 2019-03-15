@@ -283,4 +283,9 @@ namespace AzToolsFramework
     {
         return AppearsInAddComponentMenu(classData, AZ_CRC("System", 0xc94d118b));
     }
+
+    inline bool AppearsInLayerComponentMenu(const AZ::SerializeContext::ClassData& classData)
+    {
+        return AppearsInAddComponentMenu(classData, AZ_CRC("Layer", 0xe4db211a));
+    }
 }

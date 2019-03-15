@@ -49,7 +49,7 @@ namespace EMStudio
         mLoadMeshesCheckbox->setChecked(loadMeshesValue);
 
         // connect the load meshes checkbox to enable/disable all related to mesh
-        connect(mLoadMeshesCheckbox, SIGNAL(clicked(bool)), this, SLOT(LoadMeshesClicked(bool)));
+        connect(mLoadMeshesCheckbox, &QCheckBox::clicked, this, &LoadActorSettingsWindow::LoadMeshesClicked);
 
         // create the load collision meshes checkbox
         mLoadCollisionMeshesCheckbox = new QCheckBox("Load Collision Meshes");
@@ -67,7 +67,7 @@ namespace EMStudio
         mLoadSkinningInfoCheckbox->setChecked(loadSkinningInfoValue);
 
         // connect the load meshes checkbox to enable/disable all related to mesh
-        connect(mLoadSkinningInfoCheckbox, SIGNAL(clicked(bool)), this, SLOT(LoadSkinningInfoClicked(bool)));
+        connect(mLoadSkinningInfoCheckbox, &QCheckBox::clicked, this, &LoadActorSettingsWindow::LoadSkinningInfoClicked);
 
         // create the load limits checkbox
         mLoadLimitsCheckbox = new QCheckBox("Load Limits");
@@ -161,8 +161,8 @@ namespace EMStudio
         buttonLayout->setContentsMargins(6, 0, 6, 6);
 
         // connect the buttons
-        connect(okButton, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(okButton, &QPushButton::clicked, this, &LoadActorSettingsWindow::accept);
+        connect(cancelButton, &QPushButton::clicked, this, &LoadActorSettingsWindow::reject);
 
         // create the button layout widget
         QWidget* buttonLayoutWidget = new QWidget();
@@ -180,7 +180,7 @@ namespace EMStudio
         setLayout(layout);
 
         // connect the dialog action
-        connect(this, SIGNAL(accepted()), this, SLOT(Accepted()));
+        connect(this, &LoadActorSettingsWindow::accepted, this, &LoadActorSettingsWindow::Accepted);
     }
 
 

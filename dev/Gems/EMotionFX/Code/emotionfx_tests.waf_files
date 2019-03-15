@@ -1,22 +1,41 @@
 {
     "auto": {
       "Tests": [
+      	"Tests/ActorFixture.cpp",
+        "Tests/ActorFixture.h",
         "Tests/AnimGraphFixture.cpp",
         "Tests/AnimGraphFixture.h",
+        "Tests/AnimGraphReferenceNodeTests.cpp",
         "Tests/AnimGraphFuzzTests.cpp",
-        "Tests/AnimGraphTransitionFixture.cpp",
-        "Tests/AnimGraphTransitionFixture.h",
-        "Tests/AnimGraphTransitionTests.cpp",
+        "Tests/AnimGraphMotionConditionTests.cpp",
+        "Tests/AnimGraphSyncTrackTests.cpp",
         "Tests/AnimGraphTransitionConditionFixture.cpp",
         "Tests/AnimGraphTransitionConditionFixture.h",
         "Tests/AnimGraphTransitionConditionTests.cpp",
+        "Tests/AnimGraphTransitionFixture.cpp",
+        "Tests/AnimGraphTransitionFixture.h",
+        "Tests/AnimGraphTransitionTests.cpp",
         "Tests/BlendTreeTransformNodeTests.cpp",
+        "Tests/BlendTreeRotationMath2NodeTests.cpp",
+	"Tests/BlendTreeRotationLimitNodeTests.cpp",
+	"Tests/ColliderCommandTests.cpp",
         "Tests/EMotionFXTest.cpp",
         "Tests/EmotionFXMathLibTests.cpp",
+        "Tests/EventManagerTests.cpp",
         "Tests/KeyTrackLinearTests.cpp",
         "Tests/MorphTargetRuntimeTests.cpp",
+        "Tests/MotionEventTrackTests.cpp",
+	"Tests/RagdollCommandTests.cpp",
         "Tests/SystemComponentFixture.h",
-        "Tests/SystemComponentTests.cpp"
+        "Tests/SystemComponentTests.cpp",
+        "Tests/BlendTreeBlendNNodeTests.cpp",
+        "Tests/RandomMotionSelectionTests.cpp",
+        "Tests/BoolLogicNodeTests.cpp",
+        "Tests/Vector2ToVector3CompatibilityTests.cpp"
+      ],
+      "Tests/AssetCode": [
+        "Tests/TestAssetCode/MotionEvent.h",
+        "Tests/TestAssetCode/MotionEvent.cpp"
       ]
     }
 }

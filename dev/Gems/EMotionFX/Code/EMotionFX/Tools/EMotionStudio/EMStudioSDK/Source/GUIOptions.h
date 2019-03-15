@@ -34,7 +34,6 @@ namespace EMStudio
     public:
         AZ_RTTI(GUIOptions, "{45E3309A-059B-4068-9D59-A1B467EC1C86}", PluginOptions);
         
-        static const char* s_unitTypeOptionName;
         static const char* s_maxRecentFilesOptionName;
         static const char* s_maxHistoryItemsOptionName;
         static const char* s_notificationVisibleTimeOptionName;
@@ -52,9 +51,6 @@ namespace EMStudio
         static GUIOptions Load(QSettings& settings, QMainWindow& mainWindow);
 
         static void Reflect(AZ::ReflectContext* serializeContext);
-
-        MCore::Distance::EUnitType GetUnitType() const { return m_unitType; }
-        void SetUnitType(MCore::Distance::EUnitType unitType);
 
         int GetMaxRecentFiles() const { return m_maxRecentFiles; }
         void SetMaxRecentFiles(int maxRecentFiles);
@@ -84,7 +80,6 @@ namespace EMStudio
         void SetApplicationMode(const AZStd::string& applicationMode);
 
     private:
-        void OnUnitTypeChangedCallback() const;
         void OnMaxRecentFilesChangedCallback() const;
         void OnMaxHistoryItemsChangedCallback() const;
         void OnNotificationVisibleTimeChangedCallback() const;
@@ -95,7 +90,6 @@ namespace EMStudio
         void OnAutoLoadLastWorkspaceChangedCallback() const;
         void OnApplicationModeChangedCallback() const;
 
-        MCore::Distance::EUnitType m_unitType; 
         int m_maxRecentFiles;
         int m_maxHistoryItems;
         int m_notificationVisibleTime;

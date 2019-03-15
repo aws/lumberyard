@@ -47,7 +47,10 @@ namespace SceneBuilder
         builderDescriptor.m_busId = SceneBuilderWorker::GetUUID();
         builderDescriptor.m_createJobFunction = AZStd::bind(&SceneBuilderWorker::CreateJobs, &m_sceneBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&SceneBuilderWorker::ProcessJob, &m_sceneBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
-        
+
+        builderDescriptor.m_version = 1; // bump this to rebuild everything.
+        builderDescriptor.m_analysisFingerprint = m_sceneBuilder.GetFingerprint(); // bump this to at least re-analyze everything.
+
         m_sceneBuilder.BusConnect(builderDescriptor.m_busId);
         
         AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBus::Events::RegisterBuilderInformation, builderDescriptor);

@@ -39,5 +39,5 @@ namespace AZ
         static AZ_ALIGN(const u32 g_simdWMask[4], 16) = { 0xffffffff, 0xffffffff, 0xffffffff, 0x0 };
     }
 
-    inline bool IsFiniteFloat(float x) { return (isfinite(x) != 0); }
+    inline bool IsFiniteFloat(float x) { return (azisfinite(x) != 0); }
 }

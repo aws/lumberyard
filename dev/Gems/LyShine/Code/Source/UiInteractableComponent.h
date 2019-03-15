@@ -12,7 +12,8 @@
 #pragma once
 
 #include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
+#include <LyShine/Bus/UiCanvasUpdateNotificationBus.h>
+#include <LyShine/Bus/UiElementBus.h>
 #include <LyShine/Bus/UiNavigationBus.h>
 #include <LyShine/Bus/UiInteractableActionsBus.h>
 #include "UiInteractableState.h"
@@ -32,7 +33,8 @@ class ISprite;
 class UiInteractableComponent
     : public AZ::Component
     , public UiInteractableBus::Handler
-    , public UiUpdateBus::Handler
+    , public UiCanvasUpdateNotificationBus::Handler
+    , public UiElementNotificationBus::Handler
     , public UiInteractableActionsBus::Handler
 {
 public: // member functions
@@ -66,9 +68,14 @@ public: // member functions
     void SetIsAutoActivationEnabled(bool isEnabled) override;
     // ~UiInteractableInterface
 
-    // UiUpdateInterface
+    // UiCanvasUpdateNotification
     void Update(float deltaTime) override;
-    // ~UiUpdateInterface
+    // ~UiCanvasUpdateNotification
+
+    // UiElementNotifications
+    void OnUiElementFixup(AZ::EntityId canvasEntityId, AZ::EntityId parentEntityId) override;
+    void OnUiElementAndAncestorsEnabledChanged(bool areElementAndAncestorsEnabled) override;
+    // ~UiElementNotifications
 
     // UiInteractableActionsInterface
     const LyShine::ActionName& GetHoverStartActionName() override;

@@ -11,188 +11,19 @@
 */
 
 #include <AzCore/Casting/numeric_cast.h>
-#include "EMotionFXConfig.h"
-#include "AnimGraphNodeGroup.h"
-#include "AnimGraphNode.h"
 #include <MCore/Source/Attribute.h>
 #include <MCore/Source/MCoreSystem.h>
-#include "Importer/SharedFileFormatStructs.h"
-#include "AnimGraph.h"
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphNodeGroup.h>
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/Importer/SharedFileFormatStructs.h>
+
 
 namespace EMotionFX
 {
-    AZ_CLASS_ALLOCATOR_IMPL(AttributeRotation, MCore::AttributeAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(AttributePose, MCore::AttributeAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(AttributeMotionInstance, MCore::AttributeAllocator, 0)
-
-    // static create
-    AttributeRotation* AttributeRotation::Create()
-    {
-        return aznew AttributeRotation();
-    }
-
-
-    // static create
-    AttributeRotation* AttributeRotation::Create(const AZ::Vector3& angles, const MCore::Quaternion& quat, ERotationOrder order)
-    {
-        AttributeRotation* result = aznew AttributeRotation();
-        result->SetDirect(angles, quat, order);
-        return result;
-    }
-
-
-    // static create
-    AttributeRotation* AttributeRotation::Create(float xDeg, float yDeg, float zDeg)
-    {
-        AttributeRotation* result = aznew AttributeRotation();
-        result->SetRotationAngles(AZ::Vector3(xDeg, yDeg, zDeg), true);
-        return result;
-    }
-
-
-
-    void AttributeRotation::UpdateRotationQuaternion()
-    {
-        switch (mOrder)
-        {
-        case ROTATIONORDER_ZYX:
-            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
-                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX()));
-            break;
-
-        case ROTATIONORDER_ZXY:
-            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
-                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY()));
-            break;
-
-        case ROTATIONORDER_YZX:
-            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
-                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX()));
-            break;
-
-        case ROTATIONORDER_YXZ:
-            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
-                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ()));
-            break;
-
-        case ROTATIONORDER_XYZ:
-            mRotation = MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ()));
-            break;
-
-        case ROTATIONORDER_XZY:
-            mRotation = MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY()));
-            break;
-
-        default:
-            mRotation = MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), MCore::Math::DegreesToRadians(mDegrees.GetZ())) *
-                MCore::Quaternion(AZ::Vector3(0.0f, 1.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetY())) *
-                MCore::Quaternion(AZ::Vector3(1.0f, 0.0f, 0.0f), MCore::Math::DegreesToRadians(mDegrees.GetX()));
-            MCORE_ASSERT(false);
-        }
-        ;
-    }
-
-
-
-    uint32 AttributeRotation::GetDataSize() const
-    {
-        //     rotation angles          rotation quat               rotation order
-        return sizeof(AZ::Vector3) + sizeof(MCore::Quaternion) + sizeof(uint8);
-    }
-
-
-    // read from a stream
-    bool AttributeRotation::ReadData(MCore::Stream* stream, MCore::Endian::EEndianType streamEndianType, uint8 version)
-    {
-        if (version == 1)
-        {
-            // read the value
-            AZ::PackedVector3f streamValue;
-            if (stream->Read(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
-            {
-                return false;
-            }
-
-            // convert endian
-            MCore::Endian::ConvertVector3(&streamValue, streamEndianType);
-
-            // read only the degrees, automatically calculate the quaternion
-            mDegrees = AZ::Vector3(streamValue);
-            mRotation.SetEuler(MCore::Math::DegreesToRadians(mDegrees.GetX()), MCore::Math::DegreesToRadians(mDegrees.GetY()), MCore::Math::DegreesToRadians(mDegrees.GetZ()));
-        }
-        else
-        if (version == 2)
-        {
-            // read the value
-            AZ::PackedVector3f streamValue;
-            if (stream->Read(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
-            {
-                return false;
-            }
-
-            // convert endian
-            MCore::Endian::ConvertVector3(&streamValue, streamEndianType);
-            mDegrees = AZ::Vector3(streamValue);
-
-            // read the quaternion
-            MCore::Quaternion streamValueQ;
-            if (stream->Read(&streamValueQ, sizeof(MCore::Quaternion)) == 0)
-            {
-                return false;
-            }
-
-            // convert endian
-            MCore::Endian::ConvertQuaternion(&streamValueQ, streamEndianType);
-            mRotation = streamValueQ;
-        }
-        else
-        if (version == 3)
-        {
-            // read the value
-            AZ::PackedVector3f streamValue;
-            if (stream->Read(&streamValue, sizeof(AZ::PackedVector3f)) == 0)
-            {
-                return false;
-            }
-
-            // convert endian
-            MCore::Endian::ConvertVector3(&streamValue, streamEndianType);
-            mDegrees = AZ::Vector3(streamValue);
-
-            // read the quaternion
-            MCore::Quaternion streamValueQ;
-            if (stream->Read(&streamValueQ, sizeof(MCore::Quaternion)) == 0)
-            {
-                return false;
-            }
-
-            // convert endian
-            MCore::Endian::ConvertQuaternion(&streamValueQ, streamEndianType);
-            mRotation = streamValueQ;
-
-            // read the rotation order
-            uint8 order = 0;
-            if (stream->Read(&order, sizeof(uint8)) == 0)
-            {
-                return false;
-            }
-
-            mOrder = (ERotationOrder)order;
-        }
-
-        return true;
-    }
-
-
-    //---------------------------------------------------------------------------------------------------------------------
 
     // static create
     AttributePose* AttributePose::Create()
@@ -201,7 +32,6 @@ namespace EMotionFX
     }
 
 
-    // static create
     AttributePose* AttributePose::Create(AnimGraphPose* pose)
     {
         AttributePose* result = aznew AttributePose();
@@ -212,14 +42,12 @@ namespace EMotionFX
 
     //---------------------------------------------------------------------------------------------------------------------
 
-    // static create
     AttributeMotionInstance* AttributeMotionInstance::Create()
     {
         return aznew AttributeMotionInstance();
     }
 
 
-    // static create
     AttributeMotionInstance* AttributeMotionInstance::Create(MotionInstance* motionInstance)
     {
         AttributeMotionInstance* result = aznew AttributeMotionInstance();
@@ -229,5 +57,21 @@ namespace EMotionFX
 
     //---------------------------------------------------------------------------------------------------------------------
 
+    void AnimGraphPropertyUtils::ReinitJointIndices(const Actor* actor, const AZStd::vector<AZStd::string>& jointNames, AZStd::vector<AZ::u32>& outJointIndices)
+    {
+        const Skeleton* skeleton = actor->GetSkeleton();
+        const size_t jointCount = jointNames.size();
 
+        outJointIndices.clear();
+        outJointIndices.reserve(jointCount);
+
+        for (const AZStd::string& jointName : jointNames)
+        {
+            const Node* node = skeleton->FindNodeByName(jointName);
+            if (node)
+            {
+                outJointIndices.emplace_back(node->GetNodeIndex());
+            }
+        }
+    }
 } // namespace EMotionFX

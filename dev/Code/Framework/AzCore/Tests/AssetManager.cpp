@@ -28,7 +28,11 @@
 #include <AzCore/std/parallel/conditional_variable.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(AssetManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AssetManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AssetManager_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1451,7 +1455,7 @@ namespace UnitTest
             AZ_RTTI(AssetC, "{283255FE-0FCB-4938-AC25-8FB18EB07158}", Data::AssetData);
             AZ_CLASS_ALLOCATOR(AssetC, SystemAllocator, 0);
             AssetC()
-                : data((AZ::u8)Data::AssetLoadBehavior::PreLoad)
+                : data(Data::AssetLoadBehavior::PreLoad)
             {}
             AssetC(const AssetC&) = delete;
             static void Reflect(SerializeContext& context)

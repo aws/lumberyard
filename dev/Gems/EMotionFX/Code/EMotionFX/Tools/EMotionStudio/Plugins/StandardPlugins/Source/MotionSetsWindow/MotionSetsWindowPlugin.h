@@ -35,7 +35,6 @@ namespace EMStudio
 {
     // forward declarations
     class SaveDirtyMotionSetFilesCallback;
-    class OutlinerCategoryCallback;
 
 
     class MotionSetsWindowPlugin
@@ -88,8 +87,7 @@ namespace EMStudio
     private:
         // declare the callbacks
         MCORE_DEFINECOMMANDCALLBACK(CommandCreateMotionSetCallback);
-        MCORE_DEFINECOMMANDCALLBACK(CommandRemoveMotionSetCallback);
-        MCORE_DEFINECOMMANDCALLBACK(CommandSaveMotionSetCallback);
+        MCORE_DEFINECOMMANDCALLBACK(CommandReinitCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandAdjustMotionSetCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandMotionSetAddMotionCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandMotionSetRemoveMotionCallback);
@@ -97,8 +95,7 @@ namespace EMStudio
         MCORE_DEFINECOMMANDCALLBACK(CommandLoadMotionSetCallback);
 
         CommandCreateMotionSetCallback*         mCreateMotionSetCallback;
-        CommandRemoveMotionSetCallback*         mRemoveMotionSetCallback;
-        CommandSaveMotionSetCallback*           mSaveMotionSetCallback;
+        CommandReinitCallback*                  m_reinitCallback;
         CommandAdjustMotionSetCallback*         mAdjustMotionSetCallback;
         CommandMotionSetAddMotionCallback*      mMotionSetAddMotionCallback;
         CommandMotionSetRemoveMotionCallback*   mMotionSetRemoveMotionCallback;
@@ -114,7 +111,5 @@ namespace EMStudio
         EMotionFX::MotionSet*                   mSelectedSet;
 
         SaveDirtyMotionSetFilesCallback*        mDirtyFilesCallback;
-        OutlinerCategoryCallback*               mOutlinerCategoryCallback;
-        EMotionFX::EventHandler*                mEventHandler;
     };
 } // namespace EMStudio

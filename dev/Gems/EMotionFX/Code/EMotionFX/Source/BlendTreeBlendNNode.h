@@ -14,12 +14,40 @@
 
 #include "EMotionFXConfig.h"
 #include "AnimGraphNode.h"
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/utils.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 
 namespace EMotionFX
 {
     // forward declarations
     class ActorInstance;
+
+
+
+    class BlendNParamWeight
+    {
+    public:
+        AZ_RTTI(BlendNParamWeight, "{072E5508-B119-41DD-9915-717E750A984B}")
+        AZ_CLASS_ALLOCATOR_DECL
+
+        friend class BlendTreeBlendNNode;
+
+        BlendNParamWeight() = default;
+        BlendNParamWeight(AZ::u32 portId, float weightRange);
+        virtual ~BlendNParamWeight() = default;
+
+        AZ::u32 GetPortId() const;
+        float GetWeightRange() const;
+        const char* GetPortLabel() const;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+    private:
+        AZ::u32         m_portId = MCORE_INVALIDINDEX32;
+        float           m_weightRange = 0;
+    };
 
     class EMFX_API BlendTreeBlendNNode
         : public AnimGraphNode
@@ -94,9 +122,15 @@ namespace EMotionFX
 
         void FindBlendNodes(AnimGraphInstance* animGraphInstance, AnimGraphNode** outNodeA, AnimGraphNode** outNodeB, uint32* outIndexA, uint32* outIndexB, float* outWeight) const;
 
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         static void Reflect(AZ::ReflectContext* context);
         void SetSyncMode(ESyncMode syncMode);
         void SetEventMode(EEventMode eventMode);
+
+        void UpdateParamWeights();
+        void SetParamWeightsEquallyDistributed(float min, float max);
+
+        static const char* GetPoseInputPortName(AZ::u32 portId);
 
     private:
         void SyncMotions(AnimGraphInstance* animGraphInstance, AnimGraphNode* nodeA, AnimGraphNode* nodeB, uint32 poseIndexA, uint32 poseIndexB, float blendWeight, ESyncMode syncMode);
@@ -105,7 +139,9 @@ namespace EMotionFX
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 
-        ESyncMode       m_syncMode;
-        EEventMode      m_eventMode;
+
+        ESyncMode                                   m_syncMode;
+        EEventMode                                  m_eventMode;
+        AZStd::vector<BlendNParamWeight>            m_paramWeights;
     };
 }   // namespace EMotionFX

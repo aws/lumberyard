@@ -298,6 +298,55 @@ namespace UnitTest
         AZ_TEST_ASSERT(AZStd::find(typeIds.begin(), typeIds.end(), AzTypeInfo<MyClassMix>::Uuid()) != typeIds.end());
     }
 
+    class ExampleAbstractClass
+    {
+    public: 
+        AZ_RTTI(ExampleAbstractClass, "{F99EC269-3077-4984-A1B6-FA5656A65AC9}")
+        virtual void AbstractFunction1() = 0;
+        virtual void AbstractFunction2() = 0;
+    };
+
+    class ExampleFullImplementationClass : public ExampleAbstractClass
+    {
+    public:
+        AZ_RTTI(ExampleFullImplementationClass, "{81B043ED-3770-414E-8B54-0F623C035926}", ExampleAbstractClass)
+        void AbstractFunction1() override {} 
+        void AbstractFunction2() override {}
+    };
+
+    class ExamplePartialImplementationClass1 
+        : public ExampleAbstractClass
+    {
+    public:
+        AZ_RTTI(ExamplePartialImplementationClass1, "{049B29D7-0414-4C5F-8FB2-589D0833121B}", ExampleAbstractClass)
+        void AbstractFunction1() override {}
+    };
+
+    class ExampleCombined 
+        : public ExamplePartialImplementationClass1
+    {
+    public:
+        AZ_RTTI(ExampleCombined, "{0D03E811-F8F1-4AA5-8DA2-4CD6B7FB7080}", ExamplePartialImplementationClass1)
+        void AbstractFunction2() override {}
+    };
+
+    TEST_F(Rtti, IsAbstract)
+    {
+        // compile time proof that the two non-abstract classes are not abstract at compile time:
+        ExampleFullImplementationClass one;
+        ExampleCombined two;
+
+        ASSERT_NE(GetRttiHelper<ExampleAbstractClass>(), nullptr);
+        ASSERT_NE(GetRttiHelper<ExampleFullImplementationClass>(), nullptr);
+        ASSERT_NE(GetRttiHelper<ExamplePartialImplementationClass1>(), nullptr);
+        ASSERT_NE(GetRttiHelper<ExampleCombined>(), nullptr);
+
+        EXPECT_TRUE(GetRttiHelper<ExampleAbstractClass>()->IsAbstract());
+        EXPECT_FALSE(GetRttiHelper<ExampleFullImplementationClass>()->IsAbstract());
+        EXPECT_TRUE(GetRttiHelper<ExamplePartialImplementationClass1>()->IsAbstract());
+        EXPECT_FALSE(GetRttiHelper<ExampleCombined>()->IsAbstract());
+    }
+
     TEST_F(Rtti, DynamicCastTest)
     {
         MyBase1 i_mb1;

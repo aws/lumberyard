@@ -39,7 +39,6 @@ namespace Maestro
     namespace ClassConverters
     {
         static bool UpVersionAnimationData(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
-        static bool UpVersionEditorSequenceComponent(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
     } // namespace ClassConverters
 
       ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +100,7 @@ namespace Maestro
 
             serializeContext->Class<EditorSequenceComponent, EditorComponentBase>()
                 ->Field("Sequence", &EditorSequenceComponent::m_sequence)
-                ->Version(4, &ClassConverters::UpVersionEditorSequenceComponent);
+                ->Version(4);
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
@@ -439,108 +438,5 @@ namespace Maestro
 
             return true;
         }
-
-        static bool UpVersionEditorSequenceComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
-        {
-            bool success = true;
-
-            // The "AnimationData" field was deprecated in version 4. It used to hold a serialized string of the xml tree as serialized
-            // by the legacy CrySerialize support functions in the Maestro Cinematics library. For versions < 4, detect this string,
-            // deserialize and fill in the "Sequence" element from it, then remove the string.
-            if (classElement.GetVersion() < 4)
-            {
-                int animationDataIdx = classElement.FindElement(AZ::Crc32("AnimationData"));
-                if (animationDataIdx != -1)
-                {
-                    bool sequenceUpconverted = false;
-
-                    AZ::SerializeContext::DataElementNode& animDataElementNode = classElement.GetSubElement(animationDataIdx);
-                    AZ::SerializeContext::DataElementNode* serializedStringElementNode = animDataElementNode.FindSubElement(AZ::Crc32("SerializedString"));
-                    if (serializedStringElementNode)
-                    {
-                        AZStd::string serializedAnimString;
-                        serializedStringElementNode->GetData(serializedAnimString);
-
-                        // add a new "Sequence" element and deserialize the serializedAnimString into it
-                        int sequenceIdx = classElement.AddElement<AZStd::intrusive_ptr<IAnimSequence>>(context, "Sequence");
-                        if (sequenceIdx == -1)
-                        {
-                            AZ_Error("Serialization", false, "Failed to add 'Sequence' element in Maestro::ClassConverters::UpVersionEditorSequenceComponent.");
-                            success = false;
-                        }
-                        else
-                        {
-                            AZ::SerializeContext::DataElementNode& sequenceElemNode = classElement.GetSubElement(sequenceIdx);
-                            
-                            const char* buffer = serializedAnimString.c_str();
-                            size_t size = serializedAnimString.length();
-                            bool gEnvInitialized = (gEnv && gEnv->pSystem && gEnv->pMovieSystem);
-
-                            if (!gEnvInitialized)
-                            {
-                                success = false;
-                            }
-
-                            if (size > 0 && gEnvInitialized)
-                            {
-                                XmlNodeRef xmlArchive = gEnv->pSystem->LoadXmlFromBuffer(buffer, size);
-
-                                XmlNodeRef sequenceNode = xmlArchive->findChild("Sequence");
-                                uint32 seqId = 0;
-                                if (sequenceNode != NULL)
-                                {
-                                    IMovieSystem* movieSystem = gEnv->pMovieSystem;
-                                    if (movieSystem)
-                                    {
-                                        // check for sequence ID collision and resolve if needed
-                                        XmlNodeRef idNode = xmlArchive->findChild("ID");
-                                        if (idNode)
-                                        {
-                                            idNode->getAttr("value", seqId);
-                                            if (movieSystem->FindSequenceById(seqId))  // A collision found!
-                                            {
-                                                uint32 newId = movieSystem->GrabNextSequenceId();
-                                                // TODO: incorporate remapping of id's within archive (see CObjectArchive.AddSequenceIdMapping())
-                                                seqId = newId;
-                                                idNode->setAttr("value", seqId);
-                                            }
-                                        }
-
-                                        const char* seqName = sequenceNode->getAttr("Name");
-                                        if (seqName)
-                                        {
-                                            // create and fill in the sequence outside of the Cinematics/TrackView system - the sequence will get registered
-                                            // with these the Cinematics/TrackView libraries during the Init() call
-                                            CAnimSequence sequence(movieSystem, seqId, SequenceType::SequenceComponent);
-                                            sequence.SetName(seqName);
-
-                                            /// deserialize Xml data into m_sequence via deprecated legacy CrySerialization
-                                            /// @deprecated Serialization now occurs through AZ::SerializeContext
-                                            sequence.Serialize(sequenceNode, true, true, seqId);
-
-                                            // save the data to the "Sequence" element. Calling SetData() on this intrusive_ptr directly
-                                            // doesn't seem to work, so instead we'll set the child "element" node
-                                            int elementIdx = sequenceElemNode.AddElement<CAnimSequence>(context, "element");
-                                            sequenceElemNode.GetSubElement(elementIdx).SetData(context, sequence);
-
-                                            sequenceUpconverted = true;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (sequenceUpconverted)
-                    {
-                        // remove old serialized animationData
-                        classElement.RemoveElement(animationDataIdx);
-                    }        
-                } 
-            }
-
-            return success;
-        }
-
     } // namespace ClassConverters
 } // namespace Maestro

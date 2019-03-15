@@ -27,7 +27,7 @@ namespace EMotionFX
     {
         // create the input ports
         InitInputPorts(1);
-        SetupInputPort("x", INPUTPORT_X, MCore::AttributeVector3::TYPE_ID, PORTID_INPUT_X);
+        SetupInputPortAsVector3("x", INPUTPORT_X, PORTID_INPUT_X);
 
         // create the output ports
         InitOutputPorts(2);
@@ -138,13 +138,7 @@ namespace EMotionFX
 
         // get the input value as a float, convert if needed
         AZ::Vector3 input;
-        BlendTreeConnection* connection = mInputPorts[INPUTPORT_X].mConnection;
-        if (connection)
-        {
-            //OutputIncomingNode( animGraphInstance, GetInputNode(INPUTPORT_X) );
-            input = AZ::Vector3(GetInputVector3(animGraphInstance, INPUTPORT_X)->GetValue());
-        }
-        else
+        if (!TryGetInputVector3(animGraphInstance, INPUTPORT_X, input))
         {
             input = AZ::Vector3::CreateZero();
         }

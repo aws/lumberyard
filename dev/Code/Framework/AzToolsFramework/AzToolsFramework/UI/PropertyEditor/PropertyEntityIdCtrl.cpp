@@ -22,6 +22,7 @@
 #include <AzToolsFramework/Entity/EditorEntityContextPickingBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QHBoxLayout>
@@ -51,6 +52,7 @@ namespace AzToolsFramework
         m_entityIdLabel->setFixedHeight(PropertyQTConstant_DefaultHeight);
         m_entityIdLabel->setFrameShape(QFrame::Panel);
         m_entityIdLabel->setFrameShadow(QFrame::Sunken);
+        m_entityIdLabel->setTextInteractionFlags(Qt::NoTextInteraction);
         m_entityIdLabel->setFocusPolicy(Qt::StrongFocus);
 
         m_pickButton = aznew QPushButton(this);
@@ -117,15 +119,30 @@ namespace AzToolsFramework
 
     void PropertyEntityIdCtrl::InitObjectPickMode()
     {
+        AzFramework::EntityContextId pickModeEntityContextId = GetPickModeEntityContextId();
         EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
         if (!EditorPickModeRequests::Bus::Handler::BusIsConnected())
         {
-            emit OnPickStart();
+  	        emit OnPickStart();
             m_pickButton->setChecked(true);
-            EditorPickModeRequests::Bus::Handler::BusConnect();
+            EditorPickModeRequests::Bus::Handler::BusConnect(pickModeEntityContextId);
             AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
         }
-        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StartObjectPickMode);
+
+        if (!pickModeEntityContextId.IsNull())
+        {
+            EBUS_EVENT_ID(pickModeEntityContextId, AzToolsFramework::EditorPickModeRequests::Bus, StartObjectPickMode);
+        }
+        else
+        {
+            // Broadcast if the entity context is unknown
+            EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StartObjectPickMode);
+        }
+    }
+
+    AzFramework::EntityContextId PropertyEntityIdCtrl::GetPickModeEntityContextId()
+    {
+        return m_acceptedEntityContextId;
     }
 
     void PropertyEntityIdCtrl::CancelObjectPickMode()

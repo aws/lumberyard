@@ -13,18 +13,19 @@
 #pragma once
 
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/ButtonGroup.h>
-#include <MysticQt/Source/DoubleSpinbox.h>
-#include <MysticQt/Source/IntSpinbox.h>
-#include <EMotionFX/Source/Motion.h>
-#include <EMotionFX/Source/MotionEvent.h>
-#include <EMotionFX/Source/MotionEventTrack.h>
-#include <QLabel>
-#include <QLineEdit>
+#include <QWidget>
 
+namespace EMotionFX
+{
+    class Motion;
+    class MotionEventTrack;
+    class MotionEvent;
+} // namespace EMotionFX
 
 namespace EMStudio
 {
+    class MotionEventEditor;
+
     class MotionEventWidget
         : public QWidget
     {
@@ -33,34 +34,12 @@ namespace EMStudio
 
     public:
         MotionEventWidget(QWidget* parent);
-        ~MotionEventWidget();
 
-        void ReInit(EMotionFX::Motion* motion, EMotionFX::MotionEventTrack* eventTrack, EMotionFX::MotionEvent* motionEvent, uint32 motionEventNr);
-
-    private slots:
-        void ConvertToTickEvent();
-        void ConvertToRangeEvent();
-        void OnStartTimeChanged(double value);
-        void OnEndTimeChanged(double value);
-        void OnLengthChanged(double value);
-        void OnEventParameterChanged();
-        void OnEventTypeChanged();
+        void ReInit(EMotionFX::Motion* motion = nullptr, EMotionFX::MotionEvent* motionEvent = nullptr);
 
     private:
         void Init();
-        void SetEventStartEndTime(float startTime, float endTime, bool forceChangingBoth = false);
 
-        MysticQt::ButtonGroup*          mTickMode;
-        MysticQt::DoubleSpinBox*        mStartTime;
-        MysticQt::DoubleSpinBox*        mEndTime;
-        MysticQt::DoubleSpinBox*        mLength;
-        QLineEdit*                      mParameter;
-        QLineEdit*                      mType;
-        QLineEdit*                      mMirrorType;
-
-        EMotionFX::MotionEvent*         mMotionEvent;
-        EMotionFX::Motion*              mMotion;
-        EMotionFX::MotionEventTrack*    mMotionEventTrack;
-        uint32                          mMotionEventNr;
+        MotionEventEditor* m_editor = nullptr;
     };
 } // namespace EMStudio

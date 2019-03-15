@@ -13,6 +13,7 @@
 #include "EditorLockComponent.h"
 
 #include <AzCore/Serialization/EditContext.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 namespace AzToolsFramework
 {
@@ -63,7 +64,7 @@ namespace AzToolsFramework
             EditorLockComponentRequestBus::Handler::BusConnect(GetEntityId());
 
             // Send event for any handlers listening for this entity's lock state set up prior to activation
-            EBUS_EVENT_ID(GetEntityId(), EditorLockComponentNotificationBus, OnEntityLockChanged, m_locked);
+            EditorLockComponentNotificationBus::Event(m_entity->GetId(), &EditorLockComponentNotifications::OnEntityLockChanged, m_locked);
         }
 
         void EditorLockComponent::Deactivate()
@@ -77,7 +78,8 @@ namespace AzToolsFramework
             if (m_locked != locked)
             {
                 m_locked = locked;
-                EBUS_EVENT_ID(GetEntityId(), EditorLockComponentNotificationBus, OnEntityLockChanged, m_locked);
+                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::AddDirtyEntity, m_entity->GetId());
+                EditorLockComponentNotificationBus::Event(m_entity->GetId(), &EditorLockComponentNotifications::OnEntityLockChanged, m_locked);
             }
         }
 

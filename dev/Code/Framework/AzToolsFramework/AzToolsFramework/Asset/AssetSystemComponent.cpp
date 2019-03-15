@@ -113,14 +113,20 @@ namespace AzToolsFramework
             // Requests
             AssetJobsInfoRequest::Reflect(context);
             AssetJobLogRequest::Reflect(context);
+            GetAbsoluteAssetDatabaseLocationRequest::Reflect(context);
             GetScanFoldersRequest::Reflect(context);
             GetAssetSafeFoldersRequest::Reflect(context);
+            AssetProcessorPlatformStatusRequest::Reflect(context);
+            AssetProcessorPendingPlatformAssetsRequest::Reflect(context);
 
             // Responses
             AssetJobsInfoResponse::Reflect(context);
             AssetJobLogResponse::Reflect(context);
+            GetAbsoluteAssetDatabaseLocationResponse::Reflect(context);
             GetScanFoldersResponse::Reflect(context);
             GetAssetSafeFoldersResponse::Reflect(context);
+            AssetProcessorPlatformStatusResponse::Reflect(context);
+            AssetProcessorPendingPlatformAssetsResponse::Reflect(context);
 
             //JobInfo
             AzToolsFramework::AssetSystem::JobInfo::Reflect(context);
@@ -206,6 +212,36 @@ namespace AzToolsFramework
             else
             {
                 fullPath = "";
+                return false;
+            }
+        }
+
+        bool AssetSystemComponent::GetAbsoluteAssetDatabaseLocation(AZStd::string& result)
+        {
+            result = "";
+
+            AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+            if (!engineConnection || !engineConnection->IsConnected())
+            {
+                return false;
+            }
+
+            AzToolsFramework::AssetSystem::GetAbsoluteAssetDatabaseLocationRequest request;
+            AzToolsFramework::AssetSystem::GetAbsoluteAssetDatabaseLocationResponse response;
+            if (!SendRequest(request, response))
+            {
+                AZ_Error("Editor", false, "Failed to send GetAbsoluteAssetDatabaseLocation request");
+                return false;
+            }
+
+
+            if (response.m_isSuccess)
+            {
+                result = response.m_absoluteAssetDatabaseLocation;
+                return true;
+            }
+            else
+            {
                 return false;
             }
         }
@@ -349,6 +385,34 @@ namespace AzToolsFramework
             return !response.m_assetSafeFolders.empty();
         }
 
+        bool AssetSystemComponent::IsAssetPlatformEnabled(const char* platform)
+        {
+            AssetProcessorPlatformStatusRequest request;
+            request.m_platform = platform;
+
+            AssetProcessorPlatformStatusResponse response;
+            if (!SendRequest(request, response))
+            {
+                return false;
+            }
+
+            return response.m_isPlatformEnabled;
+        }
+
+        int AssetSystemComponent::GetPendingAssetsForPlatform(const char* platform)
+        {
+            AssetProcessorPendingPlatformAssetsRequest request;
+            request.m_platform = platform;
+
+            AssetProcessorPendingPlatformAssetsResponse response;
+            if (!SendRequest(request, response))
+            {
+                return -1;
+            }
+
+            return response.m_numberOfPendingJobs;
+        }
+
         AZ::Outcome<AssetSystem::JobInfoContainer> AssetSystemComponent::GetAssetJobsInfo(const AZStd::string& path, const bool escalateJobs)
         {
             AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
@@ -364,7 +428,7 @@ namespace AzToolsFramework
             return SendAssetJobsRequest(request, response);
         }
 
-        AZ::Outcome<AssetSystem::JobInfoContainer> AssetSystemComponent::GetAssetJobsInfoByAssetID(const AZ::Data::AssetId& assetId, const bool escalateJobs)
+        AZ::Outcome<AssetSystem::JobInfoContainer> AssetSystemComponent::GetAssetJobsInfoByAssetID(const AZ::Data::AssetId& assetId, const bool escalateJobs, bool requireFencing = true)
         {
             AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
             if (!engineConnection || !engineConnection->IsConnected())
@@ -372,9 +436,7 @@ namespace AzToolsFramework
                 return AZ::Failure();
             }
 
-            AssetJobsInfoRequest request;
-            request.m_assetId = assetId;
-            request.m_escalateJobs = escalateJobs;
+            AssetJobsInfoRequest request(assetId, escalateJobs, requireFencing);
             AssetJobsInfoResponse response;
 
             return SendAssetJobsRequest(request, response);

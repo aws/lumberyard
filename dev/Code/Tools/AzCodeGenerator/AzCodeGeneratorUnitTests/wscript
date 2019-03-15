@@ -48,11 +48,12 @@ def build(bld):
                                #'-DelayedTemplateParsing=false',
                                #'-EnableIncrementalProcessing=false',
                               ],
-                'options' : ['PrintOutputRedirectionFile', 'Profile']
+                'options' : ['PrintOutputRedirectionFile']
             },
             {
                 'files' : [ 
-                    bld.srcnode.find_or_declare('Code/Tools/AzCodeGenerator/AzCodeGeneratorUnitTests/Components.h') 
+                    bld.srcnode.find_or_declare('Code/Tools/AzCodeGenerator/AzCodeGeneratorUnitTests/Components.h'),
+                    bld.srcnode.find_or_declare('Code/Tools/AzCodeGenerator/AzCodeGeneratorUnitTests/BehaviorContext.h')
                 ],
                 'scripts': [
                     '../../../Framework/AzFramework/CodeGen/AzFramework.py'
@@ -61,7 +62,7 @@ def build(bld):
                     '-output-redirection=file',
                     '-inclusion-filter=*Enums.h'
                 ],
-                'options' : ['PrintOutputRedirectionFile', 'Profile']
+                'options' : ['PrintOutputRedirectionFile']
             }
         ]
     )

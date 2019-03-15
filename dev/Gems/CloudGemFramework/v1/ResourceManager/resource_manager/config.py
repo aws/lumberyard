@@ -1603,10 +1603,9 @@ class DeploymentTemplateAggregator(TemplateAggregator):
 
             if not resource_group.is_enabled:
                 continue
-
             cross_gem_comms_dependencies = []
             for dep in resource_group.get_inter_gem_dependencies():
-                if dep["gem"] in enabled_resource_group_names:
+                if dep["gem"] in enabled_resource_group_names or dep["gem"] == "CloudGemFramework":
                     cross_gem_comms_dependencies.append(dep)
 
             configuration_name = resource_group.name + 'Configuration'
@@ -1644,7 +1643,8 @@ class DeploymentTemplateAggregator(TemplateAggregator):
                 inter_gem_deps_map[resource_group.name] = cross_gem_comms_dependencies
                 resolver_dependencies.add(resource_group.name)
                 for dep in cross_gem_comms_dependencies:
-                    resolver_dependencies.add(dep["gem"])
+                    if dep["gem"] != "CloudGemFramework":
+                        resolver_dependencies.add(dep["gem"])
 
         if inter_gem_deps_map:
             resources["CrossGemCommunicationInterfaceResolver"] = {

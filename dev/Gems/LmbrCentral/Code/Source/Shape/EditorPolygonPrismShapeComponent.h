@@ -19,8 +19,7 @@
 #include <AzCore/Math/VertexContainerInterface.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
-#include <AzToolsFramework/Manipulators/TranslationManipulator.h>
-#include <AzToolsFramework/Manipulators/LinearManipulator.h>
+#include <AzToolsFramework/Manipulators/TranslationManipulators.h>
 #include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
 
 namespace LmbrCentral
@@ -82,7 +81,7 @@ namespace LmbrCentral
 
         PolygonPrismShape m_polygonPrismShape; ///< Stores configuration data of a polygon prism for this component.
         AzToolsFramework::EditorVertexSelectionVariable<AZ::Vector2> m_vertexSelection; ///< Handles all manipulator interactions with vertices (inserting and translating).
-        AZStd::unique_ptr<AzToolsFramework::LinearManipulator> m_heightManipulator; ///< Manipulator to control the height of the polygon prism.
+        AZStd::shared_ptr<AzToolsFramework::LinearManipulator> m_heightManipulator; ///< Manipulator to control the height of the polygon prism.
         PolygonPrismMesh m_polygonPrismMesh; ///< Buffer to store triangles of top and bottom of Polygon Prism.
     };
 } // namespace LmbrCentral

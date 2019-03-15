@@ -201,9 +201,9 @@ void LoadEditorComponentTest<ComponentT>::SetUp()
 
     LoadReflectedObjectTestBase::SetUp();
     m_entity->AddComponent(aznew DummyTransformComponent());
-    if (m_object)
+    if (this->m_object)
     {
-        m_entity->AddComponent(m_object.get());
+        m_entity->AddComponent(this->m_object.get());
     }
     m_entity->Activate();
 }
@@ -212,9 +212,9 @@ template<class ComponentT>
 void LoadEditorComponentTest<ComponentT>::TearDown()
 {
     m_entity->Deactivate();
-    if (m_object)
+    if (this->m_object)
     {
-        m_entity->RemoveComponent(m_object.get());
+        m_entity->RemoveComponent(this->m_object.get());
     }
     LoadReflectedObjectTestBase::TearDown();
     m_entity.reset();

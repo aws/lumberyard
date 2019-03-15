@@ -13,6 +13,11 @@
 
 #include <AzCore/Component/ComponentBus.h>
 
+namespace LyShine
+{
+    class IRenderGraph;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiRenderInterface
     : public AZ::ComponentBus
@@ -21,8 +26,8 @@ public: // member functions
 
     virtual ~UiRenderInterface() {}
 
-    //! Render the component.
-    virtual void Render() = 0;
+    //! Render the component into the render graph
+    virtual void Render(LyShine::IRenderGraph* renderGraph) = 0;
 
 public: // static member data
 

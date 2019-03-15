@@ -42,8 +42,13 @@ namespace AssetProcessor
     public Q_SLOTS:
         //! AssetScanner changed its status
         void OnAssetScannerStatusChange(AssetScanningStatus status);
-        //! AssetScanner found a file or folder
-        void FileOfInterestFound(QString fileName);
+        
+        //! AssetScanner found a file
+        void AssessFilesFromScanner(QSet<QString> files);
+        
+        //! AssetScanner found a folder
+        void AssessFoldersFromScanner(QSet<QString> folders);
+
         //! FileWatcher detected added file
         void AssessAddedFile(QString fileName);
         //! FileWatcher detected removed file

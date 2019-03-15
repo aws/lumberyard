@@ -19,7 +19,9 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 
 #include <LyShine/Bus/UiElementBus.h>
-#include <LyShine/IUiRenderer.h>
+#include <LyShine/Bus/UiRenderBus.h>
+#include <LyShine/Bus/UiCanvasBus.h>
+#include <LyShine/IRenderGraph.h>
 
 #include <ITimer.h>
 
@@ -61,6 +63,10 @@ UiFaderComponent::UiFaderComponent()
     , m_fadeTarget(1.0f)
     , m_fadeSpeedInSeconds(1.0f)
 {
+    m_cachedPrimitive.m_vertices = nullptr;
+    m_cachedPrimitive.m_numVertices = 0;
+    m_cachedPrimitive.m_indices = nullptr;
+    m_cachedPrimitive.m_numIndices = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -70,6 +76,13 @@ UiFaderComponent::~UiFaderComponent()
     {
         EBUS_EVENT_ID(GetEntityId(), UiFaderNotificationBus, OnFaderDestroyed);
     }
+
+    DestroyRenderTarget();
+
+    // We only deallocate the vertices on destruction rather than every time we recreate the render
+    // target. Changing the size of the element requires recreating render target but doesn't change
+    // the number of vertices. Note this may be nullptr which is fine for delete.
+    delete [] m_cachedPrimitive.m_vertices;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +94,7 @@ void UiFaderComponent::Update(float deltaTime)
     }
 
     // Update fade
-    m_fade += m_fadeSpeedInSeconds * deltaTime;
+    SetFadeValueInternal(m_fade + m_fadeSpeedInSeconds * deltaTime);
 
     // Check for completion
     if (m_fadeSpeedInSeconds == 0 ||
@@ -93,23 +106,51 @@ void UiFaderComponent::Update(float deltaTime)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiFaderComponent::SetupBeforeRenderingComponents(Pass pass)
+void UiFaderComponent::Render(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+    UiRenderInterface* renderInterface, int numChildren, bool isInGame)
 {
-    if (pass == Pass::First)
+    static const float epsilon = 1.0f / 255.0f; // less than this value means alpha will be zero when converted to a uint8
+
+    // if the fader is at (or close to) zero then do not render this element or its children at all
+    if (m_fade < epsilon)
     {
-        IUiRenderer::Get()->PushAlphaFade(m_fade);
+        return;
     }
-}
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiFaderComponent::SetupAfterRenderingComponents(Pass /* pass */)
-{
-}
+    if (GetUseRenderToTexture())
+    {
+        AZ::Vector2 pixelAlignedTopLeft, pixelAlignedBottomRight;
+        ComputePixelAlignedBounds(pixelAlignedTopLeft, pixelAlignedBottomRight);
+        AZ::Vector2 renderTargetSize = pixelAlignedBottomRight - pixelAlignedTopLeft;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiFaderComponent::SetupAfterRenderingChildren(bool& /* isSecondComponentsPassRequired */)
-{
-    IUiRenderer::Get()->PopAlphaFade();
+        bool needsResize = static_cast<int>(renderTargetSize.GetX()) != m_renderTargetWidth || static_cast<int>(renderTargetSize.GetY()) != m_renderTargetHeight;
+        if (m_renderTargetHandle == -1 || needsResize)
+        {
+            // We delay first creation of the render target until render time since size is not known in Activate
+            // We also call this if the size has changed
+            CreateOrResizeRenderTarget(pixelAlignedTopLeft, pixelAlignedBottomRight);
+        }
+
+        // if the render target failed to be created (zero size for example) we don't render the element at all
+        if (m_renderTargetHandle == -1)
+        {
+            return;
+        }
+
+        // Do render-to-texture fade, this renders this element and its children to a render target, then renders that
+        RenderRttFader(renderGraph, elementInterface, renderInterface, numChildren, isInGame);
+    }
+    else
+    {
+        // destroy previous render target, if exists
+        if (m_renderTargetHandle != -1)
+        {
+            DestroyRenderTarget();
+        }
+
+        // do standard (non-render-to-texture) fade, this renders this element and its children
+        RenderStandardFader(renderGraph, elementInterface, renderInterface, numChildren, isInGame);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,7 +168,7 @@ void UiFaderComponent::SetFadeValue(float fade)
         m_isFading = false;
     }
 
-    m_fade = fade;
+    SetFadeValueInternal(fade);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +177,20 @@ void UiFaderComponent::Fade(float targetValue, float speed)
     if (m_isFading)
     {
         EBUS_EVENT_ID(GetEntityId(), UiFaderNotificationBus, OnFadeInterrupted);
+    }
+
+    // Connect to UpdateBus for updates while fading
+    if (!UiCanvasUpdateNotificationBus::Handler::BusIsConnected())
+    {
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+
+        // if this element has not been fixed up then canvasEntityId will be invalid. We handle this
+        // in OnUiElementFixup
+        if (canvasEntityId.IsValid())
+        {
+            UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+        }
     }
 
     m_isFading = true;
@@ -154,6 +209,53 @@ bool UiFaderComponent::IsFading()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiFaderComponent::GetUseRenderToTexture()
+{
+    return m_useRenderToTexture;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::SetUseRenderToTexture(bool useRenderToTexture)
+{
+    if (GetUseRenderToTexture() != useRenderToTexture)
+    {
+        m_useRenderToTexture = useRenderToTexture;
+        OnRenderTargetChange();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::PropertyValuesChanged()
+{
+    MarkRenderGraphDirty();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::OnUiElementFixup(AZ::EntityId canvasEntityId, AZ::EntityId parentEntityId)
+{
+    // If we are fading but not already connected to UpdateBus for updates then connect
+    // This would only happen if Fade was called during activate (before fixup)
+    if (m_isFading && !UiCanvasUpdateNotificationBus::Handler::BusIsConnected())
+    {
+        UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::OnCanvasSpaceRectChanged(AZ::EntityId /*entityId*/, const UiTransformInterface::Rect& /*oldRect*/, const UiTransformInterface::Rect& /*newRect*/)
+{
+    // we only listen for this if using render target, if rect changed recreate render target
+    OnRenderTargetChange();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::OnTransformToViewportChanged()
+{
+    // we only listen for this if using render target, if transform changed recreate render target
+    OnRenderTargetChange();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATIC MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -165,7 +267,8 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
     {
         serializeContext->Class<UiFaderComponent, AZ::Component>()
             ->Version(1)
-            ->Field("Fade", &UiFaderComponent::m_fade);
+            ->Field("Fade", &UiFaderComponent::m_fade)
+            ->Field("UseRenderToTexture", &UiFaderComponent::m_useRenderToTexture);
 
         AZ::EditContext* ec = serializeContext->GetEditContext();
         if (ec)
@@ -173,6 +276,7 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiFaderComponent>("Fader", "A component that can fade its element and all its child elements");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiFader.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiFader.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
@@ -181,7 +285,14 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
             editInfo->DataElement(AZ::Edit::UIHandlers::Slider, &UiFaderComponent::m_fade, "Fade", "The initial fade value")
                 ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                ->Attribute(AZ::Edit::Attributes::Max, 1.0f);
+                ->Attribute(AZ::Edit::Attributes::Max, 1.0f)
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiFaderComponent::OnFadeValueChanged);
+ 
+            editInfo->DataElement(0, &UiFaderComponent::m_useRenderToTexture, "Use render to texture",
+                "If true, this element and all children are rendered to a separate render target\n"
+                "and then that target is rendered to the screen. This avoids child elements\n"
+                "blending with each other as they fade. But it is more expensive.")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiFaderComponent::OnRenderTargetChange);
         }
     }
 
@@ -193,6 +304,8 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
             ->Event("SetFadeValue", &UiFaderBus::Events::SetFadeValue)
             ->Event("Fade", &UiFaderBus::Events::Fade)
             ->Event("IsFading", &UiFaderBus::Events::IsFading)
+            ->Event("GetUseRenderToTexture", &UiFaderBus::Events::GetUseRenderToTexture)
+            ->Event("SetUseRenderToTexture", &UiFaderBus::Events::SetUseRenderToTexture)
             ->VirtualProperty("Fade", "GetFadeValue", "SetFadeValue");
 
         behaviorContext->Class<UiFaderComponent>()->RequestBus("UiFaderBus");
@@ -205,6 +318,7 @@ void UiFaderComponent::Reflect(AZ::ReflectContext* context)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 float UiFaderComponent::ComputeElementFadeValue(AZ::Entity* element)
 {
+    // --- THIS FUNCTION IS DEPRECATED ---
     // NOTE: This is a short-term solution. In the longer term I want to use eBus.
     // We would probably cache the accumulate fade value in the visual components and visual
     // components could listen for update events from their closest ancestor element that can
@@ -230,24 +344,359 @@ float UiFaderComponent::ComputeElementFadeValue(AZ::Entity* element)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiFaderComponent::Activate()
 {
-    UiUpdateBus::Handler::BusConnect(m_entity->GetId());
-    UiRenderControlBus::Handler::BusConnect(m_entity->GetId());
-    UiFaderBus::Handler::BusConnect(m_entity->GetId());
+    UiRenderControlBus::Handler::BusConnect(GetEntityId());
+    UiFaderBus::Handler::BusConnect(GetEntityId());
+    UiAnimateEntityBus::Handler::BusConnect(GetEntityId());
+    UiElementNotificationBus::Handler::BusConnect(GetEntityId());
+
+    if (GetUseRenderToTexture())
+    {
+        UiTransformChangeNotificationBus::Handler::BusConnect(m_entity->GetId());
+    }
+
+    // The first time the component is activated we don't want to connect to the update bus. However if
+    // the element starts a fade and then we deactivate and reactivate we need to reconnect to the
+    // update bus.
+    if (m_isFading)
+    {
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+        if (canvasEntityId.IsValid())
+        {
+            UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+        }
+    }
+
+    // set the render target name to an automatically generated name based on entity Id
+    m_renderTargetName = "FaderTarget_";
+    m_renderTargetName += GetEntityId().ToString();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiFaderComponent::Deactivate()
 {
-    UiUpdateBus::Handler::BusDisconnect();
     UiRenderControlBus::Handler::BusDisconnect();
     UiFaderBus::Handler::BusDisconnect();
+    UiAnimateEntityBus::Handler::BusDisconnect();
+    UiElementNotificationBus::Handler::BusDisconnect();
+
+    if (UiTransformChangeNotificationBus::Handler::BusIsConnected())
+    {
+        UiTransformChangeNotificationBus::Handler::BusDisconnect();
+    }
+
+    // if deactivated during a fade we either have to cancel the fade or rely on activate reconnecting
+    // to the UpdateBus. We do the latter.
+    if (UiCanvasUpdateNotificationBus::Handler::BusIsConnected())
+    {
+        UiCanvasUpdateNotificationBus::Handler::BusDisconnect();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiFaderComponent::CompleteFade()
 {
-    m_fade = m_fadeTarget;
+    SetFadeValueInternal(m_fadeTarget);
     // Queue the OnFadeComplete event to prevent deletions during the canvas update
     EBUS_QUEUE_EVENT_ID(GetEntityId(), UiFaderNotificationBus, OnFadeComplete);
     m_isFading = false;
+
+    // Disconnect from UpdateBus
+    if (UiCanvasUpdateNotificationBus::Handler::BusIsConnected())
+    {
+        UiCanvasUpdateNotificationBus::Handler::BusDisconnect();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::SetFadeValueInternal(float fade)
+{
+    if (m_fade != fade)
+    {
+        m_fade = fade;
+        MarkRenderGraphDirty();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::OnFadeValueChanged()
+{
+    MarkRenderGraphDirty();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::OnRenderTargetChange()
+{
+    // mark render graph dirty so next render will recreate render targets if necessary
+    MarkRenderGraphDirty();
+
+    // update cached primitive to reflect new transforms
+    AZ::Vector2 pixelAlignedTopLeft, pixelAlignedBottomRight;
+    ComputePixelAlignedBounds(pixelAlignedTopLeft, pixelAlignedBottomRight);
+    UpdateCachedPrimitive(pixelAlignedTopLeft, pixelAlignedBottomRight);
+
+    // if using a render target we need to know if the element size or position changes since that
+    // affects the render target and the viewport
+    if (GetUseRenderToTexture())
+    {
+        if (!UiTransformChangeNotificationBus::Handler::BusIsConnected())
+        {
+            UiTransformChangeNotificationBus::Handler::BusConnect(m_entity->GetId());
+        }
+    }
+    else
+    {
+        if (UiTransformChangeNotificationBus::Handler::BusIsConnected())
+        {
+            UiTransformChangeNotificationBus::Handler::BusDisconnect();
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::MarkRenderGraphDirty()
+{
+    // tell the canvas to invalidate the render graph
+    AZ::EntityId canvasEntityId;
+    EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+    EBUS_EVENT_ID(canvasEntityId, UiCanvasComponentImplementationBus, MarkRenderGraphDirty);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::CreateOrResizeRenderTarget(const AZ::Vector2& pixelAlignedTopLeft, const AZ::Vector2& pixelAlignedBottomRight)
+{
+    // The render target size is the pixel aligned element size.
+    AZ::Vector2 renderTargetSize = pixelAlignedBottomRight - pixelAlignedTopLeft;
+
+    if (renderTargetSize.GetX() <= 0 || renderTargetSize.GetY() <= 0)
+    {
+        // if render targets exist then destroy them (just to be in a consistent state)
+        DestroyRenderTarget();
+        return;
+    }
+
+    m_viewportTopLeft = pixelAlignedTopLeft;
+    m_viewportSize = renderTargetSize;
+
+    // Check if the render target already exists
+    if (m_renderTargetHandle != -1)
+    {
+        // Render target exists, resize it to the given size
+        if (!gEnv->pRenderer->ResizeRenderTarget(m_renderTargetHandle, static_cast<int>(renderTargetSize.GetX()), static_cast<int>(renderTargetSize.GetY())))
+        {
+            AZ_Warning("UI", false, "Failed to resize render target for UiFaderComponent");
+            DestroyRenderTarget();
+        }
+    }
+    else
+    {
+        // Create a render target that this element and its children will be rendered to.
+        m_renderTargetHandle = gEnv->pRenderer->CreateRenderTarget(m_renderTargetName.c_str(),
+                static_cast<int>(renderTargetSize.GetX()), static_cast<int>(renderTargetSize.GetY()), Clr_Transparent, eTF_R8G8B8A8);
+
+        if (m_renderTargetHandle == -1)
+        {
+            AZ_Warning("UI", false, "Failed to create render target for UiFaderComponent");
+        }
+    }
+
+    // if depth surface already exists then destroy it
+    if (m_renderTargetDepthSurface)
+    {
+        gEnv->pRenderer->DestroyDepthSurface(m_renderTargetDepthSurface);
+        m_renderTargetDepthSurface = nullptr;
+    }
+
+    if (m_renderTargetHandle != -1)
+    {
+        // Also create a depth surface to render the canvas to, we need depth for masking
+        // since that uses the stencil buffer. We support any combination of nesting faders and masks
+        m_renderTargetDepthSurface = gEnv->pRenderer->CreateDepthSurface(
+                static_cast<int>(renderTargetSize.GetX()), static_cast<int>(renderTargetSize.GetY()));
+
+        if (!m_renderTargetDepthSurface)
+        {
+            AZ_Warning("UI", false, "Failed to create depth surface for UiFaderComponent");
+            DestroyRenderTarget();
+        }
+    }
+
+    // at this point either all render targets and depth surfaces are created or none are.
+    // If all succeeded then update the render target size
+    if (m_renderTargetHandle != -1)
+    {
+        m_renderTargetWidth = static_cast<int>(renderTargetSize.GetX());
+        m_renderTargetHeight = static_cast<int>(renderTargetSize.GetY());
+    }
+
+    UpdateCachedPrimitive(pixelAlignedTopLeft, pixelAlignedBottomRight);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::DestroyRenderTarget()
+{
+    if (m_renderTargetHandle != -1)
+    {
+        gEnv->pRenderer->DestroyRenderTarget(m_renderTargetHandle);
+        m_renderTargetHandle = -1;
+    }
+
+    if (m_renderTargetDepthSurface)
+    {
+        gEnv->pRenderer->DestroyDepthSurface(m_renderTargetDepthSurface);
+        m_renderTargetDepthSurface = nullptr;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::UpdateCachedPrimitive(const AZ::Vector2& pixelAlignedTopLeft, const AZ::Vector2& pixelAlignedBottomRight)
+{
+    // update viewport position
+    m_viewportTopLeft = pixelAlignedTopLeft;
+
+    // now create the verts to render the texture to the screen, we cache these in m_cachedPrimitive
+    const int numVertices = 4;
+    if (!m_cachedPrimitive.m_vertices)
+    {
+        // verts not yet allocated, allocate them now
+        const int numIndices = 6;
+        m_cachedPrimitive.m_vertices = new SVF_P2F_C4B_T2F_F4B[numVertices];
+        m_cachedPrimitive.m_numVertices = numVertices;
+
+        static uint16 indices[numIndices] = { 0, 1, 2, 2, 3, 0 };
+        m_cachedPrimitive.m_indices = indices;
+        m_cachedPrimitive.m_numIndices = numIndices;
+    }
+
+    float left = pixelAlignedTopLeft.GetX();
+    float right = pixelAlignedBottomRight.GetX();
+    float top = pixelAlignedTopLeft.GetY();
+    float bottom = pixelAlignedBottomRight.GetY();
+    Vec2 positions[numVertices] = { Vec2(left, top), Vec2(right, top), Vec2(right, bottom), Vec2(left, bottom) };
+
+    static const Vec2 uvs[numVertices] = { {0, 0}, {1, 0}, {1, 1}, {0, 1} };
+
+    for (int i = 0; i < numVertices; ++i)
+    {
+        m_cachedPrimitive.m_vertices[i].xy = positions[i];
+        m_cachedPrimitive.m_vertices[i].color.dcolor = 0xFFFFFFFF;
+        m_cachedPrimitive.m_vertices[i].st = uvs[i];
+        m_cachedPrimitive.m_vertices[i].texIndex = 0;   // this will be set later by render graph
+        m_cachedPrimitive.m_vertices[i].texHasColorChannel = 1;
+        m_cachedPrimitive.m_vertices[i].texIndex2 = 0;
+        m_cachedPrimitive.m_vertices[i].pad = 0;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::ComputePixelAlignedBounds(AZ::Vector2& pixelAlignedTopLeft, AZ::Vector2& pixelAlignedBottomRight)
+{
+    // The viewport has to be axis aligned so we get the axis-aligned top-left and bottom-right of the element
+    // in main viewport space. We then snap them to the nearest pixel since the render target has to be an exact number
+    // of pixels.
+    UiTransformInterface::RectPoints points;
+    EBUS_EVENT_ID(GetEntityId(), UiTransformBus, GetViewportSpacePoints, points);
+    pixelAlignedTopLeft = Draw2dHelper::RoundXY(points.GetAxisAlignedTopLeft(), IDraw2d::Rounding::Nearest);
+    pixelAlignedBottomRight = Draw2dHelper::RoundXY(points.GetAxisAlignedBottomRight(), IDraw2d::Rounding::Nearest);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::RenderStandardFader(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+    UiRenderInterface* renderInterface, int numChildren, bool isInGame)
+{
+    // Push the fade value that is used for this element and children
+    renderGraph->PushAlphaFade(m_fade);
+
+    // Render this element and its children
+    RenderElementAndChildren(renderGraph, elementInterface, renderInterface, numChildren, isInGame);
+
+    // Pop off the fade from this fader
+    renderGraph->PopAlphaFade();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::RenderRttFader(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+    UiRenderInterface* renderInterface, int numChildren, bool isInGame)
+{
+    // Render the element and its children to a render target
+    {
+        // we always clear to transparent black - the accumulation of alpha in the render target requires it
+        AZ::Color clearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+        // Start building the render to texture node in the render graph
+        renderGraph->BeginRenderToTexture(m_renderTargetHandle, m_renderTargetDepthSurface,
+            m_viewportTopLeft, m_viewportSize, clearColor);
+
+        // We don't want this fader or parent faders to affect what is rendered to the render target since we will
+        // apply those fades when we render from the render target.
+        renderGraph->PushOverrideAlphaFade(1.0f);
+
+        // Render this element and its children
+        RenderElementAndChildren(renderGraph, elementInterface, renderInterface, numChildren, isInGame);
+
+        // finish building the render to texture node in the render graph
+        renderGraph->EndRenderToTexture();
+
+        // pop off the override alpha fade
+        renderGraph->PopAlphaFade();
+    }
+
+    // render from the render target to the screen (or a parent render target) with the fade value
+    {
+        // set the alpha in the verts
+        {
+            float desiredAlpha = renderGraph->GetAlphaFade() * m_fade;
+            uint8 desiredPackedAlpha = static_cast<uint8>(desiredAlpha * 255.0f);
+
+            UCol desiredPackedColor;
+            // This is a special case. We have an input texture that already has premultiplied alpha.
+            // So we tell the shader not to premultiply the output colors and we premultiply the alpha
+            // into the vertex colors so that they are premultiplied too.
+            desiredPackedColor.r = desiredPackedColor.g = desiredPackedColor.b = desiredPackedColor.a = desiredPackedAlpha;
+            if (m_cachedPrimitive.m_vertices[0].color.dcolor != desiredPackedColor.dcolor)
+            {
+                // go through the cached vertices and update the color values
+                for (int i = 0; i < m_cachedPrimitive.m_numVertices; ++i)
+                {
+                    m_cachedPrimitive.m_vertices[i].color = desiredPackedColor;
+                }
+            }
+        }
+
+        // Add a primitive to render a quad using the render target we have created
+        {
+            // Set the texture and other render state required
+            ITexture* texture = gEnv->pRenderer->EF_GetTextureByID(m_renderTargetHandle);
+            bool isClampTextureMode = true;
+            bool isTextureSRGB = true;
+            bool isTexturePremultipliedAlpha = true;
+            LyShine::BlendMode blendMode = LyShine::BlendMode::Normal;
+
+            // add a render node to render from the render target texture to the current target
+            renderGraph->AddPrimitive(&m_cachedPrimitive, texture,
+                isClampTextureMode, isTextureSRGB, isTexturePremultipliedAlpha, blendMode);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiFaderComponent::RenderElementAndChildren(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+     UiRenderInterface* renderInterface, int numChildren, bool isInGame)
+{
+    // Render the visual component for this element (if there is one)
+    if (renderInterface)
+    {
+        renderInterface->Render(renderGraph);
+    }
+
+    // Render the child elements
+    for (int childIndex = 0; childIndex < numChildren; ++childIndex)
+    {
+        UiElementInterface* childElementInterface = elementInterface->GetChildElementInterface(childIndex);
+        // childElementInterface should never be nullptr but check just to be safe
+        if (childElementInterface)
+        {
+            childElementInterface->RenderElement(renderGraph, isInGame);
+        }
+    }
 }

@@ -24,6 +24,7 @@
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MainWindow.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/FileManager.h>
 
+#include <SceneAPIExt/Rules/ActorPhysicsSetupRule.h>
 #include <SceneAPIExt/Rules/MetaDataRule.h>
 #include <SceneAPIExt/Groups/MotionGroup.h>
 #include <SceneAPIExt/Groups/ActorGroup.h>
@@ -31,6 +32,72 @@
 
 namespace EMStudio
 {
+    void SourceControlCommand::InitSyntax()
+    {
+        GetSyntax().AddParameter(
+            "sourceControl",
+            "Enable or disable source control auto checkout and add for this file (perforce etc).",
+            MCore::CommandSyntax::PARAMTYPE_BOOLEAN,
+            "true"
+        );
+    }
+
+    /**
+    * @brief: Checks out or adds a file to source control
+    *
+    * @param[in] parameters The MCore commandline for this Command, to query the
+    *                       value of the -sourceControl parameter
+    * @param[in] filename The name of the file to check out or add
+    * @param[out] outResult A description of any errors that happen
+    * @param[in] add True when adding a newly-created file, false otherwise
+    *
+    * @return: True on success, false otherwise
+    *
+    * This method is designed to be called twice, once before saving a file and
+    * once after saving a file. Before the file is saved, @p add should be
+    * false, and iff a file named @p filename exists, that file is checked out.
+    * The second call, after the save operation, @p add should be true. If the
+    * file was not checked out the first time, it is checked out the second
+    * time.
+    *
+    * This is to accommodate the Perforce workflow: an existing file must be
+    * checked out before editing it, a new file must be added after it is
+    * created.
+    */
+
+    bool SourceControlCommand::CheckOutFile(const MCore::CommandLine& parameters, const char* filename, AZStd::string& outResult, bool add)
+    {
+        const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
+
+        if (add && m_fileExistsBeforehand)
+        {
+            // We do not need to add the file if it existed before the save
+            // operation, it will already have been checked out
+            return true;
+        }
+
+        m_fileExistsBeforehand = AZ::IO::FileIOBase::GetInstance()->Exists(filename);
+
+        bool checkoutResult = true;
+        if (sourceControl && m_fileExistsBeforehand)
+        {
+            using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
+            ApplicationBus::BroadcastResult(checkoutResult,
+                &ApplicationBus::Events::RequestEditForFileBlocking,
+                filename,
+                "Checking out file from source control.",
+                ApplicationBus::Events::RequestEditProgressCallback());
+
+            if (!checkoutResult)
+            {
+                outResult = AZStd::string::format("Cannot check out file '%s' from source control.", filename);
+                AZ_Error("EMotionFX", false, outResult.c_str());
+            }
+        }
+
+        return checkoutResult;
+    }
+
     //--------------------------------------------------------------------------------
     // CommandSaveActorAssetInfo
     //--------------------------------------------------------------------------------
@@ -74,11 +141,69 @@ namespace EMStudio
         // Generate meta data command for all changes being made to the actor.
         const AZStd::string metaDataString = CommandSystem::MetaData::GenerateActorMetaData(actor);
 
-        // Save meta data commands to the manifest.
-        const bool saveResult = EMotionFX::Pipeline::Rule::MetaDataRule::SaveMetaDataToFile<EMotionFX::Pipeline::Group::ActorGroup>(sourceAssetFilename, groupName, metaDataString);
-        if (saveResult)
+        AZ_TraceContext("External tool rule", sourceAssetFilename);
+
+        if (sourceAssetFilename.empty())
         {
-            actor->SetDirtyFlag(false);
+            AZ_Error("EMotionFX", false, "Source asset filename is empty.");
+            return false;
+        }
+
+        // Load the manifest from disk.
+        AZStd::shared_ptr<AZ::SceneAPI::Containers::Scene> scene;
+        AZ::SceneAPI::Events::SceneSerializationBus::BroadcastResult(scene, &AZ::SceneAPI::Events::SceneSerializationBus::Events::LoadScene, sourceAssetFilename, AZ::Uuid::CreateNull());
+        if (!scene)
+        {
+            AZ_Error("EMotionFX", false, "Unable to save meta data to manifest due to failed scene loading.");
+            return false;
+        }
+
+        AZ::SceneAPI::Containers::SceneManifest& manifest = scene->GetManifest();
+        auto values = manifest.GetValueStorage();
+        auto groupView = AZ::SceneAPI::Containers::MakeDerivedFilterView<EMotionFX::Pipeline::Group::ActorGroup>(values);
+        for (EMotionFX::Pipeline::Group::ActorGroup& group : groupView)
+        {
+            // Non-case sensitive group name comparison. Product filenames are lower case only and might mismatch casing of the entered group name.
+            if (AzFramework::StringFunc::Equal(group.GetName().c_str(), groupName.c_str()))
+            {
+                EMotionFX::Pipeline::Rule::MetaDataRule::SaveMetaData(*scene, group, metaDataString);
+
+                // Save physics setup only in case there is some data.
+                const AZStd::shared_ptr<EMotionFX::PhysicsSetup>& physicsSetup = actor->GetPhysicsSetup();
+                if (!physicsSetup->GetRagdollConfig().m_nodes.empty() ||
+                    !physicsSetup->GetHitDetectionConfig().m_nodes.empty() ||
+                    !physicsSetup->GetClothConfig().m_nodes.empty())
+                {
+                    EMotionFX::Pipeline::Rule::SaveToGroup<EMotionFX::Pipeline::Rule::ActorPhysicsSetupRule, AZStd::shared_ptr<EMotionFX::PhysicsSetup>>(*scene, group, physicsSetup);
+                }
+            }
+        }
+
+        const AZStd::string& manifestFilename = scene->GetManifestFilename();
+        const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(manifestFilename.c_str());
+
+        // Source Control: Checkout file.
+        if (fileExisted)
+        {
+            using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
+            bool checkoutResult = false;
+            ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Checking out manifest from source control.", [](int& current, int& max) {});
+            if (!checkoutResult)
+            {
+                AZ_Error("EMotionFX", false, "Cannot checkout file '%s' from source control.", manifestFilename.c_str());
+                return false;
+            }
+        }
+
+        const bool saveResult = manifest.SaveToFile(manifestFilename.c_str());
+
+        // Source Control: Add file in case it did not exist before (when saving it the first time).
+        if (saveResult && !fileExisted)
+        {
+            using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
+            bool checkoutResult = false;
+            ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Adding manifest to source control.", [](int& current, int& max) {});
+            AZ_Error("EMotionFX", checkoutResult, "Cannot add file '%s' to source control.", manifestFilename.c_str());
         }
 
         return saveResult;
@@ -148,10 +273,10 @@ namespace EMStudio
         EBUS_EVENT_RESULT(fullPathFound, AzToolsFramework::AssetSystemRequestBus, GetFullSourcePathFromRelativeProductPath, productFilename, sourceAssetFilename);
 
         // Generate meta data command for all changes being made to the motion.
-        const AZStd::string metaDataString = CommandSystem::MetaData::GenerateMotionMetaData(motion);
+        const AZStd::vector<MCore::Command*> metaData = CommandSystem::MetaData::GenerateMotionMetaData(motion);
 
         // Save meta data commands to the manifest.
-        const bool saveResult = EMotionFX::Pipeline::Rule::MetaDataRule::SaveMetaDataToFile<EMotionFX::Pipeline::Group::MotionGroup>(sourceAssetFilename, groupName, metaDataString);
+        const bool saveResult = EMotionFX::Pipeline::Rule::MetaDataRule::SaveMetaDataToFile<EMotionFX::Pipeline::Group::MotionGroup>(sourceAssetFilename, groupName, metaData, outResult);
         if (saveResult)
         {
             motion->SetDirtyFlag(false);
@@ -187,7 +312,7 @@ namespace EMStudio
     // CommandSaveMotionSet
     //--------------------------------------------------------------------------------
     CommandSaveMotionSet::CommandSaveMotionSet(MCore::Command* orgCommand)
-        : MCore::Command("SaveMotionSet", orgCommand)
+        : SourceControlCommand("SaveMotionSet", orgCommand)
     {
     }
 
@@ -225,34 +350,16 @@ namespace EMStudio
         parameters.GetValue("filename", this, filename);
 
         // Avoid saving to asset cache folder.
-        const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
-        if (sourceControl && !GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
+        if (!GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
             outResult = AZStd::string::format("Motion set cannot be saved. Unable to find source asset path for (%s)", filename.c_str());
             return false;
         }
         EBUS_EVENT(AzFramework::ApplicationRequests::Bus, NormalizePathKeepCase, filename);
 
-
-        const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
-
-        // Source Control: Checkout file.
-        if (sourceControl && fileExisted)
+        if (!CheckOutFile(parameters, filename.c_str(), outResult, false))
         {
-            using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
-            bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, 
-                &ApplicationBus::Events::RequestEditForFileBlocking, 
-                filename.c_str(), 
-                "Checking out motion set from source control.", 
-                ApplicationBus::Events::RequestEditProgressCallback());
-            
-            if (!checkoutResult)
-            {
-                outResult = AZStd::string::format("Cannot checkout file '%s' from source control.", filename.c_str());
-                AZ_Error("EMotionFX", false, outResult.c_str());
-                return false;
-            }
+            return false;
         }
 
         AZ::SerializeContext* context = nullptr;
@@ -265,22 +372,11 @@ namespace EMStudio
 
         const bool saveResult = motionSet->SaveToFile(filename, context);
 
-
-        // Source Control: Add file in case it did not exist before (when saving it the first time).
-        if (saveResult && !fileExisted && sourceControl)
+        if (saveResult)
         {
-            using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
-            bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, 
-                &ApplicationBus::Events::RequestEditForFileBlocking, 
-                filename.c_str(), 
-                "Adding motion set to source control.", 
-                ApplicationBus::Events::RequestEditProgressCallback());
-
-            if (!checkoutResult)
+            // Add file in case it did not exist before (when saving it the first time).
+            if (!CheckOutFile(parameters, filename.c_str(), outResult, true))
             {
-                outResult = AZStd::string::format("Cannot add file '%s' to source control.", filename.c_str());
-                AZ_Error("EMotionFX", false, outResult.c_str());
                 return false;
             }
         }
@@ -310,12 +406,12 @@ namespace EMStudio
 
     void CommandSaveMotionSet::InitSyntax()
     {
-        GetSyntax().ReserveParameters(4);
+        GetSyntax().ReserveParameters(5);
+        SourceControlCommand::InitSyntax();
         GetSyntax().AddRequiredParameter("filename",    "The filename of the motion set file.",             MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddRequiredParameter("motionSetID", "The id of the motion set to save.",                MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("updateFilename",      "True to update the filename of the motion set.",   MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    "true");
         GetSyntax().AddParameter("updateDirtyFlag",     "True to update the dirty flag of the motion set.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN,    "true");
-        GetSyntax().AddParameter("sourceControl",       "Enable or disable source control auto checkout and add for this file (perforce etc).", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -329,7 +425,7 @@ namespace EMStudio
     // Save the given anim graph
     //-------------------------------------------------------------------------------------
     CommandSaveAnimGraph::CommandSaveAnimGraph(MCore::Command* orgCommand)
-        : MCore::Command("SaveAnimGraph", orgCommand)
+        : SourceControlCommand("SaveAnimGraph", orgCommand)
     {
     }
 
@@ -353,7 +449,6 @@ namespace EMStudio
         parameters.GetValue("filename", this, filename);
 
         // Avoid saving to asset cache folder.
-        const bool sourceControl = parameters.GetValueAsBool("sourceControl", this);
         if (!GetMainWindow()->GetFileManager()->RelocateToAssetSourceFolder(filename))
         {
             outResult = AZStd::string::format("Animation graph cannot be saved. Unable to find source asset path for (%s)", filename.c_str());
@@ -367,25 +462,9 @@ namespace EMStudio
         // get the anim graph from the manager
         EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(animGraphIndex);
 
-        const bool fileExisted = AZ::IO::FileIOBase::GetInstance()->Exists(filename.c_str());
-
-        // Source Control: Checkout file.
-        if (sourceControl && fileExisted)
+        if (!CheckOutFile(parameters, filename.c_str(), outResult, false))
         {
-            using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
-            bool checkoutResult = false;
-            ApplicationBus::BroadcastResult(checkoutResult, 
-                &ApplicationBus::Events::RequestEditForFileBlocking, 
-                filename.c_str(), 
-                "Checking out anim graph from source control.", 
-                ApplicationBus::Events::RequestEditProgressCallback());
-
-            if (!checkoutResult)
-            {
-                outResult = AZStd::string::format("Cannot checkout file '%s' from source control.", filename.c_str());
-                AZ_Error("EMotionFX", false, outResult.c_str());
-                return false;
-            }
+            return false;
         }
 
         AZ::SerializeContext* context = nullptr;
@@ -404,24 +483,11 @@ namespace EMStudio
                 animGraph->SetFileName(filename.c_str());
             }
 
-            // Source Control: Add file in case it did not exist before (when saving it the first time).
-            if (!fileExisted && sourceControl)
-        	{
-            	using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
-            	bool checkoutResult = false;
-            	ApplicationBus::BroadcastResult(checkoutResult, 
-            	    &ApplicationBus::Events::RequestEditForFileBlocking, 
-             	   filename.c_str(), 
-             	   "Adding anim graph to source control.", 
-             	   ApplicationBus::Events::RequestEditProgressCallback());
-
-            	if (!checkoutResult)
-            	{
-                	outResult = AZStd::string::format("Cannot add file '%s' to source control.", filename.c_str());
-                	AZ_Error("EMotionFX", false, outResult.c_str());
-                	return false;
-            	}
-        	}
+            // Add file in case it did not exist before (when saving it the first time).
+            if (!CheckOutFile(parameters, filename.c_str(), outResult, true))
+            {
+                return false;
+            }
         }
 
         return saveResult;
@@ -438,13 +504,13 @@ namespace EMStudio
 
     void CommandSaveAnimGraph::InitSyntax()
     {
-        GetSyntax().ReserveParameters(5);
+        GetSyntax().ReserveParameters(6);
+        SourceControlCommand::InitSyntax();
         GetSyntax().AddRequiredParameter("filename",    "The filename of the anim graph file.", MCore::CommandSyntax::PARAMTYPE_STRING);
         GetSyntax().AddRequiredParameter("index",       "The index inside the anim graph manager of the anim graph to save.", MCore::CommandSyntax::PARAMTYPE_INT);
         GetSyntax().AddParameter("updateFilename",      "True to update the filename of the anim graph.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
         GetSyntax().AddParameter("updateDirtyFlag",     "True to update the dirty flag of the anim graph.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
         GetSyntax().AddParameter("companyName",         "The company name to which this anim graph belongs to.", MCore::CommandSyntax::PARAMTYPE_STRING, "");
-        GetSyntax().AddParameter("sourceControl",       "Enable or disable source control auto checkout and add for this file (perforce etc).", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "true");
     }
 
 
@@ -498,7 +564,7 @@ namespace EMStudio
 
             if (!checkoutResult)
             {
-                outResult = AZStd::string::format("Cannot checkout file '%s' from source control.", filename.c_str());
+                outResult = AZStd::string::format("Cannot check out file '%s' from source control.", filename.c_str());
                 AZ_Error("EMotionFX", false, outResult.c_str());
                 return false;
             }

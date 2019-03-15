@@ -62,6 +62,12 @@
             "_comment": "InputManagementFramework"
         },
         {
+            "Path": "Gems/TextureAtlas",
+            "Uuid": "5a149b6b3c964064bd4970f0e92f72e2",
+            "Version": "0.1.0",
+            "_comment": "TextureAtlas"
+        },
+        {
             "Path": "Gems/UiBasics",
             "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
             "Version": "0.1.0",
@@ -115,6 +121,12 @@
             "_comment": "CloudGemMetric"
         },
         {
+            "Path": "Gems/ImageProcessing",
+            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
+            "Version": "0.1.0",
+            "_comment": "ImageProcessing"
+        },
+        {
             "Path": "Gems/CryEntityRemoval",
             "Uuid": "f3ae24a1635e4f849535f37ef9f4b4da",
             "Version": "0.1.0",
@@ -137,6 +149,12 @@
             "Uuid": "ff06785f7145416b9d46fde39098cb0c",
             "Version": "0.1.0",
             "_comment": "LmbrCentral"
+        },
+        {
+            "Path": "Gems/ImageProcessing",
+            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
+            "Version": "0.1.0",
+            "_comment": "ImageProcessing"
         }
     ]
 }

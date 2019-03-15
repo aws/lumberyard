@@ -30,6 +30,8 @@
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/Entity.h>
 
+class QMenu;
+
 namespace AZ
 {
     class Vector2;
@@ -210,7 +212,13 @@ namespace AzToolsFramework
              * onto this component.
              * @param assetId A reference to the ID of the asset to drag and drop.
              */
-             virtual void SetPrimaryAsset(const AZ::Data::AssetId& /*assetId*/) { }
+            virtual void SetPrimaryAsset(const AZ::Data::AssetId& /*assetId*/) { }
+
+             /**
+              * Implement this to add component specific context menu options to your editor component
+              * when right clicked in the entity inspector
+              */
+            virtual void AddContextMenuActions(QMenu* /*menu*/) {}
 
             /**
              * Reflects component data into a variety of contexts (script, serialize, 
@@ -256,6 +264,28 @@ namespace AzToolsFramework
             virtual bool DoComponentsMatch(const AZ::Component* thisComponent, const AZ::Component* otherComponent) const = 0;
 
             /**
+             * Allows a "paste-over" operation on this component.
+             *
+             * If you want to allow this functionality on your component, you need to
+             * do the following:
+             * - Put the AZ_EDITOR_COMPONENT macro in your class, instead of AZ_COMPONENT.
+             * - Define a static PasteOverComponent() function with the following signature:
+             *
+             * `void PasteOverComponent(const ComponentClass* sourceComponent, ComponentClass* destinationComponent); // where ComponentClass is the type of the class containing this function.`
+             *
+             * @param sourceComponent The component to pull data from.
+             * @param destinationComponent The component to apply the paste operation to.
+             */
+            virtual void PasteOverComponent(const AZ::Component* sourceComponent, AZ::Component* destinationComponent) = 0;
+            
+            /**
+             * Checks if "paste-over" is supported on this component.
+             *
+             * @return True if the component this is describing implements PasteOverComponent.
+             */
+            virtual bool SupportsPasteOver() const = 0;
+
+            /**
              * Returns the editor component descriptor of the current component.
              * @return A pointer to the editor component descriptor.
              */
@@ -292,6 +322,7 @@ namespace AzToolsFramework
             AZ_CLASS_ALLOCATOR(EditorComponentDescriptorDefault<ComponentClass>, AZ::SystemAllocator, 0);
 
             AZ_HAS_STATIC_MEMBER(EditorComponentMatching, DoComponentsMatch, bool, (const ComponentClass* thisComponent, const ComponentClass* otherComponent));
+            AZ_HAS_STATIC_MEMBER(EditorComponentPasteOver, PasteOverComponent, void, (const ComponentClass* sourceComponent, ComponentClass* destinationComponent));
             
             /**
              * Creates an instance of this class.
@@ -326,6 +357,36 @@ namespace AzToolsFramework
                 return CallDoComponentsMatch(thisActualComponent, otherActualComponent, typename HasEditorComponentMatching<ComponentClass>::type());
             }
 
+            /**
+             * Pastes over another component, copying desired data from sourceComponent to destinationComponent.
+             *
+             * @param sourceComponent The component to pull data from.
+             * @param destinationComponent The component to apply the paste operation to.
+             */
+            void PasteOverComponent(const AZ::Component* sourceComponent, AZ::Component* destinationComponent) override
+            {
+                auto sourceActualComponent = azrtti_cast<const ComponentClass*>(sourceComponent);
+                AZ_Assert(sourceActualComponent, "Used the wrong descriptor to attempt a paste over operation");
+
+                auto destinationActualComponent = azrtti_cast<ComponentClass*>(destinationComponent);
+                if (!destinationActualComponent)
+                {
+                    return;
+                }
+
+                CallPasteOverComponent(sourceActualComponent, destinationActualComponent, typename HasEditorComponentPasteOver<ComponentClass>::type());
+            }
+
+            /**
+             * Checks if "paste-over" is supported on this component.
+             *
+             * @return True if the component this is describing implements PasteOverComponent.
+             */
+            bool SupportsPasteOver() const override
+            {
+                return HasEditorComponentPasteOver<ComponentClass>::value;
+            }
+
         private:
             bool CallDoComponentsMatch(const ComponentClass* thisComponent, const ComponentClass* otherComponent, const AZStd::true_type&) const
             {
@@ -335,6 +396,15 @@ namespace AzToolsFramework
             bool CallDoComponentsMatch(const ComponentClass* /*thisComponent*/, const ComponentClass* /*outerComponent*/, const AZStd::false_type&) const
             {
                 return true;
+            }
+
+            void CallPasteOverComponent(const ComponentClass* sourceComponent, ComponentClass* destinationComponent, const AZStd::true_type&)
+            {
+                ComponentClass::PasteOverComponent(sourceComponent, destinationComponent);
+            }
+
+            void CallPasteOverComponent(const ComponentClass* /*sourceComponent*/, ComponentClass* /*destinationComponent*/, const AZStd::false_type&)
+            {
             }
         };
         

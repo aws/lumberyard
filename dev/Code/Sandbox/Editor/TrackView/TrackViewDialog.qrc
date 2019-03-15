@@ -42,8 +42,6 @@
         <file>tvmain-07.png</file>
         <file>tvmain-08.png</file>
         <file>tvmain-09.png</file>
-        <file>tvmain-10.png</file>
-        <file>tvmain-11.png</file>
     </qresource>
     <qresource prefix="/Trackview/view">
         <file>tvview-00.png</file>

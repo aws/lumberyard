@@ -52,6 +52,11 @@ namespace EMStudio
         ;
     }
 
+    void ValueParameterEditor::SetAttributes(const AZStd::vector<MCore::Attribute*>& attributes)
+    {
+        m_attributes = attributes;
+    }
+
     AZStd::string ValueParameterEditor::GetDescription() const
     {
         AZ_Assert(m_valueParameter, "Expected non-null value parameter");

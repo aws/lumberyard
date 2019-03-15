@@ -23,11 +23,12 @@
 #include "Recorder.h"
 #include "MotionInstancePool.h"
 #include "AnimGraphManager.h"
-#include <MCore/Source/JobManager.h>
 #include <MCore/Source/MCoreSystem.h>
 #include <MCore/Source/MemoryTracker.h>
 #include <AzCore/std/algorithm.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/Jobs/JobContext.h>
+#include <AzCore/Jobs/Job.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <EMotionFX/Source/Allocators.h>
 
@@ -77,19 +78,12 @@ namespace EMotionFX
         gEMFX.Get()->GetAnimGraphManager()->Init();
         gEMFX.Get()->SetRecorder              (Recorder::Create());
         gEMFX.Get()->SetMotionInstancePool    (MotionInstancePool::Create());
-        //gEMFX->SetRigManager          ( RigManager::Create() );
         gEMFX.Get()->SetGlobalSimulationSpeed (1.0f);
 
         // set the number of threads
-        uint32 numThreads = MCore::GetJobManager().GetNumThreads();
-        if (numThreads > 0)
-        {
-            gEMFX.Get()->SetNumThreads(numThreads, false, MCore::GetMCore().GetJobListExecuteFunc());
-        }
-        else
-        {
-            gEMFX.Get()->SetNumThreads(1, false);
-        }
+        const AZ::u32 numThreads = AZ::JobContext::GetGlobalContext()->GetJobManager().GetNumWorkerThreads();
+        AZ_Assert(numThreads > 0, "The number of threads is expected to be bigger than 0.");
+        gEMFX.Get()->SetNumThreads(numThreads);
 
         // show details
         gEMFX.Get()->LogInfo();
@@ -130,9 +124,9 @@ namespace EMotionFX
         mWaveletCache           = nullptr;
         mRecorder               = nullptr;
         mMotionInstancePool     = nullptr;
-        //mRigManager           = nullptr;
         mUnitType               = MCore::Distance::UNITTYPE_METERS;
         mGlobalSimulationSpeed  = 1.0f;
+        m_isInEditorMode        = false;
 
         if (MCore::GetMCore().GetIsTrackingMemory())
         {
@@ -176,6 +170,8 @@ namespace EMotionFX
     // update
     void EMotionFXManager::Update(float timePassedInSeconds)
     {
+        AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Animation, "EMotionFXManager::Update");
+
         // update the wavelet cache
         mWaveletCache->Update(timePassedInSeconds);
 
@@ -196,9 +192,6 @@ namespace EMotionFX
         {
             mRecorder->SampleAndApplyAnimGraphs(mRecorder->GetCurrentPlayTime());
         }
-
-        // wait for all jobs to be completed
-        MCore::GetJobManager().NextFrame();
     }
 
 
@@ -301,13 +294,6 @@ namespace EMotionFX
         mAnimGraphManager = manager;
     }
 
-    /*
-    // set the rig manager
-    void EMotionFXManager::SetRigManager(RigManager* manager)
-    {
-        mRigManager = manager;
-    }
-    */
 
     // set the recorder
     void EMotionFXManager::SetRecorder(Recorder* recorder)
@@ -470,36 +456,16 @@ namespace EMotionFX
 
 
     // set the number of threads
-    void EMotionFXManager::SetNumThreads(uint32 numThreads, bool adjustJobManagerNumThreads, MCore::JobListExecuteFunctionType jobListExecuteFunction)
+    void EMotionFXManager::SetNumThreads(uint32 numThreads)
     {
-        MCORE_ASSERT(numThreads > 0 && numThreads <= 1024);
+        AZ_Assert(numThreads > 0 && numThreads <= 1024, "Number of threads is expected to be between 0 and 1024");
         if (numThreads == 0)
         {
-            MCore::LogWarning("EMotionFXManager::SetNumThreads() - Cannot set the number of threads to 0, using 1 instead.");
             numThreads = 1;
         }
 
         if (mThreadDatas.GetLength() == numThreads)
         {
-            if (adjustJobManagerNumThreads)
-            {
-                if (MCore::GetJobManager().GetNumThreads() == numThreads)
-                {
-                    return;
-                }
-
-                // if we want one thread, kill all threads and force going onto the main thread instead
-                if (numThreads == 1)
-                {
-                    MCore::GetJobManager().RemoveAllThreads();
-                    MCore::GetMCore().SetJobListExecuteFunc(MCore::JobListExecuteSerial);
-                }
-                else
-                {
-                    MCore::GetJobManager().SetNumThreads(numThreads);
-                    MCore::GetMCore().SetJobListExecuteFunc(jobListExecuteFunction);
-                }
-            }
             return;
         }
 
@@ -517,24 +483,8 @@ namespace EMotionFX
         {
             mThreadDatas[i] = ThreadData::Create(i);
         }
-
-        // set the number of threads inside the job manager (only does that when we use the job system job execute function)
-        if (adjustJobManagerNumThreads)
-        {
-            MCore::GetJobManager().SetNumThreads(numThreads);
-        }
-
-        // if we want one thread, kill all threads and force going onto the main thread instead
-        if (numThreads == 1)
-        {
-            MCore::GetJobManager().RemoveAllThreads();
-            MCore::GetMCore().SetJobListExecuteFunc(MCore::JobListExecuteSerial);
-        }
-        else
-        {
-            MCore::GetMCore().SetJobListExecuteFunc(jobListExecuteFunction);
-        }
     }
+
 
     // shrink internal pools to minimize memory usage
     void EMotionFXManager::ShrinkPools()

@@ -23,7 +23,6 @@
 #include "SelectTrack.h"
 
 class CGotoTrack;
-class CAnimEntityNode;
 
 class CAnimSceneNode
     : public CAnimNode
@@ -116,14 +115,12 @@ private:
     bool GetEntityTransform(IAnimSequence* pSequence, IEntity* pEntity, float time, Vec3& vCamPos, Quat& qCamRot);
     bool GetEntityTransform(IEntity* pEntity, float time, Vec3& vCamPos, Quat& qCamRot);
 
-    // fill retInterpolatedCameraParams with interpolated camera data. If firstCameraId is a valid AZ::EntityId, it is used. Otherwise it falls back to legacyFirstCamera.
+    // fill retInterpolatedCameraParams with interpolated camera data. If firstCameraId is a valid AZ::EntityId, it is used.
     // should be non-null. Preference will be given to firstCamera if they are both non-null
-    void InterpolateCameras(SCameraParams& retInterpolatedCameraParams, ISceneCamera* firstCamera, IAnimNode* firstCameraAnimNode,
+    void InterpolateCameras(SCameraParams& retInterpolatedCameraParams, ISceneCamera* firstCamera,
         ISelectKey& firstKey, ISelectKey& secondKey, float time);
 
     virtual void InitializeTrackDefaultValue(IAnimTrack* pTrack, const CAnimParamType& paramType) override;
-
-    bool UpConvertSequenceTrack();
 
     // Cached parameters of node at given time.
     float m_time;

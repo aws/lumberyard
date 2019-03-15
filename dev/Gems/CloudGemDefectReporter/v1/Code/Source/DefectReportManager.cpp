@@ -412,6 +412,18 @@ namespace CloudGemDefectReporter
         }
     }
 
+    void DefectReportManager::DeleteReportAttachments(int reportID)
+    {
+        DefectReport report = GetReport(reportID);
+
+        for (const AttachmentDesc& attachment : report.GetAttachments())
+        {
+            DeleteAttachment(attachment.m_path);
+        }
+
+        report.ClearAttachments();
+    }
+
     void DefectReportManager::PostReports(const AZStd::vector<int>& reportIDs)
     {
         AZStd::vector<ReportWrapper> reports;

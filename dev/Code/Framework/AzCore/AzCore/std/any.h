@@ -53,9 +53,6 @@ namespace AZStd
     struct transfer_ownership_t { explicit transfer_ownership_t() = default; };
     const transfer_ownership_t s_transfer_ownership{};
 
-    template<typename T> struct in_place_type_t { explicit in_place_type_t() = default; };
-    //template<typename T> const in_place_type_t<T> in_place_type{}; // VS 2013 does not like this
-
     /**
      * The class any describes a type-safe container for single values of any type.
      *

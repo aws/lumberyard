@@ -123,12 +123,14 @@ namespace AzToolsFramework
         // Set custom function for evaluating if we a given node should show an indicator or not
         void SetIndicatorQueryFunction(const IndicatorQueryFunction& indicatorQueryFunction);
 
-
         // if you want it to save its state, you need to give it a user settings label:
         //void SetSavedStateLabel(AZ::u32 label);
         //static void Reflect(const AZ::ClassDataReflection& reflection);
 
         void SetDynamicEditDataProvider(DynamicEditDataProvider provider);
+
+        using VisibilityCallback = AZStd::function<void(InstanceDataNode* node, NodeDisplayVisibility& visibility, bool& checkChildVisibility)>;
+        void SetVisibilityCallback(VisibilityCallback callback);
 
         QWidget* GetContainerWidget();
 

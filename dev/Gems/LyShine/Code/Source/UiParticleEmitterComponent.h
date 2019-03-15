@@ -14,10 +14,12 @@
 #include <LyShine/Bus/UiCanvasBus.h>
 #include <LyShine/Bus/UiParticleEmitterBus.h>
 #include <LyShine/Bus/UiInitializationBus.h>
+#include <LyShine/Bus/UiElementBus.h>
 #include <LyShine/Bus/UiRenderBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
+#include <LyShine/Bus/UiCanvasUpdateNotificationBus.h>
 #include <LyShine/Bus/UiVisualBus.h>
 #include <LyShine/UiComponentTypes.h>
+#include <LyShine/IRenderGraph.h>
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Math/Color.h>
@@ -36,7 +38,8 @@ class UiParticleEmitterComponent
     , public UiParticleEmitterBus::Handler
     , public UiInitializationBus::Handler
     , public UiRenderBus::Handler
-    , public UiUpdateBus::Handler
+    , public UiCanvasUpdateNotificationBus::Handler
+    , public UiElementNotificationBus::Handler
     , public UiVisualBus::Handler
 {
 public: // member functions
@@ -164,12 +167,17 @@ public: // member functions
     // ~UiInitializationInterface
 
     // UiRenderInterface
-    void Render() override;
+    void Render(LyShine::IRenderGraph* renderGraph) override;
     // ~UiRenderInterface
 
-    // UiUpdateInterface
+    // UiCanvasUpdateNotification
     void Update(float deltaTime) override;
-    // ~UiUpdateInterface
+    // ~UiCanvasUpdateNotification
+
+    // UiElementNotifications
+    void OnUiElementFixup(AZ::EntityId canvasEntityId, AZ::EntityId parentEntityId) override;
+    void OnUiElementAndAncestorsEnabledChanged(bool areElementAndAncestorsEnabled) override;
+    // ~UiElementNotifications
 
     // UiVisualInterface
     void ResetOverrides() override;
@@ -216,8 +224,6 @@ protected: // member functions
     void SortMultipliersByTime(AZStd::vector<ParticleFloatKeyframe>& pointList);
     void ResetParticleBuffers();
 
-    int GetBlendModeStateFlags();
-
     bool IsEmitterLifetimeFinite();
     bool IsParticleLifetimeFinite();
     bool IsParticleLimitRequired();
@@ -250,6 +256,9 @@ protected: // member functions
 
     using AZu32ComboBoxVec = AZStd::vector<AZStd::pair<AZ::u32, AZStd::string> >;
     AZu32ComboBoxVec PopulateSpriteSheetIndexStringList();
+
+    //! Mark the render graph as dirty, this should be done when any change is made affects the structure of the graph
+    void MarkRenderGraphDirty();
 
 protected: // data
 
@@ -344,8 +353,5 @@ protected: // data
     AZStd::vector<UiParticle> m_particleContainer;
 
     AZ::u32 m_particleBufferSize                    = 0;
-    AZ::u32 m_numIndices                            = 0;
-    AZ::u32 m_numVertices                           = 0;
-    AZStd::unique_ptr<SVF_P3F_C4B_T2F> m_vertices;
-    AZStd::unique_ptr<uint16> m_indicies;
+    IRenderer::DynUiPrimitive m_cachedPrimitive;
 };

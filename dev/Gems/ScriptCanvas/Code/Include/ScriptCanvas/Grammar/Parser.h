@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/std/containers/set.h>
 #include <ScriptCanvas/AST/AST.h>
 #include <ScriptCanvas/AST/Nodes.h>
 #include <ScriptCanvas/Core/Core.h>

@@ -99,9 +99,6 @@ public:
     //! Export mission to game.
     void Export(XmlNodeRef& root, XmlNodeRef& objectsNode);
 
-    //! Export mission-animations to game.
-    void ExportLegacyAnimations(XmlNodeRef& root);
-
     //! Add shared objects to mission objects.
     void AddObjectsNode(XmlNodeRef& node);
     void SetLayersNode(XmlNodeRef& node);

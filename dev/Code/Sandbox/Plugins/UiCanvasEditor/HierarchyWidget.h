@@ -13,21 +13,30 @@
 
 #include "EditorCommon.h"
 
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
+
 #include <QTreeWidget>
 
 class HierarchyWidget
     : public QTreeWidget
+    , private AzToolsFramework::EditorPickModeRequests::Bus::Handler
+    , private AzToolsFramework::EntityHighlightMessages::Bus::Handler
 {
     Q_OBJECT
 
 public:
 
     HierarchyWidget(EditorWindow* editorWindow);
+    virtual ~HierarchyWidget();
 
     void SetIsDeleting(bool b);
 
     EntityHelpers::EntityToHierarchyItemMap& GetEntityItemMap();
     EditorWindow* GetEditorWindow();
+
+    void ActiveCanvasChanged();
+    void EntityContextChanged();
 
     void CreateItems(const LyShine::EntityArray& elements);
     void RecreateItems(const LyShine::EntityArray& elements);
@@ -54,7 +63,7 @@ public:
 
     void ClearItemBeingHovered();
 
-    //! Update the appearance of all hierarchy items to show reflect their slice status
+    //! Update the appearance of all hierarchy items to reflect their slice status
     void UpdateSliceInfo();
 
 public slots:
@@ -63,10 +72,12 @@ public slots:
     void Copy();
     void PasteAsSibling();
     void PasteAsChild();
+    void SetEditorOnlyForSelectedItems(bool editorOnly);
 
 signals:
 
     void SetUserSelection(HierarchyItemRawPtrList* items);
+    void editorOnlyStateChangedOnSelectedElements();
 
 private slots:
 
@@ -94,6 +105,21 @@ protected:
 
 private:
 
+    // EditorPickModeRequests
+    void StartObjectPickMode() override;
+    void StopObjectPickMode() override;
+    // ~EditorPickModeRequests
+
+    // EntityHighlightMessages
+    void EntityHighlightRequested(AZ::EntityId entityId) override;
+    void EntityStrongHighlightRequested(AZ::EntityId entityId) override;
+    // ~EntityHighlightMessages
+
+    void PickItem(HierarchyItem* item);
+
+    bool IsEntityInEntityContext(AZ::EntityId entityId);
+
+    void ToggleVisibility(HierarchyItem* hierarchyItem);
     void DeleteSelectedItems(const QTreeWidgetItemRawPtrQList& selectedItems);
     bool AcceptsMimeData(const QMimeData *mimeData);
 
@@ -110,6 +136,13 @@ private:
     bool m_inDragStartState;
     bool m_selectionChangedBeforeDrag;
     bool m_signalSelectionChange;
+
+    bool m_inObjectPickMode;
+
+    // Used to restore the normal hierarchy mode after pick mode is complete
+    QAbstractItemView::SelectionMode m_selectionModeBeforePickMode;
+    EditTriggers m_editTriggersBeforePickMode;
+    QModelIndex m_currentItemBeforePickMode;
 
     bool m_inited;
 };

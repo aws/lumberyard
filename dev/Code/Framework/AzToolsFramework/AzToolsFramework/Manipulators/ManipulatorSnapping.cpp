@@ -23,8 +23,12 @@ namespace AzToolsFramework
      * of size. Mod distance with size, if result is > half size, snap
      * forward, otherwise closer to beginning, snap back.
      */
-    static float CalculateClosestSnapOffset(float distance, float size)
+    static float CalculateClosestSnapOffset(const float distance, float size)
     {
+        // reduce floating point precision error by rounding to 3 most significant digits
+        // (this reduces snapping errors when snapping at large values)
+        size = Round3(size);
+
         // mod distance with size to see how far
         // along size increment distance lies.
         float range;
@@ -51,7 +55,7 @@ namespace AzToolsFramework
     }
 
     AZ::Vector3 CalculateSnappedOffset(
-        const AZ::Vector3& unsnappedPosition, const AZ::Vector3& axis, float size)
+        const AZ::Vector3& unsnappedPosition, const AZ::Vector3& axis, const float size)
     {
         // calculate total distance along axis
         const float axisDistance = axis.Dot(unsnappedPosition);
@@ -60,7 +64,8 @@ namespace AzToolsFramework
     }
 
     AZ::Vector3 CalculateSnappedSurfacePosition(
-        const AZ::Vector3& worldSurfacePosition, const AZ::Transform& worldFromLocal, int viewportId, float gridSize)
+        const AZ::Vector3& worldSurfacePosition, const AZ::Transform& worldFromLocal,
+        const int viewportId, const float gridSize)
     {
         const AZ::Transform localFromWorld = worldFromLocal.GetInverseFast();
         const AZ::Vector3 localSurfacePosition = localFromWorld * worldSurfacePosition;
@@ -84,21 +89,39 @@ namespace AzToolsFramework
         return localSnappedSurfacePosition;
     }
 
-    bool GridSnapping(int viewportId)
+    bool GridSnapping(const int viewportId)
     {
-        bool snapping;
+        bool snapping = false;
         ViewportInteractionRequestBus::EventResult(
             snapping, viewportId,
             &ViewportInteractionRequestBus::Events::GridSnappingEnabled);
         return snapping;
     }
 
-    float GridSize(int viewportId)
+    float GridSize(const int viewportId)
     {
-        float gridSize;
+        float gridSize = 0.0f;
         ViewportInteractionRequestBus::EventResult(
             gridSize, viewportId,
             &ViewportInteractionRequestBus::Events::GridSize);
         return gridSize;
+    }
+
+    bool AngleSnapping(const int viewportId)
+    {
+        bool snapping = false;
+        ViewportInteractionRequestBus::EventResult(
+            snapping, viewportId,
+            &ViewportInteractionRequestBus::Events::AngleSnappingEnabled);
+        return snapping;
+    }
+
+    float AngleStep(const int viewportId)
+    {
+        float angle = 0.0f;
+        ViewportInteractionRequestBus::EventResult(
+            angle, viewportId,
+            &ViewportInteractionRequestBus::Events::AngleStep);
+        return angle;
     }
 }

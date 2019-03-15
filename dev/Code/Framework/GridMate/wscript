@@ -44,6 +44,6 @@ def build(bld):
 
         darwin_enable_rtti          = True,
     )
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = ['GridMate/{0}/gridmate_{0}.waf_files'.format(p)]
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = ['GridMate/{0}/gridmate_{1}.waf_files'.format(p0, p1)]
     bld.CryEngineStaticLibrary(**kw)

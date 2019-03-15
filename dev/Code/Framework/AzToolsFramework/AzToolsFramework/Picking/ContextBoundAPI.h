@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
@@ -30,13 +31,16 @@ namespace AzToolsFramework
         typedef AZ::u64 RegisteredBoundId;
         static const RegisteredBoundId InvalidBoundId = 0;
 
+        /**
+         * An interface concrete shape types can implement to create specific BoundShapeInterfaces.
+         */
         class BoundRequestShapeBase
         {
         public:
             AZ_RTTI(BoundRequestShapeBase, "{60D52E6E-54A6-4236-A397-322FD7607FA3}");
 
-            BoundRequestShapeBase() {}
-            virtual ~BoundRequestShapeBase() {}
+            BoundRequestShapeBase() = default;
+            virtual ~BoundRequestShapeBase() = default;
 
             virtual AZStd::shared_ptr<BoundShapeInterface> MakeShapeInterface(RegisteredBoundId id) const = 0;
         };
@@ -223,23 +227,23 @@ namespace AzToolsFramework
         struct RaySelectInfo
         {
             AZ::Vector3 m_origin;
-            AZ::Vector3 m_direction; ///< make sure m_direction is unit length
-            AZStd::vector<AZStd::pair<RegisteredBoundId, float>> m_boundIDsHit; ///< store the id of the intersected bound and the parameter of the corresponding intersecting point
+            AZ::Vector3 m_direction; ///< Make sure m_direction is unit length.
+            AZStd::vector<AZStd::pair<RegisteredBoundId, float>> m_boundIdsHit; ///< Store the id of the intersected bound and the parameter of the corresponding intersecting point.
         };
 
         /** 
          * EBus interface used to send requests to Bound Managers.
          */
-        class ContextBoundManagerRequests : public AZ::EBusTraits
+        class ContextBoundManagerRequests
+            : public AZ::EBusTraits
         {
         public:
-            //////////////////////////////////////////////////////////////////////////
             // Bus configuration
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
             typedef AZ::u32 BusIdType;
 
-            virtual ~ContextBoundManagerRequests() {}
+            virtual ~ContextBoundManagerRequests() = default;
 
             /**
              * Create and register a bound if the \ref id doesn't already exist, otherwise update the existing bound using data from \ref shapeData.

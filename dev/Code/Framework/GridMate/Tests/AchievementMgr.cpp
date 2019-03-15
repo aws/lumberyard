@@ -25,31 +25,51 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ACHIEVEMENTMGR_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(AchievementMgr_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AchievementMgr_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AchievementMgr_cpp_provo.inl"
+    #endif
 #endif
 
 using namespace GridMate;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ACHIEVEMENTMGR_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(AchievementMgr_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AchievementMgr_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AchievementMgr_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ACHIEVEMENTMGR_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(AchievementMgr_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AchievementMgr_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AchievementMgr_cpp_provo.inl"
+    #endif
 #endif
 
 AZ_TEST_SUITE(AchievementSuite)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ACHIEVEMENTMGR_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(AchievementMgr_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AchievementMgr_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AchievementMgr_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ACHIEVEMENTMGR_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(AchievementMgr_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AchievementMgr_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AchievementMgr_cpp_provo.inl"
+    #endif
 #endif
 
 AZ_TEST_SUITE_END

@@ -3077,6 +3077,14 @@ void CMergedMeshRenderNode::Render(const struct SRendParams& EntDrawParams, cons
     Vec3 extents, origin;
     uint32 frameId;
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // RTT does not support merged meshes yet.     
+    if (passInfo.IsRenderSceneToTexturePass())
+    {
+        return;
+    }
+#endif
+
     if (!passInfo.RenderVegetation()  || GetCVars()->e_MergedMeshes == 0)
     {
         return;
@@ -4839,6 +4847,12 @@ void CMergedMeshesManager::RemoveMergedMesh(CMergedMeshRenderNode* node)
 
 void CMergedMeshesManager::SortActiveInstances(const SRenderingPassInfo& passInfo)
 {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (passInfo.IsRenderSceneToTexturePass())
+    {
+        return;
+    }
+#endif
 # if MMRM_USE_JOB_SYSTEM
     m_updateCompletionMergedMeshesManager.StartJob([this, passInfo]() { this->SortActiveInstances_Async(passInfo); }); // legacy: job.SetPriorityLevel(JobManager::eHighPriority); 
 # else
@@ -4851,6 +4865,12 @@ void CMergedMeshesManager::Update(const SRenderingPassInfo& passInfo)
     FUNCTION_PROFILER_3DENGINE_LEGACYONLY;
     AZ_TRACE_METHOD();
     CRYPROFILE_SCOPE_PROFILE_MARKER("MMRMGR: update")
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (passInfo.IsRenderSceneToTexturePass())
+    {
+        return;
+    }
+#endif
     if (GetCVars()->e_MergedMeshes == 0 || !passInfo.IsGeneralPass())
     {
         return;
@@ -5200,6 +5220,13 @@ void CMergedMeshesManager::RegisterForPostRender(CMergedMeshRenderNode* node)
 void CMergedMeshesManager::PostRenderMeshes(const SRenderingPassInfo& passInfo)
 {
     FUNCTION_PROFILER(gEnv->pSystem, PROFILE_3DENGINE);
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+     if (passInfo.IsRenderSceneToTexturePass())
+     {
+         return;
+     }
+#endif
 
     size_t num_nodes = m_PostRenderNodes.size();
     for (size_t i = 0; i < num_nodes; ++i)
@@ -5592,6 +5619,14 @@ void CDeformableNode::RenderInternalDeform(
     {
         return;
     }
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // RTT does not support merged meshes yet.     
+    if (passInfo.IsRenderSceneToTexturePass())
+    {
+        return;
+    }
+#endif
 
     float radius = max(bbox.max.x - bbox.min.x, max(bbox.max.y - bbox.min.y, bbox.max.z - bbox.min.z))* 0.5f;
     Vec3 centre = (bbox.max + bbox.min)* 0.5f;

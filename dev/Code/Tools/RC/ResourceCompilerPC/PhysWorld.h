@@ -37,7 +37,14 @@ public:
 #if defined(AZ_PLATFORM_WINDOWS)
         MathHelpers::AutoFloatingPointExceptions autoFpe(0);
 #endif
-        const char* const pName = GetLibName();
+        AZStd::string libName = GetLibName();
+
+        // Need to use the library from the "rc" folder
+#ifdef CGF_PHYSX_COMPILER
+        libName = "rc/" + libName;
+#endif
+
+        const char* const pName = libName.c_str();
 
         RCLog("Loading %s...", pName);
 

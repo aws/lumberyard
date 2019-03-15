@@ -596,6 +596,18 @@ namespace LUAEditor
         textFormat.setForeground(colors->GetTextColor());
         setFormat(0, cBlock.length(), textFormat);
 
+        QTextCharFormat spaceFormat = QTextCharFormat();
+        spaceFormat.setForeground(colors->GetTextWhitespaceColor());
+
+        QRegExp tabsAndSpaces("( |\t)+");
+        int index = tabsAndSpaces.indexIn(text);
+        while (index >= 0)
+        {
+            int length = tabsAndSpaces.matchedLength();
+            setFormat(index, length, spaceFormat);
+            index = tabsAndSpaces.indexIn(text, index + length);
+        }
+
         //first take care of bracket highlighting. let later overwrite to handle case of brackets inside of a comment,ect
         if (m_openBracketPos >= 0 && m_closeBracketPos >= 0)
         {

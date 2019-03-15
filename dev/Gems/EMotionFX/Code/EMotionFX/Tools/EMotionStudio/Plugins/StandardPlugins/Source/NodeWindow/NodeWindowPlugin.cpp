@@ -103,15 +103,15 @@ namespace EMStudio
         mDock->setMinimumHeight(100);
 
         // add functionality to the controls
-        connect(mDock, SIGNAL(visibilityChanged(bool)), this, SLOT(VisibilityChanged(bool)));
-        connect(mHierarchyWidget->GetTreeWidget(), SIGNAL(itemSelectionChanged()), this, SLOT(OnNodeChanged()));
+        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &NodeWindowPlugin::VisibilityChanged);
+        connect(mHierarchyWidget->GetTreeWidget(), &QTreeWidget::itemSelectionChanged, this, &NodeWindowPlugin::OnNodeChanged);
 
         const AzQtComponents::FilteredSearchWidget* searchWidget = mHierarchyWidget->GetSearchWidget();
         connect(searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &NodeWindowPlugin::OnTextFilterChanged);
 
-        connect(mHierarchyWidget->GetDisplayNodesButton(), SIGNAL(clicked()), this, SLOT(UpdateVisibleNodeIndices()));
-        connect(mHierarchyWidget->GetDisplayBonesButton(), SIGNAL(clicked()), this, SLOT(UpdateVisibleNodeIndices()));
-        connect(mHierarchyWidget->GetDisplayMeshesButton(), SIGNAL(clicked()), this, SLOT(UpdateVisibleNodeIndices()));
+        connect(mHierarchyWidget->GetDisplayNodesButton(), &QPushButton::clicked, this, &NodeWindowPlugin::UpdateVisibleNodeIndices);
+        connect(mHierarchyWidget->GetDisplayBonesButton(), &QPushButton::clicked, this, &NodeWindowPlugin::UpdateVisibleNodeIndices);
+        connect(mHierarchyWidget->GetDisplayMeshesButton(), &QPushButton::clicked, this, &NodeWindowPlugin::UpdateVisibleNodeIndices);
 
         // reinit the dialog
         ReInit();
@@ -211,7 +211,7 @@ namespace EMStudio
 
         if (selectedInstance == nullptr)
         {
-            GetManager()->SetSelectedNodeIndices(mSelectedNodeIndices);
+            GetManager()->SetSelectedJointIndices(mSelectedNodeIndices);
             return;
         }
 
@@ -244,7 +244,7 @@ namespace EMStudio
         m_propertyWidget->InvalidateAll();
 
         // pass the selected node indices to the manager
-        GetManager()->SetSelectedNodeIndices(mSelectedNodeIndices);
+        GetManager()->SetSelectedJointIndices(mSelectedNodeIndices);
     }
 
 
@@ -278,7 +278,7 @@ namespace EMStudio
         if (actorInstance == nullptr)
         {
             // make sure the empty visible nodes array gets passed to the manager, an empty array means all nodes are shown
-            GetManager()->SetVisibleNodeIndices(mVisibleNodeIndices);
+            GetManager()->SetVisibleJointIndices(mVisibleNodeIndices);
             return;
         }
 
@@ -326,7 +326,7 @@ namespace EMStudio
         }
 
         // pass it over to the manager
-        GetManager()->SetVisibleNodeIndices(mVisibleNodeIndices);
+        GetManager()->SetVisibleJointIndices(mVisibleNodeIndices);
     }
 
     //-----------------------------------------------------------------------------------------

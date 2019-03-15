@@ -36,8 +36,8 @@ namespace CodeGenerator
         static cl::OptionCategory CodeGeneratorCategory("AZ Code Generator");
 
         // Access via g_enableVerboseOutput elsewhere (extern in configuration.h)
-        bool g_enableVerboseOutput;
-        static cl::opt<bool, true> verboseOutput("v", cl::desc("Output verbose debug information"), cl::cat(CodeGeneratorCategory), cl::location(g_enableVerboseOutput));
+        bool g_enableVerboseOutput = false;
+        static cl::opt<bool, true> verboseOutput("v", cl::desc("Output verbose debug information"), cl::cat(CodeGeneratorCategory), cl::location(g_enableVerboseOutput), cl::init(false));
     }
 
     namespace Configuration
@@ -50,7 +50,7 @@ namespace CodeGenerator
             FE_JSON
         };
 
-        static cl::opt<FrontEnd> frontEnd(cl::desc("Choose frontend:"), cl::values(clEnumValN(FE_Clang, "Clang", "Clang Compiler"), clEnumValN(FE_JSON, "JSON", "Raw JSON Input"), clEnumValEnd), cl::init(FE_Clang));
+        static cl::opt<FrontEnd> frontEnd(cl::desc("Choose frontend:"), cl::values(clEnumValN(FE_Clang, "Clang", "Clang Compiler"), clEnumValN(FE_JSON, "JSON", "Raw JSON Input")), cl::init(FE_Clang));
 
         // Code parsing settings
         static cl::OptionCategory codeParserCategory("Code Parsing Options");
@@ -65,10 +65,18 @@ namespace CodeGenerator
         static cl::opt<std::string> clangSettingsFile("clang-settings-file", cl::desc("Path to file that contains clang configuration settings"), cl::cat(codeParserCategory), cl::Optional);
         static cl::opt<std::string> intermediateFile("intermediate-file", cl::desc("Path to a place to store the JSON AST from clang parsing"), cl::cat(codeParserCategory), cl::Optional);
         static cl::opt<std::string> resourceDir("resource-dir", cl::desc("Path to the resource directory to provide to clang"), cl::cat(codeParserCategory), cl::Optional);
+        static cl::opt<std::string> isysroot("isysroot", cl::desc("Path to isysroot to provide to clang"), cl::cat(codeParserCategory), cl::Optional);
+
+        static cl::opt<bool> isAndroidBuild("is-android-build", cl::desc("Configure clang to simulate an android ndk build for parsing"), cl::cat(codeParserCategory), cl::Optional);
+        static cl::opt<std::string> androidToolchain("android-toolchain", cl::desc("Specify toolchain folder to use for android parsing, only used if is-android-build is true"), cl::cat(codeParserCategory), cl::Optional);
+        static cl::opt<std::string> androidTarget("android-target", cl::desc("Specify clang target to use for android parsing, only used if is-android-build is true"), cl::cat(codeParserCategory), cl::Optional);
+        static cl::opt<std::string> androidSysroot("android-sysroot", cl::desc("Specify clang sysroot to us for android parsing, only used if is-android-build is true"), cl::cat(codeParserCategory), cl::Optional);
 
         static cl::opt<bool> noScripts("noscripts", cl::desc("Disable running codegen scripts"), cl::Optional, cl::init(false));
 
         static cl::opt<bool> profile("profile", cl::desc("Enable profile timing and output"), cl::Optional, cl::init(false));
+
+        static cl::opt<bool> annotationErrorChecking("annotation-error-checking", cl::desc("Enable annotation error checking by compiling annotations and erroring on compilation failure"), cl::Optional, cl::init(false));
     }
 
     struct ProfileBlock
@@ -180,60 +188,94 @@ int main(int argc, char** argv)
             }
             else
             {
-                // Must be before -std=c++11 otherwise clang ignores the c++11 option
 #ifdef AZCG_PLATFORM_DARWIN
                 settings += "-stdlib=libc++";
-#endif
+#endif // AZCG_PLATFORM_DARWIN
+
                 // Platform-agnostic default settings
-                settings += "-std=c++11"; // Enable C++11 support
+                if (Configuration::isAndroidBuild)
+                {
+                    settings += "-std=c++1y"; // Enable C++14 support
+                }
+                else
+                {
+                    settings += "-std=c++14"; // Enable C++14 support
+                }
                 settings += "-w";  // Inhibit all warning messages.
                 settings += "-DAZ_CODE_GENERATOR"; // Used to toggle code gen macros
+                if (Configuration::annotationErrorChecking)
+                {
+                    // Enable annotation compilation for annotation error checking
+                    settings += "-DAZCG_COMPILE_ANNOTATIONS";
+                }
                 settings += "-fsyntax-only"; // Do a syntax-only pass
                 //TODO: If we ignore includes we do not get base class information.
                 //settings += "-fignore-includes";
 
                 // Platform-specific default settings
+                if (Configuration::isAndroidBuild)
+                {
+                    if (Configuration::androidTarget.length())
+                    {
+                        settings += "--target=" + Configuration::androidTarget;
+                    }
+                    else
+                    {
+                        // Reasonable default for 32 bit android build
+                        settings += "--target=armv7a-none-linux-android";
+                    }
+
+                    // No explicit default toolchain
+                    if (Configuration::androidToolchain.length())
+                    {
+                        settings += "--gcc-toolchain=" + Configuration::androidToolchain;
+                    }
+
+                    if (Configuration::androidSysroot.length())
+                    {
+                        settings += "--sysroot=" + Configuration::androidSysroot;
+                    }
+                }
+                else
+                {
 #ifdef AZCG_PLATFORM_WINDOWS
-                // Windows compiler defines
-                settings += "-DWIN64";
-                settings += "-D_WIN32";
-                settings += "-D_WIN64";
-                settings += "-D_M_X64";
-                settings += "-D_M_AMD64";
-                settings += "-D_MSC_VER=1800";
-                settings += "-D_MSC_FULL_VER=180031101";
-                settings += "-D_SIZE_T_DEFINED";
+                    // Windows-only defines
 
-                // Microsoft compatibility in clang
-                settings += "-fms-extensions";
-                settings += "-fms-compatibility"; // Fixes issues with windows headers (Particularly types like size_t)
-                settings += "-fdelayed-template-parsing"; // Fixes issues with windows headers (Particularly things like operator new)
-                settings += "-fdiagnostics-format=msvc"; // Changes the output to be MSVC/Error List friendly
+                    settings += "-fno-delayed-template-parsing";
+                    settings += "-fdiagnostics-format=msvc"; // Changes the output to be MSVC/Error List friendly
 
-                // Compile to windows 64bit target
-                settings += "--target=x86_64-pc-windows-msvc";
+                    // Compile to windows 64bit target
+                    settings += "--target=x86_64-pc-windows-msvc19";
 #endif
 #ifdef AZCG_PLATFORM_DARWIN
-                // Necessary paths to find all the C++ libraries, headers, and frameworks
-                settings += "-isysroot/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain";
-                if (!Configuration::resourceDir.empty())
-                {
-                    settings += "-Xclang";
-                    settings += "-resource-dir";
-                    settings += "-Xclang";
-                    settings += Configuration::resourceDir;
-                }
-                settings += "-I/usr/include";
+                    // Necessary paths to find all the C++ libraries, headers, and frameworks
+                    //settings += "-isysroot/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk";
+                    if (!Configuration::isysroot.empty())
+                    {
+                        settings += "-isysroot" + Configuration::isysroot;
+                    }
+                    if (!Configuration::resourceDir.empty())
+                    {
+                        settings += "-Xclang";
+                        settings += "-resource-dir";
+                        settings += "-Xclang";
+                        settings += Configuration::resourceDir;
+                    }
+                    settings += "-I/usr/include";
 
-                // Compile to darwin 64bit target
-                settings += "--target=x86_64-apple-macosx";
+                    // Compile to darwin 64bit target
+                    settings += "--target=x86_64-apple-macosx10.10.0";
+                    settings += "-mmacosx-version-min=10.10";
 #endif
+                }
                 settings += "-x";
                 settings += "c++"; // Treat the file as working with C++
             }
 
             if (GlobalConfiguration::verboseOutput)
             {
+                settings += "-v"; // Enables clang verbose output with our verbose output
+                
                 Output::Print("Base Parameter Set:");
                 for (const auto& setting : settings.Args())
                 {

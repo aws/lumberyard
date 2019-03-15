@@ -26,6 +26,7 @@
 #include <AzFramework/Entity/EntityContextBus.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Slice/SliceTransaction.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/SourceControl/SourceControlAPI.h>
@@ -167,7 +168,7 @@ namespace AzToolsFramework
         //=========================================================================
         SliceTransaction::TransactionPtr SliceTransaction::BeginNewSlice(const char* name,
             AZ::SerializeContext* serializeContext,
-            AZ::u32 /*sliceCreationFlags*/)
+            AZ::u32 sliceCreationFlags)
         {
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -189,6 +190,7 @@ namespace AzToolsFramework
             // Create new empty slice asset.
             newTransaction->m_targetAsset = AZ::Data::AssetManager::Instance().CreateAsset<AZ::SliceAsset>(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
             AZ::SliceComponent* component = entity->CreateComponent<AZ::SliceComponent>();
+            component->SetIsDynamic(sliceCreationFlags & CreateAsDynamic);
             newTransaction->m_targetAsset.Get()->SetData(entity, component);
 
             newTransaction->m_transactionType = TransactionType::NewSlice;
@@ -423,6 +425,7 @@ namespace AzToolsFramework
                 AZ::Entity* clonedEntity = m_serializeContext->CloneObject(entity);
                 clonedEntity->SetId(AZ::Entity::MakeId());
                 m_liveToAssetIdMap[entity->GetId()] = clonedEntity->GetId();
+                m_addedEntityIdRemaps[entity->GetId()] = clonedEntity->GetId();
 
                 m_targetAsset.Get()->GetComponent()->AddEntity(clonedEntity);
             }
@@ -535,7 +538,7 @@ namespace AzToolsFramework
                 using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
 
                 bool checkedOutSuccessfully = false;
-                ApplicationBus::BroadcastResult(checkedOutSuccessfully, &ApplicationBus::Events::RequestEditForFileBlocking,
+                ApplicationBus::BroadcastResult(checkedOutSuccessfully, &ApplicationBus::Events::CheckSourceControlConnectionAndRequestEditForFileBlocking,
                     fullPath, "Checking out for edit...", ApplicationBus::Events::RequestEditProgressCallback());
 
                 if (!checkedOutSuccessfully)
@@ -697,6 +700,9 @@ namespace AzToolsFramework
             {
                 postSaveCallback(TransactionPtr(this), fullPath, finalAsset);
             }
+
+
+            UpdateEntityReferences();
 
             AZ::SliceAssetSerializationNotificationBus::Broadcast(&AZ::SliceAssetSerializationNotificationBus::Events::OnEndSlicePush, m_originalTargetAsset.Get()->GetId(), finalAsset.Get()->GetId());
             // Reset the transaction.
@@ -967,6 +973,7 @@ namespace AzToolsFramework
             m_liveToAssetIdMap.clear();
             m_entitiesToPush.clear();
             m_entitiesToRemove.clear();
+            m_addedEntityIdRemaps.clear();
         }
 
         //=========================================================================
@@ -981,6 +988,68 @@ namespace AzToolsFramework
             if (--m_refCount == 0)
             {
                 delete this;
+            }
+        }
+
+        void SliceTransaction::UpdateEntityReferences()
+        {
+            if (m_addedEntityIdRemaps.size() == 0)
+            {
+                return;
+            }
+
+            AZ::SerializeContext* serializeContext = nullptr;
+            EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+
+            // Remap references from any entity to the new slice entities (so that other entities don't get into a broken state due to slice pushes)
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "SlicePushWidget::UpdateEntityReferences");
+                AZ::SliceComponent* editorRootSlice;
+                AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(editorRootSlice, &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+                AZ_Assert(editorRootSlice != nullptr, "Editor root slice not found!");
+
+                AZ::SliceComponent::EntityList editorRootSliceEntities;
+                editorRootSlice->GetEntities(editorRootSliceEntities);
+
+                for (AZ::Entity* entity : editorRootSliceEntities)
+                {
+                    bool needsReferenceUpdates = false;
+
+                    // Deactivating and re-activating an entity is expensive - much more expensive than this check, so we first make sure we need to do
+                    // any remapping before going through the act of remapping
+                    AZ::EntityUtils::EnumerateEntityIds(entity,
+                        [&needsReferenceUpdates, this](const AZ::EntityId& id, bool isEntityId, const AZ::SerializeContext::ClassElement* /*elementData*/) -> void
+                    {
+                        if (!isEntityId && id.IsValid())
+                        {
+                            if (m_addedEntityIdRemaps.find(id) != m_addedEntityIdRemaps.end())
+                            {
+                                needsReferenceUpdates = true;
+                            }
+                        }
+                    }, serializeContext);
+
+                    if (needsReferenceUpdates)
+                    {
+                        entity->Deactivate();
+
+                        AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(entity,
+                            [this](const AZ::EntityId& originalId, bool /*isEntityId*/, const AZStd::function<AZ::EntityId()>& /*idGenerator*/) -> AZ::EntityId
+                        {
+                            auto remapIterator = m_addedEntityIdRemaps.find(originalId);
+                            if (remapIterator != m_addedEntityIdRemaps.end())
+                            {
+                                return remapIterator->second;
+                            }
+
+                            return originalId;
+                        }, serializeContext, false);
+
+                        entity->Activate();
+
+                        AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, entity->GetId());
+                    }
+                }
             }
         }
 

@@ -83,7 +83,7 @@ namespace AzQtComponents
         void contextMenuRequested(const QPoint& position);
         void expanderChanged(bool expanded);
 
-    private:
+    protected:
         void mouseDoubleClickEvent(QMouseEvent* event) override;
         void contextMenuEvent(QContextMenuEvent* event) override;
         void triggerContextMenuUnderButton();

@@ -64,8 +64,8 @@ namespace EMStudio
         layout->addWidget(mTreeWidget);
         setLayout(layout);
 
-        connect(mTreeWidget, SIGNAL(itemSelectionChanged()), this, SLOT(UpdateSelection()));
-        connect(mTreeWidget, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(ItemDoubleClicked(QTreeWidgetItem*, int)));
+        connect(mTreeWidget, &QTreeWidget::itemSelectionChanged, this, &ParameterWidget::UpdateSelection);
+        connect(mTreeWidget, &QTreeWidget::itemDoubleClicked, this, &ParameterWidget::ItemDoubleClicked);
 
         // set the selection mode
         SetSelectionMode(useSingleSelection);

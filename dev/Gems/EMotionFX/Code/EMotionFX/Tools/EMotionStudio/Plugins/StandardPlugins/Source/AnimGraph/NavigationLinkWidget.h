@@ -10,28 +10,43 @@
 *
 */
 
-#ifndef __EMSTUDIO_NAVIGATIONLINKWIDGET_H
-#define __EMSTUDIO_NAVIGATIONLINKWIDGET_H
+#pragma once
 
-//
-#include <MCore/Source/StandardHeaders.h>
-#include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/LinkWidget.h>
-#include <EMotionFX/Source/AnimGraphNode.h>
-#include "AnimGraphPlugin.h"
-#include <QWidget>
-#include <QHBoxLayout>
-#include <QToolButton>
-#include <QDialog>
-#include <QListWidget>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
+#include <QtWidgets/QPushButton>
+#include <QtWidgets/QWidget>
 
-namespace AzQtComponents
-{
-    class FilteredSearchWidget;
-}
+QT_FORWARD_DECLARE_CLASS(QPixmap)
 
 namespace EMStudio
 {
+    class AnimGraphPlugin;
+    class AnimGraphItemDelegate;
+    class RoleFilterProxyModel;
+
+    class NavigationItemWidget
+        : public QPushButton
+    {
+        MCORE_MEMORYOBJECTCATEGORY(NavigationItemWidget, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
+        Q_OBJECT
+
+    public:
+        NavigationItemWidget(const QModelIndex& modelIndex, QWidget* parent = nullptr);
+
+    protected:
+        void enterEvent(QEvent* event) override;
+        void leaveEvent(QEvent* event) override;
+        void paintEvent(QPaintEvent* event) override;
+        QSize sizeHint() const override;
+
+    private slots:
+        void OnDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles);
+
+    private:
+        QPersistentModelIndex  m_modelIndex;
+        AnimGraphItemDelegate* m_itemDelegate;
+    };
+
     class NavigationLinkWidget
         : public QWidget
     {
@@ -39,67 +54,19 @@ namespace EMStudio
         Q_OBJECT
 
     public:
-        /**
-         * Constructor.
-         */
         NavigationLinkWidget(AnimGraphPlugin* plugin, QWidget* parent);
-
-        /**
-         * Destructor.
-         */
         ~NavigationLinkWidget();
 
-        void Update(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* node);
-
     private slots:
-        void OnHierarchyNavigationLinkClicked(const QString& text);
-        void StartSearchMode()                                          { OnModeChanged(true); }
-        void DropDownChildren();
-        void DropDownHistory();
-        void OnShowNode();
+        void OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent);
+        void OnItemClicked(const QModelIndex& newModelIndex);
 
     private:
-        QWidget* AddNodeToHierarchyNavigationLink(EMotionFX::AnimGraphNode* node, QHBoxLayout* hLayout);
-        void focusOutEvent(QFocusEvent* event);
-        void OnModeChanged(bool searchMode);
+        void AddToNavigation(const QModelIndex& modelIndex, bool isLastWidget = false);
 
-        // navigation bar
-        EMotionFX::AnimGraph*              mAnimGraph;
-        EMotionFX::AnimGraphNode*          mNode;
-
-        bool                                mLastSearchMode;
-        QWidget*                            mInnerWidget;
-        QWidget*                            mNavigationLink;
-        QHBoxLayout*                        mLinksLayout;
-        AzQtComponents::FilteredSearchWidget* m_searchWidget;
-        AnimGraphPlugin*                   mPlugin;
+        AnimGraphPlugin* m_plugin;
+        RoleFilterProxyModel* m_roleFilterProxyModel;
+        QPixmap m_navigationPathImg;
     };
 
-
-    class NavigationLinkDropdownHistory
-        : public QDialog
-    {
-        MCORE_MEMORYOBJECTCATEGORY(NavigationLinkDropdownHistory, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
-        Q_OBJECT
-
-    public:
-        /**
-         * Constructor.
-         */
-        NavigationLinkDropdownHistory(NavigationLinkWidget* parentWidget, AnimGraphPlugin* plugin);
-
-        /**
-         * Destructor.
-         */
-        ~NavigationLinkDropdownHistory();
-
-    private slots:
-        void OnShowNode(QListWidgetItem* item);
-
-    private:
-        AnimGraphPlugin* mPlugin;
-    };
 } // namespace EMStudio
-
-
-#endif

@@ -256,6 +256,9 @@ namespace ViewportHelpers
         case ViewportInteraction::InteractionMode::MOVE:
             return "Move";
             break;
+        case ViewportInteraction::InteractionMode::ANCHOR:
+            return "Anchor";
+            break;
         case ViewportInteraction::InteractionMode::ROTATE:
             return "Rotate";
             break;
@@ -335,5 +338,18 @@ namespace ViewportHelpers
             draw2d.SetTextRotation(0.0f);
             draw2d.DrawText(rotationString.toUtf8().data(), rotationStringPos, 16.0f, 1.0f);
         }
+    }
+
+    void DrawCursorText(const AZStd::string& textLabel,
+        Draw2dHelper& draw2d,
+        const ViewportWidget* viewport)
+    {
+        const AZ::Vector2 textLabelOffset(10.0f, -10.0f);
+        QPoint viewportCursorPos = viewport->mapFromGlobal(QCursor::pos());
+        AZ::Vector2 textPos = AZ::Vector2(viewportCursorPos.x(), viewportCursorPos.y()) + textLabelOffset;
+
+        draw2d.SetTextAlignment(IDraw2d::HAlign::Left, IDraw2d::VAlign::Bottom);
+        draw2d.SetTextRotation(0.0f);
+        draw2d.DrawText(textLabel.c_str(), textPos, 16.0f, 1.0f);
     }
 }   // namespace ViewportHelpers

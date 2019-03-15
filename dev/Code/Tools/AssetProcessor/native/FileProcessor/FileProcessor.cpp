@@ -74,9 +74,20 @@ namespace AssetProcessor
         }
     }
 
-    void FileProcessor::FileOfInterestFound(QString fileName)
+    void FileProcessor::AssessFilesFromScanner(QSet<QString> files)
     {
-        m_filesInAssetScanner.append(fileName);
+        for (const QString& fileName : files)
+        {
+            m_filesInAssetScanner.append(fileName);
+        }
+    }
+
+    void FileProcessor::AssessFoldersFromScanner(QSet<QString> folders)
+    {
+        for (const QString& folderName : folders)
+        {
+            m_filesInAssetScanner.append(folderName);
+        }
     }
 
     void FileProcessor::AssessAddedFile(QString filePath)

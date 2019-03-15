@@ -59,8 +59,32 @@ namespace AZ
     }
 #endif // AZ_HAS_RVALUE_REFS
 
+    template<typename ErrorT>
+    struct DefaultFailure
+    {
+        static FailureValue<ErrorT> Construct()
+        {
+            return AZ::Failure(ErrorT{});
+        }
+    };
+
+    template<>
+    struct DefaultFailure<void>
+    {
+        static FailureValue<void> Construct()
+        {
+            return AZ::Failure();
+        }
+    };
+
     ////////////////////////////////////////////////////////////////////////////
     // Outcome Implementation
+    template <class ValueT, class ErrorT>
+    AZ_FORCE_INLINE Outcome<ValueT, ErrorT>::Outcome()
+        : m_isSuccess(false)
+    {
+        ConstructFailure(AZ::DefaultFailure<ErrorT>::Construct());
+    }
 
     template <class ValueT, class ErrorT>
     AZ_FORCE_INLINE Outcome<ValueT, ErrorT>::Outcome(const SuccessType& success)
@@ -270,8 +294,8 @@ namespace AZ
     AZ_FORCE_INLINE Value_Type Outcome<ValueT, ErrorT>::GetValueOr(U&& defaultValue) const
     {
         return m_isSuccess
-               ? GetValue()
-               : static_cast<U>(AZStd::forward<U>(defaultValue));
+            ? GetValue()
+            : static_cast<U>(AZStd::forward<U>(defaultValue));
     }
 #else
     template <class ValueT, class ErrorT>
@@ -279,8 +303,8 @@ namespace AZ
     AZ_FORCE_INLINE Value_Type Outcome<ValueT, ErrorT>::GetValueOr(const ValueType& defaultValue) const
     {
         return m_isSuccess
-               ? GetValue()
-               : defaultValue;
+            ? GetValue()
+            : defaultValue;
     }
 #endif // AZ_HAS_RVALUE_REFS
 

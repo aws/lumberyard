@@ -278,6 +278,8 @@ namespace LmbrCentral
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
         //////////////////////////////////////////////////////////////////////////
 
+        void BuildGameEntity(AZ::Entity* gameEntity) override;
+
         //////////////////////////////////////////////////////////////////////////
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {

@@ -11,7 +11,7 @@
 */
 #pragma once
 
-#include <LyShine/Bus/UiUpdateBus.h>
+#include <LyShine/Bus/UiCanvasUpdateNotificationBus.h>
 #include <LyShine/Bus/UiInteractableBus.h>
 #include <LyShine/Bus/UiTooltipDataPopulatorBus.h>
 #include <LyShine/Bus/UiTooltipBus.h>
@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiTooltipComponent
     : public AZ::Component
-    , public UiUpdateBus::Handler
+    , public UiCanvasUpdateNotificationBus::Handler
     , public UiInteractableNotificationBus::Handler
     , public UiTooltipDataPopulatorBus::Handler
     , public UiTooltipBus::Handler
@@ -34,9 +34,9 @@ public: // member functions
     UiTooltipComponent();
     ~UiTooltipComponent() override;
 
-    // UiUpdateInterface
+    // UiCanvasUpdateNotification
     void Update(float deltaTime) override;
-    // ~UiUpdateInterface
+    // ~UiCanvasUpdateNotification
 
     // UiInteractableNotifications
     void OnHoverStart() override;

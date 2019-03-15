@@ -1,4 +1,14 @@
-
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
 #pragma once
 
 #include <AzCore/Asset/AssetManager.h>
@@ -7,7 +17,6 @@
 #include <AzCore/std/containers/array.h>
 #include <AzCore/IO/FileIO.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
-#include <AzFramework/Physics/CollisionFilter.h>
 
 namespace AZ
 {
@@ -16,176 +25,294 @@ namespace AZ
 
 namespace Physics
 {
-    /**
-     * Provides a property-grid-editable structure for collision filters.
-     */
-    struct EditableCollisionFilter
-    {
-        AZ_TYPE_INFO(EditableCollisionFilter, "{2EC1E83B-7C67-474A-A9B9-CE467AACB2B7}");
-
-        AZ::u32                     m_layerIndex    = 0;
-        AZStd::array<bool, 32>      m_groupMask;
-
-        EditableCollisionFilter();
-
-        ObjectCollisionFilter MakeCollisionFilter() const;
-    };
-
-    /**
-     * Defines material-based physics surface properties.
-     */
-    struct MaterialProperties
-    {
-        AZ_TYPE_INFO(MaterialProperties, "{8807CAA1-AD08-4238-8FDB-2154ADD084A1}");
-
-        AZStd::string           m_name;
-        AZStd::string           m_surfaceType;
-        float                   m_friction = 0.5f;
-        float                   m_restitution = 0.5f;
-    };
-
-    /**
-     * Owns a set of materials, as well as a cache of surface type mappings.
-     */
-    class MaterialSet
+    /// Physics material
+    /// =========================
+    /// This is the interface to the wrapper around native material type (such as PxMaterial in PhysX gem)
+    /// that stores extra metadata, like Surface Type name.
+    /// To see more details about PhysX implementation please refer to PhysX::Material class
+    ///
+    /// Usage example
+    /// -------------------------
+    /// Create new material using Physics::SystemRequestBus and Physics::MaterialConfiguration:
+    ///
+    ///     AZStd::shared_ptr<Physics::Material> newMaterial;
+    ///     Physics::MaterialConfiguration materialProperties;
+    ///     Physics::SystemRequestBus::BroadcastResult(newMaterial, &Physics::SystemRequests::CreateMaterial, materialProperties);
+    ///
+    /// To get PxMaterial use GetNativePointer function
+    ///
+    ///     physx::PxMaterial* material = static_cast<physx::PxMaterial*>(newMaterial->GetNativePointer());
+    ///
+    /// You can use retrieved PxMaterial pointer on its own, provided you increment its reference count.
+    /// If this class goes out of scope, the PxMaterial pointer will be valid, but its userData
+    /// will be cleaned up to point to nullptr.
+    class Material
     {
     public:
+        AZ_CLASS_ALLOCATOR(Material, AZ::SystemAllocator, 0);
+        AZ_RTTI(Material, "{44636CEA-46DD-4D4A-B1EF-5ED6DEA7F714}");
 
-        friend class MaterialSetSerializationEvents;
+        /// Enumeration that determines how two materials properties are combined when
+        /// processing collisions.
+        enum class CombineMode : AZ::u8
+        {
+            Average,
+            Minimum,
+            Maximum,
+            Multiply
+        };
 
-        AZ_CLASS_ALLOCATOR(MaterialSet, AZ::SystemAllocator, 0);
-        AZ_RTTI(MaterialSet, "{84399E75-18AB-4000-8DCA-07B9D4E0F8E8}");
+        /// Returns AZ::Crc32 of the surface name.
+        virtual AZ::Crc32 GetSurfaceType() const = 0;
+        virtual void SetSurfaceType(AZ::Crc32 surfaceType) = 0;
 
-        MaterialSet();
-        virtual ~MaterialSet() {};
+        virtual const AZStd::string& GetSurfaceTypeName() const = 0;
 
-        void AddMaterial(const MaterialProperties& materialProperties);
+        virtual float GetDynamicFriction() const = 0;
+        virtual void SetDynamicFriction(float dynamicFriction) = 0;
 
-        MaterialProperties* GetDefaultMaterial();
+        virtual float GetStaticFriction() const = 0;
+        virtual void SetStaticFriction(float staticFriction) = 0;
 
-        MaterialId GetMaterialId(const char* materialName) const;
-        MaterialId GetMaterialId(const AZ::Crc32& materialNameCrc) const;
+        virtual float GetRestitution() const = 0;
+        virtual void SetRestitution(float restitution) = 0;
 
-        MaterialProperties* GetMaterialProperties(MaterialId materialId);
+        virtual CombineMode GetFrictionCombineMode() const = 0;
+        virtual void SetFrictionCombineMode(CombineMode mode) = 0;
 
-        MaterialId MapLegacySurfaceTypeToPhysicsMaterial(const AZ::Crc32& surfaceTypeCrc) const;
+        virtual CombineMode GetRestitutionCombineMode() const = 0;
+        virtual void SetRestitutionCombineMode(CombineMode mode) = 0;
 
-        void GetMaterialNames(AZStd::vector<AZStd::string>& materialNames) const;
+        /// If the name of this material matches the name of one of the CrySurface types, it will return its CrySurface Id.\n
+        /// If there's no match it will return default CrySurface Id.\n
+        /// CrySurface types are defined in libs/materialeffects/surfacetypes.xml
+        virtual AZ::u32 GetCryEngineSurfaceId() const = 0;
+
+        /// Returns underlying pointer of the native physics type (for example PxMaterial in PhysX).
+        virtual void* GetNativePointer() = 0;
+    };
+
+    const AZ::u32 DefaultCryEngineSurfaceId = 0;
+
+    /// Default values used for initializing materials
+    /// ===================
+    ///
+    /// Use MaterialConfiguration to define properties for materials at the time of creation. \n
+    /// Use Physics::SystemRequestBus to create new materials.
+    class MaterialConfiguration
+    {
+    public:
+        AZ_TYPE_INFO(MaterialConfiguration, "{8807CAA1-AD08-4238-8FDB-2154ADD084A1}");
 
         static void Reflect(AZ::ReflectContext* context);
 
-        struct MaterialEntry
-        {
-            AZ_TYPE_INFO(MaterialEntry, "{C5207CC2-EF1B-4A11-BC8F-F1898282FBE5}");
+        const static AZ::Crc32 s_stringGroup; ///< Edit context data attribute. Identifies a string group instance. String values in the same group are unique.
+        const static AZ::Crc32 s_forbiddenStringSet; ///<  Edit context data attribute. A set of strings that are not acceptable as values to the data element. Can be AZStd::unordered_set<AZStd::string>, AZStd::set<AZStd::string>, AZStd::vector<AZStd::string>
+        const static AZ::Crc32 s_configLineEdit; ///< Edit context data element handler. Creates custom line edit widget that allows string values to be unique in a group.
 
-            MaterialEntry()
-            {}
+        AZStd::string m_surfaceType{ "Default" };
+        float m_dynamicFriction = 0.5f;
+        float m_staticFriction = 0.5f;
+        float m_restitution = 0.5f;
 
-            MaterialEntry(const AZ::Crc32 materialNameCrc, const AZ::Crc32 surfaceTypeCrc, const MaterialProperties& properties)
-                : m_materialNameCrc(materialNameCrc)
-                , m_surfaceTypeCrc(surfaceTypeCrc)
-                , m_properties(properties)
-            {}
+        Material::CombineMode m_restitutionCombine = Material::CombineMode::Average;
+        Material::CombineMode m_frictionCombine = Material::CombineMode::Average;
+    };
 
-            const char* GetName() const { return m_properties.m_name.c_str(); }
+    namespace Attributes
+    {
+        const static AZ::Crc32 MaterialLibraryAssetId = AZ_CRC("MaterialAssetId", 0x4a88a3f5);
+    }
 
-            AZ::Crc32               m_materialNameCrc;  // Physics material logical name
-            AZ::Crc32               m_surfaceTypeCrc;   // Corresponding game surface type
-            MaterialProperties      m_properties;       // Material physics properties
-        };
+    /// Class that is used to identify the material in the collection of materials
+    /// ============================================================
+    ///
+    /// Collection of the materials is stored in MaterialLibraryAsset.
+    class MaterialId
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(MaterialId, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(MaterialId, "{744CCE6C-9F69-4E2F-B950-DAB8514F870B}");
+        static void Reflect(AZ::ReflectContext* context);
+
+        static MaterialId Create();
+        bool IsNull() const { return m_id.IsNull(); }
+        bool operator==(const MaterialId& other) const { return m_id == other.m_id; }
+        const AZ::Uuid& GetUuid() const { return m_id; }
+
+    private:
+        AZ::Uuid m_id = AZ::Uuid::CreateNull();
+    };
+
+    /// A single Material entry in the material library
+    /// ===============================================
+    ///
+    /// MaterialLibraryAsset holds a collection of MaterialFromAssetConfiguration instances.
+    class MaterialFromAssetConfiguration
+    {
+    public:
+        AZ_TYPE_INFO(MaterialFromAssetConfiguration, "{FBD76628-DE57-435E-BE00-6FFAE64DDF1D}");
+
+        static void Reflect(AZ::ReflectContext* context);
+
+
+        MaterialConfiguration m_configuration;
+        MaterialId m_id;
+    };
+
+    /// An asset that holds a list of materials to be edited and assigned in Lumberyard Editor
+    /// ======================================================================================
+    ///
+    /// Use Asset Editor to create a MaterialLibraryAsset and add materials to it.\n
+    /// You can assign this library on primitive colliders, terrain layers, mesh colliders.
+    /// You can later select a specific material out of the library.\n
+    /// Please note, MaterialLibraryAsset is used only to provide a way to edit materials in the
+    /// Editor, if you need to create materials at runtime (for example, from custom configuration files)
+    /// please use Physics::Material class directly.
+    class MaterialLibraryAsset
+        : public AZ::Data::AssetData
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(MaterialLibraryAsset, AZ::SystemAllocator, 0);
+        AZ_RTTI(MaterialLibraryAsset, "{9E366D8C-33BB-4825-9A1F-FA3ADBE11D0F}", AZ::Data::AssetData);
+
+        MaterialLibraryAsset() = default;
+        virtual ~MaterialLibraryAsset() = default;
+
+        static void Reflect(AZ::ReflectContext* context);
+
+        /// Finds MaterialFromAssetConfiguration in the library given MaterialId
+        /// @param materialId material id to find the configuration for
+        /// @param data stores the material data if material with such ID exists
+        /// @return true if MaterialFromAssetConfiguration was found, False otherwise
+        bool GetDataForMaterialId(const MaterialId& materialId, MaterialFromAssetConfiguration& data);
+
+        /// Adds material data to the asset library.\n
+        /// If MaterialId is not set, it'll be generated automatically.\n
+        /// If MaterialId is set and is unique for this collection it'll be added to the library unchanged.\n
+        /// @param data Material data to add
+        void AddMaterialData(const MaterialFromAssetConfiguration& data);
+
+        /// Returns all MaterialFromAssetConfiguration instances from this library
+        /// @return a Vector of all MaterialFromAssetConfiguration stored in this library
+        const AZStd::vector<MaterialFromAssetConfiguration>& GetMaterialsData() { return m_materialLibrary; }
 
     protected:
-
-        // Reflected/serialized structures.
-        MaterialProperties                                  m_defaultMaterial;
-        AZStd::list<MaterialEntry>                          m_materials;
-
-        // Populated/optimized post-load.
-        AZStd::unordered_map<MaterialId, MaterialEntry*>    m_materialMap;
-        AZStd::unordered_map<AZ::Crc32, MaterialId>         m_materialNameMap;
-        AZStd::unordered_map<AZ::Crc32, MaterialId>         m_surfaceTypeToPhysicsMaterialId;
+        friend class MaterialLibraryAssetEventHandler;
+        void GenerateMissingIds();
+        AZStd::vector<MaterialFromAssetConfiguration> m_materialLibrary;
     };
 
-    /**
-     * Asset-managed material set.
-     */
-    class MaterialSetAsset
-        : public AZ::Data::AssetData
-        , public MaterialSet
+    /// The class is used to store a MaterialLibraryAsset and a vector of MaterialIds selected from the library
+    /// =======================================================================
+    ///
+    /// This class is used to store a reference to the library asset and user's
+    /// selection of the materials from this library.\n
+    /// It also reflects UI controls for assigning MaterialLibraryAsset and selecting a material from it.
+    /// You can reflect this class in EditorContext to provide UI for selecting materials
+    /// on any custom component or QWidget.
+    class MaterialSelection
     {
     public:
-        MaterialSetAsset();
+        AZ_CLASS_ALLOCATOR(MaterialSelection, AZ::SystemAllocator, 0);
+        AZ_TYPE_INFO(MaterialSelection, "{F571AFF4-C4BB-4590-A204-D11D9EEABBC4}");
 
-        friend class MaterialSetAssetManager;
+        using SlotsArray = AZStd::vector<AZStd::string>;
 
-        AZ_CLASS_ALLOCATOR(MaterialSetAsset, AZ::SystemAllocator, 0);
-        AZ_RTTI(MaterialSetAsset, "{9E366D8C-33BB-4825-9A1F-FA3ADBE11D0F}", AZ::Data::AssetData, MaterialSet);
+        static void Reflect(AZ::ReflectContext* context);
+
+        /// Returns whether MaterialLibraryAsset assigned to this selection exists and valid. Attempts to load
+        /// the library if it's not loaded yet.
+        /// @return true if MaterialLibraryAsset has a valid AssetId, loaded and isn't empty
+        bool MaterialLibraryIsValid() const;
+
+        /// Looks up MaterialLibraryAsset for MaterialFromAssetConfiguration with MaterialId that is stored intrenally.
+        /// @param configuration contains material data if there is a material selected by user
+        /// and if it exists in the MaterialLibraryAsset
+        /// @param materialId MaterialId to retrieve MaterialFromAssetConfiguration for
+        /// @return true if lookup was successful.
+        bool GetMaterialConfiguration(Physics::MaterialFromAssetConfiguration& configuration, const Physics::MaterialId& materialId) const;
+
+        /// Creates MaterialLibraryAsset with specified AssetId. \n
+        /// It is used to construct MaterialSelection at runtime. \n
+        /// It is not a typical use case and mostly needed to convert legacy entities and auto-generate material libraries
+        /// @param assetId AssetId to create MaterialLibraryAsset with
+        void CreateMaterialLibrary(const AZ::Data::AssetId& assetId);
+
+        /// Sets an array of material slots to pick MaterialIds for. Having multiple slots is required for assigning multiple materials on a mesh 
+        /// or heightfield object. SlotsArray can be empty and in this case Default slot will be created.
+        /// @param slots Array of names for slots. Can be empty, in this case Default slot will be created
+        void SetMaterialSlots(const SlotsArray& slots);
+
+        /// Returns a list of MaterialId that were assigned for each corresponding slot.
+        const AZStd::vector<Physics::MaterialId>& GetMaterialIdsAssignedToSlots() const;
+
+        /// Sets the MaterialId from MaterialLibraryAsset as the selected material at a specific slotIndex.
+        /// @param materialId MaterialId that user selected from the MaterialLibraryAsset
+        /// @param slotIndex index of the slot to set MaterialId for
+        void SetMaterialId(const Physics::MaterialId& materialId, int slotIndex = 0);
+
+        /// Returns the material library asset id.
+        AZ::Data::AssetId GetMaterialLibraryAssetId() const;
+
+        /// Returns the material id assigned to this selection at a specific slotIndex.
+        /// @param slotIndex index of the slot to retrieve MaterialId for
+        Physics::MaterialId GetMaterialId(int slotIndex = 0) const;
+
     private:
-        AZ_DISABLE_COPY_MOVE(MaterialSetAsset);
+        AZ::Data::Asset<Physics::MaterialLibraryAsset> m_materialLibrary = AZ::Data::AssetLoadBehavior::NoLoad;
+        AZStd::vector<Physics::MaterialId> m_materialIdsAssignedToSlots;
+        SlotsArray m_materialSlots;
+
+        AZ::Data::Asset<Physics::MaterialLibraryAsset> LoadAsset() const;
+        void SyncSelectionToMaterialLibrary();
+
+        // EditorContext callbacks
+        AZ::u32 OnMaterialLibraryChanged();
+        bool DisableMaterialSelection();
+        bool IsMaterialSelectionArrayVisible();
+        AZStd::string GetMaterialSlotLabel(int index);
     };
 
-    /**
-     *
-     */
-    class MaterialSetAssetHandler
-        : public AzFramework::GenericAssetHandler<MaterialSetAsset>
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(MaterialSetAssetHandler, AZ::SystemAllocator, 0);
-
-        MaterialSetAssetHandler()
-            : AzFramework::GenericAssetHandler<MaterialSetAsset>("Physics Material Set", "Other", "physicsmaterialset")
-        {
-        }
-    };
-
-    /**
-     * Material request bus, serviced by the AzFramework::Physics::SystemComponent.
-     * This bus can be used to query for physics material properties by name or material Id.
-     */
-    class MaterialRequests
+    /// Editor Bus used to assign material to terrain surface id.
+    /// ========================================================
+    ///
+    /// Used by Terrain Layer Editor window to save material selection for a specific Terrain Layer. \n
+    /// Must be used before cooking the terrain, in-game usage won't have any effect.
+    class EditorTerrainMaterialRequests
         : public AZ::EBusTraits
     {
     public:
-
-        ////////////////////////////////////////////////////////////////////////
-        // EBusTraits
-        // singleton pattern
         static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-        ////////////////////////////////////////////////////////////////////////
 
-        virtual ~MaterialRequests() = default;
+        virtual void SetMaterialSelectionForSurfaceId(int surfaceId, const MaterialSelection& selection) = 0;
+        virtual bool GetMaterialSelectionForSurfaceId(int surfaceId, MaterialSelection& selection) = 0;
 
-        /// Look up a material Id by name.
-        /// \param materialName name of material. If not found, kDefaultMaterialId is returned.
-        /// \param material Id. If name was not found, kDefaultMaterialId is returned.
-        virtual MaterialId GetMaterialIdByName(const char* materialName) = 0;
-
-        /// Look up a material Id by name Crc.
-        /// \param materialNameCrc crc32 of material name.
-        /// \param material Id. If name was not found, kDefaultMaterialId is returned.
-        virtual MaterialId GetMaterialIdByNameCrc(const AZ::Crc32& materialNameCrc) = 0;
-
-        /// Given a Crc32 of a surface type name, the Id of the material referencing the surface type will be returned.
-        /// \param surfaceTypeCrc Crc32 of surface type name.
-        /// \return materialId If no material referencing the specified surface type is present, kDefaultMaterialId is returned.
-        virtual MaterialId MapLegacySurfaceTypeToPhysicsMaterial(const AZ::Crc32& surfaceTypeCrc) = 0;
-
-        /// Retrieve mutable material properties by material Id.
-        /// Material Ids can be retrieved via GetMaterialId().
-        /// \param materialId
-        /// \return mutable pointer to material properties. Null will be returned if material id was not valid.
-        virtual MaterialProperties* GetPhysicsMaterialProperties(MaterialId materialId) = 0;
-
-        /// Retrieve the material set's default material properties.
-        /// \return mutable pointer to material properties.
-        virtual MaterialProperties* GetDefaultPhysicsMaterialProperties() = 0;
-
-        /// Retrieve list of all registered material names.
-        /// \param output vector of material names as AZStd::strings.
-        virtual void GetMaterialNames(AZStd::vector<AZStd::string>& materialNames) = 0;
+    protected:
+        ~EditorTerrainMaterialRequests() = default;
     };
 
-    using MaterialRequestBus = AZ::EBus<MaterialRequests>;
+    using EditorTerrainMaterialRequestsBus = AZ::EBus<EditorTerrainMaterialRequests>;
+
+    /// Alias for surface id to terrain material unordered map.
+    using TerrainMaterialSurfaceIdMap = AZStd::unordered_map<int, Physics::MaterialSelection>;
+
+    /// Bus that is used to retrieve SurfaceType id from the legacy material system
+    /// ========================================================
+    ///
+    /// Returns CrySurfaceType Id given Crc32 of its name
+    class LegacySurfaceTypeRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        virtual ~LegacySurfaceTypeRequests() {}
+        /// Returns CrySurfaceType Id given Crc32 of its name
+        /// @param Crc32 hash of the CrySurfaceType name
+        /// @return ID of the CrySurfaceType. If such type does not exists it will default to 0.
+        virtual AZ::u32 GetLegacySurfaceType(AZ::Crc32 pxMaterialType) = 0;
+        virtual AZ::u32 GetLegacySurfaceTypeFronName(const AZStd::string& pxMaterialTypeName) = 0;
+    };
+
+    using LegacySurfaceTypeRequestsBus = AZ::EBus<LegacySurfaceTypeRequests>;
+
 } // namespace Physics

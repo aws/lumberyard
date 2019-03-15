@@ -28,6 +28,10 @@
 #include "../Common/RenderCapabilities.h"
 #include <Common/Memory/VRAMDrillerBus.h>
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+#include <RTTBus.h>
+#endif // AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
 #undef min
 #undef max
 //===============================================================================
@@ -532,7 +536,11 @@ bool CTexture::IsDeviceFormatTypeless(D3DFormat nFormat)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -887,7 +895,11 @@ D3DFormat CTexture::ConvertToSRGBFmt(D3DFormat fmt)
         return DXGI_FORMAT_R16G16B16A16_FLOAT;
     case DXGI_FORMAT_R11G11B10_FLOAT:
         return DXGI_FORMAT_R11G11B10_FLOAT;
-
+    // There is no SRGB format for BC4
+    case DXGI_FORMAT_BC4_SNORM:
+        return DXGI_FORMAT_BC4_SNORM;
+    case DXGI_FORMAT_BC4_UNORM:
+        return DXGI_FORMAT_BC4_UNORM;
     default:
         assert(0);
     }
@@ -1392,7 +1404,11 @@ D3DFormat CTexture::ConvertToTypelessFmt(D3DFormat fmt)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2147,7 +2163,11 @@ bool CTexture::CreateRenderTarget(ETEX_Format eTF, const ColorF& cClear)
 #define D3DTEXTURE_CPP_USE_PRIVATEDATA
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
 #endif
 
@@ -2209,7 +2229,11 @@ bool CTexture::CreateDeviceTexture(const byte* pData[6])
         m_pDevTexture->GetBaseTexture()->SetPrivateData(WKPDID_D3DDebugObjectName, strlen(m_SrcName.c_str()), m_SrcName.c_str());
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
 #endif
 
@@ -2221,6 +2245,11 @@ bool CTexture::CreateDeviceTexture(const byte* pData[6])
 
 void CTexture::Unbind()
 {
+    if (m_pDeviceShaderResource)
+    {
+        gcpRendD3D->m_DevMan.UnbindSRV(m_pDeviceShaderResource);
+    }
+
     CDeviceTexture* pDevTex = m_pDevTexture;
 
     if (pDevTex)
@@ -2238,7 +2267,11 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
     int32 nESRAMOffset = -1;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
 
     //if we have any device owned resources allocated, we must sync with render thread
@@ -2269,7 +2302,11 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         m_pRenderTargetData = new RenderTargetData();
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
     }
 
@@ -2458,7 +2495,11 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
         #endif
 
             SAFE_RELEASE(m_pDevTexture);
@@ -3045,7 +3086,11 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -3054,6 +3099,10 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
     const uint nSliceCount = rv.m_Desc.nSliceCount == SResourceView().m_Desc.nSliceCount ? (uint) - 1 : (uint)rv.m_Desc.nSliceCount;
 #endif
 
+    if (!m_pDevTexture)
+    {
+        return nullptr;
+    }
 
     D3DTexture* pTex = m_pDevTexture->Get2DTexture();
 
@@ -3110,7 +3159,11 @@ void* CTexture::CreateDeviceResourceView(const SResourceView& rv)
         dsvDesc.Flags = rv.m_Desc.nFlags;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_9
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
 
         D3DDepthSurface* pDSV = NULL;
@@ -3453,50 +3506,43 @@ void CTexture::UpdateTexStates()
 void CTexture::SetSamplerState(int nTS, int nSUnit, EHWShaderClass eHWSC)
 {
     FUNCTION_PROFILER_RENDER_FLAT
-        assert(gcpRendD3D->m_pRT->IsRenderThread());
+    assert(gcpRendD3D->m_pRT->IsRenderThread());
     STexStageInfo* const __restrict TexStages = s_TexStages;
 
-    if (s_TexStateIDs[eHWSC][nSUnit] != nTS)
+    STexState* pTS = &s_TexStates[nTS];
+    D3DSamplerState* pSamp = (D3DSamplerState*)pTS->m_pDeviceState;
+
+    assert(pSamp);
+
+    if (pSamp)
     {
-        STexState* pTS = &s_TexStates[nTS];
-        D3DSamplerState* pSamp = (D3DSamplerState*)pTS->m_pDeviceState;
-        D3D11_SAMPLER_DESC Desc;
-
-        assert(pSamp);
-
-        if (pSamp)
+        if (eHWSC == eHWSC_Pixel)
         {
-            pSamp->GetDesc(&Desc);
-            s_TexStateIDs[eHWSC][nSUnit] = nTS;
-
-            if (eHWSC == eHWSC_Pixel)
-            {
-                gcpRendD3D->m_DevMan.BindSampler(eHWSC_Pixel, &pSamp, nSUnit, 1);
-            }
-            else
-            if (eHWSC == eHWSC_Domain)
-            {
-                gcpRendD3D->m_DevMan.BindSampler(eHWSC_Domain, &pSamp, nSUnit, 1);
-            }
-            else
-            if (eHWSC == eHWSC_Vertex)
-            {
-                gcpRendD3D->m_DevMan.BindSampler(eHWSC_Vertex, &pSamp, nSUnit, 1);
-            }
-            else
-            if (eHWSC == eHWSC_Compute)
-            {
-                gcpRendD3D->m_DevMan.BindSampler(eHWSC_Compute, &pSamp, nSUnit, 1);
-            }
-            else
-            if (eHWSC == eHWSC_Geometry)
-            {
-                gcpRendD3D->m_DevMan.BindSampler(eHWSC_Geometry, &pSamp, nSUnit, 1);
-            }
-            else
-            {
-                assert(0);
-            }
+            gcpRendD3D->m_DevMan.BindSampler(eHWSC_Pixel, &pSamp, nSUnit, 1);
+        }
+        else
+        if (eHWSC == eHWSC_Domain)
+        {
+            gcpRendD3D->m_DevMan.BindSampler(eHWSC_Domain, &pSamp, nSUnit, 1);
+        }
+        else
+        if (eHWSC == eHWSC_Vertex)
+        {
+            gcpRendD3D->m_DevMan.BindSampler(eHWSC_Vertex, &pSamp, nSUnit, 1);
+        }
+        else
+        if (eHWSC == eHWSC_Compute)
+        {
+            gcpRendD3D->m_DevMan.BindSampler(eHWSC_Compute, &pSamp, nSUnit, 1);
+        }
+        else
+        if (eHWSC == eHWSC_Geometry)
+        {
+            gcpRendD3D->m_DevMan.BindSampler(eHWSC_Geometry, &pSamp, nSUnit, 1);
+        }
+        else
+        {
+            assert(0);
         }
     }
 }
@@ -4164,6 +4210,184 @@ void SEnvTexture::ReleaseDeviceObjects()
     //if (m_pTex)
     //  m_pTex->ReleaseDynamicRT(true);
 }
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+bool CTexture::RenderToTexture(int handle, const CCamera& camera, AzRTT::RenderContextId contextId)
+{
+    if (!CRenderer::CV_r_RTT)
+    {
+        return false;
+    }
+
+    CTexture* pTex = CTexture::GetByID(handle);
+    if (!pTex || !pTex->GetDevTexture())
+    {
+        iLog->Log("Failed to render texture.  Invalid texture handle ID.");
+        return false;
+    }
+
+    // a context may be invalid because it requires hardware resources that are not available
+    bool contextIsValid = false;
+    AzRTT::RTTRequestBus::BroadcastResult(contextIsValid, &AzRTT::RTTRequestBus::Events::ContextIsValid, contextId);
+    if (!contextIsValid)
+    {
+        return false;
+    }
+
+    const int width = pTex->GetWidth();
+    const int height = pTex->GetHeight();
+
+    // NOTE: the renderer's camera comes from the thread info double buffer, so it is possible
+    // GetCamera() will just return the camera using in the last render to texture pass.  
+    // System::GetViewCamera() will have the camera used for the main rendering view
+    CCamera prevSysCamera = gEnv->pSystem->GetViewCamera();
+
+    // get the current viewport and renderer settings to restore after rendering to texture
+    int vX, vY, vWidth, vHeight;
+    gRenDev->GetViewport(&vX, &vY, &vWidth, &vHeight);
+
+    // this flag is used by the engine to denote we are rendering the whole scene to texture
+    gcpRendD3D->m_RP.m_TI[gcpRendD3D->m_RP.m_nFillThreadID].m_PersFlags |= RBPF_RENDER_SCENE_TO_TEXTURE;
+
+    // this resets the view and frame view/proj matrices in the thread info
+    gcpRendD3D->BeginFrame();
+
+    // this frees up previous frame render cameras and waits for jobs.  It will trigger MainThreadRenderRequestBus::ExecuteQueuedEvents();
+    // The main pass also calls this after BeginFrame and before RenderWorld
+    gEnv->p3DEngine->Tick();
+
+    // set the active camera 
+    gRenDev->SetCamera(camera);
+
+    // set the system view camera 
+    CCamera newSystemCamera = camera;
+    gEnv->pSystem->SetViewCamera(newSystemCamera);
+
+    // we do not call PreWorldStreamUpdate here because it will compare the distance of the rtt 
+    // camera to the main camera and negatively affect stream settings
+
+    gRenDev->m_pRT->EnqueueRenderCommand([=]()
+    {
+        // disable back buffer swap so the renderer doesn't call present
+        gRenDev->EnableSwapBuffers(false);
+
+        CTexture* pTex = CTexture::GetByID(handle);
+
+        // when you set the render target SetViewport is also called with the size of the target
+        gRenDev->RT_PushRenderTarget(0, pTex, nullptr, -1);
+
+        // TODO manually set the viewport with our own viewport ID if we enabled TAA.  Currently
+        // doesn't work in multi-threaded mode. Causes flickering vegetation/transparent shadows
+
+        // disabling temporal effects turns off auto exposure and reduces flicker.
+        gRenDev->m_nDisableTemporalEffects = 1;
+    });
+
+    bool contextIsActive = false;
+    AzRTT::RTTRequestBus::BroadcastResult(contextIsActive, &AzRTT::RTTRequestBus::Events::SetActiveContext, contextId);
+    AZ_Warning("RenderToTexture", contextIsActive, "Failed to activate render to texture context, the render target will not be updated");
+
+    if (contextIsActive)
+    {
+        // don't draw UI or console to this RTT 
+        gEnv->pSystem->SetConsoleDrawEnabled(false);
+        gEnv->pSystem->SetUIDrawEnabled(false);
+
+        AzRTT::RenderContextConfig config;
+        AzRTT::RTTRequestBus::BroadcastResult(config, &AzRTT::RTTRequestBus::Events::GetContextConfig, contextId);
+
+        uint32_t renderPassFlags = SRenderingPassInfo::DEFAULT_FLAGS | SRenderingPassInfo::RENDER_SCENE_TO_TEXTURE;
+
+        // render to texture does not support merged meshes yet
+        renderPassFlags &= ~SRenderingPassInfo::MERGED_MESHES;
+
+        // do not allow SVO (SHDF_ALLOW_AO) for now   
+        int renderFlags = SHDF_ZPASS | SHDF_ALLOWHDR | SHDF_ALLOWPOSTPROCESS | SHDF_ALLOW_WATER;
+
+        if (!config.m_shadowsEnabled)
+        {
+            renderFlags |= SHDF_NO_SHADOWGEN;
+            renderPassFlags &= ~SRenderingPassInfo::SHADOWS;
+        }
+
+        if (!config.m_oceanEnabled)
+        {
+            renderPassFlags &= ~SRenderingPassInfo::WATEROCEAN;
+        }
+
+        if (!config.m_terrainEnabled)
+        {
+            renderPassFlags &= ~SRenderingPassInfo::TERRAIN;
+        }
+
+        if (!config.m_vegetationEnabled)
+        {
+            renderPassFlags &= ~SRenderingPassInfo::VEGETATION;
+        }
+
+        SRenderingPassInfo renderPassInfo = SRenderingPassInfo::CreateGeneralPassRenderingInfo(camera, renderPassFlags);
+        gEnv->p3DEngine->RenderWorld(renderFlags, renderPassInfo, __FUNCTION__);
+
+        gEnv->pSystem->SetConsoleDrawEnabled(true);
+        gEnv->pSystem->SetUIDrawEnabled(true);
+
+        gEnv->p3DEngine->EndOcclusion();
+
+        gEnv->p3DEngine->WorldStreamUpdate();
+
+        // NOTE: This is how you could copy from the hdr target to the render target if you wanted no post processing (should probably remove SHDF_ALLOWPOSTPROCESS above)
+        //gRenDev->m_pRT->EnqueueRenderCommand([=]()
+        //{
+            //PostProcessUtils().StretchRect(CTexture::s_ptexHDRTarget, pTex, false, false, false, false, SPostEffectsUtils::eDepthDownsample_None, false, &gcpRendD3D->m_FullResRect);
+        //});
+
+        // this ends up calling FX_FinalComposite which will use our render target for post effects  
+        gcpRendD3D->SwitchToNativeResolutionBackbuffer();
+    }
+
+    // Pop our render target
+    gcpRendD3D->SetRenderTarget(0);
+
+    gRenDev->m_pRT->EnqueueRenderCommand([=]()
+    {
+        gcpRendD3D->m_RP.m_TI[gcpRendD3D->m_RP.m_nProcessThreadID].m_PersFlags &= ~RBPF_RENDER_SCENE_TO_TEXTURE;
+
+        gcpRendD3D->SetViewport(vX, vY, vWidth, vHeight);
+
+        // Reset the camera on the render thread or the main thread can get our
+        // camera info after syncing with main.
+        gcpRendD3D->SetCamera(prevSysCamera);
+    });
+
+    AzRTT::RTTRequestBus::Broadcast(&AzRTT::RTTRequestBus::Events::SetActiveContext, AzRTT::RenderContextId::CreateNull());
+
+    // Free all unused render meshes.  Without this you can get lots of fun memory leaks.
+    gRenDev->ForceGC();  
+
+    // call endframe on the renderer instead of via d3d to bypass drawing messages
+    // set wait to true otherwise EndFrame won't be sent if there is no pending flush condition
+    bool wait = true;
+    gRenDev->m_pRT->RC_EndFrame(wait);
+
+    // re-enable swap buffers after calling end frame so the main pass will call present()
+    gRenDev->m_pRT->EnqueueRenderCommand([=]()
+    {
+        gRenDev->EnableSwapBuffers(true);
+    });
+
+    // normally we would need to remove the cull job producer using RemoveCullJobProducer
+    // we don't need to because we use e_statobjbufferrendertask = 0
+
+    // restore previous settings
+    gEnv->pSystem->SetViewCamera(prevSysCamera);
+    gRenDev->SetCamera(prevSysCamera);
+
+    // this fixes streaming update sync errors when rendering pre frame
+    gEnv->p3DEngine->SyncProcessStreamingUpdate();
+
+    return true;
+}
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
 bool CTexture::RenderEnvironmentCMHDR(int size, Vec3& Pos, TArray<unsigned short>& vecData)
 {
@@ -5147,7 +5371,11 @@ void CTexture::ReleaseSystemTargets()
     SAFE_RELEASE_FORCE(s_ptexSceneSpecular);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_10
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
     SAFE_RELEASE_FORCE(s_ptexSceneDiffuseAccMap);
     SAFE_RELEASE_FORCE(s_ptexSceneSpecularAccMap);
@@ -5218,7 +5446,11 @@ void CTexture::CopySliceChain(CDeviceTexture* const pDevTexture, int ownerMips, 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_11
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
 
     D3DBaseTexture* pDstResource = pDevTexture->GetBaseTexture();
@@ -5237,7 +5469,11 @@ void CTexture::CopySliceChain(CDeviceTexture* const pDevTexture, int ownerMips, 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTEXTURE_CPP_SECTION_12
-#include AZ_RESTRICTED_FILE(D3DTexture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTexture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTexture_cpp_provo.inl"
+    #endif
 #endif
     assert(nSrcMip >= 0 && nDstMip >= 0);
     for (int i = 0; i < nNumMips; ++i)

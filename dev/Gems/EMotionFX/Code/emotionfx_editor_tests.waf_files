@@ -1,10 +1,15 @@
 {
     "auto": {
         "Tests": [
-            "Tests/EMotionFXTest.cpp",
+            "Tests/EMotionFXEditorTest.cpp",
             "Tests/InitSceneAPIFixture.h",
+            "Tests/MetaDataRuleTests.cpp",
             "Tests/MorphTargetPipelineTests.cpp",
-            "Tests/SystemComponentFixture.h"
+            "Tests/SystemComponentFixture.h",
+            "Tests/UI/CommandRunnerFixture.h",
+            "Tests/UI/UIFixture.cpp",
+            "Tests/UI/UIFixture.h",
+            "Tests/UI/LY-92269.cpp"
         ]
     }
 }

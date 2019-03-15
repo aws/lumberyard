@@ -111,6 +111,11 @@ namespace AssetProcessor
         return m_pendingCriticalJobsPerPlatform[platform.toLower()];
     }
 
+    int RCController::NumberOfPendingJobsPerPlatform(QString platform)
+    {
+        return m_jobsCountPerPlatform[platform.toLower()];
+    }
+
     void RCController::FinishJob(RCJob* rcJob)
     {
         m_RCQueueSortModel.RemoveJobIdEntry(rcJob);
@@ -242,7 +247,7 @@ namespace AssetProcessor
         // Start the job we just received if no job currently running
         if ((!m_shuttingDown) && (!m_dispatchingJobs))
         {
-            QMetaObject::invokeMethod(this, "DispatchJobs", Qt::QueuedConnection);
+            DispatchJobs();
         }
     }
 
@@ -255,15 +260,16 @@ namespace AssetProcessor
             {
                 if ((!m_shuttingDown) && (!m_dispatchingJobs))
                 {
-                    QMetaObject::invokeMethod(this, "DispatchJobs", Qt::QueuedConnection);
+                    DispatchJobs();
                     Q_EMIT ActiveJobsCountChanged(aznumeric_cast<unsigned int>(m_RCJobListModel.itemCount()));
                 }
             }
         }
     }
 
-    void RCController::DispatchJobs()
+    void RCController::DispatchJobsImpl()
     {
+        m_dispatchJobsQueued = false;
         if (!m_dispatchingJobs)
         {
             m_dispatchingJobs = true;
@@ -284,6 +290,14 @@ namespace AssetProcessor
                 rcJob = m_RCQueueSortModel.GetNextPendingJob();
             }
             m_dispatchingJobs = false;
+        }
+    }
+    void RCController::DispatchJobs()
+    {
+        if (!m_dispatchJobsQueued)
+        {
+            m_dispatchJobsQueued = true;
+            QMetaObject::invokeMethod(this, "DispatchJobsImpl", Qt::QueuedConnection);
         }
     }
 

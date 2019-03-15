@@ -63,6 +63,8 @@ namespace HierarchyHelpers
         }
         hierarchy->SetIsDeleting(false);
 
+        hierarchy->SignalUserSelectionHasChanged(hierarchy->selectedItems());
+
         hierarchy->GetEditorWindow()->EntitiesAddedOrRemoved();
     }
 

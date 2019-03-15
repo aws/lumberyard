@@ -41,7 +41,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_1
-#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerUtils_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerUtils_h_provo.inl"
+    #endif
 #endif
 
 #pragma pop_macro("max")	// restore previous disabling of max
@@ -92,7 +96,11 @@ namespace Multiplayer
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_2
-#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerUtils_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerUtils_h_provo.inl"
+    #endif
 #endif
         }
 
@@ -156,7 +164,11 @@ namespace Multiplayer
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_3
-#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerUtils_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerUtils_h_provo.inl"
+    #endif
 #endif
         }
 
@@ -164,7 +176,11 @@ namespace Multiplayer
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_4
-#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerUtils_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerUtils_h_provo.inl"
+    #endif
 #endif
         }
     };
@@ -175,7 +191,11 @@ namespace Multiplayer
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_5
-#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerUtils_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerUtils_h_provo.inl"
+    #endif
 #endif
         }
 
@@ -183,7 +203,11 @@ namespace Multiplayer
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERUTILS_H_SECTION_6
-#include AZ_RESTRICTED_FILE(MultiplayerUtils_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerUtils_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerUtils_h_provo.inl"
+    #endif
 #endif
         }
     };

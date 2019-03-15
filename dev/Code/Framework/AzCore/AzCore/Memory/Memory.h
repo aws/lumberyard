@@ -648,6 +648,67 @@ namespace AZ
     };
 
     /**
+     * Generic wrapper for binding IAllocator interface allocator.
+     * This is basically the same as \ref AZStdAlloc but it allows
+     * you to remove the template parameter and retrieve the allocator from a supplied function
+     * pointer
+     */
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
+#define AZ_FUNCTORALLOCATOR_CONSTEXPR constexpr
+#else
+#define AZ_FUNCTORALLOCATOR_CONSTEXPR
+#endif
+    class AZStdFunctorAllocator
+    {
+    public:
+        using pointer_type = void*;
+        using size_type = AZStd::size_t;
+        using difference_type = AZStd::ptrdiff_t;
+        using allow_memory_leaks = AZStd::false_type; ///< Regular allocators should not leak.
+        using functor_type = IAllocatorAllocate&(*)(); ///< Function Pointer must return IAllocatorAllocate&.
+                                                       ///< function pointers do not support covariant return types
+
+        constexpr AZStdFunctorAllocator(functor_type allocatorFunctor, const char* name = "AZ::AZStdFunctorAllocator")
+            : m_allocatorFunctor(allocatorFunctor)
+            , m_name(name)
+        {
+        }
+        constexpr AZStdFunctorAllocator(const AZStdFunctorAllocator& rhs, const char* name)
+            : m_allocatorFunctor(rhs.m_allocatorFunctor)
+            , m_name(name)
+        {
+        }
+        constexpr AZStdFunctorAllocator(const AZStdFunctorAllocator& rhs) = default;
+        AZ_FUNCTORALLOCATOR_CONSTEXPR AZStdFunctorAllocator& operator=(const AZStdFunctorAllocator& rhs) = default;
+        pointer_type allocate(size_t byteSize, size_t alignment, int flags = 0)
+        {
+            return m_allocatorFunctor().Allocate(byteSize, alignment, flags, m_name, __FILE__, __LINE__, 1);
+        }
+        size_type resize(pointer_type ptr, size_t newSize)
+        {
+            return m_allocatorFunctor().Resize(ptr, newSize);
+        }
+        void deallocate(pointer_type ptr, size_t byteSize, size_t alignment)
+        {
+            m_allocatorFunctor().DeAllocate(ptr, byteSize, alignment);
+        }
+        constexpr const char* get_name() const { return m_name; }
+        void set_name(const char* name) { m_name = name; }
+        size_type get_max_size() const { return m_allocatorFunctor().GetMaxAllocationSize(); }
+        size_type get_allocated_size() const { return m_allocatorFunctor().NumAllocatedBytes(); }
+
+        constexpr bool operator==(const AZStdFunctorAllocator& rhs) const { return m_allocatorFunctor == rhs.m_allocatorFunctor; }
+        constexpr bool operator!=(const AZStdFunctorAllocator& rhs) const { return m_allocatorFunctor != rhs.m_allocatorFunctor; }
+    private:
+        functor_type m_allocatorFunctor;
+        const char* m_name;
+    };
+
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
+#undef AZ_FUNCTORALLOCATOR_CONSTEXPR
+#endif
+
+    /**
     * Helper class to determine if type T has a AZ_CLASS_ALLOCATOR defined,
     * so we can safely call aznew on it. -  AZClassAllocator<ClassType>....
     */

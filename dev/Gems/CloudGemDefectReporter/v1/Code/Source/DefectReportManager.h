@@ -111,6 +111,9 @@ namespace CloudGemDefectReporter
         // delete a report
         void RemoveReport(int reportID);
 
+        // delete all the attachment of a report
+        void DeleteReportAttachments(int reportID);
+
         // send available reports and attachments to AWS
         void PostReports(const AZStd::vector<int>& reportIDs);
 

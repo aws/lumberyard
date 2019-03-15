@@ -29,7 +29,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DLLMAIN_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(DllMain_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DllMain_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DllMain_cpp_provo.inl"
+    #endif
 #endif
 
 // For lua debugger
@@ -128,7 +132,11 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DLLMAIN_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(DllMain_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DllMain_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DllMain_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_MONOLITHIC_BUILD)
     ICryFactoryRegistryImpl* pCryFactoryImpl = static_cast<ICryFactoryRegistryImpl*>(pSystem->GetCryFactoryRegistry());
@@ -151,7 +159,11 @@ CRYSYSTEM_API ISystem* CreateSystemInterface(const SSystemInitParams& startupPar
         ((DebugCallStack*)IDebugCallStack::instance())->installErrorHandler(pSystem);
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DLLMAIN_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(DllMain_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DllMain_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DllMain_cpp_provo.inl"
+    #endif
 #endif
     }
 
@@ -181,7 +193,11 @@ CRYSYSTEM_API void WINAPI CryInstallUnhandledExceptionHandler()
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DLLMAIN_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(DllMain_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DllMain_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DllMain_cpp_provo.inl"
+    #endif
 #endif
 }
 

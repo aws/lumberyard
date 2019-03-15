@@ -797,7 +797,11 @@ bool ResourceParticleParams::IsActive() const
         !Platforms.hasMacOSMetal && platform_spec == CONFIG_OSX_METAL ||
         !Platforms.hasAndroid && platform_spec == CONFIG_ANDROID ||
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ParticleEffect_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ParticleEffect_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ParticleEffect_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\

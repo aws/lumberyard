@@ -13,17 +13,12 @@
 #include "AnimGraphEventBuffer.h"
 #include "EventManager.h"
 #include "AnimGraphInstance.h"
+#include <EMotionFX/Source/MotionEvent.h>
 
 
 namespace EMotionFX
 {
     AnimGraphEventBuffer::AnimGraphEventBuffer()
-    {
-        mEvents.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_EVENTBUFFERS);
-    }
-
-
-    AnimGraphEventBuffer::~AnimGraphEventBuffer()
     {
     }
 
@@ -31,10 +26,9 @@ namespace EMotionFX
     // set the emitter pointers
     void AnimGraphEventBuffer::UpdateEmitters(AnimGraphNode* emitterNode)
     {
-        const uint32 numEvents = mEvents.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
+        for (EventInfo& event : m_events)
         {
-            mEvents[i].mEmitter = emitterNode;
+            event.mEmitter = emitterNode;
         }
     }
 
@@ -42,13 +36,11 @@ namespace EMotionFX
     // update the weights
     void AnimGraphEventBuffer::UpdateWeights(AnimGraphInstance* animGraphInstance)
     {
-        const uint32 numEvents = mEvents.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
+        for (EventInfo& curEvent : m_events)
         {
-            EventInfo&              curEvent            = mEvents[i];
-            AnimGraphNodeData*     emitterUniqueData   = curEvent.mEmitter->FindUniqueNodeData(animGraphInstance);
-            curEvent.mGlobalWeight  = emitterUniqueData->GetGlobalWeight();
-            curEvent.mLocalWeight   = emitterUniqueData->GetLocalWeight();
+            AnimGraphNodeData* emitterUniqueData = curEvent.mEmitter->FindUniqueNodeData(animGraphInstance);
+            curEvent.mGlobalWeight = emitterUniqueData->GetGlobalWeight();
+            curEvent.mLocalWeight = emitterUniqueData->GetLocalWeight();
         }
     }
 
@@ -56,16 +48,27 @@ namespace EMotionFX
     // log details of all events
     void AnimGraphEventBuffer::Log() const
     {
-        const uint32 numEvents = mEvents.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
+        for (const EMotionFX::EventInfo& event : m_events)
         {
-            MCore::LogInfo("Event #%d: (time=%f) (type=%s) (param=%s) (emitter=%s) (locWeight=%.4f  globWeight=%.4f)", i,
-                mEvents[i].mTimeValue,
-                mEvents[i].mTypeString->c_str(),
-                mEvents[i].mParameters->c_str(),
-                mEvents[i].mEmitter->GetName(),
-                mEvents[i].mLocalWeight,
-                mEvents[i].mGlobalWeight);
+            AZStd::string eventDataString;
+
+            for (const EventDataPtr& eventData : event.mEvent->GetEventDatas())
+            {
+                if (eventData)
+                {
+                    eventDataString += '{' + eventData->ToString() + '}';
+                }
+                else {
+                    eventDataString += "{<null>}";
+                }
+            }
+
+            MCore::LogInfo("Event: (time=%f) (eventData=%s) (emitter=%s) (locWeight=%.4f  globWeight=%.4f)",
+                event.mTimeValue,
+                eventDataString.size() ? eventDataString.c_str() : "<none>",
+                event.mEmitter->GetName(),
+                event.mLocalWeight,
+                event.mGlobalWeight);
         }
     }
 
@@ -73,40 +76,42 @@ namespace EMotionFX
     // trigger the events
     void AnimGraphEventBuffer::TriggerEvents() const
     {
-        const uint32 numEvents = mEvents.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
+        for (const EventInfo& event : m_events)
         {
-            GetEventManager().OnEvent(mEvents[i]);
+            if (event.m_eventState != EventInfo::EventState::ACTIVE)
+            {
+                GetEventManager().OnEvent(event);
+            }
         }
     }
 
 
     void AnimGraphEventBuffer::Reserve(uint32 numEvents)
     {
-        mEvents.Reserve(numEvents);
+        m_events.reserve(numEvents);
     }
 
 
     void AnimGraphEventBuffer::Resize(uint32 numEvents)
     {
-        mEvents.Resize(numEvents);
+        m_events.resize(numEvents);
     }
 
 
     void AnimGraphEventBuffer::AddEvent(const EventInfo& newEvent)
     {
-        mEvents.Add(newEvent);
+        m_events.emplace_back(newEvent);
     }
 
 
     void AnimGraphEventBuffer::Clear()
     {
-        mEvents.Clear(false);
+        m_events.clear();
     }
 
 
     void AnimGraphEventBuffer::SetEvent(uint32 index, const EventInfo& eventInfo)
     {
-        mEvents[index] = eventInfo;
+        m_events[index] = eventInfo;
     }
 }   // namespace EMotionFX

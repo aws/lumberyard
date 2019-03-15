@@ -37,10 +37,10 @@ namespace AzToolsFramework
             AZ_RTTI(AssetJobsInfoRequest, "{E5DEF45C-C4CF-47ED-843F-97B3C4A3D5B3}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
             static unsigned int MessageType();
-            bool RequireFencing() override;
 
-            AssetJobsInfoRequest() = default;
-            AssetJobsInfoRequest(const AZ::OSString& searchTerm);
+            explicit AssetJobsInfoRequest(bool requireFencing = true);
+            explicit AssetJobsInfoRequest(const AZ::Data::AssetId& assetId, bool m_escalateJobs = true, bool requireFencing = true);
+            AssetJobsInfoRequest(const AZ::OSString& searchTerm, bool requireFencing = true);
             unsigned int GetMessageType() const override;
 
             AZ::OSString m_searchTerm;
@@ -76,10 +76,8 @@ namespace AzToolsFramework
             AZ_RTTI(AssetJobLogRequest, "{8E69F76E-F25D-486E-BC3F-26BB3FF5A3A3}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
             static void Reflect(AZ::ReflectContext* context);
             static unsigned int MessageType();
-            bool RequireFencing() override;
-
-            AssetJobLogRequest() = default;
-            AssetJobLogRequest(AZ::s64 jobRunKey);
+            explicit AssetJobLogRequest(bool requireFencing = true);
+            explicit AssetJobLogRequest(AZ::u64 jobRunKey, bool requireFencing = true);
             unsigned int GetMessageType() const override;
 
             AZ::u64 m_jobRunKey;
@@ -127,6 +125,33 @@ namespace AzToolsFramework
             AZ::OSString m_scanFolder;
             AZ::Uuid m_sourceUUID;
             NotificationType m_type;
+        };
+
+        class GetAbsoluteAssetDatabaseLocationRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetAbsoluteAssetDatabaseLocationRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(GetAbsoluteAssetDatabaseLocationRequest, "{8696976E-F19D-48E3-BDDF-2GB63FA1AF23}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+            GetAbsoluteAssetDatabaseLocationRequest() = default;
+            unsigned int GetMessageType() const override;
+        };
+
+        class GetAbsoluteAssetDatabaseLocationResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(GetAbsoluteAssetDatabaseLocationResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(GetAbsoluteAssetDatabaseLocationResponse, "{BDF155AB-EE74-FACA-3654-54069289AF2C}", AzFramework::AssetSystem::BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            GetAbsoluteAssetDatabaseLocationResponse() = default;
+            unsigned int GetMessageType() const override;
+
+            bool m_isSuccess = false;
+            AZStd::string m_absoluteAssetDatabaseLocation;
         };
 
         class GetScanFoldersRequest
@@ -214,6 +239,69 @@ namespace AzToolsFramework
 
             NotificationType m_type = NotificationType::Synced;
             AZ::s64 m_fileID = 0;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        //! Request the enabled status of an asset platform
+        class AssetProcessorPlatformStatusRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetProcessorPlatformStatusRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetProcessorPlatformStatusRequest, "{529A8549-DD78-4E66-9BEA-D633846115C6}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            AssetProcessorPlatformStatusRequest() = default;
+            unsigned int GetMessageType() const override;
+            AZ::OSString m_platform;
+        };
+
+        //! This will be sent in response to the AssetProcessorPlatformStatusRequest request,
+        //! indicating if the asset platform is currently enabled or not
+        class AssetProcessorPlatformStatusResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetProcessorPlatformStatusResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetProcessorPlatformStatusResponse, "{3F804A16-3C5A-41A5-9051-7714E3CFAC9A}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            AssetProcessorPlatformStatusResponse() = default;
+            unsigned int GetMessageType() const override;
+            bool m_isPlatformEnabled = false;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        //! Request the total number of pending jobs for an asset platform
+        class AssetProcessorPendingPlatformAssetsRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetProcessorPendingPlatformAssetsRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetProcessorPendingPlatformAssetsRequest, "{5B16F6F2-0F94-4BAE-8238-1E8F3E66D507}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            AssetProcessorPendingPlatformAssetsRequest() = default;
+            unsigned int GetMessageType() const override;
+            AZ::OSString m_platform;
+        };
+
+
+        //! This will be sent in response to the AssetProcessorPendingPlatformAssetsRequest request,
+        //! indicating the number of pending assets for the specified platform
+        class AssetProcessorPendingPlatformAssetsResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetProcessorPendingPlatformAssetsResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetProcessorPendingPlatformAssetsResponse, "{E63825D6-4704-471D-8594-B96656FA4477}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+
+            AssetProcessorPendingPlatformAssetsResponse() = default;
+            unsigned int GetMessageType() const override;
+            int m_numberOfPendingJobs = -1;
         };
     } // namespace AssetSystem
 } // namespace AzToolsFramework

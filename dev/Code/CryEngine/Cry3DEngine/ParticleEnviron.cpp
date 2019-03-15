@@ -484,8 +484,15 @@ void SPhysEnviron::SArea::GetForces(SPhysForces& forces, Vec3 const& vPos, uint3
             }
 
             Vec3 vDist = m_matToLocal * vPosRel;
-            float fDist = m_nGeomShape == GEOM_BOX ? max(max(abs(vDist.x), abs(vDist.y)), abs(vDist.z))
-                : vDist.GetLengthFast();
+            
+            // We want to avoid any Nan in the case vDist is zero.
+            float fDist = 0;
+            if ((vDist*vDist) != 0)
+            {
+                fDist = m_nGeomShape == GEOM_BOX ? max(max(abs(vDist.x), abs(vDist.y)), abs(vDist.z))
+                    : vDist.GetLengthFast();
+            }
+           
             if (fDist <= 1.f)
             {
                 float fStrength = min((1.f - fDist) * m_fFalloffScale, 1.f);

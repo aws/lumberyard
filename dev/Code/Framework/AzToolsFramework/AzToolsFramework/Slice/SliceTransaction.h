@@ -59,6 +59,7 @@ namespace AzToolsFramework
              */
             enum SliceCreationFlags
             {
+                CreateAsDynamic                 = (1<<0),
             };
 
             /**
@@ -243,6 +244,9 @@ namespace AzToolsFramework
             void add_ref();
             void release();
 
+            /// Update any entity references for entities that were added to the slice through this transaction
+            void UpdateEntityReferences();
+
         private:
 
             SliceTransaction(const SliceTransaction&) = delete;
@@ -291,6 +295,7 @@ namespace AzToolsFramework
             AZStd::vector<AZ::EntityId>                                 m_entitiesToRemove;
             AZ::SliceComponent::EntityIdToEntityIdMap                   m_liveToAssetIdMap;
             bool                                                        m_hasEntityAdds = false;///< Whether entities have been added as part of this transaction
+            AZStd::unordered_map<AZ::EntityId, AZ::EntityId>            m_addedEntityIdRemaps;
 
             AZStd::atomic_int                                           m_refCount; // intrusive_ptr
         };

@@ -45,6 +45,7 @@
 #define NO_GAMECONTROLLER_NAME "None"
 
 QT_FORWARD_DECLARE_CLASS(QCheckBox)
+QT_FORWARD_DECLARE_CLASS(QLabel)
 
 namespace EMStudio
 {
@@ -150,7 +151,7 @@ namespace EMStudio
         void UpdateParameterInterface(ParameterInfo* parameterInfo);
         void UpdateGameControllerComboBox();
 
-        AnimGraphPlugin*               mPlugin;
+        AnimGraphPlugin*                mPlugin;
         MCore::Array<QLabel*>           mPreviewLabels;
         MCore::Array<ParameterInfo>     mParameterInfos;
         MCore::Array<ButtonInfo>        mButtonInfos;

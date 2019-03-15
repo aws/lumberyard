@@ -31,11 +31,13 @@ namespace LyShine
     const char* const UiFaderComponentUuid =            "{CD01FF77-2249-4ED8-BFFB-33A66A47E17C}";
     const char* const UiFlipbookAnimationComponentUuid ="{AACCFFA1-B694-4F8B-A289-391A56404E0C}";
     const char* const UiImageComponentUuid =            "{BDBEFD23-DBB4-4726-A32D-4FEAC24E51F6}";
+    const char* const UiImageSequenceComponentUuid =    "{BFAC7909-3A56-4980-AF7C-261A99D6371B}";
     const char* const UiLayoutColumnComponentUuid =     "{4BC2E786-360B-4426-8D9C-9B254C5EA21F}";
     const char* const UiLayoutCellComponentUuid =       "{A0568E58-4382-47F8-8B88-77C64B99AC80}";
     const char* const UiLayoutFitterComponentUuid =     "{96C55390-9D03-4C47-BB0D-17D3BD5219E3}";
     const char* const UiLayoutGridComponentUuid =       "{ADDA3AE5-B9AB-44B7-A462-8B89B398A837}";
     const char* const UiLayoutRowComponentUuid =        "{7B2820C4-7FC7-4F02-B777-6727EB4BAC13}";
+    const char* const UiMarkupButtonComponentUuid =     "{D7EB1706-75E8-4C94-A266-61913F42431B}";
     const char* const UiMaskComponentUuid =             "{2279AA38-271D-4D4F-A472-E42B984088AC}";
     const char* const UiParticleEmitterComponentUuid =  "{E8B1288C-CB49-4CAD-B366-AF1B40C47E74}";
     const char* const UiRadioButtonComponentUuid =      "{773A0F4B-F9F9-4B82-9951-BBD73A737DE4}";

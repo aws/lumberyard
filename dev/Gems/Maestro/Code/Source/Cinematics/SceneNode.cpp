@@ -31,7 +31,6 @@
 #include "CaptureTrack.h"
 #include "ISystem.h"
 #include "ITimer.h"
-#include "AnimCameraNode.h"
 #include "AnimAZEntityNode.h"
 #include "AnimComponentNode.h"
 #include "Movie.h"
@@ -441,47 +440,11 @@ void CAnimSceneNode::Activate(bool bActivate)
 }
 
 //////////////////////////////////////////////////////////////////////////
-// This can be removed when Legacy Object Sequences are deprecated.
-bool CAnimSceneNode::UpConvertSequenceTrack()
-{
-    bool keysChanged = false;
-
-    if (!m_sequenceTrackUpConverted)
-    {
-        IAnimTrack* seqTrack = GetTrackForParameter(AnimParamType::Sequence);
-        if (seqTrack)
-        {
-            keysChanged = static_cast<CSequenceTrack*>(seqTrack)->UpConvertKeys();
-        }
-        m_sequenceTrackUpConverted = true;
-    }
-
-    return keysChanged;
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CAnimSceneNode::Animate(SAnimContext& ec)
 {
-    if (ec.bResetting)
+    if (ec.resetting)
     {
         return;
-    }
-
-    // Don't try to convert sequence track key data from names to EntityId while in game mode.
-    // If the user opens a legacy level, goes in game, goes back to the editor and then
-    // saves the level, it will destroy the sequence refs in the key data because the following
-    // will happen:
-    // Go in game and fill remap entity id map with invalid entity ids (because they have never been converted from names).
-    // In game Animate() is called, converting legacy names to entity ids store in the keys.
-    // Leave game and remap enity map will be used to populate key data with invalid entity ids.
-    //
-    // TODO: Remove with SequenceType::Legacy removal
-    if (gEnv->IsEditor() && !gEnv->IsEditorSimulationMode() && !gEnv->IsEditorGameMode())
-    {
-        // all sequence ID's need to be resolved before UpConverting a SequenceTrack, so we defer the
-        // upconversion until the first Animate() call - m_sequenceTrackUpConverted is set so this is
-        // only done once. When legacy sequence objects are deprecated, we can remove this.
-        UpConvertSequenceTrack();
     }
 
     CSelectTrack* cameraTrack = NULL;
@@ -641,7 +604,7 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
         int nEventKey = pEventTrack->GetActiveKey(ec.time, &key);
         if (nEventKey != m_lastEventKey && nEventKey >= 0)
         {
-            bool bNotTrigger = key.bNoTriggerInScrubbing && ec.bSingleFrame && key.time != ec.time;
+            bool bNotTrigger = key.bNoTriggerInScrubbing && ec.singleFrame && key.time != ec.time;
             if (!bNotTrigger)
             {
                 ApplyEventKey(key, ec);
@@ -656,7 +619,7 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
         int nConsoleKey = pConsoleTrack->GetActiveKey(ec.time, &key);
         if (nConsoleKey != m_lastConsoleKey && nConsoleKey >= 0)
         {
-            if (!ec.bSingleFrame || key.time == ec.time) // If Single frame update key time must match current time.
+            if (!ec.singleFrame || key.time == ec.time) // If Single frame update key time must match current time.
             {
                 ApplyConsoleKey(key, ec);
             }
@@ -692,7 +655,7 @@ void CAnimSceneNode::Animate(SAnimContext& ec)
             justEnded = true;
         }
 
-        if (!ec.bSingleFrame && !(gEnv->IsEditor() && gEnv->IsEditing()))
+        if (!ec.singleFrame && !(gEnv->IsEditor() && gEnv->IsEditing()))
         {
             if (nCaptureKey != m_lastCaptureKey && nCaptureKey >= 0)
             {
@@ -743,7 +706,7 @@ void CAnimSceneNode::OnReset()
         if (!gEnv->pMovieSystem->IsCapturing())
         {
             CamParams.cameraEntityId.SetInvalid();
-            CamParams.fFOV = 0;
+            CamParams.fov = 0;
             CamParams.justActivated = true;
             gEnv->pMovieSystem->SetCameraParams(CamParams);
         }
@@ -864,41 +827,25 @@ void CAnimSceneNode::ReleaseSounds()
 // This rather long function takes care of the interpolation (or blending) of
 // two camera keys, specifically FoV, nearZ, position and rotation blending.
 //
-void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraParams, ISceneCamera* firstCamera, IAnimNode* firstCameraAnimNode,
+void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraParams, ISceneCamera* firstCamera,
                                         ISelectKey& firstKey, ISelectKey& secondKey, float time)
 {
-    IEntity* secondCameraLegacyEntity = nullptr;
     if (!secondKey.cameraAzEntityId.IsValid())
     {
-        secondCameraLegacyEntity = gEnv->pEntitySystem->FindEntityByName(secondKey.szSelection.c_str());
-        if (!secondCameraLegacyEntity)
-        {
-            // abort - can't interpolate if we can't find a legacy second camera and there isn't a valid Id for a component entity camera
-            return;
-        }
+        // abort - can't interpolate if there isn't a valid Id for a component entity camera
+        return;
     }
 
     static const float EPSILON_TIME = 0.01f;            // consider times within EPSILON_TIME of beginning of blend time to be at the beginning of blend time
     float interpolatedFoV;
-    const bool isFirstAnimNodeACamera = (firstCameraAnimNode && firstCameraAnimNode->GetType() == AnimNodeType::Camera);
 
-    ISceneCamera* secondCamera = secondKey.cameraAzEntityId.IsValid() 
-                                ? static_cast<ISceneCamera*>(new CComponentEntitySceneCamera(secondKey.cameraAzEntityId))
-                                : static_cast<ISceneCamera*>(new CLegacySceneCamera(secondCameraLegacyEntity));
-
-    if (firstCameraAnimNode)
-    {
-        m_pCamNodeOnHoldForInterp = firstCameraAnimNode;
-        m_pCamNodeOnHoldForInterp->SetSkipInterpolatedCameraNode(true);
-    }
+    ISceneCamera* secondCamera = static_cast<ISceneCamera*>(new CComponentEntitySceneCamera(secondKey.cameraAzEntityId));
 
     float t = 1 - ((secondKey.time - time) / firstKey.fBlendTime);
     t = min(t, 1.0f);
     t = pow(t, 3) * (t * (t * 6 - 15) + 10);                // use a cubic curve for the camera blend
 
     bool haveStashedInterpData = (m_InterpolatingCameraStartStates.find(m_CurrentSelectTrackKeyNumber) != m_InterpolatingCameraStartStates.end());
-    const bool haveFirstCameraAnimNodeFoV = (isFirstAnimNodeACamera && firstCameraAnimNode->GetTrackForParameter(AnimParamType::FOV));
-    const bool haveFirstCameraAnimNodeNearZ = (isFirstAnimNodeACamera && firstCameraAnimNode->GetTrackForParameter(AnimParamType::NearZ));
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // at the start of the blend, stash the starting point first camera data to use throughout the interpolation
@@ -909,24 +856,11 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
         camData.m_interpolatedCamFirstPos = firstCamera->GetPosition();
         camData.m_interpolatedCamFirstRot = firstCamera->GetRotation();     
 
-        // stash FoV, from track if it exists, otherwise from the first camera entity
-        if (haveFirstCameraAnimNodeFoV && firstCameraAnimNode->GetTrackForParameter(AnimParamType::FOV)->GetNumKeys() > 0)
-        {
-            firstCameraAnimNode->GetParamValue(time, AnimParamType::FOV, camData.m_FoV);
-        }
-        else
-        {
-            camData.m_FoV = firstCamera->GetFoV();
-        }
+        // stash FoV from the first camera entity
+        camData.m_FoV = firstCamera->GetFoV();
+        
         // stash nearZ
-        if (haveFirstCameraAnimNodeNearZ && firstCameraAnimNode->GetTrackForParameter(AnimParamType::NearZ)->GetNumKeys() > 0)
-        {
-            firstCameraAnimNode->GetParamValue(time, AnimParamType::NearZ, camData.m_nearZ);
-        }
-        else
-        {
-            camData.m_nearZ = firstCamera->GetNearZ();
-        }
+        camData.m_nearZ = firstCamera->GetNearZ();
 
         m_InterpolatingCameraStartStates.insert(AZStd::make_pair(m_CurrentSelectTrackKeyNumber, camData));
     }
@@ -934,125 +868,38 @@ void CAnimSceneNode::InterpolateCameras(SCameraParams& retInterpolatedCameraPara
     const auto& retStashedInterpCamData = m_InterpolatingCameraStartStates.find(m_CurrentSelectTrackKeyNumber);
     InterpolatingCameraStartState stashedInterpCamData = retStashedInterpCamData->second;
 
-    ///////////////////
     // interpolate FOV
-    float secondCameraFOV;
-
-    IAnimNode* secondCameraAnimNode = m_pSequence->FindNodeByName(secondKey.szSelection.c_str(), this);
-    if (secondCameraAnimNode == NULL)
-    {
-        secondCameraAnimNode = m_pSequence->FindNodeByName(secondKey.szSelection.c_str(), NULL);
-    }
-
-    const bool isSecondAnimNodeACamera = (secondCameraAnimNode && secondCameraAnimNode->GetType() == AnimNodeType::Camera);
-
-    if (isSecondAnimNodeACamera && secondCameraAnimNode->GetTrackForParameter(AnimParamType::FOV)
-        && secondCameraAnimNode->GetTrackForParameter(AnimParamType::FOV)->GetNumKeys() > 0)
-    {
-        secondCameraAnimNode->GetParamValue(time, AnimParamType::FOV, secondCameraFOV);
-    }
-    else
-    {
-        secondCameraFOV = secondCamera->GetFoV();   
-    }
+    float secondCameraFOV = secondCamera->GetFoV();   
 
     interpolatedFoV = stashedInterpCamData.m_FoV + (secondCameraFOV - stashedInterpCamData.m_FoV) * t;
     // store the interpolated FoV to be returned, in radians
-    retInterpolatedCameraParams.fFOV = DEG2RAD(interpolatedFoV);
+    retInterpolatedCameraParams.fov = DEG2RAD(interpolatedFoV);
 
-    if (haveFirstCameraAnimNodeFoV)
-    {
-        firstCameraAnimNode->SetParamValue(time, AnimParamType::FOV, interpolatedFoV);
-    }
-
-    /////////////////////
     // interpolate NearZ
-    float secondCameraNearZ;
+    float secondCameraNearZ = secondCamera->GetNearZ();
 
-    if (isSecondAnimNodeACamera && secondCameraAnimNode->GetTrackForParameter(AnimParamType::NearZ)
-        && secondCameraAnimNode->GetTrackForParameter(AnimParamType::NearZ)->GetNumKeys() > 0)
-    {
-        secondCameraAnimNode->GetParamValue(time, AnimParamType::NearZ, secondCameraNearZ);
-    }
-    else
-    {
-        secondCameraNearZ = secondCamera->GetNearZ();
-    }
-
-    retInterpolatedCameraParams.fNearZ = stashedInterpCamData.m_nearZ + (secondCameraNearZ - stashedInterpCamData.m_nearZ) * t;
-
-    if (haveFirstCameraAnimNodeNearZ)
-    {
-        firstCameraAnimNode->SetParamValue(time, AnimParamType::NearZ, retInterpolatedCameraParams.fNearZ);
-    }
+    retInterpolatedCameraParams.nearZ = stashedInterpCamData.m_nearZ + (secondCameraNearZ - stashedInterpCamData.m_nearZ) * t;
 
     // update the Camera entity's component FOV and nearZ directly if needed (if they weren't set via anim node SetParamValue() above)
-    firstCamera->SetNearZAndFOVIfChanged(retInterpolatedCameraParams.fFOV, retInterpolatedCameraParams.fNearZ);
+    firstCamera->SetNearZAndFOVIfChanged(retInterpolatedCameraParams.fov, retInterpolatedCameraParams.nearZ);
 
     ////////////////////////
     // interpolate Position
     Vec3 vFirstCamPos = stashedInterpCamData.m_interpolatedCamFirstPos;
-    if (isFirstAnimNodeACamera)
-    {
-        firstCameraAnimNode->GetParamValue(time, AnimParamType::Position, vFirstCamPos);
-        firstCamera->TransformPositionFromLocalToWorldSpace(vFirstCamPos);
-    }
-
     Vec3 secondKeyPos = secondCamera->GetPosition();
-    if (isSecondAnimNodeACamera)
-    {
-        secondCameraAnimNode->GetParamValue(time, AnimParamType::Position, secondKeyPos);
-        secondCamera->TransformPositionFromLocalToWorldSpace(secondKeyPos);
-    }
-
     Vec3 interpolatedPos = vFirstCamPos + (secondKeyPos - vFirstCamPos) * t;
 
-
-    if (isFirstAnimNodeACamera)
-    {
-        firstCamera->TransformPositionFromWorldToLocalSpace(interpolatedPos);
-        ((CAnimEntityNode*)firstCameraAnimNode)->SetCameraInterpolationPosition(interpolatedPos);
-    }
     firstCamera->SetPosition(interpolatedPos);
 
     ////////////////////////
     // interpolate Rotation
     Quat firstCameraRotation = stashedInterpCamData.m_interpolatedCamFirstRot;
-    Quat secondCameraRotation;
-
-    IAnimTrack* pOrgRotationTrack = (firstCameraAnimNode ? firstCameraAnimNode->GetTrackForParameter(AnimParamType::Rotation) : 0);
-    if (pOrgRotationTrack)
-    {
-        pOrgRotationTrack->GetValue(time, firstCameraRotation);
-    }
-
-    if (isFirstAnimNodeACamera)
-    {
-        firstCamera->TransformRotationFromLocalToWorldSpace(firstCameraRotation);
-    }
-
-    secondCameraRotation = secondCamera->GetRotation();
+    Quat secondCameraRotation = secondCamera->GetRotation();
     
-    IAnimTrack* pRotationTrack = (secondCameraAnimNode ? secondCameraAnimNode->GetTrackForParameter(AnimParamType::Rotation) : 0);
-    if (pRotationTrack)
-    {
-        pRotationTrack->GetValue(time, secondCameraRotation);
-    }
-    
-    if (isSecondAnimNodeACamera)
-    {
-        secondCamera->TransformRotationFromLocalToWorldSpace(secondCameraRotation);
-    }
-
     Quat interpolatedRotation;
     interpolatedRotation.SetSlerp(firstCameraRotation, secondCameraRotation, t);
 
     firstCamera->SetWorldRotation(interpolatedRotation);
-
-    if (isFirstAnimNodeACamera)
-    {
-        ((CAnimEntityNode*)firstCameraAnimNode)->SetCameraInterpolationRotation(firstCamera->HasParent() ? firstCamera->GetRotation() : interpolatedRotation);
-    }
 
     // clean-up
     if (secondCamera)
@@ -1079,24 +926,16 @@ void CAnimSceneNode::ApplyCameraKey(ISelectKey& key, SAnimContext& ec)
         }
     }
 
-    // check if we're finished interpolating and there is a camera node on hold for iterpolation. If so, unset it from hold.
+    // check if we're finished interpolating and there is a camera node on hold for interpolation. If so, unset it from hold.
     if (!bInterpolateCamera && m_pCamNodeOnHoldForInterp)
     {
         m_pCamNodeOnHoldForInterp->SetSkipInterpolatedCameraNode(false);
         m_pCamNodeOnHoldForInterp = 0;
     }
 
-    // Search sequences for the current Camera's AnimNode, if it exists.
-    // First, check the child nodes of this director, then global nodes.
-    IAnimNode* firstCameraAnimNode = m_pSequence->FindNodeByName(key.szSelection.c_str(), this);
-    if (firstCameraAnimNode == NULL)
-    {
-        firstCameraAnimNode = m_pSequence->FindNodeByName(key.szSelection.c_str(), NULL);
-    }
-
     SCameraParams cameraParams;
     cameraParams.cameraEntityId.SetInvalid();
-    cameraParams.fFOV = 0;
+    cameraParams.fov = 0;
     cameraParams.justActivated = true;
 
     // Init the defaults with the current view settings.
@@ -1111,13 +950,13 @@ void CAnimSceneNode::ApplyCameraKey(ISelectKey& key, SAnimContext& ec)
         if (view)
         {
             SViewParams params = *view->GetCurrentParams();
-            cameraParams.fFOV = params.fov;
-            cameraParams.fNearZ = params.nearplane;
+            cameraParams.fov = params.fov;
+            cameraParams.nearZ = params.nearplane;
         }
     }
 
     ///////////////////////////////////////////////////////////////////
-    // find the Scene Camera (either Legacy or Camera Component Camera)  
+    // find the Scene Camera (Camera Component Camera)  
     ISceneCamera* firstSceneCamera = nullptr;
 
     if (key.cameraAzEntityId.IsValid())
@@ -1126,38 +965,15 @@ void CAnimSceneNode::ApplyCameraKey(ISelectKey& key, SAnimContext& ec)
         cameraParams.cameraEntityId = key.cameraAzEntityId;
         firstSceneCamera = static_cast<ISceneCamera*>(new CComponentEntitySceneCamera(key.cameraAzEntityId));
     }
-    else
-    {
-        // legacy camera entity
-        IEntity* legacyFirstCamera = nullptr;
-        legacyFirstCamera = gEnv->pEntitySystem->FindEntityByName(key.szSelection.c_str());
-        if (legacyFirstCamera)
-        {
-            firstSceneCamera = static_cast<ISceneCamera*>(new CLegacySceneCamera(legacyFirstCamera));
-            cameraParams.cameraEntityId = AZ::EntityId(legacyFirstCamera->GetId());
-        }
-    }
 
-    // get FOV - prefer track data for Legacy Cameras. For Component Cameras, retrieving from the component is fine.
-    if (firstCameraAnimNode && firstCameraAnimNode->GetType() == AnimNodeType::Camera)
+    if (firstSceneCamera)
     {
-        float fFirstCameraFOV = RAD2DEG(DEFAULT_FOV);
-        float fFirstCameraNearZ = DEFAULT_NEAR;
-
-        firstCameraAnimNode->GetParamValue(ec.time, AnimParamType::NearZ, fFirstCameraNearZ);
-        cameraParams.fNearZ = fFirstCameraNearZ;
-
-        firstCameraAnimNode->GetParamValue(ec.time, AnimParamType::FOV, fFirstCameraFOV);
-        cameraParams.fFOV = DEG2RAD(fFirstCameraFOV);
-    }
-    else if (firstSceneCamera)
-    {
-        cameraParams.fFOV = DEG2RAD(firstSceneCamera->GetFoV());
+        cameraParams.fov = DEG2RAD(firstSceneCamera->GetFoV());
     }   
 
     if (bInterpolateCamera && firstSceneCamera)
     {
-        InterpolateCameras(cameraParams, firstSceneCamera, firstCameraAnimNode, key, nextKey, ec.time);
+        InterpolateCameras(cameraParams, firstSceneCamera, key, nextKey, ec.time);
     }
 
     m_legacyCurrentCameraEntityId = GetLegacyEntityId(cameraParams.cameraEntityId);
@@ -1325,7 +1141,7 @@ void CAnimSceneNode::ApplyGotoKey(CGotoTrack*   poGotoTrack, SAnimContext& ec)
     nCurrentActiveKeyIndex = poGotoTrack->GetActiveKey(ec.time, &stDiscreteFloadKey);
     if (nCurrentActiveKeyIndex != m_nLastGotoKey && nCurrentActiveKeyIndex >= 0)
     {
-        if (!ec.bSingleFrame)
+        if (!ec.singleFrame)
         {
             if (stDiscreteFloadKey.m_fValue >= 0)
             {

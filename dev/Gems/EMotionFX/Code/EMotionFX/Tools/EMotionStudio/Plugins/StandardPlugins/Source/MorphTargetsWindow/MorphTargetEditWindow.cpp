@@ -51,7 +51,7 @@ namespace EMStudio
         mRangeMin->setSingleStep(0.1);
         mRangeMin->setRange(std::numeric_limits<int32>::lowest(), morphTargetRangeMax);
         mRangeMin->setValue(morphTargetRangeMin);
-        connect(mRangeMin, SIGNAL(valueChanged(double)), this, SLOT(MorphTargetRangeMinValueChanged(double)));
+        connect(mRangeMin, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &MorphTargetEditWindow::MorphTargetRangeMinValueChanged);
 
         // create the range max label
         QLabel* rangeMaxLabel = new QLabel("Range Max");
@@ -61,7 +61,7 @@ namespace EMStudio
         mRangeMax->setSingleStep(0.1);
         mRangeMax->setRange(morphTargetRangeMin, std::numeric_limits<int32>::max());
         mRangeMax->setValue(morphTargetRangeMax);
-        connect(mRangeMax, SIGNAL(valueChanged(double)), this, SLOT(MorphTargetRangeMaxValueChanged(double)));
+        connect(mRangeMax, static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged), this, &MorphTargetEditWindow::MorphTargetRangeMaxValueChanged);
 
         // create the grid layout
         QGridLayout* gridLayout = new QGridLayout();
@@ -76,11 +76,11 @@ namespace EMStudio
 
         // create the OK button
         QPushButton* OKButton = new QPushButton("OK");
-        connect(OKButton, SIGNAL(clicked()), this, SLOT(Accepted()));
+        connect(OKButton, &QPushButton::clicked, this, &MorphTargetEditWindow::Accepted);
 
         // create the cancel button
         QPushButton* cancelButton = new QPushButton("Cancel");
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(cancelButton, &QPushButton::clicked, this, &MorphTargetEditWindow::reject);
 
         // add widgets in the buttons layout
         buttonsLayout->addWidget(OKButton);

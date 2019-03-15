@@ -16,6 +16,9 @@
 //  - Render a glyph outline into a bitmap using FreeType 2
 
 #include "StdAfx.h"
+
+#if !defined(USE_NULLFONT_ALWAYS)
+
 #include "FontRenderer.h"
 
 #include <freetype/freetype.h>
@@ -28,6 +31,50 @@
 // Sizes are defined in in 26.6 fixed float format (TT_F26Dot6), where
 // 1 unit is 1/64 of a pixel.
 static const int fractionalPixelUnits = 64;
+
+namespace
+{
+    FT_Int32 GetLoadFlags(CFFont::HintBehavior hintBehavior)
+    {
+        switch (hintBehavior)
+        {
+        case CFFont::HintBehavior::NoHinting:
+        {
+            return FT_LOAD_NO_HINTING;
+            break;
+        }
+        case CFFont::HintBehavior::AutoHint:
+        {
+            return FT_LOAD_FORCE_AUTOHINT;
+            break;
+        }
+        }
+        return FT_LOAD_DEFAULT;
+    }
+
+    FT_Int32 GetLoadTarget(CFFont::HintStyle hintStyle)
+    {
+        if (hintStyle == CFFont::HintStyle::Light)
+        {
+            return FT_LOAD_TARGET_LIGHT;
+        }
+
+        return FT_LOAD_TARGET_NORMAL;
+    }
+
+    FT_Render_Mode GetRenderMode(CFFont::HintStyle hintStyle)
+    {
+        // We use the hint style to drive the render mode also. These should 
+        // usually be correlated with each other for best results, even though 
+        // they could technically be different.
+        if (hintStyle == CFFont::HintStyle::Light)
+        {
+            return FT_RENDER_MODE_LIGHT;
+        }
+
+        return FT_RENDER_MODE_NORMAL;
+    }
+}
 
 //-------------------------------------------------------------------------------------------------
 CFontRenderer::CFontRenderer()
@@ -161,18 +208,23 @@ int CFontRenderer::SetEncoding(FT_Encoding pEncoding)
 
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
-int CFontRenderer::GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8* iGlyphWidth, uint8* iGlyphHeight, AZ::s8& iCharOffsetX, AZ::s8& iCharOffsetY, int iX, int iY, int iCharCode)
+int CFontRenderer::GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8* iGlyphWidth, uint8* iGlyphHeight, AZ::s32& iCharOffsetX, AZ::s32& iCharOffsetY, int iX, int iY, int iCharCode, const CFFont::FontHintParams& fontHintParams)
 {
-    int iError = FT_Load_Char(m_pFace, iCharCode, FT_LOAD_DEFAULT);
+    FT_Int32 loadFlags = GetLoadFlags(fontHintParams.hintBehavior);
+    loadFlags |= GetLoadTarget(fontHintParams.hintStyle);
+
+    int iError = FT_Load_Char(m_pFace, iCharCode, loadFlags);
 
     if (iError)
     {
         return 0;
     }
 
+    FT_Render_Mode renderMode = GetRenderMode(fontHintParams.hintStyle);
+
     m_pGlyph = m_pFace->glyph;
 
-    iError = FT_Render_Glyph(m_pGlyph, FT_RENDER_MODE_NORMAL);
+    iError = FT_Render_Glyph(m_pGlyph, renderMode);
 
     if (iError)
     {
@@ -198,8 +250,8 @@ int CFontRenderer::GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8
     AZ_Assert(pBuffer, "CGlyphBitmap: bad buffer");
 
     uint32 dwGlyphWidth = pGlyphBitmap->GetWidth();
-    iCharOffsetX = static_cast<AZ::s8>(m_pGlyph->bitmap_left);
-    iCharOffsetY = static_cast<AZ::s8>(((int)(m_iGlyphBitmapHeight * m_fSizeRatio) - m_pGlyph->bitmap_top));     // is that correct? - we need the baseline
+    iCharOffsetX = m_pGlyph->bitmap_left;
+    iCharOffsetY = (static_cast<AZ::s32>(round(m_iGlyphBitmapHeight * m_fSizeRatio)) - m_pGlyph->bitmap_top);
 
     const int textureSlotBufferWidth = pGlyphBitmap->GetWidth();
     const int textureSlotBufferHeight = pGlyphBitmap->GetHeight();
@@ -209,6 +261,11 @@ int CFontRenderer::GetGlyph(CGlyphBitmap* pGlyphBitmap, int* iHoriAdvance, uint8
     const bool charHeightFits = iY + m_pGlyph->bitmap.rows <= textureSlotBufferHeight;
     const bool charFitsInSlot = charWidthFits && charHeightFits;
     AZ_Error("Font", charFitsInSlot, "Character code %d doesn't fit in font texture; check 'sizeRatio' attribute in font XML or adjust this character's sizing in the font.", iCharCode);
+
+    // Since we might be re-rendering/overwriting a glyph that already exists
+    // in the font texture, clear the contents of this particular slot so no
+    // artifacts of the previous glyph remain.
+    pGlyphBitmap->Clear();
 
     // Restrict iteration to smallest of either the texture slot or glyph 
     // bitmap buffer ranges
@@ -267,69 +324,76 @@ Vec2 CFontRenderer::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
     return Vec2(azlossy_cast<float>(kerningOffsets.x / fractionalPixelUnits), azlossy_cast<float>(kerningOffsets.y / fractionalPixelUnits));
 }
 
+float CFontRenderer::GetAscenderToHeightRatio()
+{
+    return (static_cast<float>(m_pFace->ascender) / static_cast<float>(m_pFace->height));
+}
+
 //-------------------------------------------------------------------------------------------------
 /*
 int CFontRenderer::FT_GetIndex(int iCharCode)
 {
-    if (iCharCode < 256)
-    {
-        int iIndex = 0;
-        int iUnicode;
+if (iCharCode < 256)
+{ 
+int iIndex = 0;
+int iUnicode;
 
-        // try unicode
-        for (int i = 0; i < m_pFace->num_charmaps; i++)
-        {
-            if ((m_pFace->charmaps[i]->platform_id == 3) && (m_pFace->charmaps[i]->encoding_id == 1))
-            {
-                iUnicode = i;
+// try unicode
+for (int i = 0; i < m_pFace->num_charmaps; i++)
+{
+if ((m_pFace->charmaps[i]->platform_id == 3) && (m_pFace->charmaps[i]->encoding_id == 1))
+{
+iUnicode = i;
 
-                FT_Set_Charmap(m_pFace, m_pFace->charmaps[i]);
+FT_Set_Charmap(m_pFace, m_pFace->charmaps[i]);
 
-                iIndex = FT_Get_Char_Index(m_pFace, iCharCode);
+iIndex = FT_Get_Char_Index(m_pFace, iCharCode);
 
-                // not unicode, try ascii
-                if (iIndex == 0)
-                {
-                    for (int i = 0; i < m_pFace->num_charmaps; i++)
-                    {
-                        if ((m_pFace->charmaps[i]->platform_id == 0) && (m_pFace->charmaps[i]->encoding_id == 0))
-                        {
-                            FT_Set_Charmap(m_pFace, m_pFace->charmaps[i]);
+// not unicode, try ascii
+if (iIndex == 0)
+{
+for (int i = 0; i < m_pFace->num_charmaps; i++)
+{
+if ((m_pFace->charmaps[i]->platform_id == 0) && (m_pFace->charmaps[i]->encoding_id == 0))
+{
+FT_Set_Charmap(m_pFace, m_pFace->charmaps[i]);
 
-                            iIndex = FT_Get_Char_Index(m_pFace, iCharCode);
+iIndex = FT_Get_Char_Index(m_pFace, iCharCode);
 
-                            // not ascii either, reuse unicode default "missing char"
-                            if (iIndex == 0)
-                            {
-                                FT_Set_Charmap(m_pFace, m_pFace->charmaps[iUnicode]);
+// not ascii either, reuse unicode default "missing char"
+if (iIndex == 0)
+{
+FT_Set_Charmap(m_pFace, m_pFace->charmaps[iUnicode]);
 
-                                return FT_Get_Char_Index(m_pFace, iCharCode);
-                            }
-                        }
-                    }
-                }
+return FT_Get_Char_Index(m_pFace, iCharCode);
+}
+}
+}
+}
 
-                return  iIndex;
-            }
-        }
+return  iIndex;
+}
+}
 
-        return 0;
-    }
-    else
-    {
-        for (int i = 0; i < m_pFace->num_charmaps; i++)
-        {
-            if ((m_pFace->charmaps[i]->platform_id == 3) && (m_pFace->charmaps[i]->encoding_id == 1))
-            {
-                FT_Set_Charmap(m_pFace, m_pFace->charmaps[i]);
+return 0;
+}
+else
+{
+for (int i = 0; i < m_pFace->num_charmaps; i++)
+{
+if ((m_pFace->charmaps[i]->platform_id == 3) && (m_pFace->charmaps[i]->encoding_id == 1))
+{
+FT_Set_Charmap(m_pFace, m_pFace->charmaps[i]);
 
-                return FT_Get_Char_Index(m_pFace, iCharCode);
-            }
-        }
+return FT_Get_Char_Index(m_pFace, iCharCode);
+}
+}
 
-        return 0;
-    }
+return 0;
+}
 
-    return 0;
+return 0;
 }
 */
+
+#endif // #if !defined(USE_NULLFONT_ALWAYS)

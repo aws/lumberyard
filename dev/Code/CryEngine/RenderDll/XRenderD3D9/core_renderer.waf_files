@@ -55,6 +55,12 @@
             "PostProcessWater.cpp",
             "PostProcessSnow.cpp"
         ],
+        "Source Files/RTT":
+        [
+            "RTT/RTTContext.cpp",
+            "RTT/RTTContextManager.cpp",
+            "RTT/RTTSwappableRenderTarget.cpp"
+        ],
         "Header Files":
         [
             "D3D_SVO.h",
@@ -87,6 +93,13 @@
             "StatoscopeRenderStats.h",
             "DeviceInfo.inl",
             "MultiLayerAlphaBlendPass.h"
+        ],
+        "Header Files/RTT":
+        [
+            "RTT/RTTContext.h",
+            "RTT/RTTContextManager.h",
+            "RTT/RTTSwappableRenderTarget.h",
+            "RTT/RTTSwappableCVar.h"
         ],
         "Common":
         [

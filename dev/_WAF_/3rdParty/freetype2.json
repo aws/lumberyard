@@ -54,6 +54,7 @@
                 "libfreetype2.a"
             ]
         },
+        "orbis_vs2017": "@orbis_vs2015",
         "darwin_x64": {
             "libpath_debug": [
                 "build/osx/darwin-clang-703.0.31/debug"
@@ -82,17 +83,6 @@
             ],
             "libpath_release": [
                 "build/osx/appletv-clang-703.0.31/release"
-            ],
-            "lib": [
-                "libfreetype2.a"
-            ]
-        },
-        "android_armv7_gcc": {
-            "libpath_debug": [
-                "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9/debug"
-            ],
-            "libpath_release": [
-                "build/win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9/release"
             ],
             "lib": [
                 "libfreetype2.a"

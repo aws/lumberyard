@@ -36,9 +36,9 @@ namespace EMotionFX
         // setup the input ports
         InitInputPorts(5);
         SetupInputPort("Pose", INPUTPORT_POSE, AttributePose::TYPE_ID, PORTID_INPUT_POSE);
-        SetupInputPort("Goal Pos", INPUTPORT_GOALPOS, MCore::AttributeVector3::TYPE_ID, PORTID_INPUT_GOALPOS);
-        SetupInputPort("Bend Dir", INPUTPORT_BENDDIR, MCore::AttributeVector3::TYPE_ID, PORTID_INPUT_BENDDIR);
-        SetupInputPort("Goal Rot", INPUTPORT_GOALROT, AttributeRotation::TYPE_ID, PORTID_INPUT_GOALROT);
+        SetupInputPortAsVector3("Goal Pos", INPUTPORT_GOALPOS, PORTID_INPUT_GOALPOS);
+        SetupInputPortAsVector3("Bend Dir", INPUTPORT_BENDDIR, PORTID_INPUT_BENDDIR);
+        SetupInputPort("Goal Rot", INPUTPORT_GOALROT, MCore::AttributeQuaternion::TYPE_ID, PORTID_INPUT_GOALROT);
         SetupInputPortAsNumber("Weight", INPUTPORT_WEIGHT, PORTID_INPUT_WEIGHT);
 
         // setup the output ports
@@ -203,12 +203,12 @@ namespace EMotionFX
         // the solution on the YZ plane
         const AZ::Vector3 solution(d, e, 0);
 
-        // calculate the matrix that rotates from IK solve space into global space
+        // calculate the matrix that rotates from IK solve space into world space
         MCore::Matrix matForward;
         matForward.Identity();
         CalculateMatrix(localGoal, bendDir, &matForward);
 
-        // rotate the solution (the mid "knee/elbow" position) into global space
+        // rotate the solution (the mid "knee/elbow" position) into world space
         *outMidPos = posA + matForward.Mul3x3(solution);
 
         // check if we found a solution or not
@@ -285,9 +285,10 @@ namespace EMotionFX
         UpdateUniqueData(animGraphInstance, uniqueData); // update the unique data (lookup node indices when something changed)
         if (uniqueData->mIsValid == false)
         {
-        #ifdef EMFX_EMSTUDIOBUILD
-            SetHasError(animGraphInstance, true);
-        #endif
+            if (GetEMotionFX().GetIsInEditorMode())
+            {
+                SetHasError(animGraphInstance, true);
+            }
             return;
         }
 
@@ -307,16 +308,18 @@ namespace EMotionFX
 
         // get the goal
         OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_GOALPOS));
-        const MCore::AttributeVector3* inputGoalPos = GetInputVector3(animGraphInstance, INPUTPORT_GOALPOS);
-        AZ::Vector3 goal = (inputGoalPos) ? AZ::Vector3(inputGoalPos->GetValue()) : AZ::Vector3::CreateZero();
+        AZ::Vector3 goal = AZ::Vector3::CreateZero();
+        TryGetInputVector3(animGraphInstance, INPUTPORT_GOALPOS, goal);
 
         // there is no error, as we have all we need to solve this
-    #ifdef EMFX_EMSTUDIOBUILD
-        SetHasError(animGraphInstance, false);
-    #endif
+        if (GetEMotionFX().GetIsInEditorMode())
+        {
+            SetHasError(animGraphInstance, false);
+        }
 
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
         ActorInstance* alignInstance = actorInstance;
+        EMotionFX::Transform alignNodeTransform;
 
         // adjust the gizmo offset value
         if (alignNodeIndex != MCORE_INVALIDINDEX32)
@@ -325,29 +328,37 @@ namespace EMotionFX
             alignInstance = animGraphInstance->FindActorInstanceFromParentDepth(m_alignToNode.second);
             if (alignInstance)
             {
-                const AZ::Vector3& offset = alignInstance->GetTransformData()->GetCurrentPose()->GetGlobalTransformInclusive(alignNodeIndex).mPosition;
+                if (m_alignToNode.second == 0)
+                {   // we are aligning to a node in our current graphInstance so we can use the input pose
+                    alignNodeTransform = inputPose->GetPose().GetWorldSpaceTransform(alignNodeIndex);
+                }
+                else
+                {
+                    alignNodeTransform = alignInstance->GetTransformData()->GetCurrentPose()->GetWorldSpaceTransform(alignNodeIndex);
+                }
+                const AZ::Vector3& offset = alignNodeTransform.mPosition;
                 goal += offset;
 
-            #ifdef EMFX_EMSTUDIOBUILD
-                // check if the offset goal pos values comes from a param node
-                const BlendTreeConnection* posConnection = GetInputPort(INPUTPORT_GOALPOS).mConnection;
-                if (posConnection)
+                if (GetEMotionFX().GetIsInEditorMode())
                 {
-                    if (azrtti_typeid(posConnection->GetSourceNode()) == azrtti_typeid<BlendTreeParameterNode>())
+                    // check if the offset goal pos values comes from a param node
+                    const BlendTreeConnection* posConnection = GetInputPort(INPUTPORT_GOALPOS).mConnection;
+                    if (posConnection)
                     {
-                        BlendTreeParameterNode* parameterNode = static_cast<BlendTreeParameterNode*>(posConnection->GetSourceNode());
-                        GetEventManager().OnSetVisualManipulatorOffset(animGraphInstance, parameterNode->GetParameterIndex(posConnection->GetSourcePort()), offset);
+                        if (azrtti_typeid(posConnection->GetSourceNode()) == azrtti_typeid<BlendTreeParameterNode>())
+                        {
+                            BlendTreeParameterNode* parameterNode = static_cast<BlendTreeParameterNode*>(posConnection->GetSourceNode());
+                            GetEventManager().OnSetVisualManipulatorOffset(animGraphInstance, parameterNode->GetParameterIndex(posConnection->GetSourcePort()), offset);
+                        }
                     }
                 }
-            #endif
             }
             else
             {
                 alignNodeIndex = MCORE_INVALIDINDEX32; // we were not able to get the align instance, so set the align node index to the invalid index
             }
         }
-    #ifdef EMFX_EMSTUDIOBUILD
-        else
+        else if (GetEMotionFX().GetIsInEditorMode())
         {
             const BlendTreeConnection* posConnection = GetInputPort(INPUTPORT_GOALPOS).mConnection;
             if (posConnection)
@@ -359,15 +370,14 @@ namespace EMotionFX
                 }
             }
         }
-    #endif
 
         //------------------------------------
         // perform the main calculation part
         //------------------------------------
         Pose& outTransformPose = outputPose->GetPose();
-        Transform globalTransformA = outTransformPose.GetGlobalTransformInclusive(nodeIndexA);
-        Transform globalTransformB = outTransformPose.GetGlobalTransformInclusive(nodeIndexB);
-        Transform globalTransformC = outTransformPose.GetGlobalTransformInclusive(nodeIndexC);
+        Transform globalTransformA = outTransformPose.GetWorldSpaceTransform(nodeIndexA);
+        Transform globalTransformB = outTransformPose.GetWorldSpaceTransform(nodeIndexB);
+        Transform globalTransformC = outTransformPose.GetWorldSpaceTransform(nodeIndexC);
 
         // extract the bend direction from the input pose?
         AZ::Vector3 bendDir;
@@ -375,7 +385,7 @@ namespace EMotionFX
         {
             if (bendDirIndex != MCORE_INVALIDINDEX32)
             {
-                bendDir = outTransformPose.GetGlobalTransformInclusive(bendDirIndex).mPosition - globalTransformA.mPosition;
+                bendDir = outTransformPose.GetWorldSpaceTransform(bendDirIndex).mPosition - globalTransformA.mPosition;
             }
             else
             {
@@ -385,14 +395,16 @@ namespace EMotionFX
         else
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_BENDDIR));
-            const MCore::AttributeVector3* inputBendDir = GetInputVector3(animGraphInstance, INPUTPORT_BENDDIR);
-            bendDir = (inputBendDir) ? AZ::Vector3(inputBendDir->GetValue()) : AZ::Vector3(0.0f, 0.0f, -1.0f);
+            if (!TryGetInputVector3(animGraphInstance, INPUTPORT_BENDDIR, bendDir))
+            {
+                bendDir = AZ::Vector3(0.0f, 0.0f, -1.0f);
+            }
         }
 
         // if we want a relative bend dir, rotate it with the actor (only do this if we don't extract the bend dir)
         if (m_relativeBendDir && !m_extractBendDir)
         {
-            bendDir = actorInstance->GetGlobalTransform().mRotation * bendDir;
+            bendDir = actorInstance->GetWorldSpaceTransform().mRotation * bendDir;
             bendDir = MCore::SafeNormalize(bendDir);
         }
         else
@@ -404,7 +416,7 @@ namespace EMotionFX
         if (m_rotationEnabled)
         {
             OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_GOALROT));
-            const AttributeRotation* inputGoalRot = GetInputRotation(animGraphInstance, INPUTPORT_GOALROT);
+            const MCore::AttributeQuaternion* inputGoalRot = GetInputQuaternion(animGraphInstance, INPUTPORT_GOALROT);
 
             // if we don't want to align the rotation and position to another given node
             if (alignNodeIndex == MCORE_INVALIDINDEX32)
@@ -412,31 +424,29 @@ namespace EMotionFX
                 MCore::Quaternion newRotation; // identity quat
                 if (inputGoalRot)
                 {
-                    newRotation = inputGoalRot->GetRotationQuaternion(); // use our new rotation directly
+                    newRotation = inputGoalRot->GetValue(); // use our new rotation directly
                 }
                 globalTransformC.mRotation = newRotation;
-                outTransformPose.SetGlobalTransformInclusive(nodeIndexC, globalTransformC);
-                outTransformPose.UpdateLocalTransform(nodeIndexC);
+                outTransformPose.SetWorldSpaceTransform(nodeIndexC, globalTransformC);
             }
             else // align to another node
             {
                 if (inputGoalRot)
                 {
                     OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_GOALROT));
-                    globalTransformC.mRotation = GetInputRotation(animGraphInstance, INPUTPORT_GOALROT)->GetRotationQuaternion() * alignInstance->GetTransformData()->GetCurrentPose()->GetGlobalTransformInclusive(alignNodeIndex).mRotation;
+                    globalTransformC.mRotation = GetInputQuaternion(animGraphInstance, INPUTPORT_GOALROT)->GetValue() * alignNodeTransform.mRotation;
                 }
                 else
                 {
-                    globalTransformC.mRotation = alignInstance->GetTransformData()->GetCurrentPose()->GetGlobalTransformInclusive(alignNodeIndex).mRotation;
+                    globalTransformC.mRotation = alignNodeTransform.mRotation;
                 }
 
-                outTransformPose.SetGlobalTransformInclusive(nodeIndexC, globalTransformC);
-                outTransformPose.UpdateLocalTransform(nodeIndexC);
+                outTransformPose.SetWorldSpaceTransform(nodeIndexC, globalTransformC);
             }
         }
 
         // adjust the goal and get the end effector position
-        AZ::Vector3 endEffectorNodePos = outTransformPose.GetGlobalTransformInclusive(endEffectorNodeIndex).mPosition;
+        AZ::Vector3 endEffectorNodePos = outTransformPose.GetWorldSpaceTransform(endEffectorNodeIndex).mPosition;
         const AZ::Vector3 posCToEndEffector = endEffectorNodePos - globalTransformC.mPosition;
         if (m_rotationEnabled)
         {
@@ -447,8 +457,7 @@ namespace EMotionFX
         MCore::Quaternion newNodeRotationC = globalTransformC.mRotation;
 
         // draw debug lines
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             const float s = animGraphInstance->GetVisualizeScale() * actorInstance->GetVisualizeScale();
 
@@ -483,7 +492,6 @@ namespace EMotionFX
             //GetEventManager().OnDrawLine( posB, posC, color);
             //GetEventManager().OnDrawLine( posC, endEffectorNodePos, color);
         }
-    #endif
 
         // perform IK, try to find a solution by calculating the new middle node position
         AZ::Vector3 midPos;
@@ -506,20 +514,20 @@ namespace EMotionFX
         newForward = MCore::SafeNormalize(newForward);
 
         // perform a delta rotation to rotate into the new direction after IK
-        float deltaAngle = MCore::Math::ACos(oldForward.Dot(newForward));
+        float dotProduct = oldForward.Dot(newForward);
+        float deltaAngle = MCore::Math::ACos(MCore::Clamp<float>(dotProduct, -1.0f, 1.0f));
         AZ::Vector3 axis = oldForward.Cross(newForward);
         MCore::Quaternion deltaRot(axis, deltaAngle);
         globalTransformA.mRotation = deltaRot * globalTransformA.mRotation;
-        outTransformPose.SetGlobalTransformInclusive(nodeIndexA, globalTransformA);
-        outTransformPose.UpdateLocalTransform(nodeIndexA);
+        outTransformPose.SetWorldSpaceTransform(nodeIndexA, globalTransformA);
 
         //globalTransformA = outTransformPose.GetGlobalTransformIncludingActorInstanceTransform(nodeIndexA);
-        globalTransformB = outTransformPose.GetGlobalTransformInclusive(nodeIndexB);
-        globalTransformC = outTransformPose.GetGlobalTransformInclusive(nodeIndexC);
+        globalTransformB = outTransformPose.GetWorldSpaceTransform(nodeIndexB);
+        globalTransformC = outTransformPose.GetWorldSpaceTransform(nodeIndexC);
 
         // get the new current node positions
         midPos = globalTransformB.mPosition;
-        endEffectorNodePos = outTransformPose.GetGlobalTransformInclusive(endEffectorNodeIndex).mPosition;
+        endEffectorNodePos = outTransformPose.GetWorldSpaceTransform(endEffectorNodeIndex).mPosition;
 
         // second node
         if (m_rotationEnabled)
@@ -536,10 +544,10 @@ namespace EMotionFX
         newForward = MCore::SafeNormalize(newForward);
 
         // calculate the delta rotation
-        const float dotProduct = oldForward.Dot(newForward);
+        dotProduct = oldForward.Dot(newForward);
         if (dotProduct < 1.0f - MCore::Math::epsilon)
         {
-            deltaAngle = MCore::Math::ACos(dotProduct);
+            deltaAngle = MCore::Math::ACos(MCore::Clamp<float>(dotProduct, -1.0f, 1.0f));
             axis = oldForward.Cross(newForward);
             deltaRot = MCore::Quaternion(axis, deltaAngle);
         }
@@ -550,16 +558,14 @@ namespace EMotionFX
 
         globalTransformB.mRotation = deltaRot * globalTransformB.mRotation;
         globalTransformB.mPosition = midPos;
-        outTransformPose.SetGlobalTransformInclusive(nodeIndexB, globalTransformB);
-        outTransformPose.UpdateLocalTransform(nodeIndexB);
+        outTransformPose.SetWorldSpaceTransform(nodeIndexB, globalTransformB);
 
         // update the rotation of node C
         if (m_rotationEnabled)
         {
-            globalTransformC = outTransformPose.GetGlobalTransformInclusive(nodeIndexC);
+            globalTransformC = outTransformPose.GetWorldSpaceTransform(nodeIndexC);
             globalTransformC.mRotation = newNodeRotationC;
-            outTransformPose.SetGlobalTransformInclusive(nodeIndexC, globalTransformC);
-            outTransformPose.UpdateLocalTransform(nodeIndexC);
+            outTransformPose.SetWorldSpaceTransform(nodeIndexC, globalTransformC);
         }
 
         // only blend when needed
@@ -569,30 +575,28 @@ namespace EMotionFX
             const Pose& inputTransformPose = inputPose->GetPose();
 
             // get the original input transforms
-            Transform finalTransformA = inputTransformPose.GetLocalTransform(nodeIndexA);
-            Transform finalTransformB = inputTransformPose.GetLocalTransform(nodeIndexB);
-            Transform finalTransformC = inputTransformPose.GetLocalTransform(nodeIndexC);
+            Transform finalTransformA = inputTransformPose.GetLocalSpaceTransform(nodeIndexA);
+            Transform finalTransformB = inputTransformPose.GetLocalSpaceTransform(nodeIndexB);
+            Transform finalTransformC = inputTransformPose.GetLocalSpaceTransform(nodeIndexC);
 
             // blend them into the new transforms after IK
-            finalTransformA.Blend(outTransformPose.GetLocalTransform(nodeIndexA), weight);
-            finalTransformB.Blend(outTransformPose.GetLocalTransform(nodeIndexB), weight);
-            finalTransformC.Blend(outTransformPose.GetLocalTransform(nodeIndexC), weight);
+            finalTransformA.Blend(outTransformPose.GetLocalSpaceTransform(nodeIndexA), weight);
+            finalTransformB.Blend(outTransformPose.GetLocalSpaceTransform(nodeIndexB), weight);
+            finalTransformC.Blend(outTransformPose.GetLocalSpaceTransform(nodeIndexC), weight);
 
             // copy them to the output transforms
-            outTransformPose.SetLocalTransform(nodeIndexA, finalTransformA);
-            outTransformPose.SetLocalTransform(nodeIndexB, finalTransformB);
-            outTransformPose.SetLocalTransform(nodeIndexC, finalTransformC);
+            outTransformPose.SetLocalSpaceTransform(nodeIndexA, finalTransformA);
+            outTransformPose.SetLocalSpaceTransform(nodeIndexB, finalTransformB);
+            outTransformPose.SetLocalSpaceTransform(nodeIndexC, finalTransformC);
         }
 
         // render some debug lines
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             const uint32 color = mVisualizeColor;
-            GetEventManager().OnDrawLine(outTransformPose.GetGlobalTransformInclusive(nodeIndexA).mPosition, outTransformPose.GetGlobalTransformInclusive(nodeIndexB).mPosition, color);
-            GetEventManager().OnDrawLine(outTransformPose.GetGlobalTransformInclusive(nodeIndexB).mPosition, outTransformPose.GetGlobalTransformInclusive(nodeIndexC).mPosition, color);
+            GetEventManager().OnDrawLine(outTransformPose.GetWorldSpaceTransform(nodeIndexA).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, color);
+            GetEventManager().OnDrawLine(outTransformPose.GetWorldSpaceTransform(nodeIndexB).mPosition, outTransformPose.GetWorldSpaceTransform(nodeIndexC).mPosition, color);
         }
-    #endif
     }
 
 
@@ -621,12 +625,12 @@ namespace EMotionFX
     {
         m_relativeBendDir = relativeBendDir;
     }
-    
+
     void BlendTreeTwoLinkIKNode::SetExtractBendDir(bool extractBendDir)
     {
         m_extractBendDir = extractBendDir;
     }
-    
+
     void BlendTreeTwoLinkIKNode::SetRotationEnabled(bool rotationEnabled)
     {
         m_rotationEnabled = rotationEnabled;
@@ -688,13 +692,14 @@ namespace EMotionFX
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTwoLinkIKNode::Reinit)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ_CRC("ActorGoalNode", 0xaf1e8a3a), &BlendTreeTwoLinkIKNode::m_alignToNode, "Align To", "The node to align the end node to. This basically sets the goal to this node.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::HideChildren)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTwoLinkIKNode::Reinit)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeTwoLinkIKNode::m_bendDirNodeName, "Bend Dir Node", "The optional node to control the bend direction. The vector from the start node to the bend dir node will be used as bend direction.")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTwoLinkIKNode::Reinit)
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_rotationEnabled, "Enable Rotation Goal", "Enable the goal orientation?")
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_relativeBendDir, "Relative Bend Dir", "Use a relative (to the actor instance) bend direction, instead of global space?")
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_relativeBendDir, "Relative Bend Dir", "Use a relative (to the actor instance) bend direction, instead of world space?")
             ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeTwoLinkIKNode::GetRelativeBendDirVisibility)
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTwoLinkIKNode::m_extractBendDir, "Extract Bend Dir", "Extract the bend direction from the input pose instead of using the bend dir input value?")
             ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)

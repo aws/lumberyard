@@ -14,6 +14,7 @@
 #include "OutlinerListModel.hxx"
 
 #include <QtCore/QMimeData>
+#include <QFontMetrics>
 #include <QtGui/QPainter>
 #include <QtWidgets/QStyleOption>
 #include <QtWidgets/QCheckBox>
@@ -41,11 +42,11 @@
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
-#include <AzToolsFramework/Slice/SliceMetadataEntityContextBus.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 #include <AzToolsFramework/ToolsComponents/ComponentAssetMimeDataContainer.h>
 #include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 #include <AzToolsFramework/ToolsComponents/EditorEntityIdContainer.h>
+#include <AzToolsFramework/ToolsComponents/EditorLayerComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorLockComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
@@ -56,6 +57,10 @@
 
 #include "OutlinerDisplayOptionsMenu.h"
 #include "OutlinerSortFilterProxyModel.hxx"
+#include "OutlinerTreeView.hxx"
+
+#include <Editor/CryEditDoc.h>
+#include <AzCore/Outcome/Outcome.h>
 
 ////////////////////////////////////////////////////////////////////////////
 // OutlinerListModel
@@ -204,6 +209,12 @@ QVariant OutlinerListModel::dataForAll(const QModelIndex& index, int role) const
     case PartiallyLockedRole:
         return !AreAllDescendantsSameLockState(id);
 
+    case InLockedLayerRole:
+        return IsInLayerWithProperty(id, LayerProperty::Locked);
+
+    case InInvisibleLayerRole:
+        return IsInLayerWithProperty(id, LayerProperty::Invisible);
+
     case ChildCountRole:
     {
         AZStd::size_t childCount = 0;
@@ -253,29 +264,7 @@ QVariant OutlinerListModel::dataForName(const QModelIndex& index, int role) cons
 
     case Qt::ToolTipRole:
     {
-        AZStd::string sliceAssetName;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(sliceAssetName, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetSliceAssetName);
-
-        bool isEditorOnly = false;
-        AzToolsFramework::EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, id, &AzToolsFramework::EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
-
-        QString tooltip = !sliceAssetName.empty() ? QString("Slice asset: %1").arg(sliceAssetName.data()) : QString("Slice asset: This entity is not part of a slice.");
-
-        if (isEditorOnly)
-        {
-            tooltip = QString("(%1) %2").arg(tr("Editor-only"), tooltip);
-        }
-        else
-        {
-            AZ::Entity* entity = nullptr;
-            AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, id);
-            if (!entity->IsRuntimeActiveByDefault())
-            {
-                tooltip = QString("(%1) %2").arg(tr("Not Active on Start"), tooltip);
-            }
-        }
-
-        return tooltip;
+        return GetEntityTooltip(id);
     }
 
     case EntityTypeRole:
@@ -287,13 +276,33 @@ QVariant OutlinerListModel::dataForName(const QModelIndex& index, int role) cons
         bool isSubsliceRoot = false;
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSubsliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSubsliceRoot);
 
-        if (isSliceEntity)
+        bool isLayerEntity = false;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            isLayerEntity,
+            id,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+        if (isLayerEntity)
+        {
+            return LayerType;
+        }
+        else if (isSliceEntity)
         {
             return (isSliceRoot | isSubsliceRoot) ? SliceHandleType : SliceEntityType;
         }
 
         // Guaranteed to return a valid type.
         return EntityType;
+    }
+
+    case LayerColorRole:
+    {
+        QColor layerColor;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            layerColor,
+            id,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::GetLayerColor);
+        return layerColor;
     }
 
     case Qt::ForegroundRole:
@@ -323,7 +332,19 @@ QVariant OutlinerListModel::GetEntityIcon(const AZ::EntityId& id) const
     bool isSliceEntity = false;
     AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
 
-    if (isSliceEntity)
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        id,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+
+    if (isLayerEntity)
+    {
+        // There is only one layer icon, it does not have multiple states like entities.
+        return QIcon(QPixmap(QString(":/Icons/layer_icon.svg")));
+    }
+    else if (isSliceEntity)
     {
         iconName = "Slice_Entity";
 
@@ -376,6 +397,98 @@ QVariant OutlinerListModel::GetEntityIcon(const AZ::EntityId& id) const
     return QIcon(entityIcon);
 }
 
+QVariant OutlinerListModel::GetEntityTooltip(const AZ::EntityId& id) const
+{
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        id,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+    if (isLayerEntity)
+    {
+        bool isLayerNameValid = false;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            isLayerNameValid,
+            id,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::IsLayerNameValid);
+        if (!isLayerNameValid)
+        {
+            return "Layer names at the same level of the hierarchy must be unique before you can save them.";
+        }
+
+        AZ::Outcome<AZStd::string, AZStd::string> layerFullNameResult(
+            AZ::Failure(AZStd::string("Unable to get the layer's file name with an extension.")));
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            layerFullNameResult,
+            id,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::GetLayerFullFileName);
+        if (!layerFullNameResult.IsSuccess())
+        {
+            return layerFullNameResult.GetError().c_str();
+        }
+
+        QString layerTooltip = layerFullNameResult.GetValue().c_str();
+
+        bool hasUnsavedChanges = false;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            hasUnsavedChanges,
+            id,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasUnsavedChanges);
+        if (hasUnsavedChanges)
+        {
+            layerTooltip = QObject::tr("%1(Unsaved)").arg(layerTooltip);
+        }
+
+        QString levelAbsoluteFolder = Path::GetPath(GetIEditor()->GetDocument()->GetActivePathName());
+        bool doesLayerFileExistOnDisk = false;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            doesLayerFileExistOnDisk,
+            id,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::DoesLayerFileExistOnDisk,
+            levelAbsoluteFolder);
+        if (doesLayerFileExistOnDisk)
+        {
+            layerTooltip = QObject::tr("Unsaved layer");
+        }
+
+        return layerTooltip;
+    }
+
+
+    AZStd::string sliceAssetName;
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(sliceAssetName, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetSliceAssetName);
+
+    bool isEditorOnly = false;
+    AzToolsFramework::EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, id, &AzToolsFramework::EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
+
+    QString tooltip = !sliceAssetName.empty() ? QString("Slice asset: %1").arg(sliceAssetName.data()) : QString("Slice asset: This entity is not part of a slice.");
+
+
+    bool hasCyclicDependency = false;
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(hasCyclicDependency, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasCyclicDependency);
+    if (hasCyclicDependency)
+    {
+        tooltip = QObject::tr("Circular dependency detected. Cannot save instances of a slice inside of itself. Other valid overrides can be saved as normal.");
+    }
+    else
+    if (isEditorOnly)
+    {
+        tooltip = QString("(%1) %2").arg(tr("Editor-only"), tooltip);
+    }
+    else
+    {
+        AZ::Entity* entity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, id);
+        if (!entity->IsRuntimeActiveByDefault())
+        {
+            tooltip = QString("(%1) %2").arg(tr("Not Active on Start"), tooltip);
+        }
+    }
+
+    return tooltip;
+}
+
 QVariant OutlinerListModel::dataForVisibility(const QModelIndex& index, int role) const
 {
     auto id = GetEntityFromIndex(index);
@@ -384,9 +497,7 @@ QVariant OutlinerListModel::dataForVisibility(const QModelIndex& index, int role
     {
     case Qt::CheckStateRole:
     {
-        bool isVisible = true;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isVisible, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
-        return isVisible ? Qt::Checked : Qt::Unchecked;
+        return IsEntityVisible(id) ? Qt::Checked : Qt::Unchecked;
     }
 
     case Qt::ToolTipRole:
@@ -405,7 +516,13 @@ QVariant OutlinerListModel::dataForLock(const QModelIndex& index, int role) cons
     case Qt::CheckStateRole:
     {
         bool isLocked = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLocked, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
+        // Lock state is tracked in 3 places:
+        // EditorLockComponent, EditorEntityModel, and ComponentEntityObject.
+        // In addition to that, entities that are in layers can have the layer's lock state override their own.
+        // Retrieving the lock state from the lock component is ideal for drawing the lock icon in the outliner because
+        // the outliner needs to show that specific entity's lock state, and not the actual final lock state including the layer behavior.
+        // The EditorLockComponent only knows about the specific entity's lock state and not the hierarchy.
+        AzToolsFramework::EditorLockComponentRequestBus::EventResult(isLocked, id, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
         return isLocked ? Qt::Checked : Qt::Unchecked;
     }
 
@@ -782,6 +899,9 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
         }
     }
 
+    AZ::EntityId assignParentId = GetEntityFromIndex(parent);
+    ToolsApplicationNotificationBus::Broadcast(&ToolsApplicationNotificationBus::Events::SetEntityInstantiationPosition, assignParentId, GetEntityFromIndex(index(row, 0, parent)));
+
     if (componentAssetPairs.empty())
     {
         return false;
@@ -795,7 +915,6 @@ bool OutlinerListModel::DropMimeDataAssets(const QMimeData* data, Qt::DropAction
     bool createdNewEntity = false;
 
     // Shift modifier enables creating a child entity from the asset.
-    AZ::EntityId assignParentId;
     if (QApplication::keyboardModifiers() & Qt::ShiftModifier)
     {
         assignParentId = targetEntityId;
@@ -962,6 +1081,28 @@ bool OutlinerListModel::CanReparentEntities(const AZ::EntityId& newParentId, con
                 return false;
             }
         }
+
+        if (newParentId.IsValid())
+        {
+            bool isLayerEntity = false;
+            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+                isLayerEntity,
+                entityId,
+                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+            // Layers can only have other layers as parents, or have no parent.
+            if (isLayerEntity)
+            {
+                bool newParentIsLayer = false;
+                AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+                    newParentIsLayer,
+                    newParentId,
+                    &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+                if (!newParentIsLayer)
+                {
+                    return false;
+                }
+            }
+        }
     }
 
     //Only check the entity pointer if the entity id is valid because
@@ -1008,6 +1149,8 @@ bool OutlinerListModel::ReparentEntities(const AZ::EntityId& newParentId, const 
     {
         return false;
     }
+
+    m_isFilterDirty = true;
 
     AzToolsFramework::ScopedUndoBatch undo("Reparent Entities");
     //capture child entity order before re-parent operation, which will automatically add order info if not present
@@ -1176,6 +1319,14 @@ void OutlinerListModel::QueueEntityToExpand(AZ::EntityId entityId, bool expand)
     QueueEntityUpdate(entityId);
 }
 
+// Helper struct for tracking a range of indices.
+struct ModelIndexRange
+{
+public:
+    QModelIndex m_start;
+    QModelIndex m_end;
+};
+
 
 void OutlinerListModel::ProcessEntityUpdates()
 {
@@ -1206,16 +1357,34 @@ void OutlinerListModel::ProcessEntityUpdates()
 
     {
         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:ChangeQueue");
+
+        QMap<QModelIndex, ModelIndexRange> parentsToChangedIndices;
+
         for (auto entityId : m_entityChangeQueue)
         {
-            auto startIndex = GetIndexFromEntity(entityId, ColumnName);
-            auto endIndex = GetIndexFromEntity(entityId, ColumnCount - 1);
-            if (startIndex.isValid() && endIndex.isValid())
+            auto myStartIndex = GetIndexFromEntity(entityId, ColumnName);
+            ModelIndexRange& changedRange = parentsToChangedIndices[myStartIndex.parent()];
+
+            // Expand the range around each changed index, even if a sibling between didn't change.
+            // This is faster than emitting a data change for every modified index.
+            if (!changedRange.m_start.isValid() ||
+                myStartIndex.row() < changedRange.m_start.row())
             {
-                //refresh entire row...can optimize to queue update for specific columns and roles later if needed    
-                emit dataChanged(startIndex, endIndex);
+                changedRange.m_start = myStartIndex;
+            }
+            auto myEndIndex = GetIndexFromEntity(entityId, ColumnCount - 1);
+            if (!changedRange.m_end.isValid() ||
+                myEndIndex.row() > changedRange.m_end.row())
+            {
+                changedRange.m_end = myEndIndex;
             }
         };
+        for (const auto& changedGroups : parentsToChangedIndices)
+        {
+            // Not checking for isValid for performance reasons, the scope marker above (ChangeQueue) was showing up
+            // as a high cost in cloning large entity stacks. This data is all good because it was just generated.
+            emit dataChanged(changedGroups.m_start, changedGroups.m_end);
+        }
         m_entityChangeQueue.clear();
     }
 
@@ -1231,7 +1400,10 @@ void OutlinerListModel::ProcessEntityUpdates()
 
     {
         AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Editor, "OutlinerListModel::ProcessEntityUpdates:InvalidateFilter");
-        InvalidateFilter();
+        if (m_isFilterDirty)
+        {
+            InvalidateFilter();
+        }
     }
 }
 
@@ -1244,6 +1416,7 @@ void OutlinerListModel::OnEntityInfoResetBegin()
 void OutlinerListModel::OnEntityInfoResetEnd()
 {
     m_layoutResetQueued = true;
+    endResetModel();
     QTimer::singleShot(0, this, &OutlinerListModel::ProcessEntityInfoResetEnd);
 }
 
@@ -1251,11 +1424,8 @@ void OutlinerListModel::ProcessEntityInfoResetEnd()
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
     m_layoutResetQueued = false;
-    endResetModel();
     m_entityChangeQueued = false;
     m_entityChangeQueue.clear();
-    //m_entityExpansionState.clear();
-    //m_entityFilteredState.clear();
     QueueEntityUpdate(AZ::EntityId());
     emit EnableSelectionUpdates(true);
 }
@@ -1287,6 +1457,7 @@ void OutlinerListModel::OnEntityInfoUpdatedAddChildEnd(AZ::EntityId parentId, AZ
     RestoreDescendantExpansion(childId);
 
     //must refresh partial lock/visibility of parents
+    m_isFilterDirty = true;
     QueueAncestorUpdate(childId);
     emit EnableSelectionUpdates(true);
 }
@@ -1308,6 +1479,7 @@ void OutlinerListModel::OnEntityInfoUpdatedRemoveChildEnd(AZ::EntityId parentId,
     endRemoveRows();
 
     //must refresh partial lock/visibility of parents
+    m_isFilterDirty = true;
     QueueAncestorUpdate(parentId);
     emit EnableSelectionUpdates(true);
 }
@@ -1363,6 +1535,16 @@ void OutlinerListModel::OnEntityInfoUpdatedName(AZ::EntityId entityId, const AZS
     QueueEntityUpdate(entityId);
 }
 
+void OutlinerListModel::OnEntityInfoUpdatedUnsavedChanges(AZ::EntityId entityId)
+{
+    QueueEntityUpdate(entityId);
+}
+
+void OutlinerListModel::OnEntityInfoUpdateSliceOwnership(AZ::EntityId entityId)
+{
+    QueueEntityUpdate(entityId);
+}
+
 QString OutlinerListModel::GetSliceAssetName(const AZ::EntityId& entityId) const
 {
     AZStd::string sliceAssetName;
@@ -1391,6 +1573,7 @@ AZ::EntityId OutlinerListModel::GetEntityFromIndex(const QModelIndex& index) con
 
 void OutlinerListModel::SearchStringChanged(const AZStd::string& filter)
 {
+    m_isFilterDirty = true;
     if (filter.size() > 0)
     {
         CacheSelectionIfAppropriate();
@@ -1402,8 +1585,9 @@ void OutlinerListModel::SearchStringChanged(const AZStd::string& filter)
     RestoreSelectionIfAppropriate();
 }
 
-void OutlinerListModel::SearchFilterChanged(const AZStd::vector<AZ::Uuid>& componentFilters)
+void OutlinerListModel::SearchFilterChanged(const AZStd::vector<ComponentTypeValue>& componentFilters)
 {
+    m_isFilterDirty = true;
     if (componentFilters.size() > 0)
     {
         CacheSelectionIfAppropriate();
@@ -1496,12 +1680,14 @@ void OutlinerListModel::AfterEntitySelectionChanged(const AzToolsFramework::Enti
 
 void OutlinerListModel::OnEntityExpanded(const AZ::EntityId& entityId)
 {
+    m_isFilterDirty = true;
     m_entityExpansionState[entityId] = true;
     QueueEntityUpdate(entityId);
 }
 
 void OutlinerListModel::OnEntityCollapsed(const AZ::EntityId& entityId)
 {
+    m_isFilterDirty = true;
     m_entityExpansionState[entityId] = false;
     QueueEntityUpdate(entityId);
 }
@@ -1516,6 +1702,7 @@ void OutlinerListModel::InvalidateFilter()
     {
         emit dataChanged(modelIndex, modelIndex, { VisibilityRole });
     }
+    m_isFilterDirty = false;
 }
 
 void OutlinerListModel::OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap)
@@ -1537,6 +1724,8 @@ void OutlinerListModel::ToggleEditorLockState(const AZ::EntityId& entityId)
         bool isLocked = false;
         AzToolsFramework::EditorLockComponentRequestBus::EventResult(isLocked, entityId, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
 
+        AzToolsFramework::ScopedUndoBatch undo("Toggle Entity Lock State");
+
         if (IsSelected(entityId))
         {
             AzToolsFramework::EntityIdList selectedEntityIds;
@@ -1556,17 +1745,75 @@ void OutlinerListModel::ToggleEditorLockState(const AZ::EntityId& entityId)
 
 void OutlinerListModel::SetEditorLockState(const AZ::EntityId& entityId, bool isLocked)
 {
-    if (entityId.IsValid())
+    // When an entity is unlocked, if it was in a locked layer(s), unlock those layers.
+    // Layers are checked for recursively because lock status for a layer is currently saved in the level and not the layer itself.
+    // When lock status can be saved in the layer, then this should only unlock the most immediate layer.
+    if (!isLocked)
+    {
+        AZ::EntityId parentLayerCheck = entityId;
+        while (parentLayerCheck.IsValid())
+        {
+            AZ::EntityId parentId;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, parentLayerCheck, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+
+            bool isParentLayer = false;
+            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+                isParentLayer,
+                parentId,
+                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+            if (isParentLayer)
+            {
+                bool isParentLayerLocked = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isParentLayerLocked, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsJustThisEntityLocked);
+                if (isParentLayerLocked)
+                {
+                    // If a child of a layer has its lock state changed to false, change that layer to no longer be locked.
+                    // Do this for all layers in the hierarchy.
+                    AzToolsFramework::EditorLockComponentRequestBus::Event(parentId, &AzToolsFramework::EditorLockComponentRequests::SetLocked, false);
+                }
+            }
+
+            parentLayerCheck = parentId;
+        }
+    }
+
+    bool isLayer = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayer,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+    SetEditorLockStateRecursively(entityId, isLocked, entityId, isLayer);
+}
+
+void OutlinerListModel::SetEditorLockStateRecursively(const AZ::EntityId& entityId, bool isLocked, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer)
+{
+    if (!entityId.IsValid())
+    {
+        return;
+    }
+    if (!toggledEntityWasLayer || toggledEntityId == entityId)
     {
         AzToolsFramework::EditorLockComponentRequestBus::Event(entityId, &AzToolsFramework::EditorLockComponentRequests::SetLocked, isLocked);
+    }
+    else
+    {
+        bool oldLockState = false;
+        AzToolsFramework::EditorLockComponentRequestBus::EventResult(oldLockState, entityId, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
 
-        AzToolsFramework::EntityIdList children;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+        bool newLockState = isLocked ? true : oldLockState;
+        AzToolsFramework::EditorLockComponentNotificationBus::Event(
+            entityId,
+            &AzToolsFramework::EditorLockComponentNotificationBus::Events::OnEntityLockChanged,
+            newLockState);
+    }
 
-        for (auto childId : children)
-        {
-            SetEditorLockState(childId, isLocked);
-        }
+    AzToolsFramework::EntityIdList children;
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+
+    for (auto childId : children)
+    {
+        SetEditorLockStateRecursively(childId, isLocked, toggledEntityId, toggledEntityWasLayer);
     }
 }
 
@@ -1575,8 +1822,9 @@ void OutlinerListModel::ToggleEditorVisibility(const AZ::EntityId& entityId)
 {
     if (entityId.IsValid())
     {
-        bool isVisible = false;
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(isVisible, entityId, &AzToolsFramework::EditorVisibilityRequests::GetVisibilityFlag);
+        bool isVisible = IsEntityVisible(entityId);
+
+        AzToolsFramework::ScopedUndoBatch undo("Toggle Entity Visibility");
 
         if (IsSelected(entityId))
         {
@@ -1597,16 +1845,126 @@ void OutlinerListModel::ToggleEditorVisibility(const AZ::EntityId& entityId)
 
 void OutlinerListModel::SetEditorVisibility(const AZ::EntityId& entityId, bool isVisible)
 {
-    if (entityId.IsValid())
+    // When an entity is set to visible, if it was in an invisible layer(s), make that layer visible.
+    if (isVisible)
     {
-        AzToolsFramework::EditorVisibilityRequestBus::Event(entityId, &AzToolsFramework::EditorVisibilityRequests::SetVisibilityFlag, isVisible);
-
-        AzToolsFramework::EntityIdList children;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
-        for (auto childId : children)
+        AZ::EntityId parentLayerCheck = entityId;
+        while (parentLayerCheck.IsValid())
         {
-            SetEditorVisibility(childId, isVisible);
+            AZ::EntityId parentId;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, parentLayerCheck, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+
+            bool isParentLayer = false;
+            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+                isParentLayer,
+                parentId,
+                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+            if (isParentLayer)
+            {
+                if (!IsEntityVisible(parentId))
+                {
+                    // If a child of a layer has its visibility state changed to true, change that layer to be visible.
+                    // Do this for all layers in the hierarchy.
+                    SetEntityVisibility(parentId, true);
+                    // Even though layer visibility is saved to each layer individually, parents still need to be checked recursively so
+                    // that the entity that was toggled can become visible.
+                }
+            }
+
+            parentLayerCheck = parentId;
         }
+    }
+    bool isLayer = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayer,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+    SetEditorVisibilityStateRecursively(entityId, isVisible, entityId, isLayer);
+}
+
+void OutlinerListModel::SetEditorVisibilityStateRecursively(const AZ::EntityId& entityId, bool isVisible, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer)
+{
+    if (!entityId.IsValid())
+    {
+        return;
+    }
+    if (!toggledEntityWasLayer || toggledEntityId == entityId)
+    {
+        SetEntityVisibility(entityId, isVisible);
+    }
+    else
+    {
+        bool oldVisibilityState = IsEntityVisible(entityId);
+
+        bool newVisibilityState = isVisible ? oldVisibilityState : false;
+        AzToolsFramework::EditorVisibilityNotificationBus::Event(
+            entityId,
+            &AzToolsFramework::EditorVisibilityNotificationBus::Events::OnEntityVisibilityChanged,
+            newVisibilityState);
+    }
+
+    AzToolsFramework::EntityIdList children;
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
+
+    for (auto childId : children)
+    {
+        SetEditorVisibilityStateRecursively(childId, isVisible, toggledEntityId, toggledEntityWasLayer);
+    }
+}
+
+bool OutlinerListModel::IsEntityVisible(const AZ::EntityId& entityId) const
+{
+    // Visibility state is tracked in 5 places, see dataForLock for info on 3 of these ways.
+    // Visibility's fourth state over lock is the EditorVisibilityRequestBus has two sets of
+    // setting and getting functions for visibility. Get/SetVisibilityFlag is what should be used in most cases.
+    // The fifth state is tracked on layers. Layers are always invisible to other systems, so the visibility flag
+    // is set false there. However, layers need to be able to toggle visibility to hide/show their children, so
+    // layers have a unique flag.
+    bool isVisible = true;
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+    if (isLayerEntity)
+    {
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            isVisible,
+            entityId,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::AreLayerChildrenVisible);
+    }
+    else
+    {
+        AzToolsFramework::EditorVisibilityRequestBus::EventResult(
+            isVisible,
+            entityId,
+            &AzToolsFramework::EditorVisibilityRequestBus::Events::GetVisibilityFlag);
+    }
+    return isVisible;
+}
+
+void OutlinerListModel::SetEntityVisibility(const AZ::EntityId& entityId, bool visibility) const
+{
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+    if (isLayerEntity)
+    {
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::Event(
+            entityId,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::SetLayerChildrenVisibility,
+            visibility);
+    }
+    else
+    {
+        AzToolsFramework::EditorVisibilityRequestBus::Event(
+            entityId,
+            &AzToolsFramework::EditorVisibilityRequestBus::Events::SetVisibilityFlag,
+            visibility);
     }
 }
 
@@ -1681,17 +2039,81 @@ bool OutlinerListModel::FilterEntity(const AZ::EntityId& entityId)
         }
     }
 
-    // If we matched the filter string and have any component filters, make sure we match those too
+    int numberOfGlobalFlags = 0;
+    // First check if any of the global flags are valid
     if (isFilterMatch && m_componentFilters.size() > 0)
+    {
+        int globalFlags = 0;
+
+        for (ComponentTypeValue& componentType : m_componentFilters)
+        {
+            if (componentType.m_globalVal >= 0)
+            {
+                switch (componentType.m_globalVal)
+                {
+                case 0:
+                    globalFlags |= static_cast<int>(GlobalSearchCriteriaFlags::Unlocked);
+                    break;
+                case 1:
+                    globalFlags |= static_cast<int>(GlobalSearchCriteriaFlags::Locked);
+                    break;
+                case 2:
+                    globalFlags |= static_cast<int>(GlobalSearchCriteriaFlags::Visible);
+                    break;
+                case 3:
+                    globalFlags |= static_cast<int>(GlobalSearchCriteriaFlags::Hidden);
+                    break;
+                }
+                ++numberOfGlobalFlags;
+            }
+        }
+        if ((globalFlags & static_cast<int>(GlobalSearchCriteriaFlags::Unlocked)) && (globalFlags & static_cast<int>(GlobalSearchCriteriaFlags::Locked)))
+        {
+            globalFlags &= (static_cast<int>(GlobalSearchCriteriaFlags::Visible) | static_cast<int>(GlobalSearchCriteriaFlags::Hidden));
+        }
+        if ((globalFlags & static_cast<int>(GlobalSearchCriteriaFlags::Visible)) && (globalFlags & static_cast<int>(GlobalSearchCriteriaFlags::Hidden)))
+        {
+            globalFlags &= (static_cast<int>(GlobalSearchCriteriaFlags::Unlocked) | static_cast<int>(GlobalSearchCriteriaFlags::Locked));
+        }
+        if (globalFlags)
+        {
+            bool visibleFlag = false;
+            AzToolsFramework::EditorVisibilityRequestBus::EventResult(visibleFlag, entityId, &AzToolsFramework::EditorVisibilityRequests::GetVisibilityFlag);
+            if (visibleFlag && (globalFlags & static_cast<int>(GlobalSearchCriteriaFlags::Hidden)))
+            {
+                isFilterMatch = false;
+            }
+            if (!visibleFlag && (globalFlags & static_cast<int>(GlobalSearchCriteriaFlags::Visible)))
+            {
+                isFilterMatch = false;
+            }
+            bool isLocked = false;
+            AzToolsFramework::EditorLockComponentRequestBus::EventResult(isLocked, entityId, &AzToolsFramework::EditorLockComponentRequests::GetLocked);
+            if (isLocked && (globalFlags & static_cast<int>(GlobalSearchCriteriaFlags::Unlocked)))
+            {
+                isFilterMatch = false;
+            }
+            if (!isLocked && (globalFlags & static_cast<int>(GlobalSearchCriteriaFlags::Locked)))
+            {
+                isFilterMatch = false;
+            }
+        }
+    }
+
+    // If we matched the filter string and have any component filters, make sure we match those too
+    if (isFilterMatch && m_componentFilters.size() > numberOfGlobalFlags)
     {
         bool hasMatchingComponent = false;
 
-        for (AZ::TypeId& componentType : m_componentFilters)
+        for (ComponentTypeValue& componentType : m_componentFilters)
         {
-            if (AzToolsFramework::EntityHasComponentOfType(entityId, componentType))
+            if (componentType.m_globalVal < 0)
             {
-                hasMatchingComponent = true;
-                break;
+            if (AzToolsFramework::EntityHasComponentOfType(entityId, componentType.m_uuid, true, true))
+                {
+                    hasMatchingComponent = true;
+                    break;
+                }
             }
         }
 
@@ -1755,14 +2177,14 @@ bool OutlinerListModel::AreAllDescendantsSameLockState(const AZ::EntityId& entit
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
     //TODO result can be cached in mutable map and cleared when any descendant changes to avoid recursion in deep hierarchies
     bool isLocked = false;
-    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLocked, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLocked, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsJustThisEntityLocked);
 
     AzToolsFramework::EntityIdList children;
     AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
     for (auto childId : children)
     {
         bool isLockedChild = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLockedChild, childId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isLockedChild, childId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsJustThisEntityLocked);
         if (isLocked != isLockedChild || !AreAllDescendantsSameLockState(childId))
         {
             return false;
@@ -1775,15 +2197,14 @@ bool OutlinerListModel::AreAllDescendantsSameVisibleState(const AZ::EntityId& en
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
     //TODO result can be cached in mutable map and cleared when any descendant changes to avoid recursion in deep hierarchies
-    bool isVisible = false;
-    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isVisible, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+
+    bool isVisible = IsEntityVisible(entityId);
 
     AzToolsFramework::EntityIdList children;
     AzToolsFramework::EditorEntityInfoRequestBus::EventResult(children, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetChildren);
     for (auto childId : children)
     {
-        bool isVisibleChild = false;
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isVisibleChild, childId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+        bool isVisibleChild = IsEntityVisible(childId);
         if (isVisible != isVisibleChild || !AreAllDescendantsSameVisibleState(childId))
         {
             return false;
@@ -1792,10 +2213,52 @@ bool OutlinerListModel::AreAllDescendantsSameVisibleState(const AZ::EntityId& en
     return true;
 }
 
+bool OutlinerListModel::IsInLayerWithProperty(AZ::EntityId entityId, const LayerProperty& layerProperty) const
+{
+    while (entityId.IsValid())
+    {
+        AZ::EntityId parentId;
+        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(parentId, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::GetParent);
+
+        bool isParentLayer = false;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            isParentLayer,
+            parentId,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+        if (isParentLayer)
+        {
+            if (layerProperty == LayerProperty::Locked)
+            {
+                bool isParentLayerLocked = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isParentLayerLocked, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsJustThisEntityLocked);
+                if (isParentLayerLocked)
+                {
+                    return true;
+                }
+                // If this layer wasn't locked, keep checking the hierarchy, a layer above this one may be locked.
+            }
+            else if (layerProperty == LayerProperty::Invisible)
+            {
+                bool isParentVisible = IsEntityVisible(parentId);
+                if (!isParentVisible)
+                {
+                    return true;
+                }
+                // If this layer was visible, keep checking the hierarchy, a layer above this one may be invisible.
+            }
+        }
+
+        entityId = parentId;
+    }
+    return false;
+}
+
 void OutlinerListModel::OnEntityInitialized(const AZ::EntityId& /*entityId*/)
 {
     if (m_filterString.size() > 0 || m_componentFilters.size() > 0)
     {
+        m_isFilterDirty = true;
         emit ReapplyFilter();
     }
 }
@@ -1804,6 +2267,7 @@ void OutlinerListModel::OnEntityCompositionChanged(const AzToolsFramework::Entit
 {
     if (m_componentFilters.size() > 0)
     {
+        m_isFilterDirty = true;
         emit ReapplyFilter();
     }
 }
@@ -1812,6 +2276,7 @@ void OutlinerListModel::OnContextReset()
 {
     if (m_filterString.size() > 0 || m_componentFilters.size() > 0)
     {
+        m_isFilterDirty = true;
         emit ResetFilter();
     }
 }
@@ -1820,12 +2285,306 @@ void OutlinerListModel::OnContextReset()
 ////////////////////////////////////////////////////////////////////////////
 // OutlinerItemDelegate
 ////////////////////////////////////////////////////////////////////////////
-
 OutlinerItemDelegate::OutlinerItemDelegate(QWidget* parent)
     : QStyledItemDelegate(parent)
 {
     m_visibilityCheckBoxWithBorder.setObjectName("bordered");
     m_lockCheckBoxWithBorder.setObjectName("bordered");
+    m_visibilityCheckBoxLayerOverride.setObjectName("visibilityLayerOverride");
+    m_lockCheckBoxLayerOverride.setObjectName("lockLayerOverride");
+}
+
+void OutlinerItemDelegate::DrawLayerStripeAndBorder(QPainter* painter, int stripeX, int top, int bottom, QColor layerBorderColor, QColor layerColor) const
+{
+    if (!painter)
+    {
+        return;
+    }
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, false);
+    QPen layerPen;
+    layerPen.setWidthF(OutlinerListModel::GetLayerStripeWidth());
+    layerPen.setColor(layerBorderColor);
+    painter->setPen(layerPen);
+
+    QLine layerStripeLine(stripeX, top, stripeX, bottom);
+    painter->drawLine(layerStripeLine);
+
+    layerPen.setColor(layerColor);
+    // Draw the line a little taller so it connects to the top of the layer
+    layerStripeLine.translate(OutlinerListModel::GetLayerStripeWidth(), 0);
+    painter->setPen(layerPen);
+    painter->drawLine(layerStripeLine);
+
+    painter->restore();
+}
+
+void OutlinerItemDelegate::DrawLayerUI(
+    QPainter* painter,
+    const QStyleOptionViewItem& option,
+    const QModelIndex& index,
+    const AZ::EntityId& entityId,
+    bool isSelected) const
+{
+    if (!painter)
+    {
+        return;
+    }
+
+    static const QColor layerBGColor(GetIEditor()->GetColorByName("LayerBackgroundColor"));
+    static const QColor layerChildBGColor(GetIEditor()->GetColorByName("LayerChildBackgroundColor"));
+
+    static const QColor layerBorderTopColor(GetIEditor()->GetColorByName("LayerBorderTop"));
+    static const QColor layerBorderBottomColor(GetIEditor()->GetColorByName("LayerBorderBottom"));
+
+    static const QColor selectedLayerBGColor(GetIEditor()->GetColorByName("LayerBGSelectionColor"));
+    static const QColor selectedLayerChildBGColor(GetIEditor()->GetColorByName("LayerChildBGSelectionColor"));
+
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+    QColor layerColor;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        layerColor,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::GetLayerColor);
+
+    const QTreeView* outlinerTreeView(qobject_cast<const QTreeView*>(option.widget));
+    int indentation = outlinerTreeView->indentation();
+
+    bool isFirstColumn = index.column() == OutlinerListModel::ColumnName;
+    bool hasVisibleChildren = index.data(OutlinerListModel::ExpandedRole).value<bool>() && index.model()->hasChildren(index);
+    if (isLayerEntity &&
+        isFirstColumn)
+    {
+        DrawLayerStripeAndBorder(
+            painter,
+            option.rect.left(),
+            option.rect.top(),
+            option.rect.bottom(),
+            layerBorderBottomColor,
+            layerColor);
+    }
+
+    bool isInLayer = false;
+
+    // Start by assuming this row is the last in a layer, because it's easier to check if it's not the last in the layer.
+    bool continueCheckingLastInLayer = true;
+    QModelIndex lastInLayerIndex(index);
+    int indentationIfLastInLayer = 0;
+
+    QModelIndex sibling = index.sibling(index.row() + 1, index.column());
+    // This row can't be the last in a layer if it has children and is expanded.
+    if (index.data(OutlinerListModel::ExpandedRole).value<bool>() &&
+        index.model()->hasChildren(index))
+    {
+        continueCheckingLastInLayer = false;
+        lastInLayerIndex = QModelIndex();
+    }
+    else if (sibling.isValid())
+    {
+        // If the entity is a layer and has a sibling, but did not have children it's the last entity in the layer.
+        continueCheckingLastInLayer = false;
+        if (!isLayerEntity)
+        {
+            // If this entity has a sibling in the next row and isn't a layer itself, then it can't be the last entity in a layer.
+            lastInLayerIndex = QModelIndex();
+        }
+    }
+
+    int ancestorIndentation = 0;
+    QModelIndex previousAncestor = index;
+
+    for (QModelIndex ancestorIndex = index.parent(); ancestorIndex.isValid(); ancestorIndex = ancestorIndex.parent())
+    {
+        ancestorIndentation -= indentation;
+        OutlinerListModel::EntryType ancestorEntryType =
+            OutlinerListModel::EntryType(ancestorIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
+        if (ancestorEntryType == OutlinerListModel::LayerType && !isInLayer)
+        {
+            isInLayer = true;
+        }
+
+        if (continueCheckingLastInLayer && ancestorEntryType == OutlinerListModel::LayerType)
+        {
+            // If this ancestor is a layer, and our previous ancestor does not have a sibling, then the index is the last in the layer.
+            indentationIfLastInLayer = ancestorIndentation + indentation;
+            QModelIndex previousAncestorSibling = previousAncestor.sibling(previousAncestor.row() + 1, previousAncestor.column());
+            if (previousAncestorSibling.isValid())
+            {
+                continueCheckingLastInLayer = false;
+            }
+        }
+
+        if (ancestorEntryType == OutlinerListModel::LayerType && isFirstColumn)
+        {
+            QColor ancestorLayerColor = ancestorIndex.data(OutlinerListModel::LayerColorRole).value<QColor>();
+            int stripeX = option.rect.left() + ancestorIndentation;
+            DrawLayerStripeAndBorder(
+                painter,
+                stripeX,
+                option.rect.top() - m_layerDividerLineHeight,
+                option.rect.bottom(),
+                layerBorderBottomColor,
+                ancestorLayerColor);
+        }
+
+        previousAncestor = ancestorIndex;
+    }
+    // If this entity is the last entity in a layer at the root of the outliner, but is not a root entity itself,
+    // then adjust the indentation one more time for that.
+    if (continueCheckingLastInLayer && index.parent().isValid())
+    {
+        indentationIfLastInLayer -= indentation;
+    }
+
+    const bool isLayerOrInLayer = isLayerEntity || isInLayer;
+
+    if (isLayerOrInLayer)
+    {
+        painter->save();
+        painter->setRenderHint(QPainter::Antialiasing, false);
+
+        QPainterPath layerBGPath;
+        QRect layerBGRect(option.rect);
+        if (isFirstColumn && isLayerEntity)
+        {
+            layerBGRect.setLeft(layerBGRect.left() + indentation + OutlinerListModel::GetLayerStripeWidth());
+        }
+        layerBGPath.addRect(layerBGRect);
+        QColor layerBG = isLayerEntity ? layerBGColor : layerChildBGColor;
+        if (isSelected)
+        {
+            layerBG = isLayerEntity ? selectedLayerBGColor : selectedLayerChildBGColor;
+        }
+        painter->fillPath(layerBGPath, layerBG);
+
+        QPoint lineBottomLeft(option.rect.bottomLeft());
+        if (isLayerEntity)
+        {
+            QPoint lineTopLeft(option.rect.topLeft());
+
+            if (isFirstColumn)
+            {
+                lineTopLeft.setX(lineTopLeft.x() + OutlinerListModel::GetLayerStripeWidth());
+            }
+            QPen topLinePen(layerBorderTopColor, m_layerDividerLineHeight);
+            painter->setPen(topLinePen);
+            painter->drawLine(lineTopLeft, option.rect.topRight());
+        }
+        // Each layer entity has a line drawn on the bottom, and the last entity in the layer has the same line drawn.
+        if (isLayerEntity || lastInLayerIndex.isValid())
+        {
+            if (isFirstColumn)
+            {
+                lineBottomLeft.setX(lineBottomLeft.x() + indentationIfLastInLayer);
+                // Leave room for the 2 layer stripes on the first child to connect to the layer box.
+                if (!isLayerEntity || hasVisibleChildren)
+                {
+                    lineBottomLeft.setX(lineBottomLeft.x() + OutlinerListModel::GetLayerStripeWidth());
+                }
+            }
+            int dividerLineHeight = m_layerDividerLineHeight;
+            QPen bottomLinePen(layerBorderBottomColor, dividerLineHeight);
+            painter->setPen(bottomLinePen);
+            painter->drawLine(lineBottomLeft, option.rect.bottomRight());
+        }
+
+        painter->restore();
+    }
+}
+
+QString OutlinerItemDelegate::GetLayerInfoString(const AZ::EntityId& entityId) const
+{
+    QString result;
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+    if (!isLayerEntity)
+    {
+        return result;
+    }
+
+    bool hasUnsavedLayerChanges = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        hasUnsavedLayerChanges,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasUnsavedChanges);
+
+    if (hasUnsavedLayerChanges)
+    {
+        result = QObject::tr("*");
+    }
+
+    bool isLayerNameValid = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerNameValid,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::IsLayerNameValid);
+
+    if (!isLayerNameValid)
+    {
+        result = QObject::tr("<font color=\"red\">(!)</font> %1").arg(result);
+    }
+
+    return result;
+}
+
+int OutlinerItemDelegate::GetEntityNameVerticalOffset(const AZ::EntityId& entityId) const
+{
+    // Start with a slight offset so that the entity name better aligns to the middle of the row.
+    // The default vertical alignment ends up looking a little low on the row.
+    const int entityNameOffset = -1;
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+    if (!isLayerEntity)
+    {
+        return entityNameOffset;
+    }
+    // Layers draw a divider over the bottom of the row, so adjust the text rect to account for that.
+    return -m_layerDividerLineHeight + entityNameOffset;
+}
+
+QString OutlinerItemDelegate::GetColumnHighlightedStylesheet(int column, bool highlighted) const
+{
+    QString stylesheet;
+    QString color;
+    QString checkBoxName;
+
+    static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("OutlinerSelectionColor"));
+
+    if (column == OutlinerListModel::ColumnVisibilityToggle)
+    {
+        checkBoxName = "OutlinerVisibilityCheckBox";
+    }
+    else if (column == OutlinerListModel::ColumnLockToggle)
+    {
+        checkBoxName = "OutlinerLockCheckBox";
+    }
+    else
+    {
+        return "";
+    }
+
+    if (highlighted)
+    {
+        color = outlinerHighlightColor.name();
+    }
+    else
+    {
+        color = "transparent";
+    }
+
+    stylesheet = QString("%1{background-color: %2} %1::indicator{background-color: %2)").arg(checkBoxName).arg(color);
+
+    return stylesheet;
 }
 
 void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
@@ -1838,7 +2597,46 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 
     static const QColor sliceEntityColor(GetIEditor()->GetColorByName("SliceEntityColor"));
     static const QColor sliceOverrideColor(GetIEditor()->GetColorByName("SliceOverrideColor"));
+    
+    bool entityHasOverrides = false, childrenHaveOverrides = false, isSliceEntity = false;
 
+    AZ::EntityId entityId(index.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(entityHasOverrides, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceEntityOverrides);
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(childrenHaveOverrides, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceChildrenOverrides);
+
+    const bool sliceHasOverrides = (entityHasOverrides || childrenHaveOverrides);
+
+    static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("OutlinerSelectionColor"));
+
+    const bool isSelected = (option.state & QStyle::State_Selected);
+    if (isSelected)
+    {
+        bool isLayerEntity = false;
+        AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+            isLayerEntity,
+            entityId,
+            &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+        QRect selectionRect = option.rect;
+        if (isLayerEntity && index.column() == OutlinerListModel::ColumnName)
+        {
+            selectionRect.setLeft(selectionRect.left() + OutlinerTreeView::GetLayerSquareSize());
+        }
+        QPainterPath path;
+        path.addRect(selectionRect);
+        painter->fillPath(path, outlinerHighlightColor);
+    }
+
+    DrawLayerUI(painter, option, index, entityId, isSelected);
+
+    QPalette checkboxPalette;
+    QColor transparentColor(0, 0, 0, 0);
+    checkboxPalette.setColor(QPalette::ColorRole::Background, transparentColor);
+
+    const bool isSliceRoot = index.data(OutlinerListModel::SliceBackgroundRole).value<bool>();
+
+    const int slicePillCornerRadius = 4;
     // We're only using these check boxes as renderers so their actual state doesn't matter.
     // We can set it right before we draw using information from the model data.
     if (index.column() == OutlinerListModel::ColumnVisibilityToggle)
@@ -1846,20 +2644,25 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         painter->save();
         painter->translate(option.rect.topLeft());
 
-        bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
-        m_visibilityCheckBoxWithBorder.setChecked(checked);
-        m_visibilityCheckBox.setChecked(checked);
+        OutlinerVisibilityCheckBox* checkboxToRender = &m_visibilityCheckBox;
 
-        if (index.data(OutlinerListModel::PartiallyVisibleRole).value<bool>())
+        if (index.data(OutlinerListModel::InInvisibleLayerRole).value<bool>())
         {
-            m_visibilityCheckBoxWithBorder.render(painter);
+            m_visibilityCheckBoxLayerOverride.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
+            checkboxToRender = &m_visibilityCheckBoxLayerOverride;
         }
-        else
+        else if (index.data(OutlinerListModel::PartiallyVisibleRole).value<bool>())
         {
-            m_visibilityCheckBox.render(painter);
+            m_visibilityCheckBoxWithBorder.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
+            checkboxToRender = &m_visibilityCheckBoxWithBorder;
         }
+        bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
+        checkboxToRender->setChecked(checked);
+        checkboxToRender->setPalette(checkboxPalette);
+        checkboxToRender->render(painter);
 
         painter->restore();
+
         return;
     }
 
@@ -1868,18 +2671,22 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         painter->save();
         painter->translate(option.rect.topLeft());
 
-        bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
-        m_lockCheckBoxWithBorder.setChecked(checked);
-        m_lockCheckBox.setChecked(checked);
+        OutlinerLockCheckBox* checkboxToRender = &m_lockCheckBox;
 
-        if (index.data(OutlinerListModel::PartiallyLockedRole).value<bool>())
+        if (index.data(OutlinerListModel::InLockedLayerRole).value<bool>())
         {
-            m_lockCheckBoxWithBorder.render(painter);
+            m_lockCheckBoxLayerOverride.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
+            checkboxToRender = &m_lockCheckBoxLayerOverride;
         }
-        else
+        else if (index.data(OutlinerListModel::PartiallyLockedRole).value<bool>())
         {
-            m_lockCheckBox.render(painter);
+            m_lockCheckBoxWithBorder.setStyleSheet(GetColumnHighlightedStylesheet(index.column(), isSelected));
+            checkboxToRender = &m_lockCheckBoxWithBorder;
         }
+        bool checked = index.data(Qt::CheckStateRole).value<Qt::CheckState>() == Qt::Checked;
+        checkboxToRender->setChecked(checked);
+        checkboxToRender->setPalette(checkboxPalette);
+        checkboxToRender->render(painter);
 
         painter->restore();
         return;
@@ -1895,21 +2702,11 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
     auto backgroundBoxRect = option.rect;
 
     backgroundBoxRect.setX(backgroundBoxRect.x() + 0.5);
-    backgroundBoxRect.setY(backgroundBoxRect.y() + 3.5);
+    backgroundBoxRect.setY(backgroundBoxRect.y() + 2.5);
     backgroundBoxRect.setWidth(backgroundBoxRect.width() - 1.0);
-    backgroundBoxRect.setHeight(backgroundBoxRect.height() - 4.0);
+    backgroundBoxRect.setHeight(backgroundBoxRect.height() - 1.0);
 
-    const bool isSelected = (option.state & QStyle::State_Selected);
-    const bool isSliceRoot = index.data(OutlinerListModel::SliceBackgroundRole).value<bool>();
-
-    bool entityHasOverrides = false, childrenHaveOverrides = false, isSliceEntity = false;
-    {
-        AZ::EntityId entityId(index.data(OutlinerListModel::EntityIdRole).value<AZ::u64>());
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceEntity, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceEntity);
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(entityHasOverrides, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceEntityOverrides);
-        AzToolsFramework::EditorEntityInfoRequestBus::EventResult(childrenHaveOverrides, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::HasSliceChildrenOverrides);
-    }
-    const bool sliceHasOverrides = (entityHasOverrides || childrenHaveOverrides);
+    const int sliceBorderHeight = 1;
 
     // Draw this Slice Handle Accent if the item is not selected before the
     // entry is drawn.
@@ -1920,7 +2717,7 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing);
             QPainterPath path;
-            path.addRoundedRect(backgroundBoxRect, 6, 6);
+            path.addRoundedRect(backgroundBoxRect, slicePillCornerRadius, slicePillCornerRadius);
             QPen pen(sliceRootBorderColor, 1);
             painter->setPen(pen);
             painter->fillPath(path, sliceRootBackgroundColor);
@@ -1934,7 +2731,7 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
             && index.data(OutlinerListModel::ChildSelectedRole).template value<bool>())
         {
             QPainterPath path;
-            path.addRoundedRect(backgroundBoxRect, 6, 6);
+            path.addRoundedRect(backgroundBoxRect, slicePillCornerRadius, slicePillCornerRadius);
 
             // Get the foreground color of the current object to draw our sub-object-selected box
             auto targetColor = index.data(Qt::ForegroundRole).value<QBrush>().color();
@@ -1957,6 +2754,22 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
             painter->restore();
         }
     }
+    else
+    {
+        //draw slice root background
+        if (isSliceRoot)
+        {
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing);
+            QPainterPath path;
+            path.addRoundedRect(backgroundBoxRect, 4, 4);
+            QPen pen(selectedSliceRootBorderColor, sliceBorderHeight);
+            painter->setPen(pen);
+            painter->fillPath(path, selectedSliceRootBackgroundColor);
+            painter->drawPath(path);
+            painter->restore();
+        }
+    }
 
     if (index.column() == OutlinerListModel::ColumnName)
     {
@@ -1967,9 +2780,45 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
 
         QStyleOptionViewItemV4 optionV4{ customOptions };
         initStyleOption(&optionV4, index);
-
+        optionV4.state &= ~(QStyle::State_HasFocus | QStyle::State_Selected);
+     
         // get the rich text and save for later
-        QString richText = optionV4.text;
+
+        QString layerInfoString = GetLayerInfoString(entityId);
+
+        QRect textRect = optionV4.widget->style()->proxy()->subElementRect(QStyle::SE_ItemViewItemText, &optionV4);
+
+        QRegularExpression htmlMarkupRegex("<[^>]*>");
+
+        // Start with the raw rich text for the entity name.
+        QString entityNameRichText = optionV4.text;
+
+        // If there is any HTML markup in the entity name, don't elide.
+        if (!htmlMarkupRegex.match(entityNameRichText).hasMatch())
+        {
+            QFontMetrics fontMetrics(optionV4.font);
+            int textWidthAvailable = textRect.width();
+            // Qt uses "..." for elide, but there doesn't seem to be a way to retrieve this exact string from Qt.
+            // Subtract the elide string from the width available, so it can actually appear.
+            textWidthAvailable -= fontMetrics.width(QObject::tr("..."));
+            if (!layerInfoString.isEmpty())
+            {
+                // The layer info string includes HTML markup, which can cause an issue computing the width.
+                // The markup on the layer text is light (just color for now, may include italic or bold later), so 
+                // an approximate width is computed by taking the width of the non-HTML portion of the string and padding it a bit.
+                QString htmlStripped = layerInfoString;
+                htmlStripped.remove(htmlMarkupRegex);
+                const float layerInfoPadding = 1.2;
+                textWidthAvailable -= fontMetrics.width(htmlStripped) * layerInfoPadding;
+            }
+
+            entityNameRichText = fontMetrics.elidedText(optionV4.text, Qt::TextElideMode::ElideRight, textWidthAvailable);
+        }
+
+        if (!layerInfoString.isEmpty())
+        {
+            entityNameRichText = QObject::tr("%1%2").arg(entityNameRichText).arg(layerInfoString);
+        }
 
         // delete the text from the item so we can use the standard painter to draw the icon
         optionV4.text.clear();
@@ -1978,10 +2827,10 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
         // Now we setup a Text Document so it can draw the rich text
         QTextDocument textDoc;
         textDoc.setDefaultFont(optionV4.font);
-        textDoc.setDefaultStyleSheet("body {color: " + optionV4.palette.color(QPalette::Text).name() + "}");
-        textDoc.setHtml("<body>" + richText + "</body>");
-        QRect textRect = optionV4.widget->style()->proxy()->subElementRect(QStyle::SE_ItemViewItemText, &optionV4);
-        painter->translate(textRect.topLeft());
+        textDoc.setDefaultStyleSheet("body {color: white}");
+        textDoc.setHtml("<body>" + entityNameRichText + "</body>");
+        int verticalOffset = GetEntityNameVerticalOffset(entityId);
+        painter->translate(textRect.topLeft() + QPoint(0, verticalOffset));
         textDoc.setTextWidth(textRect.width());
         textDoc.drawContents(painter, QRectF(0, 0, textRect.width(), textRect.height()));
 
@@ -1991,20 +2840,6 @@ void OutlinerItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& 
     else
     {
         QStyledItemDelegate::paint(painter, customOptions, index);
-    }
-    // if so work out where the matched text is and a pply a highlight overlay
-    // Draw this Slice Handle Accent if the item is selected after the entry is drawn.
-    if (isSelected && isSliceRoot)
-    {
-        painter->save();
-        painter->setRenderHint(QPainter::Antialiasing);
-        QPainterPath path;
-        path.addRoundedRect(backgroundBoxRect, 6, 6);
-        QPen pen(selectedSliceRootBorderColor, 1);
-        painter->setPen(pen);
-        painter->fillPath(path, selectedSliceRootBackgroundColor);
-        painter->drawPath(path);
-        painter->restore();
     }
 }
 

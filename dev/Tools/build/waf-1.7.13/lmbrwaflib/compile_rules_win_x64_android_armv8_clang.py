@@ -9,10 +9,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 import os, sys
-from waflib import Logs
+
+from compile_settings_android_clang import load_android_clang_toolchains
+
 from waflib.Configure import conf
 
 
+################################################################
 ################################################################
 @conf
 def get_android_armv8_clang_target_abi(conf):
@@ -20,58 +23,15 @@ def get_android_armv8_clang_target_abi(conf):
 
 
 ################################################################
+################################################################
 @conf
 def load_win_x64_android_armv8_clang_common_settings(conf):
     """
     Setup all compiler and linker settings shared over all win_x64_android_armv8_clang configurations
     """
-    env = conf.env
-
-    # load the toolchains
-    ndk_root = env['ANDROID_NDK_HOME']
-
-    gcc_toolchain_root = os.path.join(ndk_root, 'toolchains', 'aarch64-linux-android-4.9', 'prebuilt', 'windows-x86_64')
-    gcc_toolchain_path = os.path.join(gcc_toolchain_root, 'bin')
-
-    clang_toolchain_path = os.path.join(ndk_root, 'toolchains', 'llvm', 'prebuilt', 'windows-x86_64', 'bin')
-
-    ndk_toolchains = {
-        'CC'    : 'clang',
-        'CXX'   : 'clang++',
-        'AR'    : 'aarch64-linux-android-ar',
-        'STRIP' : 'aarch64-linux-android-strip',
-    }
-
-    if not conf.load_android_toolchains([clang_toolchain_path, gcc_toolchain_path], **ndk_toolchains):
-        conf.fatal('[ERROR] android_armv8_clang setup failed')
-
-    if not conf.load_android_tools():
-        conf.fatal('[ERROR] android_armv8_clang setup failed')
-
-    # common settings
-    gcc_toolchain = '--gcc-toolchain={}'.format(gcc_toolchain_root)
-    target_arch = '--target=aarch64-none-linux-android' # <arch><sub>-<vendor>-<sys>-<abi>
-
-    common_flags = [
-        gcc_toolchain,
-        target_arch,
-    ]
-
-    env['CFLAGS'] += common_flags[:]
-    env['CXXFLAGS'] += common_flags[:]
-    env['LINKFLAGS'] += common_flags[:]
-
-    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc141')
-    if not os.path.exists(azcg_dir):
-        azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc140')
-    if not os.path.exists(azcg_dir):
-        azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc120')
-    if not os.path.exists(azcg_dir):
-        conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have either VS2013, VS2015, or VS2017 binaries available')
-    env['CODE_GENERATOR_PATH'] = [azcg_dir]
+    load_android_clang_toolchains(conf, 'armv8', 'windows-x86_64')
 
 
-################################################################
 @conf
 def load_debug_win_x64_android_armv8_clang_settings(conf):
     """
@@ -94,7 +54,6 @@ def load_debug_win_x64_android_armv8_clang_settings(conf):
     conf.load_debug_android_clang_settings()
 
 
-################################################################
 @conf
 def load_profile_win_x64_android_armv8_clang_settings(conf):
     """
@@ -117,7 +76,6 @@ def load_profile_win_x64_android_armv8_clang_settings(conf):
     conf.load_profile_android_clang_settings()
 
 
-################################################################
 @conf
 def load_performance_win_x64_android_armv8_clang_settings(conf):
     """
@@ -140,7 +98,6 @@ def load_performance_win_x64_android_armv8_clang_settings(conf):
     conf.load_performance_android_clang_settings()
 
 
-################################################################
 @conf
 def load_release_win_x64_android_armv8_clang_settings(conf):
     """

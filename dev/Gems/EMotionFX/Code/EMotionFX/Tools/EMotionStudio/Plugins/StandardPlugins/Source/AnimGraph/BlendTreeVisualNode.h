@@ -13,10 +13,8 @@
 #pragma once
 
 // include required headers
-#include <MCore/Source/StandardHeaders.h>
-#include "../StandardPluginsConfig.h"
-#include <EMotionFX/Source/AnimGraphNode.h>
-#include "AnimGraphVisualNode.h"
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphVisualNode.h>
 
 
 namespace EMStudio
@@ -36,17 +34,18 @@ namespace EMStudio
             TYPE_ID = 0x00000002
         };
 
-        BlendTreeVisualNode(AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node, bool syncWithEMFX);
+        BlendTreeVisualNode(const QModelIndex& modelIndex, AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node);
         ~BlendTreeVisualNode();
 
-        void SyncWithEMFX();
+        void Sync() override;
         uint32 GetType() const      { return BlendTreeVisualNode::TYPE_ID; }
 
-        void Render(QPainter& painter, QPen* pen, bool renderShadow);
+        void Render(QPainter& painter, QPen* pen, bool renderShadow) override;
 
         int32 CalcRequiredHeight() const;
 
     private:
         QColor GetPortColor(const EMotionFX::AnimGraphNode::Port& port) const;
     };
+
 }   // namespace EMStudio

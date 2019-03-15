@@ -26,6 +26,9 @@
 
 #include <AzCore/std/string/conversions.h>
 
+// Static member definitions
+const Vec2i CCryFont::defaultGlyphSize = Vec2i(ICryFont::defaultGlyphSizeX, ICryFont::defaultGlyphSizeY);
+
 #if !defined(_RELEASE)
 static void DumpFontTexture(IConsoleCmdArgs* pArgs)
 {
@@ -55,6 +58,11 @@ static void DumpFontNames(IConsoleCmdArgs* pArgs)
 {
     string names = gEnv->pCryFont->GetLoadedFontNames();
     gEnv->pLog->LogWithType(IMiniLog::eInputResponse, "Currently loaded fonts: %s", names.c_str());
+}
+
+static void ReloadFonts(IConsoleCmdArgs* pArgs)
+{
+    gEnv->pCryFont->ReloadAllFonts();
 }
 #endif
 
@@ -324,6 +332,9 @@ CCryFont::CCryFont(ISystem* pSystem)
 
     CryLogAlways("Using FreeType %d.%d.%d", FREETYPE_MAJOR, FREETYPE_MINOR, FREETYPE_PATCH);
 
+    // Persist fonts for application lifetime to prevent unnecessary work
+    REGISTER_CVAR(r_persistFontFamilies, r_persistFontFamilies, VF_NULL, "Persist loaded font families for lifetime of application.");
+
 #if !defined(_RELEASE)
     REGISTER_COMMAND("r_DumpFontTexture", DumpFontTexture, 0,
         "Dumps the specified font's texture to a bitmap file\n"
@@ -331,11 +342,16 @@ CCryFont::CCryFont(ISystem* pSystem)
         "Usage: r_DumpFontTexture <fontname>");
     REGISTER_COMMAND("r_DumpFontNames", DumpFontNames, 0,
         "Logs a list of fonts currently loaded");
+    REGISTER_COMMAND("r_ReloadFonts", ReloadFonts, VF_NULL,
+        "Reload all fonts");
 #endif
 }
 
 CCryFont::~CCryFont()
 {
+    // Persist fonts for application lifetime to prevent unnecessary work
+    m_persistedFontFamilies.clear();
+
     for (FontMapItor it = m_fonts.begin(), itEnd = m_fonts.end(); it != itEnd; )
     {
         CFFont* pFont = it->second;
@@ -488,9 +504,9 @@ FontFamilyPtr CCryFont::LoadFontFamily(const char* pFontFamilyName)
                 ReleaseFontFamily(pFontFamily);
             });
 
-            // For "pass-through" fonts, we simply use the filename of the
-            // font XML as the font family name.
-            fontFamily->familyName = PathUtil::GetFileName(pFontFamilyName);
+            // Use filepath as familyName so font loading/unloading doesn't break with duplicate file names
+            fontFamily->familyName = pFontFamilyName;
+
             if (!AddFontFamilyToMaps(pFontFamilyName, fontFamily->familyName, fontFamily))
             {
                 SAFE_RELEASE(pFont);
@@ -514,21 +530,60 @@ FontFamilyPtr CCryFont::LoadFontFamily(const char* pFontFamilyName)
         }
     }
 
+    // Persist fonts for application lifetime to prevent unnecessary work
+    if (r_persistFontFamilies > 0)
+    {
+        m_persistedFontFamilies.emplace_back(FontFamilyPtr(fontFamily));
+    }
+
     return fontFamily;
 }
 
 FontFamilyPtr CCryFont::GetFontFamily(const char* pFontFamilyName)
 {
-    auto it = m_fontFamilies.find(PathUtil::MakeGamePath(string(pFontFamilyName).Trim().MakeLower()).c_str());
-    return it != m_fontFamilies.end() ? FontFamilyPtr(it->second) : FontFamilyPtr(nullptr);
+    FontFamilyPtr fontFamily = nullptr;
+
+    // The given string could either be: a font family name (defined in font
+    // family XML), a file path (for regular fonts mapped as font families),
+    // or just the filename of a font itself. Fonts are mapped by font family
+    // name or by filepath, so attempt lookup using the map first since it's
+    // the fastest.
+    string loweredName = string(pFontFamilyName).Trim().MakeLower();
+    auto it = m_fontFamilies.find(PathUtil::MakeGamePath(loweredName).c_str());
+    if (it != m_fontFamilies.end())
+    {
+        fontFamily = FontFamilyPtr(it->second);
+    }
+    else
+    {
+        // Iterate through all fonts, returning the first match where simply
+        // the filename of a font could be a match. This case will likely be
+        // hit when text markup references a font that doesn't belong to a 
+        // font family.
+        for (const auto& fontFamilyIter : m_fontFamilies)
+        {
+            const AZStd::string& mappedFontFamilyName = fontFamilyIter.first;
+            string mappedFilenameNoExtension = PathUtil::GetFileName(mappedFontFamilyName.c_str());
+
+            string searchStringFilenameNoExtension = PathUtil::GetFileName(loweredName);
+
+            if (mappedFilenameNoExtension == searchStringFilenameNoExtension)
+            {
+                fontFamily = FontFamilyPtr(fontFamilyIter.second);
+                break;
+            }
+        }
+    }
+
+    return fontFamily;
 }
 
-void CCryFont::AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars)
+void CCryFont::AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars, int glyphSizeX, int glyphSizeY)
 {
-    pFontFamily->normal->AddCharsToFontTexture(pChars);
-    pFontFamily->bold->AddCharsToFontTexture(pChars);
-    pFontFamily->italic->AddCharsToFontTexture(pChars);
-    pFontFamily->boldItalic->AddCharsToFontTexture(pChars);
+    pFontFamily->normal->AddCharsToFontTexture(pChars, glyphSizeX, glyphSizeY);
+    pFontFamily->bold->AddCharsToFontTexture(pChars, glyphSizeX, glyphSizeY);
+    pFontFamily->italic->AddCharsToFontTexture(pChars, glyphSizeX, glyphSizeY);
+    pFontFamily->boldItalic->AddCharsToFontTexture(pChars, glyphSizeX, glyphSizeY);
 }
 
 void CCryFont::SetRendererProperties(IRenderer* pRenderer)
@@ -577,6 +632,9 @@ void CCryFont::OnLanguageChanged()
 
 void CCryFont::ReloadAllFonts()
 {
+    // Persist fonts for application lifetime to prevent unnecessary work
+    m_persistedFontFamilies.clear();
+
     AZStd::list<AZStd::string> fontFamilyFilenames;
     AZStd::list<FontFamily*> fontFamilyWeakPtrs;
 

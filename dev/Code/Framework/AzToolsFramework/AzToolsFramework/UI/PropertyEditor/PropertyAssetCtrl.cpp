@@ -443,6 +443,13 @@ namespace AzToolsFramework
         });
     }
 
+    void PropertyAssetCtrl::ClearAssetInternal()
+    {
+        SetCurrentAssetHint(AZStd::string());
+        SetCurrentAssetID(AZ::Data::AssetId());
+        EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
+    }
+
     void PropertyAssetCtrl::SourceFileChanged(AZStd::string /*relativePath*/, AZStd::string /*scanFolder*/, AZ::Uuid sourceUUID)
     {
         if (GetCurrentAssetID().m_guid == sourceUUID)
@@ -580,28 +587,39 @@ namespace AzToolsFramework
         AZ_Assert(m_currentAssetType != AZ::Data::s_invalidAssetType, "No asset type was assigned.");
 
         // Request the AssetBrowser Dialog and set a type filter
-        AssetSelectionModel selection = AssetSelectionModel::AssetTypeSelection(GetCurrentAssetType());
+        AssetSelectionModel selection = GetAssetSelectionModel();
         selection.SetSelectedAssetId(m_currentAssetID);
         EditorRequests::Bus::Broadcast(&EditorRequests::BrowseForAssets, selection);
         if (selection.IsValid())
         {
             auto product = azrtti_cast<const ProductAssetBrowserEntry*>(selection.GetResult());
-            AZ_Assert(product, "Incorrect entry type selected. Expected product.");
-            SetCurrentAssetID(product->GetAssetId());
+            auto folder = azrtti_cast<const FolderAssetBrowserEntry*>(selection.GetResult());
+            AZ_Assert(product || folder, "Incorrect entry type selected. Expected product or folder.");
+            if (product)
+            {
+                SetCurrentAssetID(product->GetAssetId());
+            }
+            else if (folder)
+            {
+                SetFolderSelection(folder->GetRelativePath());
+                SetCurrentAssetID(AZ::Data::AssetId());
+            }
         }
     }
 
     void PropertyAssetCtrl::ClearAsset()
     {
-        SetCurrentAssetHint(AZStd::string());
-        SetCurrentAssetID(AZ::Data::AssetId());
-        EBUS_EVENT(ToolsApplicationEvents::Bus, InvalidatePropertyDisplay, Refresh_EntireTree);
+        ClearAssetInternal();
     }
 
 
     void PropertyAssetCtrl::SetCurrentAssetID(const AZ::Data::AssetId& newID)
     {
-        if (m_currentAssetID == newID)
+        // Early out if we're attempting to set the same asset ID unless the
+        // asset is a folder. Folders don't have an asset ID, so we bypass
+        // the early-out for folder selections. See PropertyHandlerDirectory.
+        const bool isFolderSelection = !GetFolderSelection().empty();
+        if (m_currentAssetID == newID && !isFolderSelection)
         {
             return;
         }
@@ -669,7 +687,7 @@ namespace AzToolsFramework
         }
 
         AZ::Outcome<AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
-        AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, GetCurrentAssetID(), false);
+        AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, GetCurrentAssetID(), false, false);
 
         if (jobOutcome.IsSuccess())
         {

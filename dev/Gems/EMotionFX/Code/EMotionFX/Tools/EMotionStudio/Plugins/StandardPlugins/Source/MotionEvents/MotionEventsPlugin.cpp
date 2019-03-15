@@ -11,12 +11,14 @@
 */
 
 #include "MotionEventsPlugin.h"
+#include "../TimeView/TrackDataWidget.h"
 #include "../TimeView/TrackHeaderWidget.h"
 #include <MCore/Source/LogManager.h>
 #include "../../../../EMStudioSDK/Source/EMStudioManager.h"
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <EMotionFX/Source/MotionEventTrack.h>
 #include <EMotionFX/Source/MotionEventTable.h>
+#include <EMotionFX/CommandSystem/Source/MotionEventCommands.h>
 #include <QLabel>
 #include <QShortcut>
 #include <QPushButton>
@@ -27,18 +29,19 @@ namespace EMStudio
 {
     MotionEventsPlugin::MotionEventsPlugin()
         : EMStudio::DockWidgetPlugin()
-        , mDialogStack(nullptr)
         , mAdjustMotionCallback(nullptr)
         , mSelectCallback(nullptr)
         , mUnselectCallback(nullptr)
         , mClearSelectionCallback(nullptr)
+        , mDialogStack(nullptr)
+        , mMotionEventPresetsWidget(nullptr)
+        , mMotionEventWidget(nullptr)
+        , mMotionTable(nullptr)
         , mTimeViewPlugin(nullptr)
+        , mTrackHeaderWidget(nullptr)
         , mTrackDataWidget(nullptr)
         , mMotionWindowPlugin(nullptr)
         , mMotionListWindow(nullptr)
-        , mMotionTable(nullptr)
-        , mMotionEventWidget(nullptr)
-        , mTrackHeaderWidget(nullptr)
         , mMotion(nullptr)
     {
     }
@@ -56,6 +59,12 @@ namespace EMStudio
         delete mClearSelectionCallback;
     }
 
+
+    void MotionEventsPlugin::Reflect(AZ::ReflectContext* context)
+    {
+        MotionEventPreset::Reflect(context);
+        MotionEventPresetManager::Reflect(context);
+    }
 
     // clone the log window
     EMStudioPlugin* MotionEventsPlugin::Clone()
@@ -82,6 +91,9 @@ namespace EMStudio
     // init after the parent dock window has been created
     bool MotionEventsPlugin::Init()
     {
+        GetEventPresetManager()->LoadFromSettings();
+        GetEventPresetManager()->Load();
+
         // create callbacks
         mAdjustMotionCallback = new CommandAdjustMotionCallback(false);
         mSelectCallback = new CommandSelectCallback(false);
@@ -100,11 +112,11 @@ namespace EMStudio
         // create the motion event presets widget
         mMotionEventPresetsWidget = new MotionEventPresetsWidget(mDialogStack, this);
         mDialogStack->Add(mMotionEventPresetsWidget, "Motion Event Presets", false, true);
-        connect(mDock, SIGNAL(visibilityChanged(bool)), this, SLOT(WindowReInit(bool)));
+        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &MotionEventsPlugin::WindowReInit);
 
         // create the motion event properties widget
         mMotionEventWidget = new MotionEventWidget(mDialogStack);
-        mDialogStack->Add(mMotionEventWidget, "Motion Event Properties");
+        mDialogStack->Add(mMotionEventWidget, "Motion Event Properties", false, true);
 
         ValidatePluginLinks();
         UpdateMotionEventWidget();
@@ -124,9 +136,9 @@ namespace EMStudio
                 mTrackDataWidget    = mTimeViewPlugin->GetTrackDataWidget();
                 mTrackHeaderWidget  = mTimeViewPlugin->GetTrackHeaderWidget();
 
-                connect((QWidget*)mTrackDataWidget, SIGNAL(MotionEventPresetsDropped(QPoint)), this, SLOT(OnEventPresetDropped(QPoint)));
-                connect(mTimeViewPlugin, SIGNAL(SelectionChanged()), this, SLOT(UpdateMotionEventWidget()));
-                connect(this, SIGNAL(OnColorChanged()), mTimeViewPlugin, SLOT(ReInit()));
+                connect(mTrackDataWidget, &TrackDataWidget::MotionEventPresetsDropped, this, &MotionEventsPlugin::OnEventPresetDropped);
+                connect(mTimeViewPlugin, &TimeViewPlugin::SelectionChanged, this, &MotionEventsPlugin::UpdateMotionEventWidget);
+                connect(this, &MotionEventsPlugin::OnColorChanged, mTimeViewPlugin, &TimeViewPlugin::ReInit);
             }
         }
 
@@ -138,12 +150,9 @@ namespace EMStudio
                 mMotionWindowPlugin = (MotionWindowPlugin*)motionBasePlugin;
                 mMotionListWindow   = mMotionWindowPlugin->GetMotionListWindow();
 
-                connect(mMotionListWindow, SIGNAL(MotionSelectionChanged()), this, SLOT(MotionSelectionChanged()));
+                connect(mMotionListWindow, &MotionListWindow::MotionSelectionChanged, this, &MotionEventsPlugin::MotionSelectionChanged);
             }
         }
-
-        // in case one motion is selected
-        MotionSelectionChanged();
     }
 
 
@@ -231,19 +240,23 @@ namespace EMStudio
         }
 
         // get the number of motion event presets and iterate through them
-        const uint32 numRows = eventPresetsTable->rowCount();
-        for (uint32 i = 0; i < numRows; ++i)
+        const size_t numRows = EMStudio::GetEventPresetManager()->GetNumPresets();
+        AZStd::string result;
+        for (size_t i = 0; i < numRows; ++i)
         {
-            QTableWidgetItem* itemType      = eventPresetsTable->item(i, 1);
-            QTableWidgetItem* itemParameter = eventPresetsTable->item(i, 2);
-            QTableWidgetItem* itemMirror    = eventPresetsTable->item(i, 3);
+            const MotionEventPreset* preset = EMStudio::GetEventPresetManager()->GetPreset(i);
+            QTableWidgetItem* itemName = eventPresetsTable->item(static_cast<int>(i), 1);
 
-            if (itemType->isSelected())
+            if (itemName->isSelected())
             {
-                const AZStd::string command = AZStd::string::format("CreateMotionEvent -motionID %i -eventTrackName \"%s\" -startTime %f -endTime %f -eventType \"%s\" -parameters \"%s\" -mirrorType \"%s\"", mMotion->GetID(), eventTrack->GetName(), dropTimeInSeconds, dropTimeInSeconds, itemType->text().toUtf8().data(), itemParameter->text().toUtf8().data(), itemMirror->text().toUtf8().data());
+                CommandSystem::CommandCreateMotionEvent* createMotionEventCommand = aznew CommandSystem::CommandCreateMotionEvent();
+                createMotionEventCommand->SetMotionID(mMotion->GetID());
+                createMotionEventCommand->SetEventTrackName(eventTrack->GetName());
+                createMotionEventCommand->SetStartTime(dropTimeInSeconds);
+                createMotionEventCommand->SetEndTime(dropTimeInSeconds);
+                createMotionEventCommand->SetEventDatas(preset->GetEventDatas());
 
-                AZStd::string result;
-                if (!EMStudio::GetCommandManager()->ExecuteCommand(command, result))
+                if (!EMStudio::GetCommandManager()->ExecuteCommand(createMotionEventCommand, result))
                 {
                     AZ_Error("EMotionFX", false, result.c_str());
                 }
@@ -262,12 +275,12 @@ namespace EMStudio
         mTimeViewPlugin->UpdateSelection();
         if (mTimeViewPlugin->GetNumSelectedEvents() != 1)
         {
-            mMotionEventWidget->ReInit(nullptr, nullptr, nullptr, MCORE_INVALIDINDEX32);
+            mMotionEventWidget->ReInit();
         }
         else
         {
             EventSelectionItem selectionItem = mTimeViewPlugin->GetSelectedEvent(0);
-            mMotionEventWidget->ReInit(selectionItem.mMotion, selectionItem.GetEventTrack(), selectionItem.GetMotionEvent(), selectionItem.mEventNr);
+            mMotionEventWidget->ReInit(selectionItem.mMotion, selectionItem.GetMotionEvent());
         }
     }
 

@@ -51,7 +51,7 @@ namespace MCore
      * But, does it first rotate and then translate in the rotated space? Or does it first translate and then rotate?
      * For example if you want to rotate a planet, while it's moving, you want to rotate it in it's local coordinate system. Like when you spin
      * a globe you can have on your desk. So where it spins around it's own center. However, if the planet is at location (10,10,10) in 3D space for example
-     * it is also possible that rotates around the origin in global space (0,0,0). The order of multiplication between matrices matters.
+     * it is also possible that rotates around the origin in world space (0,0,0). The order of multiplication between matrices matters.
      * This means that (matrixA * matrixB) does not have to not result in the same as (matrixB * matrixA).
      *
      * Here is some information about how the matrices are stored internally:

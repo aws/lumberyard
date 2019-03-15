@@ -11,6 +11,7 @@
 */
 #include "LmbrCentral_precompiled.h"
 #include "PhysicsComponent.h"
+#include <AzFramework/Physics/RigidBody.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Transform.h>
@@ -27,29 +28,6 @@ namespace LmbrCentral
 
     extern bool PhysicsComponentV1Converter(AZ::SerializeContext&, AZ::SerializeContext::DataElementNode&);
 
-    class PhysicsComponentNotificationBusHandler
-        : public PhysicsComponentNotificationBus::Handler
-        , public AZ::BehaviorEBusHandler
-    {
-    public:
-        AZ_EBUS_BEHAVIOR_BINDER_WITH_DOC(PhysicsComponentNotificationBusHandler, "{245B5B85-533C-4A5E-B1DC-F06CAD896D37}", AZ::SystemAllocator, OnPhysicsEnabled, (), OnPhysicsDisabled, (), OnCollision, ({"Collision", "Structure containing information about Collision"}));
-
-        void OnPhysicsEnabled() override
-        {
-            Call(FN_OnPhysicsEnabled);
-        }
-
-        void OnPhysicsDisabled() override
-        {
-            Call(FN_OnPhysicsDisabled);
-        }
-
-        void OnCollision(const Collision& collision) override
-        {
-            Call(FN_OnCollision, collision);
-        }
-    };
-
     void PhysicsComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -63,9 +41,18 @@ namespace LmbrCentral
                 ->Version(2)
             ;
 
+            using CollisionPoint = AzFramework::PhysicsComponentNotifications::CollisionPoint;
+            serializeContext->Class<CollisionPoint>()
+                ->Field("position", &CollisionPoint::m_position)
+                ->Field("normal", &CollisionPoint::m_normal)
+                ->Field("separation", &CollisionPoint::m_separation)
+                ;
+
             using Collision = AzFramework::PhysicsComponentNotifications::Collision;
             serializeContext->Class<Collision>()
                 ->Field("entity", &Collision::m_entity)
+                ->Field("collisionPoints", &Collision::m_collisionPoints)
+                ->Field("eventType", &Collision::m_eventType)
                 ->Field("position", &Collision::m_position)
                 ->Field("normal", &Collision::m_normal)
                 ->Field("impulse", &Collision::m_impulse)
@@ -76,11 +63,26 @@ namespace LmbrCentral
         }
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
+            using CollisionPoint = AzFramework::PhysicsComponentNotifications::CollisionPoint;
+            behaviorContext->Class<CollisionPoint>()
+                ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Property("position", BehaviorValueProperty(&CollisionPoint::m_position))
+                ->Property("normal", BehaviorValueProperty(&CollisionPoint::m_normal))
+                ->Property("impulse", BehaviorValueProperty(&CollisionPoint::m_impulse))
+                ->Property("faceIndex01", BehaviorValueProperty(&CollisionPoint::m_internalFaceIndex01))
+                ->Property("faceIndex02", BehaviorValueProperty(&CollisionPoint::m_internalFaceIndex02))
+                ->Property("separation", BehaviorValueProperty(&CollisionPoint::m_separation));
+
             using Collision = AzFramework::PhysicsComponentNotifications::Collision;
             // Info about a collision event
             behaviorContext->Class<Collision>()
                 ->Attribute(AZ::Script::Attributes::Storage, AZ::Script::Attributes::StorageType::Value)
+                ->Enum<int(Collision::ECollisionEventType::CollisionBegin)>("CollisionBegin")
+                ->Enum<int(Collision::ECollisionEventType::CollisionPersist)>("CollisionPersist")
+                ->Enum<int(Collision::ECollisionEventType::CollisionExit)>("CollisionExit")
                 ->Property("entity", BehaviorValueProperty(&Collision::m_entity))
+                ->Property("collisionPoints", BehaviorValueProperty(&Collision::m_collisionPoints))
+                ->Property("eventType", [](Collision* thisPtr) { return thisPtr->m_eventType; }, nullptr)
                 ->Property("position", BehaviorValueProperty(&Collision::m_position))
                 ->Property("normal", BehaviorValueProperty(&Collision::m_normal))
                 ->Property("impulse", BehaviorValueProperty(&Collision::m_impulse))
@@ -104,8 +106,15 @@ namespace LmbrCentral
                 ->Event("SetMass", &PhysicsComponentRequestBus::Events::SetMass)
                 ->Event("GetLinearDamping", &PhysicsComponentRequestBus::Events::GetLinearDamping)
                 ->Event("SetLinearDamping", &PhysicsComponentRequestBus::Events::SetLinearDamping)
+                ->Event("GetAngularDamping", &PhysicsComponentRequestBus::Events::GetAngularDamping)
+                ->Event("SetAngularDamping", &PhysicsComponentRequestBus::Events::SetAngularDamping)
                 ->Event("GetSleepThreshold", &PhysicsComponentRequestBus::Events::GetSleepThreshold)
                 ->Event("SetSleepThreshold", &PhysicsComponentRequestBus::Events::SetSleepThreshold)
+                ->Event("IsAwake", &PhysicsComponentRequestBus::Events::IsAwake)
+                ->Event("ForceAwake", &PhysicsComponentRequestBus::Events::ForceAwake)
+                ->Event("ForceAsleep", &PhysicsComponentRequestBus::Events::ForceAsleep)
+                ->Event("GetAabb", &PhysicsComponentRequestBus::Events::GetAabb)
+                ->Event("GetRigidBody", &PhysicsComponentRequestBus::Events::GetRigidBody)
                  
                  // Deprecated methods
                 ->Event("GetDamping", &PhysicsComponentRequestBus::Events::GetDamping)
@@ -139,8 +148,8 @@ namespace LmbrCentral
                 ->Event("SetWaterResistance", &CryPhysicsComponentRequestBus::Events::SetWaterResistance)
                 ;
 
-            behaviorContext->EBus<PhysicsComponentNotificationBus>("PhysicsComponentNotificationBus")
-                ->Handler<PhysicsComponentNotificationBusHandler>()
+            behaviorContext->EBus<AzFramework::PhysicsComponentNotificationBus>("PhysicsComponentNotificationBus")
+                ->Handler<AzFramework::PhysicsComponentNotificationBusHandler>()
                 ;
         }
     }
@@ -492,6 +501,26 @@ namespace LmbrCentral
 
         return result;
     }
+    
+    bool PhysicsComponent::IsAwake() const
+    {
+        pe_status_awake awakeStatus;
+        return m_physicalEntity->GetStatus(&awakeStatus) != 0;
+    }
+
+    void PhysicsComponent::ForceAwake()
+    {
+        pe_action_awake action_awake;
+        action_awake.bAwake = true;
+        m_physicalEntity->Action(&action_awake);
+    }
+
+    void PhysicsComponent::ForceAsleep()
+    {
+        pe_action_awake action_awake;
+        action_awake.bAwake = false;
+        m_physicalEntity->Action(&action_awake);
+    }
 
     void PhysicsComponent::EnablePhysics()
     {
@@ -618,6 +647,11 @@ namespace LmbrCentral
         {
             m_physicalEntity->Action(&action, threadSafe ? 1 : 0);
         }
+    }
+
+    bool PhysicsComponent::IsPhysicsFullyEnabled()
+    {
+        return m_isPhysicsFullyEnabled;
     }
 
     void PhysicsComponent::AddCollidersFromEntityAndDescendants(const AZ::EntityId& rootEntityId)

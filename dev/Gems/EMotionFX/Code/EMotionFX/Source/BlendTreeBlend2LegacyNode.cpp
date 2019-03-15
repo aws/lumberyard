@@ -127,13 +127,11 @@ namespace EMotionFX
             OutputFeathering(animGraphInstance, uniqueData);
         }
 
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             AnimGraphPose* outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 
@@ -245,9 +243,9 @@ namespace EMotionFX
                 {
                     const float finalWeight = blendWeight /* * uniqueData->mWeights[n]*/;
                     const uint32 nodeIndex = uniqueData->mMask[n];
-                    transform = outputLocalPose.GetLocalTransform(nodeIndex);
-                    transform.Blend(localMaskPose.GetLocalTransform(nodeIndex), finalWeight);
-                    outputLocalPose.SetLocalTransform(nodeIndex, transform);
+                    transform = outputLocalPose.GetLocalSpaceTransform(nodeIndex);
+                    transform.Blend(localMaskPose.GetLocalSpaceTransform(nodeIndex), finalWeight);
+                    outputLocalPose.SetLocalSpaceTransform(nodeIndex, transform);
                 }
             }
             else
@@ -258,9 +256,9 @@ namespace EMotionFX
                 {
                     const float finalWeight = blendWeight /* * uniqueData->mWeights[n]*/;
                     const uint32 nodeIndex = uniqueData->mMask[n];
-                    transform = outputLocalPose.GetLocalTransform(nodeIndex);
-                    transform.BlendAdditive(localMaskPose.GetLocalTransform(nodeIndex), bindPose->GetLocalTransform(nodeIndex), finalWeight);
-                    outputLocalPose.SetLocalTransform(nodeIndex, transform);
+                    transform = outputLocalPose.GetLocalSpaceTransform(nodeIndex);
+                    transform.BlendAdditive(localMaskPose.GetLocalSpaceTransform(nodeIndex), bindPose->GetLocalSpaceTransform(nodeIndex), finalWeight);
+                    outputLocalPose.SetLocalSpaceTransform(nodeIndex, transform);
                 }
             }
         }
@@ -287,7 +285,7 @@ namespace EMotionFX
         else
         {
             const Pose* bindPose = actorInstance->GetTransformData()->GetBindPose();
-            const Transform bindTransform = bindPose->GetLocalTransform(actor->GetMotionExtractionNodeIndex());
+            const Transform bindTransform = bindPose->GetLocalSpaceTransform(actor->GetMotionExtractionNodeIndex());
             CalculateMotionExtractionDeltaAdditive(m_extractionMode, nodeAData, nodeBData, bindTransform, weight, hasMotionExtractionNodeInMask, delta, deltaMirrored);
         }
 
@@ -476,22 +474,22 @@ namespace EMotionFX
 
 
     void BlendTreeBlend2LegacyNode::SetAdditiveBlending(bool additiveBlending)
-    { 
+    {
         m_additiveBlending = additiveBlending;
     }
-    
-    
+
+
     bool BlendTreeBlend2LegacyNode::GetAdditiveBlending() const
-    { 
+    {
         return m_additiveBlending;
     }
-    
+
     bool BlendTreeBlend2LegacyNodeConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode)
     {
         if (rootElementNode.GetVersion() < 3)
         {
             // Changed base class from AnimGraphNode to BlendTreeBlend2NodeBase
-            int currentBaseClass1Index = rootElementNode.FindElement(AZ_CRC("BaseClass1", 0xd4925735));
+            const int currentBaseClass1Index = rootElementNode.FindElement(AZ_CRC("BaseClass1", 0xd4925735));
             if (currentBaseClass1Index >= 0)
             {
                 // If AnimGraphNode is the BaseClass1, move it to be a child of BlendTreeBlend2NodeBase
@@ -501,24 +499,23 @@ namespace EMotionFX
                     // Create a copy so we can remove it before creating a new one with a different type
                     AZ::SerializeContext::DataElementNode currentBaseClass1Copy = currentBaseClass1;
                     rootElementNode.RemoveElement(currentBaseClass1Index);
-                    int newBaseClass1Index = rootElementNode.AddElement(serializeContext, "BaseClass1", azrtti_typeid<BlendTreeBlend2NodeBase>());
+                    const int newBaseClass1Index = rootElementNode.AddElement(serializeContext, "BaseClass1", azrtti_typeid<BlendTreeBlend2NodeBase>());
 
                     AZ::SerializeContext::DataElementNode& newBaseClass1 = rootElementNode.GetSubElement(newBaseClass1Index);
                     newBaseClass1.AddElement(currentBaseClass1Copy);
-                   
+
                     // Move the members: syncMode, eventMode, extractionMode and mask to the newBaseClass1
                     static const AZStd::vector<AZ::u32> membersToMove = { AZ_CRC("syncMode", 0x64ef27e2), AZ_CRC("eventMode", 0xcb6e9b82), AZ_CRC("extractionMode", 0xbce1ceb4), AZ_CRC("mask", 0x7f6fc330) };
-                    
+
                     for (const AZ::u32 member : membersToMove)
                     {
-                        int currentMemberIndex = rootElementNode.FindElement(member);
+                        const int currentMemberIndex = rootElementNode.FindElement(member);
                         if (currentMemberIndex >= 0)
                         {
                             newBaseClass1.AddElement(rootElementNode.GetSubElement(currentMemberIndex));
                             rootElementNode.RemoveElement(currentMemberIndex);
                         }
                     }
-                    
                 }
             }
 

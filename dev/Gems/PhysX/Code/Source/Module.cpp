@@ -13,67 +13,86 @@
 #include <PhysX_precompiled.h>
 
 #include <AzCore/Module/Module.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 
-#if defined(PHYSX_WIN)
-#include <PhysXSystemComponent.h>
-#include <PhysXRigidBodyComponent.h>
-#include <PhysXColliderComponent.h>
-#include <PhysXMeshShapeComponent.h>
-#include <PhysXTriggerAreaComponent.h>
-#endif // defined(PHYSX_WIN)
+#include <Source/SystemComponent.h>
+#include <Source/TerrainComponent.h>
+#include <Source/RigidBodyComponent.h>
+#include <Source/BaseColliderComponent.h>
+#include <Source/MeshColliderComponent.h>
+#include <Source/BoxColliderComponent.h>
+#include <Source/SphereColliderComponent.h>
+#include <Source/CapsuleColliderComponent.h>
 
-#if defined(PHYSX_EDITOR_WIN)
-#include <EditorPhysXRigidBodyComponent.h>
-#include <Pipeline/PhysXMeshExporter.h>
-#include <Pipeline/PhysXMeshBehavior.h>
+#if defined(PHYSX_EDITOR)
+#include <Source/EditorSystemComponent.h>
+#include <Source/EditorTerrainComponent.h>
+#include <Source/EditorRigidBodyComponent.h>
+#include <Source/EditorColliderComponent.h>
+#include <Source/Pipeline/MeshExporter.h>
+#include <Source/Pipeline/MeshBehavior.h>
+#include <Source/Pipeline/CgfMeshBuilder/CgfMeshAssetBuilderComponent.h>
 #include <AzCore/Module/DynamicModuleHandle.h>
-#endif // defined(PHYSX_EDITOR_WIN)
+#endif // defined(PHYSX_EDITOR)
 
 namespace PhysX
 {
-    class PhysXModule
+    class Module
         : public AZ::Module
     {
     public:
-        AZ_RTTI(PhysXModule, "{160C59B1-FA68-4CDC-8562-D1204AB78FC1}", Module);
+        AZ_RTTI(PhysX::Module, "{160C59B1-FA68-4CDC-8562-D1204AB78FC1}", AZ::Module);
 
-        PhysXModule()
+        Module()
         {
-#if defined(PHYSX_EDITOR_WIN)
+#if defined(PHYSX_EDITOR)
             m_sceneCoreModule = AZ::DynamicModuleHandle::Create("SceneCore");
             m_sceneCoreModule->Load(true);
-#endif // defined(PHYSX_EDITOR_WIN)
+#endif // defined(PHYSX_EDITOR)
+
+            SystemComponent::InitializePhysXSDK();
             m_descriptors.insert(m_descriptors.end(), {
-#if defined(PHYSX_WIN)
-                    PhysXSystemComponent::CreateDescriptor(),
-                    PhysXRigidBodyComponent::CreateDescriptor(),
-                    PhysXColliderComponent::CreateDescriptor(),
-                    PhysXMeshShapeComponent::CreateDescriptor(),
-                    PhysXTriggerAreaComponent::CreateDescriptor(),
-#endif // defined(PHYSX_WIN)
-#if defined(PHYSX_EDITOR_WIN)
-                    EditorPhysXRigidBodyComponent::CreateDescriptor(),
-                    Pipeline::PhysXMeshExporter::CreateDescriptor(),
-                    Pipeline::PhysXMeshBehavior::CreateDescriptor()
-#endif // defined(PHYSX_EDITOR_WIN)
+                    SystemComponent::CreateDescriptor(),
+                    TerrainComponent::CreateDescriptor(),
+                    RigidBodyComponent::CreateDescriptor(),
+                    BaseColliderComponent::CreateDescriptor(),
+                    MeshColliderComponent::CreateDescriptor(),
+                    BoxColliderComponent::CreateDescriptor(),
+                    SphereColliderComponent::CreateDescriptor(),
+                    CapsuleColliderComponent::CreateDescriptor(),
+#if defined(PHYSX_EDITOR)
+                    EditorSystemComponent::CreateDescriptor(),
+                    EditorTerrainComponent::CreateDescriptor(),
+                    EditorRigidBodyComponent::CreateDescriptor(),
+                    EditorColliderComponent::CreateDescriptor(),
+                    Pipeline::MeshExporter::CreateDescriptor(),
+                    Pipeline::MeshBehavior::CreateDescriptor(),
+                    Pipeline::CgfMeshAssetBuilderComponent::CreateDescriptor()
+#endif // defined(PHYSX_EDITOR)
                 });
+        }
+
+        ~Module()
+        {
+            SystemComponent::DestroyPhysXSDK();
         }
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override
         {
             return AZ::ComponentTypeList{
-#if defined(PHYSX_WIN)
-                azrtti_typeid<PhysXSystemComponent>(),
-#endif // defined(PHYSX_WIN)
+                azrtti_typeid<SystemComponent>()
+#if defined(PHYSX_EDITOR)
+                , azrtti_typeid<EditorSystemComponent>()
+#endif
             };
         }
-#if defined(PHYSX_EDITOR_WIN)
+#if defined(PHYSX_EDITOR)
         AZStd::unique_ptr<AZ::DynamicModuleHandle> m_sceneCoreModule;
-#endif // defined(PHYSX_EDITOR_WIN)
+#endif // defined(PHYSX_EDITOR)
     };
 } // namespace PhysX
 
 // DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM
 // The first parameter should be GemName_GemIdLower
 // The second should be the fully qualified name of the class above
-AZ_DECLARE_MODULE_CLASS(PhysX_4e08125824434932a0fe3717259caa47, PhysX::PhysXModule)
+AZ_DECLARE_MODULE_CLASS(PhysX_4e08125824434932a0fe3717259caa47, PhysX::Module)

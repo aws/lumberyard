@@ -167,7 +167,7 @@ namespace AssetProcessor
             return false;
         }
 
-        SourceDatabaseEntry sourceEntry(scanFolderEntry.m_scanFolderID, sourceRelPath, assetId);
+        SourceDatabaseEntry sourceEntry(scanFolderEntry.m_scanFolderID, sourceRelPath, assetId, "fingerprint");
         dbConn->SetSource(sourceEntry);
 
         JobDatabaseEntry jobEntry(sourceEntry.m_sourceID, "test", 1234, "pc", assetId, AzToolsFramework::AssetSystem::JobStatus::Completed, 12345);

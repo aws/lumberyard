@@ -31,6 +31,8 @@ namespace EMotionFX
          * @param[in] object The object that changed and requests the UI sync.
          */
         virtual MotionSet* GetSelectedMotionSet() { return nullptr; }
+
+        virtual void UpdateMotionSetComboBox() {}
     };
 
     using AnimGraphEditorRequestBus = AZ::EBus<AnimGraphEditorRequests>;
@@ -43,7 +45,6 @@ namespace EMotionFX
         : public AZ::EBusTraits
     {
     public:
-        virtual void UpdateMotionSetComboBox() {}
     };
 
     using AnimGraphEditorNotificationBus = AZ::EBus<AnimGraphEditorNotifications>;

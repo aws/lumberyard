@@ -12,14 +12,10 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "QtHelpers.h"
 
 namespace EntityHelpers
 {
-    AZ::Vector2 QPointFToVec2(const QPointF& other)
-    {
-        return AZ::Vector2(other.x(), other.y());
-    }
-
     AZ::Vector2 RoundXY(const AZ::Vector2& v)
     {
         return AZ::Vector2(roundf(v.GetX()), roundf(v.GetY()));
@@ -72,7 +68,7 @@ namespace EntityHelpers
         // Transform destination position to canvas space
         AZ::Matrix4x4 transformFromViewport;
         EBUS_EVENT_ID(element->GetId(), UiTransformBus, GetTransformFromViewport, transformFromViewport);
-        AZ::Vector2 globalPos2(QPointFToVec2(globalPos));
+        AZ::Vector2 globalPos2(QtHelpers::QPointFToVector2(globalPos));
         AZ::Vector3 destPos3 = transformFromViewport * AZ::Vector3(globalPos2.GetX(), globalPos2.GetY(), 0.0f);
         AZ::Vector2 destPos(destPos3.GetX(), destPos3.GetY());
 
@@ -312,6 +308,172 @@ namespace EntityHelpers
             return (index1 < index2);
         }
 
+    }
+
+    void MoveByLocalDeltaUsingOffsets(AZ::EntityId entityId, AZ::Vector2 deltaInLocalSpace)
+    {
+        // Get the existing offsets and pass them to the version of this function that takes starting offsets
+        UiTransform2dInterface::Offsets offsets;
+        EBUS_EVENT_ID_RESULT(offsets, entityId, UiTransform2dBus, GetOffsets);
+        MoveByLocalDeltaUsingOffsets(entityId, offsets, deltaInLocalSpace);
+    }
+
+    void MoveByLocalDeltaUsingOffsets(AZ::EntityId entityId, const UiTransform2dInterface::Offsets& startingOffsets, AZ::Vector2 deltaInLocalSpace)
+    {
+        // simply add the local space delta to the offsets
+        EBUS_EVENT_ID(entityId, UiTransform2dBus, SetOffsets, startingOffsets + deltaInLocalSpace);
+    }
+
+    AZ::Vector2 MoveByLocalDeltaUsingAnchors(AZ::EntityId entityId, AZ::EntityId parentEntityId, AZ::Vector2 deltaInLocalSpace, bool restrictDirection)
+    {
+        // Get the existing anchors and pass them to the version of this function that takes starting anchors
+        UiTransform2dInterface::Anchors anchors;
+        EBUS_EVENT_ID_RESULT(anchors, entityId, UiTransform2dBus, GetAnchors);
+        return MoveByLocalDeltaUsingAnchors(entityId, parentEntityId, anchors, deltaInLocalSpace, restrictDirection);
+    }
+
+    AZ::Vector2 MoveByLocalDeltaUsingAnchors(AZ::EntityId entityId, AZ::EntityId parentEntityId,
+        const UiTransform2dInterface::Anchors& startingAnchors, AZ::Vector2 deltaInLocalSpace, bool restrictDirection)
+    {
+        UiTransform2dInterface::Anchors anchors = startingAnchors;
+
+        AZ::Vector2 parentSize;
+        EBUS_EVENT_ID_RESULT(parentSize, parentEntityId, UiTransformBus, GetCanvasSpaceSizeNoScaleRotate);
+
+        // compute the anchorDelta in anchor space (0-1) and add to the anchor values
+        AZ::Vector2 anchorDelta(0.0f, 0.0f);
+        const float epsilon = 0.001f;
+        if (parentSize.GetX() > epsilon)
+        {
+            anchorDelta.SetX(deltaInLocalSpace.GetX() / parentSize.GetX());
+            anchors.m_left += anchorDelta.GetX();
+            anchors.m_right += anchorDelta.GetX();
+        }
+        if (parentSize.GetY() > epsilon)
+        {
+            anchorDelta.SetY(deltaInLocalSpace.GetY() / parentSize.GetY());
+            anchors.m_top += anchorDelta.GetY();
+            anchors.m_bottom += anchorDelta.GetY();
+        }
+
+        // Check if the anchors are now out of the 0-1 range and if so move them back along the delta vector
+        // Note that we can't just clamp (both because it doesn't work if the anchors are apart and because we
+        // do not want to change the angle of movement).
+        if (anchors.m_left < 0.0f || anchors.m_right > 1.0f || anchors.m_top < 0.0f || anchors.m_bottom > 1.0f)
+        {
+            // compute the adjustment needed to get the anchors in range
+            AZ::Vector2 adjustment(0.0f, 0.0f);
+            if (anchors.m_left < 0.0f)
+            {
+                adjustment.SetX(0.0f - anchors.m_left);
+            }
+            else if (anchors.m_right > 1.0f)
+            {
+                adjustment.SetX(1.0f - anchors.m_right);
+            }
+
+            if (anchors.m_top < 0.0f)
+            {
+                adjustment.SetY(0.0f - anchors.m_top);
+            }
+            else if (anchors.m_bottom > 1.0f)
+            {
+                adjustment.SetY(1.0f - anchors.m_bottom);
+            }
+
+            // If we are moving only in one axis then there are no issues with sliding along the edge since we must be moving directly
+            // against one anchor limit (edge) only, if we are moving in more than one axis then we have to make sure we adjust back only
+            // along the direction of movement (if restrictDirection is true)
+            if (anchorDelta.GetX() != 0.0f && anchorDelta.GetY() != 0.0f && restrictDirection)
+            {
+                // The adjustment vector as it is would put the anchor on the limit but not respect only moving it along the
+                // deltaInLocalSpace (and therefore anchorDelta) vector.
+                // So we modify the adjustment vector to be co-linear (but in the opposite direction) to anchorDelta.
+                // Because of rounding errors where the anchorDelta vector is very close to the x or y axis we check whether
+                // the x or y component is greater and switch the order of the calculation.
+                float xAdjustAbs = fabsf(adjustment.GetX());
+                float yAdjustAbs = fabsf(adjustment.GetY());
+                if (xAdjustAbs < yAdjustAbs)
+                {
+                    float xAdjustmentToFitY = adjustment.GetY() * anchorDelta.GetX() / anchorDelta.GetY();
+                    if (fabsf(xAdjustmentToFitY) >= xAdjustAbs)
+                    {
+                        adjustment.SetX(xAdjustmentToFitY);
+                    }
+                    else
+                    {
+                        float yAdjustmentToFitX = adjustment.GetX() * anchorDelta.GetY() / anchorDelta.GetX();
+                        adjustment.SetY(yAdjustmentToFitX);
+                    }
+                }
+                else
+                {
+                    float yAdjustmentToFitX = adjustment.GetX() * anchorDelta.GetY() / anchorDelta.GetX();
+                    if (fabsf(yAdjustmentToFitX) >= yAdjustAbs)
+                    {
+                        adjustment.SetY(yAdjustmentToFitX);
+                    }
+                    else
+                    {
+                        float xAdjustmentToFitY = adjustment.GetY() * anchorDelta.GetX() / anchorDelta.GetY();
+                        adjustment.SetX(xAdjustmentToFitY);
+                    }
+                }
+            }
+
+            // apply the adjustment to the anchors so that they stay in bounds
+            anchors.m_left += adjustment.GetX();
+            anchors.m_right += adjustment.GetX();
+            anchors.m_top += adjustment.GetY();
+            anchors.m_bottom += adjustment.GetY();
+
+            // do an extra clamp just in case of rounding errors to ensure the anchor is never even a tiny amount out of range
+            anchors.UnitClamp();
+
+            // we will return the adjusted localTranslation which is the amount we actually moved in local space
+            deltaInLocalSpace.SetX(deltaInLocalSpace.GetX() + adjustment.GetX() * parentSize.GetX());
+            deltaInLocalSpace.SetY(deltaInLocalSpace.GetY() + adjustment.GetY() * parentSize.GetY());
+        }
+
+        EBUS_EVENT_ID(entityId, UiTransform2dBus, SetAnchors, anchors, false, false);
+
+        return deltaInLocalSpace;
+    }
+
+    AZ::Vector2 TransformDeltaFromCanvasToLocalSpace(AZ::EntityId entityId, AZ::Vector2 deltaInCanvasSpace)
+    {
+        AZ::Vector3 deltaInCanvasSpace3(deltaInCanvasSpace.GetX(), deltaInCanvasSpace.GetY(), 0.0f);
+        AZ::Matrix4x4 transform;
+        EBUS_EVENT_ID(entityId, UiTransformBus, GetTransformFromCanvasSpace, transform);
+
+        AZ::Vector3 deltaInLocalSpace3 = transform.Multiply3x3(deltaInCanvasSpace3);
+        AZ::Vector2 deltaInLocalSpace = AZ::Vector2(deltaInLocalSpace3.GetX(), deltaInLocalSpace3.GetY());
+
+        return deltaInLocalSpace;
+    }
+
+    AZ::Vector2 TransformDeltaFromLocalToCanvasSpace(AZ::EntityId entityId, AZ::Vector2 deltaInLocalSpace)
+    {
+        AZ::Vector3 deltaInLocalSpace3(deltaInLocalSpace.GetX(), deltaInLocalSpace.GetY(), 0.0f);
+        AZ::Matrix4x4 transform;
+        EBUS_EVENT_ID(entityId, UiTransformBus, GetTransformToCanvasSpace, transform);
+
+        AZ::Vector3 deltaInCanvasSpace3 = transform.Multiply3x3(deltaInLocalSpace3);
+        AZ::Vector2 deltaInCanvasSpace = AZ::Vector2(deltaInCanvasSpace3.GetX(), deltaInCanvasSpace3.GetY());
+
+        return deltaInCanvasSpace;
+    }
+
+    AZ::Vector2 TransformDeltaFromViewportToCanvasSpace(AZ::EntityId canvasEntityId, AZ::Vector2 deltaInViewportSpace)
+    {
+        AZ::Vector3 deltaInViewportSpace3(deltaInViewportSpace.GetX(), deltaInViewportSpace.GetY(), 0.0f);
+        AZ::Matrix4x4 transform;
+        EBUS_EVENT_ID(canvasEntityId, UiCanvasBus, GetViewportToCanvasMatrix, transform);
+
+        AZ::Vector3 deltaInCanvasSpace3 = transform.Multiply3x3(deltaInViewportSpace3);
+        AZ::Vector2 deltaInLocalSpace = AZ::Vector2(deltaInCanvasSpace3.GetX(), deltaInCanvasSpace3.GetY());
+
+        return deltaInLocalSpace;
     }
 
 }   // namespace EntityHelpers

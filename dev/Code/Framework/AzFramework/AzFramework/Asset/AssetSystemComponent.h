@@ -73,6 +73,8 @@ namespace AzFramework
             bool Disconnect() override;
             AssetStatus CompileAssetSync(const AZStd::string& assetPath) override;
             AssetStatus GetAssetStatus(const AZStd::string& assetPath) override;
+            AssetStatus CompileAssetSync_FlushIO(const AZStd::string& assetPath) override;
+            AssetStatus GetAssetStatus_FlushIO(const AZStd::string& assetPath) override;
             void ShowAssetProcessor() override;
             float GetAssetProcessorPingTimeMilliseconds() override;
             void SetAssetProcessorPort(AZ::u16 port) override;
@@ -81,7 +83,7 @@ namespace AzFramework
             void SetAssetProcessorIP(const AZStd::string& ip) override;
             //////////////////////////////////////////////////////////////////////////
 
-            AssetStatus SendAssetStatusRequest(const AZStd::string& assetPath, bool statusOnly);
+            AssetStatus SendAssetStatusRequest(const AZStd::string& assetPath, bool statusOnly, bool requireFencing = true);
             bool RequestFromBootstrapReader(const char* key, AZStd::string& value, bool checkPlatform);
 
             AZStd::unique_ptr<SocketConnection> m_socketConn = nullptr;

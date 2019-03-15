@@ -95,7 +95,7 @@ def build(bld):
         )
     )
 
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = ['scriptcanvasdiagnosticlibrary_game.waf_files']
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = ['scriptcanvasdiagnosticlibrary_game.waf_files']
     
     bld.DefineGem(**kw)

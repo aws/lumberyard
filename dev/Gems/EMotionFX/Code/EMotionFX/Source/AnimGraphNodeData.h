@@ -15,7 +15,6 @@
 // include the required headers
 #include "EMotionFXConfig.h"
 #include "AnimGraphObjectData.h"
-#include "AnimGraphSyncTrack.h"
 #include <AzCore/Memory/Memory.h>
 
 namespace EMotionFX
@@ -25,6 +24,7 @@ namespace EMotionFX
     class AnimGraphInstance;
     class AnimGraphNode;
     class AnimGraphRefCountedData;
+    class AnimGraphSyncTrack;
 
 
     /**
@@ -47,7 +47,7 @@ namespace EMotionFX
         };
 
         AnimGraphNodeData(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
-        virtual ~AnimGraphNodeData();
+        virtual ~AnimGraphNodeData() = default;
 
         static AnimGraphNodeData* Create(AnimGraphNode* node, AnimGraphInstance* animGraphInstance);
 
@@ -102,9 +102,12 @@ namespace EMotionFX
         MCORE_INLINE void SetRefCountedData(AnimGraphRefCountedData* data)     { mRefCountedData = data; }
         MCORE_INLINE AnimGraphRefCountedData* GetRefCountedData() const        { return mRefCountedData; }
 
-        MCORE_INLINE const AnimGraphSyncTrack& GetSyncTrack() const            { return mSyncTrack; }
-        MCORE_INLINE AnimGraphSyncTrack& GetSyncTrack()                        { return mSyncTrack; }
-        MCORE_INLINE void SetSyncTrack(const AnimGraphSyncTrack& syncTrack)    { mSyncTrack = syncTrack; }
+        MCORE_INLINE const AnimGraphSyncTrack* GetSyncTrack() const            { return mSyncTrack; }
+        MCORE_INLINE AnimGraphSyncTrack* GetSyncTrack()                        { return mSyncTrack; }
+        MCORE_INLINE void SetSyncTrack(AnimGraphSyncTrack* syncTrack)          { mSyncTrack = syncTrack; }
+
+        bool GetIsMirrorMotion() const { return m_isMirrorMotion; }
+        void SetIsMirrorMotion(bool newValue) { m_isMirrorMotion = newValue; }
 
     protected:
         float       mDuration;
@@ -117,8 +120,10 @@ namespace EMotionFX
         uint8       mPoseRefCount;
         uint8       mRefDataRefCount;
         uint8       mInheritFlags;
+        bool        m_isMirrorMotion;
         AnimGraphRefCountedData*   mRefCountedData;
-        AnimGraphSyncTrack         mSyncTrack;
+        AnimGraphSyncTrack*        mSyncTrack;
+
 
         void Delete() override;
     };

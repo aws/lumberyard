@@ -33,11 +33,11 @@ namespace MysticQt
         mSpinBox = new IntSpinBox();
 
         // connect signals and slots
-        connect(mSpinBox,  SIGNAL(valueChanged(int)),                  this,   SLOT(OnSpinBoxChanged(int)));
-        connect(mSpinBox,  SIGNAL(ValueChangedMouseReleased(int)),     this,   SLOT(OnSpinBoxEditingFinished(int)));
-        connect(mSpinBox,  SIGNAL(ValueChangedByTextFinished(int)),    this,   SLOT(OnSpinBoxEditingFinished(int)));
-        connect(mSlider,   SIGNAL(valueChanged(int)),                  this,   SLOT(OnSliderChanged(int)));
-        connect(mSlider,   SIGNAL(sliderReleased()),                   this,   SLOT(OnSliderReleased()));
+        connect(mSpinBox,  static_cast<void (MysticQt::IntSpinBox::*)(int)>(&MysticQt::IntSpinBox::valueChanged),                  this,   &MysticQt::IntSlider::OnSpinBoxChanged);
+        connect(mSpinBox,  &MysticQt::IntSpinBox::ValueChangedMouseReleased,     this,   &MysticQt::IntSlider::OnSpinBoxEditingFinished);
+        connect(mSpinBox,  &MysticQt::IntSpinBox::ValueChangedByTextFinished,    this,   &MysticQt::IntSlider::OnSpinBoxEditingFinished);
+        connect(mSlider,   &MysticQt::Slider::valueChanged,                  this,   &MysticQt::IntSlider::OnSliderChanged);
+        connect(mSlider,   &MysticQt::Slider::sliderReleased,                   this,   &MysticQt::IntSlider::OnSliderReleased);
 
         hLayout->addWidget(mSlider);
         hLayout->addWidget(mSpinBox);
@@ -144,11 +144,11 @@ namespace MysticQt
         mSpinBox = new DoubleSpinBox();
 
         // connect signals and slots
-        connect(mSpinBox,  SIGNAL(valueChanged(double)),               this,   SLOT(OnSpinBoxChanged(double)));
-        connect(mSpinBox,  SIGNAL(ValueChangedMouseReleased(double)),  this,   SLOT(OnSpinBoxEditingFinished(double)));
-        connect(mSpinBox,  SIGNAL(ValueChangedByTextFinished(double)), this,   SLOT(OnSpinBoxEditingFinished(double)));
-        connect(mSlider,   SIGNAL(valueChanged(int)),                  this,   SLOT(OnSliderChanged(int)));
-        connect(mSlider,   SIGNAL(sliderReleased()),                   this,   SLOT(OnSliderReleased()));
+        connect(mSpinBox,  static_cast<void (MysticQt::DoubleSpinBox::*)(double)>(&MysticQt::DoubleSpinBox::valueChanged),               this,   &MysticQt::FloatSlider::OnSpinBoxChanged);
+        connect(mSpinBox,  &MysticQt::DoubleSpinBox::ValueChangedMouseReleased,  this,   &MysticQt::FloatSlider::OnSpinBoxEditingFinished);
+        connect(mSpinBox,  &MysticQt::DoubleSpinBox::ValueChangedByTextFinished, this,   &MysticQt::FloatSlider::OnSpinBoxEditingFinished);
+        connect(mSlider,   &MysticQt::Slider::valueChanged,                  this,   &MysticQt::FloatSlider::OnSliderChanged);
+        connect(mSlider,   &MysticQt::Slider::sliderReleased,                   this,   &MysticQt::FloatSlider::OnSliderReleased);
 
         hLayout->addWidget(mSlider);
         hLayout->addWidget(mSpinBox);

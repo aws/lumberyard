@@ -62,6 +62,9 @@ namespace MCore
          */
         virtual void OnPostExecuteCommand(CommandGroup* group, Command* command, const CommandLine& commandLine, bool wasSuccess, const AZStd::string& outResult) = 0;
 
+        virtual void OnPreUndoCommand(MCore::Command* command, const MCore::CommandLine& commandLine) {}
+        virtual void OnPostUndoCommand(MCore::Command* command, const MCore::CommandLine& commandLine) {}
+
         /**
          * This callback is executed before we are going to execute a given command group.
          * @param group The group that is about to be executed, or nullptr when it is not a group but a regular command.

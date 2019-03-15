@@ -87,7 +87,7 @@ namespace AzToolsFramework
             if (AZ::IO::FileIOBase::GetInstance()->IsDirectory(scanFolderDatabaseEntry.m_scanFolder.c_str()))
             {
                 const auto scanFolder = CreateFolders(scanFolderDatabaseEntry.m_scanFolder.c_str(), this);
-                scanFolder->m_displayName = scanFolderDatabaseEntry.m_displayName;
+                scanFolder->m_displayName = QString::fromUtf8(scanFolderDatabaseEntry.m_displayName.c_str());
                 EntryCache::GetInstance()->m_scanFolderIdMap[scanFolderDatabaseEntry.m_scanFolderID] = scanFolder;
             }
 
@@ -153,7 +153,7 @@ namespace AzToolsFramework
                 auto source = aznew SourceAssetBrowserEntry();
                 source->m_name = (sourceName + sourceExtension).c_str();
                 source->m_fileId = fileDatabaseEntry.m_fileID;
-                source->m_displayName = source->m_name;
+                source->m_displayName = QString::fromUtf8(source->m_name.c_str());
                 source->m_scanFolderId = fileDatabaseEntry.m_scanFolderPK;
                 source->m_extension = sourceExtension.c_str();
                 parent->AddChild(source);
@@ -277,7 +277,7 @@ namespace AzToolsFramework
             }
             productName += productExtension;
             product->m_name = productName;
-            product->m_displayName = displayName;
+            product->m_displayName = QString::fromUtf8(displayName.c_str());
             product->m_productId = productWithUuidDatabaseEntry.second.m_productID;
             product->m_jobId = productWithUuidDatabaseEntry.second.m_jobPK;
             product->m_assetId = assetId;

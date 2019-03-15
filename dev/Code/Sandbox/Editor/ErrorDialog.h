@@ -13,6 +13,8 @@
 #pragma once
 #include <QDialog>
 
+#include "Include/SandboxAPI.h"
+
 namespace Ui 
 {
     class ErrorLogDialog;
@@ -24,7 +26,7 @@ namespace SandboxEditor
     /// Used to display a collection of error and warning messages.
     /// This is used instead of QMessageBox because the details section of QMessageBox is not
     /// very resizeable, making it hard to show multiple errors at once.
-    class ErrorDialog
+    class SANDBOX_API ErrorDialog
         : public QDialog
     {
         Q_OBJECT
@@ -64,5 +66,6 @@ namespace SandboxEditor
         QString GetMessageTypeString(MessageType messageType) const;
 
         QScopedPointer<Ui::ErrorLogDialog> m_ui; ///< Tracks the Qt UI associated with this class.
+        QSet<QString> m_uniqueStrings;
     };
 }

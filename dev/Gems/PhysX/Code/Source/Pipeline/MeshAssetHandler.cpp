@@ -13,39 +13,43 @@
 
 #include <PhysX_precompiled.h>
 
-#include <Pipeline/PhysXMeshAsset.h>
+#include <Pipeline/MeshAssetHandler.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/Serialization/Utils.h>
+#include <PhysX/MeshAsset.h>
+#include <PhysX/SystemComponentBus.h>
+#include <Source/Pipeline/MeshAssetHandler.h>
 
 namespace PhysX
 {
     namespace Pipeline
     {
-        const char* PhysXMeshAsset::m_assetFileExtention = "pxmesh";
+        const char* MeshAssetHandler::s_assetFileExtension = "pxmesh";
 
-        PhysXMeshAssetHandler::PhysXMeshAssetHandler()
+        MeshAssetHandler::MeshAssetHandler()
         {
             Register();
         }
 
-        PhysXMeshAssetHandler::~PhysXMeshAssetHandler()
+        MeshAssetHandler::~MeshAssetHandler()
         {
             Unregister();
         }
 
-        void PhysXMeshAssetHandler::Register()
+        void MeshAssetHandler::Register()
         {
             bool assetManagerReady = AZ::Data::AssetManager::IsReady();
             AZ_Error("PhysX Mesh Asset", assetManagerReady, "Asset manager isn't ready.");
             if (assetManagerReady)
             {
-                AZ::Data::AssetManager::Instance().RegisterHandler(this, AZ::AzTypeInfo<PhysXMeshAsset>::Uuid());
+                AZ::Data::AssetManager::Instance().RegisterHandler(this, AZ::AzTypeInfo<MeshAsset>::Uuid());
             }
 
-            AZ::AssetTypeInfoBus::Handler::BusConnect(AZ::AzTypeInfo<PhysXMeshAsset>::Uuid());
+            AZ::AssetTypeInfoBus::Handler::BusConnect(AZ::AzTypeInfo<MeshAsset>::Uuid());
         }
 
-        void PhysXMeshAssetHandler::Unregister()
+        void MeshAssetHandler::Unregister()
         {
             AZ::AssetTypeInfoBus::Handler::BusDisconnect();
 
@@ -56,92 +60,99 @@ namespace PhysX
         }
 
         // AZ::AssetTypeInfoBus
-        AZ::Data::AssetType PhysXMeshAssetHandler::GetAssetType() const
+        AZ::Data::AssetType MeshAssetHandler::GetAssetType() const
         {
-            return AZ::AzTypeInfo<PhysXMeshAsset>::Uuid();
+            return AZ::AzTypeInfo<MeshAsset>::Uuid();
         }
 
-        void PhysXMeshAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
+        void MeshAssetHandler::GetAssetTypeExtensions(AZStd::vector<AZStd::string>& extensions)
         {
-            extensions.push_back(PhysXMeshAsset::m_assetFileExtention);
+            extensions.push_back(s_assetFileExtension);
         }
 
-        const char* PhysXMeshAssetHandler::GetAssetTypeDisplayName() const
+        const char* MeshAssetHandler::GetAssetTypeDisplayName() const
         {
-            return "PhysX Collision Mesh";
+            return "PhysX Collision Mesh (PhysX Gem)";
         }
 
-        const char* PhysXMeshAssetHandler::GetBrowserIcon() const
+        const char* MeshAssetHandler::GetBrowserIcon() const
         {
             return "Editor/Icons/Components/ColliderMesh.png";
         }
 
-        const char* PhysXMeshAssetHandler::GetGroup() const
+        const char* MeshAssetHandler::GetGroup() const
         {
             return "Physics";
         }
 
-        AZ::Uuid PhysXMeshAssetHandler::GetComponentTypeId() const
+        // Disable spawning of physics asset entities on drag and drop
+        AZ::Uuid MeshAssetHandler::GetComponentTypeId() const
         {
-            return AZ::Uuid("{87A02711-8D7F-4966-87E1-77001EB6B29E}"); // PhysXMeshShapeComponent
+            // NOTE: This doesn't do anything when CanCreateComponent returns false
+            return AZ::Uuid("{FD429282-A075-4966-857F-D0BBF186CFE6}"); // EditorColliderComponent
+        }
+
+        bool MeshAssetHandler::CanCreateComponent(const AZ::Data::AssetId& assetId) const
+        {
+            return false;
         }
 
         // AZ::Data::AssetHandler
-        AZ::Data::AssetPtr PhysXMeshAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
+        AZ::Data::AssetPtr MeshAssetHandler::CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type)
         {
-            if (type == AZ::AzTypeInfo<PhysXMeshAsset>::Uuid())
+            if (type == AZ::AzTypeInfo<MeshAsset>::Uuid())
             {
-                return aznew PhysXMeshAsset();
+                return aznew MeshAsset();
             }
 
             AZ_Error("PhysX Mesh Asset", false, "This handler deals only with PhysXMeshAsset type.");
             return nullptr;
         }
 
-        bool PhysXMeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
+        bool MeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
         {
-            PhysXMeshAsset* physXMeshAsset = asset.GetAs<PhysXMeshAsset>();
-            if (!physXMeshAsset)
+            MeshAsset* meshAsset = asset.GetAs<MeshAsset>();
+            if (!meshAsset)
             {
                 AZ_Error("PhysX Mesh Asset", false, "This should be a PhysXMeshAsset, as this is the only type we process.");
                 return false;
             }
 
-            AZ::u32 assetVersion = 0;
-            stream->Read(sizeof(assetVersion), &assetVersion);
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
-            AZ::u8 isConvexMesh = 0;
-            stream->Read(sizeof(isConvexMesh), &isConvexMesh);
-
-            AZ::u32 assetDataSize = 0;
-            stream->Read(sizeof(assetDataSize), &assetDataSize);
-
-            if (assetVersion == 1 && assetDataSize > 0)
+            MeshAssetCookedData cookedMeshAsset;
+            if (!AZ::Utils::LoadObjectFromStreamInPlace(*stream, cookedMeshAsset, serializeContext))
             {
-                void* assetDataBuffer = azmalloc(assetDataSize);
-
-                stream->Read(assetDataSize, assetDataBuffer);
-
-                if (isConvexMesh == 1)
-                {
-                    PhysX::PhysXSystemRequestBus::BroadcastResult(physXMeshAsset->m_meshData, &PhysX::PhysXSystemRequests::CreateConvexMeshFromCooked, assetDataBuffer, assetDataSize);
-                }
-                else
-                {
-                    PhysX::PhysXSystemRequestBus::BroadcastResult(physXMeshAsset->m_meshData, &PhysX::PhysXSystemRequests::CreateTriangleMeshFromCooked, assetDataBuffer, assetDataSize);
-                }
-
-                AZ_Error("PhysX Mesh Asset", physXMeshAsset->m_meshData != nullptr, "Failed to construct PhysX mesh from the cooked data. Possible data corruption.");
-
-                azfree(assetDataBuffer);
-
-                return (physXMeshAsset->m_meshData != nullptr);
+                return false;
             }
 
-            return false;
+            if (cookedMeshAsset.m_isConvexMesh)
+            {
+                PhysX::SystemRequestsBus::BroadcastResult(
+                    meshAsset->m_meshData,
+                    &PhysX::SystemRequests::CreateConvexMeshFromCooked, 
+                    static_cast<void*>(cookedMeshAsset.m_cookedPxMeshData.data()),
+                    static_cast<AZ::u32>(cookedMeshAsset.m_cookedPxMeshData.size())
+                );
+            }
+            else
+            {
+                PhysX::SystemRequestsBus::BroadcastResult(
+                    meshAsset->m_meshData,
+                    &PhysX::SystemRequests::CreateTriangleMeshFromCooked, 
+                    static_cast<void*>(cookedMeshAsset.m_cookedPxMeshData.data()),
+                    static_cast<AZ::u32>(cookedMeshAsset.m_cookedPxMeshData.size())
+                );
+            }
+
+            meshAsset->m_materials = AZStd::move(cookedMeshAsset.m_materialsData);
+            meshAsset->m_materialSlots = AZStd::move(cookedMeshAsset.m_materialSlots);
+
+            return meshAsset->m_meshData != nullptr;
         }
 
-        bool PhysXMeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
+        bool MeshAssetHandler::LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, const char* assetPath, const AZ::Data::AssetFilterCB& assetLoadFilterCB)
         {
             AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
             if (fileIO)
@@ -152,17 +163,37 @@ namespace PhysX
                     return LoadAssetData(asset, &stream, assetLoadFilterCB);
                 }
             }
-            return true;
+            return false;
         }
 
-        void PhysXMeshAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
+        void MeshAssetHandler::DestroyAsset(AZ::Data::AssetPtr ptr)
         {
             delete ptr;
         }
 
-        void PhysXMeshAssetHandler::GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes)
+        void MeshAssetHandler::GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes)
         {
-            assetTypes.push_back(AZ::AzTypeInfo<PhysXMeshAsset>::Uuid());
+            assetTypes.push_back(AZ::AzTypeInfo<MeshAsset>::Uuid());
         }
-    } //namespace Pipeline
+
+        MeshAssetCookedData::MeshAssetCookedData(const physx::PxDefaultMemoryOutputStream& cookedStream)
+        {
+            m_cookedPxMeshData.insert( m_cookedPxMeshData.begin(), cookedStream.getData(), cookedStream.getData() + cookedStream.getSize());
+        }
+
+        void MeshAssetCookedData::Reflect(AZ::ReflectContext* context)
+        {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serializeContext)
+            {
+                serializeContext->Class<MeshAssetCookedData>()
+                    ->Version(2)
+                    ->Field("Convexity", &MeshAssetCookedData::m_isConvexMesh)
+                    ->Field("Materials", &MeshAssetCookedData::m_materialsData)
+                    ->Field("MaterialSlots", &MeshAssetCookedData::m_materialSlots)
+                    ->Field("CookedPxData", &MeshAssetCookedData::m_cookedPxMeshData)
+                    ;
+            }
+        }
+} //namespace Pipeline
 } // namespace PhysX

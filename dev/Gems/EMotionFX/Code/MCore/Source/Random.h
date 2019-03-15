@@ -21,6 +21,33 @@
 namespace MCore
 {
     /**
+    * A very simple and fast LCG random number generator, useful if you need a fast pseudo-random sequence and
+    * don't really care about the quality of the sequence.
+    * This is similar to the SimpleLcgRandom class in AZ with a few modification.
+    */
+    class MCORE_API LcgRandom
+    {
+    public:
+
+        LcgRandom(AZ::u64 seed = 1234) { SetSeed(seed); }
+
+        void SetSeed(AZ::u64 seed)
+        {
+            m_seed = seed;
+        }
+
+        AZ::u64 GetSeed() const { return m_seed; }
+
+        unsigned int GetRandom();
+
+        //Gets a random float in the range [0,1)
+        float GetRandomFloat();
+
+    private:
+        AZ::u64 m_seed;
+    };
+
+    /**
      * A random number generation class.
      * This class can generate both random numbers and vectors using several different algorithms.
      */
@@ -40,6 +67,22 @@ namespace MCore
          * @result A uniform random floating point number in range of [min..max].
          */
         static MCORE_INLINE float RandF(float minVal, float maxVal)                                 { return minVal + (maxVal - minVal) * rand() / (float)RAND_MAX; }
+
+        /**
+        * Generate a uniform random float in a range of a given minimum and maximum.
+        * @param minVal The minimum value of the range.
+        * @param maxVal The maximum value of the range.
+        * @result A uniform random floating point number in range of [min..max].
+        */
+        static MCORE_INLINE float RandF(float minVal, float maxVal, unsigned int seed) { return minVal + (maxVal - minVal) * rand() / (float)RAND_MAX; }
+
+        /**
+        * Generate a uniform random float in a range of a given minimum and maximum.
+        * @param minVal The minimum value of the range.
+        * @param maxVal The maximum value of the range.
+        * @result A uniform random floating point number in range of [min..max].
+        */
+        static MCORE_INLINE float RandF(float minVal, float maxVal, LcgRandom& rand) { return minVal + (maxVal - minVal) * rand.GetRandomFloat(); }
 
         /**
          * Generates a uniform random normalized direction vector, using floats.

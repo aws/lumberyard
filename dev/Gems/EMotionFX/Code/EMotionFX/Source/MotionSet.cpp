@@ -160,6 +160,7 @@ namespace EMotionFX
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         m_isOwnedByRuntime   = false;
+        m_isOwnedByAsset     = false;
 #endif // EMFX_DEVELOPMENT_BUILD
 
         // Automatically register the motion set.
@@ -207,7 +208,7 @@ namespace EMotionFX
         for (size_t i = numChildSets; i > 0; --i)
         {
             MotionSet* childSet = m_childSets[i-1];
-            if (!childSet->GetIsOwnedByRuntime())
+            if (!childSet->GetIsOwnedByRuntime() && !childSet->GetIsOwnedByAsset())
             {
                 delete childSet;
             }
@@ -610,6 +611,25 @@ namespace EMotionFX
         return true;
 #endif
     }
+
+
+    void MotionSet::SetIsOwnedByAsset(bool isOwnedByAsset)
+    {
+#if defined(EMFX_DEVELOPMENT_BUILD)
+        m_isOwnedByAsset = isOwnedByAsset;
+#endif
+    }
+
+
+    bool MotionSet::GetIsOwnedByAsset() const
+    {
+#if defined(EMFX_DEVELOPMENT_BUILD)
+        return m_isOwnedByAsset;
+#else
+        return true;
+#endif
+    }
+
 
     bool MotionSet::GetDirtyFlag() const
     {

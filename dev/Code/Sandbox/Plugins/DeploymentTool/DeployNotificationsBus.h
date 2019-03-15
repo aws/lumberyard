@@ -60,6 +60,7 @@ namespace DeployTool
 
         virtual void RemoteLogConnectionStateChange(bool isConnected) = 0;
 
+        virtual void DeployProcessStatusChange(const AZStd::string& status) = 0;
         virtual void DeployProcessFinished(bool success) = 0;
     };
 } // namespace DeployTool

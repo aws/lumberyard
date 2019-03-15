@@ -156,9 +156,7 @@ namespace LmbrCentral
                 ;
 
             serializeContext->Class<RayCastResult>()
-                ->Version(1)
-                ->SerializeWithNoData()
-                ;
+                ->Version(1);
 
             serializeContext->Class<RayCastConfiguration>()
                 ->Version(1)
@@ -366,6 +364,18 @@ namespace LmbrCentral
 
                     collision.m_surfaces[0] = GetSurfaceId(collisionIn, senderI);
                     collision.m_surfaces[1] = GetSurfaceId(collisionIn, otherI);
+
+                    using CollisionPoint = AzFramework::PhysicsComponentNotifications::CollisionPoint;
+
+                    CollisionPoint point;
+                    point.m_position = collision.m_position;
+                    point.m_normal = collision.m_normal;
+                    point.m_impulse = collision.m_impulse * collision.m_normal;
+                    point.m_separation = 0.0f;
+                    point.m_internalFaceIndex01 = collision.m_surfaces[0];
+                    point.m_internalFaceIndex02 = collision.m_surfaces[1];
+
+                    collision.m_collisionPoints = { point };
 
                     EBUS_EVENT_ID(sender, PhysicsComponentNotificationBus, OnCollision, collision);
                 }

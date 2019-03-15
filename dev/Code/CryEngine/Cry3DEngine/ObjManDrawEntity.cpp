@@ -163,6 +163,11 @@ void CObjManager::RenderVegetation(CVegetation* pEnt,
         }
     }
 
+    if (GetCVars()->e_LodForceUpdate)
+    {
+        pEnt->m_pRNTmpData->userData.nWantedLod = CObjManager::GetObjectLOD(pEnt, fEntDistance);
+    }
+
     const CLodValue lodValue = pEnt->ComputeLod(pEnt->m_pRNTmpData->userData.nWantedLod, passInfo);
     pEnt->Render(passInfo, lodValue, pTerrainTexInfo,  rendItemSorter);
 }
@@ -387,6 +392,11 @@ void CObjManager::RenderObject(IRenderNode* pEnt,
     if (nRndFlags & ERF_SELECTED)
     {
         DrawParams.dwFObjFlags |= FOB_SELECTED;
+    }
+
+    if (pCVars->e_LodForceUpdate)
+    {
+        pEnt->m_pRNTmpData->userData.nWantedLod = CObjManager::GetObjectLOD(pEnt, fEntDistance);
     }
 
     // draw bbox

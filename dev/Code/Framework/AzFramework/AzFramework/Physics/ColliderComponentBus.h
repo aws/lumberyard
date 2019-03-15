@@ -12,38 +12,34 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzFramework/Physics/Material.h>
 
 struct IPhysicalEntity;
 struct pe_geomparams;
 
 namespace AzFramework
 {
-    /**
-     * Messages serviced by a ColliderComponent.
-     * A ColliderComponent describes the shape of an entity to the physics system.
-     */
+    /// Messages serviced by a ColliderComponent.
+    /// A ColliderComponent describes the shape of an entity to the physics system.
     class ColliderComponentRequests
         : public AZ::ComponentBus
     {
     public:
         enum { NoPartsAdded = -1 };
 
-        //! Collider adds its geometry to the IPhysicalEntity.
-        //! \param physicalEntity The IPhysicalEntity to which geometry will be added.
-        //! \param nextPartId The IPhysicalEntity's next available part ID.
-        //!                   If the collider has multiple parts,
-        //!                   it will use sequential IDs beginning at this value.
-        //! \return The ID used by the collider's final part.
-        //!         If any parts added, this value will greater or equal to nextPartId.
-        //!         If no parts added then NoPartsAdded is returned.
+        /// Collider adds its geometry to the IPhysicalEntity.
+        /// \param physicalEntity The IPhysicalEntity to which geometry will be added.
+        /// \param nextPartId The IPhysicalEntity's next available part ID.
+        /// If the collider has multiple parts, it will use sequential IDs beginning at this value.
+        /// \return The ID used by the collider's final part.
+        /// If any parts added, this value will greater or equal to nextPartId.
+        /// If no parts added then NoPartsAdded is returned.
         virtual int AddColliderToPhysicalEntity(IPhysicalEntity& physicalEntity, int nextPartId) = 0;
     };
     using ColliderComponentRequestBus = AZ::EBus<ColliderComponentRequests>;
 
-    /**
-     * Events dispatched by a ColliderComponent.
-     * A ColliderComponent describes the shape of an entity to the physics system.
-     */
+    /// Events dispatched by a ColliderComponent.
+    /// A ColliderComponent describes the shape of an entity to the physics system.
     class ColliderComponentEvents
         : public AZ::ComponentBus
     {
@@ -52,14 +48,10 @@ namespace AzFramework
     };
     using ColliderComponentEventBus = AZ::EBus<ColliderComponentEvents>;
 
-    /**
-     * Type ID for the PrimitiveColliderComponent
-     */
+    /// Type ID for the PrimitiveColliderComponent.
     static const AZ::Uuid PrimitiveColliderComponentTypeId = "{9CB3707A-73B3-4EE5-84EA-3CF86E0E3722}";
 
-    /**
-     * Configuration data for the PrimitiveColliderComponent.
-     */
+    /// Configuration data for the PrimitiveColliderComponent.
     class PrimitiveColliderConfig
         : public AZ::ComponentConfig
     {

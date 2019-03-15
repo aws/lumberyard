@@ -157,12 +157,36 @@ namespace AzToolsFramework
         void OnToggleWarningClicked();
 
     private:
+        //show or hide the conflict message as appropriate
+        void ShowConflictMessage();
+
+        /// set the correct icon for changed items (changed/conflicted etc)
+        void  SetFieldIcon(FieldTreeItem* item);
+
+        ///returns number of conflicted changes for this fieldtype
+        bool GetConflictCount();
+
+        /// Populate tree fields with data about which nods conflict with each other
+        void SetupConflictData(AZ::Data::AssetId assetId);
 
         /// Conduct initial analysis for entities.
         void Setup(const EntityIdList& entities, AZ::SerializeContext* serializeContext);
 
         /// Creates the UI for displaying warnings to the user.
         void CreateWarningLayout();
+
+        /// Creates the UI for displaying messages to the user.
+        QWidget* CreateMessageWidget();
+
+        /// Creates the UI for displaying conflict messages to the user.
+        void CreateConflictLayout();
+
+        /// Creates the top area message layout
+        void SetupTopAreaMessage(QVBoxLayout* layout, QLabel* label, bool addPullDown);
+
+        /// Creates the conflict display.
+        /// \param warningLayout The layout the header will be added to.
+        void CreateConflictMessage(QVBoxLayout* conflictLayout);
 
         /// Creates the header of the warning display.
         /// \param warningLayout The layout the header will be added to.
@@ -250,14 +274,18 @@ namespace AzToolsFramework
         AZStd::vector<AZ::SliceComponent::SliceInstanceAddress>     m_sliceInstances;       ///< Cached slice instances for transform fixup
         QVBoxLayout*                                                m_bottomLayout;         ///< Bottom layout containing optional status messages, legend and buttons
         QWidget*                                                    m_warningWidget;        ///< Top level item for warning messages, disabled when there are no warnings.
+        QWidget*                                                    m_conflictWidget;       ///< Top level item for conflict messages, disabled when there are no conflicts.
         QWidget*                                                    m_warningFoldout;       ///< Top level item for information displayed when detailed warnings are enabled.
         ClickableLabel*                                             m_toggleWarningButton;  ///< The icon users can click on to toggle detailed warnings.
         QTreeWidget*                                                m_warningMessages;      ///< The list of warning messages.
         QLabel*                                                     m_warningTitle;         ///< If any warnings were encountered, this displays the number of warnings.
+        QLabel*                                                     m_conflictTitle;        ///< If any conflicts were encountered, this displays the number of conflicts.
         AZStd::vector<StatusMessage>                                m_statusMessages;       ///< Status messages to be displayed
 
         QIcon                                                       m_iconGroup;            ///< Icon to use for field groups (parents)
         QIcon                                                       m_iconChangedDataItem;  ///< Icon to use for modified field leafs that're pushable.
+        QIcon                                                       m_iconConflictedDataItem;///< Icon to use for modified but conflicted field
+        QIcon                                                       m_iconConflictedDisabledDataItem;///< Icon to use for modified, conflicted, and disabled field
         QIcon                                                       m_iconNewDataItem;      ///< Icon to use for new child elements/data under pushable parent fields.
         QIcon                                                       m_iconRemovedDataItem;  ///< Icon to use for removed field leafs that're pushable.
         QIcon                                                       m_iconSliceItem;        ///< Icon to use for slice targets in the slice tree
@@ -269,8 +297,16 @@ namespace AzToolsFramework
         QCheckBox*                                                  m_checkboxAllAddedItems;   ///< CheckBox to check/uncheck all items that are newly added to the slice
         QCheckBox*                                                  m_checkboxAllRemovedItems;   ///< CheckBox to check/uncheck all items that are removed from the slice
 
+        QPushButton*                                                m_pushSelectedButton;
+
         AZStd::unordered_map<QTreeWidgetItem*, FieldTreeItem*>      m_warningsToEntityTree; ///< A map tracking warning messages to elements in the field tree.
         AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent*>     m_entityToSliceComponentWithInvalidReferences; ///< A map tracking entity IDs to components that have invalid references.
+    
+        //warning/conflict layout settings
+        static const int s_messageSeperatorLineHeight = 1;
+        // The left margin of the header should be pushed in to the right a bit, by design.
+        static const int s_messageHeaderLeftMargin = 24;
+        static const int s_messageHheaderMargins = 3;
     };
 
 } // namespace AzToolsFramework

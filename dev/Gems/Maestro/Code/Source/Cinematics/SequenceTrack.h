@@ -29,10 +29,6 @@ public:
     void GetKeyInfo(int key, const char*& description, float& duration);
     void SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool bLoading);
 
-    // This goes through all the ISequenceKeys on this track and upConverts legacy keys that used Sequence Names to use OwnerIds
-    // returns true if any keys were upconverted
-    bool UpConvertKeys();
-
     static void Reflect(AZ::SerializeContext* serializeContext);
 };
 

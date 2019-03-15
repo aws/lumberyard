@@ -15,12 +15,19 @@
 // include the required headers
 #include <EMotionFX/CommandSystem/Source/CommandSystemConfig.h>
 
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 
 namespace EMotionFX
 {
     class Motion;
     class Actor;
 };
+
+namespace MCore
+{
+    class Command;
+}
 
 namespace CommandSystem
 {
@@ -33,15 +40,14 @@ namespace CommandSystem
          * @param motion The motion to read the changes from.
          * @result A string containing a list of commands.
          */
-        static AZStd::string GenerateMotionMetaData(EMotionFX::Motion* motion);
+        static AZStd::vector<MCore::Command*> GenerateMotionMetaData(EMotionFX::Motion* motion);
 
         /**
-         * Use the given meta data string, prepare it for the given motion and apply the meta data.
+         * Use the given list , prepare it for the given motion and apply the meta data.
          * @param motion The motion to apply the meta data on.
          * @result True in case the meta data got applied correctly, false if something failed.
          */
-        static bool ApplyMetaDataOnMotion(EMotionFX::Motion* motion, const AZStd::string& metaDataString);
-
+        static bool ApplyMetaDataOnMotion(EMotionFX::Motion* motion, const AZStd::vector<MCore::Command*>& metaDataCommands);
 
         /**
          * Constructs a list of commands representing the changes the user did on the source asset and returns it as a string.
@@ -67,6 +73,12 @@ namespace CommandSystem
          */
         static bool ApplyMetaData(AZ::u32 objectId, const char* objectIdKeyword, AZStd::string metaDataString);
 
+
+        /**
+         * Execute the list of Commands that have been deserialized from a MetaDataRule
+         */
+        static bool ApplyMetaData(const AZStd::vector<MCore::Command*>& metaDataCommands);
+
         static void GenerateNodeGroupMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
         static void GeneratePhonemeMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
         static void GenerateAttachmentMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
@@ -75,4 +87,4 @@ namespace CommandSystem
         static void GenerateMirrorSetupMetaData(EMotionFX::Actor* actor, AZStd::string& outMetaDataString);
     };
 
-} // namespace CommandSystem
+} // namespace CommandSystemlt

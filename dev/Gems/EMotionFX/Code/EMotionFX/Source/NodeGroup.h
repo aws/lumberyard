@@ -29,7 +29,7 @@ namespace EMotionFX
      * The group contains a list of node numbers, which index inside the actor where the groups belong to.
      * It is possible to enable and disable individual groups. Disabling a group will skip all calculations done on the nodes that are inside the group.
      * You can enable and disable individual groups per ActorInstance object.
-     * Skipped calculations include the calculation of local space matrices, forward kinematics to calculate global space matrices and blending.
+     * Skipped calculations include the calculation of local space matrices, forward kinematics to calculate world space matrices and blending.
      * It is important that you do not use the nodes that are disabled. For example if a given node is disabled and you try to get its transformation, then this transformation
      * might contain incorrect or even uninitialized data.
      */
@@ -112,7 +112,7 @@ namespace EMotionFX
          * The reason why you specify an ActorInstance as parameter is because the node groups are stored inside the Actor objects, while you can enable and disable
          * nodes individually per ActorInstance.
          * Nodes that are enabled will be processed by fully inside the EMotion FX pipeline. This includes things like motion sampling, local space matrix construction,
-         * global space transformation calculations and blending operations. Disabled nodes will skip those calculations.
+         * world space transformation calculations and blending operations. Disabled nodes will skip those calculations.
          * @param targetActorInstance The actor instance object in which we will enable all the nodes that are inside this group.
          */
         void EnableNodes(ActorInstance* targetActorInstance);
@@ -122,7 +122,7 @@ namespace EMotionFX
          * The reason why you specify an ActorInstance as parameter is because the node groups are stored inside the Actor objects, while you can enable and disable
          * nodes individually per ActorInstance.
          * Nodes that are enabled will be processed by fully inside the EMotion FX pipeline. This includes things like motion sampling, local space matrix construction,
-         * global space transformation calculations and blending operations. Disabled nodes will skip those calculations.
+         * world space transformation calculations and blending operations. Disabled nodes will skip those calculations.
          * @param targetActorInstance The actor instance object in which we will enable all the nodes that are inside this group.
          */
         void DisableNodes(ActorInstance* targetActorInstance);
@@ -175,7 +175,7 @@ namespace EMotionFX
          & @result Returns true when all nodes inside this group will be in an enabled state when creating a new actor instance using this group. Otherwise false is returned.
          */
         void SetIsEnabledOnDefault(bool enabledOnDefault);
-        
+
         /**
         * The default constructor.
         * This does not assign a name and there will be nodes inside this group on default.

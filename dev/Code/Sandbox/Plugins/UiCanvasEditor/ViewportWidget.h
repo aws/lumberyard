@@ -13,8 +13,16 @@
 
 #include "EditorCommon.h"
 
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+
+#include <IFont.h>
+
+class RulerWidget;
+
 class ViewportWidget
     : public QViewport
+    , private AzToolsFramework::EditorPickModeRequests::Bus::Handler
+    , private FontNotificationBus::Handler
 {
     Q_OBJECT
 
@@ -31,6 +39,7 @@ public: // types
 public: // member functions
 
     explicit ViewportWidget(EditorWindow* parent);
+    virtual ~ViewportWidget();
 
     ViewportInteraction* GetViewportInteraction();
 
@@ -40,6 +49,7 @@ public: // member functions
     void UpdateViewportBackground();
 
     void ActiveCanvasChanged();
+    void EntityContextChanged();
 
     //! Flags the viewport display as needing a refresh
     void Refresh();
@@ -52,6 +62,21 @@ public: // member functions
 
     //! Get the canvas scale factor being used for the preview mode
     float GetPreviewCanvasScale() { return m_previewCanvasScale; }
+
+    //! Used by ViewportInteraction for drawing
+    ViewportHighlight* GetViewportHighlight() { return m_viewportHighlight.get(); }
+
+    bool IsInObjectPickMode() { return m_inObjectPickMode; }
+    void PickItem(AZ::EntityId entityId);
+
+    QWidget* CreateViewportWithRulersWidget(QWidget* parent);
+    void ShowRulers(bool show);
+    bool AreRulersShown() { return m_rulersVisible; }
+    void RefreshRulers();
+    void SetRulerCursorPositions(const QPoint& globalPos);
+
+    void ShowGuides(bool show);
+    bool AreGuidesShown() { return m_guidesVisible; }
 
 protected:
 
@@ -102,11 +127,27 @@ protected:
 
 private: // member functions
 
+    // EditorPickModeRequests
+    void StartObjectPickMode() override;
+    void StopObjectPickMode() override;
+    // ~EditorPickModeRequests
+
+    // FontNotifications
+    void OnFontsReloaded() override;
+    void OnFontTextureUpdated(IFFont* font) override;
+    // ~FontNotifications
+
     //! Render the viewport when in edit mode
     void RenderEditMode();
 
     //! Render the viewport when in preview mode
     void RenderPreviewMode();
+
+    //! Create shortcuts for manipulating the viewport
+    void SetupShortcuts();
+
+    //! Do the Qt stuff to hide/show the rulers
+    void ApplyRulerVisibility();
 
 private: // data
 
@@ -138,4 +179,13 @@ private: // data
     QTimer m_updateTimer;
 
     float m_previewCanvasScale;
+
+    bool m_inObjectPickMode = false;
+
+    RulerWidget* m_rulerHorizontal = nullptr;
+    RulerWidget* m_rulerVertical = nullptr;
+    QWidget* m_rulerCorner = nullptr;
+    bool     m_rulersVisible;
+    bool     m_guidesVisible;
+    bool     m_fontTextureHasChanged = false;
 };

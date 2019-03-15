@@ -297,7 +297,11 @@ typedef uintptr_t uintPointer;
 
 // check if fast float math operations such as sinf etc are available, or if we need to stick with standard calls to sin etc
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Config_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Config_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Config_h_provo.inl"
+    #endif
 #elif ((defined(MCORE_PLATFORM_WINDOWS) || defined(MCORE_PLATFORM_MAC) || defined(MCORE_PLATFORM_IPHONE) || defined(MCORE_PLATFORM_ANDROID)))
     #define MCORE_FASTFLOAT_MATH
 #endif

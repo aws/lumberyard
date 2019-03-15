@@ -454,7 +454,7 @@ namespace AzFramework
         SpawnRequest& request = requestQueue.back();
         request.m_bindTo = bindTo;
         request.m_useEntityId = useEntityId;
-        request.m_spawnDataBuffer.resize(spawnData.GetLength());
+        request.m_spawnDataBuffer.resize_no_construct(spawnData.GetLength());
         spawnData.Read(request.m_spawnDataBuffer.size(), request.m_spawnDataBuffer.data());
     }
 

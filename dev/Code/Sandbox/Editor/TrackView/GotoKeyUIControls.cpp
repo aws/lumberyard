@@ -14,7 +14,6 @@
 #include "StdAfx.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
-#include "TrackViewUndo.h"
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/SequenceType.h>
 
@@ -110,12 +109,7 @@ void CGotoKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& select
             bool isDuringUndo = false;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
 
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-                keyHandle.SetKey(&discreteFloatKey);
-            }
-            else if (isDuringUndo)
+            if (isDuringUndo)
             {
                 keyHandle.SetKey(&discreteFloatKey);
             }

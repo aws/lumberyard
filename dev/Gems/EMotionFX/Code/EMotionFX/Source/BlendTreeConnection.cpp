@@ -11,11 +11,9 @@
 */
 
 #include <AzCore/Serialization/SerializeContext.h>
-#include "EMotionFXConfig.h"
-#include "BlendTreeConnection.h"
-#include <MCore/Source/IDGenerator.h>
-#include "AnimGraphNode.h"
-#include "AnimGraph.h"
+#include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/BlendTreeConnection.h>
 
 
 namespace EMotionFX
@@ -25,16 +23,12 @@ namespace EMotionFX
     BlendTreeConnection::BlendTreeConnection()
         : m_animGraph(nullptr)
         , m_sourceNode(nullptr)
+        , m_id(AnimGraphConnectionId::Create())
         , mSourcePort(MCORE_INVALIDINDEX16)
         , mTargetPort(MCORE_INVALIDINDEX16)
+        , mVisited(false)
     {
-        mId = MCore::GetIDGenerator().GenerateID();
-
-    #ifdef EMFX_EMSTUDIOBUILD
-        mVisited = false;
-    #endif
     }
-
 
     BlendTreeConnection::BlendTreeConnection(AnimGraphNode* sourceNode, AZ::u16 sourcePort, AZ::u16 targetPort)
         : BlendTreeConnection()
@@ -50,11 +44,9 @@ namespace EMotionFX
         SetSourceNode(sourceNode);
     }
 
-
     BlendTreeConnection::~BlendTreeConnection()
     {
     }
-
 
     void BlendTreeConnection::Reinit()
     {
@@ -66,7 +58,6 @@ namespace EMotionFX
         m_sourceNode = m_animGraph->RecursiveFindNodeById(GetSourceNodeId());
         AZ_Error("EMotionFX", m_sourceNode, "Could not find node for id %s.", GetSourceNodeId().ToString().c_str());
     }
-
 
     bool BlendTreeConnection::InitAfterLoading(AnimGraph* animGraph)
     {
@@ -80,7 +71,6 @@ namespace EMotionFX
         return true;
     }
 
-
     void BlendTreeConnection::SetSourceNode(AnimGraphNode* node)
     {
         m_sourceNode = node;
@@ -91,9 +81,6 @@ namespace EMotionFX
         }
     }
 
-
-
-    // check if this connection is valid
     bool BlendTreeConnection::GetIsValid() const
     {
         // make sure the node and input numbers are valid
@@ -106,7 +93,6 @@ namespace EMotionFX
         return true;
     }
 
-
     void BlendTreeConnection::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -116,7 +102,8 @@ namespace EMotionFX
         }
 
         serializeContext->Class<BlendTreeConnection>()
-            ->Version(1)
+            ->Version(2)
+            ->Field("id", &BlendTreeConnection::m_id)
             ->Field("sourceNodeId", &BlendTreeConnection::m_sourceNodeId)
             ->Field("sourcePortNr", &BlendTreeConnection::mSourcePort)
             ->Field("targetPortNr", &BlendTreeConnection::mTargetPort);

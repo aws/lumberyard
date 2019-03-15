@@ -39,6 +39,9 @@ namespace CodeGenerator
                     writer->WriteString("type");
                     writer->WriteString("enum");
 
+                    writer->WriteString("underlying_type");
+                    writer->WriteString(enumDecl->getIntegerType().getAsString().c_str());
+
                     writer->WriteString("elements");
                     writer->BeginArray();
 
@@ -48,6 +51,17 @@ namespace CodeGenerator
                     }
 
                     writer->EndArray();
+
+                    // Meta
+                    writer->WriteString("meta");
+                    writer->Begin();
+                    {
+                        writer->WriteString("path");
+                        auto fileID = enumDecl->getASTContext().getSourceManager().getFileID(decl->getLocation());
+                        auto fileEntry = enumDecl->getASTContext().getSourceManager().getFileEntryForID(fileID);
+                        writer->WriteString(fileEntry ? fileEntry->getName() : "");
+                    }
+                    writer->End();
                 }
                 writer->End();
             }

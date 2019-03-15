@@ -10,34 +10,36 @@
 *
 */
 
-#include "TranslationManipulator.h"
+#include "TranslationManipulators.h"
 
-#include <AzToolsFramework/Manipulators/ManipulatorView.h>
 #include <AzCore/Math/VectorConversions.h>
+#include <AzToolsFramework/Manipulators/ManipulatorView.h>
 
 namespace AzToolsFramework
 {
-    TranslationManipulator::TranslationManipulator(AZ::EntityId entityId, Dimensions dimensions)
+    TranslationManipulators::TranslationManipulators(
+        const AZ::EntityId entityId, const Dimensions dimensions, const AZ::Transform& worldFromLocal)
         : m_dimensions(dimensions)
     {
         switch (dimensions)
         {
         case Dimensions::Two:
             m_linearManipulators.reserve(2);
-            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
-            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
-            m_planarManipulators.emplace_back(AZStd::make_unique<PlanarManipulator>(entityId));
+            for (size_t i = 0; i < 2; ++i)
+            {
+                m_linearManipulators.emplace_back(AZStd::make_shared<LinearManipulator>(entityId, worldFromLocal));
+            }
+            m_planarManipulators.emplace_back(AZStd::make_shared<PlanarManipulator>(entityId, worldFromLocal));
             break;
         case Dimensions::Three:
             m_linearManipulators.reserve(3);
-            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
-            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
-            m_linearManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId));
             m_planarManipulators.reserve(3);
-            m_planarManipulators.emplace_back(AZStd::make_unique<PlanarManipulator>(entityId));
-            m_planarManipulators.emplace_back(AZStd::make_unique<PlanarManipulator>(entityId));
-            m_planarManipulators.emplace_back(AZStd::make_unique<PlanarManipulator>(entityId));
-            m_surfaceManipulator = AZStd::make_unique<SurfaceManipulator>(entityId);
+            for (size_t i = 0; i < 3; ++i)
+            {
+                m_linearManipulators.emplace_back(AZStd::make_shared<LinearManipulator>(entityId, worldFromLocal));
+                m_planarManipulators.emplace_back(AZStd::make_shared<PlanarManipulator>(entityId, worldFromLocal));
+            }
+            m_surfaceManipulator = AZStd::make_shared<SurfaceManipulator>(entityId, worldFromLocal);
             break;
         default:
             AZ_Assert(false, "Invalid dimensions provided");
@@ -45,100 +47,62 @@ namespace AzToolsFramework
         }
     }
 
-    void TranslationManipulator::ProcessManipulators(AZStd::function<void(BaseManipulator*)> manipulatorFn)
+    void TranslationManipulators::InstallLinearManipulatorMouseDownCallback(
+        const LinearManipulator::MouseActionCallback& onMouseDownCallback)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
-        {
-            manipulatorFn(manipulator.get());
-        }
-
-        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
-        {
-            manipulatorFn(manipulator.get());
-        }
-
-        if (m_surfaceManipulator)
-        {
-            manipulatorFn(m_surfaceManipulator.get());
-        }
-    }
-
-    TranslationManipulator::~TranslationManipulator()
-    {
-        ProcessManipulators([](BaseManipulator* manipulator)
-        {
-            if (manipulator->Registered())
-            {
-                manipulator->Unregister();
-            }
-        });
-    }
-
-    void TranslationManipulator::Register(ManipulatorManagerId manipulatorManagerId)
-    {
-        ProcessManipulators([manipulatorManagerId](BaseManipulator* manipulator)
-        {
-            manipulator->Register(manipulatorManagerId);
-        });
-    }
-
-    void TranslationManipulator::Unregister()
-    {
-        ProcessManipulators([](BaseManipulator* manipulator)
-        {
-            manipulator->Unregister();
-        });
-    }
-
-    void TranslationManipulator::InstallLinearManipulatorMouseDownCallback(LinearManipulator::MouseActionCallback onMouseDownCallback)
-    {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_linearManipulators)
         {
             manipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
         }
     }
 
-    void TranslationManipulator::InstallLinearManipulatorMouseMoveCallback(LinearManipulator::MouseActionCallback onMouseMoveCallback)
+    void TranslationManipulators::InstallLinearManipulatorMouseMoveCallback(
+        const LinearManipulator::MouseActionCallback& onMouseMoveCallback)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_linearManipulators)
         {
             manipulator->InstallMouseMoveCallback(onMouseMoveCallback);
         }
     }
 
-    void TranslationManipulator::InstallLinearManipulatorMouseUpCallback(LinearManipulator::MouseActionCallback onMouseUpCallback)
+    void TranslationManipulators::InstallLinearManipulatorMouseUpCallback(
+        const LinearManipulator::MouseActionCallback& onMouseUpCallback)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_linearManipulators)
         {
             manipulator->InstallLeftMouseUpCallback(onMouseUpCallback);
         }
     }
 
-    void TranslationManipulator::InstallPlanarManipulatorMouseDownCallback(PlanarManipulator::MouseActionCallback onMouseDownCallback)
+    void TranslationManipulators::InstallPlanarManipulatorMouseDownCallback(
+        const PlanarManipulator::MouseActionCallback& onMouseDownCallback)
     {
-        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        for (AZStd::shared_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
         {
             manipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
         }
     }
 
-    void TranslationManipulator::InstallPlanarManipulatorMouseMoveCallback(PlanarManipulator::MouseActionCallback onMouseMoveCallback)
+    void TranslationManipulators::InstallPlanarManipulatorMouseMoveCallback(
+        const PlanarManipulator::MouseActionCallback& onMouseMoveCallback)
     {
-        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        for (AZStd::shared_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
         {
             manipulator->InstallMouseMoveCallback(onMouseMoveCallback);
         }
     }
 
-    void TranslationManipulator::InstallPlanarManipulatorMouseUpCallback(PlanarManipulator::MouseActionCallback onMouseUpCallback)
+    void TranslationManipulators::InstallPlanarManipulatorMouseUpCallback(
+        const PlanarManipulator::MouseActionCallback& onMouseUpCallback)
     {
-        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        for (AZStd::shared_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
         {
             manipulator->InstallLeftMouseUpCallback(onMouseUpCallback);
         }
     }
 
-    void TranslationManipulator::InstallSurfaceManipulatorMouseDownCallback(SurfaceManipulator::MouseActionCallback onMouseDownCallback)
+    void TranslationManipulators::InstallSurfaceManipulatorMouseDownCallback(
+        const SurfaceManipulator::MouseActionCallback& onMouseDownCallback)
     {
         if (m_surfaceManipulator)
         {
@@ -146,7 +110,8 @@ namespace AzToolsFramework
         }
     }
 
-    void TranslationManipulator::InstallSurfaceManipulatorMouseUpCallback(SurfaceManipulator::MouseActionCallback onMouseUpCallback)
+    void TranslationManipulators::InstallSurfaceManipulatorMouseUpCallback(
+        const SurfaceManipulator::MouseActionCallback& onMouseUpCallback)
     {
         if (m_surfaceManipulator)
         {
@@ -154,7 +119,8 @@ namespace AzToolsFramework
         }
     }
 
-    void TranslationManipulator::InstallSurfaceManipulatorMouseMoveCallback(SurfaceManipulator::MouseActionCallback onMouseMoveCallback)
+    void TranslationManipulators::InstallSurfaceManipulatorMouseMoveCallback(
+        const SurfaceManipulator::MouseActionCallback& onMouseMoveCallback)
     {
         if (m_surfaceManipulator)
         {
@@ -162,35 +128,45 @@ namespace AzToolsFramework
         }
     }
 
-    void TranslationManipulator::SetBoundsDirty()
+    void TranslationManipulators::SetLocalTransform(const AZ::Transform& localTransform)
     {
-        ProcessManipulators([](BaseManipulator* manipulator)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_linearManipulators)
         {
-            manipulator->SetBoundsDirty();
-        });
-    }
-
-    void TranslationManipulator::SetPosition(const AZ::Vector3& position)
-    {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_linearManipulators)
-        {
-            manipulator->SetPosition(position);
+            manipulator->SetLocalTransform(localTransform);
         }
 
-        for (AZStd::unique_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        for (AZStd::shared_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
         {
-            manipulator->SetPosition(position);
+            manipulator->SetLocalTransform(localTransform);
         }
 
         if (m_surfaceManipulator)
         {
-            m_surfaceManipulator->SetPosition(position);
+            m_surfaceManipulator->SetPosition(localTransform.GetTranslation());
         }
 
-        m_position = position;
+        m_position = localTransform.GetTranslation();
     }
 
-    void TranslationManipulator::SetAxes(
+    void TranslationManipulators::SetSpace(const AZ::Transform& worldFromLocal)
+    {
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        {
+            manipulator->SetSpace(worldFromLocal);
+        }
+
+        for (AZStd::shared_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        {
+            manipulator->SetSpace(worldFromLocal);
+        }
+
+        if (m_surfaceManipulator)
+        {
+            m_surfaceManipulator->SetSpace(worldFromLocal);
+        }
+    }
+
+    void TranslationManipulators::SetAxes(
         const AZ::Vector3& axis1, const AZ::Vector3& axis2, const AZ::Vector3& axis3 /*= AZ::Vector3::CreateAxisZ()*/)
     {
         AZ::Vector3 axes[] = { axis1, axis2, axis3 };
@@ -206,9 +182,8 @@ namespace AzToolsFramework
         }
     }
 
-    void TranslationManipulator::ConfigureLinearView(
-        float axisLength,
-        const AZ::Color& axis1Color, const AZ::Color& axis2Color,
+    void TranslationManipulators::ConfigureLinearView(
+        float axisLength, const AZ::Color& axis1Color, const AZ::Color& axis2Color,
         const AZ::Color& axis3Color /*= AZ::Color(0.0f, 0.0f, 1.0f, 0.5f)*/)
     {
         const float coneLength = 0.28f;
@@ -217,7 +192,8 @@ namespace AzToolsFramework
 
         const AZ::Color axesColor[] = { axis1Color, axis2Color, axis3Color };
 
-        auto configureLinearView = [lineWidth, coneLength, axisLength, coneRadius](LinearManipulator* linearManipulator, const AZ::Color& color)
+        const auto configureLinearView = [lineWidth, coneLength, axisLength, coneRadius](
+            LinearManipulator* linearManipulator, const AZ::Color& color)
         {
             ManipulatorViews views;
             views.emplace_back(CreateManipulatorViewLine(
@@ -234,7 +210,7 @@ namespace AzToolsFramework
         }
     }
 
-    void TranslationManipulator::ConfigurePlanarView(
+    void TranslationManipulators::ConfigurePlanarView(
         const AZ::Color& plane1Color, const AZ::Color& plane2Color /*= AZ::Color(0.0f, 1.0f, 0.0f, 0.5f)*/,
         const AZ::Color& plane3Color /*= AZ::Color(0.0f, 0.0f, 1.0f, 0.5f)*/)
     {
@@ -245,25 +221,47 @@ namespace AzToolsFramework
         {
             m_planarManipulators[i]->SetView(
                 CreateManipulatorViewQuad(
-                    *m_planarManipulators[i], planesColor[i], planesColor[(i + 1) % 3], planeSize));
+                    *m_planarManipulators[i],planesColor[i],
+                    planesColor[(i + 1) % 3],
+                    planeSize)
+            );
         }
     }
 
-    void TranslationManipulator::ConfigureSurfaceView(
-        float radius, const AZ::Color& color)
+    void TranslationManipulators::ConfigureSurfaceView(
+        const float radius, const AZ::Color& color)
     {
         if (m_surfaceManipulator)
         {
             m_surfaceManipulator->SetView(CreateManipulatorViewSphere(color, radius,
-                [](const ViewportInteraction::MouseInteraction& /*mouseInteraction*/, 
+                [](const ViewportInteraction::MouseInteraction& /*mouseInteraction*/,
                     bool mouseOver, const AZ::Color& defaultColor) -> AZ::Color
             {
                 const AZ::Color color[2] =
-                { 
+                {
                     defaultColor, Vector3ToVector4(BaseManipulator::s_defaultMouseOverColor.GetAsVector3(), 0.75f)
                 };
+
                 return color[mouseOver];
             }));
+        }
+    }
+
+    void TranslationManipulators::ProcessManipulators(const AZStd::function<void(BaseManipulator*)>& manipulatorFn)
+    {
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_linearManipulators)
+        {
+            manipulatorFn(manipulator.get());
+        }
+
+        for (AZStd::shared_ptr<PlanarManipulator>& manipulator : m_planarManipulators)
+        {
+            manipulatorFn(manipulator.get());
+        }
+
+        if (m_surfaceManipulator)
+        {
+            manipulatorFn(m_surfaceManipulator.get());
         }
     }
 } // namespace AzToolsFramework

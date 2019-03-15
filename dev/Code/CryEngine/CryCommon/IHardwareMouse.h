@@ -32,19 +32,19 @@ struct IHardwareMouse
     virtual void Release() { delete this; }
 
     /// @deprecated Use UiCursorBus::IncrementVisibleCounter instead.
-    virtual void AZ_DEPRECATED(IncrementCounter(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
+    AZ_DEPRECATED(virtual void IncrementCounter(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
     {
         UiCursorBus::Broadcast(&UiCursorInterface::IncrementVisibleCounter);
     }
 
     /// @deprecated Use UiCursorBus::DecrementVisibleCounter instead.
-    virtual void AZ_DEPRECATED(DecrementCounter(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
+    AZ_DEPRECATED(virtual void DecrementCounter(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
     {
         UiCursorBus::Broadcast(&UiCursorInterface::DecrementVisibleCounter);
     }
 
     /// @deprecated Use UiCursorBus::IsUiCursorVisible instead.
-    virtual bool AZ_DEPRECATED(IsHidden(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
+    AZ_DEPRECATED(virtual bool IsHidden(), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
     {
         bool isCursorVisible = false;
         UiCursorBus::BroadcastResult(isCursorVisible, &UiCursorInterface::IsUiCursorVisible);
@@ -52,7 +52,7 @@ struct IHardwareMouse
     }
 
     /// @deprecated Use UiCursorBus::SetUiCursor instead.
-    virtual bool AZ_DEPRECATED(SetCursor(const char* cursorPath), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
+    AZ_DEPRECATED(virtual bool SetCursor(const char* cursorPath), "IHardwareMouse has been deprecated, use UiCursorBus instead.")
     {
         UiCursorBus::Broadcast(&UiCursorInterface::SetUiCursor, cursorPath);
         return true;

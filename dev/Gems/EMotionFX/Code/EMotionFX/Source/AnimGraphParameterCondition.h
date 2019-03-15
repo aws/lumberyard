@@ -14,6 +14,7 @@
 
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
+#include <EMotionFX/Source/ObjectAffectedByParameterChanges.h>
 
 
 namespace EMotionFX
@@ -28,9 +29,10 @@ namespace EMotionFX
      */
     class EMFX_API AnimGraphParameterCondition
         : public AnimGraphTransitionCondition
+        , public ObjectAffectedByParameterChanges
     {
     public:
-        AZ_RTTI(AnimGraphParameterCondition, "{458D0D08-3F1E-4116-89FC-50F447EDC84E}", AnimGraphTransitionCondition)
+        AZ_RTTI(AnimGraphParameterCondition, "{458D0D08-3F1E-4116-89FC-50F447EDC84E}", AnimGraphTransitionCondition, ObjectAffectedByParameterChanges)
         AZ_CLASS_ALLOCATOR_DECL
 
         enum EFunction : AZ::u8
@@ -85,6 +87,16 @@ namespace EMotionFX
         const AZStd::string& GetParameterName() const;
         AZ::TypeId GetParameterType() const;
         bool IsFloatParameter() const;
+
+        // ParameterDrivenPorts
+        AZStd::vector<AZStd::string> GetParameters() const override;
+        AnimGraph* GetParameterAnimGraph() const override;
+        void ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask) override;
+        void AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const override;
+        void ParameterAdded(size_t newParameterIndex) override;
+        void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) override;
+        void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) override;
+        void ParameterRemoved(const AZStd::string& oldParameterName) override;
 
         static void Reflect(AZ::ReflectContext* context);
 

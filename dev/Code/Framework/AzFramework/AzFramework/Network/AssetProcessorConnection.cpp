@@ -78,6 +78,12 @@ namespace AzFramework
 
             m_recvThread.m_desc.m_name = "APConn::RecvThread";
             m_recvThread.m_main = AZStd::bind(&AssetProcessorConnection::RecvThread, this);
+            
+            // Put the AP send and receive threads on a core not shared by the main thread or render thread.
+            // We have found cases where render thread would stall on a Send request, but the main thread would be running on core 0
+            // and starve the send and receive threads.  Putting them on a lighter CPU prevents this starvation.
+            m_sendThread.m_desc.m_cpuId = 4;
+            m_recvThread.m_desc.m_cpuId = 4;
 
             m_disconnectThread.m_desc.m_name = "APConn::DisconnectThread";
             m_disconnectThread.m_skipStartingIfRunning = true;
@@ -137,7 +143,11 @@ namespace AzFramework
             azsnprintf(buffer, 2048, "(%p/%u): %s\n", this, AZStd::this_thread::get_id().m_id, msg);
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(AssetProcessorConnection_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AssetProcessorConnection_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AssetProcessorConnection_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1037,7 +1047,7 @@ namespace AzFramework
             MessageBuffer messageBuffer;
 
             // Build message buffer
-            messageBuffer.resize(dataLength + sizeof(typeId) + sizeof(serial) + sizeof(dataLength));
+            messageBuffer.resize_no_construct(dataLength + sizeof(typeId) + sizeof(serial) + sizeof(dataLength));
             // Send network type, serial, and length
             AZ::u32 offset = 0;
             memcpy(messageBuffer.data() + offset, reinterpret_cast<const void*>(&typeId), sizeof(typeId));

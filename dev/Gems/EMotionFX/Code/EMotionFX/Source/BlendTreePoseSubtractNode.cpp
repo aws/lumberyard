@@ -22,6 +22,7 @@
 #include "AnimGraphRefCountedData.h"
 #include "Node.h"
 #include "AnimGraph.h"
+#include <EMotionFX/Source/EMotionFXManager.h>
 
 
 namespace EMotionFX
@@ -104,16 +105,24 @@ namespace EMotionFX
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
 
         // Perform the subtraction
-        *outputPose = *inputNode->GetMainOutputPose(animGraphInstance);
-        outputPose->GetPose().MakeAdditive(subtractNode->GetMainOutputPose(animGraphInstance)->GetPose());
+        if (inputNode)
+        {
+            *outputPose = *inputNode->GetMainOutputPose(animGraphInstance);
+        }
+        if (subtractNode)
+        {
+            AnimGraphPose* subtractPose = subtractNode->GetMainOutputPose(animGraphInstance);
+            if (subtractPose)
+            {
+                outputPose->GetPose().MakeRelativeTo(subtractPose->GetPose());
+            }
+        }
 
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             AnimGraphPose* visualOutputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue();
             animGraphInstance->GetActorInstance()->DrawSkeleton(visualOutputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
     
 
@@ -143,7 +152,6 @@ namespace EMotionFX
             AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
             uniqueData->Init(animGraphInstance, inputNode);
         }
-
         if (subtractNode)
         {
             UpdateIncomingNode(animGraphInstance, subtractNode, timePassedInSeconds);
@@ -154,6 +162,12 @@ namespace EMotionFX
     void BlendTreePoseSubtractNode::UpdateMotionExtraction(AnimGraphInstance* animGraphInstance, AnimGraphNode* nodeA, AnimGraphNode* nodeB, AnimGraphNodeData* uniqueData)
     {
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
+
+        if (!data)
+        {
+            return;
+        }
+
         data->ZeroTrajectoryDelta();
 
         // We are disabled and have no input pose, so output no delta.
@@ -166,8 +180,14 @@ namespace EMotionFX
         // Do the same if we are not disabled but have no second pose.
         AnimGraphRefCountedData* nodeAData = nodeA ? nodeA->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
         AnimGraphRefCountedData* nodeBData = nodeB ? nodeB->FindUniqueNodeData(animGraphInstance)->GetRefCountedData() : nullptr;
-        data->SetTrajectoryDelta(nodeAData->GetTrajectoryDelta());
-        data->SetTrajectoryDeltaMirrored(nodeAData->GetTrajectoryDeltaMirrored());  
+        if (nodeAData)
+        {
+            data->SetTrajectoryDelta(nodeAData->GetTrajectoryDelta());
+        }
+        if (nodeBData)
+        {
+            data->SetTrajectoryDeltaMirrored(nodeAData->GetTrajectoryDeltaMirrored());
+        }
     }
 
 
@@ -262,16 +282,25 @@ namespace EMotionFX
             return;
         }
 
-        inputNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
-        subtractNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
+        if (inputNode)
+        {
+            inputNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
+        }
+        if (subtractNode)
+        {
+            subtractNode->PerformPostUpdate(animGraphInstance, timePassedInSeconds);
+        }
 
         RequestRefDatas(animGraphInstance);
         AnimGraphNodeData* uniqueData = FindUniqueNodeData(animGraphInstance);
         AnimGraphRefCountedData* data = uniqueData->GetRefCountedData();
         data->ClearEventBuffer();
 
-        FilterEvents(animGraphInstance, m_eventMode, inputNode, subtractNode, 0.0f, data);
-        UpdateMotionExtraction(animGraphInstance, inputNode, subtractNode, uniqueData);
+        if (data && inputNode && subtractNode)
+        {
+            FilterEvents(animGraphInstance, m_eventMode, inputNode, subtractNode, 0.0f, data);
+            UpdateMotionExtraction(animGraphInstance, inputNode, subtractNode, uniqueData);
+        }
     }
 
 

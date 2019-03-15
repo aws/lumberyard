@@ -1,0 +1,63 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
+
+#pragma once
+
+#include <AzCore/RTTI/RTTI.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
+#include <EMotionFX/Source/Parameter/ValueParameter.h>
+
+namespace EMotionFX
+{
+    class AnimGraph;
+
+    // Interface class to be used for anim graph objects that get affected by changes in parameters. This interface
+    // can deal with both: changes of parameters in a mask and addition/removal/reordering of parameters in the AnimGraph.
+    //
+    class ObjectAffectedByParameterChanges
+    {
+    public:
+        AZ_RTTI(ObjectAffectedByParameterChanges, "{5B0BC730-F5FF-490F-93E6-706080058D08}")
+
+        virtual ~ObjectAffectedByParameterChanges() {}
+
+        // Add parameters that are required in the mask for this node. For example, a BlendTreeParameterNode can 
+        // add the parameters that belong to connected ports. This is using after the user inputs a new mask into
+        // the UI. 
+        virtual void AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const = 0;
+
+        virtual AZStd::vector<AZStd::string> GetParameters() const = 0;
+        virtual AnimGraph* GetParameterAnimGraph() const = 0;
+
+        virtual void ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask) = 0;
+
+        // This method is called whenever a new parameter is being added. A node implementing this interface has to 
+        // call or not the event manager to notify about changes in ports. If it is not affected by this new parameter
+        // then it can do nothing.
+        virtual void ParameterAdded(size_t newParameterIndex) = 0;
+        
+        // Similar as above, this method is called after renaming a parameter.
+        virtual void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) = 0;
+        
+        // Similar as above, this method is called when parameters change order.
+        virtual void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) = 0;
+        
+        // Similar as above, this method is called when a parameter is removed.
+        virtual void ParameterRemoved(const AZStd::string& oldParameterName) = 0;
+
+        // Convenient function to sort parameters based on the order they appear in the animgraph. It also removes duplicates
+        static void SortAndRemoveDuplicates(AnimGraph* animGraph, AZStd::vector<AZStd::string>& parameterNames);
+    };
+
+}   // namespace EMotionFX

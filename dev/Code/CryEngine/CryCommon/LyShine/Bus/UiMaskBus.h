@@ -51,6 +51,12 @@ public: // member functions
     //! Set whether to use alpha test when drawing mask visual to stencil
     virtual void SetUseAlphaTest(bool useAlphaTest) = 0;
 
+    //! Get the flag that indicates whether the mask should use render to texture
+    virtual bool GetUseRenderToTexture() = 0;
+
+    //! Set the flag that indicates whether the mask should use render to texture
+    virtual void SetUseRenderToTexture(bool useRenderToTexture) = 0;
+
 public: // static member data
 
     //! Only one component on a entity can implement the events

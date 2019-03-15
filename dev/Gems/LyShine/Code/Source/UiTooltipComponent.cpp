@@ -57,7 +57,13 @@ void UiTooltipComponent::OnHoverStart()
     if (m_displayElementId.IsValid())
     {
         EBUS_EVENT_ID(m_displayElementId, UiTooltipDisplayBus, PrepareToShow, GetEntityId());
-        UiUpdateBus::Handler::BusConnect(GetEntityId());
+
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+        if (canvasEntityId.IsValid())
+        {
+            UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+        }
     }
 }
 
@@ -123,6 +129,7 @@ void UiTooltipComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiTooltipComponent>("Tooltip", "A component that provides the data needed to display a tooltip.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiTooltip.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiTooltip.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
@@ -156,7 +163,7 @@ void UiTooltipComponent::Activate()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiTooltipComponent::Deactivate()
 {
-    UiUpdateBus::Handler::BusDisconnect();
+    UiCanvasUpdateNotificationBus::Handler::BusDisconnect();
     UiInteractableNotificationBus::Handler::BusDisconnect();
     UiTooltipDataPopulatorBus::Handler::BusDisconnect();
     UiTooltipBus::Handler::BusDisconnect();
@@ -169,6 +176,6 @@ void UiTooltipComponent::HideDisplayElement()
     {
         EBUS_EVENT_ID(m_displayElementId, UiTooltipDisplayBus, Hide);
         m_displayElementId.SetInvalid();
-        UiUpdateBus::Handler::BusDisconnect();
+        UiCanvasUpdateNotificationBus::Handler::BusDisconnect();
     }
 }

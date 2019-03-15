@@ -9,11 +9,10 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
+#include <AzCore/std/string/string.h>
 
 struct android_app;
 
@@ -65,5 +64,8 @@ namespace AzFramework
 
         //! Sets the Android application state required to pumping the event loop
         virtual void SetAppState(android_app* appState) = 0;
+
+        //! Requests permissions at runtime
+        virtual bool RequestPermission(const AZStd::string& permission, const AZStd::string& rationale) = 0;
     };
 } // namespace AzFramework

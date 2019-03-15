@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>232</width>
+    <width>250</width>
     <height>138</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>250</width>
+    <height>0</height>
+   </size>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="leftMargin">
@@ -23,19 +29,6 @@
    <property name="bottomMargin">
     <number>4</number>
    </property>
-   <item>
-    <widget class="QLabel" name="STATIC1">
-     <property name="text">
-      <string>Sequence Type:</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QComboBox" name="m_seqNodeTypeCombo"/>
-   </item>
    <item>
     <widget class="QLabel" name="STATIC">
      <property name="text">

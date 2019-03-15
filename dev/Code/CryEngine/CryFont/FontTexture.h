@@ -15,9 +15,12 @@
 #define CRYINCLUDE_CRYFONT_FONTTEXTURE_H
 #pragma once
 
+#if !defined(USE_NULLFONT_ALWAYS)
+
 #include "GlyphCache.h"
 #include "GlyphBitmap.h"
-
+#include "CryFont.h"
+#include "FFont.h"
 
 typedef uint8 FONT_TEXTURE_TYPE;
 
@@ -49,15 +52,16 @@ typedef uint8 FONT_TEXTURE_TYPE;
 //! \sa CCacheSlot
 typedef struct CTextureSlot
 {
-    uint16              wSlotUsage;                 //!< For LRU strategy, 0xffff is never released
-    uint32              cCurrentChar;               //!< ~0 if not used for characters
+    Vec2i               glyphSize = CCryFont::defaultGlyphSize; //!< Size of the rendered glyph stored in the font texture
+    uint16              wSlotUsage;                             //!< For LRU strategy, 0xffff is never released
+    uint32              cCurrentChar;                           //!< ~0 if not used for characters
     int                 iTextureSlot;
-    int                 iHoriAdvance;               //!< Advance width. See FT_Glyph_Metrics::horiAdvance.
-    float               vTexCoord[2];               //!< Character position in the texture (not yet half texel corrected)
-    uint8               iCharWidth;                 //!< Glyph width (in pixel)
-    uint8               iCharHeight;                //!< Glyph height (in pixel)
-    AZ::s8              iCharOffsetX;               //!< Glyph's left-side bearing (in pixels). See FT_GlyphSlotRec::bitmap_left.
-    AZ::s8              iCharOffsetY;               //!< Glyph's top bearing (in pixels). See FT_GlyphSlotRec::bitmap_top.
+    int                 iHoriAdvance;                           //!< Advance width. See FT_Glyph_Metrics::horiAdvance.
+    float               vTexCoord[2];                           //!< Character position in the texture (not yet half texel corrected)
+    uint8               iCharWidth;                             //!< Glyph width (in pixel)
+    uint8               iCharHeight;                            //!< Glyph height (in pixel)
+    AZ::s32             iCharOffsetX;                           //!< Glyph's left-side bearing (in pixels). See FT_GlyphSlotRec::bitmap_left.
+    AZ::s32             iCharOffsetY;                           //!< Glyph's top bearing (in pixels). See FT_GlyphSlotRec::bitmap_top.
 
     void Reset()
     {
@@ -79,12 +83,44 @@ typedef struct CTextureSlot
 } CTextureSlot;
 
 
-typedef std::vector<CTextureSlot*>                                     CTextureSlotList;
-typedef std::vector<CTextureSlot*>::iterator                           CTextureSlotListItor;
+typedef std::vector<CTextureSlot*>                                      CTextureSlotList;
+typedef std::vector<CTextureSlot*>::iterator                            CTextureSlotListItor;
 
-typedef AZStd::unordered_map<uint32, CTextureSlot*>                    CTextureSlotTable;
-typedef AZStd::unordered_map<uint32, CTextureSlot*>::iterator          CTextureSlotTableItor;
-typedef AZStd::unordered_map<uint32, CTextureSlot*>::const_iterator    CTextureSlotTableItorConst;
+namespace CryFont
+{
+    namespace FontTexture
+    {
+        //! Height and width pair for glyph size mapping
+        typedef Vec2i                                                           CGlyphSizeType;
+
+        //! Pair for mapping a height and width size to a UTF32 character/glyph
+        typedef AZStd::pair<CGlyphSizeType, uint32>                             CTextureSlotKey;
+
+        //! Hasher for texture slot table keys (glyphsize-char code pair)
+        //!
+        //! Instead of creating our own custom hash, the types are broken down to their
+        //! native types (ints) and passed to existing hashes that handle those types.
+        struct HashTextureSlotTableKey
+        {
+            typedef CTextureSlotKey                 ArgumentType;
+            typedef AZStd::size_t                   ResultType;
+            typedef AZStd::pair<int32, int32>       Int32Pair;
+            typedef AZStd::pair<Int32Pair, uint32>  Int32PairU32Pair;
+            ResultType operator()(const ArgumentType& value) const
+            {
+                // Utiliize existing hash function for pairs of ints
+                AZStd::hash<Int32PairU32Pair> pairHash;
+                return pairHash(Int32PairU32Pair(Int32Pair(value.first.x, value.first.y), value.second));
+            }
+        };
+    }
+}
+
+//! Maps size-speicifc UTF32 glyphs to their corresponding texture slots
+typedef AZStd::unordered_map<CryFont::FontTexture::CTextureSlotKey, CTextureSlot*, CryFont::FontTexture::HashTextureSlotTableKey> CTextureSlotTable;
+
+typedef CTextureSlotTable::iterator         CTextureSlotTableItor;
+typedef CTextureSlotTable::const_iterator   CTextureSlotTableItorConst;
 
 #ifdef WIN64
 #undef GetCharWidth
@@ -139,20 +175,27 @@ public:
     FONT_TEXTURE_TYPE* GetBuffer() { return m_pBuffer; }
 
     uint32 GetSlotChar(int iSlot) const;
-    CTextureSlot* GetCharSlot(uint32 cChar);
+    CTextureSlot* GetCharSlot(uint32 cChar, const Vec2i& glyphSize = CCryFont::defaultGlyphSize);
     CTextureSlot* GetGradientSlot();
 
     CTextureSlot* GetLRUSlot();
     CTextureSlot* GetMRUSlot();
 
-    // returns 1 if texture updated, returns 2 if texture not updated, returns 0 on error
-    // pUpdated is the number of slots updated
-    int PreCacheString(const char* szString, int* pUpdated = 0);
+    //! Returns 1 if texture updated, returns 2 if texture not updated, returns 0 on error
+    //! \param szString A string of glyphs (UTF8) to added to the font texture (if they don't already exist in the font texture)
+    //! \param pUpdated is the number of slots updated
+    //! \param sizeRatio A sizing scale that gets applied to all glyphs sizes before they are stored in the font texture.
+    //! \param glyphSize The resolution to render the glyphs in szString at. 
+    //! \param glyphFlags Controls hinting behavior for glyphs rendered to the font texture.
+    int PreCacheString(const char* szString, int* pUpdated = 0, float sizeRatio = IFFontConstants::defaultSizeRatio, const Vec2i& glyphSize = CCryFont::defaultGlyphSize, const CFFont::FontHintParams& glyphFlags = CFFont::FontHintParams());
     // Arguments:
     //   pSlot - function does nothing if this pointer is 0
-    void GetTextureCoord(CTextureSlot * pSlot, float texCoords[4], int& iCharSizeX, int& iCharSizeY, int& iCharOffsetX, int& iCharOffsetY) const;
+    void GetTextureCoord(CTextureSlot * pSlot, float texCoords[4], int& iCharSizeX, int& iCharSizeY, int& iCharOffsetX, int& iCharOffsetY, const Vec2i& glyphSize = CCryFont::defaultGlyphSize) const;
     int GetCharacterWidth(uint32 cChar) const;
-    int GetHorizontalAdvance(uint32 cChar) const;
+    //! Gets the horizontal advance for the given glyph/char.
+    //! \param cChar The glyph (UTF32) to get the horizontal advance for.
+    //! \param glyphSize The rendered size of the glyph to get the advance for (the same glyph could be stored in the font texture at multiple sizes).
+    int GetHorizontalAdvance(uint32 cChar, const Vec2i& glyphSize = CCryFont::defaultGlyphSize) const;
     //  int GetCharHeightByChar(wchar_t cChar);
 
     // useful for special feature rendering interleaved with fonts (e.g. box behind the text)
@@ -173,11 +216,54 @@ public:
 
     Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph);
 
+    float GetAscenderToHeightRatio();
+
+public: // ---------------------------------------------------------------
+
+        //! Clamps the given glyph size to the given max cell width and height dimensions.
+    static Vec2i ClampGlyphSize(const Vec2i& glyphSize, int cellWidth, int cellHeight);
+
 private: // ---------------------------------------------------------------
 
     int CreateSlotList(int iListSize);
     int ReleaseSlotList();
-    int UpdateSlot(int iSlot, uint16 wSlotUsage, uint32 cChar);
+
+    //! Updates the given font texture slot with the given glyph (UTF8) with the given parameters. If the glyph doesn't
+    //! exist in the font texture at the given size, then the glyph will be rendered to the font texture with the given
+    //! parameters.
+    //! \param iSlot Index of the texture slot to update within the slot list.
+    //! \param wSlotUsage Used for LRU strategy to determine how many times a glyph is referenced for retention within the font texture (before eviction).
+    //! \param cChar UTF32 glyph to store within the slot.
+    //! \param sizeRatio A sizing scale that should be applied to the glyph before being stored within the font texture.
+    //! \param glyphSize The size of the glyph to be rendered at within the font texture.
+    //! \param glyphFlags Specifies hinting behavior that should be applied to the glyph when rendered to the font texture.
+    int UpdateSlot(int iSlot, uint16 wSlotUsage, uint32 cChar, float sizeRatio, const Vec2i& glyphSize = CCryFont::defaultGlyphSize, const CFFont::FontHintParams& glyphFlags = CFFont::FontHintParams());
+
+    CryFont::FontTexture::CTextureSlotKey GetTextureSlotKey(uint32 cChar, const Vec2i& glyphSize = CCryFont::defaultGlyphSize) const;
+
+    //! Calculates scaling info that should be applied when the rendered glyph size doesn't match the maximum glyph slot resolution.
+    //!
+    //! Glyphs can be re-rendered to glyph slots at smaller resolutions for pixel-perfect resolution (rather than applying a scale
+    //! to glyphs rendered at larger sizes). These scaling values allow clients of the font texture to use the glyphs without regard
+    //! to whether the glyphs have been re-rendered or not.
+    float GetRequestSizeWidthScale(const Vec2i& glyphSize) const
+    {
+        const int cellWidth = m_iCellWidth == 0 ? 1 : m_iCellWidth;
+        const float invCellWidth = 1.0f / cellWidth;
+        return glyphSize.x > 0 ? glyphSize.x * invCellWidth : 1.0f;
+    }
+
+    //! Calculates scaling info that should be applied when the rendered glyph size doesn't match the maximum glyph slot resolution.
+    //!
+    //! Glyphs can be re-rendered to glyph slots at smaller resolutions for pixel-perfect resolution (rather than applying a scale
+    //! to glyphs rendered at larger sizes). These scaling values allow clients of the font texture to use the glyphs without regard
+    //! to whether the glyphs have been re-rendered or not.
+    float GetRequestSizeHeightScale(const Vec2i& glyphSize) const
+    {
+        const int cellHeight = m_iCellHeight == 0 ? 1 : m_iCellHeight;
+        const float invCellHeight = 1.0f / cellHeight;
+        return glyphSize.y > 0 ? glyphSize.y * invCellHeight : 1.0f;
+    }
 
     // --------------------------------
 
@@ -210,5 +296,6 @@ private: // ---------------------------------------------------------------
     uint16                              m_wSlotUsage;
 };
 
+#endif // #if !defined(USE_NULLFONT_ALWAYS)
 
 #endif // CRYINCLUDE_CRYFONT_FONTTEXTURE_H

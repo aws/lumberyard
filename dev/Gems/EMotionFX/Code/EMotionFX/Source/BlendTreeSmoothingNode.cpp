@@ -24,6 +24,7 @@ namespace EMotionFX
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSmoothingNode, AnimGraphAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(BlendTreeSmoothingNode::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
 
+    const float BlendTreeSmoothingNode::s_targetReachedRelativeTolerance = 0.01f;
 
     BlendTreeSmoothingNode::BlendTreeSmoothingNode()
         : AnimGraphNode()
@@ -102,9 +103,16 @@ namespace EMotionFX
         const float sourceValue = uniqueData->mCurrentValue;
         const float interpolationSpeed = m_interpolationSpeed * uniqueData->mFrameDeltaTime * 10.0f;
         const float interpolationResult = (interpolationSpeed < 0.99999f) ? MCore::LinearInterpolate<float>(sourceValue, destValue, interpolationSpeed) : destValue;
-
-        // pass the interpolated result to the output port and the current value of the unique data
-        uniqueData->mCurrentValue = interpolationResult;
+        // If the percentage error is 1%, or less, snap to the destination value
+        if (AZ::IsClose((interpolationResult - destValue) / destValue, 0.0f, s_targetReachedRelativeTolerance))
+        {
+            uniqueData->mCurrentValue = destValue;
+        }
+        else
+        {
+            // pass the interpolated result to the output port and the current value of the unique data
+            uniqueData->mCurrentValue = interpolationResult;
+        }
         GetOutputFloat(animGraphInstance, OUTPUTPORT_RESULT)->SetValue(interpolationResult);
 
         uniqueData->mFrameDeltaTime = timePassedInSeconds;

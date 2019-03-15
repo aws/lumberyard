@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <AzCore/Math/VertexContainer.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/Math/VertexContainerInterface.h>
 #include <AzToolsFramework/Manipulators/ManipulatorBus.h>
 
@@ -26,7 +26,7 @@ namespace AZ
 
 namespace AzToolsFramework
 {
-    class TranslationManipulator;
+    class TranslationManipulators;
     class LineSegmentSelectionManipulator;
 }
 
@@ -76,7 +76,7 @@ namespace AzToolsFramework
     private:
         AZ_DISABLE_COPY_MOVE(LineSegmentHoverSelection)
 
-        AZStd::vector<AZStd::unique_ptr<LineSegmentSelectionManipulator>> m_lineSegmentManipulators; ///< Manipulators for each line.
+        AZStd::vector<AZStd::shared_ptr<LineSegmentSelectionManipulator>> m_lineSegmentManipulators; ///< Manipulators for each line.
     };
 
     /**
@@ -87,8 +87,8 @@ namespace AzToolsFramework
         : public HoverSelection
     {
     public:
-        NullHoverSelection() {}
-        ~NullHoverSelection() {}
+        NullHoverSelection() = default;
+        ~NullHoverSelection() = default;
 
         void Create(AZ::EntityId /*entityId*/, ManipulatorManagerId /*managerId*/) override {}
         void Destroy() override {}
@@ -110,11 +110,13 @@ namespace AzToolsFramework
     /**
      * Function pointer to configure how a translation manipulator should look and behave (dimensions/axes/views).
      */
-    template<typename Vertex>
-    using TranslationManipulatorConfiguratorFn = void(*)(TranslationManipulator*, const Vertex&);
+    using TranslationManipulatorConfiguratorFn = void(*)(
+        TranslationManipulators*, const AZ::Transform& localTransform);
 
     void ConfigureTranslationManipulatorAppearance3d(
-        TranslationManipulator* translationManipulator, const AZ::Vector3 &localPos);
+        TranslationManipulators* translationManipulators,
+        const AZ::Transform& localTransform);
     void ConfigureTranslationManipulatorAppearance2d(
-        TranslationManipulator* translationManipulator, const AZ::Vector2 &localPos);
+        TranslationManipulators* translationManipulators,
+        const AZ::Transform& localTransform);
 }

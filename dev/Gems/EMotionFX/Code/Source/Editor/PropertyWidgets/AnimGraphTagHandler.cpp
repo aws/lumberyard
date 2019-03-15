@@ -13,7 +13,6 @@
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/Parameter/TagParameter.h>
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendNodeSelectionWindow.h>
 #include <Editor/AnimGraphEditorBus.h>
 #include <Editor/PropertyWidgets/AnimGraphTagHandler.h>
 #include <QHBoxLayout>
@@ -44,23 +43,15 @@ namespace EMotionFX
     }
 
 
+    void AnimGraphTagPicker::Reinit()
+    {
+        SetTags(m_tags);
+    }
+
+
     void AnimGraphTagPicker::SetAnimGraph(AnimGraph* animGraph)
     {
         m_animGraph = animGraph;
-
-        // Get the list of available tags.
-        QVector<QString> availableTags;
-        GetAvailableTags(availableTags);
-
-        m_tagSelector->Reinit(availableTags);
-
-        // Get the tag strings from the array of string attributes for selection.
-        QVector<QString> tagStrings;
-        GetSelectedTags(tagStrings);
-
-        // Pre-select tags.
-        QSignalBlocker tagSelectorSignalBlocker(m_tagSelector);
-        m_tagSelector->SelectTags(tagStrings);
     }
 
 
@@ -68,8 +59,16 @@ namespace EMotionFX
     {
         m_tags = tags;
 
+        // Get the list of available tags and update the tag selector.
+        QVector<QString> availableTags;
+        GetAvailableTags(availableTags);
+        m_tagSelector->Reinit(availableTags);
+
+        // Get the tag strings from the array of string attributes for selection.
         QVector<QString> tagStrings;
         GetSelectedTags(tagStrings);
+        
+        QSignalBlocker tagSelectorSignalBlocker(m_tagSelector);
         m_tagSelector->SelectTags(tagStrings);
     }
 
@@ -191,5 +190,3 @@ namespace EMotionFX
         return true;
     }
 } // namespace EMotionFX
-
-#include <Source/Editor/PropertyWidgets/AnimGraphTagHandler.moc>

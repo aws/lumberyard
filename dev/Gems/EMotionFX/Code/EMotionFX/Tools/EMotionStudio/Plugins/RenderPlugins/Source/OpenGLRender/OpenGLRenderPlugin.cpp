@@ -17,10 +17,6 @@
 #include "../../../../EMStudioSDK/Source/MainWindow.h"
 #include "../../../../EMStudioSDK/Source/RenderPlugin/RenderViewWidget.h"
 
-#include <MCore/Source/JobManager.h>
-#include <MCore/Source/Job.h>
-#include <MCore/Source/JobList.h>
-
 #include <chrono>
 
 #include <EMotionFX/Source/BlendTreeSmoothingNode.h>

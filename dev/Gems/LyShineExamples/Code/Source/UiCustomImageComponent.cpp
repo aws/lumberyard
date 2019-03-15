@@ -22,7 +22,6 @@
 
 #include <LyShine/IDraw2d.h>
 #include <LyShine/ISprite.h>
-#include <LyShine/IUiRenderer.h>
 #include <LyShine/Bus/UiElementBus.h>
 #include <LyShine/Bus/UiCanvasBus.h>
 #include <LyShine/Bus/UiTransformBus.h>
@@ -79,8 +78,19 @@ namespace LyShineExamples
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    void UiCustomImageComponent::Render()
+    void UiCustomImageComponent::Render(LyShine::IRenderGraph* renderGraph)
     {
+        // get fade value (tracked by UiRenderer) and compute the desired alpha for the image
+        float fade = renderGraph->GetAlphaFade();
+        float desiredAlpha = m_overrideAlpha * fade;
+        uint8 desiredPackedAlpha = static_cast<uint8>(desiredAlpha * 255.0f);
+
+        // if desired alpha is zero then no need to do any more
+        if (desiredPackedAlpha == 0)
+        {
+            return;
+        }
+
         ISprite* sprite = (m_overrideSprite) ? m_overrideSprite : m_sprite;
         ITexture* texture = (sprite) ? sprite->GetTexture() : nullptr;
 
@@ -90,7 +100,31 @@ namespace LyShineExamples
             texture = gEnv->pRenderer->EF_GetTextureByID(gEnv->pRenderer->GetWhiteTextureId());
         }
 
-        RenderSprite(texture);
+        if (m_isRenderCacheDirty)
+        {
+            RenderToCache(renderGraph);
+            m_isRenderCacheDirty = false;
+        }
+
+        // Render cache is now valid - render using the cache
+
+        // If the fade value has changed we need to update the alpha values in the vertex colors but we do
+        // not want to touch or recompute the RGB values
+        if (m_cachedPrimitive.m_vertices[0].color.a != desiredPackedAlpha)
+        {
+            // go through all the cached vertices and update the alpha values
+            UCol desiredPackedColor = m_cachedPrimitive.m_vertices[0].color;
+            desiredPackedColor.a = desiredPackedAlpha;
+            for (int i = 0; i < m_cachedPrimitive.m_numVertices; ++i)
+            {
+                m_cachedPrimitive.m_vertices[i].color = desiredPackedColor;
+            }
+        }
+
+        bool isTextureSRGB = false;
+        bool isTexturePremultipliedAlpha = false; // we are not rendering from a render target with alpha in it
+        LyShine::BlendMode blendMode = LyShine::BlendMode::Normal;
+        renderGraph->AddPrimitive(&m_cachedPrimitive, texture, m_clamp, isTextureSRGB, isTexturePremultipliedAlpha, blendMode);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +140,7 @@ namespace LyShineExamples
         m_alpha = color.GetA();
         m_overrideColor = m_color;
         m_overrideAlpha = m_alpha;
+        MarkRenderCacheDirty();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +165,8 @@ namespace LyShineExamples
             m_sprite->AddRef();
             m_spritePathname.SetAssetPath(m_sprite->GetPathname().c_str());
         }
+
+        MarkRenderGraphDirty();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -142,6 +179,7 @@ namespace LyShineExamples
     void UiCustomImageComponent::SetSpritePathname(AZStd::string spritePath)
     {
         m_spritePathname.SetAssetPath(spritePath.c_str());
+        MarkRenderGraphDirty();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +192,7 @@ namespace LyShineExamples
     void UiCustomImageComponent::SetUVs(UiCustomImageInterface::UVRect uvs)
     {
         m_uvs = uvs;
+        MarkRenderCacheDirty();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -166,6 +205,19 @@ namespace LyShineExamples
     void UiCustomImageComponent::SetClamp(bool clamp)
     {
         m_clamp = clamp;
+        MarkRenderGraphDirty();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void UiCustomImageComponent::OnCanvasSpaceRectChanged(AZ::EntityId /*entityId*/, const UiTransformInterface::Rect& /*oldRect*/, const UiTransformInterface::Rect& /*newRect*/)
+    {
+        MarkRenderCacheDirty();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void UiCustomImageComponent::OnTransformToViewportChanged()
+    {
+        MarkRenderCacheDirty();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -211,10 +263,12 @@ namespace LyShineExamples
                     ->Attribute(AZ::Edit::Attributes::Max, 1.0f);
 
                 editInfo->DataElement(0, &UiCustomImageComponent::m_uvs, "UV Rect", "The UV coordinates of the rectangle for rendering the texture.")
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiCustomImageComponent::OnRenderSettingChange)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshValues", 0x28e720d4))
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Show); // needed because sub-elements are hidden
 
                 editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiCustomImageComponent::m_clamp, "Clamp", "Whether the image should be clamped or not.")
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiCustomImageComponent::OnRenderSettingChange)
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshValues", 0x28e720d4));
             }
         }
@@ -268,6 +322,7 @@ namespace LyShineExamples
         UiVisualBus::Handler::BusConnect(m_entity->GetId());
         UiRenderBus::Handler::BusConnect(m_entity->GetId());
         UiCustomImageBus::Handler::BusConnect(m_entity->GetId());
+        UiTransformChangeNotificationBus::Handler::BusConnect(m_entity->GetId());
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -276,6 +331,7 @@ namespace LyShineExamples
         UiVisualBus::Handler::BusDisconnect();
         UiRenderBus::Handler::BusDisconnect();
         UiCustomImageBus::Handler::BusDisconnect();
+        UiTransformChangeNotificationBus::Handler::BusDisconnect();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -283,38 +339,59 @@ namespace LyShineExamples
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    void UiCustomImageComponent::RenderSprite(ITexture* texture)
+    void UiCustomImageComponent::RenderToCache(LyShine::IRenderGraph* renderGraph)
     {
         UiTransformInterface::RectPoints points;
         EBUS_EVENT_ID(GetEntityId(), UiTransformBus, GetViewportSpacePoints, points);
-
-        texture->SetClamp(m_clamp);
 
         // points are a clockwise quad
         const AZ::Vector2 uvs[4] = {
             AZ::Vector2(m_uvs.m_left, m_uvs.m_top), AZ::Vector2(m_uvs.m_right, m_uvs.m_top)
             , AZ::Vector2(m_uvs.m_right, m_uvs.m_bottom), AZ::Vector2(m_uvs.m_left, m_uvs.m_bottom)
         };
-        RenderSingleQuad(texture, points.pt, uvs);
+        RenderSingleQuad(renderGraph, points.pt, uvs);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    void UiCustomImageComponent::RenderSingleQuad(ITexture* texture, const AZ::Vector2* positions, const AZ::Vector2* uvs)
+    void UiCustomImageComponent::RenderSingleQuad(LyShine::IRenderGraph* renderGraph, const AZ::Vector2* positions, const AZ::Vector2* uvs)
     {
-        AZ::Color color = AZ::Color::CreateFromVector3AndFloat(m_overrideColor.GetAsVector3(), m_overrideAlpha);
+        float fade = renderGraph->GetAlphaFade();
+        float desiredAlpha = m_overrideAlpha * fade;
+
+        AZ::Color color = AZ::Color::CreateFromVector3AndFloat(m_overrideColor.GetAsVector3(), desiredAlpha);
         color = color.GammaToLinear();   // the colors are specified in sRGB but we want linear colors in the shader
 
-        // points are a clockwise quad
-        IDraw2d::VertexPosColUV verts[4];
-        for (int i = 0; i < 4; ++i)
+        uint32 packedColor = (color.GetA8() << 24) | (color.GetR8() << 16) | (color.GetG8() << 8) | color.GetB8();
+        IDraw2d::Rounding pixelRounding = IsPixelAligned() ? IDraw2d::Rounding::Nearest : IDraw2d::Rounding::None;
+
+        const int numVertices = 4;
+        if (numVertices != m_cachedPrimitive.m_numVertices)
         {
-            verts[i].position = positions[i];
-            verts[i].color = color;
-            verts[i].uv = uvs[i];
+            if (m_cachedPrimitive.m_vertices)
+            {
+                delete [] m_cachedPrimitive.m_vertices;
+            }
+    
+            m_cachedPrimitive.m_vertices = new SVF_P2F_C4B_T2F_F4B[numVertices];
+            m_cachedPrimitive.m_numVertices = numVertices;
         }
 
-        IDraw2d::Rounding rounding = IsPixelAligned() ? IDraw2d::Rounding::Nearest : IDraw2d::Rounding::None;
-        Draw2dHelper::GetDraw2d()->DrawQuad(texture->GetTextureID(), verts, GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA, rounding, IUiRenderer::Get()->GetBaseState());
+        // points are a clockwise quad
+        for (int i = 0; i < numVertices; ++i)
+        {
+            AZ::Vector2 pos = Draw2dHelper::RoundXY(positions[i], pixelRounding);
+            m_cachedPrimitive.m_vertices[i].xy = Vec2(pos.GetX(), pos.GetY());
+            m_cachedPrimitive.m_vertices[i].color.dcolor = packedColor;
+            m_cachedPrimitive.m_vertices[i].st = Vec2(uvs[i].GetX(), uvs[i].GetY());
+            m_cachedPrimitive.m_vertices[i].texIndex = 0;
+            m_cachedPrimitive.m_vertices[i].texHasColorChannel = 1;
+            m_cachedPrimitive.m_vertices[i].texIndex2 = 0;
+            m_cachedPrimitive.m_vertices[i].pad = 0;
+        }
+
+        static uint16 indices[6] = { 0, 1, 2, 2, 3, 0 };
+        m_cachedPrimitive.m_numIndices = 6;
+        m_cachedPrimitive.m_indices = indices;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -340,6 +417,7 @@ namespace LyShineExamples
 
         SAFE_RELEASE(m_sprite);
         m_sprite = newSprite;
+        MarkRenderGraphDirty();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -347,5 +425,32 @@ namespace LyShineExamples
     {
         m_overrideColor = m_color;
         m_overrideAlpha = m_alpha;
+        MarkRenderCacheDirty();
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void UiCustomImageComponent::OnRenderSettingChange()
+    {
+        MarkRenderCacheDirty();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void UiCustomImageComponent::MarkRenderCacheDirty()
+    {
+        if (!m_isRenderCacheDirty)
+        {
+            m_isRenderCacheDirty = true;
+            MarkRenderGraphDirty();
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    void UiCustomImageComponent::MarkRenderGraphDirty()
+    {
+        // tell the canvas to invalidate the render graph (never want to do this while rendering)
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+        EBUS_EVENT_ID(canvasEntityId, UiCanvasComponentImplementationBus, MarkRenderGraphDirty);
+    }
+
 }

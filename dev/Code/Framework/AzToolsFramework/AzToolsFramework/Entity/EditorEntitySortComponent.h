@@ -41,6 +41,7 @@ namespace AzToolsFramework
             EntityOrderArray GetChildEntityOrderArray() override;
             bool SetChildEntityOrderArray(const EntityOrderArray& entityOrderArray) override;
             bool AddChildEntity(const AZ::EntityId& entityId, bool addToBack) override;
+            bool AddChildEntityAtPosition(const AZ::EntityId& entityId, const AZ::EntityId& beforeEntity) override;
             bool RemoveChildEntity(const AZ::EntityId& entityId) override;
             AZ::u64 GetChildEntityIndex(const AZ::EntityId& entityId) override;
 
@@ -50,6 +51,7 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
         private:
             void MarkDirtyAndSendChangedEvent();
+            bool AddChildEntityInternal(const AZ::EntityId& entityId, bool addToBack, EntityOrderArray::iterator insertPosition);
 
             ///////////////
             // AZ::Entity
@@ -103,6 +105,7 @@ namespace AzToolsFramework
             EntityOrderArray m_childEntityOrderArray; ///< The simple vector of entity id is what is used by the entity sort order ebus and is generated from the serialized data
 
             void RebuildEntityOrderCache();
+            EntityOrderArray::iterator GetFirstSelectedEntityPosition();
             using EntityOrderCache = AZStd::unordered_map<AZ::EntityId, AZ::u64>;
             EntityOrderCache m_childEntityOrderCache; ///< The map of entity id to index for quick look up
 

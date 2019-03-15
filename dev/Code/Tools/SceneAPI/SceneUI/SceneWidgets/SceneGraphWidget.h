@@ -25,6 +25,8 @@
 
 class QStandardItem; 
 class QStandardItemModel;
+class QCheckBox;
+class QTreeView;
 
 namespace AZ
 {
@@ -113,6 +115,9 @@ namespace AZ
                 virtual bool IsSelected(const Containers::SceneGraph::Name& name) const;
                 virtual bool AddSelection(const QStandardItem* item);
                 virtual bool RemoveSelection(const QStandardItem* item);
+
+                QCheckBox* GetQCheckBox();
+                QTreeView* GetQTreeView();
 
                 AZStd::vector<QStandardItem*> m_treeItems;
                 AZStd::set<Uuid> m_filterTypes;

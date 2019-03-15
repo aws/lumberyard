@@ -28,8 +28,7 @@ NewElementToolbarSection::NewElementToolbarSection(QToolBar* parent, bool addSep
                     (HierarchyMenu::Show::kNew_EmptyElementAtRoot |
                      HierarchyMenu::Show::kNew_ElementFromPrefabsAtRoot |
                      HierarchyMenu::Show::kNew_InstantiateSliceAtRoot),
-                    false,
-                    nullptr);
+                    false);
 
                 contextMenu.exec(QCursor::pos());
             });

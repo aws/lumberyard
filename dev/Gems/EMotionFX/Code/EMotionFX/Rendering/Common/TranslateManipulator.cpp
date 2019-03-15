@@ -52,11 +52,11 @@ namespace MCommon
 
         // set bounding volumes for the plane selectors
         mXYPlaneAABB.SetMax(mPosition + AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, mBaseRadius));
-        mXYPlaneAABB.SetMin(mPosition + 0.3f * AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mXYPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(mPlaneSelectorPos, mPlaneSelectorPos, 0) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
         mXZPlaneAABB.SetMax(mPosition + AZ::Vector3(mPlaneSelectorPos, mBaseRadius, mPlaneSelectorPos));
-        mXZPlaneAABB.SetMin(mPosition + 0.3f * AZ::Vector3(mPlaneSelectorPos, 0, mPlaneSelectorPos) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mXZPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(mPlaneSelectorPos, 0, mPlaneSelectorPos) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
         mYZPlaneAABB.SetMax(mPosition + AZ::Vector3(mBaseRadius, mPlaneSelectorPos, mPlaneSelectorPos));
-        mYZPlaneAABB.SetMin(mPosition + 0.3f * AZ::Vector3(0, mPlaneSelectorPos, mPlaneSelectorPos) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
+        mYZPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(0, mPlaneSelectorPos, mPlaneSelectorPos) - AZ::Vector3(mBaseRadius, mBaseRadius, mBaseRadius));
     }
 
 

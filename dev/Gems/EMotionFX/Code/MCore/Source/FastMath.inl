@@ -243,9 +243,9 @@ MCORE_INLINE float Math::Log(float x)
 MCORE_INLINE float Math::Log2(float x)
 {
     #if defined(MCORE_FASTFLOAT_MATH)
-    return logf(x) / logf(2);
+    return logf(x) / logf(2.0f);
     #else
-    return log(x) / log(2);
+    return log(x) / log(2.0f);
     #endif
 }
 

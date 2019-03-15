@@ -20,6 +20,7 @@
 #include "LogPanel_Panel.h" // for the BaseLogPanel
 #include "LogControl.h" // for BaseLogView
 #include <AzCore/std/parallel/mutex.h>
+#include <AzCore/Component/TickBus.h>
 
 namespace AzToolsFramework
 {
@@ -39,6 +40,11 @@ namespace AzToolsFramework
 
             TracePrintFLogPanel(QWidget* pParent = nullptr);
 
+            void InsertLogLine(Logging::LogLine::LogType type, const char* window, const char* message, void* data);
+
+        Q_SIGNALS:
+            void LogLineSelected(const Logging::LogLine& logLine);
+
         private:
             QWidget* CreateTab(const TabSettings& settings) override;
         };
@@ -50,6 +56,7 @@ namespace AzToolsFramework
         class AZTracePrintFLogTab
             : public BaseLogView
             , protected AZ::Debug::TraceMessageBus::Handler
+            , protected AZ::SystemTickBus::Handler
         {
             Q_OBJECT;
         public:
@@ -66,9 +73,16 @@ namespace AzToolsFramework
             virtual bool OnPrintf(const char* window, const char* message);
             //////////////////////////////////////////////////////////////////////////
 
-        protected:
             /// Log a message received from the TraceMessageBus
-            void LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message);
+            void LogTraceMessage(Logging::LogLine::LogType type, const char* window, const char* message, void* data = nullptr);
+
+            QTableView* GetLogView() { return m_ptrLogView; }
+
+        Q_SIGNALS:
+            void SelectionChanged(const Logging::LogLine& logLine);
+
+        protected:
+            void OnSystemTick() override;
 
             TabSettings m_settings;
 
@@ -78,6 +92,8 @@ namespace AzToolsFramework
             AZStd::queue<Logging::LogLine> m_bufferedLines;
             AZStd::atomic_bool m_alreadyQueuedDrainMessage;  // we also only drain the queue at the end so that we do bulk inserts instead of one at a time.
             AZStd::mutex m_bufferedLinesMutex; // protects m_bufferedLines from draining and adding entries into it from different threads at the same time 
+
+            void CurrentItemChanged(const QModelIndex& current, const QModelIndex& previous);
 
         private Q_SLOTS:
             void    DrainMessages();

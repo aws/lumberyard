@@ -49,7 +49,8 @@ bool CD3D9Renderer::FontUploadTexture(class CFBitmap* pBmp, ETEX_Format eTF)
     char szName[128];
     azsprintf(szName, "$AutoFont_%d", m_TexGenID++);
 
-    int iFlags = FT_TEX_FONT | FT_DONT_STREAM | FT_DONT_RELEASE;
+    // FT_DONT_RELEASE was previously set here and caused the VRAM from font textures to never be released
+    int iFlags = FT_TEX_FONT | FT_DONT_STREAM;
     CTexture* tp = CTexture::Create2DTexture(szName, pBmp->GetWidth(), pBmp->GetHeight(), 1, iFlags, (unsigned char*)pData, eTF, eTF);
 
     SAFE_DELETE_ARRAY(pData);
@@ -59,7 +60,7 @@ bool CD3D9Renderer::FontUploadTexture(class CFBitmap* pBmp, ETEX_Format eTF)
     return true;
 }
 
-int CD3D9Renderer::FontCreateTexture(int Width, int Height, byte* pData, ETEX_Format eTF, bool genMips)
+int CD3D9Renderer::FontCreateTexture(int Width, int Height, byte* pData, ETEX_Format eTF, bool genMips, const char* textureName)
 {
     if (!pData)
     {
@@ -67,9 +68,17 @@ int CD3D9Renderer::FontCreateTexture(int Width, int Height, byte* pData, ETEX_Fo
     }
 
     char szName[128];
-    sprintf_s(szName, "$AutoFont_%d", m_TexGenID++);
-
-    int iFlags = FT_TEX_FONT | FT_DONT_STREAM | FT_DONT_RELEASE;
+    if (textureName)
+    {
+        sprintf_s(szName, "$AutoFont_%d_%s", m_TexGenID++, textureName);
+    }
+    else
+    {
+        sprintf_s(szName, "$AutoFont_%d", m_TexGenID++);
+    }
+    
+    // FT_DONT_RELEASE was previously set here and caused the VRAM from font textures to never be released
+    int iFlags = FT_TEX_FONT | FT_DONT_STREAM;
     if (genMips)
     {
         iFlags |= FT_FORCE_MIPS;
@@ -263,4 +272,16 @@ void CD3D9Renderer::DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, int nVerts, 
     }
 
     m_pRT->RC_DrawDynVB(pBuf, pInds, nVerts, nInds, nPrimType);
+}
+
+void CD3D9Renderer::DrawDynUiPrimitiveList(DynUiPrimitiveList& primitives, int totalNumVertices, int totalNumIndices)
+{
+    PROFILE_FRAME(Draw_IndexMesh_Dyn);
+
+    if (m_bDeviceLost)
+    {
+        return;
+    }
+
+    m_pRT->RC_DrawDynUiPrimitiveList(primitives, totalNumVertices, totalNumIndices);
 }

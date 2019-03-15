@@ -130,7 +130,7 @@ void StreamerLayoutHelper::GenerateOptimalSeekDeviceReadLayout(AZStd::vector<AZS
 {
     layout.clear();
 
-    AZStd::lock_guard<StreamerDrillerBus::MutexType> lock(StreamerDrillerBus::GetOrCreateContext().m_mutex);
+    AZStd::lock_guard<StreamerDrillerBus::MutexType> lock(StreamerDrillerBus::GetOrCreateContext().m_contextMutex);
 
     typedef AZStd::unordered_map<StreamID, SeekLink> SeekLinksMap;
     SeekLinksMap seekLinks;

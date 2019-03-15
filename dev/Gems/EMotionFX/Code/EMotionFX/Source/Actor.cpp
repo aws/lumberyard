@@ -10,7 +10,7 @@
 *
 */
 
-// include the required headers
+#include <AzCore/std/smart_ptr/make_shared.h>
 #include "EMotionFXConfig.h"
 #include "Actor.h"
 #include "Motion.h"
@@ -32,6 +32,7 @@
 #include "Node.h"
 #include "Skeleton.h"
 #include "SoftSkinDeformer.h"
+#include "DualQuatSkinDeformer.h"
 
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Compare.h>
@@ -79,7 +80,6 @@ namespace EMotionFX
         mMaterials.SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
         mDependencies.SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
         mMorphSetups.SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
-        mInvBindPoseGlobalMatrices.SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
         mLODs.SetMemoryCategory(EMFX_MEMCATEGORY_ACTORS);
 
         mSkeleton = Skeleton::Create();
@@ -98,6 +98,8 @@ namespace EMotionFX
 
         mUsedForVisualization       = false;
         mDirtyFlag                  = false;
+
+        m_physicsSetup              = AZStd::make_shared<PhysicsSetup>();
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime           = false;
@@ -133,8 +135,7 @@ namespace EMotionFX
         // remove all node groups
         RemoveAllNodeGroups();
 
-        //  mBindPose.Clear();
-        mInvBindPoseGlobalMatrices.Clear();
+        mInvBindPoseTransforms.clear();
 
         // destroy the skeleton
         MCore::Destroy(mSkeleton);
@@ -165,6 +166,7 @@ namespace EMotionFX
         result->mFileUnitType           = mFileUnitType;
         result->mStaticAABB             = mStaticAABB;
         result->mRetargetRootNode       = mRetargetRootNode;
+        result->mInvBindPoseTransforms  = mInvBindPoseTransforms;
 
         result->RecursiveAddDependencies(this);
 
@@ -235,6 +237,8 @@ namespace EMotionFX
         result->CopyTransformsFrom(this);
 
         result->mNodeMirrorInfos = mNodeMirrorInfos;
+
+        result->m_physicsSetup = m_physicsSetup;
 
         // trigger the event
         GetEMotionFX().GetEventManager()->OnPostCreateActor(result);
@@ -829,6 +833,18 @@ namespace EMotionFX
     }
 
 
+    void Actor::SetPhysicsSetup(const AZStd::shared_ptr<PhysicsSetup>& physicsSetup)
+    {
+        m_physicsSetup = physicsSetup;
+    }
+
+
+    const AZStd::shared_ptr<PhysicsSetup>& Actor::GetPhysicsSetup() const
+    {
+        return m_physicsSetup;
+    }
+
+
     // remove all morph setups
     void Actor::RemoveAllMorphSetups(bool deleteMeshDeformers)
     {
@@ -1066,15 +1082,11 @@ namespace EMotionFX
     // update the bounding volumes
     void Actor::UpdateNodeBindPoseOBBs(uint32 lodLevel)
     {
-        // build the set of  bind pose matrices in global space
-        MCore::Array<MCore::Matrix> globalMatrices;
-        mSkeleton->CalcBindPoseGlobalMatrices(globalMatrices);
-
         // for all nodes
         const uint32 numNodes = mSkeleton->GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            CalcOBBFromBindPose(lodLevel, i, globalMatrices[i].Inversed());
+            CalcOBBFromBindPose(lodLevel, i);
         }
     }
 
@@ -1090,137 +1102,6 @@ namespace EMotionFX
         mNodeGroups.Clear();
     }
 
-
-    /*
-    // modify the bind pose and mesh data where needed
-    // to allow the motion mirroring feature to work correct
-    // basically it removes rotation and scale from the nodes and meshes
-    void Actor::FixSkeletalBindPoseForMotionMirroring(MCore::Array<MCore::Matrix>* outDeltas)
-    {
-        // get the transformation data
-        TransformData* transformData = GetTransformData();
-
-        // calc the bind pose matrices in global space
-        Array<Matrix> globalMatrices;
-        CalcBindPoseGlobalMatrices( globalMatrices );
-
-        // getting a pointer to the output global matrices
-        Matrix* newGlobalMatrices = transformData->GetGlobalMatrices();
-
-        // get the number of nodes and iterate thoguh them
-        const uint32 numNodes = GetNumNodes();
-        outDeltas->Resize( numNodes );
-        for (uint32 nodeIndex=0; nodeIndex<numNodes; ++nodeIndex)
-        {
-            // get the current node
-            Node* node = GetNode( nodeIndex );
-
-            // check if the current node is an attachment
-            if (node->IsAttachmentNode())
-            {
-                // as we don't tweak attachments, when mirroring a character,
-                // attachers have to produce the same GTM as *before* mirroring conformation.
-                // So we're just just preserve the GTM (but that will produce a new LTM, so still a delta matrix
-                // to be applied for that node during animation conformation
-                newGlobalMatrices[nodeIndex] = globalMatrices[nodeIndex];
-            }
-            else
-            {
-                // calculate the new transformation, using only translation
-                // the rotation and scale are being ignored here
-                newGlobalMatrices[nodeIndex].Set(   MCore::Quaternion(),                                    // no scale rotation
-                                                    MCore::Quaternion(),                                    // no rotation
-                                                    MCore::Vector3(1.0f, 1.0f, 1.0f),                       // no scale
-                                                    globalMatrices[nodeIndex].GetTranslation() );   // only translation
-            }
-
-            // get the parent index
-            const uint32 parentIndex = node->GetParentIndex();
-
-            // compute and store local transformation matrix (basically it subtracts the parent translation)
-            Matrix& newLTM = transformData->GetLocalMatrices()[nodeIndex];
-            newLTM = newGlobalMatrices[nodeIndex];
-            if (parentIndex != MCORE_INVALIDINDEX32)
-                newLTM *= newGlobalMatrices[parentIndex].Inversed();
-
-            // decompose the local space matrix
-            MatrixDecomposer ltmDecomposer;
-            Transform newTransform;
-            ltmDecomposer.InitFromMatrix( newLTM );
-
-            // copy the decomposed info into the localspace transform object
-            EMFX_SCALECODE
-            (
-                newTransform.mScaleRotation = ltmDecomposer.GetScaleRotation();
-                newTransform.mScale         = ltmDecomposer.GetScale();
-            )
-
-            newTransform.mRotation          = ltmDecomposer.GetRotation();
-            newTransform.mPosition          = ltmDecomposer.GetTranslation();
-
-            // update the bind pose transformation of the actor
-            transformData->SetOrgTransform( nodeIndex, newTransform );
-            transformData->SetFlag( nodeIndex, TransformData::FLAG_NEEDLOCALTMUPDATE, false );
-
-            // calculate the delta between the new and original bind pose transform
-            (*outDeltas)[nodeIndex] = newGlobalMatrices[nodeIndex] * globalMatrices[nodeIndex].Inversed();
-
-            // compute and store new inverse bind pose matrix
-            transformData->GetInvBindPoseMatrices()[nodeIndex] = newGlobalMatrices[nodeIndex].Inversed();
-
-            // mesh fixup
-            // check if this node has a mesh in any LOD
-            if (node->HasMesh())
-            {
-                // compute the vertex transformation to apply eventually to every vertices
-                Matrix delta = globalMatrices[nodeIndex] * newGlobalMatrices[nodeIndex].Inversed();
-
-                // for all geometry LOD levels
-                const uint32 numLODs = GetNumLODLevels();
-                for (uint32 lodLevel=0; lodLevel<numLODs; ++lodLevel)
-                {
-                    // if there is no deformable mesh
-                    if (node->HasDeformableMesh(lodLevel) == false)
-                    {
-                        // get the current mesh
-                        Mesh* mesh = node->GetMesh(lodLevel);
-                        if (mesh)
-                        {
-                            // iterate over all vertex attribute layers
-                            const uint32 numLayers = mesh->GetNumVertexAttributeLayers();
-                            for (uint32 layer=0; layer<numLayers; ++layer)
-                            {
-                                // handle Vector3's
-                                const uint32 layerType = mesh->GetVertexAttributeLayer(layer)->GetType();
-                                if (layerType == Mesh::ATTRIB_POSITIONS || layerType == Mesh::ATTRIB_NORMALS)
-                                {
-                                    // multiply all vectors with the delta matrix
-                                    Vector3* data = (Vector3*)mesh->GetVertexAttributeLayer(layer)->GetOriginalData();
-                                    const uint32 numVerts = mesh->GetNumVertices();
-                                    for (uint32 v=0; v<numVerts; ++v)
-                                        data[v] = data[v] * delta;
-                                }
-                                // handle Vector4's
-                                else if (layerType == Mesh::ATTRIB_TANGENTS)
-                                {
-                                    // multiply all vectors with the delta matrix
-                                    Vector4* data = (Vector4*)mesh->GetVertexAttributeLayer(layer)->GetOriginalData();
-                                    const uint32 numVerts = mesh->GetNumVertices();
-                                    for (uint32 v=0; v<numVerts; ++v)
-                                    {
-                                        Vector3 inData( data[v].x, data[v].y, data[v].z );  // convert vector4 into vector3
-                                        Vector3 out = inData * delta;                       // transform vector3 part
-                                        data[v].Set(out.x, out.y, out.z, data[v].w);        // convert back into vector4
-                                    }
-                                }
-                            }   // for all vertex layers
-                        }   // if there is a mesh in this lod
-                    }   // if its not a deformable mesh
-                }   // for all lods
-            }   // if we have a mesh on this node
-        }   // for all nodes
-    }
-    */
 
     // try to find a match for a given node with a given name
     // for example find "Bip01 L Hand" for node "Bip01 R Hand"
@@ -1484,77 +1365,6 @@ namespace EMotionFX
     }
 
 
-    /*
-    // NOTE: Keeping this commented here for future reference to see how to add a new node dynamically.
-    void Actor::CreateTrajectoryNode()
-    {
-        // get access to the trajectory and the motion extraction node
-        Node* trajectoryNode = GetTrajectoryNode();
-
-        // check if there is a trajectory node
-        if (trajectoryNode)
-        {
-            if (trajectoryNode->GetNameString() == "EMFX_Trajectory")
-            {
-                return;
-            }
-        }
-
-        // get the new trajectory node index
-        const uint32 trajectoryNodeIndex = GetNumNodes();
-
-        // increase the number of nodes and number of root nodes by one
-        mSkeleton->SetNumNodes(trajectoryNodeIndex + 1);
-        mSkeleton->ReserveRootNodes(mSkeleton->GetNumRootNodes() + 1);
-        mSkeleton->GetBindPose()->LinkToActor(this, Pose::FLAG_LOCALTRANSFORMREADY, false);
-        //mBindPose.LinkToActor(this, Pose::FLAG_LOCALTRANSFORMREADY, false);
-
-        ResizeTransformData();
-
-        // increase the number of node motion mirror source
-        if (GetHasMirrorInfo())
-        {
-            mNodeMirrorInfos.AddEmpty();
-            mNodeMirrorInfos.GetLast().mSourceNode = static_cast<uint16>(trajectoryNodeIndex);
-            mNodeMirrorInfos.GetLast().mAxis = 0;
-        }
-
-        // create the trajectory node
-        trajectoryNode = Node::Create("EMFX_Trajectory", mSkeleton);
-
-        // set the node indices and add it as a root node to the actor
-        trajectoryNode->SetNodeIndex(trajectoryNodeIndex);
-        mSkeleton->SetNode(trajectoryNodeIndex, trajectoryNode);
-        mSkeleton->AddRootNode(trajectoryNodeIndex);
-
-        // initialize the LOD data
-        mNodeInfos.AddEmpty();
-        mNodeInfos.GetLast().mOBB.Init();
-        for (uint32 i = 0; i < mLODs.GetLength(); ++i)
-        {
-            LODLevel& lod = mLODs[i];
-            lod.mNodeInfos.AddEmpty();
-            NodeLODInfo& info = lod.mNodeInfos.GetLast();
-            info.mMesh      = nullptr;
-            info.mStack     = nullptr;
-            //info.mColStack    = nullptr;
-            //info.mColMesh = nullptr;
-        }
-
-        // force set it to an identity transform
-        Transform identTransform;
-        identTransform.Identity();
-        //  mBindPose.SetLocalTransform(trajectoryNodeIndex, identTransform);
-        //  mBindPoseLocalTransforms[ trajectoryNodeIndex ].Identity();
-        mInvBindPoseGlobalMatrices[ trajectoryNodeIndex ].Identity();
-        mSkeleton->GetBindPose()->SetLocalTransform(trajectoryNodeIndex, identTransform);
-
-        // set the new trajectory node, update will be called by the importer automatically
-        SetTrajectoryNode(trajectoryNode, false);
-    }
-*/
-
-
     // generate a path from the current node towards the root
     void Actor::GenerateUpdatePathToRoot(uint32 endNodeIndex, MCore::Array<uint32>& outPath) const
     {
@@ -1596,7 +1406,7 @@ namespace EMotionFX
 
 
     // debug render a skeleton
-    void Actor::RenderSkeleton(const Transform* globalTransforms, uint32 color)
+    void Actor::RenderSkeleton(const Transform* worldSpaceTransforms, uint32 color)
     {
         const uint32 numNodes = mSkeleton->GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
@@ -1604,7 +1414,7 @@ namespace EMotionFX
             const uint32 parentIndex = mSkeleton->GetNode(i)->GetParentIndex();
             if (parentIndex != MCORE_INVALIDINDEX32)
             {
-                GetEventManager().OnDrawLine(globalTransforms[i].mPosition, globalTransforms[parentIndex].mPosition, color);
+                GetEventManager().OnDrawLine(worldSpaceTransforms[i].mPosition, worldSpaceTransforms[parentIndex].mPosition, color);
             }
         }
     }
@@ -1628,11 +1438,6 @@ namespace EMotionFX
                 {
                     stack->ReinitializeDeformers(this, node, lodLevel);
                 }
-
-                // reinit the collision mesh deformer stacks
-                //stack = GetCollisionMeshDeformerStack(lodLevel, i);
-                //if (stack)
-                //stack->ReinitializeDeformers(this, node, lodLevel);
             }
         }
     }
@@ -1647,12 +1452,12 @@ namespace EMotionFX
         }
 
         // calculate the inverse bind pose matrices
-        MCore::Array<MCore::Matrix> bindPoseGlobalMatrices;
-        mSkeleton->CalcBindPoseGlobalMatrices(bindPoseGlobalMatrices);
+        const Pose* bindPose = GetBindPose();
         const uint32 numNodes = mSkeleton->GetNumNodes();
+        mInvBindPoseTransforms.resize(numNodes);
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            mInvBindPoseGlobalMatrices[i] = bindPoseGlobalMatrices[i].Inversed();
+            mInvBindPoseTransforms[i] = bindPose->GetModelSpaceTransform(i).Inversed();
         }
 
         // make sure the skinning info doesn't use any disabled bones
@@ -1664,12 +1469,12 @@ namespace EMotionFX
         // initialize the mesh deformers
         ReinitializeMeshDeformers();
 
-        // make sure our global space bind pose is updated too
+        // make sure our world space bind pose is updated too
         if (mMorphSetups.GetLength() > 0 && mMorphSetups[0])
         {
             mSkeleton->GetBindPose()->ResizeNumMorphs(mMorphSetups[0]->GetNumMorphTargets());
         }
-        mSkeleton->GetBindPose()->ForceUpdateFullGlobalPose();
+        mSkeleton->GetBindPose()->ForceUpdateFullModelSpacePose();
         mSkeleton->GetBindPose()->ZeroMorphWeights();
 
         if (generateOBBs)
@@ -1701,9 +1506,9 @@ namespace EMotionFX
     // update the static AABB (very heavy as it has to create an actor instance, update mesh deformers, calculate the mesh based bounds etc)
     void Actor::UpdateStaticAABB()
     {
-        if (mStaticAABB.CheckIfIsValid() == false)
+        if (!mStaticAABB.CheckIfIsValid())
         {
-            ActorInstance* actorInstance = ActorInstance::Create(this, AZ::EntityId(AZ::EntityId::InvalidEntityId), mThreadIndex);
+            ActorInstance* actorInstance = ActorInstance::Create(this, nullptr, mThreadIndex);
             //actorInstance->UpdateMeshDeformers(0.0f);
             //actorInstance->UpdateStaticBasedAABBDimensions();
             actorInstance->GetStaticBasedAABB(&mStaticAABB);
@@ -1715,7 +1520,7 @@ namespace EMotionFX
     // auto detect the mirror axes
     void Actor::AutoDetectMirrorAxes()
     {
-        AZ::Vector3 globalMirrorPlaneNormal(1.0f, 0.0f, 0.0f);
+        AZ::Vector3 modelSpaceMirrorPlaneNormal(1.0f, 0.0f, 0.0f);
 
         Pose pose;
         pose.LinkToActor(this);
@@ -1725,17 +1530,17 @@ namespace EMotionFX
         {
             const uint16 motionSource = (GetHasMirrorInfo()) ? GetNodeMirrorInfo(i).mSourceNode : static_cast<uint16>(i);
 
-            // displace the local transform a bit, and calculate its mirrored global space position
+            // displace the local transform a bit, and calculate its mirrored model space position
             pose.InitFromBindPose(this);
-            Transform localTransform = pose.GetLocalTransform(motionSource);
+            Transform localTransform = pose.GetLocalSpaceTransform(motionSource);
             Transform orgDelta;
             orgDelta.mPosition.Set(1.1f, 2.2f, 3.3f);
             orgDelta.mRotation.SetEuler(0.1f, 0.2f, 0.3f);
             Transform delta = orgDelta;
             delta.Multiply(localTransform);
-            pose.SetLocalTransform(motionSource, delta);
-            Transform endGlobalTransform = pose.GetGlobalTransform(motionSource);
-            endGlobalTransform.Mirror(globalMirrorPlaneNormal);
+            pose.SetLocalSpaceTransform(motionSource, delta);
+            Transform endModelSpaceTransform = pose.GetModelSpaceTransform(motionSource);
+            endModelSpaceTransform.Mirror(modelSpaceMirrorPlaneNormal);
 
             float   minDist     = FLT_MAX;
             uint8   bestAxis    = 0;
@@ -1748,15 +1553,15 @@ namespace EMotionFX
 
                 // mirror it over the current plane
                 pose.InitFromBindPose(this);
-                localTransform = pose.GetLocalTransform(i);
+                localTransform = pose.GetLocalSpaceTransform(i);
                 delta = orgDelta;
                 delta.Mirror(axis);
                 delta.Multiply(localTransform);
-                pose.SetLocalTransform(i, delta);
-                Transform globalResult = pose.GetGlobalTransform(i);
+                pose.SetLocalSpaceTransform(i, delta);
+                const Transform& modelSpaceResult = pose.GetModelSpaceTransform(i);
 
-                // check if we have a matching distance in global space
-                const float dist = MCore::SafeLength(globalResult.mPosition - endGlobalTransform.mPosition);
+                // check if we have a matching distance in model space
+                const float dist = MCore::SafeLength(modelSpaceResult.mPosition - endModelSpaceTransform.mPosition);
                 if (dist <= MCore::Math::epsilon)
                 {
                     //MCore::LogInfo("%s = %f (axis=%d)", mNodes[i]->GetName(), dist, a);
@@ -1801,15 +1606,15 @@ namespace EMotionFX
 
                         // mirror it over the current plane
                         pose.InitFromBindPose(this);
-                        localTransform = pose.GetLocalTransform(i);
+                        localTransform = pose.GetLocalSpaceTransform(i);
                         delta = orgDelta;
                         delta.MirrorWithFlags(axis, flags);
                         delta.Multiply(localTransform);
-                        pose.SetLocalTransform(i, delta);
-                        Transform globalResult = pose.GetGlobalTransform(i);
+                        pose.SetLocalSpaceTransform(i, delta);
+                        const Transform& modelSpaceResult = pose.GetModelSpaceTransform(i);
 
-                        // check if we have a matching distance in global space
-                        const float dist = MCore::SafeLength(globalResult.mPosition - endGlobalTransform.mPosition);
+                        // check if we have a matching distance in world space
+                        const float dist = MCore::SafeLength(modelSpaceResult.mPosition - endModelSpaceTransform.mPosition);
                         if (dist <= MCore::Math::epsilon)
                         {
                             //MCore::LogInfo("*** %s = %f (axis=%d) (flip=%d)", mNodes[i]->GetName(), dist, a, f);
@@ -1901,8 +1706,8 @@ namespace EMotionFX
             return MCORE_INVALIDINDEX16;
         }
 
-        // calculate the global space transform and mirror it
-        const Transform nodeTransform       = pose.GetGlobalTransform(nodeIndex);
+        // calculate the model space transform and mirror it
+        const Transform nodeTransform       = pose.GetModelSpaceTransform(nodeIndex);
         const Transform mirroredTransform   = nodeTransform.Mirrored(AZ::Vector3(1.0f, 0.0f, 0.0f));
 
         uint32 numMatches = 0;
@@ -1912,7 +1717,7 @@ namespace EMotionFX
         const uint32 numNodes = mSkeleton->GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            const Transform curNodeTransform = pose.GetGlobalTransform(i);
+            const Transform curNodeTransform = pose.GetModelSpaceTransform(i);
             if (i != nodeIndex)
             {
                 // only check the translation for now
@@ -1952,7 +1757,7 @@ namespace EMotionFX
     void Actor::ResizeTransformData()
     {
         mSkeleton->GetBindPose()->LinkToActor(this, Pose::FLAG_LOCALTRANSFORMREADY, false);
-        mInvBindPoseGlobalMatrices.Resize(mSkeleton->GetNumNodes());
+        mInvBindPoseTransforms.resize(mSkeleton->GetNumNodes());
     }
 
 
@@ -1960,7 +1765,7 @@ namespace EMotionFX
     void Actor::ReleaseTransformData()
     {
         mSkeleton->GetBindPose()->Clear();
-        mInvBindPoseGlobalMatrices.Clear();
+        mInvBindPoseTransforms.clear();
     }
 
 
@@ -1969,7 +1774,7 @@ namespace EMotionFX
     {
         MCORE_ASSERT(other->GetNumNodes() == mSkeleton->GetNumNodes());
         ResizeTransformData();
-        mInvBindPoseGlobalMatrices = other->mInvBindPoseGlobalMatrices;
+        mInvBindPoseTransforms = other->mInvBindPoseTransforms;
         *mSkeleton->GetBindPose() = *other->GetSkeleton()->GetBindPose();
     }
 
@@ -2005,7 +1810,7 @@ namespace EMotionFX
         mSkeleton->GetBindPose()->LinkToActor(this, Pose::FLAG_LOCALTRANSFORMREADY, false);
         Transform identTransform;
         identTransform.Identity();
-        mSkeleton->GetBindPose()->SetLocalTransform(mSkeleton->GetNumNodes() - 1, identTransform);
+        mSkeleton->GetBindPose()->SetLocalSpaceTransform(mSkeleton->GetNumNodes() - 1, identTransform);
     }
 
 
@@ -2350,30 +2155,29 @@ namespace EMotionFX
     }
 
 
-    // check if the mesh at the given LOD has a softskin deformer
-    bool Actor::CheckIfHasSoftSkinDeformer(uint32 lodLevel, uint32 nodeIndex) const
+    // check if the mesh has a skinning deformer (either linear or dual quat)
+    bool Actor::CheckIfHasSkinningDeformer(uint32 lodLevel, uint32 nodeIndex) const
     {
         // check if there is a mesh
         Mesh* mesh = GetMesh(lodLevel, nodeIndex);
-        if (mesh == nullptr)
+        if (!mesh)
         {
             return false;
         }
 
         // check if there is a mesh deformer stack
         MeshDeformerStack* stack = GetMeshDeformerStack(lodLevel, nodeIndex);
-        if (stack == nullptr)
+        if (!stack)
         {
             return false;
         }
 
-        // check if there is a morph deformer on the stack
-        return stack->CheckIfHasDeformerOfType(SoftSkinDeformer::TYPE_ID);
+        return (stack->CheckIfHasDeformerOfType(SoftSkinDeformer::TYPE_ID) || stack->CheckIfHasDeformerOfType(DualQuatSkinDeformer::TYPE_ID));
     }
 
 
     // calculate the OBB for a given node
-    void Actor::CalcOBBFromBindPose(uint32 lodLevel, uint32 nodeIndex, const MCore::Matrix& invBindPoseMatrix)
+    void Actor::CalcOBBFromBindPose(uint32 lodLevel, uint32 nodeIndex)
     {
         AZStd::vector<AZ::Vector3> points;
 
@@ -2389,6 +2193,8 @@ namespace EMotionFX
         }
         else // there is no mesh, so maybe this is a bone
         {
+            const Transform& invBindPoseTransform = GetInverseBindPoseTransform(nodeIndex);
+
             // for all nodes inside the actor where this node belongs to
             const uint32 numNodes = mSkeleton->GetNumNodes();
             for (uint32 n = 0; n < numNodes; ++n)
@@ -2426,8 +2232,8 @@ namespace EMotionFX
                             // if this is the same node as we are updating the bounds for, add the vertex position to the list
                             if (nodeNr == nodeIndex)
                             {
-                                AZ::Vector3 tempPos(positions[v]);
-                                points.emplace_back(tempPos * invBindPoseMatrix);
+                                const AZ::Vector3 tempPos(positions[v]);
+                                points.emplace_back(invBindPoseTransform.TransformPoint(tempPos));
                             }
                         } // for all influences
                     } // for all vertices
@@ -2512,18 +2318,16 @@ namespace EMotionFX
         const uint32 numNodes = GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            Transform transform = bindPose->GetLocalTransform(i);
+            Transform transform = bindPose->GetLocalSpaceTransform(i);
             transform.mPosition *= scaleFactor;
-            bindPose->SetLocalTransform(i, transform);
+            bindPose->SetLocalSpaceTransform(i, transform);
         }
-        bindPose->ForceUpdateFullGlobalPose();
+        bindPose->ForceUpdateFullModelSpacePose();
 
         // calculate the inverse bind pose matrices
-        MCore::Array<MCore::Matrix> bindPoseGlobalMatrices;
-        mSkeleton->CalcBindPoseGlobalMatrices(bindPoseGlobalMatrices);
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            mInvBindPoseGlobalMatrices[i] = bindPoseGlobalMatrices[i].Inversed();
+            mInvBindPoseTransforms[i] = bindPose->GetModelSpaceTransform(i).Inversed();
         }
 
         // update node obbs
@@ -2597,14 +2401,14 @@ namespace EMotionFX
         }
 
         // Get the local space rotation matrix of the motion extraction node.
-        const Transform& localTransform = GetBindPose()->GetLocalTransform(mMotionExtractionNode);
+        const Transform& localTransform = GetBindPose()->GetLocalSpaceTransform(mMotionExtractionNode);
         const MCore::Matrix rotationMatrix = localTransform.mRotation.ToMatrix();
 
         // Calculate angles between the up axis and each of the rotation's basis vectors.
         const AZ::Vector3 globalUpAxis(0.0f, 0.0f, 1.0f);
-        const float dotX = rotationMatrix.GetRow(0).Dot(globalUpAxis);      // Right
-        const float dotY = rotationMatrix.GetRow(1).Dot(globalUpAxis);      // Forward
-        const float dotZ = rotationMatrix.GetRow(2).Dot(globalUpAxis);      // Up
+        const float dotX = rotationMatrix.GetRow(0).Dot(globalUpAxis);
+        const float dotY = rotationMatrix.GetRow(1).Dot(globalUpAxis);
+        const float dotZ = rotationMatrix.GetRow(2).Dot(globalUpAxis);
 
         const float difX = 1.0f - MCore::Clamp(MCore::Math::Abs(dotX), 0.0f, 1.0f);
         const float difY = 1.0f - MCore::Clamp(MCore::Math::Abs(dotY), 0.0f, 1.0f);
@@ -2636,5 +2440,4 @@ namespace EMotionFX
     {
         mRetargetRootNode = node ? node->GetNodeIndex() : MCORE_INVALIDINDEX32;
     }
-
 } // namespace EMotionFX

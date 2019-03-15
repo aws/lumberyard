@@ -491,6 +491,16 @@ typedef struct
 	GLLang GLSLLanguage;
 } GLSLShader;
 
+typedef enum _FRAMEBUFFER_FETCH_TYPE
+{
+    FBF_NONE = 0,
+    FBF_EXT_COLOR = 1 << 0,
+    FBF_ARM_COLOR = 1 << 1,
+    FBF_ARM_DEPTH = 1 << 2,
+    FBF_ARM_STENCIL = 1 << 3,
+    FBF_ANY = FBF_EXT_COLOR | FBF_ARM_COLOR | FBF_ARM_DEPTH | FBF_ARM_STENCIL
+} FRAMEBUFFER_FETCH_TYPE;
+
 // NOTE: HLSLCC flags are specified by command line when executing this cross compiler.
 //       If these flags change, the command line switch '-flags=XXX' must change as well.
 //       Lumberyard composes the command line in file 'dev\Code\CryEngine\RenderDll\Common\Shaders\RemoteCompiler.cpp'

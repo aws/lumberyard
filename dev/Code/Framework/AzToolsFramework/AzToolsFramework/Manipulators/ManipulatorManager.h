@@ -70,9 +70,8 @@ namespace AzToolsFramework
         bool ConsumeViewportMouseWheel(const ViewportInteraction::MouseInteraction&);
 
         /// ManipulatorManagerRequestBus::Handler
-        void RegisterManipulator(BaseManipulator& manipulator) override;
-        void UnregisterManipulator(BaseManipulator& manipulator) override;
-        void SetActiveManipulator(BaseManipulator* manipulator) override;
+        void RegisterManipulator(AZStd::shared_ptr<BaseManipulator> manipulator) override;
+        void UnregisterManipulator(BaseManipulator* manipulator) override;
         void DeleteManipulatorBound(Picking::RegisteredBoundId boundId) override;
         void SetBoundDirty(Picking::RegisteredBoundId boundId) override;
         void SetAllBoundsDirty() override;
@@ -103,7 +102,7 @@ namespace AzToolsFramework
          * @param[out] rayIntersectionDistance The result intersecting point equals "rayOrigin + rayIntersectionDistance * rayDirection".
          * @return A pointer to a manipulator that the ray intersects. Null pointer if no intersection is detected.
          */
-        BaseManipulator* PerformRaycast(
+        AZStd::shared_ptr<BaseManipulator> PerformRaycast(
             const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, float& rayIntersectionDistance);
 
         // EditorEntityInfoNotifications
@@ -112,10 +111,10 @@ namespace AzToolsFramework
         ManipulatorManagerId m_manipulatorManagerId; ///< This manipulator manager's id.
         ManipulatorId m_nextManipulatorIdToGenerate; ///< Id to use for the next manipulator that is registered with this manager.
 
-        AZStd::unordered_map<ManipulatorId, BaseManipulator*> m_manipulatorIdToPtrMap; ///< Mapping from a manipulatorId to the corresponding manipulator.
+        AZStd::unordered_map<ManipulatorId, AZStd::shared_ptr<BaseManipulator>> m_manipulatorIdToPtrMap; ///< Mapping from a manipulatorId to the corresponding manipulator.
         AZStd::unordered_map<Picking::RegisteredBoundId, ManipulatorId> m_boundIdToManipulatorIdMap; ///< Mapping from a boundId to the corresponding manipulatorId.
 
-        BaseManipulator* m_activeManipulator = nullptr; ///< The manipulator we are currently interacting with.
+        AZStd::shared_ptr<BaseManipulator> m_activeManipulator = nullptr; ///< The manipulator we are currently interacting with.
         Picking::ManipulatorBoundManager m_boundManager; ///< All active manipulator bounds that could be interacted with.
 
         ViewportInteraction::KeyboardModifiers m_keyboardModifiers; ///< Our recorded state of the modifier keys.

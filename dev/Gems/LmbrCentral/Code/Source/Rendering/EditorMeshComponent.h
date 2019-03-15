@@ -22,6 +22,7 @@
 
 #include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 #include "MeshComponent.h"
 
@@ -37,6 +38,7 @@ namespace LmbrCentral
     class EditorMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , public AZ::Data::AssetBus::Handler
+        , private RenderBoundsRequestBus::Handler
         , private CryPhysicsComponentRequestBus::Handler
         , private MeshComponentRequestBus::Handler
         , private MaterialOwnerRequestBus::Handler
@@ -68,9 +70,15 @@ namespace LmbrCentral
         void GetPhysicsStatus(pe_status& outStatus) override;
         void ApplyPhysicsAction(const pe_action& action, bool threadSafe) override;
 
-        // MeshComponentRequestBus
+        //////////////////////////////////////////////////////////////////////////
+        // RenderBoundsRequestBus interface implementation
+        //////////////////////////////////////////////////////////////////////////
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // MeshComponentRequestBus interface implementation
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_mesh.GetMeshAsset(); }
         void SetVisibility(bool visible) override;

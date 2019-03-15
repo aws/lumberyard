@@ -17,6 +17,7 @@
 #include "D3DPostProcess.h"
 #include "DepthOfField.h"
 #include "../../Common/Textures/TextureManager.h"
+#include <Common/RenderCapabilities.h>
 
 struct TemporalAAParameters
 {
@@ -47,6 +48,16 @@ void CPostAA::Render()
     gcpRendD3D->GetGraphicsPipeline().RenderPostAA();
 }
 
+PostAAPass::PostAAPass()
+{
+    AZ::RenderNotificationsBus::Handler::BusConnect();
+}
+
+PostAAPass::~PostAAPass()
+{
+    AZ::RenderNotificationsBus::Handler::BusDisconnect();
+}
+
 void PostAAPass::Init()
 {
     m_TextureAreaSMAA = CTexture::ForName("EngineAssets/ScreenSpace/AreaTex.dds", FT_DONT_STREAM, eTF_Unknown);
@@ -57,6 +68,16 @@ void PostAAPass::Shutdown()
 {
     SAFE_RELEASE(m_TextureAreaSMAA);
     SAFE_RELEASE(m_TextureSearchSMAA);
+}
+
+void PostAAPass::OnRendererFreeResources(int flags)
+{
+    // If texture resources are about to be freed by the renderer
+    if (flags & FRR_TEXTURES)
+    {
+        // Release the PostAA textures first so they do not leak
+        Shutdown();
+    }
 }
 
 void PostAAPass::Reset()
@@ -493,7 +514,7 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
 {
     PROFILE_LABEL_SCOPE("FLARES, GRAIN");
 
-    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3]);
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
 
     // enable sharpening controlled by r_AntialiasingNonTAASharpening here 
     // TAA applies sharpening in a different shader stage (TAAGatherHistory)
@@ -519,6 +540,11 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     else
     {
         gRenDev->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE4];
+    }
+
+    if (!RenderCapabilities::SupportsTextureViews())
+    {
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE5];
     }
     
     PostProcessUtils().SetSRGBShaderFlags();
@@ -649,11 +675,29 @@ void PostAAPass::RenderFinalComposite(CTexture* sourceTexture)
     }
 
     PROFILE_LABEL_SCOPE("NATIVE_UPSCALE");
-    gRenDev->m_RP.m_FlagsShader_RT &= ~g_HWSR_MaskBit[HWSR_SAMPLE0];
+    gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    const bool renderSceneToTexture = (gcpRendD3D->m_RP.m_TI[gcpRendD3D->m_RP.m_nProcessThreadID].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE) != 0;
+    if ((sourceTexture->GetWidth() != gRenDev->GetOverlayWidth() || sourceTexture->GetHeight() != gRenDev->GetOverlayHeight()) && !renderSceneToTexture)
+#else
     if (sourceTexture->GetWidth() != gRenDev->GetOverlayWidth() || sourceTexture->GetHeight() != gRenDev->GetOverlayHeight())
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     {
         gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE0];
     }
+
+    if (!RenderCapabilities::SupportsTextureViews())
+    {
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE5];
+    }
+    
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (CRenderer::CV_r_FinalOutputAlpha == static_cast<int>(AzRTT::AlphaMode::ALPHA_DEPTH_BASED))
+    {
+        // enable sampling of depth target for alpha value
+        gRenDev->m_RP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_SAMPLE1];
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     
     PostProcessUtils().SetSRGBShaderFlags();
     
@@ -666,6 +710,13 @@ void PostAAPass::RenderFinalComposite(CTexture* sourceTexture)
     STexState texStateLinerSRGB(FILTER_LINEAR, true);
     texStateLinerSRGB.m_bSRGBLookup = true;
     sourceTexture->Apply(0, CTexture::GetTexState(texStateLinerSRGB));
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (CRenderer::CV_r_FinalOutputAlpha == static_cast<int>(AzRTT::AlphaMode::ALPHA_DEPTH_BASED))
+    {
+        CTexture::s_ptexZTarget->Apply(1, CTexture::GetTexState(STexState(FILTER_POINT, true)));
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     SPostEffectsUtils::DrawFullScreenTri(gcpRendD3D->GetOverlayWidth(), gcpRendD3D->GetOverlayHeight());
     SPostEffectsUtils::ShEndPass();

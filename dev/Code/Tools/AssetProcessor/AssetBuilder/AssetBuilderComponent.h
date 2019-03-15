@@ -120,6 +120,8 @@ protected:
     //! Handles calling the appropriate builder job function for the incoming job
     void JobThread();
 
+    void ProcessJob(const AssetBuilderSDK::ProcessJobFunction& job, const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& outResponse);
+
     //! Handles a builder registration request
     bool HandleRegisterBuilder(const AZStd::string& inputFilePath, const AZStd::string& outputFilePath) const;
 

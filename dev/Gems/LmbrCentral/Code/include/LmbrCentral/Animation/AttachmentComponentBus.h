@@ -44,8 +44,21 @@ namespace LmbrCentral
         //! The entity will detach from its target.
         virtual void Detach() = 0;
 
+        //! Trigger a detach followed by a re-attach using the currently setup targetId and bone name and offset.
+        //! This can be used when an asset reloads for example.
+        virtual void Reattach(bool detachFirst) = 0;
+
         //! Update entity's offset from target.
         virtual void SetAttachmentOffset(const AZ::Transform& offset) = 0;
+
+        //! Get the selected joint name.
+        virtual const char* GetJointName() = 0;
+
+        //! Get the target entity Id.
+        virtual AZ::EntityId GetTargetEntityId() = 0;
+
+        //! Get the transform offset.
+        virtual AZ::Transform GetOffset() = 0;
     };
     using AttachmentComponentRequestBus = AZ::EBus<AttachmentComponentRequests>;
 
@@ -58,6 +71,27 @@ namespace LmbrCentral
         : public AZ::ComponentBus
     {
     public:
+        template <class Bus>
+        struct AttachmentNotificationConnectionPolicy
+            : public AZ::EBusConnectionPolicy<Bus>
+        {
+            static void Connect(typename Bus::BusPtr& busPtr, typename Bus::Context& context, typename Bus::HandlerNode& handler, const typename Bus::BusIdType& id = 0)
+            {
+                AZ::EBusConnectionPolicy<Bus>::Connect(busPtr, context, handler, id);
+
+                AZ::EntityId targetId;
+                AttachmentComponentRequestBus::EventResult(targetId, id, &AttachmentComponentRequestBus::Events::GetTargetEntityId);
+
+                // Trigger a reattach, for cases where the other component didn't connect yet to this bus and never received the attach message.
+                if (targetId.IsValid())
+                {
+                    AttachmentComponentRequestBus::Event(id, &AttachmentComponentRequestBus::Events::Reattach, false /* Skip dettaching */);
+                }
+            }
+        };
+        template<class Bus>
+        using ConnectionPolicy = AttachmentNotificationConnectionPolicy<Bus>;
+
         virtual ~AttachmentComponentNotifications() = default;
 
         //! The entity has attached to the target.

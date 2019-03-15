@@ -206,6 +206,16 @@ namespace AzToolsFramework
             OnAssetReady(asset);
         }
 
+        void AssetEditorWidget::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset)
+        {
+            // asset load attempt failed so the current editor state is garbage -- clear it
+            SetAsset(AZ::Data::Asset<AZ::Data::AssetData>()); // blank asset
+
+            QString errString = tr("Failed to load %1!").arg(asset.GetHint().c_str());
+            AZ_Error("Asset Editor", false, errString.toUtf8());
+            QMessageBox::warning(this, tr("Error!"), errString);
+        }
+
         bool AssetEditorWidget::TrySave(const AZStd::function<void()>& savedCallback)
         {
             if (!m_dirty)

@@ -38,6 +38,7 @@ def load_linux_x64_host_settings(conf):
                                               conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_HOME'] = conf.Path('Tools/Python/2.7.12/linux_x64')
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/linux_x64')
+    v['CODE_GENERATOR_INCLUDE_PATHS'] = [conf.ThirdPartyPath('Clang', 'linux_x64/release/lib/clang/6.0.0/include')]
 
     # Detect the QT binaries, if the current capabilities selected requires it.
     _, enabled, _, _ = conf.tp.get_third_party_path(PLATFORM, 'qt')

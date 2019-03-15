@@ -43,6 +43,8 @@ namespace AzToolsFramework
     class IPropertyEditorNotify
     {
     public:
+        virtual ~IPropertyEditorNotify() = default;
+
         // this function gets called each time you are about to actually modify a property (not when the editor opens)
         virtual void BeforePropertyModified(InstanceDataNode* pNode) = 0;
 
@@ -251,39 +253,31 @@ namespace AzToolsFramework
         virtual void WriteGUIValuesIntoTempProperty_Internal(QWidget* widget, void* tempValue, const AZ::Uuid& propertyType, AZ::SerializeContext* serializeContext) = 0;
         virtual void ReadValuesIntoGUI_Internal(QWidget* widget, InstanceDataNode* t) = 0;
         // we define this automatically for you, you don't have to override it.
+        virtual bool HandlesType(const AZ::Uuid& id) const = 0;
         virtual const AZ::Uuid& GetHandledType() const = 0;
         virtual QWidget* GetFirstInTabOrder_Internal(QWidget* widget) = 0;
         virtual QWidget* GetLastInTabOrder_Internal(QWidget* widget) = 0;
         virtual void UpdateWidgetInternalTabbing_Internal(QWidget* widget) = 0;
     };
 
-    template <typename PropertyType, class WidgetType>
+    template <class WidgetType>
     class PropertyHandler_Internal
         : public PropertyHandlerBase
     {
     public:
-        typedef PropertyType property_t;
         typedef WidgetType widget_t;
-
-        // WriteGUIValuesIntoProperty:  This will be called on each instance of your property type.  So for example if you have an object
-        // selected, each of which has the same float property on them, and your property editor is for floats, you will get this
-        // write and read function called 5x - once for each instance.
-        // this is your opportunity to determine if the values are the same or different.
-        // index is the index of the instance, from 0 to however many there are.  You can use this to determine if its
-        // the first instance, or to check for multi-value edits if it matters to you.
-        // GUI is a pointer to the GUI used to editor your property (the one you created in CreateGUI)
-        // and instance is a the actual value (PropertyType).
-        virtual void WriteGUIValuesIntoProperty(size_t index, WidgetType* GUI, PropertyType& instance, InstanceDataNode* node) = 0;
-
-        // this will get called in order to initialize your gui.  It will be called once for each instance.
-        // for example if you have multiple objects selected, index will go from 0 to however many there are.
-        virtual bool ReadValuesIntoGUI(size_t index, WidgetType* GUI, const PropertyType& instance, InstanceDataNode* node) = 0;
 
         // this will be called in order to initialize your gui.  Your class will be fed one attribute at a time
         // you can interpret the attributes as you wish - use attrValue->Read<int>() for example, to interpret it as an int.
         // all attributes can either be a flat value, or a function which returns that same type.  In the case of the function
         // it will be called on the first instance.
-        virtual void ConsumeAttribute(WidgetType* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) = 0;
+        virtual void ConsumeAttribute(WidgetType* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
+        {
+            (void)widget;
+            (void)attrib;
+            (void)attrValue;
+            (void)debugName;
+        }
 
         // override GetFirstInTabOrder, GetLastInTabOrder in your base class to define which widget gets focus first when pressing tab,
         // and also what widget is last.
@@ -300,18 +294,66 @@ namespace AzToolsFramework
 
         // implement this function in order to set your internal tab order between child controls.
         // just call a series of QWidget::setTabOrder
-        virtual void UpdateWidgetInternalTabbing(WidgetType* /*widget*/) { }
-
-
+        virtual void UpdateWidgetInternalTabbing(WidgetType* widget)
+        {
+            (void)widget;
+        }
 
     protected:
         // ---------------- INTERNAL -----------------------------
+        virtual void ConsumeAttributes_Internal(QWidget* widget, InstanceDataNode* dataNode) override;
+
+        virtual QWidget* GetFirstInTabOrder_Internal(QWidget* widget) override
+        {
+            WidgetType* wid = static_cast<WidgetType*>(widget);
+            return GetFirstInTabOrder(wid);
+        }
+
+        virtual void UpdateWidgetInternalTabbing_Internal(QWidget* widget) override
+        {
+            WidgetType* wid = static_cast<WidgetType*>(widget);
+            return UpdateWidgetInternalTabbing(wid);
+        }
+
+        virtual QWidget* GetLastInTabOrder_Internal(QWidget* widget) override
+        {
+            WidgetType* wid = static_cast<WidgetType*>(widget);
+            return GetLastInTabOrder(wid);
+        }
+    };
+
+    template <typename PropertyType, class WidgetType>
+    class TypedPropertyHandler_Internal
+        : public PropertyHandler_Internal<WidgetType>
+    {
+    public:
+        typedef PropertyType property_t;
+
+        // WriteGUIValuesIntoProperty:  This will be called on each instance of your property type.  So for example if you have an object
+        // selected, each of which has the same float property on them, and your property editor is for floats, you will get this
+        // write and read function called 5x - once for each instance.
+        // this is your opportunity to determine if the values are the same or different.
+        // index is the index of the instance, from 0 to however many there are.  You can use this to determine if its
+        // the first instance, or to check for multi-value edits if it matters to you.
+        // GUI is a pointer to the GUI used to editor your property (the one you created in CreateGUI)
+        // and instance is a the actual value (PropertyType).
+        virtual void WriteGUIValuesIntoProperty(size_t index, WidgetType* GUI, PropertyType& instance, InstanceDataNode* node) = 0;
+
+        // this will get called in order to initialize your gui.  It will be called once for each instance.
+        // for example if you have multiple objects selected, index will go from 0 to however many there are.
+        virtual bool ReadValuesIntoGUI(size_t index, WidgetType* GUI, const PropertyType& instance, InstanceDataNode* node) = 0;
+
+    protected:
+        // ---------------- INTERNAL -----------------------------
+        virtual bool HandlesType(const AZ::Uuid& id) const override
+        {
+            return GetHandledType() == id;
+        }
+
         virtual const AZ::Uuid& GetHandledType() const override
         {
             return AZ::SerializeTypeInfo<PropertyType>::GetUuid();
         }
-
-        virtual void ConsumeAttributes_Internal(QWidget* widget, InstanceDataNode* dataNode) override;
 
         virtual void WriteGUIValuesIntoProperty_Internal(QWidget* widget, InstanceDataNode* node) override
         {
@@ -330,7 +372,7 @@ namespace AzToolsFramework
             }
         }
 
-		virtual void WriteGUIValuesIntoTempProperty_Internal(QWidget* widget, void* tempValue, const AZ::Uuid& propertyType, AZ::SerializeContext* serializeContext) override
+        virtual void WriteGUIValuesIntoTempProperty_Internal(QWidget* widget, void* tempValue, const AZ::Uuid& propertyType, AZ::SerializeContext* serializeContext) override
         {
             WidgetType* wid = static_cast<WidgetType*>(widget);
 
@@ -359,25 +401,6 @@ namespace AzToolsFramework
                     return;
                 }
             }
-        }
-
-        virtual QWidget* GetFirstInTabOrder_Internal(QWidget* widget) override
-        {
-            WidgetType* wid = static_cast<WidgetType*>(widget);
-            return GetFirstInTabOrder(wid);
-        }
-
-        virtual void UpdateWidgetInternalTabbing_Internal(QWidget* widget) override
-        {
-            WidgetType* wid = static_cast<WidgetType*>(widget);
-            return UpdateWidgetInternalTabbing(wid);
-        }
-
-
-        virtual QWidget* GetLastInTabOrder_Internal(QWidget* widget) override
-        {
-            WidgetType* wid = static_cast<WidgetType*>(widget);
-            return GetLastInTabOrder(wid);
         }
     };
 }

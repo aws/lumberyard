@@ -1,0 +1,29 @@
+{
+    "none": {
+        "Source": [
+            "Source/SliceFavorites_precompiled.cpp",
+            "Source/SliceFavorites_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/SliceFavorites/SliceFavoritesBus.h"
+        ],
+        "Source": [
+            "Source/SliceFavoritesModule.cpp",
+            "Source/SliceFavoritesSystemComponent.cpp",
+            "Source/SliceFavoritesSystemComponent.h",
+            "Source/FavoriteDataModel.cpp",
+            "Source/FavoriteDataModel.h",
+            "Source/SliceFavoritesWidget.cpp",
+            "Source/SliceFavoritesWidget.h",
+            "Source/SliceFavoritesWidget.ui",
+            "Source/ComponentSliceFavoritesWindow.cpp",
+            "Source/ComponentSliceFavoritesWindow.h",
+            "Source/SliceFavoritesSystemComponentBus.h",
+            "Source/SliceFavoritesTreeView.cpp",
+            "Source/SliceFavoritesTreeView.h",
+            "SliceFavorites.qrc"
+        ]
+    }
+}

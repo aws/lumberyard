@@ -9,10 +9,77 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
 import os
-from waflib.Configure import conf
+
 from cry_utils import append_to_unique_list
 
+from waflib import Logs
+from waflib.Configure import conf
 
+
+################################################################
+################################################################
+def load_android_toolchains(ctx, search_paths, CC, CXX, AR, STRIP, **addition_toolchains):
+    """
+    Loads the native toolchains from the Android NDK
+    """
+    try:
+        ctx.find_program(CC, var = 'CC', path_list = search_paths, silent_output = True)
+        ctx.find_program(CXX, var = 'CXX', path_list = search_paths, silent_output = True)
+        ctx.find_program(AR, var = 'AR', path_list = search_paths, silent_output = True)
+
+        # for debug symbol stripping
+        ctx.find_program(STRIP, var = 'STRIP', path_list = search_paths, silent_output = True)
+
+        # optional linker override
+        if 'LINK_CC' in addition_toolchains and 'LINK_CXX' in addition_toolchains:
+            ctx.find_program(addition_toolchains['LINK_CC'], var = 'LINK_CC', path_list = search_paths, silent_output = True)
+            ctx.find_program(addition_toolchains['LINK_CXX'], var = 'LINK_CXX', path_list = search_paths, silent_output = True)
+        else:
+            ctx.env['LINK_CC'] = ctx.env['CC']
+            ctx.env['LINK_CXX'] = ctx.env['CXX']
+
+        ctx.env['LINK'] = ctx.env['LINK_CC']
+
+        # common cc settings
+        ctx.cc_load_tools()
+        ctx.cc_add_flags()
+
+        # common cxx settings
+        ctx.cxx_load_tools()
+        ctx.cxx_add_flags()
+
+        # common link settings
+        ctx.link_add_flags()
+    except:
+        Logs.error('[ERROR] Failed to find the Android NDK standalone toolchain(s) in search path %s' % search_paths)
+        return False
+
+    return True
+
+
+def load_android_tools(ctx):
+    """
+    Loads the necessary build tools from the Android SDK
+    """
+    android_sdk_home = ctx.env['ANDROID_SDK_HOME']
+
+    build_tools_version = ctx.get_android_build_tools_version()
+    build_tools_dir = os.path.join(android_sdk_home, 'build-tools', build_tools_version)
+
+    try:
+        ctx.find_program('aapt', var = 'AAPT', path_list = [ build_tools_dir ], silent_output = True)
+        ctx.find_program('aidl', var = 'AIDL', path_list = [ build_tools_dir ], silent_output = True)
+        ctx.find_program('dx', var = 'DX', path_list = [ build_tools_dir ], silent_output = True)
+        ctx.find_program('zipalign', var = 'ZIPALIGN', path_list = [ build_tools_dir ], silent_output = True)
+    except:
+        Logs.error('[ERROR] The desired Android SDK build-tools version - {} - appears to be incomplete.  Please use Android SDK Manager to validate the build-tools version installation '
+                         'or change BUILD_TOOLS_VER in _WAF_/android/android_settings.json to either a version installed or "latest" and run the configure command again.'.format(build_tools_version))
+        return False
+
+    return True
+
+
+################################################################
 ################################################################
 @conf
 def load_android_common_settings(conf):
@@ -36,7 +103,7 @@ def load_android_common_settings(conf):
         'NDK_REV_MINOR={}'.format(env['ANDROID_NDK_REV_MINOR']),
     ]
 
-    if conf.is_using_android_unified_headers():
+    if env['ANDROID_NDK_REV_MAJOR'] < 19:
         defines += [
             '__ANDROID_API__={}'.format(env['ANDROID_NDK_PLATFORM_NUMBER']),
         ]
@@ -110,41 +177,24 @@ def load_android_common_settings(conf):
     tools_contents = os.listdir(tools_path)
     tools_jars = [ entry for entry in tools_contents if entry.lower().endswith('.jar') ]
 
-    # try to detect older versions of the merger
-    if 'manifest-merger.jar' in tools_jars or 'manifmerger.jar' in tools_jars:
-        env['MANIFEST_MERGER_ENTRY_POINT'] = [ 'com.android.manifmerger.Main','merge' ]
-        env['MANIFEST_MERGER_OLD_VERSION'] = True
+    manifest_merger_lib_names = [
+        # entry point for the merger
+        'manifest-merger',
 
-        if 'manifest-merger.jar' in tools_jars:
-            merger_jar = 'manifest-merger.jar'
-        else:
-            merger_jar = 'manifmerger.jar'
+        # dependent libs
+        'sdk-common',
+        'common'
+    ]
 
-        env['MANIFEST_MERGER_CLASSPATH'] = os.path.join(tools_path, merger_jar)
+    manifest_merger_libs = []
+    for jar in tools_jars:
+        if any(lib_name for lib_name in manifest_merger_lib_names if jar.lower().startswith(lib_name)):
+            manifest_merger_libs.append(jar)
 
-    else:
+    if len(manifest_merger_libs) < len(manifest_merger_lib_names):
+        conf.fatal('[ERROR] Failed to find the required file(s) for the Manifest Merger.  Please use the Android SDK Manager to update to the latest SDK Tools version and run the configure command again.')
 
-        env['MANIFEST_MERGER_ENTRY_POINT'] = 'com.android.manifmerger.Merger'
-        env['MANIFEST_MERGER_OLD_VERSION'] = False
-
-        manifest_merger_lib_names = [
-            # entry point for the merger
-            'manifest-merger', 
-
-            # dependent libs
-            'sdk-common',
-            'common-'
-        ]
-
-        manifest_merger_libs = []
-        for jar in tools_jars:
-            if any(lib_name for lib_name in manifest_merger_lib_names if jar.lower().startswith(lib_name)):
-                manifest_merger_libs.append(jar)
-
-        if len(manifest_merger_libs) < len(manifest_merger_lib_names):
-            conf.fatal('[ERROR] Failed to find the required file(s) for the Manifest Merger.  Please use the Android SDK Manager to update to the latest SDK Tools version and run the configure command again.')
-
-        env['MANIFEST_MERGER_CLASSPATH'] = os.pathsep.join([ os.path.join(tools_path, jar_file) for jar_file in manifest_merger_libs ])
+    env['MANIFEST_MERGER_CLASSPATH'] = os.pathsep.join([ os.path.join(tools_path, jar_file) for jar_file in manifest_merger_libs ])
 
     # zipalign settings
     env['ZIPALIGN_SIZE'] = '4' # alignment in bytes, e.g. '4' provides 32-bit alignment (has to be a string)
@@ -154,7 +204,6 @@ def load_android_common_settings(conf):
     env['KEYSTORE'] = conf.get_android_env_keystore_path()
 
 
-################################################################
 @conf
 def load_debug_android_settings(conf):
     """
@@ -182,7 +231,6 @@ def load_debug_android_settings(conf):
     ]
 
 
-################################################################
 @conf
 def load_profile_android_settings(conf):
     """
@@ -211,7 +259,6 @@ def load_profile_android_settings(conf):
     ]
 
 
-################################################################
 @conf
 def load_performance_android_settings(conf):
     """
@@ -227,7 +274,6 @@ def load_performance_android_settings(conf):
     ]
 
 
-################################################################
 @conf
 def load_release_android_settings(conf):
     """

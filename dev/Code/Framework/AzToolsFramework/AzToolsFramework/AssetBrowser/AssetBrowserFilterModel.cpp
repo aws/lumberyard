@@ -94,11 +94,39 @@ namespace AzToolsFramework
                     }
 
                     // if both entries are of same type, sort alphabetically
-                    
-                    return m_collator.compare(leftEntry->GetDisplayName().c_str(), rightEntry->GetDisplayName().c_str()) > 0;
+                    return m_collator.compare(leftEntry->GetDisplayName(), rightEntry->GetDisplayName()) > 0;
                 }
             }
             return QSortFilterProxyModel::lessThan(source_left, source_right);
+        }
+
+        void AssetBrowserFilterModel::FilterUpdatedSlotImmediate()
+        {
+            auto compFilter = qobject_cast<QSharedPointer<const CompositeFilter> >(m_filter);
+            if (compFilter)
+            {
+                auto& subFilters = compFilter->GetSubFilters();
+                auto it = AZStd::find_if(subFilters.begin(), subFilters.end(), [subFilters](FilterConstType filter) -> bool
+                {
+                    auto assetTypeFilter = qobject_cast<QSharedPointer<const CompositeFilter> >(filter);
+                    return !assetTypeFilter.isNull();
+                });
+                if (it != subFilters.end())
+                {
+                    m_assetTypeFilter = qobject_cast<QSharedPointer<const CompositeFilter> >(*it);
+                }
+                it = AZStd::find_if(subFilters.begin(), subFilters.end(), [subFilters](FilterConstType filter) -> bool
+                {
+                    auto stringFilter = qobject_cast<QSharedPointer<const StringFilter> >(filter);
+                    return !stringFilter.isNull();
+                });
+                if (it != subFilters.end())
+                {
+                    m_stringFilter = qobject_cast<QSharedPointer<const StringFilter> >(*it);
+                }
+            }
+            invalidateFilter();
+                    Q_EMIT filterChanged();
         }
 
         void AssetBrowserFilterModel::filterUpdatedSlot()
@@ -110,30 +138,7 @@ namespace AzToolsFramework
                 QTimer::singleShot(0, this, [this]()
                 {
                     m_alreadyRecomputingFilters = false;
-                    auto compFilter = qobject_cast<QSharedPointer<const CompositeFilter> >(m_filter);
-                    if (compFilter)
-                    {
-                        auto& subFilters = compFilter->GetSubFilters();
-                        auto it = AZStd::find_if(subFilters.begin(), subFilters.end(), [subFilters](FilterConstType filter) -> bool
-                        {
-                            auto assetTypeFilter = qobject_cast<QSharedPointer<const CompositeFilter> >(filter);
-                            return !assetTypeFilter.isNull();
-                        });
-                        if (it != subFilters.end())
-                        {
-                            m_assetTypeFilter = qobject_cast<QSharedPointer<const CompositeFilter> >(*it);
-                        }
-                        it = AZStd::find_if(subFilters.begin(), subFilters.end(), [subFilters](FilterConstType filter) -> bool
-                        {
-                            auto stringFilter = qobject_cast<QSharedPointer<const StringFilter> >(filter);
-                            return !stringFilter.isNull();
-                        });
-                        if (it != subFilters.end())
-                        {
-                            m_stringFilter = qobject_cast<QSharedPointer<const StringFilter> >(*it);
-                        }
-                    }
-                    invalidateFilter();
+                    FilterUpdatedSlotImmediate();
                 }
                 );
             }

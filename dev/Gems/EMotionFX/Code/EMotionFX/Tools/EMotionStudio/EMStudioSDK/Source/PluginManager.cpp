@@ -80,10 +80,12 @@ namespace EMStudio
         QApplication::processEvents();
 
         // delete all plugins
-        for (EMStudioPlugin* plugin : mPlugins)
-        {
-            delete plugin;
-        }
+        // The plugins stored in mPlugins do not have Init() called, but the
+        // destructors are written assuming Init() was called.
+        //for (EMStudioPlugin* plugin : mPlugins)
+        //{
+        //    delete plugin;
+        //}
         mPlugins.clear();
 
         // delete all active plugins

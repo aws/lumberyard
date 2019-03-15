@@ -354,7 +354,15 @@ namespace LmbrCentral
     void GeometryCacheCommon::SetMaterial(_smart_ptr<IMaterial> material)
     {
         m_materialOverride = material;
-        m_materialOverrideAsset.SetAssetPath(material->GetName());
+        
+        if (material)
+        {
+            m_materialOverrideAsset.SetAssetPath(material->GetName());
+        }
+        else
+        {
+            m_materialOverrideAsset.SetAssetPath("");
+        }
 
         DestroyGeomCache();
         CreateGeomCache();

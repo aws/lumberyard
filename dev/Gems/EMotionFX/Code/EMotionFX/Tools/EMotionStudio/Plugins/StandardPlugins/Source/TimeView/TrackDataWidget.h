@@ -138,12 +138,20 @@ namespace EMStudio
         // copy and paste
         struct CopyElement
         {
-            uint32          mMotionID;
-            AZStd::string   mTrackName;
-            AZStd::string   mEventType;
-            AZStd::string   mEventParameters;
-            float           mStartTime;
-            float           mEndTime;
+            uint32 m_motionID;
+            AZStd::string m_trackName;
+            const EMotionFX::EventDataSet m_eventDatas;
+            float m_startTime;
+            float m_endTime;
+
+            CopyElement(uint32 motionID, AZStd::string trackName, const EMotionFX::EventDataSet& eventDatas, float startTime, float endTime)
+                : m_motionID(motionID)
+                , m_trackName(trackName)
+                , m_eventDatas(eventDatas)
+                , m_startTime(startTime)
+                , m_endTime(endTime)
+            {
+            }
         };
 
         bool GetIsReadyForPaste() const                                                             { return mCopyElements.empty() == false; }

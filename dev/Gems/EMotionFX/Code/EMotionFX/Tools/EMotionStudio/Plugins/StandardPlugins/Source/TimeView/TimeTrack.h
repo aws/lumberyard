@@ -48,7 +48,7 @@ namespace EMStudio
         void RenderData(QPainter& painter, uint32 width, int32 startY, double startTime, double endTime, double animationLength, double clipStartTime, double clipEndTime);
 
         MCORE_INLINE uint32 GetNumElements() const                      { return static_cast<uint32>(mElements.size()); }
-        MCORE_INLINE TimeTrackElement* GetElement(uint32 index)         { return mElements[static_cast<uint32>(index)]; }
+        MCORE_INLINE TimeTrackElement* GetElement(uint32 index) const   { return mElements[static_cast<uint32>(index)]; }
         void AddElement(TimeTrackElement* elem)                         { elem->SetTrack(this); mElements.push_back(elem); }
         void RemoveElement(TimeTrackElement* elem, bool delFromMem = true)
         {
@@ -67,6 +67,11 @@ namespace EMStudio
             mElements.erase(mElements.begin() + index);
         }
         void RemoveAllElements(bool delFromMem = true);
+        void SetElementCount(size_t count)
+        {
+            mElements.resize(count);
+        }
+
         uint32 CalcNumSelectedElements() const;
         TimeTrackElement* GetFirstSelectedElement() const;
         void RangeSelectElements(uint32 elementStartNr, uint32 elementEndNr);
@@ -78,7 +83,7 @@ namespace EMStudio
         bool GetIsInside(uint32 y)                          { return (y >= mStartY) && (y <= (mStartY + mHeight)); }
 
         void SetName(const char* name)                      { mName = name; }
-        const char* GetName()                               { return mName.c_str(); }
+        const char* GetName() const                         { return mName.c_str(); }
 
         bool GetIsEnabled() const                           { return mEnabled; }
         void SetIsEnabled(bool enabled)                     { mEnabled = enabled; }

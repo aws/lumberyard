@@ -58,6 +58,25 @@ namespace AzToolsFramework
         return false;
     }
 
+    bool NodeGroupMatchesFilter(const InstanceDataNode& node, const char* filter)
+    {
+        if (!filter || filter[0] == '\0')
+        {
+            return true;
+        }
+
+        if (node.GetGroupElementMetadata() && node.GetGroupElementMetadata()->m_description)
+        {
+            // Check if we match the filter
+            if (AzFramework::StringFunc::Find(node.GetGroupElementMetadata()->m_description, filter) != AZStd::string::npos)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
     //-----------------------------------------------------------------------------
 
     bool HasAnyVisibleChildren(const InstanceDataNode& node, bool isSlicePushUI)
@@ -93,6 +112,12 @@ namespace AzToolsFramework
             {
                 visibility = NodeDisplayVisibility::Visible;
             }
+        }
+
+        // Show UI Elements by default
+        if (node.GetElementMetadata() && 0 != (node.GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_UI_ELEMENT))
+        {
+            visibility = NodeDisplayVisibility::Visible;
         }
 
         // Use class meta data as opposed to parent's reflection data if this is a root node or a container element.
@@ -167,20 +192,29 @@ namespace AzToolsFramework
         if (node.GetClassMetadata() && 
             node.GetClassMetadata()->m_typeId == AZ::AzTypeInfo<AzToolsFramework::Components::GenericComponentWrapper>::Uuid())
         {
+            const Components::GenericComponentWrapper* componentWrapper = nullptr;
             if (node.GetNumInstances() > 0)
             {
-                const Components::GenericComponentWrapper* componentWrapper =
-                    static_cast<Components::GenericComponentWrapper*>(node.FirstInstance());
-                return componentWrapper->GetDisplayName();
+                componentWrapper = static_cast<Components::GenericComponentWrapper*>(node.FirstInstance());
             }
             else
             {
                 auto comparisonNode = node.GetComparisonNode();
                 if (comparisonNode && comparisonNode->GetNumInstances() > 0)
                 {
-                    const Components::GenericComponentWrapper* componentWrapper =
-                        static_cast<Components::GenericComponentWrapper*>(comparisonNode->FirstInstance());
-                    return GetFriendlyComponentName(componentWrapper->GetTemplate());
+                    componentWrapper = static_cast<Components::GenericComponentWrapper*>(comparisonNode->FirstInstance());
+                }
+            }
+
+            if (componentWrapper)
+            {
+                if (componentWrapper->GetTemplate())
+                {
+                    return componentWrapper->GetDisplayName();
+                }
+                else
+                {
+                    return "<empty component>";
                 }
             }
         }

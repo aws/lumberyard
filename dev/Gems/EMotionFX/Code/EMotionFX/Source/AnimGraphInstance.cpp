@@ -27,6 +27,8 @@
 #include <EMotionFX/Source/Parameter/ValueParameter.h>
 #include <EMotionFX/Source/ThreadData.h>
 #include <EMotionFX/Source/TransformData.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+
 
 namespace EMotionFX
 {
@@ -40,8 +42,9 @@ namespace EMotionFX
         animGraph->AddAnimGraphInstance(this);
         animGraph->Lock();
 
-        mAnimGraph             = animGraph;
+        mAnimGraph              = animGraph;
         mActorInstance          = actorInstance;
+        m_parentAnimGraphInstance = nullptr;
         mMotionSet              = motionSet;
         mAutoUnregister         = true;
         mEnableVisualization    = true;
@@ -59,6 +62,7 @@ namespace EMotionFX
 
         mParamValues.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_INSTANCE);
         mObjectFlags.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_INSTANCE);
+        m_eventHandlersByEventType.resize(EVENT_TYPE_ANIM_GRAPH_INSTANCE_LAST_EVENT - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT + 1);
 
         // init the internal attributes (create them)
         InitInternalAttributes();
@@ -86,6 +90,18 @@ namespace EMotionFX
     // destructor
     AnimGraphInstance::~AnimGraphInstance()
     {
+        for (AnimGraphInstance* childInstance : m_childAnimGraphInstances)
+        {
+            childInstance->m_parentAnimGraphInstance = nullptr;
+        }
+        m_childAnimGraphInstances.clear();
+        SetParentAnimGraphInstance(nullptr);
+
+        if (m_parentAnimGraphInstance)
+        {
+            m_parentAnimGraphInstance->RemoveChildAnimGraphInstance(this);
+        }
+
         GetEventManager().OnDeleteAnimGraphInstance(this);
 
         // automatically unregister the anim graph instance
@@ -97,15 +113,31 @@ namespace EMotionFX
         // Get rid of the unique data for all anim graph objects.
         for (AnimGraphObjectData* uniqueData : m_uniqueDatas)
         {
-            uniqueData->Destroy();
+            if (uniqueData)
+            {
+                uniqueData->Destroy();
+            }
         }
         m_uniqueDatas.clear();
 
         RemoveAllParameters(true);
-        RemoveAllEventHandlers(true);
+        RemoveAllEventHandlers();
 
         // remove all the internal attributes (from node ports etc)
         RemoveAllInternalAttributes();
+
+        // Remove all master graph
+        for (AnimGraphInstance* servant : m_servantGraphs)
+        {
+            servant->RemoveMasterGraph(this);
+        }
+        m_servantGraphs.clear();
+
+        for (AnimGraphInstance* master : m_masterGraphs)
+        {
+            master->RemoveServantGraph(this, false);
+        }
+        m_masterGraphs.clear();
 
         // unregister from the animgraph
         mAnimGraph->RemoveAnimGraphInstance(this);
@@ -238,6 +270,13 @@ namespace EMotionFX
                 }
             }
             posePool.FreeAllPoses();
+        }
+
+        // Gather active state. Must be done in output function.
+        if (mSnapshot && mSnapshot->IsNetworkAuthoritative())
+        {
+            mSnapshot->CollectActiveNodes(*this);
+            mSnapshot->CollectMotionNodePlaytimes(*this);
         }
     }
 
@@ -648,7 +687,10 @@ namespace EMotionFX
         {
             for (AnimGraphObjectData* uniqueData : m_uniqueDatas)
             {
-                uniqueData->Destroy();
+                if (uniqueData)
+                {
+                    uniqueData->Destroy();
+                }
             }
         }
 
@@ -660,136 +702,96 @@ namespace EMotionFX
     // register event handler
     void AnimGraphInstance::AddEventHandler(AnimGraphInstanceEventHandler* eventHandler)
     {
-        mEventHandlers.Add(eventHandler);
-    }
-
-
-    // find the index of the given event handler
-    uint32 AnimGraphInstance::FindEventHandlerIndex(AnimGraphInstanceEventHandler* eventHandler) const
-    {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        AZ_Assert(eventHandler, "Expected non-null event handler");
+        for (const EventTypes eventType : eventHandler->GetHandledEventTypes())
         {
-            // compare the event handlers and return the index in case they are equal
-            if (eventHandler == mEventHandlers[i])
-            {
-                return i;
-            }
+            AZ_Assert(AZStd::find(m_eventHandlersByEventType[eventType - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT].begin(), m_eventHandlersByEventType[eventType - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT].end(), eventHandler) == m_eventHandlersByEventType[eventType - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT].end(),
+                "Event handler already added to manager");
+            m_eventHandlersByEventType[eventType - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT].emplace_back(eventHandler);
         }
-
-        // failure, the event handler hasn't been found
-        return MCORE_INVALIDINDEX32;
     }
 
 
     // unregister event handler
-    bool AnimGraphInstance::RemoveEventHandler(AnimGraphInstanceEventHandler* eventHandler, bool delFromMem)
+    void AnimGraphInstance::RemoveEventHandler(AnimGraphInstanceEventHandler* eventHandler)
     {
-        // get the index of the event handler
-        const uint32 index = FindEventHandlerIndex(eventHandler);
-        if (index == MCORE_INVALIDINDEX32)
+        for (const EventTypes eventType : eventHandler->GetHandledEventTypes())
         {
-            return false;
+            EventHandlerVector& eventHandlers = m_eventHandlersByEventType[eventType - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT];
+            eventHandlers.erase(AZStd::remove(eventHandlers.begin(), eventHandlers.end(), eventHandler), eventHandlers.end());
         }
-
-        // remove the given event handler
-        RemoveEventHandler(index, delFromMem);
-        return true;
-    }
-
-
-    // unregister event handler
-    void AnimGraphInstance::RemoveEventHandler(uint32 index, bool delFromMem)
-    {
-        if (delFromMem)
-        {
-            mEventHandlers[index]->Destroy();
-        }
-
-        mEventHandlers.Remove(index);
     }
 
 
     // remove all event handlers
-    void AnimGraphInstance::RemoveAllEventHandlers(bool delFromMem)
+    void AnimGraphInstance::RemoveAllEventHandlers()
     {
-        // destroy all event handlers
-        if (delFromMem)
+#ifdef DEBUG
+        for (const EventHandlerVector& eventHandlers : m_eventHandlersByEventType)
         {
-            const uint32 numEventHandlers = mEventHandlers.GetLength();
-            for (uint32 i = 0; i < numEventHandlers; ++i)
-            {
-                mEventHandlers[i]->Destroy();
-            }
+            AZ_Assert(eventHandlers.empty(), "Expected all events to be removed");
         }
-
-        mEventHandlers.Clear();
+#endif
+        m_eventHandlersByEventType.clear();
     }
 
 
     void AnimGraphInstance::OnStateEnter(AnimGraphNode* state)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STATE_ENTER - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT];
+        for (AnimGraphInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStateEnter(this, state);
+            eventHandler->OnStateEnter(this, state);
         }
     }
 
 
     void AnimGraphInstance::OnStateEntering(AnimGraphNode* state)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STATE_ENTERING - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT];
+        for (AnimGraphInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStateEntering(this, state);
+            eventHandler->OnStateEntering(this, state);
         }
     }
 
 
     void AnimGraphInstance::OnStateExit(AnimGraphNode* state)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STATE_EXIT - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT];
+        for (AnimGraphInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStateExit(this, state);
+            eventHandler->OnStateExit(this, state);
         }
     }
 
 
     void AnimGraphInstance::OnStateEnd(AnimGraphNode* state)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STATE_END - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT];
+        for (AnimGraphInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStateEnd(this, state);
+            eventHandler->OnStateEnd(this, state);
         }
     }
 
 
     void AnimGraphInstance::OnStartTransition(AnimGraphStateTransition* transition)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_TRANSITION - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT];
+        for (AnimGraphInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStartTransition(this, transition);
+            eventHandler->OnStartTransition(this, transition);
         }
     }
 
 
     void AnimGraphInstance::OnEndTransition(AnimGraphStateTransition* transition)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_END_TRANSITION - EVENT_TYPE_ANIM_GRAPH_INSTANCE_FIRST_EVENT];
+        for (AnimGraphInstanceEventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnEndTransition(this, transition);
+            eventHandler->OnEndTransition(this, transition);
         }
     }
 
@@ -843,6 +845,12 @@ namespace EMotionFX
     // synchronize all nodes, based on sync tracks etc
     void AnimGraphInstance::Update(float timePassedInSeconds)
     {
+        // pass 0: (Optional, networking only) When this instance is shared between network, restore the instance using an animgraph snapshot.
+        if (mSnapshot)
+        {
+            mSnapshot->Restore(*this);
+        }
+
         // pass 1: update (bottom up), update motion timers etc
         // pass 2: topdown update (top down), syncing happens here (adjusts motion/node timers again)
         // pass 3: postupdate (bottom up), processing the motion events events and update motion extraction deltas
@@ -853,9 +861,10 @@ namespace EMotionFX
 
         ResetFlagsForAllObjects();
 
-    #ifdef EMFX_EMSTUDIOBUILD
-        rootNode->RecursiveResetFlags(this, 0xffffffff);    // the 0xffffffff clears all flags
-    #endif
+        if (GetEMotionFX().GetIsInEditorMode())
+        {
+            rootNode->RecursiveResetFlags(this, 0xffffffff);    // the 0xffffffff clears all flags
+        }
 
         // reset all node pose ref counts
         const uint32 threadIndex = mActorInstance->GetThreadIndex();
@@ -954,6 +963,11 @@ namespace EMotionFX
     void AnimGraphInstance::ResetFlagsForAllObjects()
     {
         MCore::MemSet(mObjectFlags.GetPtr(), 0, sizeof(uint32) * mObjectFlags.GetLength());
+
+        for (AnimGraphInstance* childInstance : m_childAnimGraphInstances)
+        {
+            childInstance->ResetFlagsForAllObjects();
+        }
     }
 
 
@@ -966,14 +980,15 @@ namespace EMotionFX
             AnimGraphNode* node = mAnimGraph->GetNode(i);
             mObjectFlags[node->GetObjectIndex()] &= ~flagsToDisable;
 
-        #ifdef EMFX_EMSTUDIOBUILD
-            // reset all connections
-            const uint32 numConnections = node->GetNumConnections();
-            for (uint32 c = 0; c < numConnections; ++c)
+            if (GetEMotionFX().GetIsInEditorMode())
             {
-                node->GetConnection(c)->SetIsVisited(false);
+                // reset all connections
+                const uint32 numConnections = node->GetNumConnections();
+                for (uint32 c = 0; c < numConnections; ++c)
+                {
+                    node->GetConnection(c)->SetIsVisited(false);
+                }
             }
-        #endif
         }
     }
 
@@ -995,6 +1010,13 @@ namespace EMotionFX
     {
         outNodes->Clear(false);
         mAnimGraph->GetRootStateMachine()->RecursiveCollectActiveNodes(this, outNodes, nodeType);
+    }
+
+
+    void AnimGraphInstance::CollectActiveNetTimeSyncNodes(AZStd::vector<AnimGraphNode*>* outNodes)
+    {
+        outNodes->clear();
+        mAnimGraph->GetRootStateMachine()->RecursiveCollectActiveNetTimeSyncNodes(this, outNodes);
     }
 
 
@@ -1076,7 +1098,133 @@ namespace EMotionFX
     {
         return mEventBuffer;
     }
+   
 
+    void AnimGraphInstance::AddServantGraph(AnimGraphInstance* servant, bool registerMasterInsideServant)
+    {
+        const auto& it = AZStd::find(m_servantGraphs.begin(), m_servantGraphs.end(), servant);
+        if (it == m_servantGraphs.end())
+        {
+            m_servantGraphs.emplace_back(servant);
+        }
+
+        if (registerMasterInsideServant)
+        {
+            servant->AddMasterGraph(this);
+        }
+    }
+
+    void AnimGraphInstance::RemoveServantGraph(AnimGraphInstance* servant, bool removeMasterFromServant)
+    {
+        const auto& it = AZStd::find(m_servantGraphs.begin(), m_servantGraphs.end(), servant);
+        if (it != m_servantGraphs.end())
+        {
+            m_servantGraphs.erase(it);
+        }
+
+        if (removeMasterFromServant)
+        {
+            servant->RemoveMasterGraph(this);
+        }
+    }
+
+    AZStd::vector<AnimGraphInstance*>& AnimGraphInstance::GetServantGraphs()
+    {
+        return m_servantGraphs;
+    }
+
+    void AnimGraphInstance::AddMasterGraph(AnimGraphInstance* master)
+    {
+        const auto& it = AZStd::find(m_masterGraphs.begin(), m_masterGraphs.end(), master);
+        if (it == m_masterGraphs.end())
+        {
+            m_masterGraphs.emplace_back(master);
+        }
+    }
+
+    void AnimGraphInstance::RemoveMasterGraph(AnimGraphInstance* master)
+    {
+        const auto& it = AZStd::find(m_masterGraphs.begin(), m_masterGraphs.end(), master);
+        if (it != m_masterGraphs.end())
+        {
+            m_masterGraphs.erase(it);
+        }
+    }
+
+    AZStd::vector<AnimGraphInstance*>& AnimGraphInstance::GetMasterGraphs()
+    {
+        return m_masterGraphs;
+    }
+
+    void AnimGraphInstance::CreateSnapshot(bool authoritative)
+    {
+        if (mSnapshot)
+        {
+            AZ_Error("EMotionFX", false, "Snapshot already created for this animgraph instance.");
+            return;
+        }
+        mSnapshot = AZStd::make_shared<AnimGraphSnapshot>(*this, authoritative);
+    }
+
+    void AnimGraphInstance::SetSnapshotSerializer(AZStd::shared_ptr<Network::AnimGraphSnapshotSerializer> serializer)
+    {
+        if (!mSnapshot)
+        {
+            AZ_Error("EMotionFX", false, "Snapshot should be created first.");
+            return;
+        }
+        mSnapshot->SetSnapshotSerializer(serializer);
+    }
+
+    void AnimGraphInstance::SetSnapshotChunkSerializer(AZStd::shared_ptr<Network::AnimGraphSnapshotChunkSerializer> serializer)
+    {
+        if (!mSnapshot)
+        {
+            AZ_Error("EMotionFX", false, "Snapshot should be created first.");
+            return;
+        }
+        mSnapshot->SetSnapshotChunkSerializer(serializer);
+    }
+
+    void AnimGraphInstance::OnNetworkConnected()
+    {
+        if (!mSnapshot)
+        {
+            AZ_Error("EMotionFX", false, "Snapshot should be created first.");
+            return;
+        }
+         mSnapshot->OnNetworkConnected(*this);
+    }
+
+    void AnimGraphInstance::OnNetworkParamUpdate(const AttributeContainer& parameters)
+    {
+        if (!mSnapshot)
+        {
+            AZ_Error("EMotionFX", false, "Snapshot should be created first.");
+            return;
+        }
+        mSnapshot->SetParameters(parameters);
+    }
+
+    void AnimGraphInstance::OnNetworkActiveNodesUpdate(const AZStd::vector<AZ::u32>& activeNodes)
+    {
+        if (!mSnapshot)
+        {
+            AZ_Error("EMotionFX", false, "Snapshot should be created first.");
+            return;
+        }
+        mSnapshot->SetActiveNodes(activeNodes);
+    }
+
+    void AnimGraphInstance::OnNetworkMotionNodePlaytimesUpdate(const MotionNodePlaytimeContainer& motionNodePlaytimes)
+    {
+        if (!mSnapshot)
+        {
+            AZ_Error("EMotionFX", false, "Snapshot should be created first.");
+            return;
+        }
+        mSnapshot->SetMotionNodePlaytimes(motionNodePlaytimes);
+    }
 
     bool AnimGraphInstance::GetParameterValueAsFloat(uint32 paramIndex, float* outValue)
     {
@@ -1103,7 +1251,6 @@ namespace EMotionFX
 
         return false;
     }
-
 
     bool AnimGraphInstance::GetParameterValueAsBool(uint32 paramIndex, bool* outValue)
     {
@@ -1172,14 +1319,38 @@ namespace EMotionFX
 
     bool AnimGraphInstance::GetRotationParameterValue(uint32 paramIndex, MCore::Quaternion* outRotation)
     {
-        AttributeRotation* param = GetParameterValueChecked<AttributeRotation>(paramIndex);
+        MCore::AttributeQuaternion* param = GetParameterValueChecked<MCore::AttributeQuaternion>(paramIndex);
         if (param)
         {
-            *outRotation = param->GetRotationQuaternion();
+            *outRotation = param->GetValue();
             return true;
         }
 
         return false;
+    }
+
+    void AnimGraphInstance::SetParentAnimGraphInstance(AnimGraphInstance* parentAnimGraphInstance)
+    { 
+        if (m_parentAnimGraphInstance)
+        {
+            m_parentAnimGraphInstance->m_childAnimGraphInstances.erase(
+                AZStd::remove(m_parentAnimGraphInstance->m_childAnimGraphInstances.begin(), m_parentAnimGraphInstance->m_childAnimGraphInstances.end(), this),
+                m_parentAnimGraphInstance->m_childAnimGraphInstances.end());
+        }
+
+        m_parentAnimGraphInstance = parentAnimGraphInstance; 
+        
+        // Add myself to the parent
+        if (parentAnimGraphInstance)
+        {
+            parentAnimGraphInstance->m_childAnimGraphInstances.emplace_back(this);
+        }
+    }
+
+
+    void AnimGraphInstance::RemoveChildAnimGraphInstance(AnimGraphInstance* childAnimGraphInstance)
+    {
+        m_childAnimGraphInstances.erase(AZStd::remove(m_childAnimGraphInstances.begin(), m_childAnimGraphInstances.end(), childAnimGraphInstance), m_childAnimGraphInstances.end());
     }
 
 

@@ -106,6 +106,8 @@ public: // member functions
     void ResetContext() override;
     // ~EntityContextRequestBus
 
+    AZStd::string GetErrorMessage() const { return m_errorMessage; }
+
 protected: // member functions
 
     void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
@@ -182,4 +184,8 @@ private: // data
     };
 
     AZStd::vector<SliceEntityRestoreRequest> m_queuedSliceEntityRestores;
+
+    AZ::ComponentTypeList m_requiredEditorComponentTypes;
+
+    AZStd::string m_errorMessage;
 };

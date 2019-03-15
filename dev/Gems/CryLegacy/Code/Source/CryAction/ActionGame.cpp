@@ -49,6 +49,11 @@
 #include "Components/IComponentRender.h"
 #include "Components/IComponentSubstitution.h"
 
+#include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/TriggerBus.h>
+#include <AzFramework/Physics/CollisionNotificationBus.h>
+#include <AzFramework/Physics/PhysicsComponentBus.h>
+
 CActionGame* CActionGame::s_this = nullptr;
 int CActionGame::g_procedural_breaking = 0;
 int CActionGame::g_joint_breaking = 1;
@@ -228,10 +233,15 @@ CActionGame::CActionGame(CScriptRMI* pScriptRMI)
     m_inDeleteEntityCallback = 0;
 
     m_clientReserveForMigrate = NULL;
+
+    Physics::DefaultWorldBus::Handler::BusConnect();
+    AZ::TickBus::Handler::BusConnect();
 }
 
 CActionGame::~CActionGame()
 {
+    AZ::TickBus::Handler::BusDisconnect();
+
     if (m_pNetwork)
     {
         m_pNetwork->SyncWithGame(eNGS_Shutdown);
@@ -274,6 +284,11 @@ CActionGame::~CActionGame()
     }
 
     UnloadLevel();
+
+    // Destroy Physics::World. 
+    // This should be done after UnloadLevel() to make sure all level entities have been destroyed.
+    Physics::DefaultWorldBus::Handler::BusDisconnect();
+    m_physicalWorld = nullptr;
 
 #if !defined(CONSOLE)
     if (!gEnv->IsDedicated()) // Dedi client should remain client
@@ -495,6 +510,15 @@ bool CActionGame::Init(const SGameStartParams* pGameStartParams)
     }
 
     m_pPhysicalWorld = gEnv->pPhysicalWorld;
+
+    // Create Physics API World
+    Physics::SystemRequestBus::BroadcastResult(m_physicalWorld,
+        &Physics::SystemRequests::CreateWorld, AZ_CRC("AZPhysicalWorld"));
+    if (m_physicalWorld)
+    {
+        m_physicalWorld->SetEventHandler(this);
+    }
+
     m_pFreeCHSlot0 = m_pCHSlotPool = new SEntityCollHist[32];
     int i;
     for (i = 0; i < 31; i++)
@@ -4613,4 +4637,59 @@ void CActionGame::OnEntitySystemReset()
 {
     m_clientActorID = 0;
     m_pClientActor = NULL;
+}
+
+void CActionGame::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+{
+    if (m_physicalWorld)
+    {
+        m_physicalWorld->Update(deltaTime);
+    }
+}
+
+int CActionGame::GetTickOrder()
+{
+    return AZ::ComponentTickBus::TICK_FIRST;
+}
+
+AZStd::shared_ptr<Physics::World> CActionGame::GetDefaultWorld()
+{
+    return m_physicalWorld;
+}
+
+void CActionGame::OnTriggerEnter(const Physics::TriggerEvent& triggerEvent)
+{
+    Physics::TriggerNotificationBus::Event(triggerEvent.m_triggerBody->GetEntityId(), &Physics::TriggerNotifications::OnTriggerEnter, triggerEvent);
+}
+
+void CActionGame::OnTriggerExit(const Physics::TriggerEvent& triggerEvent)
+{
+    Physics::TriggerNotificationBus::Event(triggerEvent.m_triggerBody->GetEntityId(), &Physics::TriggerNotifications::OnTriggerExit, triggerEvent);
+}
+
+void CActionGame::OnCollisionBegin(const Physics::CollisionEvent& event)
+{
+    Physics::CollisionEvent collisionEvent = event;
+    Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionBegin, collisionEvent);
+    AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
+    AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
+    Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionBegin, collisionEvent);
+}
+
+void CActionGame::OnCollisionPersist(const Physics::CollisionEvent& event)
+{
+    Physics::CollisionEvent collisionEvent = event;
+    Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionPersist, collisionEvent);
+    AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
+    AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
+    Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionPersist, collisionEvent);
+}
+
+void CActionGame::OnCollisionEnd(const Physics::CollisionEvent& event)
+{
+    Physics::CollisionEvent collisionEvent = event;
+    Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
+    AZStd::swap(collisionEvent.m_body1, collisionEvent.m_body2);
+    AZStd::swap(collisionEvent.m_shape1, collisionEvent.m_shape2);
+    Physics::CollisionNotificationBus::Event(collisionEvent.m_body1->GetEntityId(), &Physics::CollisionNotifications::OnCollisionEnd, collisionEvent);
 }

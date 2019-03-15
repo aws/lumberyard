@@ -56,6 +56,7 @@ namespace EMotionFX
                 float                                m_playspeed;               ///< Determines the rate at which the motion is played
                 float                                m_blendInTime;             ///< Determines the blend in time in seconds.
                 float                                m_blendOutTime;            ///< Determines the blend out time in seconds.
+                bool                                 m_playOnActivation;                 ///< Determines if the motion should be played immediately
 
                 static void Reflect(AZ::ReflectContext* context);
             };
@@ -104,6 +105,8 @@ namespace EMotionFX
             float GetBlendInTime() const override;
             void BlendOutTime(float time) override;
             float GetBlendOutTime() const override;
+            void PlayMotion() override;
+
         private:
             // ActorComponentNotificationBus::Handler
             void OnActorInstanceCreated(EMotionFX::ActorInstance* actorInstance) override;
@@ -113,10 +116,9 @@ namespace EMotionFX
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
-            void UpdateAndPlayMotionInstance();
             void RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance);
 
-            static EMotionFX::MotionInstance* PlayMotion(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight);
+            static EMotionFX::MotionInstance* PlayMotionInternal(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight);
 
             Configuration                               m_configuration;        ///< Component configuration.
             EMotionFX::ActorInstance*                   m_actorInstance;        ///< Associated actor instance (retrieved from Actor Component).

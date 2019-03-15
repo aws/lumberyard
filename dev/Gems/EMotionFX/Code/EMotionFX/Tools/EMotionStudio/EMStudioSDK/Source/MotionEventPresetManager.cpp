@@ -17,42 +17,60 @@
 #include <MCore/Source/Color.h>
 #include <MCore/Source/LogManager.h>
 #include <EMotionFX/Source/EventManager.h>
+#include <EMotionFX/Source/TwoStringEventData.h>
 #include <MysticQt/Source/MysticQtManager.h>
 #include <QSettings>
+
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/Utils.h>
 
 
 namespace EMStudio
 {
-    MotionEventPreset::MotionEventPreset(const AZStd::string& eventType, const AZStd::string& eventParameter, const AZStd::string& mirrorType, uint32 color, uint32 eventID)
-        : mEventType(eventType)
-        , mMirrorType(mirrorType)
-        , mEventParameter(eventParameter)
-        , mEventID(eventID)
-        , mColor(color)
-        , mIsDefault(false)
+    MotionEventPreset::MotionEventPreset(const AZStd::string& name, EMotionFX::EventDataSet&& eventDatas, AZ::Color color)
+        : m_eventDatas(AZStd::move(eventDatas))
+        , m_name(name)
+        , m_color(color)
+        , m_isDefault(false)
     {
-        UpdateEventID();
     }
 
 
-    // update the event ID based on the name
-    void MotionEventPreset::UpdateEventID()
+    void MotionEventPreset::Reflect(AZ::ReflectContext* context)
     {
-        mEventID = EMotionFX::GetEventManager().FindEventID(mEventType.c_str());
-
-        // if its an unknown ID, see if we should register it and then try to get the updated ID
-        if (mEventID == MCORE_INVALIDINDEX32)
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
         {
-            if (!mEventType.empty())
-            {
-                mEventID = EMotionFX::GetEventManager().RegisterEventType(mEventType.c_str());
-            }
+            return;
         }
+
+        serializeContext->Class<MotionEventPreset>()
+            ->Version(1)
+            ->Field("name", &MotionEventPreset::m_name)
+            ->Field("color", &MotionEventPreset::m_color)
+            ->Field("eventDatas", &MotionEventPreset::m_eventDatas)
+            ;
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<MotionEventPreset>("MotionEventPreset", "")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotionEventPreset::m_name, "Name", "Name of this preset")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotionEventPreset::m_color, "Color", "Color to use for events that use this preset")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+            ;
     }
 
     //-----------------------------------
 
-    const uint32 MotionEventPresetManager::m_unknownEventColor = MCore::RGBA(193, 195, 196, 255);
+    const AZ::u32 MotionEventPresetManager::m_unknownEventColor = MCore::RGBA(193, 195, 196, 255);
 
     MotionEventPresetManager::MotionEventPresetManager()
         : mDirtyFlag(false)
@@ -63,11 +81,24 @@ namespace EMStudio
 
     MotionEventPresetManager::~MotionEventPresetManager()
     {
-        SaveToSettings();
         Save(false);
         Clear();
     }
 
+
+    void MotionEventPresetManager::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<MotionEventPresetManager>()
+            ->Version(1)
+            ->Field("eventPresets", &MotionEventPresetManager::mEventPresets)
+            ;
+    }
 
     void MotionEventPresetManager::Clear()
     {
@@ -94,12 +125,12 @@ namespace EMStudio
 
     void MotionEventPresetManager::AddPreset(MotionEventPreset* preset)
     {
-        mEventPresets.push_back(preset);
+        mEventPresets.emplace_back(preset);
         mDirtyFlag = true;
     }
 
 
-    void MotionEventPresetManager::RemovePreset(uint32 index)
+    void MotionEventPresetManager::RemovePreset(size_t index)
     {
         delete mEventPresets[index];
         mEventPresets.erase(mEventPresets.begin() + index);
@@ -107,7 +138,7 @@ namespace EMStudio
     }
 
 
-    MotionEventPreset* MotionEventPresetManager::GetPreset(uint32 index) const
+    MotionEventPreset* MotionEventPresetManager::GetPreset(size_t index) const
     {
         return mEventPresets[index];
     }
@@ -115,51 +146,32 @@ namespace EMStudio
 
     void MotionEventPresetManager::CreateDefaultPresets()
     {
-        const size_t startEvent = mEventPresets.size();
-        mEventPresets.push_back(new MotionEventPreset("LeftFoot",    "",     "RightFoot",    MCore::RGBA(255, 0, 0)));
-        mEventPresets.push_back(new MotionEventPreset("RightFoot",   "",     "LeftFoot",     MCore::RGBA(0, 255, 0)));
-
-        // Mark the events as defaults.
-        for (MotionEventPreset* eventPreset : mEventPresets)
-        {
-            eventPreset->SetIsDefault(true);
-        }
+        EMotionFX::EventDataPtr leftFootData = EMotionFX::GetEventManager().FindOrCreateEventData<EMotionFX::TwoStringEventData>("LeftFoot", "", "RightFoot");
+        EMotionFX::EventDataPtr rightFootData = EMotionFX::GetEventManager().FindOrCreateEventData<EMotionFX::TwoStringEventData>("RightFoot", "", "LeftFoot");
+        MotionEventPreset* leftFootPreset = aznew MotionEventPreset("LeftFoot", {AZStd::move(leftFootData)}, AZ::Color(AZ::u8(255), 0, 0, 255));
+        MotionEventPreset* rightFootPreset = aznew MotionEventPreset("RightFoot", {AZStd::move(rightFootData)}, AZ::Color(AZ::u8(0), 255, 0, 255));
+        leftFootPreset->SetIsDefault(true);
+        rightFootPreset->SetIsDefault(true);
+        mEventPresets.emplace(mEventPresets.begin(), leftFootPreset);
+        mEventPresets.emplace(AZStd::next(mEventPresets.begin(), 1), rightFootPreset);
     }
-    
+
+
     void MotionEventPresetManager::Load(const AZStd::string& filename)
     {
         mFileName = filename;
 
         // Clear the old event presets.
         Clear();
+
+        if (!LoadLYSerializedFormat())
+        {
+            LoadLegacyQSettingsFormat();
+        }
+
+        // LoadLYSerializedFormat() will clear mEventPresets, so default
+        // presets have to be made afterwards
         CreateDefaultPresets();
-
-        QSettings settings(mFileName.c_str(), QSettings::IniFormat, GetManager()->GetMainWindow());
-
-        const uint32 numMotionEventPresets = settings.value("numMotionEventPresets").toInt();
-        if (numMotionEventPresets == 0)
-        {
-            return;
-        }
-
-        // Add the new motion event presets.
-        AZStd::string eventType;
-        AZStd::string mirrorType;
-        AZStd::string eventParameter;
-        for (uint32 i = 0; i < numMotionEventPresets; ++i)
-        {
-            settings.beginGroup(AZStd::string::format("%i", i).c_str());
-            const MCore::RGBAColor color  = RenderOptions::StringToColor(settings.value("MotionEventPresetColor").toString());
-
-            eventType       = settings.value("MotionEventPresetType").toString().toUtf8().data();
-            mirrorType      = settings.value("MotionEventPresetMirrorType").toString().toUtf8().data();
-            eventParameter  = settings.value("MotionEventPresetParameter").toString().toUtf8().data();
-
-            settings.endGroup();
-                
-            MotionEventPreset* preset = new MotionEventPreset(eventType, eventParameter, mirrorType, color.ToInt());
-            AddPreset(preset);
-        }
 
         mDirtyFlag = false;
 
@@ -168,53 +180,69 @@ namespace EMStudio
     }
 
 
+    bool MotionEventPresetManager::LoadLegacyQSettingsFormat()
+    {
+        QSettings settings(mFileName.c_str(), QSettings::IniFormat, GetManager()->GetMainWindow());
+
+        if (settings.status() != QSettings::Status::NoError)
+        {
+            return false;
+        }
+
+        const uint32 numMotionEventPresets = settings.value("numMotionEventPresets").toInt();
+        if (numMotionEventPresets == 0)
+        {
+            return true;
+        }
+
+        // Add the new motion event presets.
+        AZStd::string eventType;
+        AZStd::string mirrorType;
+        AZStd::string eventParameter;
+        AZ::Color color;
+        for (uint32 i = 0; i < numMotionEventPresets; ++i)
+        {
+            settings.beginGroup(AZStd::string::format("%i", i).c_str());
+            color = RenderOptions::StringToColor(settings.value("MotionEventPresetColor").toString());
+
+            eventType       = settings.value("MotionEventPresetType").toString().toUtf8().data();
+            mirrorType      = settings.value("MotionEventPresetMirrorType").toString().toUtf8().data();
+            eventParameter  = settings.value("MotionEventPresetParameter").toString().toUtf8().data();
+
+            settings.endGroup();
+                
+            EMotionFX::EventDataPtr eventData = EMotionFX::GetEventManager().FindOrCreateEventData<EMotionFX::TwoStringEventData>(eventType, eventParameter, mirrorType);
+            MotionEventPreset* preset = new MotionEventPreset(eventType, {AZStd::move(eventData)}, color);
+            AddPreset(preset);
+        }
+        return true;
+    }
+
+
+    bool MotionEventPresetManager::LoadLYSerializedFormat()
+    {
+        return AZ::Utils::LoadObjectFromFileInPlace(mFileName, azrtti_typeid(mEventPresets), &mEventPresets);
+    }
+
+
     void MotionEventPresetManager::SaveAs(const AZStd::string& filename, bool showNotification)
     {
         mFileName = filename;
 
-        QSettings settings(mFileName.c_str(), QSettings::IniFormat, GetManager()->GetMainWindow());
-
-        size_t numEventPresets = 0;
-
-        // Remove the default ones
-        for (MotionEventPreset* eventPreset : mEventPresets)
+        // Skip saving the built-in presets
+        AZStd::vector<MotionEventPreset*> presets;
+        presets.reserve(mEventPresets.size());
+        for (MotionEventPreset* preset : mEventPresets)
         {
-            if (!eventPreset->GetIsDefault())
-            {
-                ++numEventPresets;
-            }
-        }
-        {
-            // QVariant doesnt like direct conversions from size_t in Mac
-            QVariant vNumEventPresets;
-            vNumEventPresets.setValue(numEventPresets);
-            settings.setValue("numMotionEventPresets", vNumEventPresets);
-        }
-        
-        // Loop trough all entries and save them to the settings file.
-        size_t presetIndex = 0;
-        for (MotionEventPreset* eventPreset : mEventPresets)
-        {
-            if (!eventPreset || eventPreset->GetIsDefault())
+            if (preset->GetIsDefault())
             {
                 continue;
             }
-
-            settings.beginGroup(AZStd::string::format("%i", presetIndex).c_str());
-            settings.setValue("MotionEventPresetColor", RenderOptions::ColorToString(MCore::RGBAColor(eventPreset->GetEventColor())));
-            settings.setValue("MotionEventPresetType", eventPreset->GetEventType().c_str());
-            settings.setValue("MotionEventPresetMirrorType", eventPreset->GetMirrorType().c_str());
-            settings.setValue("MotionEventPresetParameter", eventPreset->GetEventParameter().c_str());
-            settings.endGroup();
-
-            ++presetIndex;
+            presets.emplace_back(preset);
         }
 
-        // Sync to ensure the status is correct because qt delays the write to file.
-        settings.sync();
-
         // Check if the settings correctly saved.
-        if (settings.status() == QSettings::NoError)
+        if (AZ::Utils::SaveObjectToFile(filename, AZ::DataStream::ST_XML, &presets))
         {
             mDirtyFlag = false;
 
@@ -255,28 +283,21 @@ namespace EMStudio
 
 
     // Check if motion event with this configuration exists and return color.
-    uint32 MotionEventPresetManager::GetEventColor(const char* type, const char* parameter) const
+    AZ::u32 MotionEventPresetManager::GetEventColor(const EMotionFX::EventDataSet& eventDatas) const
     {
         for (const MotionEventPreset* preset : mEventPresets)
         {
-            // If the type and parameter are equal, return the color.
-            if (preset->GetEventType() == type && preset->GetEventParameter() == parameter)
+            EMotionFX::EventDataSet commonDatas;
+            const EMotionFX::EventDataSet& presetDatas = preset->GetEventDatas();
+            const bool allMatch = AZStd::all_of(presetDatas.cbegin(), presetDatas.cend(), [eventDatas](const EMotionFX::EventDataPtr& presetData)
             {
-                return preset->GetEventColor();
-            }
-        }
-
-        // Use the same color for all events that are not from a preset.
-        return m_unknownEventColor;
-    }
-
-
-    // Get the color for the first event with a given ID, regardless of its parameter.
-    uint32 MotionEventPresetManager::GetEventColor(uint32 eventID) const
-    {
-        for (const MotionEventPreset* preset : mEventPresets)
-        {
-            if (preset->GetEventID() == eventID)
+                const auto thisPresetDataHasMatch = AZStd::find_if(eventDatas.cbegin(), eventDatas.cend(), [presetData](const EMotionFX::EventDataPtr& eventData)
+                {
+                    return ((presetData && eventData && *presetData == *eventData) || (!presetData && !eventData));
+                });
+                return thisPresetDataHasMatch != eventDatas.cend();
+            });
+            if (allMatch)
             {
                 return preset->GetEventColor();
             }

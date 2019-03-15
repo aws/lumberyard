@@ -13,7 +13,9 @@
 
 #include "EditorCommon.h"
 #include <AzToolsFramework/Slice/SliceUtilities.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
 #include "SliceMenuHelpers.h"
+#include "QtHelpers.h"
 
 // Define for enabling/disabling the UI Slice system
 #define ENABLE_UI_SLICE_MENU_ITEMS 1
@@ -21,7 +23,6 @@
 HierarchyMenu::HierarchyMenu(HierarchyWidget* hierarchy,
     size_t showMask,
     bool addMenuForNewElement,
-    AZ::Component* componentToRemove,
     const QPoint* optionalPos)
     : QMenu()
 {
@@ -82,9 +83,16 @@ HierarchyMenu::HierarchyMenu(HierarchyWidget* hierarchy,
 
     addSeparator();
 
-    if (showMask & Show::kRemoveComponents)
+    if (showMask & Show::kFindElements)
     {
-        RemoveComponents(hierarchy, selectedItems, componentToRemove);
+        FindElements(hierarchy, selectedItems);
+    }
+
+    addSeparator();
+
+    if (showMask & Show::kEditorOnly)
+    {
+        EditorOnly(hierarchy, selectedItems);
     }
 }
 
@@ -422,7 +430,7 @@ void HierarchyMenu::New_ElementFromSlice(HierarchyWidget* hierarchy,
     AZ::Vector2 viewportPosition(-1.0f,-1.0f); // indicates no viewport position specified
     if (optionalPos)
     {
-        viewportPosition = EntityHelpers::QPointFToVec2(*optionalPos);
+        viewportPosition = QtHelpers::QPointFToVector2(*optionalPos);
     }
 
     SliceMenuHelpers::CreateInstantiateSliceMenu(hierarchy,
@@ -440,7 +448,7 @@ void HierarchyMenu::New_ElementFromSlice(HierarchyWidget* hierarchy,
             AZ::Vector2 viewportPosition(-1.0f,-1.0f); // indicates no viewport position specified
             if (optionalPos)
             {
-                viewportPosition = EntityHelpers::QPointFToVec2(*optionalPos);
+                viewportPosition = QtHelpers::QPointFToVector2(*optionalPos);
             }
             hierarchy->GetEditorWindow()->GetSliceManager()->InstantiateSliceUsingBrowser(hierarchy, viewportPosition);
         }
@@ -484,13 +492,71 @@ void HierarchyMenu::DeleteElement(HierarchyWidget* hierarchy,
     }
 }
 
-void HierarchyMenu::RemoveComponents(HierarchyWidget* hierarchy,
-    QTreeWidgetItemRawPtrQList& selectedItems,
-    const AZ::Component* optionalOnlyThisComponentType)
+void HierarchyMenu::FindElements(HierarchyWidget* hierarchy,
+    QTreeWidgetItemRawPtrQList& selectedItems)
 {
-    addActions(ComponentHelpers::CreateRemoveComponentActions(hierarchy,
-            selectedItems,
-            optionalOnlyThisComponentType));
+    QAction* action;
+
+    // Find elements
+    {
+        action = new QAction("Find Elements...", this);
+        action->setShortcut(QKeySequence::Find);
+        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+        QObject::connect(action,
+            &QAction::triggered,
+            hierarchy,
+            [ hierarchy ](bool checked)
+            {
+                hierarchy->GetEditorWindow()->ShowEntitySearchModal();
+            });
+        addAction(action);
+    }
+}
+
+void HierarchyMenu::EditorOnly(HierarchyWidget* hierarchy,
+    QTreeWidgetItemRawPtrQList& selectedItems)
+{
+    QAction* action;
+
+    // Toggle editor only state.
+    {
+        action = new QAction("Editor Only", this);
+        action->setCheckable(true);
+        
+        if (selectedItems.empty())
+        {
+            action->setChecked(false);
+            action->setEnabled(false);
+        }
+        else
+        {
+            EntityHelpers::EntityIdList entityIds = SelectionHelpers::GetSelectedElementIds(hierarchy, selectedItems, false);
+
+            bool checked = true;
+            for (auto entityId : entityIds)
+            {
+                bool isEditorOnly = false;
+                AzToolsFramework::EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, entityId, &AzToolsFramework::EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
+            
+                if (!isEditorOnly)
+                {
+                    checked = false;
+                    break;
+                }
+            }
+
+            action->setChecked(checked);
+            action->setEnabled(true);
+        }
+
+        QObject::connect(action,
+            &QAction::triggered,
+            [hierarchy](bool checked)
+        {
+            QMetaObject::invokeMethod(hierarchy, "SetEditorOnlyForSelectedItems", Qt::QueuedConnection, Q_ARG(bool, checked));
+        });
+        addAction(action);
+    }
 }
 
 #include <HierarchyMenu.moc>

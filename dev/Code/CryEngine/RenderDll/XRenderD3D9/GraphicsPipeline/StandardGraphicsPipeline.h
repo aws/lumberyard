@@ -15,6 +15,7 @@
 
 #include "Common/GraphicsPipeline.h"
 #include "Common/GraphicsPipelineStateSet.h"
+#include <RenderBus.h>
 
 class CAutoExposurePass;
 class CBloomPass;
@@ -38,9 +39,11 @@ enum ERenderableTechnique
 
 class CStandardGraphicsPipeline
     : public CGraphicsPipeline
+    , AZ::RenderNotificationsBus::Handler
 {
 public:
-    virtual ~CStandardGraphicsPipeline() {}
+    CStandardGraphicsPipeline();
+    virtual ~CStandardGraphicsPipeline();
 
     struct ViewParameters
     {
@@ -122,6 +125,8 @@ public:
     CDeviceResourceSetPtr GetDefaultInstanceExtraResources() const { return m_pDefaultInstanceExtraResources; }
 
 private:
+    void OnRendererFreeResources(int flags) override;
+
     CAutoExposurePass*            m_pAutoExposurePass;
     CBloomPass*                   m_pBloomPass;
     CScreenSpaceObscurancePass*   m_pScreenSpaceObscurancePass;

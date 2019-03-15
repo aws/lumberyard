@@ -239,7 +239,11 @@ LYGame::Platform StarterGameGame::GetPlatform() const
 #elif defined(IOS)
     platform = ePlatform_iOS;
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(StarterGameGame_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/StarterGameGame_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/StarterGameGame_cpp_provo.inl"
+    #endif
 #elif defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
     platform = ePlatform_PC;
 #endif

@@ -1,9 +1,12 @@
 {
     "none": {
-        "Woodpecker":
-        [
+        "Woodpecker": [
             "Woodpecker/LuaIDEApplication.h",
-            "Woodpecker/LuaIDEApplication.cpp"
+            "Woodpecker/LuaIDEApplication.cpp",
+            "Woodpecker/AssetDatabaseLocationListener.h",
+            "Woodpecker/AssetDatabaseLocationListener.cpp",
+            "Woodpecker/ThumbnailerNullComponent.h",
+            "Woodpecker/ThumbnailerNullComponent.cpp"
         ],
         "Woodpecker/Editor":
         [

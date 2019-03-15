@@ -29,6 +29,7 @@ namespace EMotionFX
         : public Parameter
     {
     public:
+        
         AZ_RTTI(ValueParameter, "{46549C79-6B4C-4DDE-A5E3-E5FBEC455816}", Parameter)
         AZ_CLASS_ALLOCATOR_DECL
 

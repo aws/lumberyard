@@ -29,12 +29,8 @@ namespace EMStudio
         : EMStudio::DockWidgetPlugin()
     {
         mDialogStack                    = nullptr;
-        mSelectCallback                 = nullptr;
-        mUnselectCallback               = nullptr;
-        mClearSelectionCallback         = nullptr;
         mCurrentActorInstance           = nullptr;
-        mAdjustMorphTargetCallback      = nullptr;
-        mAdjustActorInstanceCallback    = nullptr;
+        mStaticTextWidget = nullptr;
     }
 
 
@@ -42,16 +38,11 @@ namespace EMStudio
     MorphTargetsWindowPlugin::~MorphTargetsWindowPlugin()
     {
         // unregister the command callbacks and get rid of the memory
-        GetCommandManager()->RemoveCommandCallback(mSelectCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mUnselectCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mClearSelectionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAdjustMorphTargetCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAdjustActorInstanceCallback, false);
-        delete mSelectCallback;
-        delete mUnselectCallback;
-        delete mClearSelectionCallback;
-        delete mAdjustMorphTargetCallback;
-        delete mAdjustActorInstanceCallback;
+        for (auto callback : m_callbacks)
+        {
+            GetCommandManager()->RemoveCommandCallback(callback, true);
+        }
+        m_callbacks.clear();
 
         Clear();
 
@@ -86,24 +77,17 @@ namespace EMStudio
         mDock->setMinimumHeight(100);
         mDock->SetContents(mStaticTextWidget);
 
-        // create and register the command callbacks only (only execute this code once for all plugins)
-        mSelectCallback             = new CommandSelectCallback(false);
-        mUnselectCallback           = new CommandUnselectCallback(false);
-        mClearSelectionCallback     = new CommandClearSelectionCallback(false);
-        mAdjustMorphTargetCallback  = new CommandAdjustMorphTargetCallback(false);
-        mAdjustActorInstanceCallback = new CommandAdjustActorInstanceCallback(false);
-
-        GetCommandManager()->RegisterCommandCallback("Select", mSelectCallback);
-        GetCommandManager()->RegisterCommandCallback("Unselect", mUnselectCallback);
-        GetCommandManager()->RegisterCommandCallback("ClearSelection", mClearSelectionCallback);
-        GetCommandManager()->RegisterCommandCallback("AdjustMorphTarget", mAdjustMorphTargetCallback);
-        GetCommandManager()->RegisterCommandCallback("AdjustActorInstance", mAdjustActorInstanceCallback);
+        GetCommandManager()->RegisterCommandCallback<CommandSelectCallback>("Select", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandUnselectCallback>("Unselect", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandClearSelectionCallback>("ClearSelection", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandAdjustMorphTargetCallback>("AdjustMorphTarget", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandAdjustActorInstanceCallback>("AdjustActorInstance", m_callbacks, false);
 
         // reinit the dialog
         ReInit();
 
         // connect the window activation signal to refresh if reactivated
-        connect(mDock, SIGNAL(visibilityChanged(bool)), this, SLOT(WindowReInit(bool)));
+        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &MorphTargetsWindowPlugin::WindowReInit);
 
         // done
         return true;
@@ -113,10 +97,16 @@ namespace EMStudio
     // clear the morph target window
     void MorphTargetsWindowPlugin::Clear()
     {
-        mDock->SetContents(mStaticTextWidget);
+        if (mDock)
+        {
+            mDock->SetContents(mStaticTextWidget);
+        }
 
         // clear the dialog stack
-        mDialogStack->Clear();
+        if (mDialogStack)
+        {
+            mDialogStack->Clear();
+        }
 
         mMorphTargetGroups.clear();
     }

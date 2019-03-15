@@ -120,6 +120,7 @@ enum EOcclusionObjectType
 #define ERF_RECVWIND                    BIT(21)
 #define ERF_COLLISION_PROXY             BIT(22) // Collision proxy is a special object that is only visible in editor
 // and used for physical collisions with player and vehicles.
+#define ERF_LOD_BBOX_BASED              BIT(23) // Lod changes based on bounding boxes.
 #define ERF_SPEC_BIT0                   BIT(24) // Bit0 of min config specification.
 #define ERF_SPEC_BIT1                   BIT(25) // Bit1 of min config specification.
 #define ERF_SPEC_BIT2                   BIT(26) // Bit2 of min config specification.
@@ -636,6 +637,8 @@ struct IRoadRenderNode
     bool m_hasToBeSerialised = true;
     // Whether or not ends of the road should be faded out
     bool m_bAlphaBlendRoadEnds = true;
+    // Whether or not the road segments should be extended to overlap at the point where roads are split
+    bool m_addOverlapBetweenSectors = false;
 };
 
 // Summary:

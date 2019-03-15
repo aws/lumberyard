@@ -192,6 +192,9 @@ TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetScanFolderForFile_Sub
     EXPECT_STREQ(info->GetDisplayName().toUtf8().constData(), "Editor ScanFolder");
 }
 
+// note that in the case of GetOverridingFile, this SHOULD return the correct case if an override is found
+// because its possible to override a file with another file with different case in a different scan folder
+// such a situation is supposed to be very rare, so the cost of correcting the case is mitigated.
 TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetOverridingFile_Exists_ReturnsCorrectCase)
 {
     using namespace AzToolsFramework::AssetSystem;
@@ -234,7 +237,7 @@ TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetOverridingFile_Exists
     // Perform the test by asking it whether the existing real winning file is being overridden by anyone.
     QString overrider = m_config->GetOverridingFile("TestCase.tXt", scanfolder1Path);
 
-    // note that this should return the emptystring, becuase there is nothing that OVERRIDES it (ie, its already the winner).
+    // note that this should return the emptystring, because there is nothing that OVERRIDES it (ie, its already the winner).
     EXPECT_TRUE(overrider.isEmpty());
 }
 
@@ -273,50 +276,11 @@ TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, FindFirstMatchingFile_Do
     EXPECT_TRUE(foundFile.isEmpty());
 }
 
-TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, FindFirstMatchingFile_ExistsWithoutOverride_ReturnsCorrectCase)
-{
-    using namespace AzToolsFramework::AssetSystem;
-    using namespace AssetProcessor;
-
-    // create two scan folders, since its order dependent, the ScanFolder1 is the "winner" in tie breakers
-    QString scanfolder1Path = m_tempPath.filePath("scanfolder1");
-    QString scanfolder2Path = m_tempPath.filePath("scanfolder2");
-    QString caseSensitiveDummyFileName = m_tempPath.absoluteFilePath("scanfolder1/TestCase.tXt");
-
-    m_config->AddScanFolder(ScanFolderInfo(scanfolder1Path, "ScanFolder1", "sf1", "", false, true, m_platforms), true);
-    m_config->AddScanFolder(ScanFolderInfo(scanfolder2Path, "ScanFolder2", "sf2", "", false, true, m_platforms), true);
-    UnitTestUtils::CreateDummyFile(caseSensitiveDummyFileName, QString("testcase\n"));
-
-    // Perform the test by asking it whether anyone overrides "testcase" (lowercase)
-    QString foundFile = m_config->FindFirstMatchingFile("testcase.txt");
-
-    EXPECT_FALSE(foundFile.isEmpty());
-    EXPECT_STREQ(foundFile.toUtf8().constData(), caseSensitiveDummyFileName.toUtf8().constData());
-}
-
-
-TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, FindFirstMatchingFile_ExistsWithOverride_ReturnsCorrectCase)
-{
-    using namespace AzToolsFramework::AssetSystem;
-    using namespace AssetProcessor;
-
-    // create two scan folders, since its order dependent, the ScanFolder1 is the "winner" in tie breakers.
-    QString scanfolder1Path = m_tempPath.filePath("scanfolder1");
-    QString scanfolder2Path = m_tempPath.filePath("scanfolder2");
-    QString caseSensitiveDummyFileName = m_tempPath.absoluteFilePath("scanfolder1/TestCase.tXt");
-    QString caseSensitiveDummyFileName2 = m_tempPath.absoluteFilePath("scanfolder2/testcase.txt");
-
-    m_config->AddScanFolder(ScanFolderInfo(scanfolder1Path, "ScanFolder1", "sf1", "", false, true, m_platforms), true);
-    m_config->AddScanFolder(ScanFolderInfo(scanfolder2Path, "ScanFolder2", "sf2", "", false, true, m_platforms), true);
-    UnitTestUtils::CreateDummyFile(caseSensitiveDummyFileName, QString("testcase\n"));
-
-    // Perform the test by asking it the first file that matches here (improper case entered)
-    QString foundFile = m_config->FindFirstMatchingFile("tEstcAse.txt");
-
-    EXPECT_FALSE(foundFile.isEmpty());
-    EXPECT_STREQ(foundFile.toUtf8().constData(), caseSensitiveDummyFileName.toUtf8().constData());
-}
-
+// note that we do not guarantee that FindFirstMatchingFile always returns the correct case, as it is a super hot path
+// function, and the only time case could be incorrect is in the situation where a file with different case overrides
+// an underlying file, ie, 
+// Engine/EngineAssets/Textures/StartScreen.tif
+// MyGame/EngineAssets/textures/startscreen.tif <-- would override the above because game has higher / more important priority.
 
 // ensures that exact matches take priority over subfolder matches
 TEST_F(PlatformConfigurationUnitTests_OnePCHostFixture, GetScanFolderForFile_SubFolder_ExactMatch_IsFound)

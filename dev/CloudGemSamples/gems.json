@@ -80,6 +80,12 @@
             "_comment": "InputManagementFramework"
         },
         {
+            "Path": "Gems/TextureAtlas",
+            "Uuid": "5a149b6b3c964064bd4970f0e92f72e2",
+            "Version": "0.1.0",
+            "_comment": "TextureAtlas"
+        },
+        {
             "Path": "Gems/UiBasics",
             "Uuid": "6bb61c9e547043f0afc5019d6d460b78",
             "Version": "0.1.0",
@@ -186,6 +192,12 @@
             "Uuid": "f905c05883b94fd6bddc91052c3c5a86",
             "Version": "0.1.0",
             "_comment": "ScriptCanvasDeveloperGem"
+        },
+        {
+            "Path": "Gems/ImageProcessing",
+            "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
+            "Version": "0.1.0",
+            "_comment": "ImageProcessing"
         },
         {
             "Path": "Gems/Camera",

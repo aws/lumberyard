@@ -111,7 +111,6 @@ namespace EMotionFX
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
 
-        uniqueData->mMustUpdate = true;
         UpdateUniqueData(animGraphInstance, uniqueData);
     }
 

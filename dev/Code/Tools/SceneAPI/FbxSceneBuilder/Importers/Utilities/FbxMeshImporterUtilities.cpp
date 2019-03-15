@@ -40,6 +40,10 @@ namespace AZ
                 sourceMesh.GetMaterialIndices(&fbxMaterialIndices); // per polygon
 
                 int fbxPolygonCount = sourceMesh.GetPolygonCount();
+
+                AZ_Error("FbxSceneBuilder", fbxPolygonCount, 
+                    "Source mesh %s polygon count is 0. Zero count meshes are not supported, either remove this mesh or add polygons to it.",
+                    sourceMesh.GetName());
                 for (int fbxPolygonIndex = 0; fbxPolygonIndex < fbxPolygonCount; ++fbxPolygonIndex)
                 {
                     // if the polygon has less than 3 vertices, it's not a valid polygon and is skipped
@@ -128,7 +132,7 @@ namespace AZ
 
                         // Add normal
                         sceneSystem.SwapVec3ForUpAxis(meshVertexNormal);
-                        meshVertexNormal.Normalize();
+                        meshVertexNormal.NormalizeSafe();
                         mesh->AddNormal(meshVertexNormal);
 
                         mesh->SetVertexIndexToControlPointIndexMap(meshVertexIndex, fbxControlPointIndex);

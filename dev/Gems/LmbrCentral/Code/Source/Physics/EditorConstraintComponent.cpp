@@ -175,7 +175,7 @@ namespace LmbrCentral
             {
                 editContext->Class<EditorConstraintComponent>("Constraint", "The Constraint component creates a physical limitation or restriction between an entity and its target")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PhysicsConstraint.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/PhysicsConstraint.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))  

@@ -24,6 +24,8 @@
 #include <EMotionFX/Source/AnimGraphMotionCondition.h>
 #include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/MotionSet.h>
+#include <EMotionFX/Source/MotionEvent.h>
+#include <EMotionFX/Source/TwoStringEventData.h>
 
 
 namespace EMotionFX
@@ -38,7 +40,6 @@ namespace EMotionFX
 
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphMotionCondition, AnimGraphConditionAllocator, 0)
     AZ_CLASS_ALLOCATOR_IMPL(AnimGraphMotionCondition::UniqueData, AnimGraphObjectUniqueDataAllocator, 0)
-    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphMotionCondition::EventHandler, AnimGraphObjectUniqueDataAllocator, 0)
 
     AnimGraphMotionCondition::AnimGraphMotionCondition()
         : AnimGraphTransitionCondition()
@@ -156,25 +157,46 @@ namespace EMotionFX
         }
 
         // Update the unique data.
-        if (uniqueData->mMotionInstance != motionInstance ||
-            uniqueData->mMotionInstance->FindEventHandlerIndex(uniqueData->mEventHandler) == MCORE_INVALIDINDEX32)
+        if (uniqueData->mMotionInstance != motionInstance)
         {
-            // Create a new event handler for this motion condition and add it to the motion instance.
             uniqueData->mMotionInstance = motionInstance;
-            uniqueData->mEventHandler = AnimGraphMotionCondition::EventHandler::Create(const_cast<AnimGraphMotionCondition*>(this), uniqueData);
-            uniqueData->mMotionInstance->AddEventHandler(uniqueData->mEventHandler);
-        }
-
-        // In case a motion event got triggered or a motion has looped constantly fire true until the condition gets reset.
-        if (uniqueData->mTriggered)
-        {
-            uniqueData->mTriggered = false;
-            return true;
         }
 
         // Process the condition depending on the function used.
         switch (m_testFunction)
         {
+        case FUNCTION_EVENT:
+        {
+            const EMotionFX::AnimGraphEventBuffer& eventBuffer = animGraphInstance->GetEventBuffer();
+            const uint32 numEvents = eventBuffer.GetNumEvents();
+
+            // Check if the triggered motion event is of the given type and parameter from the motion condition.
+            for (uint32 i = 0; i < numEvents; ++i)
+            {
+                const EMotionFX::EventInfo& eventInfo = eventBuffer.GetEvent(i);
+                const EventDataSet& eventDatas = eventInfo.mEvent->GetEventDatas();
+
+                size_t matches = 0;
+                for (const EventDataPtr& checkAgainstData : m_eventDatas)
+                {
+                    if (checkAgainstData)
+                    {
+                        for (const auto& emittedData : eventDatas)
+                        {
+                            if (checkAgainstData->Equal(*emittedData, /*ignoreEmptyFields = */true))
+                            {
+                                ++matches;
+                            }
+                        }
+                    }
+                }
+                if (m_eventDatas.size() == matches)
+                {
+                    return true;
+                }
+            }
+        }
+        break;
         // Has motion finished playing?
         case FUNCTION_HASENDED:
         {
@@ -197,6 +219,10 @@ namespace EMotionFX
                     // Return true in case the current playtime has reached the animation start.
                     return currentTime <= MCore::Math::epsilon;
                 }
+            }
+            else
+            {
+                return motionInstance->GetHasLooped();
             }
         }
         break;
@@ -223,22 +249,15 @@ namespace EMotionFX
             return m_motionNode->GetCurrentPlayTime(animGraphInstance) >= (m_playTime - AZ::g_fltEps);
         }
         break;
+
+        case FUNCTION_NONE:
+        default:
+        break;
         }
 
         // No event got triggered, continue playing the state and don't autostart the transition.
         return false;
     }
-
-
-    void AnimGraphMotionCondition::Reset(AnimGraphInstance* animGraphInstance)
-    {
-        UniqueData* uniqueData = static_cast<UniqueData*>(animGraphInstance->FindUniqueObjectData(this));
-        if (uniqueData)
-        {
-            uniqueData->mTriggered = false;
-        }
-    }
-
 
     void AnimGraphMotionCondition::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
@@ -304,28 +323,15 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphMotionCondition::SetEventType(const AZStd::string& eventType)
+    void AnimGraphMotionCondition::SetEventDatas(EventDataSet&& eventData)
     {
-        m_eventType = eventType;
+        m_eventDatas = AZStd::move(eventData);
     }
 
 
-    const AZStd::string& AnimGraphMotionCondition::GetEventType() const
+    const EventDataSet& AnimGraphMotionCondition::GetEventDatas() const
     {
-        return m_eventType;
-    }
-
-
-
-    void AnimGraphMotionCondition::SetEventParameter(const AZStd::string& eventParameter)
-    {
-        m_eventParameter = eventParameter;
-    }
-
-
-    const AZStd::string& AnimGraphMotionCondition::GetEventParameter() const
-    {
-        return m_eventParameter;
+        return m_eventDatas;
     }
 
 
@@ -422,89 +428,6 @@ namespace EMotionFX
         : AnimGraphObjectData(object, animGraphInstance)
     {
         mMotionInstance = motionInstance;
-        mEventHandler   = nullptr;
-        mTriggered      = false;
-    }
-
-
-    AnimGraphMotionCondition::UniqueData::~UniqueData()
-    {
-        if (mMotionInstance && mEventHandler)
-        {
-            mMotionInstance->RemoveEventHandler(mEventHandler);
-        }
-    }
-
-    //--------------------------------------------------------------------------------
-    // class AnimGraphMotionCondition::EventHandler
-    //--------------------------------------------------------------------------------
-    AnimGraphMotionCondition::EventHandler::EventHandler(AnimGraphMotionCondition* condition, UniqueData* uniqueData)
-        : MotionInstanceEventHandler()
-    {
-        mCondition      = condition;
-        mUniqueData     = uniqueData;
-    }
-
-
-    AnimGraphMotionCondition::EventHandler::~EventHandler()
-    {
-    }
-
-
-    void AnimGraphMotionCondition::EventHandler::OnDeleteMotionInstance()
-    {
-        // Reset the motion instance and the flag in the unique data.
-        mUniqueData->mMotionInstance    = nullptr;
-        mUniqueData->mTriggered         = false;
-        mUniqueData->mEventHandler      = nullptr;
-    }
-
-
-    void AnimGraphMotionCondition::EventHandler::OnEvent(const EventInfo& eventInfo)
-    {
-        // Make sure the condition function is the right one.
-        if (mCondition->GetTestFunction() != FUNCTION_EVENT)
-        {
-            return;
-        }
-
-        // Check if the triggered motion event is of the given type and parameter from the motion condition.
-        const AZStd::string& eventParameter = mCondition->GetEventParameter();
-        const AZStd::string& eventType = mCondition->GetEventType();
-        if ((eventParameter.empty() || eventParameter == *eventInfo.mParameters) &&
-            (eventType.empty() || AzFramework::StringFunc::Equal(eventType.c_str(), GetEventManager().GetEventTypeString(eventInfo.mTypeID), true /* case sensitive */)))
-        {
-            if (eventInfo.mIsEventStart)
-            {
-                mUniqueData->mTriggered = true;
-            }
-            else
-            {
-                mUniqueData->mTriggered = false;
-            }
-        }
-    }
-
-
-    void AnimGraphMotionCondition::EventHandler::OnHasLooped()
-    {
-        if (mCondition->GetTestFunction() != FUNCTION_HASENDED)
-        {
-            return;
-        }
-
-        mUniqueData->mTriggered = true;
-    }
-
-
-    void AnimGraphMotionCondition::EventHandler::OnIsFrozenAtLastFrame()
-    {
-        if (mCondition->GetTestFunction() != FUNCTION_HASENDED)
-        {
-            return;
-        }
-
-        mUniqueData->mTriggered = true;
     }
 
 
@@ -517,13 +440,6 @@ namespace EMotionFX
             SetMotionNodeId(AnimGraphNodeId::InvalidId);
         }
     }
-
-
-    AnimGraphMotionCondition::EventHandler* AnimGraphMotionCondition::EventHandler::Create(AnimGraphMotionCondition* condition, UniqueData* uniqueData)
-    {
-        return aznew AnimGraphMotionCondition::EventHandler(condition, uniqueData);
-    }
-
 
     AZ::Crc32 AnimGraphMotionCondition::GetNumLoopsVisibility() const
     {
@@ -558,6 +474,56 @@ namespace EMotionFX
         }
     }
 
+
+    bool AnimGraphMotionConditionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& rootElementNode)
+    {
+        if (rootElementNode.GetVersion() >= 2)
+        {
+            return false;
+        }
+
+        AZ::GenericClassInfo* classInfo = serializeContext.FindGenericClassInfo(azrtti_typeid<AZStd::vector<AZStd::shared_ptr<const EventData>>>());
+        const int elementIndex = rootElementNode.AddElement(serializeContext, "eventDatas", classInfo);
+        AZ::SerializeContext::DataElementNode& eventDataSharedPtrElement = rootElementNode.GetSubElement(elementIndex);
+
+        // Read the old eventType and eventParameter fields
+        AZStd::string eventType;
+        const int eventTypeIndex = rootElementNode.FindElement(AZ_CRC("eventType", 0xd07a8b00));
+        if (eventTypeIndex < 0)
+        {
+            return false;
+        }
+        AZ::SerializeContext::DataElementNode eventTypeNode = rootElementNode.GetSubElement(eventTypeIndex);
+        if (!eventTypeNode.GetData(eventType))
+        {
+            return false;
+        }
+
+        AZStd::string eventParameter;
+        const int eventParameterIndex = rootElementNode.FindElement(AZ_CRC("eventParameter", 0x42bb3da0));
+        if (eventParameterIndex < 0)
+        {
+            return false;
+        }
+
+        AZ::SerializeContext::DataElementNode eventParameterNode = rootElementNode.GetSubElement(eventParameterIndex);
+        if (!eventParameterNode.GetData(eventParameter))
+        {
+            return false;
+        }
+
+        // Add the new data
+        if (!eventDataSharedPtrElement.SetData(serializeContext, EventDataSet {AZStd::make_shared<TwoStringEventData>(eventType, eventParameter)}))
+        {
+            return false;
+        }
+
+        // Remove the old fields
+        rootElementNode.RemoveElementByName(AZ_CRC("eventType", 0xd07a8b00));
+        rootElementNode.RemoveElementByName(AZ_CRC("eventParameter", 0x42bb3da0));
+        return true;
+    }
+
     void AnimGraphMotionCondition::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -567,13 +533,12 @@ namespace EMotionFX
         }
 
         serializeContext->Class<AnimGraphMotionCondition, AnimGraphTransitionCondition>()
-            ->Version(1)
+            ->Version(2, &AnimGraphMotionConditionConverter)
             ->Field("motionNodeId", &AnimGraphMotionCondition::m_motionNodeId)
             ->Field("testFunction", &AnimGraphMotionCondition::m_testFunction)
             ->Field("numLoops", &AnimGraphMotionCondition::m_numLoops)
             ->Field("playTime", &AnimGraphMotionCondition::m_playTime)
-            ->Field("eventType", &AnimGraphMotionCondition::m_eventType)
-            ->Field("eventParameter", &AnimGraphMotionCondition::m_eventParameter)
+            ->Field("eventDatas", &AnimGraphMotionCondition::m_eventDatas)
             ;
 
 
@@ -608,10 +573,9 @@ namespace EMotionFX
                 ->Attribute(AZ::Edit::Attributes::Min, -std::numeric_limits<float>::max())
                 ->Attribute(AZ::Edit::Attributes::Max,  std::numeric_limits<float>::max())
                 ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphMotionCondition::GetPlayTimeVisibility)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphMotionCondition::m_eventType, "Event Type", "The event type to catch.")
+            ->DataElement(AZ_CRC("EMotionFX::EventData", 0xca242382), &AnimGraphMotionCondition::m_eventDatas, "Event Parameters", "The event parameters to match.")
                 ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphMotionCondition::GetEventPropertiesVisibility)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraphMotionCondition::m_eventParameter, "Event Parameter", "The event parameter to catch.")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &AnimGraphMotionCondition::GetEventPropertiesVisibility)
+                ->ElementAttribute(AZ::Edit::Attributes::Handler, AZ_CRC("EMotionFX::EventData", 0xca242382))
             ;
     }
 } // namespace EMotionFX

@@ -18,6 +18,7 @@
 #include <AzCore/IO/ByteContainerStream.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
 namespace AzToolsFramework
 {
@@ -119,7 +120,8 @@ namespace AzToolsFramework
             {
                 continue;
             }
-            auto classData = context->FindClassData(component->RTTI_GetType());
+            // Get the underlying component type if wrapped with a generic component wrapper
+            auto classData = context->FindClassData(GetComponentTypeId(component));
             if (classData)
             {
                 componentClassTypes.push_back(classData);

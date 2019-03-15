@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Math/Color.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiFaderInterface
@@ -35,6 +36,12 @@ public: // member functions
 
     //! Get whether a fade animation is taking place
     virtual bool IsFading() = 0;
+
+    //! Get the flag that indicates whether the fader should use render to texture
+    virtual bool GetUseRenderToTexture() = 0;
+
+    //! Set the flag that indicates whether the fader should use render to texture
+    virtual void SetUseRenderToTexture(bool useRenderToTexture) = 0;
 
 public: // static member data
 

@@ -17,20 +17,27 @@
 #include <platform.h>
 #include <ISystem.h>
 
-#include <ShellAPI.h>
 #include <StringUtils.h>
 #include <platform_impl.h>
 
 #include <ParseEngineConfig.h>
 
 #include <AzFramework/Application/Application.h>
-
-// We need shell api for Current Root Extraction.
-#include "shlwapi.h"
-#pragma comment(lib, "shlwapi.lib")
+#include <AzCore/Module/DynamicModuleHandle.h>
+#include <AzCore/std/string/osstring.h>
+#include <AzCore/IPC/SharedMemory.h>
 
 #include <CryLibrary.h>
 #include <IConsole.h>
+
+#if defined(AZ_PLATFORM_APPLE_OSX)
+#include <fcntl.h>
+#include <errno.h>
+#include <semaphore.h>
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
+static bool s_displayMessageBox = true;
 
 struct COutputPrintSink
     : public IOutputPrintSink
@@ -41,6 +48,70 @@ struct COutputPrintSink
     }
 };
 
+#if defined(AZ_PLATFORM_APPLE_OSX)
+CFOptionFlags MessageBox(const char* title, const char* message, CFStringRef defaultButton, CFStringRef alternateButton)
+{
+    CFStringRef strHeader = CFStringCreateWithCString(NULL, title, kCFStringEncodingMacRoman);
+    CFStringRef strMsg = CFStringCreateWithCString(NULL, message, kCFStringEncodingMacRoman);
+    
+    CFOptionFlags result;
+    CFUserNotificationDisplayAlert(
+                                   0,
+                                   kCFUserNotificationNoteAlertLevel,
+                                   NULL,
+                                   NULL,
+                                   NULL,
+                                   strHeader,
+                                   strMsg,
+                                   defaultButton,
+                                   alternateButton,
+                                   NULL,
+                                   &result
+                                   );
+    
+    if (strHeader)
+    {
+        CFRelease(strHeader);
+    }
+
+    if (strMsg)
+    {
+        CFRelease(strMsg);
+    }
+    return result;
+}
+#endif // defined(AZ_PLATFORM_APPLE_OSX)
+
+bool DisplayYesNoMessageBox(const char* title, const char* message)
+{
+    if (!s_displayMessageBox)
+    {
+        return false;
+    }
+	
+#if defined(AZ_PLATFORM_WINDOWS)
+    return MessageBox(0, message, title, MB_YESNO) == IDYES;
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    return MessageBox(title, message, CFSTR("Yes"), CFSTR("No")) == kCFUserNotificationDefaultResponse;
+#endif
+    return false;
+}
+
+void DisplayErrorMessageBox(const char* message)
+{
+    if (!s_displayMessageBox)
+    {
+        printf("Error: %s\n", message);
+        return;
+    }
+	
+#if defined(AZ_PLATFORM_WINDOWS)
+    MessageBox(0, message, "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    MessageBox("Error", message, NULL, NULL);
+#endif
+}
+
 void ClearPlatformCVars(ISystem* pISystem)
 {
     pISystem->GetIConsole()->ExecuteString("r_ShadersDX11 = 0");
@@ -49,6 +120,33 @@ void ClearPlatformCVars(ISystem* pISystem)
     pISystem->GetIConsole()->ExecuteString("r_ShadersMETAL = 0");
     pISystem->GetIConsole()->ExecuteString("r_ShadersGL4 = 0");
     pISystem->GetIConsole()->ExecuteString("r_ShadersGLES3 = 0");
+}
+
+bool IsLumberyardRunning()
+{
+    bool isRunning = false;
+    const char* mutexName = "LumberyardApplication";
+#if defined(AZ_PLATFORM_WINDOWS)
+    HANDLE mutex = CreateMutex(NULL, TRUE, mutexName);
+    isRunning = GetLastError() == ERROR_ALREADY_EXISTS;
+    if (mutex)
+    {
+        CloseHandle(mutex);
+    }
+#elif defined(AZ_PLATFORM_APPLE_OSX)
+    sem_t* mutex = sem_open(mutexName, O_CREAT | O_EXCL);
+    if (mutex == SEM_FAILED && errno == EEXIST)
+    {
+        isRunning = true;
+    }
+    else
+    {
+        sem_close(mutex);
+        sem_unlink(mutexName);
+    }
+#endif
+
+    return isRunning;
 }
 
 static AZ::EnvironmentVariable<IMemoryManager*> s_cryMemoryManager = nullptr;
@@ -92,34 +190,157 @@ void ReleaseCryMemoryManager()
 // and all memory created on the stack here in main_wrapped can go out of scope before we stop the application
 int main_wrapped(int argc, char* argv[])
 {
-    const char* commandLine = GetCommandLineA();
+    const int errorCode = 1;
+    if (argc < 2)
+    {
+        printf("\nInvalid number of arguments. Usage:\n\
+                ShaderGen BuildGlobalCache [NoCompile] | BuildLevelCache\n\
+                ShadersPlatform={D3D11/GLES3/GL4/METAL}\n\
+                TargetPlatform={Win/Android/iOS/OSX}\n\
+                [-nopromt][-devmode]\n");
+        return errorCode;
+    }
 
-    HANDLE mutex = CreateMutex(NULL, TRUE, "CrytekApplication");
-    if (GetLastError() == ERROR_ALREADY_EXISTS)
+    AZ::OSString cmdLineString;
+    for (int i = 0; i < argc - 1; ++i)
+    {
+        cmdLineString += argv[i];
+        cmdLineString += " ";
+    }
+    cmdLineString += argv[argc - 1];
+    const char* commandLine = cmdLineString.c_str();
+    
+    if (CryStringUtils::stristr(commandLine, "-noprompt"))
+    {
+        s_displayMessageBox = false;
+    }
+
+    if (IsLumberyardRunning())
     {
         if (CryStringUtils::stristr(commandLine, "-devmode") == 0)
         {
-            MessageBox(0, "There is already a Crytek application running. Cannot start another one!", "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
-            return 1;
+            DisplayErrorMessageBox("There is already a Lumberyard application running. Cannot start another one!");
+            return errorCode;
         }
 
-        if (CryStringUtils::stristr(commandLine, "-noprompt") == 0)
+        if (s_displayMessageBox)
         {
-            if (MessageBox(GetDesktopWindow(), "There is already a Crytek application running\nDo you want to start another one?", "Too many apps", MB_YESNO) != IDYES)
+            if (!DisplayYesNoMessageBox("Too many apps", "There is already a Lumberyard application running\nDo you want to start another one?"))
             {
-                return 1;
+                return errorCode;
             }
         }
     }
 
+#if defined(AZ_PLATFORM_WINDOWS)
     InitRootDir();
+#endif
 
-    PFNCREATESYSTEMINTERFACE CreateSystemInterface =
-        (PFNCREATESYSTEMINTERFACE)::GetProcAddress(s_crySystemDll, "CreateSystemInterface");
+
+    PFNCREATESYSTEMINTERFACE CreateSystemInterface = reinterpret_cast<PFNCREATESYSTEMINTERFACE>(CryGetProcAddress(s_crySystemDll, "CreateSystemInterface"));
 
     COutputPrintSink printSink;
     SSystemInitParams sip;
     CEngineConfig cfg;
+
+    using PlatformMap = AZStd::unordered_map<AZ::OSString, AZ::PlatformID, AZStd::hash<AZ::OSString>>;
+    using PlatformMapElement = PlatformMap::value_type;
+
+    const PlatformMap platforms =
+    {
+        { "pc", AZ::PLATFORM_WINDOWS_64 },
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+        { #CodeName,       AZ::PLATFORM_##PUBLICNAME },\
+        { #CODENAME,       AZ::PLATFORM_##PUBLICNAME },\
+        { #codename,       AZ::PLATFORM_##PUBLICNAME },\
+        { #PrivateName,    AZ::PLATFORM_##PUBLICNAME },\
+        { #PRIVATENAME,    AZ::PLATFORM_##PUBLICNAME },\
+        { #privatename,    AZ::PLATFORM_##PUBLICNAME },\
+        { #PublicAuxName1, AZ::PLATFORM_##PUBLICNAME },\
+        { #PublicAuxName2, AZ::PLATFORM_##PUBLICNAME },\
+        { #PublicAuxName3, AZ::PLATFORM_##PUBLICNAME },
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
+        AZ_EXPAND_FOR_RESTRICTED_PLATFORM
+#else
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#endif
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#endif
+        { "es3", AZ::PLATFORM_ANDROID },
+        { "ios", AZ::PLATFORM_APPLE_IOS },
+        { "osx_gl", AZ::PLATFORM_APPLE_OSX }
+    };
+
+    AZ::PlatformID platform = AZ::PLATFORM_MAX;
+    AZ::OSString shaderTypeCommand;
+
+    // Parse the args that have to do with shader type and target platform
+    if (CryStringUtils::stristr(commandLine, "ShadersPlatform"))
+    {
+        if (CryStringUtils::stristr(commandLine, "ShadersPlatform=PC") || CryStringUtils::stristr(commandLine, "ShadersPlatform=D3D11") != 0)
+        {
+            shaderTypeCommand = "r_ShadersDX11 = 1";
+            platform = AZ::PLATFORM_WINDOWS_64;
+        }
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM) || defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
+#define AZ_RESTRICTED_PLATFORM_EXPANSION(CodeName, CODENAME, codename, PrivateName, PRIVATENAME, privatename, PublicName, PUBLICNAME, publicname, PublicAuxName1, PublicAuxName2, PublicAuxName3)\
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=" #PrivateName) != 0)    \
+        {                                                                                       \
+            shaderTypeCommand = "r_Shaders" #PrivateName " = 1";                                \
+            platform = AZ::PLATFORM_##PUBLICNAME;                                               \
+        }
+#if defined(AZ_EXPAND_FOR_RESTRICTED_PLATFORM)
+        AZ_EXPAND_FOR_RESTRICTED_PLATFORM
+#else
+        AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS
+#endif
+#undef AZ_RESTRICTED_PLATFORM_EXPANSION
+#endif
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=GL4") != 0)
+        {
+            shaderTypeCommand = "r_ShadersGL4 = 1";
+            platform = AZ::PLATFORM_WINDOWS_64;
+        }
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=GLES3") != 0)
+        {
+            shaderTypeCommand = "r_ShadersGLES3 = 1";
+            platform = AZ::PLATFORM_ANDROID;
+        }
+        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=METAL") != 0)
+        {
+            shaderTypeCommand = "r_ShadersMETAL = 1";
+            // For metal the platform has to be specified in the command line
+        }
+    }
+
+    const char* platformArg = "TargetPlatform=";
+    if (const char* platformString = CryStringUtils::stristr(commandLine, platformArg))
+    {
+        // Get the platform value
+        platformString += strlen(platformArg);
+        // Search for the next white space
+        const char* platformStringEnd = strchr(platformString, ' ');
+        size_t stringLen = platformStringEnd ? platformStringEnd - platformString : strlen(platformString);
+        AZ::OSString platformAsString(platformString, stringLen);
+        AZStd::to_lower(platformAsString.begin(), platformAsString.end());
+        auto it = platforms.find(platformAsString);
+        if (it != platforms.end())
+        {
+            platform = it->second;
+        }
+    }
+
+    // Search for the platform name using the enum value
+    PlatformMap::const_iterator foundPlatofrm = AZStd::find_if(platforms.begin(), platforms.end(), [&platform](const PlatformMapElement& element) { return element.second == platform; });
+    if (foundPlatofrm == platforms.end())
+    {
+        DisplayErrorMessageBox("Invalid target platform");
+        return errorCode;
+    }
+
+    // Overwrite assets platform so it matches the platform for which we are generating the shaders.
+    cfg.m_assetPlatform = foundPlatofrm->first.c_str();
     cfg.CopyToStartupParams(sip);
 
     sip.bShaderCacheGen = true;
@@ -144,11 +365,7 @@ int main_wrapped(int argc, char* argv[])
 
     if (!pISystem)
     {
-        string errorStr;
-        errorStr.Format("CreateSystemInterface Failed");
-
-        MessageBox(0, errorStr.c_str(), "Error", MB_OK | MB_DEFAULT_DESKTOP_ONLY);
-
+        DisplayErrorMessageBox("CreateSystemInterface Failed");
         return false;
     }
 
@@ -157,36 +374,19 @@ int main_wrapped(int argc, char* argv[])
 
     pISystem->ExecuteCommandLine();
 
-    if (CryStringUtils::stristr(commandLine, "ShadersPlatform="))
+    // Set the shader type
+    if (!shaderTypeCommand.empty())
     {
         ClearPlatformCVars(pISystem);
-
-        if (CryStringUtils::stristr(commandLine, "ShadersPlatform=PC") != 0)
-        {
-            pISystem->GetIConsole()->ExecuteString("r_ShadersDX11 = 1");   // DX9 is dead, long live DX11
-        }
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=Durango") != 0) // ACCEPTED_USE
-        {
-            pISystem->GetIConsole()->ExecuteString("r_ShadersDurango = 1"); // ACCEPTED_USE
-        }
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=Orbis") != 0) // ACCEPTED_USE
-        {
-            pISystem->GetIConsole()->ExecuteString("r_ShadersOrbis = 1"); // ACCEPTED_USE
-        }
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=GL4") != 0)
-        {
-            pISystem->GetIConsole()->ExecuteString("r_ShadersGL4 = 1");
-        }
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=GLES3") != 0)
-        {
-            pISystem->GetIConsole()->ExecuteString("r_ShadersGLES3 = 1");
-        }
-        else if (CryStringUtils::stristr(commandLine, "ShadersPlatform=METAL") != 0)
-        {
-            pISystem->GetIConsole()->ExecuteString("r_ShadersMETAL = 1");
-        }
+        pISystem->GetIConsole()->ExecuteString(shaderTypeCommand.c_str());
     }
 
+    // Set the target platform
+    if (platform != AZ::PLATFORM_MAX)
+    {
+        pISystem->GetIConsole()->ExecuteString(AZStd::string::format("r_ShadersPlatform = %d", platform).c_str());
+    }
+    
     if (CryStringUtils::stristr(commandLine, "BuildGlobalCache") != 0)
     {
         // to only compile shader explicitly listed in global list, call PrecacheShaderList
@@ -238,7 +438,6 @@ int main_wrapped(int argc, char* argv[])
 
     pISystem = NULL;
 
-    CloseHandle(mutex);
     return 0;
 }
 

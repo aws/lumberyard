@@ -12,26 +12,46 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
-#include <Pipeline/PhysXMeshAsset.h>
+#include <PhysX/MeshAsset.h>
+
+namespace Physics
+{
+    class MaterialId;
+}
 
 namespace PhysX
 {
-    /**
-     * Services provided by the PhysX Mesh Shape Component.
-     */
-    class PhysXMeshShapeComponentRequests
+    /// Services provided by the PhysX Mesh Collider Component.
+    class MeshColliderComponentRequests
         : public AZ::ComponentBus
     {
     public:
-        /**
-        * Gets Mesh information from this entity.
-        * @return Asset pointer to mesh asset.
-        */
-        virtual AZ::Data::Asset<Pipeline::PhysXMeshAsset> GetMeshAsset() = 0;
+        /// Gets Mesh information from this entity.
+        /// @return Asset pointer to mesh asset.
+        virtual AZ::Data::Asset<Pipeline::MeshAsset> GetMeshAsset() const = 0;
+
+        /// Gets the mesh triangles as a list of verts and indices.
+        /// @param verts The list of verts in the mesh
+        /// @param indices The ordering of the verts into triangles
+        virtual void GetStaticWorldSpaceMeshTriangles(AZStd::vector<AZ::Vector3>& verts, AZStd::vector<AZ::u32>& indices) const = 0;
+
+        /// Gets the material id from the material library for this entity.
+        /// @return The asset ID to set it to.
+        virtual Physics::MaterialId GetMaterialId() const = 0;
+
+        /// Sets the mesh asset ID
+        /// @param id The asset ID to set it to.
+        virtual void SetMeshAsset(const AZ::Data::AssetId& id) = 0;
+
+        /// Sets the material library asset to the collider.
+        /// @param id The asset ID to set it to.
+        virtual void SetMaterialAsset(const AZ::Data::AssetId& id) = 0;
+
+        /// Sets the material id from the material library.
+        /// @param id The asset ID to set it to.
+        virtual void SetMaterialId(const Physics::MaterialId& id) = 0;
     };
 
-    /**
-     * Bus to service the PhysX Mesh Shape Component event group.
-     */
-    using PhysXMeshShapeComponentRequestBus = AZ::EBus<PhysXMeshShapeComponentRequests>;
+    /// Bus to service the PhysX Mesh Collider Component event group.
+    using MeshColliderComponentRequestsBus = AZ::EBus<MeshColliderComponentRequests>;
 } // namespace PhysX

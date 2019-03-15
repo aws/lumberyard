@@ -14,7 +14,11 @@
 #include "DiskFile.h"
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(DiskFile_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DiskFile_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DiskFile_cpp_provo.inl"
+    #endif
 #else
 #define DISKFILE_CPP_TRAIT_USE_POSIX 1
 #endif

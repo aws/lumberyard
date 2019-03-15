@@ -126,7 +126,7 @@ namespace LmbrCentral
         const AZ::Vector3 base = m_intersectionDataCache.m_baseCenterPoint;
         const AZ::Vector3 top = m_intersectionDataCache.m_baseCenterPoint + m_intersectionDataCache.m_axisVector;
         const AZ::Vector3 axis = m_intersectionDataCache.m_axisVector;
-        
+
         const AZ::Vector3 e = m_intersectionDataCache.m_radius *
             SqrtVector3(AZ::Vector3::CreateOne() - axis * axis / axis.Dot(axis));
 
@@ -144,8 +144,8 @@ namespace LmbrCentral
         float halfHeight = m_intersectionDataCache.m_height * 0.5f;
         float maxRadius = m_intersectionDataCache.m_radius;
 
-		// As std:normal_distribution requires a std:random_engine to be passed in, create one using a random seed that is guaranteed to be properly
-		// random each time it is called
+        // As std:normal_distribution requires a std:random_engine to be passed in, create one using a random seed that is guaranteed to be properly
+        // random each time it is called
         time_t seedVal;
 #ifdef AZ_OS32
         seedVal = AZ::Sfmt::GetInstance().Rand32();
@@ -158,61 +158,63 @@ namespace LmbrCentral
         float randomZ = 0.0f;
         float randomAngle = 0.0f;
         float randomRadius = 0.0f;
+
+        // Points should be generated just inside the shape boundary
+        halfHeight *= 0.999f;
+        maxRadius *= 0.999f;
+
         switch (randomDistribution)
         {
         case AZ::RandomDistributionType::Normal:
-        {
-            // Points should be generated just inside the shape boundary
-            halfHeight *= 0.999f;
-            maxRadius *= 0.999f;
+            {
+                const float meanRadius = 0.0f; //Mean for the radius should be 0. Negative radius is still valid
+                const float meanZ = 0.0f; //We want the average height of generated points to be between the min height and the max height
+                const float meanAngle = 0.0f; //There really isn't a good mean angle
+                const float stdDevRadius = sqrtf(maxRadius); //StdDev of the radius will be the sqrt of the radius (the radius is the total variation)
+                const float stdDevZ = sqrtf(halfHeight); //Same principle applied to the stdDev of the height
+                const float stdDevAngle = sqrtf(maxAngle); //And the angle as well
 
-            const float meanRadius = 0.0f; //Mean for the radius should be 0. Negative radius is still valid
-            const float meanZ = 0.0f; //We want the average height of generated points to be between the min height and the max height
-            const float meanAngle = 0.0f; //There really isn't a good mean angle
-            const float stdDevRadius = sqrtf(maxRadius); //StdDev of the radius will be the sqrt of the radius (the radius is the total variation)
-            const float stdDevZ = sqrtf(halfHeight); //Same principle applied to the stdDev of the height
-            const float stdDevAngle = sqrtf(maxAngle); //And the angle as well
+                //Generate a random radius
+                std::normal_distribution<float> normalDist = std::normal_distribution<float>(meanRadius, stdDevRadius);
+                randomRadius = normalDist(generator);
+                //Normal distributions can produce values higher than the desired max
+                //This is very unlikely but we clamp anyway
+                randomRadius = AZStd::clamp(randomRadius, -maxRadius, maxRadius);
 
-            //Generate a random radius
-            std::normal_distribution<float> normalDist = std::normal_distribution<float>(meanRadius, stdDevRadius);
-            randomRadius = normalDist(generator);
-            //Normal distributions can produce values higher than the desired max
-            //This is very unlikely but we clamp anyway
-            randomRadius = AZStd::clamp(randomRadius, -maxRadius, maxRadius);
+                //Generate a random height
+                normalDist = std::normal_distribution<float>(meanZ, stdDevZ);
+                randomZ = normalDist(generator);
+                randomZ = AZStd::clamp(randomZ, -halfHeight, halfHeight);
 
-            //Generate a random height
-            normalDist = std::normal_distribution<float>(meanZ, stdDevZ);
-            randomZ = normalDist(generator);
-            randomZ = AZStd::clamp(randomZ, -halfHeight, halfHeight);
-
-            //Generate a random angle along the circle
-            normalDist = std::normal_distribution<float>(meanAngle, stdDevAngle);
-            randomAngle = normalDist(generator);
-            //Don't bother to clamp the angle because it doesn't matter if the angle is above 360 deg or below 0 deg
-
+                //Generate a random angle along the circle
+                normalDist = std::normal_distribution<float>(meanAngle, stdDevAngle);
+                randomAngle = normalDist(generator);
+                //Don't bother to clamp the angle because it doesn't matter if the angle is above 360 deg or below 0 deg
+            }
             break;
-        }
         case AZ::RandomDistributionType::UniformReal:
-        {
-            std::uniform_real_distribution<float> uniformRealDist = std::uniform_real_distribution<float>(-maxRadius, maxRadius);
-            randomRadius = uniformRealDist(generator);
+            {
+                std::uniform_real_distribution<float> uniformRealDist = std::uniform_real_distribution<float>(-maxRadius, maxRadius);
+                randomRadius = uniformRealDist(generator);
 
-            uniformRealDist = std::uniform_real_distribution<float>(-halfHeight, halfHeight);
-            randomZ = uniformRealDist(generator);
+                uniformRealDist = std::uniform_real_distribution<float>(-halfHeight, halfHeight);
+                randomZ = uniformRealDist(generator);
 
-            uniformRealDist = std::uniform_real_distribution<float>(minAngle, maxAngle);
-            randomAngle = uniformRealDist(generator);
-
+                uniformRealDist = std::uniform_real_distribution<float>(minAngle, maxAngle);
+                randomAngle = uniformRealDist(generator);
+            }
             break;
-        }
         default:
             AZ_Warning("CylinderShape", false, "Unsupported random distribution type. Returning default vector (0,0,0)");
+            break;
         }
 
-        return m_currentTransform * AZ::Vector3(
-                randomRadius * cosf(randomAngle),
-                randomRadius * sinf(randomAngle),
-                randomZ);
+        const AZ::Vector3 localRandomPoint = AZ::Vector3(
+            randomRadius * cosf(randomAngle),
+            randomRadius * sinf(randomAngle),
+            randomZ);
+
+        return m_currentTransform * localRandomPoint;
     }
 
     bool CylinderShape::IsPointInside(const AZ::Vector3& point)
@@ -242,7 +244,7 @@ namespace LmbrCentral
         m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_cylinderShapeConfig);
 
         float t1 = 0.0f, t2 = 0.0f;
-        const bool intersection = 
+        const bool intersection =
             AZ::Intersect::IntersectRayCappedCylinder(
                 src, dir, m_intersectionDataCache.m_baseCenterPoint,
                 m_intersectionDataCache.m_axisVector.GetNormalizedSafe(), m_intersectionDataCache.m_height,

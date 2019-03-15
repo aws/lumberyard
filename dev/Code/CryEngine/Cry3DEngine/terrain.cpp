@@ -97,6 +97,8 @@ CTerrain::CTerrain(const STerrainInfo& TerrainInfo)
     }
 
     m_pTerrainUpdateDispatcher = new CTerrainUpdateDispatcher();
+
+    LegacyTerrain::CryTerrainRequestBus::Handler::BusConnect();
 }
 
 CTerrain::~CTerrain()
@@ -130,6 +132,7 @@ CTerrain::~CTerrain()
     }
 
     CTerrainNode::ResetStaticData();
+    LegacyTerrain::CryTerrainRequestBus::Handler::BusDisconnect();
 }
 
 void CTerrain::InitHeightfieldPhysics()
@@ -342,6 +345,15 @@ void CTerrain::ActivateNodeProcObj(CTerrainNode* pNode)
     if (m_lstActiveProcObjNodes.Find(pNode) < 0)
     {
         m_lstActiveProcObjNodes.Add(pNode);
+    }
+}
+
+
+void CTerrain::RequestTerrainUpdate()
+{
+    if (m_NodePyramid.Size() > 0)
+    {
+        SendLegacyTerrainUpdateNotifications(0, 0, m_NodePyramid[0].GetSize(), m_NodePyramid[0].GetSize());
     }
 }
 
@@ -730,6 +742,8 @@ _smart_ptr<IRenderMesh> CTerrain::MakeAreaRenderMesh(const Vec3& vPos, float fRa
 {
     PodArray<vtx_idx> lstIndices;
     lstIndices.Clear();
+    PodArray<vtx_idx> lstClippedIndices;
+    lstClippedIndices.Clear();
     PodArray<Vec3> posBuffer;
     posBuffer.Clear();
     PodArray<SVF_P3S_C4B_T2S> vertBuffer;
@@ -758,6 +772,7 @@ _smart_ptr<IRenderMesh> CTerrain::MakeAreaRenderMesh(const Vec3& vPos, float fRa
     nEstimateVerts = clamp_tpl(nEstimateVerts, 100, 10000);
     posBuffer.reserve(nEstimateVerts);
     lstIndices.reserve(nEstimateVerts * 6);
+    lstClippedIndices.reserve(nEstimateVerts * 6);
 
     const CTerrain* pTerrain = GetTerrain();
     for (int x = vBoxMin.x; x <= vBoxMax.x; x += nUnitSize)
@@ -812,22 +827,18 @@ _smart_ptr<IRenderMesh> CTerrain::MakeAreaRenderMesh(const Vec3& vPos, float fRa
     // clip triangles
     if (planes)
     {
-        int nOrigCount = lstIndices.Count();
-        for (int i = 0; i < nOrigCount; i += 3)
+        int indexCount = lstIndices.Count();
+        for (int i = 0; i < indexCount; i += 3)
         {
-            if (CRoadRenderNode::ClipTriangle(posBuffer, lstIndices, i, planes))
-            {
-                i -= 3;
-                nOrigCount -= 3;
-            }
+            CRoadRenderNode::ClipTriangle(posBuffer, lstIndices, lstClippedIndices, i, planes);
         }
     }
 
     AABB bbox;
     bbox.Reset();
-    for (int i = 0, nIndexCount = lstIndices.size(); i < nIndexCount; i++)
+    for (int i = 0, nIndexCount = lstClippedIndices.size(); i < nIndexCount; i++)
     {
-        bbox.Add(posBuffer[lstIndices[i]]);
+        bbox.Add(posBuffer[lstClippedIndices[i]]);
     }
 
     tangBasises.reserve(posBuffer.size());
@@ -858,12 +869,12 @@ _smart_ptr<IRenderMesh> CTerrain::MakeAreaRenderMesh(const Vec3& vPos, float fRa
 
     _smart_ptr<IRenderMesh> pMesh = GetRenderer()->CreateRenderMeshInitialized(
             vertBuffer.GetElements(), vertBuffer.Count(), eVF_P3S_C4B_T2S,
-            lstIndices.GetElements(), lstIndices.Count(), prtTriangleList,
+            lstClippedIndices.GetElements(), lstClippedIndices.Count(), prtTriangleList,
             szLSourceName, szLSourceName, eRMT_Static, 1, 0, NULL, NULL, false, true, tangBasises.GetElements());
 
     float texelAreaDensity = 1.0f;
 
-    pMesh->SetChunk(pMat, 0, vertBuffer.Count(), 0, lstIndices.Count(), texelAreaDensity, eVF_P3S_C4B_T2S);
+    pMesh->SetChunk(pMat, 0, vertBuffer.Count(), 0, lstClippedIndices.Count(), texelAreaDensity, eVF_P3S_C4B_T2S);
     pMesh->SetBBox(bbox.min - vPos, bbox.max - vPos);
     if (pMesh->GetChunks()[0].pRE)
     {

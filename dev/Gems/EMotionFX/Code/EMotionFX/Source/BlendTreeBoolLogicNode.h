@@ -49,6 +49,11 @@ namespace EMotionFX
             FUNCTION_AND        = 0,
             FUNCTION_OR         = 1,
             FUNCTION_XOR        = 2,
+            FUNCTION_NAND       = 3,
+            FUNCTION_NOR        = 4,
+            FUNCTION_XNOR       = 5,
+            FUNCTION_NOT_X      = 6,
+            FUNCTION_NOT_Y      = 7,
             NUM_FUNCTIONS
         };
 
@@ -59,6 +64,7 @@ namespace EMotionFX
         bool InitAfterLoading(AnimGraph* animGraph) override;
 
         void SetFunction(EFunction func);
+        EFunction GetFunction() const;
 
         uint32 GetVisualColor() const override;
 
@@ -85,5 +91,10 @@ namespace EMotionFX
         static bool MCORE_CDECL BoolLogicAND(bool x, bool y);
         static bool MCORE_CDECL BoolLogicOR(bool x, bool y);
         static bool MCORE_CDECL BoolLogicXOR(bool x, bool y);
+        static bool MCORE_CDECL BoolLogicNAND(bool x, bool y);
+        static bool MCORE_CDECL BoolLogicNOR(bool x, bool y);
+        static bool MCORE_CDECL BoolLogicXNOR(bool x, bool y);
+        static bool MCORE_CDECL BoolLogicNOTX(bool x, bool y);
+        static bool MCORE_CDECL BoolLogicNOTY(bool x, bool y);
     };
 } // namespace EMotionFX

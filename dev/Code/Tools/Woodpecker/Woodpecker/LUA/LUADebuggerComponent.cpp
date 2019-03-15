@@ -183,7 +183,7 @@ namespace LUADebugger
         {
             // local editors are never debuggable (they'd never have the debuggable flag) so if you get here you know its over the network
             // and its network id is targetID.
-            EBUS_EVENT(AzFramework::TargetManager::Bus, SendTmMessage, targetInfo, AzFramework::ScriptDebugBreakpointRequest(AZ_CRC("AddBreakpoint", 0xba71daa4), relativePath.c_str(), static_cast<AZ::u32>(lineNumber + 1)));
+            EBUS_EVENT(AzFramework::TargetManager::Bus, SendTmMessage, targetInfo, AzFramework::ScriptDebugBreakpointRequest(AZ_CRC("AddBreakpoint", 0xba71daa4), relativePath.c_str(), static_cast<AZ::u32>(lineNumber)));
         }
     }
 
@@ -201,7 +201,7 @@ namespace LUADebugger
         {
             // local editors are never debuggable (they'd never have the debuggable flag) so if you get here you know its over the network
             // and its network id is targetID.
-            EBUS_EVENT(AzFramework::TargetManager::Bus, SendTmMessage, targetInfo, AzFramework::ScriptDebugBreakpointRequest(AZ_CRC("RemoveBreakpoint", 0x90ade500), relativePath.c_str(), static_cast<AZ::u32>(lineNumber + 1)));
+            EBUS_EVENT(AzFramework::TargetManager::Bus, SendTmMessage, targetInfo, AzFramework::ScriptDebugBreakpointRequest(AZ_CRC("RemoveBreakpoint", 0x90ade500), relativePath.c_str(), static_cast<AZ::u32>(lineNumber)));
         }
     }
 
@@ -334,15 +334,15 @@ namespace LUADebugger
             AzFramework::ScriptDebugAckBreakpoint* ackBreakpoint = azdynamic_cast<AzFramework::ScriptDebugAckBreakpoint*>(msg.get());
             if (ackBreakpoint->m_id == AZ_CRC("BreakpointHit", 0xf1a38e0b))
             {
-                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointHit, ackBreakpoint->m_moduleName, ackBreakpoint->m_line - 1);
+                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointHit, ackBreakpoint->m_moduleName, ackBreakpoint->m_line);
             }
             else if (ackBreakpoint->m_id == AZ_CRC("AddBreakpoint", 0xba71daa4))
             {
-                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointAdded, ackBreakpoint->m_moduleName, ackBreakpoint->m_line - 1);
+                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointAdded, ackBreakpoint->m_moduleName, ackBreakpoint->m_line);
             }
             else if (ackBreakpoint->m_id == AZ_CRC("RemoveBreakpoint", 0x90ade500))
             {
-                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointRemoved, ackBreakpoint->m_moduleName, ackBreakpoint->m_line - 1);
+                EBUS_EVENT(LUAEditor::Context_DebuggerManagement::Bus, OnBreakpointRemoved, ackBreakpoint->m_moduleName, ackBreakpoint->m_line);
             }
         }
         else if (AzFramework::ScriptDebugAckExecute* ackExecute = azdynamic_cast<AzFramework::ScriptDebugAckExecute*>(msg.get()))

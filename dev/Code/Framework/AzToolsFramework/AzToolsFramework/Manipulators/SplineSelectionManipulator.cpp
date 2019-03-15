@@ -41,12 +41,12 @@ namespace AzToolsFramework
 
     SplineSelectionManipulator::~SplineSelectionManipulator() {}
 
-    void SplineSelectionManipulator::InstallLeftMouseDownCallback(MouseActionCallback onMouseDownCallback)
+    void SplineSelectionManipulator::InstallLeftMouseDownCallback(const MouseActionCallback& onMouseDownCallback)
     {
         m_onLeftMouseDownCallback = onMouseDownCallback;
     }
 
-    void SplineSelectionManipulator::InstallLeftMouseUpCallback(MouseActionCallback onMouseUpCallback)
+    void SplineSelectionManipulator::InstallLeftMouseUpCallback(const MouseActionCallback& onMouseUpCallback)
     {
         m_onLeftMouseUpCallback = onMouseUpCallback;
     }

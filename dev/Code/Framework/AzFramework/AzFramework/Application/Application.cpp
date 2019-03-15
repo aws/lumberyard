@@ -500,6 +500,15 @@ namespace AzFramework
         return components;
     }
 
+    AZStd::string Application::ResolveFilePath(AZ::u32 providerId)
+    {
+        (void)providerId;
+
+        AZStd::string result;
+        AzFramework::StringFunc::Path::Join(GetAppRoot(), "UserSettings.xml", result, /*bJoinOverlapping*/false, /*bCaseInsenitive*/false);
+        return result;
+    }
+
     AZ::Component* Application::EnsureComponentAdded(AZ::Entity* systemEntity, const AZ::Uuid& typeId)
     {
         AZ::Component* component = systemEntity->FindComponent(typeId);
@@ -529,7 +538,11 @@ namespace AzFramework
         {
             CalculateExecutablePath();
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Application_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Application_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Application_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

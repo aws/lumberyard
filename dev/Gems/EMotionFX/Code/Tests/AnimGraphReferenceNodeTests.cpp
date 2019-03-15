@@ -36,14 +36,17 @@ namespace EMotionFX
             AnimGraphFixture::ConstructGraph();
 
             m_blendTree = aznew BlendTree();
+            m_blendTree->SetName("BlendTreeInParentGraph");
             m_animGraph->GetRootStateMachine()->AddChildNode(m_blendTree);
             m_animGraph->GetRootStateMachine()->SetEntryState(m_blendTree);
 
             m_referenceNode = aznew AnimGraphReferenceNode();
+            m_referenceNode->SetName("ReferenceNodeInParentGraph");
             m_blendTree->AddChildNode(m_referenceNode);
             BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
+            finalNode->SetName("BlendTreeFinalNodeParentGraph");
             m_blendTree->AddChildNode(finalNode);
-            finalNode->AddConnection(m_referenceNode, AnimGraphReferenceNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+            finalNode->AddUnitializedConnection(m_referenceNode, AnimGraphReferenceNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
         }
 
         BlendTree* m_blendTree = nullptr;
@@ -80,6 +83,9 @@ namespace EMotionFX
             m_referenceAnimGraph->SetRootStateMachine(rootStateMachine);
             ConstructReferenceGraph();
             m_referenceAnimGraph->InitAfterLoading();
+
+            m_referenceNode->SetAnimGraph(m_animGraph);
+            m_referenceNode->OnAssetReady(animGraphAsset);
         }
 
         virtual void ConstructReferenceGraph() {}
@@ -107,14 +113,17 @@ namespace EMotionFX
             AnimGraphReferenceNodeWithAssetTests::ConstructReferenceGraph();
 
             BlendTree* blendTree = aznew BlendTree();
+            blendTree->SetName("BlendTreeInReferenceGraph");
             m_referenceAnimGraph->GetRootStateMachine()->AddChildNode(blendTree);
             m_referenceAnimGraph->GetRootStateMachine()->SetEntryState(blendTree);
 
             m_transformNode = aznew BlendTreeTransformNode();
+            m_transformNode->SetName("BlendTreeTransformNodeInReferenceGraph");
             blendTree->AddChildNode(m_transformNode);
             BlendTreeFinalNode* finalNode = aznew BlendTreeFinalNode();
+            finalNode->SetName("BlendTreeFinalNodeInReferenceGraph");
             blendTree->AddChildNode(finalNode);
-            finalNode->AddConnection(m_transformNode, BlendTreeTransformNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
+            finalNode->AddUnitializedConnection(m_transformNode, BlendTreeTransformNode::PORTID_OUTPUT_POSE, BlendTreeFinalNode::PORTID_INPUT_POSE);
 
             // Add a parameter to the reference anim graph
             {
@@ -123,11 +132,12 @@ namespace EMotionFX
             }
 
             BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
+            parameterNode->SetName("ParameterNodeInReferenceGraph");
             blendTree->AddChildNode(parameterNode);
-            m_transformNode->AddConnection(parameterNode, 0, BlendTreeTransformNode::PORTID_INPUT_TRANSLATE_AMOUNT);
+            m_transformNode->AddUnitializedConnection(parameterNode, 0, BlendTreeTransformNode::PORTID_INPUT_TRANSLATE_AMOUNT);
         }
 
-        void ConstructGraph()
+        void ConstructGraph() override
         {
             AnimGraphReferenceNodeWithAssetTests::ConstructGraph();
 
@@ -137,8 +147,9 @@ namespace EMotionFX
             }
 
             BlendTreeParameterNode* parameterNode = aznew BlendTreeParameterNode();
+            parameterNode->SetName("ParameterNodeInParentGraph");
             m_blendTree->AddChildNode(parameterNode);
-            m_referenceNode->AddConnection(parameterNode, 0, 0);
+            m_referenceNode->AddUnitializedConnection(parameterNode, 0, 0);
         }
 
         BlendTreeTransformNode* m_transformNode;

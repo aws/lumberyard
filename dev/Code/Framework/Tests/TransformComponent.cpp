@@ -12,14 +12,17 @@
 
 #include <Tests/TestTypes.h>
 
+#include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Random.h>
 #include <AzCore/Serialization/Utils.h>
 
 #include <AzFramework/Application/Application.h>
 #include <AzFramework/Components/TransformComponent.h>
+#include <AzFramework/Math/MathUtils.h>
 
-#include <AzCore/Component/ComponentApplication.h>
+#include <AzToolsFramework/Application/ToolsApplication.h>
+#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 
 using namespace AZ;
 using namespace AzFramework;
@@ -469,6 +472,21 @@ namespace UnitTest
         EXPECT_TRUE(localScale.IsClose(Vector3(1.0f, 1.0f, 1.0f)));
     }
 
+    TEST_F(TransformComponentTransformMatrixSetGet, RotateAroundLocalX_ScaleDoesNotSkewRotation)
+    {
+        float sx = 42.564f;
+        float sy = 12.460f;
+        float sz = 28.692f;
+        Vector3 expectedScales(sx, sy, sz);
+        TransformBus::Event(m_childId, &TransformBus::Events::SetLocalScale, expectedScales);
+
+        float rx = 1.43f;
+        TransformBus::Event(m_childId, &TransformBus::Events::RotateAroundLocalX, rx);
+        Vector3 localRotation;
+        TransformBus::EventResult(localRotation, m_childId, &TransformBus::Events::GetLocalRotation);
+        EXPECT_TRUE(localRotation.IsClose(Vector3(rx, 0.0f, 0.0f)));
+    }
+
     TEST_F(TransformComponentTransformMatrixSetGet, RotateAroundLocalY_SimpleValue_Set)
     {
         float ry = 1.43f;
@@ -491,6 +509,21 @@ namespace UnitTest
         EXPECT_TRUE(localScale.IsClose(Vector3(1.0f, 1.0f, 1.0f)));
     }
 
+    TEST_F(TransformComponentTransformMatrixSetGet, RotateAroundLocalY_ScaleDoesNotSkewRotation)
+    {
+        float sx = 42.564f;
+        float sy = 12.460f;
+        float sz = 28.692f;
+        Vector3 expectedScales(sx, sy, sz);
+        TransformBus::Event(m_childId, &TransformBus::Events::SetLocalScale, expectedScales);
+
+        float ry = 1.43f;
+        TransformBus::Event(m_childId, &TransformBus::Events::RotateAroundLocalY, ry);
+        Vector3 localRotation;
+        TransformBus::EventResult(localRotation, m_childId, &TransformBus::Events::GetLocalRotation);
+        EXPECT_TRUE(localRotation.IsClose(Vector3(0.0f, ry, 0.0f)));
+    }
+
     TEST_F(TransformComponentTransformMatrixSetGet, RotateAroundLocalZ_SimpleValues_Set)
     {
         float rz = 1.43f;
@@ -511,6 +544,21 @@ namespace UnitTest
         Vector3 localScale;
         TransformBus::EventResult(localScale, m_childId, &TransformBus::Events::GetLocalScale);
         EXPECT_TRUE(localScale.IsClose(Vector3(1.0f, 1.0f, 1.0f)));
+    }
+
+    TEST_F(TransformComponentTransformMatrixSetGet, RotateAroundLocalZ_ScaleDoesNotSkewRotation)
+    {
+        float sx = 42.564f;
+        float sy = 12.460f;
+        float sz = 28.692f;
+        Vector3 expectedScales(sx, sy, sz);
+        TransformBus::Event(m_childId, &TransformBus::Events::SetLocalScale, expectedScales);
+
+        float rz = 1.43f;
+        TransformBus::Event(m_childId, &TransformBus::Events::RotateAroundLocalZ, rz);
+        Vector3 localRotation;
+        TransformBus::EventResult(localRotation, m_childId, &TransformBus::Events::GetLocalRotation);
+        EXPECT_TRUE(localRotation.IsClose(Vector3(0.0f, 0.0f, rz)));
     }
 
     TEST_F(TransformComponentTransformMatrixSetGet, SetLocalScale_SimpleValues_Set)
@@ -1027,5 +1075,93 @@ namespace UnitTest
 
         EXPECT_TRUE(component.GetConfiguration(retrievedConfig));
         EXPECT_TRUE(defaultConfig == retrievedConfig);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // AzToolsFramework::Components::TransformComponent
+
+    // Fixture base class for AzToolsFramework::Components::TransformComponent tests
+    class EditorTransformComponentTest
+        : public ::testing::Test
+    {
+    protected:
+        void SetUp() override
+        {
+            m_app.Start(AZ::ComponentApplication::Descriptor());
+        }
+
+        void TearDown() override
+        {
+            m_app.Stop();
+        }
+
+        AzToolsFramework::ToolsApplication m_app;
+    };
+
+    // Old TransformComponents used to store "Slice Root" entity Id, which could be its own Id.
+    // The version-converter could end up making an entity into its own transform parent.
+    // The EditorEntityFixupComponent should fix this up during slice instantiation.
+    TEST_F(EditorTransformComponentTest, OldSliceRoots_ShouldHaveNoParent)
+    {
+        const char kSliceData[] =
+R"DELIMITER(<ObjectStream version="1">
+    <Class name="PrefabComponent" field="element" version="1" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
+        <Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+            <Class name="AZ::u64" field="Id" value="3561916384376604258" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+        </Class>
+        <Class name="AZStd::vector" field="Entities" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
+            <Class name="AZ::Entity" field="element" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+                <Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+                    <Class name="AZ::u64" field="id" value="15464031792689993220" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+                </Class>
+                <Class name="AZStd::string" field="Name" value="MrRootEntity" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
+                <Class name="bool" field="IsDependencyReady" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+                <Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
+                    <Class name="TransformComponent" field="element" version="5" type="{27F1E1A1-8D9D-4C3B-BD3A-AFB9762449C0}">
+                        <Class name="EditorComponentBase" field="BaseClass1" version="1" type="{D5346BD4-7F20-444E-B370-327ACD03D4A0}">
+                            <Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+                                <Class name="AZ::u64" field="Id" value="3107681419974783222" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+                            </Class>
+                        </Class>
+                        <Class name="EntityId" field="Parent Entity" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+                            <Class name="AZ::u64" field="id" value="4294967295" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+                        </Class>
+                        <Class name="EditorTransform" field="Transform Data" version="1" type="{B02B7063-D238-4F40-A724-405F7A6D68CB}">
+                            <Class name="Vector3" field="Translate" value="0.0000000 0.0000000 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+                            <Class name="Vector3" field="Rotate" value="0.0000000 0.0000000 0.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+                            <Class name="Vector3" field="Scale" value="1.0000000 1.0000000 1.0000000" type="{8379EB7D-01FA-4538-B64B-A6543B4BE73D}"/>
+                        </Class>
+                        <Class name="Transform" field="Slice Transform" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
+                        <Class name="EntityId" field="Slice Root" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+                            <Class name="AZ::u64" field="id" value="15464031792689993220" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+                        </Class>
+                        <Class name="Transform" field="Cached World Transform" value="1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000 1.0000000 0.0000000 0.0000000 0.0000000" type="{5D9958E9-9F1E-4985-B532-FFFDE75FEDFD}"/>
+                    </Class>
+                </Class>
+            </Class>
+        </Class>
+        <Class name="AZStd::list" field="Prefabs" type="{B845AD64-B5A0-4CCD-A86B-3477A36779BE}"/>
+        <Class name="bool" field="IsDynamic" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+    </Class>
+</ObjectStream>)DELIMITER";
+
+        AZStd::unique_ptr<SliceComponent> slice{ AZ::Utils::LoadObjectFromBuffer<AZ::SliceComponent>(kSliceData, strlen(kSliceData) + 1) };
+        EXPECT_NE(slice.get(), nullptr);
+        if (slice)
+        {
+            AZStd::vector<AZ::Entity*> entities;
+            slice->GetEntities(entities);
+            EXPECT_FALSE(entities.empty());
+            if (!entities.empty())
+            {
+                auto editorTransformComponent = entities[0]->FindComponent<AzToolsFramework::Components::TransformComponent>();
+                EXPECT_NE(editorTransformComponent, nullptr);
+                if (editorTransformComponent)
+                {
+                    // EditorEntityFixupComponent should have fixed this
+                    EXPECT_EQ(editorTransformComponent->GetParentId(), AZ::EntityId());
+                }
+            }
+        }
     }
 } // namespace UnitTest

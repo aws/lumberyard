@@ -294,8 +294,15 @@
             "Include/ScriptCanvas/Libraries/Time/Timer.cpp"
         ],
         "Include/ScriptCanvas/Libraries/String": [
+          "Include/ScriptCanvas/Libraries/String/Contains.h",
+          "Include/ScriptCanvas/Libraries/String/Contains.cpp",
+          "Include/ScriptCanvas/Libraries/String/Replace.h",
+          "Include/ScriptCanvas/Libraries/String/Replace.cpp",
           "Include/ScriptCanvas/Libraries/String/String.h",
           "Include/ScriptCanvas/Libraries/String/String.cpp",
+          "Include/ScriptCanvas/Libraries/String/StringGenerics.h",
+          "Include/ScriptCanvas/Libraries/String/Utilities.h",
+          "Include/ScriptCanvas/Libraries/String/Utilities.cpp",
           "Include/ScriptCanvas/Libraries/String/Print.h",
           "Include/ScriptCanvas/Libraries/String/Print.cpp",
           "Include/ScriptCanvas/Libraries/String/Format.h",

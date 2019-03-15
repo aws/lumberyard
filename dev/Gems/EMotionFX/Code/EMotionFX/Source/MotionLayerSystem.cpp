@@ -153,7 +153,7 @@ namespace EMotionFX
         }
 
         // update the global transform now that we have an updated local transform of the actor instance itself (modified by motion extraction for example)
-        mActorInstance->UpdateGlobalTransform();
+        mActorInstance->UpdateWorldTransform();
 
         // if we need to update the node transforms because the character is visible
         if (updateNodes)
@@ -280,7 +280,7 @@ namespace EMotionFX
         uint32 numRemoved = 0;
 
         // start from the bottom up
-        for (uint32 i = mMotionInstances.GetLength() - 1; i != MCORE_INVALIDINDEX32; )
+        for (uint32 i = mMotionInstances.GetLength() - 1; i != MCORE_INVALIDINDEX32;)
         {
             MotionInstance* curInstance = mMotionInstances[i];
 
@@ -375,7 +375,7 @@ namespace EMotionFX
                     }
 
                     // compensate for motion extraction
-                    if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled)
+                    if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled && !instance->GetMotion()->GetIsAdditive())
                     {
                         tempActorPose->CompensateForMotionExtractionDirect(instance->GetMotion()->GetMotionExtractionFlags());
                     }
@@ -404,7 +404,7 @@ namespace EMotionFX
                     }
 
                     // compensate for motion extraction
-                    if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled)
+                    if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled && !instance->GetMotion()->GetIsAdditive())
                     {
                         finalPose->CompensateForMotionExtractionDirect(instance->GetMotion()->GetMotionExtractionFlags());
                     }
@@ -433,7 +433,7 @@ namespace EMotionFX
                     }
 
                     // compensate for motion extraction
-                    if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled)
+                    if (instance->GetMotionExtractionEnabled() && motionExtractionEnabled && !instance->GetMotion()->GetIsAdditive())
                     {
                         tempActorPose->CompensateForMotionExtractionDirect(instance->GetMotion()->GetMotionExtractionFlags());
                     }

@@ -11,7 +11,7 @@
 */
 
 #include "stdafx.h"
-
+#include <AzCore/std/containers/set.h>
 #include "CarrierDataEvents.h"
 #include "CarrierDataAggregator.hxx"
 #include "CarrierDataView.hxx"

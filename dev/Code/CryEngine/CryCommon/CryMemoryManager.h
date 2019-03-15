@@ -24,7 +24,11 @@
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(CryMemoryManager_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryMemoryManager_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryMemoryManager_h_provo.inl"
+    #endif
 #else
 #if !defined(APPLE)
 #define CRYMEMORYMANAGER_H_TRAIT_INCLUDE_MALLOC_H 1
@@ -154,7 +158,11 @@ struct IMemoryManager
         eapCustomAlignment,
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYMEMORYMANAGER_H_SECTION_ALLOCPOLICY
-#include AZ_RESTRICTED_FILE(CryMemoryManager_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryMemoryManager_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryMemoryManager_h_provo.inl"
+    #endif
 #endif
     };
 

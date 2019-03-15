@@ -17,7 +17,11 @@
 
 #define VEC4_SSE
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(VMath_hpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/VMath_hpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/VMath_hpp_provo.inl"
+    #endif
 #endif
 
 //#include <math.h>

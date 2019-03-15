@@ -74,14 +74,16 @@ namespace AzToolsFramework
 
         AZ::Entity* CreateEditorEntity(const char* name) override;
         void AddEditorEntity(AZ::Entity* entity) override;
-        void AddEditorEntities(const AzToolsFramework::EntityList& entities) override;
-        void AddEditorSliceEntities(const AzToolsFramework::EntityList& entities) override;
-        bool CloneEditorEntities(const AzToolsFramework::EntityIdList& sourceEntities, 
-                                 AzToolsFramework::EntityList& resultEntities,
+        void AddEditorEntities(const EntityList& entities) override;
+        void AddEditorSliceEntities(const EntityList& entities) override;
+        bool CloneEditorEntities(const EntityIdList& sourceEntities, 
+                                 EntityList& resultEntities,
                                  AZ::SliceComponent::EntityIdToEntityIdMap& sourceToCloneEntityIdMap) override;
         bool DestroyEditorEntity(AZ::EntityId entityId) override;
-        void DetachSliceEntities(const AzToolsFramework::EntityIdList& entities) override;
-        void ResetEntitiesToSliceDefaults(AzToolsFramework::EntityIdList entities) override;
+        void DetachSliceEntities(const EntityIdList& entities) override;
+        void DetachSliceInstances(const AZ::SliceComponent::SliceInstanceAddressSet& instances) override;
+        void DetachFromSlice(const EntityIdList& entities, const char* undoMessage);
+        void ResetEntitiesToSliceDefaults(EntityIdList entities) override;
 
         AZ::SliceComponent::SliceInstanceAddress CloneSubSliceInstance(
             const AZ::SliceComponent::SliceInstanceAddress& sourceSliceInstanceAddress,
@@ -93,10 +95,16 @@ namespace AzToolsFramework
         AZ::SliceComponent::SliceInstanceAddress CloneEditorSliceInstance(AZ::SliceComponent::SliceInstanceAddress sourceInstance, 
                                                                           AZ::SliceComponent::EntityIdToEntityIdMap& sourceToCloneEntityIdMap) override;
 
-        bool SaveToStreamForEditor(AZ::IO::GenericStream& stream) override;
+        bool SaveToStreamForEditor(
+            AZ::IO::GenericStream& stream,
+            const EntityList& entitiesInLayers,
+            AZ::SliceComponent::SliceReferenceToInstancePtrs& instancesInLayers) override;
+        void GetLooseEditorEntities(EntityList& entityList) override;
+        
         bool SaveToStreamForGame(AZ::IO::GenericStream& stream, AZ::DataStream::StreamType streamType) override;
         using EntityContext::LoadFromStream;
         bool LoadFromStream(AZ::IO::GenericStream& stream) override;
+        bool LoadFromStreamWithLayers(AZ::IO::GenericStream& stream, QString levelPakFile) override;
 
         void StartPlayInEditor() override;
         void StopPlayInEditor() override;
@@ -107,7 +115,7 @@ namespace AzToolsFramework
         void AddRequiredComponents(AZ::Entity& entity) override;
         const AZ::ComponentTypeList& GetRequiredComponentTypes() override;
 
-        void RestoreSliceEntity(AZ::Entity* entity, const AZ::SliceComponent::EntityRestoreInfo& info) override;
+        void RestoreSliceEntity(AZ::Entity* entity, const AZ::SliceComponent::EntityRestoreInfo& info, SliceEntityRestoreType restoreType) override;
 
         void QueueSliceReplacement(const char* targetPath, 
             const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& selectedToAssetMap,
@@ -137,7 +145,7 @@ namespace AzToolsFramework
         // AzFramework::EntityContext
         void PrepareForContextReset() override;
         //////////////////////////////////////////////////////////////////////////
-        
+
         //////////////////////////////////////////////////////////////////////////
         // AssetCatalogEventBus::Handler
         void OnCatalogAssetAdded(const AZ::Data::AssetId& assetId) override;
@@ -165,13 +173,15 @@ namespace AzToolsFramework
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
-        void OnContextEntitiesAdded(const AzToolsFramework::EntityList& entities) override;
+        void OnContextEntitiesAdded(const EntityList& entities) override;
         void OnContextEntityRemoved(const AZ::EntityId& id) override;
 
         void HandleNewMetadataEntitiesCreated(AZ::SliceComponent& slice) override;
 
         void SetupEditorEntity(AZ::Entity* entity);
-        void SetupEditorEntities(const AzToolsFramework::EntityList& entities);
+        void SetupEditorEntities(const EntityList& entities);
+
+        void LoadFromStreamComplete(bool loadedSuccessfully);
 
         using InstantiatingSlicePair = AZStd::pair<AZ::Data::Asset<AZ::Data::AssetData>, AZ::Transform>;
         AZStd::vector<InstantiatingSlicePair> m_instantiatingSlices;
@@ -252,6 +262,7 @@ namespace AzToolsFramework
             AZ::Entity* m_entity;
             AZ::SliceComponent::EntityRestoreInfo m_restoreInfo;
             AZ::Data::Asset<AZ::Data::AssetData> m_asset;
+            SliceEntityRestoreType m_restoreType;
         };
 
         AZStd::vector<SliceEntityRestoreRequest> m_queuedSliceEntityRestores;

@@ -150,7 +150,11 @@ void STexStreamOutState::Reset()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/TextureStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/TextureStreaming_cpp_provo.inl"
+    #endif
 #endif
 }
 
@@ -160,7 +164,11 @@ bool STexStreamOutState::TryCommit()
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/TextureStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/TextureStreaming_cpp_provo.inl"
+    #endif
 #endif
 
         if (!m_bAborted)
@@ -255,7 +263,11 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/TextureStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/TextureStreaming_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -297,7 +309,11 @@ void STexStreamInState::StreamAsyncOnComplete(IReadStream* pStream, unsigned nEr
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/TextureStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/TextureStreaming_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(TEXSTRM_DEFERRED_UPLOAD)
@@ -399,7 +415,11 @@ bool STexStreamInState::TryCommit()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/TextureStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/TextureStreaming_cpp_provo.inl"
+    #endif
 #endif
 
         if (!m_bValidLowMips)
@@ -1463,7 +1483,11 @@ bool CTexture::CanStreamInPlace(int nMip, STexPoolItem* pNewPoolItem)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/TextureStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/TextureStreaming_cpp_provo.inl"
+    #endif
 #endif
 
 #if TEXTURESTREAMING_CPP_TRAIT_CANSTREAMINPLACE_SRCTILEMODE_CHECK && !defined(NULL_RENDERER)
@@ -1572,7 +1596,11 @@ bool CTexture::StartStreaming(CTexture* pTex, STexPoolItem* pNewPoolItem, const 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURESTREAMING_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(TextureStreaming_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/TextureStreaming_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/TextureStreaming_cpp_provo.inl"
+    #endif
 #endif
 
                     if (pBaseAddress)

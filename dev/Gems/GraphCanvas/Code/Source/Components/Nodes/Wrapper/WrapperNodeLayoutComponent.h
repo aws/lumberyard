@@ -16,6 +16,7 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/EntityBus.h>
+#include <AzCore/std/containers/set.h>
 
 #include <Components/Nodes/NodeLayoutComponent.h>
 #include <GraphCanvas/Components/Nodes/NodeLayoutBus.h>

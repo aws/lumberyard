@@ -34,7 +34,7 @@ namespace LmbrCentral
                 editContext->Class<EditorWindVolumeComponent>(
                     "Wind Volume", "The wind volume component is used to apply a physical force on objects within the volume")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                    ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/WindVolume.png")
                     ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/WindVolume.png")
                     ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
@@ -50,7 +50,7 @@ namespace LmbrCentral
                 editContext->Class<WindVolumeConfiguration>(
                     "Wind Volume Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                    ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
 
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &WindVolumeConfiguration::m_falloff, "Falloff", "Distance from the volume center where the falloff begins. A value of 1 has no effect.")

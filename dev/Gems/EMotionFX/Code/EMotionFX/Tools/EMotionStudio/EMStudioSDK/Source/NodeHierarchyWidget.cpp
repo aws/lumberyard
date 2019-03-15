@@ -42,7 +42,7 @@ EMotionFX::Node* SelectionItem::GetNode() const
 
 namespace EMStudio
 {
-    NodeHierarchyWidget::NodeHierarchyWidget(QWidget* parent, bool useSingleSelection)
+    NodeHierarchyWidget::NodeHierarchyWidget(QWidget* parent, bool useSingleSelection, bool useDefaultMinWidth)
         : QWidget(parent)
     {
         mBoneIcon       = new QIcon(AZStd::string(MysticQt::GetDataDir() + "Images/Icons/Bone.png").c_str());
@@ -77,9 +77,9 @@ namespace EMStudio
         mDisplayNodesButton->setChecked(true);
         mDisplayBonesButton->setChecked(true);
 
-        connect(mDisplayMeshesButton, SIGNAL(clicked()), this, SLOT(Update()));
-        connect(mDisplayNodesButton, SIGNAL(clicked()), this, SLOT(Update()));
-        connect(mDisplayBonesButton, SIGNAL(clicked()), this, SLOT(Update()));
+        connect(mDisplayMeshesButton, &QPushButton::clicked, this, static_cast<void (NodeHierarchyWidget::*)()>(&NodeHierarchyWidget::Update));
+        connect(mDisplayNodesButton, &QPushButton::clicked, this, static_cast<void (NodeHierarchyWidget::*)()>(&NodeHierarchyWidget::Update));
+        connect(mDisplayBonesButton, &QPushButton::clicked, this, static_cast<void (NodeHierarchyWidget::*)()>(&NodeHierarchyWidget::Update));
 
         displayLayout->addWidget(mDisplayButtonGroup);
 
@@ -113,7 +113,12 @@ namespace EMStudio
         mHierarchy->setColumnWidth(3, 50);
         mHierarchy->setSortingEnabled(false);
         mHierarchy->setSelectionMode(QAbstractItemView::SingleSelection);
-        mHierarchy->setMinimumWidth(670);
+
+        if (useDefaultMinWidth)
+        {
+            mHierarchy->setMinimumWidth(670);
+        }
+
         mHierarchy->setMinimumHeight(500);
         mHierarchy->setAlternatingRowColors(true);
         mHierarchy->setExpandsOnDoubleClick(true);
@@ -125,15 +130,15 @@ namespace EMStudio
         if (useSingleSelection == false)
         {
             mHierarchy->setContextMenuPolicy(Qt::CustomContextMenu);
-            connect(mHierarchy, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(TreeContextMenu(const QPoint&)));
+            connect(mHierarchy, &QTreeWidget::customContextMenuRequested, this, &NodeHierarchyWidget::TreeContextMenu);
         }
 
         layout->addLayout(displayLayout);
         layout->addWidget(mHierarchy);
         setLayout(layout);
 
-        connect(mHierarchy, SIGNAL(itemSelectionChanged()), this, SLOT(UpdateSelection()));
-        connect(mHierarchy, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(ItemDoubleClicked(QTreeWidgetItem*, int)));
+        connect(mHierarchy, &QTreeWidget::itemSelectionChanged, this, &NodeHierarchyWidget::UpdateSelection);
+        connect(mHierarchy, &QTreeWidget::itemDoubleClicked, this, &NodeHierarchyWidget::ItemDoubleClicked);
         connect(mHierarchy, &QTreeWidget::itemSelectionChanged, this, &NodeHierarchyWidget::OnSelectionChanged);
 
         // connect the window activation signal to refresh if reactivated
@@ -289,8 +294,8 @@ namespace EMStudio
     bool NodeHierarchyWidget::CheckIfNodeVisible(const AZStd::string& nodeName, bool isMeshNode, bool isBone, bool isNode)
     {
         if (((mDisplayMeshesButton->isChecked() && isMeshNode) ||
-             (mDisplayBonesButton->isChecked() && isBone) ||
-             (mDisplayNodesButton->isChecked() && isNode)) &&
+            (mDisplayBonesButton->isChecked() && isBone) ||
+            (mDisplayNodesButton->isChecked() && isNode)) &&
             (m_searchWidgetText.empty() || nodeName.find(m_searchWidgetText) != AZStd::string::npos))
         {
             return true;
@@ -661,7 +666,7 @@ namespace EMStudio
     {
         AZStd::vector<SelectionItem>& selectedItems = GetSelectedItems();
         MCore::Array<SelectionItem> result;
-        
+
         const AZ::u32 numSelectedItems = static_cast<AZ::u32>(selectedItems.size());
         result.Resize(numSelectedItems);
 

@@ -34,6 +34,16 @@ namespace AzToolsFramework
     public:
         virtual ~EditorOnlyEntityHandler() = default;
 
+        virtual bool IsEntityUniquelyForThisHandler(AZ::Entity* entity) = 0;
+
+        /**
+         * Adds the given entity ID to the set of editor only entities.
+         *
+         * Handlers can customize this behavior, such as additionally adding child entities
+         * when a parent is marked as editor-only.
+         */
+        virtual void AddEditorOnlyEntity(AZ::Entity* editorOnlyEntity, EntityIdSet& editorOnlyEntities) { editorOnlyEntities.insert(editorOnlyEntity->GetId()); }
+
         using Result = AZ::Outcome<void, AZStd::string>;
 
         /**
@@ -49,6 +59,12 @@ namespace AzToolsFramework
             const AzToolsFramework::EntityList& /*entities*/, 
             const AzToolsFramework::EntityIdSet& /*editorOnlyEntityIds*/, 
             AZ::SerializeContext& /*serializeContext*/) { return AZ::Success();  }
+
+        // Verify that none of the runtime entities reference editor-only entities. Fail w/ details if so.
+        static Result ValidateReferences(
+            const AzToolsFramework::EntityList& entities,
+            const AzToolsFramework::EntityIdSet& editorOnlyEntityIds,
+            AZ::SerializeContext& serializeContext);
     };
 
     /**
@@ -60,6 +76,8 @@ namespace AzToolsFramework
     class WorldEditorOnlyEntityHandler : public AzToolsFramework::EditorOnlyEntityHandler
     {
     public:
+        bool IsEntityUniquelyForThisHandler(AZ::Entity* entity) override;
+
         Result HandleEditorOnlyEntities(
             const AzToolsFramework::EntityList& entities, 
             const AzToolsFramework::EntityIdSet& editorOnlyEntityIds, 
@@ -70,13 +88,29 @@ namespace AzToolsFramework
         static void FixTransformRelationships(
             const AzToolsFramework::EntityList& entities, 
             const AzToolsFramework::EntityIdSet& editorOnlyEntityIds);
-
-        // Verify that none of the runtime entities reference editor-only entities. Fail w/ details if so.
-        static Result ValidateReferences(
-            const AzToolsFramework::EntityList& entities, 
-            const AzToolsFramework::EntityIdSet& editorOnlyEntityIds, 
-            AZ::SerializeContext& serializeContext);
     };
+
+    /**
+    * EditorOnlyEntity handler for UI entities.
+    * - Removes editor-only entities and their descedent hierarchy entirely.
+    * -- This differs from the world-entity handler where editor-only entities
+    *    are removed "in-place".
+    * - Validates that no editor entities are referenced by non-editor entities.
+    */
+    class UiEditorOnlyEntityHandler : public AzToolsFramework::EditorOnlyEntityHandler
+    {
+    public:
+        bool IsEntityUniquelyForThisHandler(AZ::Entity* entity) override;
+
+        void AddEditorOnlyEntity(AZ::Entity* editorOnlyEntity, EntityIdSet& editorOnlyEntities) override;
+
+        Result HandleEditorOnlyEntities(
+            const AzToolsFramework::EntityList& entities,
+            const AzToolsFramework::EntityIdSet& editorOnlyEntityIds,
+            AZ::SerializeContext& serializeContext) override;
+    };
+
+    EditorOnlyEntityHandler::Result AdjustForEditorOnlyEntities(AZ::SliceComponent* slice, const AZStd::unordered_set<AZ::EntityId>& editorOnlyEntities, AZ::SerializeContext& serializeContext, EditorOnlyEntityHandler* customHandler);
 
     /**
      * Converts a source editor slice to a runtime-usable slice (i.e. dynamic slice).
@@ -86,9 +120,16 @@ namespace AzToolsFramework
      * @param sourceSlice pointer to the source slice asset, which is required for successful compilation.
      * @param platformTags set of tags defined for the platform currently being executed for.
      * @param valid serialize context.
-     * @param editorOnlyEntityHandler optional custom handler to process entities in a slice in preparation for the stripping of editor only entities.
+     * @param editorOnlyEntityHandlers optional list of custom handlers to process entities in a slice in preparation for the stripping of editor only entities.
      * @return Result an AZ::Outcome with a valid slice asset as the success payload, and an error string for the error payload.
      */
-    SliceCompilationResult CompileEditorSlice(const AZ::Data::Asset<AZ::SliceAsset>& sourceSlice, const AZ::PlatformTagSet& platformTags, AZ::SerializeContext& serializeContext, EditorOnlyEntityHandler* editorOnlyEntityHandler = nullptr);
+    using EditorOnlyEntityHandlers = AZStd::vector<EditorOnlyEntityHandler*>;
+    SliceCompilationResult CompileEditorSlice(const AZ::Data::Asset<AZ::SliceAsset>& sourceSlice, const AZ::PlatformTagSet& platformTags, AZ::SerializeContext& serializeContext, const EditorOnlyEntityHandlers& editorOnlyEntityHandlers = EditorOnlyEntityHandlers());
+
+    /**
+     * Sort entities so parents are listed before children.
+     * The entities must contain a component which can be azrtti_cast to AZ::TransformIterface.
+     */
+    void SortTransformParentsBeforeChildren(AZStd::vector<AZ::Entity*>& entitiesInOut);
 
 } // AzToolsFramework

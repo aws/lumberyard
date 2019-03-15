@@ -25,7 +25,10 @@ namespace EMStudio
     // constructor
     LogWindowCallback::LogWindowCallback(QWidget* parent)
         : QTableWidget(parent)
+        , m_scrollToBottom(false)
     {
+        qRegisterMetaType<MCore::LogCallback::ELogLevel>();
+
         // init the max second column width
         mMaxSecondColumnWidth = 0;
 
@@ -51,6 +54,8 @@ namespace EMStudio
     #else
         mFilter = LOGLEVEL_FATAL | LOGLEVEL_ERROR | LOGLEVEL_WARNING | LOGLEVEL_INFO;
     #endif
+
+        connect(this, &LogWindowCallback::DoLog, this, &LogWindowCallback::LogImpl, Qt::QueuedConnection);
     }
 
 
@@ -69,6 +74,11 @@ namespace EMStudio
 
     // log the message
     void LogWindowCallback::Log(const char* text, ELogLevel logLevel)
+    {
+        emit DoLog(text, logLevel);
+    }
+
+    void LogWindowCallback::LogImpl(const QString text, ELogLevel logLevel)
     {
         // add the row in the table
         const QTime currentTime = QTime::currentTime();
@@ -130,7 +140,7 @@ namespace EMStudio
         }
 
         // scroll to bottom to see the last message
-        scrollToBottom();
+        m_scrollToBottom = true;
     }
 
 
@@ -356,22 +366,22 @@ namespace EMStudio
         if (items.size() > 0)
         {
             QAction* copyAction = menu.addAction("Copy");
-            connect(copyAction, SIGNAL(triggered()), this, SLOT(Copy()));
+            connect(copyAction, &QAction::triggered, this, &LogWindowCallback::Copy);
         }
         if (numRows > 0)
         {
             QAction* selectAllAction = menu.addAction("Select All");
-            connect(selectAllAction, SIGNAL(triggered()), this, SLOT(SelectAll()));
+            connect(selectAllAction, &QAction::triggered, this, &LogWindowCallback::SelectAll);
         }
         if (items.size() > 0)
         {
             QAction* UnselectAllAction = menu.addAction("Unselect All");
-            connect(UnselectAllAction, SIGNAL(triggered()), this, SLOT(UnselectAll()));
+            connect(UnselectAllAction, &QAction::triggered, this, &LogWindowCallback::UnselectAll);
         }
         if (numRows > 0)
         {
             QAction* clearAction = menu.addAction("Clear");
-            connect(clearAction, SIGNAL(triggered()), this, SLOT(Clear()));
+            connect(clearAction, &QAction::triggered, this, &LogWindowCallback::Clear);
         }
 
         // execute the menu
@@ -380,6 +390,18 @@ namespace EMStudio
             menu.exec(event->globalPos());
         }
     }
+
+    void LogWindowCallback::paintEvent(QPaintEvent* event)
+    {
+        if (m_scrollToBottom)
+        {
+            scrollToBottom();
+            m_scrollToBottom = false;
+        }
+
+        QTableWidget::paintEvent(event);
+    }
+
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/LogWindow/LogWindowCallback.moc>

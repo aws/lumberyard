@@ -1099,7 +1099,7 @@ namespace EMotionFX
     }
 
 
-    void Mesh::CalcAABB(MCore::AABB* outBoundingBox, const MCore::Matrix& globalMatrix, uint32 vertexFrequency)
+    void Mesh::CalcAABB(MCore::AABB* outBoundingBox, const Transform& transform, uint32 vertexFrequency)
     {
         MCORE_ASSERT(vertexFrequency >= 1);
 
@@ -1108,29 +1108,27 @@ namespace EMotionFX
 
         // get the position data
         AZ::PackedVector3f* positions = (AZ::PackedVector3f*)FindVertexData(ATTRIB_POSITIONS);
-        //  MCore::Vector3* positions = (MCore::Vector3*)FindOriginalVertexData( ATTRIB_POSITIONS );
 
-        // process all vertices
         const uint32 numVerts = GetNumVertices();
         for (uint32 i = 0; i < numVerts; i += vertexFrequency)
         {
-            outBoundingBox->Encapsulate(AZ::Vector3(positions[i]) * globalMatrix);
+            outBoundingBox->Encapsulate(transform.TransformPoint(AZ::Vector3(positions[i])));
         }
     }
 
 
 
     // intersection test between the mesh and a ray
-    bool Mesh::Intersects(const MCore::Matrix& transformMatrix, const MCore::Ray& ray)
+    bool Mesh::Intersects(const Transform& transform, const MCore::Ray& ray)
     {
         // get the positions and indices and calculate the inverse of the transformation matrix
-        const AZ::PackedVector3f*   positions   = (AZ::PackedVector3f*)FindVertexData(Mesh::ATTRIB_POSITIONS);
-        const MCore::Matrix     invMat      = transformMatrix.Inversed();
+        const AZ::PackedVector3f* positions = (AZ::PackedVector3f*)FindVertexData(Mesh::ATTRIB_POSITIONS);
+        const Transform invTransform = transform.Inversed();
 
         // transform origin and dest of the ray into space of the mesh
-        // on this way we do not have to convert the vertices into global space
-        const AZ::Vector3       newOrigin   = ray.GetOrigin() * invMat;
-        const AZ::Vector3       newDest     = ray.GetDest()   * invMat;
+        // on this way we do not have to convert the vertices into world space
+        const AZ::Vector3       newOrigin   = invTransform.TransformPoint(ray.GetOrigin());
+        const AZ::Vector3       newDest     = invTransform.TransformPoint(ray.GetDest());
         const MCore::Ray        testRay(newOrigin, newDest);
 
         // iterate over all polygons, triangulate internally
@@ -1168,12 +1166,12 @@ namespace EMotionFX
 
 
     // intersection test between the mesh and a ray, includes calculation of intersection point
-    bool Mesh::Intersects(const MCore::Matrix& transformMatrix, const MCore::Ray& ray, AZ::Vector3* outIntersect, float* outBaryU, float* outBaryV, uint32* outIndices)
+    bool Mesh::Intersects(const Transform& transform, const MCore::Ray& ray, AZ::Vector3* outIntersect, float* outBaryU, float* outBaryV, uint32* outIndices)
     {
-        AZ::PackedVector3f* positions       = (AZ::PackedVector3f*)FindVertexData(Mesh::ATTRIB_POSITIONS);
-        MCore::Matrix       invNodeTM = transformMatrix.Inversed();
-        AZ::Vector3         newOrigin = ray.GetOrigin() * invNodeTM;
-        AZ::Vector3         newDest = ray.GetDest() * invNodeTM;
+        AZ::PackedVector3f* positions = (AZ::PackedVector3f*)FindVertexData(Mesh::ATTRIB_POSITIONS);
+        Transform           invNodeTransform = transform.Inversed();
+        AZ::Vector3         newOrigin = invNodeTransform.TransformPoint(ray.GetOrigin());
+        AZ::Vector3         newDest = invNodeTransform.TransformPoint(ray.GetDest());
         float               closestDist = FLT_MAX;
         bool                hasIntersected = false;
         //uint32            closestStartIndex=0;
@@ -1183,7 +1181,7 @@ namespace EMotionFX
         float               dist, baryU, baryV, closestBaryU = 0, closestBaryV = 0;
 
         // the test ray, in space of the node (object space)
-        // on this way we do not have to convert the vertices into global space
+        // on this way we do not have to convert the vertices into world space
         MCore::Ray testRay(newOrigin, newDest);
 
         // iterate over all polygons, triangulate internally
@@ -1230,12 +1228,12 @@ namespace EMotionFX
             polyStartIndex += numPolyVerts;
         }
 
-        // store the closest intersection point (in global space)
+        // store the closest intersection point (in world space)
         if (hasIntersected)
         {
             if (outIntersect)
             {
-                *outIntersect = closestIntersect * transformMatrix;
+                *outIntersect = transform.TransformPoint(closestIntersect);
             }
 
             if (outIndices)

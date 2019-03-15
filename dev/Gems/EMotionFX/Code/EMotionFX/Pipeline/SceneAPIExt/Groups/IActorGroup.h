@@ -32,6 +32,10 @@ namespace EMotionFX
                 virtual const AZStd::string& GetSelectedRootBone() const = 0;
 
                 virtual void SetSelectedRootBone(const AZStd::string& selectedRootBone) = 0;
+
+                // This list should contain the base meshe nodes (LOD0 meshes)
+                virtual AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetBaseNodeSelectionList() = 0;
+                virtual const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetBaseNodeSelectionList() const = 0 ;
             };
         }
     }

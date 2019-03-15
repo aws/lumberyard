@@ -18,8 +18,8 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Slice/SliceMetadataInfoBus.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
 
 namespace AZ
 {
@@ -36,7 +36,7 @@ namespace AZ
     class SliceMetadataInfoComponent
         : public AZ::Component
         , public SliceMetadataInfoRequestBus::Handler
-        , private ComponentApplicationEventBus::Handler
+        , public AZ::EntityBus::MultiHandler
         , public SliceMetadataInfoManipulationBus::Handler
     {
     public:
@@ -84,8 +84,8 @@ namespace AZ
         friend SliceComponent;
 
         //////////////////////////////////////////////////////////////////////////
-        // ComponentApplicationEventBus
-        void OnEntityRemoved(const AZ::EntityId& entityId) override;
+        // EntityBus
+        void OnEntityDestruction(const AZ::EntityId& entityId) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

@@ -15,14 +15,19 @@
 #include <LyShine/Bus/UiEditorBus.h>
 
 #include <AzCore/Component/Component.h>
+#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Slice/SliceBus.h>
 #include <AzCore/std/containers/vector.h>
 
 #include "UiSerialize.h"
 #include <LyShine/UiComponentTypes.h>
 
+#include <AzCore/std/containers/intrusive_slist.h>
+
 class UiCanvasComponent;
 class UiTransform2dComponent;
+class UiRenderInterface;
+class UiRenderControlInterface;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiElementComponent
@@ -30,6 +35,8 @@ class UiElementComponent
     , public UiElementBus::Handler
     , public UiEditorBus::Handler
     , public AZ::SliceEntityHierarchyRequestBus::Handler
+    , public AZ::EntityBus::Handler
+    , public AZStd::intrusive_slist_node<UiElementComponent>
 {
 public: // types
 
@@ -46,8 +53,7 @@ public: // member functions
 
     // UiElementInterface
 
-    void UpdateElement(float deltaTime) override;
-    void RenderElement(bool isInGame, bool displayBounds) override;
+    void RenderElement(LyShine::IRenderGraph* renderGraph, bool isInGame) override;
 
     LyShine::ElementId GetElementId() override;
     LyShine::NameType GetName() override;
@@ -59,6 +65,7 @@ public: // member functions
     int GetNumChildElements() override;
     AZ::Entity* GetChildElement(int index) override;
     AZ::EntityId GetChildEntityId(int index) override;
+    UiElementInterface* GetChildElementInterface(int index) override;
 
     int GetIndexOfChild(const AZ::Entity* child) override;
     int GetIndexOfChildByEntityId(AZ::EntityId childId) override;
@@ -93,6 +100,8 @@ public: // member functions
     bool IsEnabled() override;
     void SetIsEnabled(bool isEnabled) override;
 
+    bool GetAreElementAndAncestorsEnabled() override;
+
     bool IsRenderEnabled() override;
     void SetIsRenderEnabled(bool isRenderEnabled) override;
 
@@ -111,8 +120,14 @@ public: // member functions
     bool AreAllAncestorsVisible() override;
     // ~UiEditorInterface
 
+    // EntityEvents
+    void OnEntityActivated(const AZ::EntityId&) override;
+    void OnEntityDeactivated(const AZ::EntityId&) override;
+    // ~EntityEvents
+
     void AddChild(AZ::Entity* child, AZ::Entity* insertBefore = nullptr);
     void RemoveChild(AZ::Entity* child);
+    void RemoveChild(AZ::EntityId child);
 
     //! Only to be used by UiCanvasComponent when creating the root element
     void SetCanvas(UiCanvasComponent* canvas, LyShine::ElementId elementId);
@@ -181,6 +196,11 @@ protected: // member functions
     void Activate() override;
     void Deactivate() override;
     // ~AZ::Component
+
+private: // member functions
+
+    //! Send out notifications to elements whose "effective" enabled state has changed
+    void DoRecursiveEnabledNotification(bool newIsEnabledValue);
 
 private: //types
 
@@ -262,6 +282,8 @@ private: // data
     UiElementComponent* m_parentElementComponent = nullptr;
     UiTransform2dComponent* m_transformComponent = nullptr;
     AZStd::vector<UiElementComponent*> m_childElementComponents;
+    UiRenderInterface* m_renderInterface = nullptr;
+    UiRenderControlInterface* m_renderControlInterface = nullptr;
 
     bool m_isEnabled = true;
     bool m_isRenderEnabled = true;

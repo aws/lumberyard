@@ -201,6 +201,11 @@ namespace UnitTest
                     Data::Asset<ScriptAsset> scriptAsset2(aznew ScriptAsset(scriptAsset1.GetId()));
                     scriptAsset2.Get()->m_scriptBuffer.insert(scriptAsset2.Get()->m_scriptBuffer.begin(), script2.begin(), script2.end());
 
+                    // When reloading script assets from files, ScriptSystemComponent would clear old script caches automatically in the
+                    // function `ScriptSystemComponent::LoadAssetData()`. But here we are changing script directly in memory, therefore we 
+                    // need to clear old cache manually.
+                    AZ::ScriptSystemRequestBus::Broadcast(&AZ::ScriptSystemRequestBus::Events::ClearAssetReferences, scriptAsset1.GetId());
+
                     // trigger reload
                     Data::AssetManager::Instance().ReloadAssetFromData(scriptAsset2);
 

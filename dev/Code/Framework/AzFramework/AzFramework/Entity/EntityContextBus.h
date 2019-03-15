@@ -148,6 +148,13 @@ namespace AzFramework
         virtual AZ::SliceComponent* GetRootSlice() = 0;
 
         /**
+        * Gets the Asset ID of the currently instantiating slice.
+        * If no slice is currently being instantiated, it returns an invalid ID
+        * @return The Asset ID of the slice currently being instantiated.
+        */
+        virtual AZ::Data::AssetId CurrentlyInstantiatingSlice() = 0;
+
+        /**
          * Creates an entity and adds it to the root slice of the entity context.
          * This operation does not activate the entity by default.
          * @param name A name for the entity.

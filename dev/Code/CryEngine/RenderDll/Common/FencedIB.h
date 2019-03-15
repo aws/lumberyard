@@ -101,7 +101,11 @@ void FencedIB<IndexType>::UnlockIB()
     {
         gRenDev->m_DevMan.UnlockDirectAccessBuffer((D3DBuffer*)m_pIB, CDeviceManager::BIND_INDEX_BUFFER);
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(FencedIB_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/FencedIB_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/FencedIB_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

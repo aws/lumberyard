@@ -273,7 +273,7 @@ namespace AzFramework
                         (void)connId;
                         if (dataLength != 0)
                         {
-                            responseBuffer.resize(dataLength);
+                            responseBuffer.resize_no_construct(dataLength);
                             memcpy(responseBuffer.data(), data, dataLength);
                             emptyResponseMessage = false;
                         }

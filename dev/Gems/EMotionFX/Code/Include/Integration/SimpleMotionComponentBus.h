@@ -26,6 +26,9 @@ namespace EMotionFX
             : public AZ::ComponentBus
         {
         public:
+
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+
             virtual void LoopMotion(bool enable) = 0;
             virtual bool GetLoopMotion() const = 0;
             virtual void RetargetMotion(bool enable) = 0;
@@ -41,6 +44,7 @@ namespace EMotionFX
             virtual float GetBlendInTime() const = 0;
             virtual void BlendOutTime(float time) = 0;
             virtual float GetBlendOutTime() const = 0;
+            virtual void PlayMotion() = 0;
         };
         using SimpleMotionComponentRequestBus = AZ::EBus<SimpleMotionComponentRequests>;
     }

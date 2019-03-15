@@ -312,6 +312,12 @@ void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAsse
         {
             const AZ::SliceComponent::EntityList& entities = instance.GetInstance()->GetInstantiated()->m_entities;
 
+            // It's possible that this dynamic slice only contains editor-only elements
+            if (entities.empty())
+            {
+                return;
+            }
+
             // Create a set of all the top-level entities.
             AZStd::unordered_set<AZ::Entity*> topLevelEntities;
             for (AZ::Entity* entity : entities)
@@ -391,11 +397,13 @@ void UiGameEntityContext::OnSliceInstantiated(const AZ::Data::AssetId& sliceAsse
                 EBUS_EVENT_ID(rootElement->GetId(), UiTransformBus, MoveLocalPositionBy, instantiatingIter->m_position);
             }
 
+            // must erase this in case our instantiate calls trigger a slice spawn which would invalid this iterator.
+            m_instantiatingDynamicSlices.erase(instantiatingIter);
+
             // This allows the UiSpawnerComponent to respond after the entities have been activated and fixed up
             EBUS_EVENT_ID(ticket, UiGameEntityContextSliceInstantiationResultsBus, OnEntityContextSliceInstantiated, sliceAssetId, instance);
 
             EBUS_EVENT(UiGameEntityContextNotificationBus, OnSliceInstantiated, sliceAssetId, instance, ticket);
-            m_instantiatingDynamicSlices.erase(instantiatingIter);
             break;
         }
     }

@@ -109,7 +109,11 @@ struct SShaderLevelPolicies
 union UPipelineState // Pipeline state relevant for shader instantiation
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ShaderCache_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ShaderCache_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ShaderCache_h_provo.inl"
+    #endif
 #endif
     uint64 opaque;
     UPipelineState()
@@ -122,6 +126,7 @@ struct SShaderCombIdent
 {
     uint64 m_RTMask;    // run-time mask
     uint64 m_GLMask;    // global mask
+    uint64 m_STMask;    // static mask
     UPipelineState m_pipelineState;
     union
     {
@@ -147,6 +152,7 @@ struct SShaderCombIdent
         m_MDMask = nMD;
         m_MDVMask = nMDV;
         m_nHash = 0;
+        m_STMask = 0;
     }
     SShaderCombIdent(uint64 nGL, const SShaderCombIdent& Ident)
     {
@@ -162,6 +168,7 @@ struct SShaderCombIdent
         m_MDMask = 0;
         m_MDVMask = 0;
         m_nHash = 0;
+        m_STMask = 0;
     }
 
     uint32 PostCreate();
@@ -355,6 +362,7 @@ struct SEmptyCombination
     uint32 nLTNew;
     uint32 nMD;
     uint32 nMDV;
+    uint64 nST;
     class CHWShader* pShader;
 
     using Combinations = AZStd::vector<SEmptyCombination, AZ::StdLegacyAllocator>;

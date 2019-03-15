@@ -444,7 +444,7 @@ void AzAssetBrowserRequestHandler::ResaveSlice(AZ::Entity* sliceEntity, const AZ
                 if (tmpFilesaved && AZ::IO::SmartMove(tmpFileName.c_str(), fullFilePath.c_str()))
                 {
                     // Bump the slice asset up in the asset processor's queue.
-                    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::GetAssetStatus, fullFilePath);
+                    AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::GetAssetStatus_FlushIO, fullFilePath);
                 }
             }
             else

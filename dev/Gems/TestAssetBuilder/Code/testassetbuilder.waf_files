@@ -1,0 +1,9 @@
+{
+    "auto": {
+        "Source": [
+            "Source/TestAssetBuilderModule.cpp",
+            "Source/Builder/TestAssetBuilderComponent.h",
+            "Source/Builder/TestAssetBuilderComponent.cpp"
+        ]
+    }
+}

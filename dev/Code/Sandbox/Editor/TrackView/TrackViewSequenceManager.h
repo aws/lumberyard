@@ -24,7 +24,6 @@ class CTrackViewSequenceManager
     , public IDataBaseManagerListener
     , public ITrackViewSequenceManager
 {
-    friend class CAbstractUndoSequenceTransaction;
     friend class CSequenceObject;
 
 public:
@@ -41,7 +40,6 @@ public:
     void RenameNode(CTrackViewAnimNode* pAnimNode, const char* newName) const;
 
     CTrackViewSequence* GetSequenceByName(QString name) const override;
-    CTrackViewSequence* GetLegacySequenceByName(QString name) const override;
     CTrackViewSequence* GetSequenceByEntityId(const AZ::EntityId& entityId) const override;
     CTrackViewSequence* GetSequenceByIndex(unsigned int index) const;
     CTrackViewSequence* GetSequenceByAnimSequence(IAnimSequence* pAnimSequence) const;
@@ -58,7 +56,6 @@ public:
     void OnDeleteSequenceEntity(const AZ::EntityId& entityId) override;
     void OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence) override;
     void OnSequenceActivated(const AZ::EntityId& entityId) override;
-    void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) override;
     //~ ITrackViewSequenceManager Overrides
 
 private:

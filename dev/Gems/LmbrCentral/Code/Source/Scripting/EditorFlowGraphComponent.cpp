@@ -143,8 +143,6 @@ namespace LmbrCentral
         FlowGraphEditorRequestsBus::Handler::BusConnect(FlowEntityId(GetEntityId()));
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
 
-        AZ::ComponentApplicationEventBus::Handler::BusConnect();
-
         for (FlowGraphWrapper& flowGraphWrapper : m_flowGraphs)
         {
             flowGraphWrapper.SetEditorFlowGraphEntity(GetEntityId());
@@ -165,8 +163,6 @@ namespace LmbrCentral
 
     void EditorFlowGraphComponent::Deactivate()
     {
-        AZ::ComponentApplicationEventBus::Handler::BusDisconnect();
-
         FlowGraphEditorRequestsBus::Handler::BusDisconnect();
         EditorComponentBase::Deactivate();
 

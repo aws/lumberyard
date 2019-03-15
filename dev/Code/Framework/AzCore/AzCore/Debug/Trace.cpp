@@ -31,7 +31,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Trace_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Trace_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID)
 
 #   if defined(AZ_PLATFORM_ANDROID)
@@ -68,7 +72,11 @@ namespace AZ {
     LPTOP_LEVEL_EXCEPTION_FILTER g_previousExceptionHandler = NULL;
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Trace_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Trace_cpp_provo.inl"
+    #endif
     #endif
 #endif // defined(AZ_ENABLE_DEBUG_TOOLS)
 
@@ -102,7 +110,11 @@ namespace AZ {
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Trace_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Trace_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -163,7 +175,11 @@ namespace AZ {
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Trace_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Trace_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -186,7 +202,11 @@ namespace AZ {
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TRACE_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(Trace_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Trace_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Trace_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

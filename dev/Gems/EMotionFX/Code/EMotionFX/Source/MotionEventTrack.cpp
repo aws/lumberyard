@@ -15,45 +15,86 @@
 #include "MotionEvent.h"
 #include "EventManager.h"
 #include "EventHandler.h"
+#include "TwoStringEventData.h"
 #include "AnimGraphEventBuffer.h"
 #include <MCore/Source/StringIdPool.h>
 #include <EMotionFX/Source/Allocators.h>
+#include <AzCore/Math/MathUtils.h>
+
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(MotionEventTrack, MotionEventAllocator, 0)
 
-
     // constructor
     MotionEventTrack::MotionEventTrack(Motion* motion)
         : BaseObject()
+        , mMotion(motion)
+        , mNameID(MCORE_INVALIDINDEX32)
+        , mEnabled(true)
+        , mDeletable(true)
     {
-        mMotion     = motion;
-        mEnabled    = true;
-        mNameID     = MCORE_INVALIDINDEX32;
-        mParameters.SetMemoryCategory(EMFX_MEMCATEGORY_EVENTS);
-        mEvents.SetMemoryCategory(EMFX_MEMCATEGORY_EVENTS);
-        mDeletable  = true;
     }
 
 
     // extended constructor
     MotionEventTrack::MotionEventTrack(const char* name, Motion* motion)
         : BaseObject()
+        , mMotion(motion)
+        , mEnabled(true)
+        , mDeletable(true)
     {
-        mMotion     = motion;
-        mEnabled    = true;
-        mDeletable  = true;
-
-        mParameters.SetMemoryCategory(EMFX_MEMCATEGORY_EVENTS);
-        mEvents.SetMemoryCategory(EMFX_MEMCATEGORY_EVENTS);
         SetName(name);
     }
 
-
-    // destructor
-    MotionEventTrack::~MotionEventTrack()
+    MotionEventTrack::MotionEventTrack(const MotionEventTrack& other)
     {
+        *this = other;
+    }
+
+    MotionEventTrack& MotionEventTrack::operator=(const MotionEventTrack& other)
+    {
+        if (this == &other)
+        {
+            return *this;
+        }
+        m_events = other.m_events;
+        mMotion = other.mMotion;
+        mNameID = other.mNameID;
+        return *this;
+    }
+
+    void MotionEventTrack::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<MotionEventTrack>()
+            ->Version(1)
+            ->Field("name", &MotionEventTrack::mNameID)
+            ->Field("enabled", &MotionEventTrack::mEnabled)
+            ->Field("deletable", &MotionEventTrack::mDeletable)
+            ->Field("events", &MotionEventTrack::m_events)
+            ;
+
+        AZ::EditContext* editContext = serializeContext->GetEditContext();
+        if (!editContext)
+        {
+            return;
+        }
+
+        editContext->Class<MotionEventTrack>("MotionEventTrack", "")
+            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &MotionEventTrack::m_events, "Events", "List of events in this track")
+                ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+            ;
     }
 
 
@@ -78,184 +119,89 @@ namespace EMotionFX
     }
 
 
-    // get the parameter index by string
-    uint32 MotionEventTrack::GetParameterIndex(const char* parameters) const
-    {
-        // try to find locate the parameter string in the array
-        const uint32 numParams = mParameters.GetLength();
-        for (uint32 i = 0; i < numParams; ++i)
-        {
-            if (mParameters[i] == parameters)
-            {
-                return i;
-            }
-        }
-
-        return MCORE_INVALIDINDEX32;
-    }
-
-
     // the main method to add an event, which automatically inserts it at the right sorted location
-    uint32 MotionEventTrack::AddEvent(float startTimeValue, float endTimeValue, const char* eventType, const char* parameters, const char* mirrorType)
+    size_t MotionEventTrack::AddEvent(float startTimeValue, float endTimeValue, EventDataSet&& eventData)
     {
-        // get the event type index
-        uint32 eventTypeID = GetEventManager().FindEventID(eventType);
-        uint32 mirrorTypeID = GetEventManager().FindEventID(mirrorType);
-
-        // if the event type hasn't been registered at the event manager yet, we have a problem
-        if (eventTypeID == MCORE_INVALIDINDEX32)
+        auto compFunc = [](const float time, const EMotionFX::MotionEvent& event)
         {
-            MCore::LogWarning("MotionEventTrack::AddEvent - *** WARNING: Event type '%s' has not yet been registered at the EMotion FX event manager! Event will not be added! ***", eventType);
-            return MCORE_INVALIDINDEX32;
-        }
+            return time < event.GetStartTime();
+        };
+        const MotionEvent* insertPosition = AZStd::upper_bound(m_events.cbegin(), m_events.cend(), startTimeValue, compFunc);
+        const MotionEvent* positionAfterInsert = m_events.emplace(insertPosition, startTimeValue, endTimeValue, AZStd::move(eventData));
 
-        // get the parameter index
-        uint32 parameterIndex = AddParameter(parameters);
-
-        // if there are no events yet
-        if (mEvents.GetLength() == 0)
-        {
-            mEvents.Add(MotionEvent(startTimeValue, endTimeValue, eventTypeID, parameterIndex, mirrorTypeID));
-            return 0;
-        }
-        else // if there are events already stored
-        {
-            // if we must add it at the end
-            if (mEvents.GetLast().GetStartTime() <= startTimeValue)
-            {
-                mEvents.Add(MotionEvent(startTimeValue, endTimeValue, eventTypeID, parameterIndex, mirrorTypeID));
-                return mEvents.GetLength() - 1;
-            }
-            else
-            {
-                // if we must add it at the start
-                if (mEvents.GetFirst().GetStartTime() >= startTimeValue)
-                {
-                    mEvents.Insert(0, MotionEvent(startTimeValue, endTimeValue, eventTypeID, parameterIndex, mirrorTypeID));
-                    return 0;
-                }
-            }
-
-            // add the event (array sorted on time)
-            uint32 insertPos = 0;
-            const uint32 numEvents = mEvents.GetLength();
-            for (uint32 i = 0; i < numEvents - 1; ++i)
-            {
-                // if this is the place we need to insert it
-                if (mEvents[i].GetStartTime() <= startTimeValue && mEvents[i + 1].GetStartTime() >= startTimeValue)
-                {
-                    insertPos = i + 1;
-                    break;
-                }
-            }
-
-            // insert it
-            mEvents.Insert(insertPos, MotionEvent(startTimeValue, endTimeValue, eventTypeID, parameterIndex, mirrorTypeID));
-            return insertPos;
-        }
+        return AZStd::distance(m_events.cbegin(), positionAfterInsert);
     }
 
 
-    // add a motion event
-    uint32 MotionEventTrack::AddEvent(float startTimeValue, float endTimeValue, uint32 eventTypeID, const char* parameters, uint32 mirrorTypeID)
+    size_t MotionEventTrack::AddEvent(float startTimeValue, float endTimeValue, EventDataPtr&& eventData)
     {
-        // find the event index in the array
-        const uint32 eventIndex  = GetEventManager().FindEventTypeIndex(eventTypeID);
-        if (eventIndex == MCORE_INVALIDINDEX32)
-        {
-            MCore::LogWarning("MotionEventTrack::AddEvent - *** WARNING: Event type with ID %d has not yet been registered at the EMotion FX event manager! Event will not be added! ***", eventTypeID);
-            return MCORE_INVALIDINDEX32;
-        }
+        return AddEvent(startTimeValue, endTimeValue, EventDataSet {AZStd::move(eventData)});
+    }
 
-        uint32 mirrorEventIndex = MCORE_INVALIDINDEX32;
-        if (mirrorTypeID != MCORE_INVALIDINDEX32)
-        {
-            mirrorEventIndex = GetEventManager().FindEventTypeIndex(mirrorTypeID);
-            if (mirrorEventIndex == MCORE_INVALIDINDEX32)
-            {
-                MCore::LogWarning("MotionEventTrack::AddEvent - *** WARNING: Event type with ID %d has not yet been registered at the EMotion FX event manager! Event will not be added! ***", mirrorTypeID);
-            }
-        }
+    // Add a tick event
+    size_t MotionEventTrack::AddEvent(float timeValue, EventDataSet&& data)
+    {
+        return AddEvent(timeValue, timeValue, AZStd::move(data));
+    }
 
-        // get the name of the event
-        const char* eventName = GetEventManager().GetEventTypeString(eventIndex);
-        const char* mirrorTypeName = (mirrorEventIndex != MCORE_INVALIDINDEX32) ? GetEventManager().GetEventTypeString(mirrorEventIndex) : "";
-
-        // add the event for real
-        return AddEvent(startTimeValue, endTimeValue, eventName, parameters, mirrorTypeName);
+    // Add a tick event
+    size_t MotionEventTrack::AddEvent(float timeValue, EventDataPtr&& data)
+    {
+        return AddEvent(timeValue, timeValue, EventDataSet {AZStd::move(data)});
     }
 
 
-    // add the event by using a integer event ID
-    uint32 MotionEventTrack::AddEvent(float timeValue, uint32 eventTypeID, const char* parameters, uint32 mirrorTypeID)
+    class EventManagerOnEventFunctor
     {
-        // find the event index in the array
-        const uint32 eventIndex  = GetEventManager().FindEventTypeIndex(eventTypeID);
-        if (eventIndex == MCORE_INVALIDINDEX32)
+    public:
+        template <typename... Args>
+        void operator()(Args&&... args) const
         {
-            MCore::LogInfo("MotionEventTrack::AddEvent - *** WARNING: Event type with ID %d has not yet been registered at the EMotion FX event manager! Event will not be added! ***", eventTypeID);
-            return MCORE_INVALIDINDEX32;
+            GetEventManager().OnEvent(EventInfo(AZStd::forward<Args>(args)...));
+        }
+    };
+
+    class AnimGraphEventBufferAddEventsFunctor
+    {
+    public:
+        AnimGraphEventBufferAddEventsFunctor(AnimGraphEventBuffer* buffer) : m_buffer(buffer) {}
+
+        template <typename... Args>
+        void operator()(Args&&... args) const
+        {
+            m_buffer->AddEvent(AZStd::forward<Args>(args)...);
         }
 
-        uint32 mirrorEventIndex = MCORE_INVALIDINDEX32;
-        if (mirrorTypeID != MCORE_INVALIDINDEX32)
-        {
-            mirrorEventIndex = GetEventManager().FindEventTypeIndex(mirrorTypeID);
-            if (mirrorEventIndex == MCORE_INVALIDINDEX32)
-            {
-                MCore::LogWarning("MotionEventTrack::AddEvent - *** WARNING: Event type with ID %d has not yet been registered at the EMotion FX event manager! Event will not be added! ***", mirrorTypeID);
-            }
-        }
-
-        // get the name of the event
-        const char* eventName = GetEventManager().GetEventTypeString(eventIndex);
-        const char* mirrorTypeName = (mirrorEventIndex != MCORE_INVALIDINDEX32) ? GetEventManager().GetEventTypeString(mirrorEventIndex) : "";
-
-        // add the event for real
-        return AddEvent(timeValue, timeValue, eventName, parameters, mirrorTypeName);
-    }
-
-
-    // add an event (adds it sorted on time value)
-    uint32 MotionEventTrack::AddEvent(float timeValue, const char* eventType, const char* parameters, const char* mirrorType)
-    {
-        return AddEvent(timeValue, timeValue, eventType, parameters, mirrorType);
-    }
-
-
-    // add a new parameter and return its index
-    uint32 MotionEventTrack::AddParameter(const char* parameters)
-    {
-        // get the parameter index
-        uint32 parameterIndex = GetParameterIndex(parameters);
-
-        // if the parameter string isn't stored yet
-        if (parameterIndex == MCORE_INVALIDINDEX32)
-        {
-            mParameters.Add(parameters);
-            parameterIndex = mParameters.GetLength() - 1;
-        }
-
-        return parameterIndex;
-    }
-
+    private:
+        mutable AnimGraphEventBuffer* m_buffer;
+    };
 
     // process all events within a given time range
-    void MotionEventTrack::ProcessEvents(float startTime, float endTime, ActorInstance* actorInstance, MotionInstance* motionInstance)
+    void MotionEventTrack::ProcessEvents(float startTime, float endTime, MotionInstance* motionInstance) const
     {
-        EventInfo eventInfo;
+        ExtractEvents(startTime, endTime, motionInstance, EventManagerOnEventFunctor());
+    }
+
+    void MotionEventTrack::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const
+    {
+        ExtractEvents(startTime, endTime, motionInstance, AnimGraphEventBufferAddEventsFunctor(outEventBuffer));
+    }
+
+    template <typename Functor>
+    void MotionEventTrack::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc) const
+    {
+        // Please note: if startTime is equal to endTime the events will not be triggered (pause)
 
         // TODO: optimize with hierarchical search like keyframe finder
         // if we are playing forward
-        if (startTime <= endTime)
+        if (startTime < endTime)
         {
             // for all events
-            const uint32 numEvents = mEvents.GetLength();
-            for (uint32 i = 0; i < numEvents; ++i)
+            for (const EMotionFX::MotionEvent& event : m_events)
             {
                 // get the event start time
-                const float eventStartTime = mEvents[i].GetStartTime();
-                const float eventEndTime   = mEvents[i].GetEndTime();
+                const float eventStartTime  = event.GetStartTime();
+                const float eventEndTime    = event.GetEndTime();
 
                 // we can quit processing events if its impossible that they execute
                 if (eventStartTime > endTime)
@@ -266,40 +212,50 @@ namespace EMotionFX
                 // if we need to execute the event
                 if (eventStartTime >= startTime && eventStartTime < endTime)
                 {
-                    eventInfo.mTimeValue        = eventStartTime;
-                    eventInfo.mTypeID           = mEvents[i].GetEventTypeID();
-                    eventInfo.mTypeString       = const_cast<AZStd::string*>(&GetEventManager().GetEventTypeStringAsString(mEvents[i].GetEventTypeID()));
-                    eventInfo.mParameters       = &mParameters[mEvents[i].GetParameterIndex()];
-                    eventInfo.mActorInstance    = actorInstance;
-                    eventInfo.mMotionInstance   = motionInstance;
-                    eventInfo.mIsEventStart     = true;
-                    eventInfo.mEvent            = &mEvents[i];
-                    GetEventManager().OnEvent(eventInfo);
+                    processFunc(
+                        eventStartTime,
+                        motionInstance->GetActorInstance(),
+                        motionInstance,
+                        const_cast<MotionEvent*>(&event),
+                        EventInfo::EventState::START
+                    );
                 }
 
-                // trigger the event end
-                if (eventEndTime >= startTime && eventEndTime < endTime && mEvents[i].GetIsTickEvent() == false)
+                if (!event.GetIsTickEvent())
                 {
-                    eventInfo.mTimeValue        = eventStartTime;
-                    eventInfo.mTypeID           = mEvents[i].GetEventTypeID();
-                    eventInfo.mTypeString       = const_cast<AZStd::string*>(&GetEventManager().GetEventTypeStringAsString(mEvents[i].GetEventTypeID()));
-                    eventInfo.mParameters       = &mParameters[mEvents[i].GetParameterIndex()];
-                    eventInfo.mActorInstance    = actorInstance;
-                    eventInfo.mMotionInstance   = motionInstance;
-                    eventInfo.mIsEventStart     = false;
-                    eventInfo.mEvent            = &mEvents[i];
-                    GetEventManager().OnEvent(eventInfo);
+                    // trigger the event end
+                    if (eventEndTime >= startTime && eventEndTime < endTime)
+                    {
+                        processFunc(
+                            eventEndTime,
+                            motionInstance->GetActorInstance(),
+                            motionInstance,
+                            const_cast<MotionEvent*>(&event),
+                            EventInfo::EventState::END
+                        );
+                    }
+                    else if (eventEndTime > endTime)
+                    {
+                        processFunc(
+                            endTime,
+                            motionInstance->GetActorInstance(),
+                            motionInstance,
+                            const_cast<MotionEvent*>(&event),
+                            EventInfo::EventState::ACTIVE
+                        );
+                    }
                 }
             } // for all events
         }
-        else // playing backward
+        else if (startTime > endTime) // playing backward
         {
-            const uint32 numEvents = mEvents.GetLength();
-            for (uint32 i = numEvents - 1; i != MCORE_INVALIDINDEX32; --i)
+            for (auto i = m_events.crbegin(); i != m_events.crend(); ++i)
             {
+                const EMotionFX::MotionEvent& event = *i;
+
                 // get the event time
-                const float eventStartTime = mEvents[i].GetStartTime();
-                const float eventEndTime   = mEvents[i].GetEndTime();
+                const float eventStartTime  = event.GetStartTime();
+                const float eventEndTime    = event.GetEndTime();
 
                 // we can quit processing events if its impossible that they execute
                 if (eventEndTime < endTime)
@@ -308,176 +264,65 @@ namespace EMotionFX
                 }
 
                 // if we need to execute the event
-                if (eventStartTime > endTime && eventStartTime <= startTime)
+                if (eventEndTime >= endTime && eventEndTime < startTime)
                 {
-                    eventInfo.mTimeValue        = eventStartTime;
-                    eventInfo.mTypeID           = mEvents[i].GetEventTypeID();
-                    eventInfo.mTypeString       = const_cast<AZStd::string*>(&GetEventManager().GetEventTypeStringAsString(mEvents[i].GetEventTypeID()));
-                    eventInfo.mParameters       = &mParameters[mEvents[i].GetParameterIndex()];
-                    eventInfo.mActorInstance    = motionInstance->GetActorInstance();
-                    eventInfo.mMotionInstance   = motionInstance;
-                    eventInfo.mIsEventStart     = false;
-                    eventInfo.mEvent            = &mEvents[i];
-                    GetEventManager().OnEvent(eventInfo);
+                    processFunc(
+                        eventEndTime,
+                        motionInstance->GetActorInstance(),
+                        motionInstance,
+                        const_cast<MotionEvent*>(&event),
+                        EventInfo::EventState::START
+                    );
                 }
 
-                // trigger the event end
-                if (eventEndTime > endTime && eventEndTime <= startTime && mEvents[i].GetIsTickEvent() == false)
+
+                if (!event.GetIsTickEvent())
                 {
-                    eventInfo.mTimeValue        = eventStartTime;
-                    eventInfo.mTypeID           = mEvents[i].GetEventTypeID();
-                    eventInfo.mTypeString       = const_cast<AZStd::string*>(&GetEventManager().GetEventTypeStringAsString(mEvents[i].GetEventTypeID()));
-                    eventInfo.mParameters       = &mParameters[mEvents[i].GetParameterIndex()];
-                    eventInfo.mActorInstance    = motionInstance->GetActorInstance();
-                    eventInfo.mMotionInstance   = motionInstance;
-                    eventInfo.mIsEventStart     = true;
-                    eventInfo.mEvent            = &mEvents[i];
-                    GetEventManager().OnEvent(eventInfo);
-                }
-            } // for all events
-        }
-    }
-
-
-    // extract events
-    void MotionEventTrack::ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer)
-    {
-        EventInfo eventInfo;
-
-        // TODO: optimize with hierarchical search like keyframe finder
-        // if we are playing forward
-        if (startTime <= endTime)
-        {
-            // for all events
-            const uint32 numEvents = mEvents.GetLength();
-            for (uint32 i = 0; i < numEvents; ++i)
-            {
-                // get the event start time
-                const float eventStartTime = mEvents[i].GetStartTime();
-                const float eventEndTime   = mEvents[i].GetEndTime();
-
-                // we can quit processing events if its impossible that they execute
-                if (eventStartTime > endTime)
-                {
-                    break;
-                }
-
-                // if we need to execute the event
-                if (eventStartTime >= startTime && eventStartTime < endTime)
-                {
-                    eventInfo.mTimeValue        = eventStartTime;
-                    eventInfo.mTypeID           = mEvents[i].GetEventTypeID();
-                    eventInfo.mTypeString       = const_cast<AZStd::string*>(&GetEventManager().GetEventTypeStringAsString(mEvents[i].GetEventTypeID()));
-                    eventInfo.mParameters       = &mParameters[mEvents[i].GetParameterIndex()];
-                    eventInfo.mActorInstance    = motionInstance->GetActorInstance();
-                    eventInfo.mMotionInstance   = motionInstance;
-                    eventInfo.mIsEventStart     = true;
-                    eventInfo.mEvent            = &mEvents[i];
-                    outEventBuffer->AddEvent(eventInfo);
-                }
-
-                // trigger the event end
-                if (eventEndTime >= startTime && eventEndTime < endTime && mEvents[i].GetIsTickEvent() == false)
-                {
-                    eventInfo.mTimeValue        = eventStartTime;
-                    eventInfo.mTypeID           = mEvents[i].GetEventTypeID();
-                    eventInfo.mTypeString       = const_cast<AZStd::string*>(&GetEventManager().GetEventTypeStringAsString(mEvents[i].GetEventTypeID()));
-                    eventInfo.mParameters       = &mParameters[mEvents[i].GetParameterIndex()];
-                    eventInfo.mActorInstance    = motionInstance->GetActorInstance();
-                    eventInfo.mMotionInstance   = motionInstance;
-                    eventInfo.mIsEventStart     = false;
-                    eventInfo.mEvent            = &mEvents[i];
-                    outEventBuffer->AddEvent(eventInfo);
+                    // trigger the event end
+                    if (eventStartTime >= endTime && eventStartTime < startTime)
+                    {
+                        processFunc(
+                            eventStartTime,
+                            motionInstance->GetActorInstance(),
+                            motionInstance,
+                            const_cast<MotionEvent*>(&event),
+                            EventInfo::EventState::END
+                        );
+                    }
+                    else if (eventStartTime < endTime)
+                    {
+                        processFunc(
+                            endTime,
+                            motionInstance->GetActorInstance(),
+                            motionInstance,
+                            const_cast<MotionEvent*>(&event),
+                            EventInfo::EventState::ACTIVE
+                        );
+                    }
                 }
             } // for all events
         }
-        else // playing backward
-        {
-            const uint32 numEvents = mEvents.GetLength();
-            for (uint32 i = numEvents - 1; i != MCORE_INVALIDINDEX32; --i)
-            {
-                // get the event time
-                const float eventStartTime = mEvents[i].GetStartTime();
-                const float eventEndTime   = mEvents[i].GetEndTime();
-
-                // we can quit processing events if its impossible that they execute
-                if (eventEndTime < endTime)
-                {
-                    break;
-                }
-
-                // if we need to execute the event
-                if (eventStartTime > endTime && eventStartTime <= startTime)
-                {
-                    eventInfo.mTimeValue        = eventStartTime;
-                    eventInfo.mTypeID           = mEvents[i].GetEventTypeID();
-                    eventInfo.mTypeString       = const_cast<AZStd::string*>(&GetEventManager().GetEventTypeStringAsString(mEvents[i].GetEventTypeID()));
-                    eventInfo.mParameters       = &mParameters[mEvents[i].GetParameterIndex()];
-                    eventInfo.mActorInstance    = motionInstance->GetActorInstance();
-                    eventInfo.mMotionInstance   = motionInstance;
-                    eventInfo.mIsEventStart     = false;
-                    eventInfo.mEvent            = &mEvents[i];
-                    outEventBuffer->AddEvent(eventInfo);
-                }
-
-                // trigger the event end
-                if (eventEndTime > endTime && eventEndTime <= startTime && mEvents[i].GetIsTickEvent() == false)
-                {
-                    eventInfo.mTimeValue        = eventStartTime;
-                    eventInfo.mTypeID           = mEvents[i].GetEventTypeID();
-                    eventInfo.mTypeString       = const_cast<AZStd::string*>(&GetEventManager().GetEventTypeStringAsString(mEvents[i].GetEventTypeID()));
-                    eventInfo.mParameters       = &mParameters[mEvents[i].GetParameterIndex()];
-                    eventInfo.mActorInstance    = motionInstance->GetActorInstance();
-                    eventInfo.mMotionInstance   = motionInstance;
-                    eventInfo.mIsEventStart     = true;
-                    eventInfo.mEvent            = &mEvents[i];
-                    outEventBuffer->AddEvent(eventInfo);
-                }
-            } // for all events
-        }
-    }
-
-
-
-    // get a given parameter string
-    const char* MotionEventTrack::GetParameter(uint32 nr) const
-    {
-        return mParameters[nr].c_str();
-    }
-
-
-    // get a given parameter string
-    const AZStd::string& MotionEventTrack::GetParameterString(uint32 nr) const
-    {
-        return mParameters[nr];
-    }
-
-
-    // get the number of parameter strings
-    uint32 MotionEventTrack::GetNumParameters() const
-    {
-        return mParameters.GetLength();
     }
 
 
     // get the number of events
-    uint32 MotionEventTrack::GetNumEvents() const
+    size_t MotionEventTrack::GetNumEvents() const
     {
-        return mEvents.GetLength();
+        return m_events.size();
     }
 
 
     // remove a given event
-    void MotionEventTrack::RemoveEvent(uint32 eventNr)
+    void MotionEventTrack::RemoveEvent(size_t eventNr)
     {
-        mEvents.Remove(eventNr);
+        m_events.erase(AZStd::next(m_events.begin(), eventNr));
     }
 
 
     // remove all events from the table
     void MotionEventTrack::RemoveAllEvents()
     {
-        mEvents.Clear();
+        m_events.clear();
     }
 
 
@@ -485,7 +330,6 @@ namespace EMotionFX
     void MotionEventTrack::Clear()
     {
         RemoveAllEvents();
-        mParameters.Clear();
     }
 
 
@@ -513,66 +357,20 @@ namespace EMotionFX
     }
 
 
-    // remove all parameters
-    void MotionEventTrack::RemoveAllParameters()
-    {
-        mParameters.Clear();
-    }
-
-
     // copy the track contents to a target track
     // this overwrites all existing contents of the target track
-    void MotionEventTrack::CopyTo(MotionEventTrack* targetTrack)
+    void MotionEventTrack::CopyTo(MotionEventTrack* targetTrack) const
     {
-        targetTrack->mNameID        = mNameID;
-        targetTrack->mEvents        = mEvents;
-        targetTrack->mParameters    = mParameters;
-        targetTrack->mEnabled       = mEnabled;
+        targetTrack->mNameID = mNameID;
+        targetTrack->m_events = m_events;
+        targetTrack->mEnabled = mEnabled;
     }
 
 
     // reserve memory for a given amount of events
-    void MotionEventTrack::ReserveNumEvents(uint32 numEvents)
+    void MotionEventTrack::ReserveNumEvents(size_t numEvents)
     {
-        mEvents.Reserve(numEvents);
-    }
-
-
-    // reserve memory for a given amount of parameter strings
-    void MotionEventTrack::ReserveNumParameters(uint32 numParamStrings)
-    {
-        mParameters.Reserve(numParamStrings);
-    }
-
-
-    // remove unused parameters
-    void MotionEventTrack::RemoveUnusedParameters()
-    {
-        MCore::Array<AZStd::string> usedParameters;
-
-        // build the new parameters table
-        const uint32 numEvents = mEvents.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            if (mEvents[i].GetParameterIndex() != MCORE_INVALIDINDEX16 && usedParameters.Contains(mEvents[i].GetParameterString(this)) == false)
-            {
-                usedParameters.Add(mEvents[i].GetParameterString(this));
-            }
-        }
-
-        // remap the events into the new parameters table
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            if (mEvents[i].GetParameterIndex() != MCORE_INVALIDINDEX16)
-            {
-                const uint32 index = usedParameters.Find(mEvents[i].GetParameterString(this));
-                MCORE_ASSERT(index != MCORE_INVALIDINDEX32);
-                mEvents[i].SetParameterIndex(static_cast<uint16>(index));
-            }
-        }
-
-        // update the old table with the new one
-        mParameters = usedParameters;
+        m_events.reserve(numEvents);
     }
 
 
@@ -615,5 +413,10 @@ namespace EMotionFX
     Motion* MotionEventTrack::GetMotion() const
     {
         return mMotion;
+    }
+
+    void MotionEventTrack::SetMotion(Motion* newMotion)
+    {
+        mMotion = newMotion;
     }
 } // namespace EMotionFX

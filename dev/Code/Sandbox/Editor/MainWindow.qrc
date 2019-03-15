@@ -104,12 +104,22 @@
       <file alias="Entity_Editor_Only.svg">res/Entity_Editor_Only.svg</file>
       <file alias="Entity_Not_Active.svg">res/Entity_Not_Active.svg</file>
 
+      <file alias="layer_icon.svg">res/layer_icon.svg</file>
+      <file alias="locked.svg">res/locked.svg</file>
+      <file alias="unlocked.svg">res/unlocked.svg</file>
+      <file alias="visb.svg">res/visb.svg</file>
+      <file alias="visb_hidden.svg">res/visb_hidden.svg</file>
+
       <file alias="Slice_Entity.svg">res/Slice_Entity.svg</file>
+      <file alias="Slice_Entity_Unsavable.svg">res/Slice_Entity_Modified_Unsavable.svg</file>
       <file alias="Slice_Entity_Editor_Only.svg">res/Slice_Entity_Editor_Only.svg</file>
       <file alias="Slice_Entity_Not_Active.svg">res/Slice_Entity_Not_Active.svg</file>
       <file alias="Slice_Entity_Modified.svg">res/Slice_Entity_Modified.svg</file>
+      <file alias="Slice_Entity_Modified_Unsavable.svg">res/Slice_Entity_Modified_Unsavable.svg</file>
       <file alias="Slice_Entity_Modified_Editor_Only.svg">res/Slice_Entity_Modified_Editor_Only.svg</file>
+      <file alias="Slice_Entity_Modified_Editor_Only_Unsavable.svg">res/Slice_Entity_Modified_Editor_Only_Unsavable.svg</file>
       <file alias="Slice_Entity_Modified_Not_Active.svg">res/Slice_Entity_Modified_Not_Active.svg</file>
+      <file alias="Slice_Entity_Modified_Not_Active_Unsavable.svg">res/Slice_Entity_Modified_Not_Active_Unsavable.svg</file>
 
       <file alias="Slice_Handle.svg">res/Slice_Handle.svg</file>
       <file alias="Slice_Handle_Editor_Only.svg">res/Slice_Handle_Editor_Only.svg</file>
@@ -117,6 +127,18 @@
       <file alias="Slice_Handle_Modified.svg">res/Slice_Handle_Modified.svg</file>
       <file alias="Slice_Handle_Modified_Editor_Only.svg">res/Slice_Handle_Modified_Editor_Only.svg</file>
       <file alias="Slice_Handle_Modified_Not_Active.svg">res/Slice_Handle_Modified_Not_Active.svg</file>
+
+      <file alias="lock_circle_default.svg">res/lock_circle_default.svg</file>
+      <file alias="lock_circle_transparent.svg">res/lock_circle_transparent.svg</file>
+      <file alias="lock_on_NotTransparent.svg">res/lock_on_NotTransparent.svg</file>
+      <file alias="lock_on_transparent.svg">res/lock_on_transparent.svg</file>
+      <file alias="vis_circle_default.svg">res/vis_circle_default.svg</file>
+      <file alias="vis_circle_transparent.svg">res/vis_circle_transparent.svg</file>
+      <file alias="vis_on_NotTransparent.svg">res/vis_on_NotTransparent.svg</file>
+      <file alias="vis_on_transparent.svg">res/vis_on_transparent.svg</file>
+
+      <file alias="Default_closed.svg">res/Default_closed.svg</file>
+      <file alias="Default_open.svg">res/Default_open.svg</file>
   </qresource>
   <qresource>
     <file>res/Preferences_00.png</file>

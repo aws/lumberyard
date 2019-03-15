@@ -107,129 +107,13 @@ namespace EMStudio
 
         const char* GetExtension() const override       { return "motion"; }
         const char* GetFileType() const override        { return "motion"; }
+        const AZ::Uuid GetFileRttiType() const override
+        {
+            return azrtti_typeid<EMotionFX::Motion>();
+        }
 
     private:
         MotionWindowPlugin* mPlugin;
-    };
-
-
-    class MotionWindowPluginEventHandler
-        : public EMotionFX::EventHandler
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(MotionWindowPluginEventHandler, EMotionFX::EventHandlerAllocator, 0)
-
-        void OnDeleteMotion(EMotionFX::Motion* motion) override
-        {
-            if (motion == nullptr)
-            {
-                return;
-            }
-
-            OutlinerManager* manager = GetOutlinerManager();
-            if (manager == nullptr)
-            {
-                return;
-            }
-            manager->RemoveItemFromCategory("Motions", motion->GetID());
-        }
-    };
-
-
-    class MotionsOutlinerCategoryCallback
-        : public OutlinerCategoryCallback
-    {
-        MCORE_MEMORYOBJECTCATEGORY(SaveDirtyMotionFilesCallback, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS)
-
-    public:
-        MotionsOutlinerCategoryCallback(MotionWindowPlugin* plugin)
-        {
-            mPlugin = plugin;
-        }
-
-        ~MotionsOutlinerCategoryCallback()
-        {
-        }
-
-        QString BuildNameItem(OutlinerCategoryItem* item) const override
-        {
-            EMotionFX::Motion* motion = static_cast<EMotionFX::Motion*>(item->mUserData);
-            AZStd::string fileNameWithoutExtension = motion->GetFileNameString();
-            AzFramework::StringFunc::Path::GetFileName(fileNameWithoutExtension.c_str(), fileNameWithoutExtension);
-            return fileNameWithoutExtension.c_str();
-        }
-
-        QString BuildToolTipItem(OutlinerCategoryItem* item) const override
-        {
-            EMotionFX::Motion* motion = static_cast<EMotionFX::Motion*>(item->mUserData);
-            AZStd::string relativeFileName = motion->GetFileNameString();
-            EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&relativeFileName);
-            
-            AZStd::string relativeFileNameWithoutExtension;
-            AzFramework::StringFunc::Path::GetFileName(relativeFileName.c_str(), relativeFileNameWithoutExtension);
-            
-            QString toolTip = "<table border=\"0\">";
-            toolTip += "<tr><td><p style='white-space:pre'><b>Name: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileNameWithoutExtension.empty() ? "&#60;no name&#62;" : relativeFileNameWithoutExtension.c_str());
-            toolTip += "<tr><td><p style='white-space:pre'><b>FileName: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.empty() ? "&#60;not saved yet&#62;" : relativeFileName.c_str());
-            if ((motion->GetType() == EMotionFX::SkeletalMotion::TYPE_ID) || (motion->GetType() == EMotionFX::WaveletSkeletalMotion::TYPE_ID))
-            {
-                EMotionFX::SkeletalMotion* skeletalMotion = static_cast<EMotionFX::SkeletalMotion*>(motion);
-                toolTip += "<tr><td><p style='white-space:pre'><b>Num SubMotions: </b></p></td>";
-                toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(skeletalMotion->GetNumSubMotions());
-                toolTip += "<tr><td><p style='white-space:pre'><b>Num Morph SubMotions: </b></p></td>";
-                toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(skeletalMotion->GetNumMorphSubMotions());
-            }
-            toolTip += "</table>";
-            return toolTip;
-        }
-
-        QIcon GetIcon(OutlinerCategoryItem* item) const override
-        {
-            MCORE_UNUSED(item);
-            return MysticQt::GetMysticQt()->FindIcon("Images/OutlinerPlugin/MotionsCategory.png");
-        }
-
-        void OnRemoveItems(QWidget* parent, const AZStd::vector<OutlinerCategoryItem*>& items, MCore::CommandGroup* commandGroup) override
-        {
-            MCORE_UNUSED(parent);
-
-            // remove each item
-            AZStd::vector<EMotionFX::Motion*> motionsToRemove;
-            const size_t numItems = items.size();
-            for (size_t i = 0; i < numItems; ++i)
-            {
-                // save the dirty motion
-                EMotionFX::Motion* motion = static_cast<EMotionFX::Motion*>(items[i]->mUserData);
-                mPlugin->SaveDirtyMotion(motion, nullptr, true, false);
-
-                // set the motions to remove array
-                motionsToRemove.push_back(motion);
-            }
-
-            // remove the selected motions
-            CommandSystem::RemoveMotions(motionsToRemove, &mFailedRemoveMotions, commandGroup);
-        }
-
-        void OnPostRemoveItems(QWidget* parent) override
-        {
-            if (!mFailedRemoveMotions.empty())
-            {
-                MotionListRemoveMotionsFailedWindow removeMotionsFailedWindow(parent, mFailedRemoveMotions);
-                removeMotionsFailedWindow.exec();
-            }
-        }
-
-        void OnLoadItem(QWidget* parent) override
-        {
-            const AZStd::vector<AZStd::string> filenames = GetMainWindow()->GetFileManager()->LoadMotionsFileDialog(parent);
-            CommandSystem::LoadMotionsCommand(filenames);
-        }
-
-    private:
-        MotionWindowPlugin*                 mPlugin;
-        AZStd::vector<EMotionFX::Motion*>   mFailedRemoveMotions;
     };
 
 
@@ -242,19 +126,9 @@ namespace EMStudio
         mDialogStack                        = nullptr;
         mMotionListWindow                   = nullptr;
         mMotionPropertiesWindow             = nullptr;
-        mImportMotionCallback               = nullptr;
-        mRemoveMotionPostCallback           = nullptr;
-        mSaveMotionAssetInfoCallback        = nullptr;
-        mAdjustDefaultPlayBackInfoCallback  = nullptr;
-        mAdjustMotionCallback               = nullptr;
-        mLoadMotionSetCallback              = nullptr;
-        mWaveletCompressMotionCallback      = nullptr;
-        mKeyframeCompressMotionCallback     = nullptr;
-        mScaleMotionDataCallback            = nullptr;
         mMotionExtractionWindow             = nullptr;
         mMotionRetargetingWindow            = nullptr;
         mDirtyFilesCallback                 = nullptr;
-        mOutlinerCategoryCallback           = nullptr;
     }
 
 
@@ -264,33 +138,14 @@ namespace EMStudio
         ClearMotionEntries();
 
         // unregister the command callbacks and get rid of the memory
-        GetCommandManager()->RemoveCommandCallback(mImportMotionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mRemoveMotionPostCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAdjustDefaultPlayBackInfoCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mAdjustMotionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mLoadMotionSetCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mWaveletCompressMotionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mKeyframeCompressMotionCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mScaleMotionDataCallback, false);
-        GetCommandManager()->RemoveCommandCallback(mSaveMotionAssetInfoCallback, false);
-        delete mImportMotionCallback;
-        delete mRemoveMotionPostCallback;
-        delete mSaveMotionAssetInfoCallback;
-        delete mAdjustDefaultPlayBackInfoCallback;
-        delete mAdjustMotionCallback;
-        delete mLoadMotionSetCallback;
-        delete mWaveletCompressMotionCallback;
-        delete mKeyframeCompressMotionCallback;
-        delete mScaleMotionDataCallback;
+        for (auto callback : m_callbacks)
+        {
+            GetCommandManager()->RemoveCommandCallback(callback, true);
+        }
+        m_callbacks.clear();
 
         GetMainWindow()->GetDirtyFileManager()->RemoveCallback(mDirtyFilesCallback, false);
         delete mDirtyFilesCallback;
-
-        EMotionFX::GetEventManager().RemoveEventHandler(mEventHandler, true);
-
-        // unregister the outliner category
-        GetOutlinerManager()->UnregisterCategory("Motions");
-        delete mOutlinerCategoryCallback;
     }
 
 
@@ -316,24 +171,16 @@ namespace EMStudio
         //LogInfo("Initializing motion window.");
 
         // create and register the command callbacks only (only execute this code once for all plugins)
-        mImportMotionCallback               = new CommandImportMotionCallback(true);
-        mRemoveMotionPostCallback           = new CommandRemoveMotionPostCallback(false);
-        mSaveMotionAssetInfoCallback        = new CommandSaveMotionAssetInfoCallback(false);
-        mAdjustDefaultPlayBackInfoCallback  = new CommandAdjustDefaultPlayBackInfoCallback(false);
-        mAdjustMotionCallback               = new CommandAdjustMotionCallback(false);
-        mLoadMotionSetCallback              = new CommandLoadMotionSetCallback(false);
-        mKeyframeCompressMotionCallback     = new CommandKeyframeCompressMotionCallback(false);
-        mWaveletCompressMotionCallback      = new CommandWaveletCompressMotionCallback(false);
-        mScaleMotionDataCallback            = new CommandScaleMotionDataCallback(false);
-        GetCommandManager()->RegisterCommandCallback("ImportMotion", mImportMotionCallback);
-        GetCommandManager()->RegisterCommandCallback("RemoveMotion", mRemoveMotionPostCallback);
-        GetCommandManager()->RegisterCommandCallback("SaveMotionAssetInfo", mSaveMotionAssetInfoCallback);
-        GetCommandManager()->RegisterCommandCallback("AdjustDefaultPlayBackInfo", mAdjustDefaultPlayBackInfoCallback);
-        GetCommandManager()->RegisterCommandCallback("AdjustMotion", mAdjustMotionCallback);
-        GetCommandManager()->RegisterCommandCallback("LoadMotionSet", mLoadMotionSetCallback);
-        GetCommandManager()->RegisterCommandCallback("KeyframeCompressMotion", mKeyframeCompressMotionCallback);
-        GetCommandManager()->RegisterCommandCallback("WaveletCompressMotion", mWaveletCompressMotionCallback);
-        GetCommandManager()->RegisterCommandCallback("ScaleMotionData", mScaleMotionDataCallback);
+        GetCommandManager()->RegisterCommandCallback<CommandImportMotionCallback>("ImportMotion", m_callbacks, true);
+        GetCommandManager()->RegisterCommandCallback<CommandRemoveMotionPostCallback>("RemoveMotion", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandSaveMotionAssetInfoCallback>("SaveMotionAssetInfo", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandAdjustDefaultPlayBackInfoCallback>("AdjustDefaultPlayBackInfo", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandAdjustMotionCallback>("AdjustMotion", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandLoadMotionSetCallback>("LoadMotionSet", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandKeyframeCompressMotionCallback>("KeyframeCompressMotion", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandWaveletCompressMotionCallback>("WaveletCompressMotion", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandScaleMotionDataCallback>("ScaleMotionData", m_callbacks, false);
+        GetCommandManager()->RegisterCommandCallback<CommandSelectCallback>("Select", m_callbacks, false);
 
         QSplitter* splitterWidget = new QSplitter(mDock);
         splitterWidget->setOrientation(Qt::Horizontal);
@@ -370,7 +217,7 @@ namespace EMStudio
         mDialogStack->Add(mMotionRetargetingWindow, "Motion Retargeting");
 
         // connect the window activation signal to refresh if reactivated
-        connect(mDock, SIGNAL(visibilityChanged(bool)), this, SLOT(VisibilityChanged(bool)));
+        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &MotionWindowPlugin::VisibilityChanged);
 
         // update the new interface and return success
         UpdateInterface();
@@ -378,28 +225,6 @@ namespace EMStudio
         // initialize the dirty files callback
         mDirtyFilesCallback = new SaveDirtyMotionFilesCallback(this);
         GetMainWindow()->GetDirtyFileManager()->AddCallback(mDirtyFilesCallback);
-
-        // register the outliner category
-        mOutlinerCategoryCallback = new MotionsOutlinerCategoryCallback(this);
-        OutlinerCategory* outlinerCategory = GetOutlinerManager()->RegisterCategory("Motions", mOutlinerCategoryCallback);
-
-        // add each item in the outliner category
-        const uint32 numMotions = EMotionFX::GetMotionManager().GetNumMotions();
-        for (uint32 i = 0; i < numMotions; ++i)
-        {
-            EMotionFX::Motion* motion = EMotionFX::GetMotionManager().GetMotion(i);
-
-            if (motion->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
-            outlinerCategory->AddItem(motion->GetID(), motion);
-        }
-
-        // add the event handler
-        mEventHandler = aznew MotionWindowPluginEventHandler();
-        EMotionFX::GetEventManager().AddEventHandler(mEventHandler);
 
         return true;
     }
@@ -730,7 +555,7 @@ namespace EMStudio
         {
             return;
         }
-
+        /*
         if (mMotionRetargetingWindow->GetRenderMotionBindPose())
         {
             const CommandSystem::SelectionList& selection = CommandSystem::GetCommandManager()->GetCurrentSelection();
@@ -750,7 +575,11 @@ namespace EMStudio
                     if (motion->GetType() == EMotionFX::SkeletalMotion::TYPE_ID)
                     {
                         EMotionFX::SkeletalMotion* skeletalMotion = (EMotionFX::SkeletalMotion*)motion;
-                        skeletalMotion->CalcMotionBindPose(actor, mLocalMatrices, mGlobalMatrices);
+
+                        EMotionFX::AnimGraphPosePool& posePool = EMotionFX::GetEMotionFX().GetThreadData(0)->GetPosePool();
+                        EMotionFX::AnimGraphPose* pose = posePool.RequestPose(m_actorInstance);
+
+                        skeletalMotion->CalcMotionBindPose(actor, pose->GetPose());
 
                         // for all nodes in the actor
                         const uint32 numNodes = actorInstance->GetNumEnabledNodes();
@@ -763,21 +592,24 @@ namespace EMStudio
                             uint32 parentIndex = curNode->GetParentIndex();
                             if (parentIndex == MCORE_INVALIDINDEX32)
                             {
-                                AZ::Vector3 startPos = mGlobalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
+                                AZ::Vector3 startPos = mGlobalMatrices[curNode->GetNodeIndex()].GetTranslation();
                                 AZ::Vector3 endPos   = startPos + AZ::Vector3(0.0f, 3.0f, 0.0f);
                                 renderUtil->RenderLine(startPos, endPos, MCore::RGBAColor(0.0f, 1.0f, 1.0f));
                             }
                             else
                             {
-                                AZ::Vector3 startPos = mGlobalMatrices[ curNode->GetNodeIndex() ].GetTranslation();
-                                AZ::Vector3 endPos   = mGlobalMatrices[ parentIndex ].GetTranslation();
+                                AZ::Vector3 startPos = mGlobalMatrices[curNode->GetNodeIndex()].GetTranslation();
+                                AZ::Vector3 endPos   = mGlobalMatrices[parentIndex].GetTranslation();
                                 renderUtil->RenderLine(startPos, endPos, MCore::RGBAColor(0.0f, 1.0f, 1.0f));
                             }
                         }
+
+                        posePool.FreePose(pose);
                     }
                 }
             }
         }
+        */
     }
 
 
@@ -931,11 +763,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandImportMotion* importMotionCommand = static_cast<CommandSystem::CommandImportMotion*>(command);
-        EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(importMotionCommand->mOldMotionID);
-        if (motion)
-        {
-            GetOutlinerManager()->AddItemToCategory("Motions", motion->GetID(), motion);
-        }
         return CallbackAddMotionByID(importMotionCommand->mOldMotionID);
     }
 
@@ -954,7 +781,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandRemoveMotion* removeMotionCommand = static_cast<CommandSystem::CommandRemoveMotion*>(command);
-        GetOutlinerManager()->RemoveItemFromCategory("Motions", removeMotionCommand->mOldMotionID);
         return CallbackRemoveMotion(removeMotionCommand->mOldMotionID);
     }
 
@@ -971,7 +797,6 @@ namespace EMStudio
 
     bool MotionWindowPlugin::CommandSaveMotionAssetInfoCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
     {
-        GetOutlinerManager()->FireItemModifiedEvent();
         return ReInitMotionWindowPlugin();
     }
 
@@ -1010,7 +835,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
         return ReInitMotionWindowPlugin();
     }
 
@@ -1019,7 +843,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
         return ReInitMotionWindowPlugin();
     }
 
@@ -1047,6 +870,45 @@ namespace EMStudio
 
     bool MotionWindowPlugin::CommandAdjustDefaultPlayBackInfoCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)  { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateInterfaceMotionWindowPlugin(); }
     bool MotionWindowPlugin::CommandAdjustDefaultPlayBackInfoCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return UpdateInterfaceMotionWindowPlugin(); }
+
+
+    bool MotionWindowPlugin::CommandSelectCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
+    {
+        AZ_UNUSED(command);
+
+        if (CommandSystem::CheckIfHasMotionSelectionParameter(commandLine))
+        {
+            EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionWindowPlugin::CLASS_ID);
+            if (plugin == nullptr)
+            {
+                return false;
+            }
+
+            MotionWindowPlugin* motionWindowPlugin = static_cast<MotionWindowPlugin*>(plugin);
+            motionWindowPlugin->UpdateInterface();
+        }
+
+        return true;
+    }
+
+    bool MotionWindowPlugin::CommandSelectCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
+    {
+        AZ_UNUSED(command);
+
+        if (CommandSystem::CheckIfHasMotionSelectionParameter(commandLine))
+        {
+            EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionWindowPlugin::CLASS_ID);
+            if (plugin == nullptr)
+            {
+                return false;
+            }
+
+            MotionWindowPlugin* motionWindowPlugin = static_cast<MotionWindowPlugin*>(plugin);
+            motionWindowPlugin->UpdateInterface();
+        }
+
+        return true;
+    }
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionWindowPlugin.moc>

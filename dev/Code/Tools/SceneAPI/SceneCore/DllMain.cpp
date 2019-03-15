@@ -12,7 +12,7 @@
 
 #if !defined(AZ_MONOLITHIC_BUILD)
 
-#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Component/Entity.h>
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Module/Environment.h>
@@ -65,27 +65,29 @@ static AZ::EntityId g_behaviorsId;
 static AZ::SceneAPI::Import::ManifestImportRequestHandler* g_manifestImporter = nullptr;
 static AZStd::vector<AZ::ComponentDescriptor*> g_componentDescriptors;
 
-class EntityMonitor : public AZ::ComponentApplicationEventBus::Handler
+class EntityMonitor 
+    : public AZ::EntityBus::Handler
 {
 public:
     AZ_CLASS_ALLOCATOR(EntityMonitor, AZ::SystemAllocator, 0);
 
     EntityMonitor()
     {
-        BusConnect();
+        AZ::EntityBus::Handler::BusConnect(g_behaviorsId);
     }
 
     ~EntityMonitor()
     {
-        BusDisconnect();
+        AZ::EntityBus::Handler::BusDisconnect(g_behaviorsId);
     }
 
-    void OnEntityRemoved(const AZ::EntityId& entityId) override
+    void OnEntityDestruction(const AZ::EntityId& entityId) override
     {
         if (entityId == g_behaviorsId)
         {
             // Another part of the code has claimed and deleted this entity already.
             g_behaviors = nullptr;
+            AZ::EntityBus::Handler::BusDisconnect(g_behaviorsId);
             g_behaviorsId.SetInvalid();
         }
     }
@@ -100,10 +102,7 @@ extern "C" AZ_DLL_EXPORT void InitializeDynamicModule(void* env)
 
     AZ::Environment::Attach(static_cast<AZ::EnvironmentInstance>(env));
 
-    if (!g_entityMonitor)
-    {
-        g_entityMonitor = aznew EntityMonitor();
-    }
+
 
     // Explicitly creating this component early as this currently needs to be available to the 
     //      RC before Gems are loaded in order to know the file extension.
@@ -216,10 +215,22 @@ extern "C" AZ_DLL_EXPORT void Activate()
     g_behaviors = AZ::SceneAPI::SceneCore::EntityConstructor::BuildEntityRaw("Scene Behaviors", 
         AZ::SceneAPI::SceneCore::BehaviorComponent::TYPEINFO_Uuid());
     g_behaviorsId = g_behaviors->GetId();
+
+    AZ_Error("SceneCore", !g_entityMonitor, "The EntityMonitor has not been deactivated properly, cannot complete activation");
+    if (!g_entityMonitor)
+    {
+        g_entityMonitor = aznew EntityMonitor();
+    }
 }
 
 extern "C" AZ_DLL_EXPORT void Deactivate()
 {
+    if (g_entityMonitor)
+    {
+        delete g_entityMonitor;
+        g_entityMonitor = nullptr;
+    }
+
     if (g_behaviors)
     {
         g_behaviors->Deactivate();
@@ -243,6 +254,7 @@ extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
         context->EnableRemoveReflection();
         Reflect(context);
         context->DisableRemoveReflection();
+        context->CleanupModuleGenericClassInfo();
     }
 
     if (!g_componentDescriptors.empty())
@@ -260,12 +272,6 @@ extern "C" AZ_DLL_EXPORT void UninitializeDynamicModule()
         g_manifestImporter->Deactivate();
         delete g_manifestImporter;
         g_manifestImporter = nullptr;
-    }
-
-    if (g_entityMonitor)
-    {
-        delete g_entityMonitor;
-        g_entityMonitor = nullptr;
     }
 
     // This module does not own these allocators, but must clear its cached EnvironmentVariables

@@ -34,31 +34,43 @@ namespace EMotionFX
         MCORE_MEMORYOBJECTCATEGORY(EventInfo, EMFX_DEFAULT_ALIGNMENT, EMFX_MEMCATEGORY_EVENTS);
 
     public:
+        enum EventState
+        {
+            START,
+            ACTIVE,
+            END
+        };
+
         float           mTimeValue;         /**< The time value of the event, in seconds. */
-        uint32          mTypeID;            /**< The type ID of the event. */
-        AZStd::string*  mParameters;        /**< The parameter string */
-        AZStd::string*  mTypeString;        /**< The type string. */
         ActorInstance*  mActorInstance;     /**< The actor instance that triggered this event. */
         MotionInstance* mMotionInstance;    /**< The motion instance which triggered this event, can be nullptr. */
         AnimGraphNode*  mEmitter;           /**< The animgraph node which originally did emit this event. This parameter can be nullptr. */
-        MotionEvent*    mEvent;             /**< The event itself. */
+        const MotionEvent*    mEvent;       /**< The event itself. */
         float           mGlobalWeight;      /**< The global weight of the event. */
         float           mLocalWeight;       /**< The local weight of the event. */
-        bool            mIsEventStart;      /**< Is this the start of a ranged event? Ticked events will always have this set to true. */
+        EventState      m_eventState;      /**< Is this the start of a ranged event? Ticked events will always have this set to true. */
 
-        EventInfo()
+        bool IsEventStart() const
         {
-            mTimeValue          = 0.0f;
-            mTypeID             = MCORE_INVALIDINDEX32;
-            mParameters         = nullptr;
-            mTypeString         = nullptr;
-            mActorInstance      = nullptr;
-            mMotionInstance     = nullptr;
-            mEmitter            = nullptr;
-            mEvent              = nullptr;
-            mLocalWeight        = 1.0f;
-            mGlobalWeight       = 1.0f;
-            mIsEventStart       = true;
+            return m_eventState == EventState::START;
+        }
+
+        explicit EventInfo(
+                float timeValue = 0.0f,
+                ActorInstance* actorInstance = nullptr,
+                MotionInstance* motionInstance = nullptr,
+                MotionEvent* event = nullptr,
+                EventState eventState = START
+        )
+            : mTimeValue(timeValue)
+            , mActorInstance(actorInstance)
+            , mMotionInstance(motionInstance)
+            , mEmitter(nullptr)
+            , mEvent(event)
+            , mGlobalWeight(1.0f)
+            , mLocalWeight(1.0f)
+            , m_eventState(eventState)
+        {
         }
     };
 }   // namespace EMotionFX

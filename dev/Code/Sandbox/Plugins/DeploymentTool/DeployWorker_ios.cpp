@@ -199,6 +199,8 @@ StringOutcome DeployWorkerIos::Prepare()
 
 void DeployWorkerIos::StartDeploy()
 {
+    DeployTool::Notifications::Bus::Broadcast(&DeployTool::Notifications::DeployProcessStatusChange, "Deploying");
+
     // building the game automatically runs the packaging so we just need to "launch" the app
     if (m_deploymentConfig.m_buildGame)
     {

@@ -55,39 +55,39 @@ namespace SandboxEditor
     {
         // If a collection is not active, then show this error. Otherwise, collect it 
         // and show it with other occurs that occured in the operation.
-        OnMessage(message, &m_errors, MessageDisplayBehavior::ShowWhenNotCollecting);
-        return true;
+        return OnMessage(message, &m_errors, MessageDisplayBehavior::ShowWhenNotCollecting);
     }
 
     bool StartupTraceHandler::OnPreWarning(const char* /*window*/, const char* /*fileName*/, int /*line*/, const char* /*func*/, const char* message)
     {
         // Only track warnings if messages are being collected.
-        OnMessage(message, &m_warnings, MessageDisplayBehavior::OnlyCollect);
-        return true;
+        return OnMessage(message, &m_warnings, MessageDisplayBehavior::OnlyCollect);
     }
 
-    void StartupTraceHandler::OnMessage(
+    bool StartupTraceHandler::OnMessage(
         const char *message,
         AZStd::list<QString>* messageList,
         MessageDisplayBehavior messageDisplayBehavior)
     {
-        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
-
         if (m_isCollecting && messageList)
         {
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
             messageList->push_back(QString(message));
+            return true;
         }
-        else if (
-            (!m_isCollecting && messageDisplayBehavior == MessageDisplayBehavior::ShowWhenNotCollecting) ||
+
+        if ((!m_isCollecting && messageDisplayBehavior == MessageDisplayBehavior::ShowWhenNotCollecting) ||
             messageDisplayBehavior == MessageDisplayBehavior::AlwaysShow)
         {
             ShowMessageBox(message);
+            return true;
         }
+
+        return false;
     }
 
     void StartupTraceHandler::StartCollection()
     {
-        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
         ConnectToMessageBus();
         if (m_isCollecting)
         {
@@ -98,12 +98,42 @@ namespace SandboxEditor
 
     void StartupTraceHandler::EndCollectionAndShowCollectedErrors()
     {
-        AZ::SystemTickBus::QueueFunction([this]() 
+        AZStd::list<QString> cachedWarnings;
+        AZStd::list<QString> cachedErrors;
         {
             AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
             m_isCollecting = false;
-            ShowMessages(m_warnings, m_errors);
-            ClearMessages();
+            if (m_warnings.size() == 0 && m_errors.size() == 0)
+            {
+                return;
+            }
+            if (m_warnings.size() > 0)
+            {
+                cachedWarnings.splice(cachedWarnings.end(), m_warnings);
+            }
+            if (m_errors.size() > 0)
+            {
+                cachedErrors.splice(cachedErrors.end(), m_errors);
+            }
+        }
+
+        AZ::SystemTickBus::QueueFunction([cachedWarnings, cachedErrors]() 
+        {
+            // Parent to the main window, so that the error dialog doesn't
+            // show up as a separate window when alt-tabbing.
+            QWidget* mainWindow = nullptr;
+            AzToolsFramework::EditorRequests::Bus::BroadcastResult(
+                mainWindow,
+                &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
+
+            ErrorDialog errorDialog(mainWindow);
+            errorDialog.AddMessages(
+                SandboxEditor::ErrorDialog::MessageType::Warning,
+                cachedWarnings);
+            errorDialog.AddMessages(
+                SandboxEditor::ErrorDialog::MessageType::Error,
+                cachedErrors);
+            errorDialog.exec();
         });
     }
 
@@ -132,6 +162,7 @@ namespace SandboxEditor
     {
         AZ::Debug::TraceMessageBus::Handler::BusConnect();
     }
+
     void StartupTraceHandler::DisconnectFromMessageBus()
     {
         AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
@@ -140,40 +171,5 @@ namespace SandboxEditor
     bool StartupTraceHandler::IsConnectedToMessageBus() const
     {
         return AZ::Debug::TraceMessageBus::Handler::BusIsConnected();
-    }
-
-    void StartupTraceHandler::ClearMessages()
-    {
-        AZStd::lock_guard<AZStd::recursive_mutex> lock(m_mutex);
-        m_errors.clear();
-        m_warnings.clear();
-    }
-
-    void StartupTraceHandler::ShowMessages(
-        const AZStd::list<QString>& warnings,
-        const AZStd::list<QString>& errors
-        )
-    {
-        // If more than one error was found, or any warnings were found, display
-        // the errors and warnings in one dialog window.
-        if (errors.size() == 0 && warnings.size() == 0)
-        {
-            return;
-        }
-        // Parent to the main window, so that the error dialog doesn't
-        // show up as a separate window when alt-tabbing.
-        QWidget* mainWindow = nullptr;
-        AzToolsFramework::EditorRequests::Bus::BroadcastResult(
-            mainWindow,
-            &AzToolsFramework::EditorRequests::Bus::Events::GetMainWindow);
-
-        ErrorDialog errorDialog(mainWindow);
-        errorDialog.AddMessages(
-            SandboxEditor::ErrorDialog::MessageType::Error,
-            errors);
-        errorDialog.AddMessages(
-            SandboxEditor::ErrorDialog::MessageType::Warning,
-            warnings);
-        errorDialog.exec();
     }
 }

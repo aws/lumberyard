@@ -25,7 +25,7 @@ namespace EMotionFX
     {
         // setup the input ports
         InitInputPorts(1);
-        SetupInputPort("Vector", INPUTPORT_VECTOR, MCore::AttributeVector2::TYPE_ID, PORTID_INPUT_VECTOR);
+        SetupInputPortAsVector2("Vector", INPUTPORT_VECTOR, PORTID_INPUT_VECTOR);
 
         // setup the output ports
         InitOutputPorts(2);
@@ -73,13 +73,11 @@ namespace EMotionFX
         // update all inputs
         UpdateAllIncomingNodes(animGraphInstance, timePassedInSeconds);
 
-        // if there are no incoming connections, there is nothing to do
-        if (mConnections.size() == 0)
+        AZ::Vector2 value = AZ::Vector2::CreateZero();
+        if (!TryGetInputVector2(animGraphInstance, INPUTPORT_VECTOR, value))
         {
             return;
         }
-
-        AZ::Vector2 value = GetInputVector2(animGraphInstance, INPUTPORT_VECTOR)->GetValue();
         GetOutputFloat(animGraphInstance, OUTPUTPORT_X)->SetValue(value.GetX());
         GetOutputFloat(animGraphInstance, OUTPUTPORT_Y)->SetValue(value.GetY());
     }

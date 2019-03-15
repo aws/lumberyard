@@ -157,18 +157,18 @@ namespace AZ
             //!        e.g. android.app.NativeActivity ==> android/app/NativeActivity
             //! \param classRef A valid reference to a java class
             //! \return A copy of the class name
-            AZStd::string AZ_DEPRECATED(GetClassName(jclass classRef) const, "Use AZ::Android::JNI::GetClassName instead");
+            AZ_DEPRECATED(AZStd::string GetClassName(jclass classRef) const, "Use AZ::Android::JNI::GetClassName instead");
 
             //! \deprecated Use AZ::Android::JNI::GetSimpleClassName instead
             //! \brief Get just the name of the Java class from a Java class ref.
             //!        e.g. android.app.NativeActivity ==> NativeActivity
             //! \param classRef A valid reference to a java class
             //! \return A copy of the class name
-            AZStd::string AZ_DEPRECATED(GetSimpleClassName(jclass classRef) const, "Use AZ::Android::JNI::GetSimpleClassName instead");
+            AZ_DEPRECATED(AZStd::string GetSimpleClassName(jclass classRef) const, "Use AZ::Android::JNI::GetSimpleClassName instead");
 
             //! \deprecated This function is no longer available
             //! \brief Get the game project name from the Java string resources.
-            const char* AZ_DEPRECATED(GetGameProjectName() const, "This function is no longer available")
+            AZ_DEPRECATED(const char* GetGameProjectName() const, "This function is no longer available")
             {
                 AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetGameProjectName.");
                 return "";
@@ -177,7 +177,7 @@ namespace AZ
             //! \deprecated This function is no longer available
             //! \brief Get the root directory for external (or public) storage.
             //!        e.g. /storage/sdcard0/, /storage/self/primary/, etc.
-            const char* AZ_DEPRECATED(GetExternalStorageRoot() const, "This function is no longer available")
+            AZ_DEPRECATED(const char* GetExternalStorageRoot() const, "This function is no longer available")
             {
                 AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetExternalStorageRoot.");
                 return "";
@@ -187,7 +187,7 @@ namespace AZ
             //! \brief Retrieve a boolean resource from the android resources
             //! \param resourceName The name of the boolean resource.
             //! \return The boolean value of the resource.
-            bool AZ_DEPRECATED(GetBooleanResource(const char* resourceName) const, "This function is no longer available")
+            AZ_DEPRECATED(bool GetBooleanResource(const char* resourceName) const, "This function is no longer available")
             {
                 AZ_Assert(false, "Using unsupported function call to AZ::Android::AndroidEnv::GetBooleanResource.");
                 return false;
@@ -196,12 +196,12 @@ namespace AZ
             //! \deprecated Use AndroidEnv::GetAppPrivateStoragePath instead
             //! \brief Get the hidden internal storage, typically this is where the application is installed on the device.
             //!        e.g. /data/data/<package_name/files
-            const char* AZ_DEPRECATED(GetInternalStoragePath() const, "Use AndroidEnv::GetAppPrivateStoragePath instead") { return m_appPrivateStoragePath.c_str(); }
+            AZ_DEPRECATED(const char* GetInternalStoragePath() const, "Use AndroidEnv::GetAppPrivateStoragePath instead") { return m_appPrivateStoragePath.c_str(); }
 
             //! \deprecated Use AndroidEnv::GetAppPublicStoragePath instead
             //! \brief Get the application specific directory for external (or public) storage.
             //!        e.g. <public_storage>/Android/data/<package_name/files
-            const char* AZ_DEPRECATED(GetExternalStoragePath() const, "Use AndroidEnv::GetAppPublicStoragePath instead") { return m_appPublicStoragePath.c_str(); }
+            AZ_DEPRECATED(const char* GetExternalStoragePath() const, "Use AndroidEnv::GetAppPublicStoragePath instead") { return m_appPublicStoragePath.c_str(); }
 
 
         private:

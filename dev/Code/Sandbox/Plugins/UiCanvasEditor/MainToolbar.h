@@ -12,6 +12,7 @@
 #pragma once
 
 #include <QToolBar>
+#include <AzToolsFramework/UI/PropertyEditor/DHQSpinbox.hxx>
 
 class EditorWindow;
 class NewElementToolbarSection;
@@ -43,7 +44,7 @@ public:
         return m_canvasSizeToolbarSection.get();
     }
 
-    QLabel* GetZoomFactorLabel();
+    void SetZoomPercent(float zoomPercent);
 
 private:
 
@@ -51,5 +52,5 @@ private:
     std::unique_ptr<CoordinateSystemToolbarSection> m_coordinateSystemToolbarSection;
     std::unique_ptr<CanvasSizeToolbarSection> m_canvasSizeToolbarSection;
 
-    QLabel* m_zoomFactorLabel;
+    AzToolsFramework::DHQDoubleSpinbox* m_zoomFactorSpinBox;
 };

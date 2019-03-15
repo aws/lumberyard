@@ -373,7 +373,7 @@ SShaderBin* CShaderManBin::SaveBinShader(
     }
     else
     {
-        iLog->LogWarning("CShaderManBin::SaveBinShader: Cannot write shader to file '%s'.", nameFile);
+        iLog->LogWarning("WARN: CShaderManBin::SaveBinShader: Cannot write shader to file '%s'.", nameFile);
         pBin->m_bReadOnly = true;
     }
 
@@ -720,13 +720,13 @@ void CShaderManBin::mfGeneratePublicFXParams(CShader* pSH, CParserBin& Parser)
     }
 }
 
-SParamCacheInfo* CShaderManBin::GetParamInfo(SShaderBin* pBin, uint32 dwName, uint64 nMaskGenFX)
+SParamCacheInfo* CShaderManBin::GetParamInfo(SShaderBin* pBin, uint32 dwName, uint64 nMaskGenFX, uint64 maskGenStatic)
 {
     const int n = pBin->m_ParamsCache.size();
     for (int i = 0; i < n; i++)
     {
         SParamCacheInfo* pInf = &pBin->m_ParamsCache[i];
-        if (pInf->m_dwName == dwName && pInf->m_nMaskGenFX == nMaskGenFX)
+        if (pInf->m_dwName == dwName && pInf->m_nMaskGenFX == nMaskGenFX && pInf->m_maskGenStatic == maskGenStatic)
         {
             pBin->m_nCurParamsID = i;
             return pInf;
@@ -736,13 +736,13 @@ SParamCacheInfo* CShaderManBin::GetParamInfo(SShaderBin* pBin, uint32 dwName, ui
     return NULL;
 }
 
-bool CShaderManBin::SaveBinShaderLocalInfo(SShaderBin* pBin, uint32 dwName, uint64 nMaskGenFX, TArray<int32>& Funcs, std::vector<SFXParam>& Params, std::vector<SFXSampler>& Samplers, std::vector<SFXTexture>& Textures)
+bool CShaderManBin::SaveBinShaderLocalInfo(SShaderBin* pBin, uint32 dwName, uint64 nMaskGenFX, uint64 maskGenStatic, TArray<int32>& Funcs, std::vector<SFXParam>& Params, std::vector<SFXSampler>& Samplers, std::vector<SFXTexture>& Textures)
 {
-    if (GetParamInfo(pBin, dwName, nMaskGenFX))
+    if (GetParamInfo(pBin, dwName, nMaskGenFX, maskGenStatic))
     {
         return true;
     }
-    //return false;
+
     if (pBin->IsReadOnly() && !gEnv->IsEditor()) // if in the editor, allow params to be added in-memory, but not saved to disk
     {
         return false;
@@ -782,6 +782,7 @@ bool CShaderManBin::SaveBinShaderLocalInfo(SShaderBin* pBin, uint32 dwName, uint
     pBin->m_ParamsCache.push_back(SParamCacheInfo());
     SParamCacheInfo& pr = pBin->m_ParamsCache.back();
     pr.m_nMaskGenFX = nMaskGenFX;
+    pr.m_maskGenStatic = maskGenStatic;
     pr.m_dwName = dwName;
     pr.m_AffectedFuncs.assign(Funcs.begin(), Funcs.end());
     pr.m_AffectedParams.assign(EParams.begin(), EParams.end());
@@ -810,6 +811,7 @@ bool CShaderManBin::SaveBinShaderLocalInfo(SShaderBin* pBin, uint32 dwName, uint
     int32* pSamplers = ESamplers.size() ? &ESamplers[0] : NULL;
     int32* pTextures = ETextures.size() ? &ETextures[0] : NULL;
     sd.nMask = nMaskGenFX;
+    sd.nstaticMask = maskGenStatic;
     sd.nName = dwName;
     sd.nFuncs = Funcs.size();
     sd.nParams = EParams.size();
@@ -982,6 +984,7 @@ SShaderBin* CShaderManBin::LoadBinShader(AZ::IO::HandleType fpBin, const char* s
             SParamCacheInfo& prc = pBin->m_ParamsCache[n];
             prc.m_dwName = sd.nName;
             prc.m_nMaskGenFX = sd.nMask;
+            prc.m_maskGenStatic = sd.nstaticMask;
             prc.m_AffectedParams.resize(sd.nParams);
             prc.m_AffectedSamplers.resize(sd.nSamplers);
             prc.m_AffectedTextures.resize(sd.nTextures);
@@ -1294,7 +1297,7 @@ SShaderBin* CShaderManBin::GetBinShader(const char* szName, bool bInclude, uint3
                         CRenderer::CV_r_shadersAllowCompilation = 1;
                         CRenderer::CV_r_shadersasyncactivation = 0;
 
-                        gEnv->pLog->LogError("ERROR LOADING BIN SHADER - REACTIVATING SHADER COMPILATION !");
+                        gEnv->pLog->LogError("ERROR: LOADING BIN SHADER - REACTIVATING SHADER COMPILATION !");
                     }
                     else
                     {
@@ -1418,7 +1421,7 @@ SShaderBin* CShaderManBin::GetBinShader(const char* szName, bool bInclude, uint3
             {
                 matName = m_pCEF->m_pCurInputResources->m_szMaterialName;
             }
-            LogWarningEngineOnly("Error: Shader \"%s\" doesn't exist (used in material \"%s\")", nameFile, matName != 0 ? matName : "$unknown$");
+            iLog->LogWarning("WARN: Shader \"%s\" doesn't exist (used in material \"%s\")", nameFile, matName != 0 ? matName : "$unknown$");
         }
     }
 
@@ -1435,7 +1438,7 @@ SShaderBin* CShaderManBin::GetBinShader(const char* szName, bool bInclude, uint3
     return pSHB;
 }
 
-void CShaderManBin::AddGenMacroses(SShaderGen* shG, CParserBin& Parser, uint64 nMaskGen)
+void CShaderManBin::AddGenMacroses(SShaderGen* shG, CParserBin& Parser, uint64 nMaskGen, bool ignoreShaderGenMask /*=false*/)
 {
     if (!nMaskGen || !shG)
     {
@@ -1447,7 +1450,7 @@ void CShaderManBin::AddGenMacroses(SShaderGen* shG, CParserBin& Parser, uint64 n
     {
         if (shG->m_BitMask[i]->m_Mask & nMaskGen)
         {
-            Parser.AddMacro(shG->m_BitMask[i]->m_dwToken, &dwMacro, 1, shG->m_BitMask[i]->m_Mask, Parser.m_Macros[1]);
+            Parser.AddMacro(shG->m_BitMask[i]->m_dwToken, &dwMacro, 1, ignoreShaderGenMask ? 0 : shG->m_BitMask[i]->m_Mask, Parser.m_Macros[1]);
         }
     }
 }
@@ -3654,7 +3657,7 @@ bool CShaderManBin::ParseBinFX_Technique_Pass_GenerateShaderData(CParserBin& Par
 
     SCodeFragment* pFunc = &Parser.m_CodeFragments[nNum];
     SShaderBin* pBin = Parser.m_pCurBinShader;
-    SParamCacheInfo* pCache = GetParamInfo(pBin, pFunc->m_dwName, Parser.m_pCurShader->m_nMaskGenFX);
+    SParamCacheInfo* pCache = GetParamInfo(pBin, pFunc->m_dwName, Parser.m_pCurShader->m_nMaskGenFX, Parser.m_pCurShader->m_maskGenStatic);
     if (pCache)
     {
         AffectedFragments.SetUse(0);
@@ -3812,7 +3815,7 @@ bool CShaderManBin::ParseBinFX_Technique_Pass_GenerateShaderData(CParserBin& Par
             }
             if (CRenderer::CV_r_shadersAllowCompilation)
             {
-                SaveBinShaderLocalInfo(pBin, pFunc->m_dwName, Parser.m_pCurShader->m_nMaskGenFX, AffectedFragments, AffectedParams, AffectedSamplers, AffectedTextures);
+                SaveBinShaderLocalInfo(pBin, pFunc->m_dwName, Parser.m_pCurShader->m_nMaskGenFX, Parser.m_pCurShader->m_maskGenStatic, AffectedFragments, AffectedParams, AffectedSamplers, AffectedTextures);
             }
         }
         else
@@ -4908,6 +4911,12 @@ bool CShaderManBin::ParseBinFX(SShaderBin* pBin, CShader* ef, uint64 nMaskGen)
         AddGenMacroses(efGen->m_ShaderGenParams, Parser, nMaskGen);
     }
 
+    if (ef->m_ShaderGenStaticParams)
+    {
+        // Just add the defines and not the masks because they could clash with the gen params masks.
+        AddGenMacroses(ef->m_ShaderGenStaticParams, Parser, ef->m_maskGenStatic, true);
+    }
+
     pBin->Lock();
     Parser.Preprocess(0, pBin->m_Tokens, &pBin->m_TokenTable);
     ef->m_CRC32 = pBin->m_CRC32;
@@ -4916,7 +4925,7 @@ bool CShaderManBin::ParseBinFX(SShaderBin* pBin, CShader* ef, uint64 nMaskGen)
 #endif
 
 #if defined(SHADER_NO_SOURCES)
-    iLog->Log("ERROR: Couldn't find binary shader '%s' (0x%x)", ef->GetName(), ef->m_nMaskGenFX);
+    iLog->LogError("ERROR: Couldn't find binary shader '%s' (0x%x)", ef->GetName(), ef->m_nMaskGenFX);
     return false;
 #else
     SParserFrame Frame(0, (Parser.m_Tokens.size() > 0 ? Parser.m_Tokens.size() - 1 : 0));
@@ -5509,7 +5518,7 @@ SShaderTexSlots* CShaderManBin::GetTextureSlots(CParserBin& Parser, SShaderBin* 
             uint32 dwEntryFuncName = Parser.GetCRC32(ef->m_HWTechniques[nTech]->m_Passes[nPassIter].m_PShader->m_EntryFunc);
 
             // get the cached info for the entry func
-            SParamCacheInfo* pCache = GetParamInfo(pBin, dwEntryFuncName, ef->m_nMaskGenFX);
+            SParamCacheInfo* pCache = GetParamInfo(pBin, dwEntryFuncName, ef->m_nMaskGenFX, ef->m_maskGenStatic);
 
             if (pCache)
             {
@@ -5906,7 +5915,7 @@ void CShaderMan::mfPostLoadFX(CShader* ef, std::vector<SShaderTechParseParams>& 
             {
                 if (hw->m_NameStr == ps->techName[n])
                 {
-                    iLog->LogWarning("WARNING: technique '%s' refers to itself as the next technique (ignored)", hw->m_NameStr.c_str());
+                    iLog->LogWarning("WARN: technique '%s' refers to itself as the next technique (ignored)", hw->m_NameStr.c_str());
                 }
                 else
                 {
@@ -5922,7 +5931,7 @@ void CShaderMan::mfPostLoadFX(CShader* ef, std::vector<SShaderTechParseParams>& 
                     }
                     if (j == ef->m_HWTechniques.Num())
                     {
-                        iLog->LogWarning("WARNING: couldn't find technique '%s' in the sequence for technique '%s' (ignored)", ps->techName[n].c_str(), hw->m_NameStr.c_str());
+                        iLog->LogWarning("WARN: couldn't find technique '%s' in the sequence for technique '%s' (ignored)", ps->techName[n].c_str(), hw->m_NameStr.c_str());
                     }
                 }
             }
@@ -6358,6 +6367,14 @@ CTexture* CShaderMan::mfParseFXTechnique_LoadShaderTexture (STexSamplerRT* smp, 
     {
         return NULL;
     }
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // store the CRC for this sampler's texture name for fast lookup
+    // this is particularly useful for shared engine textures
+    CCryNameTSCRC crc(szName);
+    smp->m_nCrc = crc.get();
+#endif // #if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     if (szName[0] == '$')
     {
         tp = mfCheckTemplateTexName(szName, (ETEX_Type)smp->m_eTexType);

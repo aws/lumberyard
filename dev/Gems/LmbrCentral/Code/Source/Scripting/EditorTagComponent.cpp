@@ -43,7 +43,8 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Tag.png")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                         ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-tag.html")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorTagComponent::m_tags, "Tags", "The tags that will be on this entity by default");
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorTagComponent::m_tags, "Tags", "The tags that will be on this entity by default")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorTagComponent::OnTagChanged);
             }
         }
     }
@@ -61,23 +62,17 @@ namespace LmbrCentral
         if (!HasTag(tag))
         {
             m_tags.push_back(tag);
-            EBUS_EVENT_ID(GetEntityId(), TagComponentNotificationsBus, OnTagAdded, Tag(tag));
-            EBUS_EVENT_ID(Tag(tag), TagGlobalNotificationBus, OnEntityTagAdded, GetEntityId());
-            TagGlobalRequestBus::MultiHandler::BusConnect(Tag(tag));
+            ActivateTag(tag);
         }
     }
 
-    void EditorTagComponent::RemoveTag(const  char* tag)
+    void EditorTagComponent::RemoveTag(const char* tag)
     {
-        AZStd::size_t prevSize = m_tags.size();
-        m_tags.erase(AZStd::remove_if(m_tags.begin(), m_tags.end(), [tag](const AZStd::string& target) { return target == tag; }));
-        if (m_tags.size() != prevSize)
+        AZStd::remove_if(m_tags.begin(), m_tags.end(), [&tag](const AZStd::string& target) { return target == tag; });
+        if (AZStd::find(m_activeTags.begin(), m_activeTags.end(), tag) != m_activeTags.end())
         {
-            EBUS_EVENT_ID(GetEntityId(), TagComponentNotificationsBus, OnTagRemoved, Tag(tag));
-            EBUS_EVENT_ID(Tag(tag), TagGlobalNotificationBus, OnEntityTagRemoved, GetEntityId());
-            TagGlobalRequestBus::MultiHandler::BusDisconnect(Tag(tag));
+            DeactivateTag(tag);
         }
-
     }
     //////////////////////////////////////////////////////////////////////////
 
@@ -87,25 +82,15 @@ namespace LmbrCentral
     void EditorTagComponent::Activate()
     {
         EditorComponentBase::Activate();
-
-        for (const AZStd::string& tag : m_tags)
-        {
-            TagGlobalRequestBus::MultiHandler::BusConnect(Tag(tag.c_str()));
-            EBUS_EVENT_ID(Tag(tag.c_str()), TagGlobalNotificationBus, OnEntityTagAdded, GetEntityId());
-        }
+        ActivateTags();
         EditorTagComponentRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorTagComponent::Deactivate()
     {
-        EditorComponentBase::Deactivate();
-
         EditorTagComponentRequestBus::Handler::BusDisconnect();
-        for (const AZStd::string& tag : m_tags)
-        {
-            TagGlobalRequestBus::MultiHandler::BusDisconnect(Tag(tag.c_str()));
-            EBUS_EVENT_ID(Tag(tag.c_str()), TagGlobalNotificationBus, OnEntityTagRemoved, GetEntityId());
-        }
+        DeactivateTags();
+        EditorComponentBase::Deactivate();
     }
 
     //=========================================================================
@@ -122,6 +107,52 @@ namespace LmbrCentral
             }
             tagComponent->EditorSetTags(AZStd::move(newTagList));
         }
+    }
+
+    void EditorTagComponent::ActivateTag(const char* tagName)
+    { 
+        Tag tag(tagName);
+        const AZ::EntityId entityId = GetEntityId();
+        m_activeTags.push_back(tagName);
+
+        TagComponentNotificationsBus::Event(entityId, &TagComponentNotificationsBus::Events::OnTagAdded, tag);
+        TagGlobalNotificationBus::Event(tag, &TagGlobalNotificationBus::Events::OnEntityTagAdded, entityId);
+        TagGlobalRequestBus::MultiHandler::BusConnect(tag);
+    }
+
+    void EditorTagComponent::DeactivateTag(const char* tagName)
+    {
+        Tag tag(tagName);
+        const AZ::EntityId entityId = GetEntityId();
+
+        TagGlobalRequestBus::MultiHandler::BusDisconnect(tag);
+        TagGlobalNotificationBus::Event(tag, &TagGlobalNotificationBus::Events::OnEntityTagRemoved, entityId);
+        TagComponentNotificationsBus::Event(entityId, &TagComponentNotificationsBus::Events::OnTagRemoved, tag);
+
+        AZStd::remove_if(m_activeTags.begin(), m_activeTags.end(), [&tagName](const AZStd::string& target) { return target == tagName; });
+    }
+
+    void EditorTagComponent::ActivateTags()
+    {
+        for (const AZStd::string& tag : m_tags)
+        {
+            ActivateTag(tag.c_str());
+        }
+    }
+
+    void EditorTagComponent::DeactivateTags()
+    {
+        EditorTags tagsToDeactivate(AZStd::move(m_activeTags));
+        for (const AZStd::string& tag : tagsToDeactivate)
+        {
+            DeactivateTag(tag.c_str());
+        }
+    }
+
+    void EditorTagComponent::OnTagChanged()
+    {
+        DeactivateTags();
+        ActivateTags();
     }
 
 } // namespace LmbrCentral

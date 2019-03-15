@@ -91,6 +91,7 @@ namespace AzToolsFramework
         bool EntityIdsFromMimeData(const QMimeData &mimeData, AzToolsFramework::EditorEntityIdContainer* entityIdListContainer = nullptr) const;
         void InitObjectPickMode();
         void CancelObjectPickMode();
+        AzFramework::EntityContextId GetPickModeEntityContextId();
 
         QString BuildTooltip();
 

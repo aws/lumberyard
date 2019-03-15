@@ -186,7 +186,10 @@ CShaderResources::~CShaderResources()
 
 CShaderResources::CShaderResources()
 {
+    // Only do expensive DX12 resource set building for PC DX12
+#if defined(CRY_USE_DX12)
     m_pipelineStateCache = AZStd::make_shared<CGraphicsPipelineStateLocalCache>();
+#endif
     Reset();
 }
 
@@ -195,7 +198,10 @@ CShaderResources::CShaderResources(SInputShaderResources* pSrc)
     assert(pSrc);
     PREFAST_ASSUME(pSrc);
 
+    // Only do expensive DX12 resource set building for PC DX12
+#if defined(CRY_USE_DX12)
     m_pipelineStateCache = AZStd::make_shared<CGraphicsPipelineStateLocalCache>();
+#endif
     Reset();
 
     if (!pSrc)
@@ -215,16 +221,15 @@ CShaderResources::CShaderResources(SInputShaderResources* pSrc)
         *m_pDeformInfo = pSrc->m_DeformInfo;
     }
 
-    for (const auto& it : pSrc->m_TexturesResourcesMap)
+    for (auto it = pSrc->m_TexturesResourcesMap.begin(), end = pSrc->m_TexturesResourcesMap.end(); it != end; ++it)
     {
-        const SEfResTexture& texture = it.second;
+        const SEfResTexture& texture = it->second;
         // Omit any resources with no texture present
         if (!texture.m_Name.empty() || texture.m_Sampler.m_pTex)
         {
-            m_TexturesResourcesMap[it.first] = texture;
+            m_TexturesResourcesMap[it->first] = texture;
         }
     }
-    
 
     SetInputLM(pSrc->m_LMaterial);
 }
@@ -694,6 +699,8 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
 
         m_ConstantBuffer->UpdateBuffer(&m_Constants[0], m_Constants.size() * sizeof(Vec4));
 
+    // Only do expensive DX12 resource set building for PC DX12
+#if defined(CRY_USE_DX12)
         if (!m_pCompiledResourceSet)
         {
             m_pCompiledResourceSet = CDeviceObjectFactory::GetInstance().CreateResourceSet();
@@ -702,6 +709,7 @@ void CShaderResources::Rebuild(IShader* abstractShader, AzRHI::ConstantBufferUsa
         m_pCompiledResourceSet->Clear();
         m_pCompiledResourceSet->Fill(shader, this, EShaderStage_AllWithoutCompute);
         m_pCompiledResourceSet->Build();
+#endif
     }
 }
 

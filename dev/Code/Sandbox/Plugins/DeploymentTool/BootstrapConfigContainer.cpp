@@ -20,6 +20,8 @@
 namespace
 {
     const char* bootstrapFilePath = "bootstrap.cfg";
+
+    const char* assetsKey = "assets";
     const char* gameFolderKey = "sys_game_folder";
     const char* remoteFileSystemKey = "remote_filesystem";
     const char* remoteIPKey = "remote_ip";
@@ -77,13 +79,64 @@ StringOutcome BootstrapConfigContainer::ApplyConfiguration(const DeploymentConfi
         case PlatformOptions::iOS:
             SetBool(iosConnectToRemoteKey, deploymentConfig.m_shaderCompilerUseAP);
             break;
-    #endif
+    #endif // defined(AZ_PLATFORM_APPLE_OSX)
 
         default:
             break;
     }
 
     return Write();
+}
+
+AZStd::string BootstrapConfigContainer::GetHostAssetsType() const
+{
+    AZStd::string assetsType = GetString(assetsKey);
+
+#if defined(AZ_PLATFORM_APPLE_OSX)
+    AZStd::string platfromSpecificAssetKey = AZStd::move(AZStd::string::format("osx_%s", assetsKey));
+
+    AZStd::string platformAssets = GetString(platfromSpecificAssetKey);
+    if (!platformAssets.empty())
+    {
+        assetsType = AZStd::move(platformAssets);
+    }
+#endif // defined(AZ_PLATFORM_APPLE_OSX)
+
+    return assetsType;
+}
+
+AZStd::string BootstrapConfigContainer::GetAssetsTypeForPlatform(PlatformOptions platform) const
+{
+    AZStd::string assetsType = GetString(assetsKey);
+
+    AZStd::string platfromSpecificAssetKey;
+    switch (platform)
+    {
+        case PlatformOptions::Android_ARMv7:
+        case PlatformOptions::Android_ARMv8:
+            platfromSpecificAssetKey = AZStd::move(AZStd::string::format("android_%s", assetsKey));
+            break;
+
+    #if defined(AZ_PLATFORM_APPLE_OSX)
+        case PlatformOptions::iOS:
+            platfromSpecificAssetKey = AZStd::move(AZStd::string::format("ios_%s", assetsKey));
+            break;
+    #endif // defined(AZ_PLATFORM_APPLE_OSX)
+
+        default:
+            break;
+    }
+
+    if (!platfromSpecificAssetKey.empty())
+    {
+        AZStd::string platformAssets = GetString(platfromSpecificAssetKey);
+        if (!platformAssets.empty())
+        {
+            assetsType = AZStd::move(platformAssets);
+        }
+    }
+
+    return assetsType;
 }
 
 AZStd::string BootstrapConfigContainer::GetGameFolder() const

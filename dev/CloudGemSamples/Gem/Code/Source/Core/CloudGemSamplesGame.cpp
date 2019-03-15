@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #include "StdAfx.h"
 #include "Game/Actor.h"
@@ -236,7 +247,11 @@ LYGame::Platform CloudGemSamplesGame::GetPlatform() const
 #elif defined(WIN32) || defined(WIN64) || defined(APPLE) || defined(LINUX)
     platform = ePlatform_PC;
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CloudGemSamplesGame_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CloudGemSamplesGame_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CloudGemSamplesGame_cpp_provo.inl"
+    #endif
 #endif
 
     return platform;

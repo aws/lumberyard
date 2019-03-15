@@ -17,7 +17,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzFramework/Physics/PhysicsComponentBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
-#include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 #include <LmbrCentral/Shape/SplineComponentBus.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
 #include <LmbrCentral/Shape/TubeShapeComponentBus.h>
@@ -204,7 +204,7 @@ namespace LmbrCentral
         AZ::Aabb combinedAabb = AZ::Aabb::CreateNull();
         AZ::Aabb componentAabb = AZ::Aabb::CreateNull();
 
-        MeshComponentRequestBus::EventResult(componentAabb, entityId, &MeshComponentRequests::GetWorldBounds);
+        LmbrCentral::RenderBoundsRequestBus::EventResult(componentAabb, entityId, &LmbrCentral::RenderBoundsRequests::GetWorldBounds);
         combinedAabb.AddAabb(componentAabb);
 
         ShapeComponentRequestsBus::EventResult(componentAabb, entityId, &ShapeComponentRequestsBus::Events::GetEncompassingAabb);

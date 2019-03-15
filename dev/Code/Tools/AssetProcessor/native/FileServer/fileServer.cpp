@@ -397,7 +397,7 @@ void FileServer::ProcessReadRequest(unsigned int connId, unsigned int, unsigned 
     bool failOnFewerRead = request.m_failOnFewerRead;
 
     FileReadResponse response;
-    response.m_data.resize(request.m_bytesToRead);
+    response.m_data.resize_no_construct(request.m_bytesToRead);
     uint64_t bytesRead = 0;
     auto fileIO = m_fileIOs[connId];
     AZStd::string moreInfo = AZStd::string::format("%llu bytes", size);

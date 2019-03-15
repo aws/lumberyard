@@ -35,25 +35,43 @@ namespace RoadsAndRivers
 
         return *this;
     }
+	
+	bool Road::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        // conversion from version 1 to version 2:
+        // splines created with v1 should set m_addOverlapBetweenSectors to true
+        // new splines created with v2 and beyond will default m_addOverlapBetweenSectors to false
+        if (classElement.GetVersion() <= 1)
+        {
+            classElement.AddElementWithData(context, "AddOverlapBetweenSectors", true);
+        }
+
+        return true;
+    }
 
     void Road::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<Road, SplineGeometry>()
-                ->Version(1)
+                ->Version(2, &VersionConverter)
                 ->Field("Material", &Road::m_material)
-                ->Field("IgnoreTerrainHoles", &Road::m_ignoreTerrainHoles);
+                ->Field("IgnoreTerrainHoles", &Road::m_ignoreTerrainHoles)
+                ->Field("AddOverlapBetweenSectors", &Road::m_addOverlapBetweenSectors);
 
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<Road>("Road", "Road data")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &Road::m_material, "Road material", "Specify the road material")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::MaterialPropertyChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &Road::m_ignoreTerrainHoles, "Ignore terrain holes", "")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::RenderingPropertyModified);
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Road::m_material, "Road material", "Specify the road material")
+                            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::MaterialPropertyChanged)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Road::m_ignoreTerrainHoles, "Ignore terrain holes", "")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::RenderingPropertyModified)
+                    ->ClassElement(AZ::Edit::ClassElements::Group, "Rendering")
+                        ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Road::m_addOverlapBetweenSectors, "Add Overlap Between Sectors", "Adds overlap between sectors when the spline geometry is split into multiple meshes. Can be used to cover small gaps between sectors, but typically results in other artifacts caused by the overlap, so disabled by default.")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::GeneralPropertyModified)
+                    ;
             }
         }
 
@@ -227,22 +245,33 @@ namespace RoadsAndRivers
                 vertices.push_back(geometrySectors[startSecId + i].points[1]);
             }
 
-            auto& lastSector = geometrySectors[startSecId + sectorsNum - 1];
+            auto& lastSector = geometrySectors[startSecId + sectorsNum - 1];            
 
-            // Extend final boundary to cover holes in roads caused by f16 meshes.
-            // Overlapping the roads slightly seems to be the nicest way to fix the issue
-            auto sectorLastOffset2 = lastSector.points[2] - lastSector.points[0];
-            auto sectorLastOffset3 = lastSector.points[3] - lastSector.points[1];
+            if (m_addOverlapBetweenSectors)
+            {
+                newRenderNode.GetRenderNode()->m_addOverlapBetweenSectors = true;
 
-            sectorLastOffset2.Normalize();
-            sectorLastOffset3.Normalize();
+                // Extend final boundary to cover holes in roads caused by f16 meshes.
+                // Overlapping the roads slightly seems to be the nicest way to fix the issue
+                auto sectorLastOffset2 = lastSector.points[2] - lastSector.points[0];
+                auto sectorLastOffset3 = lastSector.points[3] - lastSector.points[1];
 
-            const float sectorLastOffset = 0.075f;
-            sectorLastOffset2 *= sectorLastOffset;
-            sectorLastOffset3 *= sectorLastOffset;
+                sectorLastOffset2.Normalize();
+                sectorLastOffset3.Normalize();
 
-            vertices.push_back(lastSector.points[2] + sectorLastOffset2);
-            vertices.push_back(lastSector.points[3] + sectorLastOffset3);
+                const float sectorLastOffset = 0.075f;
+                sectorLastOffset2 *= sectorLastOffset;
+                sectorLastOffset3 *= sectorLastOffset;
+                vertices.push_back(lastSector.points[2] + sectorLastOffset2);
+                vertices.push_back(lastSector.points[3] + sectorLastOffset3);
+            }
+            else 
+            {
+                newRenderNode.GetRenderNode()->m_addOverlapBetweenSectors = false;
+
+                vertices.push_back(lastSector.points[2]);
+                vertices.push_back(lastSector.points[3]);
+            }
 
             AZ_Assert((vertices.size() % 2) == 0, "Road mesh generation failed; Wrong vertices number");
 

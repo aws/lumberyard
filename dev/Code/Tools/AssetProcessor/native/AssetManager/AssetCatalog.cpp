@@ -74,11 +74,10 @@ namespace AssetProcessor
             AZ_Error("AssetCatalog", false, "Failed to connect to sqlite database");
         }
 
-        BuildRegistry();
-        m_registryBuiltOnce = true;
         AssetRegistryRequestBus::Handler::BusConnect();
         AzToolsFramework::AssetSystemRequestBus::Handler::BusConnect();
         AzToolsFramework::ToolsAssetSystemBus::Handler::BusConnect();
+        AZ::Data::AssetCatalogRequestBus::Handler::BusConnect();
     }
 
     AssetCatalog::~AssetCatalog()
@@ -86,6 +85,7 @@ namespace AssetProcessor
         AzToolsFramework::ToolsAssetSystemBus::Handler::BusDisconnect();
         AzToolsFramework::AssetSystemRequestBus::Handler::BusDisconnect();
         AssetRegistryRequestBus::Handler::BusDisconnect();
+        AZ::Data::AssetCatalogRequestBus::Handler::BusDisconnect();
         SaveRegistry_Impl();
     }
 
@@ -293,6 +293,7 @@ namespace AssetProcessor
     void AssetCatalog::BuildRegistry()
     {
         m_catalogIsDirty = true;
+        m_registryBuiltOnce = true;
 
         for (QString platform : m_platforms)
         {
@@ -639,6 +640,67 @@ namespace AssetProcessor
             }
         }
         return true;
+    }
+
+    bool AssetCatalog::IsAssetPlatformEnabled(const char* platform)
+    {
+        const AZStd::vector<AssetBuilderSDK::PlatformInfo>& enabledPlatforms = m_platformConfig->GetEnabledPlatforms();
+        for (const AssetBuilderSDK::PlatformInfo& platformInfo : enabledPlatforms)
+        {
+            if (platformInfo.m_identifier == platform)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    int AssetCatalog::GetPendingAssetsForPlatform(const char* platform)
+    {
+        AZ_Assert(false, "Call to unsupported Asset Processor function GetPendingAssetsForPlatform on AssetCatalog");
+        return -1;
+    }
+
+    AZStd::string AssetCatalog::GetAssetPathById(const AZ::Data::AssetId& id)
+    {
+        return GetAssetInfoById(id).m_relativePath;
+        
+    }
+
+    AZ::Data::AssetId AssetCatalog::GetAssetIdByPath(const char* path, const AZ::Data::AssetType& typeToRegister, bool autoRegisterIfNotFound)
+    {
+        AZ_UNUSED(autoRegisterIfNotFound);
+        AZ_Assert(autoRegisterIfNotFound == false, "Auto registration is invalid during asset processing.");
+        AZ_UNUSED(typeToRegister);
+        AZ_Assert(typeToRegister == AZ::Data::s_invalidAssetType, "Can not register types during asset processing.");
+        AZStd::string relProductPath;
+        GetRelativeProductPathFromFullSourceOrProductPath(path, relProductPath);
+        QString tempPlatformName;
+        
+        // Search the current platform registry first if enabled otherwise search the first registry
+        if (m_platforms.contains(AzToolsFramework::AssetSystem::GetHostAssetPlatform()))
+        {
+            tempPlatformName = QString::fromUtf8(AzToolsFramework::AssetSystem::GetHostAssetPlatform());
+        }
+        else
+        {
+            tempPlatformName = m_platforms[0];
+        }
+        AZ::Data::AssetId assetId;
+        {
+            QMutexLocker locker(&m_registriesMutex);
+            assetId = m_registries[tempPlatformName].GetAssetIdByPath(relProductPath.c_str());
+        }
+        return assetId;
+    }
+
+    AZ::Data::AssetInfo AssetCatalog::GetAssetInfoById(const AZ::Data::AssetId& id)
+    {
+        AZ::Data::AssetType assetType;
+        AZ::Data::AssetInfo assetInfo;
+        AZStd::string rootFilePath;
+        GetAssetInfoById(id, assetType, assetInfo, rootFilePath);
+        return assetInfo;
     }
 
     bool ConvertDatabaseProductPathToProductFileName(QString dbPath, QString& productFileName)

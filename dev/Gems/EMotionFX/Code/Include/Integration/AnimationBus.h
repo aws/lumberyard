@@ -15,7 +15,10 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Component/Entity.h>
 #include <AzCore/std/containers/array.h>
+#include <AzFramework/Physics/World.h>
+
 
 namespace EMotionFX
 {
@@ -34,7 +37,6 @@ namespace EMotionFX
         public:
             static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
             static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-            // Public functions
         };
         using SystemRequestBus = AZ::EBus<SystemRequests>;
 
@@ -165,5 +167,50 @@ namespace EMotionFX
             virtual void OnStateTransitionEnd(const char* /*fromState*/, const char* /*toState*/) {}
         };
         using ActorNotificationBus = AZ::EBus<ActorNotifications>;
+
+
+        /**
+         * The raycast request bus, which EMotion FX calls in order to perform ray cast tests.
+         * This allows you to perform custom filtering.
+         */
+        class RaycastRequests : public AZ::EBusTraits
+        {
+        public:
+            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+            enum class UsecaseHint : AZ::u32
+            {
+                Generic,    /**< A generic raycast, so a non-specific use case. */
+                FootPlant   /**< We are using this for foot planting. */
+            };
+
+            struct RaycastRequest
+            {
+                AZ::Vector3 m_start;        /**< The start position of the ray in world space. */
+                AZ::Vector3 m_direction;    /**< The direction vector (has to be normalized). */
+                float       m_distance;     /**< The maximum distance (has to be positive and larger than zero). */
+                Physics::QueryType  m_queryType     = Physics::QueryType::StaticAndDynamic;
+                UsecaseHint         m_hint          = UsecaseHint::Generic; /**< The use case hint. */
+            };
+
+            struct RaycastResult
+            {
+                AZ::Vector3 m_position      = AZ::Vector3::CreateZero();        /**< The intersection point. */
+                AZ::Vector3 m_normal        = AZ::Vector3(0.0f, 0.0f, 1.0f);    /**< The normal at the intersection point. */
+                bool        m_intersected   = false;  /**< Did we intersect? In case this is false, the m_position and m_normal should be ignored. */
+            };
+ 
+            /** 
+             * Perform a raycast to try to find the intersecion point with the world.
+             * Your game should implement this.
+             * @param entityId The entity that is requesting this raycast. This entity will have an Actor component on it.
+             * @param rayRequest The ray information, containing the start point, direction and length of the ray.
+             * @result The resulting intersection, if there is any. If there is none the m_intersected member of the RaycastResult object returned will be set to false.
+             */
+            virtual RaycastResult Raycast(AZ::EntityId entityId, const RaycastRequest& rayRequest) = 0;
+        }; 
+        using RaycastRequestBus = AZ::EBus<RaycastRequests>;
+
     } // namespace Integration
 } // namespace EMotionFX

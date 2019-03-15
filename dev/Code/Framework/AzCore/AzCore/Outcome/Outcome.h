@@ -12,6 +12,7 @@
 #pragma once
 
 #include "AzCore/Outcome/Internal/OutcomeStorage.h"
+#include "AzCore/RTTI/TypeInfo.h"
 
 namespace AZ
 {
@@ -83,6 +84,8 @@ namespace AZ
     class Outcome
     {
     public:
+        AZ_TYPE_INFO(Outcome, "{C1DB96E5-922A-4387-B658-B4BE7FB94EA0}", ValueT, ErrorT)
+        
         using ValueType = ValueT;
         using ErrorType = ErrorT;
 
@@ -91,8 +94,11 @@ namespace AZ
         using FailureType = FailureValue<ErrorType>;
 
     public:
-        //! Default construction is not allowed; Outcome must be either in success state or failure state
-        Outcome() = delete;
+        /**
+        Default construction is not allowed only allowed to support generic interactions with Outcome objects of all template argumetns; user
+        Outcome must be either in success state or failure state
+        */
+        AZ_FORCE_INLINE Outcome();
 
         //! Constructs successful outcome, where value is copy-constructed.
         AZ_FORCE_INLINE Outcome(const SuccessType& success);
@@ -189,7 +195,6 @@ namespace AZ
 #endif // AZ_HAS_RVALUE_REFS
 
     private:
-
         //! Return m_success  as a SuccessType.
         //! Behavior is undefined if outcome was a failure.
         SuccessType& GetSuccess();

@@ -331,15 +331,15 @@ void CSystem::RenderEnd(bool bRenderStats, bool bMainWindow)
 void CSystem::OnScene3DEnd()
 {
     // Render UI Canvas
-    if (gEnv->pLyShine)
+    if (m_bDrawUI && gEnv->pLyShine)
     {
         gEnv->pLyShine->Render();
     }
 
     //Render Console
-    if (IConsole* pConsole = gEnv->pConsole)
+    if (m_bDrawConsole && gEnv->pConsole)
     {
-        pConsole->Draw();
+        gEnv->pConsole->Draw();
     }
 }
 
@@ -538,7 +538,11 @@ void CSystem::UpdateLoadingScreen()
 
 #if defined(CHECK_UPDATE_TIMES)
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(SystemRender_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemRender_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemRender_cpp_provo.inl"
+    #endif
 #endif
 #endif // CHECK_UPDATE_TIMES
 

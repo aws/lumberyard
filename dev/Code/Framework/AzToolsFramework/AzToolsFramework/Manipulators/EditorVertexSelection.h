@@ -19,7 +19,7 @@
 #include <AzToolsFramework/Manipulators/ManipulatorBus.h>
 #include <AzToolsFramework/Manipulators/HoverSelection.h>
 #include <AzToolsFramework/Manipulators/SelectionManipulator.h>
-#include <AzToolsFramework/Manipulators/TranslationManipulator.h>
+#include <AzToolsFramework/Manipulators/TranslationManipulators.h>
 
 namespace AzToolsFramework
 {
@@ -82,8 +82,8 @@ namespace AzToolsFramework
             {
                 vertex = m_array[index];
                 return true;
-            } 
-            
+            }
+
             return false;
         }
 
@@ -119,10 +119,19 @@ namespace AzToolsFramework
         virtual ~EditorVertexSelectionBase() {}
 
         void Create(AZ::EntityId entityId, ManipulatorManagerId managerId,
-            TranslationManipulator::Dimensions dimensions,
-            TranslationManipulatorConfiguratorFn<Vertex> translationManipulatorConfigurator);
+            TranslationManipulators::Dimensions dimensions,
+            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator);
         void Destroy();
-        void Refresh();
+
+        /**
+         * Update manipulators based on local changes to vertex positions.
+         */
+        void RefreshLocal();
+        /**
+         * Update manipulators based on changes to the entities transform.
+         */
+        void RefreshSpace(const AZ::Transform& worldFromLocal);
+
         void SetBoundsDirty();
 
         // ManipulatorRequestBus::Handler
@@ -134,8 +143,8 @@ namespace AzToolsFramework
          */
         void CreateTranslationManipulator(
             AZ::EntityId entityId, ManipulatorManagerId managerId,
-            TranslationManipulator::Dimensions dimensions, const Vertex& vertex, size_t index,
-            TranslationManipulatorConfiguratorFn<Vertex> translationManipulatorConfigurator);
+            TranslationManipulators::Dimensions dimensions, const Vertex& vertex, size_t index,
+            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator);
 
         AZStd::function<void()> m_onVertexPositionsUpdated = nullptr; ///< Callback for when vertex positions are changed.
 
@@ -145,8 +154,8 @@ namespace AzToolsFramework
         virtual AZ::FixedVertices<Vertex>* GetVertices() const = 0;
         virtual void SetupSelectionManipulator(
             const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator, AZ::EntityId entityId,
-            ManipulatorManagerId managerId, TranslationManipulator::Dimensions dimensions, size_t index,
-            TranslationManipulatorConfiguratorFn<Vertex> translationManipulatorConfigurator) = 0;
+            ManipulatorManagerId managerId, TranslationManipulators::Dimensions dimensions, size_t index,
+            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator) = 0;
         virtual void OnCreated(AZ::EntityId /*entityId*/) {}
         virtual void OnDestroyed() {}
 
@@ -171,8 +180,8 @@ namespace AzToolsFramework
          */
         void SelectionManipulatorSelectCallback(
             size_t index, const ViewportInteraction::MouseInteraction& interaction, AZ::EntityId entityId,
-            ManipulatorManagerId managerId, TranslationManipulator::Dimensions dimensions,
-            TranslationManipulatorConfiguratorFn<Vertex> translationManipulatorConfigurator);
+            ManipulatorManagerId managerId, TranslationManipulators::Dimensions dimensions,
+            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator);
 
         AZStd::shared_ptr<IndexedTranslationManipulator<Vertex>> m_translationManipulator = nullptr; ///< Manipulator when vertex is selected to translate it.
         AZStd::vector<AZStd::shared_ptr<SelectionManipulator>> m_selectionManipulators; ///< Manipulators for each vertex when entity is selected.
@@ -184,6 +193,8 @@ namespace AzToolsFramework
          * Called after manipulator and vertex positions have been updated.
          */
         void ManipulatorsAndVerticesUpdated();
+
+        AZ::EntityId m_entityId; ///< Id of the entity this editor vertex selection was created on.
     };
 
     /**
@@ -201,8 +212,8 @@ namespace AzToolsFramework
         AZ::FixedVertices<Vertex>* GetVertices() const override { return m_vertices.get(); }
         void SetupSelectionManipulator(
             const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator, AZ::EntityId entityId,
-            ManipulatorManagerId managerId, TranslationManipulator::Dimensions dimensions, size_t index,
-            TranslationManipulatorConfiguratorFn<Vertex> translationManipulatorConfigurator) override;
+            ManipulatorManagerId managerId, TranslationManipulators::Dimensions dimensions, size_t index,
+            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator) override;
 
         AZStd::unique_ptr<AZ::FixedVertices<Vertex>> m_vertices; ///< Reference to backing store of vertices, set when created.
 
@@ -229,8 +240,8 @@ namespace AzToolsFramework
         AZ::FixedVertices<Vertex>* GetVertices() const override { return m_vertices.get(); }
         void SetupSelectionManipulator(
             const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator, AZ::EntityId entityId,
-            ManipulatorManagerId managerId, TranslationManipulator::Dimensions dimensions, size_t index,
-            TranslationManipulatorConfiguratorFn<Vertex> translationManipulatorConfigurator) override;
+            ManipulatorManagerId managerId, TranslationManipulators::Dimensions dimensions, size_t index,
+            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator) override;
         void OnCreated(AZ::EntityId entityId) override;
         void OnDestroyed() override;
 

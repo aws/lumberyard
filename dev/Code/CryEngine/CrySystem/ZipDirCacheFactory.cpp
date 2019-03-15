@@ -469,7 +469,11 @@ namespace
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ZIPDIRCACHEFACTORY_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(ZipDirCacheFactory_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ZipDirCacheFactory_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ZipDirCacheFactory_cpp_provo.inl"
+    #endif
 #endif
 }
 
@@ -505,7 +509,11 @@ ZipDir::CachePtr ZipDir::CacheFactory::MakeCache (const char* szFile)
     pCacheInstance->Construct(m_fileExt, m_pHeap, nSizeRequired, m_nFlags, nCacheInstanceSize);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ZIPDIRCACHEFACTORY_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(ZipDirCacheFactory_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ZipDirCacheFactory_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ZipDirCacheFactory_cpp_provo.inl"
+    #endif
 #endif
     pCacheInstance->SetZipFileSize(m_nZipFileSize);
     pCacheInstance->SetCDROffsetSize(m_CDREnd.lCDROffset, m_CDREnd.lCDRSize);

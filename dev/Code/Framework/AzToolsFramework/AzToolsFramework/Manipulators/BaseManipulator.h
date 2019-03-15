@@ -9,15 +9,16 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Color.h>
 #include <AzCore/RTTI/RTTI.h>
+#include <AzCore/std/smart_ptr/enable_shared_from_this.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Manipulators/ManipulatorBus.h>
-#include <AzCore/std/smart_ptr/enable_shared_from_this.h>
 
 namespace AzFramework
 {
@@ -30,10 +31,6 @@ namespace AzToolsFramework
     {
         struct CameraState;
         struct MouseInteraction;
-        struct KeyboardInteraction;
-        struct KeyboardModifiers;
-        struct MousePick;
-        struct InteractionId;
     }
 
     struct ManipulatorManagerState;
@@ -52,7 +49,7 @@ namespace AzToolsFramework
      * The base class for manipulators, providing interfaces for users of manipulators to talk to.
      */
     class BaseManipulator
-        :public AZStd::enable_shared_from_this<BaseManipulator>
+        : public AZStd::enable_shared_from_this<BaseManipulator>
     {
     public:
         AZ_RTTI(BaseManipulator, "{3D1CD58D-C589-464C-BC9A-480D59341AB4}");
@@ -70,9 +67,9 @@ namespace AzToolsFramework
         bool OnLeftMouseDown(const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance);
 
         /**
-         * Callback for the event when this manipulator is active and the left mouse button is released.
-         * @param interaction It contains various mouse states when the event happens, as well as a ray shooting from the viewing camera through the mouse pointer.
-         */
+        * Callback for the event when this manipulator is active and the left mouse button is released.
+        * @param interaction It contains various mouse states when the event happens, as well as a ray shooting from the viewing camera through the mouse pointer.
+        */
         void OnLeftMouseUp(const ViewportInteraction::MouseInteraction& interaction);
 
         /**
@@ -246,7 +243,7 @@ namespace AzToolsFramework
         /**
          * Update the mouseOver state for this manipulator.
          */
-        void UpdateMouseOver(ManipulatorId manipulatorId) { m_mouseOver = m_manipulatorId == manipulatorId; }
+        void UpdateMouseOver(const ManipulatorId manipulatorId) { m_mouseOver = (m_manipulatorId == manipulatorId); }
 
         /**
          * Manage correctly ending the undo batch.
@@ -262,6 +259,27 @@ namespace AzToolsFramework
          * Record an action as having stopped.
          */
         void EndAction();
+    };
+
+    /**
+     * Base class to be used when composing aggregate manipulator types - wraps some
+     * common functionality all manipulators need.
+     */
+    class Manipulators
+    {
+    public:
+        virtual ~Manipulators() = default;
+
+        void Register(ManipulatorManagerId manipulatorManagerId);
+        void Unregister();
+        void SetBoundsDirty();
+
+    protected:
+        /**
+         * Common processing for base manipulator type - Implement for all
+         * individual manipulators used in an aggregate manipulator.
+         */
+        virtual void ProcessManipulators(const AZStd::function<void(BaseManipulator*)>&) = 0;
     };
 
     namespace Internal
@@ -284,8 +302,13 @@ namespace AzToolsFramework
          * This helper will transform an axis to the correct space.
          * If ManipulatorSpace is local, axis will not be transformed - pass local axis, return local axis.
          * If ManipulatorSpace is world, axis will be transformed - pass world axis, return local axis.
+         * @param space Space to transform to.
+         * @param localFromWorld Inverse world transform to go from world space to local space.
+         * @param localRotation Additional local orientation of axis (for example an orientation that is inside the space of an entity).
+         * @param axis Axis to transform.
          */
         AZ::Vector3 TransformAxisForSpace(
-            ManipulatorSpace space, const AZ::Transform& localFromWorld, const AZ::Vector3& axis);
+            ManipulatorSpace space, const AZ::Transform& localFromWorld,
+            const AZ::Quaternion& localRotation, const AZ::Vector3& axis);
     }
 }

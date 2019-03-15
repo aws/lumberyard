@@ -2531,6 +2531,14 @@ void CMainWindow::UnregisterActions()
     }
 }
 
+void CMainWindow::RefreshItemUI()
+{
+    if (m_LoDDock)
+    {
+       m_LoDDock->RefreshGUI();
+    }
+}
+
 void CMainWindow::UpdateItemUI(const AZStd::string& itemId, bool selected, int lodIdx)
 {
     EditorUIPlugin::ScopedSuspendUndoPtr suspendUndo;

@@ -64,6 +64,7 @@ public:
     void SetScale(float fScale) { m_ucScale = (uint8)SATURATEB(fScale * VEGETATION_CONV_FACTOR); }
     virtual const char* GetName() const override;
     virtual CLodValue ComputeLod(int wantedLod, const SRenderingPassInfo& passInfo) override;
+    bool CanExecuteRenderAsJob() override;
     virtual void Render(const SRendParams& RendParams, const SRenderingPassInfo& passInfo){ assert(0); }
     void Render(const SRenderingPassInfo& passInfo, const CLodValue& lodValue, SSectorTextureSet* pTerrainTexInfo, const SRendItemSorter& rendItemSorter) const;
     IPhysicalEntity* GetPhysics(void) const { return m_pPhysEnt; }

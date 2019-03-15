@@ -115,7 +115,11 @@ bool AzToLyInput::Init()
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION AZTOLYINPUT_CPP_SECTION_ADDINPUT
-#include AZ_RESTRICTED_FILE(AzToLyInput_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AzToLyInput_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AzToLyInput_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -132,11 +136,11 @@ bool AzToLyInput::Init()
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION AZTOLYINPUT_CPP_SECTION_ADDTOOLSINPUT
-#include AZ_RESTRICTED_FILE(AzToLyInput_cpp, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/AzToLyInput_cpp_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION AZTOLYINPUT_CPP_SECTION_ADDTOOLSINPUT
-#include AZ_RESTRICTED_FILE(AzToLyInput_cpp, TOOLS_SUPPORT_PROVO)
+    #include "Provo/AzToLyInput_cpp_provo.inl"
 #endif
 #endif
 

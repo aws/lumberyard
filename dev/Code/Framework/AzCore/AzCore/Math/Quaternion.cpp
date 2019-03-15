@@ -105,19 +105,35 @@ namespace AZ
 
     const Quaternion Quaternion::CreateShortestArc(const Vector3& v1, const Vector3& v2)
     {
-        Vector3 c = v1.Cross(v2);
-        float d = v1.Dot(v2);
+        const float dotProduct = v1.Dot(v2);
+        const Vector3 crossProduct = v1.Cross(v2);
+        const float magnitudeProduct = sqrtf(v1.GetLengthSq() * v2.GetLengthSq());
 
-        if (d < -0.99999f)
+        if (dotProduct >= 0.0f)
         {
-            return Quaternion(0.0f, 1.0f, 0.0f, 0.0f); // just pick any vector
+            // The cross product is in the right direction for the vector part of the quaternion and has magnitude
+            // |v1||v2|sin(t)
+            // = 2|v1||v2|cos(t / 2) [sin(t / 2)]
+            // Then, if we make a quaternion with the cross product as its vector part and scalar part given by
+            // |v1||v2| + v1.v2
+            // = |v1||v2| + |v1||v2|cos(t)
+            // = |v1||v2|(1 + cos(t))
+            // = |v1||v2|(2 cos(t / 2) ^ 2)
+            // = 2|v1||v2|cos(t / 2) [cos(t / 2)]
+            // then normalizing the quaternion will eliminate the common factor of 2|v1||v2|cos(t / 2) and give the
+            // desired rotation.
+            const float w = magnitudeProduct + dotProduct;
+            return CreateFromVector3AndValue(crossProduct, w).GetNormalized();
         }
-        float s = sqrtf((1.0f + d) * 2.0f);
-        float rs = 1.0f / s;
 
-        return Quaternion::CreateFromVector3AndValue(c * rs, 0.5f * s);
+        // If the vectors aren't in the same hemisphere, return the product of a 180 degree rotation and the rotation
+        // from -v1 to v2.  This gives much better accuracy in the case where v1 is very close to -v2.
+        const float w = magnitudeProduct - dotProduct;
+        const Vector3 orthogonalVector = v1.GetOrthogonalVector();
+        Quaternion result = (CreateFromVector3AndValue(-crossProduct, w) * CreateFromVector3(orthogonalVector)).GetNormalized();
+        return result.GetW() >= 0.0f ? result : -result;
     }
-    
+
     const Quaternion Quaternion::NLerp(const Quaternion& dest, const VectorFloat& t) const
     {
         Quaternion result = Lerp(dest, t);

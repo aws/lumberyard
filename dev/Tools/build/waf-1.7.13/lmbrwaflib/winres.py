@@ -18,10 +18,9 @@ def rc_file(self, node):
 	"""
 	Bind the .rc extension to a winrc task
 	"""
-	platform = self.bld.env['PLATFORM']
-	if not platform.startswith('win'):
+	if not is_rc_supported_for_platform(self):
 		return
-
+	
 	# Add the target name to prevent cases where the same project files are shared for different targets
 	if hasattr(self, 'target'):
 		target_name = self.target
@@ -55,8 +54,6 @@ def load_rc_tool(conf):
 
 RC_FILE_TEMPLATE='''// Microsoft Visual C++ generated resource script.
 //
-#include "resource.h"
-
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -82,16 +79,11 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 1 TEXTINCLUDE
 BEGIN
-	"resource.h\\0"
-END
-
-2 TEXTINCLUDE
-BEGIN
 	"#include ""winres.h""\\r\\n"
 	"\\0"
 END
 
-3 TEXTINCLUDE
+2 TEXTINCLUDE
 BEGIN
 	"\\r\\n"
 	"\\0"
@@ -158,7 +150,7 @@ END
 #ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
-// Generated from the TEXTINCLUDE 3 resource.
+// Generated from the TEXTINCLUDE 2 resource.
 //
 
 
@@ -236,6 +228,7 @@ def compile_template(line):
 	#print(fun)
 	return Task.funex(fun)
 
+
 class create_rc_file(Task.Task):
 	color = 'YELLOW'
 
@@ -297,10 +290,10 @@ class create_rc_file(Task.Task):
 @feature('generate_rc_file')
 @before_method('process_source')
 def generate_rc_file(self):
-	platform = self.bld.env['PLATFORM']
-	if not platform.startswith('win'):
+	
+	if not is_rc_supported_for_platform(self):
 		return
-
+	
 	# Generate Tasks to create rc file as well as copy the resources
 	rc_task_inputs = []
 
@@ -311,9 +304,35 @@ def generate_rc_file(self):
 	# declare target node using 'find_or_declare' so WAF notices if it's missing
 	rc_file = self.path.find_or_declare([rc_file_folder, self.target + '.auto_gen.rc'])
 
-	self.create_task( 'create_rc_file', rc_task_inputs, rc_file )
+	self.create_task('create_rc_file', rc_task_inputs, rc_file )
 
 	# create rc compile task
 	self.rc_file(rc_file)
 
 
+def is_rc_supported_for_platform(taskgen):
+	"""
+	Check if the platform supports rc compiling, following these rules:
+
+	1. MSVC base target platform
+	2. Non static library
+
+	:param tg:	The task generator to determine the platform and target type
+	:return: True if windows rc compiling is supported, False if not
+	"""
+	
+	platform = taskgen.bld.env['PLATFORM']
+	
+	if platform == 'project_generator':
+		return False
+	
+	# Only non-static lib targets are supported (program, shlib)
+	target_type = getattr(taskgen, '_type', None)
+	if target_type not in ('program', 'shlib'):
+		return False
+	
+	# Only msvc based compilers are supported
+	rc_supported_platform = False
+	if platform.startswith('win'):
+		rc_supported_platform = True
+	return rc_supported_platform

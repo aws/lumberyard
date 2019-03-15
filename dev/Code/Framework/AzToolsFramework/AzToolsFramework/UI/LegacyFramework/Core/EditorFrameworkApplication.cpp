@@ -571,7 +571,7 @@ namespace LegacyFramework
     void Application::ReflectSerialize()
     {
         AZ::SerializeContext* serializeContext = GetSerializeContext();
-        if (serializeContext->GetEditContext() == nullptr)
+        if (serializeContext && serializeContext->GetEditContext() == nullptr)
         {
             serializeContext->CreateEditContext(); // we are the editor make a serialize context.
         }

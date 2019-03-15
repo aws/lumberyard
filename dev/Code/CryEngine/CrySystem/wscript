@@ -53,9 +53,9 @@ def build(bld):
 
         restricted_script       = 'update_restricted_parameters',
 
-        android_file_list       = [ 'platformos_pc.waf_files', 'autodetect_android.waf_files' ],
+        android_file_list       = [ 'platformos_pc.waf_files', 'crysystem_android.waf_files' ],
 
-        ios_file_list           = [ 'platformos_pc.waf_files', 'autodetect_ios.waf_files' ],
+        ios_file_list           = [ 'platformos_pc.waf_files', 'crysystem_ios.waf_files' ],
 
         appletv_file_list       = 'platformos_pc.waf_files',
 
@@ -64,6 +64,6 @@ def build(bld):
         # Testing
         test_all_file_list      = ['crysystem_test.waf_files'],
     )
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = ['{0}/platformos_{0}.waf_files'.format(p)]
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = ['{0}/platformos_{1}.waf_files'.format(p0, p1)]
     bld.CryEngineModule(**kw)

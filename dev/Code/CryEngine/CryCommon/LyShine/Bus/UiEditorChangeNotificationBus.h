@@ -30,3 +30,18 @@ public: // member functions
 };
 
 typedef AZ::EBus<UiEditorChangeNotificationInterface> UiEditorChangeNotificationBus;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//! Notify components who store directories as properties when directory contents change.
+class UiEditorRefreshDirectoryNotificationInterface
+    : public AZ::EBusTraits
+{
+public: // member functions
+
+    virtual ~UiEditorRefreshDirectoryNotificationInterface() {}
+
+    //! Notify directory properties that they should refresh their contents
+    virtual void OnRefreshDirectory() = 0;
+};
+
+typedef AZ::EBus<UiEditorRefreshDirectoryNotificationInterface> UiEditorRefreshDirectoryNotificationBus;

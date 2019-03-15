@@ -12,12 +12,12 @@
 
 #pragma once
 
-// include required headers
-#include "EMotionFXConfig.h"
-#include "Transform.h"
+#include <AzCore/std/containers/unordered_map.h>
 #include <MCore/Source/AlignedArray.h>
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Quaternion.h>
+#include <EMotionFX/Source/PoseData.h>
+#include <EMotionFX/Source/Transform.h>
 
 
 namespace EMotionFX
@@ -43,7 +43,7 @@ namespace EMotionFX
         enum
         {
             FLAG_LOCALTRANSFORMREADY    = 1 << 0,
-            FLAG_GLOBALTRANSFORMREADY   = 1 << 1
+            FLAG_MODELTRANSFORMREADY    = 1 << 1
         };
 
         Pose();
@@ -64,49 +64,80 @@ namespace EMotionFX
         void ApplyMorphWeightsToActorInstance();
         void ZeroMorphWeights();
 
-        void UpdateAllLocalTranforms();
-        void UpdateAllGlobalTranforms();
-        void ForceUpdateFullLocalPose();
-        void ForceUpdateFullGlobalPose();
+        void UpdateAllLocalSpaceTranforms();
+        void UpdateAllModelSpaceTranforms();
+        void ForceUpdateFullLocalSpacePose();
+        void ForceUpdateFullModelSpacePose();
 
-        const Transform& GetLocalTransform(uint32 nodeIndex) const;
-        const Transform& GetGlobalTransform(uint32 nodeIndex) const;
-        Transform GetGlobalTransformInclusive(uint32 nodeIndex) const;
-        void GetLocalTransform(uint32 nodeIndex, Transform* outResult) const;
-        void GetGlobalTransform(uint32 nodeIndex, Transform* outResult) const;
-        void GetGlobalTransformInclusive(uint32 nodeIndex, Transform* outResult) const;
+        AZ_DEPRECATED(void UpdateAllLocalTranforms(), "This method has been deprecated, please use UpdateAllLocalSpaceTransforms instead.");
+        AZ_DEPRECATED(void UpdateAllGlobalTranforms(), "This method has been deprecated, please use UpdateAllModelSpaceTransforms instead.");
+        AZ_DEPRECATED(void ForceUpdateFullLocalPose(), "This method has been deprecated, please use ForceUpdateFullLocalSpacePose instead.");
+        AZ_DEPRECATED(void ForceUpdateFullGlobalPose(), "This method has been deprecated, please use ForceUpdateFullModelSpacePose instead.");
+        AZ_DEPRECATED(const Transform&GetLocalTransform(uint32 nodeIndex) const, "This method has been deprecated, please use GetLocalSpaceTransform instead.");
+        AZ_DEPRECATED(Transform GetGlobalTransformInclusive(uint32 nodeIndex) const, "This method has been deprecated, please use GetWorldSpaceTransform instead.");
+        AZ_DEPRECATED(void GetLocalTransform(uint32 nodeIndex, Transform * outResult) const, "This method has been deprecated, please use GetLocalTransform.");
+        AZ_DEPRECATED(void GetGlobalTransformInclusive(uint32 nodeIndex, Transform * outResult) const, "This method has been deprecated, please use GetWorldSpaceTransform instead.");
+        AZ_DEPRECATED(void SetLocalTransform(uint32 nodeIndex, const Transform&newTransform, bool invalidateGlobalTransforms = true), "This method has been deprecated, please use SetLocalSpaceTransform instead.");
+        AZ_DEPRECATED(void SetGlobalTransformInclusive(uint32 nodeIndex, const Transform&newTransform, bool invalidateChildGlobalTransforms = true), "This method has been deprecated, please use SetWorldSpaceTransform instead. There is also no need to call UpdateLocalTransform anymore afterwards, this happens internally now.");
+        AZ_DEPRECATED(const Transform&GetGlobalTransform(uint32 nodeIndex) const, "This method has been deprecated, please use GetModelSpaceTransform instead.");
+        AZ_DEPRECATED(void GetGlobalTransform(uint32 nodeIndex, Transform * outResult) const, "This method has been deprecated, please use GetModelSpaceTransform instead.");
+        AZ_DEPRECATED(void SetGlobalTransform(uint32 nodeIndex, const Transform&newTransform, bool invalidateChildGlobalTransforms = true), "This method has been deprecated, please use SetModelSpaceTransform instead.");
+        AZ_DEPRECATED(void UpdateGlobalTransform(uint32 nodeIndex) const, "This method has been deprecated, please use UpdateModelSpaceTransform instead.");
+        AZ_DEPRECATED(void UpdateLocalTransform(uint32 nodeIndex) const, "This method has been deprecated, please use UpdateLocalSpaceTransform instead.");
+        AZ_DEPRECATED(void InvalidateAllLocalTransforms(), "This method  has been deprecated, please use InvalidateAllLocalSpaceTransforms instead.");
+        AZ_DEPRECATED(void InvalidateAllGlobalTransforms(), "This method  has been deprecated, please use InvalidateAllModelSpaceTransforms instead.");
+        AZ_DEPRECATED(void InvalidateAllLocalAndGlobalTransforms(), "This method  has been deprecated, please use InvalidateAllLocalAndModelSpaceTransforms instead.");
 
-        void SetLocalTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateGlobalTransforms = true);
-        void SetGlobalTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateChildGlobalTransforms = true);
-        void SetGlobalTransformInclusive(uint32 nodeIndex, const Transform& newTransform, bool invalidateChildGlobalTransforms = true);
+        const Transform& GetLocalSpaceTransform(uint32 nodeIndex) const;
+        const Transform& GetModelSpaceTransform(uint32 nodeIndex) const;
+        Transform GetWorldSpaceTransform(uint32 nodeIndex) const;
 
-        void UpdateGlobalTransform(uint32 nodeIndex) const;
-        void UpdateLocalTransform(uint32 nodeIndex) const;
+        void GetLocalSpaceTransform(uint32 nodeIndex, Transform* outResult) const;
+        void GetModelSpaceTransform(uint32 nodeIndex, Transform* outResult) const;
+        void GetWorldSpaceTransform(uint32 nodeIndex, Transform* outResult) const;
 
-        void CompensateForMotionExtraction(EMotionExtractionFlags motionExtractionFlags=(EMotionExtractionFlags)0);
-        void CompensateForMotionExtractionDirect(EMotionExtractionFlags motionExtractionFlags=(EMotionExtractionFlags)0);
+        void SetLocalSpaceTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateModelSpaceTransforms = true);
+        void SetModelSpaceTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateChildModelSpaceTransforms = true);
+        void SetWorldSpaceTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateChildModelSpaceTransforms = true);
 
-        void InvalidateAllLocalTransforms();
-        void InvalidateAllGlobalTransforms();
-        void InvalidateAllLocalAndGlobalTransforms();
+        void UpdateModelSpaceTransform(uint32 nodeIndex) const;
+        void UpdateLocalSpaceTransform(uint32 nodeIndex) const;
+
+        void CompensateForMotionExtraction(EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
+        void CompensateForMotionExtractionDirect(EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
+
+        /**
+         * Use this method when you need to transform the mesh data like vertex positions into world space.
+         * Multiply all your vertices with the transform returned by this.
+         * The difference between using GetWorldSpaceTransform directly from the current pose is that this looks whether the mesh is skinned or not.
+         * Right now we handle skinned meshes differently. This will change in the future. Skinned meshes will always return an identity transform and therefore act like they cannot be animated.
+         * This requires the pose to be linked to an actor instance. If this is not the case, identity transform is returned.
+         * @param The LOD level, which must be in range of 0..mActor->GetNumLODLevels().
+         * @param nodeIndex The index of the node. If this node happens to have no mesh the regular current world space transform is returned.
+         */
+        Transform GetMeshNodeWorldSpaceTransform(AZ::u32 lodLevel, AZ::u32 nodeIndex) const;
+
+        void InvalidateAllLocalSpaceTransforms();
+        void InvalidateAllModelSpaceTransforms();
+        void InvalidateAllLocalAndModelSpaceTransforms();
 
         Transform CalcTrajectoryTransform() const;
 
-        MCORE_INLINE const Transform* GetLocalTransforms() const                                    { return mLocalTransforms.GetReadPtr(); }
-        MCORE_INLINE const Transform* GetGlobalTransforms() const                                   { return mGlobalTransforms.GetReadPtr(); }
-        MCORE_INLINE uint32 GetNumTransforms() const                                                { return mLocalTransforms.GetLength(); }
+        MCORE_INLINE const Transform* GetLocalSpaceTransforms() const                               { return mLocalSpaceTransforms.GetReadPtr(); }
+        MCORE_INLINE const Transform* GetModelSpaceTransforms() const                               { return mModelSpaceTransforms.GetReadPtr(); }
+        MCORE_INLINE uint32 GetNumTransforms() const                                                { return mLocalSpaceTransforms.GetLength(); }
         MCORE_INLINE ActorInstance* GetActorInstance() const                                        { return mActorInstance; }
         MCORE_INLINE Actor* GetActor() const                                                        { return mActor; }
         MCORE_INLINE Skeleton* GetSkeleton() const                                                  { return mSkeleton; }
 
-        MCORE_INLINE Transform& GetLocalTransformDirect(uint32 nodeIndex)                           { return mLocalTransforms[nodeIndex]; }
-        MCORE_INLINE Transform& GetGlobalTransformDirect(uint32 nodeIndex)                          { return mGlobalTransforms[nodeIndex]; }
-        MCORE_INLINE const Transform& GetLocalTransformDirect(uint32 nodeIndex) const               { return mLocalTransforms[nodeIndex]; }
-        MCORE_INLINE const Transform& GetGlobalTransformDirect(uint32 nodeIndex) const              { return mGlobalTransforms[nodeIndex]; }
-        MCORE_INLINE void SetLocalTransformDirect(uint32 nodeIndex, const Transform& transform)     { mLocalTransforms[nodeIndex]  = transform; mFlags[nodeIndex] |= FLAG_LOCALTRANSFORMREADY; }
-        MCORE_INLINE void SetGlobalTransformDirect(uint32 nodeIndex, const Transform& transform)    { mGlobalTransforms[nodeIndex] = transform; mFlags[nodeIndex] |= FLAG_GLOBALTRANSFORMREADY; }
-        MCORE_INLINE void InvalidateLocalTransform(uint32 nodeIndex)                                { mFlags[nodeIndex] &= ~FLAG_LOCALTRANSFORMREADY; }
-        MCORE_INLINE void InvalidateGlobalTransform(uint32 nodeIndex)                               { mFlags[nodeIndex] &= ~FLAG_GLOBALTRANSFORMREADY; }
+        MCORE_INLINE Transform& GetLocalSpaceTransformDirect(uint32 nodeIndex)                      { return mLocalSpaceTransforms[nodeIndex]; }
+        MCORE_INLINE Transform& GetModelSpaceTransformDirect(uint32 nodeIndex)                      { return mModelSpaceTransforms[nodeIndex]; }
+        MCORE_INLINE const Transform& GetLocalSpaceTransformDirect(uint32 nodeIndex) const          { return mLocalSpaceTransforms[nodeIndex]; }
+        MCORE_INLINE const Transform& GetModelSpaceTransformDirect(uint32 nodeIndex) const          { return mModelSpaceTransforms[nodeIndex]; }
+        MCORE_INLINE void SetLocalSpaceTransformDirect(uint32 nodeIndex, const Transform& transform){ mLocalSpaceTransforms[nodeIndex]  = transform; mFlags[nodeIndex] |= FLAG_LOCALTRANSFORMREADY; }
+        MCORE_INLINE void SetModelSpaceTransformDirect(uint32 nodeIndex, const Transform& transform){ mModelSpaceTransforms[nodeIndex] = transform; mFlags[nodeIndex] |= FLAG_MODELTRANSFORMREADY; }
+        MCORE_INLINE void InvalidateLocalSpaceTransform(uint32 nodeIndex)                           { mFlags[nodeIndex] &= ~FLAG_LOCALTRANSFORMREADY; }
+        MCORE_INLINE void InvalidateModelSpaceTransform(uint32 nodeIndex)                           { mFlags[nodeIndex] &= ~FLAG_MODELTRANSFORMREADY; }
 
         MCORE_INLINE void SetMorphWeight(uint32 index, float weight)                                { mMorphWeights[index] = weight; }
         MCORE_INLINE float GetMorphWeight(uint32 index) const                                       { return mMorphWeights[index]; }
@@ -163,16 +194,38 @@ namespace EMotionFX
         MCORE_INLINE uint8 GetFlags(uint32 nodeIndex) const         { return mFlags[nodeIndex]; }
         MCORE_INLINE void SetFlags(uint32 nodeIndex, uint8 flags)   { mFlags[nodeIndex] = flags; }
 
+        bool HasPoseData(const AZ::TypeId& typeId) const;
+        PoseData* GetPoseDataByType(const AZ::TypeId& typeId) const;
+        template <class T>
+        T* GetPoseData() const                   { return azdynamic_cast<T*>(GetPoseDataByType(azrtti_typeid<T>())); }
+
+        void AddPoseData(PoseData* poseData);
+        void ClearPoseDatas();
+        const AZStd::unordered_map<AZ::TypeId, AZStd::unique_ptr<PoseData> >& GetPoseDatas() const;
+
+        /**
+         * Guaranteed retrieval of a fully prepared and ready to use pose data of the given type.
+         * Pose data of the given type will be created and reset to its default value in case it does not yet exist on the current pose.
+         * In case the pose data existed but was unused, the pose data will be reset before being returned.
+         * @param[in] typeId The type id of the pose data that we want to retrieve.
+         * @param[in] linkToActorInstance The actor instance to link to the pose data.
+         * @result Valid pointer to the pose data of the given type.
+         */
+        PoseData* GetAndPreparePoseData(const AZ::TypeId& typeId, ActorInstance* linkToActorInstance);
+        template <class T>
+        T* GetAndPreparePoseData(ActorInstance* linkToActorInstance) { return azdynamic_cast<T*>(GetAndPreparePoseData(azrtti_typeid<T>(), linkToActorInstance)); }
+
     private:
-        mutable MCore::AlignedArray<Transform, 16>  mLocalTransforms;
-        mutable MCore::AlignedArray<Transform, 16>  mGlobalTransforms;
+        mutable MCore::AlignedArray<Transform, 16>  mLocalSpaceTransforms;
+        mutable MCore::AlignedArray<Transform, 16>  mModelSpaceTransforms;
         mutable MCore::AlignedArray<uint8, 16>      mFlags;
+        AZStd::unordered_map<AZ::TypeId, AZStd::unique_ptr<PoseData> > m_poseDatas;
         MCore::AlignedArray<float, 16>              mMorphWeights;      /**< The morph target weights. */
         ActorInstance*                              mActorInstance;
         Actor*                                      mActor;
         Skeleton*                                   mSkeleton;
 
-        void RecursiveInvalidateGlobalTransforms(Actor* actor, uint32 nodeIndex);
+        void RecursiveInvalidateModelSpaceTransforms(Actor* actor, uint32 nodeIndex);
 
         /**
          * Perform a non-mixed blend into the specified destination pose.

@@ -667,7 +667,8 @@
                                     "Resource": [
                                         { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }]] },
                                         { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/upload/*" ]] },
-                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-definitions/*" ]] }
+                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/resource-definitions/*" ]] },
+                                        { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" }, "/dstack*" ]] }
                                     ]
                                 },
                                 {
@@ -2089,6 +2090,15 @@
                                     ]
                                 }
                             }
+                        },
+                        {
+                            "Sid": "ListConfigurationObjects",
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:ListBucket"
+                            ],
+                            "Resource":
+                                { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "Configuration" } ]] }
                         }
                     ]
                 }

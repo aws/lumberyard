@@ -42,14 +42,16 @@ namespace EMotionFX
             Pose& actorBindPose = *m_actor->GetBindPose();
             EMotionFX::Transform identity;
             identity.Identity();
-            actorBindPose.SetGlobalTransform(0, identity);
+            actorBindPose.SetModelSpaceTransform(0, identity);
+            m_actor->ResizeTransformData();
+            m_actor->PostCreateInit();
+        }
+        {
+            m_motionSet = aznew MotionSet("testMotionSet");
         }
         {
             ConstructGraph();
             m_animGraph->InitAfterLoading();
-        }
-        {
-            m_motionSet = aznew MotionSet("testMotionSet");
         }
         {
             m_actorInstance = ActorInstance::Create(m_actor);
@@ -106,12 +108,13 @@ namespace EMotionFX
     const Transform& AnimGraphFixture::GetOutputTransform(uint32 nodeIndex)
     {
         const Pose* pose = m_actorInstance->GetTransformData()->GetCurrentPose();
-        return pose->GetGlobalTransform(nodeIndex);
+        return pose->GetModelSpaceTransform(nodeIndex);
     }
 
     void AnimGraphFixture::AddValueParameter(const AZ::TypeId& typeId, const AZStd::string& name)
     {
         Parameter* parameter = ParameterFactory::Create(typeId);
+        parameter->SetName(name);
         m_animGraph->AddParameter(parameter);
         m_animGraphInstance->AddMissingParameterValues();
     }

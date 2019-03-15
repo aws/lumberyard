@@ -24,6 +24,7 @@
 
 #include "../Editor/Objects/EntityObject.h"
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 class QMenu;
 
@@ -37,6 +38,7 @@ class CComponentEntityObject
     , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
     , private AzToolsFramework::EditorEntityIconComponentNotificationBus::Handler
     , private AZ::TransformNotificationBus::Handler
+    , private LmbrCentral::RenderBoundsNotificationBus::Handler
     , private LmbrCentral::MeshComponentNotificationBus::Handler
     , private AzToolsFramework::ComponentEntityEditorRequestBus::Handler
     , private AzToolsFramework::ComponentEntityObjectRequestBus::Handler
@@ -83,6 +85,8 @@ public:
     void DrawDefault(DisplayContext& dc, const QColor& labelColor = QColor(255, 255, 255)) override;
     IStatObj* GetIStatObj() override;
     bool IsIsolated() const override;
+
+    void SetWorldPos(const Vec3& pos, int flags = 0) override;
 
     // Always returns false as Component entity highlighting (accenting) is taken care of elsewhere
     bool IsHighlighted() { return false; }
@@ -136,7 +140,11 @@ public:
     //////////////////////////////////////////////////////////////////////////
     //! MeshComponentNotificationBus
     void OnMeshCreated(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
-    void OnBoundsReset() override;
+    //////////////////////////////////////////////////////////////////////////
+
+    //////////////////////////////////////////////////////////////////////////
+    //! RenderBoundsNotificationBus
+    void OnRenderBoundsReset() override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -146,11 +154,14 @@ public:
     void SetSandboxObjectAccent(AzToolsFramework::EntityAccentType accent) override;
     void SetSandBoxObjectIsolated(bool isIsolated) override;
     bool IsSandBoxObjectIsolated() override;
+
+    void RefreshVisibilityAndLock() override;
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
     //! ComponentEntityObjectRequestBus
     AZ::EntityId GetAssociatedEntityId() override { return m_entityId; }
+    void UpdatePreemptiveUndoCache() override;
     //////////////////////////////////////////////////////////////////////////
 
     void AssignEntity(AZ::Entity* entity, bool destroyOld = true);
@@ -178,7 +189,8 @@ protected:
 
     void DeleteThis() { delete this; };
 
-    bool IsAncestorSelected() const;
+    bool IsNonLayerAncestorSelected() const;
+    bool IsLayer() const;
 
     bool IsAncestorIconDrawingAtSameLocation() const;
 

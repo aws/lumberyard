@@ -106,7 +106,7 @@ namespace AZ
             {
                 return mapper(originalId, isEntityId);
             };
-            return IdUtils::Remapper<EntityId>::ReplaceIdsAndIdRefs(classPtr, SerializeTypeInfo<T>::GetUuid(classPtr), idMapper, context);
+            return IdUtils::Remapper<EntityId>::ReplaceIdsAndIdRefs(classPtr, idMapper, context);
         }
 
         /**

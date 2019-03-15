@@ -57,6 +57,7 @@ namespace EMStudio
         virtual const char* GetExtension() const = 0;
         virtual const char* GetFileType() const = 0;
         virtual uint32 GetType() const = 0;
+        virtual const AZ::Uuid GetFileRttiType() const = 0;
         virtual uint32 GetPriority() const = 0;
         virtual bool GetIsPostProcessed() const = 0;
     };
@@ -88,10 +89,16 @@ namespace EMStudio
                 QDialogButtonBox::StandardButtons buttons = QDialogButtonBox::Ok | QDialogButtonBox::Discard | QDialogButtonBox::Cancel
         );
 
+        int SaveDirtyFiles(const AZStd::vector<AZ::TypeId>& typeIds, 
+                QDialogButtonBox::StandardButtons buttons = QDialogButtonBox::Ok | QDialogButtonBox::Discard | QDialogButtonBox::Cancel
+        );
+
         void SaveSettings();
 
     private:
         AZStd::vector<SaveDirtyFilesCallback*>  mSaveDirtyFilesCallbacks;
+
+        int SaveDirtyFiles(const AZStd::vector<SaveDirtyFilesCallback*>& neededSaveDirtyFilesCallbacks, QDialogButtonBox::StandardButtons buttons);
     };
 
 

@@ -179,7 +179,7 @@ namespace LmbrCentral
 
     AZ::u32 SkinnedMeshComponentRenderNode::GetJointIndexByName(const char* jointName) const
     {
-        if (m_characterInstance)
+        if (m_characterInstance && jointName)
         {
             const IDefaultSkeleton& skeleton = m_characterInstance->GetIDefaultSkeleton();
             const int jointIndex = skeleton.GetJointIDByName(jointName);

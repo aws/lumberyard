@@ -103,7 +103,11 @@ typedef union UnINT64
 
 // FIXME: probably better to sort by shaders (Currently sorted by resources)
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(RenderPipeline_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderPipeline_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderPipeline_h_provo.inl"
+    #endif
 #endif
 struct SRendItem
 {
@@ -277,7 +281,13 @@ struct SVertexDeclaration
     AZ::Vertex::Format VertexFormat;
     int InstAttrMask;
     AZStd::vector<D3D11_INPUT_ELEMENT_DESC> m_Declaration;
-    ID3D11InputLayout* m_pDeclaration;
+    ID3D11InputLayout* m_pDeclaration = nullptr;
+
+    // This caching structure is only used for auto-generated vertex formats for instanced renders.
+    // The caching format was previously invalid because it cached ID3D11InputLayout based only on the
+    // vertex format declaration, rather than based on the vertex format declaration with the vertex shader input
+    // table since a different IA layout will be generated whether a vertex shader uses different inputs or not
+    void* m_vertexShader = nullptr;
 
     ~SVertexDeclaration()
     {
@@ -516,6 +526,11 @@ enum EBatchFlags
 #define RBPF_ENCODE_HDR        (1 << 29)
 #define RBPF_OBLIQUE_FRUSTUM_CLIPPING  (1 << 30)
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+#define RBPF_RENDER_SCENE_TO_TEXTURE (1 << 31)
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
+
 // m_RP.m_PersFlags1
 #define RBPF1_USESTREAM       (1 << 0)
 #define RBPF1_USESTREAM_MASK  ((1 << VSF_NUM) - 1)
@@ -670,6 +685,8 @@ struct SThreadInfo
         false
     };
 
+    PerFrameParameters m_perFrameParameters;
+
     ~SThreadInfo() {}
     SThreadInfo& operator = (const SThreadInfo& ti)
     {
@@ -689,6 +706,7 @@ struct SThreadInfo
             m_arrZonesRoundId[z] = ti.m_arrZonesRoundId[z];
         }
         m_FS = ti.m_FS;
+        m_perFrameParameters = ti.m_perFrameParameters;
         m_pIgnoreObject = ti.m_pIgnoreObject;
         memcpy(&m_pObliqueClipPlane, &ti.m_pObliqueClipPlane, sizeof(m_pObliqueClipPlane));
         m_bObliqueClipPlane = ti.m_bObliqueClipPlane;

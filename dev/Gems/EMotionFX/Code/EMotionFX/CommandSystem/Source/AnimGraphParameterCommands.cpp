@@ -141,17 +141,17 @@ namespace CommandSystem
         }
 
         // The position inside the parameter array where the parameter should get added to.
-        const int parameterIndex = parameters.GetValueAsInt("index", this);
+        const int insertAtIndex = parameters.GetValueAsInt("index", this);
         const size_t parentGroupSize = parentGroupParameter ? parentGroupParameter->GetNumParameters() : animGraph->GetNumParameters();
-        if (parameterIndex != -1 && (parameterIndex < 0 || parameterIndex > static_cast<int>(parentGroupSize)))
+        if (insertAtIndex != -1 && (insertAtIndex < 0 || insertAtIndex > static_cast<int>(parentGroupSize)))
         {
-            outResult = AZStd::string::format("Index '%d' out of range.", parameterIndex);
+            outResult = AZStd::string::format("Cannot insert parameter at index '%d'. Index is out of range.", insertAtIndex);
             return false;
         }
 
-        const bool paramResult = parameterIndex == -1
+        const bool paramResult = insertAtIndex == -1
             ? animGraph->AddParameter(newParam.get(), parentGroupParameter)
-            : animGraph->InsertParameter(parameterIndex, newParam.get(), parentGroupParameter);
+            : animGraph->InsertParameter(insertAtIndex, newParam.get(), parentGroupParameter);
 
         if (!paramResult)
         {
@@ -159,48 +159,42 @@ namespace CommandSystem
             return false;
         }
 
-        if (azrtti_typeid(newParam.get()) != azrtti_typeid<EMotionFX::GroupParameter>())
+        const AZ::Outcome<size_t> parameterIndex = animGraph->FindParameterIndex(newParam.get());
+        AZ_Assert(parameterIndex.IsSuccess(), "Expected valid parameter index.");
+
+        newParam.release(); // adding the parameter succeeded, release the memory because it is owned by the AnimGraph
+
+        const EMotionFX::Parameter* param = animGraph->FindParameter(parameterIndex.GetValue());
+        if (azrtti_typeid(param) != azrtti_typeid<EMotionFX::GroupParameter>())
         {
-            const AZ::Outcome<size_t> valueParameterIndex = animGraph->FindValueParameterIndex(static_cast<const EMotionFX::ValueParameter*>(newParam.get()));
-            AZ_Assert(valueParameterIndex.IsSuccess(), "Expected a valid value parameter index");
+            const AZ::Outcome<size_t> valueParameterIndex = animGraph->FindValueParameterIndex(static_cast<const EMotionFX::ValueParameter*>(param));
+            AZ_Assert(valueParameterIndex.IsSuccess(), "Expected valid value parameter index.");
+
+            AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+            animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+            EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
+
+            for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
+            {
+                EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+                affectedObjectByParameterChanges->ParameterAdded(parameterIndex.GetValue());
+            }
 
             // Update all anim graph instances.
-            const size_t numInstances = EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances();
+            const size_t numInstances = animGraph->GetNumAnimGraphInstances();
             for (size_t i = 0; i < numInstances; ++i)
             {
-                EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
-
-                // Only update anim graph instances using the given anim graph.
-                if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-                {
-                    animGraphInstance->InsertParameterValue(static_cast<uint32>(valueParameterIndex.GetValue()));
-                }
+                EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
+                animGraphInstance->InsertParameterValue(static_cast<uint32>(valueParameterIndex.GetValue()));
             }
-
-            // Get an array of all parameter nodes.
-            MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
-            parameterNodes.Reserve(8);
-            animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
-
-            // Reinit all parameter nodes.
-            const uint32 numParamNodes = parameterNodes.GetLength();
-            for (uint32 i = 0; i < numParamNodes; ++i)
-            {
-                EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
-                parameterNode->Reinit();
-            }
-
-            // Set the parameter name as command result.
-            outResult = name.c_str();
-
-            // Save the current dirty flag and tell the anim graph that something got changed.
-            mOldDirtyFlag = animGraph->GetDirtyFlag();
-            animGraph->SetDirtyFlag(true);
-
-            animGraph->Reinit();
-            animGraph->UpdateUniqueData();
         }
-        newParam.release(); // adding the parameter succeeded, release the memory because it is owned by the AnimGraph
+
+        // Set the parameter name as command result.
+        outResult = name.c_str();
+
+        // Save the current dirty flag and tell the anim graph that something got changed.
+        mOldDirtyFlag = animGraph->GetDirtyFlag();
+        animGraph->SetDirtyFlag(true);
 
         return true;
     }
@@ -313,39 +307,31 @@ namespace CommandSystem
             // Remove the parameter from all corresponding anim graph instances if it is a value parameter
             if (mType != azrtti_typeid<EMotionFX::GroupParameter>())
             {
-                const size_t numInstances = EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances();
-                for (size_t i = 0; i < numInstances; ++i)
+                AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+                animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+                EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
+
+                for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
                 {
-                    EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
-                    if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-                    {
-                        // Remove the parameter.
-                        animGraphInstance->RemoveParameterValue(static_cast<uint32>(valueParameterIndex.GetValue()));
-                    }
+                    EMotionFX::ObjectAffectedByParameterChanges* parameterDriven = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+                    parameterDriven->ParameterRemoved(mName);
                 }
 
-                // Get an array of all parameter nodes.
-                MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
-                animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
-
-                // Reinit all parameter nodes.
-                const uint32 numParamNodes = parameterNodes.GetLength();
-                for (uint32 i = 0; i < numParamNodes; ++i)
+                const size_t numInstances = animGraph->GetNumAnimGraphInstances();
+                for (size_t i = 0; i < numInstances; ++i)
                 {
-                    EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
-                    parameterNode->Reinit();
+                    EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
+                    // Remove the parameter.
+                    animGraphInstance->RemoveParameterValue(static_cast<uint32>(valueParameterIndex.GetValue()));
                 }
 
                 // Save the current dirty flag and tell the anim graph that something got changed.
                 mOldDirtyFlag = animGraph->GetDirtyFlag();
                 animGraph->SetDirtyFlag(true);
-
-                animGraph->Reinit();
-                animGraph->UpdateUniqueData();
             }
+            return true;
         }
-
-        return true;
+        return false;
     }
 
 
@@ -414,45 +400,6 @@ namespace CommandSystem
     }
 
 
-    void CommandAnimGraphAdjustParameter::UpdateTransitionConditions(EMotionFX::AnimGraph* animGraph, const AZStd::string& oldParameterName, const AZStd::string& newParameterName)
-    {
-        if (animGraph->GetIsOwnedByRuntime())
-        {
-            return;
-        }
-
-        // Collect all parameter transition conditions.
-        MCore::Array<EMotionFX::AnimGraphTransitionCondition*> parameterConditions;
-        animGraph->RecursiveCollectTransitionConditionsOfType(azrtti_typeid<EMotionFX::AnimGraphParameterCondition>(), &parameterConditions);
-
-        const uint32 numParameterConditions = parameterConditions.GetLength();
-        for (uint32 j = 0; j < numParameterConditions; ++j)
-        {
-            EMotionFX::AnimGraphParameterCondition* parameterCondition = static_cast<EMotionFX::AnimGraphParameterCondition*>(parameterConditions[j]);
-
-            // Adjust all parameter conditions along with the parameter name change.
-            if (parameterCondition->GetParameterName() == oldParameterName)
-            {
-                parameterCondition->SetParameterName(newParameterName);
-            }
-        }
-
-
-        // Collect all tag transition conditions.
-        MCore::Array<EMotionFX::AnimGraphTransitionCondition*> tagConditions;
-        animGraph->RecursiveCollectTransitionConditionsOfType(azrtti_typeid<EMotionFX::AnimGraphTagCondition>(), &tagConditions);
-
-        const uint32 numTagConditions = tagConditions.GetLength();
-        for (uint32 j = 0; j < numTagConditions; ++j)
-        {
-            EMotionFX::AnimGraphTagCondition* tagCondition = static_cast<EMotionFX::AnimGraphTagCondition*>(tagConditions[j]);
-            tagCondition->RenameTag(oldParameterName, newParameterName);
-        }
-
-        animGraph->Reinit();
-    }
-
-
     bool CommandAnimGraphAdjustParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
         // Get the parameter name.
@@ -500,6 +447,11 @@ namespace CommandSystem
                 outResult = AZStd::string::format("There is already a parameter with the name '%s', please use a unique name.", newName.c_str());
                 return false;
             }
+        }
+        if (!newName.empty())
+        {
+            EMotionFX::Parameter* editableParameter = const_cast<EMotionFX::Parameter*>(parameter);
+            animGraph->RenameParameter(editableParameter, newName);
         }
 
         // Get the data type and check if it is a valid one.
@@ -587,114 +539,62 @@ namespace CommandSystem
                 }
             }
 
-            if (!newName.empty())
+            // Apply the name change., only required to do it if the type didn't change
+            if (!changedType)
             {
-                // Get an array of all parameter nodes.
-                MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
-                parameterNodes.Reserve(16);
-                animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
-
-                const uint32 numParamNodes = parameterNodes.GetLength();
-                for (uint32 i = 0; i < numParamNodes; ++i)
+                if (!newName.empty())
                 {
-                    // Type-cast the anim graph node to a parameter node and reinitialize the ports.
-                    EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
+                    AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+                    animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+                    EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
 
-                    // In case we changed the name of a parameter also update the parameter masks.
-                    parameterNode->RenameParameterName(mOldName, newName);
+                    for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
+                    {
+                        EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+                        affectedObjectByParameterChanges->ParameterRenamed(mOldName, newName);
+                    }
                 }
             }
-
-            // Apply the name change., only required to do it if the type didn't change
-            if (!changedType && !newName.empty())
+            else
             {
-                RenameParameterNodePorts(animGraph, nullptr, mOldName, newName);
+                // Changed the type, should be treated as remove/add
+                AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+                animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+                EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
 
-                // Update all transition conditions along with the parameter name change.
-                UpdateTransitionConditions(animGraph, mOldName, newName);
-
-                EMotionFX::Parameter* editableParameter = const_cast<EMotionFX::Parameter*>(parameter);
-                animGraph->RenameParameter(editableParameter, newName);
+                for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
+                {
+                    EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+                    affectedObjectByParameterChanges->ParameterRemoved(mOldName);
+                    affectedObjectByParameterChanges->ParameterAdded(valueParameterIndex.GetValue());
+                }
             }
 
             // Save the current dirty flag and tell the anim graph that something got changed.
             mOldDirtyFlag = animGraph->GetDirtyFlag();
             animGraph->SetDirtyFlag(true);
-
-            animGraph->Reinit();
-            animGraph->UpdateUniqueData();
         }
         else if (mOldType != azrtti_typeid<EMotionFX::GroupParameter>())
         {
             AZ_Assert(oldValueParameterIndex.IsSuccess(), "Unable to find parameter index when changing parameter to a group");
 
-            // Update all corresponding anim graph instances.
-            const size_t numInstances = animGraph->GetNumAnimGraphInstances();
-            for (uint32 i = 0; i < numInstances; ++i)
-            {
-                EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
-                animGraphInstance->RemoveParameterValue(static_cast<uint32>(oldValueParameterIndex.GetValue()));
-            }
-           
-            // Get an array of all parameter nodes.
-            MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
-            parameterNodes.Reserve(16);
-            animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
+            // Changed the type, should be treated as remove/add
+            AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+            animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+            EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
 
-            const uint32 numParamNodes = parameterNodes.GetLength();
-            for (uint32 i = 0; i < numParamNodes; ++i)
+            for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
             {
-                // Type-cast the anim graph node to a parameter node and reinitialize the ports.
-                EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
-                
-                // In case we changed the name of a parameter also update the parameter masks.
-                parameterNode->RemoveParameterByName(newName);
+                EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+                affectedObjectByParameterChanges->ParameterRemoved(mOldName);
             }
 
             // Save the current dirty flag and tell the anim graph that something got changed.
             mOldDirtyFlag = animGraph->GetDirtyFlag();
             animGraph->SetDirtyFlag(true);
-
-            animGraph->Reinit();
-            animGraph->UpdateUniqueData();
         }
 
         return true;
-    }
-
-
-    void CommandAnimGraphAdjustParameter::RenameParameterNodePorts(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* startNode, const AZStd::string& oldName, const AZStd::string& newName)
-    {
-        // Root state machines.
-        if (!startNode)
-        {
-            EMotionFX::AnimGraphStateMachine* stateMachine = animGraph->GetRootStateMachine();
-            const uint32 numChildNodes = stateMachine->GetNumChildNodes();
-            for (uint32 i = 0; i < numChildNodes; ++i)
-            {
-                RenameParameterNodePorts(animGraph, stateMachine->GetChildNode(i), oldName, newName);
-            }
-        }
-        else
-        {
-            // Update output port name when start node is a blend tree.
-            if (azrtti_typeid(startNode) == azrtti_typeid<EMotionFX::BlendTreeParameterNode>())
-            {
-                EMotionFX::BlendTreeParameterNode* paramNode = static_cast<EMotionFX::BlendTreeParameterNode*>(startNode);
-                const uint32 index = paramNode->FindOutputPortIndex(oldName.c_str());
-                if (index != MCORE_INVALIDINDEX32)
-                {
-                    paramNode->SetOutputPortName(index, newName.c_str());
-                }
-            }
-
-            // recurse
-            const uint32 numChildNodes = startNode->GetNumChildNodes();
-            for (uint32 i = 0; i < numChildNodes; ++i)
-            {
-                RenameParameterNodePorts(animGraph, startNode->GetChildNode(i), oldName, newName);
-            }
-        }
     }
 
 
@@ -789,74 +689,6 @@ namespace CommandSystem
     {
     }
 
-    void CommandAnimGraphMoveParameter::RelinkConnections(EMotionFX::AnimGraph* animGraph, const AZ::Outcome<size_t>& valueIndexBeforeMove, const AZ::Outcome<size_t>& valueIndexAfterMove)
-    {
-        // Get an array of all parameter nodes.
-        MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
-        animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
-
-        // Relink the affected connections that are connected to parameter nodes.
-        const uint32 numParamNodes = parameterNodes.GetLength();
-        for (uint32 i = 0; i < numParamNodes; ++i)
-        {
-            EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
-
-            if (valueIndexBeforeMove.IsSuccess() && valueIndexAfterMove.IsSuccess())
-            {
-                // Make sure the parameter mask is sorted and represents the moves.
-                parameterNode->Reinit();
-
-                // Calculate the new port indices based on the current value parameter order. When using a parameter mask, they will be local to the mask entries, elsewise the port indices will be equal to the anim graph value parameter indices.
-                const uint32 portBeforeMove = static_cast<uint32>(parameterNode->FindPortForParameterIndex(valueIndexBeforeMove.GetValue()));
-                const uint32 portAfterMove = static_cast<uint32>(parameterNode->FindPortForParameterIndex(valueIndexAfterMove.GetValue()));
-
-                // Only swap connections if they actually moved. When a parameter mask is selected, a parameter move does not mean the ports move as well.
-                EMotionFX::AnimGraphNode* parentNode = parameterNode->GetParentNode();
-                if (portBeforeMove != MCORE_INVALIDINDEX32 &&
-                    portAfterMove != MCORE_INVALIDINDEX32 &&
-                    parentNode)
-                {
-                    parameterNode->GetOutputPort(portBeforeMove).mConnection = nullptr;
-                    parameterNode->GetOutputPort(portAfterMove).mConnection = nullptr;
-
-                    const uint32 numChildNodes = parentNode->GetNumChildNodes();
-                    for (uint32 childIndex = 0; childIndex < numChildNodes; ++childIndex)
-                    {
-                        EMotionFX::AnimGraphNode* childNode = parentNode->GetChildNode(childIndex);
-
-                        // Skip the current parameter node.
-                        if (childNode == parameterNode)
-                        {
-                            continue;
-                        }
-
-                        const uint32 numConnections = childNode->GetNumConnections();
-                        for (uint32 c = 0; c < numConnections; ++c)
-                        {
-                            EMotionFX::BlendTreeConnection* connection = childNode->GetConnection(c);
-
-                            // Is this connection starting at the parameter node?
-                            if (connection->GetSourceNode() == parameterNode)
-                            {
-                                // Swap the source ports for the connection.
-                                if (connection->GetSourcePort() == portAfterMove)
-                                {
-                                    connection->SetSourcePort(static_cast<uint16>(portBeforeMove));
-                                    parameterNode->GetOutputPort(portAfterMove).mConnection = connection;
-                                }
-                                else if (connection->GetSourcePort() == portBeforeMove)
-                                {
-                                    connection->SetSourcePort(static_cast<uint16>(portAfterMove));
-                                    parameterNode->GetOutputPort(portAfterMove).mConnection = connection;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }    
-    }
-
 
     bool CommandAnimGraphMoveParameter::Execute(const MCore::CommandLine& parameters, AZStd::string& outResult)
     {
@@ -910,6 +742,8 @@ namespace CommandSystem
             mOldIndex = animGraph->FindRelativeParameterIndex(parameter).GetValue();
         }
 
+        EMotionFX::ValueParameterVector valueParametersBeforeChange = animGraph->RecursivelyGetValueParameters();
+
         // If the parameter being moved is a value parameter (not a group), we need to update the anim graph instances and
         // nodes. To do so, we need to get the absolute index of the parameter before and after the move.
         AZ::Outcome<size_t> valueIndexBeforeMove = AZ::Failure();
@@ -938,28 +772,31 @@ namespace CommandSystem
             return true;
         }
 
-        // Remove the parameter from all corresponding anim graph instances if it is a value parameter
-        const size_t numInstances = EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances();
-        for (size_t i = 0; i < numInstances; ++i)
+        EMotionFX::ValueParameterVector valueParametersAfterChange = animGraph->RecursivelyGetValueParameters();
+
+        AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+        animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+        EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
+
+        for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
         {
-            EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
-            if (animGraphInstance && animGraphInstance->GetAnimGraph() == animGraph)
-            {
-                // Remove the parameter and add it to the new position
-                animGraphInstance->RemoveParameterValue(static_cast<uint32>(valueIndexBeforeMove.GetValue()));
-                animGraphInstance->InsertParameterValue(static_cast<uint32>(valueIndexAfterMove.GetValue()));
-            }
+            EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+            affectedObjectByParameterChanges->ParameterOrderChanged(valueParametersBeforeChange, valueParametersAfterChange);
         }
 
-        // Automatically relink connected connections to the new ports.
-        RelinkConnections(animGraph, valueIndexBeforeMove, valueIndexAfterMove);
+        // Remove the parameter from all corresponding anim graph instances if it is a value parameter
+        const size_t numInstances = animGraph->GetNumAnimGraphInstances();
+        for (size_t i = 0; i < numInstances; ++i)
+        {
+            EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
+            // Remove the parameter and add it to the new position
+            animGraphInstance->RemoveParameterValue(static_cast<uint32>(valueIndexBeforeMove.GetValue()));
+            animGraphInstance->InsertParameterValue(static_cast<uint32>(valueIndexAfterMove.GetValue()));
+        }
 
         // Save the current dirty flag and tell the anim graph that something got changed.
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
-
-        animGraph->Reinit();
-        animGraph->UpdateUniqueData();
 
         return true;
     }
@@ -1109,115 +946,11 @@ namespace CommandSystem
             usedCommandGroup = &internalCommandGroup;
         }
 
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // PHASE 1: Get all parameter nodes in the anim graph
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
-        animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
-        const uint32 numParameterNodes = parameterNodes.GetLength();
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // PHASE 2: Remember the old connections
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        AZStd::vector<ParameterConnectionItem> oldParameterConnections;
-        for (uint32 i = 0; i < numParameterNodes; ++i)
-        {
-            const EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
-            const EMotionFX::AnimGraphNode* parentNode = parameterNode->GetParentNode();
-            if (!parentNode)
-            {
-                continue;
-            }
-
-            // Iterate through all nodes and check if any of these is connected to our parameter node.
-            const uint32 numNodes = parentNode->GetNumChildNodes();
-            for (uint32 j = 0; j < numNodes; ++j)
-            {
-                const EMotionFX::AnimGraphNode* childNode = parentNode->GetChildNode(j);
-
-                // Skip the node in case it is the parameter node itself.
-                if (childNode == parameterNode)
-                {
-                    continue;
-                }
-
-                const uint32 numConnections = childNode->GetNumConnections();
-                for (uint32 c = 0; c < numConnections; ++c)
-                {
-                    const EMotionFX::BlendTreeConnection* connection = childNode->GetConnection(c);
-
-                    // Is the connection plugged to the parameter node?
-                    if (connection->GetSourceNode() == parameterNode)
-                    {
-                        // Only add if this connection is not plugged to one of the parameter node ports that is going to be removed.
-                        const uint16 sourcePort = connection->GetSourcePort();
-                        const uint32 parameterIndex = parameterNode->GetParameterIndex(sourcePort);
-                        const EMotionFX::ValueParameter* valueParameter = animGraph->FindValueParameter(parameterIndex);
-                        const AZStd::string& parameterName = valueParameter->GetName();
-
-                        if (AZStd::find(parameterNamesToRemove.begin(), parameterNamesToRemove.end(), parameterName) == parameterNamesToRemove.end())
-                        {
-                            ParameterConnectionItem connectionItem;
-                            connectionItem.SetParameterNodeName(parameterNode->GetName());
-                            connectionItem.SetTargetNodeName(childNode->GetName());
-                            connectionItem.SetParameterName(parameterName.c_str());
-                            connectionItem.mTargetNodePort = connection->GetTargetPort();
-
-                            oldParameterConnections.push_back(connectionItem);
-                        }
-                    }
-                }
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // PHASE 3: Delete all connections for all parameter nodes.
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        AZStd::vector<EMotionFX::BlendTreeConnection*> connectionList;
-
-        // Iterate through all parameter nodes.
-        for (uint32 i = 0; i < numParameterNodes; ++i)
-        {
-            EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
-            EMotionFX::AnimGraphNode* parentNode = parameterNode->GetParentNode();
-            if (!parentNode)
-            {
-                continue;
-            }
-
-            DeleteNodeConnections(usedCommandGroup, parameterNode, parentNode, connectionList, false);
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // PHASE 4: Adjust parameter masks for all parameter nodes
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        AZStd::string parameterMaskString;
-        for (uint32 i = 0; i < numParameterNodes; ++i)
-        {
-            // Type-cast the anim graph node to a parameter node and check if there is a parameter mask applied.
-            const EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
-            if (!parameterNode->GetParameters().empty())
-            {
-                // Create the new parameter mask excluding the parameter we are removing.
-                parameterMaskString = EMotionFX::BlendTreeParameterNode::ConstructParameterNamesString(parameterNode->GetParameters(), parameterNamesToRemove);
-                commandString = AZStd::string::format("AnimGraphAdjustNode -animGraphID %i -name \"%s\" -parameterMask \"%s\"", animGraph->GetID(), parameterNode->GetName(), parameterMaskString.c_str());
-                usedCommandGroup->AddCommandString(commandString);
-            }
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // PHASE 5: Remove the parameters from the anim graph
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         for (const AZStd::string& parameterName : parameterNamesToRemove)
         {
             commandString = AZStd::string::format("AnimGraphRemoveParameter -animGraphID %i -name \"%s\"", animGraph->GetID(), parameterName.c_str());
             usedCommandGroup->AddCommandString(commandString);
         }
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        // PHASE 6: Recreate the connections at the mapped/new ports
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        RecreateOldConnections(animGraph, oldParameterConnections, commandGroup, parameterNamesToRemove);
 
         // Is the command group parameter set?
         if (!commandGroup)
@@ -1230,149 +963,6 @@ namespace CommandSystem
         }
 
         return true;
-    }
-
-
-    void RecreateOldParameterMaskConnections(EMotionFX::AnimGraph* animGraph, const AZStd::vector<ParameterConnectionItem>& oldParameterConnections, MCore::CommandGroup* commandGroup, const AZStd::vector<AZStd::string>& newParameterMask)
-    {
-        if (!animGraph)
-        {
-            return;
-        }
-
-        AZStd::string commandString;
-
-        // Get the number of old connections and terate through them.
-        for (const ParameterConnectionItem& connectionItem : oldParameterConnections)
-        {
-            // Find the parameter node by name.
-            EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNodeByName(connectionItem.GetParameterNodeName());
-            if (!animGraphNode || azrtti_typeid(animGraphNode) != azrtti_typeid<EMotionFX::BlendTreeParameterNode>())
-            {
-                continue;
-            }
-
-            const EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(animGraphNode);
-
-            uint32 parameterNodePortNr = MCORE_INVALIDINDEX32;
-            if (newParameterMask.empty())
-            {
-                // In case the parameter mask is empty, all parameters are shown in the parameter node. We can just use the global value parameter index.
-                const AZ::Outcome<size_t> parameterIndex = animGraph->FindValueParameterIndexByName(connectionItem.GetParameterName());
-                MCORE_ASSERT(parameterIndex.IsSuccess());
-                parameterNodePortNr = static_cast<uint32>(parameterIndex.GetValue());
-            }
-            else
-            {
-                // Search the index in the local parameter name mask array.
-                const auto iterator = AZStd::find(newParameterMask.begin(), newParameterMask.end(), connectionItem.GetParameterName());
-                parameterNodePortNr = static_cast<uint32>(iterator - newParameterMask.begin());
-            }
-
-            if (parameterNodePortNr != MCORE_INVALIDINDEX32)
-            {
-
-                commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d",
-                    animGraph->GetID(),
-                    parameterNode->GetName(),
-                    connectionItem.GetTargetNodeName(),
-                    parameterNodePortNr,
-                    connectionItem.mTargetNodePort);
-
-                commandGroup->AddCommandString(commandString);
-            }
-        }
-    }
-
-
-    void RecreateOldConnections(EMotionFX::AnimGraph* animGraph, const AZStd::vector<ParameterConnectionItem>& oldParameterConnections, MCore::CommandGroup* commandGroup, const AZStd::vector<AZStd::string>& parametersToBeRemoved)
-    {
-        if (!animGraph)
-        {
-            return;
-        }
-
-        AZStd::string commandString;
-
-        // Get the number of old connections and terate through them.
-        for (const ParameterConnectionItem& connectionItem : oldParameterConnections)
-        {
-            // Find the parameter node by name.
-            EMotionFX::AnimGraphNode* animGraphNode = animGraph->RecursiveFindNodeByName(connectionItem.GetParameterNodeName());
-            if (!animGraphNode || azrtti_typeid(animGraphNode) != azrtti_typeid<EMotionFX::BlendTreeParameterNode>())
-            {
-                continue;
-            }
-
-            const EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(animGraphNode);
-
-            const size_t sourcePortNr = parameterNode->CalcNewPortIndexForParameter(connectionItem.GetParameterName(), parametersToBeRemoved);
-            if (sourcePortNr != MCORE_INVALIDINDEX32)
-            {
-                commandString = AZStd::string::format("AnimGraphCreateConnection -animGraphID %i -sourceNode \"%s\" -targetNode \"%s\" -sourcePort %d -targetPort %d",
-                        animGraph->GetID(),
-                        parameterNode->GetName(),
-                        connectionItem.GetTargetNodeName(),
-                        sourcePortNr,
-                        connectionItem.mTargetNodePort);
-
-                commandGroup->AddCommandString(commandString);
-            }
-        }
-    }
-
-    void RewireConnectionsForParameterNodesAfterParameterIndexChange(EMotionFX::AnimGraph* animGraph, const EMotionFX::ValueParameterVector& valueParametersBeforeChange, const EMotionFX::ValueParameterVector& valueParametersAfterChange)
-    {
-        // Get an array of all parameter nodes.
-        MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
-        animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
-
-        // Relink the affected connections that are connected to parameter nodes.
-        const uint32 numParamNodes = parameterNodes.GetLength();
-        for (uint32 i = 0; i < numParamNodes; ++i)
-        {
-            EMotionFX::BlendTreeParameterNode* parameterNode = static_cast<EMotionFX::BlendTreeParameterNode*>(parameterNodes[i]);
-
-            AZStd::vector<EMotionFX::BlendTreeConnection*> connections;
-            AZStd::vector<EMotionFX::AnimGraphNode*> targetNodes;
-            parameterNode->CollectOutgoingConnections(connections, targetNodes);
-
-            EMotionFX::ValueParameterVector parameterPerConnection;
-            const AZStd::vector<AZStd::string>& parameterMask = parameterNode->GetParameters();
-
-            for (EMotionFX::BlendTreeConnection* connection : connections)
-            {
-                // Get the parameter index before the change.
-                const uint32 parameterIndex = parameterNode->GetParameterIndex(connection->GetSourcePort());
-                parameterPerConnection.emplace_back(valueParametersBeforeChange[parameterIndex]);
-            }
-
-            // Update the internally stored parameter indices for the parameter mask in order find the correct port index for the connections
-            parameterNode->Reinit();
-
-            const size_t blendTreeConnectionSize = connections.size();
-            for (size_t j = 0; j < blendTreeConnectionSize; ++j)
-            {
-                EMotionFX::BlendTreeConnection* connection = connections[j];
-                const EMotionFX::ValueParameter* valueParameter = parameterPerConnection[j];
-
-                // Find the value parameter index in the value parameter array after the change.
-                const auto iterator = AZStd::find(valueParametersAfterChange.begin(), valueParametersAfterChange.end(), valueParameter);
-                if (iterator == valueParametersAfterChange.end())
-                {
-                    continue;
-                }
-
-                const size_t parameterIndexAfterChange = AZStd::distance(valueParametersAfterChange.begin(), iterator);
-
-                // Depending on if we use a parameter mask or not the parameter index after the change can differentiate from the actual port index.
-                const uint32 portIndexAfterChange = static_cast<uint32>(parameterNode->FindPortForParameterIndex(parameterIndexAfterChange));
-
-                // Adjust the actual source port of the connection and update the port's connection.
-                connection->SetSourcePort(static_cast<uint16>(portIndexAfterChange));
-                parameterNode->GetOutputPort(portIndexAfterChange).mConnection = connection;
-            }
-        }
     }
 
 } // namesapce EMotionFX

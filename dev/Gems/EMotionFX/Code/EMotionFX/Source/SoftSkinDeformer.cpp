@@ -20,9 +20,6 @@
 #include "SkinningInfoVertexAttributeLayer.h"
 #include "TransformData.h"
 #include "ActorInstance.h"
-#include <MCore/Source/JobManager.h>
-#include <MCore/Source/Job.h>
-#include <MCore/Source/JobList.h>
 #include <EMotionFX/Source/Allocators.h>
 
 
@@ -89,20 +86,15 @@ namespace EMotionFX
         MCORE_UNUSED(timeDelta);
 
         // get some vars
-        TransformData* transformData        = actorInstance->GetTransformData();
-        const MCore::Matrix* invBindPoseMatrices    = actorInstance->GetActor()->GetInverseBindPoseGlobalMatrices().GetReadPtr();
-        const MCore::Matrix* globalMatrices     = transformData->GetGlobalInclusiveMatrices();
-        uint32 i;
+        const TransformData* transformData = actorInstance->GetTransformData();
+        const MCore::Matrix* skinningMatrices = transformData->GetSkinningMatrices();
 
         // precalc the skinning matrices
-        MCore::Matrix invNodeTM = globalMatrices[ node->GetNodeIndex() ];
-        invNodeTM.Inverse();
         const uint32 numBones = mBoneMatrices.GetLength();
-        for (i = 0; i < numBones; i++)
+        for (uint32 i = 0; i < numBones; i++)
         {
             const uint32 nodeIndex = mNodeNumbers[i];
-            mBoneMatrices[i].MultMatrix4x3(invBindPoseMatrices[nodeIndex], globalMatrices[nodeIndex]);
-            mBoneMatrices[i].MultMatrix4x3(invNodeTM);
+            mBoneMatrices[i] = skinningMatrices[nodeIndex];
         }
 
         // find the skinning layer

@@ -16,12 +16,12 @@
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Application/Application.h>
-#include <AzFramework/Physics/SystemComponent.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <Tests/TestTypes.h>
+#include <AzFramework/IO/LocalFileIO.h>
 
 namespace Physics
 {
@@ -36,6 +36,7 @@ namespace Physics
         AZ::Entity* m_systemEntity;
         AZStd::unique_ptr<AZ::ComponentDescriptor> m_transformComponentDescriptor;
         AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
+        AZ::IO::LocalFileIO m_fileIo;
     };
 
     class PhysXEditorTest
@@ -53,6 +54,8 @@ namespace Physics
 
     void PhysXEditorTestEnvironment::SetupEnvironment()
     {
+        AZ::IO::FileIOBase::SetInstance(&m_fileIo);
+
         AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
 
         // Create application and descriptor

@@ -18,6 +18,7 @@
 #include <QLibrary>
 
 #include <AzCore/std/base.h>
+#include <AzCore/std/containers/set.h>
 
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 

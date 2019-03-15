@@ -25,7 +25,7 @@
 #include <EMotionFX/Source/AnimGraphNodeGroup.h>
 #include <EMotionFX/Source/AnimGraphObject.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
-#include <EMotioNFX/Source/BlendTree.h>
+#include <EMotionFX/Source/BlendTree.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/EventManager.h>
 #include <EMotionFX/Source/Pose.h>
@@ -41,7 +41,6 @@ namespace EMotionFX
     AnimGraph::AnimGraph()
         : mGameControllerSettings(aznew AnimGraphGameControllerSettings())
     {
-        mObjects.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH);
         mNodes.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH);
 
         mID = MCore::GetIDGenerator().GenerateID();
@@ -52,10 +51,10 @@ namespace EMotionFX
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime = false;
+        m_isOwnedByAsset = false;
 #endif // EMFX_DEVELOPMENT_BUILD
 
         // reserve some memory
-        mObjects.Reserve(2048);
         mNodes.Reserve(1024);
 
         // automatically register the anim graph
@@ -87,14 +86,14 @@ namespace EMotionFX
     }
 
 
-    void AnimGraph::Reinit()
+    void AnimGraph::RecursiveReinit()
     {
         if (!mRootStateMachine)
         {
             return;
         }
 
-        mRootStateMachine->Reinit();
+        mRootStateMachine->RecursiveReinit();
     }
 
 
@@ -107,6 +106,11 @@ namespace EMotionFX
 
         // Cache the value parameters
         m_valueParameters = m_rootParameter.RecursivelyGetChildValueParameters();
+        const size_t valueParameterSize = m_valueParameters.size();
+        for (size_t i = 0; i < valueParameterSize; ++i)
+        {
+            m_valueParameterIndexByName.emplace(m_valueParameters[i]->GetName(), i);
+        }
 
         return mRootStateMachine->InitAfterLoading(this);
     }
@@ -134,6 +138,7 @@ namespace EMotionFX
                 const AZ::Outcome<size_t> valueParameterIndex = m_rootParameter.FindValueParameterIndex(parameter);
                 AZ_Assert(valueParameterIndex.IsSuccess(), "Expected to have a value value parameter index");
                 m_valueParameters.insert(m_valueParameters.begin() + valueParameterIndex.GetValue(), static_cast<ValueParameter*>(parameter));
+                AddValueParameterToIndexByNameCache(valueParameterIndex.GetValue(), parameter->GetName());
             }
             return true;
         }
@@ -153,6 +158,7 @@ namespace EMotionFX
                 const AZ::Outcome<size_t> valueParameterIndex = m_rootParameter.FindValueParameterIndex(parameter);
                 AZ_Assert(valueParameterIndex.IsSuccess(), "Expected to have a value value parameter index");
                 m_valueParameters.insert(m_valueParameters.begin() + valueParameterIndex.GetValue(), static_cast<ValueParameter*>(parameter));
+                AddValueParameterToIndexByNameCache(valueParameterIndex.GetValue(), parameter->GetName());
             }
             return true;
         }
@@ -165,7 +171,18 @@ namespace EMotionFX
         {
             return false; // already a parameter named like that
         }
+
+        AZStd::unordered_map<AZStd::string_view, size_t>::iterator cachedIndexIterator = m_valueParameterIndexByName.find(parameter->GetName());
+        AZ_Assert(cachedIndexIterator != m_valueParameterIndexByName.end(), "Cached parameter indices are out of sync with the actual parameters.");
+
+        // Store the value parameter index so that we can re-add it without looking it up after renaming and remove it from the cached indices.
+        const size_t oldIndex = cachedIndexIterator->second;
+        m_valueParameterIndexByName.erase(cachedIndexIterator);
+
         parameter->SetName(newName);
+
+        // Re-add the parameter index after renaming the parameter.
+        m_valueParameterIndexByName.emplace(parameter->GetName(), oldIndex);
         return true;
     }
 
@@ -173,7 +190,11 @@ namespace EMotionFX
     {
         if (azrtti_typeid(parameter) != azrtti_typeid<GroupParameter>())
         {
-            m_valueParameters.erase(AZStd::remove(m_valueParameters.begin(), m_valueParameters.end(), parameter), m_valueParameters.end());
+            const auto it = AZStd::find(m_valueParameters.begin(), m_valueParameters.end(), parameter);
+            AZ_Assert(it != m_valueParameters.end(), "Expected to have the parameter in this anim graph");
+            const size_t valueParameterIndex = AZStd::distance(m_valueParameters.begin(), it);
+            m_valueParameters.erase(it);
+            RemoveValueParameterToIndexByNameCache(valueParameterIndex, parameter->GetName());
         }
 
         return m_rootParameter.RemoveParameter(parameter);
@@ -232,12 +253,10 @@ namespace EMotionFX
 
     const ValueParameter* AnimGraph::FindValueParameterByName(const AZStd::string& paramName) const
     {
-        for (const ValueParameter* valueParameter : m_valueParameters)
+        const AZStd::unordered_map<AZStd::string_view, size_t>::const_iterator it = m_valueParameterIndexByName.find(paramName);
+        if (it != m_valueParameterIndexByName.end())
         {
-            if (valueParameter->GetName() == paramName)
-            {
-                return valueParameter;
-            }
+            return m_valueParameters[it->second];
         }
         return nullptr;
     }
@@ -249,15 +268,17 @@ namespace EMotionFX
 
     AZ::Outcome<size_t> AnimGraph::FindValueParameterIndexByName(const AZStd::string& paramName) const
     {
-        const size_t parameterCount = m_valueParameters.size();
-        for (size_t i = 0; i < parameterCount; ++i)
+        const AZStd::unordered_map<AZStd::string_view, size_t>::const_iterator it = m_valueParameterIndexByName.find(paramName);
+        if (it != m_valueParameterIndexByName.end())
         {
-            if (m_valueParameters[i]->GetName() == paramName)
-            {
-                return AZ::Success(i);
-            }
+            return AZ::Success(it->second);
         }
         return AZ::Failure();
+    }
+
+    AZ::Outcome<size_t> AnimGraph::FindParameterIndex(Parameter* parameter) const
+    {
+        return m_rootParameter.FindParameterIndex(parameter);
     }
 
     AZ::Outcome<size_t> AnimGraph::FindParameterIndex(const Parameter* parameter) const
@@ -299,6 +320,24 @@ namespace EMotionFX
     AnimGraphNode* AnimGraph::RecursiveFindNodeById(AnimGraphNodeId nodeId) const
     {
         return mRootStateMachine->RecursiveFindNodeById(nodeId);
+    }
+
+
+    AnimGraphStateTransition* AnimGraph::RecursiveFindTransitionById(AnimGraphConnectionId transitionId) const
+    {
+        for (AnimGraphObject* object : mObjects)
+        {
+            if (azrtti_typeid(object) == azrtti_typeid<AnimGraphStateTransition>())
+            {
+                AnimGraphStateTransition* transition = static_cast<AnimGraphStateTransition*>(object);
+                if (transition->GetId() == transitionId)
+                {
+                    return transition;
+                }
+            }
+        }
+
+        return nullptr;
     }
 
 
@@ -357,7 +396,7 @@ namespace EMotionFX
             AnimGraphStateMachine* stateMachine = static_cast<AnimGraphStateMachine*>(animGraphNode);
             outStatistics.m_numStateMachines++;
 
-            const uint32 numTransitions = stateMachine->GetNumTransitions();
+            const AZ::u32 numTransitions = static_cast<AZ::u32>(stateMachine->GetNumTransitions());
             outStatistics.m_numTransitions += numTransitions;
 
             outStatistics.m_numStates += stateMachine->GetNumChildNodes();
@@ -428,6 +467,25 @@ namespace EMotionFX
 #endif
     }
 
+
+    void AnimGraph::SetIsOwnedByAsset(bool isOwnedByAsset)
+    {
+#if defined(EMFX_DEVELOPMENT_BUILD)
+        m_isOwnedByAsset = isOwnedByAsset;
+#endif
+    }
+
+
+    bool AnimGraph::GetIsOwnedByAsset() const
+    {
+#if defined(EMFX_DEVELOPMENT_BUILD)
+        return m_isOwnedByAsset;
+#else
+        return true;
+#endif
+    }
+
+    
 
     // get a pointer to the given node group
     AnimGraphNodeGroup* AnimGraph::GetNodeGroup(uint32 index) const
@@ -539,7 +597,7 @@ namespace EMotionFX
         for (uint32 i = 0; i < blendTreeNodesCount; ++i)
         {
             BlendTree* blendTree = static_cast<BlendTree*>(blendTreeNodes[i]);
-            const AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>> cycleConnections = blendTree->FindCycles();
+            const AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*> > cycleConnections = blendTree->FindCycles();
             if (!cycleConnections.empty())
             {
                 for (const auto& cycleConnection : cycleConnections)
@@ -572,6 +630,18 @@ namespace EMotionFX
     void AnimGraph::RecursiveCollectTransitionConditionsOfType(const AZ::TypeId& conditionType, MCore::Array<AnimGraphTransitionCondition*>* outConditions) const
     {
         mRootStateMachine->RecursiveCollectTransitionConditionsOfType(conditionType, outConditions);
+    }
+
+
+    void AnimGraph::RecursiveCollectObjectsOfType(const AZ::TypeId& objectType, AZStd::vector<AnimGraphObject*>& outObjects)
+    {
+        mRootStateMachine->RecursiveCollectObjectsOfType(objectType, outObjects);
+    }
+
+
+    void AnimGraph::RecursiveCollectObjectsAffectedBy(AnimGraph* animGraph, AZStd::vector<AnimGraphObject*>& outObjects)
+    {
+        mRootStateMachine->RecursiveCollectObjectsAffectedBy(animGraph, outObjects);
     }
 
 
@@ -609,7 +679,11 @@ namespace EMotionFX
         // if it is a value parameter, remove it from the list of values
         if (azrtti_typeid(parameter) != azrtti_typeid<GroupParameter>())
         {
-            m_valueParameters.erase(AZStd::remove(m_valueParameters.begin(), m_valueParameters.end(), parameter), m_valueParameters.end());
+            const auto it = AZStd::find(m_valueParameters.begin(), m_valueParameters.end(), parameter);
+            AZ_Assert(it != m_valueParameters.end(), "Expected to have the parameter in this anim graph");
+            const size_t valueParameterIndex = AZStd::distance(m_valueParameters.begin(), it);
+            m_valueParameters.erase(it);
+            RemoveValueParameterToIndexByNameCache(valueParameterIndex, parameter->GetName());
         }
 
         return m_rootParameter.TakeParameterFromParent(parameter);
@@ -645,8 +719,8 @@ namespace EMotionFX
         MCore::LockGuard lock(mLock);
 
         // assign the index and add it to the objects array
-        object->SetObjectIndex(mObjects.GetLength());
-        mObjects.Add(object);
+        object->SetObjectIndex(static_cast<uint32>(mObjects.size()));
+        mObjects.push_back(object);
 
         // if it's a node, add it to the nodes array as well
         if (azrtti_istypeof<AnimGraphNode>(object))
@@ -669,14 +743,14 @@ namespace EMotionFX
     {
         MCore::LockGuard lock(mLock);
 
-        const uint32 objectIndex = object->GetObjectIndex();
+        const size_t objectIndex = object->GetObjectIndex();
 
         // remove all internal attributes for this object
         object->RemoveInternalAttributesForAllInstances();
 
         // decrease the indices of all objects that have an index after this node
-        const uint32 numObjects = mObjects.GetLength();
-        for (uint32 i = objectIndex + 1; i < numObjects; ++i)
+        const size_t numObjects = mObjects.size();
+        for (size_t i = objectIndex + 1; i < numObjects; ++i)
         {
             AnimGraphObject* curObject = mObjects[i];
             MCORE_ASSERT(i == curObject->GetObjectIndex());
@@ -684,7 +758,7 @@ namespace EMotionFX
         }
 
         // remove the object from the array
-        mObjects.Remove(objectIndex);
+        mObjects.erase(mObjects.begin() + objectIndex);
 
         // remove it from the nodes array if it is a node
         if (azrtti_istypeof<AnimGraphNode>(object))
@@ -709,7 +783,7 @@ namespace EMotionFX
     // reserve space for a given amount of objects
     void AnimGraph::ReserveNumObjects(uint32 numObjects)
     {
-        mObjects.Reserve(numObjects);
+        mObjects.reserve(numObjects);
     }
 
 
@@ -762,10 +836,9 @@ namespace EMotionFX
     // decrease internal attribute indices by one, for values higher than the given parameter
     void AnimGraph::DecreaseInternalAttributeIndices(uint32 decreaseEverythingHigherThan)
     {
-        const uint32 numObjects = mObjects.GetLength();
-        for (uint32 i = 0; i < numObjects; ++i)
+        for (AnimGraphObject* object : mObjects)
         {
-            mObjects[i]->DecreaseInternalAttributeIndices(decreaseEverythingHigherThan);
+            object->DecreaseInternalAttributeIndices(decreaseEverythingHigherThan);
         }
     }
 
@@ -865,7 +938,7 @@ namespace EMotionFX
             ->Field("nodeGroups", &AnimGraph::mNodeGroups)
             ->Field("gameControllerSettings", &AnimGraph::mGameControllerSettings)
             ->Field("retarget", &AnimGraph::mRetarget)
-            ;
+        ;
 
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -876,11 +949,11 @@ namespace EMotionFX
 
         editContext->Class<AnimGraph>("Anim Graph", "Anim graph attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ::Edit::UIHandlers::Default, &AnimGraph::mRetarget, "Retarget", "")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraph::OnRetargetingEnabledChanged)
-            ;
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &AnimGraph::OnRetargetingEnabledChanged)
+        ;
     }
 
 
@@ -898,8 +971,8 @@ namespace EMotionFX
             animGraph->InitAfterLoading();
             animGraph->RemoveInvalidConnections(true);
             const float initTimeInMs = loadTimer.GetDeltaTimeInSeconds() * 1000.0f;
-            
-            AZ_Printf("EMotionFX", "Loaded anim graph from %s in %.1f ms (Deserialization %.1f ms, Initialization %.1f ms).", filename.c_str(), deserializeTimeInMs+initTimeInMs, deserializeTimeInMs, initTimeInMs);
+
+            AZ_Printf("EMotionFX", "Loaded anim graph from %s in %.1f ms (Deserialization %.1f ms, Initialization %.1f ms).", filename.c_str(), deserializeTimeInMs + initTimeInMs, deserializeTimeInMs, initTimeInMs);
         }
 
         return animGraph;
@@ -921,7 +994,7 @@ namespace EMotionFX
             animGraph->RemoveInvalidConnections(true);
             const float initTimeInMs = loadTimer.GetDeltaTimeInSeconds() * 1000.0f;
 
-            AZ_Printf("EMotionFX", "Loaded anim graph from buffer in %.1f ms (Deserialization %.1f ms, Initialization %.1f ms).", deserializeTimeInMs+initTimeInMs, deserializeTimeInMs, initTimeInMs);
+            AZ_Printf("EMotionFX", "Loaded anim graph from buffer in %.1f ms (Deserialization %.1f ms, Initialization %.1f ms).", deserializeTimeInMs + initTimeInMs, deserializeTimeInMs, initTimeInMs);
         }
 
         return animGraph;
@@ -939,7 +1012,7 @@ namespace EMotionFX
             const float saveTimeInMs = saveTimer.GetDeltaTimeInSeconds() * 1000.0f;
             AZ_Printf("EMotionFX", "Saved anim graph to %s in %.1f ms.", filename.c_str(), saveTimeInMs);
         }
-        
+
         return result;
     }
 
@@ -970,4 +1043,30 @@ namespace EMotionFX
             }
         }
     }
+
+
+    void AnimGraph::AddValueParameterToIndexByNameCache(const size_t index, const AZStd::string& parameterName)
+    {
+        for (auto& nameAndIndex : m_valueParameterIndexByName)
+        {
+            if (nameAndIndex.second >= index)
+            {
+                ++nameAndIndex.second;
+            }
+        }
+        m_valueParameterIndexByName.emplace(parameterName, index);
+    }
+
+    void AnimGraph::RemoveValueParameterToIndexByNameCache(const size_t index, const AZStd::string& parameterName)
+    {
+        m_valueParameterIndexByName.erase(parameterName);
+        for (auto& nameAndIndex : m_valueParameterIndexByName)
+        {
+            if (nameAndIndex.second > index)
+            {
+                --nameAndIndex.second;
+            }
+        }
+    }
+
 } // namespace EMotionFX

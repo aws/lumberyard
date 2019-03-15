@@ -94,6 +94,10 @@ namespace AzFramework
     class NetQuery
     {
     public:
+        AZ_RTTI(NetQuery, "{AA4C5699-889D-4A73-9AD2-53EB03D8BB99}");
+
+        virtual ~NetQuery() = default;
+
         static AZ_FORCE_INLINE bool IsEntityAuthoritative(AZ::EntityId entityId)
         {
             bool result = true;

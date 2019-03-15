@@ -30,7 +30,7 @@ namespace LmbrCentral
                 editContext->Class<AzFramework::RigidPhysicsConfig>(
                     "Rigid Body Physics Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
 
                     ->DataElement(0, &AzFramework::RigidPhysicsConfig::m_enabledInitially,
@@ -120,7 +120,7 @@ namespace LmbrCentral
                 editContext->Class<EditorRigidPhysicsComponent>(
                     "Rigid Body Physics", "The Rigid Body Physics component is used to represent solid objects that move realistically when touched")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/RigidPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/RigidPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

@@ -56,6 +56,9 @@ namespace TranslationBuilder
 
         m_builderWorker.BusConnect(builderDescriptor.m_busId);
 
+        // (optimization) this builder does not emit source dependencies:
+        builderDescriptor.m_flags |= AssetBuilderSDK::AssetBuilderDesc::BF_EmitsNoDependencies;
+
         EBUS_EVENT(AssetBuilderSDK::AssetBuilderBus, RegisterBuilderInformation, builderDescriptor);
     }
 

@@ -11,6 +11,8 @@
 */
 #include "assetUtils.h"
 
+#include <AzCore/Math/Sha1.h>
+
 #include "native/utilities/PlatformConfiguration.h"
 #include "native/AssetManager/assetScanner.h"
 #include "native/assetprocessor.h"
@@ -1053,47 +1055,71 @@ namespace AssetUtilities
 
     unsigned int GenerateFingerprint(const AssetProcessor::JobDetails& jobDetail)
     {
-        QString absolutePath = jobDetail.m_jobEntry.GetAbsoluteSourcePath();
-        unsigned int fingerprint = GenerateBaseFingerprint(absolutePath, jobDetail.m_extraInformationForFingerprinting);
+        // it is assumed that m_fingerprintFilesList contains the original file and all dependencies, and is in a stable order without duplicates
+        // CRC32 is not an effective hash for this purpose, so we will build a string and then use SHA1 on it.
+        
+        // to avoid resizing and copying repeatedly we will keep track of the largest reserved capacity ever needed for this function, and reserve that much data
+        static size_t s_largestFingerprintCapacitySoFar = 1;
+        AZStd::string fingerprintString;
+        fingerprintString.reserve(s_largestFingerprintCapacitySoFar);
 
-        // If fingerprint is zero, then the file does not exist so abort
-        if (fingerprint == 0)
+        // in general, we'll build a string which is:
+        // (version):[Array of individual file fingerprints][Array of individual job fingerprints]
+        // with each element of the arrays seperated by colons.
+
+        fingerprintString.append(jobDetail.m_extraInformationForFingerprinting);
+
+        for (const auto& fingerprintFile : jobDetail.m_fingerprintFiles)
         {
-            return 0;
+            fingerprintString.append(":");
+            fingerprintString.append(GetFileFingerprint(fingerprintFile.first, fingerprintFile.second));
         }
 
-        for (AZStd::string fingerprintFile : jobDetail.m_fingerprintFilesList)
+        // now the other jobs, which this job depends on:
+        for (const AssetProcessor::JobDependencyInternal& jobDependencyInternal : jobDetail.m_jobDependencyList)
         {
-            unsigned int metaDataFingerprint = GenerateBaseFingerprint(fingerprintFile.c_str());
+            AssetProcessor::JobDesc jobDesc(jobDependencyInternal.m_jobDependency.m_sourceFile.m_sourceFileDependencyPath,
+                jobDependencyInternal.m_jobDependency.m_jobKey, jobDependencyInternal.m_jobDependency.m_platformIdentifier);
 
-            if (metaDataFingerprint != 0)
+            for (auto builderIter = jobDependencyInternal.m_builderUuidList.begin(); builderIter != jobDependencyInternal.m_builderUuidList.end(); ++builderIter)
             {
-                fingerprint = AssetUtilities::ComputeCRC32Lowercase(reinterpret_cast<const char*>(&metaDataFingerprint), sizeof(unsigned int), fingerprint);
+                AZ::u32 dependentJobFingerprint;
+                AssetProcessor::ProcessingJobInfoBus::BroadcastResult(dependentJobFingerprint, &AssetProcessor::ProcessingJobInfoBusTraits::GetJobFingerprint, AssetProcessor::JobIndentifier(jobDesc, *builderIter));
+                if (dependentJobFingerprint != 0)
+                {
+                    fingerprintString.append(AZStd::string::format(":%u", dependentJobFingerprint));
+                }
             }
         }
+        s_largestFingerprintCapacitySoFar = AZStd::GetMax(fingerprintString.capacity(), s_largestFingerprintCapacitySoFar);
 
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "FP:'%s':'%u'\n", jobDetail.m_extraInformationForFingerprinting.toUtf8().data(), fingerprint);
+        AZ::Sha1 sha;
+        sha.ProcessBytes(fingerprintString.data(), fingerprintString.size());
+        AZ::u32 digest[5];
+        sha.GetDigest(digest);
 
-        return fingerprint;
+        return digest[0]; // we only currently use 32-bit hashes.  This could be extended if collisions still occur.
     }
 
-    unsigned int GenerateBaseFingerprint(QString fullPathToFile, QString extraInfo /*= QString()*/)
+    AZStd::string GetFileFingerprint(const AZStd::string& absolutePath, const AZStd::string& nameToUse)
     {
-        QFileInfo fi(fullPathToFile);
-        if (!fi.exists())
+        QFileInfo fileInfo(QString::fromUtf8(absolutePath.c_str()));
+        QDateTime lastModifiedTime = fileInfo.lastModified();
+        if (!lastModifiedTime.isValid())
         {
-            return 0;
+            // we still use the name here so that when missing files change, it still counts as a change.
+            // we also don't use '0' as the placeholder, so that there is a difference between files that do not exist
+            // and files which have 0 bytes size.
+            return AZStd::string::format("-:-:%s", nameToUse.c_str());
         }
-        unsigned int fingerprint = 0;
-        QDateTime mod = fi.lastModified();
-
-        fingerprint = AssetUtilities::ComputeCRC32(extraInfo.toStdString().data(), extraInfo.toStdString().length(), static_cast<unsigned int>(extraInfo.size()));
-        qint64 highreztimer = mod.toMSecsSinceEpoch();
-        // commented to reduce spam in logs.
-        //AZ_TracePrintf(AssetProcessor::DebugChannel, "ms since epoch: %llu", highreztimer);
-        fingerprint = AssetUtilities::ComputeCRC32(&highreztimer, sizeof(highreztimer), fingerprint);
-
-        return fingerprint;
+        else
+        {
+            // its possible that the dependency has moved to a different file with the same modtime
+            // so we add the size of it too.
+            // its also possible that it moved to a different file with the same modtime AND size,
+            // but with a different name.  So we add that too.
+            return AZStd::string::format("%llX:%llu:%s", lastModifiedTime.toMSecsSinceEpoch(), fileInfo.size(), nameToUse.c_str());
+        }
     }
 
     AZStd::string ComputeJobLogFileName(const AssetProcessor::JobEntry& jobEntry)
@@ -1244,6 +1270,68 @@ namespace AssetUtilities
             }
         }
         return productName.toLower();
+    }
+
+    bool UpdateToCorrectCase(const QString& rootPath, QString& relativePathFromRoot)
+    {
+        // normalize the input string:
+        relativePathFromRoot = NormalizeFilePath(relativePathFromRoot);
+
+#if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_APPLE_OSX)
+        // these operating systems use File Systems which are generally not case sensitive, and so we can make this function "early out" a lot faster.
+        // by quickly determining the case where it does not exist at all.  Without this assumption, it can be hundreds of times slower.
+        if (!QFile::exists(QDir(rootPath).absoluteFilePath(relativePathFromRoot)))
+        {
+            return false;
+        }
+#endif
+        
+        QStringList tokenized = relativePathFromRoot.split(QChar('/'), QString::SkipEmptyParts);
+        QString validatedPath(rootPath);
+
+        bool success = true;
+
+        for (QString& element : tokenized)
+        {
+            // validate the element:
+            QStringList searchPattern;
+
+            QString searchTerm = element;
+
+            // its a wildcard globbing search, and we cannot include terms that have square brackets.
+            // and unfortunately, Qt's wildcard globbing does not support escaping characters like [, ], and *
+            searchTerm = searchTerm.replace("[", "?");
+            searchTerm = searchTerm.replace("]", "?");
+            searchTerm = searchTerm.replace("*", "?");
+
+            searchPattern << searchTerm;
+
+            QDir checkDir(validatedPath);
+
+            // note that this specifically does not emit the case sensitive option - so it will find it caselessly.
+
+            bool foundAMatch = false;
+            QStringList actualCasing = checkDir.entryList(searchPattern, QDir::Files | QDir::Dirs);
+            for (const QString& found : actualCasing)
+            {
+                if (QString::compare(found, element, Qt::CaseInsensitive) == 0)
+                {
+                    element = found;
+                    foundAMatch = true;
+                    break;
+                }
+            }
+            if (!foundAMatch)
+            {
+                success = false;
+                break;
+            }
+            validatedPath = checkDir.absoluteFilePath(element); // go one step deeper.
+        }
+
+        relativePathFromRoot = tokenized.join(QChar('/'));
+
+        return success;
     }
 
     BuilderFilePatternMatcher::BuilderFilePatternMatcher(const AssetBuilderSDK::AssetBuilderPattern& pattern, const AZ::Uuid& builderDescID)

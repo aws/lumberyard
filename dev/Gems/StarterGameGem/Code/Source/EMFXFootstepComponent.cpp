@@ -102,18 +102,26 @@ namespace StarterGameGem
             return;
         }
 
+        Vec3 jointOffset(ZERO);
+
+        if (boneName.data())
+        {
+            AZ::s32 jointIndex = -1;
+            LmbrCentral::SkeletalHierarchyRequestBus::EventResult(jointIndex, GetEntityId(), &LmbrCentral::SkeletalHierarchyRequestBus::Events::GetJointIndexByName, boneName.data());
+            if (jointIndex >= 0)
+            {
+                AZ::Transform characterRelativeTransform;
+                LmbrCentral::SkeletalHierarchyRequestBus::EventResult(characterRelativeTransform, GetEntityId(), &LmbrCentral::SkeletalHierarchyRequestBus::Events::GetJointTransformCharacterRelative, jointIndex);
+                jointOffset = AZVec3ToLYVec3(characterRelativeTransform.GetPosition());
+            }
+        }
+        else
+        {
+            AZ_WarningOnce("EMFXFootstepComponent", false, "Missing bone name for footsteps events in %s, effects will play from entity origin", __FUNCTION__);
+        }
+
         AZ::Transform entityTransform;
         AZ::TransformBus::EventResult(entityTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
-
-        AZ::s32 jointIndex = -1;
-        LmbrCentral::SkeletalHierarchyRequestBus::EventResult(jointIndex, GetEntityId(), &LmbrCentral::SkeletalHierarchyRequestBus::Events::GetJointIndexByName, boneName.data());
-        Vec3 jointOffset(ZERO);
-        if (jointIndex >= 0)
-        {
-            AZ::Transform characterRelativeTransform;
-            LmbrCentral::SkeletalHierarchyRequestBus::EventResult(characterRelativeTransform, GetEntityId(), &LmbrCentral::SkeletalHierarchyRequestBus::Events::GetJointTransformCharacterRelative, jointIndex);
-            jointOffset = AZVec3ToLYVec3(characterRelativeTransform.GetPosition());
-        }
         Matrix34 tm = AZTransformToLYTransform(entityTransform);
         tm.OrthonormalizeFast();
         Ang3 angles = Ang3::GetAnglesXYZ(tm);
@@ -144,7 +152,11 @@ namespace StarterGameGem
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION EMFXFOOTSTEPCOMPONENT_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(EMFXFootstepComponent_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/EMFXFootstepComponent_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/EMFXFootstepComponent_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -167,7 +179,11 @@ namespace StarterGameGem
                 effectId = pMaterialEffects->GetEffectId(fxLibName.data(), livingStatus.groundSurfaceIdx);
     #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION EMFXFOOTSTEPCOMPONENT_CPP_SECTION_2
-    #include AZ_RESTRICTED_FILE(EMFXFootstepComponent_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/EMFXFootstepComponent_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/EMFXFootstepComponent_cpp_provo.inl"
+    #endif
     #endif
     #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
     #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

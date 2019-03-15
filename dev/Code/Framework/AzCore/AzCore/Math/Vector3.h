@@ -352,6 +352,9 @@ namespace AZ
 
         bool IsPerpendicular(const Vector3& v, const VectorFloat& tolerance = g_simdTolerance) const;
 
+        /// Returns an (unnormalized) arbitrary vector which is orthogonal to this vector.
+        Vector3 GetOrthogonalVector() const;
+
         /// Project vector onto another. P = (a.Dot(b) / b.Dot(b)) * b
         AZ_MATH_FORCE_INLINE void           Project(const Vector3& rhs)                 { *this = rhs * (Dot(rhs) / rhs.Dot(rhs)); }
         /// Project vector onto a normal (faster function). P = (v.Dot(Normal) * normal)

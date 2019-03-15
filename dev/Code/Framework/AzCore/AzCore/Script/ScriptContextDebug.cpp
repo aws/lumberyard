@@ -1411,9 +1411,6 @@ ScriptContextDebug::GetValue(DebugValue& value)
     // Erase first element, so that all that's left is sub-elements
     tokens.erase(tokens.begin());
 
-    // Disallow writing back values if it's a sub-element
-    bool isReadOnly = !tokens.empty();
-
     for (const auto& token : tokens)
     {
         // Attempt to convert token to a number
@@ -1443,7 +1440,7 @@ ScriptContextDebug::GetValue(DebugValue& value)
 
     VoidPtrArray tablesVisited; ///< Keep a list of visited tables to allow circular table dependencies
 
-    ReadValue(value, tablesVisited, isReadOnly);
+    ReadValue(value, tablesVisited);
 
     lua_pop(l, 1); // pop the value from the stack
 
@@ -1455,10 +1452,54 @@ ScriptContextDebug::GetValue(DebugValue& value)
 // [8/15/2012]
 //=========================================================================
 bool
-ScriptContextDebug::SetValue(const DebugValue& value)
+ScriptContextDebug::SetValue(const DebugValue& sourceValue)
 {
-    const char* name = value.m_name.c_str();
-    size_t nameLen = value.m_name.length();
+    AZStd::vector<AZ::OSString> tokens;
+    AZStd::tokenize<AZ::OSString>(sourceValue.m_name, ".[] ", tokens);
+
+    if (tokens.empty())
+    {
+        return false;
+    }
+
+    // create hierarchy from tokens
+    const DebugValue* value = &sourceValue;
+    DebugValue untokenizedValue;
+    
+    if (tokens.size() > 1)
+    {
+        untokenizedValue.m_name = tokens[0];
+        untokenizedValue.m_type = LUA_TTABLE;
+
+        // Erase first element, so that all that's left is sub-elements
+        tokens.erase(tokens.begin());
+
+        // expand the tokens into the hierarchy
+        DebugValue* current = &untokenizedValue;
+
+        for (AZ::OSString& token : tokens)
+        {
+            current->m_elements.push_back();
+            current = &(current->m_elements.back());
+            current->m_name = token;
+            current->m_type = LUA_TTABLE;
+        }
+
+        current->m_type = sourceValue.m_type;
+        current->m_value = sourceValue.m_value;
+
+        // If any hierarchy was passed in with the sourceValue, make sure it is accounted for
+        // in the last element of our new hierarchy
+        if (sourceValue.m_elements.size() > 0)
+        {
+            current->m_elements = sourceValue.m_elements;
+        }
+
+        value = &untokenizedValue;
+    }
+
+    const char* name = value->m_name.c_str();
+    size_t nameLen = value->m_name.length();
     if (nameLen == 0)
     {
         return false;
@@ -1495,7 +1536,7 @@ ScriptContextDebug::SetValue(const DebugValue& value)
         }
     }
 
-    WriteValue(value, name, localIndex, -1, -1);
+    WriteValue(*value, name, localIndex, -1, -1);
 
     return true;
 }

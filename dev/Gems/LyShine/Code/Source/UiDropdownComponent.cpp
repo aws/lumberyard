@@ -91,6 +91,7 @@ AZ::EntityId UiDropdownComponent::GetValue()
     return m_value;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiDropdownComponent::SetValue(AZ::EntityId value)
 {
     m_value = value;
@@ -103,7 +104,7 @@ void UiDropdownComponent::SetValue(AZ::EntityId value)
         AZStd::string text;
         EBUS_EVENT_ID_RESULT(text, optionText, UiTextBus, GetText);
         // Set our text to that text to show which option was selected
-        EBUS_EVENT_ID(m_textElement, UiTextBus, SetText, text);
+        EBUS_EVENT_ID(m_textElement, UiTextBus, SetTextWithFlags, text, UiTextInterface::SetTextFlags::SetLocalized);
     }
 
     // Get the icon from the newly selection option
@@ -125,8 +126,6 @@ void UiDropdownComponent::SetValue(AZ::EntityId value)
     }
     EBUS_EVENT_ID(GetEntityId(), UiDropdownNotificationBus, OnDropdownValueChanged, value);
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 AZ::EntityId UiDropdownComponent::GetContent()
@@ -215,115 +214,13 @@ void UiDropdownComponent::SetIconElement(AZ::EntityId iconElement)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiDropdownComponent::Expand()
 {
-    m_expanded = true;
-
-    // Enable the dropdown menu
-    EBUS_EVENT_ID(m_content, UiElementBus, SetIsEnabled, true);
-
-    // Disconnect from the tickbus if we were connected
-    if (AZ::TickBus::Handler::BusIsConnected())
-    {
-        AZ::TickBus::Handler::BusDisconnect();
-    }
-
-    // Save the current viewport position and scale
-    AZ::Vector2 viewportPosition;
-    EBUS_EVENT_ID_RESULT(viewportPosition, m_content, UiTransformBus, GetViewportPosition);
-
-    // Create a temporary content parent interactable that's a child of the given expanded parent
-    // or the canvas if no expanded parent was specified.
-    // The content element needs a parent interactable to constrain navigation between the content's
-    // descendant interactables.
-    m_tempContentParentInteractable = CreateContentParentInteractable();
-
-    // Reparent the dropdown content to the content parent interactable
-    if (m_tempContentParentInteractable.IsValid())
-    {
-        UiInteractableNotificationBus::MultiHandler::BusConnect(m_tempContentParentInteractable);
-        EBUS_EVENT_ID(m_content, UiElementBus, ReparentByEntityId, m_tempContentParentInteractable, AZ::EntityId());
-    }
-
-    EBUS_EVENT_ID(m_content, UiTransformBus, SetViewportPosition, viewportPosition);
-
-    // Set the first descendant interactable to have the hover
-    TransferHoverToDescendant();
-
-    if (!m_expandedActionName.empty())
-    {
-        AZ::EntityId canvasEntityId;
-        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
-        EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_expandedActionName);
-    }
-    EBUS_EVENT_ID(GetEntityId(), UiDropdownNotificationBus, OnDropdownExpanded);
+    Expand(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiDropdownComponent::Collapse()
 {
-    // Check if the dropdown should become the hover interactable
-    AZ::EntityId hoverInteractable;
-    EBUS_EVENT_ID_RESULT(hoverInteractable, m_canvasEntityId, UiCanvasBus, GetHoverInteractable);
-    if (hoverInteractable.IsValid() && hoverInteractable != GetEntityId())
-    {
-        if (ContentIsAncestor(hoverInteractable))
-        {
-            // Regain the hover
-            EBUS_EVENT_ID(m_canvasEntityId, UiCanvasBus, ForceHoverInteractable, GetEntityId());
-        }
-    }
-
-    m_expanded = false;
-
-    // This is for Expand to always work the same way when called by script
-    m_expandedByClick = true;
-
-    // Disable the dropdown menu
-    EBUS_EVENT_ID(m_content, UiElementBus, SetIsEnabled, false);
-
-    // Disconnect from the tickbus if we were connected
-    if (AZ::TickBus::Handler::BusIsConnected())
-    {
-        AZ::TickBus::Handler::BusDisconnect();
-    }
-
-    // Save the current viewport position and scale
-    AZ::Vector2 viewportPosition;
-    EBUS_EVENT_ID_RESULT(viewportPosition, m_content, UiTransformBus, GetViewportPosition);
-
-    // Reparent the dropdown content to the base collapsed parent
-    if (m_baseParent.IsValid())
-    {
-        EBUS_EVENT_ID(m_content, UiElementBus, ReparentByEntityId, m_baseParent, AZ::EntityId());
-    }
-    // If the dropdown content had no base collapsed parent, reparent to canvas
-    else
-    {
-        EBUS_EVENT_ID(m_content, UiElementBus, Reparent, nullptr, nullptr);
-    }
-
-    // Destroy the temporary content parent interactable
-    if (m_tempContentParentInteractable.IsValid())
-    {
-        UiInteractableNotificationBus::MultiHandler::BusDisconnect(m_tempContentParentInteractable);
-        EBUS_EVENT_ID(m_tempContentParentInteractable, UiElementBus, DestroyElement);
-        m_tempContentParentInteractable.SetInvalid();
-    }
-
-    EBUS_EVENT_ID(m_content, UiTransformBus, SetViewportPosition, viewportPosition);
-
-    if (!m_collapsedActionName.empty())
-    {
-        AZ::EntityId canvasEntityId;
-        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
-        EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_collapsedActionName);
-    }
-    EBUS_EVENT_ID(GetEntityId(), UiDropdownNotificationBus, OnDropdownCollapsed);
-
-    // Let all our submenus know they should collapse
-    for (auto submenu : m_submenus)
-    {
-        EBUS_EVENT_ID(submenu->GetId(), UiDropdownBus, Collapse);
-    }
+    Collapse(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -454,7 +351,7 @@ void UiDropdownComponent::OnReceivedHoverByNavigatingFromDescendant(AZ::EntityId
 
     if (entityId == m_tempContentParentInteractable)
     {
-        Collapse();
+        Collapse(true);
 
         // Disconnect from the tickbus if we were connected
         if (AZ::TickBus::Handler::BusIsConnected())
@@ -467,7 +364,7 @@ void UiDropdownComponent::OnReceivedHoverByNavigatingFromDescendant(AZ::EntityId
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiDropdownComponent::OnCanvasPrimaryReleased(AZ::EntityId entityId)
 {
-    HandleCanvasReleasedCommon(entityId);
+    HandleCanvasReleasedCommon(entityId, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -475,7 +372,7 @@ void UiDropdownComponent::OnCanvasEnterReleased(AZ::EntityId entityId)
 {
     if (entityId.IsValid())
     {
-        HandleCanvasReleasedCommon(entityId);
+        HandleCanvasReleasedCommon(entityId, false);
     }
 }
 
@@ -615,6 +512,7 @@ void UiDropdownComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiDropdownComponent>("Dropdown", "An interactable component for Dropdown behavior.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiDropdown.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiDropdown.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
@@ -739,11 +637,144 @@ void UiDropdownComponent::OnExpandedStateActionsChanged()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiDropdownComponent::Expand(bool transferHover)
+{
+    m_expanded = true;
+
+    // Enable the dropdown menu
+    EBUS_EVENT_ID(m_content, UiElementBus, SetIsEnabled, true);
+
+    // Disconnect from the tickbus if we were connected
+    if (AZ::TickBus::Handler::BusIsConnected())
+    {
+        AZ::TickBus::Handler::BusDisconnect();
+    }
+
+    // Save the current viewport position and scale
+    AZ::Vector2 viewportPosition;
+    EBUS_EVENT_ID_RESULT(viewportPosition, m_content, UiTransformBus, GetViewportPosition);
+
+    // Create a temporary content parent interactable that's a child of the given expanded parent
+    // or the canvas if no expanded parent was specified.
+    // The content element needs a parent interactable to constrain navigation between the content's
+    // descendant interactables.
+    m_tempContentParentInteractable = CreateContentParentInteractable();
+
+    // Reparent the dropdown content to the content parent interactable
+    if (m_tempContentParentInteractable.IsValid())
+    {
+        UiInteractableNotificationBus::MultiHandler::BusConnect(m_tempContentParentInteractable);
+        EBUS_EVENT_ID(m_content, UiElementBus, ReparentByEntityId, m_tempContentParentInteractable, AZ::EntityId());
+    }
+
+    EBUS_EVENT_ID(m_content, UiTransformBus, SetViewportPosition, viewportPosition);
+
+    if (transferHover && IsNavigationSupported())
+    {
+        // Set the first descendant interactable to have the hover
+        TransferHoverToDescendant();
+    }
+
+    if (!m_expandedActionName.empty())
+    {
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+        EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_expandedActionName);
+    }
+    EBUS_EVENT_ID(GetEntityId(), UiDropdownNotificationBus, OnDropdownExpanded);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiDropdownComponent::Collapse(bool transferHover)
+{
+    bool curHoverInteractableIsAncestor = false;
+
+    AZ::EntityId hoverInteractable;
+    EBUS_EVENT_ID_RESULT(hoverInteractable, m_canvasEntityId, UiCanvasBus, GetHoverInteractable);
+    if (hoverInteractable.IsValid() && hoverInteractable != GetEntityId())
+    {
+        if (ContentIsAncestor(hoverInteractable))
+        {
+            curHoverInteractableIsAncestor = true;
+        }
+    }
+
+    if (IsNavigationSupported() && curHoverInteractableIsAncestor)
+    {
+        if (transferHover)
+        {
+            // Regain the hover
+            EBUS_EVENT_ID(m_canvasEntityId, UiCanvasBus, ForceHoverInteractable, GetEntityId());
+        }
+        else
+        {
+            // Make sure a soon to be disabled interactable doesn't remain the hover interactable
+            EBUS_EVENT_ID(m_canvasEntityId, UiCanvasBus, ForceHoverInteractable, AZ::EntityId());
+        }
+    }
+
+    m_expanded = false;
+
+    // This is for Expand to always work the same way when called by script
+    m_expandedByClick = true;
+
+    // Disable the dropdown menu
+    EBUS_EVENT_ID(m_content, UiElementBus, SetIsEnabled, false);
+
+    // Disconnect from the tickbus if we were connected
+    if (AZ::TickBus::Handler::BusIsConnected())
+    {
+        AZ::TickBus::Handler::BusDisconnect();
+    }
+
+    // Save the current viewport position and scale
+    AZ::Vector2 viewportPosition;
+    EBUS_EVENT_ID_RESULT(viewportPosition, m_content, UiTransformBus, GetViewportPosition);
+
+    // Reparent the dropdown content to the base collapsed parent
+    if (m_baseParent.IsValid())
+    {
+        EBUS_EVENT_ID(m_content, UiElementBus, ReparentByEntityId, m_baseParent, AZ::EntityId());
+    }
+    // If the dropdown content had no base collapsed parent, reparent to canvas
+    else
+    {
+        EBUS_EVENT_ID(m_content, UiElementBus, Reparent, nullptr, nullptr);
+    }
+
+    // Destroy the temporary content parent interactable
+    if (m_tempContentParentInteractable.IsValid())
+    {
+        UiInteractableNotificationBus::MultiHandler::BusDisconnect(m_tempContentParentInteractable);
+        EBUS_EVENT_ID(m_tempContentParentInteractable, UiElementBus, DestroyElement);
+        m_tempContentParentInteractable.SetInvalid();
+    }
+
+    EBUS_EVENT_ID(m_content, UiTransformBus, SetViewportPosition, viewportPosition);
+
+    if (!m_collapsedActionName.empty())
+    {
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+        EBUS_EVENT_ID(canvasEntityId, UiCanvasNotificationBus, OnAction, GetEntityId(), m_collapsedActionName);
+    }
+    EBUS_EVENT_ID(GetEntityId(), UiDropdownNotificationBus, OnDropdownCollapsed);
+
+    // Let all our submenus know they should collapse
+    for (auto submenu : m_submenus)
+    {
+        EBUS_EVENT_ID(submenu->GetId(), UiDropdownBus, Collapse);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 bool UiDropdownComponent::HandleReleasedCommon(const AZ::Vector2& point)
 {
     if (m_isHandlingEvents)
     {
         UiInteractableComponent::TriggerReleasedAction();
+
+        bool transferHover = (point == AZ::Vector2(-1.0f, -1.0f));
 
         if (!m_expanded)
         {
@@ -751,7 +782,7 @@ bool UiDropdownComponent::HandleReleasedCommon(const AZ::Vector2& point)
             {
                 m_expandedByClick = true;
             }
-            Expand();
+            Expand(transferHover);
         }
         else
         {
@@ -759,7 +790,7 @@ bool UiDropdownComponent::HandleReleasedCommon(const AZ::Vector2& point)
             // by a click if it is an expand on hover dropdown
             if (!m_expandOnHover || m_expandedByClick)
             {
-                Collapse();
+                Collapse(transferHover);
             }
         }
     }
@@ -770,7 +801,7 @@ bool UiDropdownComponent::HandleReleasedCommon(const AZ::Vector2& point)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiDropdownComponent::HandleCanvasReleasedCommon(AZ::EntityId entityId)
+void UiDropdownComponent::HandleCanvasReleasedCommon(AZ::EntityId entityId, bool positionalInput)
 {
     if (m_expanded)
     {
@@ -787,13 +818,15 @@ void UiDropdownComponent::HandleCanvasReleasedCommon(AZ::EntityId entityId)
         }
         else
         {
+            bool transferHover = !positionalInput;
+
             // Get the dropdown the option belongs to
             AZ::EntityId owningDropdown;
             EBUS_EVENT_ID_RESULT(owningDropdown, entityId, UiDropdownOptionBus, GetOwningDropdown);
             // If one of our options was clicked
             if (owningDropdown == GetEntityId())
             {
-                Collapse();
+                Collapse(transferHover);
                 return;
             }
             else if (m_collapseOnOutsideClick)
@@ -806,7 +839,7 @@ void UiDropdownComponent::HandleCanvasReleasedCommon(AZ::EntityId entityId)
                     // If it was not an ancestor, then we clicked outside the dropdown
                     if (!contentIsAncestor)
                     {
-                        Collapse();
+                        Collapse(transferHover);
                         return;
                     }
                 }
@@ -916,6 +949,15 @@ bool UiDropdownComponent::ContentIsAncestor(AZ::EntityId entityId)
     }
 
     return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiDropdownComponent::IsNavigationSupported()
+{
+    bool isNavigationSupported = false;
+    EBUS_EVENT_ID_RESULT(isNavigationSupported, m_canvasEntityId, UiCanvasBus, GetIsNavigationSupported);
+
+    return isNavigationSupported;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

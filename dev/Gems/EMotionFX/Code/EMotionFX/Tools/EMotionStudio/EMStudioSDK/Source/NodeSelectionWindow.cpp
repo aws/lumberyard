@@ -50,10 +50,10 @@ namespace EMStudio
         layout->addLayout(buttonLayout);
         setLayout(layout);
 
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(mCancelButton, SIGNAL(clicked()), this, SLOT(reject()));
-        connect(this, SIGNAL(accepted()), this, SLOT(OnAccept()));
-        connect(mHierarchyWidget, SIGNAL(OnDoubleClicked(MCore::Array<SelectionItem>)), this, SLOT(OnDoubleClicked(MCore::Array<SelectionItem>)));
+        connect(mOKButton, &QPushButton::clicked, this, &NodeSelectionWindow::accept);
+        connect(mCancelButton, &QPushButton::clicked, this, &NodeSelectionWindow::reject);
+        connect(this, &NodeSelectionWindow::accepted, this, &NodeSelectionWindow::OnAccept);
+        connect(mHierarchyWidget, static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnDoubleClicked), this, &NodeSelectionWindow::OnDoubleClicked);
 
         // connect the window activation signal to refresh if reactivated
         //connect( this, SIGNAL(visibilityChanged(bool)), this, SLOT(OnVisibilityChanged(bool)) );

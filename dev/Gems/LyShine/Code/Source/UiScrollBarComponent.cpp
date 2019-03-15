@@ -58,6 +58,7 @@ UiScrollBarComponent::UiScrollBarComponent()
     , m_orientation(Orientation::Horizontal)
     , m_isDragging(false)
     , m_isActive(false)
+    , m_lastDragPoint(0.0f, 0.0f)
     , m_onValueChanged()
     , m_onValueChanging()
     , m_valueChangedActionName()
@@ -81,10 +82,20 @@ float UiScrollBarComponent::GetValue()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiScrollBarComponent::SetValue(float value)
 {
-    DoSetValue(value);
-    DoChangedActions();
+    if (m_value != value)
+    {
+        DoSetValue(value);
 
-    NotifyScrollableOnValueChanged();
+        // Reset drag info
+        if (m_isDragging)
+        {
+            ResetDragInfo();
+        }
+
+        DoChangedActions();
+
+        NotifyScrollableOnValueChanged();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -250,9 +261,18 @@ void UiScrollBarComponent::OnValueChangingByScrollable(AZ::Vector2 value)
         AZ_Assert(false, "unhandled scrollbar orientation");
     }
 
+    if (m_value != axisValue)
+    {
+        DoSetValue(axisValue);
 
-    DoSetValue(axisValue);
-    DoChangingActions();
+        // Reset drag info
+        if (m_isDragging)
+        {
+            ResetDragInfo();
+        }
+
+        DoChangingActions();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -273,8 +293,18 @@ void UiScrollBarComponent::OnValueChangedByScrollable(AZ::Vector2 value)
         AZ_Assert(false, "unhandled scrollbar orientation");
     }
 
-    DoSetValue(axisValue);
-    DoChangedActions();
+    if (m_value != axisValue)
+    {
+        DoSetValue(axisValue);
+
+        // Reset drag info
+        if (m_isDragging)
+        {
+            ResetDragInfo();
+        }
+
+        DoChangedActions();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -463,6 +493,10 @@ void UiScrollBarComponent::InputPositionUpdate(AZ::Vector2 point)
                     {
                         // the drag was valid for this scrollbar, we are now dragging
                         m_isDragging = true;
+
+                        m_pressedValue = m_value;
+                        m_pressedPoint = point;
+                        m_pressedPosAlongAxis = GetPosAlongAxis(m_pressedPoint);
                     }
                 }
             }
@@ -489,6 +523,8 @@ void UiScrollBarComponent::InputPositionUpdate(AZ::Vector2 point)
                         newValue = AZ::GetClamp(m_pressedValue + valueOffset, 0.0f, 1.0f);
                     }
                 }
+
+                m_lastDragPoint = point;
 
                 if (newValue != m_value)
                 {
@@ -550,8 +586,11 @@ bool UiScrollBarComponent::OfferDragHandOff(AZ::EntityId currentActiveInteractab
         {
             // a drag was detected and it was not handed off to a parent, so this scrollbar is now taking the handoff
             m_isPressed = true;
+            m_pressedValue = m_value;
             m_pressedPoint = startPoint;
+            m_pressedPosAlongAxis = GetPosAlongAxis(m_pressedPoint);
             m_isDragging = true;
+            m_lastDragPoint = m_pressedPoint;
 
             // tell the canvas that this is now the active interactable
             EBUS_EVENT_ID(currentActiveInteractable, UiInteractableActiveNotificationBus, ActiveChanged, GetEntityId(), false);
@@ -679,6 +718,7 @@ void UiScrollBarComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiScrollBarComponent>("ScrollBar", "An interactable component for scrolling content that is larger than its viewing area.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiScrollBar.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiScrollBar.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
@@ -1132,4 +1172,12 @@ bool UiScrollBarComponent::MoveHandle(LocRelativeToHandle pointLoc)
     }
 
     return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiScrollBarComponent::ResetDragInfo()
+{
+    m_pressedValue = m_value;
+    m_pressedPoint = m_lastDragPoint;
+    m_pressedPosAlongAxis = GetPosAlongAxis(m_pressedPoint);
 }

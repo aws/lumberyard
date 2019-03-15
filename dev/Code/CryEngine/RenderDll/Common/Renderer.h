@@ -23,6 +23,13 @@
 
 #include <LoadScreenBus.h>
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED && !defined(NULL_RENDERER)
+namespace AzRTT
+{
+    class RenderContextManager;
+}
+#endif // AZ_RENDER_TO_TEXTURE_GEM_ENABLED && !defined(NULL_RENDERER)
+
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
 #define RENDERER_H_SECTION_1 1
@@ -33,7 +40,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_1
-#include AZ_RESTRICTED_FILE(Renderer_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Renderer_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Renderer_h_provo.inl"
+    #endif
 #endif
 
 typedef void (PROCRENDEF)(SShaderPass* l, int nPrimType);
@@ -150,7 +161,11 @@ typedef int (* pDrawModelFunc)(void);
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_2
-#include AZ_RESTRICTED_FILE(Renderer_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Renderer_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Renderer_h_provo.inl"
+    #endif
 #endif
 
 //////////////////////////////////////////////////////////////////////
@@ -531,7 +546,11 @@ class CRenderer
     : public IRenderer
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_3
-#include AZ_RESTRICTED_FILE(Renderer_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Renderer_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Renderer_h_provo.inl"
+    #endif
 #endif
 {
 public:
@@ -769,7 +788,11 @@ public:
     // Multithreading support
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERER_H_SECTION_4
-#include AZ_RESTRICTED_FILE(Renderer_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Renderer_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Renderer_h_provo.inl"
+    #endif
 #endif
 
     virtual void SyncComputeVerticesJobs();
@@ -812,6 +835,7 @@ public:
     virtual void RT_ReleaseVBStream(void* pVB, int nStream) = 0;
     virtual void RT_ReleaseCB(void* pCB) = 0;
     virtual void RT_DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, uint32 nVerts, uint32 nInds, const PublicRenderPrimitiveType nPrimType) = 0;
+    virtual void RT_DrawDynVBUI(SVF_P2F_C4B_T2F_F4B* pBuf, uint16* pInds, uint32 nVerts, uint32 nInds, const PublicRenderPrimitiveType nPrimType) = 0;
     virtual void RT_Draw2dImage(float xpos, float ypos, float w, float h, CTexture* pTexture, float s0, float t0, float s1, float t1, float angle, DWORD col, float z) = 0;
     virtual void RT_Draw2dImageStretchMode(bool bStretch) = 0;
     virtual void RT_Push2dImage(float xpos, float ypos, float w, float h, CTexture* pTexture, float s0, float t0, float s1, float t1, float angle, DWORD col, float z, float stereoDepth) = 0;
@@ -1051,6 +1075,7 @@ public:
     virtual void    RemoveTexture(unsigned int TextureId) = 0;
 
     virtual void    SetTexture(int tnum);
+    virtual void    SetTexture(int tnum, int nUnit);
     virtual void    SetWhiteTexture();
     virtual int     GetWhiteTextureId() const;
     virtual int     GetBlackTextureId() const;
@@ -1143,16 +1168,29 @@ public:
         ScaleCoordInternal(x, y);
     }
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    bool IsRenderToTextureActive() const override;
+
+    int GetWidth() const override;
+    void SetWidth(int width);
+    int GetHeight() const override;
+    void SetHeight(int height);
+
+    int GetOverlayWidth() const override;
+    int GetOverlayHeight() const override;
+#else
     void SetWidth(int nW) { m_width = nW; }
     void SetHeight(int nH) { m_height = nH; }
+
+    virtual int     GetWidth() const { return (m_width); }
+    virtual int     GetHeight() const { return (m_height); }
+
+    virtual int GetOverlayWidth() const { return m_nativeWidth; }
+    virtual int GetOverlayHeight() const { return m_nativeHeight; }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     void SetPixelAspectRatio(float fPAR) {m_pixelAspectRatio = fPAR; }
-    virtual int     GetWidth()  { return (m_width); }
-
-    virtual int     GetHeight() { return (m_height); }
-    virtual float   GetPixelAspectRatio() const { return (m_pixelAspectRatio); }
-
-    virtual int GetOverlayWidth() { return m_nativeWidth; }
-    virtual int GetOverlayHeight() { return m_nativeHeight; }
+    virtual float GetPixelAspectRatio() const { return (m_pixelAspectRatio); }
 
     int GetBackbufferWidth() { return m_backbufferWidth; }
     int GetBackbufferHeight() { return m_backbufferHeight; }
@@ -1170,7 +1208,8 @@ public:
     virtual float   GetNearestRangeMax() const { return (CV_r_DrawNearZRange); }
 
     //  Get mipmap distance factor (depends on screen width, screen height and aspect ratio)
-    _inline float GetMipDistFactor() { return TANGENT30_2 * TANGENT30_2 / (m_height * m_height); }
+
+    _inline float GetMipDistFactor() { return TANGENT30_2 * TANGENT30_2 / (GetHeight() * GetHeight()); }
 
     virtual int     GetWireframeMode() { return(m_wireframe_mode); }
 
@@ -1227,6 +1266,16 @@ public:
     virtual void SetTextureStreamListener(ITextureStreamListener* pListener);
 
     virtual void GetLogVBuffers() = 0;
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Returns a frame ID that is sequential for the active camera.  This is 
+    // useful for camera-specific temporal data like motion vectors.
+    virtual int GetCameraFrameID() const
+    {
+        const int nThreadID = m_pRT ? m_pRT->GetThreadList() : 0;
+        return m_RP.m_TI[nThreadID].m_cam.GetFrameUpdateId();
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     virtual int GetFrameID(bool bIncludeRecursiveCalls = true)
     {
@@ -1304,7 +1353,6 @@ public:
     bool m_bTimeProfileUpdated;
     int m_PrevProfiler;
     int m_nCurSlotProfiler;
-    bool m_hasSmallUniformBuffers;
 
     AZ::IO::HandleType m_logFileHandle;
     AZ::IO::HandleType m_logFileStrHandle;
@@ -1547,11 +1595,11 @@ public:
     // Summary:
     virtual void BeginSpawningGeneratingRendItemJobs(int nThreadID);
     virtual void BeginSpawningShadowGeneratingRendItemJobs(int nThreadID);
-    virtual void EndSpawningGeneratingRendItemJobs(int nThreadID);
+    virtual void EndSpawningGeneratingRendItemJobs();
 
-    AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutor(int nThreadID) override;
-    AZ::LegacyJobExecutor* GetGenerateShadowRendItemJobExecutor(int nThreadID) override;
-    AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutorPreProcess(int nThreadID) override;
+    AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutor() override;
+    AZ::LegacyJobExecutor* GetGenerateShadowRendItemJobExecutor() override;
+    AZ::LegacyJobExecutor* GetGenerateRendItemJobExecutorPreProcess() override;
     AZ::LegacyJobExecutor* GetFinalizeRendItemJobExecutor(int nThreadID) override;
     AZ::LegacyJobExecutor* GetFinalizeShadowRendItemJobExecutor(int nThreadID) override;
 
@@ -1565,7 +1613,7 @@ public:
     virtual uint64          EF_GetRemapedShaderMaskGen(const char* name, uint64 nMaskGen = 0, bool bFixup = 0);
 
     virtual uint64      EF_GetShaderGlobalMaskGenFromString(const char* szShaderName, const char* szShaderGen, uint64 nMaskGen = 0);
-    virtual const char* EF_GetStringFromShaderGlobalMaskGen(const char* szShaderName, uint64 nMaskGen = 0);
+    virtual AZStd::string EF_GetStringFromShaderGlobalMaskGen(const char* szShaderName, uint64 nMaskGen = 0);
 
     // reload file
     virtual bool EF_ReloadFile(const char* szFileName);
@@ -2047,8 +2095,8 @@ public:
     static int CV_r_shadersGL4;
     static int CV_r_shadersGLES3;
     static int CV_r_shadersdurango; // ACCEPTED_USE
-    // Confetti Nicholas Baldwin: adding metal shader language support
     static int CV_r_shadersMETAL;
+    static int CV_r_shadersPlatform;
 #endif
     //  static int CV_r_envcmwrite;
     static int CV_r_shaderspreactivate;
@@ -2113,7 +2161,7 @@ public:
     DeclareStaticConstIntCVar(CV_r_profiler, 0);
     static float CV_r_profilerTargetFPS;
     DeclareStaticConstIntCVar(CV_r_ShadowPoolMaxFrames, 30);
-    DeclareStaticConstIntCVar(CV_r_log, 0);
+    static int CV_r_log;
     DeclareStaticConstIntCVar(CV_r_logTexStreaming, 0);
     DeclareStaticConstIntCVar(CV_r_logShaders, 0);
     static int CV_r_logVBuffers;
@@ -2177,6 +2225,11 @@ public:
     static int CV_r_PostProcess;
     DeclareStaticConstIntCVar(CV_r_PostProcessFilters, 1);
     DeclareStaticConstIntCVar(CV_r_PostProcessGameFx, 1);
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    static int CV_r_FinalOutputsRGB;
+    static int CV_r_FinalOutputAlpha;
+    static int CV_r_RTT;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     static int CV_r_colorgrading;
     DeclareStaticConstIntCVar(CV_r_colorgrading_levels, 1);
     DeclareStaticConstIntCVar(CV_r_colorgrading_filters, 1);
@@ -2302,8 +2355,6 @@ public:
     //Clears GMEM G-Buffer
     DeclareStaticConstIntCVar(CV_r_ClearGMEMGBuffer, 0);
 
-    // Confetti David Srour: 0 = disable, 1= resolves LDR GMEM path to an RGBA8 target after deferred composition
-    DeclareStaticConstIntCVar(CV_r_GMEM_LDR_ForceResolvePostComposition, 0);
     // 0 = disable, 1 = enables fast math for metal shaders
     DeclareStaticConstIntCVar(CV_r_MetalShadersFastMath, 1);
     // Confetti Vera
@@ -2667,13 +2718,11 @@ public:
     int m_nFlushAllPendingTextureStreamingJobs;
     float m_fTexturesStreamingGlobalMipFactor;
 
-
-    AZ::LegacyJobExecutor m_generateRendItemJobExecutor[RT_COMMAND_BUF_COUNT];
-    AZ::LegacyJobExecutor m_generateShadowRendItemJobExecutor[RT_COMMAND_BUF_COUNT];
-    AZ::LegacyJobExecutor m_generateRendItemPreProcessJobExecutor[RT_COMMAND_BUF_COUNT];
-
 protected:
 
+    AZ::LegacyJobExecutor m_generateRendItemJobExecutor;
+    AZ::LegacyJobExecutor m_generateRendItemPreProcessJobExecutor;
+    AZ::LegacyJobExecutor m_generateShadowRendItemJobExecutor;
     AZ::LegacyJobExecutor m_finalizeRendItemsJobExecutor[RT_COMMAND_BUF_COUNT];
     AZ::LegacyJobExecutor m_finalizeShadowRendItemsJobExecutor[RT_COMMAND_BUF_COUNT];
 
@@ -2682,6 +2731,10 @@ private:
     RendererAssetListener m_assetListener;
 
     unsigned long m_nvidiaDriverVersion = 0;
+    
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED && !defined(NULL_RENDERER)
+    AZStd::unique_ptr<AzRTT::RenderContextManager> m_contextManager;
+#endif // AZ_RENDER_TO_TEXTURE_GEM_ENABLED && !defined(NULL_RENDERER)
 };
 
 

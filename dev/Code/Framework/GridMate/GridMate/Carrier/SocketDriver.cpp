@@ -59,7 +59,11 @@
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -133,7 +137,11 @@ namespace GridMate
         sockAddr.sin_family = AF_INET;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #endif
         switch (hints->ai_flags)
         {
@@ -249,7 +257,11 @@ namespace GridMate
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -379,7 +391,11 @@ namespace GridMate
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -456,7 +472,11 @@ namespace GridMate
             }
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_LINUX)
             AZ::s32 msgNoSignal = MSG_NOSIGNAL;
 #elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_WINDOWS)
@@ -649,7 +669,11 @@ namespace GridMate
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1035,7 +1059,11 @@ namespace GridMate
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1222,7 +1250,11 @@ namespace GridMate
         AZ_Assert(ft == BSD_AF_INET || ft == BSD_AF_INET6, "Family type (ft) can be IPV4 or IPV6 only!");
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1694,7 +1726,11 @@ namespace GridMate
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_CPP_SECTION_9
-#include AZ_RESTRICTED_FILE(SocketDriver_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1747,6 +1783,7 @@ namespace GridMate
 #ifdef AZ_SOCKET_RIO_SUPPORT
     SocketDriverCommon::RIOPlatformSocketDriver::RIOPlatformSocketDriver(SocketDriverCommon &parent, SocketType &socket)
         : PlatformSocketDriver(parent, socket)
+        , m_workerBufferCount(0)
     { }
 
     SocketDriverCommon::RIOPlatformSocketDriver::~RIOPlatformSocketDriver()

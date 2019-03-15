@@ -13,39 +13,47 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
-#include <PxPhysicsAPI.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
+#include <AzFramework/Physics/Shape.h>
 
 namespace PhysX
 {
-    /**
-    * Messages serviced by a PhysX collider component.
-    * A PhysX collider component allows collision geometry to be attached to bodies in PhysX.
-    */
-    class PhysXColliderComponentRequests
-        : public AZ::ComponentBus
-    {
-    public:
-        /**
-        * Creates a ShapeConfiguration based on shape information from this entity's shape bus.
-        * @return A smart pointer to the created ShapeConfiguration.
-        */
-        virtual Physics::Ptr<Physics::ShapeConfiguration> GetShapeConfigFromEntity() = 0;
-    };
-    using PhysXColliderComponentRequestBus = AZ::EBus<PhysXColliderComponentRequests>;
+    class Shape;
+    class RigidBodyStatic;
 
-    /**
-    * Events dispatched by a PhysX collider component.
-    * A PhysX collider component allows collision geometry to be attached to bodies in PhysX.
-    */
-    class PhysXColliderComponentEvents
+    /// Messages serviced by a PhysX collider component.
+    /// A PhysX collider component allows collision geometry to be attached to bodies in PhysX.
+    class ColliderComponentRequests
         : public AZ::ComponentBus
     {
     public:
-        /**
-        * Event fired when the collider is updated.
-        */
+        /// Creates a ShapeConfiguration based on shape information from this entity's shape bus.
+        /// @return A smart pointer to the created ShapeConfiguration.
+        virtual AZStd::shared_ptr<Physics::ShapeConfiguration> GetShapeConfigFromEntity() = 0;
+        virtual const Physics::ColliderConfiguration& GetColliderConfig() = 0;
+        virtual AZStd::shared_ptr<Physics::Shape> GetShape() = 0;
+        virtual void* GetNativePointer() = 0;
+
+        /// Checks if this collider component is associated with a static rigid body.
+        /// Checks whether this collider component exists on an entity without a rigid body component,
+        /// in which case a static rigid body will automatically be created.
+        /// @return true if static rigid body is created for this collider component
+        virtual bool IsStaticRigidBody() = 0;
+
+        /// Gets the static rigid body associated with the collider if one was created.
+        /// @return the static rigid body pointer
+        virtual AZStd::shared_ptr<PhysX::RigidBodyStatic> GetStaticRigidBody() = 0;
+    };
+    using ColliderComponentRequestBus = AZ::EBus<ColliderComponentRequests>;
+
+    /// Events dispatched by a PhysX collider component.
+    /// A PhysX collider component allows collision geometry to be attached to bodies in PhysX.
+    class ColliderComponentEvents
+        : public AZ::ComponentBus
+    {
+    public:
+        /// Event fired when the collider is updated.
         virtual void OnColliderChanged() {}
     };
-    using PhysXColliderComponentEventBus = AZ::EBus<PhysXColliderComponentEvents>;
+    using ColliderComponentEventBus = AZ::EBus<ColliderComponentEvents>;
 } // namespace PhysX

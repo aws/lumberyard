@@ -44,9 +44,18 @@ namespace CustomAssetExample
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.example", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.exampleinclude", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.examplesource", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+		builderDescriptor.m_patterns.emplace_back(AssetBuilderSDK::AssetBuilderPattern("*.examplejob", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = azrtti_typeid<ExampleBuilderWorker>();
+        builderDescriptor.m_version = 1; // if you change this, all assets will automatically rebuild
+        builderDescriptor.m_analysisFingerprint = ""; // if you change this, all assets will re-analyze but not necessarily rebuild.
         builderDescriptor.m_createJobFunction = AZStd::bind(&ExampleBuilderWorker::CreateJobs, &m_exampleBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&ExampleBuilderWorker::ProcessJob, &m_exampleBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
+
+        // note that this particualar builder does in fact emit various kinds of dependencies (as an example).
+        // if your builder is simple and emits no dependencies (for example, it just processes a single file and that file
+        // doesn't really depend on any other files or jobs), setting the BF_EmitsNoDependencies flag 
+        // will improve "fast analysis" scan performance.
+        builderDescriptor.m_flags = AssetBuilderSDK::AssetBuilderDesc::BF_None;
 
         m_exampleBuilder.BusConnect(builderDescriptor.m_busId);
 

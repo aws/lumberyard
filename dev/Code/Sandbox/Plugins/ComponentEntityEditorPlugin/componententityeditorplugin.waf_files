@@ -46,21 +46,23 @@
             "UI/ComponentPalette/InformationPanel.cpp"
 
         ],
-        "UI/Outliner" : [
-            "UI/Outliner/OutlinerDisplayOptionsMenu.h",
-            "UI/Outliner/OutlinerDisplayOptionsMenu.cpp",
-            "UI/Outliner/OutlinerDisplayOptionsMenu.ui",
-            "UI/Outliner/OutlinerTreeView.hxx",
-            "UI/Outliner/OutlinerTreeView.cpp",
-            "UI/Outliner/OutlinerWidget.hxx",
-            "UI/Outliner/OutlinerWidget.cpp",
-            "UI/Outliner/OutlinerCacheBus.h",
-            "UI/Outliner/OutlinerListModel.hxx",
-            "UI/Outliner/OutlinerListModel.cpp",
-            "UI/Outliner/OutlinerSortFilterProxyModel.hxx",
-            "UI/Outliner/OutlinerSortFilterProxyModel.cpp",
-            "UI/Outliner/OutlinerWidget.ui"
-        ],
+      "UI/Outliner": [
+        "UI/Outliner/OutlinerDisplayOptionsMenu.h",
+        "UI/Outliner/OutlinerDisplayOptionsMenu.cpp",
+        "UI/Outliner/OutlinerDisplayOptionsMenu.ui",
+        "UI/Outliner/OutlinerTreeView.hxx",
+        "UI/Outliner/OutlinerTreeView.cpp",
+        "UI/Outliner/OutlinerWidget.hxx",
+        "UI/Outliner/OutlinerWidget.cpp",
+        "UI/Outliner/OutlinerCacheBus.h",
+        "UI/Outliner/OutlinerListModel.hxx",
+        "UI/Outliner/OutlinerListModel.cpp",
+        "UI/Outliner/OutlinerSearchWidget.h",
+        "UI/Outliner/OutlinerSearchWidget.cpp",
+        "UI/Outliner/OutlinerSortFilterProxyModel.hxx",
+        "UI/Outliner/OutlinerSortFilterProxyModel.cpp",
+        "UI/Outliner/OutlinerWidget.ui"
+      ],
         "EditorObjects": 
         [
             "Objects/ComponentEntityObject.h",

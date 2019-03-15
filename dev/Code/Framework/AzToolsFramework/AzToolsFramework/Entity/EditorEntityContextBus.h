@@ -22,6 +22,8 @@
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
+#include <AzToolsFramework/ToolsComponents/EditorLayerComponentBus.h>
+
 namespace AZ
 {
     class Entity;
@@ -29,6 +31,16 @@ namespace AZ
 
 namespace AzToolsFramework
 {
+    /**
+     * Indicates how an entity was removed from its slice instance, so the said entity 
+     * can be restored properly.
+     */
+    enum SliceEntityRestoreType
+    {
+        Deleted,
+        Detached
+    };
+
     /**
      * Bus for making requests to the edit-time entity context component.
      */
@@ -58,20 +70,23 @@ namespace AzToolsFramework
         virtual void AddEditorEntity(AZ::Entity* entity) = 0;
 
         /// Registers an existing set of entities with the editor context.
-        virtual void AddEditorEntities(const AzToolsFramework::EntityList& entities) = 0;
+        virtual void AddEditorEntities(const EntityList& entities) = 0;
 
         /// Registers an existing set of entities of a slice instance with the editor context.
-        virtual void AddEditorSliceEntities(const AzToolsFramework::EntityList& entities) = 0;
+        virtual void AddEditorSliceEntities(const EntityList& entities) = 0;
 
         /// Destroys an entity in the editor context.
         /// \return whether or not the entity was destroyed. A false return value signifies the entity did not belong to the game context.
         virtual bool DestroyEditorEntity(AZ::EntityId entityId) = 0;
 
         /// Detaches entities from their current slice instance and adds them to root slice as loose entities.
-        virtual void DetachSliceEntities(const AzToolsFramework::EntityIdList& entities) = 0;
+        virtual void DetachSliceEntities(const EntityIdList& entities) = 0;
+
+        /// Detaches all entities from input instances and adds them to the root slice as loose entities.
+        virtual void DetachSliceInstances(const AZ::SliceComponent::SliceInstanceAddressSet& instances) = 0;
 
         /// Resets any slice data overrides for the specified entity
-        virtual void ResetEntitiesToSliceDefaults(AzToolsFramework::EntityIdList entities) = 0;
+        virtual void ResetEntitiesToSliceDefaults(EntityIdList entities) = 0;
 
         /**
          * Clone an slice-instance that comes from a sub-slice, and add the clone to the root slice.
@@ -91,8 +106,8 @@ namespace AzToolsFramework
         /// \param resultEntities - the set of entities cloned from the source
         /// \param sourceToCloneEntityIdMap[out] The map between source entity ids and clone entity ids
         /// \return true means cloning succeeded, false otherwise
-        virtual bool CloneEditorEntities(const AzToolsFramework::EntityIdList& sourceEntities, 
-                                         AzToolsFramework::EntityList& resultEntities, 
+        virtual bool CloneEditorEntities(const EntityIdList& sourceEntities, 
+                                         EntityList& resultEntities, 
                                          AZ::SliceComponent::EntityIdToEntityIdMap& sourceToCloneEntityIdMap) = 0;
 
         /// Clones an existing slice instance in the editor context. New instance is immediately returned.
@@ -107,8 +122,17 @@ namespace AzToolsFramework
         virtual AzFramework::SliceInstantiationTicket InstantiateEditorSlice(const AZ::Data::Asset<AZ::Data::AssetData>& sliceAsset, const AZ::Transform& worldTransform) = 0;
 
         /// Saves the context's slice root to the specified buffer. Entities are saved as-is (with editor components).
+        /// \param stream The stream to save the editor entity context to.
+        /// \param entitiesInLayers A list of entities that were saved into layers. These won't be saved to the editor entity context stream.
         /// \return true if successfully saved. Failure is only possible if serialization data is corrupt.
-        virtual bool SaveToStreamForEditor(AZ::IO::GenericStream& stream) = 0;
+        virtual bool SaveToStreamForEditor(
+            AZ::IO::GenericStream& stream,
+            const EntityList& entitiesInLayers,
+            AZ::SliceComponent::SliceReferenceToInstancePtrs& instancesInLayers) = 0;
+
+        /// Returns entities that are not part of a slice.
+        /// \param entityList The entity list to populate with loose entities.
+        virtual void GetLooseEditorEntities(EntityList& entityList) = 0;
 
         /// Saves the context's slice root to the specified buffer. Entities undergo conversion for game: editor -> game components.
         /// \return true if successfully saved. Failure is only possible if serialization data is corrupt.
@@ -117,6 +141,12 @@ namespace AzToolsFramework
         /// Loads the context's slice root from the specified buffer.
         /// \return true if successfully loaded. Failure is possible if the source file is corrupt or data could not be up-converted.
         virtual bool LoadFromStream(AZ::IO::GenericStream& stream) = 0;
+
+        /// Loads the context's slice root from the specified buffer, and loads any layers referenced by the context.
+        /// \param stream The stream to load from.
+        /// \param levelPakFile The path to the level's pak file, which is used to find the layers.
+        /// \return true if successfully loaded.
+        virtual bool LoadFromStreamWithLayers(AZ::IO::GenericStream& stream, QString levelPakFile) = 0;
 
         /// Completely resets the context (slices and entities deleted).
         virtual void ResetEditorContext() = 0;
@@ -136,7 +166,7 @@ namespace AzToolsFramework
 
         /// Restores an entity back to a slice instance for undo/redo *only*. A valid \ref EntityRestoreInfo must be provided,
         /// and is only extracted directly via \ref SliceReference::GetEntityRestoreInfo().
-        virtual void RestoreSliceEntity(AZ::Entity* entity, const AZ::SliceComponent::EntityRestoreInfo& info) = 0;
+        virtual void RestoreSliceEntity(AZ::Entity* entity, const AZ::SliceComponent::EntityRestoreInfo& info, SliceEntityRestoreType restoreType) = 0;
 
         /// Adds the required editor components to the entity.
         virtual void AddRequiredComponents(AZ::Entity& entity) = 0;
@@ -205,7 +235,7 @@ namespace AzToolsFramework
 
         /// Fired when an group of entities has slice ownership change.
         /// This should only be fired if all of the entities now belong to the same slice or all now belong to no slice
-        virtual void OnEditorEntitiesSliceOwnershipChanged(const AzToolsFramework::EntityIdList& /*entityIdList*/) {}
+        virtual void OnEditorEntitiesSliceOwnershipChanged(const EntityIdList& /*entityIdList*/) {}
 
         //! Fired when the editor begins going into 'Simulation' mode.
         virtual void OnStartPlayInEditorBegin() {}
@@ -226,7 +256,7 @@ namespace AzToolsFramework
         virtual void OnEntityStreamLoadFailed() {}
 
         //! Fired when the entities needs to be focused in Entity Outliner
-        virtual void OnFocusInEntityOutliner(const AzToolsFramework::EntityIdList& /*entityIdList*/) {}
+        virtual void OnFocusInEntityOutliner(const EntityIdList& /*entityIdList*/) {}
     };
 
     using EditorEntityContextNotificationBus = AZ::EBus<EditorEntityContextNotification>;

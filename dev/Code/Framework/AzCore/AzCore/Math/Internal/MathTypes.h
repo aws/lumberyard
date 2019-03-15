@@ -20,7 +20,11 @@
 // are using SIMD on the specified platform.
 #if defined(AZ_ALLOW_SIMD)
     #if defined(AZ_RESTRICTED_PLATFORM)
-        #include AZ_RESTRICTED_FILE(MathTypes_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MathTypes_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MathTypes_h_provo.inl"
+    #endif
     #elif defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_APPLE_OSX)
         #define AZ_TRAIT_USE_PLATFORM_SIMD 1
     #endif

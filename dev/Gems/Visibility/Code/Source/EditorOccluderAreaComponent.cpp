@@ -135,7 +135,7 @@ namespace Visibility
     void EditorOccluderAreaConfiguration::OnVerticesChange()
     {
         m_component->UpdateObject();
-        m_component->m_vertexSelection.Refresh();
+        m_component->m_vertexSelection.RefreshLocal();
     }
 
     EditorOccluderAreaComponent::EditorOccluderAreaComponent()
@@ -213,8 +213,9 @@ namespace Visibility
         }
     }
 
-    void EditorOccluderAreaComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
+    void EditorOccluderAreaComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
+        m_vertexSelection.RefreshSpace(world);
         UpdateObject();
     }
 
@@ -251,7 +252,7 @@ namespace Visibility
         displayInterface->DrawLine(m_config.m_vertices[3], m_config.m_vertices[0]);
 
         AzToolsFramework::EditorVertexSelectionUtil::DisplayVertexContainerIndices(*displayInterface, m_vertexSelection, GetWorldTM(), IsSelected());
-        
+
         displayInterface->DepthWriteOn();
         displayInterface->PopMatrix();
 
@@ -276,17 +277,14 @@ namespace Visibility
 
     void EditorOccluderAreaComponent::CreateManipulators()
     {
-        AZStd::unique_ptr<AzToolsFramework::NullHoverSelection> nullHoverSelection =
-            AZStd::make_unique<AzToolsFramework::NullHoverSelection>();
-        m_vertexSelection.m_hoverSelection = AZStd::move(nullHoverSelection);
+        m_vertexSelection.m_hoverSelection = AZStd::make_unique<AzToolsFramework::NullHoverSelection>();
 
         // create interface wrapping internal AZStd::array for use by vertex selection
         m_vertexSelection.m_vertices =
             AZStd::make_unique<AzToolsFramework::FixedVerticesArray<AZ::Vector3, 4>>(m_config.m_vertices);
 
-        const AzToolsFramework::ManipulatorManagerId managerId = AzToolsFramework::ManipulatorManagerId(1);
-        m_vertexSelection.Create(GetEntityId(), managerId,
-            AzToolsFramework::TranslationManipulator::Dimensions::Three,
+        m_vertexSelection.Create(GetEntityId(), AzToolsFramework::ManipulatorManagerId(1),
+            AzToolsFramework::TranslationManipulators::Dimensions::Three,
             AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
 
         m_vertexSelection.m_onVertexPositionsUpdated = [this]()

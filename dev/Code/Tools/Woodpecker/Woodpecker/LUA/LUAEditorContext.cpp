@@ -24,6 +24,7 @@
 #include <AzCore/Script/ScriptContextAttributes.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/std/string/conversions.h>
+#include <AzCore/std/string/regex.h>
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
@@ -42,13 +43,13 @@
 #include <Woodpecker/LUA/LUALocalsTrackerMessages.h>
 
 #include <QMessageBox>
+#include <regex>
 
 #include "LUAEditorContextInterface.h"
 #include "LUAEditorDebuggerMessages.h"
 #include "LUAWatchesDebuggerMessages.h"
 #include "LUAEditorViewMessages.h"
 #include "LUAContextControlMessages.h"
-
 
 namespace LUAEditor
 {
@@ -104,6 +105,8 @@ namespace LUAEditor
     {
         s_pLUAEditorScriptPtr = NULL;
         delete m_referenceModel;
+
+        m_errorData.clear();
 
         AZ_Assert(m_numOutstandingOperations == 0, "Save still pending when shut down.");
         AZ_Assert(!m_pLUAEditorMainWindow, "You must deactivate this Context");
@@ -187,6 +190,11 @@ namespace LUAEditor
 
     }
 
+    void Context::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        required.push_back(AZ_CRC("AssetProcessorToolsConnection", 0x734669bc));
+    }
+
     void Context::ApplicationDeactivated()
     {
     }
@@ -213,6 +221,11 @@ namespace LUAEditor
             }
 
             m_filesToOpen.clear();
+        }
+
+        if (m_pLUAEditorMainWindow)
+        {
+            m_pLUAEditorMainWindow->SetupLuaFilesPanel();
         }
     }
 
@@ -420,16 +433,27 @@ namespace LUAEditor
                 AZ_TracePrintf(LUAEditorDebugName, "ProcessReloadCheck inspecting assetId '%s' '%s'\n", info.m_assetId.c_str(), info.m_assetName.c_str());
             }
 
-            // we may have unsaved changes:
-            QMessageBox msgBox(this->m_pLUAEditorMainWindow);
-            msgBox.setText("A file has been modified by an outside program. Would you like to reload it from disk? If you do, you will lose any unsaved changes.");
-            msgBox.setInformativeText(info.m_assetName.c_str());
-            msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-            msgBox.setButtonText(QMessageBox::Yes, "Reload From Disk");
-            msgBox.setButtonText(QMessageBox::No, "Don't reload");
-            msgBox.setDefaultButton(QMessageBox::No);
-            msgBox.setIcon(QMessageBox::Question);
-            if (msgBox.exec() == QMessageBox::Yes)
+            auto newState = AZ::UserSettings::CreateFind<LUAEditorMainWindowSavedState>(AZ_CRC("LUA EDITOR MAIN WINDOW STATE", 0xa181bc4a), AZ::UserSettings::CT_LOCAL);
+
+            // Check to see if it is unmodified and the setting is set to auto-reload unmodified files
+            bool shouldAutoReload = newState->m_bAutoReloadUnmodifiedFiles && !info.m_bIsModified;
+            bool shouldReload = false;
+
+            if (!shouldAutoReload)
+            {
+                // we may have unsaved changes:
+                QMessageBox msgBox(this->m_pLUAEditorMainWindow);
+                msgBox.setText("A file has been modified by an outside program. Would you like to reload it from disk? If you do, you will lose any unsaved changes.");
+                msgBox.setInformativeText(info.m_assetName.c_str());
+                msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+                msgBox.setButtonText(QMessageBox::Yes, "Reload From Disk");
+                msgBox.setButtonText(QMessageBox::No, "Don't reload");
+                msgBox.setDefaultButton(QMessageBox::No);
+                msgBox.setIcon(QMessageBox::Question);
+                shouldReload = (msgBox.exec() == QMessageBox::Yes);
+            }
+
+            if (shouldAutoReload || shouldReload)
             {
                 // queue document reopen!
                 {
@@ -530,32 +554,48 @@ namespace LUAEditor
         return m_currentTargetContext;
     }
 
-    void Context::RequestEditorFocus(const AZStd::string& assetIdString, int lineNumber)
+    void Context::RequestEditorFocus(const AZStd::string& relativePath, int lineNumber)
     {
-        AZStd::to_lower(const_cast<AZStd::string&>(assetIdString).begin(), const_cast<AZStd::string&>(assetIdString).end());
+        AZStd::to_lower(const_cast<AZStd::string&>(relativePath).begin(), const_cast<AZStd::string&>(relativePath).end());
 
-        AZStd::string assetId = assetIdString;
-        auto docInfoIter = m_documentInfoMap.find(assetId);
+        bool foundAbsolutePath = false;
+        AZStd::string absolutePath;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(foundAbsolutePath,
+            &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, relativePath, absolutePath);
 
-        bool found = !(assetId.empty() || docInfoIter == m_documentInfoMap.end());
-        if (!found)
+        bool fileFound = false;
+        if (foundAbsolutePath)
+        {
+            AZStd::to_lower(const_cast<AZStd::string&>(absolutePath).begin(), const_cast<AZStd::string&>(absolutePath).end());
+            auto docInfoIter = m_documentInfoMap.find(absolutePath);
+            fileFound = docInfoIter != m_documentInfoMap.end();
+        }
+
+        if (!fileFound)
         {
             // Check if we have a relative path, we may still be able to open the file (this may happen when double clicking on a stack panel entry)
             for (const auto& doc : m_documentInfoMap)
             {
-                const char* result = strstr(doc.first.c_str(), assetId.c_str());
+                const char* result = strstr(doc.first.c_str(), relativePath.c_str());
                 if (result)
                 {
-                    assetId = doc.second.m_assetId;
-                    found = true;
+                    absolutePath = doc.second.m_assetId;
+                    fileFound = true;
                     break;
                 }
             }
 
-            if (!found)
+            if (!fileFound)
             {
                 // the document was probably closed.
-                AssetOpenRequested(assetId, true);
+                if (foundAbsolutePath)
+                { 
+                    AssetOpenRequested(absolutePath, true);
+                }
+                else
+                {
+                    AssetOpenRequested(relativePath, true);
+                }
                 return;
             }
         }
@@ -563,8 +603,8 @@ namespace LUAEditor
         ProvisionalShowAndFocus();
 
         // tell the view that it needs to focus that document!
-        m_pLUAEditorMainWindow->OnRequestFocusView(assetId);
-        m_pLUAEditorMainWindow->MoveEditCursor(assetId, lineNumber, true);
+        m_pLUAEditorMainWindow->OnRequestFocusView(absolutePath);
+        m_pLUAEditorMainWindow->MoveEditCursor(absolutePath, lineNumber, true);
     }
 
     void Context::RequestDeleteBreakpoint(const AZStd::string& assetIdString, int lineNumber)
@@ -1765,7 +1805,6 @@ namespace LUAEditor
 
         //AZ_TracePrintf(LUAEditorDebugName, "Breakpoint '%s' was hit on line %i\n", assetIdString.c_str(), lineNumber);
         EBUS_EVENT(LUAEditorDebuggerMessages::Bus, GetCallstack);
-        EBUS_EVENT(LUAEditorDebuggerMessages::Bus, EnumLocals);
         EBUS_EVENT(LUAEditor::LUABreakpointRequestMessages::Bus, RequestEditorFocus, absolutePath, lineNumber);
 
         AZStd::string assetId = absolutePath;
@@ -2111,7 +2150,7 @@ namespace LUAEditor
                         // LUA format
                         LUAEditor::StackEntry s;
 
-                        const char* fb = strchr(stackLine, ']');
+                        const char* fb = strchr(stackLine, '@');
                         if (fb)
                         {
                             ++fb;
@@ -2122,7 +2161,7 @@ namespace LUAEditor
                                 --fe;
                                 memcpy(temp, fb, fe - fb);
                                 temp[ fe - fb ] = 0;
-                                s.m_blob = stackLine;
+                                s.m_blob = temp;
 
                                 int line = 0;
                                 const char* ns = strchr(stackLine, '(');
@@ -2349,8 +2388,95 @@ namespace LUAEditor
     {
         if (IsLuaAsset(assetPath))
         {
-            AZ_Error(LUAEditorInfoName, false, "Compilation Failed!  %s\n", assetPath.c_str());
+            AZStd::lock_guard<AZStd::mutex> lock(m_failedAssetMessagesMutex);
+            m_failedAssets.push(assetPath);
+
+            EBUS_QUEUE_FUNCTION(AZ::SystemTickBus, &Context::ProcessFailedAssetMessages, this);
         }
+    }
+
+    void Context::ProcessFailedAssetMessages()
+    {
+        AZStd::string currentAsset;
+        bool foundAsset = false;
+        do
+        {
+            {
+                AZStd::lock_guard<AZStd::mutex> lock(m_failedAssetMessagesMutex);
+                if (m_failedAssets.empty())
+                {
+                    foundAsset = false;
+                }
+                else
+                {
+                    foundAsset = true;
+                    currentAsset = AZStd::move(m_failedAssets.front());
+                    m_failedAssets.pop();
+                }
+            }
+
+            if (foundAsset)
+            {
+                AZStd::string msg = AZStd::string::format("Compilation Failed! (%s)\n", currentAsset.c_str());
+                AZ_Warning(LUAEditorInfoName, false, msg.c_str());
+
+                AZ::Outcome<AzToolsFramework::AssetSystem::JobInfoContainer> jobInfoResult = AZ::Failure();
+                AzToolsFramework::AssetSystemJobRequestBus::BroadcastResult(jobInfoResult, &AzToolsFramework::AssetSystemJobRequestBus::Events::GetAssetJobsInfo, currentAsset, false);
+                if (jobInfoResult.IsSuccess())
+                {
+                    const AzToolsFramework::AssetSystem::JobInfo &jobInfo = jobInfoResult.GetValue()[0];
+                    AZ::Outcome<AZStd::string> logResult = AZ::Failure();
+                    AzToolsFramework::AssetSystemJobRequestBus::BroadcastResult(logResult, &AzToolsFramework::AssetSystemJobRequestBus::Events::GetJobLog, jobInfo.m_jobRunKey);
+                    if (logResult.IsSuccess())
+                    {
+                        // Errors should come in the form of <timestamp> filename.lua:####: errormsg
+                        std::regex errorRegex(".+\\.lua:(\\d+):(.*)");
+
+                        AzToolsFramework::Logging::LogLine::ParseLog(logResult.GetValue().c_str(), logResult.GetValue().size(),
+                            [this, &msg, &currentAsset, &errorRegex](AzToolsFramework::Logging::LogLine& logLine)
+                        {
+                            if ((logLine.GetLogType() == AzToolsFramework::Logging::LogLine::TYPE_WARNING) || (logLine.GetLogType() == AzToolsFramework::Logging::LogLine::TYPE_ERROR))
+                            {
+                                if (m_pLUAEditorMainWindow)
+                                {
+                                    m_errorData.push_back();
+                                    auto& errorData = m_errorData.back();
+
+                                    // Get the full path from the currentAsset
+                                    bool pathFound = false;
+                                    AZStd::string fullPath;
+                                    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(pathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, currentAsset, errorData.m_filename);
+                                    // Lower this so that it matches the asset_id used by the rest of the lua id when referring to open files
+                                    AZStd::to_lower(errorData.m_filename.begin(), errorData.m_filename.end());
+
+                                    // Errors should come in the form of <timestamp> filename.lua:####: errormsg
+                                    AZStd::string logString = logLine.ToString();
+                                    // Default the final message to the entire line in case it can't be parsed for line number and actual error
+                                    AZStd::string finalMessage = logString;
+
+                                    // Try to extract the line number here
+                                    std::smatch match;
+                                    std::string stdLogString = logString.c_str();
+                                    bool matchFound = std::regex_search(stdLogString, match, errorRegex);
+
+                                    if (matchFound)
+                                    {
+                                        int lineNumber = 0;
+                                        if (AzFramework::StringFunc::LooksLikeInt(match[1].str().c_str(), &lineNumber))
+                                        {
+                                            errorData.m_lineNumber = lineNumber;
+                                            finalMessage = match[2].str().c_str();
+                                        }
+                                    }
+
+                                    m_pLUAEditorMainWindow->AddMessageToLog(logLine.GetLogType(), LUAEditorInfoName, finalMessage.c_str(), &errorData);
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        } while (foundAsset); // keep doing this as long as there's failed assets in the queue
     }
 
     bool Context::IsLuaAsset(const AZStd::string& assetPath)

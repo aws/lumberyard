@@ -49,7 +49,6 @@
 
 STexState CTexture::s_sDefState;
 STexStageInfo CTexture::s_TexStages[MAX_TMU];
-int CTexture::s_TexStateIDs[eHWSC_Num][MAX_TMU];
 int CTexture::s_nStreamingMode;
 int CTexture::s_nStreamingUpdateMode;
 bool CTexture::s_bPrecachePhase;
@@ -94,7 +93,11 @@ CTexture* CTexture::s_ptexSceneDiffuse;
 CTexture* CTexture::s_ptexSceneSpecular;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
 CTexture* CTexture::s_ptexAmbientLookup;
 
@@ -1527,12 +1530,20 @@ uint32 CTexture::TextureDataSize(uint32 nWidth, uint32 nHeight, uint32 nDepth, u
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
 
         __debugbreak();
@@ -1900,13 +1911,6 @@ void CTexture::Init()
     SDynTexture::Init();
     InitStreaming();
     CTexture::s_TexStates.reserve(300); // this likes to expand, so it'd be nice if it didn't; 300 => ~6Kb, there were 171 after one level
-    for (int i = 0; i < MAX_TMU; i++)
-    {
-        for (int j = 0; j < eHWSC_Num; j++)
-        {
-            s_TexStateIDs[j][i] = -1;
-        }
-    }
 
     SDynTexture2::Init(eTP_Clouds);
 }
@@ -2845,7 +2849,11 @@ void CTexture::LoadDefaultSystemTextures()
         s_ptexSceneSpecularAccMapMS = CTexture::CreateTextureObject("$SceneSpecularAccMS", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_DONT_STREAM | FT_USAGE_RENDERTARGET, eTF_Unknown, TO_SCENE_SPECULAR_ACC_MS);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
         s_ptexRT_ShadowPool = CTexture::CreateTextureObject("$RT_ShadowPool", 0, 0, 1, eTT_2D, FT_DONT_STREAM | FT_USAGE_RENDERTARGET | FT_USAGE_DEPTHSTENCIL, eTF_Unknown);
         //  Confetti BEGIN: Igor Lobanchikov
@@ -2906,7 +2914,11 @@ void CTexture::LoadDefaultSystemTextures()
             s_ptexSceneSpecular = CTexture::CreateTextureObject("$SceneSpecular", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
             s_ptexSceneDiffuseAccMap = CTexture::CreateTextureObject("$SceneDiffuseAcc", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_DIFFUSE_ACC);
             s_ptexSceneSpecularAccMap = CTexture::CreateTextureObject("$SceneSpecularAcc", 0, 0, 1, eTT_2D, nRTFlags, eTF_R8G8B8A8, TO_SCENE_SPECULAR_ACC);
@@ -2974,7 +2986,11 @@ void CTexture::LoadDefaultSystemTextures()
         }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
 
         // Create dummy texture object for terrain and clouds lightmap
@@ -3037,7 +3053,11 @@ void CTexture::LoadDefaultSystemTextures()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(Texture_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_cpp_provo.inl"
+    #endif
 #endif
     }
 #endif
@@ -3324,7 +3344,7 @@ void CTexture::AddInvalidateCallback(void* listener, InvalidateCallbackType call
     //which point to this texture. We need to lock to avoid a race-condition.
     AZStd::lock_guard<AZStd::mutex> lockGuard(m_invalidateCallbacksMutex);
 
-    m_invalidateCallbacks.push_back(AZStd::make_pair(listener, callback));
+    m_invalidateCallbacks.insert(AZStd::pair<void*, InvalidateCallbackType>(listener, callback));
 }
 
 void CTexture::RemoveInvalidateCallbacks(void* listener)
@@ -3333,17 +3353,7 @@ void CTexture::RemoveInvalidateCallbacks(void* listener)
     //which point to this texture. We need to lock to avoid a race-condition.
     AZStd::lock_guard<AZStd::mutex> lockGuard(m_invalidateCallbacksMutex);
 
-    for (auto it = m_invalidateCallbacks.begin(); it != m_invalidateCallbacks.end(); )
-    {
-        if (it->first == listener)
-        {
-            it = m_invalidateCallbacks.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
+    m_invalidateCallbacks.erase(listener);
 }
 
 void CTexture::ApplyDepthTextureState(int unit, int nFilter, bool clamp)

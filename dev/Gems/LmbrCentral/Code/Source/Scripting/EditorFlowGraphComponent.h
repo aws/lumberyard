@@ -96,7 +96,6 @@ namespace LmbrCentral
     class EditorFlowGraphComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , private FlowGraphEditorRequestsBus::Handler
-        , private AZ::ComponentApplicationEventBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
     {
     public:

@@ -15,6 +15,9 @@
 //  - Create and update a texture with the most recently used glyphs
 
 #include "StdAfx.h"
+
+#if !defined(USE_NULLFONT_ALWAYS)
+
 #include "FontTexture.h"
 #include "UnicodeIterator.h"
 #include <AzCore/IO/FileIO.h>
@@ -180,9 +183,10 @@ uint32 CFontTexture::GetSlotChar(int iSlot) const
 }
 
 //-------------------------------------------------------------------------------------------------
-CTextureSlot* CFontTexture::GetCharSlot(uint32 cChar)
+CTextureSlot* CFontTexture::GetCharSlot(uint32 cChar, const Vec2i& glyphSize)
 {
-    CTextureSlotTableItor pItor = m_pSlotTable.find(cChar);
+    CryFont::FontTexture::CTextureSlotKey slotKey = GetTextureSlotKey(cChar, glyphSize);
+    CTextureSlotTableItor pItor = m_pSlotTable.find(slotKey);
 
     if (pItor != m_pSlotTable.end())
     {
@@ -195,7 +199,7 @@ CTextureSlot* CFontTexture::GetCharSlot(uint32 cChar)
 //-------------------------------------------------------------------------------------------------
 CTextureSlot* CFontTexture::GetLRUSlot()
 {
-    uint16 wMinSlotUsage = 0xffff;
+    uint16 wMaxSlotAge = 0;
     CTextureSlot* pLRUSlot = 0;
     CTextureSlot* pSlot;
 
@@ -211,10 +215,11 @@ CTextureSlot* CFontTexture::GetLRUSlot()
         }
         else
         {
-            if (pSlot->wSlotUsage < wMinSlotUsage)
+            uint16 slotAge = m_wSlotUsage - pSlot->wSlotUsage;
+            if (slotAge > wMaxSlotAge)
             {
                 pLRUSlot = pSlot;
-                wMinSlotUsage = pSlot->wSlotUsage;
+                wMaxSlotAge = slotAge;
             }
         }
 
@@ -227,7 +232,7 @@ CTextureSlot* CFontTexture::GetLRUSlot()
 //-------------------------------------------------------------------------------------------------
 CTextureSlot* CFontTexture::GetMRUSlot()
 {
-    uint16 wMaxSlotUsage = 0;
+    uint16 wMinSlotAge = 0xFFFF;
     CTextureSlot* pMRUSlot = 0;
     CTextureSlot* pSlot;
 
@@ -239,10 +244,11 @@ CTextureSlot* CFontTexture::GetMRUSlot()
 
         if (pSlot->wSlotUsage != 0)
         {
-            if (pSlot->wSlotUsage > wMaxSlotUsage)
+            uint16 slotAge = m_wSlotUsage - pSlot->wSlotUsage;
+            if (slotAge > wMinSlotAge)
             {
                 pMRUSlot = pSlot;
-                wMaxSlotUsage = pSlot->wSlotUsage;
+                wMinSlotAge = slotAge;
             }
         }
 
@@ -253,15 +259,17 @@ CTextureSlot* CFontTexture::GetMRUSlot()
 }
 
 //-------------------------------------------------------------------------------------------------
-int CFontTexture::PreCacheString(const char* szString, int* pUpdated)
+int CFontTexture::PreCacheString(const char* szString, int* pUpdated, float sizeRatio, const Vec2i& glyphSize, const CFFont::FontHintParams& fontHintParams)
 {
+    Vec2i clampedGlyphSize = ClampGlyphSize(glyphSize, m_iCellWidth, m_iCellHeight);
+
     uint16 wSlotUsage = m_wSlotUsage++;
     int iUpdated = 0;
 
     uint32 cChar;
     for (Unicode::CIterator<const char*, false> it(szString); cChar = *it; ++it)
     {
-        CTextureSlot* pSlot = GetCharSlot(cChar);
+        CTextureSlot* pSlot = GetCharSlot(cChar, clampedGlyphSize);
 
         if (!pSlot)
         {
@@ -272,7 +280,7 @@ int CFontTexture::PreCacheString(const char* szString, int* pUpdated)
                 return 0;
             }
 
-            if (!UpdateSlot(pSlot->iTextureSlot, wSlotUsage, cChar))
+            if (!UpdateSlot(pSlot->iTextureSlot, wSlotUsage, cChar, sizeRatio, clampedGlyphSize, fontHintParams))
             {
                 return 0;
             }
@@ -300,32 +308,55 @@ int CFontTexture::PreCacheString(const char* szString, int* pUpdated)
 
 //-------------------------------------------------------------------------------------------------
 void CFontTexture::GetTextureCoord(CTextureSlot* pSlot, float texCoords[4],
-    int& iCharSizeX, int& iCharSizeY, int& iCharOffsetX, int& iCharOffsetY) const
+    int& iCharSizeX, int& iCharSizeY, int& iCharOffsetX, int& iCharOffsetY,
+    const Vec2i& glyphSize) const
 {
     if (!pSlot)
     {
         return;         // expected behavior
     }
-    int iChWidth = pSlot->iCharWidth;
-    int iChHeight = pSlot->iCharHeight;
+
+    // Re-rendered glyphs are stored at smaller sizes than glyphs rendered at
+    // the (maximum) font texture slot resolution. We scale the returned width
+    // and height of the (actual) rendered glyph sizes so its transparent to 
+    // callers that the glyph is actually smaller (from being re-rendered).
+    const float requestSizeWidthScale = AZ::GetMin<float>(1.0f, GetRequestSizeWidthScale(glyphSize));
+    const float requestSizeHeightScale = AZ::GetMin<float>(1.0f, GetRequestSizeHeightScale(glyphSize));
+    const float invRequestSizeWidthScale = 1.0f / requestSizeWidthScale;
+    const float invRequestSizeHeightScale = 1.0f / requestSizeHeightScale;
+
+    // The inverse scale grows as the glyph size decreases. Once the glyph size
+    // reaches the font texture's max slot dimensions, we cap width/height scale
+    // since the text draw context will apply normal (as opposed to re-rendered)
+    // scaling.
+    int iChWidth = static_cast<int>(pSlot->iCharWidth * invRequestSizeWidthScale);
+    int iChHeight = static_cast<int>(pSlot->iCharHeight * invRequestSizeHeightScale);
+
     float slotCoord0 = pSlot->vTexCoord[0];
     float slotCoord1 = pSlot->vTexCoord[1];
-
     texCoords[0] = slotCoord0 - m_fInvWidth;                                      // extra pixel for nicer bilinear filter
     texCoords[1] = slotCoord1 - m_fInvHeight;                                     // extra pixel for nicer bilinear filter
-    texCoords[2] = slotCoord0 + (float)iChWidth * m_fInvWidth;
-    texCoords[3] = slotCoord1 + (float)iChHeight * m_fInvHeight;
+    
+    // UV coordinates also must be scaled relative to the re-rendered glyph size
+    // as well. Width scale must be capped at 1.0f since glyph can't grow 
+    // beyond the slot's resolution.
+    texCoords[2] = slotCoord0 + (((float)iChWidth * m_fInvWidth) * requestSizeWidthScale);
+    texCoords[3] = slotCoord1 + (((float)iChHeight * m_fInvHeight) * requestSizeHeightScale);
 
     iCharSizeX = iChWidth + 1;                                        // extra pixel for nicer bilinear filter
     iCharSizeY = iChHeight + 1;                                   // extra pixel for nicer bilinear filter
-    iCharOffsetX = pSlot->iCharOffsetX;
-    iCharOffsetY = pSlot->iCharOffsetY;
+
+    // Offsets are scaled accordingly when the rendered glyph size is smaller 
+    // than the glyph/slot dimensions, but otherwise we expect the text draw 
+    // context to apply scaling beyond that.
+    iCharOffsetX = static_cast<int>(pSlot->iCharOffsetX * invRequestSizeWidthScale);
+    iCharOffsetY = static_cast<int>(pSlot->iCharOffsetY * invRequestSizeHeightScale);
 }
 
 //-------------------------------------------------------------------------------------------------
 int CFontTexture::GetCharacterWidth(uint32 cChar) const
 {
-    CTextureSlotTableItorConst pItor = m_pSlotTable.find(cChar);
+    CTextureSlotTableItorConst pItor = m_pSlotTable.find(GetTextureSlotKey(cChar));
 
     if (pItor == m_pSlotTable.end())
     {
@@ -341,9 +372,9 @@ int CFontTexture::GetCharacterWidth(uint32 cChar) const
 }
 
 //-------------------------------------------------------------------------------------------------
-int CFontTexture::GetHorizontalAdvance(uint32 cChar) const
+int CFontTexture::GetHorizontalAdvance(uint32 cChar, const Vec2i& glyphSize) const
 {
-    CTextureSlotTableItorConst pItor = m_pSlotTable.find(cChar);
+    CTextureSlotTableItorConst pItor = m_pSlotTable.find(GetTextureSlotKey(cChar, glyphSize));
 
     if (pItor == m_pSlotTable.end())
     {
@@ -352,21 +383,30 @@ int CFontTexture::GetHorizontalAdvance(uint32 cChar) const
 
     const CTextureSlot& rSlot = *pItor->second;
 
-    return rSlot.iHoriAdvance;
+    // Re-rendered glyphs are stored at smaller sizes than glyphs rendered at
+    // the (maximum) font texture slot resolution. We scale the returned width
+    // and height of the (actual) rendered glyph sizes so its transparent to 
+    // callers that the glyph is actually smaller (from being re-rendered).
+    const float requestSizeWidthScale = GetRequestSizeWidthScale(glyphSize);
+    const float invRequestSizeWidthScale = 1.0f / requestSizeWidthScale;
+
+    // Only multiply by 1.0f when glyphsize is greater than cell width because we assume that callers
+    // will use the font draw text context to scale the value appropriately.
+    return static_cast<int>(rSlot.iHoriAdvance * AZ::GetMax<float>(1.0f, invRequestSizeWidthScale));
 }
 
 //-------------------------------------------------------------------------------------------------
 /*
 int CFontTexture::GetCharHeightByChar(wchar_t cChar)
 {
-    CTextureSlotTableItor pItor = m_pSlotTable.find(cChar);
+CTextureSlotTableItor pItor = m_pSlotTable.find(cChar);
 
-    if (pItor != m_pSlotTable.end())
-    {
-        return pItor->second->iCharHeight;
-    }
+if (pItor != m_pSlotTable.end())
+{
+return pItor->second->iCharHeight;
+}
 
-    return 0;
+return 0;
 }
 */
 
@@ -428,6 +468,12 @@ Vec2 CFontTexture::GetKerning(uint32_t leftGlyph, uint32_t rightGlyph)
 }
 
 //-------------------------------------------------------------------------------------------------
+float CFontTexture::GetAscenderToHeightRatio()
+{
+    return m_pGlyphCache.GetAscenderToHeightRatio();
+}
+
+//-------------------------------------------------------------------------------------------------
 int CFontTexture::CreateSlotList(int iListSize)
 {
     int y, x;
@@ -472,7 +518,7 @@ int CFontTexture::ReleaseSlotList()
 }
 
 //-------------------------------------------------------------------------------------------------
-int CFontTexture::UpdateSlot(int iSlot, uint16 wSlotUsage, uint32 cChar)
+int CFontTexture::UpdateSlot(int iSlot, uint16 wSlotUsage, uint32 cChar, float sizeRatio, const Vec2i& glyphSize, const CFFont::FontHintParams& fontHintParams)
 {
     CTextureSlot* pSlot = m_pSlotList[iSlot];
 
@@ -481,15 +527,14 @@ int CFontTexture::UpdateSlot(int iSlot, uint16 wSlotUsage, uint32 cChar)
         return 0;
     }
 
-    CTextureSlotTableItor pItor = m_pSlotTable.find(pSlot->cCurrentChar);
+    CTextureSlotTableItor pItor = m_pSlotTable.find(GetTextureSlotKey(pSlot->cCurrentChar, pSlot->glyphSize));
 
     if (pItor != m_pSlotTable.end())
     {
         m_pSlotTable.erase(pItor);
     }
-
-    m_pSlotTable.insert(AZStd::pair<wchar_t, CTextureSlot*>(cChar, pSlot));
-
+    m_pSlotTable.insert(AZStd::pair<CryFont::FontTexture::CTextureSlotKey, CTextureSlot*>(GetTextureSlotKey(cChar, glyphSize), pSlot));
+    pSlot->glyphSize = glyphSize;
     pSlot->wSlotUsage = wSlotUsage;
     pSlot->cCurrentChar = cChar;
 
@@ -502,7 +547,12 @@ int CFontTexture::UpdateSlot(int iSlot, uint16 wSlotUsage, uint32 cChar)
 
     CGlyphBitmap* pGlyphBitmap;
 
-    if (!m_pGlyphCache.GetGlyph(&pGlyphBitmap, &pSlot->iHoriAdvance, &iWidth, &iHeight, pSlot->iCharOffsetX, pSlot->iCharOffsetY, cChar))
+    if (glyphSize.x > 0 && glyphSize.y > 0)
+    {
+        m_pGlyphCache.SetGlyphBitmapSize(glyphSize.x, glyphSize.y, sizeRatio);
+    }
+
+    if (!m_pGlyphCache.GetGlyph(&pGlyphBitmap, &pSlot->iHoriAdvance, &iWidth, &iHeight, pSlot->iCharOffsetX, pSlot->iCharOffsetY, cChar, glyphSize, fontHintParams))
     {
         return 0;
     }
@@ -510,8 +560,15 @@ int CFontTexture::UpdateSlot(int iSlot, uint16 wSlotUsage, uint32 cChar)
     pSlot->iCharWidth = iWidth;
     pSlot->iCharHeight = iHeight;
 
+    // Add a pixel along width and height to avoid artifacts being rendered
+    // from a previous glyph in this slot due to bilinear filtering. The source
+    // glyph bitmap buffer is presumed to be cleared prior to FreeType rendering
+    // to the bitmap.
+    const int blitWidth = AZ::GetMin<int>(iWidth + 1, m_iCellWidth);
+    const int blitHeight = AZ::GetMin<int>(iHeight + 1, m_iCellHeight);
+
     pGlyphBitmap->BlitTo8(m_pBuffer, 0, 0,
-        iWidth, iHeight, x * m_iCellWidth, y * m_iCellHeight, m_iWidth);
+        blitWidth, blitHeight, x * m_iCellWidth, y * m_iCellHeight, m_iWidth);
 
     return 1;
 }
@@ -520,7 +577,7 @@ int CFontTexture::UpdateSlot(int iSlot, uint16 wSlotUsage, uint32 cChar)
 void CFontTexture::CreateGradientSlot()
 {
     CTextureSlot* pSlot = GetGradientSlot();
-    assert(pSlot->cCurrentChar == (uint32) ~0);      // 0 needs to be unused spot
+    assert(pSlot->cCurrentChar == (uint32)~0);      // 0 needs to be unused spot
 
     pSlot->Reset();
     pSlot->iCharWidth = m_iCellWidth - 2;
@@ -531,7 +588,7 @@ void CFontTexture::CreateGradientSlot()
     int y = pSlot->iTextureSlot / m_iWidthCellCount;
 
     assert(sizeof(*m_pBuffer) == sizeof(uint8));
-    uint8* pBuffer = &m_pBuffer[ x * m_iCellWidth + y * m_iCellHeight * m_iWidth];
+    uint8* pBuffer = &m_pBuffer[x * m_iCellWidth + y * m_iCellHeight * m_iWidth];
 
     for (uint32 dwY = 0; dwY < pSlot->iCharHeight; ++dwY)
     {
@@ -547,3 +604,29 @@ CTextureSlot* CFontTexture::GetGradientSlot()
 {
     return m_pSlotList[0];
 }
+
+//-------------------------------------------------------------------------------------------------
+CryFont::FontTexture::CTextureSlotKey CFontTexture::GetTextureSlotKey(uint32 cChar, const Vec2i& glyphSize) const
+{
+    const Vec2i clampedGlyphSize(ClampGlyphSize(glyphSize, m_iCellWidth, m_iCellHeight));
+    return CryFont::FontTexture::CTextureSlotKey(clampedGlyphSize, cChar);
+}
+
+Vec2i CFontTexture::ClampGlyphSize(const Vec2i& glyphSize, int cellWidth, int cellHeight)
+{
+    const Vec2i maxCellDimensions(cellWidth, cellHeight);
+    Vec2i clampedGlyphSize(glyphSize);
+
+    const bool hasZeroDimension = glyphSize.x == 0 || glyphSize.y == 0;
+    const bool isDefaultSize = glyphSize == CCryFont::defaultGlyphSize;
+    const bool exceedsDimensions = glyphSize.x > cellWidth || glyphSize.y > cellHeight;
+    const bool useMaxCellDimension = hasZeroDimension || isDefaultSize || exceedsDimensions;
+    if (useMaxCellDimension)
+    {
+        clampedGlyphSize = maxCellDimensions;
+    }
+
+    return clampedGlyphSize;
+}
+
+#endif // #if !defined(USE_NULLFONT_ALWAYS)

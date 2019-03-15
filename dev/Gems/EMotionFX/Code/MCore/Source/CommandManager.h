@@ -88,8 +88,11 @@ namespace MCore
          */
         bool ExecuteCommand(const char* command, AZStd::string& outCommandResult, bool addToHistory = true, Command** outExecutedCommand = nullptr, CommandLine* outExecutedParamters = nullptr, bool callFromCommandGroup = false, bool clearErrors = true, bool handleErrors = true);
         bool ExecuteCommand(const AZStd::string& command, AZStd::string& outCommandResult, bool addToHistory = true, Command** outExecutedCommand = nullptr, CommandLine* outExecutedParamters = nullptr, bool callFromCommandGroup = false, bool clearErrors = true, bool handleErrors = true);
+        bool ExecuteCommand(Command* command, AZStd::string& outCommandResult, bool addToHistory = true, bool clearErrors = true, bool handleErrors = true);
         bool ExecuteCommandInsideCommand(const char* command, AZStd::string& outCommandResult);
         bool ExecuteCommandInsideCommand(const AZStd::string& command, AZStd::string& outCommandResult);
+
+        bool ExecuteCommandOrAddToGroup(const AZStd::string& command, MCore::CommandGroup* commandGroup = nullptr, bool executeInsideCommand = false);
 
         /**
          * Execute a command group.
@@ -256,6 +259,19 @@ namespace MCore
          */
         bool RegisterCommandCallback(const char* commandName, Command::Callback* callback);
 
+        template<typename T, typename... Args>
+        bool RegisterCommandCallback(const char* commandName, AZStd::vector<Command::Callback*>& callbacks, Args... args)
+        {
+            Command::Callback* callback = new T(AZStd::forward<Args>(args)...);
+            if (RegisterCommandCallback(commandName, callback))
+            {
+                callbacks.emplace_back(callback);
+                return true;
+            }
+            delete callback;
+            return false;
+        }
+
         /**
          * Add error message to the internal callback based error handling system.
          * @param[in] errorLine The error line to add to the internal error handler.
@@ -269,6 +285,12 @@ namespace MCore
          */
         bool ShowErrorReport();
 
+        /**
+        * Checks if there are commands currently being executed
+        * @result True in case there is at least one command being executed.
+        */
+        bool IsExecuting() const { return m_commandsInExecution > 0; }
+
     protected:
         AZStd::unordered_map<AZStd::string, Command*>   mRegisteredCommands;    /**< A hash table storing the command objects for fast command object access. */
         Array<CommandHistoryEntry>                      mCommandHistory;        /**< The command history stack for undo/redo functionality. */
@@ -278,7 +300,7 @@ namespace MCore
         uint32                                          mMaxHistoryEntries;     /**< The maximum remembered commands in the command history. */
         int32                                           mHistoryIndex;          /**< The command history iterator. The current position in the undo/redo history. */
         AZ::u32                                         m_totalNumHistoryItems; /**< The number of history items since the application start. This number will neither change depending on the size of the history queue nor with undo/redo. */
-
+        int                                             m_commandsInExecution;  /**< The number of commands currently in execution. */
         /**
          * Internal method to execute a command.
          * @param command The registered command object.

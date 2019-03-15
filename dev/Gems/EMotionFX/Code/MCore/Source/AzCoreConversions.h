@@ -23,7 +23,6 @@
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Matrix4.h>
 #include <MCore/Source/Quaternion.h>
-#include <MCore/Source/MemoryObject.h>
 
 #include <EMotionFX/Source/Transform.h>
 

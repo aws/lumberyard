@@ -33,11 +33,9 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
     // it's easy enough to iterate through the list anyways.
     for (const UiTextComponent::DrawBatch& drawBatch : batchLine.drawBatchList)
     {
-        AZStd::string displayedText(m_displayedTextFunction(drawBatch.text));
-
         // Iterate character by character over DrawBatch string contents,
         // looking for m_firstIndex and m_lastIndex.
-        Unicode::CIterator<const char*, false> pChar(displayedText.c_str());
+        Unicode::CIterator<const char*, false> pChar(drawBatch.text.c_str());
         while (uint32_t ch = *pChar)
         {
             ++pChar;
@@ -49,7 +47,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
                 // Get the width of the string of characters prior to the
                 // selection string. This will be used to offset the
                 // cursor position from the left of the start of the line.
-                AZStd::string unselectedPrecedingString(displayedText.substr(0, firstIndexLineIndex));
+                AZStd::string unselectedPrecedingString(drawBatch.text.substr(0, firstIndexLineIndex));
                 lineOffsetsStack.top()->left.SetX(curLineWidth + drawBatch.font->GetTextSize(unselectedPrecedingString.c_str(), false, m_fontContext).x);
 
                 if (m_firstIndex == m_lastIndex)
@@ -68,7 +66,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
                 // line depends on whether the selection is split across multiple lines.
                 const int selectionLength = firstAndLastIndexOccurOnDifferentLines ? curLineIndexIter : curLineIndexIter - firstIndexLineIndex;
 
-                AZStd::string selectionString(displayedText.substr(firstIndexLineIndex, selectionLength));
+                AZStd::string selectionString(drawBatch.text.substr(firstIndexLineIndex, selectionLength));
                 Vec2 rightSize = drawBatch.font->GetTextSize(selectionString.c_str(), true, m_fontContext);
                 lineOffsetsStack.top()->right.SetX(rightSize.x);
                 m_numCharsSelected += LyShine::GetUtf8StringLength(selectionString);
@@ -89,7 +87,7 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
         // line width.
         if (!firstIndexFound)
         {
-            curLineWidth += drawBatch.font->GetTextSize(displayedText.c_str(), false, m_fontContext).x;
+            curLineWidth += drawBatch.font->GetTextSize(drawBatch.text.c_str(), false, m_fontContext).x;
         }
         // If m_firstIndex has been found, but we haven't found m_lastIndex, we
         // calculate curLineWidth relative to firstIndexLineIndex (the m_firstIndex
@@ -99,8 +97,8 @@ void UiTextComponentOffsetsSelector::ParseBatchLine(const UiTextComponent::DrawB
         // on the same line or not.
         else if (!lastIndexFound)
         {
-            int substrLength = displayedText.length() - firstIndexLineIndex;
-            AZStd::string curSubstring(displayedText.substr(firstIndexLineIndex, substrLength));
+            int substrLength = drawBatch.text.length() - firstIndexLineIndex;
+            AZStd::string curSubstring(drawBatch.text.substr(firstIndexLineIndex, substrLength));
             curLineWidth += drawBatch.font->GetTextSize(curSubstring.c_str(), false, m_fontContext).x;
             lineOffsetsStack.top()->right.SetX(AZStd::GetMax<float>(lineOffsetsStack.top()->right.GetX(), curLineWidth));
             m_numCharsSelected += LyShine::GetUtf8StringLength(curSubstring);

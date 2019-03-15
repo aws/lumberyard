@@ -12,12 +12,8 @@
 
 #include "TestTypes.h"
 
-#include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/Entity.h>
-#include <AzCore/Serialization/Utils.h>
-#include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/IdUtils.h>
-#include <AzCore/Memory/PoolAllocator.h>
 
 namespace UnitTest
 {
@@ -30,43 +26,32 @@ namespace UnitTest
     public:
         RemappableIdTest()
             : AllocatorsFixture(15, false)
-            , m_systemEntity(nullptr)
         {
-            AllocatorsFixture::SetUp();
-            m_serializeContext.reset(aznew AZ::SerializeContext());
-            AllocatorInstance<PoolAllocator>::Create();
-            AllocatorInstance<ThreadPoolAllocator>::Create();
-
-            Entity::Reflect(m_serializeContext.get());
-            RemapIdData::Reflect(*m_serializeContext);
-            RemapUuidAndEntityIdData::Reflect(*m_serializeContext);
         }
 
         ~RemappableIdTest()
         {
-            m_serializeContext.reset();
-
-            AllocatorInstance<PoolAllocator>::Destroy();
-            AllocatorInstance<ThreadPoolAllocator>::Destroy();
-
-            AllocatorsFixture::TearDown();
         }
 
         void SetUp() override
         {
-            ComponentApplication::Descriptor desc;
-            desc.m_useExistingAllocator = true;
-            m_systemEntity = m_app.Create(desc);
+            AllocatorsFixture::SetUp();
+            m_serializeContext.reset(aznew AZ::SerializeContext());
+
+            Entity::Reflect(m_serializeContext.get());
+            RemapIdData::Reflect(*m_serializeContext);
+            RemapUuidAndEntityIdData::Reflect(*m_serializeContext);
+            ParentEntityContainer::Reflect(*m_serializeContext);
+            RootParentElementWrapper::Reflect(*m_serializeContext);
         }
 
         void TearDown() override
         {
-            delete m_systemEntity;
-            m_app.Destroy();
+            m_serializeContext.reset();
+
+            AllocatorsFixture::TearDown();
         }
 
-        ComponentApplication m_app;
-        AZ::Entity* m_systemEntity;
         AZStd::unique_ptr<SerializeContext> m_serializeContext;
 
         struct RemapIdData
@@ -119,7 +104,85 @@ namespace UnitTest
             AZ::Entity m_entity;
             AZ::EntityId m_entityRef;
         };
+
+        struct ParentEntityContainer
+        {
+            AZ_TYPE_INFO(ParentEntityContainer, "{60EFD610-4B9A-444C-9004-A651B772927F}");
+            AZ_CLASS_ALLOCATOR(ParentEntityContainer, AZ::SystemAllocator, 0);
+
+            static void Reflect(AZ::SerializeContext& serializeContext);
+
+            AZ::EntityId m_remappableEntityId1;
+            AZ::EntityId m_remappableEntityId2;
+
+            int m_beginWriteCount = 0;
+            int m_endWriteCount = 0;
+        };
+
+        struct RootParentElementWrapper
+        {
+            AZ_TYPE_INFO(RootParentElementWrapper, "{BFC46F3C-D696-4A34-B824-F18428CAA910}");
+            AZ_CLASS_ALLOCATOR(RootParentElementWrapper, AZ::SystemAllocator, 0);
+
+            static void Reflect(AZ::SerializeContext& serializeContext)
+            {
+                serializeContext.Class<RootParentElementWrapper>()
+                    ->Field("m_parentEntityContainer", &RootParentElementWrapper::m_parentEntityContainer)
+                    ;
+            }
+
+            ~RootParentElementWrapper()
+            {
+                delete m_parentEntityContainer;
+            }
+
+            ParentEntityContainer* m_parentEntityContainer = nullptr;
+        };
+
+        struct ParentEntityContainerEventHandler
+            : public AZ::SerializeContext::IEventHandler
+        {
+            static bool s_isCheckingCallbackOrder;
+
+            void OnWriteBegin(void* classPtr) override
+            {
+                auto parentEntityContainer = reinterpret_cast<ParentEntityContainer*>(classPtr);
+
+                if (s_isCheckingCallbackOrder)
+                {
+                    EXPECT_EQ(parentEntityContainer->m_beginWriteCount, parentEntityContainer->m_endWriteCount);
+                }
+
+                parentEntityContainer->m_beginWriteCount++;
+            }
+
+            void OnWriteEnd(void* classPtr) override
+            {
+                auto parentEntityContainer = reinterpret_cast<ParentEntityContainer*>(classPtr);
+
+                if (s_isCheckingCallbackOrder)
+                {
+                    EXPECT_EQ(parentEntityContainer->m_beginWriteCount, parentEntityContainer->m_endWriteCount + 1);
+                }
+
+                parentEntityContainer->m_endWriteCount++;
+            }
+        };
+
     };
+
+    bool RemappableIdTest::ParentEntityContainerEventHandler::s_isCheckingCallbackOrder = false;
+
+    void RemappableIdTest::ParentEntityContainer::Reflect(AZ::SerializeContext& serializeContext)
+    {
+        serializeContext.Class<ParentEntityContainer>()
+            ->EventHandler<ParentEntityContainerEventHandler>()
+            ->Field("m_remappableEntityId1", &ParentEntityContainer::m_remappableEntityId1)
+                ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &AZ::Entity::MakeId)
+            ->Field("m_remappableEntityId2", &ParentEntityContainer::m_remappableEntityId2)
+                ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &AZ::Entity::MakeId)
+            ;
+    }
 
     TEST_F(RemappableIdTest, UuidRemapTest)
     {
@@ -270,111 +333,9 @@ namespace UnitTest
         delete cloneData;
     }
 
-    //! Test that the IdUtils::RemapIds function does not crash when invoking the IEventHandler function
-    //! on a pointer to a class element(i.e ClassType**)
-    class ParentElementPointerNotificationIdRemapTest
-        : public AllocatorsFixture
-    {
-    public:
-        ParentElementPointerNotificationIdRemapTest()
-            : AllocatorsFixture(15, false)
-            , m_systemEntity(nullptr)
-        {
-            AllocatorsFixture::SetUp();
-            m_serializeContext.reset(aznew AZ::SerializeContext());
-            AllocatorInstance<PoolAllocator>::Create();
-            AllocatorInstance<ThreadPoolAllocator>::Create();
-
-            Entity::Reflect(m_serializeContext.get());
-            ParentEntityContainer::Reflect(*m_serializeContext);
-            RootParentElementWrapper::Reflect(*m_serializeContext);
-        }
-
-        ~ParentElementPointerNotificationIdRemapTest()
-        {
-            m_serializeContext.reset();
-
-            AllocatorInstance<PoolAllocator>::Destroy();
-            AllocatorInstance<ThreadPoolAllocator>::Destroy();
-
-            AllocatorsFixture::TearDown();
-        }
-
-        void SetUp() override
-        {
-            ComponentApplication::Descriptor desc;
-            desc.m_useExistingAllocator = true;
-            m_systemEntity = m_app.Create(desc);
-        }
-
-        void TearDown() override
-        {
-            delete m_systemEntity;
-            m_app.Destroy();
-        }
-
-        ComponentApplication m_app;
-        AZ::Entity* m_systemEntity;
-        AZStd::unique_ptr<SerializeContext> m_serializeContext;
-
-        struct ParentEntityContainer
-        {
-            AZ_TYPE_INFO(ParentEntityContainer, "{60EFD610-4B9A-444C-9004-A651B772927F}");
-            AZ_CLASS_ALLOCATOR(ParentEntityContainer, AZ::SystemAllocator, 0);
-            friend class ParentEntityContainerEventHandler;
-
-            static void Reflect(AZ::SerializeContext& serializeContext);
-
-            AZ::EntityId m_remappableEntityId;
-        private:
-            void* alwaysNullptr = nullptr;
-        };
-
-        struct RootParentElementWrapper
-        {
-            AZ_TYPE_INFO(RootParentElementWrapper, "{BFC46F3C-D696-4A34-B824-F18428CAA910}");
-            AZ_CLASS_ALLOCATOR(RootParentElementWrapper, AZ::SystemAllocator, 0);
-
-            static void Reflect(AZ::SerializeContext& serializeContext)
-            {
-                serializeContext.Class<RootParentElementWrapper>()
-                    ->Field("m_parentEntityContainer", &RootParentElementWrapper::m_parentEntityContainer)
-                    ;
-            }
-
-            ParentEntityContainer* m_parentEntityContainer;
-        };
-
-    };
-
-    class ParentEntityContainerEventHandler
-        : public AZ::SerializeContext::IEventHandler
-    {
-    protected:
-        void OnWriteBegin(void* classPtr) override
-        {
-            auto parentEntityContainer = reinterpret_cast<ParentElementPointerNotificationIdRemapTest::ParentEntityContainer*>(classPtr);
-            EXPECT_EQ(nullptr, parentEntityContainer->alwaysNullptr);
-        }
-
-        void OnWriteEnd(void* classPtr) override
-        {
-            auto parentEntityContainer = reinterpret_cast<ParentElementPointerNotificationIdRemapTest::ParentEntityContainer*>(classPtr);
-            EXPECT_EQ(nullptr, parentEntityContainer->alwaysNullptr);
-        }
-    };
-    
-    
-    void ParentElementPointerNotificationIdRemapTest::ParentEntityContainer::Reflect(AZ::SerializeContext& serializeContext)
-    {
-        serializeContext.Class<ParentEntityContainer>()
-            ->EventHandler<ParentEntityContainerEventHandler>()
-            ->Field("m_remappableEntityId", &ParentEntityContainer::m_remappableEntityId)
-            ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &AZ::Entity::MakeId)
-            ;
-    }
-
-    TEST_F(ParentElementPointerNotificationIdRemapTest, RemapEntityId)
+    // Test that the IdUtils::RemapIds function does not crash when invoking the IEventHandler function
+    // on a pointer to a class element(i.e ClassType**)
+    TEST_F(RemappableIdTest, OnWriteCallbacks_WhenParentHasPointer_DoesNotCrash)
     {
         RootParentElementWrapper rootWrapper;
         rootWrapper.m_parentEntityContainer = aznew ParentEntityContainer;
@@ -384,8 +345,46 @@ namespace UnitTest
             return idGenerator();
         };
 
-        AZ::u32 remapIdTotal = AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&rootWrapper, entityIdMapper, m_serializeContext.get(), true);
-        EXPECT_EQ(1, remapIdTotal);
-        delete rootWrapper.m_parentEntityContainer;
+        AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&rootWrapper, entityIdMapper, m_serializeContext.get(), true);
+        EXPECT_NE(0, rootWrapper.m_parentEntityContainer->m_beginWriteCount); // check that callbacks were invoked at all
     }
-}
+
+    // Test that each OnWriteBegin is paired with an OnWriteEnd
+    // and that we don't get two OnWriteBegins in a row
+    TEST_F(RemappableIdTest, OnWriteCallbacks_CalledInCorrectOrder)
+    {
+        ParentEntityContainerEventHandler::s_isCheckingCallbackOrder = true;
+
+        RootParentElementWrapper rootWrapper;
+        rootWrapper.m_parentEntityContainer = aznew ParentEntityContainer;
+
+        auto entityIdMapper = [](const AZ::EntityId&, bool, const AZ::IdUtils::Remapper<AZ::EntityId>::IdGenerator& idGenerator)
+        {
+            return idGenerator();
+        };
+
+        AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&rootWrapper, entityIdMapper, m_serializeContext.get(), true);
+
+        EXPECT_EQ(rootWrapper.m_parentEntityContainer->m_beginWriteCount, rootWrapper.m_parentEntityContainer->m_endWriteCount);
+
+        ParentEntityContainerEventHandler::s_isCheckingCallbackOrder = false;
+    }
+
+    // Test that we only call OnWriteBegin once per node, even if multiple IDs on child nodes are remapped
+    TEST_F(RemappableIdTest, OnWriteCallbacks_WhenMultipleChildrenChanged_CalledOnceOnParent)
+    {
+        RootParentElementWrapper rootWrapper;
+        rootWrapper.m_parentEntityContainer = aznew ParentEntityContainer;
+
+        auto entityIdMapper = [](const AZ::EntityId&, bool, const AZ::IdUtils::Remapper<AZ::EntityId>::IdGenerator& idGenerator)
+        {
+            return idGenerator();
+        };
+
+        unsigned int remappedIdCount = AZ::IdUtils::Remapper<AZ::EntityId>::RemapIds(&rootWrapper, entityIdMapper, m_serializeContext.get(), true);
+
+        EXPECT_EQ(2, remappedIdCount);
+        EXPECT_EQ(1, rootWrapper.m_parentEntityContainer->m_beginWriteCount);
+    }
+
+} // namespace UnitTest

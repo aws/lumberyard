@@ -117,6 +117,8 @@ namespace EMotionFX
             EventHandler(AnimGraphStateCondition* condition, UniqueData* uniqueData);
             virtual ~EventHandler();
 
+            const AZStd::vector<EventTypes> GetHandledEventTypes() const override;
+
             // overloaded
             void OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;
             void OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* state) override;

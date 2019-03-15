@@ -45,7 +45,7 @@ void CRendElement::ShutDown()
         {
             iLog->Log("Warning: CRendElementBase::ShutDown: RenderElement %s was not deleted", pRE->mfTypeString());
         }
-        pRE->Release(true);
+        pRE->Release();
     }
 }
 

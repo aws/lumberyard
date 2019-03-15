@@ -275,7 +275,7 @@ namespace LmbrCentral
                 editContext->Class<CryPlayerPhysicsConfiguration>(
                     "CryPhysics Player Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly", 0xef428f20))
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CryPlayerPhysicsConfiguration::m_dimensions,
                     "Player Dimensions", "Player dimensions used by CryPhysics")
@@ -357,7 +357,7 @@ namespace LmbrCentral
                 editContext->Class<CharacterPhysicsComponent>(
                     "Character Physics", "The Character Physics component adds physical behavior to and configures simulation characteristics for character entities, such as players and enemies")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Physics")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/CharacterPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/CharacterPhysics.png")
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))

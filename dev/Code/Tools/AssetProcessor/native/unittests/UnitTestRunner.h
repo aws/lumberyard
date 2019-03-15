@@ -70,6 +70,13 @@ private:
 // ----------------- UTILITY FUNCTIONS --------------------
 namespace UnitTestUtils
 {
+    /** sleep for the minimum amount of time that the file system can store.
+    * Different file systems (windows, mac, for example) have differing resolutions that they have for
+    * file times.  HFS stores only 'seconds' precision, for example.  so tests that need to wait so that
+    * mod times have changed, must wait for this amount of time
+    **/
+    void SleepForMinimumFileSystemTime();
+
     //! Create a dummy file, with optional contents.  Will create directories for it too.
     bool CreateDummyFile(const QString& fullPathToFile, QString contents = "");
     //! This function pumps the Qt event queue until either the varToWatch becomes true or the specified millisecond elapse.

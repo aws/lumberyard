@@ -13,11 +13,15 @@
 #pragma once
 
 #include <AzCore/EBus/EBus.h>
-#include <EMotionFX/Source/AnimGraphObject.h>
-
 
 namespace EMotionFX
 {
+    class AnimGraphNode;
+    class AnimGraphObject;
+    class AnimGraphReferenceNode;
+    class BlendTree;
+    class ValueParameter;
+
     /**
      * EMotion FX Anim Graph Request Bus
      * Used for making requests to anim graphs.
@@ -48,6 +52,22 @@ namespace EMotionFX
          * @param[in] object The object that changed and requests the UI sync.
          */
         virtual void OnSyncVisualObject(AnimGraphObject* object) {}
+
+        /**
+        * Called whenever an attribute changes that influences the visual graph or any other UI element.
+        */
+        virtual void OnParameterActionTriggered(const ValueParameter* valueParameter) {}
+
+        /**
+        * Called whenever the virtual final node is set on a blend tree.
+        */
+        virtual void OnVirtualFinalNodeSet(BlendTree* blendTree) {}
+
+        /**
+        * Called whenever the anim graph in a reference node changed.
+        */
+        virtual void OnReferenceAnimGraphChanged(AnimGraphReferenceNode* referenceNode) {}
+ 
     };
 
     using AnimGraphNotificationBus = AZ::EBus<AnimGraphNotifications>;

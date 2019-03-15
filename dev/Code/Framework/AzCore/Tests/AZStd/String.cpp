@@ -1168,6 +1168,16 @@ namespace UnitTest
         AZStd::hash<string_view> h;
         AZStd::size_t value = h(cstr1);
         AZ_TEST_ASSERT(value != 0);
+
+        // testing empty string
+        AZStd::string emptyString;
+        string_view cstr4;
+        cstr4 = emptyString;
+        AZ_TEST_ASSERT(cstr4.data() != nullptr);
+        AZ_TEST_ASSERT(cstr4.size() == 0);
+        AZ_TEST_ASSERT(cstr4.length() == 0);
+        AZ_TEST_ASSERT(cstr4.begin() == cstr4.end());
+        AZ_TEST_ASSERT(cstr4.empty());
     }
 
     TEST_F(String, StringViewModifierTest)
@@ -1321,6 +1331,24 @@ namespace UnitTest
         string_view suffixRemovalView = view2;
         suffixRemovalView.remove_suffix(8);
         EXPECT_EQ("Needle in ", suffixRemovalView);
+
+        // starts_with
+        EXPECT_TRUE(view2.starts_with("Needle"));
+        EXPECT_TRUE(view2.starts_with('N'));
+        EXPECT_TRUE(view2.starts_with(AZStd::string_view("Needle")));
+
+        EXPECT_FALSE(view2.starts_with("Needle not"));
+        EXPECT_FALSE(view2.starts_with('n'));
+        EXPECT_FALSE(view2.starts_with(AZStd::string_view("Needle not")));
+
+        // ends_with
+        EXPECT_TRUE(view2.ends_with("Haystack"));
+        EXPECT_TRUE(view2.ends_with('k'));
+        EXPECT_TRUE(view2.ends_with(AZStd::string_view("Haystack")));
+
+        EXPECT_FALSE(view2.ends_with("Hayqueue"));
+        EXPECT_FALSE(view2.ends_with('e'));
+        EXPECT_FALSE(view2.ends_with(AZStd::string_view("Hayqueue")));
     }
 
     TEST_F(String, StringViewCmpOperatorTest)

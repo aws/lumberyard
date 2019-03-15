@@ -23,10 +23,10 @@
 
 namespace AzToolsFramework
 {
-    template <typename PropertyType, class WidgetType>
-    void PropertyHandler_Internal<PropertyType, WidgetType>::ConsumeAttributes_Internal(QWidget* widget, InstanceDataNode* dataNode)
+    template <class WidgetType>
+    void PropertyHandler_Internal<WidgetType>::ConsumeAttributes_Internal(QWidget* widget, InstanceDataNode* dataNode)
     {
-        WidgetType* wid = qobject_cast<WidgetType*>(widget);
+        WidgetType* wid = static_cast<WidgetType*>(widget);
         AZ_Assert(wid, "Invalid class cast - this is not the right kind of widget!");
 
         InstanceDataNode* parent = dataNode->GetParent();
@@ -43,18 +43,25 @@ namespace AzToolsFramework
             parent = dataNode;
         }
 
-        if (dataNode->GetElementMetadata())
+        void* classInstance = parent->FirstInstance(); // pointer to the owner class so we can read member variables and functions
+        auto consumeAttributes = [&](const auto& attributes, const char* name)
         {
+            for (size_t i = 0; i < attributes.size(); ++i)
+            {
+                const AZ::Edit::AttributePair& attrPair = attributes[i];
+                PropertyAttributeReader reader(classInstance, attrPair.second);
+                ConsumeAttribute(wid, attrPair.first, &reader, name);
+            }
+        };
+
+        const AZ::SerializeContext::ClassElement* element = dataNode->GetElementMetadata();
+        if (element)
+        {
+            consumeAttributes(element->m_attributes, element->m_name);
             const AZ::Edit::ElementData* elementEdit = dataNode->GetElementEditMetadata();
             if (elementEdit)
             {
-                void* classInstance = parent->FirstInstance(); // pointer to the owner class so we can read member variables and functions
-                for (size_t i = 0; i < elementEdit->m_attributes.size(); ++i)
-                {
-                    const AZ::Edit::AttributePair& attrPair = elementEdit->m_attributes[i];
-                    PropertyAttributeReader reader(classInstance, attrPair.second);
-                    ConsumeAttribute(wid, attrPair.first, &reader, elementEdit->m_name);
-                }
+                consumeAttributes(elementEdit->m_attributes, elementEdit->m_name);
             }
         }
 
@@ -63,16 +70,9 @@ namespace AzToolsFramework
             const AZ::Edit::ClassData* classEditData = dataNode->GetClassMetadata()->m_editData;
             if (classEditData)
             {
-                void* classInstance = parent->FirstInstance(); // pointer to the owner class so we can read member variables and functions
                 for (auto it = classEditData->m_elements.begin(); it != classEditData->m_elements.end(); ++it)
                 {
-                    const AZ::Edit::ElementData& elementEdit = *it;
-                    for (size_t i = 0; i < elementEdit.m_attributes.size(); ++i)
-                    {
-                        const AZ::Edit::AttributePair& attrPair = elementEdit.m_attributes[i];
-                        PropertyAttributeReader reader(classInstance, attrPair.second);
-                        ConsumeAttribute(wid, attrPair.first, &reader, classEditData->m_name);
-                    }
+                    consumeAttributes(it->m_attributes, it->m_name);
                 }
             }
         }

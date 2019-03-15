@@ -26,6 +26,7 @@
 #include "GPUTimer.h"
 
 #include <AzCore/Casting/numeric_cast.h>
+#include <AzCore/std/containers/set.h>
 #include <vector>
 #include "Common/RenderView.h"
 
@@ -87,7 +88,11 @@ static const float nearPlane = 0.2f;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 static const Vec3 s_GPUParticles_RotationOffset = Vec3(90, 0, 0);
 
@@ -103,7 +108,11 @@ struct GPUEmitterResources
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 
         SAFE_RELEASE(depthCubemap);
@@ -121,7 +130,11 @@ struct GPUEmitterResources
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 
     unsigned int texSampledCurves;                      // bind as t9
@@ -1028,6 +1041,9 @@ static float ComputePulsePeriod(const ResourceParticleParams* particleParams, co
 
 static void UpdateEmitterLifetimeParams(GPUSubemitterData& emitter, const ResourceParticleParams* particleParams, const SpawnParams& spawnParams, float time)
 {
+    // Note that time here is actually emitter->baseData.time!
+    // This method gets called from UpdateSubemitter when a repeating emitter must be re-initiated, so using time to calculate repeatAge is correct
+
     // time buffer is a time offset to make sure that floating point inaccuracies don't give any problem with
     // particle/emitter lifetimes. 0.5 is a reasonable buffer time wouldn't keep things alive for too long.
     const float timeBuffer = 0.5;
@@ -1040,7 +1056,14 @@ static void UpdateEmitterLifetimeParams(GPUSubemitterData& emitter, const Resour
 
         emitter.repeatAge = time + repeat;
     }
-    emitter.startAge = emitter.stopAge = time;
+
+    // Ignore ParentCollide and ParentDeath as starting age for GPU particles:
+    // Using time to calculate startAge and stopAge will cause the window to "slide" together with time, resulting in never-ending emission.
+    // Instead, assume activate age of 0.f (need to check if this is true for ParticleCollision and ParticleDeath spawn conditions)
+    float fActivateAge = 0.f;
+
+    // Reference (ParticleSubEmitter.cpp, line 88): m_fStartAge = m_fStopAge = m_fLastEmitAge = m_fActivateAge + params.fSpawnDelay(VRANDOM);
+    emitter.startAge = emitter.stopAge = fActivateAge + particleParams->fSpawnDelay(VRANDOM);
     emitter.deathAge = emitter.stopAge + particleParams->fParticleLifeTime(VMAX) + timeBuffer;
 
     if (particleParams->bContinuous || !particleParams->fParticleLifeTime)
@@ -1353,7 +1376,11 @@ void CImpl_GPUParticles::InitializeBuffers(GPUEmitterResources& resources, int n
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 
     resources.bufParticleIndices.Create(resources.numMaxParticlesInBuffer, sizeof(int) * 2, DXGI_FORMAT_UNKNOWN, DX11BUF_STRUCTURED | DX11BUF_BIND_UAV | DX11BUF_BIND_SRV, cpuSortIndices);
@@ -2519,7 +2546,11 @@ void CImpl_GPUParticles::GatherSortScore(GPUEmitterResources& emitter)
     // bind UAVs (rwStructuredBuffers) & SRVs (textures/structuredBuffers/curve data)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2571,7 +2602,11 @@ void CImpl_GPUParticles::SortParticlesBitonicLocal(GPUEmitterResources& emitter,
     // bind UAVs (rwStructuredBuffers)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2644,7 +2679,11 @@ void CImpl_GPUParticles::SortParticlesBitonic(GPUEmitterResources& emitter, GPUE
         // bind UAVs (rwStructuredBuffers)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2961,7 +3000,11 @@ CD3DGPUParticleEngine::CD3DGPUParticleEngine()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 }
 
@@ -3202,7 +3245,11 @@ void CD3DGPUParticleEngine::UpdateFrame()
     // sort particles that need sorting
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_9
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
 
     //render cubemaps for collision, if necesary
@@ -3252,7 +3299,11 @@ void CD3DGPUParticleEngine::UpdateFrame()
             {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_10
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
                 m_impl->GatherSortScore(emitter->resources);
             }
@@ -3276,7 +3327,11 @@ void CD3DGPUParticleEngine::UpdateFrame()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_11
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
         }
     }
@@ -3291,7 +3346,11 @@ void CD3DGPUParticleEngine::UpdateFrame()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DGPUPARTICLEENGINE_CPP_SECTION_12
-#include AZ_RESTRICTED_FILE(D3DGPUParticleEngine_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DGPUParticleEngine_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DGPUParticleEngine_cpp_provo.inl"
+    #endif
 #endif
     }
 

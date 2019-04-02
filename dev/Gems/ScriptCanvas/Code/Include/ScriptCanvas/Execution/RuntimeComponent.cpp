@@ -305,6 +305,7 @@ namespace ScriptCanvas
             // Also add a mapping of the InvalidUniqueRuntimeId to the graph uniqueId
             // as well as an identity mapping for the EntityId and the UniqueId
             assetToRuntimeEntityIdMap.insert(assetToRuntimeInternalMap.begin(), assetToRuntimeInternalMap.end());
+            AZStd::swap(assetToRuntimeEntityIdMap, loadedGameEntityIdMap);
             assetToRuntimeEntityIdMap.insert(loadedGameEntityIdMap.begin(), loadedGameEntityIdMap.end());
             // Add only entities within the m_assetToRuntimeEntityIdMap that has been mapped to a new value
             for (const auto& assetToRuntimeEntityIdPair : m_variableEntityIdMap)

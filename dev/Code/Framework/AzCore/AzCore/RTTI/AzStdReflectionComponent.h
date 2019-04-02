@@ -19,7 +19,7 @@ namespace AZ
         : public AZ::Component
     {
     public:
-        AZ_COMPONENT(AzStdReflectionComponent, "{E6049565-B346-4F54-B9A5-FC7354384ACB}");
+        AZ_COMPONENT(AzStdReflectionComponent, "{E6049565-B346-4F54-B9A5-FC7354384ACB}", AZ::Component);
         static void Reflect(AZ::ReflectContext* context);
 
         ~AzStdReflectionComponent() override = default;

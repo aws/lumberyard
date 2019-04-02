@@ -16,7 +16,7 @@
 #include <AzCore/Math/Uuid.h>
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/Slice/SliceComponent.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Component/EntityBus.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/IdUtils.h>
 
@@ -48,7 +48,7 @@ namespace AzFramework
     class EntityContext
         : public EntityIdContextQueryBus::MultiHandler
         , public AZ::Data::AssetBus::MultiHandler
-        , public AZ::ComponentApplicationEventBus::Handler
+        , public AZ::EntityBus::MultiHandler 
         , public EntityContextRequestBus::Handler
     {
     public:
@@ -115,6 +115,7 @@ namespace AzFramework
         //////////////////////////////////////////////////////////////////////////
         // EntityContextRequestBus
         AZ::SliceComponent* GetRootSlice() override;
+        AZ::Data::AssetId CurrentlyInstantiatingSlice() override;
         AZ::Entity* CreateEntity(const char* name) override;
         void AddEntity(AZ::Entity* entity) override;
         void ActivateEntity(AZ::EntityId entityId) override;
@@ -144,8 +145,8 @@ namespace AzFramework
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // ComponentApplicationEventBus
-        void OnEntityRemoved(const AZ::EntityId& entityId) override;
+        // EntityBus
+        void OnEntityDestruction(const AZ::EntityId& entityId) override;
         //////////////////////////////////////////////////////////////////////////
 
         void CreateRootSlice();
@@ -182,6 +183,7 @@ namespace AzFramework
         EntityContextEventBus::BusPtr               m_eventBusPtr;          ///< Pre-bound event bus for the context.
         AZ::u64                                     m_nextSliceTicket;      ///< Monotic tickets for slice instantiation requests.
         AZ::SliceComponent::EntityIdToEntityIdMap   m_loadedEntityIdMap;    ///< Stores map from entity Ids loaded from stream, to remapped entity Ids, if remapping was performed.
+        AZ::Data::AssetId                           m_instantiatingAssetId; ///< When a slice is instantiating, the associated asset ID is cached here.
 
         /// Tracking of pending slice instantiations, each being the requested asset and the associated request's ticket.
         struct InstantiatingSliceInfo

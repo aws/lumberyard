@@ -82,7 +82,11 @@ public: //types
 public:
     void Init(UiParticle::UiParticleInitialParameters* emitter);
     void Update(float timeStep, const UiParticleUpdateParameters& updateParameters);
-    void FillVertices(SVF_P3F_C4B_T2F* outputVertices, const UiParticleRenderParameters& renderParameters, AZ::u32& particlesInserted, const AZ::Matrix4x4& transform);
+
+    //! Fill out the four vertices for the particle. 
+    //! Returns false if the vertex was not added because it was fully transparent.
+    bool FillVertices(SVF_P2F_C4B_T2F_F4B* outputVertices, const UiParticleRenderParameters& renderParameters, const AZ::Matrix4x4& transform);
+
     bool IsActive(bool infiniteLifetime) const;
 
 private:

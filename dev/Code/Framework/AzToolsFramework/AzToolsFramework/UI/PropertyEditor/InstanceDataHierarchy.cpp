@@ -29,11 +29,11 @@
 
 namespace
 {
-    AZStd::string GetStringFromAttribute(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
+    AZ::Edit::Attribute* FindAttributeInNode(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
     {
         if (!node)
         {
-            return "";
+            return nullptr;
         }
 
         AZ::Edit::Attribute* attr{};
@@ -57,9 +57,15 @@ namespace
                     }
                 }
             }
-        }
+        } 
 
-        if (!attr)
+        return attr;
+    }
+
+    template<typename ... Args> 
+    AZStd::string GetStringFromAttributeWithParams(AzToolsFramework::InstanceDataNode* node, AZ::Edit::Attribute* attribute, Args&& ... params)
+    {
+        if (!node || !attribute)
         {
             return "";
         }
@@ -68,14 +74,26 @@ namespace
         AZStd::string label;
         for (size_t instIndex = 0; instIndex < node->GetNumInstances(); ++instIndex)
         {
-            AzToolsFramework::PropertyAttributeReader reader(node->GetInstance(instIndex), attr);
-            if (reader.Read<AZStd::string>(label))
+            AzToolsFramework::PropertyAttributeReader reader(node->GetInstance(instIndex), attribute);
+            if (reader.Read<AZStd::string>(label, AZStd::forward<Args>(params) ...))
             {
                 return label;
             }
         }
 
         return "";
+    }
+
+    AZStd::string GetIndexedStringFromAttribute(AzToolsFramework::InstanceDataNode* parentNode, AzToolsFramework::InstanceDataNode* attributeNode, AZ::Edit::AttributeId attribId, int siblingIndex)
+    {
+        AZ::Edit::Attribute* attribute = FindAttributeInNode(attributeNode, attribId);
+        return GetStringFromAttributeWithParams(parentNode, attribute, siblingIndex);
+    }
+
+    AZStd::string GetStringFromAttribute(AzToolsFramework::InstanceDataNode* node, AZ::Edit::AttributeId attribId)
+    {
+        AZ::Edit::Attribute* attribute = FindAttributeInNode(node, attribId);
+        return GetStringFromAttributeWithParams(node, attribute);
     }
 
     template<typename Type>
@@ -128,7 +146,7 @@ namespace
         return Type();
     }
 
-    AZStd::string GetDisplayLabel(AzToolsFramework::InstanceDataNode* node)
+    AZStd::string GetDisplayLabel(AzToolsFramework::InstanceDataNode* node, int siblingIndex = 0)
     {
         if (!node)
         {
@@ -170,6 +188,19 @@ namespace
         if (label.empty())
         {
             label = GetStringFromAttribute(node, AZ::Edit::Attributes::NameLabelOverride);
+        }
+
+        if (label.empty())
+        {
+            parentNode = node;
+            do
+            {
+                parentNode = parentNode->GetParent();
+            } 
+            while (parentNode && parentNode->GetClassMetadata() && parentNode->GetClassMetadata()->m_container);
+
+            // trying to get per-item name provided by real parent
+            label = GetIndexedStringFromAttribute(parentNode, node->GetParent(), AZ::Edit::Attributes::IndexedChildNameLabelOverride, siblingIndex);
         }
 
         return label;
@@ -325,7 +356,9 @@ namespace AzToolsFramework
                 }
                 // reserve entry in the container
                 void* dataAddress = container->ReserveElement(GetInstance(i), containerClassElement);
-                bool noDefaultData = (containerClassElement->m_flags & AZ::SerializeContext::ClassElement::FLG_NO_DEFAULT_VALUE) != 0;
+                bool isAssociative = false;
+                ReadAttribute(AZ::Edit::Attributes::ShowAsKeyValuePairs, isAssociative, true);
+                bool noDefaultData = isAssociative || (containerClassElement->m_flags & AZ::SerializeContext::ClassElement::FLG_NO_DEFAULT_VALUE) != 0;
 
                 if (!dataAddress || !fillData(dataAddress, containerClassElement, noDefaultData, m_context) && noDefaultData) // fill default data
                 {
@@ -454,6 +487,27 @@ namespace AzToolsFramework
         return addressStack;
     }
 
+    AZ::Edit::Attribute* InstanceDataNode::FindAttribute(AZ::Edit::AttributeId nameCrc) const
+    {
+        AZ::Edit::Attribute* attribute = nullptr;
+
+        // Edit Data > Class Element > Class Data in terms of specificity to what we're editing, so prioritize their attributes accordingly
+        if (m_elementEditData) 
+        {
+            attribute = m_elementEditData->FindAttribute(nameCrc); 
+        }
+        if (!attribute && m_classElement)
+        {
+            attribute = m_classElement->FindAttribute(nameCrc);
+        }
+        if (!attribute && m_classData)
+        {
+            attribute = m_classData->FindAttribute(nameCrc);
+        }
+
+        return attribute;
+    }
+
     //-----------------------------------------------------------------------------
     // InstanceDataHierarchy
     //-----------------------------------------------------------------------------
@@ -492,6 +546,68 @@ namespace AzToolsFramework
     }
 
     //-----------------------------------------------------------------------------
+    void InstanceDataHierarchy::SetBuildFlags(AZ::u8 flags)
+    {
+        m_buildFlags = flags;
+    }
+
+    void InstanceDataHierarchy::EnumerateUIElements(InstanceDataNode* node, DynamicEditDataProvider dynamicEditDataProvider)
+    {
+        for (InstanceDataNode& child : node->m_children)
+        {
+            EnumerateUIElements(&child, dynamicEditDataProvider);
+        }
+
+        AZ::Edit::ClassData* nodeEditData = node->GetClassMetadata() ? node->GetClassMetadata()->m_editData : nullptr;
+        if (nodeEditData)
+        {
+            const AZ::Edit::ElementData* groupData = nullptr;
+
+            for (auto& element : nodeEditData->m_elements)
+            {
+                if (element.m_elementId == AZ::Edit::ClassElements::UIElement)
+                {
+                    // For every UIElement, generate an InstanceDataNode pointed at our instance with the corresponding attributes
+                    for (size_t i = 0, numInstances = node->GetNumInstances(); i < numInstances; ++i)
+                    {
+                        m_supplementalElementData.push_back();
+                        auto& serializeFieldElement = m_supplementalElementData.back();
+                        auto classData = node->GetClassMetadata();
+
+                        serializeFieldElement.m_name = element.m_description;
+                        serializeFieldElement.m_nameCrc = AZ::Crc32(element.m_description);
+                        serializeFieldElement.m_azRtti = classData->m_azRtti;
+                        serializeFieldElement.m_dataSize = sizeof(void*);
+                        serializeFieldElement.m_offset = 0;
+                        serializeFieldElement.m_typeId = classData->m_typeId;
+                        serializeFieldElement.m_editData = &element;
+                        serializeFieldElement.m_flags = AZ::SerializeContext::ClassElement::FLG_UI_ELEMENT;
+                        serializeFieldElement.m_attributeOwnership = AZ::SerializeContext::ClassElement::AttributeOwnership::None;
+
+                        m_curParentNode = node;
+                        BeginNode(node->GetInstance(i), classData, &serializeFieldElement, dynamicEditDataProvider);
+                        m_curParentNode->m_groupElementData = groupData;
+                        EndNode();
+                    }
+                }
+                else if (element.IsClassElement() && element.m_elementId == AZ::Edit::ClassElements::Group)
+                {
+                    if (!element.m_description || !element.m_description[0])
+                    {
+                        groupData = nullptr;
+                    }
+                    else
+                    {
+                        groupData = &element;
+                    }
+                }
+            }
+
+            m_curParentNode = nullptr;
+        }
+    }
+
+    //-----------------------------------------------------------------------------
     void InstanceDataHierarchy::Build(AZ::SerializeContext* sc, unsigned int accessFlags, DynamicEditDataProvider dynamicEditDataProvider, ComponentEditor* editorParent)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -507,6 +623,7 @@ namespace AzToolsFramework
         m_nodeDiscarded = false;
         m_context = sc;
         m_comparisonHierarchies.clear();
+        m_supplementalEditData.clear();
 
         AZ::SerializeContext::EnumerateInstanceCallContext callContext(
             AZStd::bind(&InstanceDataHierarchy::BeginNode, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, dynamicEditDataProvider),
@@ -538,8 +655,11 @@ namespace AzToolsFramework
             );
         }
 
+        EnumerateUIElements(this, dynamicEditDataProvider);
+
+        // Fixup our container edit data first, as we may specifically affect comparison data
+        FixupEditData(this, 0);
         bool dataIdentical = RefreshComparisonData(accessFlags, dynamicEditDataProvider);
-        FixupEditData();
 
         if (editorParent)
         {
@@ -547,7 +667,89 @@ namespace AzToolsFramework
         }
     }
 
-    //-----------------------------------------------------------------------------
+    namespace InstanceDataHierarchyHelper
+    {
+        template <class T>
+        bool GetEnumStringRepresentation(AZStd::string& value, const AZ::Edit::ElementData* data, void* instance, const AZ::Uuid& storageTypeId)
+        {
+            if (storageTypeId == azrtti_typeid<T>())
+            {
+                for (const AZ::AttributePair& attributePair : data->m_attributes)
+                {
+                    PropertyAttributeReader reader(instance, attributePair.second);
+                    AZ::Edit::EnumConstant<T> enumPair;
+                    if (reader.Read<AZ::Edit::EnumConstant<T>>(enumPair))
+                    {
+                        T* enumValue = reinterpret_cast<T*>(instance);
+                        if (enumPair.m_value == *enumValue)
+                        {
+                            value = enumPair.m_description;
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Try GetEnumStringRepresentation<Type> on all of the specified types 
+        template <class T1, class T2, class... TRest>
+        bool GetEnumStringRepresentation(AZStd::string& value, const AZ::Edit::ElementData* data, void* instance, const AZ::Uuid& storageTypeId)
+        {
+            return GetEnumStringRepresentation<T1>(value, data, instance, storageTypeId) || GetEnumStringRepresentation<T2, TRest...>(value, data, instance, storageTypeId);
+        }
+
+        bool GetValueStringRepresentation(const InstanceDataNode* node, AZStd::string& value)
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            // Get our enum string value from the edit context if we're actually an enum
+            AZ::Uuid enumId;
+            if (serializeContext && node->ReadAttribute(AZ::Edit::InternalAttributes::EnumType, enumId))
+            {
+                if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+                {
+                    const AZ::Edit::ElementData* data = editContext->GetEnumElementData(enumId);
+                    if (data)
+                    {
+                        // Check all underlying enum storage types
+                        if (GetEnumStringRepresentation<
+                            AZ::u8, AZ::u16, AZ::u32, AZ::u64,
+                            AZ::s8, AZ::s16, AZ::s32, AZ::s64>(value, data, node->FirstInstance(), node->GetClassMetadata()->m_typeId))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            // Just use our underlying AZStd::string if we're a string
+            if (node->GetClassMetadata()->m_typeId == azrtti_typeid<AZStd::string>())
+            {
+                value = *reinterpret_cast<AZStd::string*>(node->FirstInstance());
+                return true;
+            }
+
+            // Fall back on using our serializer's DataToText
+            if (node->GetElementMetadata())
+            {
+                if (auto serializer = node->GetClassMetadata()->m_serializer)
+                {
+                    AZ::IO::MemoryStream memStream(node->FirstInstance(), 0, node->GetElementMetadata()->m_dataSize);
+                    AZStd::vector<char> buffer;
+                    AZ::IO::ByteContainerStream<AZStd::vector<char>> outStream(&buffer);
+                    serializer->DataToText(memStream, outStream, false);
+                    value = AZStd::string(buffer.data(), buffer.size());
+                    return !value.empty();
+                }
+            }
+
+            return false;
+        }
+    }
+
+    //----------------------------------------------------------------------------- 
     void InstanceDataHierarchy::FixupEditData(InstanceDataNode* node, int siblingIdx)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -555,8 +757,36 @@ namespace AzToolsFramework
         bool mergeElementEditData = node->m_classElement && node->m_classElement->m_editData && node->GetElementEditMetadata() != node->m_classElement->m_editData;
         bool mergeContainerEditData = node->m_parent && node->m_parent->m_classData->m_container && node->m_parent->GetElementEditMetadata() && (node->m_classElement->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER) == 0;
 
-        if (mergeElementEditData || mergeContainerEditData)
+        bool showAsKeyValue = false;
+        if (!(m_buildFlags & Flags::IgnoreKeyValuePairs))
         {
+            // Default to showing as key values if we're an associative interface, but always respect ShowAsKeyValuePairs if it's specified
+            showAsKeyValue = node->m_parent && node->m_parent->m_classData->m_container && node->m_parent->m_classData->m_container->GetAssociativeContainerInterface();
+            node->ReadAttribute(AZ::Edit::Attributes::ShowAsKeyValuePairs, showAsKeyValue);
+        }
+
+        if (mergeElementEditData || mergeContainerEditData || showAsKeyValue)
+        {
+            AZStd::string label = GetDisplayLabel(node, siblingIdx);
+
+            // Grab a copy of our instances if we might need to move them to a key/value attribute.
+            // We need a copy because the current node may well be replaced in its entirety by one of its children.
+            AZStd::vector<void*> elementInstances;
+            if (showAsKeyValue)
+            {
+                elementInstances = node->m_instances;
+            }
+
+            // If our node is a pair, and we're not enumerating multiple instances, respect showAsKeyValue and promote the value data element with a label matching our instance's string representation
+            if (showAsKeyValue && node->m_children.size() == 2 && node->GetNumInstances() == 1)
+            {
+                // Make sure we can get a valid string representation before doing the conversion
+                if (label.empty())
+                {
+                    showAsKeyValue = InstanceDataHierarchyHelper::GetValueStringRepresentation(&node->m_children.front(), label);
+                }
+            }
+
             m_supplementalEditData.push_back();
             AZ::Edit::ElementData* editData = &m_supplementalEditData.back().m_editElementData;
             if (node->GetElementEditMetadata())
@@ -564,6 +794,19 @@ namespace AzToolsFramework
                 *editData = *node->GetElementEditMetadata();
             }
             node->m_elementEditData = editData;
+
+            // Flag our new key node with our original instances for any future element modification
+            if (showAsKeyValue)
+            {
+                node->m_identifier = AZ::Crc32(label.c_str());
+
+                auto attribute = aznew AZ::AttributeContainerType<AZStd::vector<void*>>(AZStd::move(elementInstances));
+                m_supplementalEditData.back().m_attributes.emplace_back(attribute); // Ensure the attribute gets cleaned up
+                editData->m_attributes.emplace_back(
+                    AZ::Edit::InternalAttributes::ElementInstances, 
+                    attribute);
+            }
+
             if (mergeElementEditData)
             {
                 for (AZ::Edit::AttributeArray::const_iterator elemAttrIter = node->m_classElement->m_editData->m_attributes.begin(); elemAttrIter != node->m_classElement->m_editData->m_attributes.end(); ++elemAttrIter)
@@ -582,31 +825,35 @@ namespace AzToolsFramework
                     }
                 }
             }
-            if (mergeContainerEditData)
+
+            if (mergeContainerEditData || !label.empty())
             {
-                AZStd::string label = GetDisplayLabel(node);
                 m_supplementalEditData.back().m_displayLabel = label.empty() ? AZStd::string::format("[%d]", siblingIdx) : label;
                 editData->m_description = nullptr;
                 editData->m_name = m_supplementalEditData.back().m_displayLabel.c_str();
-                InstanceDataNode* container = node->m_parent;
-                for (AZ::Edit::AttributeArray::const_iterator containerAttrIter = container->GetElementEditMetadata()->m_attributes.begin(); containerAttrIter != container->GetElementEditMetadata()->m_attributes.end(); ++containerAttrIter)
-                {
-                    if (!containerAttrIter->second->m_describesChildren)
-                    {
-                        continue;
-                    }
 
-                    AZ::Edit::AttributeArray::iterator editAttrIter = editData->m_attributes.begin();
-                    for (; editAttrIter != editData->m_attributes.end(); ++editAttrIter)
+                if (mergeContainerEditData)
+                {
+                    InstanceDataNode* container = node->m_parent;
+                    for (AZ::Edit::AttributeArray::const_iterator containerAttrIter = container->GetElementEditMetadata()->m_attributes.begin(); containerAttrIter != container->GetElementEditMetadata()->m_attributes.end(); ++containerAttrIter)
                     {
-                        if (containerAttrIter->first == editAttrIter->first)
+                        if (!containerAttrIter->second->m_describesChildren)
                         {
-                            break;
+                            continue;
                         }
-                    }
-                    if (editAttrIter == editData->m_attributes.end())
-                    {
-                        editData->m_attributes.push_back(*containerAttrIter);
+
+                        AZ::Edit::AttributeArray::iterator editAttrIter = editData->m_attributes.begin();
+                        for (; editAttrIter != editData->m_attributes.end(); ++editAttrIter)
+                        {
+                            if (containerAttrIter->first == editAttrIter->first)
+                            {
+                                break;
+                            }
+                        }
+                        if (editAttrIter == editData->m_attributes.end())
+                        {
+                            editData->m_attributes.push_back(*containerAttrIter);
+                        }
                     }
                 }
             }
@@ -682,7 +929,10 @@ namespace AzToolsFramework
                     if (!subElement->m_matched &&
                         subElement->m_classElement->m_nameCrc == classElement->m_nameCrc &&
                         subElement->m_classData == classData &&
-                        (subElement->m_elementEditData == elementEditData || (subElement->m_elementEditData && elementEditData && azstricmp(subElement->m_elementEditData->m_name, elementEditData->m_name) == 0)))
+                        (subElement->m_elementEditData == elementEditData ||
+                        (subElement->m_elementEditData && elementEditData &&
+                            subElement->m_elementEditData->m_name && elementEditData->m_name &&
+                            azstricmp(subElement->m_elementEditData->m_name, elementEditData->m_name) == 0)))
                     {
                         node = subElement;
                         break;

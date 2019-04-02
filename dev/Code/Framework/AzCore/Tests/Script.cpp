@@ -3690,6 +3690,142 @@ namespace UnitTest
         run();
     }
 
+    // RamenRequests 
+    class RamenRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        typedef unsigned int BusIdType;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+
+        virtual void AddPepper() = 0;
+    };
+    using RamenRequestBus = AZ::EBus<RamenRequests>;
+
+    class RamenRequestHandler
+        : public RamenRequestBus::Handler
+    {
+    public:
+        void AddPepper() override {  };
+    };
+
+    class RamenRequestBehaviorHandler
+        : public RamenRequestBus::Handler
+        , public BehaviorEBusHandler
+    {
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(RamenRequestBehaviorHandler, "{EB4E043B-AD1A-4745-A725-91100E191517}", AZ::SystemAllocator, AddPepper);
+
+        void AddPepper() override 
+        {  
+            Call(FN_AddPepper);
+        }
+    };
+    // RamenRequests 
+
+    // RamenShopNotifications
+    class RamenShopNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        typedef unsigned int BusIdType;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+
+        virtual void OnOrderCancelled(int id) = 0;
+    };
+    using RamenShopNotificationBus = AZ::EBus<RamenShopNotifications>;
+
+    class RamenShopNotificationHandler
+        : public RamenShopNotificationBus::MultiHandler
+    {
+    public:
+        void OnOrderCancelled(int /*id*/) override {};
+    };
+
+    class RamenShopNotificationBehaviorHandler
+        : public RamenShopNotificationBus::MultiHandler
+        , public BehaviorEBusHandler
+    {
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(RamenShopNotificationBehaviorHandler, "{98A0C1B1-0B81-4563-886A-03204DDBE146}", AZ::SystemAllocator, OnOrderCancelled);
+
+        void OnOrderCancelled(int id) override 
+        {
+            Call(FN_OnOrderCancelled, id);
+        }
+    };
+    // RamenShopNotifications
+
+    class ScriptBehaviorHandlerIsConnectedTest
+        : public AllocatorsFixture
+    {
+    public:
+        static void TestAssert(bool check)
+        {
+            AZ_Assert(check, "Script Test assert");
+        }
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            m_behaviorContext = aznew BehaviorContext();
+            m_behaviorContext->Method("TestAssert", &ScriptBehaviorHandlerIsConnectedTest::TestAssert);
+
+            m_behaviorContext->EBus<RamenRequestBus>("RamenRequestBus")->
+                Handler<RamenRequestBehaviorHandler>()->
+                    Event("AddPepper", &RamenRequestBus::Events::AddPepper);
+
+            m_behaviorContext->EBus<RamenShopNotificationBus>("RamenShopNotificationBus")->
+                Handler<RamenShopNotificationBehaviorHandler>()->
+                    Event("OnOrderCancelled", &RamenShopNotificationBus::Events::OnOrderCancelled);
+
+            m_scriptContext = aznew ScriptContext();
+            m_scriptContext->BindTo(m_behaviorContext);
+
+        }
+
+        void TearDown() override
+        {
+            AllocatorsFixture::TearDown();
+            delete m_scriptContext;
+            delete m_behaviorContext;
+        }
+
+        ScriptContext* m_scriptContext;
+        BehaviorContext* m_behaviorContext;
+    };
+
+    TEST_F(ScriptBehaviorHandlerIsConnectedTest, IsConnected_UberTest)
+    {
+            const char luaCode[] = R"(
+ramen = {
+    handler1 = nil,
+    handler2 = nil
+}
+ramen.handler1 = RamenRequestBus.Connect(ramen, 1)
+ramen.handler2 = RamenRequestBus.Connect(ramen, 2)
+
+ramenShop = {
+    handler = nil
+}
+ramenShop.handler = RamenShopNotificationBus.CreateHandler(ramenShop)
+ramenShop.handler:Connect(3);
+ramenShop.handler:Connect(4);
+)";
+        m_scriptContext->Execute(luaCode);
+
+        m_scriptContext->Execute("TestAssert(ramen.handler1:IsConnected())");
+        m_scriptContext->Execute("TestAssert(ramen.handler1:IsConnectedId(1))");
+        m_scriptContext->Execute("TestAssert(ramen.handler2:IsConnectedId(2))");
+
+        m_scriptContext->Execute("TestAssert(ramenShop.handler:IsConnected())");
+        m_scriptContext->Execute("TestAssert(ramenShop.handler:IsConnectedId(3))");
+        m_scriptContext->Execute("TestAssert(ramenShop.handler:IsConnectedId(4))");
+    }
+
     //-----------------------------------------------------------------------------
     // Ebus script with bus id test
     //-----------------------------------------------------------------------------

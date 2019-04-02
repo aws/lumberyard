@@ -11,32 +11,5 @@
 */
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphNodeWidget.h>
-#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
-
-
-namespace EMStudio
-{
-    AnimGraphNodeWidget::AnimGraphNodeWidget(QWidget* parent)
-        : QWidget(parent)
-    {
-    }
-
-
-    AnimGraphNodeWidget::~AnimGraphNodeWidget()
-    {
-    }
-
-
-    EMotionFX::AnimGraphInstance* AnimGraphNodeWidget::GetAnimGraphInstance() const
-    {
-        const EMotionFX::ActorInstance* actorInstance = CommandSystem::GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
-        if (!actorInstance)
-        {
-            return nullptr;
-        }
-        
-        return actorInstance->GetAnimGraphInstance();
-    }
-} // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphNodeWidget.moc>

@@ -115,7 +115,7 @@ namespace AzToolsFramework
             if (role == Qt::DisplayRole)
             {
                 const AssetBrowserEntry* item = static_cast<AssetBrowserEntry*>(index.internalPointer());
-                return item->GetDisplayName().c_str();
+                return item->GetDisplayName();
             }
 
             if (role == Roles::EntryRole)

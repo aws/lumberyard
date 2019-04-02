@@ -17,6 +17,8 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include "PropertyEditorAPI.h"
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 
 #include <QWidget>
 
@@ -73,7 +75,33 @@ namespace AzToolsFramework
         {
             (void)debugName;
 
-            if (attrib == AZ_CRC("EnumValue", 0xe4f32eed))
+            // Forward EnumValue fields from the registered enum specified by EnumType
+            if (attrib == AZ::Edit::InternalAttributes::EnumType)
+            {
+                AZ::Uuid typeId;
+                if (attrValue->Read<AZ::Uuid>(typeId))
+                {
+                    AZ::SerializeContext* serializeContext = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+                    if (serializeContext)
+                    {
+                        if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+                        {
+                            const AZ::Edit::ElementData* data = editContext->GetEnumElementData(typeId);
+                            if (data)
+                            {
+                                for (const AZ::AttributePair& attributePair : data->m_attributes)
+                                {
+                                    PropertyAttributeReader reader(attrValue->GetInstancePointer(), attributePair.second);
+                                    ConsumeAttribute(GUI, attributePair.first, &reader, debugName);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else if (attrib == AZ_CRC("EnumValue", 0xe4f32eed))
             {
                 AZStd::pair<AZ::s64, AZStd::string>  guiEnumValue;
                 AZStd::pair<ValueType, AZStd::string>  enumValue;

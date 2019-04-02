@@ -65,6 +65,26 @@ namespace EMotionFX
             m_function = BoolLogicXOR;
             SetNodeInfo("x XOR y");
             break;
+        case FUNCTION_NAND:
+            m_function = BoolLogicNAND;
+            SetNodeInfo("x NAND y");
+            break;
+        case FUNCTION_NOR:
+            m_function = BoolLogicNOR;
+            SetNodeInfo("x NOR y");
+            break;
+        case FUNCTION_XNOR:
+            m_function = BoolLogicXNOR;
+            SetNodeInfo("x XNOR y");
+            break;
+        case FUNCTION_NOT_X:
+            m_function = BoolLogicNOTX;
+            SetNodeInfo("NOT x");
+            break;
+        case FUNCTION_NOT_Y:
+            m_function = BoolLogicNOTY;
+            SetNodeInfo("NOT y");
+            break;
         default:
             AZ_Assert(false, "EMotionFX: Math function unknown.");
         }
@@ -164,6 +184,10 @@ namespace EMotionFX
         }
     }
 
+    BlendTreeBoolLogicNode::EFunction BlendTreeBoolLogicNode::GetFunction() const
+    {
+        return m_functionEnum;
+    }
 
     uint32 BlendTreeBoolLogicNode::GetVisualColor() const
     {
@@ -177,7 +201,11 @@ namespace EMotionFX
     bool BlendTreeBoolLogicNode::BoolLogicAND(bool x, bool y)       { return (x && y); }
     bool BlendTreeBoolLogicNode::BoolLogicOR(bool x, bool y)        { return (x || y); }
     bool BlendTreeBoolLogicNode::BoolLogicXOR(bool x, bool y)       { return (x ^ y); }
-
+    bool BlendTreeBoolLogicNode::BoolLogicNAND(bool x, bool y)      { return !BoolLogicAND(x,y); }
+    bool BlendTreeBoolLogicNode::BoolLogicNOR(bool x, bool y)       { return !BoolLogicOR(x, y); }
+    bool BlendTreeBoolLogicNode::BoolLogicXNOR(bool x, bool y)      { return !BoolLogicXOR(x, y); }
+    bool BlendTreeBoolLogicNode::BoolLogicNOTX(bool x, bool y)      { return !x; }
+    bool BlendTreeBoolLogicNode::BoolLogicNOTY(bool x, bool y)      { return !y; }
 
     void BlendTreeBoolLogicNode::SetDefaultValue(bool defaultValue)
     {
@@ -225,6 +253,11 @@ namespace EMotionFX
             ->EnumAttribute(FUNCTION_AND,  "AND")
             ->EnumAttribute(FUNCTION_OR,   "OR")
             ->EnumAttribute(FUNCTION_XOR,  "XOR")
+            ->EnumAttribute(FUNCTION_NAND, "NAND")
+            ->EnumAttribute(FUNCTION_NOR, "NOR")
+            ->EnumAttribute(FUNCTION_XNOR, "XNOR")
+            ->EnumAttribute(FUNCTION_NOT_X, "NOT x")
+            ->EnumAttribute(FUNCTION_NOT_Y, "NOT y")
             ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeBoolLogicNode::m_defaultValue, "Default Value", "Value used for x or y when the input port has no connection.")
             ->EnumAttribute(FUNCTION_AND,  "False")
             ->EnumAttribute(FUNCTION_OR,   "True")

@@ -199,11 +199,11 @@ TEST_F(BehaviorEntityTest, CreateComponent_Succeeds)
 TEST_F(BehaviorEntityTest, CreateComponent_WithNonexistentType_Fails)
 {
     // We expect an assert in Entity::CreateComponent()
-    AZ_TEST_START_ASSERTTEST;
+    UnitTest::TestRunner::Instance().StartAssertTests();
 
     AzFramework::BehaviorComponentId componentId = m_behaviorEntity.CreateComponent(AZ::TypeId::CreateNull());
 
-    AZ_TEST_STOP_ASSERTTEST(1);
+    UnitTest::TestRunner::Instance().StopAssertTests();
 
     EXPECT_FALSE(componentId.IsValid());
     EXPECT_EQ(0, m_rawEntity->GetComponents().size());
@@ -273,6 +273,12 @@ TEST_F(BehaviorEntityTest, GetComponentType_Succeeds)
 {
     AZ::Component* rawComponent = m_rawEntity->CreateComponent(HatComponentTypeId);
     EXPECT_EQ(azrtti_typeid(rawComponent), m_behaviorEntity.GetComponentType(rawComponent->GetId()));
+}
+
+TEST_F(BehaviorEntityTest, GetComponentName_Succeeds)
+{
+    AZ::Component* rawComponent = m_rawEntity->CreateComponent(HatComponentTypeId);
+    EXPECT_EQ(m_behaviorEntity.GetComponentName(rawComponent->GetId()), "HatComponent");
 }
 
 TEST_F(BehaviorEntityTest, SetComponentConfiguration_Succeeds)

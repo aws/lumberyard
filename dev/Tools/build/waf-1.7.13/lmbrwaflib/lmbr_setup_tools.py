@@ -23,7 +23,9 @@ LMBR_SETUP_QT_FILTERS = {
             "Qt5Widgets",
             "Qt5Concurrent",
             "Qt5WinExtras",
-            "Qt5Xml"
+            "Qt5Xml",
+            "libEGL",
+            "libGLESv2"
         ],
 
         "qtlibs": {

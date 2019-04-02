@@ -16,12 +16,14 @@
 #include <AzCore/RTTI/ReflectContext.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/string/string.h>
-#include <EMotionFX/Source/AnimGraphNodeId.h>
+#include <AzCore/std/string/string_view.h>
+#include <EMotionFX/Source/AnimGraphObjectIds.h>
 #include <EMotionFX/Source/BaseObject.h>
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/Parameter/GroupParameter.h>
 #include <EMotionFX/Source/Parameter/ValueParameter.h>
 #include <MCore/Source/Distance.h>
+#include <MCore/Source/Array.h>
 
 namespace EMotionFX
 {
@@ -33,9 +35,10 @@ namespace EMotionFX
     class AnimGraphNodeGroup;
     class AnimGraphObject;
     class AnimGraphStateMachine;
+    class AnimGraphStateTransition;
     class AnimGraphTransitionCondition;
     class BlendTree;
-    
+
     //
     class EMFX_API AnimGraph
     {
@@ -46,7 +49,7 @@ namespace EMotionFX
         AnimGraph();
         virtual ~AnimGraph();
 
-        void Reinit();
+        void RecursiveReinit();
         bool InitAfterLoading();
 
         /// Recursive update unique datas for all corresponding anim graph instances.
@@ -62,10 +65,15 @@ namespace EMotionFX
         AnimGraphNode* RecursiveFindNodeByName(const char* nodeName) const;
         bool IsNodeNameUnique(const AZStd::string& newNameCandidate, const AnimGraphNode* forNode) const;
         AnimGraphNode* RecursiveFindNodeById(AnimGraphNodeId nodeId) const;
-
+        AnimGraphStateTransition* RecursiveFindTransitionById(AnimGraphConnectionId transitionId) const;
 
         void RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, MCore::Array<AnimGraphNode*>* outNodes) const; // note: outNodes is NOT cleared internally, nodes are added to the array
         void RecursiveCollectTransitionConditionsOfType(const AZ::TypeId& conditionType, MCore::Array<AnimGraphTransitionCondition*>* outConditions) const; // note: outNodes is NOT cleared internally, nodes are added to the array
+
+        // Collects all objects of type and/or derived type
+        void RecursiveCollectObjectsOfType(const AZ::TypeId& objectType, AZStd::vector<AnimGraphObject*>& outObjects);
+
+        void RecursiveCollectObjectsAffectedBy(AnimGraph* animGraph, AZStd::vector<AnimGraphObject*>& outObjects);
 
         uint32 RecursiveCalcNumNodes() const;
 
@@ -194,6 +202,7 @@ namespace EMotionFX
         * @param[in] parameter The parameter to search for.
         * @result The index of the parameter. AZ::Failure will be returned in case it has not been found.
         */
+        AZ::Outcome<size_t> FindParameterIndex(Parameter* parameter) const;
         AZ::Outcome<size_t> FindParameterIndex(const Parameter* parameter) const;
 
         /**
@@ -290,10 +299,16 @@ namespace EMotionFX
         bool GetAutoUnregister() const;
 
         /**
-         * Marks the actor as used by the engine runtime, as opposed to the tool suite.
+         * Marks the anim graph as used by the engine runtime, as opposed to the tool suite.
          */
         void SetIsOwnedByRuntime(bool isOwnedByRuntime);
         bool GetIsOwnedByRuntime() const;
+
+        /**
+         * Marks the anim graph as owned by an asset, as opposed to the tool suite.
+         */
+        void SetIsOwnedByAsset(bool isOwnedByAsset);
+        bool GetIsOwnedByAsset() const;
 
         //-------------------------------------------------------------------------------------------------------------
 
@@ -365,7 +380,7 @@ namespace EMotionFX
         void AddObject(AnimGraphObject* object);       // registers the object in the array and modifies the object's object index value
         void RemoveObject(AnimGraphObject* object);    // doesn't actually remove it from memory, just removes it from the list
 
-        uint32 GetNumObjects() const                                                          { return mObjects.GetLength(); }
+        uint32 GetNumObjects() const                                                          { return static_cast<uint32>(mObjects.size()); }
         AnimGraphObject* GetObject(uint32 index) const                                        { return mObjects[index]; }
         void ReserveNumObjects(uint32 numObjects);
 
@@ -397,10 +412,14 @@ namespace EMotionFX
 
         void OnRetargetingEnabledChanged();
 
+        void AddValueParameterToIndexByNameCache(const size_t index, const AZStd::string& parameterName);
+        void RemoveValueParameterToIndexByNameCache(const size_t index, const AZStd::string& parameterName);
+
         GroupParameter                                  m_rootParameter;   /**< root group parameter. */
         ValueParameterVector                            m_valueParameters;      /**< Cached version of all parameters with values. */
+        AZStd::unordered_map<AZStd::string_view, size_t> m_valueParameterIndexByName; /**< Cached version of parameter index by name to accelerate lookups. */
         AZStd::vector<AnimGraphNodeGroup*>              mNodeGroups;
-        MCore::Array<AnimGraphObject*>                  mObjects;
+        AZStd::vector<AnimGraphObject*>                 mObjects;
         MCore::Array<AnimGraphNode*>                    mNodes;
         AZStd::vector<AnimGraphInstance*>               m_animGraphInstances;
         AZStd::string                                   mFileName;
@@ -414,6 +433,7 @@ namespace EMotionFX
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                                            mIsOwnedByRuntime;      /**< Set if the anim graph is used/owned by the engine runtime. */
+        bool                                            m_isOwnedByAsset;        /**< Set if the anim graph is used/owned by an asset. */
 #endif // EMFX_DEVELOPMENT_BUILD
     };
 }   // namespace EMotionFX

@@ -22,9 +22,9 @@
 #include <MCore/Source/Vector.h>
 #include <MCore/Source/Quaternion.h>
 #include <MCore/Source/MultiThreadManager.h>
+#include <EMotionFX/Source/AnimGraphObjectIds.h>
 #include "KeyTrackLinearDynamic.h"
 #include "EventInfo.h"
-#include <EMotionFX/Source/AnimGraphNodeId.h>
 
 namespace EMotionFX
 {
@@ -136,6 +136,7 @@ namespace EMotionFX
             uint32                  mTrackIndex;            // the track index
             uint32                  mCachedKey;             // a cached key
             AnimGraphNodeId         mNodeId;                // animgraph node Id
+            AnimGraphInstance*      mAnimGraphInstance;     // the anim graph instance this node was recorded from
             uint32                  mColor;                 // the node viz color
             uint32                  mTypeColor;             // the node type color
             uint32                  mAnimGraphID;           // the animgraph ID
@@ -151,6 +152,7 @@ namespace EMotionFX
                 mTrackIndex     = MCORE_INVALIDINDEX32;
                 mCachedKey      = MCORE_INVALIDINDEX32;
                 mNodeId         = AnimGraphNodeId();
+                mAnimGraphInstance = nullptr;
                 mAnimGraphID    = MCORE_INVALIDINDEX32;
                 mNodeType       = AZ::TypeId::CreateNull();
                 mCategoryID     = MCORE_INVALIDINDEX32;

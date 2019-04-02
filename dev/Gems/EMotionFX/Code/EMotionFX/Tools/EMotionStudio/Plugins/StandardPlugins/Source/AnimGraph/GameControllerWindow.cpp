@@ -47,7 +47,8 @@
 #include <MysticQt/Source/DialogStack.h>
 #include <MysticQt/Source/LinkWidget.h>
 #include "BlendNodeSelectionWindow.h"
-
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphHierarchyWidget.h>
+#include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 
 namespace EMStudio
 {
@@ -154,11 +155,11 @@ namespace EMStudio
         mRemovePresetButton = new QPushButton();
         mPresetNameLineEdit = new QLineEdit();
 
-        connect(mPresetComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(OnPresetComboBox(int)));
-        connect(mAddPresetButton, SIGNAL(clicked()), this, SLOT(OnAddPresetButton()));
-        connect(mRemovePresetButton, SIGNAL(clicked()), this, SLOT(OnRemovePresetButton()));
-        connect(mPresetNameLineEdit, SIGNAL(editingFinished()), this, SLOT(OnPresetNameChanged()));
-        connect(mPresetNameLineEdit, SIGNAL(textEdited(const QString&)), this, SLOT(OnPresetNameEdited(const QString&)));
+        connect(mPresetComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnPresetComboBox);
+        connect(mAddPresetButton, &QPushButton::clicked, this, &GameControllerWindow::OnAddPresetButton);
+        connect(mRemovePresetButton, &QPushButton::clicked, this, &GameControllerWindow::OnRemovePresetButton);
+        connect(mPresetNameLineEdit, &QLineEdit::editingFinished, this, &GameControllerWindow::OnPresetNameChanged);
+        connect(mPresetNameLineEdit, &QLineEdit::textEdited, this, &GameControllerWindow::OnPresetNameEdited);
 
         EMStudioManager::MakeTransparentButton(mAddPresetButton, "/Images/Icons/Plus.png", "Add a game controller preset");
         EMStudioManager::MakeTransparentButton(mRemovePresetButton, "/Images/Icons/Remove.png", "Remove a game controller preset");
@@ -179,12 +180,12 @@ namespace EMStudio
         dummyWidget->setObjectName("StyledWidgetDark");
         dummyWidget->setLayout(gameControllerLayout);
         mDialogStack->Add(dummyWidget, "Game Controller And Preset Selection");
-        connect(mGameControllerComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(OnGameControllerComboBox(int)));
+        connect(mGameControllerComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnGameControllerComboBox);
 
         DisablePresetInterface();
         AutoSelectGameController();
 
-        connect(GetMainWindow(), SIGNAL(HardwareChangeDetected()), this, SLOT(HardwareChangeDetected()));
+        connect(GetMainWindow(), &MainWindow::HardwareChangeDetected, this, &GameControllerWindow::HardwareChangeDetected);
     }
 
 
@@ -258,7 +259,7 @@ namespace EMStudio
         ReInit();
 
         // update the parameter window
-        mPlugin->GetParameterWindow()->Init();
+        mPlugin->GetParameterWindow()->Reinit();
     }
 
 
@@ -350,7 +351,7 @@ namespace EMStudio
         {
             const EMotionFX::ValueParameter* parameter = parameters[parameterIndex];
 
-            if (!azrtti_istypeof<EMotionFX::FloatParameter>(parameter) 
+            if (!azrtti_istypeof<EMotionFX::FloatParameter>(parameter)
                 && azrtti_typeid(parameter) != azrtti_typeid<EMotionFX::Vector2Parameter>())
             {
                 continue;
@@ -424,7 +425,7 @@ namespace EMStudio
                 }
             }
         #endif
-            connect(axesComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(OnAxisComboBox(int)));
+            connect(axesComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnAxisComboBox);
 
             // select the given axis in the combo box or select none if there is no assignment yet or the assigned axis wasn't found on the current game controller
             axesComboBox->setCurrentIndex(selectedComboItem);
@@ -439,7 +440,7 @@ namespace EMStudio
             modeComboBox->addItem("Negative Param Range Mode");
             modeComboBox->addItem("Rotate Character");
             modeComboBox->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-            connect(modeComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(OnParameterModeComboBox(int)));
+            connect(modeComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnParameterModeComboBox);
             modeComboBox->setCurrentIndex(settingsInfo->m_mode);
             mParameterGridLayout->addWidget(modeComboBox, parameterIndex, 2);
 
@@ -451,7 +452,7 @@ namespace EMStudio
             QCheckBox* invertCheckbox = new QCheckBox();
             invertLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
             invertCheckbox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            connect(invertCheckbox, SIGNAL(stateChanged(int)), this, SLOT(OnInvertCheckBoxChanged(int)));
+            connect(invertCheckbox, &QCheckBox::stateChanged, this, &GameControllerWindow::OnInvertCheckBoxChanged);
             invertCheckbox->setCheckState(settingsInfo->m_invert ? Qt::Checked : Qt::Unchecked);
             invertCheckBoxLayout->addWidget(invertCheckbox);
             mParameterGridLayout->addLayout(invertCheckBoxLayout, parameterIndex, 3);
@@ -510,7 +511,7 @@ namespace EMStudio
             modeComboBox->addItem("Enable Bool For One Frame Only");
             //modeComboBox->addItem( "Execute Script Mode" );
             modeComboBox->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
-            connect(modeComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(OnButtonModeComboBox(int)));
+            connect(modeComboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnButtonModeComboBox);
             modeComboBox->setCurrentIndex(settingsInfo->m_mode);
             mButtonGridLayout->addWidget(modeComboBox, i, 1);
 
@@ -575,7 +576,7 @@ namespace EMStudio
         mDeadZoneSlider->setValue(mGameController->GetDeadZone() * 100);
         mString = AZStd::string::format("%.2f", mGameController->GetDeadZone());
         mDeadZoneValueLabel->setText(mString.c_str());
-        connect(mDeadZoneSlider, SIGNAL(valueChanged(int)), this, SLOT(OnDeadZoneSliderChanged(int)));
+        connect(mDeadZoneSlider, &MysticQt::Slider::valueChanged, this, &GameControllerWindow::OnDeadZoneSliderChanged);
     #endif
 
         // start the timers
@@ -839,7 +840,7 @@ namespace EMStudio
                 linkWidget->setText(settingsInfo->m_string.c_str());
             }
 
-            connect(linkWidget, SIGNAL(clicked()), this, SLOT(OnSelectNodeButtonClicked()));
+            connect(linkWidget, &MysticQt::LinkWidget::clicked, this, &GameControllerWindow::OnSelectNodeButtonClicked);
 
             linkWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
@@ -872,7 +873,7 @@ namespace EMStudio
                 }
             }
 
-            connect(comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(OnButtonParameterComboBox(int)));
+            connect(comboBox, static_cast<void (MysticQt::ComboBox::*)(int)>(&MysticQt::ComboBox::currentIndexChanged), this, &GameControllerWindow::OnButtonParameterComboBox);
             comboBox->setProperty("ButtonIndex", buttonIndex);
 
             // select the correct parameter
@@ -932,8 +933,9 @@ namespace EMStudio
         MCORE_ASSERT(settingsInfo);
 
         // create and show the state selection window
-        BlendNodeSelectionWindow stateSelectionWindow(linkWidget, true, nullptr, azrtti_typeid<EMotionFX::AnimGraphStateMachine>());
-        stateSelectionWindow.Update(mAnimGraph->GetID(), nullptr);
+        BlendNodeSelectionWindow stateSelectionWindow(linkWidget);
+        stateSelectionWindow.GetAnimGraphHierarchyWidget().SetSingleSelectionMode(true);
+        stateSelectionWindow.GetAnimGraphHierarchyWidget().SetFilterNodeType(azrtti_typeid<EMotionFX::AnimGraphStateMachine>());
         stateSelectionWindow.setModal(true);
         if (stateSelectionWindow.exec() == QDialog::Rejected)   // we pressed cancel or the close cross
         {
@@ -941,7 +943,7 @@ namespace EMStudio
         }
 
         // Get the selected states.
-        const AZStd::vector<AnimGraphSelectionItem>& selectedStates = stateSelectionWindow.GetAnimGraphHierarchyWidget()->GetSelectedItems();
+        const AZStd::vector<AnimGraphSelectionItem>& selectedStates = stateSelectionWindow.GetAnimGraphHierarchyWidget().GetSelectedItems();
         if (selectedStates.empty())
         {
             return;
@@ -985,7 +987,7 @@ namespace EMStudio
         }
 
         // update the parameter window
-        mPlugin->GetParameterWindow()->Init();
+        mPlugin->GetParameterWindow()->Reinit();
     }
 
 
@@ -1037,7 +1039,7 @@ namespace EMStudio
         ReInitButtonInterface(buttonInfo->mButtonIndex);
 
         // update the parameter window
-        mPlugin->GetParameterWindow()->Init();
+        mPlugin->GetParameterWindow()->Reinit();
     }
 
 
@@ -1218,7 +1220,7 @@ namespace EMStudio
         UpdateParameterInterface(paramInfo);
 
         // update the parameter window
-        mPlugin->GetParameterWindow()->Init();
+        mPlugin->GetParameterWindow()->Reinit();
     }
 
 
@@ -1274,7 +1276,7 @@ namespace EMStudio
         UpdateGameControllerComboBox();
         AutoSelectGameController();
         ReInit();
-        mPlugin->GetParameterWindow()->Init();
+        mPlugin->GetParameterWindow()->Reinit();
     }
 
 
@@ -1447,9 +1449,9 @@ namespace EMStudio
                         // only process in case the parameter info is enabled
                         if (settingsInfo->m_enabled)
                         {
-                            MCore::Quaternion localRot = actorInstance->GetLocalRotation();
+                            MCore::Quaternion localRot = actorInstance->GetLocalSpaceTransform().mRotation;
                             localRot = localRot * MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), value * timeDelta * 3.0f);
-                            actorInstance->SetLocalRotation(localRot);
+                            actorInstance->SetLocalSpaceRotation(localRot);
                         }
                     }
 
@@ -1603,9 +1605,9 @@ namespace EMStudio
                         // only process in case the parameter info is enabled
                         if (settingsInfo->m_enabled)
                         {
-                            MCore::Quaternion localRot = actorInstance->GetLocalRotation();
+                            MCore::Quaternion localRot = actorInstance->GetLocalSpaceTransform().mRotation;
                             localRot = localRot * MCore::Quaternion(AZ::Vector3(0.0f, 0.0f, 1.0f), value.GetX() * timeDelta * 3.0f);
-                            actorInstance->SetLocalRotation(localRot);
+                            actorInstance->SetLocalSpaceRotation(localRot);
                         }
                     }
 

@@ -24,7 +24,6 @@
 #include "MorphMeshDeformer.h"
 #include "TransformData.h"
 #include "EventManager.h"
-#include "EyeBlinker.h"
 #include "Recorder.h"
 #include "AnimGraphInstance.h"
 #include "AttachmentNode.h"
@@ -32,18 +31,19 @@
 #include "NodeGroup.h"
 #include "ActorUpdateScheduler.h"
 #include "MorphSetup.h"
+#include "MorphSetupInstance.h"
 #include "Node.h"
-
+#include <EMotionFX/Source/RagdollInstance.h>
 
 
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(ActorInstance, ActorInstanceAllocator, 0)
 
-    // the constructor
-    ActorInstance::ActorInstance(Actor* actor, AZ::EntityId entityId, uint32 threadIndex)
+    ActorInstance::ActorInstance(Actor* actor, AZ::Entity* entity, uint32 threadIndex)
         : BaseObject()
-        , m_entityId(entityId)
+        , m_entity(entity)
+        , m_ragdollInstance(nullptr)
     {
         MCORE_ASSERT(actor);
 
@@ -63,7 +63,6 @@ namespace EMotionFX
         mSelfAttachment         = nullptr;
         mCustomData             = nullptr;
         mID                     = MCore::GetIDGenerator().GenerateID();
-        mEyeBlinker             = nullptr;
         mVisualizeScale         = 1.0f;
         mMotionSamplingRate     = 0.0f;
         mMotionSamplingTimer    = 0.0f;
@@ -116,9 +115,10 @@ namespace EMotionFX
         mBoundsUpdateItemFreq   = 1;
 
         // initialize the actor local and global transform
-        mParentGlobalTransform.Identity();
+        mParentWorldTransform.Identity();
         mLocalTransform.Identity();
-        mGlobalTransform.Identity();
+        mWorldTransform.Identity();
+        mWorldTransformInv.Identity();
 
         // init the morph setup instance
         mMorphSetup = MorphSetupInstance::Create();
@@ -166,7 +166,7 @@ namespace EMotionFX
 
         // remove it from the recording
         GetRecorder().RemoveActorInstanceFromRecording(this);
-          
+
         // get rid of the motion system
         if (mMotionSystem)
         {
@@ -176,11 +176,6 @@ namespace EMotionFX
         if (mAnimGraphInstance)
         {
             mAnimGraphInstance->Destroy();
-        }
-
-        if (mEyeBlinker)
-        {
-            mEyeBlinker->Destroy();
         }
 
         // delete all attachments
@@ -221,10 +216,9 @@ namespace EMotionFX
     }
 
 
-    // create an actor instance
-    ActorInstance* ActorInstance::Create(Actor* actor, AZ::EntityId entityId, uint32 threadIndex)
+    ActorInstance* ActorInstance::Create(Actor* actor, AZ::Entity* entity, uint32 threadIndex)
     {
-        return aznew ActorInstance(actor, entityId, threadIndex);
+        return aznew ActorInstance(actor, entity, threadIndex);
     }
 
 
@@ -261,9 +255,8 @@ namespace EMotionFX
 
             // perform forward kinematics etc
             mTransformData->UpdateNodeFlags();
-            UpdateLocalMatrices();          // update local transformation matrices
-            UpdateGlobalTransform();        // update the global transformation
-            UpdateGlobalMatrices();         // update global matrices (performs forward kinematics)
+            UpdateWorldTransform();
+            UpdateSkinningMatrices();
             mTransformData->ResetNodeFlags(); // reset node flags
             UpdateAttachments();            // update the attachment parent matrices
 
@@ -284,14 +277,65 @@ namespace EMotionFX
         // check if we are an attachment
         Attachment* attachment = GetSelfAttachment();
 
-        // if we are not an attachment, or if we are but not one influenced by multiple nodes
-        if (attachment == nullptr || (attachment && attachment->GetIsInfluencedByMultipleNodes() == false))
+        // if we are not an attachment, or if we are but not one influenced by multiple joints
+        if (!attachment || !attachment->GetIsInfluencedByMultipleJoints())
         {
             // update the motion system, which performs all blending, and updates all local transforms (excluding the local matrices)
             if (mAnimGraphInstance)
             {
                 mAnimGraphInstance->Update(timePassedInSeconds);
-                UpdateGlobalTransform();
+                UpdateWorldTransform();
+                if (updateMatrices && sampleMotions)
+                {
+                    mAnimGraphInstance->Output(mTransformData->GetCurrentPose());
+
+                    if (m_ragdollInstance)
+                    {
+                        m_ragdollInstance->PostAnimGraphUpdate(timePassedInSeconds);
+                    }
+                }
+            }
+            else
+            if (mMotionSystem)
+            {
+                mMotionSystem->Update(timePassedInSeconds, (updateMatrices && sampleMotions));
+            }
+            else
+            {
+                UpdateWorldTransform();
+            }
+
+            // when the actor instance isn't visible, we don't want to do more things
+            if (updateMatrices == false)
+            {
+                if (GetBoundsUpdateEnabled() && mBoundsUpdateType == BOUNDS_STATIC_BASED)
+                {
+                    UpdateBounds(mLODLevel, mBoundsUpdateType);
+                }
+
+                return;
+            }
+
+            // apply the morph setup
+            mTransformData->GetCurrentPose()->ApplyMorphWeightsToActorInstance();
+            ApplyMorphSetup();
+
+            mTransformData->UpdateNodeFlags();
+            UpdateSkinningMatrices();
+
+            // reset the node flags
+            mTransformData->ResetNodeFlags();
+
+            // update the parent matrices
+            UpdateAttachments();
+        }
+        else // we are a skin attachment
+        {
+            if (mAnimGraphInstance)
+            {
+                mAnimGraphInstance->Update(timePassedInSeconds);
+                UpdateWorldTransform();
+
                 if (updateMatrices && sampleMotions)
                 {
                     mAnimGraphInstance->Output(mTransformData->GetCurrentPose());
@@ -304,8 +348,9 @@ namespace EMotionFX
             }
             else
             {
-                UpdateGlobalTransform();        // update the global transformation
+                UpdateWorldTransform();
             }
+
             // when the actor instance isn't visible, we don't want to do more things
             if (updateMatrices == false)
             {
@@ -313,118 +358,17 @@ namespace EMotionFX
                 {
                     UpdateBounds(mLODLevel, mBoundsUpdateType);
                 }
-
                 return;
             }
 
-            // update the procedural eyeblinker if we have one
-            if (mEyeBlinker)
-            {
-                mEyeBlinker->Update(timePassedInSeconds);
-            }
-
-            // **** if you want to overwrite some local space transforms, then here is the location to do it, or after the morph setup ****
-            // of course it is nicer to use the LocalSpaceController class for this though, as that takes blending etc into account
-            // <insert your code here, that modifies the local transforms>
-
-            // apply the morph setup
             mTransformData->GetCurrentPose()->ApplyMorphWeightsToActorInstance();
             ApplyMorphSetup();
-
-            // update the local matrices (calc them based on local pos/rot/scale etc)
             mTransformData->UpdateNodeFlags();
-
-            if (sampleMotions)
-            {
-                UpdateLocalMatrices();
-            }
-
-            // update global matrices (performs forward kinematics)
-            UpdateGlobalMatrices();
+            mSelfAttachment->UpdateJointTransforms(*mTransformData->GetCurrentPose());
+            UpdateSkinningMatrices();
 
             // reset the node flags
             mTransformData->ResetNodeFlags();
-
-            // update the parent matrices
-            UpdateAttachments();
-        }
-        else // we are a skin attachment
-        {
-            const bool allowFastUpdates = attachment->GetAllowFastUpdates();
-
-            // update the motion system, which performs all blending, and updates all local transforms (excluding the local matrices)
-            if (mAnimGraphInstance)
-            {
-                mAnimGraphInstance->Update(timePassedInSeconds);
-                UpdateGlobalTransform();
-
-                if (updateMatrices && sampleMotions)
-                {
-                    mAnimGraphInstance->Output(mTransformData->GetCurrentPose());
-                }
-            }
-            else
-            if (mMotionSystem)
-            {
-                mMotionSystem->Update(timePassedInSeconds, allowFastUpdates ? false : (updateMatrices && sampleMotions));
-            }
-            else
-            {
-                UpdateGlobalTransform();        // update the global transformation
-            }
-            // when the actor instance isn't visible, we don't want to do more things
-            if (updateMatrices == false)
-            {
-                if (GetBoundsUpdateEnabled() && mBoundsUpdateType == BOUNDS_STATIC_BASED)
-                {
-                    UpdateBounds(mLODLevel, mBoundsUpdateType);
-                }
-                return;
-            }
-
-            // update the procedural eyeblinker if we have one
-            if (mEyeBlinker)
-            {
-                mEyeBlinker->Update(timePassedInSeconds);
-            }
-
-            // **** if you want to overwrite some local space transforms, then here is the location to do it, or after the morph setup ****
-            // of course it is nicer to use the LocalSpaceController class for this though, as that takes blending etc into account
-            // <insert your code here, that modifies the local transforms>
-
-            // apply the morph setup
-            if (allowFastUpdates == false)
-            {
-                mTransformData->GetCurrentPose()->ApplyMorphWeightsToActorInstance();
-                ApplyMorphSetup();
-
-                // update the local matrices (calc them based on local pos/rot/scale etc)
-                mTransformData->UpdateNodeFlags();
-                UpdateLocalMatrices();
-            }
-
-            // update global matrices (performs forward kinematics)
-            //if (allowFastUpdates == false)
-            //  UpdateGlobalMatrices();
-
-            // if this is an attachment that deforms with the actor instance where it is attached to
-            // then we need to overwrite the local space transformations for the nodes
-            // nodes that don't exist in the actor it deforms with will not be overwritten
-            UpdateMatricesIfSkinAttachment();
-
-            if (allowFastUpdates == false)
-            {
-                // if this is an attachment itself, calculate all the global matrices again
-                if (mSelfAttachment)
-                {
-                    UpdateGlobalMatricesForNonRoots(); // don't update root nodes though, assume the root nodes are already copied over from the actor instance where we are attached to
-                }
-
-                // reset the node flags
-                mTransformData->ResetNodeFlags();
-            }
-
-            // update the attachment parent matrices
             UpdateAttachments();
         }
 
@@ -441,191 +385,29 @@ namespace EMotionFX
     }
 
 
-    // calculate the local space matrix for a given node
-    void ActorInstance::CalcLocalTM(uint32 nodeIndex, MCore::Matrix* outMatrix) const
+    // update the world transformation
+    void ActorInstance::UpdateWorldTransform()
     {
-        const Transform& localTransform = mTransformData->GetCurrentPose()->GetLocalTransform(nodeIndex);
-
-    #ifdef EMFX_SCALE_DISABLED
-        CalcLocalTM(nodeIndex, localTransform.mPosition, localTransform.mRotation, MCore::Vector3(1.0f, 1.0f, 1.0f), outMatrix);
-    #else
-        CalcLocalTM(nodeIndex, localTransform.mPosition, localTransform.mRotation, localTransform.mScale, outMatrix);
-    #endif
+        mWorldTransform = mLocalTransform;
+        mWorldTransform.Multiply(mParentWorldTransform);
+        mWorldTransformInv = mWorldTransform.Inversed();
     }
 
 
-    // calculate the local space matrix from transformation components (pos/rot/scale) that have been specified manually
-    void ActorInstance::CalcLocalTM(uint32 nodeIndex, const AZ::Vector3& pos, const MCore::Quaternion& rot, const AZ::Vector3& scale, MCore::Matrix* outMatrix) const
+    // updates the skinning matrices of all nodes
+    void ActorInstance::UpdateSkinningMatrices()
     {
-    #ifdef EMFX_SCALE_DISABLED
-        MCORE_UNUSED(nodeIndex);
-        MCORE_UNUSED(scale);
-        outMatrix->InitFromPosRot(pos, rot);
-    #else
-        // if there is scale
-        TransformData::ENodeFlags flags = mTransformData->GetNodeFlags(nodeIndex);
-        if (flags & TransformData::FLAG_HASSCALE)
-        {
-            // check if there is a parent
-            const uint32 parentIndex = mActor->GetSkeleton()->GetNode(nodeIndex)->GetParentIndex();
-            if ((parentIndex != MCORE_INVALIDINDEX32) && (mTransformData->GetNodeFlags(parentIndex) & TransformData::FLAG_HASSCALE))    // if there is a parent and it has scale
-            {
-                AZ::Vector3 invParentScale(1.0f, 1.0f, 1.0f);
-                invParentScale /= mTransformData->GetCurrentPose()->GetLocalTransform(parentIndex).mScale;  // TODO: unsafe, can get division by zero
-                outMatrix->InitFromNoScaleInherit(pos, rot, scale, invParentScale);
-            }
-            else // there is NO parent, so its a root node
-            {
-                outMatrix->InitFromPosRotScale(pos, rot, scale);
-            }
-        }
-        else    // if there is no scale in the current node
-        {
-            // check if there is a parent, but no scale
-            const uint32 parentIndex = mActor->GetSkeleton()->GetNode(nodeIndex)->GetParentIndex();
-            if ((parentIndex != MCORE_INVALIDINDEX32) && (mTransformData->GetNodeFlags(parentIndex) & TransformData::FLAG_HASSCALE))    // if there is a parent and it has scale
-            {
-                // calculate the inverse parent scale
-                AZ::Vector3 invParentScale(1.0f, 1.0f, 1.0f);
-                invParentScale /= mTransformData->GetCurrentPose()->GetLocalTransform(parentIndex).mScale;  // TODO: unsafe, can get division by zero
-                outMatrix->InitFromNoScaleInherit(pos, rot, scale, invParentScale);
-            }
-            else    // there is no parent or parent scale, and no scale
-            {
-                outMatrix->InitFromPosRot(pos, rot);
-            }
-        }
-    #endif
-    }
+        MCore::Matrix* skinningMatrices = mTransformData->GetSkinningMatrices();
+        const Pose* pose = mTransformData->GetCurrentPose();
+        const Pose* bindPose = mTransformData->GetBindPose();
 
-
-    // updates the local matrices of all nodes and the actor instance itself
-    void ActorInstance::UpdateLocalMatrices()
-    {
-    #ifdef EMFX_SCALE_DISABLED
-        MCore::Matrix* localMatrices  = mTransformData->GetLocalMatrices();
-        Pose* pose = mTransformData->GetCurrentPose();
-
-        // process all nodes
         const uint32 numNodes = GetNumEnabledNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            // get the index of the node from the array of enabled nodes
-            const uint16 nodeNumber = GetEnabledNode(i);
-            const Transform& localTransform = pose->GetLocalTransform(nodeNumber);
-            localMatrices[nodeNumber].InitFromPosRot(localTransform.mPosition, localTransform.mRotation);
-        }   // for loop
-    #else
-        MCore::Matrix*  localMatrices = mTransformData->GetLocalMatrices();
-
-        // process all nodes
-        Skeleton* skeleton = mActor->GetSkeleton();
-        const uint32 numNodes = GetNumEnabledNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            // get the index of the node from the array of enabled nodes
             const uint32 nodeNumber = GetEnabledNode(i);
-
-            // if we need to update the local TM
-            TransformData::ENodeFlags flags = mTransformData->GetNodeFlags(nodeNumber);
-            const Transform& localTransform = mTransformData->GetCurrentPose()->GetLocalTransform(nodeNumber);
-
-            // if there is scale
-            if (flags & TransformData::FLAG_HASSCALE)
-            {
-                // check if there is a parent
-                const uint32 parentIndex = skeleton->GetNode(nodeNumber)->GetParentIndex();
-                if ((parentIndex != MCORE_INVALIDINDEX32) && (mTransformData->GetNodeFlags(parentIndex) & TransformData::FLAG_HASSCALE))    // if there is a parent and it has scale
-                {
-                    AZ::Vector3 invParentScale(1.0f, 1.0f, 1.0f);
-                    invParentScale /= mTransformData->GetCurrentPose()->GetLocalTransform(parentIndex).mScale;  // TODO: unsafe, can get division by zero
-                    localMatrices[nodeNumber].InitFromNoScaleInherit(localTransform.mPosition, localTransform.mRotation, localTransform.mScale, invParentScale);
-                }
-                else // there is NO parent, so its a root node
-                {
-                    localMatrices[nodeNumber].InitFromPosRotScale(localTransform.mPosition, localTransform.mRotation, localTransform.mScale);
-                }
-            }
-            else    // if there is no scale in the current node
-            {
-                // check if there is a parent, but no scale
-                const uint32 parentIndex = skeleton->GetNode(nodeNumber)->GetParentIndex();
-                if ((parentIndex != MCORE_INVALIDINDEX32) && (mTransformData->GetNodeFlags(parentIndex) & TransformData::FLAG_HASSCALE))    // if there is a parent and it has scale
-                {
-                    // calculate the inverse parent scale
-                    AZ::Vector3 invParentScale(1.0f, 1.0f, 1.0f);
-                    invParentScale /= mTransformData->GetCurrentPose()->GetLocalTransform(parentIndex).mScale;  // TODO: unsafe, can get division by zero
-                    localMatrices[nodeNumber].InitFromNoScaleInherit(localTransform.mPosition, localTransform.mRotation, localTransform.mScale, invParentScale);
-                }
-                else    // there is no parent or parent scale, and no scale
-                {
-                    localMatrices[nodeNumber].InitFromPosRot(localTransform.mPosition, localTransform.mRotation);
-                }
-            }
-        }
-    #endif  // #ifdef EMFX_SCALE_DISABLED
-    }
-
-
-    // update global space matrices for nodes that are no root nodes
-    void ActorInstance::UpdateGlobalMatricesForNonRoots()
-    {
-        // get the transform data and some shortcuts to specific transform buffers
-        MCore::Matrix* localMatrices = mTransformData->GetLocalMatrices();
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
-
-        const uint32 numNodes = GetNumEnabledNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            // get the index of the node from the array of enabled nodes
-            const uint32 nodeNumber = GetEnabledNode(i);
-
-            // if this is not a root node
-            const uint32 parentIndex = skeleton->GetNode(nodeNumber)->GetParentIndex();
-            if (parentIndex != MCORE_INVALIDINDEX32)
-            {
-                globalMatrices[nodeNumber].MultMatrix4x3(localMatrices[nodeNumber], globalMatrices[parentIndex]);
-            }
-        }
-    }
-
-
-    // update the global transformation
-    void ActorInstance::UpdateGlobalTransform()
-    {
-        mGlobalTransform = mLocalTransform;
-        mGlobalTransform.Multiply(mParentGlobalTransform);
-    }
-
-
-    // updates the global matrices of all nodes
-    void ActorInstance::UpdateGlobalMatrices()
-    {
-        // build the global transform matrix
-        MCore::Matrix globalTM = mGlobalTransform.ToMatrix();
-
-        // get the transform data and some shortcuts to specific transform buffers
-        MCore::Matrix* localMatrices = mTransformData->GetLocalMatrices();
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
-
-        const uint32 numNodes = GetNumEnabledNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            // get the index of the node from the array of enabled nodes
-            const uint32 nodeNumber = GetEnabledNode(i);
-
-            // if this is not a root node
-            const uint32 parentIndex = skeleton->GetNode(nodeNumber)->GetParentIndex();
-            if (parentIndex != MCORE_INVALIDINDEX32)
-            {
-                globalMatrices[nodeNumber].MultMatrix4x3(localMatrices[nodeNumber], globalMatrices[parentIndex]);
-            }
-            else
-            {
-                globalMatrices[nodeNumber].MultMatrix4x3(localMatrices[nodeNumber], globalTM);
-            }
+            Transform skinningTransform = mActor->GetInverseBindPoseTransform(nodeNumber);
+            skinningTransform.Multiply(pose->GetModelSpaceTransform(nodeNumber));
+            skinningMatrices[nodeNumber] = skinningTransform.ToMatrix();
         }
     }
 
@@ -694,9 +476,20 @@ namespace EMotionFX
         }
     }
 
+    void ActorInstance::PostPhysicsUpdate(float timePassedInSeconds)
+    {
+        if (m_ragdollInstance)
+        {
+            m_ragdollInstance->PostPhysicsUpdate(timePassedInSeconds);
+        }
+    }
+
     // add an attachment
     void ActorInstance::AddAttachment(Attachment* attachment)
     {
+        AZ_Assert(attachment, "Attachment cannot be a nullptr");
+        AZ_Assert(attachment->GetAttachmentActorInstance() != this, "Cannot attach to itself.");
+
         // first remove the current attachment tree from the scheduler
         ActorInstance* root = FindAttachmentRoot();
         GetActorManager().GetScheduler()->RecursiveRemoveActorInstance(root);
@@ -777,7 +570,7 @@ namespace EMotionFX
 
             Transform identTransform;
             identTransform.Identity();
-            attachmentInstance->SetParentGlobalTransform(identTransform);
+            attachmentInstance->SetParentWorldSpaceTransform(identTransform);
         }
 
         // delete it from memory when desired
@@ -858,70 +651,6 @@ namespace EMotionFX
     }
 
 
-    // update the matrices in case this is a skin attachment
-    void ActorInstance::UpdateMatricesIfSkinAttachment()
-    {
-        // if this actor instance isn't an attachment, then there's nothing to do
-        if (GetIsAttachment() == false)
-        {
-            return;
-        }
-
-        // copy over the matrices
-        MCORE_ASSERT(mSelfAttachment);
-        MCORE_ASSERT(mSelfAttachment->GetIsInfluencedByMultipleNodes());
-
-        static_cast<AttachmentSkin*>(mSelfAttachment)->UpdateNodeTransforms();
-    }
-
-
-    // recursively update the globalspace matrix for a given node
-    // this propagates the changes to all child nodes, using forward kinematics
-    void ActorInstance::RecursiveUpdateGlobalTM(uint32 nodeIndex, const MCore::Matrix* globalTM, MCore::Matrix* outGlobalMatrixArray)
-    {
-        // use the global space matrix array on default
-        if (outGlobalMatrixArray == nullptr)
-        {
-            outGlobalMatrixArray = mTransformData->GetGlobalInclusiveMatrices();
-        }
-
-        MCore::Matrix* outLocalMatrices = mTransformData->GetLocalMatrices();
-        Node* node = mActor->GetSkeleton()->GetNode(nodeIndex);
-
-        // if we have set a global matrix, then copy it, else calculate it
-        if (globalTM)
-        {
-            outGlobalMatrixArray[nodeIndex] = *globalTM;
-            const uint32 parentIndex = node->GetParentIndex();
-
-            // calculate the local TM
-            if (parentIndex != MCORE_INVALIDINDEX32)
-            {
-                outLocalMatrices[nodeIndex].MultMatrix4x3(*globalTM, outGlobalMatrixArray[parentIndex].Inversed());
-            }
-            else
-            {
-                outLocalMatrices[nodeIndex] = *globalTM;
-            }
-        }
-        else
-        {
-            const uint32 parentIndex = node->GetParentIndex();
-            if (parentIndex != MCORE_INVALIDINDEX32)
-            {
-                outGlobalMatrixArray[nodeIndex].MultMatrix4x3(outLocalMatrices[nodeIndex], outGlobalMatrixArray[parentIndex]);
-            }
-        }
-
-        // recursively update the global matrices of the childs
-        const uint32 numChildNodes = node->GetNumChildNodes();
-        for (uint32 i = 0; i < numChildNodes; ++i)
-        {
-            RecursiveUpdateGlobalTM(node->GetChildIndex(i), nullptr, outGlobalMatrixArray);
-        }
-    }
-
-
     // change visibility state
     void ActorInstance::SetIsVisible(bool isVisible)
     {
@@ -947,22 +676,22 @@ namespace EMotionFX
             CalcStaticBasedAABB(&mAABB);
             break;
 
-        // based on the global space positions of the nodes (least accurate, but fastest)
+        // based on the world space positions of the nodes (least accurate, but fastest)
         case BOUNDS_NODE_BASED:
             CalcNodeBasedAABB(&mAABB, itemFrequency);
             break;
 
-        // based on the global space positions of the vertices of the collision meshes (faster and more accurate than mesh based)
+        // based on the world space positions of the vertices of the collision meshes (faster and more accurate than mesh based)
         case BOUNDS_COLLISIONMESH_BASED:
             CalcCollisionMeshBasedAABB(geomLODLevel, &mAABB, itemFrequency);
             break;
 
-        // based on the global space positions of the vertices of the meshes (most accurate)
+        // based on the world space positions of the vertices of the meshes (most accurate)
         case BOUNDS_MESH_BASED:
             CalcMeshBasedAABB(geomLODLevel, &mAABB, itemFrequency);
             break;
 
-        // based on the global space positions of the vertices of the meshes (most accurate)
+        // based on the world space positions of the vertices of the meshes (most accurate)
         case BOUNDS_NODEOBB_BASED:
             CalcNodeOBBBasedAABB(&mAABB, itemFrequency);
             break;
@@ -985,11 +714,10 @@ namespace EMotionFX
         // init the axis aligned bounding box
         outResult->Init();
 
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
+        const Skeleton* skeleton = mActor->GetSkeleton();
 
-        // for all nodes, encapsulate the global space positions
+        // for all nodes, encapsulate the world space positions
         uint16 nodeNr;
         const uint32 numNodes = GetNumEnabledNodes();
         for (uint32 i = 0; i < numNodes; i += nodeFrequency)
@@ -1009,8 +737,9 @@ namespace EMotionFX
                 obb.CalcMinMaxPoints(&minPoint, &maxPoint);
 
                 // encapsulate the results in the AABB box
-                outResult->Encapsulate(minPoint * globalMatrices[nodeNr]);
-                outResult->Encapsulate(maxPoint * globalMatrices[nodeNr]);
+                const Transform worldTransform = pose->GetWorldSpaceTransform(nodeNr);
+                outResult->Encapsulate(worldTransform.TransformPoint(minPoint));
+                outResult->Encapsulate(worldTransform.TransformPoint(maxPoint));
             }
         }
     }
@@ -1022,14 +751,11 @@ namespace EMotionFX
         // init the axis aligned bounding box
         outResult->Init();
 
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
+        const Skeleton* skeleton = mActor->GetSkeleton();
 
-        // the 8 corners of a given OBB
+        // for all nodes, encapsulate the world space positions
         AZ::Vector3 cornerPoints[8];
-
-        // for all nodes, encapsulate the global space positions
         uint16 nodeNr;
         const uint32 numNodes = GetNumEnabledNodes();
         for (uint32 i = 0; i < numNodes; i += nodeFrequency)
@@ -1047,73 +773,50 @@ namespace EMotionFX
                 // calculate the 8 corner points
                 obb.CalcCornerPoints(cornerPoints);
 
-                // encapsulate all OBB global space corner points inside the AABB
+                const Transform worldTransform = pose->GetWorldSpaceTransform(nodeNr);
+
+                // encapsulate all OBB world space corner points inside the AABB
                 for (uint32 p = 0; p < 8; ++p)
                 {
-                    cornerPoints[p] *= globalMatrices[i];
-                    outResult->Encapsulate(cornerPoints[p]);
+                    outResult->Encapsulate(worldTransform.TransformPoint(cornerPoints[p]));
                 }
             }
         }
     }
 
 
-    // calculate the axis aligned bounding box based on the global space positions of the nodes
+    // calculate the axis aligned bounding box based on the world space positions of the nodes
     void ActorInstance::CalcNodeBasedAABB(MCore::AABB* outResult, uint32 nodeFrequency)
     {
-        // init the axis aligned bounding box
         outResult->Init();
 
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
+        const Skeleton* skeleton = mActor->GetSkeleton();
 
-        // if it is not a skin attachment
-        if (GetIsSkinAttachment() == false)
+        // for all nodes, encapsulate the world space positions
+        uint16 nodeNr;
+        const uint32 numNodes = GetNumEnabledNodes();
+        for (uint32 i = 0; i < numNodes; i += nodeFrequency)
         {
-            // for all nodes, encapsulate the global space positions
-            uint16 nodeNr;
-            const uint32 numNodes = GetNumEnabledNodes();
-            for (uint32 i = 0; i < numNodes; i += nodeFrequency)
+            nodeNr = GetEnabledNode(i);
+            if (skeleton->GetNode(nodeNr)->GetIncludeInBoundsCalc())
             {
-                nodeNr = GetEnabledNode(i);
-                if (skeleton->GetNode(nodeNr)->GetIncludeInBoundsCalc())
-                {
-                    outResult->Encapsulate(globalMatrices[nodeNr].GetTranslation());
-                }
-            }
-        }
-        else // if we are dealing with a skin attachment here
-        {
-            // get the attachment
-            AttachmentSkin* attachment = static_cast<AttachmentSkin*>(GetSelfAttachment());
-
-            // process all nodes
-            uint16 nodeIndex;
-            const uint32 numNodes = GetNumEnabledNodes();
-            for (uint32 i = 0; i < numNodes; ++i)
-            {
-                nodeIndex = GetEnabledNode(i);
-                if (attachment->GetNodeMapping(nodeIndex).mSourceNode) // if this node maps to a node in the main skeleton, otherwise skip it as then the bounds would go to the origin
-                {
-                    outResult->Encapsulate(globalMatrices[nodeIndex].GetTranslation());
-                }
+                outResult->Encapsulate(pose->GetWorldSpaceTransform(nodeNr).mPosition);
             }
         }
     }
 
 
-    // calculate the AABB that contains all global space vertices of all meshes
+    // calculate the AABB that contains all world space vertices of all meshes
     void ActorInstance::CalcMeshBasedAABB(uint32 geomLODLevel, MCore::AABB* outResult, uint32 vertexFrequency)
     {
         // init the axis aligned bounding box
         outResult->Init();
 
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
+        const Skeleton* skeleton = mActor->GetSkeleton();
 
-        // for all nodes, encapsulate the global space positions
+        // for all nodes, encapsulate the world space positions
         const uint32 numNodes = GetNumEnabledNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
@@ -1133,9 +836,11 @@ namespace EMotionFX
                 continue;
             }
 
+            const Transform worldTransform = pose->GetMeshNodeWorldSpaceTransform(geomLODLevel, nodeNr);
+
             // calculate and encapsulate the mesh bounds inside the total mesh box
             MCore::AABB meshBox;
-            mesh->CalcAABB(&meshBox, globalMatrices[nodeNr], vertexFrequency);
+            mesh->CalcAABB(&meshBox, worldTransform, vertexFrequency);
             outResult->Encapsulate(meshBox);
         }
     }
@@ -1146,11 +851,10 @@ namespace EMotionFX
         // init the axis aligned bounding box
         outResult->Init();
 
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
+        const Skeleton* skeleton = mActor->GetSkeleton();
 
-        // for all nodes, encapsulate the global space positions
+        // for all nodes, encapsulate the world space positions
         uint16 nodeNr;
         const uint32 numNodes = GetNumEnabledNodes();
         for (uint32 i = 0; i < numNodes; ++i)
@@ -1176,9 +880,11 @@ namespace EMotionFX
                 continue;
             }
 
+            const Transform worldTransform = pose->GetMeshNodeWorldSpaceTransform(geomLODLevel, nodeNr);
+
             // calculate and encapsulate the mesh bounds inside the total mesh box
             MCore::AABB meshBox;
-            mesh->CalcAABB(&meshBox, globalMatrices[nodeNr], vertexFrequency);
+            mesh->CalcAABB(&meshBox, worldTransform, vertexFrequency);
             outResult->Encapsulate(meshBox);
         }
     }
@@ -1255,14 +961,17 @@ namespace EMotionFX
     // check intersection with a ray, but don't get the intersection point or closest intersecting node
     Node* ActorInstance::IntersectsCollisionMesh(uint32 lodLevel, const MCore::Ray& ray) const
     {
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
 
         // for all nodes
-        const uint32 numNodes = skeleton->GetNumNodes();
+        const uint32 numNodes = GetNumEnabledNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
+            const uint16 nodeNr = GetEnabledNode(i);
+
             // check if there is a mesh for this node
-            Mesh* mesh = mActor->GetMesh(lodLevel, i);
+            Mesh* mesh = mActor->GetMesh(lodLevel, nodeNr);
             if (mesh == nullptr)
             {
                 continue;
@@ -1273,10 +982,12 @@ namespace EMotionFX
                 continue;
             }
 
+            const Transform worldTransform = pose->GetMeshNodeWorldSpaceTransform(lodLevel, nodeNr);
+
             // return when there is an intersection
-            if (mesh->Intersects(mTransformData->GetGlobalInclusiveMatrices()[i], ray))
+            if (mesh->Intersects(worldTransform, ray))
             {
-                return skeleton->GetNode(i);
+                return skeleton->GetNode(nodeNr);
             }
         }
 
@@ -1291,10 +1002,12 @@ namespace EMotionFX
         AZ::Vector3     closestPoint(0.0f, 0.0f, 0.0f);
         float           dist, baryU, baryV, closestBaryU = 0, closestBaryV = 0;
         float           closestDist = FLT_MAX;
+        Transform       closestTransform;
         uint32          closestIndices[3];
         uint32          triIndices[3];
 
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
 
         // check all nodes
         uint16 nodeNr;
@@ -1314,8 +1027,10 @@ namespace EMotionFX
                 continue;
             }
 
+            const Transform worldTransform = pose->GetMeshNodeWorldSpaceTransform(lodLevel, nodeNr);
+
             // if there is an intersection between the ray and the mesh
-            if (mesh->Intersects(mTransformData->GetGlobalInclusiveMatrix(nodeNr), ray, &point, &baryU, &baryV, triIndices))
+            if (mesh->Intersects(worldTransform, ray, &point, &baryU, &baryV, triIndices))
             {
                 // calculate the squared distance between the intersection point and the ray origin
                 dist = (point - ray.GetOrigin()).GetLengthSq();
@@ -1323,14 +1038,15 @@ namespace EMotionFX
                 // if it is the closest point till now, record it as closest
                 if (dist < closestDist)
                 {
-                    closestPoint    = point;
-                    closestDist     = dist;
-                    closestNode     = curNode;
-                    closestBaryU    = baryU;
-                    closestBaryV    = baryV;
-                    closestIndices[0] = triIndices[0];
-                    closestIndices[1] = triIndices[1];
-                    closestIndices[2] = triIndices[2];
+                    closestTransform    = worldTransform;
+                    closestPoint        = point;
+                    closestDist         = dist;
+                    closestNode         = curNode;
+                    closestBaryU        = baryU;
+                    closestBaryV        = baryV;
+                    closestIndices[0]   = triIndices[0];
+                    closestIndices[1]   = triIndices[1];
+                    closestIndices[2]   = triIndices[2];
                 }
             }
         }
@@ -1370,8 +1086,8 @@ namespace EMotionFX
                 {
                     AZ::PackedVector3f* normals = (AZ::PackedVector3f*)mesh->FindVertexData(Mesh::ATTRIB_NORMALS);
                     AZ::Vector3  norm = MCore::BarycentricInterpolate<AZ::Vector3>(closestBaryU, closestBaryV, AZ::Vector3(normals[closestIndices[0]]), AZ::Vector3(normals[closestIndices[1]]), AZ::Vector3(normals[closestIndices[2]]));
-                    norm = mTransformData->GetGlobalInclusiveMatrices()[closestNode->GetNodeIndex()].Mul3x3(norm);
-                    norm.GetNormalized();
+                    norm = closestTransform.TransformVector(norm);
+                    norm.Normalize();
                     *outNormal = norm;
                 }
 
@@ -1399,9 +1115,8 @@ namespace EMotionFX
     // check intersection with a ray, but don't get the intersection point or closest intersecting node
     Node* ActorInstance::IntersectsMesh(uint32 lodLevel, const MCore::Ray& ray) const
     {
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
+        const Skeleton* skeleton = mActor->GetSkeleton();
 
         // for all nodes
         uint16 nodeNr;
@@ -1418,8 +1133,10 @@ namespace EMotionFX
                 continue;
             }
 
+            const Transform worldTransform = pose->GetMeshNodeWorldSpaceTransform(lodLevel, nodeNr);
+
             // return when there is an intersection
-            if (mesh->Intersects(globalMatrices[nodeNr], ray))
+            if (mesh->Intersects(worldTransform, ray))
             {
                 return node;
             }
@@ -1430,6 +1147,24 @@ namespace EMotionFX
     }
 
 
+    void ActorInstance::SetRagdoll(const AZStd::shared_ptr<Physics::Ragdoll>& ragdoll)
+    {
+        if (ragdoll && ragdoll->GetNumNodes() > 0)
+        {
+            m_ragdollInstance = AZStd::make_unique<RagdollInstance>(ragdoll, this);
+        }
+        else
+        {
+            m_ragdollInstance.reset();
+        }
+    }
+
+
+    RagdollInstance* ActorInstance::GetRagdollInstance() const
+    {
+        return m_ragdollInstance.get();
+    }
+
 
     // intersection test that returns the closest intersection
     Node* ActorInstance::IntersectsMesh(uint32 lodLevel, const MCore::Ray& ray, AZ::Vector3* outIntersect, AZ::Vector3* outNormal, AZ::Vector2* outUV, float* outBaryU, float* outBaryV, uint32* outIndices) const
@@ -1437,14 +1172,14 @@ namespace EMotionFX
         Node*           closestNode = nullptr;
         AZ::Vector3     point;
         AZ::Vector3     closestPoint(0.0f, 0.0f, 0.0f);
+        Transform       closestTransform;
         float           dist, baryU, baryV, closestBaryU = 0, closestBaryV = 0;
         float           closestDist = FLT_MAX;
         uint32          closestIndices[3];
         uint32          triIndices[3];
 
-        // get the global space matrices
-        MCore::Matrix* globalMatrices = mTransformData->GetGlobalInclusiveMatrices();
-        Skeleton* skeleton = mActor->GetSkeleton();
+        const Pose* pose = mTransformData->GetCurrentPose();
+        const Skeleton* skeleton = mActor->GetSkeleton();
 
         // check all nodes
         uint16 nodeNr;
@@ -1459,8 +1194,10 @@ namespace EMotionFX
                 continue;
             }
 
+            const Transform worldTransform = pose->GetMeshNodeWorldSpaceTransform(lodLevel, nodeNr);
+
             // if there is an intersection between the ray and the mesh
-            if (mesh->Intersects(globalMatrices[nodeNr], ray, &point, &baryU, &baryV, triIndices))
+            if (mesh->Intersects(worldTransform, ray, &point, &baryU, &baryV, triIndices))
             {
                 // calculate the squared distance between the intersection point and the ray origin
                 dist = (point - ray.GetOrigin()).GetLengthSq();
@@ -1468,14 +1205,15 @@ namespace EMotionFX
                 // if it is the closest point till now, record it as closest
                 if (dist < closestDist)
                 {
-                    closestPoint    = point;
-                    closestDist     = dist;
-                    closestNode     = curNode;
-                    closestBaryU    = baryU;
-                    closestBaryV    = baryV;
-                    closestIndices[0] = triIndices[0];
-                    closestIndices[1] = triIndices[1];
-                    closestIndices[2] = triIndices[2];
+                    closestTransform    = worldTransform;
+                    closestPoint        = point;
+                    closestDist         = dist;
+                    closestNode         = curNode;
+                    closestBaryU        = baryU;
+                    closestBaryV        = baryV;
+                    closestIndices[0]   = triIndices[0];
+                    closestIndices[1]   = triIndices[1];
+                    closestIndices[2]   = triIndices[2];
                 }
             }
         }
@@ -1514,11 +1252,11 @@ namespace EMotionFX
                 if (outNormal)
                 {
                     AZ::PackedVector3f* normals = (AZ::PackedVector3f*)mesh->FindVertexData(Mesh::ATTRIB_NORMALS);
-                    AZ::Vector3  norm = MCore::BarycentricInterpolate<AZ::Vector3>(
+                    AZ::Vector3 norm = MCore::BarycentricInterpolate<AZ::Vector3>(
                             closestBaryU, closestBaryV,
-                            AZ::Vector3(normals[closestIndices[0]]), AZ::Vector3(normals[closestIndices[1]]), AZ::Vector3(normals[closestIndices[2]]));
-                    norm = globalMatrices[closestNode->GetNodeIndex()].Mul3x3(norm);
-                    norm.GetNormalized();
+                            AZ::Vector3(normals[closestIndices[0]]), AZ::Vector3(normals[closestIndices[1]]), AZ::Vector3(normals[closestIndices[2]]));                   
+                    norm = closestTransform.TransformVector(norm);
+                    norm.Normalize();
                     *outNormal = norm;
                 }
 
@@ -1775,7 +1513,7 @@ namespace EMotionFX
             return false;
         }
 
-        return mSelfAttachment->GetIsInfluencedByMultipleNodes();
+        return mSelfAttachment->GetIsInfluencedByMultipleJoints();
     }
 
 
@@ -1794,8 +1532,8 @@ namespace EMotionFX
             // if there is a parent node
             if (parentIndex != MCORE_INVALIDINDEX32)
             {
-                const AZ::Vector3& startPos     = pose.GetGlobalTransformInclusive(nodeIndex).mPosition;
-                const AZ::Vector3& endPos       = pose.GetGlobalTransformInclusive(parentIndex).mPosition;
+                const AZ::Vector3 startPos = pose.GetWorldSpaceTransform(nodeIndex).mPosition;
+                const AZ::Vector3 endPos = pose.GetWorldSpaceTransform(parentIndex).mPosition;
                 GetEventManager().OnDrawLine(startPos, endPos, color);
             }
         }
@@ -1822,7 +1560,7 @@ namespace EMotionFX
         trajectoryTransform.ApplyMotionExtractionFlags(motionExtractionFlags);
 
         // Get the projected bind pose transform.
-        Transform bindTransformProjected = mTransformData->GetBindPose()->GetLocalTransform(mActor->GetMotionExtractionNodeIndex());
+        Transform bindTransformProjected = mTransformData->GetBindPose()->GetLocalSpaceTransform(mActor->GetMotionExtractionNodeIndex());
         bindTransformProjected.ApplyMotionExtractionFlags(motionExtractionFlags);
 
         // Remove the projected rotation and translation from the transform to prevent the double transform.
@@ -1841,10 +1579,10 @@ namespace EMotionFX
         }
 
         Pose* currentPose = mTransformData->GetCurrentPose();
-        Transform transform = currentPose->GetLocalTransform(motionExtractIndex);
+        Transform transform = currentPose->GetLocalSpaceTransform(motionExtractIndex);
         MotionExtractionCompensate(transform, motionExtractionFlags);
 
-        currentPose->SetLocalTransform(motionExtractIndex, transform);
+        currentPose->SetLocalSpaceTransform(motionExtractIndex, transform);
     }
 
 
@@ -1856,13 +1594,16 @@ namespace EMotionFX
             return;
         }
 
+        Transform curTransform = mLocalTransform;
         #ifndef EMFX_SCALE_DISABLED
-        SetLocalPosition(GetLocalPosition() + (trajectoryDelta.mPosition * GetLocalScale()));
+        curTransform.mPosition += trajectoryDelta.mPosition * curTransform.mScale;
         #else
-        SetLocalPosition(GetLocalPosition() + trajectoryDelta.mPosition);
+        curTransform.mPosition += trajectoryDelta.mPosition;
         #endif
 
-        SetLocalRotation(GetLocalRotation() * trajectoryDelta.mRotation);
+        curTransform.mRotation *= trajectoryDelta.mRotation;
+
+        mLocalTransform = curTransform;
     }
 
 
@@ -1889,15 +1630,15 @@ namespace EMotionFX
     void ActorInstance::UpdateStaticBasedAABBDimensions()
     {
         // backup the transform
-        Transform orgTransform = GetLocalTransform();
+        Transform orgTransform = GetLocalSpaceTransform();
         //-------------------------------------
 
         // reset position and scale
-        SetLocalPosition(AZ::Vector3::CreateZero());
+        SetLocalSpacePosition(AZ::Vector3::CreateZero());
 
         EMFX_SCALECODE
         (
-            SetLocalScale(AZ::Vector3(1.0f, 1.0f, 1.0f));
+            SetLocalSpaceScale(AZ::Vector3(1.0f, 1.0f, 1.0f));
         )
 
         // rotate over x, y and z axis
@@ -1911,7 +1652,7 @@ namespace EMotionFX
                 AZ::Vector3 axisVector(0.0f, 0.0f, 0.0f);
                 axisVector.SetElement(axis, 1.0f);
                 const float angle = static_cast<float>(i);
-                SetLocalRotation(MCore::Quaternion(axisVector, MCore::Math::DegreesToRadians(angle)));
+                SetLocalSpaceRotation(MCore::Quaternion(axisVector, MCore::Math::DegreesToRadians(angle)));
 
                 UpdateTransformations(0.0f, true);
                 UpdateMeshDeformers(0.0f);
@@ -1959,17 +1700,17 @@ namespace EMotionFX
         mStaticAABB.SetMin(boxMin);
         mStaticAABB.SetMax(boxMax);
 
-/*        
-            // calculate the center point of the box
-            const AZ::Vector3 center = mStaticAABB.CalcMiddle();
+        /*
+                    // calculate the center point of the box
+                    const AZ::Vector3 center = mStaticAABB.CalcMiddle();
 
-            // find the maximum of the width, height and depth
-            const float maxDim = MCore::Max3<float>( mStaticAABB.CalcWidth(), mStaticAABB.CalcHeight(), mStaticAABB.CalcDepth() ) * 0.5f;
+                    // find the maximum of the width, height and depth
+                    const float maxDim = MCore::Max3<float>( mStaticAABB.CalcWidth(), mStaticAABB.CalcHeight(), mStaticAABB.CalcDepth() ) * 0.5f;
 
-            // make width, height and depth the same as its maximum
-            mStaticAABB.SetMin( center + AZ::Vector3(-maxDim, -maxDim, -maxDim) );
-            mStaticAABB.SetMax( center + AZ::Vector3( maxDim,  maxDim,  maxDim) );
-*/        
+                    // make width, height and depth the same as its maximum
+                    mStaticAABB.SetMin( center + AZ::Vector3(-maxDim, -maxDim, -maxDim) );
+                    mStaticAABB.SetMax( center + AZ::Vector3( maxDim,  maxDim,  maxDim) );
+        */
         //-------------------------------------
 
         // restore the transform
@@ -1980,19 +1721,19 @@ namespace EMotionFX
     // calculate the moved static based aabb
     void ActorInstance::CalcStaticBasedAABB(MCore::AABB* outResult)
     {
+        if (GetIsSkinAttachment())
+        {
+            mSelfAttachment->GetAttachToActorInstance()->CalcStaticBasedAABB(outResult);
+            return;
+        }
+
         *outResult = mStaticAABB;
         EMFX_SCALECODE
         (
-            outResult->SetMin(mStaticAABB.GetMin() * mGlobalTransform.mScale);
-            outResult->SetMax(mStaticAABB.GetMax() * mGlobalTransform.mScale);
+            outResult->SetMin(mStaticAABB.GetMin() * mWorldTransform.mScale);
+            outResult->SetMax(mStaticAABB.GetMax() * mWorldTransform.mScale);
         )
-        outResult->Translate(mGlobalTransform.mPosition);
-        /*
-            if (GetSelfAttachment() && GetSelfAttachment()->GetIsInfluencedByMultipleNodes())
-            {
-                ActorInstance* parent = GetSelfAttachment()->GetAttachToActorInstance();
-                outResult->Translate( parent->GetGlobalTransform().mPosition );
-            }*/
+        outResult->Translate(mWorldTransform.mPosition);
     }
 
 
@@ -2001,8 +1742,6 @@ namespace EMotionFX
     {
         mAnimGraphInstance = instance;
         UpdateDependencies();
-        //GetActorManager().GetScheduler()->RecursiveRemoveActorInstance(this);
-        //GetActorManager().GetScheduler()->RecursiveInsertActorInstance(this);
     }
 
 
@@ -2042,9 +1781,20 @@ namespace EMotionFX
     }
 
 
+    AZ::Entity* ActorInstance::GetEntity() const
+    {
+        return m_entity;
+    }
+
+
     AZ::EntityId ActorInstance::GetEntityId() const
     {
-        return m_entityId;
+        if (m_entity)
+        {
+            return m_entity->GetId();
+        }
+
+        return AZ::EntityId();
     }
 
 
@@ -2187,15 +1937,15 @@ namespace EMotionFX
     }
 
 
-    void ActorInstance::SetParentGlobalTransform(const Transform& transform)
+    void ActorInstance::SetParentWorldSpaceTransform(const Transform& transform)
     {
-        mParentGlobalTransform = transform;
+        mParentWorldTransform = transform;
     }
 
 
-    const Transform& ActorInstance::GetParentGlobalTransform() const
+    const Transform& ActorInstance::GetParentWorldSpaceTransform() const
     {
-        return mParentGlobalTransform;
+        return mParentWorldTransform;
     }
 
 
@@ -2262,18 +2012,6 @@ namespace EMotionFX
     const Transform& ActorInstance::GetTrajectoryDeltaTransform() const
     {
         return mTrajectoryDelta;
-    }
-
-
-    void ActorInstance::SetEyeBlinker(EyeBlinker* blinker)
-    {
-        mEyeBlinker = blinker;
-    }
-
-
-    EyeBlinker* ActorInstance::GetEyeBlinker() const
-    {
-        return mEyeBlinker;
     }
 
 
@@ -2474,5 +2212,4 @@ namespace EMotionFX
 
         return true;
     }
-
 }   // namespace EMotionFX

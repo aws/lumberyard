@@ -43,7 +43,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_REGISTER_THREAD
-    #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
     #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -214,7 +218,11 @@ public:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_TRAITS
-#include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #else
 #if !defined(LINUX) && !defined(APPLE)
 #define CRYTHREAD_PTHREADS_H_TRAIT_DEFINE_CRYMUTEX 1
@@ -268,7 +276,11 @@ public:
             timeout.tv_nsec = (long)nsec;
 #if defined(AZ_RESTRICTED_PLATFORM)
             #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_PTHREADCOND
-            #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
             #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -398,7 +410,11 @@ inline CrySemaphore::CrySemaphore(int nMaximumCount, int nInitialCount)
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_SEMAPHORE_CONSTRUCT
-    #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
     #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -419,7 +435,11 @@ inline CrySemaphore::~CrySemaphore()
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_SEMAPHORE_DESTROY
-    #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
     #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -437,7 +457,11 @@ inline void CrySemaphore::Acquire()
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_SEMAPHORE_ACQUIRE
-    #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
     #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -454,7 +478,11 @@ inline void CrySemaphore::Release()
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_SEMAPHORE_RELEASE
-    #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
     #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -542,7 +570,11 @@ public:
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
         #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_TRY_RLOCK
-        #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
         #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -556,7 +588,11 @@ public:
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
         #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_TRY_RLOCK
-        #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
         #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -990,7 +1026,11 @@ public:
         }
 #elif defined(AZ_RESTRICTED_PLATFORM)
         #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_START_RUNNABLE
-        #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
         m_Runnable = &runnable;
         int err = pthread_create(
@@ -1041,7 +1081,11 @@ public:
         }
 #elif defined(AZ_RESTRICTED_PLATFORM)
         #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_START_CPUMASK
-        #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
         int err = pthread_create(
                 &m_ThreadID,
@@ -1052,7 +1096,11 @@ public:
         RegisterThreadName(m_ThreadID, name);
 #if defined(AZ_RESTRICTED_PLATFORM)
         #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_START_CPUMASK_POSTCREATE
-        #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
         assert(err == 0);
     }
@@ -1125,7 +1173,11 @@ public:
             pthread_attr_setaffinity_np(&threadAttr, sizeof cpuSet, &cpuSet);
 #elif defined(AZ_RESTRICTED_PLATFORM)
         #define AZ_RESTRICTED_SECTION CRYTHREAD_PTHREADS_H_SECTION_SETCPUMASK
-        #include AZ_RESTRICTED_FILE(CryThread_pthreads_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_pthreads_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_pthreads_h_provo.inl"
+    #endif
 #endif
             return oldCpuMask;
         }

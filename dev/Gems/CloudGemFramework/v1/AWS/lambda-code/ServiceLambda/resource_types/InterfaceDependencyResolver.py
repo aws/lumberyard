@@ -66,17 +66,38 @@ def handler(event, context):
                 gem_function_info[interface['function']] = { "interfaces": [] }
             interface_function_info = {}
             interface_function_info["id"] = interface['id']
-            interface_function_info["url"] = _get_url(
-                service_directory, stack, interface['id'])
-            interface_function_info["permittedArns"] = _get_permitted_arns(
+            interface_function_info["gem"] = interface.get("gem", "CloudGemFramework")
+            if interface_function_info["gem"] == "CloudGemFramework":
+                interface_function_info["url"] = _get_project_url(
+                    service_directory, interface['id'])
+                interface_function_info["permittedArns"] = _get_permitted_arns(
                     _get_resource_group(gem, stack),
-                    _get_interface_description(service_directory, stack, interface["id"])
+                    _get_project_interface_description(
+                        service_directory, interface["id"])
                 )
+            else:
+                interface_function_info["url"] = _get_url(
+                    service_directory, stack, interface['id'])
+                interface_function_info["permittedArns"] = _get_permitted_arns(
+                        _get_resource_group(gem, stack),
+                        _get_interface_description(service_directory, stack, interface["id"])
+                    )
             gem_function_info[interface['function']]["interfaces"].append(
                 interface_function_info)
+
         _put_gem_function_info(gem, gem_function_info, stack)
+
     return custom_resource_response.success_response(data, physical_resource_id)
 
+
+def _get_project_interface_description(service_directory, interface_id):
+    interfaces = service_directory.get_interface_services("", interface_id)
+    if len(interfaces) > 1:
+        print "There are more than one entries for the x-gem interface {}".format(interface_id)
+    if len(interfaces) > 0:
+        return interfaces[0]
+    print "No info found for x-gem interface {}".format(interface_id)
+    return None
 
 def _get_interface_description(service_directory, stack, interface_id):
     interfaces = service_directory.get_interface_services(
@@ -86,6 +107,13 @@ def _get_interface_description(service_directory, stack, interface_id):
     if len(interfaces) > 0:
         return interfaces[0]
     print "No info found for x-gem interface {}".format(interface_id)
+    return None
+
+
+def _get_project_url(service_directory, interface_id):
+    desc = _get_project_interface_description(service_directory, interface_id)
+    if desc is not None:
+        return desc['InterfaceUrl']
     return None
 
 def _get_url(service_directory, stack, interface_id):
@@ -179,6 +207,7 @@ def _get_permitted_arns(stack, interface):
                     interface_path=interface_url_parts.path
                 )
                 permitted_arns.append(arn)
+
     return permitted_arns
 
 
@@ -208,7 +237,6 @@ def _parse_interface_url(interface_url):
         stage_name=stage_name,
         path=path
     )
-
 
 
 def _get_lambda(resource_group_name, lambda_name, deployment):
@@ -259,6 +287,9 @@ def _clear_interface_refs(deployment):
             try:
                 function_config = lambda_client.get_function_configuration(FunctionName=rg_lambda.physical_id)
                 existing_env = function_config.get("Environment", {})
+                # decrypting an environment of a function that is deleted gives a KMS error, just skip these
+                if "Error" in existing_env:
+                    continue
                 env_vars = existing_env.get("Variables", {})
 
                 to_remove = [var for var in env_vars if SERVICE_DIRECTORY_PREFIX in var]

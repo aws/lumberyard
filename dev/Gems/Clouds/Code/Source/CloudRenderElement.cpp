@@ -16,6 +16,8 @@
 #include "CloudRenderElement.h"
 #include "CloudImposterRenderElement.h"
 
+#include <AzCore/std/sort.h>
+
 namespace CloudsGem
 {
     static const uint32 s_iShadeResolution = 32;
@@ -215,7 +217,7 @@ namespace CloudsGem
                 // Draw each particle as a textured billboard.
                 for (int i = 0; i < nCurParts; i++)
                 {
-                    const std::shared_ptr<CloudParticle>& p = m_particles[i + nStartPart];
+                    const AZStd::shared_ptr<CloudParticle>& p = m_particles[i + nStartPart];
                     const uint32 nInd = i * 4;
                     SVF_P3F_C4B_T2F* pQuad = &pDst[nInd];
 
@@ -269,7 +271,7 @@ namespace CloudsGem
 
         for (const auto& particle : particles)
         {
-            auto newParticle = std::make_shared<CloudParticle>(particle);
+            auto newParticle = AZStd::make_shared<CloudParticle>(particle);
             m_particles.emplace_back(newParticle);
         }
     }
@@ -287,10 +289,10 @@ namespace CloudsGem
         switch (eDir)
         {
         case ESortDirection::eSort_TOWARD:
-            std::sort(m_particles.begin(), m_particles.end(), [](const std::shared_ptr<CloudParticle>& a, const std::shared_ptr<CloudParticle>& b) { return a > b; });
+            AZStd::sort(m_particles.begin(), m_particles.end(), [](const AZStd::shared_ptr<CloudParticle>& a, const AZStd::shared_ptr<CloudParticle>& b) { return b < a; });
             break;
         case ESortDirection::eSort_AWAY:
-            std::sort(m_particles.begin(), m_particles.end(), [](const std::shared_ptr<CloudParticle>& a, const std::shared_ptr<CloudParticle>& b) { return a < b; });
+            AZStd::sort(m_particles.begin(), m_particles.end(), [](const AZStd::shared_ptr<CloudParticle>& a, const AZStd::shared_ptr<CloudParticle>& b) { return a < b; });
             break;
         default:
             break;

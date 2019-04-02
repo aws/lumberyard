@@ -62,6 +62,7 @@ bool SDeviceObjectHelpers::GetShaderInstanceInfo(std::array<SDeviceObjectHelpers
                 Ident.m_MDMask = mdFlags & (shaderStage != eHWSC_Pixel ? 0xFFFFFFFF : ~HWMD_TEXCOORD_FLAG_MASK);
                 Ident.m_MDVMask = ((shaderStage != eHWSC_Pixel) ? mdvFlags : 0) | CParserBin::m_nPlatform;
                 Ident.m_GLMask = pHWShaderD3D->m_nMaskGenShader;
+                Ident.m_STMask = pHWShaderD3D->m_maskGenStatic;
                 Ident.m_pipelineState = pipelineState ? pipelineState[shaderStage] : UPipelineState();
 
                 if (auto pInstance = pHWShaderD3D->mfGetInstance(pShader, Ident, 0))
@@ -491,7 +492,7 @@ void CDeviceResourceSet::Clear()
 {
     for (size_t i = 0; i < m_Textures.size(); i++)
     {
-        auto rsTexBind = m_Textures[i];
+        auto& rsTexBind = m_Textures[i];
 
         CTexture* pTex = std::get<1>(rsTexBind.resource);
         if (pTex != nullptr)

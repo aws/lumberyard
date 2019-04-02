@@ -77,17 +77,17 @@ namespace EMStudio
         mainLayout->addLayout(toolBarLayout);
         mButtonOpen = new QPushButton();
         EMStudioManager::MakeTransparentButton(mButtonOpen,    "/Images/Icons/Open.png",       "Load and apply a mapping template.");
-        connect(mButtonOpen, SIGNAL(clicked()), this, SLOT(OnLoadMapping()));
+        connect(mButtonOpen, &QPushButton::clicked, this, &MirrorSetupWindow::OnLoadMapping);
         mButtonSave = new QPushButton();
         EMStudioManager::MakeTransparentButton(mButtonSave,    "/Images/Menu/FileSave.png",    "Save the currently setup mapping as template.");
-        connect(mButtonSave, SIGNAL(clicked()), this, SLOT(OnSaveMapping()));
+        connect(mButtonSave, &QPushButton::clicked, this, &MirrorSetupWindow::OnSaveMapping);
         mButtonClear = new QPushButton();
         EMStudioManager::MakeTransparentButton(mButtonClear,   "/Images/Icons/Clear.png",      "Clear the currently setup mapping entirely.");
-        connect(mButtonClear, SIGNAL(clicked()), this, SLOT(OnClearMapping()));
+        connect(mButtonClear, &QPushButton::clicked, this, &MirrorSetupWindow::OnClearMapping);
 
         mButtonGuess = new QPushButton();
         EMStudioManager::MakeTransparentButton(mButtonGuess,   "/Images/Icons/Character.png",  "Perform name based mapping.");
-        connect(mButtonGuess, SIGNAL(clicked()), this, SLOT(OnBestGuess()));
+        connect(mButtonGuess, &QPushButton::clicked, this, &MirrorSetupWindow::OnBestGuess);
 
         toolBarLayout->addWidget(mButtonOpen, 0, Qt::AlignLeft);
         toolBarLayout->addWidget(mButtonSave, 0, Qt::AlignLeft);
@@ -170,8 +170,8 @@ namespace EMStudio
         mCurrentList->horizontalHeader()->setStretchLastSection(true);
         mCurrentList->horizontalHeader()->setSortIndicatorShown(false);
         mCurrentList->horizontalHeader()->setSectionsClickable(false);
-        connect(mCurrentList, SIGNAL(itemSelectionChanged()), this, SLOT(OnCurrentListSelectionChanged()));
-        connect(mCurrentList, SIGNAL(itemDoubleClicked(QTableWidgetItem*)), this, SLOT(OnCurrentListDoubleClicked(QTableWidgetItem*)));
+        connect(mCurrentList, &QTableWidget::itemSelectionChanged, this, &MirrorSetupWindow::OnCurrentListSelectionChanged);
+        connect(mCurrentList, &QTableWidget::itemDoubleClicked, this, &MirrorSetupWindow::OnCurrentListDoubleClicked);
         leftListLayout->addWidget(mCurrentList);
 
         // add link button middle part
@@ -179,7 +179,7 @@ namespace EMStudio
         middleLayout->setMargin(0);
         topPartLayout->addLayout(middleLayout);
         QPushButton* linkButton = new QPushButton("link");
-        connect(linkButton, SIGNAL(clicked()), this, SLOT(OnLinkPressed()));
+        connect(linkButton, &QPushButton::clicked, this, &MirrorSetupWindow::OnLinkPressed);
         middleLayout->addWidget(linkButton);
 
         // right listbox part
@@ -234,7 +234,7 @@ namespace EMStudio
         mSourceList->horizontalHeader()->setStretchLastSection(true);
         mSourceList->horizontalHeader()->setSortIndicatorShown(false);
         mSourceList->horizontalHeader()->setSectionsClickable(false);
-        connect(mSourceList, SIGNAL(itemSelectionChanged()), this, SLOT(OnSourceListSelectionChanged()));
+        connect(mSourceList, &QTableWidget::itemSelectionChanged, this, &MirrorSetupWindow::OnSourceListSelectionChanged);
         rightListLayout->addWidget(mSourceList);
 
         // create the mapping table
@@ -282,8 +282,8 @@ namespace EMStudio
         mMappingTable->horizontalHeader()->setStretchLastSection(true);
         mMappingTable->horizontalHeader()->setSortIndicatorShown(false);
         mMappingTable->horizontalHeader()->setSectionsClickable(false);
-        connect(mMappingTable, SIGNAL(itemDoubleClicked(QTableWidgetItem*)), this, SLOT(OnMappingTableDoubleClicked(QTableWidgetItem*)));
-        connect(mMappingTable, SIGNAL(itemSelectionChanged()), this, SLOT(OnMappingTableSelectionChanged()));
+        connect(mMappingTable, &QTableWidget::itemDoubleClicked, this, &MirrorSetupWindow::OnMappingTableDoubleClicked);
+        connect(mMappingTable, &QTableWidget::itemSelectionChanged, this, &MirrorSetupWindow::OnMappingTableSelectionChanged);
     }
 
 

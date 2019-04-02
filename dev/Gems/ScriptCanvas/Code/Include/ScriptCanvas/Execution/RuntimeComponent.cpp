@@ -31,6 +31,16 @@
 
 namespace ScriptCanvas
 {
+    bool RuntimeComponent::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        if (classElement.GetVersion() < 2)
+        {
+            classElement.RemoveElementByName(AZ_CRC("m_uniqueId", 0x52157a7a));
+        }
+
+        return true;
+    }
+
     RuntimeComponent::RuntimeComponent(AZ::EntityId uniqueId)
         : RuntimeComponent({}, uniqueId)
     {
@@ -53,9 +63,7 @@ namespace ScriptCanvas
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<RuntimeComponent, AZ::Component>()
-                ->Version(1)
-                ->Field("m_uniqueId", &RuntimeComponent::m_uniqueId)
-                ->Attribute(AZ::Edit::Attributes::IdGeneratorFunction, &AZ::Entity::MakeId)
+                ->Version(2, &RuntimeComponent::VersionConverter)
                 ->Field("m_runtimeAsset", &RuntimeComponent::m_runtimeAsset)
                 ->Field("m_variableOverrides", &RuntimeComponent::m_variableOverrides)
                 ->Field("m_variableEntityIdMap", &RuntimeComponent::m_variableEntityIdMap)

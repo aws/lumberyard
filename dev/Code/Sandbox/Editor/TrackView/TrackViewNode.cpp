@@ -572,17 +572,14 @@ namespace
 {
     static int GetNodeOrder(AnimNodeType nodeType)
     {
-        assert(nodeType < AnimNodeType::Num);
+        AZ_Assert(nodeType < AnimNodeType::Num, "Expected nodeType to be less than AnimNodeType::Num");
 
         // note: this array gets over-allocated and is sparsely populated because the eAnimNodeType enums are not sequential in IMovieSystem.h
         // I wonder if the original authors intended this? Not a big deal, just some trivial memory wastage.
         static int nodeOrder[static_cast<int>(AnimNodeType::Num)];
         nodeOrder[static_cast<int>(AnimNodeType::Invalid)] = 0;
         nodeOrder[static_cast<int>(AnimNodeType::Director)] = 1;
-        nodeOrder[static_cast<int>(AnimNodeType::Camera)] = 2;
-        nodeOrder[static_cast<int>(AnimNodeType::Entity)] = 3;
         nodeOrder[static_cast<int>(AnimNodeType::Alembic)] = 4;
-        nodeOrder[static_cast<int>(AnimNodeType::GeomCache)] = 5;
         nodeOrder[static_cast<int>(AnimNodeType::CVar)] = 6;
         nodeOrder[static_cast<int>(AnimNodeType::ScriptVar)] = 7;
         nodeOrder[static_cast<int>(AnimNodeType::Material)] = 8;

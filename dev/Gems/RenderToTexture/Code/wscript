@@ -1,0 +1,67 @@
+########################################################################################
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+from waflib import Logs
+
+def build(bld):
+
+    ## render to texture is not supported on all platforms and configurations
+    export_defines = ['AZ_RENDER_TO_TEXTURE_GEM_ENABLED=1']
+    export_defines_not_supported = ['AZ_RENDER_TO_TEXTURE_GEM_ENABLED=0']
+
+    ## render to texture does not support the DX12 renderer
+    if 'win' in bld.variant and bld.options.win_build_renderer == 'DX12':
+        Logs.warn('Render to texture will be disabled because it does not support DX12 and win_build_renderer = DX12')
+        export_defines = export_defines_not_supported
+
+    bld.DefineGem(
+        includes =  [
+            bld.Path('Code/CryEngine'),
+            bld.Path('Code/CryEngine/Cry3DEngine'),
+            bld.Path('Code/CryEngine/RenderDll'),
+            bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
+            bld.Path('Gems/LmbrCentral/Code/include'),
+            bld.Path('Code/Framework/AzToolsFramework'),
+        ],
+
+        win_export_defines = export_defines,
+        win_dedicated_export_defines = export_defines_not_supported,
+
+        ## Ensure that Apple platforms use Metal, since GL isn't supported.
+        darwin_cxxflags     = [ '-x', 'objective-c++', '-Wno-c++11-narrowing'  ],
+        darwin_libpath      = [ bld.Path('Code/Tools/HLSLCrossCompiler/lib/mac') ],
+        darwin_framework    = [ 'Metal', 'CoreGraphics', 'CoreServices', 'QuartzCore' ],
+        darwin_defines      = ['CRY_USE_METAL'],
+        darwin_export_defines      = export_defines,
+        darwin_dedicated_export_defines = export_defines_not_supported,
+
+	editor      = dict(
+            platforms   = ['win', 'darwin'],
+            defines     = ['RENDER_TO_TEXTURE_EDITOR'],
+            use	        = [ 'AzToolsFramework' ],
+
+            includes    = [ 
+                bld.Path('Code/CryEngine'),
+                bld.Path('Code/CryEngine/Cry3DEngine'),
+                bld.Path('Code/CryEngine/RenderDll/XRenderD3D9'),
+                bld.Path('Code/CryEngine/RenderDll'),
+                bld.Path('Code/CryEngine/RenderDll/Common'),
+                bld.Path('Code/Framework/AzToolsFramework'),
+                bld.Path('Gems/LmbrCentral/Code/include'),
+                bld.Path('Gems/LmbrCentral/Code/Source'),
+                bld.Path('Code/Sandbox'),
+                bld.Path('Code/Sandbox/Editor'),
+                bld.Path('Code/Sandbox/Editor/Include'),
+                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+            ],
+        ),
+    )

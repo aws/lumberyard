@@ -11,7 +11,9 @@
 */
 #pragma once
 
+#include "EditorWindow.h"
 #include "HierarchyWidget.h"
+#include "EditorCommon.h"
 
 namespace HierarchyHelpers
 {
@@ -140,6 +142,9 @@ namespace HierarchyHelpers
         // Qt is smart enough to recognize and handle multi-selection
         // properly when the Ctrl key or the Shift key is pressed.
 
+        // Stop object pick mode when an action explicitly wants to set the hierarchy's selected items
+        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+
         if ((!list) || list->empty())
         {
             // Note that calling SetSelectedItems with an empty list should clear
@@ -192,6 +197,30 @@ namespace HierarchyHelpers
             if (p)
             {
                 p->setExpanded(true);
+            }
+        }
+    }
+
+    //-------------------------------------------------------------------------------
+
+    template< typename T >
+    void ExpandItemsAndAncestors(HierarchyWidget* widget,
+        T& items)
+    {
+        for (auto && i : items)
+        {
+            QTreeWidgetItem* item = _GetItem(widget, i);
+            
+            // Expand parent first, then child
+            QTreeWidgetItemRawPtrList itemsToExpand;
+            while (item)
+            {
+                itemsToExpand.push_front(item);
+                item = item->parent();
+            }
+            for (auto itemToExpand : itemsToExpand)
+            {
+                itemToExpand->setExpanded(true);
             }
         }
     }

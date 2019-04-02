@@ -21,7 +21,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RANDOM_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Random_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Random_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Random_cpp_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_WINDOWS)
 #   include <AzCore/PlatformIncl.h>
 #   include <Wincrypt.h>
@@ -96,7 +100,11 @@ bool BetterPseudoRandom::GetRandom(void* data, size_t dataSize)
     }
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RANDOM_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Random_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Random_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Random_cpp_provo.inl"
+    #endif
 #endif
     return true;
 }

@@ -144,6 +144,10 @@ namespace EMStudio
         bool AddMotion(EMotionFX::MotionSet* motionSet, EMotionFX::MotionSet::MotionEntry* motionEntry);
         bool UpdateMotion(EMotionFX::MotionSet* motionSet, EMotionFX::MotionSet::MotionEntry* motionEntry, const AZStd::string& oldMotionId);
         bool RemoveMotion(EMotionFX::MotionSet* motionSet, EMotionFX::MotionSet::MotionEntry* motionEntry);
+        void PlayMotion(EMotionFX::Motion* motion);
+
+    signals:
+        void MotionSelectionChanged();
 
     public slots:
         void UpdateInterface();

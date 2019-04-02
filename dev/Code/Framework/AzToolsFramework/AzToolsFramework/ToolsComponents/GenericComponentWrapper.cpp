@@ -285,59 +285,6 @@ namespace AzToolsFramework
 
             return descriptor ? descriptor : aznew GenericComponentWrapperDescriptor();
         }
-
-        ////////////////////////////////////////////////////////////////////////
-        // GenericComponentUnwrapper
-        ////////////////////////////////////////////////////////////////////////
-
-        void GenericComponentUnwrapper::Reflect(AZ::ReflectContext* context)
-        {
-            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
-            {
-                serializeContext->Class<GenericComponentUnwrapper, AZ::Component>();
-            }
-        }
-
-        void GenericComponentUnwrapper::Activate()
-        {
-            AZ::SliceAssetSerializationNotificationBus::Handler::BusConnect();
-        }
-
-        void GenericComponentUnwrapper::Deactivate()
-        {
-            AZ::SliceAssetSerializationNotificationBus::Handler::BusDisconnect();
-        }
-
-        // Why do the swap after a SliceAsset loads?
-        // We can't swap during version-conversion of the editor-component
-        // because converters don't have access to parent data.
-        // We can't swap after writing GenericComponentWrapper from data
-        // because we don't have access to the parent Entity.
-        // We could have swapped after writing the AZ::Entity from data,
-        // but Entities are written with high frequency for many reasons (ex: undo).
-        // Therefore, do the swap after slice entities finish loading.
-        // Any editor-entity that's saved out to disk will come in via a
-        // SliceAsset, so this is a safe place for the check.
-        void GenericComponentUnwrapper::OnSliceEntitiesLoaded(const AZStd::vector<AZ::Entity*>& entities)
-        {
-            for (AZ::Entity* entity : entities)
-            {
-                for (AZ::Component* component : entity->GetComponents())
-                {
-                    if (auto genericComponentWrapper = azrtti_cast<GenericComponentWrapper*>(component))
-                    {
-                        if (auto wrappedComponent = azrtti_cast<EditorComponentBase*>(genericComponentWrapper->GetTemplate()))
-                        {
-                            entity->SwapComponents(genericComponentWrapper, wrappedComponent);
-
-                            genericComponentWrapper->ReleaseTemplate();
-                            delete genericComponentWrapper;
-                        }
-                    }
-                }
-            }
-        }
-
     }   // namespace Components
 
     const AZ::Uuid& GetUnderlyingComponentType(const AZ::Component& component)

@@ -58,11 +58,6 @@ def load_win_x64_win_x64_vs2013_common_settings(conf):
         v['CFLAGS'] += ['/bigobj']
         v['CXXFLAGS'] += ['/bigobj']
 
-    azcg_dir = conf.Path('Tools/AzCodeGenerator/bin/vc120')
-    if not os.path.exists(azcg_dir):
-        conf.fatal('Unable to locate the AzCodeGenerator subfolder.  Make sure that you have VS2013 AzCodeGenerator binaries available')
-    v['CODE_GENERATOR_PATH'] = [azcg_dir]
-
     crcfix_dir = conf.Path('Tools/crcfix/bin/vc120')
     if not os.path.exists(crcfix_dir):
         Logs.warn('Unable to locate the crcfix subfolder.  Make sure that you have VS2013 crcfix binaries available')

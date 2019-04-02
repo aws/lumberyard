@@ -83,34 +83,6 @@ namespace AzToolsFramework
             AZStd::string m_displayName;
             AZStd::string m_displayDescription;
         };
-
-        /**
-        * System component which removes unnecessary GenericComponentWrappers
-        * from an AZ::Entity after the entity is loaded from serialized data.
-        *
-        * It's possible that a component which hadn't been an editor-component
-        * has been changed into an editor-component over the course of development.
-        * If this happens to the component inside GenericComponentWrapper,
-        * the wrapper should swap places with the component and delete itself.
-        */
-        class GenericComponentUnwrapper
-            : public AZ::Component
-            , public AZ::SliceAssetSerializationNotificationBus::Handler
-        {
-        public:
-            AZ_COMPONENT(GenericComponentUnwrapper, "{7D00B08D-DC26-465A-949B-8DAC7787E607}");
-            static void Reflect(AZ::ReflectContext* context);
-
-        protected:
-            void Activate() override;
-            void Deactivate() override;
-
-            ////////////////////////////////////////////////////////////////////////
-            // SliceAssetSerializationNotificationBus
-            void OnSliceEntitiesLoaded(const AZStd::vector<AZ::Entity*>& entities) override;
-            ////////////////////////////////////////////////////////////////////////
-        };
-
     } // namespace Components
 
     /// Returns the component's type ID.

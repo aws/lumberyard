@@ -10,99 +10,173 @@
 *
 */
 
-#include "AttributesWindow.h"
-#include "AnimGraphPlugin.h"
-#include "GraphNodeFactory.h"
-#include "BlendGraphWidget.h"
-#include "ConditionSelectDialog.h"
-
 #include <AzCore/Component/ComponentApplicationBus.h>
-#include <EMotionFX/Source/AnimGraphObjectFactory.h>
-#include <EMotionFX/Source/AnimGraphStateTransition.h>
-#include <EMotionFX/Source/AnimGraphStateCondition.h>
-#include <EMotionFX/Source/AnimGraphPlayTimeCondition.h>
-#include <EMotionFX/Source/AnimGraphTransitionCondition.h>
-#include <EMotionFX/Source/AnimGraphManager.h>
+#include <AzQtComponents/Components/Widgets/Card.h>
+#include <AzQtComponents/Components/Widgets/CardHeader.h>
 #include <EMotionFX/Source/AnimGraphMotionCondition.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
 #include <EMotionFX/Source/AnimGraphObjectFactory.h>
+#include <EMotionFX/Source/AnimGraphPlayTimeCondition.h>
+#include <EMotionFX/Source/AnimGraphStateCondition.h>
+#include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include <EMotionFX/Source/AnimGraphTriggerAction.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphConditionCommands.h>
+#include <EMotionFX/CommandSystem/Source/AnimGraphTriggerActionCommands.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/MetricsEventSender.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphEditor.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AttributesWindow.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/GraphNodeFactory.h>
 #include <MCore/Source/ReflectionSerializer.h>
-
-#include <QVBoxLayout>
-#include <QApplication>
-#include <QGridLayout>
-#include <QIcon>
-#include <QScrollArea>
-#include <QPushButton>
-#include <QGroupBox>
-#include <QLabel>
-#include <QMenu>
+#include <QCheckBox>
 #include <QContextMenuEvent>
-#include <QTreeWidgetItem>
-#include <QPixmap>
-#include <QLabel>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QVBoxLayout>
+#include <Source/Editor/ObjectEditor.h>
 
 
 namespace EMStudio
 {
     AttributesWindow::AttributesWindow(AnimGraphPlugin* plugin, QWidget* parent)
         : QWidget(parent)
-        , m_attributeWidget(nullptr)
-        , m_objectEditor(nullptr)
     {
         mPlugin                 = plugin;
-        m_animGraphEditor       = nullptr;
-        mMainWidget             = nullptr;
-        mObject                 = nullptr;
         mPasteConditionsWindow  = nullptr;
         mScrollArea             = new QScrollArea();
 
-        mMainLayout = new QVBoxLayout();
-        mMainLayout->setMargin(0);
-        mMainLayout->setSpacing(1);
-        setLayout(mMainLayout);
+        QVBoxLayout* mainLayout = new QVBoxLayout();
+        mainLayout->setMargin(0);
+        mainLayout->setSpacing(1);
+        setLayout(mainLayout);
 
-        mMainLayout->addWidget(mScrollArea);
+        mainLayout->addWidget(mScrollArea);
         mScrollArea->setWidgetResizable(true);
 
-        AZ::SerializeContext* serializeContext = nullptr;
-        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
-        if (!serializeContext)
+        // The main reflected widget will contain the non-custom attribute version of the
+        // attribute widget. The intention is to reuse the Reflected Property Editor and
+        // Cards
         {
-            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
-            return;
+            m_mainReflectedWidget = new QWidget();
+            m_mainReflectedWidget->setVisible(false);
+
+            QVBoxLayout* verticalLayout = new QVBoxLayout();
+            m_mainReflectedWidget->setLayout(verticalLayout);
+            verticalLayout->setAlignment(Qt::AlignTop);
+            verticalLayout->setMargin(0);
+            verticalLayout->setSpacing(0);
+            verticalLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
+
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            if (!serializeContext)
+            {
+                AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+            }
+            else
+            {
+                // 1. Create anim graph card.
+                m_animGraphEditor = new EMotionFX::AnimGraphEditor(nullptr, serializeContext, m_mainReflectedWidget);
+                verticalLayout->addWidget(m_animGraphEditor);
+                m_animGraphEditor->setVisible(false);
+
+                // Align the layout spacing with the entity inspector.
+                verticalLayout->addSpacerItem(new QSpacerItem(0, 10, QSizePolicy::Fixed, QSizePolicy::Fixed));
+
+                // 2. Create object card
+                m_objectEditor = new EMotionFX::ObjectEditor(serializeContext, m_mainReflectedWidget);
+
+                m_objectCard = new AzQtComponents::Card(m_mainReflectedWidget);
+                m_objectCard->setTitle("");
+                m_objectCard->setContentWidget(m_objectEditor);
+                m_objectCard->setExpanded(true);
+
+                AzQtComponents::CardHeader* cardHeader = m_objectCard->header();
+                cardHeader->setHasContextMenu(false);
+                cardHeader->setHelpURL("");
+
+                verticalLayout->addWidget(m_objectCard);
+                m_objectCard->setVisible(false);
+            }
+            {
+                m_conditionsWidget = new QWidget();
+                QVBoxLayout* conditionsVerticalLayout = new QVBoxLayout();
+                m_conditionsWidget->setLayout(conditionsVerticalLayout);
+                conditionsVerticalLayout->setAlignment(Qt::AlignTop);
+                conditionsVerticalLayout->setMargin(0);
+                conditionsVerticalLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
+                conditionsVerticalLayout->addSpacerItem(new QSpacerItem(0, 10, QSizePolicy::Fixed, QSizePolicy::Fixed));
+
+                m_conditionsLayout = new QVBoxLayout();
+                m_conditionsLayout->setAlignment(Qt::AlignTop);
+                m_conditionsLayout->setMargin(0);
+                m_conditionsLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
+                conditionsVerticalLayout->addLayout(m_conditionsLayout);
+
+                AddConditionButton* addConditionButton = new AddConditionButton(mPlugin, m_conditionsWidget);
+                connect(addConditionButton, &AddConditionButton::ObjectTypeChosen, this, [=](AZ::TypeId conditionType)
+                {
+                    AddCondition(conditionType);
+                });
+
+                conditionsVerticalLayout->addWidget(addConditionButton);
+
+                verticalLayout->addWidget(m_conditionsWidget);
+                m_conditionsWidget->setVisible(false);
+            }
+            {
+                m_actionsWidget = new QWidget();
+                QVBoxLayout* actionVerticalLayout = new QVBoxLayout();
+                m_actionsWidget->setLayout(actionVerticalLayout);
+                actionVerticalLayout->setAlignment(Qt::AlignTop);
+                actionVerticalLayout->setMargin(0);
+                actionVerticalLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
+                actionVerticalLayout->addSpacerItem(new QSpacerItem(0, 10, QSizePolicy::Fixed, QSizePolicy::Fixed));
+
+                m_actionsLayout = new QVBoxLayout();
+                m_actionsLayout->setAlignment(Qt::AlignTop);
+                m_actionsLayout->setMargin(0);
+                m_actionsLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
+                actionVerticalLayout->addLayout(m_actionsLayout);
+
+                AddActionButton* addActionButton = new AddActionButton(mPlugin, m_actionsWidget);
+                connect(addActionButton, &AddActionButton::ObjectTypeChosen, this, [=](AZ::TypeId actionType)
+                {
+                    const AnimGraphModel::ModelItemType itemType = m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+                    if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
+                    {
+                        AddTransitionAction(actionType);
+                    }
+                    else
+                    {
+                        AddStateAction(actionType);
+                    }
+                });
+                actionVerticalLayout->addWidget(addActionButton);
+
+                verticalLayout->addWidget(m_actionsWidget);
+                m_actionsWidget->setVisible(false);
+            }
         }
 
-        mMainWidget = new QWidget();
+        connect(&plugin->GetAnimGraphModel().GetSelectionModel(), &QItemSelectionModel::selectionChanged , this, &AttributesWindow::OnSelectionChanged);
+        connect(&plugin->GetAnimGraphModel(), &AnimGraphModel::dataChanged, this, &AttributesWindow::OnDataChanged);
 
-        m_animGraphEditor = new EMotionFX::AnimGraphEditor(nullptr, serializeContext, mMainWidget);
-
-        QVBoxLayout* verticalLayout = new QVBoxLayout(mMainWidget);
-        mMainWidget->setLayout(verticalLayout);
-        verticalLayout->setAlignment(Qt::AlignTop);
-        verticalLayout->setMargin(0);
-        verticalLayout->setSpacing(0);
-        verticalLayout->addWidget(m_animGraphEditor);
-
-        mScrollArea->setWidget(mMainWidget);
-
-        InitForAnimGraphObject(nullptr);
+        Init(QModelIndex(), true);
     }
-
 
     AttributesWindow::~AttributesWindow()
     {
+        if (m_mainReflectedWidget)
+        {
+            if (mScrollArea->widget() == m_mainReflectedWidget)
+            {
+                mScrollArea->takeWidget();
+            }
+            delete m_mainReflectedWidget;
+        }
     }
-
-
-    // re-init the window
-    void AttributesWindow::Reinit()
-    {
-        InitForAnimGraphObject(mObject);
-    }
-
 
     QIcon AttributesWindow::GetIconForObject(EMotionFX::AnimGraphObject* object)
     {
@@ -117,17 +191,19 @@ namespace EMStudio
     }
 
 
-    void AttributesWindow::InitForAnimGraphObject(EMotionFX::AnimGraphObject* object)
+    void AttributesWindow::Init(const QModelIndex& modelIndex, bool forceUpdate)
     {
-        // delete the existing property browser
-        if (m_attributeWidget)
+        if (!modelIndex.isValid())
         {
-            m_attributeWidget->hide();
-            m_attributeWidget->deleteLater();
-            m_attributeWidget = nullptr;
+            m_objectEditor->ClearInstances(false);
         }
-        mScrollArea->setVisible(false);
-        mObject = object;
+
+        // This only works on TRANSITIONS and NODES
+        AnimGraphModel::ModelItemType itemType = modelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+        if (itemType != AnimGraphModel::ModelItemType::NODE && itemType != AnimGraphModel::ModelItemType::TRANSITION)
+        {
+            return;
+        }
 
         AZ::SerializeContext* serializeContext = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
@@ -137,95 +213,240 @@ namespace EMStudio
             return;
         }
 
-        // create the new property parent window
-        m_attributeWidget = mPlugin->GetGraphNodeFactory()->CreateAttributeWidget(azrtti_typeid(object));
-        if (!m_attributeWidget) // if there is no custom attribute widget, generate one
+        EMotionFX::AnimGraphObject* object = modelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_OBJECT_PTR).value<EMotionFX::AnimGraphObject*>();
+        
+        QWidget* attributeWidget = mPlugin->GetGraphNodeFactory()->CreateAttributeWidget(azrtti_typeid(object));
+        if (attributeWidget)
         {
-            m_attributeWidget = new QWidget();
-
-            QVBoxLayout* verticalCardsLayout = new QVBoxLayout(m_attributeWidget);
-            verticalCardsLayout->setAlignment(Qt::AlignTop);
-            verticalCardsLayout->setSizeConstraint(QLayout::SetMinAndMaxSize);
-            verticalCardsLayout->setMargin(0);
-
-            // Align the layout spacing with the entity inspector.
-            verticalCardsLayout->setSpacing(13);
-
+            // In the case we have a custom attribute widget, we cannot reuse the widget, so we just replace it
+            if (mScrollArea->widget() == m_mainReflectedWidget)
+            {
+                mScrollArea->takeWidget();
+            }
+            mScrollArea->setWidget(attributeWidget);
+        }
+        else 
+        {
+            EMotionFX::AnimGraph* animGraph = nullptr;
             if (object)
             {
-                // 1. Set the new anim graph on the AnimGraph editor.
-                EMotionFX::AnimGraph* animGraph = object->GetAnimGraph();
-                m_animGraphEditor->SetAnimGraph(animGraph);
-                m_animGraphEditor->setVisible(true);
-
-                // 2. Create object card
-                m_objectEditor = new EMotionFX::ObjectEditor(serializeContext, this);
-
-                m_objectCard = new AzQtComponents::Card(this);
-                m_objectCard->setTitle(object->GetPaletteName());
-                m_objectCard->setContentWidget(m_objectEditor);
-                m_objectCard->setExpanded(true);
-
-                AzQtComponents::CardHeader* cardHeader = m_objectCard->header();
-                cardHeader->setHasContextMenu(false);
-                cardHeader->setHelpURL(object->GetHelpUrl());
-
-                m_objectEditor->AddInstance(object, azrtti_typeid(object));
-                verticalCardsLayout->addWidget(m_objectCard);
-
-                // 3. Add the condition cards and the add condition button in case we're dealing with a transition.
-                CreateConditionsGUI(object, serializeContext, verticalCardsLayout);
+                animGraph = object->GetAnimGraph();
             }
             else
             {
-                // In case we're not inspecting a anim graph object, only set the anim graph.
-                EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-                m_animGraphEditor->SetAnimGraph(animGraph);
-                m_animGraphEditor->setVisible(animGraph);
+                animGraph = mPlugin->GetActiveAnimGraph();
+            }
+            
+            m_animGraphEditor->SetAnimGraph(animGraph);
+            m_animGraphEditor->setVisible(animGraph);
+
+            if (object)
+            {
+                m_objectCard->setTitle(object->GetPaletteName());
+
+                AzQtComponents::CardHeader* cardHeader = m_objectCard->header();
+                cardHeader->setHelpURL(object->GetHelpUrl());
+
+                if (!forceUpdate && object == m_objectEditor->GetObject())
+                {
+                    m_objectEditor->InvalidateValues();
+                }
+                else
+                {
+                    m_objectEditor->ClearInstances(false);
+                    m_objectEditor->AddInstance(object, azrtti_typeid(object));
+                }
+
+                UpdateConditions(object, serializeContext, forceUpdate);
+                UpdateActions(object, serializeContext, forceUpdate);
+            }
+            else
+            {
+                // In case the previous selected object was showing any of these
+                m_conditionsWidget->setVisible(false);
+                m_actionsWidget->setVisible(false);
+            }
+            
+            m_objectCard->setVisible(object);
+
+            if (mScrollArea->widget() != m_mainReflectedWidget)
+            {
+                mScrollArea->setWidget(m_mainReflectedWidget);
             }
         }
-        static_cast<QVBoxLayout*>(mMainWidget->layout())->addWidget(m_attributeWidget);
 
-        mScrollArea->setVisible(true);
+        m_displayingModelIndex = modelIndex;
     }
 
-
-    void AttributesWindow::CreateConditionsGUI(EMotionFX::AnimGraphObject* object, AZ::SerializeContext* serializeContext, QVBoxLayout* mainLayout)
+    void AttributesWindow::UpdateConditions(EMotionFX::AnimGraphObject* object, AZ::SerializeContext* serializeContext, bool forceUpdate)
     {
-        if (azrtti_typeid(object) != azrtti_typeid<EMotionFX::AnimGraphStateTransition>())
+        if (azrtti_typeid(object) == azrtti_typeid<EMotionFX::AnimGraphStateTransition>())
         {
-            // Skip adding the condition UI elements in case the given object is not a transition.
-            return;
+            const EMotionFX::AnimGraphStateTransition* stateTransition = static_cast<EMotionFX::AnimGraphStateTransition*>(object);
+
+            const size_t numConditions = stateTransition->GetNumConditions();
+            const size_t numConditionsWidgets = m_conditionsCachedWidgets.size();
+            const size_t numConditionsAlreadyWithWidgets = AZStd::min(numConditions, numConditionsWidgets);
+            for (size_t c = 0; c < numConditionsAlreadyWithWidgets; ++c)
+            {
+                EMotionFX::AnimGraphTransitionCondition* condition = stateTransition->GetCondition(c);
+                CachedWidgets& conditionWidgets = m_conditionsCachedWidgets[c];
+
+                conditionWidgets.m_card->setTitle(condition->GetPaletteName());
+                AzQtComponents::CardHeader* cardHeader = conditionWidgets.m_card->header();
+                cardHeader->setHelpURL(condition->GetHelpUrl());
+
+                if (!forceUpdate && conditionWidgets.m_objectEditor->GetObject() == condition)
+                {
+                    conditionWidgets.m_objectEditor->InvalidateValues();
+                }
+                else
+                {
+                    conditionWidgets.m_objectEditor->ClearInstances(false);
+                    conditionWidgets.m_objectEditor->AddInstance(condition, azrtti_typeid(condition));
+                }
+            }
+
+            if (numConditions > numConditionsWidgets)
+            {
+                for (size_t c = numConditionsWidgets; c < numConditions; ++c)
+                {
+                    EMotionFX::AnimGraphTransitionCondition* condition = stateTransition->GetCondition(c);
+
+                    EMotionFX::ObjectEditor* conditionEditor = new EMotionFX::ObjectEditor(serializeContext, this);
+                    conditionEditor->AddInstance(condition, azrtti_typeid(condition));
+
+                    // Create the card and put the editor widget in it.
+                    AzQtComponents::Card* card = new AzQtComponents::Card(m_conditionsWidget);
+                    connect(card, &AzQtComponents::Card::contextMenuRequested, this, &AttributesWindow::OnConditionContextMenu);
+
+                    card->setTitle(condition->GetPaletteName());
+                    card->setContentWidget(conditionEditor);
+                    card->setProperty("conditionIndex", static_cast<unsigned int>(c));
+                    card->setExpanded(true);
+
+                    AzQtComponents::CardHeader* cardHeader = card->header();
+                    cardHeader->setHelpURL(condition->GetHelpUrl());
+
+                    m_conditionsLayout->addWidget(card);
+
+                    m_conditionsCachedWidgets.emplace_back(card, conditionEditor);
+
+                } // for all conditions
+            }
+            else if (numConditionsWidgets > numConditions)
+            {
+                // remove all the widgets that are no longer valid
+                for (size_t w = numConditions; w < numConditionsWidgets; ++w)
+                {
+                    CachedWidgets& conditionWidgets = m_conditionsCachedWidgets[w];
+
+                    // Just the card needs to be removed.
+                    conditionWidgets.m_card->setVisible(false);
+                    m_conditionsLayout->removeWidget(conditionWidgets.m_card);
+                }
+                m_conditionsCachedWidgets.erase(m_conditionsCachedWidgets.begin() + numConditions, m_conditionsCachedWidgets.end());
+            }
+
+            m_conditionsWidget->setVisible(true);
+        }
+        else
+        {
+            m_conditionsWidget->setVisible(false);
+        }
+    }
+
+    void AttributesWindow::UpdateActions(EMotionFX::AnimGraphObject* object, AZ::SerializeContext* serializeContext, bool forceUpdate)
+    {
+        const EMotionFX::TriggerActionSetup* actionSetup = nullptr;
+
+        if (azrtti_istypeof<EMotionFX::AnimGraphNode>(object))
+        {
+            const EMotionFX::AnimGraphNode* node = static_cast<EMotionFX::AnimGraphNode*>(object);
+            const EMotionFX::AnimGraphNode* parent = node->GetParentNode();
+            if (node->GetCanActAsState() && parent && azrtti_istypeof<EMotionFX::AnimGraphStateMachine>(parent))
+            {
+                actionSetup = &node->GetTriggerActionSetup();
+            }
+        }
+        else if (azrtti_typeid(object) == azrtti_typeid<EMotionFX::AnimGraphStateTransition>())
+        {
+            const EMotionFX::AnimGraphStateTransition* stateTransition = static_cast<EMotionFX::AnimGraphStateTransition*>(object);
+            actionSetup = &stateTransition->GetTriggerActionSetup();
         }
 
-        const EMotionFX::AnimGraphStateTransition* stateTransition = static_cast<EMotionFX::AnimGraphStateTransition*>(object);
-
-        const size_t numConditions = stateTransition->GetNumConditions();
-        for (size_t c = 0; c < numConditions; ++c)
+        if (actionSetup)
         {
-            EMotionFX::AnimGraphTransitionCondition* condition = stateTransition->GetCondition(c);
+            const size_t numActions = actionSetup->GetNumActions();
+            const size_t numActionWidgets = m_actionsCachedWidgets.size();
+            const size_t numActionsAlreadyWithWidgets = AZStd::min(numActions, numActionWidgets);
+            for (size_t a = 0; a < numActionsAlreadyWithWidgets; ++a)
+            {
+                EMotionFX::AnimGraphTriggerAction* action = actionSetup->GetAction(a);
+                CachedWidgets& actionWidgets = m_actionsCachedWidgets[a];
 
-            EMotionFX::ObjectEditor* conditionEditor = new EMotionFX::ObjectEditor(serializeContext, this);
-            conditionEditor->AddInstance(condition, azrtti_typeid(condition));
+                actionWidgets.m_card->setTitle(action->GetPaletteName());
+                AzQtComponents::CardHeader* cardHeader = actionWidgets.m_card->header();
+                cardHeader->setHelpURL(action->GetHelpUrl());
 
-            // Create the card and put the editor widget in it.
-            AzQtComponents::Card* card = new AzQtComponents::Card(this);
-            connect(card, &AzQtComponents::Card::contextMenuRequested, this, &AttributesWindow::OnConditionContextMenu);
+                if (!forceUpdate && actionWidgets.m_objectEditor->GetObject() == action)
+                {
+                    actionWidgets.m_objectEditor->InvalidateValues();
+                }
+                else
+                {
+                    actionWidgets.m_objectEditor->ClearInstances(false);
+                    actionWidgets.m_objectEditor->AddInstance(action, azrtti_typeid(action));
+                }
+            }
 
-            card->setTitle(condition->GetPaletteName());
-            card->setContentWidget(conditionEditor);
-            card->setProperty("conditionIndex", static_cast<unsigned int>(c));
-            card->setExpanded(true);
+            if (numActions > numActionWidgets)
+            {
+                for (size_t a = numActionWidgets; a < numActions; ++a)
+                {
+                    EMotionFX::AnimGraphTriggerAction* action = actionSetup->GetAction(a);
 
-            AzQtComponents::CardHeader* cardHeader = card->header();
-            cardHeader->setHelpURL(condition->GetHelpUrl());
+                    EMotionFX::ObjectEditor* actionEditor = new EMotionFX::ObjectEditor(serializeContext, this);
+                    actionEditor->AddInstance(action, azrtti_typeid(action));
 
-            mainLayout->addWidget(card);
-        } // for all conditions
+                    // Create the card and put the editor widget in it.
+                    AzQtComponents::Card* card = new AzQtComponents::Card(m_actionsWidget);
+                    connect(card, &AzQtComponents::Card::contextMenuRequested, this, &AttributesWindow::OnActionContextMenu);
 
-        QPushButton* addConditionButton = new QPushButton("Add condition");
-        connect(addConditionButton, &QPushButton::clicked, this, &AttributesWindow::OnAddCondition);
-        mainLayout->addWidget(addConditionButton);
+                    card->setTitle(action->GetPaletteName());
+                    card->setContentWidget(actionEditor);
+                    card->setProperty("actionIndex", static_cast<unsigned int>(a));
+                    card->setExpanded(true);
+
+                    AzQtComponents::CardHeader* cardHeader = card->header();
+                    cardHeader->setHelpURL(action->GetHelpUrl());
+
+                    m_actionsLayout->addWidget(card);
+
+                    m_actionsCachedWidgets.emplace_back(card, actionEditor);
+
+                } // for all actions
+            }
+            else if (numActionWidgets > numActions)
+            {
+                // remove all the widgets that are no longer valid
+                for (size_t w = numActions; w < numActionWidgets; ++w)
+                {
+                    CachedWidgets& actionWidgets = m_actionsCachedWidgets[w];
+
+                    // Just the card needs to be removed
+                    actionWidgets.m_card->setVisible(false);
+                    m_actionsLayout->removeWidget(actionWidgets.m_card);
+                }
+                m_actionsCachedWidgets.erase(m_actionsCachedWidgets.begin() + numActions, m_actionsCachedWidgets.end());
+            }
+
+            m_actionsWidget->setVisible(true);
+        }
+        else
+        {
+            m_actionsWidget->setVisible(false);
+        }
     }
 
 
@@ -236,12 +457,24 @@ namespace EMStudio
 
         QMenu contextMenu(this);
 
-        QAction* addAction = contextMenu.addAction("Add condition");
-        connect(addAction, &QAction::triggered, this, &AttributesWindow::OnAddCondition);
-
         QAction* deleteAction = contextMenu.addAction("Delete condition");
         deleteAction->setProperty("conditionIndex", conditionIndex);
         connect(deleteAction, &QAction::triggered, this, &AttributesWindow::OnRemoveCondition);
+
+        QAction* copyAction = contextMenu.addAction("Copy conditions");
+        copyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
+        connect(copyAction, &QAction::triggered, this, &AttributesWindow::OnCopyConditions);
+
+        if (!m_copyPasteClipboard.empty())
+        {
+            QAction* pasteAction = contextMenu.addAction("Paste conditions");
+            pasteAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
+            connect(pasteAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditions);
+
+            QAction* pasteSelectiveAction = contextMenu.addAction("Paste conditions selective");
+            pasteSelectiveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
+            connect(pasteSelectiveAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditionsSelective);
+        }
 
         if (!contextMenu.isEmpty())
         {
@@ -249,201 +482,194 @@ namespace EMStudio
         }
     }
 
-
-    void AttributesWindow::OnAddCondition()
+    void AttributesWindow::OnActionContextMenu(const QPoint& position)
     {
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (!animGraph)
+        const AnimGraphModel::ModelItemType itemType = m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>();
+
+        const AzQtComponents::Card* card = static_cast<AzQtComponents::Card*>(sender());
+        const int actionIndex = card->property("actionIndex").toInt();
+
+        QMenu contextMenu(this);
+
+       
+        QAction* deleteAction = contextMenu.addAction("Delete action");
+        deleteAction->setProperty("actionIndex", actionIndex);
+        if (itemType == AnimGraphModel::ModelItemType::TRANSITION)
         {
-            AZ_Error("EMotionFX", false, "Cannot add condition to transition. Anim graph is not valid.");
-            return;
+            connect(deleteAction, &QAction::triggered, this, &AttributesWindow::OnRemoveTransitionAction);
         }
-
-        ConditionSelectDialog dialog(this);
-        if (dialog.exec() == QDialog::Rejected)
+        else
         {
-            return;
+            connect(deleteAction, &QAction::triggered, this, &AttributesWindow::OnRemoveStateAction);
         }
+        
 
-        // get the selected transition condition type
-        const AZ::TypeId selectedConditionType = dialog.GetSelectedConditionType();
-        if (selectedConditionType.IsNull())
+        if (!contextMenu.isEmpty())
         {
-            return;
+            contextMenu.exec(position);
         }
+    }
 
-        MCORE_ASSERT(azrtti_istypeof<EMotionFX::AnimGraphStateTransition>(mObject));
+    void AttributesWindow::OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
+    {
+        AZ_UNUSED(selected);
+        AZ_UNUSED(deselected);
 
-        // add it to the transition
-        EMotionFX::AnimGraphStateTransition* transition = static_cast<EMotionFX::AnimGraphStateTransition*>(mObject);
+        const QModelIndexList modelIndexes = mPlugin->GetAnimGraphModel().GetSelectionModel().selectedRows();
+        if (!modelIndexes.empty())
+        {
+            Init(modelIndexes.front());
+        }
+        else
+        {
+            Init();
+        }
+    }
 
-        // get the source node of the transition and the parent of that node, which is the state machine in which the transition is stored at
-        EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
-        EMotionFX::AnimGraphNode* parentNode = targetNode->GetParentNode();
+    void AttributesWindow::OnDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight, const QVector<int>& roles)
+    {
+        QItemSelection changes(topLeft, bottomRight);
+        if (changes.contains(m_displayingModelIndex))
+        {
+            if (roles.empty())
+            {
+                Init(m_displayingModelIndex);
+            }
+            else
+            {
+                if (roles.contains(AnimGraphModel::ROLE_TRANSITION_CONDITIONS))
+                {
+                    AZ::SerializeContext* serializeContext = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+                    if (!serializeContext)
+                    {
+                        AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+                        return;
+                    }
 
-        // check if the parent node really is a state machine
+                    EMotionFX::AnimGraphObject* object = m_displayingModelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_OBJECT_PTR).value<EMotionFX::AnimGraphObject*>();
+                    UpdateConditions(object, serializeContext);
+                }
+                else if (roles.contains(AnimGraphModel::ROLE_TRIGGER_ACTIONS))
+                {
+                    AZ::SerializeContext* serializeContext = nullptr;
+                    AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+                    if (!serializeContext)
+                    {
+                        AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+                        return;
+                    }
+
+                    EMotionFX::AnimGraphObject* object = m_displayingModelIndex.data(AnimGraphModel::ROLE_ANIM_GRAPH_OBJECT_PTR).value<EMotionFX::AnimGraphObject*>();
+                    UpdateActions(object, serializeContext);
+                }
+            }
+        }
+    }
+
+
+    void AttributesWindow::AddCondition(const AZ::TypeId& conditionType)
+    {
+        AZ_Assert(m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::TRANSITION,
+            "Expected a transition");
+
+        const EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
+
+        const EMotionFX::AnimGraphNode* sourceNode = transition->GetSourceNode();
+        const EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
+        const EMotionFX::AnimGraphNode* parentNode = targetNode->GetParentNode();
+
         if (azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
         {
-            // convert the node to a state machine
-            EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
+            const EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<const EMotionFX::AnimGraphStateMachine*>(parentNode);
 
-            // execute the command
-            AZStd::string commandString, outResult;
-            commandString = AZStd::string::format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType \"%s\"", 
-                animGraph->GetID(), 
-                stateMachine->GetName(), 
-                transition->GetID(), 
-                selectedConditionType.ToString<AZStd::string>().c_str());
-            if (GetCommandManager()->ExecuteCommand(commandString.c_str(), outResult) == false)
+            AZStd::optional<AZStd::string> contents;
+            if (conditionType == azrtti_typeid<EMotionFX::AnimGraphMotionCondition>() &&
+                sourceNode && azrtti_typeid(sourceNode) == azrtti_typeid<EMotionFX::AnimGraphMotionNode>())
             {
-                if (outResult.empty() == false)
+                EMotionFX::AnimGraphMotionCondition motionCondition;
+                motionCondition.SetMotionNodeId(sourceNode->GetId());
+
+                AZ::Outcome<AZStd::string> serializeOutcome = MCore::ReflectionSerializer::Serialize(&motionCondition);
+                if (serializeOutcome.IsSuccess())
                 {
-                    MCore::LogError(outResult.c_str());
+                    contents = serializeOutcome.GetValue();
+                }
+            }
+            else if (conditionType == azrtti_typeid<EMotionFX::AnimGraphStateCondition>() &&
+                sourceNode && azrtti_typeid(sourceNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+            {
+                EMotionFX::AnimGraphStateCondition stateCondition;
+                stateCondition.SetStateId(sourceNode->GetId());
+
+                AZ::Outcome<AZStd::string> serializeOutcome = MCore::ReflectionSerializer::Serialize(&stateCondition);
+                if (serializeOutcome.IsSuccess())
+                {
+                    contents = serializeOutcome.GetValue();
+                }
+            }
+            else if (conditionType == azrtti_typeid<EMotionFX::AnimGraphPlayTimeCondition>() &&
+                sourceNode)
+            {
+                EMotionFX::AnimGraphPlayTimeCondition playTimeCondition;
+                playTimeCondition.SetNodeId(sourceNode->GetId());
+
+                AZ::Outcome<AZStd::string> serializeOutcome = MCore::ReflectionSerializer::Serialize(&playTimeCondition);
+                if (serializeOutcome.IsSuccess())
+                {
+                    contents = serializeOutcome.GetValue();
                 }
             }
 
-            if (transition->GetNumConditions() > 0)
-            {
-                EMotionFX::AnimGraphTransitionCondition* transitionCondition = transition->GetCondition(transition->GetNumConditions() - 1);
-
-                if (azrtti_typeid(transitionCondition) == azrtti_typeid<EMotionFX::AnimGraphMotionCondition>())
-                {
-                    EMotionFX::AnimGraphMotionCondition* motionCondition = static_cast<EMotionFX::AnimGraphMotionCondition*>(transitionCondition);
-                    
-                    EMotionFX::AnimGraphNodeId newMotionNodeId;
-                    if (transition->GetSourceNode() && azrtti_typeid(transition->GetSourceNode()) == azrtti_typeid<EMotionFX::AnimGraphMotionNode>())
-                    {
-                        newMotionNodeId = transition->GetSourceNode()->GetId();
-                    }
-
-                    motionCondition->SetMotionNodeId(newMotionNodeId);
-                }
-
-                if (azrtti_typeid(transitionCondition) == azrtti_typeid<EMotionFX::AnimGraphStateCondition>())
-                {
-                    EMotionFX::AnimGraphStateCondition* stateCondition = static_cast<EMotionFX::AnimGraphStateCondition*>(transitionCondition);
-
-                    EMotionFX::AnimGraphNodeId newStateId;
-                    if (transition->GetSourceNode() && azrtti_typeid(transition->GetSourceNode()) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
-                    {
-                        newStateId = transition->GetSourceNode()->GetId();
-                    }
-
-                    stateCondition->SetStateId(newStateId);
-                }
-
-                if (azrtti_typeid(transitionCondition) == azrtti_typeid<EMotionFX::AnimGraphPlayTimeCondition>())
-                {
-                    EMotionFX::AnimGraphPlayTimeCondition* playTimeCondition = static_cast<EMotionFX::AnimGraphPlayTimeCondition*>(transitionCondition);
-
-                    EMotionFX::AnimGraphNodeId newNodeId;
-                    if (transition->GetSourceNode())
-                    {
-                        newNodeId = transition->GetSourceNode()->GetId();
-                    }
-
-                    playTimeCondition->SetNodeId(newNodeId);
-                }
-            }
+            CommandSystem::AddCondition(transition, conditionType, contents);
         }
-
-        mPlugin->OnUpdateUniqueData();
-        Reinit();
     }
 
-
-    // reinits the interface based on the current anim graph object
-    void AttributesWindow::ReInitCurrentAnimGraphObject()
-    {
-        InitForAnimGraphObject(mObject);
-    }
 
     // when we press the remove condition button
     void AttributesWindow::OnRemoveCondition()
     {
-        MCORE_ASSERT(mObject && azrtti_istypeof<EMotionFX::AnimGraphStateTransition>(mObject));
+        AZ_Assert(m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::TRANSITION,
+            "Expected a transition");
 
         QAction* action = static_cast<QAction*>(sender());
         const int conditionIndex = action->property("conditionIndex").toInt();
 
-        // get the anim graph
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (animGraph == nullptr)
-        {
-            return;
-        }
-
         // convert the object into a state transition
-        EMotionFX::AnimGraphStateTransition* transition = static_cast<EMotionFX::AnimGraphStateTransition*>(mObject);
+        EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
 
-        // get the source node of the transition and the parent of that node, which is the state machine in which the transition is stored at
-        EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
-        if (targetNode == nullptr)
-        {
-            MCore::LogError("Cannot remove condition from transition with id %i. Target node is nullptr.", transition->GetID());
-            return;
-        }
-
-        // get the parent node
-        EMotionFX::AnimGraphNode* parentNode = targetNode->GetParentNode();
-
-        // check if the parent node really is a state machine
-        if (azrtti_typeid(parentNode) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
-        {
-            // convert the node to a state machine
-            EMotionFX::AnimGraphStateMachine* stateMachine = static_cast<EMotionFX::AnimGraphStateMachine*>(parentNode);
-
-            // execute the command
-            AZStd::string commandString, outResult;
-            commandString = AZStd::string::format("AnimGraphRemoveCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionIndex %i", animGraph->GetID(), stateMachine->GetName(), transition->GetID(), conditionIndex);
-            if (GetCommandManager()->ExecuteCommand(commandString.c_str(), outResult) == false)
-            {
-                if (outResult.empty() == false)
-                {
-                    MCore::LogError(outResult.c_str());
-                }
-            }
-
-            // re-init the attributes window
-            InitForAnimGraphObject(mObject);
-        }
-        else
-        {
-            MCore::LogError("AttributesWindow::OnRemoveCondition(): Parent node is no state machine.");
-        }
+        CommandSystem::RemoveCondition(transition, conditionIndex);
     }
 
 
     void AttributesWindow::contextMenuEvent(QContextMenuEvent* event)
     {
-        if (mObject == nullptr || !azrtti_istypeof<EMotionFX::AnimGraphStateTransition>(mObject))
+        if (!m_displayingModelIndex.isValid()
+            || m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() != AnimGraphModel::ModelItemType::TRANSITION)
         {
             return;
         }
 
-        EMotionFX::AnimGraphStateTransition* transition = static_cast<EMotionFX::AnimGraphStateTransition*>(mObject);
+        EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
 
-        // create the context menu
         QMenu menu(this);
 
-        // allow to put the conditions into the clipboard
         if (transition->GetNumConditions() > 0)
         {
-            QAction* copyAction = menu.addAction("Copy Conditions");
+            QAction* copyAction = menu.addAction("Copy conditions");
             copyAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
-            connect(copyAction, SIGNAL(triggered()), this, SLOT(OnCopyConditions()));
+            connect(copyAction, &QAction::triggered, this, &AttributesWindow::OnCopyConditions);
         }
 
-        // if we already copied some conditions, allow pasting
-        if (mCopyPasteClipboard.GetIsEmpty() == false)
+        if (!m_copyPasteClipboard.empty())
         {
-            QAction* pasteAction = menu.addAction("Paste Conditions");
+            QAction* pasteAction = menu.addAction("Paste conditions");
             pasteAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
-            connect(pasteAction, SIGNAL(triggered()), this, SLOT(OnPasteConditions()));
+            connect(pasteAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditions);
 
-            QAction* pasteSelectiveAction = menu.addAction("Paste Conditions Selective");
+            QAction* pasteSelectiveAction = menu.addAction("Paste conditions selective");
             pasteSelectiveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
-            connect(pasteSelectiveAction, SIGNAL(triggered()), this, SLOT(OnPasteConditionsSelective()));
+            connect(pasteSelectiveAction, &QAction::triggered, this, &AttributesWindow::OnPasteConditionsSelective);
         }
 
         // show the menu at the given position
@@ -456,14 +682,14 @@ namespace EMStudio
 
     void AttributesWindow::OnCopyConditions()
     {
-        if (mObject == nullptr || !azrtti_istypeof<EMotionFX::AnimGraphStateTransition>(mObject))
+        if (!m_displayingModelIndex.isValid()
+            || m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() != AnimGraphModel::ModelItemType::TRANSITION)
         {
             return;
         }
 
-        // get the transition and reset the clipboard data
-        EMotionFX::AnimGraphStateTransition* transition = static_cast<EMotionFX::AnimGraphStateTransition*>(mObject);
-        mCopyPasteClipboard.Clear(false);
+        EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
+        m_copyPasteClipboard.clear();
 
         // iterate through the conditions and put them into the clipboard
         const size_t numConditions = transition->GetNumConditions();
@@ -479,7 +705,7 @@ namespace EMStudio
                 copyPasteObject.mContents = contents.GetValue();
                 copyPasteObject.mConditionType = azrtti_typeid(condition);
                 condition->GetSummary(&copyPasteObject.mSummary);
-                mCopyPasteClipboard.Add(copyPasteObject);
+                m_copyPasteClipboard.push_back(copyPasteObject);
             }
         }
     }
@@ -487,45 +713,17 @@ namespace EMStudio
 
     void AttributesWindow::OnPasteConditions()
     {
-        if (!mObject || !azrtti_istypeof<EMotionFX::AnimGraphStateTransition>(mObject))
+        if (!m_displayingModelIndex.isValid()
+            || m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() != AnimGraphModel::ModelItemType::TRANSITION)
         {
             return;
         }
+        EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
 
-        EMotionFX::AnimGraphStateTransition* transition = static_cast<EMotionFX::AnimGraphStateTransition*>(mObject);
-
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (!animGraph)
-        {
-            return;
-        }
-
-        EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
-        if (!targetNode)
-        {
-            return;
-        }
-
-        // Only allow when the parent is a valid state machine.
-        EMotionFX::AnimGraphNode* parentNode = targetNode->GetParentNode();
-        if (!parentNode || azrtti_typeid(parentNode) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
-        {
-            return;
-        }
-
-        AZStd::string command;
         MCore::CommandGroup commandGroup;
-
-        const uint32 numConditions = mCopyPasteClipboard.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
+        for (const CopyPasteConditionObject& copyPasteObject : m_copyPasteClipboard)
         {
-            command = AZStd::string::format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType \"%s\" -contents {%s}", 
-                animGraph->GetID(), 
-                parentNode->GetName(), 
-                transition->GetID(), 
-                mCopyPasteClipboard[i].mConditionType.ToString<AZStd::string>().c_str(), 
-                mCopyPasteClipboard[i].mContents.c_str());
-            commandGroup.AddCommandString(command);
+            CommandSystem::AddCondition(transition, copyPasteObject.mConditionType, copyPasteObject.mContents, /*insertAt*/AZStd::nullopt, &commandGroup);
         }
 
         AZStd::string result;
@@ -533,15 +731,20 @@ namespace EMStudio
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
+        else
+        {
+            m_copyPasteClipboard.clear();
+        }
 
         // Send LyMetrics event.
-        MetricsEventSender::SendPasteConditionsEvent(numConditions);
+        MetricsEventSender::SendPasteConditionsEvent(static_cast<AZ::u32>(m_copyPasteClipboard.size()));
     }
 
 
     void AttributesWindow::OnPasteConditionsSelective()
     {
-        if (!mObject || !azrtti_istypeof<EMotionFX::AnimGraphStateTransition>(mObject))
+        if (!m_displayingModelIndex.isValid()
+            || m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() != AnimGraphModel::ModelItemType::TRANSITION)
         {
             return;
         }
@@ -549,25 +752,7 @@ namespace EMStudio
         delete mPasteConditionsWindow;
         mPasteConditionsWindow = nullptr;
 
-        EMotionFX::AnimGraphStateTransition* transition = static_cast<EMotionFX::AnimGraphStateTransition*>(mObject);
-
-        EMotionFX::AnimGraph* animGraph = mPlugin->GetActiveAnimGraph();
-        if (!animGraph)
-        {
-            return;
-        }
-
-        EMotionFX::AnimGraphNode* targetNode = transition->GetTargetNode();
-        if (!targetNode)
-        {
-            return;
-        }
-
-        EMotionFX::AnimGraphNode* parentNode = targetNode->GetParentNode();
-        if (!parentNode || azrtti_typeid(parentNode) != azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
-        {
-            return;
-        }
+        EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
 
         // Open the select conditions window and return if the user canceled it.
         mPasteConditionsWindow = new PasteConditionsWindow(this);
@@ -576,40 +761,83 @@ namespace EMStudio
             return;
         }
 
-        AZStd::string command;
+        AZStd::string commandString;
         MCore::CommandGroup commandGroup;
 
         AZ::u32 numPastedConditions = 0;
-        const AZ::u32 numConditions = mCopyPasteClipboard.GetLength();
-        for (AZ::u32 i = 0; i < numConditions; ++i)
+        const size_t numConditions = m_copyPasteClipboard.size();
+        for (size_t i = 0; i < numConditions; ++i)
         {
             // check if the condition was selected in the window, if not skip it
-            if (mPasteConditionsWindow->GetIsConditionSelected(i) == false)
+            if (!mPasteConditionsWindow->GetIsConditionSelected(i))
             {
                 continue;
             }
 
-            command = AZStd::string::format("AnimGraphAddCondition -animGraphID %i -stateMachineName \"%s\" -transitionID %i -conditionType \"%s\" -contents {%s}",
-                animGraph->GetID(),
-                parentNode->GetName(),
-                transition->GetID(), \
-                mCopyPasteClipboard[i].mConditionType.ToString<AZStd::string>().c_str(), 
-                mCopyPasteClipboard[i].mContents.c_str());
-            commandGroup.AddCommandString(command);
+            CommandSystem::AddCondition(transition, m_copyPasteClipboard[i].mConditionType, m_copyPasteClipboard[i].mContents, /*insertAt*/AZStd::nullopt, &commandGroup);
+
             numPastedConditions++;
         }
-
-        mCopyPasteClipboard.Clear(false);
 
         AZStd::string result;
         if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
+        else
+        {
+            m_copyPasteClipboard.clear();
+        }
 
         // Send LyMetrics event.
         MetricsEventSender::SendPasteConditionsEvent(numPastedConditions);
+    }
 
+    void AttributesWindow::AddTransitionAction(const AZ::TypeId& actionType)
+    {
+        AZ_Assert(m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::TRANSITION,
+            "Expected a transition");
+
+        const EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
+        CommandSystem::AddTransitionAction(transition, actionType);
+    }
+
+    void AttributesWindow::AddStateAction(const AZ::TypeId& actionType)
+    {
+        AZ_Assert(m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::NODE,
+            "StateAction must added on an anim graph node");
+
+        const EMotionFX::AnimGraphNode* node = m_displayingModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+        CommandSystem::AddStateAction(node, actionType);
+    }
+
+    // when we press the remove condition button
+    void AttributesWindow::OnRemoveTransitionAction()
+    {
+        AZ_Assert(m_displayingModelIndex.isValid(), "Object shouldn't be null.");
+
+        QAction* action = static_cast<QAction*>(sender());
+        const int actionIndex = action->property("actionIndex").toInt();
+        AZ_Assert(m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::TRANSITION,
+            "Expected a transition");
+
+        EMotionFX::AnimGraphStateTransition* transition = m_displayingModelIndex.data(AnimGraphModel::ROLE_TRANSITION_POINTER).value<EMotionFX::AnimGraphStateTransition*>();
+        CommandSystem::RemoveTransitionAction(transition, actionIndex);
+    }
+
+    // when we press the remove condition button
+    void AttributesWindow::OnRemoveStateAction()
+    {
+        AZ_Assert(m_displayingModelIndex.isValid(), "Object shouldn't be null.");
+
+        QAction* action = static_cast<QAction*>(sender());
+        const int actionIndex = action->property("actionIndex").toInt();
+
+        AZ_Assert(m_displayingModelIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::NODE,
+            "StateAction must added on an anim graph node");
+
+        EMotionFX::AnimGraphNode* node = m_displayingModelIndex.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+        CommandSystem::RemoveStateAction(node, actionIndex);
     }
 
 
@@ -626,29 +854,28 @@ namespace EMStudio
 
         layout->addWidget(new QLabel("Please select the conditions you want to paste:"));
 
-        mCheckboxes.Clear();
-        const MCore::Array<AttributesWindow::CopyPasteConditionObject>& copyPasteClipboard = attributeWindow->GetCopyPasteConditionClipboard();
-        const uint32 numConditions = copyPasteClipboard.GetLength();
-        for (uint32 i = 0; i < numConditions; ++i)
+        mCheckboxes.clear();
+        const AZStd::vector<AttributesWindow::CopyPasteConditionObject>& copyPasteClipboard = attributeWindow->GetCopyPasteConditionClipboard();
+        for (const AttributesWindow::CopyPasteConditionObject& copyPasteObject : copyPasteClipboard)
         {
-            QCheckBox* checkbox = new QCheckBox(copyPasteClipboard[i].mSummary.c_str());
-            mCheckboxes.Add(checkbox);
+            QCheckBox* checkbox = new QCheckBox(copyPasteObject.mSummary.c_str());
+            mCheckboxes.push_back(checkbox);
             checkbox->setCheckState(Qt::Checked);
             layout->addWidget(checkbox);
         }
 
         // create the ok and cancel buttons
         QHBoxLayout* buttonLayout = new QHBoxLayout();
-        mOKButton       = new QPushButton("OK");
-        mCancelButton   = new QPushButton("Cancel");
+        mOKButton = new QPushButton("OK");
+        mCancelButton = new QPushButton("Cancel");
         buttonLayout->addWidget(mOKButton);
         buttonLayout->addWidget(mCancelButton);
 
         layout->addLayout(buttonLayout);
         setLayout(layout);
 
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(mCancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(mOKButton, &QPushButton::clicked, this, &PasteConditionsWindow::accept);
+        connect(mCancelButton, &QPushButton::clicked, this, &PasteConditionsWindow::reject);
     }
 
 
@@ -659,10 +886,44 @@ namespace EMStudio
 
 
     // check if the condition is selected
-    bool PasteConditionsWindow::GetIsConditionSelected(uint32 index) const
+    bool PasteConditionsWindow::GetIsConditionSelected(size_t index) const
     {
         return mCheckboxes[index]->checkState() == Qt::Checked;
     }
-} // namespace EMStudio
 
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AttributesWindow.moc>
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    AddConditionButton::AddConditionButton(AnimGraphPlugin* plugin, QWidget* parent)
+        : EMotionFX::TypeChoiceButton("Add condition", "", parent)
+    {
+        const AZStd::vector<EMotionFX::AnimGraphObject*>& objectPrototypes = plugin->GetAnimGraphObjectFactory()->GetUiObjectPrototypes();
+        AZStd::unordered_map<AZ::TypeId, AZStd::string> types;
+        m_types.reserve(objectPrototypes.size());
+
+        for (const EMotionFX::AnimGraphObject* objectPrototype : objectPrototypes)
+        {
+            if (azrtti_istypeof<EMotionFX::AnimGraphTransitionCondition>(objectPrototype))
+            {
+                m_types.emplace(azrtti_typeid(objectPrototype), objectPrototype->GetPaletteName());
+            }
+        }
+    }
+
+    AddActionButton::AddActionButton(AnimGraphPlugin* plugin, QWidget* parent)
+        : EMotionFX::TypeChoiceButton("Add action", "", parent)
+    {
+        const AZStd::vector<EMotionFX::AnimGraphObject*>& objectPrototypes = plugin->GetAnimGraphObjectFactory()->GetUiObjectPrototypes();
+        AZStd::unordered_map<AZ::TypeId, AZStd::string> types;
+        types.reserve(objectPrototypes.size());
+
+        for (const EMotionFX::AnimGraphObject* objectPrototype : objectPrototypes)
+        {
+            if (azrtti_istypeof<EMotionFX::AnimGraphTriggerAction>(objectPrototype))
+            {
+                types.emplace(azrtti_typeid(objectPrototype), objectPrototype->GetPaletteName());
+            }
+        }
+
+        SetTypes(types);
+    }
+} // namespace EMStudio

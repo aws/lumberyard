@@ -49,8 +49,14 @@ namespace EMotionFX
                 const AZ::SceneAPI::Containers::RuleContainer& GetRuleContainerConst() const override;
 
                 // ISceneNodeGroup overrides
+                // This list should contain all the nodes that should be exported in this actor. ( base nodes + all LOD nodes )
+                // To get the base node list, use the function in below.
                 AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetSceneNodeSelectionList() override;
                 const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetSceneNodeSelectionList() const override;
+
+                // This list should contain the base nodes (LOD0 nodes)
+                AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetBaseNodeSelectionList() override;
+                const AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& GetBaseNodeSelectionList() const override;
 
                 // IActorGroup overrides
                 const AZStd::string& GetSelectedRootBone() const override;
@@ -62,7 +68,8 @@ namespace EMotionFX
                 static bool ActorVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
             protected:
-                AZ::SceneAPI::SceneData::SceneNodeSelectionList     m_nodeSelectionList;
+                AZ::SceneAPI::SceneData::SceneNodeSelectionList     m_allNodeSelectionList;
+                AZ::SceneAPI::SceneData::SceneNodeSelectionList     m_baseNodeSelectionList;
                 AZ::SceneAPI::Containers::RuleContainer             m_rules;
                 AZStd::string                                       m_name;
                 AZStd::string                                       m_selectedRootBone;

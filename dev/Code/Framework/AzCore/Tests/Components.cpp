@@ -42,7 +42,11 @@ using namespace AZ;
 using namespace AZ::Debug;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Components_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Components_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Components_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -637,6 +641,21 @@ namespace UnitTest
     };
     //////////////////////////////////////////////////////////////////////////
 
+    //////////////////////////////////////////////////////////////////////////
+    // Component P - no services at all
+    class ComponentP
+        : public Component
+    {
+    public:
+        AZ_COMPONENT(ComponentP, "{0D71F310-FEBC-418D-9C4B-847C89DF6606}");
+
+        void Activate() override {}
+        void Deactivate() override {}
+
+        static void Reflect(ReflectContext* /*reflection*/) {}
+    };
+    //////////////////////////////////////////////////////////////////////////
+
     class ComponentDependency
         : public Components
     {
@@ -662,6 +681,7 @@ namespace UnitTest
             aznew ComponentM::DescriptorType;
             aznew ComponentN::DescriptorType;
             aznew ComponentO::DescriptorType;
+            aznew ComponentP::DescriptorType;
 
             m_componentApp = aznew ComponentApplication();
 
@@ -852,14 +872,50 @@ namespace UnitTest
         EXPECT_LT(locationE2, locationB);
     }
 
+    TEST_F(ComponentDependency, ComponentsThatProvideNoServices_SortedLast)
+    {
+        // components providing no services
+        Component* c = m_entity->CreateComponent<ComponentC>(); // requires ServiceB
+        Component* p = m_entity->CreateComponent<ComponentP>();
+
+        // components providing a service
+        Component* b = m_entity->CreateComponent<ComponentB>();
+        Component* d = m_entity->CreateComponent<ComponentD>();
+        Component* i = m_entity->CreateComponent<ComponentI>();
+        Component* k = m_entity->CreateComponent<ComponentK>();
+
+        // the only dependency between these components is that C requires B
+
+        EXPECT_EQ(Entity::DependencySortResult::DSR_OK, m_entity->EvaluateDependencies());
+
+        const AZStd::vector<Component*>& components = m_entity->GetComponents();
+        const ptrdiff_t numComponents = m_entity->GetComponents().size();
+
+        ptrdiff_t maxIndexOfComponentProvidingServices = PTRDIFF_MIN;
+        for (Component* component : { b, d, i, k })
+        {
+            ptrdiff_t index = AZStd::distance(components.begin(), AZStd::find(components.begin(), components.end(), component));
+            EXPECT_TRUE(index >= 0 && index < numComponents);
+            maxIndexOfComponentProvidingServices = AZStd::max(maxIndexOfComponentProvidingServices, index);
+        }
+
+        ptrdiff_t minIndexOfComponentProvidingNoServices = PTRDIFF_MAX;
+        for (Component* component : { c, p })
+        {
+            ptrdiff_t index = AZStd::distance(components.begin(), AZStd::find(components.begin(), components.end(), component));
+            EXPECT_TRUE(index >= 0 && index < numComponents);
+            minIndexOfComponentProvidingNoServices = AZStd::min(minIndexOfComponentProvidingNoServices, index);
+        }
+
+        EXPECT_LT(maxIndexOfComponentProvidingServices, minIndexOfComponentProvidingNoServices);
+    }
+
     // there was once a bug where we didn't check requirements if there was only 1 component
     TEST_F(ComponentDependency, OneComponentRequiringService_FailsDueToMissingRequirements)
     {
         m_entity->CreateComponent<ComponentG>(); // requires ServiceH
 
-        AZ_TEST_START_ASSERTTEST;
         EXPECT_EQ(Entity::DependencySortResult::MissingRequiredService, m_entity->EvaluateDependencies());
-        AZ_TEST_STOP_ASSERTTEST(1);
     }
 
     // there was once a bug where we didn't check requirements of components that provided no services
@@ -868,9 +924,7 @@ namespace UnitTest
         m_entity->CreateComponent<ComponentC>(); // requires ServiceB
         m_entity->CreateComponent<ComponentC>(); // requires ServiceB
 
-        AZ_TEST_START_ASSERTTEST;
         EXPECT_EQ(Entity::DependencySortResult::MissingRequiredService, m_entity->EvaluateDependencies());
-        AZ_TEST_STOP_ASSERTTEST(1);
 
         // there was also once a bug where failed sorts would result in components vanishing
         EXPECT_EQ(2, m_entity->GetComponents().size());
@@ -888,9 +942,7 @@ namespace UnitTest
         m_entity->CreateComponent<ComponentI>(); // incompatible with ServiceI
         m_entity->CreateComponent<ComponentI>(); // incompatible with ServiceI
 
-        AZ_TEST_START_ASSERTTEST;
         EXPECT_EQ(Entity::DependencySortResult::HasIncompatibleServices, m_entity->EvaluateDependencies());
-        AZ_TEST_STOP_ASSERTTEST(1);
     }
 
     // there was once a bug where failures due to cyclic dependencies would result in components vanishing
@@ -905,12 +957,31 @@ namespace UnitTest
         EXPECT_EQ(2, m_entity->GetComponents().size());
     }
 
+    TEST_F(ComponentDependency, ComponentWithoutDescriptor_FailsDueToMissingDescriptor)
+    {
+        CreateComponents_ABCDE();
+
+        // delete ComponentB's descriptor
+        ComponentDescriptorBus::Event(azrtti_typeid<ComponentB>(), &ComponentDescriptorBus::Events::ReleaseDescriptor);
+
+        EXPECT_EQ(Entity::DependencySortResult::MissingDescriptor, m_entity->EvaluateDependencies());
+    }
+
     TEST_F(ComponentDependency, StableSort_GetsSameResultsEveryTime)
     {
         // put a bunch of components on the entity
         CreateComponents_ABCDE();
         CreateComponents_ABCDE();
         CreateComponents_ABCDE();
+
+        // throw in components whose dependencies could make the sort order ambiguous
+        m_entity->CreateComponent<ComponentI>(); // I is incompatible with itself, but depends on nothing
+        m_entity->CreateComponent<ComponentP>(); // P has no service declarations whatsoever
+        m_entity->CreateComponent<ComponentP>();
+        m_entity->CreateComponent<ComponentP>();
+        m_entity->CreateComponent<ComponentK>(); // K depends on J (but J not present)
+        m_entity->CreateComponent<ComponentK>();
+        m_entity->CreateComponent<ComponentK>();
 
         // set Component IDs (using seeded random) so we get same results each time this test runs
         u32 randSeed[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
@@ -1022,9 +1093,7 @@ namespace UnitTest
         m_entity->CreateComponent<ComponentN>(); // incompatible with ServiceA twice
         m_entity->CreateComponent<ComponentA>();
 
-        AZ_TEST_START_ASSERTTEST;
         EXPECT_EQ(Entity::DependencySortResult::HasIncompatibleServices, m_entity->EvaluateDependencies());
-        AZ_TEST_STOP_ASSERTTEST(1);
     }
 
     TEST_F(ComponentDependency, ComponentAccidentallyListingIncompatibilityWithSelfTwice_IsOkByItself)
@@ -1039,9 +1108,7 @@ namespace UnitTest
         m_entity->CreateComponent<ComponentO>(); // incompatible with ServiceO twice
         m_entity->CreateComponent<ComponentO>(); // incompatible with ServiceO twice
 
-        AZ_TEST_START_ASSERTTEST;
         EXPECT_EQ(Entity::DependencySortResult::HasIncompatibleServices, m_entity->EvaluateDependencies());
-        AZ_TEST_STOP_ASSERTTEST(1);
     }
 
     /**
@@ -2145,11 +2212,11 @@ namespace Benchmark
             state.ResumeTiming();
 
             // do sort
-            Entity::DependencySortResult result = Entity::DependencySort(components);
+            Entity::DependencySortOutcome outcome = Entity::DependencySort(components);
 
             // cleanup
             state.PauseTiming();
-            AZ_Assert(result == Entity::DependencySortResult::Success, "Sort failed");
+            AZ_Assert(outcome.IsSuccess(), "Sort failed");
             for (Component* component : components)
             {
                 delete component;

@@ -99,6 +99,12 @@ namespace ScriptCanvasEditor
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorScriptCanvasComponent::m_editableData, "Variables",
                         "Script Canvas graph variables")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorScriptCanvasComponent::m_name, "Asset Name", "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
+                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::HideAllTheTime | AZ::Edit::SliceFlags::PushWhenHidden)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorScriptCanvasComponent::m_variableEntityIdMap, "Variable Entity Id Map", "")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
+                        ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::HideAllTheTime | AZ::Edit::SliceFlags::PushWhenHidden)
                     ;
             }
         }
@@ -127,7 +133,7 @@ namespace ScriptCanvasEditor
             // Pathname from the asset doesn't seem to return a value unless the asset has been loaded up once(which isn't done until we try to show it).
             // Using the Job system to determine the asset name instead.
             AZ::Outcome<AzToolsFramework::AssetSystem::JobInfoContainer> jobOutcome = AZ::Failure();
-            AzToolsFramework::AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AzToolsFramework::AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, GetAsset().GetId(), false);
+            AzToolsFramework::AssetSystemJobRequestBus::BroadcastResult(jobOutcome, &AzToolsFramework::AssetSystemJobRequestBus::Events::GetAssetJobsInfoByAssetID, GetAsset().GetId(), false, false);
 
             AZStd::string assetPath;
             AZStd::string assetName;
@@ -318,6 +324,7 @@ namespace ScriptCanvasEditor
         AZ::Entity* scriptCanvasEntity = asset.Get()->GetScriptCanvasEntity();
 
         LoadVariables(scriptCanvasEntity);
+        UpdateName();
     }
 
     void EditorScriptCanvasComponent::OnScriptCanvasAssetReloaded(const AZ::Data::Asset<ScriptCanvasAsset>& asset)

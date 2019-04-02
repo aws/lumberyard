@@ -117,16 +117,17 @@ namespace EMotionFX
         // If there is none setup, we see that as a non-error state, otherwise you would see the node marked as error directly after creation.
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
 
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (m_morphTargetNames.empty())
+        if (GetEMotionFX().GetIsInEditorMode())
         {
-            SetHasError(animGraphInstance, false);
+            if (m_morphTargetNames.empty())
+            {
+                SetHasError(animGraphInstance, false);
+            }
+            else
+            {
+                SetHasError(animGraphInstance, uniqueData->m_morphTargetIndex == MCORE_INVALIDINDEX32);
+            }
         }
-        else
-        {
-            SetHasError(animGraphInstance, uniqueData->m_morphTargetIndex == MCORE_INVALIDINDEX32);
-        }
-    #endif
 
         // Refresh the morph target indices when needed.
         // This has to happen when we changed LOD levels, as the new LOD might have another number of morph targets.
@@ -165,12 +166,10 @@ namespace EMotionFX
         }
 
         // Debug visualize the output pose.
-        #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             actorInstance->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-        #endif
     }
 
 

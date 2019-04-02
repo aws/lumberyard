@@ -905,12 +905,18 @@ CShader* CShaderMan::mfForName (const char* nameSh, int flags, const CShaderReso
     char nameRes[256];
 
     uint64 nMaskGenHW = 0;
+    uint64 maskGenStatic = m_staticFlags;
 
     cry_strcpy(nameEf, nameSh);
 
     cry_strcpy(nameRes, nameEf);
 
     cry_strcat(nameRes, GetShaderLanguageResourceName());
+
+    if (maskGenStatic)
+    {
+        cry_strcat(nameRes, AZStd::string::format("(ST%llx)", maskGenStatic).c_str());
+    }
 
     ef = NULL;
     efGen = NULL;
@@ -925,11 +931,7 @@ CShader* CShaderMan::mfForName (const char* nameSh, int flags, const CShaderReso
 
         mfModifyGenFlags(efGen, Res, nMaskGen, nMaskGenHW);
         bGenModified = true;
-#ifdef __GNUC__
-        sprintf(nameNew, "%s(%llx)", nameRes, nMaskGen);
-#else
-        azsprintf(nameNew, "%s(%I64x)", nameRes, nMaskGen);
-#endif
+        azsprintf(nameNew, "%s(%llx)", nameRes, nMaskGen);
         pBR = CBaseResource::GetResource(CShader::mfGetClassName(), nameNew, false);
         ef = (CShader*)pBR;
         if (ef)
@@ -978,11 +980,7 @@ CShader* CShaderMan::mfForName (const char* nameSh, int flags, const CShaderReso
                 //nMaskGen = gRenDev->EF_GetRemapedShaderMaskGen(nameSh, nMaskGen | nMaskGenHW);
                 mfModifyGenFlags(efGen, Res, nMaskGen, nMaskGenHW);
             }
-#ifdef __GNUC__
             sprintf_s(nameNew, "%s(%llx)", nameRes, nMaskGen);
-#else
-            sprintf_s(nameNew, "%s(%I64x)", nameRes, nMaskGen);
-#endif
             ef = mfNewShader(nameNew);
             if (!ef)
             {
@@ -990,6 +988,8 @@ CShader* CShaderMan::mfForName (const char* nameSh, int flags, const CShaderReso
             }
 
             ef->m_nMaskGenFX = nMaskGen | nMaskGenHW;
+            ef->m_maskGenStatic = maskGenStatic;
+            ef->m_ShaderGenStaticParams = m_staticExt;
             ef->m_pGenShader = efGen;
         }
         if (efGen && ef)
@@ -1009,6 +1009,9 @@ CShader* CShaderMan::mfForName (const char* nameSh, int flags, const CShaderReso
             {
                 return s_DefaultShader;
             }
+
+            ef->m_maskGenStatic = maskGenStatic;
+            ef->m_ShaderGenStaticParams = m_staticExt;
         }
     }
     id = ef->GetID();

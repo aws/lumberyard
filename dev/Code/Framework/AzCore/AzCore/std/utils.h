@@ -640,6 +640,10 @@ namespace AZStd
     {
         static const bool value = false;
     };
+
+    struct in_place_t { explicit in_place_t() = default; };
+    template<typename T> struct in_place_type_t { explicit in_place_type_t() = default; };
+    //template<typename T> const in_place_type_t<T> in_place_type{}; // VS 2013 does not like this
 }
 
 #endif // AZSTD_UTILS_H

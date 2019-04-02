@@ -14,19 +14,20 @@
 
 from waflib.TaskGen import feature, after_method, before_method
 from waflib.Context import BOTH
-from waflib import Node, Task, Utils, Logs, Errors
+from waflib import Node, Task, Utils, Logs, Errors, Options
 from binascii import hexlify
 from collections import defaultdict
+from pipes import quote
 import os
 import json
 import waflib.Build
 import threading
+import itertools
 
 #  Code Generator Settings
 code_generator_ignore_includes = False
 code_generator_suppress_errors_as_warnings = False
 code_generator_verbose = False
-code_generator_invoke_command_line_directly = False
 command_length_when_windows_fails_to_execute = 8192
 
 # Module for our utility
@@ -63,8 +64,7 @@ def get_output_dir_node(tg):
     """
     Gets the output dir from a task generator.
     """
-    output_dir = tg.path.get_bld()
-    output_dir = tg.bld.bldnode.make_node('{}/{}'.format(output_dir.relpath(), tg.target_uid))
+    output_dir = tg.bld.bldnode.make_node('azcg/{}.{}'.format(tg.name,tg.idx))
     return output_dir
 
 
@@ -80,7 +80,7 @@ def add_codegen_includes(self):
 
 
 @feature('az_code_gen')
-@after_method('process_use')
+@after_method('apply_incpaths')
 def create_code_generator_tasks(self):
     # Skip during project generation
     if self.bld.env['PLATFORM'] == 'project_generator':
@@ -140,7 +140,7 @@ def create_code_generator_tasks(self):
 
 def create_az_code_generator_task(self, input_file_list, code_generator_scripts, code_gen_arguments, code_gen_options, azcg_dep_nodes):
     input_dir_node = get_input_dir_node(self)
-    input_nodes = [in_file if isinstance(in_file, waflib.Node.Node) else input_dir_node.make_node(in_file) for in_file in input_file_list]
+    input_nodes = [in_file if isinstance(in_file, waflib.Node.Node) else input_dir_node.make_node(clean_path(in_file)) for in_file in input_file_list]
 
     # Create a code gen task.
     # We would simply do "new_task = self.create_task('az_code_gen', input_nodes)" had we no need
@@ -152,36 +152,39 @@ def create_az_code_generator_task(self, input_file_list, code_generator_scripts,
     new_task.path = self.path
     new_task.input_dir = input_dir_node
     new_task.output_dir = get_output_dir_node(self)
-    new_task.scripts = code_generator_scripts
-    new_task.includes = self.to_incnodes(self.includes)
-    new_task.defines = getattr(self, 'defines', [])
+    for script in code_generator_scripts:
+        script_node = self.path.find_or_declare(script)
+        if script_node is None:
+            raise Errors.WafError('[ERROR] Unable to find node for script {}'.format(script))
+        new_task.script_nodes.append(script_node)
+    new_task.includes = self.includes_nodes
+    new_task.defines = self.env['DEFINES']
     new_task.azcg_deps = azcg_dep_nodes
     for code_gen_argument in code_gen_arguments:
         new_task.add_argument(code_gen_argument)
 
     if 'PrintOutputRedirectionFile' in code_gen_options:
         new_task.capture_and_print_error_output()
-    
-    if 'Profile' in code_gen_options:
-        new_task.profile = True
-        new_task.add_argument('-profile')
 
     if self.bld.is_option_true('use_debug_code_generator'):
         Logs.warn("Using DEBUG AZCodeGenerator!")
+
+        path = new_task.env.CODE_GENERATOR_PATH[0]
+        if path.endswith('profilenosym'):
+            new_task.env.CODE_GENERATOR_PATH = [path[:-len('profilenosym')] + 'debug']
+
         az_code_gen_exe = "AzCodeGeneratorD.exe"
         full_debug_path = os.path.join(new_task.env['CODE_GENERATOR_PATH'][0],az_code_gen_exe)
         if os.path.exists(full_debug_path):
             new_task.env['CODE_GENERATOR_EXECUTABLE'] = "AzCodeGeneratorD.exe"
         else:
-            Logs.error('Debug AzCodeGenerator executable ({}) was not found.  Make sure to build it first if you want to run the code generator in debug mode'.format(full_debug_path))
+            raise Errors.WafError('[ERROR] Debug AzCodeGenerator executable ({}) was not found.  Make sure to build it first if you want to run the code generator in debug mode'.format(full_debug_path))
 
     # Pre-compute arguments for task since doing this during run() causes multi-thread issues in Node
     new_task.prepare_task()
 
-
 def clean_path(path):
     return path.replace('\\', '/')
-
 
 def hash_node_list(list, up):
     for item in list:
@@ -189,8 +192,6 @@ def hash_node_list(list, up):
             up(item.abspath().encode())
         else:
             up(item)
-
-g_uid_counts = defaultdict(int)
 
 # ported from msvcdeps.py
 def path_to_node(base_node, path, cached_nodes):
@@ -221,13 +222,14 @@ class az_code_gen(Task.Task):
         self.more_tasks = []
         self.input_dir = None
         self.output_dir = None
-        self.scripts = []
+        self.script_nodes = []
         self.includes = []
         self.defines = []
         self.argument_list = []
         self.error_output_file_node = None
-        self.azcg_headers = []
+        self.registered_dependencies = []
         self.azcg_deps = []
+        self.generated_output = []
         self.profile = False
         # Ensure we have a 'azcg' attribute to cache task info for future builds
         if not isinstance(getattr(self.generator.bld, 'azcg', None), dict):
@@ -238,6 +240,10 @@ class az_code_gen(Task.Task):
         # Ensure the task generator has a lock to manage link task additions
         if not hasattr(self.generator, 'task_gen_link_lock'):
             self.generator.task_gen_link_lock = threading.Lock()
+
+
+    def __str__(self):
+        return 'AZ Code Generation for {} -> Processing {}\n'.format(self.generator.target, ', '.join(str(input) for input in self.inputs))
 
     def uid(self):
         try:
@@ -252,15 +258,13 @@ class az_code_gen(Task.Task):
             up(self.input_dir.abspath().encode())
             up(self.output_dir.abspath().encode())
             hash_node_list(self.inputs, up)
-            hash_node_list(self.scripts, up)
+            hash_node_list(self.script_nodes, up)
             hash_node_list(self.includes, up)
             hash_node_list(self.defines, up)
             hash_node_list(self.argument_list, up)
             hash_node_list(self.azcg_deps, up)
 
             self.uid_ = m.digest()
-            g_uid_counts[self.uid_] += 1
-            assert(g_uid_counts[self.uid_] == 1)
             return self.uid_
 
     def azcg_get(self, key, default_value=None):
@@ -290,27 +294,35 @@ class az_code_gen(Task.Task):
         self.error_output_file_node = self.generator.bld.bldnode.find_or_declare(error_output_file_path)
 
     def register_output_file(self, output_path, should_add_to_build):
-        # Nodes won't work with absolute paths, so we have to remove the build path from
-        # the given output file path. Given path is unicode, make it str to match Node.
-        output_path = os.path.relpath(str(output_path), start=self.generator.bld.bldnode.abspath())
+        # Store this output object for later use since we will need to be on the main thread for node access
+        self.generated_output.append({'output_path': output_path, 'should_add_to_build' : should_add_to_build})
 
-        with task_node_access_lock:
-            output_node = self.generator.bld.bldnode.find_node(output_path)
+    def process_generated_output(self):
+        # This should only ever be executed on the main thread! Node operations cannot happen during run()
+        for generated_output in self.generated_output:
+            output_path = generated_output['output_path']
+            should_add_to_build = generated_output['should_add_to_build']
 
-        if output_node is None:
-            Logs.error('az_code_gen: Unable to find generated file as node {}'.format(output_path))
+            # Nodes won't work with absolute paths, so we have to remove the build path from
+            # the given output file path. Given path is unicode, make it str to match Node.
+            output_path = os.path.relpath(str(output_path), start=self.generator.bld.bldnode.abspath())
+            with task_node_access_lock:
+                output_node = self.generator.bld.bldnode.find_node(output_path)
 
-        self.outputs.append(output_node)
+            if output_node is None:
+                raise Errors.WafError('[ERROR] az_code_gen: Unable to find generated file as node {}'.format(output_path))
 
-        if should_add_to_build:
-            # Add to persistent link list
-            self.azcg_append_unique('link_inputs', output_node)
-            # Perform actual add to link task
-            self.add_link_task(output_node)
+            self.outputs.append(output_node)
+
+            if should_add_to_build:
+                # Add to persistent link list
+                self.azcg_append_unique('link_inputs', output_node)
+                # Perform actual add to link task
+                self.add_link_task(output_node)
 
     def register_dependency_file(self, path):
-        if not path.endswith('NUL'):
-            self.azcg_headers.append(path)
+        if not (path.endswith('NUL') or path.endswith('null')):
+            self.registered_dependencies.append(path)
 
     def add_link_task(self, node_to_link):
         # Using modified version of example here:
@@ -318,10 +330,9 @@ class az_code_gen(Task.Task):
         try:
             task_hook = self.generator.get_hook(node_to_link)
         except Errors.WafError:
-            Logs.error(
-                'az_code_gen: Created file {} marked for "should add to build" '
+            raise Errors.WafError(
+                '[ERROR] az_code_gen: Created file {} marked for "should add to build" '
                 'is not buildable.'.format(node_to_link.path_from(self.generator.bldnode)))
-            return
 
         created_task = task_hook(self.generator, node_to_link)
 
@@ -340,6 +351,8 @@ class az_code_gen(Task.Task):
                 created_task.env.append_unique('CXXFLAGS', pdb_cxxflag)
         
         link_task = getattr(self.generator, 'link_task', None)
+        if not link_task:
+            link_task = getattr(self.bld, 'monolithic_link_task', None)
         if link_task:
             link_task.set_run_after(created_task)  # Compile our .cpp before we link.
 
@@ -351,19 +364,23 @@ class az_code_gen(Task.Task):
 
                 if(created_task.outputs[0] not in self.generator.task_gen_link_inputs):
                     self.generator.task_gen_link_inputs.append(created_task.outputs[0])
+                    self.generator.task_gen_link_inputs.sort(key=lambda x: x.name)
 
-                self.generator.task_gen_link_inputs.sort(key=lambda x: x.abspath())
-                for output in self.generator.task_gen_link_inputs:
-                    if output in link_task.inputs:
-                        link_task.inputs.remove(output)
-                for output in self.generator.task_gen_link_inputs:
-                    link_task.inputs.append(output)  # list.append is atomic (GIL).
+                    for output in self.generator.task_gen_link_inputs:
+                        try:
+                            idx = link_task.inputs.index(output)
+                            del link_task.inputs[idx:]
+                            break
+                        except:
+                            continue
+                    link_task.inputs += self.generator.task_gen_link_inputs
         else:
             # If we ever have a use case where link_task is inappropriate (non-C-family lang?),
             # then we should do "self.more_tasks.append(created_task)" in those cases.
-            Logs.error('az_code_gen: Created file {} marked for "should add to build" '
+            raise Errors.WafError('[ERROR] az_code_gen: Created file {} marked for "should add to build" '
                        'was not added to a link task.'.format(
-                           node_to_link.path_from(self.generator.bldnode)))
+                           node_to_link.path_from(self.generator.bld.bldnode)))
+        return True
 
     def propagate_azcg_incpaths(self, azcg_paths):
         """
@@ -390,6 +407,9 @@ class az_code_gen(Task.Task):
         """
         argument_file_path = 'CodeGenArguments/{}_{}.args'.format(self.inputs[0].name.replace(".", "_"), hexlify(self.uid()))
         argument_file_node = self.generator.bld.bldnode.find_or_declare(argument_file_path)
+        if os.name is 'nt' and len(argument_file_node.abspath()) >= 260:
+            Logs.error('Unable to write argument file for code gen, path will be unable to write due to MAX_PATH limit at 260 characters. Please use a shorter root path.  Length: {} - Path: {}'.format(len(argument_file_node.abspath()), argument_file_node.abspath()))
+            return False, ''
         try:
             argument_file_node.write('\n'.join(self.argument_list))
         except:
@@ -398,23 +418,37 @@ class az_code_gen(Task.Task):
             return False, ''
         return True, argument_file_node.abspath()
 
+    def handle_code_generator_output_errors(self, code_gen_output):
+        try:
+            json_object = json.loads(code_gen_output)
+            for output_object in json_object:
+                if code_generator_verbose and output_object['type'] == 'info':
+                    Logs.debug('az_code_gen: {}'.format(output_object['info']))
+                if output_object['type'] == 'error':
+                    Logs.error('{} - az_code_gen task error'.format(output_object['error']))
+        except ValueError as value_error:
+            # If we get output that isn't JSON, it means Clang errored before
+            # the code generator gained control. Likely invalid commandline arguments.
+            raise Errors.WafError('az_code_gen: Failed to json.loads output with error "{}" - output string was:\n{}'.format(str(value_error), code_gen_output))
+
     def handle_code_generator_output(self, code_gen_output):
         """
         Decode json object and process return from generator
         :param code_gen_output: json string
         :return True on success, False on failure
         """
-
         try:
             json_object = json.loads(code_gen_output)
+            errors_reported = False
             for output_object in json_object:
                 if output_object['type'] == 'info':
                     output = output_object['info']
-                    Logs.debug(output)
+                    Logs.debug('az_code_gen: {}'.format(output))
                     if (self.profile and output.startswith('Profile')):
                         Logs.debug('az_code_gen: ' + output)
                 elif output_object['type'] == 'error':
-                    Logs.error(output_object['error'])
+                    Logs.error('{} - az_code_gen task error'.format(output_object['error']))
+                    errors_reported = True
                 elif output_object['type'] == 'generated_file':
                     self.register_output_file(output_object['file_name'],
                                               output_object['should_be_added_to_build'])
@@ -422,11 +456,20 @@ class az_code_gen(Task.Task):
                     self.register_dependency_file(str(output_object['file_name']))
                 else:
                     Logs.error('az_code_gen: Unknown output json type returned from Code Generator. Type is: {} - Raw output: {}'.format(output_object['type'], code_gen_output))
-                    return False
+                    errors_reported = True
 
-            # Add output folder to include path of the task_gen and store path off to pickle for future runs
+            # Fail the task if errors were reported
+            if errors_reported:
+                return False
+
+            # Add local folder of each output node to include path of the task_gen and store path off to pickle for future runs
             azcg_paths = self.azcg_get('AZCG_INCPATHS', [])
             for output_node in self.outputs:
+                # This check is here to ensure that tasks that were written out that had None outputs will be skipped.
+                # The origin of this problem should have been solved by returning after the None checking during register output
+                if output_node is None:
+                    Logs.warn('az_code_gen: Task output has a None entry, skipping!')
+                    continue
                 output_path = output_node.parent.abspath()
                 if output_path not in azcg_paths:
                     azcg_paths.append(output_path)
@@ -479,52 +522,31 @@ class az_code_gen(Task.Task):
         host = Utils.unversioned_sys_platform()
         if (host == 'win_x64') or (host == 'win32'):
             if len(command_string) >= command_length_when_windows_fails_to_execute:
-                Logs.warn(
-                    "az_code_gen: Unable to execute code generator due to command length being "
-                    "too long")
-                return False
+                raise Errors.WafError("az_code_gen: Unable to execute code generator due to command length being too long")
 
         try:
             (code_gen_output, code_gen_error_output) = self.generator.bld.cmd_and_log(
-                command_string, output=BOTH, quiet=BOTH)
+                command_string, output=BOTH, quiet=BOTH, shell=False)
             if code_gen_error_output and not code_gen_error_output.isspace():
-                Logs.error('az_code_gen: Code generator output to stderr even though it indicated success. Output:\n{}'.format(code_gen_error_output))
-                return False
+                Logs.warn('az_code_gen: Code generator output to stderr even though it indicated success. Output was:{}\n'.format(str(code_gen_error_output)))
         except Errors.WafError as e:
-            Logs.error('az_code_gen: Code generator execution failed! Output:\n{}'.format(e.stderr))
-            self.handle_code_generator_output(e.stdout)
+            if hasattr(e, 'stdout') and e.stdout:
+                self.handle_code_generator_output_errors(e.stdout)
+            if hasattr(e, 'stderr') and e.stderr:
+                Logs.error('az_code_gen: Utility execution produced stderr output: {}'.format(e.stderr))
             if self.error_output_file_node:
                 self.print_error_output()
-            return False
+            return e.returncode
 
-        if not self.handle_code_generator_output(code_gen_output):
-            return False
+        self.handle_code_generator_output(code_gen_output)
+        return 0
 
-        return True
-
-    def run_code_generator_at_syntax(self):
+    def run_code_generator(self):
         """
         Run the code generator using at syntax for all accumulated arguments
         :return: True on success, False on failure
         """
-        status, argument_file = self.write_argument_list_to_file()
-        if status:
-            return self.exec_code_generator(' \"@' + argument_file + '\"')
-        return False
-
-    def run_code_generator_directly(self):
-        """
-        Run the code generator using a direct command line (unless too big for host support,
-        then fallback to @ syntax)
-        :return: True on success, False on failure
-        """
-        argument_string = " ".join(self.argument_list)
-        if not self.exec_code_generator(argument_string):
-            Logs.warn(
-                "az_code_gen: Unable to run code generator directly. "
-                "Falling back to @ syntax invocation")
-            return self.run_code_generator_at_syntax()
-        return True
+        return self.exec_code_generator(' \"@' + self.argument_file + '\"')
 
     def prepare_task(self):
         # Create the directory if it doesn't already exist
@@ -578,11 +600,18 @@ class az_code_gen(Task.Task):
         for include in self.includes:
             self.add_argument('-include-path "{}"'.format(clean_path(include.abspath())))
 
-        for define in self.defines:
-            self.add_argument('-define "{}"'.format(define))
+        for include_path in self.env['CODE_GENERATOR_INCLUDE_PATHS']:
+            self.add_argument('-include-path "{}"'.format(pypath(include_path)))
 
-        for code_generator_script in self.scripts:
-            self.add_argument('-codegen-script "{}"'.format(clean_path(self.path.find_or_declare(code_generator_script).get_src().abspath())))
+        if 'CODE_GENERATOR_CLANG_INCLUDE_PATH' in self.env:
+            for clang_include_path in self.env['CODE_GENERATOR_CLANG_INCLUDE_PATH']:
+                self.add_argument('-include-path "{}"'.format(clean_path(clang_include_path)))
+
+        for define in self.defines:
+            self.add_argument('-define {}'.format(quote(define)))
+
+        for script_node in self.script_nodes:
+            self.add_argument('-codegen-script "{}"'.format(clean_path(script_node.get_src().abspath())))
 
         # Include file that contains code generation tag definitions
         codegen_tags = self.env['CODE_GENERATOR_TAGS']
@@ -596,19 +625,33 @@ class az_code_gen(Task.Task):
         if 'CLANG_SEARCH_PATHS' in self.env:
             self.add_argument('-resource-dir "{}"'.format(self.env['CLANG_SEARCH_PATHS']['libraries'][0]))
 
+        if 'ISYSROOT' in self.env:
+            self.add_argument('-isysroot "{}"'.format(self.env['ISYSROOT']))
+
+        if 'ANDROID' in self.defines:
+            self.add_argument('-is-android-build')
+            for flag in self.env['CXXFLAGS']:
+                if flag.startswith('--gcc-toolchain='):
+                    gcc_toolchain = flag.split('=', 2)
+                    self.add_argument('-android-toolchain "{}"'.format(clean_path(gcc_toolchain[1])))
+                    continue
+                if flag.startswith('--target='):
+                    android_target = flag.split('=', 2)
+                    self.add_argument('-android-target "{}"'.format(clean_path(android_target[1])))
+                    continue
+                if flag.startswith('--sysroot='):
+                    android_sysroot = flag.split('=', 2)
+                    self.add_argument('-android-sysroot "{}"'.format(clean_path(android_sysroot[1])))
+                    continue
+
+        status, self.argument_file = self.write_argument_list_to_file()
+        if not status:
+            raise Errors.WafError('[ERROR] az_code_gen task creation failed')
 
     def run(self):
         # clear link dependencies
         self.azcg_set('link_inputs', [])
-
-        if code_generator_invoke_command_line_directly:
-            success = self.run_code_generator_directly()
-        else:
-            success = self.run_code_generator_at_syntax()
-
-        if success:
-            return 0
-        return 1
+        return self.run_code_generator()
 
     def scan(self):
         """
@@ -627,10 +670,11 @@ class az_code_gen(Task.Task):
             outputs = self.azcg_get('AZCG_OUTPUTS', [])
             for output_node in outputs:
                 # If you can't find the file, running is required
-                if not os.path.isfile(output_node.abspath()):
+                output_path = output_node.abspath()
+                if not os.path.isfile(output_path):
                     Logs.debug(
                         'az_code_gen: Running task for file {}, output file {} not found.'.format(
-                            self.inputs[0].abspath(), output_node.abspath()))
+                            self.inputs[0].abspath(), output_path))
                     return Task.RUN_ME
 
             # Also add the raw output path
@@ -642,13 +686,14 @@ class az_code_gen(Task.Task):
 
             # link_inputs is a list of nodes that need to be added to the link each time
             for link_node in self.azcg_get('link_inputs', []):
-                self.add_link_task(link_node)
+                if not self.add_link_task(link_node):
+                    return Task.EXCEPTION
 
             self.outputs = outputs
             self.generator.source += outputs
         return ret
 
-    def post_run(self):
+    def get_node_from_dependency_path(self, path):
         # collect headers and add them to deps
         # this is ported from msvcdeps.py
         try:
@@ -665,38 +710,46 @@ class az_code_gen(Task.Task):
         correct_case_path_len = len(correct_case_path)
         correct_case_path_norm = os.path.normcase(correct_case_path)
 
+        if os.path.isabs(path):
+            if Utils.is_win32:
+                # Force drive letter to match conventions of main source tree
+                drive, tail = os.path.splitdrive(path)
+
+                if os.path.normcase(path[:correct_case_path_len]) == correct_case_path_norm:
+                    # Path is in the sandbox, force it to be correct.  MSVC sometimes returns a lowercase path.
+                    path = correct_case_path + path[correct_case_path_len:]
+                else:
+                    # Check the drive letter
+                    if lowercase and (drive != drive.lower()):
+                        path = drive.lower() + tail
+                    elif (not lowercase) and (drive != drive.upper()):
+                        path = drive.upper() + tail
+            return path_to_node(bld.root, path, cached_nodes)
+        else:
+            base_node = bld.bldnode
+            # when calling find_resource, make sure the path does not begin by '..'
+            path = [k for k in Utils.split_path(path) if k and k != '.']
+            while path[0] == '..':
+                path = path[1:]
+                base_node = base_node.parent
+
+            return path_to_node(base_node, path, cached_nodes)
+
+    def post_run(self):
+        # Register output files generated by the code gen execution
+        self.process_generated_output()
+
+        bld = self.generator.bld
         dep_node = None
         resolved_nodes = []
-        for path in self.azcg_headers:
-            if os.path.isabs(path):
-                if Utils.is_win32:
-                    # Force drive letter to match conventions of main source tree
-                    drive, tail = os.path.splitdrive(path)
 
-                    if os.path.normcase(path[:correct_case_path_len]) == correct_case_path_norm:
-                        # Path is in the sandbox, force it to be correct.  MSVC sometimes returns a lowercase path.
-                        path = correct_case_path + path[correct_case_path_len:]
-                    else:
-                        # Check the drive letter
-                        if lowercase and (drive != drive.lower()):
-                            path = drive.lower() + tail
-                        elif (not lowercase) and (drive != drive.upper()):
-                            path = drive.upper() + tail
-                dep_node = path_to_node(bld.root, path, cached_nodes)
-            else:
-                base_node = bld.bldnode
-                # when calling find_resource, make sure the path does not begin by '..'
-                path = [k for k in Utils.split_path(path) if k and k != '.']
-                while path[0] == '..':
-                    path = path[1:]
-                    base_node = base_node.parent
-
-                dep_node = path_to_node(base_node, path, cached_nodes)
+        # Resolve registered dependencies we got into dependency nodes
+        for path in self.registered_dependencies:
+            dep_node = self.get_node_from_dependency_path(path)
 
             if dep_node:
                 if not (dep_node.is_child_of(bld.srcnode) or dep_node.is_child_of(bld.bldnode)):
                     # System library
-                    Logs.debug('az_code_gen: Ignoring system include %r' % dep_node)
                     continue
 
                 if dep_node in self.inputs:
@@ -710,6 +763,10 @@ class az_code_gen(Task.Task):
                 resolved_nodes.append(dep_node)
             else:
                 Logs.error('az_code_gen: Unable to find dependency file as node: {}'.format(path))
+
+        # Add azcg_deps and script nodes as dependencies
+        for dep_node in itertools.chain(self.azcg_deps, self.script_nodes):
+            resolved_nodes.append(dep_node)
 
         bld.node_deps[self.uid()] = resolved_nodes
 

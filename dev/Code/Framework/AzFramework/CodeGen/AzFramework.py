@@ -13,7 +13,10 @@ from AzClassHeader import AzClassHeader_Driver
 from AzClassInline import AzClassInline_Driver
 from AzComponentCpp import AzComponentCPP_Driver
 from AzReflectionCpp import AzReflectionCPP_Driver
+from AzEBusInline import AZEBusInline_Driver
+from AzEBusHeader import AzEBusHeader_Driver
+from AzEBusCpp import AzEBusCPP_Driver
 
 # Factory function - called from launcher
 def create_drivers(env):
-    return [AzClassHeader_Driver(env), AzClassInline_Driver(env), AzComponentCPP_Driver(env), AzReflectionCPP_Driver(env)]
+    return [AZEBusInline_Driver(env), AzEBusHeader_Driver(env), AzEBusCPP_Driver(env), AzClassHeader_Driver(env), AzClassInline_Driver(env), AzComponentCPP_Driver(env), AzReflectionCPP_Driver(env)]

@@ -4028,12 +4028,20 @@ int CScriptBind_AI::FindObjectOfType(IFunctionHandler* pH)
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SCRIPTBIND_AI_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(ScriptBind_AI_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ScriptBind_AI_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ScriptBind_AI_cpp_provo.inl"
+    #endif
 #endif
             std::random_shuffle(randomObjs.begin(), randomObjs.end());
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SCRIPTBIND_AI_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(ScriptBind_AI_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ScriptBind_AI_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ScriptBind_AI_cpp_provo.inl"
+    #endif
 #endif
             pFoundObject = randomObjs[0];
         }

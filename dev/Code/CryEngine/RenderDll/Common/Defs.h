@@ -18,7 +18,11 @@
 #include <math.h>
 #include <time.h>
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Defs_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Defs_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Defs_h_provo.inl"
+    #endif
 #endif
 #if defined(DEFS_H_NO_SIGNAL_H)
 #undef DEFS_H_NO_SIGNAL_H

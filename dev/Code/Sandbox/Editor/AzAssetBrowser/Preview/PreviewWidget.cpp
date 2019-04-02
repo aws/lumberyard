@@ -18,6 +18,7 @@
 
 #include <AzCore/Asset/AssetTypeInfoBus.h>
 
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserEntry.h>
 #include <AzToolsFramework/AssetBrowser/EBusFindAssetTypeByName.h>
 
@@ -77,22 +78,8 @@ void PreviewWidget::Display(const AzToolsFramework::AssetBrowser::AssetBrowserEn
     {
     case AssetBrowserEntry::AssetEntryType::Source:
     {
-        AZStd::vector<const ProductAssetBrowserEntry*> products;
-        entry->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
-        if (products.empty())
-        {
-            Clear();
-        }
-        else
-        {
-            for (auto* product : products)
-            {
-                if (DisplayProduct(product))
-                {
-                    break;
-                }
-            }
-        }
+        const SourceAssetBrowserEntry* sourceEntry = azrtti_cast<const SourceAssetBrowserEntry*>(entry);
+        DisplaySource(sourceEntry);
         break;
     }
     case AssetBrowserEntry::AssetEntryType::Product:
@@ -114,59 +101,7 @@ bool PreviewWidget::DisplayProduct(const AzToolsFramework::AssetBrowser::Product
 
     m_fileinfo = QString::fromUtf8(product->GetName().c_str());
 
-    AZ::u64 fileSizeResult = 0;
-    if (AZ::IO::FileIOBase::GetInstance()->Size(product->GetRelativePath().c_str(), fileSizeResult))
-    {
-#if defined(AZ_PLATFORM_APPLE)
-        static const double kb = 1000.0;
-        static const double mb = kb * 1000.0;
-        static const double gb = mb * 1000.0;
-
-        if (fileSizeResult < kb)
-        {
-            m_fileinfo += tr("\r\nFile Size: %1B").arg(fileSizeResult);
-        }
-        else if (fileSizeResult < mb)
-        {
-            double size = fileSizeResult / kb;
-            m_fileinfo += tr("\r\nFile Size: %1kB").arg(size, 0, 'f', 2);
-        }
-        else if (fileSizeResult < gb)
-        {
-            double size = fileSizeResult / mb;
-            m_fileinfo += tr("\r\nFile Size: %1mB").arg(size, 0, 'f', 2);
-        }
-        else
-        {
-            double size = fileSizeResult / gb;
-            m_fileinfo += tr("\r\nFile Size: %1gB").arg(size, 0, 'f', 2);
-        }
-#else
-        static const double kb = 1024.0;
-        static const double mb = kb * 1024.0;
-        static const double gb = mb * 1024.0;
-
-        if (fileSizeResult < kb)
-        {
-            m_fileinfo += tr("\r\nFile Size: %1B").arg(fileSizeResult);
-        }
-        else if (fileSizeResult < mb)
-        {
-            double size = fileSizeResult / kb;
-            m_fileinfo += tr("\r\nFile Size: %1KB").arg(size, 0, 'f', 2);
-        }
-        else if (fileSizeResult < gb)
-        {
-            double size = fileSizeResult / mb;
-            m_fileinfo += tr("\r\nFile Size: %1MB").arg(size, 0, 'f', 2);
-        }
-        else
-        {
-            double size = fileSizeResult / gb;
-            m_fileinfo += tr("\r\nFile Size: %1GB").arg(size, 0, 'f', 2);
-        }
-#endif //AZ_PLATFORM_APPLE
-    }
+    m_fileinfo += GetFileSize(product->GetRelativePath().c_str());
 
     EBusFindAssetTypeByName meshAssetTypeResult("Static Mesh");
     AZ::AssetTypeInfoBus::BroadcastResult(meshAssetTypeResult, &AZ::AssetTypeInfo::GetAssetType);
@@ -199,45 +134,201 @@ bool PreviewWidget::DisplayProduct(const AzToolsFramework::AssetBrowser::Product
 
     if (product->GetAssetType() == textureAssetTypeResult.GetAssetType())
     {
-        m_ui->m_modelPreviewWidget->hide();
-        m_ui->m_texturePreviewWidget->show();
-        m_ui->m_noPreviewWidget->hide();
-
-        bool foundPixmap = false;
-        if (!AZ::IO::FileIOBase::GetInstance()->IsDirectory(filename.toUtf8().data()))
+        // Get full product file path
+        const char* assetCachePath = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
+        AZStd::string productFullPath;
+        AzFramework::StringFunc::Path::Join(assetCachePath, product->GetRelativePath().c_str(), productFullPath);
+        if (AZ::IO::FileIOBase::GetInstance()->Exists(productFullPath.c_str()))
         {
-            QString strLoadFilename = Path::GamePathToFullPath(filename);
-            {                // scoped to control how long the file is open
-                CCryFile file;
-                if (!file.Open(strLoadFilename.toUtf8().data(), "rb"))
-                {
-                    // try the relative path instead as a backup
-                    strLoadFilename = filename;
-                }
-            }
-
-            if (CImageUtil::LoadImage(strLoadFilename, m_previewImageSource))
-            {
-                m_fileinfo += QStringLiteral("\r\n%1x%2\r\n%3")
-                        .arg(m_previewImageSource.GetWidth())
-                        .arg(m_previewImageSource.GetHeight())
-                        .arg(m_previewImageSource.GetFormatDescription());
-
-                UpdateTextureType();
-                foundPixmap = true;
-            }
+            // Try to display it in modern dds image loader, if no one exists, use the legacy image loader
+            bool foundPixmap = DisplayTextureProductModern(productFullPath.c_str());
+            return foundPixmap ? foundPixmap : DisplayTextureLegacy(productFullPath.c_str());
         }
-        if (!foundPixmap)
-        {
-            m_ui->m_previewImageCtrl->setPixmap(QPixmap());
+        else
+        {   
+            // If we cannot find the product file, means it's not treated as an asset, display its source
+            return DisplayTextureLegacy(product->GetFullPath().c_str());
         }
-        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
-        updateGeometry();
-        return true;
     }
 
     Clear();
     return false;
+}
+
+void PreviewWidget::DisplaySource(const AzToolsFramework::AssetBrowser::SourceAssetBrowserEntry* source)
+{
+    using namespace AzToolsFramework::AssetBrowser;
+
+    EBusFindAssetTypeByName textureAssetType("Texture");
+    AZ::AssetTypeInfoBus::BroadcastResult(textureAssetType, &AZ::AssetTypeInfo::GetAssetType);
+    
+    if (source->GetPrimaryAssetType() == textureAssetType.GetAssetType())
+    {
+        m_ui->m_fileInfoCtrl->show();
+        m_fileinfo = QString::fromUtf8(source->GetName().c_str());
+        m_fileinfo += GetFileSize(source->GetFullPath().c_str());
+        const char* fullSourcePath = source->GetFullPath().c_str();
+        // If it's a source dds file, try to display it using modern way
+        if (AzFramework::StringFunc::Path::IsExtension(fullSourcePath, "dds", false))
+        {
+            if (DisplayTextureProductModern(fullSourcePath))
+            {
+                return;
+            }
+        }
+        DisplayTextureLegacy(source->GetFullPath().c_str());
+    }
+    else
+    {
+        AZStd::vector<const ProductAssetBrowserEntry*> products;
+        source->GetChildrenRecursively<ProductAssetBrowserEntry>(products);
+        if (products.empty())
+        {
+            Clear();
+        }
+        else
+        {
+            for (auto* product : products)
+            {
+                if (DisplayProduct(product))
+                {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+QString PreviewWidget::GetFileSize(const char* path)
+{
+    QString fileSizeStr;
+    AZ::u64 fileSizeResult = 0;
+    if (AZ::IO::FileIOBase::GetInstance()->Size(path, fileSizeResult))
+    {
+        static double kb = 1024.0f;
+        static double mb = kb * 1024.0;
+        static double gb = mb * 1024.0;
+
+        static QString byteStr = "B";
+        static QString kbStr = "KB";
+        static QString mbStr = "MB";
+        static QString gbStr = "GB";
+
+#if defined(AZ_PLATFORM_APPLE)
+        kb = 1000.0;
+        mb = kb * 1000.0;
+        gb = mb * 1000.0;
+
+        kbStr = "kB";
+        mbStr = "mB";
+        gbStr = "gB";
+#endif //AZ_PLATFORM_APPLE
+
+        if (fileSizeResult < kb)
+        {
+            fileSizeStr += tr("\r\nFile Size: %1%2").arg(QString::number(fileSizeResult), byteStr);
+        }
+        else if (fileSizeResult < mb)
+        {
+            double size = fileSizeResult / kb;
+            fileSizeStr += tr("\r\nFile Size: %1%2").arg(QString::number(size, 'f', 2), kbStr);
+        }
+        else if (fileSizeResult < gb)
+        {
+            double size = fileSizeResult / mb;
+            fileSizeStr += tr("\r\nFile Size: %1%2").arg(QString::number(size, 'f', 2), mbStr);
+        }
+        else
+        {
+            double size = fileSizeResult / gb;
+            fileSizeStr += tr("\r\nFile Size: %1%2").arg(QString::number(size, 'f', 2), gbStr);
+        }
+    }
+    return fileSizeStr;
+}
+
+bool PreviewWidget::DisplayTextureLegacy(const char* fullImagePath)
+{
+    m_ui->m_modelPreviewWidget->hide();
+    m_ui->m_texturePreviewWidget->show();
+    m_ui->m_noPreviewWidget->hide();
+
+    bool foundPixmap = false;
+    if (!AZ::IO::FileIOBase::GetInstance()->IsDirectory(fullImagePath))
+    {
+        QString strLoadFilename = QString(fullImagePath);
+        if (CImageUtil::LoadImage(strLoadFilename, m_previewImageSource))
+        {
+            m_fileinfo += QStringLiteral("\r\n%1x%2\r\n%3")
+                .arg(m_previewImageSource.GetWidth())
+                .arg(m_previewImageSource.GetHeight())
+                .arg(m_previewImageSource.GetFormatDescription());
+            
+            m_fileinfoAlphaTexture = m_fileinfo;
+            UpdateTextureType();
+            foundPixmap = true;
+        }
+    }
+
+    if (!foundPixmap)
+    {
+        m_ui->m_previewImageCtrl->setPixmap(QPixmap());
+        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
+    }
+
+    updateGeometry();
+
+    return foundPixmap;
+}
+
+bool PreviewWidget::DisplayTextureProductModern(const char* fullProductImagePath)
+{
+    m_ui->m_modelPreviewWidget->hide();
+    m_ui->m_texturePreviewWidget->show();
+    m_ui->m_noPreviewWidget->hide();
+
+    bool foundPixmap = false;
+    QImage previewImage;
+    AZStd::string productInfo;
+    AZStd::string productAlphaInfo;
+    AzToolsFramework::AssetBrowser::AssetBrowserTexturePreviewRequestsBus::BroadcastResult(foundPixmap, &AzToolsFramework::AssetBrowser::AssetBrowserTexturePreviewRequests::GetProductTexturePreview, fullProductImagePath, previewImage, productInfo, productAlphaInfo);
+
+    if (foundPixmap)
+    {
+        QPixmap pix = QPixmap::fromImage(previewImage);
+        m_ui->m_previewImageCtrl->setPixmap(pix);
+        m_ui->m_previewImageCtrl->updateGeometry();
+        CImageUtil::QImageToImage(previewImage, m_previewImageSource);
+
+        m_fileinfo += QStringLiteral("\r\n%1x%2\r\n%3")
+            .arg(m_previewImageSource.GetWidth())
+            .arg(m_previewImageSource.GetHeight())
+            .arg(m_previewImageSource.GetFormatDescription());
+
+        m_fileinfoAlphaTexture = m_fileinfo;
+        
+        m_fileinfo += QString(productInfo.c_str());
+        if (productAlphaInfo.empty())
+        {   
+            // If there is no separate info for alpha, use the image info
+            m_fileinfoAlphaTexture += QString(productInfo.c_str());
+        }
+        else
+        {
+            m_fileinfoAlphaTexture += QString(productAlphaInfo.c_str());
+        }
+        
+
+        UpdateTextureType();
+    }
+    else
+    {
+        m_ui->m_previewImageCtrl->setPixmap(QPixmap());
+        m_ui->m_fileInfoCtrl->setText(WordWrap(m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
+    }
+
+    updateGeometry();
+    return foundPixmap;
 }
 
 void PreviewWidget::UpdateTextureType()
@@ -274,6 +365,7 @@ void PreviewWidget::UpdateTextureType()
     QPixmap qtPixmap = QPixmap::fromImage(
             QImage(reinterpret_cast<uchar*>(m_previewImageUpdated.GetData()), m_previewImageUpdated.GetWidth(), m_previewImageUpdated.GetHeight(), QImage::Format_ARGB32));
     m_ui->m_previewImageCtrl->setPixmap(qtPixmap);
+    m_ui->m_fileInfoCtrl->setText(WordWrap(m_textureType == TextureType::Alpha? m_fileinfoAlphaTexture: m_fileinfo, m_ui->m_fileInfoCtrl->width() / CHAR_WIDTH));
     m_ui->m_previewImageCtrl->updateGeometry();
 }
 

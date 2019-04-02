@@ -90,10 +90,14 @@ public:
             // Note - CryAssertTrace doesn't actually print any info to logging
             // it just stores the message internally for the message box in CryAssert to use
             CryAssertTrace("%s", message);
-            if (CryAssert("Assertion failed", fileName, line, ignore))
+            if (CryAssert("Assertion failed", fileName, line, ignore) || Trace::IsDebuggerPresent())
             {
                 Trace::Break();
             }
+        }
+        else
+        {
+            CryLogAlways("%s", message);
         }
 
         return true; // suppress default AzCore behavior.

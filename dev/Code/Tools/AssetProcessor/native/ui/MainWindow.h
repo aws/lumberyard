@@ -47,6 +47,8 @@ public Q_SLOTS:
     void SaveLogPanelState();
     void OnAssetProcessorStatusChanged(const AssetProcessor::AssetProcessorStatusEntry entry);
 
+    void OnRescanButtonClicked();
+
 private:
     Ui::MainWindow* ui;
     GUIApplicationManager* m_guiApplicationManager;

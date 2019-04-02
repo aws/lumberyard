@@ -30,6 +30,8 @@
 
 #include <QMessageBox>
 
+#include <QMenu>
+
 namespace AzToolsFramework
 {
     namespace Components
@@ -100,7 +102,7 @@ namespace AzToolsFramework
                                     }
 
                                     // Our old slice root Id is now our parent Id.
-                                    // Note - this could be ourself, but we can't know yet, so it gets fixed up in Init().
+                                    // Note - this could be ourself, but we can't know yet, so it gets fixed up by EditorEntityFixupComponent.
                                     parentElement.Convert<AZ::EntityId>(context);
                                     parentElement.SetData(context, sliceRootId);
 
@@ -170,14 +172,6 @@ namespace AzToolsFramework
 
         void TransformComponent::Init()
         {
-            // Required only after an up-conversion from version < 6 to >= 6.
-            // We used to store slice root entity Id, which could be our own Id.
-            // Since we don't have an entity association during data conversion,
-            // we have to fix up this case post-entity-assignment.
-            if (m_parentEntityId == GetEntityId())
-            {
-                m_parentEntityId = AZ::EntityId();
-            }
             
             //Ensure that when we init that our previous/parent match
             m_previousParentEntityId = m_parentEntityId;
@@ -193,7 +187,7 @@ namespace AzToolsFramework
             if (m_parentEntityId.IsValid())
             {
                 AZ::EntityBus::Handler::BusConnect(m_parentEntityId);
- 
+
                 if (m_parentEntityId != m_previousParentEntityId)
                 {
                     EBUS_EVENT(AzToolsFramework::ToolsApplicationEvents::Bus, EntityParentChanged, GetEntityId(), m_parentEntityId, m_previousParentEntityId);
@@ -237,6 +231,22 @@ namespace AzToolsFramework
                 UpdateCachedWorldTransform();
 
                 EBUS_EVENT_ID(GetEntityId(), AZ::TransformNotificationBus, OnTransformChanged, localTM, worldTM);
+            }
+        }
+
+        void TransformComponent::OnTransformChanged()
+        {
+            if (!m_suppressTransformChangedEvent)
+            {
+                auto parent = GetParentTransformComponent();
+                if (parent)
+                {
+                    OnTransformChanged(parent->GetLocalTM(), parent->GetWorldTM());
+                }
+                else
+                {
+                    OnTransformChanged(AZ::Transform::Identity(), AZ::Transform::Identity());
+                }
             }
         }
 
@@ -330,6 +340,11 @@ namespace AzToolsFramework
             m_editorTransform = dest;
 
             TransformChanged();
+        }
+
+        bool TransformComponent::IsTransformLocked()
+        {
+            return m_editorTransform.m_locked;
         }
 
         const AZ::Transform& TransformComponent::GetWorldTM()
@@ -756,6 +771,7 @@ namespace AzToolsFramework
                 return;
             }
 
+
             // Prevent this from parenting to its own child. Check if this entity is in the new parent's hierarchy.
             auto potentialParentTransformComponent = GetTransformComponent(parentId);
             if (potentialParentTransformComponent && potentialParentTransformComponent->IsEntityInHierarchy(GetEntityId()))
@@ -764,6 +780,19 @@ namespace AzToolsFramework
             }
 
             auto oldParentId = m_parentEntityId;
+
+            bool canChangeParent = true;
+            AZ::TransformNotificationBus::Event(
+                GetEntityId(),
+                &AZ::TransformNotificationBus::Events::CanParentChange,
+                canChangeParent,
+                oldParentId,
+                parentId);
+
+            if (!canChangeParent)
+            {
+                return;
+            }
 
             // SetLocalTM calls below can confuse listeners, because transforms are mathematically
             // detached before the ParentChanged events are dispatched. Suppress TransformChanged()
@@ -1124,6 +1153,12 @@ namespace AzToolsFramework
             incompatible.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
+        void TransformComponent::PasteOverComponent(const TransformComponent* sourceComponent, TransformComponent* destinationComponent)
+        {
+            // When pasting from another transform component, just grab the world transform as that's the part the user is intuitively expecting to bring over
+            destinationComponent->SetWorldTM(const_cast<TransformComponent*>(sourceComponent)->GetWorldTM());
+        }
+
         void TransformComponent::Reflect(AZ::ReflectContext* context)
         {
             // reflect data for script, serialization, editing..
@@ -1133,6 +1168,7 @@ namespace AzToolsFramework
                     Field("Translate", &EditorTransform::m_translate)->
                     Field("Rotate", &EditorTransform::m_rotate)->
                     Field("Scale", &EditorTransform::m_scale)->
+                    Field("Locked", &EditorTransform::m_locked)->
                     Version(2);
 
                 serializeContext->Class<Components::TransformComponent, EditorComponentBase>()->
@@ -1195,13 +1231,16 @@ namespace AzToolsFramework
                             Attribute(AZ::Edit::Attributes::Min, -AZ::Constants::MaxFloatBeforePrecisionLoss)->
                             Attribute(AZ::Edit::Attributes::Max, AZ::Constants::MaxFloatBeforePrecisionLoss)->
                             Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushableOnSliceRoot)->
+                            Attribute(AZ::Edit::Attributes::ReadOnly, &EditorTransform::m_locked)->
                         DataElement(0, &EditorTransform::m_rotate, "Rotate", "Local Rotation (Relative to parent) in degrees.")->
                             Attribute(AZ::Edit::Attributes::Step, 0.1f)->
                             Attribute(AZ::Edit::Attributes::Suffix, " deg")->
+                            Attribute(AZ::Edit::Attributes::ReadOnly, &EditorTransform::m_locked)->
                             Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushableOnSliceRoot)->
                         DataElement(0, &EditorTransform::m_scale, "Scale", "Local Scale")->
                             Attribute(AZ::Edit::Attributes::Step, 0.1f)->
-                            Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                            Attribute(AZ::Edit::Attributes::Min, 0.01f)->
+                            Attribute(AZ::Edit::Attributes::ReadOnly, &EditorTransform::m_locked)
                         ;
                 }
             }
@@ -1211,6 +1250,43 @@ namespace AzToolsFramework
             {
                 // string-name differs from class-name to avoid collisions with the other "TransformComponent" (AzFramework::TransformComponent).
                 behaviorContext->Class<TransformComponent>("EditorTransformBus")->RequestBus("TransformBus");
+            }
+        }
+
+        void TransformComponent::AddContextMenuActions(QMenu* menu)
+        {
+            if (menu)
+            {
+                if (!menu->actions().empty())
+                {
+                    menu->addSeparator();
+                }
+
+                QAction* resetAction = menu->addAction(QObject::tr("Reset transform values"), [this]()
+                {
+                    {
+                        AzToolsFramework::ScopedUndoBatch undo("Reset transform values");
+                        m_editorTransform.m_translate = AZ::Vector3::CreateZero();
+                        m_editorTransform.m_scale = AZ::Vector3::CreateOne();
+                        m_editorTransform.m_rotate = AZ::Vector3::CreateZero();
+                        OnTransformChanged();
+                        SetDirty();
+                    }
+
+                    AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_Values);
+                });
+                resetAction->setEnabled(!m_editorTransform.m_locked);
+
+                QString lockString = m_editorTransform.m_locked ? "Unlock transform values" : "Lock transform values";
+                menu->addAction(lockString, [this, lockString]()
+                {
+                    {
+                        AzToolsFramework::ScopedUndoBatch undo(lockString.toUtf8().data());
+                        m_editorTransform.m_locked = !m_editorTransform.m_locked;
+                        SetDirty();
+                    }
+                    AzToolsFramework::ToolsApplicationEvents::Bus::Broadcast(&AzToolsFramework::ToolsApplicationEvents::InvalidatePropertyDisplay, AzToolsFramework::Refresh_AttributesAndValues);
+                });
             }
         }
     }

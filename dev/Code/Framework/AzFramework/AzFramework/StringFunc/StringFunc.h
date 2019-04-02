@@ -88,6 +88,14 @@ namespace AzFramework
 {
     namespace StringFunc
     {
+        /*! Checks if the string begins with the given prefix
+        */
+        bool StartsWith(AZStd::string_view searchValue, AZStd::string_view suffixValue, bool bCaseSensitive = false);
+
+        /*! Checks if the string ends with the given suffix
+        */
+        bool EndsWith(AZStd::string_view searchValue, AZStd::string_view suffixValue, bool bCaseSensitive = false);
+
         //! Equal
         /*! Equality for non AZStd::strings.
         Ease of use to compare c-strings with case sensitivity.

@@ -103,6 +103,26 @@ namespace
         }
     }
 
+    void AssertDrawBatchTextNumNewlines(
+        const AZStd::list<UiTextComponent::DrawBatch>& drawBatches,
+        const int numNewlines)
+    {
+        int numNewlinesFound = 0;
+        auto drawBatchIt = drawBatches.begin();
+        for (;
+            drawBatchIt != drawBatches.end();
+            ++drawBatchIt)
+        {
+            const UiTextComponent::DrawBatch& drawBatch = *drawBatchIt;
+            numNewlinesFound += static_cast<int>(AZStd::count_if(drawBatch.text.begin(), drawBatch.text.end(), 
+            [](char c) -> bool
+            {
+                return c == '\n';
+            }));
+        }
+        AZ_Assert(numNewlines == numNewlinesFound, "Test failed");
+    }
+
     FontFamilyPtr FontFamilyLoad(const char* fontFamilyFilename)
     {
         FontFamilyPtr fontFamily = gEnv->pCryFont->GetFontFamily(fontFamilyFilename);
@@ -155,113 +175,17 @@ namespace
         
     }
 
-    void MarkupEscapingTests()
-    {
-        // One char un-escaping
-        {
-            const AZStd::string escaped("&amp;");
-            const AZStd::string unescaped("&");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&lt;");
-            const AZStd::string unescaped("<");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&gt;");
-            const AZStd::string unescaped(">");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&#37;");
-            const AZStd::string unescaped("%");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-
-        // Multi-char unescaping
-        {
-            const AZStd::string escaped("&amp;&lt;&gt;&#37;");
-            const AZStd::string unescaped("&<>%");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&lt;&amp;&gt;&#37;");
-            const AZStd::string unescaped("<&>%");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&gt;&lt;&amp;&#37;");
-            const AZStd::string unescaped("><&%");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&#37;&gt;&lt;&amp;");
-            const AZStd::string unescaped("%><&");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&amp; &lt; &gt; &#37;");
-            const AZStd::string unescaped("& < > %");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&lt; &amp; &gt; &#37;");
-            const AZStd::string unescaped("< & > %");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&gt; &lt; &amp; &#37;");
-            const AZStd::string unescaped("> < & %");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&#37; &gt; &lt; &amp;");
-            const AZStd::string unescaped("% > < &");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-
-        // Unescaping markup that results in escaped markup
-        {
-            const AZStd::string escaped("&amp;amp;");
-            const AZStd::string unescaped("&amp;");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&amp;lt;");
-            const AZStd::string unescaped("&lt;");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&amp;gt;");
-            const AZStd::string unescaped("&gt;");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-        {
-            const AZStd::string escaped("&amp;#37;");
-            const AZStd::string unescaped("&#37;");
-            AZ_Assert(UnescapeMarkup(escaped) == unescaped, "Test failed");
-            AZ_Assert(EscapeMarkup(unescaped) == escaped, "Test failed");
-        }
-    }
-
     void BuildDrawBatchesTests(FontFamily* fontFamily)
     {
+        UiTextComponent::InlineImageContainer inlineImages;
+        const float defaultImageHeight = 32.0f;
+
+        STextDrawContext fontContext;
+        fontContext.SetEffect(0);
+        fontContext.SetSizeIn800x600(false);
+        fontContext.SetSize(vector2f(32.0f, 32.0f));
+        const float defaultAscent = fontFamily->normal->GetAscender(fontContext);
+
         // Plain string
         {
             const LyShine::StringType markupTestString("this is a test!");
@@ -276,7 +200,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(1 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -305,7 +229,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(1 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -333,7 +257,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -361,7 +285,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -389,7 +313,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -400,6 +324,459 @@ namespace
                 AssertDrawBatchFontOrder(drawBatches, fontList);
 
                 AssertDrawBatchSingleColor(drawBatches, TextMarkup::ColorInvalid);
+            }
+        }
+
+        // Anchor tag
+        {
+            const LyShine::StringType markupTestString("<a action=\"action\" data=\"data\">this</a> is a test!");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(2 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                auto drawBatchIter = drawBatches.begin();
+                const auto& drawBatch = *drawBatchIter;
+                AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                AZ_Assert(drawBatch.action == "action", "Test failed");
+                AZ_Assert(drawBatch.data == "data", "Test failed");
+                AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+
+                ++drawBatchIter;
+                const auto& nextDrawBatch = *drawBatchIter;
+                AZ_Assert(!nextDrawBatch.IsClickable(), "Test failed");
+                AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                AZ_Assert(nextDrawBatch.action.empty(), "Test failed");
+                AZ_Assert(nextDrawBatch.data.empty(), "Test failed");
+                AZ_Assert(nextDrawBatch.clickableId == -1, "Test failed");
+
+                StringList stringList;
+                stringList.push_back("this");
+                stringList.push_back(" is a test!");
+                AssertDrawBatchTextContent(drawBatches, stringList);
+
+                FontList fontList;
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                AssertDrawBatchFontOrder(drawBatches, fontList);
+
+                ColorList colorList;
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(TextMarkup::ColorInvalid);
+                AssertDrawBatchMultiColor(drawBatches, colorList);
+            }
+        }
+
+        // Anchor tag: multiple anchor tags
+        {
+            const LyShine::StringType markupTestString(
+                "<a action=\"action1\" data=\"data1\">this</a>"
+                " is a <a action=\"action2\" data=\"data2\">test</a>!");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(4 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                auto batchIter = drawBatches.begin();
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action1", "Test failed");
+                    AZ_Assert(drawBatch.data == "data1", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(!drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action.empty(), "Test failed");
+                    AZ_Assert(drawBatch.data.empty(), "Test failed");
+                    AZ_Assert(drawBatch.clickableId == -1, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action2", "Test failed");
+                    AZ_Assert(drawBatch.data == "data2", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 1, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(!drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action.empty(), "Test failed");
+                    AZ_Assert(drawBatch.data.empty(), "Test failed");
+                    AZ_Assert(drawBatch.clickableId == -1, "Test failed");
+                }
+
+                StringList stringList;
+                stringList.push_back("this");
+                stringList.push_back(" is a ");
+                stringList.push_back("test");
+                stringList.push_back("!");
+                AssertDrawBatchTextContent(drawBatches, stringList);
+
+                FontList fontList;
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                AssertDrawBatchFontOrder(drawBatches, fontList);
+
+                ColorList colorList;
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(TextMarkup::ColorInvalid);
+                AssertDrawBatchMultiColor(drawBatches, colorList);
+            }
+        }
+
+        {
+            const LyShine::StringType markupTestString(
+                "<a action=\"action1\" data=\"data1\">this</a>"
+                "<a action=\"action2\" data=\"data2\"> is a test!</a>");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(2 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                auto batchIter = drawBatches.begin();
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action1", "Test failed");
+                    AZ_Assert(drawBatch.data == "data1", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action2", "Test failed");
+                    AZ_Assert(drawBatch.data == "data2", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 1, "Test failed");
+                }
+
+                StringList stringList;
+                stringList.push_back("this");
+                stringList.push_back(" is a test!");
+                AssertDrawBatchTextContent(drawBatches, stringList);
+
+                FontList fontList;
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                AssertDrawBatchFontOrder(drawBatches, fontList);
+
+                ColorList colorList;
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(TextMarkup::ColorInvalid);
+                AssertDrawBatchMultiColor(drawBatches, colorList);
+            }
+        }
+
+        {
+            const LyShine::StringType markupTestString(
+                "<b><a action=\"action1\" data=\"data1\">this</a></b> is "
+                "<a action=\"action2\" data=\"data2\">a test!</a>");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(3 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                auto batchIter = drawBatches.begin();
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action1", "Test failed");
+                    AZ_Assert(drawBatch.data == "data1", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(!drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action.empty(), "Test failed");
+                    AZ_Assert(drawBatch.data.empty(), "Test failed");
+                    AZ_Assert(drawBatch.clickableId == -1, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action2", "Test failed");
+                    AZ_Assert(drawBatch.data == "data2", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 1, "Test failed");
+                }
+
+                StringList stringList;
+                stringList.push_back("this");
+                stringList.push_back(" is ");
+                stringList.push_back("a test!");
+                AssertDrawBatchTextContent(drawBatches, stringList);
+
+                FontList fontList;
+                fontList.push_back(fontFamily->bold);
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                AssertDrawBatchFontOrder(drawBatches, fontList);
+
+                ColorList colorList;
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(TextMarkup::ColorInvalid);
+                AssertDrawBatchMultiColor(drawBatches, colorList);
+            }
+        }
+
+        // Anchor tag with link color applied via markup
+        {
+            const LyShine::StringType markupTestString("<font color=\"#ff0000\"><a action=\"action\" data=\"data\">this</a></font> is a test!");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(2 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                auto batchIter = drawBatches.begin();
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action", "Test failed");
+                    AZ_Assert(drawBatch.data == "data", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(!drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action.empty(), "Test failed");
+                    AZ_Assert(drawBatch.data.empty(), "Test failed");
+                    AZ_Assert(drawBatch.clickableId == -1, "Test failed");
+                }
+
+                StringList stringList;
+                stringList.push_back("this");
+                stringList.push_back(" is a test!");
+                AssertDrawBatchTextContent(drawBatches, stringList);
+
+                FontList fontList;
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                AssertDrawBatchFontOrder(drawBatches, fontList);
+
+                ColorList colorList;
+                colorList.push_back(AZ::Vector3(1.0f, 0.0f, 0.0f));
+                colorList.push_back(TextMarkup::ColorInvalid);
+                AssertDrawBatchMultiColor(drawBatches, colorList);
+            }
+        }
+
+        // Anchor tag with multiple colors within link 
+        {
+            const LyShine::StringType markupTestString("<a action=\"action\" data=\"data\">this <font color=\"#ff0000\">is</font> a test!</a>");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(3 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                // All drawbatches should have the same clickable ID since there's only one link that
+                // encompasses all of the text.
+                for (auto& drawBatch : drawBatches)
+                {
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action", "Test failed");
+                    AZ_Assert(drawBatch.data == "data", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                }
+
+                StringList stringList;
+                stringList.push_back("this ");
+                stringList.push_back("is");
+                stringList.push_back(" a test!");
+                AssertDrawBatchTextContent(drawBatches, stringList);
+
+                FontList fontList;
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                AssertDrawBatchFontOrder(drawBatches, fontList);
+
+                ColorList colorList;
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(AZ::Vector3(1.0f, 0.0f, 0.0f));
+                colorList.push_back(TextMarkup::ColorInvalid);
+                AssertDrawBatchMultiColor(drawBatches, colorList);
+            }
+        }
+
+        // Multiple anchor tags with link colors applied within markup
+        {
+            const LyShine::StringType markupTestString("<a action=\"action1\" data=\"data1\">this <font color=\"#ff0000\">is</font></a> a <a action=\"action2\" data=\"data2\">te<font color=\"#ff0000\">st!</font></a>");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(5 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                auto batchIter = drawBatches.begin();
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action1", "Test failed");
+                    AZ_Assert(drawBatch.data == "data1", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action1", "Test failed");
+                    AZ_Assert(drawBatch.data == "data1", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(!drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action.empty(), "Test failed");
+                    AZ_Assert(drawBatch.data.empty(), "Test failed");
+                    AZ_Assert(drawBatch.clickableId == -1, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action2", "Test failed");
+                    AZ_Assert(drawBatch.data == "data2", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 1, "Test failed");
+                }
+
+                {
+                    const auto& drawBatch = *(batchIter++);
+                    AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                    AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                    AZ_Assert(drawBatch.action == "action2", "Test failed");
+                    AZ_Assert(drawBatch.data == "data2", "Test failed");
+                    AZ_Assert(drawBatch.clickableId == 1, "Test failed");
+                }
+
+                StringList stringList;
+                stringList.push_back("this ");
+                stringList.push_back("is");
+                stringList.push_back(" a ");
+                stringList.push_back("te");
+                stringList.push_back("st!");
+                AssertDrawBatchTextContent(drawBatches, stringList);
+
+                FontList fontList;
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                fontList.push_back(fontFamily->normal);
+                AssertDrawBatchFontOrder(drawBatches, fontList);
+
+                ColorList colorList;
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(AZ::Vector3(1.0f, 0.0f, 0.0f));
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(TextMarkup::ColorInvalid);
+                colorList.push_back(AZ::Vector3(1.0f, 0.0f, 0.0f));
+                AssertDrawBatchMultiColor(drawBatches, colorList);
             }
         }
 
@@ -417,7 +794,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -456,7 +833,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed", "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed", "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -495,7 +872,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -534,7 +911,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -573,7 +950,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -612,7 +989,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -651,7 +1028,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -687,7 +1064,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -723,7 +1100,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -759,7 +1136,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -795,7 +1172,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -831,7 +1208,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -867,7 +1244,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -903,7 +1280,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -939,7 +1316,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -975,7 +1352,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1011,7 +1388,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1047,7 +1424,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1083,7 +1460,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1119,7 +1496,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1155,7 +1532,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1191,7 +1568,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1227,7 +1604,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1263,7 +1640,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1299,7 +1676,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1335,7 +1712,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1371,7 +1748,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1407,7 +1784,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1446,7 +1823,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1495,7 +1872,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(5 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1534,7 +1911,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(1 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(2 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1573,7 +1950,7 @@ namespace
                 fontFamilyStack.push(fontFamily);
 
                 UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-                BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
                 AZ_Assert(2 == fontFamilyRefs.size(), "Test failed");
                 AZ_Assert(7 == drawBatches.size(), "Test failed");
                 AssertTextNotEmpty(drawBatches);
@@ -1642,10 +2019,14 @@ namespace
 
     void WrapTextTests(FontFamily* fontFamily)
     {
+        UiTextComponent::InlineImageContainer inlineImages;
+        const float defaultImageHeight = 32.0f;
+
         STextDrawContext fontContext;
         fontContext.SetEffect(0);
         fontContext.SetSizeIn800x600(false);
         fontContext.SetSize(vector2f(32.0f, 32.0f));
+        const float defaultAscent = fontFamily->normal->GetAscender(fontContext);
 
         {
             const LyShine::StringType testMarkup("Regular Bold Italic\n");
@@ -1685,6 +2066,86 @@ namespace
             InsertNewlinesToWrapText(drawBatches, fontContext, 1000.0f);
             AssertDrawBatchTextContent(drawBatches, stringList);
         }
+
+        // Anchor tag: single line, no wrapping
+        {
+            const LyShine::StringType textNoMarkup("this is a test!");
+            const LyShine::StringType markupTestString("<a action=\"action\" data=\"data\">this</a> is a test!");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(2 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+                
+                StringList stringList;
+                stringList.push_back("this");
+                stringList.push_back(" is a test!");
+
+                // 1000.0f should be too big to cause any newlines to be inserted
+                const float wrapWidth = 1000.0f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+                AssertDrawBatchTextContent(drawBatches, stringList);
+            }
+
+            // Anchor tag: word-wrap cases
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(2 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                // Element size 75% of text length should insert one newline
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float wrapWidth = textWidth * 0.75f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                const int numNewlines = 1;
+                AssertDrawBatchTextNumNewlines(drawBatches, numNewlines);
+            }
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+                AZ_Assert(0 == fontFamilyRefs.size(), "Test failed");
+                AZ_Assert(2 == drawBatches.size(), "Test failed");
+                AssertTextNotEmpty(drawBatches);
+
+                // Element size 45% of text length should insert two newlines
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float wrapWidth = textWidth * 0.45f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                const int numNewlines = 2;
+                AssertDrawBatchTextNumNewlines(drawBatches, numNewlines);
+            }
+        }
     }
 
     void BatchLinesTests(FontFamily* fontFamily)
@@ -1693,6 +2154,10 @@ namespace
         fontContext.SetEffect(0);
         fontContext.SetSizeIn800x600(false);
         fontContext.SetSize(vector2f(32.0f, 32.0f));
+
+        UiTextComponent::InlineImageContainer inlineImages;
+        float defaultImageHeight = 32.0f;
+        const float defaultAscent = fontFamily->normal->GetAscender(fontContext);
 
         UiTextInterface::DisplayedTextFunction displayedTextFunction(DefaultDisplayedTextFunction);
 
@@ -1812,10 +2277,10 @@ namespace
             fontFamilyStack.push(fontFamily);
 
             UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-            BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+            BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
 
             DrawBatchLines batchLines;
-            BatchAwareWrapText(batchLines, drawBatches, fontFamily, fontContext, displayedTextFunction, 290.0f);
+            BatchAwareWrapText(batchLines, drawBatches, fontFamily, fontContext, 290.0f);
             AZ_Assert(2 == batchLines.batchLines.size(), "Test failed");
 
             SizeList sizeList;
@@ -1836,7 +2301,7 @@ namespace
             fontFamilyStack.push(fontFamily);
 
             UiTextComponent::FontFamilyRefSet fontFamilyRefs;
-            BuildDrawBatches(drawBatches, fontFamilyRefs, batchStack, fontFamilyStack, &markupRoot);
+            BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
             DrawBatchLines batchLines;
 
             CreateBatchLines(batchLines, drawBatches, fontFamily);
@@ -1846,6 +2311,381 @@ namespace
             sizeList.push_back(4);
             sizeList.push_back(1);
             AssertBatchLineSizes(batchLines, sizeList);
+        }
+
+        // Anchor tag: word-wrap, anchor doesn't span multiple lines
+        {
+            const LyShine::StringType textNoMarkup("this is a test!");
+            const LyShine::StringType markupTestString("<a action=\"action\" data=\"data\">this</a> is a test!");
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+
+                // 1000.0f should be too big to cause any newlines to be inserted
+                const float wrapWidth = 1000.0f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                DrawBatchLines batchLines;
+                CreateBatchLines(batchLines, drawBatches, fontFamily);
+                AZ_Assert(1 == batchLines.batchLines.size(), "Test failed");
+
+                SizeList sizeList;
+                sizeList.push_back(2);
+                AssertBatchLineSizes(batchLines, sizeList);
+            }
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+
+                // Element size 75% of text length should insert one newline
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float wrapWidth = textWidth * 0.75f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                DrawBatchLines batchLines;
+                CreateBatchLines(batchLines, drawBatches, fontFamily);
+                AZ_Assert(2 == batchLines.batchLines.size(), "Test failed");
+
+                SizeList sizeList;
+                sizeList.push_back(2);
+                sizeList.push_back(1);
+                AssertBatchLineSizes(batchLines, sizeList);
+            }
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+
+                // Element size 45% of text length should insert two newlines
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float wrapWidth = textWidth * 0.45f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                DrawBatchLines batchLines;
+                CreateBatchLines(batchLines, drawBatches, fontFamily);
+                AZ_Assert(3 == batchLines.batchLines.size(), "Test failed");
+
+                SizeList sizeList;
+                sizeList.push_back(2);
+                sizeList.push_back(1);
+                sizeList.push_back(1);
+                AssertBatchLineSizes(batchLines, sizeList);
+            }
+        }
+
+        // Anchor tag: word-wrap, single anchor spans multiple lines
+        {
+            const LyShine::StringType textNoMarkup("this is a test!");
+            const LyShine::StringType markupTestString("<a action=\"action\" data=\"data\">this is a test!</a>");
+
+            // Sanity check: single-line case
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+
+                // 1000.0f should be too big to cause any newlines to be inserted
+                const float wrapWidth = 1000.0f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                DrawBatchLines batchLines;
+                CreateBatchLines(batchLines, drawBatches, fontFamily);
+                AZ_Assert(1 == batchLines.batchLines.size(), "Test failed");
+
+                SizeList sizeList;
+                sizeList.push_back(1);
+                AssertBatchLineSizes(batchLines, sizeList);
+
+                // Since a single anchor tag spans the entirety of the text,
+                // we can just iterate over all drawbatches for all lines
+                // and verify that the anchor tag information exists across
+                // all drawbatch lines.
+                for (auto& batchLine : batchLines.batchLines)
+                {
+                    for (auto& drawBatch : batchLine.drawBatchList)
+                    {
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action", "Test failed");
+                        AZ_Assert(drawBatch.data == "data", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                    }
+                }
+            }
+
+            // Verify that anchor tag on word-wrapped text expands to both lines
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+
+                // Element size 75% of text length should insert one newline
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float wrapWidth = textWidth * 0.75f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                DrawBatchLines batchLines;
+                CreateBatchLines(batchLines, drawBatches, fontFamily);
+                AZ_Assert(2 == batchLines.batchLines.size(), "Test failed");
+
+                SizeList sizeList;
+                sizeList.push_back(1);
+                sizeList.push_back(1);
+                AssertBatchLineSizes(batchLines, sizeList);
+
+                // Since a single anchor tag spans the entirety of the text,
+                // we can just iterate over all drawbatches for all lines
+                // and verify that the anchor tag information exists across
+                // all drawbatch lines.
+                for (auto& batchLine : batchLines.batchLines)
+                {
+                    for (auto& drawBatch : batchLine.drawBatchList)
+                    {
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action", "Test failed");
+                        AZ_Assert(drawBatch.data == "data", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                    }
+                }
+            }
+
+            {
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+
+                // Element size 45% of text length should insert two newlines
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float wrapWidth = textWidth * 0.45f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                DrawBatchLines batchLines;
+                CreateBatchLines(batchLines, drawBatches, fontFamily);
+                AZ_Assert(3 == batchLines.batchLines.size(), "Test failed");
+
+                SizeList sizeList;
+                sizeList.push_back(1);
+                sizeList.push_back(1);
+                sizeList.push_back(1);
+                AssertBatchLineSizes(batchLines, sizeList);
+
+                // Since a single anchor tag spans the entirety of the text,
+                // we can just iterate over all drawbatches for all lines
+                // and verify that the anchor tag information exists across
+                // all drawbatch lines.
+                for (auto& batchLine : batchLines.batchLines)
+                {
+                    for (auto& drawBatch : batchLine.drawBatchList)
+                    {
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action", "Test failed");
+                        AZ_Assert(drawBatch.data == "data", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                    }
+                }
+            }
+        }
+
+        /////////////////////////////////////////////////////////////
+
+        // Anchor tag: word-wrap, multiple anchor spans multiple lines
+        {
+            {
+                const LyShine::StringType textNoMarkup("this is a test!");
+                const LyShine::StringType markupTestString(
+                    "<a action=\"action1\" data=\"data1\">this is a test</a>"
+                    "<a action=\"action2\" data=\"data2\">!</a>"
+                );
+
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+
+                // Element size 75% of text length should insert one newline
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float wrapWidth = textWidth * 0.75f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                DrawBatchLines batchLines;
+                CreateBatchLines(batchLines, drawBatches, fontFamily);
+                AZ_Assert(2 == batchLines.batchLines.size(), "Test failed");
+
+                SizeList sizeList;
+                sizeList.push_back(1);
+                sizeList.push_back(2);
+                AssertBatchLineSizes(batchLines, sizeList);
+                auto batchLineIter = batchLines.batchLines.begin();
+
+                {
+                    const auto& batchLine = *batchLineIter;
+                    auto drawBatchIter = batchLine.drawBatchList.begin();
+                    {
+                        const DrawBatch& drawBatch = *drawBatchIter;
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action1", "Test failed");
+                        AZ_Assert(drawBatch.data == "data1", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                    }
+                }
+
+                // Next line 
+                ++batchLineIter;
+                {
+                    const auto& batchLine = *batchLineIter;
+                    auto drawBatchIter = batchLine.drawBatchList.begin();
+                    {
+                        const DrawBatch& drawBatch = *drawBatchIter;
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action1", "Test failed");
+                        AZ_Assert(drawBatch.data == "data1", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                    }
+
+                    // Next batch
+                    ++drawBatchIter;
+                    {
+                        const DrawBatch& drawBatch = *drawBatchIter;
+                        AZ_Assert(drawBatch.text == "!", "Test failed");
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action2", "Test failed");
+                        AZ_Assert(drawBatch.data == "data2", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 1, "Test failed");
+                    }
+                }
+            }
+
+            {
+                const LyShine::StringType textNoMarkup("this is a test!");
+                const LyShine::StringType markupTestString(
+                    "<a action=\"action1\" data=\"data1\">t</a>"
+                    "<a action=\"action2\" data=\"data2\">his is a test!</a>"
+                );
+
+                TextMarkup::Tag markupRoot;
+                AZ_Assert(TextMarkup::ParseMarkupBuffer(markupTestString, markupRoot), "Test failed");
+                AZStd::list<UiTextComponent::DrawBatch> drawBatches;
+                AZStd::stack<UiTextComponent::DrawBatch> batchStack;
+
+                AZStd::stack<FontFamily*> fontFamilyStack;
+                fontFamilyStack.push(fontFamily);
+
+                UiTextComponent::FontFamilyRefSet fontFamilyRefs;
+                BuildDrawBatchesAndAssignClickableIds(drawBatches, fontFamilyRefs, inlineImages, defaultImageHeight, defaultAscent, batchStack, fontFamilyStack, &markupRoot);
+
+                // Element size 75% of text length should insert one newline
+                const float textWidth = fontFamily->normal->GetTextSize(textNoMarkup.c_str(), true, fontContext).x;
+                const float wrapWidth = textWidth * 0.75f;
+                InsertNewlinesToWrapText(drawBatches, fontContext, wrapWidth);
+
+                DrawBatchLines batchLines;
+                CreateBatchLines(batchLines, drawBatches, fontFamily);
+                AZ_Assert(2 == batchLines.batchLines.size(), "Test failed");
+
+                SizeList sizeList;
+                sizeList.push_back(2);
+                sizeList.push_back(1);
+                AssertBatchLineSizes(batchLines, sizeList);
+                auto batchLineIter = batchLines.batchLines.begin();
+
+                {
+                    const auto& batchLine = *batchLineIter;
+                    auto drawBatchIter = batchLine.drawBatchList.begin();
+                    {
+                        const DrawBatch& drawBatch = *drawBatchIter;
+                        AZ_Assert(drawBatch.text == "t", "Test failed");
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action1", "Test failed");
+                        AZ_Assert(drawBatch.data == "data1", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 0, "Test failed");
+                    }
+
+                    // Next batch
+                    ++drawBatchIter;
+                    {
+                        const DrawBatch& drawBatch = *drawBatchIter;
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action2", "Test failed");
+                        AZ_Assert(drawBatch.data == "data2", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 1, "Test failed");
+                    }
+                }
+
+                // Next line 
+                ++batchLineIter;
+                {
+                    const auto& batchLine = *batchLineIter;
+                    auto drawBatchIter = batchLine.drawBatchList.begin();
+                    {
+                        const DrawBatch& drawBatch = *drawBatchIter;
+                        AZ_Assert(drawBatch.IsClickable(), "Test failed");
+                        AZ_Assert(UiTextComponent::DrawBatch::Type::Text == drawBatch.GetType(), "Test failed");
+                        AZ_Assert(drawBatch.action == "action2", "Test failed");
+                        AZ_Assert(drawBatch.data == "data2", "Test failed");
+                        AZ_Assert(drawBatch.clickableId == 1, "Test failed");
+                    }
+                }
+            }
         }
     }
 
@@ -2095,6 +2935,7 @@ namespace
         {
             static const LyShine::StringType koreanHello("\xEC\x95\x88\xEB\x85\x95\xED\x95\x98\xEC\x84\xB8\xEC\x9A\x94");
 
+            // Tests: Get/SetText with localization
             {
                 AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
                 UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
@@ -2106,24 +2947,32 @@ namespace
                 CreateComponent(testElem, LyShine::UiTextComponentUuid);
                 AZ::EntityId testElemId = testElem->GetId();
 
-                AZStd::string testString("@ui_Hello");
-                EBUS_EVENT_ID(testElemId, UiTextBus, SetTextWithFlags, testString, UiTextInterface::SetLocalized);
-                AZStd::string resultString;
-                EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetText);
-                AZ_Assert(testString == resultString, "Test failed");
-                resultString.clear();
-                EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetTextFlags::GetAsIs);
-                AZ_Assert(testString == resultString, "Test failed");
-                resultString.clear();
+                // Verify that GetText and GetAsIs returns the unlocalized key "@ui_Hello"
+                {
+                    AZStd::string testString("@ui_Hello");
+                    EBUS_EVENT_ID(testElemId, UiTextBus, SetTextWithFlags, testString, UiTextInterface::SetLocalized);
+                    AZStd::string resultString;
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetText);
+                    AZ_Assert(testString == resultString, "Test failed");
+                    resultString.clear();
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetTextFlags::GetAsIs);
+                    AZ_Assert(testString == resultString, "Test failed");
+                    resultString.clear();
+                }
 
-                testString = koreanHello;
-                EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetLocalized);
-                AZ_Assert(testString == resultString, "Test failed");
-                resultString.clear();
+                // Verify that passing GetLocalized to GetTextWithFlags returns the localized content of "@ui_Hello"
+                {
+                    AZStd::string testString = koreanHello;
+                    AZStd::string resultString;
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetLocalized);
+                    AZ_Assert(testString == resultString, "Test failed");
+                    resultString.clear();
+                }
 
                 lyshine->ReleaseCanvas(canvasEntityId, false);
             }
 
+            // Tests: Get/SetText with localization and escaping markup
             {
                 AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
                 UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
@@ -2135,25 +2984,174 @@ namespace
                 CreateComponent(testElem, LyShine::UiTextComponentUuid);
                 AZ::EntityId testElemId = testElem->GetId();
 
-                AZStd::string testString("&<>% @ui_Hello");
-                UiTextInterface::SetTextFlags setTextFlags = static_cast<UiTextInterface::SetTextFlags>(UiTextInterface::SetEscapeMarkup | UiTextInterface::SetLocalized);
-                EBUS_EVENT_ID(testElemId, UiTextBus, SetTextWithFlags, testString, setTextFlags);
-                AZStd::string resultString;
-                EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetText);
-                AZ_Assert(testString == resultString, "Test failed");
-                resultString.clear();
-                EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetTextFlags::GetAsIs);
-                AZ_Assert(testString == resultString, "Test failed");
-                resultString.clear();
+                // Verify that GetText and GetAsIs returns the unlocalized key "@ui_Hello" along
+                // with the original (escaped) markup characters 
+                {
+                    AZStd::string testString("&<>% @ui_Hello");
+                    UiTextInterface::SetTextFlags setTextFlags = static_cast<UiTextInterface::SetTextFlags>(UiTextInterface::SetEscapeMarkup | UiTextInterface::SetLocalized);
+                    EBUS_EVENT_ID(testElemId, UiTextBus, SetTextWithFlags, testString, setTextFlags);
+                    AZStd::string resultString;
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetText);
+                    AZ_Assert(testString == resultString, "Test failed");
+                    resultString.clear();
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetTextFlags::GetAsIs);
+                    AZ_Assert(testString == resultString, "Test failed");
+                    resultString.clear();
+                }
 
-                testString = LyShine::StringType("&<>% ") + koreanHello;
-                EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetLocalized);
-                AZ_Assert(testString == resultString, "Test failed");
-                resultString.clear();
+                // Verify that passing GetLocalized to GetTextWithFlags returns the localized content of "@ui_Hello"
+                // along with the original (escaped) markup characters in the string
+                {
+                    AZStd::string testString = LyShine::StringType("&<>% ") + koreanHello;
+                    AZStd::string resultString;
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetLocalized);
+                    AZ_Assert(testString == resultString, "Test failed");
+                    resultString.clear();
+                }
+
+                lyshine->ReleaseCanvas(canvasEntityId, false);
+            }
+
+            // Tests: Setting localized text with abutting invalid localization key chars
+            //
+            // Purpose: localization tokens appear in strings surrounded by characters that
+            // shouldn't be part of the localization key. 
+            //
+            // For example:
+            // "@ui_Hello, @ui_Welcome!"
+            //
+            // This should only consider "@ui_Hello" and "@ui_Hello" for localization. The
+            // abutting punctuation characters - comma, exclamation point - should not be
+            // considered as part of the localization key.
+            //
+            // Markup example:
+            // "<font color="#FF0000">@ui_DeathStatus</font>"
+            //
+            // The end font-tag text ("</font>") following the loc key "@ui_DeathStatus" should
+            // not be considered for localization.
+            //
+            // Abutting loc keys example:
+            // "@ui_item1@ui_item2"
+            //
+            // There are two loc keys in the above example and should be localized independently
+            // of each other..
+            {
+                AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
+                UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
+                AZ_Assert(canvas, "Test failed");
+
+                AZ::Entity* testElem = canvas->CreateChildElement("Test1");
+                AZ_Assert(testElem, "Test failed");
+                CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
+                CreateComponent(testElem, LyShine::UiTextComponentUuid);
+                AZ::EntityId testElemId = testElem->GetId();
+
+                // Verify that localizing keys won't consider punctuation as part
+                // of the localization key.
+                {
+                    AZStd::string testString("@ui_Hello, @ui_Hello!");
+                    UiTextInterface::SetTextFlags setTextFlags = static_cast<UiTextInterface::SetTextFlags>(UiTextInterface::SetLocalized);
+                    EBUS_EVENT_ID(testElemId, UiTextBus, SetTextWithFlags, testString, setTextFlags);
+
+                    testString = koreanHello + ", " + koreanHello + "!";
+                    AZStd::string resultString;
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetLocalized);
+                    AZ_Assert(testString == resultString, "Test failed");
+                }
+
+                // Verify that localizing keys won't consider markup as part
+                // of the localization key.
+                {
+                    AZStd::string testString("<font color=\"#FF0000\">@ui_Hello</font>");
+                    UiTextInterface::SetTextFlags setTextFlags = static_cast<UiTextInterface::SetTextFlags>(UiTextInterface::SetLocalized);
+                    EBUS_EVENT_ID(testElemId, UiTextBus, SetTextWithFlags, testString, setTextFlags);
+
+                    testString = LyShine::StringType("<font color=\"#FF0000\">") + koreanHello + "</font>";
+                    AZStd::string resultString;
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetLocalized);
+                    AZ_Assert(testString == resultString, "Test failed");
+                }
+
+                // Verify that localizing adjacent keys will localize the keys separately
+                // and not consider them to be one single key
+                {
+                    AZStd::string testString("@ui_Hello@ui_Hello");
+                    UiTextInterface::SetTextFlags setTextFlags = static_cast<UiTextInterface::SetTextFlags>(UiTextInterface::SetLocalized);
+                    EBUS_EVENT_ID(testElemId, UiTextBus, SetTextWithFlags, testString, setTextFlags);
+
+                    testString = koreanHello + koreanHello;
+                    AZStd::string resultString;
+                    EBUS_EVENT_ID_RESULT(resultString, testElemId, UiTextBus, GetTextWithFlags, UiTextInterface::GetLocalized);
+                    AZ_Assert(testString == resultString, "Test failed");
+                }
 
                 lyshine->ReleaseCanvas(canvasEntityId, false);
             }
         }
+    }
+
+    // This tests for whether or not the MarkupFlag is functioning properly
+    void MarkupFlagTest(CLyShine* lyshine)
+    {
+        AZ::EntityId canvasEntityId = lyshine->CreateCanvas();
+        UiCanvasInterface* canvas = UiCanvasBus::FindFirstHandler(canvasEntityId);
+        AZ_Assert(canvas, "Test failed");
+
+        AZ::Entity* testElem = canvas->CreateChildElement("Test1");
+        AZ_Assert(testElem, "Test failed");
+
+        CreateComponent(testElem, LyShine::UiTransform2dComponentUuid);
+        CreateComponent(testElem, LyShine::UiTextComponentUuid);
+        AZ::EntityId testElemId = testElem->GetId();
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetText, "<font color=\"red\"> </font>");
+
+        bool enabled(true);
+        AZ::Vector2 NewSize(0, 0);
+        // Sizes expected based on the default font
+        AZ::Vector2 MarkUpEnabledSize(8, 32);
+        AZ::Vector2 MarkUpDisabledSize(354, 32);
+
+        // Test that markup is disabled by default.
+        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTextBus, GetIsMarkupEnabled);
+        AZ_Assert(!enabled, "Test failed");
+        
+        // Test that setting it to false when it is already false, does not set it to true.
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetIsMarkupEnabled, false);
+        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTextBus, GetIsMarkupEnabled);
+        AZ_Assert(!enabled, "Test failed");
+        
+        // Check that the flag is actually disabled by checking the size of the textbox
+        EBUS_EVENT_ID_RESULT(NewSize, testElemId, UiTextBus, GetTextSize);
+        AZ_Assert(NewSize == MarkUpDisabledSize, "Test failed");
+
+        // Test that setting it to true when it is false, sets it to true
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetIsMarkupEnabled, true);
+        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTextBus, GetIsMarkupEnabled);
+        AZ_Assert(enabled, "Test failed");
+
+        // Check that the flag is actually enabled by checking the size of the textbox
+        EBUS_EVENT_ID_RESULT(NewSize, testElemId, UiTextBus, GetTextSize);
+        AZ_Assert(NewSize == MarkUpEnabledSize, "Test failed");
+
+        // Test that setting it to true when it is true, does not set it to false
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetIsMarkupEnabled, true);
+        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTextBus, GetIsMarkupEnabled);
+        AZ_Assert(enabled, "Test failed");
+
+        // Check that the flag is actually enabled by checking the size of the textbox
+        EBUS_EVENT_ID_RESULT(NewSize, testElemId, UiTextBus, GetTextSize);
+        AZ_Assert(NewSize == MarkUpEnabledSize, "Test failed");
+
+        // Test that setting it to false when it is true, properly sets it to false.
+        EBUS_EVENT_ID(testElemId, UiTextBus, SetIsMarkupEnabled, false);
+        EBUS_EVENT_ID_RESULT(enabled, testElemId, UiTextBus, GetIsMarkupEnabled);
+        AZ_Assert(!enabled, "Test failed");
+
+        // Check that the flag is actually disabled by checking the size of the textbox
+        EBUS_EVENT_ID_RESULT(NewSize, testElemId, UiTextBus, GetTextSize);
+        AZ_Assert(NewSize == MarkUpDisabledSize, "Test failed");
+
+        lyshine->ReleaseCanvas(canvasEntityId, false);
     }
 }
 
@@ -2379,11 +3377,14 @@ void FontSharedPtrTests()
                 }
             }
 
+            // BEGIN JAV_LY_FORK: r_persistFontFamilies keeps font families loaded for lifetime of application.
+            // In this case, the normal/regular font has already been loaded as a "pass through" font family,
+            // so it has been persisted in memory. Even though the FontFamilyPtr used has gone out of scope.
             // notoSansRegularFamily should now be out of scope, so the original font family's
             // ref counts should return to their original values
             {
-                AZ_Assert(2 == notoSans->normal->AddRef(), "Test failed");
-                AZ_Assert(1 == notoSans->normal->Release(), "Test failed");
+                AZ_Assert(6 == notoSans->normal->AddRef(), "Test failed");
+                AZ_Assert(5 == notoSans->normal->Release(), "Test failed");
                 AZ_Assert(2 == notoSans->bold->AddRef(), "Test failed");
                 AZ_Assert(1 == notoSans->bold->Release(), "Test failed");
                 AZ_Assert(2 == notoSans->italic->AddRef(), "Test failed");
@@ -2397,8 +3398,8 @@ void FontSharedPtrTests()
                 FontFamilyPtr dupeFamily = GetISystem()->GetICryFont()->GetFontFamily("notosans");
 
                 // Ref couts for underlying fonts should stay the same
-                AZ_Assert(2 == notoSans->normal->AddRef(), "Test failed");
-                AZ_Assert(1 == notoSans->normal->Release(), "Test failed");
+                AZ_Assert(6 == notoSans->normal->AddRef(), "Test failed");
+                AZ_Assert(5 == notoSans->normal->Release(), "Test failed");
                 AZ_Assert(2 == notoSans->bold->AddRef(), "Test failed");
                 AZ_Assert(1 == notoSans->bold->Release(), "Test failed");
                 AZ_Assert(2 == notoSans->italic->AddRef(), "Test failed");
@@ -2406,6 +3407,7 @@ void FontSharedPtrTests()
                 AZ_Assert(2 == notoSans->boldItalic->AddRef(), "Test failed");
                 AZ_Assert(1 == notoSans->boldItalic->Release(), "Test failed");
             }
+            // END JAV_LY_FORK
 
             IFFont* fontBold = GetISystem()->GetICryFont()->GetFont(notoSansBoldPath);
             AZ_Assert(fontBold, "Test failed");
@@ -2457,25 +3459,40 @@ void FontSharedPtrTests()
         const char* veraFontFamilyFile = "fonts/vera.fontfamily";
         FontFamilyPtr veraFontFamily = gEnv->pCryFont->LoadFontFamily(veraFontFamilyFile);
         
-        // This should fail, because a font family named "vera" is already loaded
-        AZ_Assert(!veraFontFamily.get(), "Test failed");
-
-        // Since vera font family failed to load, the number of refs to the
-        // vera.font (loaded as a font family) should remain the same.
-        AZ_Assert(5 == veraFont->normal->AddRef(), "Test failed");
-        AZ_Assert(4 == veraFont->normal->Release(), "Test failed");
-        AZ_Assert(5 == veraFont->bold->AddRef(), "Test failed");
-        AZ_Assert(4 == veraFont->bold->Release(), "Test failed");
-        AZ_Assert(5 == veraFont->italic->AddRef(), "Test failed");
-        AZ_Assert(4 == veraFont->italic->Release(), "Test failed");
-        AZ_Assert(5 == veraFont->boldItalic->AddRef(), "Test failed");
-        AZ_Assert(4 == veraFont->boldItalic->Release(), "Test failed");
+        // BEGIN JAV_LY_FORK: The above "vera.font" is a pass-through font (not a font family)
+        // and is now mapped by by its full filepath rather than just the filename.
+        AZ_Assert(veraFontFamily.get(), "Test failed");
+        
+        // The vera font family uses vera.font for its regular-weighted font,
+        // so the ref count for vera.font increases by one, from 4 to 5.
+        AZ_Assert(6 == veraFont->normal->AddRef(), "Test failed");
+        AZ_Assert(5 == veraFont->normal->Release(), "Test failed");
+        AZ_Assert(6 == veraFont->bold->AddRef(), "Test failed");
+        AZ_Assert(5 == veraFont->bold->Release(), "Test failed");
+        AZ_Assert(6 == veraFont->italic->AddRef(), "Test failed");
+        AZ_Assert(5 == veraFont->italic->Release(), "Test failed");
+        AZ_Assert(6 == veraFont->boldItalic->AddRef(), "Test failed");
+        AZ_Assert(5 == veraFont->boldItalic->Release(), "Test failed");
+        // END JAV_LY_FORK
     }
 }
 
-void UiTextComponent::UnitTest(CLyShine* lyshine)
+void UiTextComponent::UnitTest(CLyShine* lyshine, IConsoleCmdArgs* cmdArgs)
 {
-    FontSharedPtrTests();
+    const bool testsRunningAtStartup = cmdArgs == nullptr;
+    if (testsRunningAtStartup)
+    {
+        FontSharedPtrTests();
+    }
+    else
+    {
+        // These tests assume the unit-tests run at startup in order for ref count
+        // values to make sense. 
+        AZ_Warning("LyShine", false,
+            "Unit-tests: skipping FontSharedPtrTests due to tests running "
+            "ad-hoc. Run unit tests at startup for full coverage. See ui_RunUnitTestsOnStartup.");
+    }
+    
     VerifyShippingFonts();
 
     // These fonts are required for subsequent unit-tests to work.
@@ -2483,15 +3500,15 @@ void UiTextComponent::UnitTest(CLyShine* lyshine)
     FontFamilyPtr notoSerif = FontFamilyLoad("ui/fonts/lyshineexamples/notoserif/notoserif.fontfamily");
 
     NewlineSanitizeTests();
-    MarkupEscapingTests();
     BuildDrawBatchesTests(notoSans.get());
     WrapTextTests(notoSans.get());
     BatchLinesTests(notoSans.get());
     TrackingLeadingTests(lyshine);
     ComponentGetSetTextTests(lyshine);
+    MarkupFlagTest(lyshine);
 }
 
-void UiTextComponent::UnitTestLocalization(CLyShine* lyshine)
+void UiTextComponent::UnitTestLocalization(CLyShine* lyshine, IConsoleCmdArgs* /* cmdArgs */)
 {
     ILocalizationManager* pLocMan = GetISystem()->GetLocalizationManager();
 

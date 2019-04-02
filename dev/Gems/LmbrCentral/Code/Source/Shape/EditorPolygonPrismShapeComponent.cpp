@@ -94,7 +94,7 @@ namespace LmbrCentral
 
             AzToolsFramework::ManipulatorManagerId managerId = AzToolsFramework::ManipulatorManagerId(1);
             m_vertexSelection.CreateTranslationManipulator(GetEntityId(), managerId,
-                AzToolsFramework::TranslationManipulator::Dimensions::Two,
+                AzToolsFramework::TranslationManipulators::Dimensions::Two,
                 m_polygonPrismShape.GetPolygonPrism()->m_vertexContainer.GetVertices()[index], index,
                 AzToolsFramework::ConfigureTranslationManipulatorAppearance2d);
         };
@@ -111,7 +111,8 @@ namespace LmbrCentral
         m_vertexSelection.m_onVertexPositionsUpdated = [this]()
         {
             // ensure we refresh the height manipulator after vertices are moved to ensure it stays central to the prism
-            m_heightManipulator->SetPosition(CalculateHeightManipulatorPosition(*m_polygonPrismShape.GetPolygonPrism()));
+            m_heightManipulator->SetLocalTransform(
+                AZ::Transform::CreateTranslation(CalculateHeightManipulatorPosition(*m_polygonPrismShape.GetPolygonPrism())));
             m_heightManipulator->SetBoundsDirty();
         };
 
@@ -192,14 +193,14 @@ namespace LmbrCentral
     }
 
     void EditorPolygonPrismShapeComponent::OnTransformChanged(
-        const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
+        const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
-        // refresh bounds in all manipulators after the entity has moved
-        m_vertexSelection.SetBoundsDirty();
+        // update the space manipulators are in after the entity has moved
+        m_vertexSelection.RefreshSpace(world);
 
         if (m_heightManipulator)
         {
-            m_heightManipulator->SetBoundsDirty();
+            m_heightManipulator->SetSpace(world);
         }
     }
 
@@ -245,12 +246,14 @@ namespace LmbrCentral
 
         const AzToolsFramework::ManipulatorManagerId managerId = AzToolsFramework::ManipulatorManagerId(1);
         m_vertexSelection.Create(GetEntityId(), managerId,
-            AzToolsFramework::TranslationManipulator::Dimensions::Two,
+            AzToolsFramework::TranslationManipulators::Dimensions::Two,
             AzToolsFramework::ConfigureTranslationManipulatorAppearance2d);
 
         // initialize height manipulator
-        m_heightManipulator = AZStd::make_unique<AzToolsFramework::LinearManipulator>(GetEntityId());
-        m_heightManipulator->SetPosition(CalculateHeightManipulatorPosition(*m_polygonPrismShape.GetPolygonPrism()));
+        m_heightManipulator = AZStd::make_unique<AzToolsFramework::LinearManipulator>(
+            GetEntityId(), m_polygonPrismShape.GetCurrentTransform());
+        m_heightManipulator->SetLocalTransform(
+            AZ::Transform::CreateTranslation(CalculateHeightManipulatorPosition(*m_polygonPrismShape.GetPolygonPrism())));
         m_heightManipulator->SetAxis(AZ::Vector3::CreateAxisZ());
 
         const float lineLength = 0.5f;
@@ -271,8 +274,9 @@ namespace LmbrCentral
         {
             m_polygonPrismShape.GetPolygonPrism()->SetHeight(AZ::VectorFloat(
                 action.LocalPosition().GetZ()).GetMax(AZ::VectorFloat::CreateZero()));
-            m_heightManipulator->SetPosition(Vector2ToVector3(Vector3ToVector2(
-                action.LocalPosition()), action.LocalPosition().GetZ().GetMax(AZ::VectorFloat::CreateZero())));
+            m_heightManipulator->SetLocalTransform(
+                AZ::Transform::CreateTranslation(Vector2ToVector3(Vector3ToVector2(
+                    action.LocalPosition()), action.LocalPosition().GetZ().GetMax(AZ::VectorFloat::CreateZero()))));
             m_heightManipulator->SetBoundsDirty();
 
             // ensure property grid values are refreshed
@@ -311,11 +315,12 @@ namespace LmbrCentral
 
     void EditorPolygonPrismShapeComponent::RefreshManipulators()
     {
-        m_vertexSelection.Refresh();
+        m_vertexSelection.RefreshLocal();
 
         if (m_heightManipulator)
         {
-            m_heightManipulator->SetPosition(CalculateHeightManipulatorPosition(*m_polygonPrismShape.GetPolygonPrism()));
+            m_heightManipulator->SetLocalTransform(
+                AZ::Transform::CreateTranslation(CalculateHeightManipulatorPosition(*m_polygonPrismShape.GetPolygonPrism())));
             m_heightManipulator->SetBoundsDirty();
         }
     }

@@ -17,6 +17,7 @@
 #define CRYINCLUDE_CRYANIMATION_CHARACTERMANAGER_H
 #pragma once
 
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>

@@ -210,7 +210,7 @@ namespace LmbrCentral
         // Private helpers
         void EnableInternal();
         void DisableInternal();
-        void OnPhysicsEnabledChanged(bool enabled);
+        void OnPhysicsEnabledChanged(bool enabled, AZ::EntityId entityId);
         void SetupPivotsAndFrame(pe_action_add_constraint &aac) const;
         void AddCryConstraint();
         bool IsEnabled() const;

@@ -132,8 +132,11 @@ inline void CDeviceManager::BindSampler(EHWShaderClass type, D3DSamplerState* Sa
         break;
     }
 #else
-    m_Samplers[type].samplers[slot] = Sampler;
-    m_Samplers[type].dirty |= 1 << slot;
+    if (Sampler != m_Samplers[type].samplers[slot])
+    {
+        m_Samplers[type].samplers[slot] = Sampler;
+        m_Samplers[type].dirty |= 1 << slot;
+    }
 #endif
 }
 inline void CDeviceManager::BindSampler(EHWShaderClass type, D3DSamplerState** Samplers, uint32 start_slot, uint32 count)

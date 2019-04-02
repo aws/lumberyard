@@ -406,7 +406,7 @@ namespace CommandSystem
                 // get the given motion from the motion library and add/remove it to the selection
                 EMotionFX::Motion* motion = EMotionFX::GetMotionManager().GetMotion(motionIndex);
 
-                if (!motion->GetIsOwnedByRuntime())
+                if (motion->GetIsOwnedByRuntime())
                 {
                     return false;
                 }

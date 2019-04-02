@@ -12,12 +12,14 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "UiEditorInternalBus.h"
 #include <AzToolsFramework/Application/ToolsApplication.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <LyShine/Bus/UiSystemBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+#include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 #include <LyShine/Bus/UiLayoutManagerBus.h>
 
 namespace ComponentHelpers
@@ -88,7 +90,7 @@ namespace ComponentHelpers
         return true;
     }
 
-    bool CanCreateComponentOnEntity(AZ::SerializeContext* serializeContext, const AZ::SerializeContext::ClassData& componentClassData, AZ::Entity* entity)
+    bool CanCreateComponentOnEntity(const AZ::SerializeContext::ClassData& componentClassData, AZ::Entity* entity)
     {
         // Get the componentDescriptor from the componentClassData
         AZ::ComponentDescriptor* componentDescriptor = nullptr;
@@ -273,6 +275,201 @@ namespace ComponentHelpers
         return true;
     }
 
+    bool CanComponentsBeRemoved(const AZ::Entity::ComponentArrayType& components)
+    {
+        // Get the serialize context.
+        AZ::SerializeContext* serializeContext;
+        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+        AZ_Assert(serializeContext, "We should have a valid context!");
+
+        bool canRemove = true;
+        for (auto component : components)
+        {
+            AZ::Entity* entity = component->GetEntity();
+
+            if (!entity || !CanRemoveComponentFromEntity(serializeContext, component, entity))
+            {
+                canRemove = false;
+                break;
+            }
+        }
+
+        return canRemove;
+    }
+
+    bool AreComponentsAddableByUser(const AZ::Entity::ComponentArrayType& components)
+    {
+        // Get the serialize context.
+        AZ::SerializeContext* serializeContext;
+        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+        AZ_Assert(serializeContext, "We should have a valid context!");
+
+        bool canAdd = true;
+        for (auto component : components)
+        {
+            const AZ::Uuid& componentToAddTypeId = AzToolsFramework::GetUnderlyingComponentType(*component);
+            const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(componentToAddTypeId);
+
+            if (!IsAddableByUser(classData))
+            {
+                canAdd = false;
+                break;
+            }
+        }
+
+        return canAdd;
+    }
+
+    bool CanPasteComponents(const AzToolsFramework::EntityIdList& entities, bool isCanvasSelected)
+    {
+        const QMimeData* mimeData = AzToolsFramework::ComponentMimeData::GetComponentMimeDataFromClipboard();
+
+        // Check that there are components on the clipboard and that they can all be pasted onto the selected elements
+        bool canPasteAll = true;
+
+        if (entities.empty() || !mimeData)
+        {
+            canPasteAll = false;
+        }
+        else
+        {
+            AzToolsFramework::ComponentTypeMimeData::ClassDataContainer classDataForComponentsToAdd;
+            AzToolsFramework::ComponentTypeMimeData::Get(mimeData, classDataForComponentsToAdd);
+
+            // Create class data from mime data
+            for (const AZ::EntityId& entityId : entities)
+            {
+                for (auto classData : classDataForComponentsToAdd)
+                {
+                    auto entity = AzToolsFramework::GetEntityById(entityId);
+
+                    // Check if this component can be added
+                    if (!entity
+                        || !AppearsInUIComponentMenu(*classData, isCanvasSelected)
+                        || !IsAddableByUser(classData)
+                        || !CanCreateComponentOnEntity(*classData, entity))
+                    {
+                        canPasteAll = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return canPasteAll;
+    }
+
+    AzToolsFramework::EntityIdList GetSelectedEntities(bool* isCanvasSelectedOut = nullptr)
+    {
+        AzToolsFramework::EntityIdList selectedEntities;
+        EBUS_EVENT_RESULT(selectedEntities, UiEditorInternalRequestBus, GetSelectedEntityIds);
+
+        if (isCanvasSelectedOut)
+        {
+            *isCanvasSelectedOut = false;
+        }
+        if (selectedEntities.empty())
+        {
+            AZ::EntityId canvasEntityId;
+            EBUS_EVENT_RESULT(canvasEntityId, UiEditorInternalRequestBus, GetActiveCanvasEntityId);
+            selectedEntities.push_back(canvasEntityId);
+            if (isCanvasSelectedOut)
+            {
+                *isCanvasSelectedOut = true;
+            }
+        }
+
+        return selectedEntities;
+    }
+
+    AZ::Entity::ComponentArrayType GetCopyableComponents(const AZ::Entity::ComponentArrayType componentsToCopy)
+    {
+        AzToolsFramework::EntityIdList selectedEntities = GetSelectedEntities();
+
+        // Copyable components are the components that belong to the first selected entity
+        AZ::Entity::ComponentArrayType copyableComponents;
+        copyableComponents.reserve(componentsToCopy.size());
+        for (auto component : componentsToCopy)
+        {
+            const AZ::Entity* entity = component ? component->GetEntity() : nullptr;
+            const AZ::EntityId entityId = entity ? entity->GetId() : AZ::EntityId();
+            if (entityId == selectedEntities.front())
+            {
+                copyableComponents.push_back(component);
+            }
+        }
+
+        return copyableComponents;
+    }
+
+    void HandleSelectedEntitiesPropertiesChanged()
+    {
+        EBUS_EVENT(UiEditorInternalNotificationBus, OnSelectedEntitiesPropertyChanged);
+    }
+
+    void RemoveComponents(const AZ::Entity::ComponentArrayType& componentsToRemove)
+    {
+        // Since the undo commands use the selected entities, make sure that the components being removed belong to selected entities
+        AzToolsFramework::EntityIdList selectedEntities = GetSelectedEntities();
+        bool foundUnselectedEntities = false;
+        for (auto componentToRemove : componentsToRemove)
+        {
+            AZ::Entity* entity = componentToRemove->GetEntity();
+            if (AZStd::find(selectedEntities.begin(), selectedEntities.end(), entity->GetId()) == selectedEntities.end())
+            {
+                foundUnselectedEntities = true;
+                break;
+            }
+        }
+        AZ_Assert(!foundUnselectedEntities, "Attempting to remove components from an unselected element");
+        if (foundUnselectedEntities)
+        {
+            return;
+        }
+
+        EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
+
+        // Remove all the components requested
+        for (auto componentToRemove : componentsToRemove)
+        {
+            AZ::Entity* entity = componentToRemove->GetEntity();
+
+            bool reactivate = false;
+            // We must deactivate entities to remove components
+            if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+            {
+                reactivate = true;
+                entity->Deactivate();
+            }
+
+            // See if the component is on the entity
+            const auto& entityComponents = entity->GetComponents();
+            if (AZStd::find(entityComponents.begin(), entityComponents.end(), componentToRemove) != entityComponents.end())
+            {
+                entity->RemoveComponent(componentToRemove);
+
+                delete componentToRemove;
+            }
+
+            // Attempt to re-activate if we were previously active
+            if (reactivate)
+            {
+                entity->Activate();
+            }
+        }
+
+        EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "delete component");
+    }
+
+    void CopyComponents(const AZ::Entity::ComponentArrayType& copyableComponents)
+    {
+        // Create the mime data object
+        AZStd::unique_ptr<QMimeData> mimeData = AzToolsFramework::ComponentMimeData::Create(copyableComponents);
+
+        // Put it on the clipboard
+        AzToolsFramework::ComponentMimeData::PutComponentMimeDataOnClipboard(AZStd::move(mimeData));
+    }
+
     QList<QAction*> CreateAddComponentActions(HierarchyWidget* hierarchy,
         QTreeWidgetItemRawPtrQList& selectedItems,
         QWidget* parent)
@@ -365,14 +562,14 @@ namespace ComponentHelpers
                 if (items.empty())
                 {
                     auto canvasEntity = AzToolsFramework::GetEntityById(hierarchy->GetEditorWindow()->GetCanvas());
-                    isEnabled = CanCreateComponentOnEntity(serializeContext, *componentClass, canvasEntity);
+                    isEnabled = CanCreateComponentOnEntity(*componentClass, canvasEntity);
                 }
                 else
                 {
                     for (auto i : items)
                     {
                         AZ::Entity* entity = i->GetElement();
-                        if (CanCreateComponentOnEntity(serializeContext, *componentClass, entity))
+                        if (CanCreateComponentOnEntity(*componentClass, entity))
                         {
                             isEnabled = true;
 
@@ -389,7 +586,7 @@ namespace ComponentHelpers
                     hierarchy,
                     [ serializeContext, hierarchy, componentClass, items ](bool checked)
                     {
-                        hierarchy->GetEditorWindow()->GetProperties()->BeforePropertyModified(nullptr);
+                        EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
 
                         AzToolsFramework::EntityIdList entitiesSelected;
                         if (items.empty())
@@ -407,7 +604,7 @@ namespace ComponentHelpers
                         for (auto i : entitiesSelected)
                         {
                             AZ::Entity* entity = AzToolsFramework::GetEntityById(i);
-                            if (CanCreateComponentOnEntity(serializeContext, *componentClass, entity))
+                            if (CanCreateComponentOnEntity(*componentClass, entity))
                             {
                                 entity->Deactivate();
                                 AZ::Component* component;
@@ -417,10 +614,9 @@ namespace ComponentHelpers
                             }
                         }
 
-                        hierarchy->GetEditorWindow()->GetProperties()->AfterPropertyModified(nullptr);
+                        EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "add component");
 
-                        // This is necessary to update the PropertiesWidget.
-                        hierarchy->SignalUserSelectionHasChanged(hierarchy->selectedItems());
+                        HandleSelectedEntitiesPropertiesChanged();
                     });
 
                 result.push_back(action);
@@ -430,100 +626,238 @@ namespace ComponentHelpers
         return result;
     }
 
-    QList<QAction*> CreateRemoveComponentActions(HierarchyWidget* hierarchy,
-        QTreeWidgetItemRawPtrQList& selectedItems,
-        const AZ::Component* componentToRemove)
+    QAction* CreateRemoveComponentsAction(QWidget* parent)
     {
-        AZ_Assert(componentToRemove, "We should have a valid component to remove!");
-
-        // Get the list of selected elements
-        HierarchyItemRawPtrList items = SelectionHelpers::GetSelectedHierarchyItems(hierarchy,
-                selectedItems);
-
-        AzToolsFramework::EntityIdList entitiesSelected;
-        if (items.empty())
-        {
-            entitiesSelected.push_back(hierarchy->GetEditorWindow()->GetCanvas());
-        }
-        else
-        {
-            for (auto item : items)
-            {
-                entitiesSelected.push_back(item->GetEntityId());
-            }
-        }
-
-        // Get the serialize context.
-        AZ::SerializeContext* serializeContext;
-        EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-        AZ_Assert(serializeContext, "We should have a valid context!");
-
-        const AZ::Uuid& componentTypeId = AzToolsFramework::GetUnderlyingComponentType(*componentToRemove);
-
-        AZ::ComponentDescriptor* componentDescriptor = nullptr;
-        EBUS_EVENT_ID_RESULT(componentDescriptor, componentTypeId, AZ::ComponentDescriptorBus, GetDescriptor);
-        if (!componentDescriptor)
-        {
-            return QList<QAction*>();
-        }
-
-        const char* typeName = componentDescriptor->GetName();
-
-        QString title = QString("Remove component %1").arg(typeName);
-
-        // Get the index of the component within its type
-        AZStd::vector<AZ::Component*> components = componentToRemove->GetEntity()->FindComponents(componentTypeId);
-        int componentIndex = AZStd::find(components.begin(), components.end(), componentToRemove) - components.begin();
-
-        // We still have to return a list of actions even though we only have one action because the HiearchyMenu
-        // widget is expecting a list
-        QList<QAction*> result;
-
-        QAction* action = new QAction(title, hierarchy);
+        QAction* action = new QAction("Delete component", parent);
+        action->setShortcut(QKeySequence::Delete);
+        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         QObject::connect(action,
             &QAction::triggered,
-            hierarchy,
-            [hierarchy, componentTypeId, entitiesSelected, componentIndex](bool checked)
+            []()
         {
-            hierarchy->GetEditorWindow()->GetProperties()->BeforePropertyModified(nullptr);
+            AZ::Entity::ComponentArrayType componentsToRemove;
+            EBUS_EVENT_RESULT(componentsToRemove, UiEditorInternalRequestBus, GetSelectedComponents);
 
-            for (auto i : entitiesSelected)
-            {
-                // We got this factory from LyShine so we know this is a UI component
-                AZ::Entity* element = AzToolsFramework::GetEntityById(i);
-                AZ::Component* component = element->FindComponents(componentTypeId)[componentIndex];
-                // Remove the component of that type at the right index
-                element->Deactivate();
-                element->RemoveComponent(component);
-                element->Activate();
-                delete component;
-            }
-            hierarchy->GetEditorWindow()->GetProperties()->AfterPropertyModified(nullptr);
+            RemoveComponents(componentsToRemove);
 
-            // This is necessary to update the PropertiesWidget.
-            hierarchy->SignalUserSelectionHasChanged(hierarchy->selectedItems());
+            HandleSelectedEntitiesPropertiesChanged();
         });
 
-        // Check if we can remove the component from every selected element
+        return action;
+    }
+
+    void UpdateRemoveComponentsAction(QAction* action)
+    {
+        AZ::Entity::ComponentArrayType componentsToRemove;
+        EBUS_EVENT_RESULT(componentsToRemove, UiEditorInternalRequestBus, GetSelectedComponents);
+
+        action->setText(componentsToRemove.size() > 1 ? "Delete components" : "Delete component");
+
+        // Check if we can remove every component from every element
         bool canRemove = true;
-        for (auto i : entitiesSelected)
+        if (componentsToRemove.empty() || !CanComponentsBeRemoved(componentsToRemove))
         {
-            AZ::Entity* entity = AzToolsFramework::GetEntityById(i);
-            if (!CanRemoveComponentFromEntity(serializeContext, componentToRemove, entity))
-            {
-                canRemove = false;
-            }
+            canRemove = false;
         }
 
         // Disable the action if not every element can remove the component
-        if (!canRemove)
+        action->setEnabled(canRemove);
+    }
+
+    QAction* CreateCutComponentsAction(QWidget* parent)
+    {
+        QAction* action = new QAction("Cut component", parent);
+        action->setShortcut(QKeySequence::Cut);
+        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+        QObject::connect(action,
+            &QAction::triggered,
+            []()
         {
-            action->setEnabled(false);
+            AZ::Entity::ComponentArrayType componentsToCut;
+            EBUS_EVENT_RESULT(componentsToCut, UiEditorInternalRequestBus, GetSelectedComponents);
+
+            AZ::Entity::ComponentArrayType copyableComponents = GetCopyableComponents(componentsToCut);
+
+            // Copy components
+            CopyComponents(copyableComponents);
+            // Delete components
+            RemoveComponents(componentsToCut);
+
+            HandleSelectedEntitiesPropertiesChanged();
+        });
+
+        return action;
+    }
+
+    void UpdateCutComponentsAction(QAction* action)
+    {
+        AZ::Entity::ComponentArrayType componentsToCut;
+        EBUS_EVENT_RESULT(componentsToCut, UiEditorInternalRequestBus, GetSelectedComponents);
+
+        AZ::Entity::ComponentArrayType copyableComponents = GetCopyableComponents(componentsToCut);
+
+        action->setText(componentsToCut.size() > 1 ? "Cut components" : "Cut component");
+
+        // Check that all components can be deleted and that all copyable components can be pasted
+        bool canCut = true;
+        if (copyableComponents.empty() || componentsToCut.empty() || !AreComponentsAddableByUser(copyableComponents) || !CanComponentsBeRemoved(componentsToCut))
+        {
+            canCut = false;
         }
 
-        result.push_back(action);
+        // Disable the action if not every component can be deleted or every copyable components pasted
+        action->setEnabled(canCut);
+    }
 
-        return result;
+    QAction* CreateCopyComponentsAction(QWidget* parent)
+    {
+        QAction* action = new QAction("Copy component", parent);
+        action->setShortcut(QKeySequence::Copy);
+        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+        QObject::connect(action,
+            &QAction::triggered,
+            []()
+        {
+            AZ::Entity::ComponentArrayType componentsToCopy;
+            EBUS_EVENT_RESULT(componentsToCopy, UiEditorInternalRequestBus, GetSelectedComponents);
+
+            // Get the components of the first selected elements to copy onto the clipboard
+            AZ::Entity::ComponentArrayType copyableComponents = GetCopyableComponents(componentsToCopy);
+
+            CopyComponents(copyableComponents);
+        });
+
+        return action;
+    }
+
+    void UpdateCopyComponentsAction(QAction* action)
+    {
+        AZ::Entity::ComponentArrayType componentsToCopy;
+        EBUS_EVENT_RESULT(componentsToCopy, UiEditorInternalRequestBus, GetSelectedComponents);
+
+        // Get the components of the first selected elements to copy onto the clipboard
+        AZ::Entity::ComponentArrayType copyableComponents = GetCopyableComponents(componentsToCopy);
+
+        action->setText(copyableComponents.size() > 1 ? "Copy components" : "Copy component");
+
+        // Check that all copyable components can be added by the user
+        bool canCopy = true;
+        if (copyableComponents.empty() || !AreComponentsAddableByUser(copyableComponents))
+        {
+            canCopy = false;
+        }
+
+        // Disable the action if not all copyable components can be added to all elements
+        action->setEnabled(canCopy);
+    }
+
+    QAction* CreatePasteComponentsAction(QWidget* parent)
+    {
+        QAction* action = new QAction("Paste component", parent);
+        action->setShortcut(QKeySequence::Paste);
+        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+        QObject::connect(action,
+            &QAction::triggered,
+            []()
+        {
+            bool isCanvasSelected = false;
+            AzToolsFramework::EntityIdList selectedEntities = GetSelectedEntities(&isCanvasSelected);
+
+            if (CanPasteComponents(selectedEntities, isCanvasSelected))
+            {
+                EBUS_EVENT(UiEditorInternalNotificationBus, OnBeginUndoableEntitiesChange);
+
+                // Paste to all selected entities
+                for (const AZ::EntityId& entityId : selectedEntities)
+                {
+                    auto entity = AzToolsFramework::GetEntityById(entityId);
+                    if (!entity)
+                    {
+                        continue;
+                    }
+
+                    // Create components from mime data
+                    const QMimeData* mimeData = AzToolsFramework::ComponentMimeData::GetComponentMimeDataFromClipboard();
+                    AzToolsFramework::ComponentMimeData::ComponentDataContainer componentsToAdd;
+                    AzToolsFramework::ComponentMimeData::GetComponentDataFromMimeData(mimeData, componentsToAdd);
+
+                    // Create class data from mime data
+                    AzToolsFramework::ComponentTypeMimeData::ClassDataContainer classDataForComponentsToAdd;
+                    AzToolsFramework::ComponentTypeMimeData::Get(mimeData, classDataForComponentsToAdd);
+
+                    AZ_Assert(componentsToAdd.size() == classDataForComponentsToAdd.size(), "Component mime data's components list size is different from class data list size");
+                    if (componentsToAdd.size() == classDataForComponentsToAdd.size())
+                    {
+                        // Add components
+                        for (int componentIndex = 0; componentIndex < componentsToAdd.size(); ++componentIndex)
+                        {
+                            AZ::Component* component = componentsToAdd[componentIndex];
+                            AZ_Assert(component, "Null component provided");
+                            if (!component)
+                            {
+                                // Just skip null components
+                                continue;
+                            }
+
+                            // Check if this component can be added
+                            const AZ::SerializeContext::ClassData& classData = *classDataForComponentsToAdd[componentIndex];
+                            bool isCanvas = (UiCanvasBus::FindFirstHandler(entityId));
+                            if (AppearsInUIComponentMenu(classData, isCanvas)
+                                && IsAddableByUser(&classData)
+                                && CanCreateComponentOnEntity(classData, entity))
+                            {
+                                // Add the component
+
+                                bool reactivate = false;
+                                // We must deactivate entities to add components
+                                if (entity->GetState() == AZ::Entity::ES_ACTIVE)
+                                {
+                                    reactivate = true;
+                                    entity->Deactivate();
+                                }
+
+                                entity->AddComponent(component);
+
+                                // Attempt to re-activate if we were previously active
+                                if (reactivate)
+                                {
+                                    entity->Activate();
+                                }
+                            }
+                            else
+                            {
+                                // Delete the component
+                                delete component;
+                            }
+                        }
+                    }
+                }
+
+                EBUS_EVENT(UiEditorInternalNotificationBus, OnEndUndoableEntitiesChange, "paste component");
+
+                HandleSelectedEntitiesPropertiesChanged();
+            }
+        });
+
+        return action;
+    }
+
+    void UpdatePasteComponentsAction(QAction* action)
+    {
+        const QMimeData* mimeData = AzToolsFramework::ComponentMimeData::GetComponentMimeDataFromClipboard();
+        AzToolsFramework::ComponentTypeMimeData::ClassDataContainer classDataForComponentsToAdd;
+        AzToolsFramework::ComponentTypeMimeData::Get(mimeData, classDataForComponentsToAdd);
+
+        action->setText(classDataForComponentsToAdd.size() > 1 ? "Paste components" : "Paste component");
+
+        bool isCanvasSelected = false;
+        AzToolsFramework::EntityIdList selectedEntities = GetSelectedEntities(&isCanvasSelected);
+
+        // Check that there are components on the clipboard and that they can all be pasted onto the selected elements
+        bool canPasteAll = CanPasteComponents(selectedEntities, isCanvasSelected);
+
+        // Disable the action if not every component can be pasted onto every element
+        action->setEnabled(canPasteAll);
     }
 
     AZStd::vector<ComponentTypeData> GetAllComponentTypesThatCanAppearInAddComponentMenu()

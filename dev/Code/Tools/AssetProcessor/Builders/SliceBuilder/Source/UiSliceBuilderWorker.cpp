@@ -23,6 +23,8 @@
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
+#include <AzToolsFramework/Slice/SliceCompilation.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <LyShine/Bus/Tools/UiSystemToolsBus.h>
 #include <LyShine/UiAssetTypes.h>
@@ -106,7 +108,7 @@ namespace SliceBuilder
             AssetBuilderSDK::JobDescriptor jobDescriptor;
             jobDescriptor.m_priority = 0;
             jobDescriptor.m_critical = true;
-            jobDescriptor.m_jobKey = "RC Slice";
+            jobDescriptor.m_jobKey = "UI Canvas";
             jobDescriptor.SetPlatformIdentifier(info.m_identifier.c_str());
             jobDescriptor.m_additionalFingerprintInfo = AZStd::string(compilerVersion).append(azrtti_typeid<AZ::DynamicSliceAsset>().ToString<AZStd::string>());
 
@@ -158,7 +160,6 @@ namespace SliceBuilder
         // it does some complex support for old canvas formats
         UiSystemToolsInterface::CanvasAssetHandle* canvasAsset = nullptr;
         UiSystemToolsBus::BroadcastResult(canvasAsset, &UiSystemToolsInterface::LoadCanvasFromStream, stream, AZ::ObjectStream::FilterDescriptor(assetFilter, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES));
-        
         if (!canvasAsset)
         {
             AZ_Error(s_uiSliceBuilder, false, "Compiling UI canvas \"%s\" failed to load canvas from stream.", fullPath.c_str());
@@ -205,17 +206,17 @@ namespace SliceBuilder
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_processingMutex);
 
-            AZ::Data::Asset<AZ::SliceAsset> asset;
-            asset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
+            AZ::Data::Asset<AZ::SliceAsset> sourceSliceAsset;
+            sourceSliceAsset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
             AZ::SliceAssetHandler assetHandler(context);
-            if (!assetHandler.LoadAssetData(asset, &prefabStream, &AZ::Data::AssetFilterSourceSlicesOnly))
+            if (!assetHandler.LoadAssetData(sourceSliceAsset, &prefabStream, &AZ::Data::AssetFilterSourceSlicesOnly))
             {
                 AZ_Error(s_uiSliceBuilder, false, "Failed to load the serialized Slice Asset.");
                 UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
                 return;
             }
 
-            // Flush asset manager events to ensure no asset references are held by closures queued on Ebuses.
+            // Flush sourceSliceAsset manager events to ensure no sourceSliceAsset references are held by closures queued on Ebuses.
             AZ::Data::AssetManager::Instance().DispatchEvents();
 
             // Fail gracefully if any errors occurred while serializing in the editor UI canvas.
@@ -227,188 +228,111 @@ namespace SliceBuilder
                 return;
             }
 
-            // Get the prefab component from the prefab asset
-            AZ::SliceComponent* sourceSlice = (asset.Get()) ? asset.Get()->GetComponent() : nullptr;
+            // Emulate client flags.
+            AZ::PlatformTagSet platformTags = { AZ_CRC("renderer", 0xf199a19c) };
 
-            // Now create a flattened prefab component from the source one
-            if (sourceSlice)
+            // Compile the source slice into the runtime slice (with runtime components).
+            AzToolsFramework::UiEditorOnlyEntityHandler uiEditorOnlyEntityHandler;
+            AzToolsFramework::EditorOnlyEntityHandlers handlers =
             {
-                AZ::SliceComponent::EntityList sourceEntities;
-                sourceSlice->GetEntities(sourceEntities);
-                AZ::Entity exportSliceEntity;
-                AZ::SliceComponent* exportSlice = exportSliceEntity.CreateComponent<AZ::SliceComponent>();
+                &uiEditorOnlyEntityHandler,
+            };
 
-                // For export, components can assume they're initialized, but not activated.
-                for (AZ::Entity* sourceEntity : sourceEntities)
-                {
-                    if (sourceEntity->GetState() == AZ::Entity::ES_CONSTRUCTED)
-                    {
-                        sourceEntity->Init();
-                    }
-                }
+            // Get the prefab component from the prefab sourceSliceAsset
+            AZ::SliceComponent* sourceSliceData = (sourceSliceAsset.Get()) ? sourceSliceAsset.Get()->GetComponent() : nullptr;
 
-                if (traceDrillerHook.GetErrorCount() > 0)
-                {
-                    AZ_Error(s_uiSliceBuilder, false, "Failed to instantiate entities.");
-                    return;
-                }
-
-                // Prepare entities for export. This involves invoking BuildGameEntity on source
-                // entity's components, targeting a separate entity for export.
-                for (AZ::Entity* sourceEntity : sourceEntities)
-                {
-                    AZ::Entity* exportEntity = aznew AZ::Entity(sourceEntity->GetName().c_str());
-                    exportEntity->SetId(sourceEntity->GetId());
-
-                    const AZ::Entity::ComponentArrayType& editorComponents = sourceEntity->GetComponents();
-                    for (AZ::Component* component : editorComponents)
-                    {
-                        auto* asEditorComponent =
-                            azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(component);
-
-                        if (asEditorComponent)
+            AZ::SerializeContext* context;
+            AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+            if (!context)
                         {
-                            size_t oldComponentCount = exportEntity->GetComponents().size();
-                            asEditorComponent->BuildGameEntity(exportEntity);
-                            if (exportEntity->GetComponents().size() > oldComponentCount)
-                            {
-                                AZ::Component* newComponent = exportEntity->GetComponents().back();
-                                AZ_Error("Export", asEditorComponent->GetId() != AZ::InvalidComponentId, "For entity \"%s\", component \"%s\" doesn't have a valid component id",
-                                    sourceEntity->GetName().c_str(), asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str());
-                                newComponent->SetId(asEditorComponent->GetId());
-                            }
-                        }
-                        else
-                        {
-                            // The component is already runtime-ready. I.e. it is not an editor component.
-                            // Clone the component and add it to the export entity
-                            AZ::Component* clonedComponent = context->CloneObject(component);
-                            exportEntity->AddComponent(clonedComponent);
-                        }
-                    }
-
-                    // Pre-sort prior to exporting so it isn't required at instantiation time.
-                    const AZ::Entity::DependencySortResult sortResult = exportEntity->EvaluateDependencies();
-                    if (AZ::Entity::DependencySortResult::Success != sortResult)
-                    {
-                        const char* sortResultError = "";
-                        switch (sortResult)
-                        {
-                        case AZ::Entity::DependencySortResult::HasCyclicDependency:
-                            sortResultError = "Cyclic dependency found";
-                            break;
-                        case AZ::Entity::DependencySortResult::MissingRequiredService:
-                            sortResultError = "Required services missing";
-                            break;
-                        case AZ::Entity::DependencySortResult::HasIncompatibleServices:
-                            sortResultError = "Incompatible services found";
-                            break;
-                        case AZ::Entity::DependencySortResult::DescriptorNotRegistered:
-                            sortResultError = "Component descriptor not registered";
-                            break;
-                        default:
-                            sortResultError = "Unknown error occurred";
-                            break;
-                        }
-
-                        AZ_Error(s_uiSliceBuilder, false, "For UI canvas \"%s\", Entity \"%s\" [0x%llx] dependency evaluation failed: %s. Compiled canvas cannot be generated.",
-                            fullPath.c_str(), exportEntity->GetName().c_str(), static_cast<AZ::u64>(exportEntity->GetId()),
-                            sortResultError);
-                        UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
-                        return;
-                    }
-
-                    exportSlice->AddEntity(exportEntity);
-                }
-
-                AZ::SliceComponent::EntityList exportEntities;
-                exportSlice->GetEntities(exportEntities);
-
-                if (exportEntities.size() != sourceEntities.size())
-                {
-                    AZ_Error(s_uiSliceBuilder, false, "Entity export list size must match that of the import list.");
-                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
-                    return;
-                }
-
-                // Get the canvas entity from the canvas
-                AZ::Entity* sourceCanvasEntity = nullptr;
-                UiSystemToolsBus::BroadcastResult(sourceCanvasEntity, &UiSystemToolsInterface::GetCanvasEntity, canvasAsset);
-
-                if (!sourceCanvasEntity)
-                {
-                    AZ_Error(s_uiSliceBuilder, false, "Compiling UI canvas \"%s\" failed to find the canvas entity.", fullPath.c_str());
-                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
-                    return;
-                }
-
-                // create a new canvas entity that will contain the game components rather than editor components
-                AZ::Entity exportCanvasEntity(sourceCanvasEntity->GetName().c_str());
-                exportCanvasEntity.SetId(sourceCanvasEntity->GetId());
-
-                const AZ::Entity::ComponentArrayType& editorCanvasComponents = sourceCanvasEntity->GetComponents();
-                for (AZ::Component* canvasEntityComponent : editorCanvasComponents)
-                {
-                    auto* asEditorComponent =
-                        azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(canvasEntityComponent);
-
-                    if (asEditorComponent)
-                    {
-                        size_t oldComponentCount = exportCanvasEntity.GetComponents().size();
-                        asEditorComponent->BuildGameEntity(&exportCanvasEntity);
-                        if (exportCanvasEntity.GetComponents().size() > oldComponentCount)
-                        {
-                            AZ::Component* newComponent = exportCanvasEntity.GetComponents().back();
-                            AZ_Error("Export", asEditorComponent->GetId() != AZ::InvalidComponentId, "For entity \"%s\", component \"%s\" doesn't have a valid component id",
-                                sourceCanvasEntity->GetName().c_str(), asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str());
-                            newComponent->SetId(asEditorComponent->GetId());
-                        }
-                    }
-                    else
-                    {
-                        // The component is already runtime-ready. I.e. it is not an editor component.
-                        // Clone the component and add it to the export entity
-                        AZ::Component* clonedComponent = context->CloneObject(canvasEntityComponent);
-                        exportCanvasEntity.AddComponent(clonedComponent);
-                    }
-                }
-
-                // Save runtime UI canvas to disk.
-                AZ::IO::FileIOStream outputStream(outputPath.c_str(), AZ::IO::OpenMode::ModeWrite);
-                if (outputStream.IsOpen())
-                {
-                    exportSliceEntity.RemoveComponent(exportSlice);
-                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceRootSliceSliceComponent, canvasAsset, exportSlice);
-                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceCanvasEntity, canvasAsset, &exportCanvasEntity);
-                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::SaveCanvasToStream, canvasAsset, outputStream);
-                    outputStream.Close();
-
-                    // switch them back after we write the file so that the source canvas entity gets freed.
-                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceCanvasEntity, canvasAsset, sourceCanvasEntity);
-
-                    AZ_TracePrintf(s_uiSliceBuilder, "Output file %s\n", outputPath.c_str());
-                }
-                else
-                {
-                    AZ_Error(s_uiSliceBuilder, false, "Failed to open output file %s", outputPath.c_str());
-                    UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
-                    return;
-                }
-
-                AssetBuilderSDK::JobProduct jobProduct(outputPath);
-                jobProduct.m_productAssetType = azrtti_typeid<LyShine::CanvasAsset>();
-                jobProduct.m_productSubID = 0;
-                jobProduct.m_dependencies = AZStd::move(productDependencies);
-                response.m_outputProducts.push_back(AZStd::move(jobProduct));
+                AZ_Error(s_uiSliceBuilder, context, "Unable to obtain serialize context");
+                UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
+                return;
             }
-            else
+            
+
+            AzToolsFramework::SliceCompilationResult sliceCompilationResult = AzToolsFramework::CompileEditorSlice(sourceSliceAsset, platformTags, *context, handlers);
+
+            if (!sliceCompilationResult)
             {
-                AZ_Error(s_uiSliceBuilder, false, "Failed to find the slice component from the serialized slice asset.");
+                AZ_Error(s_uiSliceBuilder, false, "Failed to export entities for runtime:\n%s", sliceCompilationResult.GetError().c_str());
                 UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
                 return;
             }
 
+            // Get the canvas entity from the canvas
+            AZ::Entity* sourceCanvasEntity = nullptr;
+            UiSystemToolsBus::BroadcastResult(sourceCanvasEntity, &UiSystemToolsInterface::GetCanvasEntity, canvasAsset);
 
+            if (!sourceCanvasEntity)
+            {
+                AZ_Error(s_uiSliceBuilder, false, "Compiling UI canvas \"%s\" failed to find the canvas entity.", fullPath.c_str());
+                UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
+                return;
+            }
+
+            // create a new canvas entity that will contain the game components rather than editor components
+            AZ::Entity exportCanvasEntity(sourceCanvasEntity->GetName().c_str());
+            exportCanvasEntity.SetId(sourceCanvasEntity->GetId());
+
+            const AZ::Entity::ComponentArrayType& editorCanvasComponents = sourceCanvasEntity->GetComponents();
+            for (AZ::Component* canvasEntityComponent : editorCanvasComponents)
+            {
+                auto* asEditorComponent =
+                    azrtti_cast<AzToolsFramework::Components::EditorComponentBase*>(canvasEntityComponent);
+
+                if (asEditorComponent)
+                {
+                    size_t oldComponentCount = exportCanvasEntity.GetComponents().size();
+                    asEditorComponent->BuildGameEntity(&exportCanvasEntity);
+                    if (exportCanvasEntity.GetComponents().size() > oldComponentCount)
+                    {
+                        AZ::Component* newComponent = exportCanvasEntity.GetComponents().back();
+                        AZ_Error("Export", asEditorComponent->GetId() != AZ::InvalidComponentId, "For entity \"%s\", component \"%s\" doesn't have a valid component id",
+                            sourceCanvasEntity->GetName().c_str(), asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str());
+                        newComponent->SetId(asEditorComponent->GetId());
+                    }
+                }
+                else
+                {
+                    // The component is already runtime-ready. I.e. it is not an editor component.
+                    // Clone the component and add it to the export entity
+                    AZ::Component* clonedComponent = context->CloneObject(canvasEntityComponent);
+                    exportCanvasEntity.AddComponent(clonedComponent);
+                }
+            }
+
+            // Save runtime UI canvas to disk.
+            AZ::IO::FileIOStream outputStream(outputPath.c_str(), AZ::IO::OpenMode::ModeWrite);
+            if (outputStream.IsOpen())
+            {
+                AZ::Data::Asset<AZ::SliceAsset> exportSliceAsset = sliceCompilationResult.GetValue();
+                AZ::Entity* exportSliceAssetEntity = exportSliceAsset.Get()->GetEntity();
+                AZ::SliceComponent* exportSliceComponent = exportSliceAssetEntity->FindComponent<AZ::SliceComponent>();
+                exportSliceAssetEntity->RemoveComponent(exportSliceComponent);
+
+                UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceRootSliceSliceComponent, canvasAsset, exportSliceComponent);
+                UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceCanvasEntity, canvasAsset, &exportCanvasEntity);
+                UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::SaveCanvasToStream, canvasAsset, outputStream);
+                outputStream.Close();
+
+                // switch them back after we write the file so that the source canvas entity gets freed.
+                UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::ReplaceCanvasEntity, canvasAsset, sourceCanvasEntity);
+
+                AZ_TracePrintf(s_uiSliceBuilder, "Output file %s\n", outputPath.c_str());
+            }
+            else
+            {
+                AZ_Error(s_uiSliceBuilder, false, "Failed to open output file %s", outputPath.c_str());
+                UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);
+                return;
+            }
+
+            AssetBuilderSDK::JobProduct jobProduct(outputPath);
+            jobProduct.m_productAssetType = azrtti_typeid<LyShine::CanvasAsset>();
+            jobProduct.m_productSubID = 0;
+            jobProduct.m_dependencies = AZStd::move(productDependencies);
+            response.m_outputProducts.push_back(AZStd::move(jobProduct));
             response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
 
             UiSystemToolsBus::Broadcast(&UiSystemToolsInterface::DestroyCanvas, canvasAsset);

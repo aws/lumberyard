@@ -67,6 +67,7 @@ DeviceInfo::DeviceInfo()
     , m_pDevice(0)
     , m_pContext(0)
     , m_pSwapChain(0)
+    , m_adapterFlag(DXGI_ADAPTER_FLAG_NONE)
     , m_driverType(D3D_DRIVER_TYPE_NULL)
     , m_creationFlags(0)
     , m_featureLevel(D3D_FEATURE_LEVEL_9_1)
@@ -378,6 +379,13 @@ bool DeviceInfo::CreateDevice(bool windowed, int width, int height, int backbuff
                     }
 #endif //!defined(_RELEASE)
 
+                    DXGI_ADAPTER_DESC1 adapterDesc1;
+                    if (SUCCEEDED(m_pAdapter->GetDesc1(&adapterDesc1)))
+                    {
+                        // We need to know if this is a software adapter (e.g., WARP) which may not have any outputs
+                        m_adapterFlag = static_cast<DXGI_ADAPTER_FLAG>(adapterDesc1.Flags);
+                    }
+
                     const D3D_DRIVER_TYPE driverType = m_driverType == D3D_DRIVER_TYPE_HARDWARE ? D3D_DRIVER_TYPE_UNKNOWN : m_driverType;
                     HRESULT hr = createDeviceCallback(pAdapter, driverType, 0, m_creationFlags, pFeatureLevels, uNumFeatureLevels, D3D11_SDK_VERSION, &pDevice, &m_featureLevel, &pContext);
                     if (SUCCEEDED(hr) && pDevice)
@@ -422,6 +430,10 @@ bool DeviceInfo::CreateDevice(bool windowed, int width, int height, int backbuff
                             SetupMonitorAndGetAdapterDesc(m_pOutput, m_pAdapter, m_adapterDesc);
                             break;
                         }
+                        else if (m_adapterFlag == DXGI_ADAPTER_FLAG_SOFTWARE || m_driverType == D3D_DRIVER_TYPE_WARP)
+                        {
+                            break;
+                        }
                         else if (r_overrideDXGIAdapter >= 0)
                         {
                             CryLogAlways("No display connected to DXGI adapter override %d. Adapter cannot be used for rendering.", r_overrideDXGIAdapter);
@@ -451,11 +463,18 @@ bool DeviceInfo::CreateDevice(bool windowed, int width, int height, int backbuff
         }
     }
 
-    if (!m_pFactory || !m_pAdapter || !m_pDevice || !m_pContext || !m_pOutput)
+    if (!m_pFactory || !m_pAdapter || !m_pDevice || !m_pContext)
     {
         Release();
         return false;
     }
+
+    if (!m_pOutput && m_adapterFlag != DXGI_ADAPTER_FLAG_SOFTWARE && m_driverType != D3D_DRIVER_TYPE_WARP)
+    {
+        Release();
+        return false;
+    }
+
     // Decrement Create() increment
     SAFE_RELEASE(pOutput);
     SAFE_RELEASE(pContext);
@@ -478,7 +497,7 @@ bool DeviceInfo::CreateDevice(bool windowed, int width, int height, int backbuff
         desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
         DXGI_MODE_DESC match;
-        if (SUCCEEDED(m_pOutput->FindClosestMatchingMode(&desc, &match, d3dDevice)))
+        if (m_pOutput && SUCCEEDED(m_pOutput->FindClosestMatchingMode(&desc, &match, d3dDevice)))
         {
             m_desktopRefreshRate = match.RefreshRate;
         }
@@ -500,7 +519,7 @@ bool DeviceInfo::CreateDevice(bool windowed, int width, int height, int backbuff
         if (!windowed)
         {
             DXGI_MODE_DESC match;
-            if (SUCCEEDED(m_pOutput->FindClosestMatchingMode(&m_swapChainDesc.BufferDesc, &match, d3dDevice)))
+            if (m_pOutput && SUCCEEDED(m_pOutput->FindClosestMatchingMode(&m_swapChainDesc.BufferDesc, &match, d3dDevice)))
             {
                 m_swapChainDesc.BufferDesc = match;
             }
@@ -618,7 +637,7 @@ void DeviceInfo::SnapSettings()
 #else
 		IUnknown* d3dDevice = m_pDevice;
 #endif
-        if (SUCCEEDED(m_pOutput->FindClosestMatchingMode(&desc, &match, d3dDevice)))
+        if (m_pOutput && SUCCEEDED(m_pOutput->FindClosestMatchingMode(&desc, &match, d3dDevice)))
         {
             m_swapChainDesc.BufferDesc = match;
 

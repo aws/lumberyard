@@ -8,7 +8,7 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-# $Revision: #2 $
+# $Revision: #1 $
 
 from errors import HandledError
 import util
@@ -32,7 +32,6 @@ PENDING_CREATE_REASON = 'The deployment''s resource group defined resources have
 ACCESS_PENDING_CREATE_REASON = 'The deployment''s access control resources have not been created in AWS.'
 CONFIGURATION_SUFFIX = 'Configuration'
 CONFIGURATION_KEY_SUFFIX = 'ConfigurationKey'
-CROSS_GEM_RESOLVER_KEY = 'CrossGemCommunicationInterfaceResolver'
 
 
 def create_stack(context, args):
@@ -226,9 +225,9 @@ def create_stack(context, args):
                     )
 
                 # Add the cross-gem resolver last, if it is required
-                cross_gem_resolver = saved_resources.get(CROSS_GEM_RESOLVER_KEY, None)
+                cross_gem_resolver = saved_resources.get(constant.CROSS_GEM_RESOLVER_KEY, None)
                 if cross_gem_resolver:
-                    template_resources[CROSS_GEM_RESOLVER_KEY] = cross_gem_resolver
+                    template_resources[constant.CROSS_GEM_RESOLVER_KEY] = cross_gem_resolver
                     context.stack.update(
                         deployment_stack_id,
                         None,
@@ -367,7 +366,7 @@ def delete_stack(context, args):
                 remove_stacks = [k for k, v in old_resources.iteritems() if v['Type'] == "AWS::CloudFormation::Stack"]
 
                 # Remove the cross gem resolver first, if it exists
-                old_resources.pop(CROSS_GEM_RESOLVER_KEY, None)
+                old_resources.pop(constant.CROSS_GEM_RESOLVER_KEY, None)
 
                 # Remove the resource groups one at a time
                 for remove_stack in remove_stacks[:-1]:  # Can't have an empty stack, so leave one resource group present
@@ -478,39 +477,41 @@ def upload_resources(context, args):
         raise HandledError('There is no {} deployment stack.'.format(args.deployment))
 
     if args.resource_group is not None:
-        # is the resource group from a gem which isn't enabled for the project?
-        __check_resource_group_gem_status(context, args.resource_group)
-
-        stack_id = context.config.get_resource_group_stack_id(
-            args.deployment, args.resource_group, optional=True)
-        if args.resource_group in context.resource_groups:
-            context.config.aggregate_settings = {}
-            for group in context.resource_groups.values():
-                if group.is_enabled:
-                    group.add_aggregate_settings(context)
-
-            group = context.resource_groups.get(args.resource_group)
-            if stack_id is None:
-                if group.is_enabled:
-                    resource_group.create_stack(context, args)
-                else:
-                    raise HandledError(
-                        'The {} resource group is disabled and no stack exists.'.format(group.name))
-            else:
-                if group.is_enabled:
-                    resource_group.update_stack(context, args)
-                else:
-                    resource_group.delete_stack(context, args)
-        else:
-            if stack_id is None:
-                raise HandledError(
-                    'There is no {} resource group.'.format(args.resource_group))
-            resource_group.delete_stack(context, args)
-
-        __update_mappings(context, args.deployment, True)
-
+        __resource_group_upload(context, args)
     else:
         update_stack(context, args)
+
+def __resource_group_upload(context, args):
+    # is the resource group from a gem which isn't enabled for the project?
+    __check_resource_group_gem_status(context, args.resource_group)
+
+    stack_id = context.config.get_resource_group_stack_id(
+        args.deployment, args.resource_group, optional=True)
+    if args.resource_group in context.resource_groups:
+        context.config.aggregate_settings = {}
+        for group in context.resource_groups.values():
+            if group.is_enabled:
+                group.add_aggregate_settings(context)
+
+        group = context.resource_groups.get(args.resource_group)
+        if stack_id is None:
+            if group.is_enabled:
+                resource_group.create_stack(context, args)
+            else:
+                raise HandledError(
+                    'The {} resource group is disabled and no stack exists.'.format(group.name))
+        else:
+            if group.is_enabled:
+                resource_group.update_stack(context, args)
+            else:
+                resource_group.delete_stack(context, args)
+    else:
+        if stack_id is None:
+            raise HandledError(
+                'There is no {} resource group.'.format(args.resource_group))
+        resource_group.delete_stack(context, args)
+
+    __update_mappings(context, args.deployment, True)
 
 
 def update_stack(context, args):
@@ -636,7 +637,7 @@ def update_stack(context, args):
             parameters[k + CONFIGURATION_KEY_SUFFIX] = None
 
         # Remove the cross-gem interface resolver if it exists
-        cross_gem_resolver = new_resources.pop(CROSS_GEM_RESOLVER_KEY, None)
+        cross_gem_resolver = new_resources.pop(constant.CROSS_GEM_RESOLVER_KEY, None)
 
         try:
             # Do individual stack updates for each newly created resource
@@ -690,7 +691,7 @@ def update_stack(context, args):
 
             # Re-add the cross gem resolver last
             if cross_gem_resolver:
-                new_resources[CROSS_GEM_RESOLVER_KEY] = cross_gem_resolver
+                new_resources[constant.CROSS_GEM_RESOLVER_KEY] = cross_gem_resolver
                 context.stack.update(
                     deployment_stack_id,
                     None,

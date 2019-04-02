@@ -15,7 +15,6 @@
 #include "AnimKey.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
-#include "TrackViewUndo.h"
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/SequenceType.h>
 
@@ -170,12 +169,7 @@ void CCaptureKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& sel
             bool isDuringUndo = false;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
 
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-                keyHandle.SetKey(&captureKey);
-            }
-            else if (isDuringUndo)
+            if (isDuringUndo)
             {
                 keyHandle.SetKey(&captureKey);
             }

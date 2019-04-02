@@ -127,4 +127,81 @@ namespace MCore
             }
         }
     }
+
+    class StringIdPoolIndexSerializer
+        : public AZ::SerializeContext::IDataSerializer
+    {
+    public:
+        /// Store the class data into a stream.
+        size_t Save(const void* classPtr, AZ::IO::GenericStream& stream, bool /*isDataBigEndian = false*/)
+        {
+            // Look up the string to save
+            const uint32 index = static_cast<const StringIdPoolIndex*>(classPtr)->m_index;
+            if (index == MCORE_INVALIDINDEX32)
+            {
+                return 0;
+            }
+            const AZStd::string& string = MCore::GetStringIdPool().GetName(index);
+
+            return stream.Write(string.size(), string.c_str());
+        }
+
+        /// Load the class data from a stream.
+        bool Load(void* classPtr, AZ::IO::GenericStream& stream, unsigned int /*version*/, bool /*isDataBigEndian = false*/)
+        {
+            AZStd::string string;
+            size_t textLen = stream.GetLength();
+
+            string.resize(textLen);
+            stream.Read(textLen, string.data());
+
+            static_cast<StringIdPoolIndex*>(classPtr)->m_index = MCore::GetStringIdPool().GenerateIdForString(string);
+            return true;
+        }
+
+        /// Convert binary data to text.
+        size_t DataToText(AZ::IO::GenericStream& in, AZ::IO::GenericStream& out, bool /*isDataBigEndian = false*/)
+        {
+            size_t dataSize = static_cast<size_t>(in.GetLength());
+
+            AZStd::string outText;
+            outText.resize(dataSize);
+            in.Read(dataSize, outText.data());
+
+            return static_cast<size_t>(out.Write(outText.size(), outText.c_str()));
+        }
+
+        /// Convert text data to binary, to support loading old version
+        // formats. We must respect text version if the text->binary format has
+        // changed!
+        size_t TextToData(const char* text, unsigned int /*textVersion*/, AZ::IO::GenericStream& stream, bool /*isDataBigEndian = false*/)
+        {
+            size_t bytesToWrite = strlen(text);
+
+            return static_cast<size_t>(stream.Write(bytesToWrite, reinterpret_cast<const void*>(text)));
+        }
+
+        /// Compares two instances of the type.
+        /// \return true if they match.
+        /// Note: Input pointers are assumed to point to valid instances of the class.
+        bool CompareValueData(const void* lhs, const void* rhs)
+        {
+            return *static_cast<const StringIdPoolIndex*>(lhs) == *static_cast<const StringIdPoolIndex*>(rhs);
+        }
+    };
+
+    void StringIdPoolIndex::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<StringIdPoolIndex>()
+            ->Version(1)
+            ->Serializer<StringIdPoolIndexSerializer>()
+            ;
+    }
+
 } // namespace MCore

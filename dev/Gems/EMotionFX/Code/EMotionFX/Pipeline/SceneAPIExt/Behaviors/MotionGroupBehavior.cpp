@@ -26,6 +26,7 @@
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
 #include <SceneAPIExt/Rules/MotionRangeRule.h>
 #include <SceneAPIExt/Rules/MorphTargetRule.h>
+#include <SceneAPIExt/Rules/MotionAdditiveRule.h>
 
 namespace EMotionFX
 {
@@ -41,6 +42,7 @@ namespace EMotionFX
                 Rule::MotionScaleRule::Reflect(context);
                 Rule::MotionCompressionSettingsRule::Reflect(context);
                 Rule::MorphTargetRuleReadOnly::Reflect(context);
+                Rule::MotionAdditiveRule::Reflect(context);
 
                 AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
                 if (serializeContext)
@@ -97,6 +99,10 @@ namespace EMotionFX
                     if (existingRules.find(Rule::MotionRangeRule::TYPEINFO_Uuid()) == existingRules.end())
                     {
                         modifiers.push_back(Rule::MotionRangeRule::TYPEINFO_Uuid());
+                    }
+                    if (existingRules.find(Rule::MotionAdditiveRule::TYPEINFO_Uuid()) == existingRules.end())
+                    {
+                        modifiers.push_back(Rule::MotionAdditiveRule::TYPEINFO_Uuid());
                     }
                 }
             }

@@ -18,18 +18,28 @@
 #include <AzCore/Slice/SliceComponent.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/Entity.h>
+#include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Slice/SliceAssetHandler.h>
 #include <AzCore/Asset/AssetManager.h>
+#include <AzCore/Math/Sfmt.h>
 #include <AzCore/Memory/PoolAllocator.h>
 #include <AzCore/Slice/SliceMetadataInfoComponent.h>
+
+#if defined(HAVE_BENCHMARK)
+#include <benchmark/benchmark.h>
+#endif
 
 using namespace AZ;
 
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(AssetManager_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AssetManager_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AssetManager_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -90,8 +100,8 @@ namespace UnitTest
             }
         }
 
-        float m_float;
-        int m_int;
+        float m_float = 0.f;
+        int m_int = 0;
     };
 
     class MyTestComponent2
@@ -121,6 +131,113 @@ namespace UnitTest
         EntityId m_entityId;
     };
 
+    class SliceTest_MockCatalog
+        : public AssetCatalog
+        , public AZ::Data::AssetCatalogRequestBus::Handler
+    {
+    private:
+        AZ::Uuid randomUuid = AZ::Uuid::CreateRandom();
+        AZStd::vector<AssetId> m_mockAssetIds;
+
+    public:
+        AZ_CLASS_ALLOCATOR(SliceTest_MockCatalog, AZ::SystemAllocator, 0);
+
+        SliceTest_MockCatalog()
+        {
+            AssetCatalogRequestBus::Handler::BusConnect();
+        }
+
+        ~SliceTest_MockCatalog()
+        {
+            AssetCatalogRequestBus::Handler::BusDisconnect();
+        }
+
+        AssetId GenerateMockAssetId()
+        {
+            AssetId assetId = AssetId(AZ::Uuid::CreateRandom(), 0);
+            m_mockAssetIds.push_back(assetId);
+            return assetId;
+        }
+        
+        //////////////////////////////////////////////////////////////////////////
+        // AssetCatalogRequestBus
+        AssetInfo GetAssetInfoById(const AssetId& id) override
+        {
+            AssetInfo result;
+            result.m_assetType = AZ::AzTypeInfo<AZ::SliceAsset>::Uuid();
+            for (const AssetId& assetId : m_mockAssetIds)
+            {
+                if (assetId == id)
+                {
+                    result.m_assetId = id;
+                    break;
+                }
+            }
+            return result;
+        }
+        //////////////////////////////////////////////////////////////////////////
+
+        AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& type) override
+        {
+            EXPECT_TRUE(type == AzTypeInfo<SliceAsset>::Uuid());
+            AssetStreamInfo info;
+            info.m_dataOffset = 0;
+            info.m_isCustomStreamType = false;
+            info.m_streamFlags = IO::OpenMode::ModeRead;
+
+            for (int i = 0; i < m_mockAssetIds.size(); ++i)
+            {
+                if (m_mockAssetIds[i] == id)
+                {
+                    info.m_streamName = AZStd::string::format("MockSliceAssetName%d", i);
+                }
+            }
+
+            if (!info.m_streamName.empty())
+            {
+                // this ensures tha parallel running unit tests do not overlap their files that they use.
+                AZStd::string fullName = AZStd::string::format("%s%s-%s", GetTestFolderPath().c_str(), randomUuid.ToString<AZStd::string>().c_str(), info.m_streamName.c_str());
+                info.m_streamName = fullName;
+                info.m_dataLen = static_cast<size_t>(IO::SystemFile::Length(info.m_streamName.c_str()));
+            }
+            else
+            {
+                info.m_dataLen = 0;
+            }
+
+            return info;
+        }
+
+        AssetStreamInfo GetStreamInfoForSave(const AssetId& id, const AssetType& type) override
+        {
+            AssetStreamInfo info;
+            info = GetStreamInfoForLoad(id, type);
+            info.m_streamFlags = IO::OpenMode::ModeWrite;
+            return info;
+        }
+
+        bool SaveAsset(Asset<SliceAsset>& asset)
+        {
+            volatile bool isDone = false;
+            volatile bool succeeded = false;
+            AssetBusCallbacks callbacks;
+            callbacks.SetCallbacks(nullptr, nullptr, nullptr,
+                [&isDone, &succeeded](const Asset<AssetData>& /*asset*/, bool isSuccessful, AssetBusCallbacks& /*callbacks*/)
+            {
+                isDone = true;
+                succeeded = isSuccessful;
+            }, nullptr, nullptr);
+
+            callbacks.BusConnect(asset.GetId());
+            asset.Save();
+
+            while (!isDone)
+            {
+                AssetManager::Instance().DispatchEvents();
+            }
+            return succeeded;
+        }
+    };
 
     class SliceTest
         : public AllocatorsFixture
@@ -141,6 +258,16 @@ namespace UnitTest
             m_serializeContext = aznew SerializeContext(true, true);
             m_sliceDescriptor = SliceComponent::CreateDescriptor();
 
+            m_prevFileIO = IO::FileIOBase::GetInstance();
+            IO::FileIOBase::SetInstance(&m_fileIO);
+            IO::Streamer::Descriptor streamerDesc;
+            AZStd::string testFolder = GetTestFolderPath();
+            if (testFolder.length() > 0)
+            {
+                streamerDesc.m_fileMountPoint = testFolder.c_str();
+            }
+            IO::Streamer::Create(streamerDesc);
+
             m_sliceDescriptor->Reflect(m_serializeContext);
             MyTestComponent1::Reflect(m_serializeContext);
             MyTestComponent2::Reflect(m_serializeContext);
@@ -152,13 +279,22 @@ namespace UnitTest
             Data::AssetManager::Descriptor desc;
             Data::AssetManager::Create(desc);
             Data::AssetManager::Instance().RegisterHandler(aznew SliceAssetHandler(m_serializeContext), AzTypeInfo<AZ::SliceAsset>::Uuid());
+            m_catalog.reset(aznew SliceTest_MockCatalog());
+            AssetManager::Instance().RegisterCatalog(m_catalog.get(), AzTypeInfo<AZ::SliceAsset>::Uuid());
         }
 
         void TearDown() override
         {
+            m_catalog->DisableCatalog();
             Data::AssetManager::Destroy();
             delete m_sliceDescriptor;
             delete m_serializeContext;
+
+            if (IO::Streamer::IsReady())
+            {
+                IO::Streamer::Destroy();
+            }
+            IO::FileIOBase::SetInstance(m_prevFileIO);
 
             AllocatorInstance<PoolAllocator>::Destroy();
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
@@ -166,6 +302,9 @@ namespace UnitTest
             AllocatorsFixture::TearDown();
         }
 
+        FileIOBase* m_prevFileIO{ nullptr };
+        TestFileIOBase m_fileIO;
+        AZStd::unique_ptr<SliceTest_MockCatalog> m_catalog;
         SerializeContext* m_serializeContext;
         ComponentDescriptor* m_sliceDescriptor;
     };
@@ -230,9 +369,14 @@ namespace UnitTest
         // Test slice component with a single base prefab
 
         // Create "fake" asset - so we don't have to deal with the asset database, etc.
-        Asset<SliceAsset> sliceAssetHolder = AssetManager::Instance().CreateAsset<SliceAsset>(AssetId("{8FCBA25A-8E2F-4D76-ABCD-5EFDFD9BAD47}"));
+        Asset<SliceAsset> sliceAssetHolder = AssetManager::Instance().CreateAsset<SliceAsset>(m_catalog->GenerateMockAssetId());
         SliceAsset* sliceAsset1 = sliceAssetHolder.Get();
         sliceAsset1->SetData(sliceEntity, sliceComponent);
+        // ASSERT_TRUE(m_catalog->SaveAsset(sliceAssetHolder));
+
+        AZ::Data::AssetInfo assetInfo;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetInfo, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetInfoById, sliceAssetHolder.GetId());
+        ASSERT_TRUE(assetInfo.m_assetId.IsValid());
 
         sliceEntity2 = aznew Entity;
         SliceComponent* sliceComponent2 = sliceEntity2->CreateComponent<SliceComponent>();
@@ -292,7 +436,7 @@ namespace UnitTest
 
         /////////////////////////////////////////////////////////////////////////////
         // Test slice component 3 levels of customization
-        Asset<SliceAsset> sliceAssetHolder1 = AssetManager::Instance().CreateAsset<SliceAsset>(AssetId("{57B76D9B-F0D0-429F-A723-64610BF9D4C0}"));
+        Asset<SliceAsset> sliceAssetHolder1 = AssetManager::Instance().CreateAsset<SliceAsset>(m_catalog->GenerateMockAssetId());
         SliceAsset* sliceAsset2 = sliceAssetHolder1.Get();
         sliceAsset2->SetData(sliceEntity2, sliceComponent2);
 
@@ -353,7 +497,7 @@ namespace UnitTest
             rootEntity.Init();
             rootEntity.Activate();
 
-            Asset<SliceAsset> testAsset = AssetManager::Instance().CreateAsset<SliceAsset>(AssetId("{BF0B1C16-6456-43EF-A9C8-C3F2A8EEA7CE}"));
+            Asset<SliceAsset> testAsset = AssetManager::Instance().CreateAsset<SliceAsset>(m_catalog->GenerateMockAssetId());
             Entity* testAssetEntity = aznew Entity;
             SliceComponent* testAssetSlice = testAssetEntity->CreateComponent<SliceComponent>();
             testAssetSlice->SetSerializeContext(&serializeContext);
@@ -471,6 +615,7 @@ namespace UnitTest
     /// a mock asset catalog which only contains two fixed assets.
     class SliceTest_RecursionDetection_Catalog
         : public AssetCatalog
+        , public AssetCatalogRequestBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(SliceTest_RecursionDetection_Catalog, AZ::SystemAllocator, 0);
@@ -479,7 +624,35 @@ namespace UnitTest
 
         AssetId m_assetIdSlice1 = AssetId("{9DE6E611-CE12-4D78-90A5-53D106A50042}", 0);
         AssetId m_assetIdSlice2 = AssetId("{884C3DEE-3C86-4941-85E9-89103BAE314B}", 0);
-        
+
+        SliceTest_RecursionDetection_Catalog()
+        {
+            AssetCatalogRequestBus::Handler::BusConnect();
+        }
+
+        ~SliceTest_RecursionDetection_Catalog()
+        {
+            AssetCatalogRequestBus::Handler::BusDisconnect();
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        // AssetCatalogRequestBus
+        AssetInfo GetAssetInfoById(const AssetId& id) override
+        {
+            AssetInfo result;
+            result.m_assetType = azrtti_typeid<SliceAsset>();
+            if (id == m_assetIdSlice1)
+            {
+                result.m_assetId = id;
+            }
+            else if (id == m_assetIdSlice2)
+            {
+                result.m_assetId = id;
+            }
+            return result;
+        }
+        //////////////////////////////////////////////////////////////////////////
+
         AssetStreamInfo GetStreamInfoForLoad(const AssetId& id, const AssetType& type) override
         {
             EXPECT_TRUE(type == AzTypeInfo<SliceAsset>::Uuid());
@@ -584,7 +757,6 @@ namespace UnitTest
 
             m_sliceDescriptor.reset(SliceComponent::CreateDescriptor());
             m_sliceDescriptor->Reflect(m_serializeContext.get());
-            SliceMetadataInfoComponent::Reflect(m_serializeContext.get());
             Entity::Reflect(m_serializeContext.get());
             DataPatch::Reflect(m_serializeContext.get());
             // Create database
@@ -597,6 +769,7 @@ namespace UnitTest
 
         void TearDown() override
         {
+            m_catalog->DisableCatalog();
             m_sliceDescriptor.reset();
             AssetManager::Destroy();
 
@@ -848,7 +1021,7 @@ namespace UnitTest
             rootSliceComponent->AddEntity(entity1InRootSlice);
 
             // create a "fake" slice asset
-            rootSliceAssetRef = Data::AssetManager::Instance().CreateAsset<SliceAsset>(Data::AssetId("{8FCBA25A-8E2F-4D76-ABCD-5EFDFD9BAD47}"));
+            rootSliceAssetRef = Data::AssetManager::Instance().CreateAsset<SliceAsset>(m_catalog->GenerateMockAssetId());
             rootSliceAssetRef.Get()->SetData(rootSliceEntity, rootSliceComponent);
         }
 
@@ -930,3 +1103,75 @@ namespace UnitTest
     }
 }
 
+#ifdef HAVE_BENCHMARK
+namespace Benchmark
+{
+    static void BM_Slice_GenerateNewIdsAndFixRefs(benchmark::State& state)
+    {
+        ComponentApplication componentApp;
+
+        ComponentApplication::Descriptor desc;
+        desc.m_useExistingAllocator = true;
+
+        ComponentApplication::StartupParameters startupParams;
+        startupParams.m_allocator = &AZ::AllocatorInstance<AZ::SystemAllocator>::Get();
+
+        componentApp.Create(desc, startupParams);
+
+        UnitTest::MyTestComponent1::Reflect(componentApp.GetSerializeContext());
+        UnitTest::MyTestComponent2::Reflect(componentApp.GetSerializeContext());
+
+        // we use some randomness to set up this scenario,
+        // seed the generator so we get the same results each time.
+        u32 randSeed[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+        AZ::Sfmt::GetInstance().Seed(randSeed, AZ_ARRAY_SIZE(randSeed));
+
+        // setup a container with N entities
+        AZ::SliceComponent::InstantiatedContainer container;
+        for (int64_t entityI = 0; entityI < state.range(0); ++entityI)
+        {
+            auto entity = aznew AZ::Entity();
+
+            // add components with nothing to remap, just to bulk up the volume of processed data
+            entity->CreateComponent<UnitTest::MyTestComponent1>();
+            entity->CreateComponent<UnitTest::MyTestComponent1>();
+            entity->CreateComponent<UnitTest::MyTestComponent1>();
+
+            // add component which references another EntityId
+            auto component2 = entity->CreateComponent<UnitTest::MyTestComponent2>();
+            if (entityI != 0)
+            {
+                component2->m_entityId = container.m_entities[AZ::Sfmt::GetInstance().Rand64() % container.m_entities.size()]->GetId();
+            }
+
+            container.m_entities.push_back(entity);
+        }
+
+        // shuffle entities so that some ID references are earlier in the data and some are later
+        for (size_t i = container.m_entities.size() - 1; i > 0; --i)
+        {
+            AZStd::swap(container.m_entities[i], container.m_entities[AZ::Sfmt::GetInstance().Rand64() % (i+1)]);
+        }
+
+        AZStd::unordered_map<AZ::EntityId, AZ::EntityId> remappedIds;
+        while (state.KeepRunning())
+        {
+            // Setup
+            state.PauseTiming();
+            AZ::SliceComponent::InstantiatedContainer* clonedContainer = componentApp.GetSerializeContext()->CloneObject(&container);
+            state.ResumeTiming();
+
+            // Timed Test
+            AZ::IdUtils::Remapper<AZ::EntityId>::GenerateNewIdsAndFixRefs(clonedContainer, remappedIds, componentApp.GetSerializeContext());
+
+            state.PauseTiming();
+            delete clonedContainer;
+            remappedIds.clear();
+            state.ResumeTiming();
+        }
+    }
+
+    BENCHMARK(BM_Slice_GenerateNewIdsAndFixRefs)->Arg(10)->Arg(1000);
+
+} // namespace Benchmark
+#endif // HAVE_BENCHMARK

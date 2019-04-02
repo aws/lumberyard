@@ -457,11 +457,12 @@ namespace EMotionFX
         {
             ActorInstanceData& actorInstanceData = *mActorInstanceDatas[i];
             ActorInstance* actorInstance = actorInstanceData.mActorInstance;
+            const Transform& transform = actorInstance->GetLocalSpaceTransform();
 
         #ifndef EMFX_SCALE_DISABLED
-            AddTransformKey(actorInstanceData.mActorLocalTransform, actorInstance->GetLocalPosition(), actorInstance->GetLocalRotation(), actorInstance->GetLocalScale());
+            AddTransformKey(actorInstanceData.mActorLocalTransform, transform.mPosition, transform.mRotation, transform.mScale);
         #else
-            AddTransformKey(actorInstanceData.mActorLocalTransform, actorInstance->GetLocalPosition(), actorInstance->GetLocalRotation(), AZ::Vector3(1.0f, 1.0f, 1.0f));
+            AddTransformKey(actorInstanceData.mActorLocalTransform, transform.mPosition, transform.mRotation, AZ::Vector3(1.0f, 1.0f, 1.0f));
         #endif
         }
     }
@@ -470,7 +471,6 @@ namespace EMotionFX
     // record current transforms
     void Recorder::RecordCurrentTransforms()
     {
-        // for all actor instances
         const uint32 numActorInstances = mActorInstanceDatas.GetLength();
         for (uint32 i = 0; i < numActorInstances; ++i)
         {
@@ -478,46 +478,11 @@ namespace EMotionFX
             ActorInstance* actorInstance = actorInstanceData.mActorInstance;
 
             const TransformData* transformData = actorInstance->GetTransformData();
-            /*      if (mRecordSettings.mForceMatrixDecompose)
-                    {
-                        const MCore::Matrix* globalMatrices = transformData->GetGlobalMatrices();
-                        MCore::Matrix invActorMatrix = actorInstance->GetGlobalTransform().ToMatrix().Inversed();
-
-                        // for all nodes in the actor instance
-                        MCore::Matrix localMatrix;
-                        MCore::Matrix globalMatrix;
-                        MCore::MatrixDecomposer decomposer;
-                        const uint32 numNodes = actorInstance->GetNumNodes();
-                        for (uint32 n=0; n<numNodes; ++n)
-                        {
-                            // calculate the local space matrix
-                            localMatrix = globalMatrices[n];
-                            const uint32 parentIndex = actorInstance->GetActor()->GetNode(n)->GetParentIndex();
-                            if (parentIndex != MCORE_INVALIDINDEX32)
-                                localMatrix *= globalMatrices[parentIndex].Inversed();
-                            else
-                                localMatrix *= invActorMatrix;
-
-                            // decompose the matrix
-                            decomposer.InitFromMatrix( localMatrix );
-
-                            // add the key
-                            #ifndef EMFX_SCALE_DISABLED
-                                AddTransformKey(actorInstanceData.mTransformTracks[n], decomposer.GetTranslation(), decomposer.GetRotation(), decomposer.GetScale(), decomposer.GetScaleRotation());
-                            #else
-                                AddTransformKey(actorInstanceData.mTransformTracks[n], decomposer.GetTranslation(), decomposer.GetRotation(), MCore::Vector3(1.0f, 1.0f, 1.0f), MCore::Quaternion());
-                            #endif
-                        }
-                    }
-                    else    // if we have a unique buffer of local transformations, use that (this is much faster than decomposing global matrices)*/
             {
-                //const Transform* localTransforms = transformData->GetLocalTransforms();
-
-                // for all nodes in the actor instance
                 const uint32 numNodes = actorInstance->GetNumNodes();
                 for (uint32 n = 0; n < numNodes; ++n)
                 {
-                    const Transform& localTransform = transformData->GetCurrentPose()->GetLocalTransform(n);
+                    const Transform& localTransform = transformData->GetCurrentPose()->GetLocalSpaceTransform(n);
 
                 #ifndef EMFX_SCALE_DISABLED
                     AddTransformKey(actorInstanceData.mTransformTracks[n], localTransform.mPosition, localTransform.mRotation, localTransform.mScale);
@@ -914,13 +879,13 @@ namespace EMotionFX
 
         // sample and apply
         const TransformTracks& track = actorInstanceData.mActorLocalTransform;
-        actorInstance->SetLocalPosition(AZ::Vector3(track.mPositions.GetValueAtTime(timeInSeconds)));
-        actorInstance->SetLocalRotation(track.mRotations.GetValueAtTime(timeInSeconds));
+        actorInstance->SetLocalSpacePosition(AZ::Vector3(track.mPositions.GetValueAtTime(timeInSeconds)));
+        actorInstance->SetLocalSpaceRotation(track.mRotations.GetValueAtTime(timeInSeconds));
         EMFX_SCALECODE
         (
             if (mRecordSettings.mRecordScale)
             {
-                actorInstance->SetLocalScale(AZ::Vector3(track.mScales.GetValueAtTime(timeInSeconds)));
+                actorInstance->SetLocalSpaceScale(AZ::Vector3(track.mScales.GetValueAtTime(timeInSeconds)));
             }
         )
     }
@@ -942,7 +907,7 @@ namespace EMotionFX
         const uint32 numNodes = actorInstance->GetNumNodes();
         for (uint32 n = 0; n < numNodes; ++n)
         {
-            outTransform = transformData->GetCurrentPose()->GetLocalTransform(n);
+            outTransform = transformData->GetCurrentPose()->GetLocalSpaceTransform(n);
             const TransformTracks& track = actorInstanceData.mTransformTracks[n];
 
             // build the output transform by sampling the keytracks
@@ -961,7 +926,7 @@ namespace EMotionFX
             )
 
             // set the transform
-            transformData->GetCurrentPose()->SetLocalTransform(n, outTransform);
+            transformData->GetCurrentPose()->SetLocalSpaceTransform(n, outTransform);
         }
     }
 
@@ -1139,6 +1104,7 @@ namespace EMotionFX
                     item->mTypeColor        = activeNode->GetVisualColor();
                     item->mCategoryID       = (uint32)activeNode->GetPaletteCategory();
                     item->mNodeType         = typeID;
+                    item->mAnimGraphInstance = animGraphInstance;
                     item->mGlobalWeights.Reserve(1024);
                     item->mLocalWeights.Reserve(1024);
                     item->mPlayTimes.Reserve(1024);
@@ -1390,14 +1356,17 @@ namespace EMotionFX
             for (uint32 i = 0; i < numEvents; ++i)
             {
                 const EventInfo& eventInfo = eventBuffer.GetEvent(i);
-
+                if (eventInfo.m_eventState == EventInfo::EventInfo::ACTIVE)
+                {
+                    continue;
+                }
                 EventHistoryItem* item = FindEventHistoryItem(actorInstanceData, eventInfo, mRecordTime);
                 if (item == nullptr) // create a new one
                 {
                     item = new EventHistoryItem();
 
-                    //item->mCategoryID = EVENTCATEGORY_MOTIONEVENT;
-                    item->mEventIndex   = GetEventManager().FindEventTypeIndex(eventInfo.mTypeID);
+                    // TODO
+                    //item->mEventIndex   = GetEventManager().FindEventTypeIndex(eventInfo.mTypeID);
                     item->mEventInfo    = eventInfo;
                     item->mIsTickEvent  = eventInfo.mEvent->GetIsTickEvent();
                     item->mStartTime    = mRecordTime;

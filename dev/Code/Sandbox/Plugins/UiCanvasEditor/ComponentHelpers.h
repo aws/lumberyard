@@ -16,9 +16,14 @@ namespace ComponentHelpers
     QList<QAction*> CreateAddComponentActions(HierarchyWidget* hierarchy,
         QTreeWidgetItemRawPtrQList& selectedItems,
         QWidget* parent);
-    QList<QAction*> CreateRemoveComponentActions(HierarchyWidget* hierarchy,
-        QTreeWidgetItemRawPtrQList& selectedItems,
-        const AZ::Component* componentToRemove);
+    QAction* CreateRemoveComponentsAction(QWidget* parent);
+    void UpdateRemoveComponentsAction(QAction* action);
+    QAction* CreateCutComponentsAction(QWidget* parent);
+    void UpdateCutComponentsAction(QAction* action);
+    QAction* CreateCopyComponentsAction(QWidget* parent);
+    void UpdateCopyComponentsAction(QAction* action);
+    QAction* CreatePasteComponentsAction(QWidget* parent);
+    void UpdatePasteComponentsAction(QAction* action);
 
     struct ComponentTypeData
     {

@@ -18,12 +18,15 @@
 #include <AzCore/Serialization/EditContext.h>
 
 #include <AzFramework/Components/TransformComponent.h>
+#include <AzFramework/InGameUI/UiFrameworkBus.h>
 
 #include <AzToolsFramework/Slice/SliceCompilation.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
+#include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 
 namespace AzToolsFramework
 {
@@ -111,8 +114,8 @@ namespace AzToolsFramework
          * This is recursive to allow deep exports, such an editor component exporting a runtime component, which in turn
          * exports a custom version of itself depending on platform.
          */
-        ExportedComponentResult ResolveExportedComponent(AZ::ExportedComponent component, 
-            const AZ::PlatformTagSet& platformTags, 
+        ExportedComponentResult ResolveExportedComponent(AZ::ExportedComponent component,
+            const AZ::PlatformTagSet& platformTags,
             AZ::SerializeContext& serializeContext)
         {
             AZ::Component* inputComponent = component.m_component;
@@ -173,11 +176,51 @@ namespace AzToolsFramework
             return AZ::Success(component);
         }
 
+        //! Iterates through the list of entities for each handler provided and returns the first handler
+        //! that can handle at least one of the entities in the list.
+        //!
+        //! We currently don't have support the concept of using multiple handlers for a given list of
+        //! entities. So once a handler is found, we assume that it can handle all of the entities in
+        //! the list.
+        //!
+        //! This may not always be true if the list contains world entities and UI element entities, for
+        //! example - so this may need udpating eventually.
+        EditorOnlyEntityHandler* FindHandlerForEntities(const AZ::SliceComponent::EntityList& entities, const EditorOnlyEntityHandlers& editorOnlyEntityHandlers)
+        {
+            EditorOnlyEntityHandler* editorOnlyEntityHandler = nullptr;
+            for (auto handlerCandidate : editorOnlyEntityHandlers)
+            {
+                const bool handlerInvalid = handlerCandidate == nullptr;
+                if (handlerInvalid)
+                {
+                    continue;
+                }
+
+                // See if this handler can handle at least one of the entities.
+                for (AZ::Entity* entity : entities)
+                {
+                    if (handlerCandidate->IsEntityUniquelyForThisHandler(entity))
+                    {
+                        editorOnlyEntityHandler = handlerCandidate;
+                        break;
+                    }
+                }
+
+                const bool editorOnlyHandlerValid = editorOnlyEntityHandler != nullptr;
+                if (editorOnlyHandlerValid)
+                {
+                    break;
+                }
+            }
+
+            return editorOnlyEntityHandler;
+        }
+
         /**
-         * Identify and remove any entities marked as editor-only.
-         * If any are discovered, adjust descendants' transforms to retain spatial relationships.
-         * Note we cannot use EBuses for this purpose, since we're crunching data, and can't assume any entities are active.
-         */
+        * Identify and remove any entities marked as editor-only.
+        * If any are discovered, adjust descendants' transforms to retain spatial relationships.
+        * Note we cannot use EBuses for this purpose, since we're crunching data, and can't assume any entities are active.
+        */
         EditorOnlyEntityHandler::Result 
         AdjustForEditorOnlyEntities(AZ::SliceComponent* slice, const AZStd::unordered_set<AZ::EntityId>& editorOnlyEntities, AZ::SerializeContext& serializeContext, EditorOnlyEntityHandler* customHandler)
         {
@@ -214,13 +257,25 @@ namespace AzToolsFramework
             return AZ::Success();
         }
 
+        AZ::TransformInterface* FindTransformInterfaceComponent(AZ::Entity& entity)
+        {
+            for (AZ::Component* component : entity.GetComponents())
+            {
+                if (auto transformInterface = azrtti_cast<AZ::TransformInterface*>(component))
+                {
+                    return transformInterface;
+                }
+            }
+            return nullptr;
+        }
+
     } // namespace Internal
 
     /**
      * Compiles the provided source slice into a runtime slice.
      * Components are validated and exported considering platform tags and EditContext-driven user validation and export customizations.
      */
-    SliceCompilationResult CompileEditorSlice(const AZ::Data::Asset<AZ::SliceAsset>& sourceSliceAsset, const AZ::PlatformTagSet& platformTags, AZ::SerializeContext& serializeContext, EditorOnlyEntityHandler* editorOnlyEntityHandler)
+    SliceCompilationResult CompileEditorSlice(const AZ::Data::Asset<AZ::SliceAsset>& sourceSliceAsset, const AZ::PlatformTagSet& platformTags, AZ::SerializeContext& serializeContext, const EditorOnlyEntityHandlers& editorOnlyEntityHandlers)
     {
         if (!sourceSliceAsset)
         {
@@ -233,7 +288,8 @@ namespace AzToolsFramework
         // Create a new target slice asset to which we'll export entities & components.
         AZ::Entity* exportSliceEntity = aznew AZ::Entity(sourceSliceAsset.Get()->GetEntity()->GetId());
         AZ::SliceComponent* exportSliceData = exportSliceEntity->CreateComponent<AZ::SliceComponent>();
-        AZ::Data::Asset<AZ::SliceAsset> exportSliceAsset(aznew AZ::SliceAsset(sourceSliceAsset.GetId()));
+        AZ::Data::Asset<AZ::SliceAsset> exportSliceAsset;
+        exportSliceAsset.Create(AZ::Data::AssetId(AZ::Uuid::CreateRandom()));
         exportSliceAsset.Get()->SetData(exportSliceEntity, exportSliceData);
 
         // For export, components can assume they're initialized, but not activated.
@@ -253,7 +309,11 @@ namespace AzToolsFramework
             immutableSourceEntities.push_back(entity);
         }
 
-        AZStd::unordered_set<AZ::EntityId> editorOnlyEntities;
+        // Pick the correct handler to use
+        EditorOnlyEntityHandler* editorOnlyEntityHandler = Internal::FindHandlerForEntities(sourceEntities, editorOnlyEntityHandlers);
+        const bool editorOnlyHandlerValid = editorOnlyEntityHandler != nullptr;
+
+        EntityIdSet editorOnlyEntities;
 
         // Prepare entities for export. This involves invoking BuildGameEntity on source
         // entity's components, targeting a separate entity for export.
@@ -264,9 +324,9 @@ namespace AzToolsFramework
 
             bool isEditorOnly = false;
             EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, sourceEntity->GetId(), &EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
-            if (isEditorOnly)
+            if (isEditorOnly && editorOnlyHandlerValid)
             {
-                editorOnlyEntities.insert(sourceEntity->GetId());
+                editorOnlyEntityHandler->AddEditorOnlyEntity(sourceEntity, editorOnlyEntities);
             }
 
             const AZ::Entity::ComponentArrayType& editorComponents = sourceEntity->GetComponents();
@@ -362,35 +422,27 @@ namespace AzToolsFramework
             }
 
             // Pre-sort prior to exporting so it isn't required at instantiation time.
-            const AZ::Entity::DependencySortResult sortResult = exportEntity->EvaluateDependencies();
-            if (AZ::Entity::DependencySortResult::Success != sortResult)
+            const AZ::Entity::DependencySortOutcome sortOutcome = exportEntity->EvaluateDependenciesGetDetails();
+            // :CBR_TODO: verify AZ::Entity::DependencySortResult::HasIncompatibleServices and AZ::Entity::DependencySortResult::DescriptorNotRegistered are still covered here
+            if (!sortOutcome.IsSuccess())
             {
-                const char* sortResultError = "";
-                switch (sortResult)
-                {
-                case AZ::Entity::DependencySortResult::HasCyclicDependency:
-                    sortResultError = "Cyclic dependency found";
-                    break;
-                case AZ::Entity::DependencySortResult::MissingRequiredService:
-                    sortResultError = "Required services missing";
-                    break;
-                }
-
-                return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%llu] dependency evaluation failed: %s.",
-                    exportEntity->GetName().c_str(), 
-                    static_cast<AZ::u64>(exportEntity->GetId()),
-                    sortResultError));
+                return AZ::Failure(AZStd::string::format("Entity \"%s\" %s dependency evaluation failed. %s",
+                    exportEntity->GetName().c_str(),
+                    exportEntity->GetId().ToString().c_str(),
+                    sortOutcome.GetError().m_message.c_str()));
             }
 
             exportSliceData->AddEntity(exportEntity);
         }
 
-        AZ::SliceComponent::EntityList exportEntities;
-        exportSliceData->GetEntities(exportEntities);
-
-        if (exportEntities.size() != sourceEntities.size())
         {
-            return AZ::Failure(AZStd::string("Entity export list size must match that of the import list."));
+            AZ::SliceComponent::EntityList exportEntities;
+            exportSliceData->GetEntities(exportEntities);
+
+            if (exportEntities.size() != sourceEntities.size())
+            {
+                return AZ::Failure(AZStd::string("Entity export list size must match that of the import list."));
+            }
         }
 
         // Notify user callback, and then strip out any editor-only entities.
@@ -404,7 +456,24 @@ namespace AzToolsFramework
             }
         }
 
+        // Sort entities by transform hierarchy, so parents will activate before children
+        {
+            AZStd::vector<AZ::Entity*> sortedEntities;
+            exportSliceData->GetEntities(sortedEntities);
+            SortTransformParentsBeforeChildren(sortedEntities);
+
+            // Sort the entities in the slice by removing them, and putting them back in sorted order
+            for (AZ::Entity* entity : sortedEntities)
+            {
+                exportSliceData->RemoveEntity(entity, false, false);
+                exportSliceData->AddEntity(entity);
+            }
+        }
+
         // Call validation callbacks on final runtime components.
+        AZ::SliceComponent::EntityList exportEntities;
+        exportSliceData->GetEntities(exportEntities);
+
         AZ::ImmutableEntityVector immutableExportEntities;
         immutableExportEntities.reserve(exportEntities.size());
         for (AZ::Entity* entity : exportEntities)
@@ -434,6 +503,11 @@ namespace AzToolsFramework
     
         return AZ::Success(exportSliceAsset);
     }
+
+    bool WorldEditorOnlyEntityHandler::IsEntityUniquelyForThisHandler(AZ::Entity* entity)
+    {
+        return Internal::FindTransformInterfaceComponent(*entity) != nullptr;
+    }
     
     EditorOnlyEntityHandler::Result WorldEditorOnlyEntityHandler::HandleEditorOnlyEntities(const AzToolsFramework::EntityList& entities, const AzToolsFramework::EntityIdSet& editorOnlyEntityIds, AZ::SerializeContext& serializeContext)
     {
@@ -449,7 +523,7 @@ namespace AzToolsFramework
         // Build a map of entity Ids to their parent Ids, for faster lookup during processing.
         for (AZ::Entity* entity : entities)
         {
-            auto* transformComponent = entity->FindComponent<AzFramework::TransformComponent>();
+            AZ::TransformInterface* transformComponent = AZ::EntityUtils::FindFirstDerivedComponent<AZ::TransformInterface>(entity);
             if (transformComponent)
             {
                 const AZ::EntityId parentId = transformComponent->GetParentId();
@@ -472,7 +546,7 @@ namespace AzToolsFramework
                 continue; // This is not an editor-only entity.
             }
 
-            auto* transformComponent = entity->FindComponent<AzFramework::TransformComponent>();
+            AZ::TransformInterface* transformComponent = AZ::EntityUtils::FindFirstDerivedComponent<AZ::TransformInterface>(entity);
             if (transformComponent)
             {
                 const AZ::Transform& parentLocalTm = transformComponent->GetLocalTM();
@@ -480,7 +554,7 @@ namespace AzToolsFramework
                 // Identify all transform children and adjust them to be children of the removed entity's parent.
                 for (AZ::Entity* childEntity : parentToChildren[entity->GetId()])
                 {
-                    auto* childTransformComponent = childEntity->FindComponent<AzFramework::TransformComponent>();
+                    AZ::TransformInterface* childTransformComponent = AZ::EntityUtils::FindFirstDerivedComponent<AZ::TransformInterface>(childEntity);
 
                     if (childTransformComponent && childTransformComponent->GetParentId() == entity->GetId())
                     {
@@ -495,7 +569,7 @@ namespace AzToolsFramework
         }
     }
 
-    EditorOnlyEntityHandler::Result WorldEditorOnlyEntityHandler::ValidateReferences(const AzToolsFramework::EntityList& entities, const AzToolsFramework::EntityIdSet& editorOnlyEntityIds, AZ::SerializeContext& serializeContext)
+    EditorOnlyEntityHandler::Result EditorOnlyEntityHandler::ValidateReferences(const AzToolsFramework::EntityList& entities, const AzToolsFramework::EntityIdSet& editorOnlyEntityIds, AZ::SerializeContext& serializeContext)
     {
         EditorOnlyEntityHandler::Result result = AZ::Success();
 
@@ -525,6 +599,176 @@ namespace AzToolsFramework
                 break;
             }
         }
+
+        return result;
+    }
+
+    // perform breadth-first topological sort, placing parents before their children.
+    // tolerate ALL possible input errors (looping parents, invalid IDs, etc).
+    void SortTransformParentsBeforeChildren(AZStd::vector<AZ::Entity*>& entities)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        // IDs of those present in 'entities'. Does not include parent ID if parent not found in 'entities'
+        AZStd::unordered_set<AZ::EntityId> existingEntityIds;
+
+        // map children by their parent ID (even if parent not found in 'entities')
+        AZStd::unordered_map<AZ::EntityId, AZStd::vector<AZ::Entity*>> parentIdToChildrenPtrs;
+
+        // store any entities with bad setups here, we'll put them last in the final sort
+        AZStd::vector<AZ::Entity*> badEntities;
+
+        // gather data about the entities...
+        for (AZ::Entity* entity : entities)
+        {
+            if (!entity)
+            {
+                badEntities.push_back(entity);
+                continue;
+            }
+
+            AZ::EntityId entityId = entity->GetId();
+
+            if (!entityId.IsValid())
+            {
+                AZ_Warning("Entity", false, "Hierarchy sort found entity '%s' with invalid ID", entity->GetName().c_str());
+
+                badEntities.push_back(entity);
+                continue;
+            }
+
+            bool entityIdIsUnique = existingEntityIds.insert(entityId).second;
+            if (!entityIdIsUnique)
+            {
+                AZ_Warning("Entity", false, "Hierarchy sort found multiple entities using same ID as entity '%s' %s",
+                    entity->GetName().c_str(),
+                    entityId.ToString().c_str());
+
+                badEntities.push_back(entity);
+                continue;
+            }
+
+            // search for any component that implements the TransformInterface.
+            // don't use EBus because we support sorting entities that haven't been initialized or activated.
+            // entities with no transform component will be treated like entities with no parent.
+            AZ::EntityId parentId;
+            if (AZ::TransformInterface* transformInterface = AZ::EntityUtils::FindFirstDerivedComponent<AZ::TransformInterface>(entity))
+            {
+                parentId = transformInterface->GetParentId();
+
+                // if entity is parented to itself, sort it as if it had no parent
+                if (parentId == entityId)
+                {
+                    AZ_Warning("Entity", false, "Hierarchy sort found entity parented to itself '%s' %s",
+                        entity->GetName().c_str(),
+                        entityId.ToString().c_str());
+
+                    parentId.SetInvalid();
+                }
+            }
+
+            parentIdToChildrenPtrs[parentId].push_back(entity);
+        }
+
+        // clear 'entities', we'll refill it in sorted order...
+        const size_t originalEntityCount = entities.size();
+        entities.clear();
+
+        // use 'candidateIds' to track the parent IDs we're going to process next.
+        // the first candidates should be the parents of the roots.
+        AZStd::vector<AZ::EntityId> candidateIds;
+        candidateIds.reserve(originalEntityCount + 1);
+        for (auto& parentChildrenPair : parentIdToChildrenPtrs)
+        {
+            const AZ::EntityId& parentId = parentChildrenPair.first;
+
+            // we found a root if parent ID doesn't correspond to any entity in the list
+            if (existingEntityIds.find(parentId) == existingEntityIds.end())
+            {
+                candidateIds.push_back(parentId);
+            }
+        }
+
+        // process candidates until everything is sorted:
+        // - add candidate's children to the final sorted order
+        // - add candidate's children to list of candidates, so we can process *their* children in a future loop
+        // - erase parent/children entry from parentToChildrenIds
+        // - continue until nothing is left in parentToChildrenIds
+        for (size_t candidateIndex = 0; !parentIdToChildrenPtrs.empty(); ++candidateIndex)
+        {
+            // if there are no more candidates, but there are still unsorted children, then we have an infinite loop.
+            // pick an arbitrary parent from the loop to be the next candidate.
+            if (candidateIndex == candidateIds.size())
+            {
+                const AZ::EntityId& parentFromLoopId = parentIdToChildrenPtrs.begin()->first;
+
+#ifdef AZ_ENABLE_TRACING
+                // Find name to use in warning message
+                AZStd::string parentFromLoopName;
+                for (auto& parentIdChildrenPtrPair : parentIdToChildrenPtrs)
+                {
+                    for (AZ::Entity* entity : parentIdChildrenPtrPair.second)
+                    {
+                        if (entity->GetId() == parentFromLoopId)
+                        {
+                            parentFromLoopName = entity->GetName();
+                            break;
+                        }
+                        if (!parentFromLoopName.empty())
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                AZ_Warning("Entity", false, "Hierarchy sort found parenting loop involving entity '%s' %s",
+                    parentFromLoopName.c_str(),
+                    parentFromLoopId.ToString().c_str());
+#endif // AZ_ENABLE_TRACING
+
+                candidateIds.push_back(parentFromLoopId);
+            }
+
+            const AZ::EntityId& parentId = candidateIds[candidateIndex];
+
+            auto foundChildren = parentIdToChildrenPtrs.find(parentId);
+            if (foundChildren != parentIdToChildrenPtrs.end())
+            {
+                for (AZ::Entity* child : foundChildren->second)
+                {
+                    entities.push_back(child);
+                    candidateIds.push_back(child->GetId());
+                }
+
+                parentIdToChildrenPtrs.erase(foundChildren);
+            }
+        }
+
+        // put bad entities at the end of the sorted list
+        entities.insert(entities.end(), badEntities.begin(), badEntities.end());
+
+        AZ_Assert(entities.size() == originalEntityCount, "Wrong number of entities after sort! This algorithm is busted.");
+    }
+    
+    bool UiEditorOnlyEntityHandler::IsEntityUniquelyForThisHandler(AZ::Entity* entity)
+    {
+        // Assume that an entity is a UI element if it has a UI element component.
+        bool uniqueForThisHandler = false;
+        UiFrameworkBus::BroadcastResult(uniqueForThisHandler, &UiFrameworkInterface::HasUiElementComponent, entity);
+        return uniqueForThisHandler;
+    }
+
+    void UiEditorOnlyEntityHandler::AddEditorOnlyEntity(AZ::Entity* editorOnlyEntity, EntityIdSet& editorOnlyEntities)
+    {
+        UiFrameworkBus::Broadcast(&UiFrameworkInterface::AddEditorOnlyEntity, editorOnlyEntity, editorOnlyEntities);
+    }
+
+    EditorOnlyEntityHandler::Result UiEditorOnlyEntityHandler::HandleEditorOnlyEntities(const AzToolsFramework::EntityList& exportSliceEntities, const AzToolsFramework::EntityIdSet& editorOnlyEntityIds, AZ::SerializeContext& serializeContext)
+    {
+        UiFrameworkBus::Broadcast(&UiFrameworkInterface::HandleEditorOnlyEntities, exportSliceEntities, editorOnlyEntityIds);
+
+        // Perform a final check to verify that all editor-only entities have been removed
+        auto result = ValidateReferences(exportSliceEntities, editorOnlyEntityIds, serializeContext);
 
         return result;
     }

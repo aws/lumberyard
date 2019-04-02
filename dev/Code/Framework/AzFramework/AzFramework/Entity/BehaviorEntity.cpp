@@ -155,6 +155,7 @@ namespace AzFramework
                 ->Method("FindComponentOfType", &BehaviorEntity::FindComponentOfType)
                 ->Method("FindAllComponentsOfType", &BehaviorEntity::FindAllComponentsOfType)
                 ->Method("GetComponentType", &BehaviorEntity::GetComponentType)
+                ->Method("GetComponentName", &BehaviorEntity::GetComponentName)
                 ->Method("SetComponentConfiguration", &BehaviorEntity::SetComponentConfiguration)
                 ->Method("GetComponentConfiguration", &BehaviorEntity::GetComponentConfiguration)
                 // Allow BehaviorEntity to be passed to functions expecting AZ::Entity*
@@ -404,6 +405,19 @@ namespace AzFramework
         return azrtti_typeid(component);
     }
 
+    AZStd::string BehaviorEntity::GetComponentName(BehaviorComponentId componentId) const
+    {
+        AZ::Component* component;
+        AZStd::string errorMessage;
+        if (!GetValidComponent(componentId, &component, &errorMessage))
+        {
+            AZ_Warning("Entity", false, "Cannot get component name. %s", errorMessage.c_str());
+            return "";
+        }
+
+        return component->RTTI_GetTypeName();
+    }
+
     bool BehaviorEntity::SetComponentConfiguration(BehaviorComponentId componentId, const AZ::ComponentConfig& componentConfig)
     {
         AZ::Component* component;
@@ -460,14 +474,14 @@ namespace AzFramework
             AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationBus::Events::FindEntity, m_entityId);
             if (entity)
             {
-                EntityIdContextQueryBus::EventResult(contextId, m_entityId, &EntityIdContextQueryBus::Events::GetOwningContextId);
-                if (!contextId.IsNull())
-                {
-                    success = true;
-                }
-                else
-                {
-                    errorMessage = AZStd::string::format("Entity has no owning context (id=%s name='%s')", m_entityId.ToString().c_str(), entity->GetName().c_str());
+                    EntityIdContextQueryBus::EventResult(contextId, m_entityId, &EntityIdContextQueryBus::Events::GetOwningContextId);
+                    if (!contextId.IsNull())
+                    {
+                        success = true;
+                    }
+                    else
+                    {
+                        errorMessage = AZStd::string::format("Entity has no owning context (id=%s name='%s')", m_entityId.ToString().c_str(), entity->GetName().c_str());
                 }
             }
             else

@@ -155,8 +155,6 @@ enum ETrackViewNodeType
 ////////////////////////////////////////////////////////////////////////////
 class CTrackViewNode
 {
-    friend class CAbstractUndoTrackTransaction;
-
 public:
     CTrackViewNode(CTrackViewNode* pParent);
     virtual ~CTrackViewNode() {}

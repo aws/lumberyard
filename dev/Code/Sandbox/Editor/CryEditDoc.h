@@ -183,6 +183,7 @@ protected:
         bool bSaved;
     };
     bool BeforeSaveDocument(const QString& lpszPathName, TSaveDocContext& context);
+    bool HasLayerNameConflicts();
     bool DoSaveDocument(const QString& lpszPathName, TSaveDocContext& context);
     bool AfterSaveDocument(const QString& lpszPathName, TSaveDocContext& context, bool bShowPrompt = true);
 
@@ -225,7 +226,7 @@ protected:
     QString m_title;
     AZ::Data::AssetId m_envProbeSliceAssetId;
     float m_terrainSize;
-    const char* m_envProbeSliceFullPath;
+    const char* m_envProbeSliceRelativePath;
     const float m_envProbeHeight;
     bool m_hasErrors = false; ///< This is used to warn the user that they may lose work when they go to save.
 };

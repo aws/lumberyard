@@ -83,9 +83,9 @@ namespace EMStudio
             EMotionFX::Node* motionExtractionNode = actor->GetMotionExtractionNode();
             if (motionExtractionNode)
             {
-                // get access to the global space matrix of the trajectory
+                // get access to the world space matrix of the trajectory
                 EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
-                MCore::Matrix globalTM = transformData->GetCurrentPose()->GetGlobalTransformInclusive(motionExtractionNode->GetNodeIndex()).ProjectedToGroundPlane().ToMatrix();
+                MCore::Matrix globalTM = transformData->GetCurrentPose()->GetWorldSpaceTransform(motionExtractionNode->GetNodeIndex()).ProjectedToGroundPlane().ToMatrix();
 
                 bool distanceTraveledEnough = false;
                 if (trajectoryPath->mTraceParticles.GetIsEmpty())
@@ -95,7 +95,7 @@ namespace EMStudio
                 else
                 {
                     const uint32 numParticles = trajectoryPath->mTraceParticles.GetLength();
-                    MCore::Matrix oldGlobalTM = trajectoryPath->mTraceParticles[numParticles - 1].mGlobalTM;
+                    MCore::Matrix oldGlobalTM = trajectoryPath->mTraceParticles[numParticles - 1].mWorldTM;
 
                     AZ::Vector3 oldPos = oldGlobalTM.GetTranslation();
                     MCore::Quaternion oldRot(oldGlobalTM.Normalized());
@@ -118,7 +118,7 @@ namespace EMStudio
                 {
                     // create the particle, fill its data and add it to the trajectory trace path
                     MCommon::RenderUtil::TrajectoryPathParticle trajectoryParticle;
-                    trajectoryParticle.mGlobalTM = globalTM;
+                    trajectoryParticle.mWorldTM = globalTM;
                     trajectoryPath->mTraceParticles.Add(trajectoryParticle);
 
                     // reset the time passed as we just added a new particle
@@ -158,29 +158,14 @@ namespace EMStudio
             return;
         }
 
-        // update the mesh deformers
-        //MCore::Timer t;
         actorInstance->UpdateMeshDeformers(timePassedInSeconds);
-        //const double totalTime = t.GetTimeDelta();
-        //MCore::LogInfo("%f (%.4f ms)", totalTime, totalTime * 1000);
 
         // get the active widget & it's rendering options
         RenderViewWidget*   widget          = mPlugin->GetActiveViewWidget();
         RenderOptions*      renderOptions   = mPlugin->GetRenderOptions();
-        //Actor*                actor           = actorInstance->GetActor();
 
-        MCore::Array<uint32>* visibleNodeIndices = &(GetManager()->GetVisibleNodeIndices());
-        MCore::Array<uint32>* selectedNodeIndices = &(GetManager()->GetSelectedNodeIndices());
-        if (selectedNodeIndices->GetIsEmpty())
-        {
-            selectedNodeIndices = nullptr;
-        }
-
-        /*Matrix mat = actorInstance->GetLocalTM();
-        mat.Normalize();
-        renderUtil->RenderLine( mat.GetTranslation(), mat.GetTranslation() + mat.GetRight()     * 10.0f, RGBAColor(1,0,0));
-        renderUtil->RenderLine( mat.GetTranslation(), mat.GetTranslation() + mat.GetUp()        * 10.0f, RGBAColor(0,1,0));
-        renderUtil->RenderLine( mat.GetTranslation(), mat.GetTranslation() + mat.GetForward()   * 10.0f, RGBAColor(0,0,1));*/
+        const AZStd::unordered_set<AZ::u32>& visibleJointIndices = GetManager()->GetVisibleJointIndices();
+        const AZStd::unordered_set<AZ::u32>& selectedJointIndices = GetManager()->GetSelectedJointIndices();
 
         // render the AABBs
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_AABB))
@@ -196,11 +181,11 @@ namespace EMStudio
 
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_OBB))
         {
-            renderUtil->RenderOBBs(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->GetOBBsColor(), renderOptions->GetSelectedObjectColor());
+            renderUtil->RenderOBBs(actorInstance, &visibleJointIndices, &selectedJointIndices, renderOptions->GetOBBsColor(), renderOptions->GetSelectedObjectColor());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_LINESKELETON))
         {
-            renderUtil->RenderSimpleSkeleton(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->GetLineSkeletonColor(), renderOptions->GetSelectedObjectColor());
+            renderUtil->RenderSimpleSkeleton(actorInstance, &visibleJointIndices, &selectedJointIndices, renderOptions->GetLineSkeletonColor(), renderOptions->GetSelectedObjectColor());
         }
 
         bool cullingEnabled = renderUtil->GetCullingEnabled();
@@ -209,15 +194,15 @@ namespace EMStudio
         renderUtil->EnableLighting(false); // disable lighting
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_SKELETON))
         {
-            renderUtil->RenderSkeleton(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->GetSkeletonColor(), renderOptions->GetSelectedObjectColor());
+            renderUtil->RenderSkeleton(actorInstance, emstudioActor->mBoneList, &visibleJointIndices, &selectedJointIndices, renderOptions->GetSkeletonColor(), renderOptions->GetSelectedObjectColor());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_NODEORIENTATION))
         {
-            renderUtil->RenderNodeOrientations(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->GetNodeOrientationScale(), renderOptions->GetScaleBonesOnLength());
+            renderUtil->RenderNodeOrientations(actorInstance, emstudioActor->mBoneList, &visibleJointIndices, &selectedJointIndices, renderOptions->GetNodeOrientationScale(), renderOptions->GetScaleBonesOnLength());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_ACTORBINDPOSE))
         {
-            renderUtil->RenderBindPose(actorInstance, emstudioActor->mBindPoseGlobalMatrices);
+            renderUtil->RenderBindPose(actorInstance);
         }
 
         // render motion extraction debug info
@@ -239,7 +224,7 @@ namespace EMStudio
         if (renderVertexNormals || renderFaceNormals || renderTangents || renderWireframe || renderCollisionMeshes)
         {
             // iterate through all enabled nodes
-            MCore::Matrix*       globalMatrices = actorInstance->GetTransformData()->GetGlobalInclusiveMatrices();
+            const EMotionFX::Pose* pose = actorInstance->GetTransformData()->GetCurrentPose();
             const uint32 geomLODLevel   = actorInstance->GetLODLevel();
             const uint32 numEnabled     = actorInstance->GetNumEnabledNodes();
             for (uint32 i = 0; i < numEnabled; ++i)
@@ -247,7 +232,7 @@ namespace EMStudio
                 EMotionFX::Node*    node            = emstudioActor->mActor->GetSkeleton()->GetNode(actorInstance->GetEnabledNode(i));
                 EMotionFX::Mesh*    mesh            = emstudioActor->mActor->GetMesh(geomLODLevel, node->GetNodeIndex());
                 //EMotionFX::Mesh*  collisionMesh   = emstudioActor->mActor->GetCollisionMesh( geomLODLevel, node->GetNodeIndex() );
-                MCore::Matrix       globalTM        = globalMatrices[ node->GetNodeIndex() ];
+                MCore::Matrix       globalTM        = pose->GetWorldSpaceTransform(node->GetNodeIndex()).ToMatrix();
 
                 renderUtil->ResetCurrentMesh();
 
@@ -291,7 +276,7 @@ namespace EMStudio
             const uint32        screenWidth     = widget->GetRenderWidget()->GetScreenWidth();
             const uint32        screenHeight    = widget->GetRenderWidget()->GetScreenHeight();
 
-            renderUtil->RenderNodeNames(actorInstance, camera, screenWidth, screenHeight, renderOptions->GetNodeNameColor(), renderOptions->GetSelectedObjectColor(), GetManager()->GetVisibleNodeIndices(), GetManager()->GetSelectedNodeIndices());
+            renderUtil->RenderNodeNames(actorInstance, camera, screenWidth, screenHeight, renderOptions->GetNodeNameColor(), renderOptions->GetSelectedObjectColor(), visibleJointIndices, selectedJointIndices);
         }
     }
 } // namespace EMStudio

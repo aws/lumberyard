@@ -35,6 +35,7 @@
 #include "BlendTreeFloatMath2Node.h"
 #include "BlendTreeFloatSwitchNode.h"
 #include "BlendTreeFloatConditionNode.h"
+#include "BlendTreeGetTransformNode.h"
 #include "BlendTreeBoolLogicNode.h"
 #include "BlendTreeSmoothingNode.h"
 #include "BlendTreeMaskNode.h"
@@ -48,16 +49,22 @@
 #include "BlendTreeVector2ComposeNode.h"
 #include "BlendTreeVector3ComposeNode.h"
 #include "BlendTreeVector4ComposeNode.h"
+#include "BlendTreeRotationMath2Node.h"
+#include "BlendTreeRotationLimitNode.h"
 #include "BlendTreeTwoLinkIKNode.h"
 #include "BlendTreeLookAtNode.h"
 #include "BlendTreeTransformNode.h"
 #include "BlendTreeAccumTransformNode.h"
 #include "BlendTreeRangeRemapperNode.h"
+#include "BlendTreeSetTransformNode.h"
 #include "BlendTreeDirectionToWeightNode.h"
 #include "BlendTreeMirrorPoseNode.h"
 #include "BlendTree.h"
 #include "BlendTreeMirrorPoseNode.h"
 #include "BlendTreePoseSubtractNode.h"
+#include "TransformSpace.h"
+#include <EMotionFX/Source/BlendTreeRagdollNode.h>
+#include <EMotionFX/Source/BlendTreeRagdollStrengthModifierNode.h>
 
 #include "AnimGraphBindPoseNode.h"
 #include "AnimGraphMotionNode.h"
@@ -65,6 +72,7 @@
 #include "AnimGraphExitNode.h"
 #include "AnimGraphEntryNode.h"
 #include "AnimGraphHubNode.h"
+#include "AnimGraphReferenceNode.h"
 
 #include "AnimGraphTransitionCondition.h"
 #include "AnimGraphParameterCondition.h"
@@ -75,10 +83,38 @@
 #include "AnimGraphVector2Condition.h"
 #include "AnimGraphPlayTimeCondition.h"
 
+#include "AnimGraphTriggerAction.h"
+#include "AnimGraphParameterAction.h"
+#include "AnimGraphServantParameterAction.h"
+#include "AnimGraphSymbolicServantParameterAction.h"
+#include "Allocators.h"
+
 namespace EMotionFX
 {
+    AZ_CLASS_ALLOCATOR_IMPL(AnimGraphObjectFactory, AnimGraphAllocator, 0)
+
+    AnimGraphObjectFactory::AnimGraphObjectFactory()
+    {
+        UITypesSet& uiTypes = GetUITypes();
+        for (const AZ::TypeId& type : uiTypes)
+        {
+            m_animGraphObjectPrototypes.emplace_back(Create(type));
+        }
+    }
+
+    AnimGraphObjectFactory::~AnimGraphObjectFactory()
+    {
+        for (AnimGraphObject* object : m_animGraphObjectPrototypes)
+        {
+            delete object;
+        }
+        m_animGraphObjectPrototypes.clear();
+    }
+
     void AnimGraphObjectFactory::ReflectTypes(AZ::ReflectContext* context)
     {
+        TransformSpace::Reflect(context);
+
         AnimGraphNode::Reflect(context);
         AnimGraphStateMachine::Reflect(context);
         AnimGraphStateTransition::Reflect(context);
@@ -91,6 +127,7 @@ namespace EMotionFX
         BlendSpace2DNode::Reflect(context);
         AnimGraphBindPoseNode::Reflect(context);
         AnimGraphHubNode::Reflect(context);
+        AnimGraphReferenceNode::Reflect(context);
 
         AnimGraphParameterCondition::Reflect(context);
         AnimGraphVector2Condition::Reflect(context);
@@ -100,6 +137,12 @@ namespace EMotionFX
         AnimGraphTransitionCondition::Reflect(context);
         AnimGraphPlayTimeCondition::Reflect(context);
         AnimGraphTagCondition::Reflect(context);
+
+        TriggerActionSetup::Reflect(context);
+        AnimGraphParameterAction::Reflect(context);
+        AnimGraphServantParameterAction::Reflect(context);
+        AnimGraphSymbolicServantParameterAction::Reflect(context);
+        AnimGraphTriggerAction::Reflect(context);
 
         // Blend tree
         BlendTree::Reflect(context);
@@ -128,6 +171,8 @@ namespace EMotionFX
         BlendTreeVector4DecomposeNode::Reflect(context);
         BlendTreeVector2ComposeNode::Reflect(context);
         BlendTreeVector3ComposeNode::Reflect(context);
+        BlendTreeRotationMath2Node::Reflect(context);
+        BlendTreeRotationLimitNode::Reflect(context);
         BlendTreeVector4ComposeNode::Reflect(context);
         BlendTreeSmoothingNode::Reflect(context);
         BlendTreeRangeRemapperNode::Reflect(context);
@@ -136,19 +181,24 @@ namespace EMotionFX
         BlendTreeTwoLinkIKNode::Reflect(context);
         BlendTreeLookAtNode::Reflect(context);
         BlendTreeTransformNode::Reflect(context);
+        BlendTreeGetTransformNode::Reflect(context);
+        BlendTreeSetTransformNode::Reflect(context);
         BlendTreeAccumTransformNode::Reflect(context);
         BlendTreePoseSubtractNode::Reflect(context);
+        BlendTreeRagdollNode::Reflect(context);
+		BlendTreeRagdollStrenghModifierNode::Reflect(context);
     }
 
-    AZStd::unordered_set<AZ::TypeId>& AnimGraphObjectFactory::GetUITypes()
+    AnimGraphObjectFactory::UITypesSet& AnimGraphObjectFactory::GetUITypes()
     {
-        static AZStd::unordered_set<AZ::TypeId> uitypes = {
+        static UITypesSet uitypes = {
             azrtti_typeid<AnimGraphBindPoseNode>(),
             azrtti_typeid<AnimGraphStateMachine>(),
             azrtti_typeid<AnimGraphMotionNode>(),
             azrtti_typeid<AnimGraphHubNode>(),
             azrtti_typeid<AnimGraphExitNode>(),
             azrtti_typeid<AnimGraphEntryNode>(),
+            azrtti_typeid<AnimGraphReferenceNode>(),
             azrtti_typeid<BlendTree>(),
             azrtti_typeid<BlendTreeFinalNode>(),
             azrtti_typeid<BlendSpace1DNode>(),
@@ -183,8 +233,12 @@ namespace EMotionFX
             azrtti_typeid<BlendTreeTwoLinkIKNode>(),
             azrtti_typeid<BlendTreeLookAtNode>(),
             azrtti_typeid<BlendTreeTransformNode>(),
+            azrtti_typeid<BlendTreeGetTransformNode>(),
+            azrtti_typeid<BlendTreeSetTransformNode>(),
             azrtti_typeid<BlendTreeAccumTransformNode>(),
             azrtti_typeid<BlendTreePoseSubtractNode>(),
+            azrtti_typeid<BlendTreeRagdollNode>(),
+            azrtti_typeid<BlendTreeRagdollStrenghModifierNode>(),
             azrtti_typeid<AnimGraphStateTransition>(),
             azrtti_typeid<AnimGraphParameterCondition>(),
             azrtti_typeid<AnimGraphVector2Condition>(),
@@ -192,7 +246,12 @@ namespace EMotionFX
             azrtti_typeid<AnimGraphStateCondition>(),
             azrtti_typeid<AnimGraphTimeCondition>(),
             azrtti_typeid<AnimGraphPlayTimeCondition>(),
-            azrtti_typeid<AnimGraphTagCondition>()
+            azrtti_typeid<AnimGraphTagCondition>(),
+            azrtti_typeid<AnimGraphParameterAction>(),
+            azrtti_typeid<AnimGraphServantParameterAction>(),
+            azrtti_typeid<AnimGraphSymbolicServantParameterAction>(),
+            azrtti_typeid<BlendTreeRotationLimitNode>(),
+            azrtti_typeid<BlendTreeRotationMath2Node>()
         };
 
         return uitypes;
@@ -223,5 +282,4 @@ namespace EMotionFX
         }
         return animGraphObject;
     }
-    
 } // namespace EMotionFX

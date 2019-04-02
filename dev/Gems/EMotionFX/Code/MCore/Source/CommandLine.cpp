@@ -231,15 +231,13 @@ namespace MCore
     }
 
 
-    AZStd::string CommandLine::GetValue(const char* paramName, Command* command) const
+    const AZStd::string& CommandLine::GetValue(const char* paramName, Command* command) const
     {
         // Try to find the parameter index.
         const uint32 paramIndex = FindParameterIndex(paramName);
         if (paramIndex == MCORE_INVALIDINDEX32)
         {
-            AZStd::string defaultValue;
-            command->GetOriginalCommand()->GetSyntax().GetDefaultValue(paramName, defaultValue);
-            return defaultValue;
+            return command->GetOriginalCommand()->GetSyntax().GetDefaultValue(paramName);
         }
 
         // return the parameter value

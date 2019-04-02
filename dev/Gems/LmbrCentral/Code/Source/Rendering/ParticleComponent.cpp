@@ -24,7 +24,7 @@
 #include <AzCore/Asset/AssetManagerBus.h>
 
 #include <AzFramework/Physics/PhysicsComponentBus.h>
-#include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 #include <MathConversion.h>
 #include <AzFramework/StringFunc/StringFunc.h>
@@ -735,7 +735,7 @@ namespace LmbrCentral
         target.vVelocity.Set(velocity.GetX(), velocity.GetY(), velocity.GetZ());
         
         AZ::Aabb bounds = AZ::Aabb::CreateNull();
-        LmbrCentral::MeshComponentRequestBus::EventResult(bounds, m_targetEntity, &LmbrCentral::MeshComponentRequests::GetLocalBounds);
+        LmbrCentral::RenderBoundsRequestBus::EventResult(bounds, m_targetEntity, &LmbrCentral::RenderBoundsRequests::GetLocalBounds);
         if (bounds.IsValid())
         {
             target.fRadius = max(bounds.GetMin().GetLength(), bounds.GetMax().GetLength());

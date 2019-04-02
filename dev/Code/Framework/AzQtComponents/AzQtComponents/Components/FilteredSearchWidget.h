@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/std/chrono/chrono.h>
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
 #include <QWidget>
@@ -20,6 +21,7 @@
 #include <QMap>
 #include <QVariant>
 #include <QMenu>
+#include <QTimer>
 
 namespace Ui
 {
@@ -27,8 +29,11 @@ namespace Ui
 }
 
 class FlowLayout;
+class QHBoxLayout;
+class QLabel;
 class QTreeView;
 class QSortFilterProxyModel;
+class QStandardItem;
 class QStandardItemModel;
 
 namespace AzQtComponents
@@ -41,6 +46,10 @@ namespace AzQtComponents
     public:
         explicit FilterCriteriaButton(QString labelText, QWidget* parent = nullptr);
 
+    protected:
+        QHBoxLayout* m_frameLayout;
+        QLabel* m_tagLabel;
+
     signals:
         void RequestClose();
     };
@@ -50,17 +59,20 @@ namespace AzQtComponents
         QString category;
         QString displayName;
         QVariant metadata;
+        int globalFilterValue;
         bool enabled = false;
 
         SearchTypeFilter() {}
-        SearchTypeFilter(QString category, QString displayName, QVariant metadata = {})
+        SearchTypeFilter(QString category, QString displayName, QVariant metadata = {}, int globalFilterValue = -1)
             : category(category)
             , displayName(displayName)
             , metadata(metadata)
+            , globalFilterValue(globalFilterValue)
         {
         }
     };
     using SearchTypeFilterList = QVector<SearchTypeFilter>;
+
 
     class AZ_QT_COMPONENTS_API SearchTypeSelector : public QMenu
     {
@@ -68,6 +80,7 @@ namespace AzQtComponents
 
     public:
         SearchTypeSelector(QWidget* parent = nullptr);
+        QTreeView* GetTree() { return m_tree; }
         void Setup(const SearchTypeFilterList& searchTypes);
 
         QSize sizeHint() const override;
@@ -78,8 +91,8 @@ namespace AzQtComponents
     private slots:
         void FilterTextChanged(const QString& newFilter);
 
-    private:
-        void RepopulateDataModel();
+    protected:
+        virtual void RepopulateDataModel();
 
         QTreeView* m_tree;
         QStandardItemModel* m_model;
@@ -87,7 +100,13 @@ namespace AzQtComponents
         QVector<int> m_filteredItemIndices;
         QString m_filterString;
         bool m_settingUp = false;
+        int m_numRows;
+
+    private:
+        void AddToDataModel(const SearchTypeFilterList* searchList, QMap<QString, QStandardItem*>& categories, int menuStartPosition, const QIcon* icons);
+
     };
+
 
     class AZ_QT_COMPONENTS_API FilteredSearchWidget
         : public QWidget
@@ -95,39 +114,59 @@ namespace AzQtComponents
         Q_OBJECT
 
     public:
-        explicit FilteredSearchWidget(QWidget* parent = nullptr);
+        explicit FilteredSearchWidget(QWidget* parent = nullptr, bool willUseOwnSelector = false);
         ~FilteredSearchWidget() override;
 
         void SetTypeFilterVisible(bool visible);
         void SetTypeFilters(const SearchTypeFilterList& typeFilters);
         void AddTypeFilter(const SearchTypeFilter& typeFilter);
+        void SetupOwnSelector(SearchTypeSelector* selector);
 
-        inline void AddTypeFilter(QString category, QString displayName, QVariant metadata = {})
+        inline void AddTypeFilter(QString category, QString displayName, QVariant metadata = {}, int globalFilterValue = -1)
         {
-            AddTypeFilter(SearchTypeFilter(category, displayName, metadata)); 
+            AddTypeFilter(SearchTypeFilter(category, displayName, metadata, globalFilterValue));
         }
 
         void SetTextFilterVisible(bool visible);
+        void SetTextFilter(const QString& textFilter);
         void ClearTextFilter();
+
+        void AddWidgetToSearchWidget(QWidget* w);
+        void SetFilteredParentVisible(bool visible);
+
+        void SetFilterState(const QString& category, const QString& displayName, bool enabled);
+        void SetFilterInputInterval(AZStd::chrono::milliseconds milliseconds);
 
     signals:
         void TextFilterChanged(const QString& activeTextFilter);
         void TypeFilterChanged(const SearchTypeFilterList& activeTypeFilters);
 
     public slots:
-        void ClearTypeFilter();
+        virtual void ClearTypeFilter();
+
+    protected slots:
+        virtual void SetFilterStateByIndex(int index, bool enabled);
 
     private slots:
         void UpdateClearIcon();
-        void SetFilterState(int index, bool enabled);
+        void OnClearFilterContextMenu(const QPoint& pos);
+
+        void OnTextChanged(const QString& activeTextFilter);
+        void UpdateTextFilter();
+
+protected:
+        SearchTypeFilterList m_typeFilters;
+        FlowLayout* m_flowLayout;
+        Ui::FilteredSearchWidget* m_ui;
+        SearchTypeSelector* m_selector;
+        QMap<int, FilterCriteriaButton*> m_typeButtons;
 
     private:
-        SearchTypeFilterList m_typeFilters;
-        QMap<int, FilterCriteriaButton*> m_typeButtons;
-        Ui::FilteredSearchWidget* m_ui;
-        FlowLayout* m_flowLayout;
+        int FindFilterIndex(const QString& category, const QString& displayName) const;
+
+        QTimer m_inputTimer;
         QMenu* m_filterMenu;
-        SearchTypeSelector* m_selector;
         static const char* s_filterDataProperty;
     };
+
 }

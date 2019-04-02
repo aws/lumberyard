@@ -19,6 +19,7 @@
 #include <QAction>
 #include <QPushButton>
 #include <QApplication>
+#include <QApplication>
 #include <QVBoxLayout>
 #include <QFileDialog>
 #include <QMimeData>
@@ -82,7 +83,7 @@ namespace EMStudio
         tableWidget->setRowCount(numMotions);
 
         // add each motion in the table
-        for (int i=0; i<numMotions; ++i)
+        for (int i = 0; i < numMotions; ++i)
         {
             // get the motion
             EMotionFX::Motion* motion = motions[i];
@@ -111,7 +112,7 @@ namespace EMStudio
 
         // add the button to close the window
         QPushButton* okButton = new QPushButton("OK");
-        connect(okButton, SIGNAL(clicked()), this, SLOT(accept()));
+        connect(okButton, &QPushButton::clicked, this, &MotionListRemoveMotionsFailedWindow::accept);
         QHBoxLayout* buttonLayout = new QHBoxLayout();
         buttonLayout->setAlignment(Qt::AlignRight);
         buttonLayout->addWidget(okButton);
@@ -148,8 +149,8 @@ namespace EMStudio
         mVLayout->setSpacing(2);
         mMotionTable = new MotionTableWidget(mMotionWindowPlugin, this);
         mMotionTable->setAlternatingRowColors(true);
-        connect(mMotionTable, SIGNAL(cellDoubleClicked(int, int)), this, SLOT(cellDoubleClicked(int, int)));
-        connect(mMotionTable, SIGNAL(itemSelectionChanged()), this, SLOT(itemSelectionChanged()));
+        connect(mMotionTable, &MotionTableWidget::cellDoubleClicked, this, &MotionListWindow::cellDoubleClicked);
+        connect(mMotionTable, &MotionTableWidget::itemSelectionChanged, this, &MotionListWindow::itemSelectionChanged);
 
         // set the table to row single selection
         mMotionTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -250,12 +251,12 @@ namespace EMStudio
         connect(m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &MotionListWindow::OnTextFilterChanged);
         buttonLayout->addWidget(m_searchWidget);
 
-        connect(mClearMotionsButton, SIGNAL(clicked()), this, SLOT(OnClearMotionsButtonPressed()));
-        connect(mRemoveMotionsButton, SIGNAL(clicked()), this, SLOT(OnRemoveMotionsButtonPressed()));
-        connect(mAddMotionsButton, SIGNAL(clicked()), this, SLOT(OnAddMotionsButtonPressed()));
-        connect(mSaveButton, SIGNAL(clicked()), this, SLOT(OnSave()));
-        connect(stopAll, SIGNAL(clicked()), this, SLOT(OnStopAllMotionsButton()));
-        connect(stopSelected, SIGNAL(clicked()), this, SLOT(OnStopSelectedMotionsButton()));
+        connect(mClearMotionsButton, &QPushButton::clicked, this, &MotionListWindow::OnClearMotionsButtonPressed);
+        connect(mRemoveMotionsButton, &QPushButton::clicked, this, &MotionListWindow::OnRemoveMotionsButtonPressed);
+        connect(mAddMotionsButton, &QPushButton::clicked, this, &MotionListWindow::OnAddMotionsButtonPressed);
+        connect(mSaveButton, &QPushButton::clicked, this, &MotionListWindow::OnSave);
+        connect(stopAll, &QPushButton::clicked, this, &MotionListWindow::OnStopAllMotionsButton);
+        connect(stopSelected, &QPushButton::clicked, this, &MotionListWindow::OnStopSelectedMotionsButton);
 
         mVLayout->addLayout(buttonLayout);
         mVLayout->addWidget(mMotionTable);
@@ -434,7 +435,7 @@ namespace EMStudio
         size_t numMotions = mMotionWindowPlugin->GetNumMotionEntries();
         mShownMotionEntries.clear();
         mShownMotionEntries.reserve(numMotions);
-        
+
         for (size_t i = 0; i < numMotions; ++i)
         {
             MotionWindowPlugin::MotionTableEntry* entry = mMotionWindowPlugin->GetMotionEntry(i);
@@ -618,7 +619,7 @@ namespace EMStudio
         // filter the items
         AZStd::vector<uint32> rowIndices;
         rowIndices.reserve(numSelectedItems);
-        for (size_t i=0; i<numSelectedItems; ++i)
+        for (size_t i = 0; i < numSelectedItems; ++i)
         {
             const uint32 rowIndex = selectedItems[static_cast<uint32>(i)]->row();
             if (AZStd::find(rowIndices.begin(), rowIndices.end(), rowIndex) == rowIndices.end())
@@ -633,7 +634,7 @@ namespace EMStudio
         // get the number of selected items and iterate through them
         const size_t numSelectedRows = rowIndices.size();
         mSelectedMotionIDs.reserve(numSelectedRows);
-        for (size_t i=0; i<numSelectedRows; ++i)
+        for (size_t i = 0; i < numSelectedRows; ++i)
         {
             mSelectedMotionIDs.push_back(GetMotionID(rowIndices[i]));
         }
@@ -805,7 +806,7 @@ namespace EMStudio
                     // add the menu to add in motion sets
                     QAction* addInSelectedMotionSetsAction = menu.addAction("Add To Selected Motion Sets");
                     addInSelectedMotionSetsAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-                    connect(addInSelectedMotionSetsAction, SIGNAL(triggered()), this, SLOT(OnAddMotionsInSelectedMotionSets()));
+                    connect(addInSelectedMotionSetsAction, &QAction::triggered, this, &MotionListWindow::OnAddMotionsInSelectedMotionSets);
 
                     menu.addSeparator();
                 }
@@ -814,14 +815,14 @@ namespace EMStudio
             // add the remove menu
             QAction* removeAction = menu.addAction("Remove Selected Motions");
             removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
-            connect(removeAction, SIGNAL(triggered()), this, SLOT(OnRemoveMotionsButtonPressed()));
+            connect(removeAction, &QAction::triggered, this, &MotionListWindow::OnRemoveMotionsButtonPressed);
 
             menu.addSeparator();
 
             // add the save menu
             QAction* saveAction = menu.addAction("Save Selected Motions");
             saveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Menu/FileSave.png"));
-            connect(saveAction, SIGNAL(triggered()), this, SLOT(OnSave()));
+            connect(saveAction, &QAction::triggered, this, &MotionListWindow::OnSave);
         }
 
         // show the menu at the given position

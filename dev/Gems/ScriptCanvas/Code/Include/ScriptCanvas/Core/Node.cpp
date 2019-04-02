@@ -304,7 +304,7 @@ namespace ScriptCanvas
         if (serializeContext)
         {
             // Needed to serialize in the AZStd::vector<Slot> from the old SlotContainer class 
-            auto genericInfo = AZ::SerializeGenericTypeInfo<AZStd::vector<Slot>>::GetGenericInfo();
+            AZ::GenericClassInfo* genericInfo = AZ::SerializeGenericTypeInfo<AZStd::vector<Slot>>::GetGenericInfo();
             if (genericInfo)
             {
                 genericInfo->Reflect(serializeContext);

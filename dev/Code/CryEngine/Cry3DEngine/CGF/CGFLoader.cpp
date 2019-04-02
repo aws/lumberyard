@@ -2783,7 +2783,7 @@ bool CLoaderCGF::LoadGeomChunk(CNodeCGF* pNode, IChunkFile::ChunkDesc* pChunkDes
     if (pChunkDesc->chunkVersion == MESH_CHUNK_DESC_0745::VERSION ||
         pChunkDesc->chunkVersion == MESH_CHUNK_DESC_0745::COMPATIBLE_OLD_VERSION)
     {
-#if !defined(RESOURCE_COMPILER)
+#if !defined(RESOURCE_COMPILER) && !defined(ENABLE_NON_COMPILED_CGF)
         m_LastError.Format("%s: non-compiled geometry chunk in %s", __FUNCTION__, m_filename);
         return false;
 #else

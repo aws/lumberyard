@@ -34,15 +34,33 @@ namespace AZ
         SliceMetadataInfoManipulationBus::Handler::BusConnect(GetEntityId());
         // General information requests for the component
         SliceMetadataInfoRequestBus::Handler::BusConnect(GetEntityId());
+
         // Application Events used to maintain synchronization
-        ComponentApplicationEventBus::Handler::BusConnect();
+        for (EntityId entityId : m_children) 
+        {
+            EntityBus::MultiHandler::BusConnect(entityId);
+        }
+
+        for (EntityId entityId : m_associatedEntities)
+        {
+            EntityBus::MultiHandler::BusConnect(entityId);
+        }
     }
 
     void SliceMetadataInfoComponent::Deactivate()
     {
         SliceMetadataInfoManipulationBus::Handler::BusDisconnect();
         SliceMetadataInfoRequestBus::Handler::BusDisconnect();
-        ComponentApplicationEventBus::Handler::BusDisconnect();
+
+        for (EntityId entityId : m_children)
+        {
+            EntityBus::MultiHandler::BusDisconnect(entityId);
+        }
+
+        for (EntityId entityId : m_associatedEntities)
+        {
+            EntityBus::MultiHandler::BusDisconnect(entityId);
+        }
         m_notificationBus = nullptr;
     }
 
@@ -52,12 +70,14 @@ namespace AZ
     {
         AZ_Assert(m_children.find(childEntityId) == m_children.end(), "Attempt to establish a child connection that already exists.");
         m_children.insert(childEntityId);
+        EntityBus::MultiHandler::BusConnect(childEntityId);
     }
 
     void SliceMetadataInfoComponent::RemoveChildMetadataEntity(EntityId childEntityId)
     {
         AZ_Assert(m_children.find(childEntityId) != m_children.end(), "Entity Specified is not an existing child metadata entity");
         m_children.erase(childEntityId);
+        EntityBus::MultiHandler::BusDisconnect(childEntityId);
 
         CheckDependencyCount();
     }
@@ -72,6 +92,7 @@ namespace AZ
         if (associatedEntityId.IsValid())
         {
             m_associatedEntities.insert(associatedEntityId);
+            EntityBus::MultiHandler::BusConnect(associatedEntityId);
         }
     }
 
@@ -84,6 +105,7 @@ namespace AZ
 
         AZ_Assert(m_associatedEntities.find(associatedEntityId) != m_associatedEntities.end(), "Entity Specified is not an existing associated editor entity");
         m_associatedEntities.erase(associatedEntityId);
+        EntityBus::MultiHandler::BusDisconnect(associatedEntityId);
 
         // During asset processing and level loading, the component may not yet have an
         // associated entity. These cases occur when loading and processing older levels,
@@ -102,8 +124,8 @@ namespace AZ
     }
 
     //////////////////////////////////////////////////////////////////////////
-    // ComponentApplicationEventBus
-    void SliceMetadataInfoComponent::OnEntityRemoved(const AZ::EntityId& entityId)
+    // EntityBus
+    void SliceMetadataInfoComponent::OnEntityDestruction(const AZ::EntityId& entityId)
     {
         if (!entityId.IsValid())
         {
@@ -114,6 +136,7 @@ namespace AZ
         // either list if it exists.
         m_associatedEntities.erase(entityId);
         m_children.erase(entityId);
+        EntityBus::MultiHandler::BusDisconnect(entityId);
         CheckDependencyCount();
     }
 

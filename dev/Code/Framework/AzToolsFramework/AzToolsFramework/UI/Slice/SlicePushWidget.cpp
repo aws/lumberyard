@@ -49,7 +49,6 @@
 #include <AzToolsFramework/Slice/SliceTransaction.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
 
-
 namespace AzToolsFramework
 {
     /**
@@ -201,6 +200,7 @@ namespace AzToolsFramework
             item->m_entity = entity;
             item->m_entityItem = item;
             item->m_node = &item->m_hierarchy;
+            item->m_address = item->m_node->ComputeAddress();
             return item;
         }
         
@@ -210,6 +210,7 @@ namespace AzToolsFramework
             item->m_entity = entityItem->m_entity;
             item->m_entityItem = entityItem;
             item->m_node = node;
+            item->m_address = item->m_node->ComputeAddress();
             item->m_selectedAsset = entityItem->m_selectedAsset;
             return item;
         }
@@ -235,6 +236,7 @@ namespace AzToolsFramework
             item->m_entityItem = item;
             item->m_slicePushType = SlicePushType::Added;
             item->m_node = &item->m_hierarchy;
+            item->m_address = item->m_node->ComputeAddress();
             return item;
         }
 
@@ -242,6 +244,30 @@ namespace AzToolsFramework
         {
             // Either entity add/removal, or leaf item (for updates)
             return m_slicePushType == SlicePushType::Added || m_slicePushType == SlicePushType::Removed || childCount() == 0;
+        }
+
+        bool IsConflicted() const
+        {
+            if (checkState(0) != Qt::CheckState::Checked)
+            {
+                return false;
+            }
+
+            for (int itemIndex = 0; itemIndex < m_conflictsWithItems.size(); itemIndex++)
+            {
+                FieldTreeItem *item = m_conflictsWithItems.at(itemIndex);
+
+                if (item->checkState(0) == Qt::CheckState::Checked)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool HasPotentialConflicts() const
+        {
+            return m_conflictsWithItems.size() > 0;
         }
 
         bool AllLeafNodesShareSelectedAsset(AZ::Data::AssetId targetAssetId) const
@@ -302,6 +328,12 @@ namespace AzToolsFramework
         // For (root) Entity-level item, points to hierarchy. For child items, points to the IDH node for the field.
         AzToolsFramework::InstanceDataNode* m_node;
 
+        //adress of m_node
+        AzToolsFramework::InstanceDataNode::Address m_address;
+
+        //list of all field items with (potential) conflicts
+        AZStd::vector<FieldTreeItem*> m_conflictsWithItems;
+
         // For (root) Entity-level item, hidden-but-pushable field nodes (these aren't displayed, so if a push is happening, they're automatically included in push).
         AZStd::unordered_set<AzToolsFramework::InstanceDataNode*> m_hiddenAutoPushNodes;
 
@@ -332,6 +364,41 @@ namespace AzToolsFramework
 
     namespace Internal
     {
+        QString PushChangedItemToSliceTransaction(SliceUtilities::SliceTransaction::TransactionPtr sliceTransaction, FieldTreeItem* item)
+        {
+            QString pushError;
+            SliceUtilities::SliceTransaction::Result result = sliceTransaction->UpdateEntityField(item->m_entity, item->m_node->ComputeAddress());
+            if (!result)
+            {
+                pushError = QString("Unable to add entity for push.\r\n\r\nDetails:\r\n%1").arg(result.GetError().c_str());
+            }
+            else
+            {
+                // Auto-push any hidden auto-push fields for the root entity item that need pushed
+                FieldTreeItem* entityRootItem = item->m_entityItem;
+                if (entityRootItem && !entityRootItem->m_hiddenAutoPushNodes.empty() && !entityRootItem->m_pushedHiddenAutoPushNodes)
+                {
+                    // We also need to ensure we're only pushing hidden pushes to the direct slice ancestor of the entity; we don't want to
+                    // be pushing things like component order to an ancestor that wouldn't have the same components
+                    AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+                    EBUS_EVENT_ID_RESULT(sliceAddress, entityRootItem->m_entity->GetId(), AzFramework::EntityIdContextQueryBus, GetOwningSlice);
+                    if (item->m_selectedAsset == sliceAddress.first->GetSliceAsset().GetId())
+                    {
+                        for (auto& hiddenAutoPushNode : entityRootItem->m_hiddenAutoPushNodes)
+                        {
+                            result = sliceTransaction->UpdateEntityField(entityRootItem->m_entity, hiddenAutoPushNode->ComputeAddress());
+
+                            // Explicitly not warning of hidden field pushes - a user cannot act or change these failures, and we don't want
+                            // to prevent valid non-hidden pushes to fail because of something someone can't change.
+                        }
+                        entityRootItem->m_pushedHiddenAutoPushNodes = true;
+                    }
+                }
+            }
+
+            return pushError;
+        }
+
         /**
          * Check/uncheck all top level items of the same FieldTreeItem::SlicePushType.
          */
@@ -461,6 +528,8 @@ namespace AzToolsFramework
 
         m_iconGroup = QIcon(":/PropertyEditor/Resources/browse_on.png");
         m_iconChangedDataItem = QIcon(":/PropertyEditor/Resources/changed_data_item.png");
+        m_iconConflictedDataItem = QIcon(":/PropertyEditor/Resources/cant_save.png");
+        m_iconConflictedDisabledDataItem = QIcon(":/PropertyEditor/Resources/cant_save_disabled.png");
         m_iconNewDataItem = QIcon(":/PropertyEditor/Resources/new_data_item.png");
         m_iconRemovedDataItem = QIcon(":/PropertyEditor/Resources/removed_data_item.png");
         m_iconSliceItem = QIcon(":/PropertyEditor/Resources/slice_item.png");
@@ -549,16 +618,16 @@ namespace AzToolsFramework
         // Create/populate button box.
         {
             QDialogButtonBox* buttonBox = new QDialogButtonBox(this);
-            QPushButton* pushSelectedButton = new QPushButton(tr(" Save Selected Overrides"));
-            pushSelectedButton->setToolTip(tr("Save selected overrides to the specified slice(es)."));
-            pushSelectedButton->setDefault(false);
-            pushSelectedButton->setAutoDefault(false);
+            m_pushSelectedButton = new QPushButton(tr(" Save Selected Overrides"));
+            m_pushSelectedButton->setToolTip(tr("Save selected overrides to the specified slice(es)."));
+            m_pushSelectedButton->setDefault(false);
+            m_pushSelectedButton->setAutoDefault(false);
             QPushButton* cancelButton = new QPushButton(tr("Cancel"));
             cancelButton->setDefault(true);
             cancelButton->setAutoDefault(true);
             buttonBox->addButton(cancelButton, QDialogButtonBox::RejectRole);
-            buttonBox->addButton(pushSelectedButton, QDialogButtonBox::ApplyRole);
-            connect(pushSelectedButton, &QPushButton::clicked, this, &SlicePushWidget::OnPushClicked);
+            buttonBox->addButton(m_pushSelectedButton, QDialogButtonBox::ApplyRole);
+            connect(m_pushSelectedButton, &QPushButton::clicked, this, &SlicePushWidget::OnPushClicked);
             connect(cancelButton, &QPushButton::clicked, this, &SlicePushWidget::OnCancelClicked);
 
             bottomLegendAndButtonsLayout->addWidget(buttonBox, 1);
@@ -571,7 +640,10 @@ namespace AzToolsFramework
 
         CreateWarningLayout();
 
+        CreateConflictLayout();
+
         // Add everything to main layout.
+        layout->addWidget(m_conflictWidget, 0);
         layout->addWidget(m_warningWidget, 0);
         layout->addWidget(splitter, 1);
         layout->addLayout(m_bottomLayout, 0);
@@ -585,12 +657,16 @@ namespace AzToolsFramework
 
         FinalizeWarningLayout();
 
+        m_conflictWidget->hide();
+
         // Only test m_checkboxAllChangedItems, the other two CheckBoxes are defaulted to unchecked.
         Qt::CheckState checkStateOfChangedItems = Internal::TestCheckStateOfAllTopLevelItemsBySlicePushType(m_fieldTree, FieldTreeItem::SlicePushType::Changed);
         if (checkStateOfChangedItems == Qt::CheckState::Checked)
         {
             m_checkboxAllChangedItems->setCheckState(Qt::CheckState::Checked);
         }
+
+        ShowConflictMessage();
     }
     
     //=========================================================================
@@ -600,18 +676,116 @@ namespace AzToolsFramework
     {
     }
 
+    QWidget* SlicePushWidget::CreateMessageWidget()
+    {
+        QWidget* widget = new QWidget();
+        QVBoxLayout* layout = new QVBoxLayout();
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setAlignment(Qt::AlignBottom);
+
+        ApplyStyleSheet(widget, ":/PropertyEditor/Resources/DarkBackgroundStyle.qss");
+
+        widget->setLayout(layout);
+
+        return widget;
+    }
+
+    void SlicePushWidget::CreateConflictLayout()
+    {
+        m_conflictWidget = CreateMessageWidget();
+
+        QLayout* layout = m_conflictWidget->layout();
+        QVBoxLayout* boxLayout = static_cast<QVBoxLayout*>(layout);
+
+        CreateConflictMessage(boxLayout);
+    }
+
     void SlicePushWidget::CreateWarningLayout()
     {
-        QVBoxLayout* warningLayout = new QVBoxLayout();
-        warningLayout->setContentsMargins(0, 0, 0, 0);
-        warningLayout->setAlignment(Qt::AlignBottom);
+        m_warningWidget = CreateMessageWidget();
 
-        CreateWarningLayoutHeader(warningLayout);
-        CreateWarningFoldout(warningLayout);
+        QLayout* layout = m_warningWidget->layout();
+        QVBoxLayout* boxLayout = static_cast<QVBoxLayout*>(layout);
 
-        m_warningWidget = new QWidget();
-        ApplyStyleSheet(m_warningWidget, ":/PropertyEditor/Resources/DarkBackgroundStyle.qss");
-        m_warningWidget->setLayout(warningLayout);
+        CreateWarningLayoutHeader(boxLayout);
+        CreateWarningFoldout(boxLayout);
+    }
+
+    void SlicePushWidget::SetupTopAreaMessage(QVBoxLayout* layout, QLabel* label, bool addPullDown)
+    {
+        if (!layout)
+        {
+            return;
+        }
+
+        const int foldoutImageSize = 24;
+
+        // The warning layout is separated from the rest of the slice push widget by a thin line on the top and bottom.
+        QWidget* topHorizontalLine = new QWidget();
+        topHorizontalLine->setFixedHeight(s_messageSeperatorLineHeight);
+        topHorizontalLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        // The top warning line is a brighter color to help draw the eye to the warning bar.
+        ApplyStyleSheet(topHorizontalLine, ":/PropertyEditor/Resources/WarningAccentColor.qss");
+        QHBoxLayout* topLayout = new QHBoxLayout();
+        topLayout->setContentsMargins(s_messageHeaderLeftMargin, s_messageHheaderMargins, s_messageHheaderMargins, s_messageHheaderMargins);
+
+        // The warning layout header has an icon, a header message, and a details label and foldout that can
+        // be clicked to view additional information about warnings.
+        QLabel* conflictIcon = new QLabel();
+        conflictIcon->setAlignment(Qt::AlignLeft);
+        conflictIcon->setPixmap(m_iconConflictedDataItem.pixmap(m_iconConflictedDataItem.availableSizes().first()));
+        conflictIcon->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+        // The warning title should be replaced later with a specific number of missing references, seed it with something useful in case that fails.
+        label->setAlignment(Qt::AlignLeft);
+        label->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+        // Add all of the widgets in order to the layout.
+        topLayout->addWidget(conflictIcon, Qt::AlignLeft);
+        topLayout->addWidget(label, Qt::AlignLeft);
+
+        if (addPullDown)
+        {
+            ClickableLabel* detailsLabel = new ClickableLabel();
+            detailsLabel->setText(tr("Details"));
+            detailsLabel->setAlignment(Qt::AlignRight);
+            detailsLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+            connect(detailsLabel, &ClickableLabel::clicked, this, &SlicePushWidget::OnToggleWarningClicked);
+
+            m_toggleWarningButton = new ClickableLabel();
+            m_toggleWarningButton->setPixmap(m_iconClosed.pixmap(m_iconClosed.availableSizes().first()));
+            m_toggleWarningButton->setFixedSize(foldoutImageSize, foldoutImageSize);
+            m_toggleWarningButton->setAlignment(Qt::AlignCenter);
+            m_toggleWarningButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            connect(m_toggleWarningButton, &ClickableLabel::clicked, this, &SlicePushWidget::OnToggleWarningClicked);
+
+            topLayout->addWidget(detailsLabel, Qt::AlignRight);
+            topLayout->addWidget(m_toggleWarningButton, Qt::AlignRight);
+        }
+        
+
+        // The warning layout header is separated on the bottom by a thin line from the rest of the window.
+        QWidget* bottomHorizontalLine = new QWidget();
+        bottomHorizontalLine->setFixedHeight(s_messageSeperatorLineHeight);
+        bottomHorizontalLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        ApplyStyleSheet(bottomHorizontalLine, ":/PropertyEditor/Resources/LightBackgroundStyle.qss");
+
+        // Add everything to the warning layout.
+        layout->addWidget(topHorizontalLine);
+        layout->addLayout(topLayout);
+        layout->addWidget(bottomHorizontalLine);
+    }
+    
+    void SlicePushWidget::CreateConflictMessage(QVBoxLayout* conflictLayout)
+    {
+        if (!conflictLayout)
+        {
+            return;
+        }
+        
+        m_conflictTitle = new QLabel(tr("You can't save the same component or property override to the same slice. Deselect conflicting overrides before saving."));
+
+        SetupTopAreaMessage(conflictLayout, m_conflictTitle, false);
     }
 
     void SlicePushWidget::CreateWarningLayoutHeader(QVBoxLayout* warningLayout)
@@ -620,65 +794,10 @@ namespace AzToolsFramework
         {
             return;
         }
-        const int lineHeight = 1;
-        const int foldoutImageSize = 24;
-        // The left margin of the warning header should be pushed in to the right a bit, by design.
-        const int warningHeaderLeftMargin = 24;
-        const int warningHeaderMargins = 3;
 
-        // The warning layout is separated from the rest of the slice push widget by a thin line on the top and bottom.
-        QWidget* topHorizontalLine = new QWidget();
-        topHorizontalLine->setFixedHeight(lineHeight);
-        topHorizontalLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        // The top warning line is a brighter color to help draw the eye to the warning bar.
-        ApplyStyleSheet(topHorizontalLine, ":/PropertyEditor/Resources/WarningAccentColor.qss");
-        QHBoxLayout* topWarningLayout = new QHBoxLayout();
-        topWarningLayout->setContentsMargins(warningHeaderLeftMargin, warningHeaderMargins, warningHeaderMargins, warningHeaderMargins);
-
-        // The warning layout header has a warning triangle, a warning header message, and a details label and foldout that can
-        // be clicked to view additional information about warnings.
-
-        QLabel* warningIcon = new QLabel();
-        warningIcon->setAlignment(Qt::AlignLeft);
-        warningIcon->setPixmap(m_iconWarning.pixmap(m_iconWarning.availableSizes().first()));
-        warningIcon->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-        // The warning title should be replaced later with a specific number of missing references, seed it with something useful in case that fails.
         m_warningTitle = new QLabel(tr("One or more slice files have missing file references. Cancel to update your references or \"Save...\" to remove the missing references."));
-        m_warningTitle->setAlignment(Qt::AlignLeft);
-        m_warningTitle->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-
-        // The word "Details" should also be clickable to expand and see details, in addition to the foldout arrow.
-        ClickableLabel* detailsLabel = new ClickableLabel();
-        detailsLabel->setText(tr("Details"));
-        detailsLabel->setAlignment(Qt::AlignRight);
-        detailsLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-        connect(detailsLabel, &ClickableLabel::clicked, this, &SlicePushWidget::OnToggleWarningClicked);
-
-        // The foldout arrow should be clickable to expand and see the detailed warning messages.
-        m_toggleWarningButton = new ClickableLabel();
-        m_toggleWarningButton->setPixmap(m_iconClosed.pixmap(m_iconClosed.availableSizes().first()));
-        m_toggleWarningButton->setFixedSize(foldoutImageSize, foldoutImageSize);
-        m_toggleWarningButton->setAlignment(Qt::AlignCenter);
-        m_toggleWarningButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        connect(m_toggleWarningButton, &ClickableLabel::clicked, this, &SlicePushWidget::OnToggleWarningClicked);
-        
-        // Add all of the widgets in order to the layout.
-        topWarningLayout->addWidget(warningIcon, Qt::AlignLeft);
-        topWarningLayout->addWidget(m_warningTitle, Qt::AlignLeft);
-        topWarningLayout->addWidget(detailsLabel, Qt::AlignRight);
-        topWarningLayout->addWidget(m_toggleWarningButton, Qt::AlignRight);
-
-        // The warning layout header is separated on the bottom by a thin line from the rest of the window.
-        QWidget* bottomHorizontalLine = new QWidget();
-        bottomHorizontalLine->setFixedHeight(lineHeight);
-        bottomHorizontalLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        ApplyStyleSheet(bottomHorizontalLine, ":/PropertyEditor/Resources/LightBackgroundStyle.qss");
-
-        // Add everything to the warning layout.
-        warningLayout->addWidget(topHorizontalLine);
-        warningLayout->addLayout(topWarningLayout);
-        warningLayout->addWidget(bottomHorizontalLine);
+     
+        SetupTopAreaMessage(warningLayout, m_warningTitle, true);
     }
 
     void SlicePushWidget::CreateWarningFoldout(QVBoxLayout* warningLayout)
@@ -807,6 +926,75 @@ namespace AzToolsFramework
         emit OnCanceled();
     }
 
+    void SlicePushWidget::SetupConflictData(AZ::Data::AssetId targetSliceAssetId)
+    {
+        // Remove all previous conflicts data before re-calculating them.
+        QTreeWidgetItemIterator conflictItemIter(m_fieldTree);
+        for (; *conflictItemIter; ++conflictItemIter)
+        {
+            FieldTreeItem* item = static_cast<FieldTreeItem*>(*conflictItemIter);
+            AZ_Assert(item, "FieldTreeItem pointer is null.");
+            item->m_conflictsWithItems.clear();
+        }
+
+        QTreeWidgetItemIterator itemIter(m_fieldTree);
+        for (; *itemIter; ++itemIter)
+        {
+            FieldTreeItem* item = static_cast<FieldTreeItem*>(*itemIter);
+
+            if (!item->IsPushableItem())
+            {
+                continue;
+            }
+
+            QTreeWidgetItemIterator conflictTestIter = itemIter;
+            conflictTestIter++;
+
+            for (; *conflictTestIter; ++conflictTestIter)
+            {
+                FieldTreeItem* confictTestItem = static_cast<FieldTreeItem*>(*conflictTestIter);
+
+                if (!confictTestItem->IsPushableItem())
+                {
+                    continue;
+                }
+
+                if (item->m_address == confictTestItem->m_address)
+                {
+                    // Check whether both changes will be pushed to the same entity down in the target slice.
+
+                    AZ::Entity* rootEntity_item = nullptr;
+                    FieldTreeItem* entityField_item = item->m_entityItem;
+                    for (const AZ::SliceComponent::Ancestor& ancestor : entityField_item->m_ancestors)
+                    {
+                        if (ancestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId() == targetSliceAssetId)
+                        {
+                            rootEntity_item = ancestor.m_entity;
+                        }
+                    }
+                    AZ_Assert(rootEntity_item, "Cannot find corresponding entity in the target slice while setting up override items in Advanced Push Window.");
+
+                    AZ::Entity* rootEntity_conflictTest = nullptr;
+                    FieldTreeItem* entityField_conflictTest = confictTestItem->m_entityItem;
+                    for (const AZ::SliceComponent::Ancestor& ancestor : entityField_conflictTest->m_ancestors)
+                    {
+                        if (ancestor.m_sliceAddress.GetReference()->GetSliceAsset().GetId() == targetSliceAssetId)
+                        {
+                            rootEntity_conflictTest = ancestor.m_entity;
+                        }
+                    }
+                    AZ_Assert(rootEntity_conflictTest, "Cannot find corresponding entity in the target slice while setting up override items in Advanced Push Window.");
+
+                    if (rootEntity_item == rootEntity_conflictTest)
+                    {
+                        item->m_conflictsWithItems.push_back(confictTestItem);
+                        confictTestItem->m_conflictsWithItems.push_back(item);
+                    }
+                }
+            }
+        }
+    }
+
     //=========================================================================
     // SlicePushWidget::Setup
     //=========================================================================
@@ -850,7 +1038,7 @@ namespace AzToolsFramework
                         }
                         else if (item->m_sliceAddress.IsValid()) // Changed data vs. slice
                         {
-                            item->setIcon(0, m_iconChangedDataItem);
+                            SetFieldIcon(item);
                         }
                     }
 
@@ -1086,6 +1274,108 @@ namespace AzToolsFramework
     }
 
     //=========================================================================
+    // SlicePushWidget::ShowConflictMessage
+    //=========================================================================
+    void SlicePushWidget::ShowConflictMessage()
+    {
+        int numConflicts = GetConflictCount();
+        if (numConflicts > 0)
+        {
+            QString conflictMsg = QString("<font color=\"red\">%1 ").arg(numConflicts);
+            if (numConflicts > 1)
+            {
+                conflictMsg += QObject::tr("conflicts: ");
+            }
+            else
+            {
+                conflictMsg += QObject::tr("conflict: ");
+            }
+            conflictMsg += "</font>";
+            conflictMsg += QObject::tr("You can't save the same component or property override to the same slice. Deselect conflicting overrides before saving.");
+            m_conflictTitle->setText(conflictMsg);
+            m_conflictWidget->show();
+            m_pushSelectedButton->setDisabled(true);
+        }
+        else
+        {
+            m_conflictWidget->hide();
+            m_pushSelectedButton->setDisabled(false);
+        }
+    }
+
+    //=========================================================================
+    // SlicePushWidget::SetFieldIcon
+    //=========================================================================
+    void SlicePushWidget::SetFieldIcon(FieldTreeItem* item)
+    {
+        const Qt::CheckState checkState = item->checkState(0);
+
+        if (item->IsConflicted())
+        {
+            item->setIcon(0, m_iconConflictedDataItem);
+        }
+        else
+        {
+            if (checkState != Qt::CheckState::Checked && item->HasPotentialConflicts())
+            {
+                item->setIcon(0, m_iconConflictedDisabledDataItem);
+            }
+            else
+            {
+                item->setIcon(0, m_iconChangedDataItem);
+            }
+        }
+    }
+
+    //=========================================================================
+    // SlicePushWidget::GetConflictCount
+    //=========================================================================
+    bool SlicePushWidget::GetConflictCount()
+    {
+        //work out total number of active conflicts, i.e. for checked leaf items only.
+        QTreeWidgetItemIterator itemIter(m_fieldTree);
+        AZStd::vector<AzToolsFramework::InstanceDataNode::Address> conflictedAddresses;
+
+        for (; *itemIter; ++itemIter)
+        {
+            FieldTreeItem* item = static_cast<FieldTreeItem*>(*itemIter);
+
+            if (item->m_slicePushType != AzToolsFramework::FieldTreeItem::SlicePushType::Changed)
+            {
+                continue;
+            }
+
+            if (item->checkState(0) != Qt::CheckState::Checked)
+            {
+                continue;
+            }
+
+            for (int conflict = 0; conflict < item->m_conflictsWithItems.size(); conflict++)
+            {
+                FieldTreeItem* conflictedItem = item->m_conflictsWithItems.at(conflict);
+                if (conflictedItem->checkState(0) != Qt::CheckState::Checked)
+                {
+                    continue;
+                }
+                bool alreadySeen = false;
+                for (int addrIndex = 0; addrIndex < conflictedAddresses.size(); addrIndex++)
+                {
+                    if (conflictedAddresses.at(addrIndex) == conflictedItem->m_address)
+                    {
+                        alreadySeen = true;
+                        break;
+                    }
+                }
+                if (!alreadySeen)
+                {
+                    conflictedAddresses.push_back(conflictedItem->m_address);
+                }
+            }
+        }
+        return conflictedAddresses.size();
+    }
+
+    //=========================================================================
     // SlicePushWidget::OnFieldDataChanged
     //=========================================================================
     void SlicePushWidget::OnFieldDataChanged(QTreeWidgetItem* item, int column)
@@ -1099,6 +1389,14 @@ namespace AzToolsFramework
         FieldTreeItem::SlicePushType fieldItemSlicePushType = fieldItem->m_slicePushType;
 
         const Qt::CheckState checkState = fieldItem->checkState(0);
+
+        SetFieldIcon(fieldItem);
+
+        for (int conflict = 0; conflict < fieldItem->m_conflictsWithItems.size(); conflict++)
+        {
+            FieldTreeItem* conflictItem = fieldItem->m_conflictsWithItems.at(conflict);
+            SetFieldIcon(conflictItem);
+        }
 
         m_fieldTree->blockSignals(true);
 
@@ -1218,6 +1516,8 @@ namespace AzToolsFramework
             }
         }
 
+        ShowConflictMessage();
+
         m_fieldTree->blockSignals(false);
     }
 
@@ -1226,12 +1526,28 @@ namespace AzToolsFramework
     //=========================================================================
     void SlicePushWidget::OnSliceRadioButtonChanged(QRadioButton* selectButton, const AZ::Data::AssetId assetId, bool checked)
     {
-        (void)checked;
+        if (!checked)
+        {
+            return;
+        }
 
         // The user selected a new target slice asset. Assign to the select data item and sync related items in the tree
 
         if (!m_fieldTree->selectedItems().isEmpty())
         {
+            SetupConflictData(assetId);
+
+            QTreeWidgetItemIterator itemIter(m_fieldTree);
+            for (; *itemIter; ++itemIter)
+            {
+                FieldTreeItem* item = static_cast<FieldTreeItem*>(*itemIter);
+                AZ_Assert(item, "FieldTreeItem pointer is null.");
+                if (item->IsPushableItem() && item->m_slicePushType == FieldTreeItem::SlicePushType::Changed)
+                {
+                    SetFieldIcon(item);
+                }
+            }
+
             if (m_sliceTree->model()->rowCount() == 1)
             {
                 selectButton->blockSignals(true);
@@ -1270,7 +1586,7 @@ namespace AzToolsFramework
 
                     AZStd::string assetPath;
                     EBUS_EVENT_RESULT(assetPath, AZ::Data::AssetCatalogRequestBus, GetAssetPathById, assetId);
-            
+
                     item->setText(1, assetPath.c_str());
 
                     QString tooltip;
@@ -1560,6 +1876,11 @@ namespace AzToolsFramework
                             hidden = true;
                         }
 
+                        if ((sliceFlags & AZ::Edit::SliceFlags::HideAllTheTime) != 0)
+                        {
+                            hidden = true;
+                        }
+
                         if (hidden && (sliceFlags & AZ::Edit::SliceFlags::PushWhenHidden) != 0)
                         {
                             entityItem->m_hiddenAutoPushNodes.insert(node);
@@ -1791,7 +2112,6 @@ namespace AzToolsFramework
         AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>> newChildEntityIdAncestorPairs;
         AZStd::unordered_map<AZ::EntityId, FieldTreeItem*> entityToFieldTreeItemMap;
 
-        bool hasUnpushableSliceEntityAdditions = false;
         AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList> sliceAncestryMapping;
         AzToolsFramework::EntityIdList entityIdList;
         for (const AZ::EntityId& entityId : entities)
@@ -1799,7 +2119,7 @@ namespace AzToolsFramework
             entityIdList.emplace_back(entityId);
         }
 
-        pushableNewChildEntityIds = SliceUtilities::GetPushableNewChildEntityIds(entityIdList, unpushableNewChildEntityIds, sliceAncestryMapping, newChildEntityIdAncestorPairs, hasUnpushableSliceEntityAdditions);
+        pushableNewChildEntityIds = SliceUtilities::GetPushableNewChildEntityIds(entityIdList, unpushableNewChildEntityIds, sliceAncestryMapping, newChildEntityIdAncestorPairs);
 
         for (const AZ::EntityId& entityId : unpushableNewChildEntityIds)
         {
@@ -1884,7 +2204,7 @@ namespace AzToolsFramework
 
         // Show bottom warnings explaining unpushables
         {
-            if (hasUnpushableSliceEntityAdditions)
+            if (unpushableNewChildEntityIds.size() > 0)
             {
                 AddStatusMessage(AzToolsFramework::SlicePushWidget::StatusMessageType::Warning, 
                                     QObject::tr("(A) Invalid additions detected. These are unsaveable because slices cannot contain instances of themselves. "
@@ -1908,6 +2228,7 @@ namespace AzToolsFramework
         SliceUtilities::IdToEntityMapping assetEntityIdtoAssetEntityMapping;
         SliceUtilities::IdToInstanceAddressMapping assetEntityIdtoInstanceAddressMapping;
         AZStd::unordered_set<AZ::EntityId> uniqueRemovedEntities = SliceUtilities::GetUniqueRemovedEntities(m_sliceInstances, assetEntityIdtoAssetEntityMapping, assetEntityIdtoInstanceAddressMapping);
+
         for (const AZ::EntityId& entityId : uniqueRemovedEntities)
         {
             AZ::SliceComponent::SliceInstanceAddress instanceAddr = assetEntityIdtoInstanceAddressMapping[entityId];
@@ -2135,6 +2456,8 @@ namespace AzToolsFramework
         QString pushError;
         AZStd::unordered_map<AZ::Data::AssetId, EntityIdList> entitiesToRemove; // collection of entities to remove per slice asset transaction completed
 
+        AZStd::vector<FieldTreeItem*> removalNodes;
+
         // Iterate over selected fields and synchronize data to target.
         QTreeWidgetItemIterator itemIter(m_fieldTree);
         for (; *itemIter; ++itemIter)
@@ -2190,35 +2513,33 @@ namespace AzToolsFramework
                     // Update entity field
                     else
                     {
-                        SliceTransaction::Result result = transaction->UpdateEntityField(item->m_entity, item->m_node->ComputeAddress());
-                        if (!result)
+                        // Add all removed nodes in reverse order later, so nodes can be removed in reverse order. 
+                        // Because removing nodes in a vector in the original order is unstable (each removal will cause subsequent nodes being shifted).
+                        if (item->m_node->IsRemovedVersusComparison())
                         {
-                            pushError = QString("Unable to add entity for push.\r\n\r\nDetails:\r\n%1").arg(result.GetError().c_str());
-                            break;
+                            removalNodes.push_back(item);
+                            continue;
                         }
 
-                        // Auto-push any hidden auto-push fields for the root entity item that need pushed
-                        FieldTreeItem* entityRootItem = item->m_entityItem;
-                        if (entityRootItem && !entityRootItem->m_hiddenAutoPushNodes.empty() && !entityRootItem->m_pushedHiddenAutoPushNodes)
+                        pushError = Internal::PushChangedItemToSliceTransaction(transaction, item);
+                        if (!pushError.isEmpty())
                         {
-                            // We also need to ensure we're only pushing hidden pushes to the direct slice ancestor of the entity; we don't want to
-                            // be pushing things like component order to an ancestor that wouldn't have the same components
-                            AZ::SliceComponent::SliceInstanceAddress sliceAddress;
-                            EBUS_EVENT_ID_RESULT(sliceAddress, entityRootItem->m_entity->GetId(), AzFramework::EntityIdContextQueryBus, GetOwningSlice);
-                            if (item->m_selectedAsset == sliceAddress.GetReference()->GetSliceAsset().GetId())
-                            {
-                                for (auto& hiddenAutoPushNode : entityRootItem->m_hiddenAutoPushNodes)
-                                {
-                                    result = transaction->UpdateEntityField(entityRootItem->m_entity, hiddenAutoPushNode->ComputeAddress());
-
-                                    // Explicitly not warning of hidden field pushes - a user cannot act or change these failures, and we don't want
-                                    // to prevent valid non-hidden pushes to fail because of something someone can't change.
-                                }
-                                entityRootItem->m_pushedHiddenAutoPushNodes = true;
-                            }
+                            break;
                         }
                     }
                 }
+            }
+        }
+
+        for (auto removalNodesItr = removalNodes.rbegin(); removalNodesItr != removalNodes.rend(); ++removalNodesItr)
+        {
+            FieldTreeItem* item = *removalNodesItr;
+            SliceTransaction::TransactionPtr transaction = transactionMap[item->m_selectedAsset];
+
+            pushError = Internal::PushChangedItemToSliceTransaction(transaction, item);
+            if (!pushError.isEmpty())
+            {
+                break;
             }
         }
 
@@ -2360,7 +2681,7 @@ namespace AzToolsFramework
 
                         using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
 
-                        ApplicationBus::Broadcast(&ApplicationBus::Events::RequestEditForFile,
+                        ApplicationBus::Broadcast(&ApplicationBus::Events::CheckSourceControlConnectionAndRequestEditForFile,
                             assetFullPath.c_str(),
                             [&pendingCheckouts, &checkoutSuccess](bool success)
                             {

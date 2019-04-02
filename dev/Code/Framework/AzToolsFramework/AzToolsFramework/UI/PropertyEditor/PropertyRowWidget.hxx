@@ -117,6 +117,8 @@ namespace AzToolsFramework
 
         void HideContent();
 
+        void SetNameLabel(const char* text);
+
         void UpdateIndicator(const char* imagePath);
 
         void SetFilterString(const AZStd::string& str);
@@ -203,9 +205,6 @@ namespace AzToolsFramework
 
         QIcon m_iconOpen;
         QIcon m_iconClosed;
-
-        void SetNameLabel(const char* text);
-
 
         /// Marks the field to be visualized as "overridden".
         void SetOverridden(bool overridden);

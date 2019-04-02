@@ -13,8 +13,11 @@
 #pragma once
 
 #include "EMotionFXConfig.h"
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/Math/Vector3.h>
 
 // include MCore related files
 #include <MCore/Source/Vector.h>
@@ -24,10 +27,8 @@
 #include <MCore/Source/OBB.h>
 #include <MCore/Source/Distance.h>
 
-//
-#include <AzCore/Math/Vector3.h>
-
 // include required headers
+#include <EMotionFX/Source/PhysicsSetup.h>
 #include "BaseObject.h"
 #include "Pose.h"
 #include "Skeleton.h"
@@ -60,21 +61,22 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_DECL
 
     public:
+        AZ_RTTI(Actor, "{15F0DAD5-6077-45E8-A628-1DB8FAFFE1BE}", BaseObject)
         /**
          * An actor dependency, which can be used during multithread scheduling.
          */
         struct EMFX_API Dependency
         {
-            Actor*             mActor;        /**< The actor where the instance is dependent on. */
-            AnimGraph*         mAnimGraph;    /**< The anim graph we depend on. */
+            Actor*      mActor;        /**< The actor where the instance is dependent on. */
+            AnimGraph*  mAnimGraph;    /**< The anim graph we depend on. */
         };
 
         //
         enum
         {
-            MIRRORFLAG_INVERT_X     = 1 << 0,   // NOTE: do not combine the MIRRORFLAG_INVERT_X with INVERT_Y or INVERT_Z
-            MIRRORFLAG_INVERT_Y     = 1 << 1,
-            MIRRORFLAG_INVERT_Z     = 1 << 2
+            MIRRORFLAG_INVERT_X = 1 << 0,   // NOTE: do not combine the MIRRORFLAG_INVERT_X with INVERT_Y or INVERT_Z
+            MIRRORFLAG_INVERT_Y = 1 << 1,
+            MIRRORFLAG_INVERT_Z = 1 << 2
         };
 
         enum EAxis : uint8
@@ -251,6 +253,11 @@ namespace EMotionFX
          *                    already contains items, the array will first be cleared, so all existing contents will be lost.
          */
         void ExtractBoneList(uint32 lodLevel, MCore::Array<uint32>* outBoneList) const;
+
+        //------------------------------------------------
+
+        void SetPhysicsSetup(const AZStd::shared_ptr<PhysicsSetup>& physicsSetup);
+        const AZStd::shared_ptr<PhysicsSetup>& GetPhysicsSetup() const;
 
         //------------------------------------------------
 
@@ -775,7 +782,7 @@ namespace EMotionFX
          */
         void MakeGeomLODsCompatibleWithSkeletalLODs();
 
-        void RenderSkeleton(const Transform* globalTransforms, uint32 color);
+        void RenderSkeleton(const Transform* worldSpaceTransforms, uint32 color);
 
         void ReinitializeMeshDeformers();
         void PostCreateInit(bool makeGeomLodsCompatibleWithSkeletalLODs = true, bool generateOBBs = true, bool convertUnitType = true);
@@ -786,16 +793,16 @@ namespace EMotionFX
         void SetNodeMirrorInfos(const MCore::Array<NodeMirrorInfo>& mirrorInfos);
         bool GetHasMirrorAxesDetected() const;
 
-        MCORE_INLINE const MCore::AlignedArray<MCore::Matrix, 16>& GetInverseBindPoseGlobalMatrices() const              { return mInvBindPoseGlobalMatrices; }
-        MCORE_INLINE Pose* GetBindPose()                                                                                 { return mSkeleton->GetBindPose(); }
-        MCORE_INLINE const Pose* GetBindPose() const                                                                     { return mSkeleton->GetBindPose(); }
+        MCORE_INLINE const AZStd::vector<Transform>& GetInverseBindPoseTransforms() const                               { return mInvBindPoseTransforms; }
+        MCORE_INLINE Pose* GetBindPose()                                                                                { return mSkeleton->GetBindPose(); }
+        MCORE_INLINE const Pose* GetBindPose() const                                                                    { return mSkeleton->GetBindPose(); }
 
         /**
-         * Get the inverse global space matrix of the node as it is in bind pose.
-         * @param nodeIndex The node number, which must be in range of [0..GetNumNodes()-1].
-         * @result The inverse of the bind pose global space matrix.
+         * Get the inverse bind pose (in world space) transform of a given joint.
+         * @param jointIndex The joint number, which must be in range of [0..GetNumNodes()-1].
+         * @result The inverse of the bind pose transform.
          */
-        MCORE_INLINE const MCore::Matrix& GetInverseBindPoseGlobalMatrix(uint32 nodeIndex) const                        { return mInvBindPoseGlobalMatrices[nodeIndex]; }
+        MCORE_INLINE const Transform& GetInverseBindPoseTransform(uint32 nodeIndex) const                         { return mInvBindPoseTransforms[nodeIndex]; }
 
         void ReleaseTransformData();
         void ResizeTransformData();
@@ -809,24 +816,18 @@ namespace EMotionFX
         uint32 GetThreadIndex() const                       { return mThreadIndex; }
 
         MCORE_INLINE Mesh* GetMesh(uint32 lodLevel, uint32 nodeIndex) const                                             { return mLODs[lodLevel].mNodeInfos[nodeIndex].mMesh; }
-        //MCORE_INLINE Mesh* GetCollisionMesh(uint32 lodLevel, uint32 nodeIndex) const                                  { return mLODs[lodLevel].mNodeInfos[nodeIndex].mColMesh; }
         MCORE_INLINE MeshDeformerStack* GetMeshDeformerStack(uint32 lodLevel, uint32 nodeIndex) const                   { return mLODs[lodLevel].mNodeInfos[nodeIndex].mStack; }
-        //MCORE_INLINE MeshDeformerStack* GetCollisionMeshDeformerStack(uint32 lodLevel, uint32 nodeIndex) const            { return mLODs[lodLevel].mNodeInfos[nodeIndex].mColStack; }
 
         MCORE_INLINE Skeleton* GetSkeleton() const          { return mSkeleton; }
         MCORE_INLINE uint32 GetNumNodes() const             { return mSkeleton->GetNumNodes(); }
 
         void SetMesh(uint32 lodLevel, uint32 nodeIndex, Mesh* mesh);
-        //void SetCollisionMesh(uint32 lodLevel, uint32 nodeIndex, Mesh* mesh);
         void SetMeshDeformerStack(uint32 lodLevel, uint32 nodeIndex, MeshDeformerStack* stack);
-        //void SetCollisionMeshDeformerStack(uint32 lodLevel, uint32 nodeIndex, MeshDeformerStack* stack);
 
         bool GetHasMesh(uint32 lodLevel, uint32 nodeIndex) const;
-        //bool GetHasCollilsionMesh(uint32 lodLevel, uint32 nodeIndex) const;
         bool CheckIfHasDeformableMesh(uint32 lodLevel, uint32 nodeIndex) const;
-        //bool CheckIfHasDeformableCollisionMesh(uint32 lodLevel, uint32 nodeIndex) const;
         bool CheckIfHasMorphDeformer(uint32 lodLevel, uint32 nodeIndex) const;
-        bool CheckIfHasSoftSkinDeformer(uint32 lodLevel, uint32 nodeIndex) const;
+        bool CheckIfHasSkinningDeformer(uint32 lodLevel, uint32 nodeIndex) const;
 
         /**
          * Calculate the object oriented box for a given LOD level.
@@ -841,14 +842,13 @@ namespace EMotionFX
          * The box is stored in local space of the node.
          * @param lodLevel The geometry LOD level to generate the OBBs from.
          * @param nodeIndex The node to calculate the OBB for.
-         * @param invBindPoseMatrix The inverse of the global space matrix of the bind pose (bind pose is the pose in which the Actor was exported).
          */
-        void CalcOBBFromBindPose(uint32 lodLevel, uint32 nodeIndex, const MCore::Matrix& invBindPoseMatrix);
+        void CalcOBBFromBindPose(uint32 lodLevel, uint32 nodeIndex);
 
         /**
          * Get the object oriented bounding box for this node.
-         * The box is in local space. In order to convert it into global space you have to multiply the corner points of the box
-         * with the global space matrix of this node.
+         * The box is in local space. In order to convert it into world space you have to multiply the corner points of the box
+         * with the world space matrix of this node.
          * Nodes that do not have a mesh and do not act as bone will have invalid bounds. You can use the MCore::OBB::CheckIfIsValid() method to check if
          * the bounds are valid bounds or not. If it is not, then it means there was nothing to calculate the box from.
          * Object Oriented Boxes for the nodes are calculated at export time by using the Actor::UpdateNodeBindPoseOBBs() and Node::CalcOBBFromBindPose() methods.
@@ -859,8 +859,8 @@ namespace EMotionFX
 
         /**
          * Get the object oriented bounding box for this node.
-         * The box is in local space. In order to convert it into global space you have to multiply the corner points of the box
-         * with the global space matrix of this node.
+         * The box is in local space. In order to convert it into world space you have to multiply the corner points of the box
+         * with the world space matrix of this node.
          * Nodes that do not have a mesh and do not act as bone will have invalid bounds. You can use the MCore::OBB::CheckIfIsValid() method to check if
          * the bounds are valid bounds or not. If it is not, then it means there was nothing to calculate the box from.
          * Object Oriented Boxes for the nodes are calculated at export time by using the Actor::UpdateNodeBindPoseOBBs() and Node::CalcOBBFromBindPose() methods.
@@ -871,8 +871,8 @@ namespace EMotionFX
 
         /**
          * Set the object oriented bounding box for this node.
-         * The box is in local space. In order to convert it into global space you have to multiply the corner points of the box
-         * with the global space matrix of this node.
+         * The box is in local space. In order to convert it into world space you have to multiply the corner points of the box
+         * with the world space matrix of this node.
          * Nodes that do not have a mesh and do not act as bone will have invalid bounds. You can use the MCore::OBB::CheckIfIsValid() method to check if
          * the bounds are valid bounds or not. If it is not, then it means there was nothing to calculate the box from.
          * @param nodeIndex The index of the node to set the OBB for.
@@ -925,33 +925,31 @@ namespace EMotionFX
             NodeInfo();
         };
 
-        Skeleton*                       mSkeleton;              /**< The skeleton, containing the nodes and bind pose. */
-        MCore::Array<LODLevel>          mLODs;
-        MCore::Array<Dependency>        mDependencies;          /**< The dependencies on other actors (shared meshes and transforms). */
-        AZStd::vector<NodeInfo>         mNodeInfos;             /**< The per node info, shared between lods. */
-        AZStd::string                   mName;                  /**< The name of the actor. */
-        AZStd::string                   mFileName;              /**< The filename of the actor. */
-        MCore::Array<NodeMirrorInfo>    mNodeMirrorInfos;       /**< The array of node mirror info. */
-        MCore::Array< MCore::Array<Material*> >   mMaterials;   /**< A collection of materials (for each lod). */
-        MCore::Array<MorphSetup*>       mMorphSetups;           /**< A morph setup for each geometry LOD. */
-        MCore::SmallArray<NodeGroup*>   mNodeGroups;            /**< The set of node groups. */
-        MCore::Distance::EUnitType      mUnitType;              /**< The unit type used on export. */
-        MCore::Distance::EUnitType      mFileUnitType;          /**< The unit type used on export. */
-
-        MCore::AlignedArray<MCore::Matrix, 16>  mInvBindPoseGlobalMatrices;
-
-        void*                           mCustomData;            /**< Some custom data, for example a pointer to your own game character class which is linked to this actor. */
-        uint32                          mMotionExtractionNode;  /**< The motion extraction node. This is the node from which to transfer a filtered part of the motion onto the actor instance. Can also be MCORE_INVALIDINDEX32 when motion extraction is disabled. */
-        uint32                          mRetargetRootNode;      /**< The retarget root node, which controls the height displacement of the character. This is most likely the hip or pelvis node. */
-        uint32                          mID;                    /**< The unique identification number for the actor. */
-        uint32                          mThreadIndex;
-        MCore::AABB                     mStaticAABB;            /**< The static AABB. */
-
-        bool                            mDirtyFlag;             /**< The dirty flag which indicates whether the user has made changes to the actor since the last file save operation. */
-        bool                            mUsedForVisualization;  /**< Indicates if the actor is used for visualization specific things and is not used as a normal in-game actor. */
+        Skeleton*                                       mSkeleton;                  /**< The skeleton, containing the nodes and bind pose. */
+        MCore::Array<LODLevel>                          mLODs;
+        MCore::Array<Dependency>                        mDependencies;              /**< The dependencies on other actors (shared meshes and transforms). */
+        AZStd::vector<NodeInfo>                         mNodeInfos;                 /**< The per node info, shared between lods. */
+        AZStd::string                                   mName;                      /**< The name of the actor. */
+        AZStd::string                                   mFileName;                  /**< The filename of the actor. */
+        MCore::Array<NodeMirrorInfo>                    mNodeMirrorInfos;           /**< The array of node mirror info. */
+        MCore::Array< MCore::Array< Material* > >       mMaterials;                 /**< A collection of materials (for each lod). */
+        MCore::Array< MorphSetup* >                     mMorphSetups;               /**< A  morph setup for each geometry LOD. */
+        MCore::SmallArray<NodeGroup*>                   mNodeGroups;                /**< The set of node groups. */
+        AZStd::shared_ptr<PhysicsSetup>                 m_physicsSetup;             /**< Hit detection, ragdoll and cloth colliders, joint limits and rigid bodies. */
+        MCore::Distance::EUnitType                      mUnitType;                  /**< The unit type used on export. */
+        MCore::Distance::EUnitType                      mFileUnitType;              /**< The unit type used on export. */
+        AZStd::vector<Transform>                        mInvBindPoseTransforms;     /**< The inverse world space bind pose transforms. */
+        void*                                           mCustomData;                /**< Some custom data, for example a pointer to your own game character class which is linked to this actor. */
+        uint32                                          mMotionExtractionNode;      /**< The motion extraction node. This is the node from which to transfer a filtered part of the motion onto the actor instance. Can also be MCORE_INVALIDINDEX32 when motion extraction is disabled. */
+        uint32                                          mRetargetRootNode;          /**< The retarget root node, which controls the height displacement of the character. This is most likely the hip or pelvis node. */
+        uint32                                          mID;                        /**< The unique identification number for the actor. */
+        uint32                                          mThreadIndex;
+        MCore::AABB                                     mStaticAABB;                /**< The static AABB. */
+        bool                                            mDirtyFlag;                 /**< The dirty flag which indicates whether the user has made changes to the actor since the last file save operation. */
+        bool                                            mUsedForVisualization;      /**< Indicates if the actor is used for visualization specific things and is not used as a normal in-game actor. */
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
-        bool                            mIsOwnedByRuntime;      /**< Set if the actor is used/owned by the engine runtime. */
+        bool                                            mIsOwnedByRuntime;          /**< Set if the actor is used/owned by the engine runtime. */
 #endif // EMFX_DEVELOPMENT_BUILD
 
         /**

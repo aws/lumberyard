@@ -32,7 +32,6 @@
 #include "UiAVSequenceProps.h"
 #include "ViewManager.h"
 #include "AnimationContext.h"
-#include "AnimationSerializer.h"
 #include "UiAnimViewFindDlg.h"
 #include "UiAnimViewUndo.h"
 #include "UiAnimViewAnimNode.h"
@@ -648,6 +647,8 @@ void CUiAnimViewDialog::UpdateActions()
         }
 
         m_actions[ID_ADDNODE]->setEnabled(true);
+
+        m_actions[ID_TV_PLAY]->setShortcut(QKeySequence(Qt::Key_Space)); // re-enable the shortcut
     }
     else
     {
@@ -655,6 +656,8 @@ void CUiAnimViewDialog::UpdateActions()
         m_actions[ID_TV_EDIT_SEQUENCE]->setEnabled(false);
         m_actions[ID_TRACKVIEW_TOGGLE_DISABLE]->setEnabled(false);
         m_actions[ID_ADDNODE]->setEnabled(false);
+
+        m_actions[ID_TV_PLAY]->setShortcut(QKeySequence()); // clear the shortcut to give parent widgets a chance to handle the same shortcut
     }
 }
 

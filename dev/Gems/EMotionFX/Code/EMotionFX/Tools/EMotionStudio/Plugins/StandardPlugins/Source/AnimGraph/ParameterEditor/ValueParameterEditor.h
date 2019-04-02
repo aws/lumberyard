@@ -53,6 +53,8 @@ namespace EMStudio
         virtual void setIsReadOnly(bool isReadOnly) { m_isReadOnly = isReadOnly; }
         bool IsReadOnly() const { return m_isReadOnly; }
 
+        void SetAttributes(const AZStd::vector<MCore::Attribute*>& attributes);
+
         // When the attribute changed without going through this editor, this editor needs
         // to update the current value. If there is a RPE hooked the client is responsible
         // for invalidating the values

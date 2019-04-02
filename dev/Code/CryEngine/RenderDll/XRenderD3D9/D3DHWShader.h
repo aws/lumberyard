@@ -14,7 +14,11 @@
 #pragma once
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(D3DHWShader_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DHWShader_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DHWShader_h_provo.inl"
+    #endif
 #endif
 
 #define MERGE_SHADER_PARAMETERS 1
@@ -1124,6 +1128,11 @@ public:
     static bool mfAddGlobalSampler(STexSamplerRT& Sampler);
 
     static void* GetVSDataForDecl(const D3D11_INPUT_ELEMENT_DESC* pDecl, int nCount, int& nDataSize);
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    //! Used by render to texture to fix-up all engine texture samplers
+    static void UpdateSamplerEngineTextures();
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     static void ShutDown();
 

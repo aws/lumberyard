@@ -531,3 +531,18 @@ def get_spec_dependencies(ctx, modules_spec, valid_gem_types):
 
     return game_engine_module_dependencies
 
+
+def write_auto_gen_header(file):
+    name, ext = os.path.splitext(os.path.basename(file.name))
+
+    comment_str = '//'
+    if name in ('wscript', 'CMakeLists') or ext in ('.py', '.properties'):
+        comment_str = '#'
+
+    full_line = comment_str * (64 / len(comment_str))
+
+    file.write('{}\n'.format(full_line))
+    file.write('{} This file was automatically created by WAF\n'.format(comment_str))
+    file.write('{} WARNING! All modifications will be lost!\n'.format(comment_str))
+    file.write('{}\n'.format(full_line))
+

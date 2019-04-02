@@ -25,6 +25,11 @@
 QT_FORWARD_DECLARE_CLASS(QPushButton)
 QT_FORWARD_DECLARE_CLASS(QCheckBox)
 
+namespace MysticQt
+{
+    class LinkWidget;
+}
+
 namespace EMStudio
 {
     // forward declarations
@@ -77,7 +82,7 @@ namespace EMStudio
 
         // motion extraction node selection
         NodeSelectionWindow*            mMotionExtractionNodeSelectionWindow;
-        QWidget*                        mWarningSelectNodeLink;
+        MysticQt::LinkWidget*           mWarningSelectNodeLink;
 
         // helper functions
         void CreateFlagsWidget();

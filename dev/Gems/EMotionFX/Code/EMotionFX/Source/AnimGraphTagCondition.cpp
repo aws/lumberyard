@@ -50,6 +50,7 @@ namespace EMotionFX
     void AnimGraphTagCondition::Reinit()
     {
         const size_t numTags = m_tags.size();
+        m_tagParameterIndices.clear();
         m_tagParameterIndices.reserve(numTags);
 
         // Iterate through the chosen tags in the condition to cache the parameter indices.
@@ -258,20 +259,61 @@ namespace EMotionFX
         m_tags = tags;
     }
 
-    void AnimGraphTagCondition::RenameTag(const AZStd::string& oldTagName, const AZStd::string& newTagName)
+    void AnimGraphTagCondition::SetFunction(EFunction function)
+    {
+        m_function = function;
+    }
+    
+    AZStd::vector<AZStd::string> AnimGraphTagCondition::GetParameters() const
+    {
+        return m_tags;
+    }
+
+    AnimGraph* AnimGraphTagCondition::GetParameterAnimGraph() const
+    {
+        return GetAnimGraph();
+    }
+
+    void AnimGraphTagCondition::ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask)
+    {
+        m_tags = newParameterMask;
+        Reinit();
+    }
+
+    void AnimGraphTagCondition::AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const
+    {
+        AZ_UNUSED(parameterNames);
+        // The parameters are replaceable
+    }
+
+    void AnimGraphTagCondition::ParameterAdded(size_t newParameterIndex)
+    {
+        // Just recompute the indexes in the case the new parameter was inserted before ours
+        Reinit();
+    }
+    
+    void AnimGraphTagCondition::ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName)
     {
         for (AZStd::string& tag : m_tags)
         {
-            if (tag == oldTagName)
+            if (tag == oldParameterName)
             {
-                tag = newTagName;
+                tag = newParameterName;
+                // Index doesnt change
             }
         }
     }
 
-    void AnimGraphTagCondition::SetFunction(EFunction function)
+    void AnimGraphTagCondition::ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange)
     {
-        m_function = function;
+        // Just recompute the indexes
+        Reinit();
+    }
+
+    void AnimGraphTagCondition::ParameterRemoved(const AZStd::string& oldParameterName)
+    {
+        // Removing a parameter can also shift indexes, so just recompute them
+        Reinit();
     }
 
     void AnimGraphTagCondition::Reflect(AZ::ReflectContext* context)

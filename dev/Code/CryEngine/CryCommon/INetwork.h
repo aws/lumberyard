@@ -21,7 +21,11 @@
 #define NUM_ASPECTS                         32              // Number of GameObject aspects supported.
 #define MAXIMUM_NUMBER_OF_CONNECTIONS       64              // Maximum number of connections supported.
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(INetwork_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/INetwork_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/INetwork_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

@@ -35,6 +35,7 @@ TArray<bool> sfxIFDef;
 TArray<bool> sfxIFIgnore;
 bool CParserBin::m_bEditable;
 uint32 CParserBin::m_nPlatform;
+AZ::PlatformID CParserBin::m_targetPlatform = AZ::PLATFORM_MAX;
 bool CParserBin::m_bEndians;
 bool CParserBin::m_bParseFX = true;
 bool CParserBin::m_bShaderCacheGen = false;
@@ -707,7 +708,6 @@ void CParserBin::Init()
     FX_REGISTER_TOKEN(DURANGO); // ACCEPTED_USE
     FX_REGISTER_TOKEN(PCDX11);
     FX_REGISTER_TOKEN(GL4);
-    FX_REGISTER_TOKEN(OSXGL4);
     FX_REGISTER_TOKEN(GLES3);
     FX_REGISTER_TOKEN(METAL);
     FX_REGISTER_TOKEN(OSXMETAL);
@@ -715,21 +715,7 @@ void CParserBin::Init()
 
     FX_REGISTER_TOKEN(STANDARDSGLOBAL);
 
-    // GMEM RELATED MACROS
-    FX_REGISTER_TOKEN(GMEM);
-    FX_REGISTER_TOKEN(GMEM_PLS);
-    FX_REGISTER_TOKEN(GMEM_256BPP);
-    FX_REGISTER_TOKEN(GMEM_128BPP);
-
-
-    // Fixed point for devices that don't support float rendering
-    FX_REGISTER_TOKEN(FIXED_POINT);
-
-    //  Confetti BEGIN: Igor Lobanchikov :END
     FX_REGISTER_TOKEN(GLES3_0);
-
-    // Shader compiled using the LLVM DirectX Shader Compiler (GL4, GLES3 and METAL)
-    FX_REGISTER_TOKEN(LLVM_DIRECTX_SHADER_COMPILER);
 
     FX_REGISTER_TOKEN(Load);
     FX_REGISTER_TOKEN(Sample);
@@ -739,8 +725,6 @@ void CParserBin::Init()
     FX_REGISTER_TOKEN(GatherBlue);
     FX_REGISTER_TOKEN(GatherAlpha);
  
-    FX_REGISTER_TOKEN(NoDepthClipping);
-    
     FXMacroItor it;
     for (it = sStaticMacros.begin(); it != sStaticMacros.end(); it++)
     {
@@ -781,7 +765,11 @@ void CParserBin::Init()
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PARSERBIN_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(ParserBin_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ParserBin_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ParserBin_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -795,9 +783,25 @@ void CParserBin::Init()
     }
 }
 
+void CParserBin::SetupTargetPlatform()
+{
+#if !defined(CONSOLE)
+    if (CParserBin::m_bShaderCacheGen)
+    {
+        m_targetPlatform = static_cast<AZ::PlatformID>(CRenderer::CV_r_shadersPlatform);
+    }
+    else
+#endif // !defined(CONSOLE)
+    {
+        m_targetPlatform = AZ::g_currentPlatform;
+    }
+}
+
 void CParserBin::SetupForD3D11()
 {
     CleanPlatformMacros();
+    SetupTargetPlatform();
+
     uint32 nMacro[1] = {eT_1};
 
     AddMacro(CParserBin::fxToken("PCDX11"), nMacro, 1, 0, m_StaticMacros);
@@ -814,25 +818,22 @@ void CParserBin::SetupForD3D11()
     gRenDev->m_cEF.m_pGlobalExt = gRenDev->m_cEF.mfCreateShaderGenInfo("RunTime", true);
 }
 
-// NOTE: The setup of the GL shader language is platform dependant (using preprocessor variables).
-//       This means ShaderCacheGen.exe cannot be run on windows to generate mac shaders and it cannot
-//       be run on mac to generate windows shaders.
 void CParserBin::SetupForGL4()
 {
     CleanPlatformMacros();
+    SetupTargetPlatform();
     uint32 nMacro[1] = {eT_1};
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
-    AddMacro(CParserBin::fxToken("OSXGL4"), nMacro, 1, 0, m_StaticMacros);
-#else
     AddMacro(CParserBin::fxToken("GL4"), nMacro, 1, 0, m_StaticMacros);
-#endif
 
-    if (CRenderer::CV_r_ShadersUseLLVMDirectXCompiler)
+    if (!gRenDev->IsShaderCacheGenMode())
     {
-        AddMacro(CParserBin::fxToken("LLVM_DIRECTX_SHADER_COMPILER"), nMacro, 1, 0, m_StaticMacros);
+        if (CRenderer::CV_r_ShadersUseLLVMDirectXCompiler)
+        {
+            gRenDev->m_cEF.AddStaticFlag(HWSST_LLVM_DIRECTX_SHADER_COMPILER);
+        }
     }
-    
+
     m_nPlatform = SF_GL4;
 
     SetupShadersCacheAndFilter();
@@ -845,122 +846,134 @@ void CParserBin::SetupForGL4()
     gRenDev->m_cEF.m_pGlobalExt = gRenDev->m_cEF.mfCreateShaderGenInfo("RunTime", true);
 }
 
-// NOTE: The setup of the GLES shader language is platform dependant (using preprocessor variables) and real-time execution dependant.
-//       This means ShaderCacheGen.exe cannot be used in windows or mac to generate GLES3 shaders.
 void CParserBin::SetupForGLES3()
 {
-    //  Confetti BEGIN: Igor Lobanchikov
-    static std::string g_generatedShaderPath;
-    //  Confetti End: Igor Lobanchikov
-
-    // Shader Cache folders to be generated for release builds for Android GLES3 at the moment:
-    //   GLES3_0
-    //   GLES3_0\FIXED_POINT
-    //   GLES3_0\GMEM128
-    //   GLES3_0\GMEM256
-    //   GLES3_1
-    //   GLES3_1\FIXED_POINT
-    //   GLES3_1\GMEM128
-    //   GLES3_1\GMEM256
-
     CleanPlatformMacros();
+    SetupTargetPlatform();
     uint32 nMacro[1] = {eT_1};
 
     AddMacro(CParserBin::fxToken("GLES3"), nMacro, 1, 0, m_StaticMacros);
-
-    if (CRenderer::CV_r_ShadersUseLLVMDirectXCompiler)
-    {
-        AddMacro(CParserBin::fxToken("LLVM_DIRECTX_SHADER_COMPILER"), nMacro, 1, 0, m_StaticMacros);
-    }
-
-    // TO FIX: Real-time macro, this will request different shaders in real-time depending on device capability.
-    //         Release builds won't have the 2 versions, with and without the macro, and it needs both.
-    if (gRenDev->m_hasSmallUniformBuffers)
-    {
-        AddMacro(CParserBin::GetCRC32("SMALL_UNIFORM_BUFFERS"), nMacro, 1, 0, m_StaticMacros);
-    }
-
-    int macroNum = 2;
+    // Forcing small uniform buffers since  OpenGLES only guarantees 16k of space for uniform blocks.
+    // We don't do it per device because that would add extra permutations.
+    AddMacro(CParserBin::GetCRC32("SMALL_UNIFORM_BUFFERS"), nMacro, 1, 0, m_StaticMacros);
 
     m_nPlatform = SF_GLES3;
+    if (!gRenDev->IsShaderCacheGenMode())
+    {
+        if (CRenderer::CV_r_ShadersUseLLVMDirectXCompiler)
+        {
+            gRenDev->m_cEF.AddStaticFlag(HWSST_LLVM_DIRECTX_SHADER_COMPILER);
+        }
+#if defined(OPENGL_ES)
+        AZ_Assert(gcpRendD3D, "Null CD3D9Renderer");
+        uint32 glVersion = RenderCapabilities::GetDeviceGLVersion();
+        AZ_Assert(glVersion >= DXGLES_VERSION_30, "Invalid OpenGL version %lu", static_cast<unsigned long>(glVersion));
+        if (glVersion == DXGLES_VERSION_30)
+        {
+            gRenDev->m_cEF.AddStaticFlag(HWSST_GLES3_0);
+        }
+
+        if (!gcpRendD3D->UseHalfFloatRenderTargets())
+        {
+            gRenDev->m_cEF.AddStaticFlag(HWSST_FIXED_POINT);
+        }
+#endif // defined(OPENGL_ES)
+    }
 
     SetupShadersCacheAndFilter();
-
-    if (GetShaderLanguage() == eSL_GLES3_0)
-    {
-        AddMacro(CParserBin::fxToken("GLES3_0"), nMacro, 1, 0, m_StaticMacros);
-    }
-
     SetupFeatureDefines();
-    SetupForGMEM(CRenderer::CV_r_EnableGMEMPath, macroNum);
+    SetupForGMEM(CRenderer::CV_r_EnableGMEMPath);
     gRenDev->m_cEF.m_Bin.InvalidateCache();
     gRenDev->m_cEF.mfInitLookups();
-
-    //  Confetti BEGIN: Igor Lobanchikov
-#if defined(ANDROID) && defined(OPENGL_ES)
-    assert(gcpRendD3D);
-    // Use Fixed Point Render Targets. In order to reduce shader permutations it is not used with GMEM at the same time.
-    if (!gcpRendD3D->UseHalfFloatRenderTargets() && !FindMacro(CParserBin::fxToken("GMEM"), m_StaticMacros))
-    {
-        AddMacro(CParserBin::fxToken("FIXED_POINT"), nMacro, macroNum++, 0, m_StaticMacros);
-
-        gRenDev->m_cEF.m_ShadersCache += "FixedPoint/";
-    }
-#endif
-    //  Confetti End: Igor Lobanchikov
 
     SAFE_DELETE(gRenDev->m_cEF.m_pGlobalExt);
     gRenDev->m_cEF.m_pGlobalExt = gRenDev->m_cEF.mfCreateShaderGenInfo("RunTime", true);
 }
 
-// NOTE: The setup of the METAL shader language is platform dependant (using preprocessor variables) and real-time execution dependant.
-//       This means ShaderCacheGen.exe cannot be used in windows or mac to generate metal shaders.
-//
-// Confetti Begin: Nicholas Baldwin: adding metal shader language support
+
+void CParserBin::RemoveGMEMStaticFlags()
+{
+    gRenDev->m_cEF.RemoveStaticFlag(HWSST_GMEM_256BPP);
+    gRenDev->m_cEF.RemoveStaticFlag(HWSST_GMEM_128BPP);
+    gRenDev->m_cEF.RemoveStaticFlag(HWSST_GMEM_PLS);
+    gRenDev->m_cEF.RemoveStaticFlag(HWSST_GMEM_VELOCITY_BUFFER);
+    gRenDev->m_cEF.RemoveStaticFlag(HWSST_GMEM_RT_GREATER_FOUR);
+    gRenDev->m_cEF.RemoveStaticFlag(HWSST_FEATURE_FETCH_DEPTHSTENCIL);
+}
+
+void CParserBin::SetupGMEMCommonStaticFlags()
+{
+#if defined(OPENGL_ES) || defined(CRY_USE_METAL)
+    if (RenderCapabilities::SupportsPLSExtension())
+    {
+        gRenDev->m_cEF.AddStaticFlag(HWSST_GMEM_PLS);
+    }
+
+    // TAA and motion blur need an extra render target to write the objects velocity.
+    if (CRenderer::CV_r_MotionBlur > 0 || (gRenDev->FX_GetAntialiasingType() & eAT_TEMPORAL_MASK) != 0)
+    {
+        gRenDev->m_cEF.AddStaticFlag(HWSST_GMEM_VELOCITY_BUFFER);
+    }
+    
+    // Ensure that the device can support at least 5 render targets - GBUFFER A, GBUFFER B, GBUFFER C, Lin Depth/Stencil and Velocity
+    if (RenderCapabilities::SupportsRenderTargets(CD3D9Renderer::s_gmemLargeRTCount))
+    {
+        gRenDev->m_cEF.AddStaticFlag(HWSST_GMEM_RT_GREATER_FOUR);
+    }
+
+    RenderCapabilities::FrameBufferFetchMask fetchCapabilities = RenderCapabilities::GetFrameBufferFetchCapabilities();
+    if (fetchCapabilities.test(RenderCapabilities::FBF_DEPTH) && fetchCapabilities.test(RenderCapabilities::FBF_STENCIL))
+    {
+        gRenDev->m_cEF.AddStaticFlag(HWSST_FEATURE_FETCH_DEPTHSTENCIL);
+    }
+#endif // defined(OPENGL_ES) || defined(CRY_USE_METAL)
+}
+
 void CParserBin::SetupForMETAL()
 {
-    // Shader Cache folders to be generated for release builds for iOS Metal at the moment:
-    //   METAL\GMEM128
-    //   METAL\GMEM256
-    //
-    // Shader Cache folders to be generated for release builds for Mac Metal at the moment:
-    //   METAL
-
     CleanPlatformMacros();
+    SetupTargetPlatform();
     uint32 nMacro[1] = {eT_1};
 
     AddMacro(CParserBin::fxToken("METAL"), nMacro, 1, 0, m_StaticMacros);
 
-#if defined(AZ_PLATFORM_APPLE_OSX)
-    AddMacro(CParserBin::fxToken("OSXMETAL"), nMacro, 1, 0, m_StaticMacros);
-#else
-    AddMacro(CParserBin::fxToken("IOSMETAL"), nMacro, 1, 0, m_StaticMacros);
-#endif
-
-    if (CRenderer::CV_r_ShadersUseLLVMDirectXCompiler)
+    switch (m_targetPlatform)
     {
-        AddMacro(CParserBin::fxToken("LLVM_DIRECTX_SHADER_COMPILER"), nMacro, 1, 0, m_StaticMacros);
+    case AZ::PLATFORM_APPLE_OSX:
+        AddMacro(CParserBin::fxToken("OSXMETAL"), nMacro, 1, 0, m_StaticMacros);
+        break;
+    case AZ::PLATFORM_APPLE_IOS:
+    case AZ::PLATFORM_APPLE_TV:
+        AddMacro(CParserBin::fxToken("IOSMETAL"), nMacro, 1, 0, m_StaticMacros);
+        break;
+    default:
+        AZ_Assert(false, "Invalid platform id (%s) for Metal shader setup", AZ::GetPlatformName(m_targetPlatform));
+        return;
     }
 
-    int macroNum = 2;
+
+    if (!gRenDev->IsShaderCacheGenMode())
+    {
+        if (CRenderer::CV_r_ShadersUseLLVMDirectXCompiler)
+        {
+            gRenDev->m_cEF.AddStaticFlag(HWSST_LLVM_DIRECTX_SHADER_COMPILER);
+        }
+    }
 
     m_nPlatform = SF_METAL;
-
     SetupShadersCacheAndFilter();
-
     SetupFeatureDefines();
-    SetupForGMEM(CRenderer::CV_r_EnableGMEMPath, macroNum);
+    SetupForGMEM(CRenderer::CV_r_EnableGMEMPath);
     gRenDev->m_cEF.m_Bin.InvalidateCache();
     gRenDev->m_cEF.mfInitLookups();
 
     SAFE_DELETE(gRenDev->m_cEF.m_pGlobalExt);
     gRenDev->m_cEF.m_pGlobalExt = gRenDev->m_cEF.mfCreateShaderGenInfo("RunTime", true);
 }
-// Confetti End: Nicholas Baldwin: adding metal shader language support
 
-void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
+void CParserBin::SetupForGMEM(int const gmemPath)
 {
-    assert(m_nPlatform == SF_METAL || m_nPlatform == SF_GLES3);
+    AZ_Assert(m_nPlatform == SF_METAL || m_nPlatform == SF_GLES3, "Invalid platform (%d) for setup up GMEM");
 
 #if defined(OPENGL_ES) || defined(CRY_USE_METAL)
     uint32 nMacro[1] = { eT_1 };
@@ -969,21 +982,14 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
     CD3D9Renderer::EGmemPathState gmemState;
     assert(gcpRendD3D);
     enabledGmemPath = gcpRendD3D->FX_GetEnabledGmemPath(&gmemState);
-
-    const char* shaderCacheAppendGMEM256 = "GMEM256/";
-    const char* shaderCacheAppendGMEM128 = "GMEM128/";
-
     const char* strUnsupportedFeats = "CParserBin::SetupForGMEM: cannot use 256bpp GMEM path due to SSDO or SSR being used! It is recommended to disable these features on mobile platforms. Forcing 128bpp path instead.";
     const char* strUnsupportedGmem256 = "CParserBin::SetupForGMEM: 256bpp GMEM path not supported on this device! Forcing 128bpp GMEM path instead.";
-    const char* strUnsupportedGmem128 = "CParserBin::SetupForGMEM: 128bpp GMEM path not supported on this device! Forcing regular render path instead.";
+    const char* strUnsupportedGmem128 = "CParserBin::SetupForGMEM: 128bpp GMEM path not supported on this device! Forcing regular render path instead.";    
 
     switch (gmemPath)
     {
     case 0:
-        RemoveMacro(CParserBin::fxToken("GMEM"), m_StaticMacros);
-        RemoveMacro(CParserBin::fxToken("GMEM_256BPP"), m_StaticMacros);
-        RemoveMacro(CParserBin::fxToken("GMEM_128BPP"), m_StaticMacros);
-        RemoveMacro(CParserBin::fxToken("GMEM_PLS"), m_StaticMacros);
+        RemoveGMEMStaticFlags();
         break;
     case 1:
     {
@@ -991,7 +997,7 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
         if (CD3D9Renderer::eGT_DEV_UNSUPPORTED == gmemState)
         {
             CryLogAlways(strUnsupportedGmem256);
-            SetupForGMEM(2, curMacroNum);
+            SetupForGMEM(2);
             return;
         }
 
@@ -1004,7 +1010,7 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
         if (CD3D9Renderer::eGT_OK != gmemState && CD3D9Renderer::eGT_128bpp_PATH == enabledGmemPath)
         {
             CryLogAlways(strUnsupportedFeats);
-            SetupForGMEM(2, curMacroNum);
+            SetupForGMEM(2);
             return;
         }
         else
@@ -1012,21 +1018,9 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
             assert(CD3D9Renderer::eGT_OK == gmemState);
         }
 
-        SetupForGMEM(0, curMacroNum);
-        AddMacro(CParserBin::fxToken("GMEM"), nMacro, curMacroNum++, 0, m_StaticMacros);
-        AddMacro(CParserBin::fxToken("GMEM_256BPP"), nMacro, curMacroNum++, 0, m_StaticMacros);
-
-        if (m_nPlatform == SF_METAL || m_nPlatform == SF_GLES3)
-        {
-            gRenDev->m_cEF.m_ShadersCache += shaderCacheAppendGMEM256;
-        }
-
-        // TO FIX: Real-time macro, this will request different shaders in real-time depending on device capability.
-        //         Release builds won't have the 2 versions, with and without the macro, and it needs both.
-        if (RenderCapabilities::SupportsPLSExtension())
-        {
-            AddMacro(CParserBin::fxToken("GMEM_PLS"), nMacro, curMacroNum++, 0, m_StaticMacros);
-        }
+        RemoveGMEMStaticFlags();
+        SetupGMEMCommonStaticFlags();
+        gRenDev->m_cEF.AddStaticFlag(HWSST_GMEM_256BPP);
         break;
     }
     case 2:
@@ -1035,7 +1029,7 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
         if (CD3D9Renderer::eGT_DEV_UNSUPPORTED == gmemState && CD3D9Renderer::eGT_REGULAR_PATH == enabledGmemPath)
         {
             CryLogAlways(strUnsupportedGmem128);
-            SetupForGMEM(0, curMacroNum);
+            SetupForGMEM(0);
             return;
         }
         else
@@ -1043,21 +1037,9 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
             assert(CD3D9Renderer::eGT_128bpp_PATH == enabledGmemPath);
         }
 
-        SetupForGMEM(0, curMacroNum);
-        AddMacro(CParserBin::fxToken("GMEM"), nMacro, curMacroNum++, 0, m_StaticMacros);
-        AddMacro(CParserBin::fxToken("GMEM_128BPP"), nMacro, curMacroNum++, 0, m_StaticMacros);
-
-        if (m_nPlatform == SF_METAL || m_nPlatform == SF_GLES3)
-        {
-            gRenDev->m_cEF.m_ShadersCache += shaderCacheAppendGMEM128;
-        }
-
-        // TO FIX: Real-time macro, this will request different shaders in real-time depending on device capability.
-        //         Release builds won't have the 2 versions, with and without the macro, and it needs both.
-        if (RenderCapabilities::SupportsPLSExtension())
-        {
-            AddMacro(CParserBin::fxToken("GMEM_PLS"), nMacro, curMacroNum++, 0, m_StaticMacros);
-        }
+        RemoveGMEMStaticFlags();
+        SetupGMEMCommonStaticFlags();
+        gRenDev->m_cEF.AddStaticFlag(HWSST_GMEM_128BPP);
         break;
     }
     default:
@@ -1069,6 +1051,7 @@ void CParserBin::SetupForGMEM(int const gmemPath, int& curMacroNum)
 void CParserBin::SetupForOrbis() // ACCEPTED_USE
 {
     CleanPlatformMacros();
+    SetupTargetPlatform();
     uint32 nMacro[1] = {eT_1};
     AddMacro(CParserBin::fxToken("ORBIS"), nMacro, 1, 0, m_StaticMacros); // ACCEPTED_USE
     m_nPlatform = SF_ORBIS; // ACCEPTED_USE
@@ -1085,6 +1068,7 @@ void CParserBin::SetupForOrbis() // ACCEPTED_USE
 void CParserBin::SetupForDurango() // ACCEPTED_USE
 {
     CleanPlatformMacros();
+    SetupTargetPlatform();
     uint32 nMacro[1] = {eT_1};
 
     m_nPlatform = SF_DURANGO; // ACCEPTED_USE
@@ -1120,7 +1104,11 @@ CCryNameTSCRC CParserBin::GetPlatformSpecName(CCryNameTSCRC orgName)
     }
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PARSERBIN_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(ParserBin_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ParserBin_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ParserBin_cpp_provo.inl"
+    #endif
 #endif
     // Confetti Nicholas Baldwin: adding metal shader language support
     else
@@ -1295,7 +1283,6 @@ void CParserBin::CleanPlatformMacros()
     RemoveMacro(CParserBin::fxToken("ORBIS"), m_StaticMacros); // ACCEPTED_USE
     RemoveMacro(CParserBin::fxToken("PCDX11"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("GL4"), m_StaticMacros);
-    RemoveMacro(CParserBin::fxToken("OSXGL4"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("GLES3"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("METAL"), m_StaticMacros);
     RemoveMacro(CParserBin::fxToken("OSXMETAL"), m_StaticMacros);
@@ -3650,13 +3637,9 @@ void CParserBin::SetupFeatureDefines()
     RemoveMacro(CParserBin::GetCRC32("FEATURE_GEOMETRY_SHADERS"), m_StaticMacros);
     RemoveMacro(CParserBin::GetCRC32("FEATURE_SVO_GI"), m_StaticMacros);
     RemoveMacro(CParserBin::GetCRC32("FEATURE_8_BONE_SKINNING"), m_StaticMacros);
-    RemoveMacro(CParserBin::GetCRC32("FEATURE_TEXTURE_VIEWS"), m_StaticMacros);
     RemoveMacro(CParserBin::GetCRC32("FEATURE_DUAL_SOURCE_BLENDING"), m_StaticMacros);
-#if defined(CRY_USE_METAL) || defined(OPENGL_ES)
-    RemoveMacro(CParserBin::GetCRC32("FEATURE_GMEM_VELOCITY"), m_StaticMacros);
-#endif
 
-    uint32 nEnable[1] = {eT_1};
+    uint32 nEnable[1] = { eT_1 };
 #if defined(MESH_TESSELLATION)
     if (m_nPlatform == SF_D3D11 || m_nPlatform == SF_DURANGO || m_nPlatform == SF_GL4) // ACCEPTED_USE
     {
@@ -3699,6 +3682,11 @@ void CParserBin::SetupFeatureDefines()
     AddMacro(CParserBin::GetCRC32("FEATURE_SVO_GI"), nEnable, 1, 0, m_StaticMacros);
 #endif
 
+    if (m_nPlatform & (SF_D3D11 | SF_ORBIS | SF_DURANGO | SF_GL4)) // ACCEPTED_USE
+    {
+        AddMacro(CParserBin::GetCRC32("FEATURE_DUAL_SOURCE_BLENDING"), nEnable, 1, 0, m_StaticMacros);
+    }
+
 #if defined(AZ_PLATFORM_APPLE_OSX)
     const bool isMacOpenGl = true;
 #else
@@ -3712,31 +3700,13 @@ void CParserBin::SetupFeatureDefines()
     }
 
 #if !defined(NULL_RENDERER)
-    // TO FIX: Real-time macro, this will request different shaders in real-time depending on device capability.
-    //         Release builds won't have the 2 versions, with and without the macro, and it needs both.
-
-     if (RenderCapabilities::SupportsTextureViews())
-     {
-         AddMacro(CParserBin::GetCRC32("FEATURE_TEXTURE_VIEWS"), nEnable, 1, 0, m_StaticMacros);
-     }
-
-     if (RenderCapabilities::SupportsDualSourceBlending())
-     {
-         AddMacro(CParserBin::GetCRC32("FEATURE_DUAL_SOURCE_BLENDING"), nEnable, 1, 0, m_StaticMacros);
-     }
-
-     if (!RenderCapabilities::SupportsDepthClipping())
-     {
-         AddMacro(CParserBin::fxToken("NoDepthClipping"), nEnable, 1, 0, m_StaticMacros);
-     }
-    
-#if defined(CRY_USE_METAL) || defined(OPENGL_ES)
-     //Ensure that the device can support at least 5 render targets - GBUFFER A, GBUFFER B, GBUFFER C, Lin Depth/Stencil and Velocity
-     if (RenderCapabilities::SupportsRenderTargets(5))
-     {
-         AddMacro(CParserBin::GetCRC32("FEATURE_GMEM_VELOCITY"), nEnable, 1, 0, m_StaticMacros);
-     }
-#endif
+    if (!gRenDev->IsShaderCacheGenMode())
+    {
+        if (!RenderCapabilities::SupportsDepthClipping())
+        {
+            gRenDev->m_cEF.AddStaticFlag(HWSST_NO_DEPTH_CLIPPING);
+        }
+    }
 #endif // !defined(NULL_RENDERER)
 }
 

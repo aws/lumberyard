@@ -622,6 +622,7 @@ namespace AZ
         virtual void*             Cast(void* p, const AZ::TypeId& asType) const = 0;
         virtual const AZ::TypeId& GetTypeId() const = 0;
         virtual bool              IsTypeOf(const AZ::TypeId& id) const = 0;
+        virtual bool              IsAbstract() const = 0;
         virtual void              EnumHierarchy(RTTI_EnumCallback callback, void* userData = nullptr) const = 0;
 
         // Template helpers
@@ -697,6 +698,10 @@ namespace AZ
             bool IsTypeOf(const AZ::TypeId& id) const override
             {
                 return T::RTTI_IsContainType(id);
+            }
+            bool IsAbstract() const override
+            {
+                return AZStd::is_abstract<T>::value;
             }
             void EnumHierarchy(RTTI_EnumCallback callback, void* userData = nullptr) const override
             {

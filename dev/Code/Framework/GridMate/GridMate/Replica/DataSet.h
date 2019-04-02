@@ -12,8 +12,7 @@
 #ifndef GM_DATASET_H
 #define GM_DATASET_H
 
-#include <AzCore/std/function/function_fwd.h>
-
+#include <AzCore/std/functional.h>
 #include <GridMate/Containers/vector.h>
 
 #include <AzCore/std/containers/unordered_map.h>
@@ -66,18 +65,33 @@ namespace GridMate
         */
         unsigned int GetLastUpdateTime() const { return m_lastUpdateTime; }
 
-        AZ::u64 GetRevision() const{ return m_revision; }
+        ReplicaChunkBase* GetReplicaChunkBase() const { return m_replicaChunk; }
+
+        AZ::u64 GetRevision() const { return m_revision; }
+
+        using DispatchCallback = AZStd::function<void(const TimeContext& tc)>;
+
+        /**
+         * \brief Delta compressed DataSets use an intermediary to catch dispatches of changed DataSets in their logic
+         * \param callback to a custom object when a DataSet changes
+         */
+        void SetDispatchOverride(DispatchCallback callback) { m_override = callback; }
+
+        /**
+         * \brief Delta compressed fields override a dispatch
+         * \return not-null if this DataSet is used for Delta Compression
+         */
+        const DispatchCallback& GetDispatchOverride() const { return m_override; }
 
     protected:
         explicit DataSetBase(const char* debugName);
-        virtual ~DataSetBase() {}
+        virtual ~DataSetBase() = default;
 
         virtual PrepareDataResult PrepareData(EndianType endianType, AZ::u32 marshalFlags) = 0;
         virtual void Unmarshal(UnmarshalContext& mc) = 0;
         virtual void ResetDirty() = 0;
-        virtual void DispatchChangedEvent(const TimeContext& tc) { (void) tc; }
         virtual void SetDirty();
-
+        virtual void DispatchChangedEvent(const TimeContext& tc) { (void)tc; }
         ReadBuffer GetMarshalData() const;
 
         float               m_maxIdleTicks;             //Note: used only if ACK feedback disabled
@@ -87,6 +101,8 @@ namespace GridMate
 
         bool                m_isDefaultValue;
         AZ::u64             m_revision;          ///< Latest revision number; 0 means unset
+
+        DispatchCallback m_override; // Used by delta compressed DataSets to combine dispatch callbacks
     };
 
     // This shim is here to temporarily allow support for Pointer type unmarshalling
@@ -117,7 +133,7 @@ namespace GridMate
         static bool Unmarshal(UnmarshalContext& mc, MarshalerType& marshaler, DataType& sourceValue, AZStd::true_type /*isPointerType*/)
         {
             // Expects a return of whether or not the value was changed.
-            return marshaler.UnmarshalToPointer(sourceValue,(*mc.m_iBuf));
+            return marshaler.UnmarshalToPointer(sourceValue, (*mc.m_iBuf));
         }
     };
 
@@ -134,6 +150,9 @@ namespace GridMate
     public:
         template<class C, void (C::* FuncPtr)(const DataType&, const TimeContext&)>
         class BindInterface;
+
+        template<class C, void (C::* FuncPtr)(const DataType&, const TimeContext&)>
+        class BindOverrideInterface;
 
         struct StampedBuffer
         {
@@ -364,7 +383,7 @@ namespace GridMate
 
         void Unmarshal(UnmarshalContext& mc) override
         {
-            if (MarshalerShim::Unmarshal(mc,m_marshaler,m_value,typename AZStd::is_pointer<DataType>::type()))
+            if (MarshalerShim::Unmarshal(mc, m_marshaler, m_value, typename AZStd::is_pointer<DataType>::type()))
             {
                 m_lastUpdateTime = mc.m_timestamp;
                 m_replicaChunk->AddDataSetEvent(this);
@@ -379,6 +398,22 @@ namespace GridMate
         bool IsWithinToleranceThreshold()
         {
             return m_throttler.WithinThreshold(m_value);
+        }
+
+        void DispatchChangedEvent(const TimeContext& tc) override
+        {
+            if (m_override)
+            {
+                /*
+                 * m_override is a AZStd::function<>, so its use can incur a cost.
+                 * However, its use is limited to Delta Compressed DataSets.
+                 * This @DispatchChangedEvent is only called on pure DataSet<>,
+                 * as opposed DataSet<>::BindInterface<> for regular DataSet usage.
+                 * And in the cases when m_override wasn't specified,
+                 * it's a simple "if (false)" pass-through.
+                 */
+                m_override(tc);
+            }
         }
 
         DataType m_value;

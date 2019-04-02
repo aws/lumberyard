@@ -46,10 +46,10 @@ namespace EMStudio
     const char* RenderOptions::s_rimAngleOptionName = "rimAngle";
     const char* RenderOptions::s_showFPSOptionName = "showFPS";
     const char* RenderOptions::s_lightGroundColorOptionName = "lightGroundColor";
-    const char* RenderOptions::s_lightSkyColorOptionName = "lightSkyColor";
-    const char* RenderOptions::s_rimColorOptionName = "rimColor";
+    const char* RenderOptions::s_lightSkyColorOptionName = "lightSkyColor_v2";
+    const char* RenderOptions::s_rimColorOptionName = "rimColor_v2";
     const char* RenderOptions::s_backgroundColorOptionName = "backgroundColor";
-    const char* RenderOptions::s_gradientSourceColorOptionName = "gradientSourceColor";
+    const char* RenderOptions::s_gradientSourceColorOptionName = "gradientSourceColor_v2";
     const char* RenderOptions::s_gradientTargetColorOptionName = "gradientTargetColor";
     const char* RenderOptions::s_wireframeColorOptionName = "wireframeColor";
     const char* RenderOptions::s_collisionMeshColorOptionName = "collisionMeshColor";
@@ -63,7 +63,7 @@ namespace EMStudio
     const char* RenderOptions::s_meshAABBColorOptionName = "meshAABBColor";
     const char* RenderOptions::s_collisionMeshAABBColorOptionName = "collisionMeshAABBColor";
     const char* RenderOptions::s_OBBsColorOptionName = "OBBsColor";
-    const char* RenderOptions::s_lineSkeletonColorOptionName = "lineSkeletonColor";
+    const char* RenderOptions::s_lineSkeletonColorOptionName = "lineSkeletonColor_v2";
     const char* RenderOptions::s_skeletonColorOptionName = "skeletonColor";
     const char* RenderOptions::s_selectionColorOptionName = "selectionColor";
     const char* RenderOptions::s_selectedObjectColorOptionName = "selectedObjectColor";
@@ -72,6 +72,13 @@ namespace EMStudio
     const char* RenderOptions::s_mainAxisColorOptionName = "gridMainAxisColor";
     const char* RenderOptions::s_subStepColorOptionName = "gridSubStepColor";
     const char* RenderOptions::s_trajectoryArrowInnerColorOptionName = "trajectoryArrowInnerColor";
+    const char* RenderOptions::s_hitDetectionColliderColorOptionName = "hitDetectionColliderColor_v2";
+    const char* RenderOptions::s_selectedHitDetectionColliderColorOptionName = "selectedHitDetectionColliderColor_v2";
+    const char* RenderOptions::s_ragdollColliderColorOptionName = "ragdollColliderColor_v2";
+    const char* RenderOptions::s_selectedRagdollColliderColorOptionName = "selectedRagdollColliderColor_v2";
+    const char* RenderOptions::s_violatedJointLimitColorOptionName = "violatedJointLimitColor";
+    const char* RenderOptions::s_clothColliderColorOptionName = "clothColliderColor";
+    const char* RenderOptions::s_selectedClothColliderColorOptionName = "selectedClothColliderColor_v2";
     const char* RenderOptions::s_lastUsedLayoutOptionName = "lastUsedLayout";
     const char* RenderOptions::s_renderSelectionBoxOptionName = "renderSelectionBox";
 
@@ -92,10 +99,10 @@ namespace EMStudio
         , m_rimAngle(60.0f)
         , m_showFPS(false)
         , m_lightGroundColor(0.117f, 0.015f, 0.07f, 1.0f)
-        , m_lightSkyColor(0.635f, 0.6f, 0.572f, 1.0f)
-        , m_rimColor(1.0f, 0.70f, 0.109f, 1.0f)
+        , m_lightSkyColor(AZ::Color::CreateFromRgba(127, 127, 127, 255))
+        , m_rimColor(AZ::Color::CreateFromRgba(208, 208, 208, 255))
         , m_backgroundColor(0.359f, 0.3984f, 0.4492f, 1.0f)
-        , m_gradientSourceColor(0.4941f, 0.5686f, 0.6470f, 1.0f)
+        , m_gradientSourceColor(AZ::Color::CreateFromRgba(64, 71, 75, 255))
         , m_gradientTargetColor(0.0941f, 0.1019f, 0.1098f, 1.0f)
         , m_wireframeColor(0.0f, 0.0f, 0.0f, 1.0f)
         , m_collisionMeshColor(0.0f, 1.0f, 1.0f, 1.0f)
@@ -109,7 +116,7 @@ namespace EMStudio
         , m_meshAABBColor(0.0f, 0.0f, 0.7f, 1.0f)
         , m_collisionMeshAABBColor(0.0f, 0.7f, 0.0f, 1.0f)
         , m_OBBsColor(1.0f, 1.0f, 0.0f, 1.0f)
-        , m_lineSkeletonColor(1.0f, 1.0f, 0.0f, 1.0f)
+        , m_lineSkeletonColor(0.33333f, 1.0f, 0.0f, 1.0f)
         , m_skeletonColor(0.19f, 0.58f, 0.19f, 1.0f)
         , m_selectionColor(1.0f, 1.0f, 1.0f, 1.0f)
         , m_selectedObjectColor(1.0f, 0.647f, 0.0f, 1.0f)
@@ -118,6 +125,13 @@ namespace EMStudio
         , m_mainAxisColor(0.0f, 0.01f, 0.04f, 1.0f)
         , m_subStepColor(0.2460f, 0.2851f, 0.3320f, 1.0f)
         , m_trajectoryArrowInnerColor(0.184f, 0.494f, 0.866f, 1.0f)
+        , m_hitDetectionColliderColor(AZ::Color::CreateFromRgba(112, 112, 112, 255))
+        , m_selectedHitDetectionColliderColor(AZ::Color::CreateFromRgba(0, 170, 255, 255))
+        , m_ragdollColliderColor(AZ::Color::CreateFromRgba(112, 112, 112, 255))
+        , m_selectedRagdollColliderColor(AZ::Color::CreateFromRgba(245, 166, 35, 255))
+        , m_violatedJointLimitColor(AZ::Color::CreateFromRgba(255, 0, 0, 255))
+        , m_clothColliderColor(AZ::Color::CreateFromRgba(112, 112, 112, 255))
+        , m_selectedClothColliderColor(AZ::Color::CreateFromRgba(180, 139, 255, 255))
         , m_lastUsedLayout("Single")
         , m_renderSelectionBox(true)
     {
@@ -125,8 +139,6 @@ namespace EMStudio
         m_nearClipPlaneDistance = tempCam.GetNearClipDistance();
         m_farClipPlaneDistance = tempCam.GetFarClipDistance();
         m_FOV = tempCam.GetFOV();
-
-        PluginOptionsNotificationsBus::Handler::BusConnect(GUIOptions::s_unitTypeOptionName);
     }
 
     RenderOptions& RenderOptions::operator=(const RenderOptions& other)
@@ -182,7 +194,6 @@ namespace EMStudio
 
     RenderOptions::~RenderOptions()
     {
-        PluginOptionsNotificationsBus::Handler::BusDisconnect();
     }
 
     void RenderOptions::Save(QSettings* settings)
@@ -211,6 +222,12 @@ namespace EMStudio
         settings->setValue(s_gridColorOptionName, ColorToString(m_gridColor));
         settings->setValue(s_mainAxisColorOptionName, ColorToString(m_mainAxisColor));
         settings->setValue(s_subStepColorOptionName, ColorToString(m_subStepColor));
+        settings->setValue(s_hitDetectionColliderColorOptionName, ColorToString(m_hitDetectionColliderColor));
+        settings->setValue(s_selectedHitDetectionColliderColorOptionName, ColorToString(m_selectedHitDetectionColliderColor));
+        settings->setValue(s_ragdollColliderColorOptionName, ColorToString(m_ragdollColliderColor));
+        settings->setValue(s_selectedRagdollColliderColorOptionName, ColorToString(m_selectedRagdollColliderColor));
+        settings->setValue(s_clothColliderColorOptionName, ColorToString(m_clothColliderColor));
+        settings->setValue(s_selectedClothColliderColorOptionName, ColorToString(m_selectedClothColliderColor));
 
         settings->setValue(s_lightSkyColorOptionName, ColorToString(m_lightSkyColor));
         settings->setValue(s_lightGroundColorOptionName, ColorToString(m_lightGroundColor));
@@ -279,6 +296,13 @@ namespace EMStudio
 
         options.m_lightSkyColor = StringToColor(settings->value(s_lightSkyColorOptionName, ColorToString(options.m_lightSkyColor)).toString());
         options.m_lightGroundColor = StringToColor(settings->value(s_lightGroundColorOptionName, ColorToString(options.m_lightGroundColor)).toString());
+
+        options.m_hitDetectionColliderColor = StringToColor(settings->value(s_hitDetectionColliderColorOptionName, ColorToString(options.m_hitDetectionColliderColor)).toString());
+        options.m_selectedHitDetectionColliderColor = StringToColor(settings->value(s_selectedHitDetectionColliderColorOptionName, ColorToString(options.m_selectedHitDetectionColliderColor)).toString());
+        options.m_ragdollColliderColor = StringToColor(settings->value(s_ragdollColliderColorOptionName, ColorToString(options.m_ragdollColliderColor)).toString());
+        options.m_selectedRagdollColliderColor = StringToColor(settings->value(s_selectedRagdollColliderColorOptionName, ColorToString(options.m_selectedRagdollColliderColor)).toString());
+        options.m_clothColliderColor = StringToColor(settings->value(s_clothColliderColorOptionName, ColorToString(options.m_clothColliderColor)).toString());
+        options.m_selectedClothColliderColor = StringToColor(settings->value(s_selectedClothColliderColorOptionName, ColorToString(options.m_selectedClothColliderColor)).toString());
 
         options.m_showFPS = settings->value(s_showFPSOptionName, options.m_showFPS).toBool();
 
@@ -383,7 +407,14 @@ namespace EMStudio
             ->Field(s_subStepColorOptionName, &RenderOptions::m_subStepColor)
             ->Field(s_trajectoryArrowInnerColorOptionName, &RenderOptions::m_trajectoryArrowInnerColor)
             ->Field(s_lastUsedLayoutOptionName, &RenderOptions::m_lastUsedLayout)
-            ->Field(s_renderSelectionBoxOptionName, &RenderOptions::m_renderSelectionBox);
+            ->Field(s_renderSelectionBoxOptionName, &RenderOptions::m_renderSelectionBox)
+            ->Field(s_hitDetectionColliderColorOptionName, &RenderOptions::m_hitDetectionColliderColor)
+            ->Field(s_selectedHitDetectionColliderColorOptionName, &RenderOptions::m_selectedHitDetectionColliderColor)
+            ->Field(s_ragdollColliderColorOptionName, &RenderOptions::m_ragdollColliderColor)
+            ->Field(s_selectedRagdollColliderColorOptionName, &RenderOptions::m_selectedRagdollColliderColor)
+            ->Field(s_clothColliderColorOptionName, &RenderOptions::m_clothColliderColor)
+            ->Field(s_selectedClothColliderColorOptionName, &RenderOptions::m_selectedClothColliderColor)
+            ;
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
         if (!editContext)
@@ -513,6 +544,19 @@ namespace EMStudio
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSubStepColorChangedCallback)
             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_trajectoryArrowInnerColor, "Trajectory path color", "")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnTrajectoryArrowInnerColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_hitDetectionColliderColor, "Hit detection collider color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnHitDetectionColliderColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedHitDetectionColliderColor, "Selected hit detection collider color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedHitDetectionColliderColorChangedCallback)
+             ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_ragdollColliderColor, "Ragdoll collider color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnRagdollColliderColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedRagdollColliderColor, "Selected ragdoll collider color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedRagdollColliderColorChangedCallback)
+            // Note: Cloth collider editor is disabled as it is in preview
+            /*->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_clothColliderColor, "Cloth collider color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnClothColliderColorChangedCallback)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &RenderOptions::m_selectedClothColliderColor, "Selected cloth collider color", "")
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &RenderOptions::OnSelectedClothColliderColorChangedCallback)*/
             ;
     }
 
@@ -903,6 +947,70 @@ namespace EMStudio
         }
     }
 
+    void RenderOptions::SetHitDetectionColliderColor(const AZ::Color& colliderColor)
+    {
+        if (!colliderColor.IsClose(m_hitDetectionColliderColor))
+        {
+            m_hitDetectionColliderColor = colliderColor;
+            OnHitDetectionColliderColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetSelectedHitDetectionColliderColor(const AZ::Color& colliderColor)
+    {
+        if (!colliderColor.IsClose(m_selectedHitDetectionColliderColor))
+        {
+            m_selectedHitDetectionColliderColor = colliderColor;
+            OnSelectedHitDetectionColliderColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetRagdollColliderColor(const AZ::Color& color)
+    {
+        if (!color.IsClose(m_ragdollColliderColor))
+        {
+            m_ragdollColliderColor = color;
+            OnRagdollColliderColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetSelectedRagdollColliderColor(const AZ::Color& color)
+    {
+        if (!color.IsClose(m_selectedRagdollColliderColor))
+        {
+            m_selectedRagdollColliderColor = color;
+            OnSelectedRagdollColliderColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetViolatedJointLimitColor(const AZ::Color& color)
+    {
+        if (!color.IsClose(m_violatedJointLimitColor))
+        {
+            m_violatedJointLimitColor = color;
+            OnViolatedJointLimitColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetClothColliderColor(const AZ::Color& colliderColor)
+    {
+        if (!colliderColor.IsClose(m_clothColliderColor))
+        {
+            m_clothColliderColor = colliderColor;
+            OnClothColliderColorChangedCallback();
+        }
+    }
+
+    void RenderOptions::SetSelectedClothColliderColor(const AZ::Color& colliderColor)
+    {
+        if (!colliderColor.IsClose(m_selectedClothColliderColor))
+        {
+            m_selectedClothColliderColor = colliderColor;
+            OnSelectedClothColliderColorChangedCallback();
+        }
+    }
+
+
     void RenderOptions::SetTrajectoryArrowInnerColor(const AZ::Color& trajectoryArrowInnerColor)
     {
         if (!trajectoryArrowInnerColor.IsClose(m_trajectoryArrowInnerColor))
@@ -927,68 +1035,6 @@ namespace EMStudio
         {
             m_renderSelectionBox = renderSelectionBox;
             OnRenderSelectionBoxChangedCallback();
-        }
-    }
-
-    void RenderOptions::OnOptionChanged(const AZStd::string& optionChanged)
-    {
-        AZ_UNUSED(optionChanged); // Since we connect to only one option, we should only be called by it
-
-        MCore::Distance::EUnitType unitType = GetMainWindow()->GetOptions().GetUnitType();
-        switch (unitType)
-        {
-        case MCore::Distance::UNITTYPE_MILLIMETERS:
-            SetNearClipPlaneDistance(10.0f);
-            SetFarClipPlaneDistance(200000.0f);
-            SetGridUnitSize(200.0f);
-            break;
-        case MCore::Distance::UNITTYPE_CENTIMETERS:
-            SetNearClipPlaneDistance(1.0f);
-            SetFarClipPlaneDistance(20000.0f);
-            SetGridUnitSize(20.0f);
-            break;
-        case MCore::Distance::UNITTYPE_DECIMETERS:
-            SetNearClipPlaneDistance(0.1f);
-            SetFarClipPlaneDistance(2000.0f);
-            SetGridUnitSize(2.0f);
-            break;
-        case MCore::Distance::UNITTYPE_METERS:
-            SetNearClipPlaneDistance(0.1f);
-            SetFarClipPlaneDistance(200.0f);
-            SetGridUnitSize(0.2f);
-            break;
-        case MCore::Distance::UNITTYPE_KILOMETERS:
-            SetNearClipPlaneDistance(0.0001f);
-            SetFarClipPlaneDistance(0.2f);
-            SetGridUnitSize(0.0002f);
-            break;
-        case MCore::Distance::UNITTYPE_INCHES:
-            SetNearClipPlaneDistance(3.937f);
-            SetFarClipPlaneDistance(7874.0f);
-            SetGridUnitSize(7.87402f);
-            break;
-        case MCore::Distance::UNITTYPE_FEET:
-            SetNearClipPlaneDistance(0.328f);
-            SetFarClipPlaneDistance(656.0f);
-            SetFarClipPlaneDistance(0.656168f);
-            break;
-        case MCore::Distance::UNITTYPE_YARDS:
-            SetNearClipPlaneDistance(0.109f);
-            SetFarClipPlaneDistance(218.0f);
-            SetGridUnitSize(0.218723f);
-            break;
-        case MCore::Distance::UNITTYPE_MILES:
-            SetNearClipPlaneDistance(0.000062f);
-            SetFarClipPlaneDistance(0.1242f);
-            SetGridUnitSize(0.000124274f);
-            break;
-        default:
-            // Assume "meters"
-            SetNearClipPlaneDistance(0.1f);
-            SetFarClipPlaneDistance(200.0f);
-            SetGridUnitSize(0.2f);
-            MCORE_ASSERT(false); // We should not hit this scenario
-            return;
         }
     }
 
@@ -1210,6 +1256,41 @@ namespace EMStudio
     void RenderOptions::OnTrajectoryArrowInnerColorChangedCallback() const
     {
         PluginOptionsNotificationsBus::Event(s_trajectoryArrowInnerColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_trajectoryArrowInnerColorOptionName);
+    }
+
+    void RenderOptions::OnHitDetectionColliderColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_hitDetectionColliderColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_hitDetectionColliderColorOptionName);
+    }
+
+    void RenderOptions::OnSelectedHitDetectionColliderColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_selectedHitDetectionColliderColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_selectedHitDetectionColliderColorOptionName);
+    }
+
+    void RenderOptions::OnRagdollColliderColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_ragdollColliderColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_ragdollColliderColorOptionName);
+    }
+
+    void RenderOptions::OnSelectedRagdollColliderColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_selectedRagdollColliderColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_selectedRagdollColliderColorOptionName);
+    }
+
+    void RenderOptions::OnViolatedJointLimitColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_violatedJointLimitColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_violatedJointLimitColorOptionName);
+    }
+
+    void RenderOptions::OnClothColliderColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_clothColliderColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_clothColliderColorOptionName);
+    }
+
+    void RenderOptions::OnSelectedClothColliderColorChangedCallback() const
+    {
+        PluginOptionsNotificationsBus::Event(s_selectedClothColliderColorOptionName, &PluginOptionsNotificationsBus::Events::OnOptionChanged, s_selectedClothColliderColorOptionName);
     }
 
     void RenderOptions::OnLastUsedLayoutChangedCallback() const

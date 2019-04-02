@@ -40,12 +40,20 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TESTS_H_SECTION_1
-#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Tests_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Tests_h_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TESTS_H_SECTION_2
-#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Tests_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Tests_h_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_PLATFORM_WINDOWS)
@@ -74,7 +82,11 @@ namespace UnitTest
     class GridMateTestFixture
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TESTS_H_SECTION_3
-#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Tests_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Tests_h_provo.inl"
+    #endif
 #endif
     {
     protected:
@@ -135,7 +147,11 @@ namespace UnitTest
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TESTS_H_SECTION_4
-#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Tests_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Tests_h_provo.inl"
+    #endif
 #endif
         }
 
@@ -145,7 +161,11 @@ namespace UnitTest
             {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TESTS_H_SECTION_5
-#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Tests_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Tests_h_provo.inl"
+    #endif
 #endif
 
                 StopDrilling();
@@ -222,7 +242,11 @@ namespace UnitTest
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TESTS_H_SECTION_6
-#include AZ_RESTRICTED_FILE(Tests_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Tests_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Tests_h_provo.inl"
+    #endif
 #endif
     };
 

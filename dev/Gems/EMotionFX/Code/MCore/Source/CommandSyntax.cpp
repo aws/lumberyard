@@ -161,6 +161,19 @@ namespace MCore
     }
 
 
+    const AZStd::string& CommandSyntax::GetDefaultValue(const char* paramName) const
+    {
+        const uint32 index = FindParameterIndex(paramName);
+        if (index != MCORE_INVALIDINDEX32)
+        {
+            return mParameters[index].mDefaultValue;
+        }
+
+        static const AZStd::string empty;
+        return empty;
+    }
+
+
     // get the default value for a given parameter name
     bool CommandSyntax::GetDefaultValue(const char* paramName, AZStd::string& outDefaultValue) const
     {

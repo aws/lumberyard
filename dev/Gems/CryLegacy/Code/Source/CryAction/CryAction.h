@@ -15,10 +15,7 @@
 //               provides a generic game framework for action based games
 //               such as 1st and 3rd person shooters.
 
-#ifndef CRYINCLUDE_CRYACTION_CRYACTION_H
-#define CRYINCLUDE_CRYACTION_CRYACTION_H
 #pragma once
-
 
 #include <ISystem.h>
 #include <ICmdLine.h>
@@ -144,7 +141,7 @@ public:
     void PauseGame(bool pause, bool force, unsigned int nFadeOutInMS = 0) override;
     bool IsGamePaused() override;
     bool IsGameStarted() override;
-    void MarkGameStarted() override;
+    void MarkGameStarted(bool started) override;
     bool IsLoadingSaveGame() override;
     const char* GetLevelName() override;
     const char* GetAbsLevelPath(char* const pPath, const uint32 cPathMaxLen) override;
@@ -612,5 +609,3 @@ private:
 
     CGameContextBridge* m_contextBridge;
 };
-
-#endif // CRYINCLUDE_CRYACTION_CRYACTION_H

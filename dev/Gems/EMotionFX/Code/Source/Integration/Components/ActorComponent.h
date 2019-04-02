@@ -19,6 +19,10 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#include <AzFramework/Physics/RagdollPhysicsBus.h>
+#include <AzFramework/Physics/CharacterPhysicsDataBus.h>
+#include <AzFramework/Physics/SystemBus.h>
+
 #include <Integration/Assets/ActorAsset.h>
 #include <Integration/Assets/MotionSetAsset.h>
 #include <Integration/Assets/AnimGraphAsset.h>
@@ -26,6 +30,10 @@
 
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
+#include <LmbrCentral/Rendering/MaterialOwnerBus.h>
+#include <LmbrCentral/Animation/AttachmentComponentBus.h>
+
 
 namespace EMotionFX
 {
@@ -40,8 +48,14 @@ namespace EMotionFX
             , private AZ::TickBus::Handler
             , private LmbrCentral::MeshComponentRequestBus::Handler
             , private LmbrCentral::RenderNodeRequestBus::Handler
+            , private LmbrCentral::RenderBoundsRequestBus::Handler
             , private ActorComponentRequestBus::Handler
             , private ActorComponentNotificationBus::Handler
+            , private LmbrCentral::MaterialOwnerRequestBus::Handler
+            , private LmbrCentral::AttachmentComponentNotificationBus::Handler
+            , private AzFramework::CharacterPhysicsDataRequestBus::Handler
+            , private AzFramework::RagdollPhysicsNotificationBus::Handler
+            , protected Physics::SystemNotificationBus::Handler
         {
         public:
 
@@ -56,7 +70,7 @@ namespace EMotionFX
             {
                 AZ_TYPE_INFO(Configuration, "{053BFBC0-ABAA-4F4E-911F-5320F941E1A8}")
 
-                    Configuration();
+                Configuration();
 
                 AZ::Data::Asset<ActorAsset>     m_actorAsset;               ///< Selected actor asset.
                 ActorAsset::MaterialList        m_materialPerLOD;           ///< Material assignment per LOD.
@@ -65,7 +79,9 @@ namespace EMotionFX
                 AttachmentType                  m_attachmentType;           ///< Type of attachment.
                 bool                            m_renderSkeleton;           ///< Toggles debug rendering of the skeleton.
                 bool                            m_renderCharacter;          ///< Toggles rendering of the character.
+                bool                            m_renderBounds;             ///< Toggles rendering of the character bounds used for visibility testing.
                 SkinningMethod                  m_skinningMethod;           ///< The skinning method for this actor
+                AZ::u32                         m_lodLevel;
 
                 static void Reflect(AZ::ReflectContext* context);
             };
@@ -80,9 +96,13 @@ namespace EMotionFX
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
-            // LmbrCentral::MeshComponentRequestBus::Handler
+            // RenderBoundsRequestBus interface implementation
             AZ::Aabb GetWorldBounds() override;
             AZ::Aabb GetLocalBounds() override;
+            //////////////////////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////////////////////
+            // LmbrCentral::MeshComponentRequestBus::Handler
             bool GetVisibility() override;
             void SetVisibility(bool isVisible) override;
             void SetMeshAsset(const AZ::Data::AssetId& id) override { (void)id; }
@@ -91,6 +111,11 @@ namespace EMotionFX
 
             //////////////////////////////////////////////////////////////////////////
             // ActorComponentRequestBus::Handler
+            size_t GetJointIndexByName(const char* name) const override;
+            AZ::Transform GetJointTransform(size_t jointIndex, Space space) const override;
+            void GetJointTransformComponents(size_t jointIndex, Space space, AZ::Vector3& outPosition, AZ::Quaternion& outRotation, AZ::Vector3& outScale) const override;
+            Physics::AnimationConfiguration* GetPhysicsConfig() const override;
+
             EMotionFX::ActorInstance* GetActorInstance() override { return m_actorInstance ? m_actorInstance.get() : nullptr; }
             void AttachToEntity(AZ::EntityId targetEntityId, AttachmentType attachmentType) override;
             void DetachFromEntity() override;
@@ -105,6 +130,12 @@ namespace EMotionFX
             void OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance) override;
             //////////////////////////////////////////////////////////////////////////
 
+            // The entity has attached to the target.
+            void OnAttached(AZ::EntityId targetId) override;
+
+            // The entity is detaching from the target.
+            void OnDetached(AZ::EntityId targetId) override;
+
             //////////////////////////////////////////////////////////////////////////
             // ActorComponentNotificationBus::Handler
             IRenderNode* GetRenderNode() override;
@@ -113,10 +144,29 @@ namespace EMotionFX
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
+            // MaterialOwnerRequestBus interface implementation
+            bool IsMaterialOwnerReady() override;
+            void SetMaterial(_smart_ptr<IMaterial>) override;
+            _smart_ptr<IMaterial> GetMaterial() override;
+            //////////////////////////////////////////////////////////////////////////
+
+            //////////////////////////////////////////////////////////////////////////
+            // AzFramework::CharacterPhysicsDataBus::Handler
+            bool GetRagdollConfiguration(Physics::RagdollConfiguration& config) const override;
+            Physics::RagdollState GetBindPose(const Physics::RagdollConfiguration& config) const override;
+            AZStd::string GetParentNodeName(const AZStd::string& childName) const override;
+
+            //////////////////////////////////////////////////////////////////////////
+            // AzFramework::RagdollPhysicsNotificationBus::Handler
+            void OnRagdollActivated() override;
+            void OnRagdollDeactivated() override;
+
+            //////////////////////////////////////////////////////////////////////////
             static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
             {
                 provided.push_back(AZ_CRC("EMotionFXActorService", 0xd6e8f48d));
                 provided.push_back(AZ_CRC("MeshService", 0x71d8a455));
+                provided.push_back(AZ_CRC("CharacterPhysicsDataService", 0x34757927));
             }
 
             static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
@@ -139,6 +189,7 @@ namespace EMotionFX
             //////////////////////////////////////////////////////////////////////////
 
             static void DrawSkeleton(const EMotionFXPtr<EMotionFX::ActorInstance>& actorInstance);
+            static void DrawBounds(const EMotionFXPtr<EMotionFX::ActorInstance>& actorInstance);
 
         private:
             //vs 2013 build limitation
@@ -156,21 +207,24 @@ namespace EMotionFX
             void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
             int GetTickOrder() override;
 
+            // Physics::SystemNotifications::Handler
+            void OnPostPhysicsUpdate(float fixedDeltaTime, Physics::World* physicsWorld) override;
+
             void CheckActorCreation();
             void DestroyActor();
             void CheckAttachToEntity();
 
             Configuration                                   m_configuration;            ///< Component configuration.
-
                                                                                         /// Live state
             ActorAsset::ActorInstancePtr                    m_attachmentTargetActor;    ///< Target actor instance to attach to.
             AZ::EntityId                                    m_attachmentTargetEntityId; ///< Target actor entity ID
             ActorAsset::ActorInstancePtr                    m_actorInstance;            ///< Live actor instance.
             AnimGraphAsset::AnimGraphInstancePtr            m_animGraphInstance;        ///< Live anim graph instance.
+            AZStd::vector<AZ::EntityId>                     m_attachments;
             AZStd::unique_ptr<ActorRenderNode>              m_renderNode;               ///< Actor render node.
             bool                                            m_debugDrawRoot;            ///< Enables drawing of actor root and facing.
+            bool                                            m_materialReadyEventSent;   ///< Tracks whether OnMaterialOwnerReady has been sent yet. - TBD
         };
     } //namespace Integration
-
 } // namespace EMotionFX
 

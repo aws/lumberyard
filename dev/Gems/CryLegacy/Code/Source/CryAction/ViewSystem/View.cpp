@@ -271,6 +271,13 @@ void CView::Update(float frameTime, bool isActive)
     {
         m_linkedTo = AZ::EntityId(0);
     }
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // Increment the frame update id for this camera. We do this here because 
+    // the CView owns the camera and CSystem will use the active camera
+    // for the call to RenderWorld.
+    m_camera.IncrementFrameUpdateId();
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 }
 
 //-----------------------------------------------------------------------

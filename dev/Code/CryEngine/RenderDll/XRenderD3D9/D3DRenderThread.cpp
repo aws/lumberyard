@@ -85,10 +85,28 @@ void CD3D9Renderer::RT_DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, uint32 nV
         if (pInds)
         {
             TempDynIB16::CreateFillAndBind(pInds, nInds);
+            FX_DrawIndexedPrimitive(GetInternalPrimitiveType(nPrimType), 0, 0, nVerts, 0, nInds);
         }
+        else
+        {
+            FX_DrawPrimitive(GetInternalPrimitiveType(nPrimType), 0, nVerts);
+        }
+    }
+}
 
+void CD3D9Renderer::RT_DrawDynVBUI(SVF_P2F_C4B_T2F_F4B* pBuf, uint16* pInds, uint32 nVerts, uint32 nInds, const PublicRenderPrimitiveType nPrimType)
+{
+    FX_SetUIMode();
+
+    if (!FAILED(FX_SetVertexDeclaration(0, eVF_P2F_C4B_T2F_F4B)))
+    {
+        // Create the temp buffer after we try to set the vertex declaration otherwise
+        // if that fails we won't call FX_DrawPrimitive that on a platform level
+        // cleans up some of the memory stuff that the TempDynVB creates
+        TempDynVB<SVF_P2F_C4B_T2F_F4B>::CreateFillAndBind(pBuf, nVerts, 0);
         if (pInds)
         {
+            TempDynIB16::CreateFillAndBind(pInds, nInds);
             FX_DrawIndexedPrimitive(GetInternalPrimitiveType(nPrimType), 0, 0, nVerts, 0, nInds);
         }
         else
@@ -257,7 +275,11 @@ void CD3D9Renderer::RT_Draw2dImageInternal(C2dImage* images, uint32 numImages, b
             FX_SetFPMode();
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(D3DRenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DRenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DRenderThread_cpp_provo.inl"
+    #endif
 #endif
         }
 

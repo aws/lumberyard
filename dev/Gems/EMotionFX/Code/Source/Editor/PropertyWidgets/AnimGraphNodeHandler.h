@@ -14,7 +14,7 @@
 
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <EMotionFX/Source/AnimGraph.h>
-#include <EMotionFX/Source/AnimGraphNodeId.h>
+#include <EMotionFX/Source/AnimGraphObjectIds.h>
 #include <QWidget>
 #include <QPushButton>
 

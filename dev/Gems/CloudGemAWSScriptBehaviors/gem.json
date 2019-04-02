@@ -10,18 +10,25 @@
     "IconPath": "preview.png",
     "Dependencies": [
         {
-            "Uuid" : "6fc787a982184217a5a553ca24676cfa",
+            "Uuid": "6fc787a982184217a5a553ca24676cfa",
             "VersionConstraints": [
                 "~>1.0"
             ],
             "_comment": "CloudGemFramework"
         },
         {
-            "Uuid" : "102e23cf4c4c4b748585edbce2bbdc65",
+            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
             "VersionConstraints": [
                 "~>0.1"
             ],
             "_comment": "CloudCanvasCommon"
+        },
+        {
+            "Uuid": "21cba308da7040439f88fc3a45c71e18",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudGemMessageOfTheDay"
         }
     ],
 

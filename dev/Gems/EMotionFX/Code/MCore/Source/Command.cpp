@@ -13,6 +13,7 @@
 // include the required headers
 #include "Command.h"
 
+#include <AzCore/Serialization/SerializeContext.h>
 
 namespace MCore
 {
@@ -42,6 +43,20 @@ namespace MCore
     Command::~Command()
     {
         RemoveAllCallbacks();
+    }
+
+
+    void Command::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+        if (!serializeContext)
+        {
+            return;
+        }
+
+        serializeContext->Class<Command>()
+            ->Version(1)
+            ;
     }
 
 

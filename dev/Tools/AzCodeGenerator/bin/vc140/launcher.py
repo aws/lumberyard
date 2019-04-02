@@ -13,7 +13,6 @@
 # to ensure they cannot be brought into our environment - failure to do this may result
 # in runtime library mismatches and/or CRT violations.
 # This has to be done before anything else
-# (see http://stackoverflow.com/questions/14552348/runtime-error-r6034-in-embedded-python-application)
 import os
 import sys
 import traceback, errno
@@ -21,11 +20,13 @@ import traceback, errno
 try:
     # Prevent non-sxs version of msvcr90.dll from being loaded by path environment variable.
     if 'path' in os.environ:
-        os.environ['path'] = os.pathsep.join(
-            path for path in os.environ['path'].split(os.pathsep)
-            if "msvcr90.dll" not in map(str.lower,
-                                        os.listdir(path) if os.path.isdir(path) else [])
-        )
+        system_paths_to_check = os.environ['path'].split(os.pathsep)
+        patched_system_paths = []
+        for system_path_to_check in system_paths_to_check:
+            if os.path.isdir(system_path_to_check):
+                if "msvcr90.dll" not in map(str.lower, os.listdir(system_path_to_check)):
+                    patched_system_paths.append(system_path_to_check)
+        os.environ['path'] = os.pathsep.join(patched_system_paths)
 except Exception, e:
     print 'error - {}'.format(e)
     raise
@@ -109,8 +110,12 @@ def exception_name(exc):
 
 def generate_output_writer(output_path, output_files):
     def output_writer(output_file_name, output_data, should_add_to_build):
-        output_file_path = os.path.join(output_path, output_file_name)
+        output_file_path = os.path.abspath(os.path.join(output_path, output_file_name))
         output_file_desc = None
+
+        if os.name is 'nt' and len(output_file_path) >= 260:
+            OutputError('Unable to write generated file output, path exceeds MAX_PATH limit of 260 characters. Please use a shorter root path.  Length: {} - Path: {}'.format(len(output_file_path), output_file_path))
+            return
         if output_file_path not in output_files:
             output_file_dir = os.path.dirname(output_file_path)
             if not os.path.isdir(output_file_dir):
@@ -133,6 +138,7 @@ def generate_output_writer(output_path, output_files):
 
 
 # This is the function called by the codegen utility
+# @return boolean - True if the script execution was successful, False if execution failed
 # @param rootPath - The path to the source script, necessary to find the modules at runtime
 # @param script - The script to run, this will load the script as a python module
 # @param dataObject - The data for the script to operate on, this can be JSON/XML or some custom binary format.
@@ -153,16 +159,21 @@ def run_scripts(scripts, data_object, input_path, output_path, input_file):
         env.output_writer = generate_output_writer(output_path, output_files)
 
         script_array = scripts.split(',')
+        was_successful = True
         for script in script_array:
             drivers = env.get_drivers_for_script(script)
             for driver in drivers:
-                driver.execute(data_object, input_file)
+                result = driver.execute(data_object, input_file)
+                if not result:
+                    was_successful = False
+                    break
 
         # Close open file handles
         for output_file_path, output_file_desc in output_files.iteritems():
             os.close(output_file_desc)
 
-        OutputPrint("Done")
+        OutputPrint("Done - {}".format("Successful" if was_successful else "Failed"))
+        return was_successful
     except BaseException as ex:
         tb_list = traceback.extract_tb(sys.exc_traceback)
         for filename, lineno, name, line in tb_list:

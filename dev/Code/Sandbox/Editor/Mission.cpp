@@ -322,22 +322,6 @@ void CMission::Export(XmlNodeRef& root, XmlNodeRef& objectsNode)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMission::ExportLegacyAnimations(XmlNodeRef& root)
-{
-    XmlNodeRef mission = XmlHelpers::CreateXmlNode("Mission");
-    mission->setAttr("Name", m_name.toUtf8().data());
-
-    XmlNodeRef movieDataNode = XmlHelpers::CreateXmlNode("MovieData");
-    GetIEditor()->GetMovieSystem()->Serialize(movieDataNode, false);
-
-    for (int i = 0; i < movieDataNode->getChildCount(); i++)
-    {
-        mission->addChild(movieDataNode->getChild(i));
-    }
-    root->addChild(mission);
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CMission::SyncContent(bool bRetrieve, bool bIgnoreObjects, bool bSkipLoadingAI /* = false */)
 {
     // The function may take a longer time when executing objMan->Serialize, which uses CWaitProgress internally
@@ -386,12 +370,6 @@ void CMission::SyncContent(bool bRetrieve, bool bIgnoreObjects, bool bSkipLoadin
         {
             pVegetationMap->OnHeightMapChanged();
         }
-
-        if (m_Animations)
-        {
-            GetIEditor()->GetMovieSystem()->Serialize(m_Animations, true);
-        }
-        GetIEditor()->Notify(eNotify_OnReloadTrackView);
 
         if (!bSkipLoadingAI)
         {

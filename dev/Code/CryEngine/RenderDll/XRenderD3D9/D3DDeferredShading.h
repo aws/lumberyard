@@ -77,7 +77,7 @@ public:
     void RestoreCurrentBuffers();
     bool PackAllShadowFrustums(TArray<SRenderLight>& arrLights, bool bPreLoop);
     void DebugShadowMaskClear();
-    bool PackToPool(CPowerOf2BlockPacker* pBlockPack, SRenderLight& light, const int nLightID, const int nFirstCandidateLight, bool bClearPool);
+    bool PackToPool(CPowerOf2BlockPacker* pBlockPack, SRenderLight& light, bool bClearPool);
 
     void FilterGBuffer();
     void AmbientOcclusionPasses();
@@ -88,10 +88,10 @@ public:
 
     bool DeferredDecalPass(const SDeferredDecal& rDecal, uint32 indDecal);
     void DeferredDecalEmissivePass(const SDeferredDecal& rDecal, uint32 indDecal);
-    bool ShadowLightPasses(const SRenderLight& light, const int nLightID);
+    bool ShadowLightPasses(const SRenderLight& light);
     void DrawDecalVolume(const SDeferredDecal& rDecal, Matrix44A& mDecalLightProj, ECull volumeCull);
     void DrawLightVolume(EShapeMeshType meshType, const Matrix44& mVolumeToWorld, const Vec4& vSphereAdjust = Vec4(ZERO));
-    void LightPass(const SRenderLight* const __restrict pDL, bool bForceStencilDisable = false, bool ignoreShadowCasting =  false);
+    void LightPass(const SRenderLight* const __restrict pDL, bool bForceStencilDisable = false);
     void DeferredCubemaps(const TArray<SRenderLight>& rCubemaps, const uint32 nStartIndex = 0);
     void DeferredCubemapPass(const SRenderLight* const __restrict pDL);
     void ScreenSpaceReflectionPass();
@@ -202,6 +202,8 @@ public:
 
     const Matrix44A& GetCameraProjMatrix() const { return m_mViewProj; }
 
+    void SortLigths(TArray<SRenderLight>& ligths) const;
+
 private:
     void SetSSDOParameters(const int texSlot);
     ITexture* SetTexture(const SShaderItem& sItem, EEfResTextures tex, int slot, const RectF texRect, float surfaceSize, float& mipLevelFactor, int flags);
@@ -276,10 +278,21 @@ private:
 
         m_nShadowPoolSize = 0;
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        // render to texture supports multiple cameras
+        const AZ::EntityId defaultEntityId;
+        Matrix44 identityMatrix;
+        identityMatrix.SetIdentity();
+        for (int i = 0; i < MAX_GPU_NUM; ++i)
+        {
+            m_prevViewProj[i].insert({ defaultEntityId, identityMatrix });
+        }
+#else
         for (int i = 0; i < MAX_GPU_NUM; ++i)
         {
             m_prevViewProj[i].SetIdentity();
         }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
         m_nRenderState = GS_BLSRC_ONE | GS_BLDST_ONE;
 
@@ -405,7 +418,15 @@ private:
     Matrix44A m_pViewProjI;
     Matrix44A m_pView;
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // render to texture supports multiple cameras
+    // we do not use Matrix44A here because this is used with Matrix44s and will
+    // fail to compile in release mode due to alignment errors
+    AZStd::unordered_map<AZ::EntityId, Matrix44> m_prevViewProj[MAX_GPU_NUM];
+#else
     Matrix44A m_prevViewProj[MAX_GPU_NUM];
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
 
     Vec4 vWorldBasisX, vWorldBasisY, vWorldBasisZ;
 

@@ -44,10 +44,13 @@ public:
     int                                 m_nRefCounter;
     int                                 m_nFrameLoad;
 
+    // Only do expensive DX12 resource set building for PC DX12
+#if defined(CRY_USE_DX12)
     // Compiled resource set.
     // For DX12 will prepare list of textures in the global heap.
     AZStd::shared_ptr<class CDeviceResourceSet>               m_pCompiledResourceSet;
     AZStd::shared_ptr<class CGraphicsPipelineStateLocalCache> m_pipelineStateCache;
+#endif
 
     uint8 m_nMtlLayerNoDrawFlags;
 

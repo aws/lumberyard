@@ -13,17 +13,22 @@
 #include "InitSceneAPIFixture.h"
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/string/conversions.h>
+
+#include <AzToolsFramework/UI/PropertyEditor/PropertyManagerComponent.h>
+
 #include <SceneAPI/SceneCore/Mocks/Containers/MockScene.h>
 #include <SceneAPI/SceneData/GraphData/BoneData.h>
 #include <SceneAPI/SceneData/GraphData/MeshData.h>
 #include <SceneAPI/SceneData/GraphData/BlendShapeData.h>
 
+#include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/Mesh.h>
 #include <EMotionFX/Source/MorphSetup.h>
 #include <EMotionFX/Source/MorphSetupInstance.h>
 #include <EMotionFX/Source/MorphTarget.h>
+#include <EMotionFX/Source/Node.h>
 #include <EMotionFX/Source/Skeleton.h>
 #include <EMotionFX/Pipeline/RCExt/Actor/ActorBuilder.h>
 #include <EMotionFX/Pipeline/RCExt/Actor/MorphTargetExporter.h>
@@ -36,20 +41,23 @@ namespace EMotionFX
 {
     // This fixture is responsible for creating the scene description used by
     // the morph target pipeline tests
-    
-    using PipelineFixture = InitSceneAPIFixture<
+
+    using MorphTargetPipelineFixtureBase = InitSceneAPIFixture<
         AZ::AssetManagerComponent,
+        AZ::JobManagerComponent,
+        AzToolsFramework::Components::PropertyManagerComponent,
         EMotionFX::Integration::SystemComponent,
         EMotionFX::Pipeline::ActorBuilder,
         EMotionFX::Pipeline::MorphTargetExporter
     >;
 
-    class MorphTargetPipelineFixture : public PipelineFixture
+    class MorphTargetPipelineFixture
+        : public MorphTargetPipelineFixtureBase
     {
     public:
         void SetUp() override
         {
-            PipelineFixture::SetUp();
+            MorphTargetPipelineFixtureBase::SetUp();
 
             m_actor = EMotionFX::Integration::EMotionFXPtr<EMotionFX::Actor>::MakeFromNew(EMotionFX::Actor::Create("TestActor"));
 
@@ -132,7 +140,7 @@ namespace EMotionFX
             m_actor.reset();
             delete m_scene;
 
-            PipelineFixture::TearDown();
+            MorphTargetPipelineFixtureBase::TearDown();
         }
 
         EMotionFX::Mesh* GetMesh(const EMotionFX::Actor* actor)
@@ -151,6 +159,7 @@ namespace EMotionFX
                 else
                 {
                     mesh = actor->GetMesh(0, nodeNum);
+                    AZ_Printf("EMotionFX", "%s node name", skeleton->GetNode(nodeNum)->GetName());
                 }
             }
             return mesh;
@@ -174,6 +183,7 @@ namespace EMotionFX
         EMotionFX::Pipeline::Group::ActorGroup actorGroup;
         actorGroup.SetSelectedRootBone("testRootBone");
         actorGroup.GetSceneNodeSelectionList().AddSelectedNode("testMesh");
+        actorGroup.GetBaseNodeSelectionList().AddSelectedNode("testMesh");
         AZStd::shared_ptr<EMotionFX::Pipeline::Rule::MorphTargetRule> morphTargetRule = AZStd::make_shared<EMotionFX::Pipeline::Rule::MorphTargetRule>();
         for (const std::string& selectedMorphTarget : selectedMorphTargets)
         {

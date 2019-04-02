@@ -23,6 +23,7 @@
 
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Memory/PoolAllocator.h>
+#include <AzCore/Jobs/JobManagerComponent.h>
 
 namespace EMotionFX
 {
@@ -127,6 +128,7 @@ namespace EMotionFX
     // Note that the SystemComponent depends on the AssetManagerComponent
     using SystemComponentFixture = ComponentFixture<
         AZ::AssetManagerComponent,
+        AZ::JobManagerComponent,
         EMotionFX::Integration::SystemComponent
     >;
 

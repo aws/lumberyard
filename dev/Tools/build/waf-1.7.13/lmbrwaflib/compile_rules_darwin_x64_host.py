@@ -39,6 +39,7 @@ def load_darwin_x64_host_settings(conf):
                                               conf.ThirdPartyPath('jinja2', 'x64')]
     v['CODE_GENERATOR_PYTHON_HOME'] = '/System/Library/Frameworks/Python.framework/Versions/2.7'
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = '/System/Library/Frameworks/Python.framework/Versions/2.7'
+    v['CODE_GENERATOR_INCLUDE_PATHS'] = []
 
     clang_search_dirs = subprocess.check_output(['clang++', '-print-search-dirs']).strip().split('\n')
     clang_search_paths = {}

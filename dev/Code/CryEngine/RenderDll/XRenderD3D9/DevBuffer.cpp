@@ -111,7 +111,11 @@ namespace
             POOL_FRAME_QUERY_COUNT = 4,
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVBUFFER_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(DevBuffer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DevBuffer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DevBuffer_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1537,7 +1541,11 @@ namespace
 #endif
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVBUFFER_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(DevBuffer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DevBuffer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DevBuffer_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -3627,7 +3635,11 @@ void WrappedDX11Buffer::Create(uint32 numElements, uint32 elementSize, DXGI_FORM
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION DEVBUFFER_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(DevBuffer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DevBuffer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DevBuffer_cpp_provo.inl"
+    #endif
 #endif
 
     gcpRendD3D->m_DevMan.CreateD3D11Buffer(&Desc, (pData != NULL) ? &Data : NULL, &m_pBuffer, "WrappedDX11Buffer");

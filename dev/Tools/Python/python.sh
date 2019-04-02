@@ -30,7 +30,7 @@ fi
 
 if [ -e "$PYTHON" ]
 then
-    $PYTHON $*
+    "$PYTHON" "$@"
 else
     echo "Could not find python.2.7.13 in $PYTHON"
     exit 1

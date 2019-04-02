@@ -51,6 +51,8 @@ enum EVertexFormat
     eVF_P2S_N4B_C4B_T1F = 17,
     eVF_P3F_C4B_T2S = 18,
 
+    eVF_P2F_C4B_T2F_F4B = 19,   // UI
+
     eVF_Max,
 };
 
@@ -176,6 +178,18 @@ struct SVF_P3F_C4B_T2F
     UCol color;
     Vec2 st;
 };
+
+struct SVF_P2F_C4B_T2F_F4B
+{
+    Vec2 xy;
+    UCol color;
+    Vec2 st;
+    uint8 texIndex;
+    uint8 texHasColorChannel;
+    uint8 texIndex2;
+    uint8 pad;
+};
+
 struct SVF_TP3F_C4B_T2F //Fonts
 {
     Vec4 pos;

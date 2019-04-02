@@ -70,6 +70,8 @@ namespace MCore
 
         // preallocate history entries
         mCommandHistory.Reserve(mMaxHistoryEntries);
+
+        m_commandsInExecution = 0;
     }
 
 
@@ -314,6 +316,7 @@ namespace MCore
 
         // create and execute the command
         Command* newCommand = commandObject->Create();
+        newCommand->SetCommandParameters(commandLine);
         const bool result = ExecuteCommand(newCommand, commandLine, outCommandResult, addToHistory, clearErrors, handleErrors);
 
         // delete the command object directly if we don't want to store it in the history
@@ -356,6 +359,35 @@ namespace MCore
         return ExecuteCommand(command.c_str(), outCommandResult, false, nullptr, nullptr, false, false, false);
     }
 
+    bool CommandManager::ExecuteCommandOrAddToGroup(const AZStd::string& command, MCore::CommandGroup* commandGroup, bool executeInsideCommand)
+    {
+        if (!commandGroup)
+        {
+            bool commandResult;
+            AZStd::string commandResultString;
+            if (executeInsideCommand)
+            {
+                commandResult = ExecuteCommandInsideCommand(command, commandResultString);
+            }
+            else
+            {
+                commandResult = ExecuteCommand(command, commandResultString);
+            }
+
+            if (!commandResult)
+            {
+                AZ_Error("EMotionFX", false, commandResultString.c_str());
+                return false;
+            }
+        }
+        else
+        {
+            commandGroup->AddCommandString(command);
+        }
+
+        return true;
+    }
+
     // execute a group of commands
     bool CommandManager::ExecuteCommandGroup(CommandGroup& commandGroup, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
     {
@@ -365,6 +397,8 @@ namespace MCore
         {
             return true;
         }
+
+        ++m_commandsInExecution;
 
         // execute command manager callbacks
         const uint32 numCallbacks = mCallbacks.GetLength();
@@ -410,7 +444,7 @@ namespace MCore
                 // For example, %LASTRESULT2% means we want the result of two commands ago
                 // %LASTRESULT% == %LASTRESULT1% which is the result of the last command
                 int32 relativeIndex = 1;
-                
+
                 // 11 is the amount of characters in "%LASTRESULT"
                 tmpStr = commandString.substr(lastResultIndex + 11, rightPercentagePos - 11 - lastResultIndex);
                 if (!tmpStr.empty())
@@ -431,7 +465,7 @@ namespace MCore
                 }
                 if (static_cast<int32>(i) < relativeIndex)
                 {
-                    MCore::LogError("Execution of command '%s' failed, command trying to access results from %d commands back, but there are only %d", commandString.c_str(), relativeIndex, i-1);
+                    MCore::LogError("Execution of command '%s' failed, command trying to access results from %d commands back, but there are only %d", commandString.c_str(), relativeIndex, i - 1);
                     hadError = true;
                     break;
                 }
@@ -439,7 +473,7 @@ namespace MCore
                 tmpStr = commandString.substr(lastResultIndex, rightPercentagePos - lastResultIndex + 1);
                 AzFramework::StringFunc::Replace(commandString, tmpStr.c_str(), intermediateCommandResults[i - relativeIndex].c_str());
                 replaceHappen = true;
-                
+
                 // Search again in case the command group is referring to other results
                 lastResultIndex = commandString.find("%LASTRESULT");
             }
@@ -447,7 +481,7 @@ namespace MCore
             {
                 commandGroup.SetCommandString(i, commandString.c_str());
             }
-            
+
             // try to execute the command
             const bool result = ExecuteCommand(commandString, intermediateCommandResults[i], false, &executedCommand, &executedParameters, true, false, false);
             if (result == false)
@@ -483,6 +517,7 @@ namespace MCore
                             mErrors.clear();
                         }
 
+                        --m_commandsInExecution;
                         return false;
                     }
                     else
@@ -542,7 +577,7 @@ namespace MCore
                 mCallbacks[i]->OnShowErrorReport(mErrors);
             }
         }
-        
+
         // Return the result of the last command
         // TODO: once we convert to AZStd::string we can do a swap here
         outCommandResult = intermediateCommandResults.back();
@@ -552,6 +587,8 @@ namespace MCore
         {
             mErrors.clear();
         }
+
+        --m_commandsInExecution;
 
         // check if we need to let the whole command group fail in case an error occured
         if (errorsOccured && commandGroup.GetReturnFalseAfterError())
@@ -583,12 +620,30 @@ namespace MCore
             // get the current callback
             Command::Callback* callback = orgCommand->GetCallback(i);
 
+            if (preUndo)
+            {
+                const uint32 numCallbacks = mCallbacks.GetLength();
+                for (uint32 j = 0; j < numCallbacks; ++j)
+                {
+                    mCallbacks[j]->OnPreUndoCommand(command, parameters);
+                }
+            }
+
             // check if we need to execute the callback
             if (callback->GetExecutePreUndo() == preUndo)
             {
                 if (callback->Undo(command, parameters) == false)
                 {
                     numFailed++;
+                }
+            }
+
+            if (!preUndo)
+            {
+                const uint32 numCallbacks = mCallbacks.GetLength();
+                for (uint32 j = 0; j < numCallbacks; ++j)
+                {
+                    mCallbacks[j]->OnPostUndoCommand(command, parameters);
                 }
             }
         }
@@ -644,6 +699,8 @@ namespace MCore
         const CommandHistoryEntry& lastEntry = mCommandHistory[mHistoryIndex];
         Command* command = lastEntry.mExecutedCommand;
 
+        ++m_commandsInExecution;
+
         // if we are dealing with a regular command
         bool result = true;
         if (command)
@@ -679,6 +736,8 @@ namespace MCore
                     continue;
                 }
 
+                ++m_commandsInExecution;
+
                 // execute pre-undo callbacks
                 ExecuteUndoCallbacks(groupCommand, group->GetParameters(g), true);
 
@@ -691,6 +750,8 @@ namespace MCore
 
                 // execute post-undo callbacks
                 ExecuteUndoCallbacks(groupCommand, group->GetParameters(g), false);
+
+                --m_commandsInExecution;
             }
 
             // perform callbacks
@@ -720,6 +781,8 @@ namespace MCore
             mErrors.clear();
         }
 
+        --m_commandsInExecution;
+
         return result;
     }
 
@@ -746,6 +809,7 @@ namespace MCore
         }
         else
         {
+            ++m_commandsInExecution;
             CommandGroup* group = lastEntry.mCommandGroup;
             MCORE_ASSERT(group);
 
@@ -761,6 +825,7 @@ namespace MCore
                     }
                 }
             }
+            --m_commandsInExecution;
         }
 
         // go one step forward in the command history
@@ -846,13 +911,20 @@ namespace MCore
     {
         auto iterator = mRegisteredCommands.find(commandName);
         if (iterator == mRegisteredCommands.end())
+        {
             return nullptr;
+        }
 
         return iterator->second;
     }
 
 
     // execute command object and store the history entry if the command is undoable
+    bool CommandManager::ExecuteCommand(Command* command, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
+    {
+        return ExecuteCommand(command, CommandLine(), outCommandResult, addToHistory, clearErrors, handleErrors);
+    }
+
     bool CommandManager::ExecuteCommand(Command* command, const CommandLine& commandLine, AZStd::string& outCommandResult, bool addToHistory, bool clearErrors, bool handleErrors)
     {
 #ifdef MCORE_COMMANDMANAGER_PERFORMANCE
@@ -867,6 +939,7 @@ namespace MCore
 #ifdef MCORE_COMMANDMANAGER_PERFORMANCE
         Timer preCallbacksTimer;
 #endif
+        ++m_commandsInExecution;
 
         // execute command manager callbacks
         const uint32 numCallbacks = mCallbacks.GetLength();
@@ -930,6 +1003,7 @@ namespace MCore
         LogInfo("   + PostExecuteCallbacks(%i): %.2f ms.", command->GetOriginalCommand()->CalcNumPostCommandCallbacks(), postCallbacksTimer.GetTime() * 1000);
         LogInfo("   + Total time: %.2f ms.", commandTimer.GetTime() * 1000);
 #endif
+        --m_commandsInExecution;
 
         return result;
     }

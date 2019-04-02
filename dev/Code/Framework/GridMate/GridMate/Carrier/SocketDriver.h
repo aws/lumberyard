@@ -38,7 +38,11 @@
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_H_SECTION_1
-#include AZ_RESTRICTED_FILE(SocketDriver_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -56,7 +60,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SOCKETDRIVER_H_SECTION_2
-#include AZ_RESTRICTED_FILE(SocketDriver_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SocketDriver_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SocketDriver_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -264,7 +272,7 @@ namespace GridMate
             static bool isSupported();
             SocketType CreateSocket(int af, int type, int protocol) override;
             ResultCode Initialize(unsigned int receiveBufferSize, unsigned int sendBufferSize) override;
-            void SocketDriverCommon::RIOPlatformSocketDriver::WorkerSendThread();
+            void WorkerSendThread();
             ResultCode Send(const sockaddr* sockAddr, unsigned int /*addressSize*/, const char* data, unsigned int dataSize) override;
             unsigned int Receive(char* data, unsigned maxDataSize, sockaddr* sockAddr, socklen_t sockAddrLen, ResultCode* resultCode) override;
             bool WaitForData(AZStd::chrono::microseconds timeOut) override;
@@ -292,7 +300,7 @@ namespace GridMate
             AZStd::thread                   m_workerSendThread;
             AZStd::mutex                    m_WorkerSendMutex;
             AZStd::condition_variable       m_triggerWorkerSend;
-            AZStd::atomic<int>              m_workerBufferCount = 0;
+            AZStd::atomic<int>              m_workerBufferCount;
             RIO_EXTENSION_FUNCTION_TABLE    m_RIO_FN_TABLE;
             RIO_RQ                          m_requestQueue = RIO_INVALID_RQ;
             RIO_CQ                          m_RIORecvQueue = RIO_INVALID_CQ;

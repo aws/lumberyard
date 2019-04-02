@@ -30,14 +30,14 @@ void CRenderer::RegisterFinalizeShadowJobs(int nThreadID)
 {
     // Init post job
     // legacy job priority: JobManager::eLowPriority
-    m_generateShadowRendItemJobExecutor[nThreadID].SetPostJob(
+    m_generateShadowRendItemJobExecutor.SetPostJob(
         m_finalizeShadowRendItemsJobExecutor[nThreadID],
         [this, nThreadID]
         {
             this->FinalizeShadowRendItems(nThreadID);
         }
     );
-    m_generateShadowRendItemJobExecutor[nThreadID].PushCompletionFence();
+    m_generateShadowRendItemJobExecutor.PushCompletionFence();
     
     m_finalizeShadowRendItemsJobExecutor[nThreadID].PushCompletionFence();
 }
@@ -183,7 +183,7 @@ void CRenderer::BeginSpawningGeneratingRendItemJobs(int nThreadID)
 
     // Register post job
     // legacy job priority: JobManager::eHighPriority
-    m_generateRendItemJobExecutor[nThreadID].SetPostJob(
+    m_generateRendItemJobExecutor.SetPostJob(
         m_finalizeRendItemsJobExecutor[nThreadID],
         [this, nThreadID]
         {
@@ -193,8 +193,8 @@ void CRenderer::BeginSpawningGeneratingRendItemJobs(int nThreadID)
 
     // Push completion fences accross all groups to prevent false (race-condition) reports of "completion" before all jobs are started.  These are then popped after we are done starting jobs.
     // there will be decreased again after the main thread has passed all job creating parts
-    m_generateRendItemPreProcessJobExecutor[nThreadID].PushCompletionFence();
-    m_generateRendItemJobExecutor[nThreadID].PushCompletionFence();
+    m_generateRendItemPreProcessJobExecutor.PushCompletionFence();
+    m_generateRendItemJobExecutor.PushCompletionFence();
     m_finalizeRendItemsJobExecutor[nThreadID].PushCompletionFence();
 }
 
@@ -205,9 +205,9 @@ void CRenderer::BeginSpawningShadowGeneratingRendItemJobs(int nThreadID)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void CRenderer::EndSpawningGeneratingRendItemJobs(int nThreadID)
+void CRenderer::EndSpawningGeneratingRendItemJobs()
 {
-    m_generateRendItemJobExecutor[nThreadID].PopCompletionFence();
+    m_generateRendItemJobExecutor.PopCompletionFence();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -338,7 +338,7 @@ void CD3D9Renderer::InvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, con
         }
 
         // all not yet to jobs ported types need to be processed by mainthread
-        gEnv->p3DEngine->RenderRenderNode_ShadowPass(pEnt, passInfo, gRenDev->GetGenerateShadowRendItemJobExecutor(passInfo.ThreadID()));
+        gEnv->p3DEngine->RenderRenderNode_ShadowPass(pEnt, passInfo, &m_generateShadowRendItemJobExecutor);
     }
 }
 
@@ -346,7 +346,7 @@ void CD3D9Renderer::InvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, con
 void CD3D9Renderer::StartInvokeShadowMapRenderJobs(ShadowMapFrustum* pCurFrustum, const SRenderingPassInfo& passInfo)
 {
     // legacy job priority: JobManager::eLowPriority
-    gRenDev->GetGenerateShadowRendItemJobExecutor(passInfo.ThreadID())->StartJob(
+    m_generateShadowRendItemJobExecutor.StartJob(
         [this, pCurFrustum, passInfo]
         {
             this->InvokeShadowMapRenderJobs(pCurFrustum, passInfo);

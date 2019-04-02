@@ -60,7 +60,15 @@ class ResourceGroup(object):
 
     @property
     def is_enabled(self):
+        for name in self.dependencies:
+            if name in self.__context.config.local_project_settings.get(constant.DISABLED_RESOURCE_GROUPS_KEY, []):
+                return False
+
         return self.name not in self.__context.config.local_project_settings.get(constant.DISABLED_RESOURCE_GROUPS_KEY, [])
+
+    @property
+    def dependencies(self):
+        return self.get_base_settings().get('GemSettings', {}).get(self.name, {}).get('DependsOn', [])
 
     def enable(self):
         if not self.is_enabled:
@@ -603,20 +611,29 @@ def enable(context, args):
 
     util.validate_writable_list(context, [ context.config.local_project_settings.path ])
 
+    for name in group.dependencies:
+        dependency = context.resource_groups.get(name, True)
+        if dependency:
+            dependency.enable()
+
     group.enable()
     context.view.resource_group_enabled(group.name)
 
 
 def disable(context, args):
 
-    group = context.resource_groups.get(args.resource_group)
-    if not group.is_enabled:
-        raise HandledError('The {} resource group is not enabled.'.format(group.name))
+    current_group = context.resource_groups.get(args.resource_group)
+    if not current_group.is_enabled:
+        raise HandledError('The {} resource group is not enabled.'.format(current_group.name))
+
+    for name, group in context.resource_groups:
+        if group.is_enabled and args.resource_group in group.dependencies:
+            raise HandledError('The {} resource group cannot be disabled since it is a dependency of resource group: {}.'.format(args.resource_group, name))
 
     util.validate_writable_list(context, [ context.config.local_project_settings.path ])
 
-    group.disable()
-    context.view.resource_group_disabled(group.name)
+    current_group.disable()
+    context.view.resource_group_disabled(current_group.name)
 
 
 def update_stack(context, args):
@@ -724,6 +741,10 @@ def create_stack(context, args):
 
     effective_deployment_resources = context.config.deployment_template_aggregator.effective_template.get('Resources',{})
 
+    if constant.CROSS_GEM_RESOLVER_KEY in effective_deployment_resources and args.resource_group in effective_deployment_resources[constant.CROSS_GEM_RESOLVER_KEY]['DependsOn']:
+        raise HandledError(
+            'Adding resource group {} will require changes to cross-gem dependencies. Run lmbr_aws deployment update to add it.'.format(args.resource_group))
+
     resource_group_stack_resource = deployment_resources.get(args.resource_group, None)
     if resource_group_stack_resource is None:
         resource_group_stack_resource = copy.deepcopy(effective_deployment_resources.get(args.resource_group, {}))
@@ -824,6 +845,9 @@ def delete_stack(context, args):
     resource_group_config_resource = deployment_resources.get(args.resource_group + 'Configuration', None)
     if resource_group_config_resource is not None:
         del deployment_resources[args.resource_group + 'Configuration']
+
+    if constant.CROSS_GEM_RESOLVER_KEY in deployment_resources and args.resource_group in deployment_resources[constant.CROSS_GEM_RESOLVER_KEY]['DependsOn']:
+        raise HandledError('The resource group {} has cross-gem dependencies. Run lmbr_aws deployment update to remove it.'.format(args.resource_group))
 
     if resource_group_stack_resource is None and resource_group_config_resource is None:
         raise HandledError('Definitions for {} resource group related resources where not found in the current {} deployment template.'.format(args.resource_group, args.deployment))

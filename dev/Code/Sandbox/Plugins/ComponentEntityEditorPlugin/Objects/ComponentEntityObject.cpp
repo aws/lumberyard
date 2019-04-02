@@ -25,8 +25,11 @@
 
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
+#include <AzToolsFramework/Commands/PreemptiveUndoCache.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorLayerComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorLockComponent.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityComponent.h>
 #include <AzToolsFramework/ToolsComponents/SelectionComponent.h>
@@ -90,6 +93,19 @@ bool CComponentEntityObject::Init(IEditor* ie, CBaseObject* copyFrom, const QStr
     return result;
 }
 
+void CComponentEntityObject::UpdatePreemptiveUndoCache()
+{
+    using namespace AzToolsFramework;
+
+    PreemptiveUndoCache* preemptiveUndoCache = nullptr;
+    ToolsApplicationRequests::Bus::BroadcastResult(preemptiveUndoCache, &ToolsApplicationRequests::GetUndoCache);
+
+    if (preemptiveUndoCache)
+    {
+        preemptiveUndoCache->UpdateCache(m_entityId);
+    }
+}
+
 void CComponentEntityObject::AssignEntity(AZ::Entity* entity, bool destroyOld)
 {
     const AZ::EntityId newEntityId = entity ? entity->GetId() : AZ::EntityId();
@@ -98,6 +114,7 @@ void CComponentEntityObject::AssignEntity(AZ::Entity* entity, bool destroyOld)
     {
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+        LmbrCentral::RenderBoundsNotificationBus::Handler::BusDisconnect();
         LmbrCentral::MeshComponentNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::ComponentEntityEditorRequestBus::Handler::BusDisconnect();
         AZ::EntityBus::Handler::BusDisconnect();
@@ -138,32 +155,9 @@ void CComponentEntityObject::AssignEntity(AZ::Entity* entity, bool destroyOld)
 
         EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, AddRequiredComponents, *entity);
 
-        // OBJFLAG_FROZEN should match EditorLockComponent's Locked state.
-        bool locked = false;
-        AzToolsFramework::EditorLockComponentRequestBus::EventResult(locked, entity->GetId(), &AzToolsFramework::EditorLockComponentRequests::GetLocked);
-        if (locked)
-        {
-            SetFlags(OBJFLAG_FROZEN);
-        }
-        else
-        {
-            ClearFlags(OBJFLAG_FROZEN);
-        }
-
-        // OBJFLAG_HIDDEN should match EditorVisibilityComponent's VisibilityFlag.
-        bool visibilityFlag;
-        AzToolsFramework::EditorVisibilityRequestBus::EventResult(visibilityFlag, entity->GetId(), &AzToolsFramework::EditorVisibilityRequests::GetVisibilityFlag);
-        if (visibilityFlag)
-        {
-            ClearFlags(OBJFLAG_HIDDEN);
-        }
-        else
-        {
-            SetFlags(OBJFLAG_HIDDEN);
-        }
-
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusConnect(m_entityId);
         AZ::TransformNotificationBus::Handler::BusConnect(m_entityId);
+        LmbrCentral::RenderBoundsNotificationBus::Handler::BusConnect(m_entityId);
         LmbrCentral::MeshComponentNotificationBus::Handler::BusConnect(m_entityId);
         AzToolsFramework::ComponentEntityEditorRequestBus::Handler::BusConnect(m_entityId);
         AZ::EntityBus::Handler::BusConnect(m_entityId);
@@ -180,6 +174,41 @@ void CComponentEntityObject::AssignEntity(AZ::Entity* entity, bool destroyOld)
             const AZ::Transform& worldTransform = transformComponent->GetWorldTM();
             OnTransformChanged(transformComponent->GetLocalTM(), transformComponent->GetWorldTM());
         }
+    }
+
+    RefreshVisibilityAndLock();
+}
+
+void CComponentEntityObject::RefreshVisibilityAndLock()
+{
+    // Lock state is tracked in 3 places:
+    // EditorLockComponent, EditorEntityModel, and ComponentEntityObject.
+    // Entities in layers have additional behavior in relation to lock state, if the layer is locked it supercede's the entity's lock state.
+    // The viewport controls for manipulating entities are disabled during lock state here in ComponentEntityObject using the OBJFLAG_FROZEN.
+    // In this case, the lock behavior should include the layer hierarchy as well, if the layer is locked this entity can't move.
+    // EditorEntityModel can report this information.
+    bool locked = false;
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(locked, m_entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsLocked);
+    if (locked)
+    {
+        SetFlags(OBJFLAG_FROZEN);
+    }
+    else
+    {
+        ClearFlags(OBJFLAG_FROZEN);
+    }
+
+    // OBJFLAG_HIDDEN should match EditorVisibilityComponent's VisibilityFlag.
+    bool visibilityFlag = true;
+    // Visibility state is similar to lock state in the number of areas it can be set / tracked. See the comment about the lock state above.
+    AzToolsFramework::EditorEntityInfoRequestBus::EventResult(visibilityFlag, m_entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+    if (visibilityFlag)
+    {
+        ClearFlags(OBJFLAG_HIDDEN);
+    }
+    else
+    {
+        SetFlags(OBJFLAG_HIDDEN);
     }
 }
 
@@ -226,11 +255,11 @@ void CComponentEntityObject::SetSelected(bool bSelect)
         // Pass the action to the tools application.
         if (bSelect)
         {
-            EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, MarkEntitySelected, m_entityId);
+            AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::MarkEntitySelected, m_entityId);
         }
         else
         {
-            EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, MarkEntityDeselected, m_entityId);
+            AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::MarkEntityDeselected, m_entityId);
         }
     }
 
@@ -490,11 +519,11 @@ void CComponentEntityObject::OnMeshCreated(const AZ::Data::Asset<AZ::Data::Asset
     (void)asset;
 
     // Need to recalculate bounds when the mesh changes.
-    OnBoundsReset();
+    OnRenderBoundsReset();
     ValidateMeshStatObject();
 }
 
-void CComponentEntityObject::OnBoundsReset()
+void CComponentEntityObject::OnRenderBoundsReset()
 {
     CalcBBox();
     CEntityObject::InvalidateTM(0);
@@ -520,10 +549,20 @@ bool CComponentEntityObject::IsSandBoxObjectIsolated()
 
 bool CComponentEntityObject::SetPos(const Vec3& pos, int flags)
 {
+    bool isAzEditorTransformLocked = false;
+    AzToolsFramework::Components::TransformComponentMessages::Bus::EventResult(isAzEditorTransformLocked, m_entityId,
+        &AzToolsFramework::Components::TransformComponentMessages::IsTransformLocked);
+
+    bool lockTransformOnUserInput = isAzEditorTransformLocked && (flags & eObjectUpdateFlags_UserInput);
+
+    if (IsLayer() || lockTransformOnUserInput)
+    {
+        return false;
+    }
     if ((flags & eObjectUpdateFlags_MoveTool) || (flags & eObjectUpdateFlags_UserInput))
     {
         // If we have a parent also in the selection set, don't allow the move tool to manipulate our position.
-        if (IsAncestorSelected())
+        if (IsNonLayerAncestorSelected())
         {
             return false;
         }
@@ -534,10 +573,20 @@ bool CComponentEntityObject::SetPos(const Vec3& pos, int flags)
 
 bool CComponentEntityObject::SetRotation(const Quat& rotate, int flags)
 {
+    bool isAzEditorTransformLocked = false;
+    AzToolsFramework::Components::TransformComponentMessages::Bus::EventResult(isAzEditorTransformLocked, m_entityId,
+        &AzToolsFramework::Components::TransformComponentMessages::IsTransformLocked);
+
+    bool lockTransformOnUserInput = isAzEditorTransformLocked && (flags & eObjectUpdateFlags_UserInput);
+
+    if (IsLayer() || lockTransformOnUserInput)
+    {
+        return false;
+    }
     if (flags & eObjectUpdateFlags_UserInput)
     {
         // If we have a parent also in the selection set, don't allow the rotate tool to manipulate our position.
-        if (IsAncestorSelected())
+        if (IsNonLayerAncestorSelected())
         {
             return false;
         }
@@ -548,10 +597,20 @@ bool CComponentEntityObject::SetRotation(const Quat& rotate, int flags)
 
 bool CComponentEntityObject::SetScale(const Vec3& scale, int flags)
 {
+    bool isAzEditorTransformLocked = false;
+    AzToolsFramework::Components::TransformComponentMessages::Bus::EventResult(isAzEditorTransformLocked, m_entityId,
+        &AzToolsFramework::Components::TransformComponentMessages::IsTransformLocked);
+
+    bool lockTransformOnUserInput = isAzEditorTransformLocked && (flags & eObjectUpdateFlags_UserInput);
+
+    if (IsLayer() || lockTransformOnUserInput)
+    {
+        return false;
+    }
     if ((flags & eObjectUpdateFlags_ScaleTool) || (flags & eObjectUpdateFlags_UserInput))
     {
         // If we have a parent also in the selection set, don't allow the scale tool to manipulate our position.
-        if (IsAncestorSelected())
+        if (IsNonLayerAncestorSelected())
         {
             return false;
         }
@@ -560,7 +619,7 @@ bool CComponentEntityObject::SetScale(const Vec3& scale, int flags)
     return CEntityObject::SetScale(scale, flags);
 }
 
-bool CComponentEntityObject::IsAncestorSelected() const
+bool CComponentEntityObject::IsNonLayerAncestorSelected() const
 {
     AZ::EntityId parentId;
     AZ::TransformBus::EventResult(parentId, m_entityId, &AZ::TransformBus::Events::GetParentId);
@@ -569,7 +628,15 @@ bool CComponentEntityObject::IsAncestorSelected() const
         CComponentEntityObject* parentObject = CComponentEntityObject::FindObjectForEntity(parentId);
         if (parentObject && parentObject->IsSelected())
         {
-            return true;
+            bool isLayerEntity = false;
+            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+                isLayerEntity,
+                parentObject->GetAssociatedEntityId(),
+                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+            if (!isLayerEntity)
+            {
+                return true;
+            }
         }
 
         AZ::EntityId currentParentId = parentId;
@@ -578,6 +645,16 @@ bool CComponentEntityObject::IsAncestorSelected() const
     }
 
     return false;
+}
+
+bool CComponentEntityObject::IsLayer() const
+{
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        m_entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+    return isLayerEntity;
 }
 
 bool CComponentEntityObject::IsAncestorIconDrawingAtSameLocation() const
@@ -834,7 +911,6 @@ void CComponentEntityObject::GetBoundBox(AABB& box)
     if (m_entityId.IsValid())
     {
         AZ::Aabb aabb = AZ::Aabb::CreateNull();
-
         AzToolsFramework::EditorComponentSelectionRequestsBus::EnumerateHandlersId(m_entityId,
             [&aabb](AzToolsFramework::EditorComponentSelectionRequests* handler) -> bool
         {
@@ -916,8 +992,11 @@ void CComponentEntityObject::Display(DisplayContext& dc)
             EBUS_EVENT_ID_RESULT(parentId, m_entityId, AZ::TransformBus, GetParentId);
             if (parentId.IsValid())
             {
+                bool isParentVisible = false;
+                AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isParentVisible, parentId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsVisible);
+
                 CComponentEntityObject* parentObject = CComponentEntityObject::FindObjectForEntity(parentId);
-                if (IsSelected() || (parentObject && parentObject->IsSelected()))
+                if (isParentVisible && (IsSelected() || (parentObject && parentObject->IsSelected())))
                 {
                     const QColor kLinkColorParent(0, 255, 255);
                     const QColor kLinkColorChild(0, 0, 255);
@@ -1005,6 +1084,31 @@ IStatObj* CComponentEntityObject::GetIStatObj()
 bool CComponentEntityObject::IsIsolated() const
 {
     return m_isIsolated;
+}
+
+void CComponentEntityObject::SetWorldPos(const Vec3& pos, int flags)
+{    
+    // Layers, by design, are not supposed to be moveable. Layers are intended to just be a grouping
+    // mechanism to allow teams to cleanly split their level into working zones, and a moveable position
+    // complicates that behavior more than it helps.
+    // Unfortunately component entity objects have a position under the hood, so prevent layers from moving here.
+    bool isLayerEntity = false;
+    AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+        isLayerEntity,
+        m_entityId,
+        &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+    bool isAzEditorTransformLocked = false;
+    AzToolsFramework::Components::TransformComponentMessages::Bus::EventResult(isAzEditorTransformLocked, m_entityId,
+        &AzToolsFramework::Components::TransformComponentMessages::IsTransformLocked);
+
+    bool lockTransformOnUserInput = isAzEditorTransformLocked && (flags & eObjectUpdateFlags_UserInput);
+
+    if (isLayerEntity || lockTransformOnUserInput)
+    {
+        return;
+    }
+    CEntityObject::SetWorldPos(pos, flags);
 }
 
 void CComponentEntityObject::OnContextMenu(QMenu* /*pMenu*/)

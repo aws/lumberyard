@@ -53,7 +53,7 @@ namespace EMStudio
 
         // add the line edit
         mLineEdit = new QLineEdit();
-        connect(mLineEdit, SIGNAL(textEdited(const QString&)), this, SLOT(TextEdited(const QString&)));
+        connect(mLineEdit, &QLineEdit::textEdited, this, &NodeGroupManagementRenameWindow::TextEdited);
         layout->addWidget(mLineEdit);
 
         // set the current name and select all
@@ -68,8 +68,8 @@ namespace EMStudio
         buttonLayout->addWidget(cancelButton);
 
         // connect the buttons
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(Accepted()));
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(mOKButton, &QPushButton::clicked, this, &NodeGroupManagementRenameWindow::Accepted);
+        connect(cancelButton, &QPushButton::clicked, this, &NodeGroupManagementRenameWindow::reject);
 
         // set the new layout
         layout->addLayout(buttonLayout);
@@ -231,10 +231,10 @@ namespace EMStudio
         setLayout(layout);
 
         // connect controls to the slots
-        connect(mAddButton, SIGNAL(clicked()), this, SLOT(AddNodeGroup()));
-        connect(mRemoveButton, SIGNAL(clicked()), this, SLOT(RemoveSelectedNodeGroup()));
-        connect(mClearButton, SIGNAL(clicked()), this, SLOT(ClearNodeGroups()));
-        connect(mNodeGroupsTable, SIGNAL(itemSelectionChanged()), this, SLOT(UpdateNodeGroupWidget()));
+        connect(mAddButton, &QPushButton::clicked, this, &NodeGroupManagementWidget::AddNodeGroup);
+        connect(mRemoveButton, &QPushButton::clicked, this, &NodeGroupManagementWidget::RemoveSelectedNodeGroup);
+        connect(mClearButton, &QPushButton::clicked, this, &NodeGroupManagementWidget::ClearNodeGroups);
+        connect(mNodeGroupsTable, &QTableWidget::itemSelectionChanged, this, &NodeGroupManagementWidget::UpdateNodeGroupWidget);
         //connect( mNodeGroupsTable, SIGNAL(currentItemChanged(QTableWidgetItem*, QTableWidgetItem*)), this, SLOT(UpdateNodeGroupWidget(QTableWidgetItem*, QTableWidgetItem*)) );
         //connect( mNodeGroupsTable, SIGNAL(itemDoubleClicked(QTableWidgetItem*)), this, SLOT(NodeGroupeNameDoubleClicked(QTableWidgetItem*)) );
     }
@@ -286,7 +286,7 @@ namespace EMStudio
             checkbox->setStyleSheet("background: transparent; padding-left: 3px; max-width: 13px;");
 
             // connect the checkbox
-            connect(checkbox, SIGNAL(clicked(bool)), this, SLOT(checkboxClicked(bool)));
+            connect(checkbox, &QCheckBox::clicked, this, &NodeGroupManagementWidget::checkboxClicked);
 
             // create table items
             QTableWidgetItem* tableItemGroupName = new QTableWidgetItem(nodeGroup->GetName());
@@ -676,21 +676,21 @@ namespace EMStudio
         // add node group is always enabled
         QAction* addAction = menu.addAction("Add Node Group");
         addAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-        connect(addAction, SIGNAL(triggered()), this, SLOT(AddNodeGroup()));
+        connect(addAction, &QAction::triggered, this, &NodeGroupManagementWidget::AddNodeGroup);
 
         // add remove action
         if (rowIndices.size() > 0)
         {
             QAction* removeAction = menu.addAction("Remove Selected Node Group");
             removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
-            connect(removeAction, SIGNAL(triggered()), this, SLOT(RemoveSelectedNodeGroup()));
+            connect(removeAction, &QAction::triggered, this, &NodeGroupManagementWidget::RemoveSelectedNodeGroup);
         }
 
         // add rename action if only one selected
         if (rowIndices.size() == 1)
         {
             QAction* renameAction = menu.addAction("Rename Selected Node Group");
-            connect(renameAction, SIGNAL(triggered()), this, SLOT(RenameSelectedNodeGroup()));
+            connect(renameAction, &QAction::triggered, this, &NodeGroupManagementWidget::RenameSelectedNodeGroup);
         }
 
         // show the menu at the given position

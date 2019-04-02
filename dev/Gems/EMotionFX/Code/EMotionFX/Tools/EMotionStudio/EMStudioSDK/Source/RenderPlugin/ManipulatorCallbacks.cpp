@@ -19,7 +19,6 @@
 
 namespace EMStudio
 {
-
     void TranslateManipulatorCallback::Update(const AZ::Vector3& value)
     {
         ManipulatorCallback::Update(value);
@@ -28,7 +27,7 @@ namespace EMStudio
         uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
         if (actorInstanceID != MCORE_INVALIDINDEX32)
         {
-            mActorInstance->SetLocalPosition(value);
+            mActorInstance->SetLocalSpacePosition(value);
         }
     }
 
@@ -38,7 +37,7 @@ namespace EMStudio
         uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
         if (actorInstanceID != MCORE_INVALIDINDEX32)
         {
-            mOldValueVec = mActorInstance->GetLocalPosition();
+            mOldValueVec = mActorInstance->GetLocalSpaceTransform().mPosition;
         }
     }
 
@@ -47,15 +46,15 @@ namespace EMStudio
         EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
         if (actorInstance)
         {
-            AZ::Vector3 newPos = actorInstance->GetLocalPosition();
-            actorInstance->SetLocalPosition(mOldValueVec);
+            AZ::Vector3 newPos = actorInstance->GetLocalSpaceTransform().mPosition;
+            actorInstance->SetLocalSpacePosition(mOldValueVec);
 
             if (AZ::Vector3(mOldValueVec - newPos).GetLength() >= MCore::Math::epsilon)
             {
                 AZStd::string outResult;
                 if (GetCommandManager()->ExecuteCommand(
-                    AZStd::string::format("AdjustActorInstance -actorInstanceID %i -pos %s", actorInstance->GetID(), AZStd::to_string(newPos).c_str()),
-                    outResult) == false)
+                        AZStd::string::format("AdjustActorInstance -actorInstanceID %i -pos %s", actorInstance->GetID(), AZStd::to_string(newPos).c_str()),
+                        outResult) == false)
                 {
                     MCore::LogError(outResult.c_str());
                 }
@@ -74,10 +73,10 @@ namespace EMStudio
         if (actorInstanceID != MCORE_INVALIDINDEX32)
         {
             // temporarily update the actor instance
-            mActorInstance->SetLocalRotation((value * mActorInstance->GetLocalRotation()).Normalize());
+            mActorInstance->SetLocalSpaceRotation(value * mActorInstance->GetLocalSpaceTransform().mRotation.Normalized());
 
             // update the callback parent
-            ManipulatorCallback::Update(mActorInstance->GetLocalRotation());
+            ManipulatorCallback::Update(mActorInstance->GetLocalSpaceTransform().mRotation);
         }
     }
 
@@ -87,7 +86,7 @@ namespace EMStudio
         uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
         if (actorInstanceID != MCORE_INVALIDINDEX32)
         {
-            mOldValueQuat = mActorInstance->GetLocalRotation();
+            mOldValueQuat = mActorInstance->GetLocalSpaceTransform().mRotation;
         }
     }
 
@@ -96,18 +95,18 @@ namespace EMStudio
         EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
         if (actorInstance)
         {
-            MCore::Quaternion newRot = actorInstance->GetLocalRotation();
-            actorInstance->SetLocalRotation(mOldValueQuat);
+            MCore::Quaternion newRot = actorInstance->GetLocalSpaceTransform().mRotation;
+            actorInstance->SetLocalSpaceRotation(mOldValueQuat);
 
             const float dot = newRot.Dot(mOldValueQuat);
             if (dot < 1.0f - MCore::Math::epsilon && dot > -1.0f + MCore::Math::epsilon)
             {
                 AZStd::string outResult;
                 if (GetCommandManager()->ExecuteCommand(
-                    AZStd::string::format("AdjustActorInstance -actorInstanceID %i -rot \"%s\"",
-                        actorInstance->GetID(),
-                        AZStd::to_string(AZ::Vector4(newRot.x, newRot.y, newRot.z, newRot.w)).c_str()).c_str(),
-                    outResult) == false)
+                        AZStd::string::format("AdjustActorInstance -actorInstanceID %i -rot \"%s\"",
+                            actorInstance->GetID(),
+                            AZStd::to_string(AZ::Vector4(newRot.x, newRot.y, newRot.z, newRot.w)).c_str()).c_str(),
+                        outResult) == false)
                 {
                     MCore::LogError(outResult.c_str());
                 }
@@ -124,7 +123,7 @@ namespace EMStudio
         uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
         if (actorInstanceID != MCORE_INVALIDINDEX32)
         {
-            return mActorInstance->GetLocalScale();
+            return mActorInstance->GetLocalSpaceTransform().mScale;
         }
         else
         {
@@ -139,11 +138,11 @@ namespace EMStudio
         if (actorInstanceID != MCORE_INVALIDINDEX32)
         {
             float minScale = 0.001f;
-            AZ::Vector3 scale = AZ::Vector3(
-                MCore::Max(float(mOldValueVec.GetX() * value.GetX()), minScale),
-                MCore::Max(float(mOldValueVec.GetY() * value.GetY()), minScale),
-                MCore::Max(float(mOldValueVec.GetZ() * value.GetZ()), minScale));
-            mActorInstance->SetLocalScale(scale);
+            const AZ::Vector3 scale = AZ::Vector3(
+                    MCore::Max(float(mOldValueVec.GetX() * value.GetX()), minScale),
+                    MCore::Max(float(mOldValueVec.GetY() * value.GetY()), minScale),
+                    MCore::Max(float(mOldValueVec.GetZ() * value.GetZ()), minScale));
+            mActorInstance->SetLocalSpaceScale(scale);
 
             // update the callback
             ManipulatorCallback::Update(scale);
@@ -156,7 +155,7 @@ namespace EMStudio
         uint32 actorInstanceID = EMotionFX::GetActorManager().FindActorInstanceIndex(mActorInstance);
         if (actorInstanceID != MCORE_INVALIDINDEX32)
         {
-            mOldValueVec = mActorInstance->GetLocalScale();
+            mOldValueVec = mActorInstance->GetLocalSpaceTransform().mScale;
         }
     }
 
@@ -165,16 +164,16 @@ namespace EMStudio
         EMotionFX::ActorInstance* actorInstance = GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
         if (actorInstance)
         {
-            AZ::Vector3 newScale = actorInstance->GetLocalScale();
-            actorInstance->SetLocalScale(mOldValueVec);
+            AZ::Vector3 newScale = actorInstance->GetLocalSpaceTransform().mScale;
+            actorInstance->SetLocalSpaceScale(mOldValueVec);
 
             if (AZ::Vector3(mOldValueVec - newScale).GetLength() >= MCore::Math::epsilon)
             {
                 AZStd::string outResult;
                 if (GetCommandManager()->ExecuteCommand(
-                    AZStd::string::format("AdjustActorInstance -actorInstanceID %i -scale %s", actorInstance->GetID(),
-                        AZStd::to_string(newScale).c_str()).c_str(),
-                    outResult) == false)
+                        AZStd::string::format("AdjustActorInstance -actorInstanceID %i -scale %s", actorInstance->GetID(),
+                            AZStd::to_string(newScale).c_str()).c_str(),
+                        outResult) == false)
                 {
                     MCore::LogError(outResult.c_str());
                 }

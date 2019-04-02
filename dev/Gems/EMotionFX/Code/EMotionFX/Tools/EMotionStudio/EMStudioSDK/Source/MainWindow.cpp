@@ -163,6 +163,11 @@ namespace EMStudio
 
         const char* GetExtension() const override       { return "emfxworkspace"; }
         const char* GetFileType() const override        { return "workspace"; }
+        const AZ::Uuid GetFileRttiType() const override
+        {
+            return azrtti_typeid<EMStudio::Workspace>();
+        }
+
     };
 
     class UndoMenuCallback
@@ -279,11 +284,14 @@ namespace EMStudio
         delete mUnselectCallback;
         delete m_clearSelectionCallback;
         delete mSaveWorkspaceCallback;
+		
+        EMotionFX::ActorEditorRequestBus::Handler::BusDisconnect();
 
         if (m_undoMenuCallback)
         {
             EMStudio::GetCommandManager()->RemoveCallback(m_undoMenuCallback);
         }
+        EMotionFX::ActorEditorRequestBus::Handler::BusDisconnect();
     }
 
     void MainWindow::Reflect(AZ::ReflectContext* context)
@@ -324,11 +332,11 @@ namespace EMStudio
         QMenu* menu = menuBar->addMenu(tr("&File"));
 
         // reset action
-        mResetAction = menu->addAction(tr("&Reset"), this, SLOT(OnReset()), QKeySequence::New);
+        mResetAction = menu->addAction(tr("&Reset"), this, &MainWindow::OnReset, QKeySequence::New);
         mResetAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/Refresh.png"));
 
         // save all
-        mSaveAllAction = menu->addAction(tr("Save All..."), this, SLOT(OnSaveAll()), QKeySequence::Save);
+        mSaveAllAction = menu->addAction(tr("Save All..."), this, &MainWindow::OnSaveAll, QKeySequence::Save);
         mSaveAllAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSave.png"));
 
         // disable the reset and save all menus until one thing is loaded
@@ -338,11 +346,11 @@ namespace EMStudio
         menu->addSeparator();
 
         // actor file actions
-        QAction* openAction = menu->addAction(tr("&Open Actor"), this, SLOT(OnFileOpenActor()), QKeySequence::Open);
+        QAction* openAction = menu->addAction(tr("&Open Actor"), this, &MainWindow::OnFileOpenActor, QKeySequence::Open);
         openAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-        mMergeActorAction = menu->addAction(tr("&Merge Actor"), this, SLOT(OnFileMergeActor()), Qt::CTRL + Qt::Key_I);
+        mMergeActorAction = menu->addAction(tr("&Merge Actor"), this, &MainWindow::OnFileMergeActor, Qt::CTRL + Qt::Key_I);
         mMergeActorAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-        mSaveSelectedActorsAction = menu->addAction(tr("&Save Selected Actors"), this, SLOT(OnFileSaveSelectedActors()));
+        mSaveSelectedActorsAction = menu->addAction(tr("&Save Selected Actors"), this, &MainWindow::OnFileSaveSelectedActors);
         mSaveSelectedActorsAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSave.png"));
 
         // disable the merge actor menu until one actor is in the scene
@@ -353,22 +361,22 @@ namespace EMStudio
 
         // recent actors submenu
         mRecentActors.Init(menu, mOptions.GetMaxRecentFiles(), "Recent Actors", "recentActorFiles");
-        connect(&mRecentActors, SIGNAL(OnRecentFile(QAction*)), this, SLOT(OnRecentFile(QAction*)));
+        connect(&mRecentActors, &MysticQt::RecentFiles::OnRecentFile, this, &MainWindow::OnRecentFile);
 
         // workspace file actions
         menu->addSeparator();
-        QAction* newWorkspaceAction = menu->addAction(tr("New Workspace"), this, SLOT(OnFileNewWorkspace()));
+        QAction* newWorkspaceAction = menu->addAction(tr("New Workspace"), this, &MainWindow::OnFileNewWorkspace);
         newWorkspaceAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-        QAction* openWorkspaceAction = menu->addAction(tr("Open Workspace"), this, SLOT(OnFileOpenWorkspace()));
+        QAction* openWorkspaceAction = menu->addAction(tr("Open Workspace"), this, &MainWindow::OnFileOpenWorkspace);
         openWorkspaceAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-        QAction* saveWorkspaceAction = menu->addAction(tr("Save Workspace"), this, SLOT(OnFileSaveWorkspace()));
+        QAction* saveWorkspaceAction = menu->addAction(tr("Save Workspace"), this, &MainWindow::OnFileSaveWorkspace);
         saveWorkspaceAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSave.png"));
-        QAction* saveWorkspaceAsAction = menu->addAction(tr("Save Workspace As"), this, SLOT(OnFileSaveWorkspaceAs()));
+        QAction* saveWorkspaceAsAction = menu->addAction(tr("Save Workspace As"), this, &MainWindow::OnFileSaveWorkspaceAs);
         saveWorkspaceAsAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/FileSaveAs.png"));
 
         // recent workspace submenu
         mRecentWorkspaces.Init(menu, mOptions.GetMaxRecentFiles(), "Recent Workspaces", "recentWorkspaces");
-        connect(&mRecentWorkspaces, SIGNAL(OnRecentFile(QAction*)), this, SLOT(OnRecentFile(QAction*)));
+        connect(&mRecentWorkspaces, &MysticQt::RecentFiles::OnRecentFile, this, &MainWindow::OnRecentFile);
 
         // edit menu
         menu = menuBar->addMenu(tr("&Edit"));
@@ -389,7 +397,7 @@ namespace EMStudio
         m_undoAction->setDisabled(true);
         m_redoAction->setDisabled(true);
         menu->addSeparator();
-        QAction* preferencesAction = menu->addAction(tr("&Preferences"), this, SLOT(OnPreferences()));
+        QAction* preferencesAction = menu->addAction(tr("&Preferences"), this, &MainWindow::OnPreferences);
         preferencesAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Menu/Preferences.png"));
 
         // layouts item
@@ -398,7 +406,7 @@ namespace EMStudio
 
         // reset the application mode selection and connect it
         mApplicationMode->setCurrentIndex(-1);
-        connect(mApplicationMode, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(ApplicationModeChanged(const QString&)));
+        connect(mApplicationMode, static_cast<void (MysticQt::ComboBox::*)(const QString&)>(&MysticQt::ComboBox::currentIndexChanged), this, &MainWindow::ApplicationModeChanged);
         mLayoutLoaded = false;
 
         // view item
@@ -410,8 +418,8 @@ namespace EMStudio
 
         QMenu* folders = menu->addMenu("Folders");
         folders->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Open.png"));
-        folders->addAction("Open autosave folder", this, SLOT(OnOpenAutosaveFolder()));
-        folders->addAction("Open settings folder", this, SLOT(OnOpenSettingsFolder()));
+        folders->addAction("Open autosave folder", this, &MainWindow::OnOpenAutosaveFolder);
+        folders->addAction("Open settings folder", this, &MainWindow::OnOpenSettingsFolder);
 
         // Reset old workspace and start clean.
         GetManager()->GetWorkspace()->Reset();
@@ -419,7 +427,7 @@ namespace EMStudio
 
         // create the autosave timer
         mAutosaveTimer = new QTimer(this);
-        connect(mAutosaveTimer, SIGNAL(timeout()), this, SLOT(OnAutosaveTimeOut()));
+        connect(mAutosaveTimer, &QTimer::timeout, this, &MainWindow::OnAutosaveTimeOut);
 
         // load preferences
         PluginOptionsNotificationsBus::Router::BusRouterConnect();
@@ -449,8 +457,11 @@ namespace EMStudio
         mShortcutManager->RegisterKeyboardShortcut("Animation", layoutGroupName, Qt::Key_2, false, true, false);
         mShortcutManager->RegisterKeyboardShortcut("Character", layoutGroupName, Qt::Key_3, false, true, false);
 
+        EMotionFX::ActorEditorRequestBus::Handler::BusConnect();
+
         m_undoMenuCallback = new UndoMenuCallback(this);
         EMStudio::GetCommandManager()->RegisterCallback(m_undoMenuCallback);
+        EMotionFX::ActorEditorRequestBus::Handler::BusConnect();
 
         // create and register the command callbacks
         mImportActorCallback = new CommandImportActorCallback(false);
@@ -507,6 +518,11 @@ namespace EMStudio
                 AZ_Warning("Editor", false, "Clear recorder command failed: %s", commandResult.c_str());
             }
         }
+    }
+
+    void MainWindow::MainWindowCommandManagerCallback::OnPreUndoCommand(MCore::Command* command, const MCore::CommandLine& commandLine)
+    {
+        OnPreExecuteCommand(nullptr, command, commandLine);
     }
 
     bool NativeEventFilter::nativeEventFilter(const QByteArray& /*eventType*/, void* message, long* /*result*/)
@@ -1017,7 +1033,7 @@ namespace EMStudio
                 action->setData(plugin->GetName());
 
                 // connect the action to activate the plugin when clicked on it
-                connect(action, SIGNAL(triggered(bool)), this, SLOT(OnWindowCreate(bool)));
+                connect(action, &QAction::triggered, this, &MainWindow::OnWindowCreate);
 
                 // set the action checkable
                 action->setCheckable(true);
@@ -1540,12 +1556,7 @@ namespace EMStudio
 
     void MainWindow::OnOptionChanged(const AZStd::string& optionChanged)
     {
-        if (optionChanged == GUIOptions::s_unitTypeOptionName)
-        {
-            EMotionFX::GetEMotionFX().SetUnitType(mOptions.GetUnitType());
-            OnUnitTypeOptionChanged();
-        }
-        else if (optionChanged == GUIOptions::s_maxRecentFilesOptionName)
+        if (optionChanged == GUIOptions::s_maxRecentFilesOptionName)
         {
             // Set the maximum number of recent files
             mRecentActors.SetMaxRecentFiles(mOptions.GetMaxRecentFiles());
@@ -1598,73 +1609,15 @@ namespace EMStudio
         }
     }
 
-    void MainWindow::OnUnitTypeOptionChanged()
-    {
-        // Scale actors
-        AZStd::string tempString;
-        MCore::CommandGroup commandGroup("Change scales");
-        const char* unitTypeString = MCore::Distance::UnitTypeToString(mOptions.GetUnitType());
-
-        const uint32 numActors = EMotionFX::GetActorManager().GetNumActors();
-        for (uint32 i = 0; i < numActors; ++i)
-        {
-            EMotionFX::Actor* actor = EMotionFX::GetActorManager().GetActor(i);
-
-            if (actor->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
-            tempString = AZStd::string::format("ScaleActorData -id %d -unitType \"%s\"", actor->GetID(), unitTypeString);
-            commandGroup.AddCommandString(tempString);
-        }
-        
-        // Rescale motions
-        const uint32 numMotions = EMotionFX::GetMotionManager().GetNumMotions();
-        for (uint32 i = 0; i < numMotions; ++i)
-        {
-            EMotionFX::Motion* motion = EMotionFX::GetMotionManager().GetMotion(i);
-
-            if (motion->GetIsOwnedByRuntime())
-            {
-                continue;
-            }
-
-            tempString = AZStd::string::format("ScaleMotionData -id %d -unitType \"%s\"", motion->GetID(), unitTypeString);
-            commandGroup.AddCommandString(tempString);
-        }
-
-        AZStd::string result;
-        if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
-        {
-            AZ_Error("EMotionFX", false, result.c_str());
-        }
-
-        // Find the render plugins and reset camera min and max distances
-        const uint32 numPlugins = GetPluginManager()->GetNumActivePlugins();
-        for (uint32 i = 0; i < numPlugins; ++i)
-        {
-            EMStudioPlugin* plugin = GetPluginManager()->GetActivePlugin(i);
-            if (plugin->GetPluginType() == EMStudioPlugin::PLUGINTYPE_RENDERING)
-            {
-                RenderPlugin* renderPlugin = static_cast<RenderPlugin*>(plugin);
-                renderPlugin->ResetCameras();
-            }
-        }
-
-        if (mPreferencesWindow)
-        {
-            AzToolsFramework::ReflectedPropertyEditor* generalPropertyWidget = mPreferencesWindow->FindPropertyWidgetByName("General");
-            if (generalPropertyWidget)
-            {
-                generalPropertyWidget->InvalidateValues();
-            }
-        }
-    }
-
     // open an actor
     void MainWindow::OnFileOpenActor()
     {
+
+        if (mDirtyFileManager->SaveDirtyFiles({azrtti_typeid<EMotionFX::Actor>()}) == DirtyFileManager::CANCELED)
+        {
+            return;
+        }
+
         AZStd::vector<AZStd::string> filenames = mFileManager->LoadActorsFileDialog(this);
         if (filenames.empty())
         {
@@ -1798,7 +1751,7 @@ namespace EMStudio
         for (uint32 i = 0; i < numLayoutNames; ++i)
         {
             QAction* action = mLayoutsMenu->addAction(mLayoutNames[i].c_str());
-            connect(action, SIGNAL(triggered()), this, SLOT(OnLoadLayout()));
+            connect(action, &QAction::triggered, this, &MainWindow::OnLoadLayout);
         }
 
         // add the separator only if at least one layout
@@ -1809,7 +1762,7 @@ namespace EMStudio
 
         // add the save current menu
         QAction* saveCurrentAction = mLayoutsMenu->addAction("Save Current");
-        connect(saveCurrentAction, SIGNAL(triggered()), this, SLOT(OnLayoutSaveAs()));
+        connect(saveCurrentAction, &QAction::triggered, this, &MainWindow::OnLayoutSaveAs);
 
         // remove menu is needed only if at least one layout
         if (numLayoutNames > 0)
@@ -1821,7 +1774,7 @@ namespace EMStudio
             for (uint32 i = 0; i < numLayoutNames; ++i)
             {
                 QAction* action = removeMenu->addAction(mLayoutNames[i].c_str());
-                connect(action, SIGNAL(triggered()), this, SLOT(OnRemoveLayout()));
+                connect(action, &QAction::triggered, this, &MainWindow::OnRemoveLayout);
             }
         }
 
@@ -1949,12 +1902,6 @@ namespace EMStudio
     // undo
     void MainWindow::OnUndo()
     {
-        AZStd::string commandResult;
-        if (!GetCommandManager()->ExecuteCommand(CommandSystem::CommandRecorderClear::s_RecorderClearCmdName, commandResult, false))
-        {
-            AZ_Warning("Editor", false, "Clear recorder command failed: %s", commandResult.c_str());
-        }
-
         // check if we can undo
         if (GetCommandManager()->GetNumHistoryItems() > 0 && GetCommandManager()->GetHistoryIndex() >= 0)
         {
@@ -2131,8 +2078,8 @@ namespace EMStudio
                     QMenu menu(this);
                     QAction* openAction = menu.addAction("Open Actor");
                     QAction* mergeAction = menu.addAction("Merge Actor");
-                    connect(openAction, SIGNAL(triggered()), this, SLOT(OnOpenDroppedActor()));
-                    connect(mergeAction, SIGNAL(triggered()), this, SLOT(OnMergeDroppedActor()));
+                    connect(openAction, &QAction::triggered, this, &MainWindow::OnOpenDroppedActor);
+                    connect(mergeAction, &QAction::triggered, this, &MainWindow::OnMergeDroppedActor);
 
                     // show the menu at the given position
                     menu.exec(mapToGlobal(QPoint(contextMenuPosX, contextMenuPosY)));
@@ -2268,7 +2215,7 @@ namespace EMStudio
                 // Need to defer loading the character until the layout is ready. We also
                 // need a couple of initializeGL/paintGL to happen before the character
                 // is being loaded.
-                QTimer::singleShot(1000, this, SLOT(LoadCharacterFiles()));
+                QTimer::singleShot(1000, this, &MainWindow::LoadCharacterFiles);
             }
         }
     }
@@ -2326,6 +2273,12 @@ namespace EMStudio
     }
 
 
+    EMotionFX::ActorInstance* MainWindow::GetSelectedActorInstance()
+    {
+        return GetCommandManager()->GetCurrentSelection().GetSingleActorInstance();
+    }
+
+
     void MainWindow::BroadcastSelectionNotifications()
     {
         const CommandSystem::SelectionList& selectionList = GetCommandManager()->GetCurrentSelection();
@@ -2378,6 +2331,10 @@ namespace EMStudio
     // gets called when the user drag&dropped an actor to the application and then chose to open it in the context menu
     void MainWindow::OnOpenDroppedActor()
     {
+        if (mDirtyFileManager->SaveDirtyFiles({azrtti_typeid<EMotionFX::Actor>()}) == DirtyFileManager::CANCELED)
+        {
+            return;
+        }
         LoadActor(mDroppedActorFileName.c_str(), true);
     }
 
@@ -2467,7 +2424,7 @@ namespace EMStudio
         // So we want to load layout after that. It's a bit hacky, but most sensible at the moment.
         if (!mLayoutLoaded)
         {
-            QTimer::singleShot(0, this, SLOT(LoadLayoutAfterShow()));
+            QTimer::singleShot(0, this, &MainWindow::LoadLayoutAfterShow);
         }
 
         QMainWindow::showEvent(event);
@@ -2476,7 +2433,7 @@ namespace EMStudio
         // is doing a "raise" on this window. Since we cannot intercept that raise (raise is a slot and doesn't
         // have an event associated) we are deferring a call to RaiseFloatingWidgets which will raise the floating
         // widgets (this needs to happen after the raise from OpenPane).
-        QTimer::singleShot(0, this, SLOT(RaiseFloatingWidgets()));
+        QTimer::singleShot(0, this, &MainWindow::RaiseFloatingWidgets);
     }
 
     void MainWindow::keyPressEvent(QKeyEvent* event)

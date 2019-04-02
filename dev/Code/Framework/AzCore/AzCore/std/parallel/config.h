@@ -123,7 +123,11 @@
 
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CONFIG_H_SECTION_1
-#include AZ_RESTRICTED_FILE(config_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/config_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/config_h_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 #   include <pthread.h>
 #   include <semaphore.h>
@@ -170,7 +174,11 @@ namespace AZStd
 
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CONFIG_H_SECTION_2
-#include AZ_RESTRICTED_FILE(config_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/config_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/config_h_provo.inl"
+    #endif
 #elif defined (AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
     // Mutex
     typedef pthread_mutex_t     native_mutex_data_type;

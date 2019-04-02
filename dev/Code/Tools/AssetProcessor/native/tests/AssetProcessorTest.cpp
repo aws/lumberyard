@@ -45,6 +45,9 @@ namespace AssetProcessor
             {
                 return false;
             }
+            
+            // tests which use the builder bus plug in their own mock version, so disconnect ours.
+            AssetProcessor::AssetBuilderInfoBus::Handler::BusDisconnect();
 
             m_platformConfig.reset(new AssetProcessor::PlatformConfiguration);
             m_connectionManager.reset(new ConnectionManager(m_platformConfig.get()));
@@ -63,7 +66,12 @@ namespace AssetProcessor
         void SetUp() override
         {
             AssetProcessorTest::SetUp();
-
+            
+            static int numParams = 1;
+            static char processName[] = {"AssetProcessorBatch"};
+            static char* namePtr = &processName[0];
+            static char** paramStringArray = &namePtr;
+            
             m_application.reset(new UnitTestAppManager(&numParams, &paramStringArray));
             ASSERT_EQ(m_application->BeforeRun(), ApplicationManager::Status_Success);
             ASSERT_TRUE(m_application->PrepareForTests());
@@ -76,10 +84,7 @@ namespace AssetProcessor
         }
 
         AZStd::unique_ptr<UnitTestAppManager> m_application;
-        
-        int numParams = 1;
-        char* paramString1 = "AssetProcessorBatch";
-        char** paramStringArray = &paramString1;
+
     };
 
     // use the list of registered legacy unit tests to generate the list of test parameters:
@@ -112,7 +117,7 @@ namespace AssetProcessor
         UnitTestRegistry* currentTest = UnitTestRegistry::first();
         while (currentTest)
         {
-            if (_stricmp(currentTest->getName(), GetParam().c_str()) == 0)
+            if (azstricmp(currentTest->getName(), GetParam().c_str()) == 0)
             {
                 UnitTestRun* actualTest = currentTest->create();
 

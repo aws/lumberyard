@@ -177,11 +177,11 @@ namespace AzToolsFramework
         {
             if (m_sliceRestoreInfo)
             {
-                EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, RestoreSliceEntity, entity, m_sliceRestoreInfo);
+                EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, RestoreSliceEntity, entity, m_sliceRestoreInfo, SliceEntityRestoreType::Deleted);
             }
             else
             {
-                if (!m_entityContextId.IsNull())
+                if (!m_entityContextId.IsNull() && !isSliceMetadataEntity)
                 {
                     EBUS_EVENT_ID(m_entityContextId, AzFramework::EntityContextRequestBus, AddEntity, entity);
                 }

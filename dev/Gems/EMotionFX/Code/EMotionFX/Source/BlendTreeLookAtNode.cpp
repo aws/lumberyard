@@ -40,11 +40,12 @@ namespace EMotionFX
         , m_followSpeed(0.75f)
         , m_twistAxis(ConstraintTransformRotationAngles::AXIS_Y)
         , m_limitsEnabled(false)
+        , m_smoothing(true)
     {
         // setup the input ports
         InitInputPorts(3);
         SetupInputPort("Pose", INPUTPORT_POSE, AttributePose::TYPE_ID, PORTID_INPUT_POSE);
-        SetupInputPort("Goal Pos", INPUTPORT_GOALPOS, MCore::AttributeVector3::TYPE_ID, PORTID_INPUT_GOALPOS);
+        SetupInputPortAsVector3("Goal Pos", INPUTPORT_GOALPOS, PORTID_INPUT_GOALPOS);
         SetupInputPortAsNumber("Weight", INPUTPORT_WEIGHT, PORTID_INPUT_WEIGHT);
 
         // setup the output ports
@@ -174,27 +175,29 @@ namespace EMotionFX
         UpdateUniqueData(animGraphInstance, uniqueData); // update the unique data (lookup node indices when something changed)
         if (uniqueData->mIsValid == false)
         {
-        #ifdef EMFX_EMSTUDIOBUILD
-            uniqueData->mMustUpdate = true;
-            UpdateUniqueData(animGraphInstance, uniqueData);
-
-            if (uniqueData->mIsValid == false)
+            if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, true);
+                uniqueData->mMustUpdate = true;
+                UpdateUniqueData(animGraphInstance, uniqueData);
+
+                if (uniqueData->mIsValid == false)
+                {
+                    SetHasError(animGraphInstance, true);
+                }
             }
-        #endif
             return;
         }
 
         // there is no error
-    #ifdef EMFX_EMSTUDIOBUILD
-        SetHasError(animGraphInstance, false);
-    #endif
+        if (GetEMotionFX().GetIsInEditorMode())
+        {
+            SetHasError(animGraphInstance, false);
+        }
 
         // get the goal
         OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_GOALPOS));
-        const MCore::AttributeVector3* inputGoalPos = GetInputVector3(animGraphInstance, INPUTPORT_GOALPOS);
-        AZ::Vector3 goal = (inputGoalPos) ? AZ::Vector3(inputGoalPos->GetValue()) : AZ::Vector3::CreateZero();
+        AZ::Vector3 goal = AZ::Vector3::CreateZero();
+        TryGetInputVector3(animGraphInstance, INPUTPORT_GOALPOS, goal);
 
         ActorInstance* actorInstance = animGraphInstance->GetActorInstance();
 
@@ -202,7 +205,7 @@ namespace EMotionFX
         const uint32 nodeIndex = uniqueData->mNodeIndex;
 
         Pose& outTransformPose = outputPose->GetPose();
-        Transform globalTransform = outTransformPose.GetGlobalTransformInclusive(nodeIndex);
+        Transform globalTransform = outTransformPose.GetWorldSpaceTransform(nodeIndex);
 
         Skeleton* skeleton = actorInstance->GetActor()->GetSkeleton();
 
@@ -233,9 +236,9 @@ namespace EMotionFX
             MCore::Quaternion parentRotationGlobal;
             MCore::Quaternion bindRotationLocal;
             if (parentIndex != MCORE_INVALIDINDEX32)
-            {               
-                parentRotationGlobal = inputPose->GetPose().GetGlobalTransformInclusive(parentIndex).mRotation;
-                bindRotationLocal    = actorInstance->GetTransformData()->GetBindPose()->GetLocalTransform(parentIndex).mRotation;
+            {
+                parentRotationGlobal = inputPose->GetPose().GetWorldSpaceTransform(parentIndex).mRotation;
+                bindRotationLocal    = actorInstance->GetTransformData()->GetBindPose()->GetLocalSpaceTransform(parentIndex).mRotation;
             }
             else
             {
@@ -257,16 +260,14 @@ namespace EMotionFX
             constraint.GetTransform().mRotation = (deltaRotLocal * constraintRotation.Conjugated());
             constraint.Execute();
 
-            #ifdef EMFX_EMSTUDIOBUILD
-                if (GetCanVisualize(animGraphInstance))
-                {
-                    MCore::Matrix offset = (postRotation.Inversed() * bindRotationLocal * constraintRotation * parentRotationGlobal).ToMatrix();
-                    offset.SetTranslation(globalTransform.mPosition);
-                    constraint.DebugDraw(offset, GetVisualizeColor(), 0.5f);
-                }
-            #endif
+            if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
+            {
+                MCore::Matrix offset = (postRotation.Inversed() * bindRotationLocal * constraintRotation * parentRotationGlobal).ToMatrix();
+                offset.SetTranslation(globalTransform.mPosition);
+                constraint.DebugDraw(offset, GetVisualizeColor(), 0.5f);
+            }
 
-            // convert back into global space
+            // convert back into world space
             destRotation = (bindRotationLocal * (constraint.GetTransform().mRotation * constraintRotation)) * parentRotationGlobal;
         }
 
@@ -278,10 +279,17 @@ namespace EMotionFX
         }
 
         // interpolate between the current rotation and the destination rotation
-        const float speed = m_followSpeed * uniqueData->mTimeDelta * 10.0f;
-        if (speed < 1.0f)
+        if (m_smoothing)
         {
-            uniqueData->mRotationQuat = uniqueData->mRotationQuat.Slerp(destRotation, speed);
+            const float speed = m_followSpeed * uniqueData->mTimeDelta * 10.0f;
+            if (speed < 1.0f)
+            {
+                uniqueData->mRotationQuat = uniqueData->mRotationQuat.Slerp(destRotation, speed);
+            }
+            else
+            {
+                uniqueData->mRotationQuat = destRotation;
+            }
         }
         else
         {
@@ -294,38 +302,34 @@ namespace EMotionFX
         // only blend when needed
         if (weight < 0.999f)
         {
-            outTransformPose.SetGlobalTransformInclusive(nodeIndex, globalTransform);
-            outTransformPose.UpdateLocalTransform(nodeIndex);
+            outTransformPose.SetWorldSpaceTransform(nodeIndex, globalTransform);
 
             const Pose& inputTransformPose = inputPose->GetPose();
-            Transform finalTransform = inputTransformPose.GetLocalTransform(nodeIndex);
-            finalTransform.Blend(outTransformPose.GetLocalTransform(nodeIndex), weight);
+            Transform finalTransform = inputTransformPose.GetLocalSpaceTransform(nodeIndex);
+            finalTransform.Blend(outTransformPose.GetLocalSpaceTransform(nodeIndex), weight);
 
-            outTransformPose.SetLocalTransform(nodeIndex, finalTransform);
+            outTransformPose.SetLocalSpaceTransform(nodeIndex, finalTransform);
         }
         else
         {
-            outTransformPose.SetGlobalTransformInclusive(nodeIndex, globalTransform);
-            outTransformPose.UpdateLocalTransform(nodeIndex);
+            outTransformPose.SetWorldSpaceTransform(nodeIndex, globalTransform);
         }
 
         // perform some debug rendering
-        #ifdef EMFX_EMSTUDIOBUILD
-            if (GetCanVisualize(animGraphInstance))
-            {
-                const float s = animGraphInstance->GetVisualizeScale() * actorInstance->GetVisualizeScale();
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
+        {
+            const float s = animGraphInstance->GetVisualizeScale() * actorInstance->GetVisualizeScale();
 
-                const uint32 color = mVisualizeColor;
-                GetEventManager().OnDrawLine(goal - AZ::Vector3(s, 0, 0), goal + AZ::Vector3(s, 0, 0), color);
-                GetEventManager().OnDrawLine(goal - AZ::Vector3(0, s, 0), goal + AZ::Vector3(0, s, 0), color);
-                GetEventManager().OnDrawLine(goal - AZ::Vector3(0, 0, s), goal + AZ::Vector3(0, 0, s), color);
+            const uint32 color = mVisualizeColor;
+            GetEventManager().OnDrawLine(goal - AZ::Vector3(s, 0, 0), goal + AZ::Vector3(s, 0, 0), color);
+            GetEventManager().OnDrawLine(goal - AZ::Vector3(0, s, 0), goal + AZ::Vector3(0, s, 0), color);
+            GetEventManager().OnDrawLine(goal - AZ::Vector3(0, 0, s), goal + AZ::Vector3(0, 0, s), color);
 
-                const AZ::Vector3& pos = globalTransform.mPosition;
-                GetEventManager().OnDrawLine(pos, goal, mVisualizeColor);
+            const AZ::Vector3& pos = globalTransform.mPosition;
+            GetEventManager().OnDrawLine(pos, goal, mVisualizeColor);
 
-                GetEventManager().OnDrawLine(globalTransform.mPosition, globalTransform.mPosition + globalTransform.mRotation.CalcUpAxis() * s * 50.0f, MCore::RGBA(0, 0, 255));
-            }
-        #endif
+            GetEventManager().OnDrawLine(globalTransform.mPosition, globalTransform.mPosition + globalTransform.mRotation.CalcUpAxis() * s * 50.0f, MCore::RGBA(0, 0, 255));
+        }
     }
 
 
@@ -397,12 +401,15 @@ namespace EMotionFX
         uniqueData->mTimeDelta = timePassedInSeconds;
     }
 
-
     AZ::Crc32 BlendTreeLookAtNode::GetLimitWidgetsVisibility() const
     {
         return m_limitsEnabled ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
     }
 
+    AZ::Crc32 BlendTreeLookAtNode::GetFollowSpeedVisibility() const
+    {
+        return m_smoothing ? AZ::Edit::PropertyVisibility::Show : AZ::Edit::PropertyVisibility::Hide;
+    }
 
     void BlendTreeLookAtNode::SetTargetNodeName(const AZStd::string& targetNodeName)
     {
@@ -444,6 +451,11 @@ namespace EMotionFX
         m_limitsEnabled = limitsEnabled;
     }
 
+    void BlendTreeLookAtNode::SetSmoothingEnabled(bool smoothingEnabled)
+    {
+        m_smoothing = smoothingEnabled;
+    }
+
     void BlendTreeLookAtNode::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -453,16 +465,17 @@ namespace EMotionFX
         }
 
         serializeContext->Class<BlendTreeLookAtNode, AnimGraphNode>()
-            ->Version(1)
+            ->Version(2)
             ->Field("targetNodeName", &BlendTreeLookAtNode::m_targetNodeName)
+            ->Field("postRotation", &BlendTreeLookAtNode::m_postRotation)
+            ->Field("limitsEnabled", &BlendTreeLookAtNode::m_limitsEnabled)
             ->Field("limitMin", &BlendTreeLookAtNode::m_limitMin)
             ->Field("limitMax", &BlendTreeLookAtNode::m_limitMax)
             ->Field("constraintRotation", &BlendTreeLookAtNode::m_constraintRotation)
-            ->Field("postRotation", &BlendTreeLookAtNode::m_postRotation)
-            ->Field("followSpeed", &BlendTreeLookAtNode::m_followSpeed)
             ->Field("twistAxis", &BlendTreeLookAtNode::m_twistAxis)
-            ->Field("limitsEnabled", &BlendTreeLookAtNode::m_limitsEnabled)
-            ;
+            ->Field("smoothing", &BlendTreeLookAtNode::m_smoothing)
+            ->Field("followSpeed", &BlendTreeLookAtNode::m_followSpeed)
+        ;
 
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -471,31 +484,39 @@ namespace EMotionFX
             return;
         }
 
-        editContext->Class<BlendTreeLookAtNode>("Look At", "Look At attributes")
-            ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+        auto root = editContext->Class<BlendTreeLookAtNode>("Look At", "Look At attributes");
+        root->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeLookAtNode::m_targetNodeName, "Node", "The node to apply the lookat to. For example the head.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeLookAtNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_limitMin, "Yaw/Pitch Min", "The minimum rotational yaw and pitch angle limits, in degrees.")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetLimitWidgetsVisibility)
-                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector2(-90.0f, -90.0f))
-                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector2(90.0f, 90.0f))
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_limitMax, "Yaw/Pitch Max", "The maximum rotational yaw and pitch angle limits, in degrees.")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetLimitWidgetsVisibility)
-                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector2(-90.0f, -90.0f))
-                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector2(90.0f, 90.0f))
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_constraintRotation, "Constraint Rotation", "A rotation that rotates the constraint space.")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetLimitWidgetsVisibility)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_postRotation, "Post Rotation", "The relative rotation applied after solving.")
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_followSpeed, "Follow Speed", "The speed factor at which to follow the goal. A value near zero meaning super slow and a value of 1 meaning instant following.")
-                ->Attribute(AZ::Edit::Attributes::Min, 0.05f)
-                ->Attribute(AZ::Edit::Attributes::Max, 1.0)
-            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeLookAtNode::m_twistAxis, "Roll Axis", "The axis used for twist/roll.")
-                ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetLimitWidgetsVisibility)
-            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_limitsEnabled, "Enable Limits", "Enable rotational limits?")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
-            ;
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeLookAtNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_postRotation, "Post rotation", "The relative rotation applied after solving.");
+
+        root->ClassElement(AZ::Edit::ClassElements::Group, "Rotation Limits")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_limitsEnabled, "Enable limits", "Enable rotational limits?")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_limitMin, "Yaw/pitch min", "The minimum rotational yaw and pitch angle limits, in degrees.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetLimitWidgetsVisibility)
+            ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector2(-90.0f, -90.0f))
+            ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector2(90.0f, 90.0f))
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_limitMax, "Yaw/pitch max", "The maximum rotational yaw and pitch angle limits, in degrees.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetLimitWidgetsVisibility)
+            ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector2(-90.0f, -90.0f))
+            ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector2(90.0f, 90.0f))
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_constraintRotation, "Constraint rotation", "A rotation that rotates the constraint space.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetLimitWidgetsVisibility)
+            ->DataElement(AZ::Edit::UIHandlers::ComboBox, &BlendTreeLookAtNode::m_twistAxis, "Roll axis", "The axis used for twist/roll.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetLimitWidgetsVisibility);
+
+        root->ClassElement(AZ::Edit::ClassElements::Group, "Smoothing")
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_smoothing, "Enable smoothing", "Enable rotation smoothing, which is controlled by the follow speed setting.")
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeLookAtNode::m_followSpeed, "Follow speed", "The speed factor at which to follow the goal. A value near zero meaning super slow and a value of 1 meaning instant following.")
+            ->Attribute(AZ::Edit::Attributes::Visibility, &BlendTreeLookAtNode::GetFollowSpeedVisibility)
+            ->Attribute(AZ::Edit::Attributes::Min, 0.05f)
+            ->Attribute(AZ::Edit::Attributes::Max, 1.0);
     }
 } // namespace EMotionFX

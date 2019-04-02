@@ -24,6 +24,7 @@
 #include <AzCore/EBus/HandlerContainer.h>
 #include <AzCore/EBus/Policies.h>
 
+#include <AzCore/std/parallel/scoped_lock.h>
 #include <AzCore/std/typetraits/is_same.h>
 #include <AzCore/std/typetraits/conditional.h>
 #include <AzCore/std/typetraits/function_traits.h>
@@ -699,7 +700,7 @@ namespace AZ
                 }
                 if (context->m_buses.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
                     if (ebIter != context->m_buses.end())
                     {
@@ -734,7 +735,7 @@ namespace AZ
                 }
                 if (context->m_buses.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
                     if (ebIter != context->m_buses.end())
                     {
@@ -772,7 +773,7 @@ namespace AZ
                 }
                 if (ebBus.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
@@ -802,7 +803,7 @@ namespace AZ
                 }
                 if (ebBus.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
@@ -829,7 +830,7 @@ namespace AZ
                 }
                 if (context->m_buses.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
                     if (ebIter != context->m_buses.end())
                     {
@@ -863,7 +864,7 @@ namespace AZ
                 }
                 if (context->m_buses.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     typename Traits::BusesContainer::iterator ebIter = context->m_buses.find(id);
                     if (ebIter != context->m_buses.end())
                     {
@@ -900,7 +901,7 @@ namespace AZ
                 }
                 if (ebBus.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus, ebBus.rbegin(), &ebBus.m_busId);
                     while (ebCurrentEvent.m_iterator != ebBus.rend())
                     {
@@ -929,7 +930,7 @@ namespace AZ
                 }
                 if (ebBus.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     typename Bus::CallstackReverseIterator ebCurrentEvent(ebBus, ebBus.rbegin(), &ebBus);
                     while (ebCurrentEvent.m_iterator != ebBus.rend())
                     {
@@ -946,7 +947,7 @@ namespace AZ
             auto* context = Bus::GetContext();
             if (context && context->m_buses.size())
             {
-                context->m_mutex.lock();
+                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
                 auto ebFirstBus = context->m_buses.begin();
                 auto ebLastBus = context->m_buses.end();
                 bool isAbortEnum = false;
@@ -975,7 +976,6 @@ namespace AZ
                         ++ebFirstBus;
                     }
                 }
-                context->m_mutex.unlock();
             }
         }
 
@@ -986,7 +986,7 @@ namespace AZ
             auto* context = Bus::GetContext();
             if (context && context->m_buses.size())
             {
-                context->m_mutex.lock();
+                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
                 auto ebIter = context->m_buses.find(id);
                 if (ebIter != context->m_buses.end())
                 {
@@ -1004,7 +1004,6 @@ namespace AZ
                         }
                     }
                 }
-                context->m_mutex.unlock();
             }
         }
 
@@ -1019,7 +1018,7 @@ namespace AZ
                 {
                     auto* context = Bus::GetContext();
                     AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
-                    context->m_mutex.lock();
+                    AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
                     typename Bus::CallstackForwardIterator ebCurrentEvent(ebBus, ebBus.begin(), &ebBus.m_busId);
                     typename Traits::EBNode::iterator ebEnd = ebBus.end();
                     while (ebCurrentEvent.m_iterator != ebEnd)
@@ -1029,7 +1028,6 @@ namespace AZ
                             break;
                         }
                     }
-                    context->m_mutex.unlock();
                 }
             }
         }
@@ -1067,14 +1065,12 @@ namespace AZ
             auto& context = Bus::GetOrCreateContext(false);
             if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
+                typename Bus::Context::DispatchLockGuard lock(context.m_contextMutex);
                 // Route the event and skip processing if RouteEvent returns true.
                 if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, true, false, func, args...))
                 {
-                    context.m_mutex.unlock();
                     return;
                 }
-                context.m_mutex.unlock();
             }
 
             Bus::QueueFunction([id, func, args...]()
@@ -1093,14 +1089,12 @@ namespace AZ
             AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
             if (context->m_routing.m_routers.size())
             {
-                context->m_mutex.lock();
+                typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                 // Route the event and skip processing if RouteEvent returns true.
                 if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&(*ptr).m_busId, true, false, func, args...))
                 {
-                    context->m_mutex.unlock();
                     return;
                 }
-                context->m_mutex.unlock();
             }
 
             Bus::QueueFunction([ptr, func, args...]()
@@ -1118,14 +1112,12 @@ namespace AZ
             auto& context = Bus::GetOrCreateContext(false);
             if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
+                typename Bus::Context::DispatchLockGuard lock(context.m_contextMutex);
                 // Route the event and skip processing if RouteEvent returns true.
                 if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&id, true, true, func, args...))
                 {
-                    context.m_mutex.unlock();
                     return;
                 }
-                context.m_mutex.unlock();
             }
 
             Bus::QueueFunction([id, func, args...]()
@@ -1144,14 +1136,12 @@ namespace AZ
             AZ_Assert(context, "Internal error: context deleted with bind ptr outstanding.");
             if (context->m_routing.m_routers.size())
             {
-                context->m_mutex.lock();
+                typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                 // Route the event and skip processing if RouteEvent returns true.
                 if (context->m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(&(*ptr).m_busId, true, true, func, args...))
                 {
-                    context->m_mutex.unlock();
                     return;
                 }
-                context->m_mutex.unlock();
             }
 
             Bus::QueueFunction([ptr, func, args...]()
@@ -1169,13 +1159,12 @@ namespace AZ
             size_t size = 0;
             if (auto* context = Bus::GetContext())
             {
-                context->m_mutex.lock();
+                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
                 auto iter = context->m_buses.find(id);
                 if (iter != context->m_buses.end())
                 {
                     size = Traits::BusesContainer::toNodePtr(iter)->size();
                 }
-                context->m_mutex.unlock();
             }
             return size;
         }
@@ -1196,7 +1185,7 @@ namespace AZ
                 }
                 if (context->m_buses.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     auto ebFirstBus = context->m_buses.begin();
                     auto ebLastBus = context->m_buses.end();
                     for (; ebFirstBus != ebLastBus; )
@@ -1239,7 +1228,7 @@ namespace AZ
                 }
                 if (context->m_buses.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     auto ebFirstBus = context->m_buses.begin();
                     auto ebLastBus = context->m_buses.end();
                     for (; ebFirstBus != ebLastBus; )
@@ -1282,7 +1271,7 @@ namespace AZ
                 }
                 if (context->m_buses.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     auto ebCurrentBus = context->m_buses.rbegin();
                     for (; ebCurrentBus != context->m_buses.rend(); )
                     {
@@ -1357,7 +1346,7 @@ namespace AZ
                 }
                 if (context->m_buses.size())
                 {
-                    typename Bus::DispatchLockGuard lock(context->m_mutex);
+                    typename Bus::Context::DispatchLockGuard lock(context->m_contextMutex);
                     auto ebCurrentBus = context->m_buses.rbegin();
                     for (; ebCurrentBus != context->m_buses.rend(); )
                     {
@@ -1423,7 +1412,7 @@ namespace AZ
             auto* context = Bus::GetContext();
             if (context && context->m_buses.size())
             {
-                context->m_mutex.lock();
+                AZStd::scoped_lock<decltype(context->m_contextMutex)> lock(context->m_contextMutex);
                 auto ebFirstBus = context->m_buses.begin();
                 auto ebLastBus = context->m_buses.end();
                 bool isAbortEnum = false;
@@ -1452,7 +1441,6 @@ namespace AZ
                         ++ebFirstBus;
                     }
                 }
-                context->m_mutex.unlock();
             }
         }
 
@@ -1519,14 +1507,12 @@ namespace AZ
             auto& context = Bus::GetOrCreateContext(false);
             if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
+                typename Bus::Context::DispatchLockGuard lock(context.m_contextMutex);
                 // Route the event and skip processing if RouteEvent returns true.
                 if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, true, false, func, args...))
                 {
-                    context.m_mutex.unlock();
                     return;
                 }
-                context.m_mutex.unlock();
             }
 
             Bus::QueueFunction([func, args...]()
@@ -1545,14 +1531,12 @@ namespace AZ
             auto& context = Bus::GetOrCreateContext(false);
             if (context.m_routing.m_routers.size())
             {
-                context.m_mutex.lock();
+                typename Bus::Context::DispatchLockGuard lock(context.m_contextMutex);
                 // Route the event and skip processing if RouteEvent returns true.
                 if (context.m_routing.template RouteEvent<typename Bus::RouterCallstackEntry>(nullptr, true, true, func, args...))
                 {
-                    context.m_mutex.unlock();
                     return;
                 }
-                context.m_mutex.unlock();
             }
 
             Bus::QueueFunction([func, args...]()

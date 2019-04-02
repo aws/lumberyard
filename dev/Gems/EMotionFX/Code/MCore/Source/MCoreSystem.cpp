@@ -19,7 +19,6 @@
 #include "StringIdPool.h"
 #include "AttributeFactory.h"
 #include "MultiThreadManager.h"
-#include "JobManager.h"
 #include "MemoryTracker.h"
 #include "FileSystem.h"
 #include <MCore/Source/AttributeAllocator.h>
@@ -35,9 +34,7 @@ namespace MCore
         mMemAllocFunction       = StandardAllocate;
         mMemReallocFunction     = StandardRealloc;
         mMemFreeFunction        = StandardFree;
-        mJobExecutionFunction   = nullptr;              // defaults to use MCore's job manager or OpenMP if openmp is enabled (in the compiler flags)
         mTrackMemoryUsage       = false;                // do not track memory usage on default, for maximum performance and pretty much zero tracking overhead
-        mNumThreads             = MCORE_INVALIDINDEX32; // use num logical processors
     }
 
     // static main init method
@@ -52,15 +49,6 @@ namespace MCore
         // create the gMCore object
         if (!gMCore)
         {
-            if (realSettings->mNumThreads == MCORE_INVALIDINDEX32)
-            {
-                realSettings->mNumThreads = AZStd::thread::hardware_concurrency();
-                if (realSettings->mNumThreads == 0)
-                {
-                    realSettings->mNumThreads = 1;
-                }
-            }
-
             // create the main core object using placement new
             gMCore = AZ::Environment::CreateVariable<MCoreSystem*>(kMCoreInstanceVarName);
             gMCore.Set(new(realSettings->mMemAllocFunction(sizeof(MCoreSystem), MCORE_MEMCATEGORY_MCORESYSTEM, 0, MCORE_FILE, MCORE_LINE))MCoreSystem());
@@ -97,16 +85,14 @@ namespace MCore
 
     // constructor
     MCoreSystem::MCoreSystem()
-        : mJobListExecuteFunc(nullptr)
-        , mAllocateFunction(StandardAllocate)
+        : mAllocateFunction(StandardAllocate)
         , mReallocFunction(StandardRealloc)
         , mFreeFunction(StandardFree)
     {
         mLogManager         = nullptr;
         mIDGenerator        = nullptr;
-        mStringIdPool  = nullptr;
+        mStringIdPool       = nullptr;
         mAttributeFactory   = nullptr;
-        mJobManager         = nullptr;
         mMemoryTracker      = nullptr;
         mMemTempBuffer      = nullptr;
         mMemTempBufferSize  = 0;
@@ -150,41 +136,16 @@ namespace MCore
             mFreeFunction = StandardFree;
         }
 
-    #ifdef MCORE_OPENMP_ENABLED
-        if (settings.mJobExecutionFunction)
-        {
-            mJobListExecuteFunc = settings.mJobExecutionFunction;
-        }
-        else
-        {
-            mJobListExecuteFunc = &JobListExecuteOpenMP;
-            settings.mNumThreads = 0;
-        }
-    #else
-        if (settings.mJobExecutionFunction)
-        {
-            mJobListExecuteFunc = settings.mJobExecutionFunction;
-        }
-        else
-        {
-            mJobListExecuteFunc = &JobListExecuteMCoreJobSystem;
-        }
-    #endif
-
         // allocate new objects
         mMemoryTracker      = new MemoryTracker();
         mTrackMemory        = settings.mTrackMemoryUsage;
         mLogManager         = new LogManager();
         mIDGenerator        = new IDGenerator();
-        mStringIdPool  = new StringIdPool();
+        mStringIdPool       = new StringIdPool();
         mAttributeFactory   = new AttributeFactory();
-        mJobManager         = JobManager::Create(settings.mNumThreads);
         mMemTempBufferSize  = 256 * 1024;
         mMemTempBuffer      = Allocate(mMemTempBufferSize, MCORE_MEMCATEGORY_SYSTEM);// 256 kb
         MCORE_ASSERT(mMemTempBuffer);
-
-        // start accepting jobs in the manager
-        mJobManager->StartAcceptingJobs();
 
         if (mTrackMemory)
         {
@@ -202,10 +163,6 @@ namespace MCore
         MCore::Free(mMemTempBuffer);
         mMemTempBuffer = nullptr;
         mMemTempBufferSize = 0;
-
-        // destroy the job manager
-        MCore::Destroy(mJobManager);
-        mJobManager = nullptr;
 
         // shutdown the log manager
         delete mLogManager;
@@ -300,7 +257,6 @@ namespace MCore
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_FRUSTUM,             "MCORE_MEMCATEGORY_FRUSTUM");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_STREAM,              "MCORE_MEMCATEGORY_STREAM");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_MULTITHREADMANAGER,  "MCORE_MEMCATEGORY_MULTITHREADMANAGER");
-        memTracker.RegisterCategory(MCORE_MEMCATEGORY_JOBSYSTEM,           "MCORE_MEMCATEGORY_JOBSYSTEM");
         memTracker.RegisterCategory(MCORE_MEMCATEGORY_MISC,                "MCORE_MEMCATEGORY_MISC");
     }
 }   // namespace MCore

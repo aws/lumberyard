@@ -63,7 +63,11 @@ void CScreenSpaceObscurancePass::Execute()
 
     CTexture* pDestRT = CTexture::s_ptexStereoR;
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ScreenSpaceObscurance_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ScreenSpaceObscurance_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ScreenSpaceObscurance_cpp_provo.inl"
+    #endif
 #endif
 
     const bool bLowResOutput = (CRenderer::CV_r_ssdoHalfRes == 3);

@@ -28,143 +28,6 @@
 
 namespace EMStudio
 {
-    class SceneManagerPluginEventHandler
-        : public EMotionFX::EventHandler
-    {
-    public:
-        AZ_CLASS_ALLOCATOR(SceneManagerPluginEventHandler, EMotionFX::EventHandlerAllocator, 0)
-
-        void OnDeleteActor(EMotionFX::Actor* actor) override
-        {
-            if (actor == nullptr)
-            {
-                return;
-            }
-
-            OutlinerManager* manager = GetOutlinerManager();
-            if (manager == nullptr)
-            {
-                return;
-            }
-
-            if (actor->GetIsOwnedByRuntime())
-            {
-                return;
-            }
-
-            manager->RemoveItemFromCategory("Actors", actor->GetID());
-        }
-    };
-
-
-    class ActorsOutlinerCategoryCallback
-        : public OutlinerCategoryCallback
-    {
-        MCORE_MEMORYOBJECTCATEGORY(ActorsOutlinerCategoryCallback, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS)
-
-    public:
-        ActorsOutlinerCategoryCallback(SceneManagerPlugin* plugin)
-        {
-            mPlugin = plugin;
-        }
-
-        ~ActorsOutlinerCategoryCallback()
-        {
-        }
-
-        QString BuildNameItem(OutlinerCategoryItem* item) const override
-        {
-            EMotionFX::Actor* actor = static_cast<EMotionFX::Actor*>(item->mUserData);
-            return actor->GetName();
-        }
-
-        QString BuildToolTipItem(OutlinerCategoryItem* item) const override
-        {
-            EMotionFX::Actor* actor = static_cast<EMotionFX::Actor*>(item->mUserData);
-
-            AZStd::string relativeFileName = actor->GetFileNameString();
-            EMotionFX::GetEMotionFX().GetFilenameRelativeToMediaRoot(&relativeFileName);
-            
-            QString toolTip = "<table border=\"0\">";
-            toolTip += "<tr><td><p style='white-space:pre'><b>Name: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(actor->GetNameString().empty() ? "&#60;no name&#62;" : actor->GetName());
-            toolTip += "<tr><td><p style='white-space:pre'><b>FileName: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(relativeFileName.empty() ? "&#60;not saved yet&#62;" : relativeFileName.c_str());
-            toolTip += "<tr><td><p style='white-space:pre'><b>Num Nodes: </b></p></td>";
-            toolTip += QString("<td><p style='color:rgb(115, 115, 115); white-space:pre'>%1</p></td></tr>").arg(actor->GetNumNodes());
-            toolTip += "</table>";
-            return toolTip;
-        }
-
-        QIcon GetIcon(OutlinerCategoryItem* item) const override
-        {
-            MCORE_UNUSED(item);
-            return MysticQt::GetMysticQt()->FindIcon("Images/OutlinerPlugin/ActorsCategory.png");
-        }
-
-        void OnRemoveItems(QWidget* parent, const AZStd::vector<OutlinerCategoryItem*>& items, MCore::CommandGroup* commandGroup) override
-        {
-            MCORE_UNUSED(parent);
-
-            // remove each item
-            const size_t numItems = items.size();
-            for (size_t i = 0; i < numItems; ++i)
-            {
-                // cast the user data to get the actor
-                EMotionFX::Actor* actor = static_cast<EMotionFX::Actor*>(items[i]->mUserData);
-
-                // ask to save if dirty
-                mPlugin->SaveDirtyActor(actor, commandGroup, true, false);
-
-                // remove actor instances
-                const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
-                for (uint32 j = 0; j < numActorInstances; ++j)
-                {
-                    EMotionFX::ActorInstance* actorInstance = EMotionFX::GetActorManager().GetActorInstance(j);
-                    if (actorInstance->GetActor() == actor)
-                    {
-                        commandGroup->AddCommandString(AZStd::string::format("RemoveActorInstance -actorInstanceID %i", actorInstance->GetID()));
-                    }
-                }
-
-                // remove the actor
-                commandGroup->AddCommandString(AZStd::string::format("RemoveActor -actorID %i", actor->GetID()));
-            }
-        }
-
-        void OnPostRemoveItems(QWidget* parent) override
-        {
-            MCORE_UNUSED(parent);
-        }
-
-        void OnLoadItem(QWidget* parent) override
-        {
-            // get the actors filename using file dialog
-            const AZStd::vector<AZStd::string> filenames = GetMainWindow()->GetFileManager()->LoadActorsFileDialog(parent);
-
-            // create our command group
-            MCore::CommandGroup commandGroup("Add actors");
-
-            AZStd::string command;
-            for (const AZStd::string& filename : filenames)
-            {
-                command = AZStd::string::format("ImportActor -filename \"%s\"", filename.c_str());
-                commandGroup.AddCommandString(command);
-            }
-
-            // execute the group command
-            AZStd::string result;
-            if (!EMStudio::GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
-            {
-                AZ_Error("EMotionFX", false, result.c_str());
-            }
-        }
-
-    private:
-        SceneManagerPlugin* mPlugin;
-    };
-
-
     void SaveDirtyActorFilesCallback::GetDirtyFileNames(AZStd::vector<AZStd::string>* outFileNames, AZStd::vector<ObjectPointer>* outObjects)
     {
         const uint32 numMasterActors = EMotionFX::GetActorManager().GetNumActors();
@@ -230,8 +93,7 @@ namespace EMStudio
         mActorSetCollisionMeshesCallback    = nullptr;
         mAdjustActorInstanceCallback        = nullptr;
         mDirtyFilesCallback                 = nullptr;
-        mOutlinerCategoryCallback           = nullptr;
-    }
+            }
 
 
     // save dirty actor
@@ -349,12 +211,6 @@ namespace EMStudio
 
         GetMainWindow()->GetDirtyFileManager()->RemoveCallback(mDirtyFilesCallback, false);
         delete mDirtyFilesCallback;
-
-        EMotionFX::GetEventManager().RemoveEventHandler(mEventHandler, true);
-
-        // unregister the outliner category
-        GetOutlinerManager()->UnregisterCategory("Actors");
-        delete mOutlinerCategoryCallback;
     }
 
 
@@ -415,7 +271,7 @@ namespace EMStudio
         mDock->SetContents(dialogStack);
 
         // connect
-        connect(mDock, SIGNAL(visibilityChanged(bool)), this, SLOT(WindowReInit(bool)));
+        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &SceneManagerPlugin::WindowReInit);
 
         // reinit the dialog
         ReInit();
@@ -423,25 +279,6 @@ namespace EMStudio
         // initialize the dirty files callback
         mDirtyFilesCallback = new SaveDirtyActorFilesCallback(this);
         GetMainWindow()->GetDirtyFileManager()->AddCallback(mDirtyFilesCallback);
-
-        // register the outliner category
-        mOutlinerCategoryCallback = new ActorsOutlinerCategoryCallback(this);
-        OutlinerCategory* outlinerCategory = GetOutlinerManager()->RegisterCategory("Actors", mOutlinerCategoryCallback);
-
-        // add each item in the outliner category
-        const uint32 numActors = EMotionFX::GetActorManager().GetNumActors();
-        for (uint32 i = 0; i < numActors; ++i)
-        {
-            EMotionFX::Actor* actor = EMotionFX::GetActorManager().GetActor(i);
-            if (!actor->GetIsOwnedByRuntime())
-            {
-                outlinerCategory->AddItem(actor->GetID(), actor);
-            }
-        }
-
-        // add the event handler
-        mEventHandler = aznew SceneManagerPluginEventHandler();
-        EMotionFX::GetEventManager().AddEventHandler(mEventHandler);
 
         return true;
     }
@@ -528,14 +365,10 @@ namespace EMStudio
         EMotionFX::Actor* actor = EMotionFX::GetActorManager().FindActorByID(importActorCommand->mPreviouslyUsedID);
         if (actor)
         {
-            GetOutlinerManager()->AddItemToCategory("Actors", actor->GetID(), actor);
-
             // Generate metrics
-            {
-                // Morph Target use for LOD 0 only
-                EMotionFX::MorphSetup * morphSetup = actor->GetMorphSetup(0);
-                MetricsEventSender::SendActorMorphTargetSizesEvent(morphSetup);
-            }
+            // Morph Target use for LOD 0 only
+            EMotionFX::MorphSetup * morphSetup = actor->GetMorphSetup(0);
+            MetricsEventSender::SendActorMorphTargetSizesEvent(morphSetup);
         }
         return ReInitSceneManagerPlugin();
     }
@@ -545,7 +378,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandImportActor* importActorCommand = static_cast<CommandSystem::CommandImportActor*>(command);
-        GetOutlinerManager()->RemoveItemFromCategory("Actors", importActorCommand->mPreviouslyUsedID);
         return ReInitSceneManagerPlugin();
     }
 
@@ -554,7 +386,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
         return ReInitSceneManagerPlugin();
     }
 
@@ -570,7 +401,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(commandLine);
         CommandSystem::CommandRemoveActor* removeActorCommand = static_cast<CommandSystem::CommandRemoveActor*>(command);
-        GetOutlinerManager()->RemoveItemFromCategory("Actors", removeActorCommand->mPreviouslyUsedID);
         return ReInitSceneManagerPlugin();
     }
 
@@ -624,7 +454,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
         return ReInitSceneManagerPlugin();
     }
 
@@ -633,7 +462,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
         return ReInitSceneManagerPlugin();
     }
 
@@ -642,7 +470,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
         return ReInitSceneManagerPlugin();
     }
 
@@ -651,7 +478,6 @@ namespace EMStudio
     {
         MCORE_UNUSED(command);
         MCORE_UNUSED(commandLine);
-        GetOutlinerManager()->FireItemModifiedEvent();
         return ReInitSceneManagerPlugin();
     }
 

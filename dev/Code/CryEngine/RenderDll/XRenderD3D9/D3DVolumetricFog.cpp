@@ -274,6 +274,13 @@ void CVolumetricFog::CreateResources()
             && ((CRenderer::CV_r_VolumetricFogDownscaledSunShadow == 1 && !m_downscaledShadow[2])
                 || (CRenderer::CV_r_VolumetricFogDownscaledSunShadow != 1 && m_downscaledShadow[2])));
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if(gcpRendD3D->IsRenderToTextureActive())
+    {
+        return;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     if (validVolumeTexture && validDownscaledShadowMaps)
     {
         return;
@@ -419,7 +426,7 @@ void CVolumetricFog::CreateResources()
         // texture name has to exactly match the name of CTexture::s_ptexVolumetricClipVolumeStencil.
         if (CTexture::s_ptexVolumetricClipVolumeStencil != ptex || CTexture::s_ptexVolumetricClipVolumeStencil->GetFlags() & FT_FAILED)
         {
-            CryFatalError("Couldn't allocate texture.");
+            CryFatalError("Couldn't allocate volumetric clip volume stencil texture.");
         }
 
         // This is the code for working around that stencil readable shader resource view can't be created directly.
@@ -1356,6 +1363,13 @@ void CVolumetricFog::PushFogVolume(CREFogVolume* pFogVolume, const SRenderingPas
 
 void CVolumetricFog::ClearFogVolumes()
 {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if(gcpRendD3D->IsRenderToTextureActive())
+    {
+        return;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     const uint32 nThreadID = gcpRendD3D->m_RP.m_nFillThreadID;
     int32 nRecurseLevel = SRendItem::m_RecurseLevel[nThreadID];
 
@@ -1370,6 +1384,13 @@ void CVolumetricFog::ClearFogVolumes()
 
 void CVolumetricFog::ClearAllFogVolumes()
 {
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if(gcpRendD3D->IsRenderToTextureActive())
+    {
+        return;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     for (int32 i = 0; i < RT_COMMAND_BUF_COUNT; ++i)
     {
         for (int32 j = 0; j < MAX_REND_RECURSION_LEVELS; ++j)
@@ -1401,6 +1422,12 @@ bool CVolumetricFog::IsViable() const
 {
     int nThreadID = gcpRendD3D->m_RP.m_nProcessThreadID;
     int nRecurseLevel = SRendItem::m_RecurseLevel[nThreadID];
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if ((gcpRendD3D->m_RP.m_TI[nThreadID].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE) != 0)
+    {
+        return false;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     bool v = CD3D9Renderer::CV_r_VolumetricFog != 0     // IsEnableInFrame() and e_VolumetricFog are accumulated.
         && gcpRendD3D->m_RP.m_TI[nThreadID].m_FS.m_bEnable
@@ -1439,12 +1466,13 @@ void CVolumetricFog::InjectInscatteringLight()
     D3DUnorderedAccessView* pUAVNull[4] = { NULL };
     rd->m_DevMan.BindUAV(eHWSC_Compute, pUAVNull, NULL, 0, 4);
 
+    // We are bypassing various texture shadow state caches by directly hitting the device manager for clearing texture slots here.
+    // CTexture::Apply can cache textures into CTexture::s_TexStages, which are not invalidated by the device manager and can lead CTexture to falsely believe
+    // a texture is still bound to the device when it has been cleared.
+    rd->RT_UnbindTMUs();
+
     rd->FX_Commit();
     rd->m_DevMan.CommitDeviceStates();
-
-    // state caching by using s_TexStateIDs doesn't work for compute shader so it's reset.
-    CTexture::ResetTMUs();
-
 
     rd->FX_SetupShadowsForFog();
 
@@ -1639,9 +1667,11 @@ void CVolumetricFog::InjectInscatteringLight()
     rd->m_DevMan.BindSRV(eHWSC_Compute, pSRVNull, 0, 8);
     rd->m_DevMan.BindSRV(eHWSC_Compute, pSRVNull, 8, 8);
     rd->m_DevMan.BindSRV(eHWSC_Compute, pSRVNull, 16, 8);
-
-    //D3DSamplerState* pSampNull[2] = { NULL };
-    //rd->m_DevMan.BindSampler( eHWSC_Compute, pSampNull, 0, 2 );
+    
+    // We are bypassing various texture shadow state caches by directly hitting the device manager for clearing texture slots here.
+    // CTexture::Apply can cache textures into CTexture::s_TexStages, which are not invalidated by the device manager and can lead CTexture to falsely believe
+    // a texture is still bound to the device when it has been cleared.
+    rd->RT_UnbindTMUs();
 
     // restore state
     rp.m_StateAnd = prevStateAnd;

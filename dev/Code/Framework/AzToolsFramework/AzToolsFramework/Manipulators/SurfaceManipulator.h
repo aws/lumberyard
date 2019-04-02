@@ -31,8 +31,8 @@ namespace AzToolsFramework
         AZ_RTTI(SurfaceManipulator, "{75B8EF42-A5F0-48EB-893E-84BED1BC8BAF}", BaseManipulator)
         AZ_CLASS_ALLOCATOR(SurfaceManipulator, AZ::SystemAllocator, 0)
 
-        explicit SurfaceManipulator(AZ::EntityId entityId);
-        ~SurfaceManipulator();
+        SurfaceManipulator(AZ::EntityId entityId, const AZ::Transform& worldFromLocal);
+        ~SurfaceManipulator() = default;
 
         /**
          * The state of the manipulator at the start of an interaction.
@@ -63,17 +63,9 @@ namespace AzToolsFramework
 
         using MouseActionCallback = AZStd::function<void(const Action&)>;
 
-        void InstallLeftMouseDownCallback(MouseActionCallback onMouseDownCallback);
-        void InstallLeftMouseUpCallback(MouseActionCallback onMouseUpCallback);
-        void InstallMouseMoveCallback(MouseActionCallback onMouseMoveCallback);
-
-        void OnLeftMouseDownImpl(
-            const ViewportInteraction::MouseInteraction& interaction,
-            float rayIntersectionDistance) override;
-        void OnLeftMouseUpImpl(const ViewportInteraction::MouseInteraction& interaction) override;
-        void OnMouseMoveImpl(const ViewportInteraction::MouseInteraction& interaction) override;
-
-        void SetBoundsDirtyImpl() override;
+        void InstallLeftMouseDownCallback(const MouseActionCallback& onMouseDownCallback);
+        void InstallLeftMouseUpCallback(const MouseActionCallback& onMouseUpCallback);
+        void InstallMouseMoveCallback(const MouseActionCallback& onMouseMoveCallback);
 
         void Draw(
             const ManipulatorManagerState& managerState,
@@ -82,16 +74,28 @@ namespace AzToolsFramework
             const ViewportInteraction::MouseInteraction& mouseInteraction) override;
 
         void SetPosition(const AZ::Vector3& position) { m_position = position; }
+        void SetSpace(const AZ::Transform& worldFromLocal) { m_worldFromLocal = worldFromLocal; }
+
         const AZ::Vector3& GetPosition() const { return m_position; }
 
         void SetView(AZStd::unique_ptr<ManipulatorView>&& view);
 
-    protected:
-        void InvalidateImpl() override;
-
     private:
-        AZ::Vector3 m_position = AZ::Vector3::CreateZero(); ///< Position in local space.
+        AZ_DISABLE_COPY_MOVE(SurfaceManipulator)
 
+        void OnLeftMouseDownImpl(
+            const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance) override;
+        void OnLeftMouseUpImpl(
+            const ViewportInteraction::MouseInteraction& interaction) override;
+        void OnMouseMoveImpl(
+            const ViewportInteraction::MouseInteraction& interaction) override;
+
+        void InvalidateImpl() override;
+        void SetBoundsDirtyImpl() override;
+
+        /**
+         * Initial data recorderd when a press first happens with a surface manipulator.
+         */
         struct StartInternal
         {
             AZ::Vector3 m_localPosition; ///< The current position of the manipulator in local space.
@@ -99,6 +103,9 @@ namespace AzToolsFramework
             AZ::Vector3 m_snapOffset; ///< The snap offset amount to ensure manipulator is aligned to the grid.
         };
 
+        AZ::Vector3 m_position = AZ::Vector3::CreateZero(); ///< Position in local space.
+        AZ::Transform m_worldFromLocal = AZ::Transform::CreateIdentity(); ///< Space the manipulator is in (identity is world space).
+        
         StartInternal m_startInternal; ///< Internal intitial state recorded/created in OnMouseDown.
 
         AZStd::unique_ptr<ManipulatorView> m_manipulatorView = nullptr; ///< Look of manipulator.
@@ -115,4 +122,4 @@ namespace AzToolsFramework
             const StartInternal& startInternal, const AZ::Transform& worldFromLocal, 
             const AZ::Vector3& worldSurfacePosition, bool snapping, float gridSize, int viewportId);
     };
-}
+} // namespace AzToolsFramework

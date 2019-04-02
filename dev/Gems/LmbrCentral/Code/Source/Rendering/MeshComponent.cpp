@@ -72,11 +72,13 @@ namespace LmbrCentral
         if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<MeshComponentRequestBus>("MeshComponentRequestBus")
-                ->Event("GetWorldBounds", &MeshComponentRequestBus::Events::GetWorldBounds)
-                ->Event("GetLocalBounds", &MeshComponentRequestBus::Events::GetLocalBounds)
                 ->Event("SetVisibility", &MeshComponentRequestBus::Events::SetVisibility)
                 ->Event("GetVisibility", &MeshComponentRequestBus::Events::GetVisibility)
                 ->VirtualProperty("Visibility", "GetVisibility", "SetVisibility");
+
+            behaviorContext->EBus<RenderBoundsRequestBus>("RenderBoundsRequestBus")
+                ->Event("GetWorldBounds", &RenderBoundsRequestBus::Events::GetWorldBounds)
+                ->Event("GetLocalBounds", &RenderBoundsRequestBus::Events::GetLocalBounds);
 
             const char* setMaterialParamTooltip = "Sets a Material param value for the given Entity. The Material will be cloned once before any changes are applied, so other instances are not affected.";
             const char* getMaterialParamTooltip = "Returns a Material param value for the given Entity";
@@ -133,6 +135,7 @@ namespace LmbrCentral
                 ->Field("ViewDistanceMultiplier", &MeshComponentRenderNode::MeshRenderOptions::m_viewDistMultiplier)
                 ->Field("LODRatio", &MeshComponentRenderNode::MeshRenderOptions::m_lodRatio)
                 ->Field("CastShadows", &MeshComponentRenderNode::MeshRenderOptions::m_castShadows)
+                ->Field("LODBBoxBased", &MeshComponentRenderNode::MeshRenderOptions::m_lodBoundingBoxBased)
                 ->Field("UseVisAreas", &MeshComponentRenderNode::MeshRenderOptions::m_useVisAreas)
                 ->Field("RainOccluder", &MeshComponentRenderNode::MeshRenderOptions::m_rainOccluder)
                 ->Field("AffectDynamicWater", &MeshComponentRenderNode::MeshRenderOptions::m_affectDynamicWater)
@@ -229,6 +232,7 @@ namespace LmbrCentral
         , m_lodRatio(100)
         , m_useVisAreas(true)
         , m_castShadows(true)
+        , m_lodBoundingBoxBased(false)
         , m_rainOccluder(true)
         , m_affectNavmesh(true)
         , m_affectDynamicWater(false)
@@ -250,6 +254,7 @@ namespace LmbrCentral
         , m_auxiliaryRenderFlagsHistory(0)
         , m_lodDistance(0.f)
         , m_lodDistanceScaled(FLT_MAX / (SMeshLodInfo::s_nMaxLodCount + 1))  // defualt overflow prevention - it is scaled by (SMeshLodInfo::s_nMaxLodCount + 1)
+        , m_lodDistanceScaleValue(1.0f)  
         , m_isRegisteredWithRenderer(false)
         , m_objectMoved(false)
         , m_meshAsset(AZ::Data::AssetLoadBehavior::QueueLoad)
@@ -647,6 +652,8 @@ namespace LmbrCentral
         UpdateRenderFlag(false == m_renderOptions.m_affectDynamicWater && m_renderOptions.IsStatic(), ERF_NODYNWATER, flags);
         UpdateRenderFlag(false == m_renderOptions.m_acceptDecals, ERF_NO_DECALNODE_DECALS, flags);
 
+        UpdateRenderFlag(m_renderOptions.m_lodBoundingBoxBased, ERF_LOD_BBOX_BASED, flags);
+
         // Apply current auxiliary render flags
         UpdateRenderFlag(true, m_auxiliaryRenderFlags, flags);
 
@@ -687,6 +694,24 @@ namespace LmbrCentral
         {
             float   invDissolveDist = 1.0f / CLAMP(0.1f * m_fWSMaxViewDist, dissolveDistMin, dissolveDistMax );
             int     nextLod = m_statObj->FindNearesLoadedLOD(currentLod + 1, true);
+            
+            // If the user chose to base LOD switch on bounding boxes, then we do not use the geometric mean computed at init.
+            if (GetRndFlags() & ERF_LOD_BBOX_BASED)
+            {
+                const float lodRatio = GetLodRatioNormalized();
+                if (lodRatio > 0.0f)
+                {
+                    // We do not use a geometric mean  per object but a global value for all objects.
+                    static ICVar* lodBoundingBoxDistanceMultiplier = gEnv->pConsole->GetCVar("e_LodBoundingBoxDistanceMultiplier");
+
+                    m_lodDistanceScaled = lodBoundingBoxDistanceMultiplier->GetFVal() * m_lodDistanceScaleValue;
+                }
+            }
+            else
+            {
+                m_lodDistanceScaled = m_lodDistance * m_lodDistanceScaleValue;
+            }
+
             float   lodDistance = m_lodDistanceScaled * (currentLod + 1);
             uint8   dissolveRatio255 = (uint8)SATURATEB((1.0f + (entityDistance - lodDistance) * invDissolveDist) * 255.f);
 
@@ -804,6 +829,7 @@ namespace LmbrCentral
         if (lodRatio > 0.0f)
         {
             m_lodDistanceScaled = m_lodDistance / (lodRatio * frameLodInfo.fTargetSize);
+            m_lodDistanceScaleValue = 1.0f / (lodRatio * frameLodInfo.fTargetSize);
         }
     }
 
@@ -962,6 +988,7 @@ namespace LmbrCentral
         // m_mesh.CreateMesh() can result in events (eg: OnMeshCreated) that we want receive.
         MaterialOwnerRequestBus::Handler::BusConnect(m_entity->GetId());
         MeshComponentRequestBus::Handler::BusConnect(m_entity->GetId());
+        RenderBoundsRequestBus::Handler::BusConnect(m_entity->GetId());
         RenderNodeRequestBus::Handler::BusConnect(m_entity->GetId());
         m_meshRenderNode.CreateMesh();
         LegacyMeshComponentRequestBus::Handler::BusConnect(GetEntityId());
@@ -970,6 +997,7 @@ namespace LmbrCentral
     void MeshComponent::Deactivate()
     {
         MeshComponentRequestBus::Handler::BusDisconnect();
+        RenderBoundsRequestBus::Handler::BusDisconnect();
         MaterialOwnerRequestBus::Handler::BusDisconnect();
         LegacyMeshComponentRequestBus::Handler::BusDisconnect();
         RenderNodeRequestBus::Handler::BusDisconnect();

@@ -39,6 +39,12 @@ namespace LmbrCentral
         AZ_EDITOR_COMPONENT(EditorRigidPhysicsComponent, AzFramework::EditorRigidPhysicsComponentTypeId, EditorPhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
 
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            EditorPhysicsComponent::GetProvidedServices(provided);
+            provided.push_back(AZ_CRC("RigidPhysicsService", 0xc03b426c));
+        }
+
         EditorRigidPhysicsComponent() = default;
         ~EditorRigidPhysicsComponent() override = default;
 

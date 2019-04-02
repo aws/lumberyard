@@ -123,7 +123,7 @@ namespace EMotionFX
 
 
     BlendSpace2DNode::BlendSpace2DNode()
-        : BlendSpaceNode(nullptr, "")
+        : BlendSpaceNode()
         , m_evaluatorX(nullptr)
         , m_evaluatorTypeX(azrtti_typeid<BlendSpaceParamEvaluatorNone>())
         , m_calculationMethodX(ECalculationMethod::AUTO)
@@ -133,9 +133,10 @@ namespace EMotionFX
         , m_syncMode(SYNCMODE_DISABLED)
         , m_currentPositionSetInteractively(false)
     {
-        InitInputPorts(2);
+        InitInputPorts(3);
         SetupInputPortAsNumber("X", INPUTPORT_XVALUE, PORTID_INPUT_XVALUE);
         SetupInputPortAsNumber("Y", INPUTPORT_YVALUE, PORTID_INPUT_YVALUE);
+        SetupInputPortAsNumber("In Place", INPUTPORT_INPLACE, PORTID_INPUT_INPLACE);
 
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
@@ -275,6 +276,19 @@ namespace EMotionFX
         }
     }
 
+
+    bool BlendSpace2DNode::GetIsInPlace(AnimGraphInstance* animGraphInstance) const
+    {
+        EMotionFX::BlendTreeConnection* inPlaceConnection = GetInputPort(INPUTPORT_INPLACE).mConnection;
+        if (inPlaceConnection)
+        {
+            return GetInputNumberAsBool(animGraphInstance, INPUTPORT_INPLACE);
+        }
+
+        return m_inPlace;
+    }
+
+
     void BlendSpace2DNode::OnUpdateUniqueData(AnimGraphInstance* animGraphInstance)
     {
         // Find the unique data for this node, if it doesn't exist yet, create it.
@@ -328,16 +342,20 @@ namespace EMotionFX
         AnimGraphPose* motionOutPose = posePool.RequestPose(actorInstance);
         Pose& motionOutLocalPose = motionOutPose->GetPose();
 
+        OutputIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_INPLACE));
+
+        const bool inPlace = GetIsInPlace(animGraphInstance);
         if (uniqueData->m_currentTriangle.m_triangleIndex != MCORE_INVALIDINDEX32)
         {
             const Triangle& triangle = uniqueData->m_triangles[uniqueData->m_currentTriangle.m_triangleIndex];
             for (int i = 0; i < 3; ++i)
             {
                 MotionInstance* motionInstance = uniqueData->m_motionInfos[triangle.m_vertIndices[i]].m_motionInstance;
+                motionInstance->SetIsInPlace(inPlace);
                 motionOutPose->InitFromBindPose(actorInstance);
                 motionInstance->GetMotion()->Update(&bindPose->GetPose(), &motionOutLocalPose, motionInstance);
 
-                if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled())
+                if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled() && !motionInstance->GetMotion()->GetIsAdditive())
                 {
                     motionOutLocalPose.CompensateForMotionExtractionDirect(motionInstance->GetMotion()->GetMotionExtractionFlags());
                 }
@@ -351,10 +369,11 @@ namespace EMotionFX
             for (int i = 0; i < 2; ++i)
             {
                 MotionInstance* motionInstance = uniqueData->m_motionInfos[edge.m_vertIndices[i]].m_motionInstance;
+                motionInstance->SetIsInPlace(inPlace);
                 motionOutPose->InitFromBindPose(actorInstance);
                 motionInstance->GetMotion()->Update(&bindPose->GetPose(), &motionOutLocalPose, motionInstance);
 
-                if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled())
+                if (motionInstance->GetMotionExtractionEnabled() && actorInstance->GetMotionExtractionEnabled() && !motionInstance->GetMotion()->GetIsAdditive())
                 {
                     motionOutLocalPose.CompensateForMotionExtractionDirect(motionInstance->GetMotion()->GetMotionExtractionFlags());
                 }
@@ -373,13 +392,10 @@ namespace EMotionFX
         posePool.FreePose(motionOutPose);
         posePool.FreePose(bindPose);
 
-
-#ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-#endif
     }
 
     void BlendSpace2DNode::TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds)
@@ -417,11 +433,14 @@ namespace EMotionFX
             {
                 UpdateIncomingNode(animGraphInstance, param1Connection->GetSourceNode(), timePassedInSeconds);
             }
+
             EMotionFX::BlendTreeConnection* param2Connection = GetInputPort(INPUTPORT_YVALUE).mConnection;
             if (param2Connection)
             {
                 UpdateIncomingNode(animGraphInstance, param2Connection->GetSourceNode(), timePassedInSeconds);
             }
+
+            UpdateIncomingNode(animGraphInstance, GetInputNode(INPUTPORT_INPLACE), timePassedInSeconds);
         }
 
         UniqueData* uniqueData = static_cast<UniqueData*>(FindUniqueNodeData(animGraphInstance));
@@ -497,7 +516,8 @@ namespace EMotionFX
         data->ClearEventBuffer();
         data->ZeroTrajectoryDelta();
 
-        DoPostUpdate(animGraphInstance, uniqueData->m_masterMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, m_eventFilterMode, data);
+        const bool inPlace = GetIsInPlace(animGraphInstance);
+        DoPostUpdate(animGraphInstance, uniqueData->m_masterMotionIdx, uniqueData->m_blendInfos, uniqueData->m_motionInfos, m_eventFilterMode, data, inPlace);
     }
 
 
@@ -621,7 +641,8 @@ namespace EMotionFX
         }
 
         AZ_Assert(uniqueDataMotionIndex < uniqueData->m_motionInfos.size(), "Invalid amount of motion infos in unique data");
-        const MotionInstance* motionInstance = uniqueData->m_motionInfos[uniqueDataMotionIndex].m_motionInstance;
+        MotionInstance* motionInstance = uniqueData->m_motionInfos[uniqueDataMotionIndex].m_motionInstance;
+        motionInstance->SetIsInPlace(false);
         const BlendSpaceManager* blendSpaceManager = GetAnimGraphManager().GetBlendSpaceManager();
 
         position = AZ::Vector2::CreateZero();
@@ -839,6 +860,7 @@ namespace EMotionFX
             }
 
             MotionInstance* motionInstance = uniqueData.m_motionInfos[iUniqueDataMotionIndex].m_motionInstance;
+            motionInstance->SetIsInPlace(false);
             AZ::Vector2& point = uniqueData.m_motionCoordinates[iUniqueDataMotionIndex];
 
             // X
@@ -1010,17 +1032,19 @@ namespace EMotionFX
 
             EMotionFX::BlendTreeConnection* inputConnectionX = GetInputPort(INPUTPORT_XVALUE).mConnection;
             EMotionFX::BlendTreeConnection* inputConnectionY = GetInputPort(INPUTPORT_YVALUE).mConnection;
-#ifdef EMFX_EMSTUDIOBUILD
-            if (inputConnectionX && inputConnectionY)
+
+            if (GetEMotionFX().GetIsInEditorMode())
             {
-                SetHasError(animGraphInstance, false);
+                if (inputConnectionX && inputConnectionY)
+                {
+                    SetHasError(animGraphInstance, false);
+                }
+                else
+                {
+                    // We do require the user to make connections into the value ports.
+                    SetHasError(animGraphInstance, true);
+                }
             }
-            else
-            {
-                // We do require the user to make connections into the value ports.
-                SetHasError(animGraphInstance, true);
-            }
-#endif
 
             if (inputConnectionX)
             {

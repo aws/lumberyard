@@ -16,7 +16,9 @@
 namespace SandboxEditor
 {
     /// Class to display errors during startup.
-    /// This class stops handling errors once the regular UI is ready
+    /// This is a system lifted from CryEdit.cpp and made thread safe.
+    /// It existed to handle errors that occur during editor startup, before
+    /// the regular error handler is loaded and available.
     class StartupTraceHandler
         : public AZ::Debug::TraceMessageBus::Handler
     {
@@ -43,9 +45,6 @@ namespace SandboxEditor
         //! @return if any errors occured during level load.
         bool HasAnyErrors() const { return m_errors.size() > 0; }
 
-        //! Clears out any stored messages.
-        void ClearMessages();
-
         //! Connects the trace handler to the trace message bus.
         void ConnectToMessageBus();
         //! Disconnects the trace handler from the trace message bus.
@@ -69,16 +68,13 @@ namespace SandboxEditor
             OnlyCollect,            ///< Only collect this message, don't show it if not collecting.
         };
 
-        void OnMessage(
+        // Returns whether or not the message was handled
+        bool OnMessage(
             const char *message,
             AZStd::list<QString>* messageList,
             MessageDisplayBehavior messageDisplayBehavior);
 
         void ShowMessageBox(const QString& message);
-        void ShowMessages(
-            const AZStd::list<QString>& warnings,
-            const AZStd::list<QString>& errors
-            );
 
         mutable AZStd::recursive_mutex m_mutex; ///< Messages can come in from multiple threads, so use a mutex to lock things when necessary.
 

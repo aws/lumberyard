@@ -436,6 +436,10 @@ private:
     IObjectSelectCallback* m_selectCallback;
     bool m_bLoadingObjects;
 
+    // True while performing a select or deselect operation on more than one object.
+    // Prevents individual undo/redo commands for every object, allowing bulk undo/redo
+    bool m_processingBulkSelect = false;
+
     //! Default selection.
     CSelectionGroup m_defaultSelection;
 

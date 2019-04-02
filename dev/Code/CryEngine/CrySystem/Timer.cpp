@@ -115,7 +115,22 @@ bool CTimer::Init()
 /////////////////////////////////////////////////////
 float CTimer::GetFrameTime(ETimer which) const
 {
-    return m_bEnabled && (which != ETIMER_GAME || !m_bGameTimerPaused) ? m_fFrameTime : 0.0f;
+    float result = 0.0f;
+    if (m_bEnabled)
+    {
+        if (which != ETIMER_GAME || !m_bGameTimerPaused)
+        {
+            if (which == ETIMER_UI)
+            {
+                result = m_fRealFrameTime;
+            }
+            else
+            {
+                result = m_fFrameTime;
+            }
+        }
+    }
+    return result;
 }
 
 /////////////////////////////////////////////////////

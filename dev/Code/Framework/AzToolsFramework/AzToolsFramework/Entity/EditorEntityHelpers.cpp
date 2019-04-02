@@ -265,14 +265,27 @@ namespace AzToolsFramework
         AZ::EntityId sortEntityId = GetEntityIdForSortInfo(parentId);
 
         bool success = false;
-        EditorEntitySortRequestBus::EventResult(success, sortEntityId, &EditorEntitySortRequestBus::Events::AddChildEntity, childId, !parentId.IsValid() || forceAddToBack);
+        EditorEntitySortRequestBus::EventResult(success, sortEntityId, &EditorEntitySortRequestBus::Events::AddChildEntity, childId, forceAddToBack);
         if (success && parentId != sortEntityId)
         {
             EditorEntitySortNotificationBus::Event(parentId, &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
         }
     }
 
-    void RecoverEntitySortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, AZ::u64 sortIndex)
+    void AddEntityIdToSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, const AZ::EntityId beforeEntity)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        AZ::EntityId sortEntityId = GetEntityIdForSortInfo(parentId);
+
+        bool success = false;
+        EditorEntitySortRequestBus::BroadcastResult(success, &EditorEntitySortRequestBus::Events::AddChildEntityAtPosition, childId, beforeEntity);
+        if (success && parentId != sortEntityId)
+        {
+            EditorEntitySortNotificationBus::Event(parentId, &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
+        }
+    }
+
+    bool RecoverEntitySortInfo(const AZ::EntityId parentId, const AZ::EntityId childId, AZ::u64 sortIndex)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
 
@@ -292,7 +305,7 @@ namespace AzToolsFramework
         }
         entityOrderArray.insert(entityOrderArray.begin() + sortIndex, childId);
         // Push the final array back to the sort component
-        SetEntityChildOrder(parentId, entityOrderArray);
+        return SetEntityChildOrder(parentId, entityOrderArray);
     }
 
     void RemoveEntityIdFromSortInfo(const AZ::EntityId parentId, const AZ::EntityId childId)
@@ -308,7 +321,7 @@ namespace AzToolsFramework
         }
     }
 
-    void SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children)
+    bool SetEntityChildOrder(const AZ::EntityId parentId, const EntityIdList& children)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         auto sortEntityId = GetEntityIdForSortInfo(parentId);
@@ -319,6 +332,7 @@ namespace AzToolsFramework
         {
             EditorEntitySortNotificationBus::Event(parentId, &EditorEntitySortNotificationBus::Events::ChildEntityOrderArrayUpdated);
         }
+        return success;
     }
 
     EntityIdList GetEntityChildOrder(const AZ::EntityId parentId)
@@ -396,7 +410,23 @@ namespace AzToolsFramework
         return nullptr;
     }
 
-    bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType)
+    bool ComponentArrayHasComponentOfType(const AZ::Entity::ComponentArrayType& components, AZ::Uuid componentType)
+    {
+        for (const AZ::Component* component : components)
+        {
+            if (component)
+            {
+                if (GetUnderlyingComponentType(*component) == componentType)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    bool EntityHasComponentOfType(const AZ::EntityId& entityId, AZ::Uuid componentType, bool checkPendingComponents, bool checkDisabledComponents)
     {
         AZ::Entity* entity = nullptr;
         AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, entityId);
@@ -404,14 +434,29 @@ namespace AzToolsFramework
         if (entity)
         {
             const AZ::Entity::ComponentArrayType components = entity->GetComponents();
-            for (const AZ::Component* component : components)
+            if (ComponentArrayHasComponentOfType(components, componentType))
             {
-                if (component)
+                return true;
+            }
+
+            if (checkPendingComponents)
+            {
+                AZ::Entity::ComponentArrayType pendingComponents;
+                AzToolsFramework::EditorPendingCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorPendingCompositionRequests::GetPendingComponents, pendingComponents);
+                if (ComponentArrayHasComponentOfType(pendingComponents, componentType))
                 {
-                    if (GetUnderlyingComponentType(*component) == componentType)
-                    {
-                        return true;
-                    }
+                    return true;
+                }
+            }
+
+            if (checkDisabledComponents)
+            {
+                // Check for disabled component
+                AZ::Entity::ComponentArrayType disabledComponents;
+                AzToolsFramework::EditorDisabledCompositionRequestBus::Event(entity->GetId(), &AzToolsFramework::EditorDisabledCompositionRequests::GetDisabledComponents, disabledComponents);
+                if (ComponentArrayHasComponentOfType(disabledComponents, componentType))
+                {
+                    return true;
                 }
             }
         }
@@ -453,7 +498,7 @@ namespace AzToolsFramework
         return result;
     }
 
-    bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone)
+    bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone, EntityIdSet& clonedEntities)
     {
         EditorMetricsEventsBus::Broadcast(
             &EditorMetricsEventsBus::Events::EntitiesAboutToBeCloned);
@@ -501,6 +546,12 @@ namespace AzToolsFramework
 
         EditorMetricsEventsBus::Broadcast(
             &EditorMetricsEventsBus::Events::EntitiesCloned);
+
+        for (const AZ::Entity* entity : allEntityClonesContainer.m_entities)
+        {
+            clonedEntities.insert(entity->GetId());
+        }
+
         return !allEntityClonesContainer.m_entities.empty();
     }
 

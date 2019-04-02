@@ -22,4 +22,8 @@ def build(bld):
         configurations          = ['test_all'],
         use                     = ['AzTest', 'AzToolsFramework'],
         msvc_cxxflags           = ['/W4'],
+        
+        # This test dll does not have any actual source files defined. Prevent it from trying to generate an rc file
+        inject_copyright        = False
     )
+

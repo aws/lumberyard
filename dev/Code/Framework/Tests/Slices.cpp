@@ -28,6 +28,7 @@
 #include <AzCore/RTTI/TypeInfo.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Slice/SliceCompilation.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 
@@ -647,6 +648,381 @@ namespace UnitTest
     TEST_F(MinimalEntityWorkflowTester, DISABLED_Test)
     {
         run();
+    }
+    
+    class SortTransformParentsBeforeChildrenTest
+        : public AllocatorsFixture
+    {
+    protected:
+        AZStd::vector<AZ::Entity*> m_unsorted;
+        AZStd::vector<AZ::Entity*> m_sorted;
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+        }
+
+        void TearDown() override
+        {
+            for (AZ::Entity* entity : m_unsorted)
+            {
+                delete entity;
+            }
+            m_unsorted.clear();
+            m_sorted.clear();
+
+            AllocatorsFixture::TearDown();
+        }
+
+        // Entity IDs to use in tests
+        AZ::EntityId E1 = AZ::EntityId(1);
+        AZ::EntityId E2 = AZ::EntityId(2);
+        AZ::EntityId E3 = AZ::EntityId(3);
+        AZ::EntityId E4 = AZ::EntityId(4);
+        AZ::EntityId E5 = AZ::EntityId(5);
+        AZ::EntityId E6 = AZ::EntityId(6);
+        AZ::EntityId MissingNo = AZ::EntityId(999);
+
+        // add entity to m_unsorted
+        void AddEntity(AZ::EntityId id, AZ::EntityId parentId = AZ::EntityId())
+        {
+            m_unsorted.push_back(aznew AZ::Entity(id));
+            m_unsorted.back()->CreateComponent<AzFramework::TransformComponent>()->SetParent(parentId);
+        }
+
+        void SortAndSanityCheck()
+        {
+            m_sorted = m_unsorted;
+            AzToolsFramework::SortTransformParentsBeforeChildren(m_sorted);
+
+            // sanity check that all entries are still there
+            EXPECT_TRUE(DoSameEntriesExistAfterSort());
+        }
+
+        bool DoSameEntriesExistAfterSort()
+        {
+            if (m_sorted.size() != m_unsorted.size())
+            {
+                return false;
+            }
+
+            for (AZ::Entity* entity : m_unsorted)
+            {
+                // compare counts in case multiple entries are identical (ex: 2 nullptrs)
+                size_t unsortedCount = Count(entity, m_unsorted);
+                size_t sortedCount = Count(entity, m_sorted);
+                if (sortedCount < 1 || sortedCount != unsortedCount)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        int Count(const AZ::Entity* value, const AZStd::vector<AZ::Entity*>& entityList)
+        {
+            int count = 0;
+            for (const AZ::Entity* entity : entityList)
+            {
+                if (entity == value)
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
+
+        bool IsChildAfterParent(AZ::EntityId childId, AZ::EntityId parentId)
+        {
+            int parentIndex = -1;
+            int childIndex = -1;
+            for (int i = 0; i < m_sorted.size(); ++i)
+            {
+                if (m_sorted[i] && (m_sorted[i]->GetId() == parentId) && (parentIndex == -1))
+                {
+                    parentIndex = i;
+                }
+                if (m_sorted[i] && (m_sorted[i]->GetId() == childId) && (childIndex == -1))
+                {
+                    childIndex = i;
+                }
+            }
+
+            EXPECT_NE(childIndex, -1);
+            EXPECT_NE(parentIndex, -1);
+            return childIndex > parentIndex;
+        }
+    };
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, 0Entities_IsOk)
+    {
+        SortAndSanityCheck();
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, 1Entity_IsOk)
+    {
+        AddEntity(E1);
+
+        SortAndSanityCheck();
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, ParentAndChild_SortsCorrectly)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1);
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, 6EntitiesWith2Roots_SortsCorrectly)
+    {
+        // Hierarchy looks like:
+        // 1
+        // + 2
+        //   + 3
+        // 4
+        // + 5
+        // + 6
+        // The entities are added in "randomish" order on purpose
+        AddEntity(E3, E2);
+        AddEntity(E1);
+        AddEntity(E6, E4);
+        AddEntity(E5, E4);
+        AddEntity(E2, E1);
+        AddEntity(E4);
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+        EXPECT_TRUE(IsChildAfterParent(E3, E2));
+        EXPECT_TRUE(IsChildAfterParent(E5, E4));
+        EXPECT_TRUE(IsChildAfterParent(E6, E4));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, ParentNotFound_ChildTreatedAsRoot)
+    {
+        AddEntity(E1);
+        AddEntity(E2, E1);
+        AddEntity(E3, MissingNo); // E3's parent not found
+        AddEntity(E4, E3);
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+        EXPECT_TRUE(IsChildAfterParent(E4, E2));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, NullptrEntry_IsToleratedButNotSorted)
+    {
+        AddEntity(E2, E1);
+        m_unsorted.push_back(nullptr);
+        AddEntity(E1);
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, DuplicateEntityId_IsToleratedButNotSorted)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1);
+        AddEntity(E1); // duplicate EntityId
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, DuplicateEntityPtr_IsToleratedButNotSorted)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1);
+        m_unsorted.push_back(m_unsorted.back()); // duplicate Entity pointer
+
+        SortAndSanityCheck();
+
+        m_unsorted.pop_back(); // remove duplicate ptr so we don't double-delete during teardown
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, LoopingHierarchy_PicksAnyParentAsRoot)
+    {
+        // loop: E1 -> E2 -> E3 -> E1 -> ...
+        AddEntity(E2, E1);
+        AddEntity(E3, E2);
+        AddEntity(E1, E3);
+
+        SortAndSanityCheck();
+
+        AZ::EntityId first = m_sorted.front()->GetId();
+
+        if (first == E1)
+        {
+            EXPECT_TRUE(IsChildAfterParent(E2, E1));
+            EXPECT_TRUE(IsChildAfterParent(E3, E2));
+        }
+        else if (first == E2)
+        {
+            EXPECT_TRUE(IsChildAfterParent(E3, E2));
+            EXPECT_TRUE(IsChildAfterParent(E1, E3));
+        }
+        else // if (first == E3)
+        {
+            EXPECT_TRUE(IsChildAfterParent(E1, E3));
+            EXPECT_TRUE(IsChildAfterParent(E2, E1));
+        }
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, EntityLackingTransformComponent_IsTreatedLikeItHasNoParent)
+    {
+        AddEntity(E2, E1);
+        m_unsorted.push_back(aznew AZ::Entity(E1)); // E1 has no components
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, EntityParentedToSelf_IsTreatedLikeItHasNoParent)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1, E1); // parented to self
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    TEST_F(SortTransformParentsBeforeChildrenTest, EntityWithInvalidId_IsToleratedButNotSorted)
+    {
+        AddEntity(E2, E1);
+        AddEntity(E1);
+        AddEntity(AZ::EntityId()); // entity using invalid ID as its own ID
+
+        SortAndSanityCheck();
+
+        EXPECT_TRUE(IsChildAfterParent(E2, E1));
+    }
+
+    class SliceCompilerTest
+        : public ::testing::Test
+    {
+    protected:
+        AzToolsFramework::ToolsApplication m_app;
+
+        AZ::Data::Asset<AZ::SliceAsset> m_editorSliceAsset;
+        AZ::SliceComponent* m_editorSliceComponent = nullptr;
+
+        AZ::Data::Asset<AZ::SliceAsset> m_compiledSliceAsset;
+        AZ::SliceComponent* m_compiledSliceComponent = nullptr;
+
+        void SetUp() override
+        {
+            m_app.Start(AzFramework::Application::Descriptor());
+
+            m_editorSliceAsset = Data::AssetManager::Instance().CreateAsset<SliceAsset>(Data::AssetId(Uuid::CreateRandom()));
+
+            AZ::Entity* editorSliceEntity = aznew AZ::Entity();
+            m_editorSliceComponent = editorSliceEntity->CreateComponent<AZ::SliceComponent>();
+            m_editorSliceAsset.Get()->SetData(editorSliceEntity, m_editorSliceComponent);
+        }
+
+        void TearDown() override
+        {
+            m_compiledSliceComponent = nullptr;
+            m_compiledSliceAsset.Release();
+            m_editorSliceComponent = nullptr;
+            m_editorSliceAsset.Release();
+            m_app.Stop();
+        }
+
+        // create entity with a given parent in the editor slice
+        void CreateEditorEntity(AZ::u64 id, const char* name, AZ::u64 parentId = (AZ::u64)AZ::EntityId())
+        {
+            AZ::Entity* entity = aznew AZ::Entity(AZ::EntityId(id), name);
+            AzToolsFramework::Components::TransformComponent* transformComponent = entity->CreateComponent<AzToolsFramework::Components::TransformComponent>();
+            transformComponent->SetParent(AZ::EntityId(parentId));
+
+            m_editorSliceComponent->AddEntity(entity);
+        }
+
+        // compile m_editorSliceAsset -> m_compiledSliceAsset
+        bool CompileSlice()
+        {
+            AzToolsFramework::WorldEditorOnlyEntityHandler worldEditorOnlyEntityHandler;
+            AzToolsFramework::EditorOnlyEntityHandlers handlers =
+            {
+                &worldEditorOnlyEntityHandler
+            };
+            AzToolsFramework::SliceCompilationResult compileResult = AzToolsFramework::CompileEditorSlice(m_editorSliceAsset, AZ::PlatformTagSet(), *m_app.GetSerializeContext(), handlers);
+
+            EXPECT_TRUE(compileResult.IsSuccess());
+            if (compileResult.IsSuccess())
+            {
+                m_compiledSliceAsset = AZStd::move(compileResult.GetValue());
+                m_compiledSliceComponent = m_compiledSliceAsset.Get()->GetComponent();
+                return true;
+            }
+
+            return false;
+        }
+
+        // check order of entities in compiled slice
+        // reference entities by name, since they have different IDs in compiled slice
+        bool IsChildAfterParent(const char* childName, const char* parentName)
+        {
+            AZStd::vector<AZ::Entity*> entities;
+            m_compiledSliceComponent->GetEntities(entities);
+
+            AZ::Entity* parent = nullptr;
+            for (AZ::Entity* entity : entities)
+            {
+                const AZStd::string& name = entity->GetName();
+                if (name == parentName)
+                {
+                    parent = entity;
+                }
+
+                if (name == childName)
+                {
+                    return parent != nullptr;
+                }
+            }
+
+            return false;
+        }
+    };
+
+    TEST_F(SliceCompilerTest, EntitiesInCompiledSlice_SortedParentsBeforeChildren)
+    {
+        // Hieararchy looks like:
+        // A
+        // + B
+        //   + C
+        // D
+        // + E
+        // + F
+        CreateEditorEntity(0xB, "B", 0xA);
+        CreateEditorEntity(0xE, "E", 0xD);
+        CreateEditorEntity(0xD, "D");
+        CreateEditorEntity(0xA, "A");
+        CreateEditorEntity(0xF, "F", 0xD);
+        CreateEditorEntity(0xC, "C", 0xB);
+
+        if (!CompileSlice())
+        {
+            return;
+        }
+
+        EXPECT_TRUE(IsChildAfterParent("B", "A"));
+        EXPECT_TRUE(IsChildAfterParent("C", "B"));
+        EXPECT_TRUE(IsChildAfterParent("E", "D"));
+        EXPECT_TRUE(IsChildAfterParent("F", "D"));
     }
 } // namespace UnitTest
 

@@ -24,7 +24,7 @@ namespace LegacyGameInterface
     {
     public:
         EditorGame();
-        virtual ~EditorGame() {}
+        ~EditorGame() override {}
 
         //////////////////////////////////////////////////////////////////////////
         //! IEditorGame
@@ -36,6 +36,7 @@ namespace LegacyGameInterface
         void HidePlayer(bool hide) override;
         void OnBeforeLevelLoad() override;
         void OnAfterLevelLoad(const char* levelName, const char* levelFolder) override;
+        void OnCloseLevel() override;
         IFlowSystem* GetIFlowSystem() override;
         IGameTokenSystem* GetIGameTokenSystem() override;
         //////////////////////////////////////////////////////////////////////////

@@ -2,7 +2,7 @@
     "APKExpansionLibrary": {
         "srcDir": ["${ANDROID_SDK_HOME}/extras/google/play_apk_expansion/downloader_library",
                     "${ANDROID_SDK_HOME}/extras/google/market_apk_expansion/downloader_library"],
-        "dependancy": [
+        "dependencies": [
             "LicenseLibrary"
         ],
         "patches": [{
@@ -37,6 +37,15 @@
                         "            .build();",
                         "    }"]
             }]
+        },
+        {
+            "path": "AndroidManifest.xml",
+            "changes": [
+            {
+                "line": 6,
+                "old": ["<uses-sdk android:minSdkVersion=\"4\" android:targetSdkVersion=\"15\"/>"],
+                "new": [""]
+            }]
         }],
         "launcherDependency": "true"
     },
@@ -53,6 +62,16 @@
                 "line": 152,
                 "old": ["Base64.decode(\"Y29tLmFuZHJvaWQudmVuZGluZy5saWNlbnNpbmcuSUxpY2Vuc2luZ1NlcnZpY2U=\"))),"],
                 "new": ["Base64.decode(\"Y29tLmFuZHJvaWQudmVuZGluZy5saWNlbnNpbmcuSUxpY2Vuc2luZ1NlcnZpY2U=\"))).setPackage(\"com.android.vending\"),"]
+            }]
+        },
+        {
+            "path": "AndroidManifest.xml",
+            "changes": [
+            {
+                "line": 19,
+                "old": ["<!-- Devices >= 3 have version of Android Market that supports licensing. -->",
+                        "<uses-sdk android:minSdkVersion=\"3\" android:targetSdkVersion=\"15\" />"],
+                "new": [""]
             }]
         }]
     }

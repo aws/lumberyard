@@ -150,7 +150,6 @@ namespace EMotionFX
         {
             bool mForceLoading;         /**< Set to true in case you want to load the motion even if a motion with the given filename is already inside the motion manager. */
             bool mLoadMotionEvents;     /**< Set to false if you wish to disable loading of motion events. */
-            bool mAutoRegisterEvents;   /**< Set to true if you want to automatically register new motion event types. */
             bool mUnitTypeConvert;      /**< Set to false to disable automatic unit type conversion (between cm, meters, etc). On default this is enabled. */
             MCore::Array<uint32>    mChunkIDsToIgnore;  /**< Add the ID's of the chunks you wish to ignore. */
 
@@ -161,7 +160,6 @@ namespace EMotionFX
             {
                 mForceLoading       = false;
                 mLoadMotionEvents   = true;
-                mAutoRegisterEvents = true;
                 mUnitTypeConvert    = true;
                 mChunkIDsToIgnore.SetMemoryCategory(EMFX_MEMCATEGORY_IMPORTER);
             }

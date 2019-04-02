@@ -15,6 +15,12 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/ComponentBus.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/Math/Transform.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/RTTI/TypeInfo.h>
+#include <AzFramework/Physics/AnimationConfiguration.h>
+#include <AzFramework/Physics/Character.h>
+
 
 namespace EMotionFX
 {
@@ -32,6 +38,13 @@ namespace EMotionFX
             SkinAttachment,     ///< Attach to another actor as a skinned attachment (using the same skeleton as the attachment target).
         };
 
+        enum class Space : AZ::u32
+        {
+            LocalSpace,         ///< Relative to the parent.
+            ModelSpace,         ///< Relative to the origin of the character.
+            WorldSpace          ///< Relative to the world origin.
+        };
+
         /**
         * EMotion FX Actor Component Request Bus
         * Used for making requests to EMotion FX Actor Components.
@@ -44,6 +57,19 @@ namespace EMotionFX
             /// Retrieve component's actor instance.
             /// \return pointer to actor instance.
             virtual EMotionFX::ActorInstance* GetActorInstance() { return nullptr; }
+
+            /// Find the name index of a given joint by its name.
+            /// \param name The name of the join to search for, case insensitive.
+            /// \return The joint index, or s_invalidJointIndex if no found.
+            virtual size_t GetJointIndexByName(const char* /*name*/) const  { return s_invalidJointIndex; }
+
+            /// Retrieve the local transform (relative to the parent) of a given joint.
+            /// \param jointIndex The joint index to get the transform from.
+            /// \param Space the space to get the transform in.
+            virtual AZ::Transform GetJointTransform(size_t /*jointIndex*/, Space /*space*/) const  { return AZ::Transform::CreateIdentity(); }
+            virtual void GetJointTransformComponents(size_t /*jointIndex*/, Space /*space*/, AZ::Vector3& outPosition, AZ::Quaternion& outRotation, AZ::Vector3& outScale) const  { outPosition = AZ::Vector3::CreateZero(); outRotation = AZ::Quaternion::CreateIdentity(); outScale = AZ::Vector3::CreateOne(); }
+
+            virtual Physics::AnimationConfiguration* GetPhysicsConfig() const { return nullptr; }
 
             /// Attach to the specified entity.
             /// \param targetEntityId - Id of the entity to attach to.
@@ -59,6 +85,8 @@ namespace EMotionFX
             /// Enables rendering of the actor.
             virtual bool GetRenderCharacter() const = 0;
             virtual void SetRenderCharacter(bool enable) = 0;
+
+            static const size_t s_invalidJointIndex = ~0;
         };
 
         using ActorComponentRequestBus = AZ::EBus<ActorComponentRequests>;
@@ -120,7 +148,11 @@ namespace EMotionFX
         };
 
         using EditorActorComponentRequestBus = AZ::EBus<EditorActorComponentRequests>;
-
     } //namespace Integration
-
 } // namespace EMotionFX
+
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(EMotionFX::Integration::Space, "{7606E4DD-B7CB-408B-BD0D-3A95636BB017}");
+}

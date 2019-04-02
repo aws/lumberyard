@@ -28,8 +28,15 @@ namespace EMotionFX
     {
         namespace Rule
         {
-            template<typename T>
-            bool MetaDataRule::SaveMetaDataToFile(const AZStd::string& sourceAssetFilename, const AZStd::string& groupName, const AZStd::string& metaDataString)
+            template<typename T, typename MetaDataType>
+            bool MetaDataRule::SaveMetaDataToFile(const AZStd::string& sourceAssetFilename, const AZStd::string& groupName, const MetaDataType& metaData)
+            {
+                AZStd::string outResult;
+                return SaveMetaDataToFile<T>(sourceAssetFilename, groupName, metaData, outResult);
+            }
+
+            template<typename T, typename MetaDataType>
+            bool MetaDataRule::SaveMetaDataToFile(const AZStd::string& sourceAssetFilename, const AZStd::string& groupName, const MetaDataType& metaData, AZStd::string& outResult)
             {
                 namespace SceneEvents = AZ::SceneAPI::Events;
                 
@@ -37,7 +44,8 @@ namespace EMotionFX
 
                 if (sourceAssetFilename.empty())
                 {
-                    AZ_Error("EMotionFX", false, "Source asset filename is empty.");
+                    outResult = "Source asset filename is empty.";
+                    AZ_Error("EMotionFX", false, outResult.c_str());
                     return false;
                 }
 
@@ -46,7 +54,8 @@ namespace EMotionFX
                 SceneEvents::SceneSerializationBus::BroadcastResult(scene, &SceneEvents::SceneSerializationBus::Events::LoadScene, sourceAssetFilename, AZ::Uuid::CreateNull());
                 if (!scene)
                 {
-                    AZ_Error("EMotionFX", false, "Unable to save meta data to manifest due to failed scene loading.");
+                    outResult = "Unable to save meta data to manifest due to failed scene loading.";
+                    AZ_Error("EMotionFX", false, outResult.c_str());
                     return false;
                 }
 
@@ -58,7 +67,7 @@ namespace EMotionFX
                     // Non-case sensitive group name comparison. Product filenames are lower case only and might mismatch casing of the entered group name.
                     if (AzFramework::StringFunc::Equal(group.GetName().c_str(), groupName.c_str()))
                     {
-                        SaveMetaData(*scene, group, metaDataString);
+                        SaveMetaData(*scene, group, metaData);
                     }
                 }
   
@@ -72,10 +81,11 @@ namespace EMotionFX
                 {
                     using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
                     bool checkoutResult = false;
-                    ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Checking out manifest from source control.", [](int& current, int& max) {});
+                    ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Checking out manifest from source control.", [](int&, int&) {});
                     if (!checkoutResult)
                     {
-                        AZ_Error("EMotionFX", false, "Cannot checkout file '%s' from source control.", manifestFilename.c_str());
+                        outResult = AZStd::string::format("Cannot check out file '%s' from source control.", manifestFilename.c_str());
+                        AZ_Error("EMotionFX", false, "%s", outResult.c_str());
                         return false;
                     }
                 }
@@ -87,8 +97,13 @@ namespace EMotionFX
                 {
                     using ApplicationBus = AzToolsFramework::ToolsApplicationRequestBus;
                     bool checkoutResult = false;
-                    ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Adding manifest to source control.", [](int& current, int& max) {});
-                    AZ_Error("EMotionFX", checkoutResult, "Cannot add file '%s' to source control.", manifestFilename.c_str());
+                    ApplicationBus::BroadcastResult(checkoutResult, &ApplicationBus::Events::RequestEditForFileBlocking, manifestFilename.c_str(), "Adding manifest to source control.", [](int&, int&) {});
+                    if (!checkoutResult)
+                    {
+                        outResult = AZStd::string::format("Cannot add file '%s' to source control.", manifestFilename.c_str());
+                        AZ_Error("EMotionFX", checkoutResult, "%s", outResult.c_str());
+                        return false;
+                    }
                 }
 
                 return saveResult;

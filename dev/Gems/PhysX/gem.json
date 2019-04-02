@@ -2,10 +2,10 @@
     "GemFormatVersion": 3,
     "Uuid": "4e08125824434932a0fe3717259caa47",
     "Name": "PhysX",
-    "DisplayName": "PhysX",
+    "DisplayName": "PhysX [PREVIEW]",
     "Version": "0.1.0",
     "LinkType": "Dynamic",
-    "Summary": "Enabling PhysX for physics simulation (experimental, currently Windows only).",
+    "Summary": "Enabling NVIDIA PhysX (3.4.0) for physics simulation (requires the NVIDIA PhysX SDK)",
     "Tags": ["Physics"],
     "IconPath": "preview.png",
     "EditorModule": true

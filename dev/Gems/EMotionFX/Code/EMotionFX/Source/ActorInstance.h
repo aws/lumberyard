@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/Component/Entity.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/RTTI/TypeInfo.h>
@@ -26,14 +27,18 @@
 #include "AnimGraphPosePool.h"
 
 
+namespace Physics
+{
+    class Ragdoll;
+}
+
 namespace EMotionFX
 {
-    // forward declarations
     class MotionSystem;
     class Attachment;
     class AnimGraphInstance;
-    class EyeBlinker;
     class MorphSetupInstance;
+    class RagdollInstance;
 
 
     /**
@@ -54,15 +59,15 @@ namespace EMotionFX
          */
         enum EBoundsType
         {
-            BOUNDS_NODE_BASED           = 0,    /**< Calculate the bounding volumes based on the globalspace node positions. */
-            BOUNDS_MESH_BASED           = 1,    /**< Calculate the bounding volumes based on the globalspace vertex positions. */
-            BOUNDS_COLLISIONMESH_BASED  = 2,    /**< Calculate the bounding volumes based on the globalspace collision mesh vertex positions. */
+            BOUNDS_NODE_BASED           = 0,    /**< Calculate the bounding volumes based on the world space node positions. */
+            BOUNDS_MESH_BASED           = 1,    /**< Calculate the bounding volumes based on the world space vertex positions. */
+            BOUNDS_COLLISIONMESH_BASED  = 2,    /**< Calculate the bounding volumes based on the world space collision mesh vertex positions. */
             BOUNDS_NODEOBB_BASED        = 3,    /**< Calculate the bounding volumes based on the oriented bounding boxes of the nodes. Uses all 8 corner points of the individual node OBB boxes. */
             BOUNDS_NODEOBBFAST_BASED    = 4,    /**< Calculate the bounding volumes based on the oriented bounding boxes of the nodes. Uses the min and max point of the individual node OBB boxes. This is less accurate but faster. */
             BOUNDS_STATIC_BASED         = 5     /**< Calculate the bounding volumes based on an approximate box, based on the mesh bounds, and move this box along with the actor instance position. */
         };
 
-        static ActorInstance* Create(Actor* actor, AZ::EntityId entityId = AZ::EntityId(), uint32 threadIndex = 0);
+        static ActorInstance* Create(Actor* actor, AZ::Entity* entity = nullptr, uint32 threadIndex = 0);
 
         /**
          * Get a pointer to the actor from which this is an instance.
@@ -209,6 +214,12 @@ namespace EMotionFX
         //--------------------------------
 
         /**
+         * Get the entity to which the given actor instance belongs to.
+         * @result Entity having an actor component added to it to which this actor instance belongs to. nullptr in case the actor instance is used without the entity component system.
+         */
+        AZ::Entity* GetEntity() const;
+
+        /**
          * Get the entity id to which the given actor instance belongs to.
          * @result Entity id of the actor instance. EntityId::InvalidEntityId in case the actor instance is used without the entity component system.
          */
@@ -248,39 +259,13 @@ namespace EMotionFX
          */
         void ApplyMorphSetup();
 
-        // update the global transformation
-        void UpdateGlobalTransform();
+        void UpdateWorldTransform();
 
         /**
-         * Update/construct the local space transformation matrices of all nodes.
+         * Update the skinning matrices.
          * This will update the data inside the TransformData class.
-         * The local space matrices are constructed from the data stored in the local space transforms.
          */
-        void UpdateLocalMatrices();
-
-        /**
-         * Update the global space matrices for all nodes.
-         * This will update the data inside the TransformData class.
-         * Forward kinematics using the local space matrices is performed to calculate the global space matrices.
-         */
-        void UpdateGlobalMatrices();
-
-        /**
-         * Update the global space matrices for all nodes, except root nodes.
-         * This is used in case we are dealing with deformable attachments, where the root transforms have already been copied over from the
-         * actor instance where this actor is attached to.
-         */
-        void UpdateGlobalMatricesForNonRoots();
-
-        /**
-         * If this is a skin attachment, it will update the global space matrices of this actor instance
-         * by copying over the transforms from the actor it is attached to.
-         * This is for example useful when you replace the upper body of a character, using a skin attachment.
-         * You attach the upper body ot the main actor that contains the skeleton hierarchy that is being animated.
-         * Now the node/bone transforms of the main actor will be copied over to this upper body attachment actor
-         * so that it skins/deforms with the main actor's skeleton.
-         */
-        void UpdateMatricesIfSkinAttachment();
+        void UpdateSkinningMatrices();
 
         /**
          * Update all the attachments.
@@ -288,37 +273,10 @@ namespace EMotionFX
          */
         void UpdateAttachments();
 
-        /**
-         * Calculate the local space transformation matrix for a given node, and output the result in a given matrix.
-         * This does not update the local space matrix of the node itself, but it just returns the matrix, how it would be
-         * when it was currently being updated. It will use the local transform (pos/rot/scale) to calculate the matrix.
-         * Also it will take into account the multiplication order as setup in the Actor object.
-         * @param nodeIndex The node index/number to calculate the local space matrix for.
-         * @param outMatrix A pointer to the matrix that will contain the local space matrix after executing this method.
-         */
-        void CalcLocalTM(uint32 nodeIndex, MCore::Matrix* outMatrix) const;
-
-        /**
-         * Calculate a local space matrix from a given pos/rot/scale/scalerot. And also take the Actor's multiplication order into account.
-         * If you have the local transform components, like pos, rot, scale and scale rotation for a given node, and you wish to
-         * construct a local space matrix from these components, for a given node in a given actor, then you should use this method.
-         * Please note that this method does not update or modify the local space matrix that is stored inside the TransformData class of this
-         * actor instance.
-         * @param nodeIndex The node to calculate the local space matrix for.
-         * @param scaleRot The scale rotation, which defines the space in which scaling has to happen.
-         * @param rot The rotation of the node.
-         * @param pos The translation.
-         & @param scale The scale factor for each axis.
-         * @param outMatrix A pointer to the matrix that will contain the local space matrix after executing this method.
-         */
-        void CalcLocalTM(uint32 nodeIndex, const AZ::Vector3& pos, const MCore::Quaternion& rot, const AZ::Vector3& scale, MCore::Matrix* outMatrix) const;
-
-        //-------------------------------------------------------------------------------------------
-
         // main methods
         /**
          * Update the transformations of this actor instance.
-         * This will calculate and update all the local transforms, local space matrices and global space matrices that
+         * This will calculate and update all the local transforms, local space matrices and world space matrices that
          * are stored inside the TransformData object of this actor instance.
          * This automatically updates all motion timers as well.
          * @param timePassedInSeconds The time passed in seconds, since the last frame or update.
@@ -346,6 +304,8 @@ namespace EMotionFX
         */
         void UpdateMorphMeshDeformers(float timePassedInSeconds, bool processDisabledDeformers = false);
 
+        void PostPhysicsUpdate(float timePassedInSeconds);
+
         //-------------------------------------------------------------------------------------------
 
         // bounding volume
@@ -354,7 +314,7 @@ namespace EMotionFX
          * This allows you to specify at what time interval the bounding volume of the actor instance should be updated and
          * if this update should base its calculations on the nodes, mesh vertices or collision mesh vertices.
          * @param updateFrequencyInSeconds The bounds will be updated every "updateFrequencyInSeconds" seconds. A value of 0 would mean every frame and a value of 0.1 would mean 10 times per second.
-         * @param boundsType The type of bounds calculation. This can be either based on the node's global space positions, the mesh global space positions or the collision mesh global space positions.
+         * @param boundsType The type of bounds calculation. This can be either based on the node's world space positions, the mesh world space positions or the collision mesh world space positions.
          * @param itemFrequency A value of 1 would mean every node or vertex will be taken into account in the bounds calculation.
          *                      A value of 2 would mean every second node or vertex would be taken into account. A value of 5 means every 5th node or vertex, etc.
          *                      Higher values will result in faster bounds updates, but also in possibly less accurate bounds. This value must 1 or higher. Zero is not allowed.
@@ -385,8 +345,8 @@ namespace EMotionFX
 
         /**
          * Get the bounding volume auto-update type.
-         * This can be either based on the node's global space positions, the mesh vertex global space positions, or the
-         * collision mesh vertex global space postitions.
+         * This can be either based on the node's world space positions, the mesh vertex world space positions, or the
+         * collision mesh vertex world space postitions.
          * @result The bounding volume update type.
          */
         EBoundsType GetBoundsUpdateType() const;
@@ -418,8 +378,8 @@ namespace EMotionFX
 
         /**
          * Set the bounding volume auto-update type.
-         * This can be either based on the node's global space positions, the mesh vertex global space positions, or the
-         * collision mesh vertex global space postitions.
+         * This can be either based on the node's world space positions, the mesh vertex world space positions, or the
+         * collision mesh vertex world space postitions.
          * @param bType The bounding volume update type.
          */
         void SetBoundsUpdateType(EBoundsType bType);
@@ -480,7 +440,7 @@ namespace EMotionFX
         void CalcStaticBasedAABB(MCore::AABB* outResult);
 
         /**
-         * Calculate the axis aligned bounding box based on the globalspace positions of the nodes.
+         * Calculate the axis aligned bounding box based on the world space positions of the nodes.
          * @param outResult The AABB where this method should store the resulting box in.
          * @param nodeFrequency This will include every "nodeFrequency"-th node. So a value of 1 will include all nodes. A value of 2 would
          *                      process every second node, meaning that half of the nodes will be skipped. A value of 4 would process every 4th node, etc.
@@ -488,7 +448,7 @@ namespace EMotionFX
         void CalcNodeBasedAABB(MCore::AABB* outResult, uint32 nodeFrequency = 1);
 
         /**
-         * Calculate the axis aligned bounding box based on the globalspace vertex coordinates of the meshes.
+         * Calculate the axis aligned bounding box based on the world space vertex coordinates of the meshes.
          * If the actor has no meshes, the created box will be invalid.
          * @param geomLODLevel The geometry LOD level to calculate the box for.
          * @param outResult The AABB where this method should store the resulting box in.
@@ -498,7 +458,7 @@ namespace EMotionFX
         void CalcMeshBasedAABB(uint32 geomLODLevel, MCore::AABB* outResult, uint32 vertexFrequency = 1);
 
         /**
-         * Calculate the axis aligned bounding box based on the globalspace vertex coordinates of the collision meshes.
+         * Calculate the axis aligned bounding box based on the world space vertex coordinates of the collision meshes.
          * If the actor has no collision meshes, the created box will be invalid.
          * @param geomLODLevel The geometry LOD level to calculate the box for.
          * @param outResult The AABB where this method should store the resulting box in.
@@ -552,68 +512,54 @@ namespace EMotionFX
 
         /**
          * Set the local space position of this actor instance.
-         * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
+         * This is relative to its parent (if it is attached ot something). Otherwise it is in world space.
          * @param position The position/translation to use.
          */
-        MCORE_INLINE void SetLocalPosition(const AZ::Vector3& position)          { mLocalTransform.mPosition = position; }
+        MCORE_INLINE void SetLocalSpacePosition(const AZ::Vector3& position)          { mLocalTransform.mPosition = position; }
 
         /**
          * Set the local rotation of this actor instance.
-         * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
+         * This is relative to its parent (if it is attached ot something). Otherwise it is in world space.
          * @param rotation The rotation to use.
          */
-        MCORE_INLINE void SetLocalRotation(const MCore::Quaternion& rotation)       { mLocalTransform.mRotation = rotation; }
+        MCORE_INLINE void SetLocalSpaceRotation(const MCore::Quaternion& rotation)    { mLocalTransform.mRotation = rotation; }
 
         EMFX_SCALECODE
         (
             /**
              * Set the local scale of this actor instance.
-             * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
+             * This is relative to its parent (if it is attached ot something). Otherwise it is in world space.
              * @param scale The scale to use.
              */
-            MCORE_INLINE void SetLocalScale(const AZ::Vector3& scale)            {
-                mLocalTransform.mScale = scale;
-            }
+            MCORE_INLINE void SetLocalSpaceScale(const AZ::Vector3& scale)           { mLocalTransform.mScale = scale; }
 
             /**
              * Get the local space scale.
-             * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
+             * This is relative to its parent (if it is attached ot something). Otherwise it is in world space.
              * @result The local space scale factor for each axis.
              */
-            // KB TODO: This has to wait till I get to the transforms since it is a ref result.
-            MCORE_INLINE const AZ::Vector3& GetLocalScale() const                   { return mLocalTransform.mScale;
-            }
+            MCORE_INLINE const AZ::Vector3& GetLocalSpaceScale() const              { return mLocalTransform.mScale; }
         )
 
         /**
          * Get the local space position/translation of this actor instance.
-         * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
+         * This is relative to its parent (if it is attached ot something). Otherwise it is in world space.
          * @result The local space position.
          */
-        MCORE_INLINE const AZ::Vector3& GetLocalPosition() const                 {
-            return mLocalTransform.mPosition;
-        }
+        MCORE_INLINE const AZ::Vector3& GetLocalSpacePosition() const               { return mLocalTransform.mPosition; }
 
         /**
          * Get the local space rotation of this actor instance.
-         * This is relative to its parent (if it is attached ot something). Otherwise it is in global space.
+         * This is relative to its parent (if it is attached ot something). Otherwise it is in world space.
          * @result The local space rotation.
          */
-        MCORE_INLINE const MCore::Quaternion& GetLocalRotation() const              { return mLocalTransform.mRotation; }
+        MCORE_INLINE const MCore::Quaternion& GetLocalSpaceRotation() const         { return mLocalTransform.mRotation; }
 
+        MCORE_INLINE void SetLocalSpaceTransform(const Transform& transform)        { mLocalTransform = transform; }
 
-        MCORE_INLINE const AZ::Vector3& GetGlobalPosition() const                   { return mGlobalTransform.mPosition; }
-        MCORE_INLINE const MCore::Quaternion& GetGlobalRotation() const             { return mGlobalTransform.mRotation;    }
-        EMFX_SCALECODE
-        (
-            MCORE_INLINE const AZ::Vector3& GetGlobalScale() const                 { return mGlobalTransform.mScale;
-            }
-        )
-
-        MCORE_INLINE void SetLocalTransform(const Transform& transform)             { mLocalTransform = transform; }
-
-        MCORE_INLINE const Transform& GetLocalTransform() const                     { return mLocalTransform; }
-        MCORE_INLINE const Transform& GetGlobalTransform() const                    { return mGlobalTransform; }
+        MCORE_INLINE const Transform& GetLocalSpaceTransform() const                { return mLocalTransform; }
+        MCORE_INLINE const Transform& GetWorldSpaceTransform() const                { return mWorldTransform; }
+        MCORE_INLINE const Transform& GetWorldSpaceTransformInversed() const        { return mWorldTransformInv; }
 
         //-------------------------------------------------------------------------------------------
 
@@ -754,16 +700,6 @@ namespace EMotionFX
         Actor::Dependency* GetDependency(uint32 nr);
 
         /**
-         * Recursively update the global space matrix.
-         * This will update the global space matrix of a given node, and go down the hierarchy to update all child nodes as well.
-         * @param nodeIndex The node to start updating the global space matrix for.
-         * @param globalTM The value of the global space matrix to set. When this is nullptr, it will multiply its current local space matrix with the
-         *                global space matrix of its parent node to use as global space matrix.
-         * @param outGlobalMatrixArray The array to output the global space matrices in. This array has to contain at least GetNumNodes() matrices.
-         */
-        void RecursiveUpdateGlobalTM(uint32 nodeIndex, const MCore::Matrix* globalTM = nullptr, MCore::Matrix* outGlobalMatrixArray = nullptr);
-
-        /**
          * Get the morph setup instance.
          * This doesn't contain the actual morph targets, but the unique settings per morph target.
          * These unique settings are the weight value per morph target, and a boolean that specifies if the morph target
@@ -817,9 +753,9 @@ namespace EMotionFX
          * Checks for an intersection between the real mesh (if present) of this actor and a given ray.
          * Returns a pointer to the node it detected a collision in case there is a collision with any of the real meshes of all nodes of this actor,
          * 'outIntersect' will contain the closest intersection point in case there is a collision.
-         * Both the intersection point and normal which are returned are in global space.
+         * Both the intersection point and normal which are returned are in world space.
          * Use the other Intersects method when you do not need the intersection point (since that one is faster).
-         * Both the intersection point and normal which are returned are in global space.
+         * Both the intersection point and normal which are returned are in world space.
          * @param lodLevel The level of detail to check the collision with.
          * @param ray The ray to test with.
          * @param outIntersect A pointer to the vector to store the intersection point in, in case of a collision (nullptr allowed).
@@ -833,8 +769,11 @@ namespace EMotionFX
          */
         Node* IntersectsMesh(uint32 lodLevel, const MCore::Ray& ray, AZ::Vector3* outIntersect, AZ::Vector3* outNormal = nullptr, AZ::Vector2* outUV = nullptr, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outStartIndex = nullptr) const;
 
-        void SetParentGlobalTransform(const Transform& transform);
-        const Transform& GetParentGlobalTransform() const;
+        void SetRagdoll(const AZStd::shared_ptr<Physics::Ragdoll>& ragdoll);
+        RagdollInstance* GetRagdollInstance() const;
+
+        void SetParentWorldSpaceTransform(const Transform& transform);
+        const Transform& GetParentWorldSpaceTransform() const;
 
         /**
          * Set whether calls to ActorUpdateCallBack::OnRender() for this actor instance should be made or not.
@@ -892,7 +831,7 @@ namespace EMotionFX
 
         /**
          * Enable all nodes inside the actor instance.
-         * This means that all nodes will be processed and will have their motions sampled (unless disabled by LOD), local and global space matrices calculated, etc.
+         * This means that all nodes will be processed and will have their motions sampled (unless disabled by LOD), local and world space matrices calculated, etc.
          * After actor instance creation time it is possible that some nodes are disabled on default. This is controlled by node groups (represented by the NodeGroup class).
          * Each Actor object has a set of node groups. Each group contains a set of nodes which are either enabled or disabled on default.
          * You can use the Actor::GetNodeGroup(...) related methods to get access to the groups and enable or disable the predefined groups of nodes manually.
@@ -923,9 +862,6 @@ namespace EMotionFX
         void SetTrajectoryDeltaTransform(const Transform& transform);
         const Transform& GetTrajectoryDeltaTransform() const;
 
-        void SetEyeBlinker(EyeBlinker* blinker);
-        EyeBlinker* GetEyeBlinker() const;
-
         AnimGraphPose* RequestPose(uint32 threadIndex);
         void FreePose(uint32 threadIndex, AnimGraphPose* pose);
 
@@ -947,8 +883,9 @@ namespace EMotionFX
         MCore::AABB             mStaticAABB;            /**< A static pre-calculated bounding box, which we can move along with the position of the actor instance, and use for visibility checks. */
 
         Transform               mLocalTransform;
-        Transform               mGlobalTransform;
-        Transform               mParentGlobalTransform;
+        Transform               mWorldTransform;
+        Transform               mWorldTransformInv;
+        Transform               mParentWorldTransform;
         Transform               mTrajectoryDelta;
 
         MCore::Array<Attachment*>               mAttachments;       /**< The attachments linked to this actor instance. */
@@ -960,11 +897,11 @@ namespace EMotionFX
         ActorInstance*          mAttachedTo;            /**< Specifies the actor where this actor is attached to, or nullptr when it is no attachment. */
         Attachment*             mSelfAttachment;        /**< The attachment it is itself inside the mAttachedTo actor instance, or nullptr when this isn't an attachment. */
         MotionSystem*           mMotionSystem;          /**< The motion system, that handles all motion playback and blending etc. */
-        EyeBlinker*             mEyeBlinker;            /**< A procedural eyeblinker, can be nullptr. */
         AnimGraphInstance*      mAnimGraphInstance;     /**< A pointer to the anim graph instance, which can be nullptr when there is no anim graph instance. */
+        AZStd::unique_ptr<RagdollInstance> m_ragdollInstance;
         MCore::Mutex            mLock;                  /**< The multithread lock. */
         void*                   mCustomData;            /**< A pointer to custom data for this actor. This could be a pointer to your engine or game object for example. */
-        AZ::EntityId            m_entityId;             /**< The entity id to which the actor instance belongs to. */
+        AZ::Entity*             m_entity;               /**< The entity to which the actor instance belongs to. */
         float                   mBoundsUpdateFrequency; /**< The bounds update frequency. Which is a time value in seconds. */
         float                   mBoundsUpdatePassedTime;/**< The time passed since the last bounds update. */
         float                   mMotionSamplingRate;    /**< The motion sampling rate in seconds, where 0.1 would mean to update 10 times per second. A value of 0 or lower means to update every frame. */
@@ -1001,7 +938,7 @@ namespace EMotionFX
          * @param actor The actor where this actor instance should be created from.
          * @param threadIndex The thread index to create the instance on.
          */
-        ActorInstance(Actor* actor, AZ::EntityId entityId, uint32 threadIndex = 0);
+        ActorInstance(Actor* actor, AZ::Entity* entity, uint32 threadIndex = 0);
 
         /**
          * The destructor.
@@ -1081,4 +1018,3 @@ namespace EMotionFX
         void SetSkeletalLODLevelNodeFlags(uint32 level);
     };
 }   // namespace EMotionFX
-

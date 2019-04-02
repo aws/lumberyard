@@ -23,6 +23,7 @@
 #include "AnimGraphInstance.h"
 #include "AnimGraphManager.h"
 #include "AnimGraphSyncTrack.h"
+#include <EMotionFX/Source/AnimGraphBus.h>
 
 
 namespace EMotionFX
@@ -40,7 +41,7 @@ namespace EMotionFX
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_POSE, PORTID_OUTPUT_POSE);
     }
 
-    
+
     BlendTree::~BlendTree()
     {
         // NOTE: child nodes get removed by the base class already
@@ -50,11 +51,6 @@ namespace EMotionFX
     void BlendTree::Reinit()
     {
         m_finalNode = nullptr;
-
-        if (!mAnimGraph)
-        {
-            return;
-        }
 
         if (m_finalNodeId == AnimGraphNodeId::InvalidId)
         {
@@ -81,9 +77,6 @@ namespace EMotionFX
                 }
             }
         }
-
-        // Re-initialize all child nodes and connections
-        AnimGraphNode::Reinit();
     }
 
 
@@ -165,12 +158,10 @@ namespace EMotionFX
         }
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 
@@ -324,6 +315,8 @@ namespace EMotionFX
     void BlendTree::SetVirtualFinalNode(AnimGraphNode* node)
     {
         mVirtualFinalNode = node;
+
+        AnimGraphNotificationBus::Broadcast(&AnimGraphNotificationBus::Events::OnVirtualFinalNodeSet, this);
     }
 
 
@@ -348,10 +341,10 @@ namespace EMotionFX
     }
 
 
-    AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>> BlendTree::FindCycles() const
+    AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*> > BlendTree::FindCycles() const
     {
         AZStd::unordered_set<AnimGraphNode*> visitedNodes;
-        AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>> cycleConnections;
+        AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*> > cycleConnections;
 
         for (AnimGraphNode* childNode : mChildNodes)
         {
@@ -364,15 +357,16 @@ namespace EMotionFX
     }
 
 
-    void BlendTree::RecursiveFindCycles(AnimGraphNode* nextNode, AZStd::unordered_set<AnimGraphNode*>& visitedNodes, AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>>& cycleConnections) const
+    void BlendTree::RecursiveFindCycles(AnimGraphNode* nextNode, AZStd::unordered_set<AnimGraphNode*>& visitedNodes, AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*> >& cycleConnections) const
     {
-        AZStd::unordered_map<AnimGraphNode*, AZStd::vector<BlendTreeConnection*>> sourceNodesAndConnections;
+        AZStd::unordered_map<AnimGraphNode*, AZStd::vector<BlendTreeConnection*> > sourceNodesAndConnections;
         const uint32 numConnections = nextNode->GetNumConnections();
         for (uint32 j = 0; j < numConnections; ++j)
         {
-            sourceNodesAndConnections[nextNode->GetConnection(j)->GetSourceNode()].emplace_back(nextNode->GetConnection(j));
+            AnimGraphNode* sourceNode = nextNode->GetConnection(j)->GetSourceNode();
+            sourceNodesAndConnections[sourceNode].emplace_back(nextNode->GetConnection(j));
         }
-                
+
         for (const auto& sourceNodeAndConnections : sourceNodesAndConnections)
         {
             if (visitedNodes.emplace(sourceNodeAndConnections.first).second)
@@ -387,7 +381,6 @@ namespace EMotionFX
                 {
                     cycleConnections.emplace(connection, nextNode);
                 }
-                
             }
         }
 
@@ -398,11 +391,11 @@ namespace EMotionFX
     bool BlendTree::ConnectionWillProduceCycle(AnimGraphNode* sourceNode, AnimGraphNode* targetNode) const
     {
         AZStd::unordered_set<AnimGraphNode*> visitedNodes;
-        AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*>> cycleConnections;
+        AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*> > cycleConnections;
 
         visitedNodes.emplace(targetNode);
         RecursiveFindCycles(sourceNode, visitedNodes, cycleConnections);
-        
+
         return !cycleConnections.empty();
     }
 
@@ -418,7 +411,7 @@ namespace EMotionFX
         serializeContext->Class<BlendTree, AnimGraphNode>()
             ->Version(1)
             ->Field("finalNodeId", &BlendTree::m_finalNodeId)
-            ;
+        ;
 
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -431,6 +424,6 @@ namespace EMotionFX
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
             ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-            ;
+        ;
     }
 } // namespace EMotionFX

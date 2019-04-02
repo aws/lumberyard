@@ -1,0 +1,8 @@
+{
+    "auto": {
+        "Source": [
+            "Source/EditorRenderToTextureComponent.cpp",
+            "Source/EditorRenderToTextureComponent.h"
+        ]
+    }
+}

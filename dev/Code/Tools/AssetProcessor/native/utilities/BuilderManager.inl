@@ -25,8 +25,6 @@ namespace AssetProcessor
         QByteArray data;
         AZStd::binary_semaphore wait;
 
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "Sending job request to builder\n");
-
         unsigned int serial;
         AssetProcessor::ConnectionBus::EventResult(serial, m_connectionId, &AssetProcessor::ConnectionBusTraits::SendRequest, netRequest, [&](AZ::u32 msgType, QByteArray msgData)
         {
@@ -49,8 +47,6 @@ namespace AssetProcessor
             AZ_Error("Builder", false, "Failed to deserialize processJobs response");
             return;
         }
-
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "Job request completed\n");
 
         if (!netResponse.m_response.Succeeded() || s_createRequestFileForSuccessfulJob)
         {

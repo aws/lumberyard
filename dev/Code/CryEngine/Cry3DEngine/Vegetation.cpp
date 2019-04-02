@@ -202,6 +202,15 @@ CLodValue CVegetation::ComputeLod(int wantedLod, const SRenderingPassInfo& passI
 }
 
 //////////////////////////////////////////////////////////////////////////
+bool CVegetation::CanExecuteRenderAsJob()
+{
+    if (m_pDeformable)
+    {
+        return false;
+    }
+    return true;
+}
+
 void CVegetation::Render(const SRenderingPassInfo& passInfo, const CLodValue& lodValue, SSectorTextureSet* pTerrainTexInfo, const SRendItemSorter& rendItemSorter) const
 {
     FUNCTION_PROFILER_3DENGINE;

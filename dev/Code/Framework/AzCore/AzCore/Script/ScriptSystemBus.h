@@ -67,6 +67,11 @@ namespace AZ
          * \return whether or not the asset load succeeded
          */
         virtual bool Load(const Data::Asset<ScriptAsset>& asset, ScriptContextId id) = 0;
+
+        /**
+         * Clear the script asset cached in ScriptSystemComponent.
+         */
+        virtual void ClearAssetReferences(Data::AssetId assetBaseId) = 0;
     };
 
     using ScriptSystemRequestBus = AZ::EBus<ScriptSystemRequests>;

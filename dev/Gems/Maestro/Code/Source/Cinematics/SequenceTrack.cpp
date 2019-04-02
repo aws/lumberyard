@@ -69,38 +69,6 @@ void CSequenceTrack::SerializeKey(ISequenceKey& key, XmlNodeRef& keyNode, bool b
 }
 
 //////////////////////////////////////////////////////////////////////////
-/// UpConvertKeys()
-//
-// Legacy levels used sequence names in ISequenceKey. We now use sequenceEntityId.
-// This method goes through any legacy keys that used names, finds their corresponding
-// ownerIds, fills them in and clears the name.
-//
-// This can be removed when Legacy Object Sequences are deprecated.
-bool CSequenceTrack::UpConvertKeys()
-{
-    bool keysChanged = false;
-    for (int i = m_keys.size(); --i >= 0;)
-    {
-        ISequenceKey& key = m_keys[i];
-        if (!key.szSelection.empty())
-        {
-            // if for some reason we had a name and a valid ownerId, keep the existing ownerId
-            if (!key.sequenceEntityId.IsValid())
-            {
-                IAnimSequence* sequence = gEnv->pMovieSystem->FindLegacySequenceByName(key.szSelection.c_str());
-                if (sequence)
-                {
-                    key.sequenceEntityId = sequence->GetSequenceEntityId();
-                }
-            }
-            key.szSelection.clear();
-            keysChanged = true;
-        }
-    }
-    return keysChanged;
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CSequenceTrack::GetKeyInfo(int key, const char*& description, float& duration)
 {
     assert(key >= 0 && key < (int)m_keys.size());

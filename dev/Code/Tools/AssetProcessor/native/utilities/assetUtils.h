@@ -192,10 +192,24 @@ namespace AssetUtilities
 
     //! interrogate a given file, which is specified as a full path name, and generate a fingerprint for it.
     unsigned int GenerateFingerprint(const AssetProcessor::JobDetails& jobDetail);
-    // Generates a fingerprint for a file without querying the existence of metadata files.  Helper function for GenerateFingerprint.
-    unsigned int GenerateBaseFingerprint(QString fullPathToFile, QString extraInfo = QString());
+    
+    // Generates a fingerprint string based on details of the file, will return the string "0" if the file does not exist.
+    // note that the 'name to use' can be blank, but it used to disambiguate between files that have the same
+    // modtime and size.
+    AZStd::string GetFileFingerprint(const AZStd::string& absolutePath, const AZStd::string& nameToUse);
 
     QString GuessProductNameInDatabase(QString path, QString platform, AssetProcessor::AssetDatabaseConnection* databaseConnection);
+
+    /** A utility function which checks the given path starting at the root and updates the relative path to be the actual case correct path.
+    * For example, if you pass it "c:\lumberyard\dev" as the root and "editor\icons\whatever.ico" as the relative path.
+    * It may update relativePathFromRoot to be "Editor\Icons\Whatever.ico" if such a casing is the actual physical case on disk already.
+    * @param rootPath a trusted already-case-correct path (will not be case corrected).
+    * @param relativePathFromRoot a non-trusted (may be incorrect case) path relative to rootPath, 
+    *        which will be normalized and updated to be correct casing.
+    * @return if such a file does NOT exist, it returns FALSE, else returns TRUE.
+    * @note A very expensive function!  Call sparingly.
+    */
+    bool UpdateToCorrectCase(const QString& rootPath, QString& relativePathFromRoot);
 
     class BuilderFilePatternMatcher
         : public AssetBuilderSDK::FilePatternMatcher

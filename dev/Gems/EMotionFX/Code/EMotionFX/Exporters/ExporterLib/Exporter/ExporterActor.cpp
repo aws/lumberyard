@@ -11,10 +11,16 @@
 */
 
 #include <AzCore/Debug/Timer.h>
+#include <AzCore/Serialization/ObjectStream.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/Utils.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 #include "Exporter.h"
 #include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/EventManager.h>
+#include <EMotionFX/Source/Importer/ActorFileFormat.h>
 
 
 //#define EMFX_DETAILED_SAVING_PERFORMANCESTATS
@@ -30,6 +36,45 @@
 
 namespace ExporterLib
 {
+    void SavePhysicsSetup(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
+    {
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!serializeContext)
+        {
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+            return;
+        }
+
+        AZStd::vector<AZ::u8> buffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<AZ::u8>> stream(&buffer);
+        const bool result = AZ::Utils::SaveObjectToStream<EMotionFX::PhysicsSetup>(stream, AZ::ObjectStream::ST_BINARY, actor->GetPhysicsSetup().get(), serializeContext);
+        if (result)
+        {
+            const AZ::u32 bufferSize = static_cast<AZ::u32>(buffer.size());
+
+            EMotionFX::FileFormat::FileChunk chunkHeader;
+            chunkHeader.mChunkID = EMotionFX::FileFormat::ACTOR_CHUNK_PHYSICSSETUP;
+            chunkHeader.mVersion = 1;
+            chunkHeader.mSizeInBytes = bufferSize + sizeof(AZ::u32);
+
+            ConvertFileChunk(&chunkHeader, targetEndianType);
+            file->Write(&chunkHeader, sizeof(EMotionFX::FileFormat::FileChunk));
+
+            // Write the number of bytes again as inside the chunk processor we don't have access to the file chunk.
+            AZ::u32 endianBufferSize = bufferSize;
+            ConvertUnsignedInt(&endianBufferSize, targetEndianType);
+            file->Write(&endianBufferSize, sizeof(AZ::u32));
+
+            file->Write(buffer.data(), bufferSize);
+        }
+        else
+        {
+            AZ_Error("EMotionFX", false, "Cannot save physics setup. SaveObjectToStream() failed.");
+        }
+    }
+
+
     // save the actor to a memory file
     void SaveActor(MCore::MemoryFile* file, EMotionFX::Actor* actor, MCore::Endian::EEndianType targetEndianType)
     {
@@ -102,6 +147,8 @@ namespace ExporterLib
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_START(morphTargetTimer);
         SaveMorphTargets(file, actor, targetEndianType);
         EMFX_DETAILED_SAVING_PERFORMANCESTATS_END(morphTargetTimer, "morph targets");
+
+        SavePhysicsSetup(file, actor, targetEndianType);
 
         // get rid of the memory again and unregister the actor
         actor->Destroy();

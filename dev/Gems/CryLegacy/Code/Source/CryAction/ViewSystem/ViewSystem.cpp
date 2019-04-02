@@ -483,8 +483,8 @@ void CViewSystem::SetActiveCamera(const SCameraParams& params)
         if (pView)
         {
             SViewParams viewParams = *pView->GetCurrentParams();
-            viewParams.fov = params.fFOV;
-            viewParams.nearplane = params.fNearZ;
+            viewParams.fov = params.fov;
+            viewParams.nearplane = params.nearZ;
 
             if (m_bActiveViewFromSequence == false && m_preSequenceViewId == 0)
             {
@@ -757,8 +757,8 @@ void CViewSystem::ClearCutsceneViews()
     {
         SCameraParams camParams;
         camParams.cameraEntityId.SetInvalid();  //Setting to invalid will try to switch to previous camera
-        camParams.fFOV = 60.0f;
-        camParams.fNearZ = DEFAULT_NEAR;
+        camParams.fov = 60.0f;
+        camParams.nearZ = DEFAULT_NEAR;
         camParams.justActivated = true;
         SetActiveCamera(camParams);
     }

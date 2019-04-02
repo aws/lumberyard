@@ -13,6 +13,7 @@
 #pragma once
 
 #include <AzCore/std/any.h>
+#include <AzCore/std/containers/set.h>
 #include <Maestro/Bus/SequenceAgentComponentBus.h>
 #include <ScriptedEntityTweener/ScriptedEntityTweenerEnums.h>
 
@@ -69,6 +70,11 @@ namespace ScriptedEntityTweener
             {
                 GetValueFromAny(m_valueInitial, initialValue);
             }
+        }
+
+        const int GetTimelineId() const
+        {
+            return m_animationProperties.m_timelineId;
         }
 
         bool GetVirtualPropertyValue(AZStd::any& returnVal, const AnimationParameterAddressData& addressData);

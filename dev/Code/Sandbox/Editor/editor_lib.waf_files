@@ -554,9 +554,7 @@
             "Animation/AnimationBipedBoneNames.cpp",
             "Animation/AnimationBipedBoneNames.h",
             "AnimationContext.cpp",
-            "AnimationContext.h",
-            "AnimationSerializer.cpp",
-            "AnimationSerializer.h"
+            "AnimationContext.h"
         ],
         "Asset Browser": [
             "AssetBrowser/AssetBrowser.qrc",
@@ -1519,6 +1517,8 @@
             "Objects/ObjectLoader.h",
             "Objects/ObjectManager.cpp",
             "Objects/ObjectManager.h",
+            "Objects/ObjectManagerLegacyUndo.cpp",
+            "Objects/ObjectManagerLegacyUndo.h",
             "Objects/ObjectPhysicsManager.cpp",
             "Objects/ObjectPhysicsManager.h",
             "Objects/ParticleEffectObject.h",

@@ -31,7 +31,7 @@
 #endif
 #include "Python.h"
 #ifdef DEBUG
-#defined _DEBUG
+#define _DEBUG
 #endif
 
 #ifdef Py_DEBUG
@@ -42,8 +42,21 @@
 #define PYTHON_HOME Configuration::PythonHome
 #endif // Py_DEBUG
 
+namespace ScriptErrors
+{
+    const unsigned int ImportMainFailed = 100;
+    const unsigned int ImportLauncherFailed = 200;
+    const unsigned int InvalidSyntax = 300;
+    const unsigned int LauncherError = 400;
+    const unsigned int NoScripts = 500;
+    const unsigned int RunScriptsError = 600;
+    const unsigned int RunScriptsErrorWithReturnedValue = 700;
+};
+
 namespace
 {
+    bool g_runScriptsResult = false;
+    
     struct UTF8Encoding {};
     struct ASCIIEncoding {};
 
@@ -177,6 +190,17 @@ namespace
         Py_RETURN_NONE;
     }
 
+    PyObject* SetRunScriptsResult(PyObject* /*self*/, PyObject* args)
+    {
+        PyObject* runScriptsResultObject = nullptr;
+        if (!PyArg_ParseTuple(args, "O:SetRunScriptsResult", &runScriptsResultObject))
+        {
+            return NULL;
+        }
+
+        g_runScriptsResult = PyObject_IsTrue(runScriptsResultObject);
+        Py_RETURN_NONE;
+    }
 
     PyMethodDef ExtensionMethods[] =
     {
@@ -184,6 +208,7 @@ namespace
         {"OutputPrint", OutputPrint, METH_VARARGS, "Takes a string and returns it from the code generator as informational output"},
         {"OutputError", OutputError, METH_VARARGS, "Takes a string and returns it from the code generator as error output"},
         {"RegisterDependencyFile", RegisterDependencyFile, METH_VARARGS, "Takes a string absolute path to raw dependency file, returns nothing"},
+        {"SetRunScriptsResult", SetRunScriptsResult, METH_VARARGS, "Takes a boolean indicating whether run_scripts was successful or not, returns nothing"},
         // Add one entry per method here
         {NULL, NULL, 0, NULL}
     };
@@ -228,7 +253,7 @@ namespace PythonScripting
         if (!PyFileObject)
         {
             CodeGenerator::Output::Error("Failed to load core script: %s", scriptPath.c_str());
-            return CodeGenerator::ErrorCodes::ScriptError;
+            return CodeGenerator::ErrorCodes::ScriptError + ScriptErrors::ImportLauncherFailed;
         }
 
         // This block of code was duplicated from Python C API - PyRunSimpleFileExFlags()
@@ -247,7 +272,7 @@ namespace PythonScripting
             {
                 // Probably missing __main__.py from scripts folder provided
                 CodeGenerator::Output::Error("Python: Unable to import __main__ module");
-                return CodeGenerator::ErrorCodes::ScriptError;
+                return CodeGenerator::ErrorCodes::ScriptError + ScriptErrors::ImportMainFailed;
             }
             // Todo - Refactor this to reduce duplication with the similar code in Invoke()
             // Also eliminate the need for goto.
@@ -300,6 +325,7 @@ namespace PythonScripting
             pyResultObject = PyRun_FileExFlags(PyFile_AsFile(PyFileObject), scriptPath.c_str(), Py_file_input, pyDictMain, pyDictMain, 0, nullptr);
             if (pyResultObject == nullptr)
             {
+                unsigned int scriptErrorNumber = 0;
                 PyObject* pyErrType;
                 PyObject* pyErrValue;
                 PyObject* pyErrTraceback;
@@ -310,19 +336,38 @@ namespace PythonScripting
                 {
                     PyObject* pyFileName = PyObject_GetAttrString(pyErrValue, "filename");
                     PyObject* pyLineNumber = PyObject_GetAttrString(pyErrValue, "lineno");
-                    CodeGenerator::Output::Error("Python syntax error during launcher.\nSyntax error at %s:%s\n", PyString_AsString(pyFileName), PyString_AsString(PyObject_Str(pyLineNumber)));
+                    PyObject* pyLineNumberString = PyObject_Str(pyLineNumber);
+                    PyObject* pyOffset = PyObject_GetAttrString(pyErrValue, "offset");
+                    PyObject* pyOffsetString = PyObject_Str(pyOffset);
+                    PyObject* pyText = PyObject_GetAttrString(pyErrValue, "text");
+                    long offset = PyInt_AsLong(pyOffset);
+                    if (offset > 0)
+                    {
+                        offset -= 1; // Offset by one since the first character is column 1, so no spaces
+                    }
+                    std::string offsetCaret = std::string(offset, ' ') + "^";
+                    CodeGenerator::Output::Error("%s(%s,%s): SyntaxError: invalid syntax.\n%s%s\n", PyString_AsString(pyFileName), PyString_AsString(pyLineNumberString), PyString_AsString(pyOffsetString), PyString_AsString(pyText), offsetCaret.c_str());
+                    scriptErrorNumber = ScriptErrors::InvalidSyntax;
+                    Py_DECREF(pyText);
+                    Py_DECREF(pyOffsetString);
+                    Py_DECREF(pyOffset);
+                    Py_DECREF(pyLineNumberString);
+                    Py_DECREF(pyLineNumber);
+                    Py_DECREF(pyFileName);
                 }
                 else
                 {
                     PyObject* pyErrStr = PyObject_Str(pyErrValue);
                     CodeGenerator::Output::Error("Python errored during launcher.\nPython error string: %s\n", PyString_AsString(pyErrStr));
+                    scriptErrorNumber = ScriptErrors::LauncherError;
+                    Py_DECREF(pyErrStr);
                 }
                 // End custom error handling code
 
                 // Clear the error
                 PyErr_Clear();
 
-                return CodeGenerator::ErrorCodes::ScriptError;
+                return CodeGenerator::ErrorCodes::ScriptError + scriptErrorNumber;
             }
             Py_DECREF(pyResultObject);
             if (Py_FlushLine())
@@ -356,7 +401,7 @@ done:
         if (!HasScripts())
         {
             CodeGenerator::Output::Error("No python driver scripts provided");
-            return CodeGenerator::ErrorCodes::ScriptError;
+            return CodeGenerator::ErrorCodes::ScriptError + ScriptErrors::NoScripts;
         }
 
         // Generate comma delimited string of scripts to run in python
@@ -371,7 +416,7 @@ done:
         std::stringstream scriptCommand;
         // Python
         // def Run(scripts, dataObject, inputPath, outputPath, inputFile):
-        scriptCommand << "run_scripts(\'" << scriptsToRun.c_str() << "\', \'" << StringEscape::Convert<ASCIIEncoding>(jsonString) << "\', \'" << inputPath << "\', \'" << outputPath << "\', \'" << inputFileName << "\')" << std::endl;
+        scriptCommand << "SetRunScriptsResult(run_scripts(\'" << scriptsToRun.c_str() << "\', \'" << StringEscape::Convert<ASCIIEncoding>(jsonString) << "\', \'" << inputPath << "\', \'" << outputPath << "\', \'" << inputFileName << "\'))" << std::endl;
 
         PyCompilerFlags pyCompilerFlags;
         //pyCompilerFlags.cf_flags = 0;
@@ -390,16 +435,17 @@ done:
             {
                 // Probably missing __main__.py from scripts folder provided
                 CodeGenerator::Output::Error("Python: Unable to import __main__ module");
-                return CodeGenerator::ErrorCodes::ScriptError;
+                return CodeGenerator::ErrorCodes::ScriptError + ScriptErrors::ImportMainFailed;
             }
             pyDictMain = PyModule_GetDict(pyModuleMain);
 
             // Run our script
-            pyResultObject = PyRun_StringFlags(scriptCommand.str().c_str(), Py_file_input, pyDictMain, pyDictMain, &pyCompilerFlags);
+            pyResultObject = PyRun_StringFlags(scriptCommand.str().c_str(), Py_single_input, pyDictMain, pyDictMain, &pyCompilerFlags);
 
             // Error handling
-            if (pyResultObject == nullptr)
+            if (!pyResultObject)
             {
+                // Null result object means that Python execution failed internally
                 // Custom error handling (not from Python C API)
                 // str() the exception (might give a decent error string for now)
                  
@@ -409,22 +455,34 @@ done:
                 PyErr_Fetch(&pyErrType, &pyErrValue, &pyErrTraceback);
                 PyErr_NormalizeException(&pyErrType, &pyErrValue, &pyErrTraceback);
 
+                unsigned int scriptErrorCode = 0;
                 if (PyErr_GivenExceptionMatches(pyErrType, PyExc_SyntaxError))
                 {
                     PyObject* pyFileName = PyObject_GetAttrString(pyErrValue, "filename");
                     PyObject* pyLineNumber = PyObject_GetAttrString(pyErrValue, "lineno");
-                    CodeGenerator::Output::Error("Python syntax error during run_scripts.\nSyntax error at %s:%s\n", PyString_AsString(pyFileName), PyString_AsString(PyObject_Str(pyLineNumber)));
+                    PyObject* pyLineNumberString = PyObject_Str(pyLineNumber);
+                    CodeGenerator::Output::Error("Python syntax error during run_scripts.\nSyntax error at %s:%s\n", PyString_AsString(pyFileName), PyString_AsString(pyLineNumberString));
+                    scriptErrorCode = ScriptErrors::InvalidSyntax;
+                    Py_DECREF(pyLineNumberString);
+                    Py_DECREF(pyLineNumber);
+                    Py_DECREF(pyFileName);
                 }
                 else
                 {
                     PyObject* pyErrStr = PyObject_Str(pyErrValue);
-                    CodeGenerator::Output::Error("Python errored during run_scripts.\nPython error string: %s\n", PyString_AsString(pyErrStr));
+                    CodeGenerator::Output::Error("Python returned an error during run_scripts: %s\n", PyString_AsString(pyErrStr));
+                    scriptErrorCode = ScriptErrors::RunScriptsError;
+                    Py_DECREF(pyErrStr);
                 }
                 // End custom error handling
 
                 // Clear the error
                 PyErr_Clear();
-                return CodeGenerator::ErrorCodes::ScriptError;
+                return CodeGenerator::ErrorCodes::ScriptError + scriptErrorCode;
+            }
+            else if (!g_runScriptsResult)
+            {
+                return CodeGenerator::ErrorCodes::ScriptError + ScriptErrors::RunScriptsErrorWithReturnedValue;
             }
 
             // Decrement reference since it was incremented for us by PyRun_StringFlags
@@ -455,6 +513,9 @@ done:
 
         // Might be necessary at some point, this SHOULD prevent PYTHONHOME and PYTHONPATH from being found in the environment, which we overwrite anyway
         //Py_IgnoreEnvironmentFlag = 1;
+
+        // Don't write pyc files which can conflict with each other since build servers and the like share drives
+        Py_DontWriteBytecodeFlag = 1;
 
         // Show all imports into Python, useful for debugging just where it is able to import something from and which paths it is trying first
         //Py_VerboseFlag = INT_MAX;

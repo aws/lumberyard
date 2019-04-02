@@ -12,7 +12,8 @@
 #pragma once
 
 #include <AzCore/Math/MathUtils.h>
-#include <AzCore/std/string/string.h>
+#include <AzCore/std/iterator.h>
+#include <AzCore/std/hash.h>
 
 namespace AZStd
 {
@@ -220,6 +221,71 @@ namespace AZStd
         }
     }
 
+    template<class Element>
+    struct char_traits;
+    /**
+    * \ref C++0x (21.2.3.1)
+    * char Traits (todo move to a separate file)
+    */
+    template<>
+    struct char_traits<char>
+    {
+        // properties of a string or stream char element
+        typedef char        char_type;
+        typedef int         int_type;
+        //typedef AZSTD_STL::streampos  pos_type;
+        //typedef AZSTD_STL::streamoff  off_type;
+        //typedef AZSTD_STL::mbstate_t  state_type;
+
+        inline static void assign(char_type& left, const char_type& right) { left = right; }
+        inline static bool eq(char_type left, char_type right) { return left == right; }
+        inline static bool lt(char_type left, char_type right) { return left < right; }
+        inline static int compare(const char_type* s1, const char_type* s2, AZStd::size_t count) { AZ_Assert(s1 != NULL && s2 != NULL, "Invalid input!"); return ::memcmp(s1, s2, count); }
+        inline static AZStd::size_t length(const char_type* s) { AZ_Assert(s != NULL, "Invalid input!"); return ::strlen(s); }
+        inline static const char_type* find(const char_type* s, AZStd::size_t count, const char_type& ch) { AZ_Assert(s != NULL, "Invalid input!"); return (const char_type*)::memchr(s, ch, count); }
+        inline static char_type* move(char_type* dest, const char_type* src, AZStd::size_t count) { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::memmove(dest, src, count); }
+        inline static char_type* copy(char_type* dest, const char_type* src, AZStd::size_t count) { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::memcpy(dest, src, count); }
+        inline static char_type* assign(char_type* dest, AZStd::size_t count, char_type ch) { AZ_Assert(dest != NULL, "Invalid input!"); return (char_type*)::memset(dest, ch, count); }
+        inline static char_type to_char_type(int_type c) { return (char_type)c; }
+        inline static int_type      to_int_type(char_type c) { return ((unsigned char)c); }
+        inline static bool          eq_int_type(int_type left, int_type right) { return left == right; }
+        inline static int_type      eof() { return (int_type)-1; }
+        inline static int_type      not_eof(const int_type c) { return (c != (int_type)-1 ? c : !eof()); }
+    };
+
+    template<>
+    struct char_traits<wchar_t>
+    {
+        // properties of a string or stream char element
+        typedef wchar_t     char_type;
+#ifdef _WCTYPE_T_DEFINED
+        typedef wint_t      int_type;
+#else
+        typedef unsigned short int_type;
+#endif
+        //typedef AZSTD_STL::streampos  pos_type;
+        //typedef AZSTD_STL::streamoff  off_type;
+        //typedef AZSTD_STL::mbstate_t  state_type;
+
+        inline static void assign(char_type& left, const char_type& right) { left = right; }
+        inline static bool eq(char_type left, char_type right) { return left == right; }
+        inline static bool lt(char_type left, char_type right) { return left < right; }
+        inline static int compare(const char_type* s1, const char_type* s2, AZStd::size_t count) { AZ_Assert(s1 != NULL && s2 != NULL, "Invalid input!"); return ::wmemcmp(s1, s2, count); }
+        inline static AZStd::size_t length(const char_type* s) { AZ_Assert(s != NULL, "Invalid input!"); return ::wcslen(s); }
+        inline static const char_type* find(const char_type* s, AZStd::size_t count, const char_type& ch) { AZ_Assert(s != NULL, "Invalid input!"); return (const char_type*)::wmemchr(s, ch, count); }
+        inline static char_type* move(char_type* dest, const char_type* src, AZStd::size_t count) { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::wmemmove(dest, src, count); }
+        inline static char_type* copy(char_type* dest, const char_type* src, AZStd::size_t count) { AZ_Assert(dest != NULL && src != NULL, "Invalid input!"); return (char_type*)::wmemcpy(dest, src, count); }
+        inline static char_type* assign(char_type* dest, AZStd::size_t count, char_type ch) { AZ_Assert(dest != NULL, "Invalid input!"); return (char_type*)::wmemset(dest, ch, count); }
+        inline static char_type to_char_type(int_type c) { return (char_type)c; }
+        inline static int_type      to_int_type(char_type c) { return ((unsigned char)c); }
+        inline static bool          eq_int_type(int_type left, int_type right) { return left == right; }
+        inline static int_type      eof() { return (int_type)-1; }
+        inline static int_type      not_eof(const int_type c) { return (c != (int_type)-1 ? c : !eof()); }
+    };
+
+    template<class Element, class Traits, class Allocator>
+    class basic_string;
+
     /**
      * Immutable string wrapper based on boost::const_string and std::string_view. When we operate on
      * const char* we don't know if this points to NULL terminated string or just a char array.
@@ -241,7 +307,7 @@ namespace AZStd
         using size_type = AZStd::size_t;
         using difference_type = AZStd::ptrdiff_t;
 
-        static const size_type npos = basic_string<value_type, traits_type>::npos;
+        static const size_type npos = size_type(-1);
 
         using iterator = const value_type*;
         using const_iterator = const value_type*;
@@ -253,12 +319,6 @@ namespace AZStd
             , m_end(nullptr)
         { }
 
-        template<typename Allocator>
-        basic_string_view(const AZStd::basic_string<value_type, traits_type, Allocator>& s)
-            : m_begin(s.c_str())
-            , m_end(m_begin + s.length())
-        { }
-
         basic_string_view(const_pointer s)
             : m_begin(s)
             , m_end(s ? s + traits_type::length(s) : nullptr)
@@ -267,9 +327,7 @@ namespace AZStd
         basic_string_view(const_pointer s, size_type length)
             : m_begin(s)
             , m_end(m_begin + length)
-        {
-            if (length == 0) erase();
-        }
+        { }
 
         basic_string_view(const_pointer first, const_pointer last)
             : m_begin(first)
@@ -328,23 +386,14 @@ namespace AZStd
             rshorten(n);
         }
 
-        operator basic_string<value_type, traits_type, AZStd::allocator>() const
-        {
-            return to_string<AZStd::allocator>();
-        }
-
-        template<typename Allocator = AZStd::allocator>
-        basic_string<value_type, traits_type, Allocator> to_string(Allocator alloc = Allocator()) const
-        {
-            return basic_string<value_type, traits_type, Allocator>(m_begin, m_end, alloc);
-        }
+        // Forward declare in string_view.h, implemented in string.h to avoid string_view having to include string.h
+        template<class Allocator = AZStd::allocator>
+        basic_string<value_type, traits_type, Allocator> to_string(Allocator alloc = Allocator()) const;
 
         basic_string_view& operator=(const basic_string_view& s) { if (&s != this) { m_begin = s.m_begin; m_end = s.m_end; } return *this; }
-        template<typename Allocator = AZStd::allocator> basic_string_view& operator=(const basic_string<value_type, traits_type, Allocator>& s) { return *this = basic_string_view(s); }
         basic_string_view& operator=(const_pointer s) { return *this = basic_string_view(s); }
 
         basic_string_view& assign(const basic_string_view& s) { return *this = s; }
-        template<typename Allocator = AZStd::allocator> basic_string_view& assign(const basic_string<value_type, traits_type, Allocator>& s) { return *this = basic_string_view(s); }
         basic_string_view& assign(const_pointer s) { return *this = basic_string_view(s); }
         basic_string_view& assign(const_pointer s, size_type len) { return *this = basic_string_view(s, len); }
         basic_string_view& assign(const_pointer f, const_pointer l) { return *this = basic_string_view(f, l); }
@@ -441,6 +490,38 @@ namespace AZStd
         int compare(size_type pos1, size_type count1, const_pointer s, size_type count2) const
         {
             return substr(pos1, count1).compare(basic_string_view(s, count2));
+        }
+
+        // starts_with
+        bool starts_with(basic_string_view prefix) const
+        {
+            return size() >= prefix.size() && compare(0, prefix.size(), prefix) == 0;
+        }
+
+        bool starts_with(value_type prefix) const
+        {
+            return starts_with(basic_string_view(&prefix, 1));
+        }
+
+        bool starts_with(const_pointer prefix) const
+        {
+            return starts_with(basic_string_view(prefix));
+        }
+
+        // ends_with
+        bool ends_with(basic_string_view suffix) const
+        {
+            return size() >= suffix.size() && compare(size() - suffix.size(), npos, suffix) == 0;
+        }
+
+        bool ends_with(value_type suffix) const
+        {
+            return ends_with(basic_string_view(&suffix, 1));
+        }
+
+        bool ends_with(const_pointer suffix) const
+        {
+            return ends_with(basic_string_view(suffix));
         }
 
         // find
@@ -602,6 +683,26 @@ namespace AZStd
     using basic_const_string = basic_string_view<Element, Traits>;
     using const_string = string_view;
     using const_wstring = wstring_view;
+
+    /// For string hashing we are using FNV-1a algorithm with 32 and 64 bit versions.
+    template<class RandomAccessIterator>
+    AZ_FORCE_INLINE AZStd::size_t hash_string(RandomAccessIterator first, AZStd::size_t length)
+    {
+#ifdef AZ_OS64
+        size_t hash = 14695981039346656037ULL;
+        const size_t fnvPrime = 1099511628211ULL;
+#else
+        size_t hash = 2166136261U;
+        const size_t fnvPrime = 16777619U;
+#endif
+        const char* cptr = reinterpret_cast<const char*>(&(*first));
+        for (; length; --length)
+        {
+            hash ^= static_cast<size_t>(*cptr++);
+            hash *= fnvPrime;
+        }
+        return hash;
+    }
 
     template<class Element, class Traits>
     struct hash<basic_string_view<Element, Traits>>

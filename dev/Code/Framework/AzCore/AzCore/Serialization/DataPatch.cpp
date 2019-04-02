@@ -95,7 +95,8 @@ namespace AZ
             const SerializeContext::ClassData* parentClassData,
             AZStd::vector<AZ::u8>& tmpSourceBuffer,
             SerializeContext* context,
-            const AZ::ObjectStream::FilterDescriptor& filterDesc);
+            const AZ::ObjectStream::FilterDescriptor& filterDesc,
+            int& parentContainerElementCounter);
 
         static DataPatch::Flags CalculateDataFlagsAtThisAddress(const DataPatch::FlagsMap& sourceFlagsMap, const DataPatch::FlagsMap& targetFlagsMap, DataPatch::Flags parentAddressFlags, const DataPatch::AddressType& address);
 
@@ -464,7 +465,8 @@ namespace AZ
         const SerializeContext::ClassData* parentClassData,
         AZStd::vector<AZ::u8>& tmpSourceBuffer,
         SerializeContext* context,
-        const AZ::ObjectStream::FilterDescriptor& filterDesc)
+        const AZ::ObjectStream::FilterDescriptor& filterDesc,
+        int& parentContainerElementCounter)
     {
         void* targetPointer = nullptr;
         void* reservePointer = nullptr;
@@ -487,8 +489,17 @@ namespace AZ
                     }
                     else
                     {
-                        // Allocate space in the container for our element
-                        targetPointer = parentClassData->m_container->ReserveElement(parentPointer, sourceNode->m_classElement);
+                        if (parentClassData->m_container->CanAccessElementsByIndex() && parentClassData->m_container->Size(parentPointer) > parentContainerElementCounter)
+                        {
+                            targetPointer = parentClassData->m_container->GetElementByIndex(parentPointer, sourceNode->m_classElement, parentContainerElementCounter);
+                        }
+                        else
+                        {
+                            // Allocate space in the container for our element
+                            targetPointer = parentClassData->m_container->ReserveElement(parentPointer, sourceNode->m_classElement);
+                        }
+
+                        ++parentContainerElementCounter;
                     }
                 }
                 else
@@ -550,8 +561,17 @@ namespace AZ
             {
                 if (parentClassData->m_container)
                 {
-                    // Allocate space in the container for our element
-                    targetPointer = parentClassData->m_container->ReserveElement(parentPointer, sourceNode->m_classElement);
+                    if (parentClassData->m_container->CanAccessElementsByIndex() && parentClassData->m_container->Size(parentPointer) > parentContainerElementCounter)
+                    {
+                        targetPointer = parentClassData->m_container->GetElementByIndex(parentPointer, sourceNode->m_classElement, parentContainerElementCounter);
+                    }
+                    else
+                    {
+                        // Allocate space in the container for our element
+                        targetPointer = parentClassData->m_container->ReserveElement(parentPointer, sourceNode->m_classElement);
+                    }
+
+                    ++parentContainerElementCounter;
                 }
                 else
                 {
@@ -606,6 +626,7 @@ namespace AZ
             }
             else
             {
+                int targetContainerElementCounter = 0;
                 if (sourceNode->m_classData->m_container)
                 {
                     // Traverse child elements of container
@@ -639,7 +660,8 @@ namespace AZ
                             sourceNode->m_classData,
                             tmpSourceBuffer,
                             context,
-                            filterDesc);
+                            filterDesc,
+                            targetContainerElementCounter);
 
                         address.pop_back();
 
@@ -723,7 +745,8 @@ namespace AZ
                             sourceNode->m_classData,
                             tmpSourceBuffer,
                             context,
-                            filterDesc);
+                            filterDesc,
+                            targetContainerElementCounter);
 
                             address.pop_back();
                         }
@@ -750,7 +773,8 @@ namespace AZ
                             sourceNode->m_classData,
                             tmpSourceBuffer,
                             context,
-                            filterDesc);
+                            filterDesc,
+                            targetContainerElementCounter);
 
                         address.pop_back();
 
@@ -795,7 +819,7 @@ namespace AZ
                                 if (classElement.m_nameCrc == static_cast<AZ::u32>(newElementId))
                                 {
                                     defaultSourceNode.m_classElement = &classElement;
-                                    ApplyToElements(
+                                ApplyToElements(
                                         &defaultSourceNode,
                                         patch,
                                         childPatchLookup,
@@ -807,7 +831,8 @@ namespace AZ
                                         sourceNode->m_classData,
                                         tmpSourceBuffer,
                                         context,
-                                        filterDesc);
+                                        filterDesc,
+                                        targetContainerElementCounter);
                                     break;
                                 }
                             }
@@ -1097,7 +1122,8 @@ namespace AZ
         }
         {
             AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzCore, "DataPatch::Apply:RecursiveCallToApplyToElements");
-            result = DataNodeTree::ApplyToElements(&sourceTree.m_root, m_patch, childPatchMap, sourceFlagsMap, targetFlagsMap, 0, address, nullptr, nullptr, tmpSourceBuffer, context, filterDesc);
+            int rootContainerElementCounter = 0;
+            result = DataNodeTree::ApplyToElements(&sourceTree.m_root, m_patch, childPatchMap, sourceFlagsMap, targetFlagsMap, 0, address, nullptr, nullptr, tmpSourceBuffer, context, filterDesc, rootContainerElementCounter);
         }
         return result;
     }

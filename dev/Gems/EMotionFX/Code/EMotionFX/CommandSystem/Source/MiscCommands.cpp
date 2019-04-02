@@ -40,9 +40,10 @@ namespace CommandSystem
         MCORE_UNUSED(parameters);
         MCORE_UNUSED(outResult);
 
+        const bool forceClear = parameters.GetValueAsBool("force", this);
         m_wasRecording = EMotionFX::GetRecorder().GetIsRecording();
         m_wasInPlayMode = EMotionFX::GetRecorder().GetIsInPlayMode();
-        if (m_wasRecording || m_wasInPlayMode)
+        if (m_wasRecording || m_wasInPlayMode || forceClear)
         {
             EMotionFX::GetRecorder().Clear();
         }
@@ -59,6 +60,7 @@ namespace CommandSystem
 
     void CommandRecorderClear::InitSyntax()
     {
+        GetSyntax().AddParameter("force", "Force clear? If set to false it will only clear while we are recording.", MCore::CommandSyntax::PARAMTYPE_BOOLEAN, "false");
     }
 
     const char* CommandRecorderClear::GetDescription() const

@@ -10,7 +10,11 @@
 *
 */
 
-#include "../EMotionFXConfig.h"
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Serialization/ObjectStream.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzCore/Serialization/Utils.h>
 #include <EMotionFX/Source/Parameter/GroupParameter.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <MCore/Source/AttributeFactory.h>
@@ -63,11 +67,15 @@
 #include "../AnimGraphStateTransition.h"
 #include "../AnimGraphTransitionCondition.h"
 #include "../MCore/Source/Endian.h"
+#include "EMotionFX/Source/TwoStringEventData.h"
 #include <AzCore/Math/PackedVector3.h>
 #include <MCore/Source/MCoreSystem.h>
 #include "../NodeMap.h"
 #include "LegacyAnimGraphNodeParser.h"
 #include <EMotionFX/CommandSystem/Source/AnimGraphParameterCommands.h>
+
+#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/Serialization/Utils.h>
 
 namespace EMotionFX
 {
@@ -542,7 +550,7 @@ namespace EMotionFX
                 bindTransform.mScale            = AZ::Vector3(scale);
             )
 
-            actor->GetBindPose()->SetLocalTransform(nodeIndex, bindTransform);
+            actor->GetBindPose()->SetLocalSpaceTransform(nodeIndex, bindTransform);
 
             // set the skeletal LOD levels
             if (actorSettings->mLoadSkeletalLODs)
@@ -1361,6 +1369,42 @@ namespace EMotionFX
 
     //=================================================================================================
 
+    bool ChunkProcessorMotionInfo3::Process(MCore::File* file, Importer::ImportParameters& importParams)
+    {
+        const MCore::Endian::EEndianType endianType = importParams.mEndianType;
+        Motion* motion = importParams.mMotion;
+        MCORE_ASSERT(motion);
+
+        // read the chunk
+        FileFormat::Motion_Info3 fileInformation;
+        file->Read(&fileInformation, sizeof(FileFormat::Motion_Info3));
+
+        // convert endian
+        MCore::Endian::ConvertUnsignedInt32(&fileInformation.mMotionExtractionFlags, endianType);
+        MCore::Endian::ConvertUnsignedInt32(&fileInformation.mMotionExtractionNodeIndex, endianType);
+
+        if (GetLogging())
+        {
+            MCore::LogDetailedInfo("- File Information");
+        }
+
+        if (GetLogging())
+        {
+            MCore::LogDetailedInfo("   + Unit Type                     = %d", fileInformation.mUnitType);
+            MCore::LogDetailedInfo("   + Is Additive Motion            = %d", fileInformation.mIsAdditive);
+            MCore::LogDetailedInfo("   + Motion Extraction Flags       = 0x%x [capZ=%d]", fileInformation.mMotionExtractionFlags, (fileInformation.mMotionExtractionFlags & EMotionFX::MOTIONEXTRACT_CAPTURE_Z) ? 1 : 0);
+        }
+
+        motion->SetUnitType(static_cast<MCore::Distance::EUnitType>(fileInformation.mUnitType));
+        motion->SetIsAdditive(fileInformation.mIsAdditive == 0 ? false : true);
+        motion->SetFileUnitType(motion->GetUnitType());
+        motion->SetMotionExtractionFlags(static_cast<EMotionFX::EMotionExtractionFlags>(fileInformation.mMotionExtractionFlags));
+
+        return true;
+    }
+
+    //=================================================================================================
+
     // Actor Standard Material 3, with layers already inside it
     bool ChunkProcessorActorStdMaterial::Process(MCore::File* file, Importer::ImportParameters& importParams)
     {
@@ -1577,9 +1621,7 @@ namespace EMotionFX
         return true;
     }
 
-
     //=================================================================================================
-
 
     // Actor material attribute set
     bool ChunkProcessorActorMaterialAttributeSet::Process(MCore::File* file, Importer::ImportParameters& importParams)
@@ -1615,7 +1657,40 @@ namespace EMotionFX
                 MCore::LogInfo("   + Material LOD:   %d", setHeader.mLODLevel);
             }
         }
-        
+
+        return true;
+    }
+
+    //=================================================================================================
+
+    bool ChunkProcessorActorPhysicsSetup::Process(MCore::File* file, Importer::ImportParameters& importParams)
+    {
+        const MCore::Endian::EEndianType endianType = importParams.mEndianType;
+        Actor* actor = importParams.mActor;
+
+        AZ::u32 bufferSize;
+        file->Read(&bufferSize, sizeof(AZ::u32));
+        MCore::Endian::ConvertUnsignedInt32(&bufferSize, endianType);
+
+        AZStd::vector<AZ::u8> buffer;
+        buffer.resize(bufferSize);
+        file->Read(&buffer[0], bufferSize);
+
+        AZ::SerializeContext* serializeContext = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!serializeContext)
+        {
+            AZ_Error("EMotionFX", false, "Can't get serialize context from component application.");
+            return false;
+        }
+
+        AZ::ObjectStream::FilterDescriptor loadFilter(nullptr, AZ::ObjectStream::FILTERFLAG_IGNORE_UNKNOWN_CLASSES);
+        EMotionFX::PhysicsSetup* result = AZ::Utils::LoadObjectFromBuffer<EMotionFX::PhysicsSetup>(buffer.data(), buffer.size(), serializeContext, loadFilter);
+        if (result)
+        {
+            actor->SetPhysicsSetup(AZStd::shared_ptr<EMotionFX::PhysicsSetup>(result));
+        }
+
         return true;
     }
 
@@ -1681,7 +1756,6 @@ namespace EMotionFX
     {
         const MCore::Endian::EEndianType endianType = importParams.mEndianType;
         Motion* motion = importParams.mMotion;
-        Importer::SkeletalMotionSettings* skelMotionSettings = importParams.mSkeletalMotionSettings;
 
         MCORE_ASSERT(motion);
 
@@ -1780,37 +1854,11 @@ namespace EMotionFX
                 }
             }
 
-            // check if we want to automatically register motion events or not
-            bool autoRegister = false;
-            if ((skelMotionSettings && skelMotionSettings->mAutoRegisterEvents) /* || (pmMotionSettings && pmMotionSettings->mAutoRegisterEvents)*/)
-            {
-                autoRegister = true;
-            }
-
             // create the default event track
             MotionEventTrack* track = MotionEventTrack::Create(trackName.c_str(), motion);
             track->SetIsEnabled(fileTrack.mIsEnabled != 0);
             track->ReserveNumEvents(fileTrack.mNumEvents);
-            track->ReserveNumParameters(fileTrack.mNumParamStrings);
             motionEventTable->AddTrack(track);
-
-            // register all mirror events
-            if (autoRegister)
-            {
-                GetEventManager().Lock();
-                for (i = 0; i < fileTrack.mNumMirrorTypeStrings; ++i)
-                {
-                    if (GetEventManager().CheckIfHasEventType(mirrorTypeStrings[i].c_str()) == false)
-                    {
-                        const uint32 mirrorID = GetEventManager().RegisterEventType(mirrorTypeStrings[i].c_str());
-                        if (GetLogging())
-                        {
-                            MCore::LogInfo("     Event '%s' has been automatically registered with ID %d", mirrorTypeStrings[i].c_str(), mirrorID);
-                        }
-                    }
-                }
-                GetEventManager().Unlock();
-            }
 
             // read all motion events
             if (GetLogging())
@@ -1836,63 +1884,60 @@ namespace EMotionFX
                     MCore::LogDetailedInfo("     [%d] StartTime = %f  -  EndTime = %f  -  Type = '%s'  -  Param = '%s'  -  Mirror = '%s'", i, fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].c_str(), paramStrings[fileEvent.mParamIndex].c_str(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].c_str());
                 }
 
-                // if we want to automatically register motion events
-                if (autoRegister)
-                {
-                    GetEventManager().Lock();
-
-                    // if the event type hasn't been registered yet
-                    if (fileEvent.mEventTypeIndex != MCORE_INVALIDINDEX32)
-                    {
-                        if (GetEventManager().CheckIfHasEventType(typeStrings[fileEvent.mEventTypeIndex].c_str()) == false)
-                        {
-                            // register/link the event type with the free ID
-                            const uint32 id = GetEventManager().RegisterEventType(typeStrings[fileEvent.mEventTypeIndex].c_str());
-                            if (GetLogging())
-                            {
-                                MCore::LogInfo("     Event '%s' has been automatically registered with ID %d", typeStrings[fileEvent.mEventTypeIndex].c_str(), id);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // check if the empty string is registered, if not register it
-                        if (GetEventManager().CheckIfHasEventType("") == false)
-                        {
-                            GetEventManager().RegisterEventType("");
-                        }
-                    }
-
-                    GetEventManager().Unlock();
-                }
+                const AZStd::string eventTypeName = fileEvent.mEventTypeIndex != MCORE_INVALIDINDEX32 ?
+                    typeStrings[fileEvent.mEventTypeIndex] : "";
+                const AZStd::string mirrorTypeName = fileEvent.mMirrorTypeIndex != MCORE_INVALIDINDEX32 ?
+                    mirrorTypeStrings[fileEvent.mMirrorTypeIndex] : "";
+                const AZStd::string params = paramStrings[fileEvent.mParamIndex];
 
                 // add the event
-                if (fileEvent.mMirrorTypeIndex != MCORE_INVALIDINDEX32)
-                {
-                    if (fileEvent.mEventTypeIndex != MCORE_INVALIDINDEX32)
-                    {
-                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].c_str(), paramStrings[fileEvent.mParamIndex].c_str(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].c_str());
-                    }
-                    else
-                    {
-                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, "", paramStrings[fileEvent.mParamIndex].c_str(), mirrorTypeStrings[fileEvent.mMirrorTypeIndex].c_str());
-                    }
-                }
-                else
-                {
-                    if (fileEvent.mEventTypeIndex != MCORE_INVALIDINDEX32)
-                    {
-                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, typeStrings[fileEvent.mEventTypeIndex].c_str(), paramStrings[fileEvent.mParamIndex].c_str(), "");
-                    }
-                    else
-                    {
-                        track->AddEvent(fileEvent.mStartTime, fileEvent.mEndTime, "", paramStrings[fileEvent.mParamIndex].c_str(), "");
-                    }
-                }
+                track->AddEvent(
+                    fileEvent.mStartTime,
+                    fileEvent.mEndTime,
+                    GetEventManager().FindOrCreateEventData<EMotionFX::TwoStringEventData>(eventTypeName, params, mirrorTypeName)
+                    );
             }
         } // for all tracks
 
         return true;
+    }
+
+    //=================================================================================================
+
+    bool ChunkProcessorMotionEventTrackTable2::Process(MCore::File* file, Importer::ImportParameters& importParams)
+    {
+        Motion* motion = importParams.mMotion;
+
+        MCORE_ASSERT(motion);
+
+        AZ::SerializeContext* context = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+        if (!context)
+        {
+            return false;
+        }
+
+        // read the motion event table header
+        FileFormat::FileMotionEventTableSerialized fileEventTable;
+        file->Read(&fileEventTable, sizeof(FileFormat::FileMotionEventTableSerialized));
+
+        if (GetLogging())
+        {
+            MCore::LogDetailedInfo("- Motion Event Table:");
+            MCore::LogDetailedInfo("  + size = %d", fileEventTable.m_size);
+        }
+
+        AZStd::vector<char> buffer(fileEventTable.m_size);
+        file->Read(&buffer[0], fileEventTable.m_size);
+
+        MotionEventTable* motionEventTable = AZ::Utils::LoadObjectFromBuffer<MotionEventTable>(&buffer[0], buffer.size(), context);
+        if (motionEventTable)
+        {
+            motionEventTable->InitAfterLoading(motion);
+            return true;
+        }
+
+        return false;
     }
 
     //=================================================================================================
@@ -1922,8 +1967,8 @@ namespace EMotionFX
         // read the source application, original filename and the compilation date of the exporter string
         SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
         SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
-        const char* exporterCompilationDate = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
-        
+        SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
+
         const char* name = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
         actor->SetName(name);
         if (GetLogging())
@@ -1982,8 +2027,8 @@ namespace EMotionFX
         // read the source application, original filename and the compilation date of the exporter string
         SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
         SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
-        const char* exporterCompilationDate = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
-        
+        SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
+
         const char* name = SharedHelperData::ReadString(file, importParams.mSharedData, endianType);
         actor->SetName(name);
 
@@ -3605,10 +3650,10 @@ namespace EMotionFX
 
         AnimGraphNode* node = nullptr;
         if (!LegacyAnimGraphNodeParser::ParseAnimGraphNodeChunk(file
-            , importParams
-            , nodeName
-            , nodeHeader
-            , node))
+                , importParams
+                , nodeName
+                , nodeHeader
+                , node))
         {
             if (importParams.mAnimGraph->GetRootStateMachine() == node)
             {
@@ -3843,7 +3888,7 @@ namespace EMotionFX
         // Since relocating a parameter to another parent changes its index, we are going to
         // compute all the relationships leaving the value parameters at the root, then relocate
         // them.
-        AZStd::vector<AZStd::pair<const EMotionFX::GroupParameter*, EMotionFX::ParameterVector>> parametersByGroup;
+        AZStd::vector<AZStd::pair<const EMotionFX::GroupParameter*, EMotionFX::ParameterVector> > parametersByGroup;
 
         // read all group parameters
         for (uint32 g = 0; g < numGroupParameters; ++g)
@@ -3876,7 +3921,7 @@ namespace EMotionFX
 
             parametersByGroup.emplace_back(groupParameter, EMotionFX::ParameterVector());
             AZStd::vector<EMotionFX::Parameter*>& parametersInGroup = parametersByGroup.back().second;
-            
+
             // set the parameters of the group parameter
             for (uint32 i = 0; i < numParameters; ++i)
             {
@@ -3915,7 +3960,14 @@ namespace EMotionFX
 
         const EMotionFX::ValueParameterVector valueParametersAfterChange = animGraph->RecursivelyGetValueParameters();
 
-        CommandSystem::RewireConnectionsForParameterNodesAfterParameterIndexChange(animGraph, valueParametersBeforeChange, valueParametersAfterChange);
+        AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+        animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+
+        for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
+        {
+            EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+            affectedObjectByParameterChanges->ParameterOrderChanged(valueParametersBeforeChange, valueParametersAfterChange);
+        }
 
         return true;
     }

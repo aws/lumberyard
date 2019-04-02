@@ -18,7 +18,7 @@ import os
 import sys
 import jinja_extensions
 import jinja2
-
+from azcg_extension import *
 
 class AZCGError(Exception):
     def __init__(self, value):
@@ -44,6 +44,7 @@ class TemplateDriver:
 
     # ---------------------------------------------------
     # Derived classes may implement this to perform custom processing and invoke the template engine.
+    # @return boolean True if execution was successful, false if execution failed
     # @param data_object The data object in the format sent by the codegen utility to use.
     # @param input_file The input file being parsed for the intermediate data
     def execute(self, data_object, input_file):
@@ -58,7 +59,11 @@ class TemplateDriver:
             # Create a raw json string of the above data we processed
             json_str = json.dumps(json_object, indent=4)
             extra_str = json.dumps(extra_data, indent=4)
-            self.render_templates(input_file, json_object=json_object, json_str=json_str, extra_data=extra_data, extra_str=extra_str)
+            error_msg = self.render_templates(input_file, json_object=json_object, json_str=json_str, extra_data=extra_data, extra_str=extra_str)
+            if error_msg:
+                OutputError("render_templates returned failed with message \"{}\" for Template Driver {} in module {} executing on input file {}".format(error_msg, self.__class__.__name__, self.__class__.__module__, input_file))
+                return False
+        return True
 
     # Call this method to run jinja and write output to disk
     def render_template_to_file(self, template_file, template_kwargs, output_file, should_add_to_build=False):

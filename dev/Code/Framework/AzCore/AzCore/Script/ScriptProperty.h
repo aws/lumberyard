@@ -20,6 +20,7 @@
 #include <AzCore/Script/ScriptPropertyWatcherBus.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/std/containers/set.h>
 
 // Ideally, the properties would be able to marshal themselves
 // to avoid needing this. But until then, in order to maintain
@@ -67,6 +68,11 @@ namespace AZ
 
         virtual const void* GetDataAddress() const = 0;
         virtual const AZ::Uuid& GetDataTypeUuid() const = 0;
+
+        /**
+         * Test if the value at the index valueIndex is of the same type as that of the instance of ScriptProperty's subclass.
+         */
+        virtual bool DoesTypeMatch(AZ::ScriptDataContext& /*context*/, int /*valueIndex*/) const { return false; }
 
         virtual ScriptProperty* Clone(const char* name = nullptr) const = 0;
 
@@ -166,6 +172,8 @@ namespace AZ
         const void* GetDataAddress() const override { return &m_value; }
         const AZ::Uuid& GetDataTypeUuid() const override;
 
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
+
         ScriptPropertyBoolean* Clone(const char* name) const override;
 
         bool Write(AZ::ScriptContext& context) override;
@@ -196,6 +204,8 @@ namespace AZ
         const void* GetDataAddress() const override { return &m_value; }
         const AZ::Uuid& GetDataTypeUuid() const override;
 
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
+
         ScriptPropertyNumber* Clone(const char* name) const override;
 
         bool Write(AZ::ScriptContext& context) override;
@@ -224,6 +234,8 @@ namespace AZ
 
         const void* GetDataAddress() const override { return &m_value; }
         const AZ::Uuid& GetDataTypeUuid() const override;
+
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex)  const override;
 
         ScriptPropertyString* Clone(const char* name = nullptr) const override;
 
@@ -256,6 +268,8 @@ namespace AZ
 
         const void* GetDataAddress() const override { return m_value.m_data; }
         const AZ::Uuid& GetDataTypeUuid() const override { return m_value.m_typeId; }
+
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
 
         ScriptPropertyGenericClass* Clone(const char* name = nullptr) const override;
         bool Write(AZ::ScriptContext& context) override;
@@ -327,6 +341,8 @@ namespace AZ
         const void* GetDataAddress() const override { return &m_values; }
         const AZ::Uuid& GetDataTypeUuid() const override;
 
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
+
         ScriptPropertyNumberArray* Clone(const char* name = nullptr) const override;
 
         bool Write(AZ::ScriptContext& context) override;
@@ -356,6 +372,8 @@ namespace AZ
         const void* GetDataAddress() const override { return &m_values; }
         const AZ::Uuid& GetDataTypeUuid() const override;
 
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
+
         ScriptPropertyBooleanArray* Clone(const char* name = nullptr) const override;
 
         bool Write(AZ::ScriptContext& context) override;
@@ -384,6 +402,8 @@ namespace AZ
 
         const void* GetDataAddress() const override { return &m_values; }
         const AZ::Uuid& GetDataTypeUuid() const override;
+
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
 
         ScriptPropertyStringArray* Clone(const char* name = nullptr) const override;
 
@@ -425,6 +445,8 @@ namespace AZ
 
         void SetElementTypeUuid(const AZ::Uuid);
 
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
+
         ScriptPropertyGenericClassArray* Clone(const char* name = nullptr) const override;
 
         bool Write(AZ::ScriptContext& context) override;
@@ -459,6 +481,8 @@ namespace AZ
         const void* GetDataAddress() const override { return &m_value; }
         const AZ::Uuid& GetDataTypeUuid() const override;
 
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
+
         ScriptPropertyAsset* Clone(const char* name = nullptr) const override;
 
         bool Write(AZ::ScriptContext& context) override;
@@ -484,6 +508,8 @@ namespace AZ
         virtual ~ScriptPropertyEntityRef() = default;
         const void* GetDataAddress() const override { return &m_value; }
         const AZ::Uuid& GetDataTypeUuid() const override;
+
+        bool DoesTypeMatch(AZ::ScriptDataContext& context, int valueIndex) const override;
 
         ScriptPropertyEntityRef* Clone(const char* name = nullptr) const override;
 

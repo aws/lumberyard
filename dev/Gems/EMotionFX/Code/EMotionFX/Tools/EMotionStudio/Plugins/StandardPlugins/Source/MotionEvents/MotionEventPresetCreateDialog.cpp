@@ -12,112 +12,65 @@
 
 #include "MotionEventPresetCreateDialog.h"
 #include <MysticQt/Source/ColorLabel.h>
-#include <QGridLayout>
+#include <Source/Editor/ObjectEditor.h>
+#include <AzCore/Component/ComponentApplication.h>
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QDialogButtonBox>
 
 
 namespace EMStudio
 {
-    MotionEventPresetCreateDialog::MotionEventPresetCreateDialog(QWidget* parent, const char* eventType, const char* parameter, const char* mirrorType, uint32 color)
+    MotionEventPresetCreateDialog::MotionEventPresetCreateDialog(const MotionEventPreset& preset, QWidget* parent)
         : QDialog(parent)
-        , mEventType(nullptr)
-        , mMirrorType(nullptr)
-        , mParameter(nullptr)
+        , m_preset(preset)
+        , m_eventDataEditor(nullptr, nullptr, &m_preset.GetEventDatas(), this)
     {
-        Init(eventType, parameter, mirrorType, color);
+        Init();
     }
 
-
-    MotionEventPresetCreateDialog::~MotionEventPresetCreateDialog()
+    MotionEventPreset& MotionEventPresetCreateDialog::GetPreset()
     {
+        m_eventDataEditor.MoveEventDataSet(m_preset.GetEventDatas());
+        return m_preset;
     }
 
-
-    void MotionEventPresetCreateDialog::Init(const char* eventType, const char* parameter, const char* mirrorType, uint32 color)
+    void MotionEventPresetCreateDialog::Init()
     {
         setWindowTitle("Motion Event Preset Creation");
 
-        QVBoxLayout* verticalLayout = new QVBoxLayout();
+        AZ::SerializeContext* context;
+        AZ::ComponentApplicationBus::BroadcastResult(context, &AZ::ComponentApplicationBus::Events::GetSerializeContext);
+
+        m_editor = new EMotionFX::ObjectEditor(context, this);
+        m_editor->AddInstance(&m_preset, azrtti_typeid<MotionEventPreset>());
+
+        QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::StandardButton::Ok | QDialogButtonBox::StandardButton::Cancel);
+        connect(buttonBox, &QDialogButtonBox::accepted, this, &MotionEventPresetCreateDialog::OnCreateButton);
+        connect(buttonBox, &QDialogButtonBox::rejected, this, &MotionEventPresetCreateDialog::reject);
+
+        QVBoxLayout* verticalLayout = new QVBoxLayout(this);
         verticalLayout->setSpacing(5);
         verticalLayout->setSizeConstraint(QLayout::SizeConstraint::SetMinAndMaxSize);
-
-        QGridLayout* gridLayout = new QGridLayout();
-        gridLayout->setSizeConstraint(QLayout::SizeConstraint::SetMinAndMaxSize);
-        gridLayout->setSpacing(2);
-        gridLayout->setMargin(0);
-
-        gridLayout->addWidget(new QLabel("Event Type:"),        0, 0, Qt::AlignRight);
-        gridLayout->addWidget(new QLabel("Event Mirror Type:"), 1, 0, Qt::AlignRight);
-        gridLayout->addWidget(new QLabel("Event Parameter:"),   2, 0, Qt::AlignRight);
-        gridLayout->addWidget(new QLabel("Color:"),             3, 0, Qt::AlignRight);
-
-        mEventType = new QLineEdit(eventType);
-        gridLayout->addWidget(mEventType, 0, 1);
-
-        mMirrorType = new QLineEdit(mirrorType);
-        gridLayout->addWidget(mMirrorType, 1, 1);
-
-        mParameter = new QLineEdit(parameter);
-        gridLayout->addWidget(mParameter, 2, 1);
-
-        mColorLabel = new MysticQt::ColorLabel(MCore::RGBAColor(color));
-        mColorLabel->setFixedSize(15, 15);
-        gridLayout->addWidget(mColorLabel, 3, 1);
-
-        verticalLayout->addLayout(gridLayout);
-
-        QHBoxLayout* buttonsLayout = new QHBoxLayout();
-        QPushButton* createButton = new QPushButton("Create");
-        QPushButton* cancelButton = new QPushButton("Cancel");
-        connect(createButton, SIGNAL(clicked()), this, SLOT(OnCreateButton()));
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
-        buttonsLayout->addWidget(createButton);
-        buttonsLayout->addWidget(cancelButton);
-        verticalLayout->addLayout(buttonsLayout);
-
-        setLayout(verticalLayout);
-
-        setFixedSize(400, 300);
+        verticalLayout->addWidget(m_editor);
+        verticalLayout->addWidget(&m_eventDataEditor);
+        verticalLayout->addStretch();
+        verticalLayout->addWidget(buttonBox);
     }
 
     
     void MotionEventPresetCreateDialog::OnCreateButton()
     {
-        if (mEventType->text().length() == 0)
+        if (m_preset.GetName().empty())
         {
-            QMessageBox::critical(this, "Missing Information", "Please enter at least an event type name.");
+            QMessageBox::critical(this, "Missing Information", "Please enter at least preset name.");
             return;
         }
 
         accept();
-    }
-
-
-    AZStd::string MotionEventPresetCreateDialog::GetEventType() const
-    {
-        return mEventType->text().toUtf8().data();
-    }
-
-
-    AZStd::string MotionEventPresetCreateDialog::GetParameter() const
-    {
-        return mParameter->text().toUtf8().data();
-    }
-
-
-    AZStd::string MotionEventPresetCreateDialog::GetMirrorType() const
-    {
-        return mMirrorType->text().toUtf8().data();
-    }
-
-
-    uint32 MotionEventPresetCreateDialog::GetColor() const
-    {
-        return MCore::RGBA(mColorLabel->GetRed(), mColorLabel->GetGreen(), mColorLabel->GetBlue());
     }
 } // namespace EMStudio
 

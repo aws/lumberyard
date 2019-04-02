@@ -17,6 +17,7 @@
 #include <AzCore/Asset/AssetCommon.h>
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 
@@ -57,13 +58,21 @@ namespace AzToolsFramework
             // AssetBrowserViewRequestBus
             //////////////////////////////////////////////////////////////////////////
             void SelectProduct(AZ::Data::AssetId assetID) override;
+            void ClearFilter() override;
             //////////////////////////////////////////////////////////////////////////
 
             void SetThumbnailContext(const char* context) const;
             void SetShowSourceControlIcons(bool showSourceControlsIcons);
+            void UpdateAfterFilter(bool hasFilter, bool selectFirstValidEntry);
+
+            template <class TEntryType>
+            const TEntryType* GetEntryFromIndex(const QModelIndex& index) const;
+
+            bool IsIndexExpandedByDefault(const QModelIndex& index) const override;
 
         Q_SIGNALS:
             void selectionChangedSignal(const QItemSelection& selected, const QItemSelection& deselected);
+            void ClearStringFilter();
 
         protected:
             void startDrag(Qt::DropActions supportedActions) override;
@@ -78,6 +87,7 @@ namespace AzToolsFramework
             EntryDelegate* m_delegate = nullptr;
 
             bool m_sendMetrics = false;
+            bool m_expandToEntriesByDefault = false;
 
             QTimer* m_scTimer = nullptr;
             const int m_scUpdateInterval = 100;
@@ -94,5 +104,17 @@ namespace AzToolsFramework
             // Get all visible source entries and place them in a queue to update their source control status
             void OnUpdateSCThumbnailsList();
         };
+
+        template <class TEntryType>
+        const TEntryType* AssetBrowserTreeView::GetEntryFromIndex(const QModelIndex& index) const
+        {
+            if (index.isValid())
+            {
+                QModelIndex sourceIndex = m_assetBrowserSortFilterProxyModel->mapToSource(index);
+                AssetBrowserEntry* entry = static_cast<AssetBrowserEntry*>(sourceIndex.internalPointer());
+                return azrtti_cast<const TEntryType*>(entry);
+            }
+            return nullptr;
+        }
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

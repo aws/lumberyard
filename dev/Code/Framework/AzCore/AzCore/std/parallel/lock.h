@@ -14,7 +14,7 @@
 
 #include <AzCore/std/parallel/config.h>
 #include <AzCore/std/createdestroy.h>
-//#include <AzCore/std/algorithm.h> // for swap
+#include <AzCore/std/parallel/thread.h>
 
 namespace AZStd
 {
@@ -25,15 +25,24 @@ namespace AZStd
     struct try_to_lock_t { };   // try to acquire ownership of the mutex without blocking
     struct adopt_lock_t { };    // assume the calling thread has already
 
+    constexpr defer_lock_t defer_lock{};
+    constexpr try_to_lock_t try_to_lock{};
+    constexpr adopt_lock_t adopt_lock{};
+
     template <class Mutex>
     class lock_guard
     {
     public:
         typedef Mutex mutex_type;
         AZ_FORCE_INLINE explicit lock_guard(mutex_type& mtx)
-            : m_mutex(mtx)         { m_mutex.lock(); }
+            : m_mutex(mtx)
+        {
+            m_mutex.lock();
+        }
         AZ_FORCE_INLINE lock_guard(mutex_type& mtx, adopt_lock_t)
-            : m_mutex(mtx)    {}
+            : m_mutex(mtx)
+        {
+        }
         AZ_FORCE_INLINE ~lock_guard()
         {
             m_mutex.unlock();
@@ -67,7 +76,10 @@ namespace AZStd
             : m_mutex(&mtx)
             , m_owns(false) {}
         AZ_FORCE_INLINE unique_lock(mutex_type& mtx, try_to_lock_t)
-            : m_mutex(&mtx) { m_owns = m_mutex->try_lock(); }
+            : m_mutex(&mtx)
+        {
+            m_owns = m_mutex->try_lock();
+        }
         AZ_FORCE_INLINE unique_lock(mutex_type& mtx, adopt_lock_t)
             : m_mutex(&mtx)
             , m_owns(true) {}
@@ -152,7 +164,7 @@ namespace AZStd
         }
         // 30.4.3.2.4 observers
         AZ_FORCE_INLINE bool owns_lock() const { return m_owns; }
-        AZ_FORCE_INLINE operator bool () const { return m_owns; }
+        AZ_FORCE_INLINE operator bool() const { return m_owns; }
         AZ_FORCE_INLINE mutex_type* mutex() const { return m_mutex; }
 
     private:
@@ -175,7 +187,10 @@ namespace AZStd
     public:
         typedef Mutex mutex_type;
         AZ_FORCE_INLINE explicit shared_lock(mutex_type& mutex)
-            : m_mutex(mutex) { m_mutex.lock_shared(); }
+            : m_mutex(mutex)
+        {
+            m_mutex.lock_shared();
+        }
         AZ_FORCE_INLINE shared_lock(mutex_type& mutex, adopt_lock_t)
             : m_mutex(mutex) {}
         AZ_FORCE_INLINE ~shared_lock() { m_mutex.unlock_shared(); }
@@ -185,6 +200,155 @@ namespace AZStd
         AZ_FORCE_INLINE shared_lock& operator=(shared_lock const&);
         mutex_type& m_mutex; // exposition only
     };
+
+    template<class Lockable1, class Lockable2>
+    int try_lock(Lockable1& lockable1, Lockable2& lockable2)
+    {
+        AZStd::unique_lock<Lockable1> firstLock(lockable1, AZStd::try_to_lock);
+        if (firstLock.owns_lock())
+        {
+            if (lockable2.try_lock())
+            {
+                firstLock.release();
+                return -1;
+            }
+            else
+            {
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    template<class Lockable1, class Lockable2, class Lockable3, class... LockableN>
+    int try_lock(Lockable1& lockable1, Lockable2& lockable2, Lockable3& lockable3, LockableN&... lockableN)
+    {
+        int mutexWhichFailedToLockIndex = 0;
+        AZStd::unique_lock<Lockable1> firstLock(lockable1, try_to_lock);
+        if (firstLock.owns_lock())
+        {
+            mutexWhichFailedToLockIndex = AZStd::try_lock(lockable2, lockable3, lockableN...);
+            if (mutexWhichFailedToLockIndex == -1)
+            {
+                firstLock.release();
+            }
+            else
+            {
+                // Must increment the mutexWhichFailedToLockIndex by 1 to take into account that lockable1 was not part of the try_lock call
+                ++mutexWhichFailedToLockIndex;
+            }
+        }
+
+        return mutexWhichFailedToLockIndex;
+    }
+
+    template<class Lockable>
+    void lock(Lockable& lockable)
+    {
+        lockable.lock();
+    }
+
+    template<class Lockable1, class Lockable2>
+    void lock(Lockable1& lockable1, Lockable2& lockable2)
+    {
+        while (true)
+        {
+            {
+                AZStd::unique_lock<Lockable1> firstLock(lockable1);
+                if (lockable2.try_lock())
+                {
+                    firstLock.release();
+                    break;
+                }
+            }
+            // Yield the thread to allow other threads to unlock the two lockable mutexes
+            AZStd::this_thread::yield();
+
+            {
+                AZStd::unique_lock<Lockable2> secondLock(lockable2);
+                if (lockable1.try_lock())
+                {
+                    secondLock.release();
+                    break;
+                }
+            }
+            AZStd::this_thread::yield();
+        }
+    }
+
+    template<class Lockable1, class Lockable2, class Lockable3, class... LockableN>
+    void lock_helper(int32_t mutexWhichFailedToLockIndex, Lockable1& lockable1, Lockable2& lockable2, Lockable3& lockable3, LockableN&... lockableN)
+    {
+        while (true)
+        {
+            switch (mutexWhichFailedToLockIndex)
+            {
+            case 0:
+            {
+                AZStd::unique_lock<Lockable1> firstLock(lockable1);
+                mutexWhichFailedToLockIndex = AZStd::try_lock(lockable2, lockable3, lockableN...);
+                if (mutexWhichFailedToLockIndex == -1)
+                {
+                    firstLock.release();
+                    return;
+                }
+
+                // Must increment the mutexhWhicFailedToLockIndex by 1 to take into account that lockable1 was not part of the try_lock call
+                ++mutexWhichFailedToLockIndex;
+            }
+            // Yield the thread to allow other threads to unlock the two lockable mutexes
+            AZStd::this_thread::yield();
+            break;
+            case 1:
+            {
+                // Attempt to lock the second lockable first
+                AZStd::unique_lock<Lockable2> secondLock(lockable2);
+                // Pass in the first lockable as the last parameter in order to detect if it has not been locked
+                constexpr int32_t firstLocklableIndex = 1 + sizeof...(lockableN);
+                mutexWhichFailedToLockIndex = AZStd::try_lock(lockable3, lockableN..., lockable1);
+                if (mutexWhichFailedToLockIndex == -1)
+                {
+                    secondLock.release();
+                    return;
+                }
+                mutexWhichFailedToLockIndex = (mutexWhichFailedToLockIndex == firstLocklableIndex) ? 0 : mutexWhichFailedToLockIndex + 2;
+            }
+            AZStd::this_thread::yield();
+            break;
+            default:
+                lock_helper(mutexWhichFailedToLockIndex - 2, lockable3, lockableN..., lockable1, lockable2);
+                return;
+            }
+        }
+    }
+
+    template<class Lockable1, class Lockable2, class Lockable3, class... LockableN>
+    void lock(Lockable1& lockable1, Lockable2& lockable2, Lockable3& lockable3, LockableN&... lockableN)
+    {
+        int32_t mutexWhichFailedToLockIndex = 0; // Initialized to 0 to start with locking the first mutex
+        lock_helper(mutexWhichFailedToLockIndex, lockable1, lockable2, lockable3, lockableN...);
+    }
+
+    template<class Lockable>
+    void unlock(Lockable& lockable)
+    {
+        lockable.unlock();
+    }
+
+    template<class Lockable1, class Lockable2>
+    void unlock(Lockable1& lockable1, Lockable2& lockable2)
+    {
+        lockable1.unlock();
+        lockable2.unlock();
+    }
+
+    template<class Lockable1, class Lockable2, class Lockable3, class... LockableN>
+    void unlock(Lockable1& lockable1, Lockable2& lockable2, Lockable3& lockable3, LockableN&... lockableN)
+    {
+        lockable1.unlock();
+        lockable2.unlock();
+        unlock(lockable3, lockableN...);
+    }
 }
 
 #endif // AZSTD_LOCK_H

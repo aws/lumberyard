@@ -25,7 +25,7 @@ Todo:
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-AZStd::unique_ptr<CMotionBlur::ObjectMap> CMotionBlur::m_Objects[3];
+AZStd::unique_ptr<CMotionBlur::ObjectMap> CMotionBlur::m_Objects[CMotionBlur::s_maxObjectBuffers];
 CThreadSafeRendererContainer<CMotionBlur::ObjectMap::value_type> CMotionBlur::m_FillData[RT_COMMAND_BUF_COUNT];
 
 bool CPostAA::Preprocess()

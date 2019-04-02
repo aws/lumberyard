@@ -36,4 +36,5 @@ private:
     PropertiesWidget* m_properties;
     ComponentButton* m_componentButton;
     EditorWindow* m_editorWindow;
+    QCheckBox* m_editorOnlyCheckbox = nullptr;
 };

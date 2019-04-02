@@ -2255,7 +2255,8 @@ void TranslateDeclaration(HLSLCrossCompilerContext* psContext, const Declaration
         // OpenGL versions lower than 4.1 don't support the
         // layout(early_fragment_tests) directive and will fail to compile
         // the shader
-        if (ui32Flags & GLOBAL_FLAG_FORCE_EARLY_DEPTH_STENCIL && EarlyDepthTestSupported(psShader->eTargetLanguage))
+        if (ui32Flags & GLOBAL_FLAG_FORCE_EARLY_DEPTH_STENCIL && EarlyDepthTestSupported(psShader->eTargetLanguage) && 
+            !(psShader->eGmemType & (FBF_ARM_DEPTH | FBF_ARM_STENCIL))) // Early fragment test is not allowed when fetching from the depth/stencil buffer. 
         {
             bcatcstr(glsl, "layout(early_fragment_tests) in;\n");
         }

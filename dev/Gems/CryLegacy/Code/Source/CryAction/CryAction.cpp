@@ -29,7 +29,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAction_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAction_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -47,7 +51,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAction_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAction_cpp_provo.inl"
+    #endif
 #elif defined(WIN32) || defined(WIN64)
 #include <CryWindows.h>
 #include <ShellApi.h>
@@ -57,7 +65,7 @@
 #include <platform_impl.h>
 
 #include <AzCore/IO/FileIO.h> // for FileIOBase::GetInstance();
-
+#include <AzCore/Jobs/LegacyJobExecutor.h>
 
 #include "AIDebugRenderer.h"
 #include "GameRulesSystem.h"
@@ -85,6 +93,7 @@
 #include <IStatoscope.h>
 #include <IStreamEngine.h>
 #include <ITimeOfDay.h>
+#include <IRenderer.h>
 #include <CryProfileMarker.h>
 
 #include "Serialization/GameSerialize.h"
@@ -1122,7 +1131,11 @@ bool CCryAction::Init(SSystemInitParams& startupParams)
  #else
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAction_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAction_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1686,6 +1699,8 @@ bool CCryAction::PreUpdate(bool haveFocus, unsigned int updateFlags)
         }
     }
 
+    CALL_FRAMEWORK_LISTENERS(OnPreUpdate());
+    
     bool bRetRun = true;
 
     if (!(updateFlags & ESYSUPDATE_EDITOR))
@@ -2029,6 +2044,10 @@ bool CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
         m_pSystem->DoWorkDuringOcclusionChecks();
     }
     FeatureTests::Update();
+    // Sync the work that must be done in the main thread by the end of frame.
+    gEnv->pRenderer->GetGenerateShadowRendItemJobExecutor()->WaitForCompletion();
+    gEnv->pRenderer->GetGenerateRendItemJobExecutor()->WaitForCompletion();
+        
 
     return bRetRun;
 }
@@ -2133,11 +2152,11 @@ bool CCryAction::IsGameStarted()
     return bStarted;
 }
 
-void CCryAction::MarkGameStarted()
+void CCryAction::MarkGameStarted(bool started)
 {
     if (m_pGame && m_pGame->GetGameContext())
     {
-        m_pGame->GetGameContext()->SetGameStarted(true);
+        m_pGame->GetGameContext()->SetGameStarted(started);
     }
 }
 
@@ -4209,7 +4228,11 @@ void CCryAction::SetupLocalView()
     STRUCT_INFO_T_INSTANTIATE(Color_tpl, <uint8>)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYACTION_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(CryAction_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAction_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAction_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

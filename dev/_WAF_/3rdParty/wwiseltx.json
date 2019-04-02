@@ -35,13 +35,15 @@
         "ak_source_libs": [
             "AkAudioInputSource",
             "AkMotionGeneratorSource",
+            "AkMotionSourceSource",
             "AkSilenceSource",
             "AkSineSource",
             "AkSynthOneSource",
             "AkToneSource"
         ],
-        "ak_vorbis_libs": [
-            "AkVorbisDecoder"
+        "ak_codec_libs": [
+            "AkVorbisDecoder",
+            "AkOpusDecoder"
         ],
         "communication_libs": [
             "CommunicationCentral"
@@ -50,13 +52,13 @@
             "${ak_core_libs}",
             "AkMotionSink",
             "${ak_effect_libs}",
-            "${ak_vorbis_libs}",
+            "${ak_codec_libs}",
             "${ak_source_libs}"
         ],
         "common_libs_nix": [
             "${ak_core_libs}",
             "${ak_effect_libs}",
-            "${ak_vorbis_libs}",
+            "${ak_codec_libs}",
             "${ak_source_libs}"
         ]
     },
@@ -82,36 +84,6 @@
         "AK_OPTIMIZED"
     ],
     "platform": {
-        "win_x64_vs2013": {
-            "libpath_debug": [
-                "SDK/x64_vc120/Debug/lib"
-            ],
-            "libpath_profile": [
-                "SDK/x64_vc120/Profile/lib"
-            ],
-            "libpath_performance": [
-                "SDK/x64_vc120/Release/lib"
-            ],
-            "libpath_release": [
-                "SDK/x64_vc120/Release/lib"
-            ],
-            "lib_debug": [
-                "${communication_libs}.lib",
-                "${common_libs}.lib",
-                "SFLib.lib"
-            ],
-            "lib_profile": [
-                "${communication_libs}.lib",
-                "${common_libs}.lib",
-                "SFLib.lib"
-            ],
-            "lib_performance": [
-                "${common_libs}.lib"
-            ],
-            "lib_release": [
-                "${common_libs}.lib"
-            ]
-        },
         "win_x64_vs2015": {
             "libpath_debug": [
                 "SDK/x64_vc140/Debug/lib"

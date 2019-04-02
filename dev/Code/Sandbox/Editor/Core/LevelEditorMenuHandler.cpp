@@ -54,14 +54,14 @@ static bool CompareLayoutNames(const QString& name1, const QString& name2)
 static void AddOpenViewPaneAction(ActionManager::MenuWrapper& menu, const char* name)
 {
     QAction* action = menu->addAction(QObject::tr(name));
-    QObject::connect(action, &QAction::triggered, action, [name]() {
-        QtViewPaneManager::instance()->OpenPane(name);
-    });
+    QObject::connect(action, &QAction::triggered, action, [name]()
+        {
+            QtViewPaneManager::instance()->OpenPane(name);
+        });
 }
 
 namespace
 {
-
     // This helper allows us to watch editor notifications to control action enable states
     class EditorListener
         : public QObject
@@ -184,7 +184,17 @@ bool LevelEditorMenuHandler::MRUEntryIsValid(const QString& entry, const QString
         return false;
     }
 
-    return info.absolutePath().startsWith(gameFolderPath);
+    const QDir gameDir(gameFolderPath);
+    QDir dir(entry); // actually pointing at file, first cdUp() gets us the parent dir
+    while (dir.cdUp())
+    {
+        if (dir == gameDir)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void LevelEditorMenuHandler::IncrementViewPaneVersion()
@@ -265,7 +275,7 @@ void LevelEditorMenuHandler::ResetToolsMenus()
 
     QtViewPanes allRegisteredViewPanes = QtViewPaneManager::instance()->GetRegisteredPanes();
 
-    QMap<QString, QList<QtViewPane*>> menuMap;
+    QMap<QString, QList<QtViewPane*> > menuMap;
 
     CreateMenuMap(menuMap, allRegisteredViewPanes);
 
@@ -293,7 +303,7 @@ void LevelEditorMenuHandler::ResetToolsMenus()
     // Optional Sub Menus
     if (!menuMap.isEmpty())
     {
-        QMap<QString, QList<QtViewPane*>>::iterator it = menuMap.begin();
+        QMap<QString, QList<QtViewPane*> >::iterator it = menuMap.begin();
 
         while (it != menuMap.end())
         {
@@ -312,9 +322,10 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
 
     // New level
     auto fileNew = fileMenu.AddAction(ID_FILE_NEW);
-    GetIEditor()->RegisterNotifyListener(new EditorListener(fileNew, [fileNew](EEditorNotifyEvent e) {
-        DisableActionWhileLevelChanges(fileNew, e);
-    }));
+    GetIEditor()->RegisterNotifyListener(new EditorListener(fileNew, [fileNew](EEditorNotifyEvent e)
+        {
+            DisableActionWhileLevelChanges(fileNew, e);
+        }));
     // Open level...
     auto fileOpenLevel = fileMenu.AddAction(ID_FILE_OPEN_LEVEL);
     GetIEditor()->RegisterNotifyListener(new EditorListener(fileOpenLevel, [fileOpenLevel](EEditorNotifyEvent e) {
@@ -398,12 +409,12 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
         // Switch Projects
         projectSettingMenu.AddAction(ID_PROJECT_CONFIGURATOR_PROJECTSELECTION);
 
-    	if (m_enableLegacyCryEntities)
-	    {
-        	// Input Mapping
-        	auto inputMappingMenu = projectSettingMenu.Get()->addAction(tr("Input Mapping"));
-        	connect(inputMappingMenu, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
-		}
+        if (m_enableLegacyCryEntities)
+        {
+            // Input Mapping
+            auto inputMappingMenu = projectSettingMenu.Get()->addAction(tr("Input Mapping"));
+            connect(inputMappingMenu, &QAction::triggered, this, &LevelEditorMenuHandler::OnOpenAssetEditor);
+        }
         // Configure Gems
         auto configureGemSubMenu = projectSettingMenu.Get()->addAction(tr("Configure Gems"));
         connect(configureGemSubMenu, &QAction::triggered, this, &LevelEditorMenuHandler::ActivateGemConfiguration);
@@ -411,6 +422,13 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
 
     // Deployment Tool
     AddOpenViewPaneAction(projectSettingMenu, LyViewPane::DeploymentTool);
+
+    // Project Settings Tool
+    // Shortcut must be set while adding the action otherwise it doesn't work
+    projectSettingMenu.Get()->addAction(
+        tr(LyViewPane::ProjectSettingsTool),
+        []() { QtViewPaneManager::instance()->OpenPane(LyViewPane::ProjectSettingsTool); },
+        tr("Ctrl+Shift+P"));
 
     fileMenu.AddSeparator();
 
@@ -423,6 +441,12 @@ QMenu* LevelEditorMenuHandler::CreateFileMenu()
 
     // Show Log File
     fileMenu.AddAction(ID_FILE_EDITLOGFILE);
+
+    fileMenu.AddSeparator();
+
+    fileMenu.AddAction(ID_FILE_RESAVESLICES);
+
+    fileMenu.AddSeparator();
 
     fileMenu.AddAction(ID_CONVERT_LEGACY_ENTITIES);
 
@@ -496,7 +520,7 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     editMenu.AddAction(ID_EDIT_UNHIDEALL);
 
     /*
-     * The following block of code is part of the feature "Isolation Mode" and is temporarily 
+     * The following block of code is part of the feature "Isolation Mode" and is temporarily
      * disabled for 1.10 release.
      * Jira: https://jira.agscollab.com/browse/LY-49532
 
@@ -629,13 +653,13 @@ QMenu* LevelEditorMenuHandler::CreateEditMenu()
     editMenu.AddAction(ID_EDIT_FREEZE);
 
     // NEWMENUS: NEEDS IMPLEMENTATION
-    //// Unlock Selection 
+    //// Unlock Selection
     //auto unlockSelectionMenu = editMenu.Get()->addAction(tr("Unlock Selection"));
 
     //// Unlock Last Locked
     //auto unlockLastLockedMenu = editMenu.Get()->addAction(tr("Unlock Last Locked"));
 
-    // Unlock All 
+    // Unlock All
     editMenu.AddAction(ID_EDIT_UNFREEZEALL);
 
     if (m_enableLegacyCryEntities)
@@ -822,7 +846,7 @@ QMenu* LevelEditorMenuHandler::CreateGameMenu()
 
     gameMenu.AddSeparator();
 
-    // Audio 
+    // Audio
     auto audioMenu = gameMenu.AddMenu(tr("Audio"));
 
     // Stop All Sounds
@@ -979,9 +1003,9 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     // Layouts
     m_layoutsMenu = viewMenu.AddMenu(tr("Layouts"));
     connect(m_viewPaneManager, &QtViewPaneManager::savedLayoutsChanged, this, [this]()
-    {
-        UpdateViewLayoutsMenu(m_layoutsMenu);
-    });
+        {
+            UpdateViewLayoutsMenu(m_layoutsMenu);
+        });
 
     UpdateViewLayoutsMenu(m_layoutsMenu);
 
@@ -995,9 +1019,9 @@ QMenu* LevelEditorMenuHandler::CreateViewMenu()
     connect(viewportTypesMenuWrapper, &QMenu::aboutToShow, this, &LevelEditorMenuHandler::UpdateOpenViewPaneMenu);
 
     InitializeViewPaneMenu(m_actionManager, viewportTypesMenuWrapper, [](const QtViewPane& view)
-    {
-        return view.IsViewportPane();
-    });
+        {
+            return view.IsViewportPane();
+        });
 #endif
 
     viewportViewsMenuWrapper.AddAction(ID_WIREFRAME);
@@ -1084,33 +1108,33 @@ QMenu* LevelEditorMenuHandler::CreateHelpMenu()
     lineEdit->addAction(searchButtonAction, QLineEdit::TrailingPosition);
 
     auto searchAction = [lineEdit]()
-    {
-        auto text = lineEdit->text();
-        if (text.isEmpty())
         {
-            QDesktopServices::openUrl(QUrl("https://aws.amazon.com/documentation/lumberyard/"));
-        }
-        else
-        {
-            static const int versionStringSize = 128;
-            char productVersionString[versionStringSize];
-            const SFileVersion& productVersion = gEnv->pSystem->GetProductVersion();
-            productVersion.ToString(productVersionString, versionStringSize);
+            auto text = lineEdit->text();
+            if (text.isEmpty())
+            {
+                QDesktopServices::openUrl(QUrl("https://aws.amazon.com/documentation/lumberyard/"));
+            }
+            else
+            {
+                static const int versionStringSize = 128;
+                char productVersionString[versionStringSize];
+                const SFileVersion& productVersion = gEnv->pSystem->GetProductVersion();
+                productVersion.ToString(productVersionString, versionStringSize);
 
-            QUrl docSearchUrl("https://docs.aws.amazon.com/search/doc-search.html");
-            QUrlQuery docSearchQuery;
-            // The order of these QueryItems matters. wiki Search URL Formatting
-            docSearchQuery.addQueryItem("searchPath", "documentation-product");
-            docSearchQuery.addQueryItem("searchQuery", text);
-            docSearchQuery.addQueryItem("this_doc_product", "Lumberyard");
-            docSearchQuery.addQueryItem("ref", "lye");
-            docSearchQuery.addQueryItem("ev", productVersionString);
-            docSearchUrl.setQuery(docSearchQuery);
-            docSearchUrl.setFragment("facet_doc_product=Lumberyard");
-            QDesktopServices::openUrl(docSearchUrl);
-        }
-        lineEdit->clear();
-    };
+                QUrl docSearchUrl("https://docs.aws.amazon.com/search/doc-search.html");
+                QUrlQuery docSearchQuery;
+                // The order of these QueryItems matters. wiki Search URL Formatting
+                docSearchQuery.addQueryItem("searchPath", "documentation-product");
+                docSearchQuery.addQueryItem("searchQuery", text);
+                docSearchQuery.addQueryItem("this_doc_product", "Lumberyard");
+                docSearchQuery.addQueryItem("ref", "lye");
+                docSearchQuery.addQueryItem("ev", productVersionString);
+                docSearchUrl.setQuery(docSearchQuery);
+                docSearchUrl.setFragment("facet_doc_product=Lumberyard");
+                QDesktopServices::openUrl(docSearchUrl);
+            }
+            lineEdit->clear();
+        };
     connect(lineEdit, &QLineEdit::returnPressed, this, searchAction);
     connect(pushButton, &QAbstractButton::clicked, this, searchAction);
     connect(helpMenu.Get(), &QMenu::aboutToHide, lineEdit, &QLineEdit::clear);
@@ -1242,15 +1266,16 @@ void LevelEditorMenuHandler::LoadNetPromoterScoreDialog(ActionManager::MenuWrapp
     if (!m_settings.value(g_shortTimeInterval).isNull())
     {
         auto showNetPromoterDialog = menu.Get()->addAction(tr("Show Net Promoter Score Dialog"));
-        connect(showNetPromoterDialog, &QAction::triggered, this, [this]() {
-            NetPromoterScoreDialog p(m_mainWindow);
-            p.exec();
-        });
+        connect(showNetPromoterDialog, &QAction::triggered, this, [this]()
+            {
+                NetPromoterScoreDialog p(m_mainWindow);
+                p.exec();
+            });
     }
     m_settings.endGroup();
 }
 
-QMap<QString, QList<QtViewPane*>> LevelEditorMenuHandler::CreateMenuMap(QMap<QString, QList<QtViewPane*>>& menuMap, QtViewPanes& allRegisteredViewPanes)
+QMap<QString, QList<QtViewPane*> > LevelEditorMenuHandler::CreateMenuMap(QMap<QString, QList<QtViewPane*> >& menuMap, QtViewPanes& allRegisteredViewPanes)
 {
     // set up view panes to each category
     for (QtViewPane& viewpane : allRegisteredViewPanes)
@@ -1274,7 +1299,7 @@ struct CaseInsensitiveStringCompare
     }
 };
 
-void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>* menuMap, ActionManager::MenuWrapper& menu, const char * category)
+void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*> >* menuMap, ActionManager::MenuWrapper& menu, const char* category)
 {
     // list in the menu and remove this menu category from the menuMap
     QList<QtViewPane*> menuList = menuMap->take(category);
@@ -1288,37 +1313,38 @@ void LevelEditorMenuHandler::CreateMenuOptions(QMap<QString, QList<QtViewPane*>>
         if (viewpane->m_options.builtInActionId != LyViewPane::NO_BUILTIN_ACTION)
         {
             sortMenuMap[viewpane->m_name] = [&menu, viewpane]() -> void
-            {
-                // Handle shortcuts for actions with a built-in ID since they
-                // bypass our CreateViewPaneMenuItem method
-                QAction* action = menu.AddAction(viewpane->m_options.builtInActionId);
-                if (action && !viewpane->m_options.shortcut.isEmpty())
                 {
-                    action->setShortcut(viewpane->m_options.shortcut);
-                }
-            };
+                    // Handle shortcuts for actions with a built-in ID since they
+                    // bypass our CreateViewPaneMenuItem method
+                    QAction* action = menu.AddAction(viewpane->m_options.builtInActionId);
+                    if (action && !viewpane->m_options.shortcut.isEmpty())
+                    {
+                        action->setShortcut(viewpane->m_options.shortcut);
+                    }
+                };
         }
         else
         {
             QString menuText = viewpane->m_options.optionalMenuText.length() > 0 ? viewpane->m_options.optionalMenuText : viewpane->m_name;
             sortMenuMap[menuText] = [this, viewpane, &menu]() -> void
-            {
-                CreateViewPaneMenuItem(m_actionManager, menu, viewpane);
-            };
+                {
+                    CreateViewPaneMenuItem(m_actionManager, menu, viewpane);
+                };
         }
     }
 
     if (category == LyViewPane::CategoryTools)
     {
         // Add LUA Editor into the Tools map
-        sortMenuMap[g_LUAEditorName] = [this, &menu]()->void
-        {
-            auto luaEditormenu = menu->addAction(tr(g_LUAEditorName));
+        sortMenuMap[g_LUAEditorName] = [this, &menu]() -> void
+            {
+                auto luaEditormenu = menu->addAction(tr(g_LUAEditorName));
 
-            connect(luaEditormenu, &QAction::triggered, this, []() {
-                EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, LaunchLuaEditor, nullptr);
-            });
-        };
+                connect(luaEditormenu, &QAction::triggered, this, []()
+                    {
+                        EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, LaunchLuaEditor, nullptr);
+                    });
+            };
     }
 
     // add each menu option into the menu
@@ -1443,16 +1469,18 @@ void LevelEditorMenuHandler::UpdateMRUFiles()
         QAction* action = m_actionManager->GetAction(ID_FILE_MRU_FILE1 + i);
         action->setText(entry);
 
-        m_actionManager->RegisterActionHandler(ID_FILE_MRU_FILE1 + i, [i]() {
-            auto cryEdit = CCryEditApp::instance();
-            RecentFileList* mruList = cryEdit->GetRecentFileList();
-            cryEdit->OpenDocumentFile((*mruList)[i].toUtf8().data());
-        });
+        m_actionManager->RegisterActionHandler(ID_FILE_MRU_FILE1 + i, [i]()
+            {
+                auto cryEdit = CCryEditApp::instance();
+                RecentFileList* mruList = cryEdit->GetRecentFileList();
+                cryEdit->OpenDocumentFile((*mruList)[i].toUtf8().data());
+            });
         m_actionManager->RegisterUpdateCallback(ID_FILE_MRU_FILE1 + i, cryEdit, &CCryEditApp::OnUpdateFileOpen);
 
-        GetIEditor()->RegisterNotifyListener(new EditorListener(action, [action](EEditorNotifyEvent e) {
-            DisableActionWhileLevelChanges(action, e);
-        }));
+        GetIEditor()->RegisterNotifyListener(new EditorListener(action, [action](EEditorNotifyEvent e)
+            {
+                DisableActionWhileLevelChanges(action, e);
+            }));
 
         m_mostRecentLevelsMenu->addAction(action);
     }
@@ -1603,7 +1631,7 @@ void LevelEditorMenuHandler::AWSMenuClicked()
 
 void LevelEditorMenuHandler::checkOrOpenView()
 {
-    QAction *action = qobject_cast<QAction*>(sender());
+    QAction* action = qobject_cast<QAction*>(sender());
     const QString viewPaneName = action->objectName();
     // If this action is checkable and was just unchecked, then we
     // should close the view pane
@@ -1614,12 +1642,12 @@ void LevelEditorMenuHandler::checkOrOpenView()
     // Otherwise, this action should open the view pane
     else
     {
-        const QtViewPane *pane = QtViewPaneManager::instance()->OpenPane(viewPaneName);
+        const QtViewPane* pane = QtViewPaneManager::instance()->OpenPane(viewPaneName);
 
         QObject::connect(pane->Widget(), &QWidget::destroyed, action, [action]
-        {
-            action->setChecked(false);
-        });
+            {
+                action->setChecked(false);
+            });
     }
 }
 

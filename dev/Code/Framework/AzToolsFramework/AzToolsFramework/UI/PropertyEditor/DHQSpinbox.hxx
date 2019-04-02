@@ -81,6 +81,7 @@ namespace AzToolsFramework
 
     protected:
         void focusInEvent(QFocusEvent* event) override;
+        void focusOutEvent(QFocusEvent* event) override;
 
         QPoint lastMousePosition;
         bool mouseCaptured = false;
@@ -91,6 +92,7 @@ namespace AzToolsFramework
     private:
         QString StringValue(double value, bool truncated = false) const;
 
+        QString m_lastSuffix;
         double m_lastValue;
         int m_displayDecimals;
     };

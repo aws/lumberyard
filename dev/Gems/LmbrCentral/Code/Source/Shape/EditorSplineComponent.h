@@ -53,7 +53,7 @@ namespace LmbrCentral
     private:
         AZ_DISABLE_COPY_MOVE(SplineHoverSelection)
 
-        AZStd::unique_ptr<AzToolsFramework::SplineSelectionManipulator> m_splineSelectionManipulator = nullptr; ///< Manipulator for adding points to spline.
+        AZStd::shared_ptr<AzToolsFramework::SplineSelectionManipulator> m_splineSelectionManipulator = nullptr; ///< Manipulator for adding points to spline.
     };
 
     /**

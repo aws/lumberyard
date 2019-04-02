@@ -8,11 +8,27 @@
             "Components.cpp",
             "Enums.h",
             "Structs.h",
-            "Structs.cpp"
+            "Structs.cpp",
+            "BehaviorContext.h",
+            "BehaviorContext.cpp"
         ],
         "Native": [
             "Native.h",
             "Native.cpp"
+        ],
+        "Drivers": [
+            "../../../Framework/AzFramework/CodeGen/AzClassHeader.py",
+            "../../../Framework/AzFramework/CodeGen/AzClassHeader.tpl",
+            "../../../Framework/AzFramework/CodeGen/AzClassInline.py",
+            "../../../Framework/AzFramework/CodeGen/AzClassInline.tpl",
+            "../../../Framework/AzFramework/CodeGen/AzComponentCpp.py",
+            "../../../Framework/AzFramework/CodeGen/AzComponentCpp.tpl",
+            "../../../Framework/AzFramework/CodeGen/AzFramework.py",
+            "../../../Framework/AzFramework/CodeGen/AzReflectionCpp.py",
+            "../../../Framework/AzFramework/CodeGen/AzReflectionCpp.tpl"
+        ],
+        "AZCG": [
+            "../../../../Tools/build/waf-1.7.13/lmbrwaflib/az_code_generator.py"
         ]
     }
 }

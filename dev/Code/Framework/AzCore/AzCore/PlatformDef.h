@@ -18,8 +18,6 @@
     #define ENABLE_TYPE_INFO_NAMES 1
 #endif
 
-#include "PlatformRestrictedFileDef.h"
-
 #if defined(AZ_RESTRICTED_PLATFORM)
 
     // xxx/PlatformDef_h_xxx.inl is a sectioned file. Each time we #include it, we need to specify which section of the file to load,
@@ -31,7 +29,11 @@
     #define PLATFORMDEF_H_SECTION_DLL_EXPORT 5
 
     #define PLATFORMDEF_H_SECTION PLATFORMDEF_H_SECTION_COMPILER_PLATFORM
-    #include AZ_RESTRICTED_FILE(PlatformDef_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/PlatformDef_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/PlatformDef_h_provo.inl"
+    #endif
 
 #elif defined(_WIN32)
 
@@ -110,7 +112,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define PLATFORMDEF_H_SECTION PLATFORMDEF_H_SECTION_TRAITS
-    #include AZ_RESTRICTED_FILE(PlatformDef_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/PlatformDef_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/PlatformDef_h_provo.inl"
+    #endif
 #else
     //----- Hardware traits ---------
     #if defined(AZ_PLATFORM_WINDOWS) || defined(AZ_PLATFORM_LINUX)
@@ -282,10 +288,17 @@
 
 #define AZ_INLINE       inline
 
+/// Deprecated macro
+#   define AZ_DEPRECATED(_decl, _message) [[deprecated(_message)]] _decl
+
 /// DLL import/export macros
 #if defined(AZ_RESTRICTED_PLATFORM)
 #   define PLATFORMDEF_H_SECTION PLATFORMDEF_H_SECTION_DLL_EXPORT
-#   include AZ_RESTRICTED_FILE(PlatformDef_h, AZ_RESTRICTED_PLATFORM)
+#   if defined(AZ_PLATFORM_XENIA)
+#       include "Xenia/PlatformDef_h_xenia.inl"
+#   elif defined(AZ_PLATFORM_PROVO)
+#       include "Provo/PlatformDef_h_provo.inl"
+#   endif
 #elif defined(AZ_PLATFORM_WINDOWS)
 #   if defined(AZ_COMPILER_CLANG)
 #       define AZ_DLL_EXPORT __attribute__ ((dllexport))
@@ -301,6 +314,15 @@
 
 #if defined(AZ_COMPILER_MSVC)
 
+/// Disables a warning using push style. For use matched with an AZ_POP_WARNING
+#define AZ_PUSH_DISABLE_WARNING(_msvcOption, __)    \
+    __pragma(warning(push));                        \
+    __pragma(warning(disable : _msvcOption));
+
+/// Pops the warning stack. For use matched with an AZ_PUSH_DISABLE_WARNING
+#define AZ_POP_DISABLE_WARNING                      \
+    __pragma(warning(pop));
+
 #   define AZ_FORCE_INLINE  __forceinline
 #if !defined(_DEBUG)
 #   pragma warning(disable:4714) //warning C4714 marked as __forceinline not inlined. Sadly this happens when LTCG during linking. We tried to NOT use force inline but VC 2012 is bad at inlining.
@@ -314,8 +336,6 @@
 #   define AZ_RESTRICT  __restrict
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS
-/// Deprecated macro
-#   define AZ_DEPRECATED(_decl, _message)    __declspec(deprecated(_message)) _decl
 /// Function signature macro
 #   define AZ_FUNCTION_SIGNATURE    __FUNCSIG__
 
@@ -347,8 +367,17 @@
 
 //////////////////////////////////////////////////////////////////////////
 #elif defined(AZ_COMPILER_GCC) || defined(AZ_COMPILER_SNC)
-/// Forces a function to be inlined. \todo check __attribute__( ( always_inline ) )
 
+/// Disables a warning using push style. For use matched with an AZ_POP_WARNING
+#define AZ_PUSH_DISABLE_WARNING(__, _gccOption)         \
+    _Pragma("GCC diagnostic push");                     \
+    _Pragma(AZ_STRINGIZE(GCC diagnostic ignored _gccOption));
+
+/// Pops the warning stack. For use matched with an AZ_PUSH_DISABLE_WARNING
+#define AZ_POP_DISABLE_WARNING                          \
+    _Pragma("GCC diagnostic pop");
+
+/// Forces a function to be inlined. \todo check __attribute__( ( always_inline ) )
 #   define AZ_FORCE_INLINE  inline
 #ifdef  AZ_COMPILER_SNC
 #   define AZ_INTERNAL_ALIGNMENT_OF(_type) __alignof__(_type)
@@ -401,8 +430,6 @@
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS __attribute__((__may_alias__))
 
-/// Deprecated macro
-#   define AZ_DEPRECATED(_decl, _message) __attribute__((deprecated)) _decl
 /// Function signature macro
 #   define AZ_FUNCTION_SIGNATURE    __PRETTY_FUNCTION__
 
@@ -412,6 +439,16 @@
 #endif
 
 #elif defined(AZ_COMPILER_CLANG)
+
+/// Disables a single warning using push style. For use matched with an AZ_POP_WARNING
+#define AZ_PUSH_DISABLE_WARNING(__, _clangOption)           \
+    _Pragma("clang diagnostic push");                       \
+    _Pragma(AZ_STRINGIZE(clang diagnostic ignored _clangOption));
+
+/// Pops the warning stack. For use matched with an AZ_PUSH_DISABLE_WARNING
+#define AZ_POP_DISABLE_WARNING                              \
+    _Pragma("clang diagnostic pop");
+
 #   define AZ_FORCE_INLINE  inline
 /// Aligns a declaration.
 #   define AZ_ALIGN(_decl, _alignment) _decl __attribute__((aligned(_alignment)))
@@ -421,8 +458,6 @@
 #   define AZ_RESTRICT  __restrict
 /// Pointer will be aliased.
 #   define AZ_MAY_ALIAS __attribute__((__may_alias__))
-/// Deprecated macro
-#   define AZ_DEPRECATED(_decl, _message) __attribute__((deprecated(_message))) _decl
 /// RValue ref, move constructors
 #   define AZ_HAS_RVALUE_REFS
 /// Variadic templates
@@ -448,7 +483,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define PLATFORMDEF_H_SECTION PLATFORMDEF_H_SECTION_OS
-    #include AZ_RESTRICTED_FILE(PlatformDef_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/PlatformDef_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/PlatformDef_h_provo.inl"
+    #endif
 #else
 #   if defined(AZ_PLATFORM_WINDOWS)
 #       define AZ_THREAD_LOCAL  __declspec(thread)
@@ -492,7 +531,11 @@
 // Determine the dynamic library/module extension by platform
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define PLATFORMDEF_H_SECTION PLATFORMDEF_H_SECTION_DLL
-    #include AZ_RESTRICTED_FILE(PlatformDef_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/PlatformDef_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/PlatformDef_h_provo.inl"
+    #endif
 #elif defined(AZ_PLATFORM_WINDOWS)
   #define AZ_DYNAMIC_LIBRARY_PREFIX
   #define AZ_DYNAMIC_LIBRARY_EXTENSION  ".dll"

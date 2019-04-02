@@ -220,7 +220,11 @@ bool DebugCamera::OnInputEvent(const SInputEvent& event)
     }
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(DebugCamera_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DebugCamera_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DebugCamera_cpp_provo.inl"
+    #endif
 #endif
 
     if (!IsEnabled() || m_cameraMode == DebugCamera::ModeFixed)

@@ -27,7 +27,6 @@
 #include <LyShine/Bus/UiEditorBus.h>
 #include <LyShine/Bus/UiRenderBus.h>
 #include <LyShine/Bus/UiRenderControlBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
 #include <LyShine/Bus/UiInteractionMaskBus.h>
 #include <LyShine/Bus/UiInteractableBus.h>
 #include <LyShine/Bus/UiEntityContextBus.h>
@@ -44,11 +43,28 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiElementComponent::UiElementComponent()
 {
+    // This is required in order to be able to tell if the element is in the scheduled transform
+    // recompute list (intrusive_slist doesn't initialize this except in a debug build)
+    m_next = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiElementComponent::~UiElementComponent()
 {
+    // If this element is currently in the list of elements needing a transform recompute then
+    // remove it from that list since the element is being destroyed
+    if (m_next)
+    {
+        if (m_canvas)
+        {
+            m_canvas->UnscheduleElementForTransformRecompute(this);
+        }
+        else
+        {
+            m_next = nullptr;
+        }
+    }
+
     // In normal (correct) usage we have nothing to do here.
     // But if a user calls DeleteEntity or just deletes an entity pointer they can delete a UI element
     // and leave its parent with a dangling child pointer.
@@ -93,30 +109,7 @@ UiElementComponent::~UiElementComponent()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiElementComponent::UpdateElement(float deltaTime)
-{
-    if (!m_isEnabled)
-    {
-        // Nothing to do - whole element and all children are disabled
-        return;
-    }
-
-    // update any components connected to the UiUpdateBus
-    EBUS_EVENT_ID(GetEntityId(), UiUpdateBus, Update, deltaTime);
-
-    if (AreChildPointersValid())
-    {
-        // now update child elements
-        int numChildren = m_childElementComponents.size();
-        for (int i = 0; i < numChildren; ++i)
-        {
-            GetChildElementComponent(i)->UpdateElement(deltaTime);
-        }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiElementComponent::RenderElement(bool isInGame, bool displayBounds)
+void UiElementComponent::RenderElement(LyShine::IRenderGraph* renderGraph, bool isInGame)
 {
     if (!IsFullyInitialized())
     {
@@ -149,71 +142,27 @@ void UiElementComponent::RenderElement(bool isInGame, bool displayBounds)
         }
     }
 
-    if (!m_isEnabled)
+    // If a component is connected to the UiRenderControl bus then we give control of rendering this element
+    // and its children to that component, otherwise follow the standard render path
+    if (m_renderControlInterface)
     {
-        // Nothing to do - whole element and all children are disabled
-        return;
+        // give control of rendering this element and its children to the render control component on this element
+        m_renderControlInterface->Render(renderGraph, this, m_renderInterface, m_childElementComponents.size(), isInGame);
     }
-
-    // This is to allow components to update within the editor window
-    if (!isInGame)
+    else
     {
-        EBUS_EVENT_ID(GetEntityId(), UiUpdateBus, UpdateInEditor);
-    }
+        // render any component on this element connected to the UiRenderBus
+        if (m_renderInterface)
+        {
+            m_renderInterface->Render(renderGraph);
+        }
 
-    // give any components connected to the UiRenderControlBus the opportunity to
-    // change render state
-    EBUS_EVENT_ID(GetEntityId(), UiRenderControlBus,
-        SetupBeforeRenderingComponents, UiRenderControlInterface::Pass::First);
-
-    // render any components connected to the UiRenderBus
-    EBUS_EVENT_ID(GetEntityId(), UiRenderBus, Render);
-
-    // give any components connected to the UiRenderControlBus the opportunity to take
-    // action after the components are rendered and before the children are
-    EBUS_EVENT_ID(GetEntityId(), UiRenderControlBus,
-        SetupAfterRenderingComponents, UiRenderControlInterface::Pass::First);
-
-    // now render child elements
-    int numChildren = m_childElementComponents.size();
-    for (int i = 0; i < numChildren; ++i)
-    {
-        GetChildElementComponent(i)->RenderElement(isInGame, displayBounds);
-    }
-
-    // give any components connected to the UiRenderControlBus the opportunity to take
-    // action after children are rendered
-    bool isSecondComponentsPassRequired = false;
-    EBUS_EVENT_ID(GetEntityId(), UiRenderControlBus,
-        SetupAfterRenderingChildren, isSecondComponentsPassRequired);
-
-    if (isSecondComponentsPassRequired)
-    {
-        // change render state for second pass of components render
-        EBUS_EVENT_ID(GetEntityId(), UiRenderControlBus,
-            SetupBeforeRenderingComponents, UiRenderControlInterface::Pass::Second);
-
-        // render any components connected to the UiRenderBus
-        EBUS_EVENT_ID(GetEntityId(), UiRenderBus, Render);
-
-        // change render state after second pass of components render
-        EBUS_EVENT_ID(GetEntityId(), UiRenderControlBus,
-            SetupAfterRenderingComponents, UiRenderControlInterface::Pass::Second);
-    }
-
-    // We use deferred render for the bounds so that they draw on top of everything else
-    if (displayBounds && m_parent != nullptr)
-    {
-        AZ::Color white(1.0f, 1.0f, 1.0f, 1.0f);
-        UiTransformInterface::RectPoints points;
-        GetTransform2dComponent()->GetViewportSpacePoints(points);
-        // Note: because we pass true to defer these renders the outlines will draw on top of everything on the canvas
-        // This is a nested call to begin 2d drawing but Draw2d supports that.
-        Draw2dHelper draw2d(true);
-        draw2d.DrawLine(points.TopLeft(), points.TopRight(), white);
-        draw2d.DrawLine(points.TopRight(), points.BottomRight(), white);
-        draw2d.DrawLine(points.BottomRight(), points.BottomLeft(), white);
-        draw2d.DrawLine(points.BottomLeft(), points.TopLeft(), white);
+        // now render child elements
+        int numChildren = m_childElementComponents.size();
+        for (int i = 0; i < numChildren; ++i)
+        {
+            GetChildElementComponent(i)->RenderElement(renderGraph, isInGame);
+        }
     }
 }
 
@@ -280,6 +229,12 @@ AZ::EntityId UiElementComponent::GetChildEntityId(int index)
         childEntityId = m_childEntityIdOrder[index].m_entityId;
     }
     return childEntityId;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+UiElementInterface* UiElementComponent::GetChildElementInterface(int index)
+{
+    return GetChildElementComponent(index);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -967,7 +922,46 @@ bool UiElementComponent::IsEnabled()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiElementComponent::SetIsEnabled(bool isEnabled)
 {
-    m_isEnabled = isEnabled;
+    if (isEnabled != m_isEnabled)
+    {
+        m_isEnabled = isEnabled;
+
+        // Tell any listeners that the enabled state has changed
+        EBUS_EVENT_ID(GetEntityId(), UiElementNotificationBus, OnUiElementEnabledChanged, m_isEnabled);
+
+        // If the ancestors are not enabled then changing the local flag has no effect on the effective
+        // enabled state.
+        bool areAncestorsEnabled = (m_parentElementComponent) ? m_parentElementComponent->GetAreElementAndAncestorsEnabled() : true;
+        if (areAncestorsEnabled)
+        {
+            // Tell any listeners that the effective enabled state has changed
+            EBUS_EVENT_ID(GetEntityId(), UiElementNotificationBus, OnUiElementAndAncestorsEnabledChanged, m_isEnabled);
+
+            DoRecursiveEnabledNotification(m_isEnabled);
+        }
+
+        // tell the canvas to invalidate the render graph
+        if (m_canvas)
+        {
+            m_canvas->MarkRenderGraphDirty();
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiElementComponent::GetAreElementAndAncestorsEnabled()
+{
+    if (!m_isEnabled)
+    {
+        return false;
+    }
+
+    if (m_parentElementComponent)
+    {
+        return m_parentElementComponent->GetAreElementAndAncestorsEnabled();
+    }
+    
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -991,7 +985,16 @@ bool UiElementComponent::GetIsVisible()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiElementComponent::SetIsVisible(bool isVisible)
 {
-    m_isVisibleInEditor = isVisible;
+    if (m_isVisibleInEditor != isVisible)
+    {
+        m_isVisibleInEditor = isVisible;
+
+        if (m_canvas)
+        {
+            // we have to regenerate the graph because different elements are now visible
+            m_canvas->MarkRenderGraphDirty();
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1052,6 +1055,22 @@ bool UiElementComponent::AreAllAncestorsVisible()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::OnEntityActivated(const AZ::EntityId&)
+{
+    // cache pointers to the optional render interface and render control interface to
+    // optimize calls rather than using ebus. Both of these buses only allow single handlers.
+    m_renderInterface = UiRenderBus::FindFirstHandler(GetEntityId());
+    m_renderControlInterface = UiRenderControlBus::FindFirstHandler(GetEntityId());
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::OnEntityDeactivated(const AZ::EntityId&)
+{
+    m_renderInterface = nullptr;
+    m_renderControlInterface = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void UiElementComponent::AddChild(AZ::Entity* child, AZ::Entity* insertBefore)
 {
     // debug check that this element is not already a child
@@ -1106,7 +1125,13 @@ void UiElementComponent::AddChild(AZ::Entity* child, AZ::Entity* insertBefore)
     // It will always require recomputing the transform for the child just added
     if (IsFullyInitialized())
     {
-        GetTransform2dComponent()->SetRecomputeTransformFlag();
+        GetTransform2dComponent()->SetRecomputeFlags(UiTransformInterface::Recompute::RectAndTransform);
+    }
+
+    // tell the canvas to invalidate the render graph
+    if (m_canvas)
+    {
+        m_canvas->MarkRenderGraphDirty();
     }
 }
 
@@ -1139,6 +1164,56 @@ void UiElementComponent::RemoveChild(AZ::Entity* child)
         // transforms of all children
         EBUS_EVENT_ID(GetCanvasEntityId(), UiLayoutManagerBus, MarkToRecomputeLayout, GetEntityId());
         EBUS_EVENT_ID(GetCanvasEntityId(), UiLayoutManagerBus, MarkToRecomputeLayoutsAffectedByLayoutCellChange, GetEntityId(), false);
+
+        // tell the canvas to invalidate the render graph
+        if (m_canvas)
+        {
+            m_canvas->MarkRenderGraphDirty();
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::RemoveChild(AZ::EntityId child)
+{
+    AZ::EntityId childId = child;
+    auto iter = AZStd::find_if(m_childEntityIdOrder.begin(), m_childEntityIdOrder.end(),
+        [childId](ChildEntityIdOrderEntry& entry) { return entry.m_entityId == childId; });
+
+    if (iter != m_childEntityIdOrder.end())
+    {
+        if (AreChildPointersValid())
+        {
+            auto childElementiter = AZStd::find_if(m_childElementComponents.begin(), m_childElementComponents.end(),
+                [childId](UiElementComponent* elementComponent) { return elementComponent->GetEntityId() == childId; });
+
+            UiElementComponent* elementComponent = childElementiter != m_childElementComponents.end() ? *childElementiter : nullptr;
+            AZ_Assert(elementComponent, "");
+            if (elementComponent)
+            {
+                stl::find_and_erase(m_childElementComponents, elementComponent);
+
+                // Clear child's parent
+                elementComponent->SetParentReferences(nullptr, nullptr);
+            }
+        }
+
+        // remove the child from m_childEntityIdOrder
+        m_childEntityIdOrder.erase(iter);
+
+        // update the sort indicies to be contiguous
+        ResetChildEntityIdSortOrders();
+
+        // Adding or removing child elements may require recomputing the
+        // transforms of all children
+        EBUS_EVENT_ID(GetCanvasEntityId(), UiLayoutManagerBus, MarkToRecomputeLayout, GetEntityId());
+        EBUS_EVENT_ID(GetCanvasEntityId(), UiLayoutManagerBus, MarkToRecomputeLayoutsAffectedByLayoutCellChange, GetEntityId(), false);
+
+        // tell the canvas to invalidate the render graph
+        if (m_canvas)
+        {
+            m_canvas->MarkRenderGraphDirty();
+        }
     }
 }
 
@@ -1237,6 +1312,11 @@ bool UiElementComponent::FixupPostLoad(AZ::Entity* entity, UiCanvasComponent* ca
         m_childElementComponents.push_back(childElementComponent);
     }
 
+    // Tell any listeners that the canvas entity ID for the element is now set, this allows other components to
+    // listen for messages from the canvas
+    AZ::EntityId parentEntityId = (parent) ? parent->GetId() : AZ::EntityId();
+    EBUS_EVENT_ID(GetEntityId(), UiElementNotificationBus, OnUiElementFixup, canvas->GetEntityId(), parentEntityId);
+
     return true;
 }
 
@@ -1299,8 +1379,8 @@ void UiElementComponent::Reflect(AZ::ReflectContext* context)
                 ->Attribute(AZ::Edit::Attributes::ReadOnly, true)
                 ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushable);
 
-            editInfo->DataElement(0, &UiElementComponent::m_isEnabled, "Start Enabled",
-                "Determines whether the \"Is Enabled\" flag is set to true or false when the element is created.\n"
+            editInfo->DataElement(0, &UiElementComponent::m_isEnabled, "Start enabled",
+                "Determines whether the element is enabled upon creation.\n"
                 "If an element is not enabled, neither it nor any of its children are drawn or interactive.");
 
             // These are not visible in the PropertyGrid since they are managed through the Hierarchy Pane
@@ -1453,11 +1533,18 @@ void UiElementComponent::Activate()
     UiElementBus::Handler::BusConnect(m_entity->GetId());
     UiEditorBus::Handler::BusConnect(m_entity->GetId());
     AZ::SliceEntityHierarchyRequestBus::Handler::BusConnect(m_entity->GetId());
+    AZ::EntityBus::Handler::BusConnect(m_entity->GetId());
 
     // Once added the transform component is never removed
     if (!m_transformComponent)
     {
         m_transformComponent = GetEntity()->FindComponent<UiTransform2dComponent>();
+    }
+
+    // tell the canvas to invalidate the render graph
+    if (m_canvas)
+    {
+        m_canvas->MarkRenderGraphDirty();
     }
 }
 
@@ -1467,6 +1554,28 @@ void UiElementComponent::Deactivate()
     UiElementBus::Handler::BusDisconnect();
     UiEditorBus::Handler::BusDisconnect();
     AZ::SliceEntityHierarchyRequestBus::Handler::BusDisconnect();
+    AZ::EntityBus::Handler::BusDisconnect();
+
+    // tell the canvas to invalidate the render graph
+    if (m_canvas)
+    {
+        m_canvas->MarkRenderGraphDirty();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiElementComponent::DoRecursiveEnabledNotification(bool newIsEnabledValue)
+{
+    for (UiElementComponent* child : m_childElementComponents)
+    {
+        // if this child element is disabled then the enabled state of the ancestors makes no difference
+        // but if it is enabled then its effective enabled state is controlled by its ancestors
+        if (child->m_isEnabled)
+        {
+            EBUS_EVENT_ID(child->GetEntityId(), UiElementNotificationBus, OnUiElementAndAncestorsEnabledChanged, newIsEnabledValue);
+            child->DoRecursiveEnabledNotification(newIsEnabledValue);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

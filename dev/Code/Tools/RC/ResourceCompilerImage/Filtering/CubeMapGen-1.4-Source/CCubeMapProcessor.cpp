@@ -1575,9 +1575,8 @@ inline void HammersleySequence(uint32 sampleIndex, uint32 sampleCount, float32* 
 
 void ImportanceSampleGGX(float* vXi, float roughness, float* vNormal, float* vOut)
 {
-    float roughnessSquared = roughness * roughness;
     float32 phi = 2 * CP_PI * vXi[0];
-    float32 cosTheta = sqrtf((1 - vXi[1]) / ( 1 + ((roughnessSquared * roughnessSquared) - 1) * vXi[1]));
+    float32 cosTheta = sqrtf((1 - vXi[1]) / ( 1 + ((roughness * roughness) - 1) * vXi[1]));
     float32 sinTheta = sqrtf(1 - (cosTheta * cosTheta));
 
     float32 vH[3];

@@ -1369,6 +1369,7 @@ void TranslateToGLSL(HLSLCrossCompilerContext* psContext, GLLang* planguage, con
     {
         bcatcstr(glsl, "#extension GL_ARM_shader_framebuffer_fetch_depth_stencil : require\n");
     }
+    psShader->eGmemType = fetchType;
 
     AddVersionDependentCode(psContext);
 

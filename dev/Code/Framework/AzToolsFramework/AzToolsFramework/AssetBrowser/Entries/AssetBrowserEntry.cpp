@@ -133,7 +133,7 @@ namespace AzToolsFramework
             case Column::Name:
                 return QString::fromUtf8(m_name.c_str());
             case Column::DisplayName:
-                return QString::fromUtf8(m_displayName.c_str());
+                return m_displayName;
             default:
                 return QVariant();
             }
@@ -209,7 +209,7 @@ namespace AzToolsFramework
             return m_name;
         }
 
-        const AZStd::string& AssetBrowserEntry::GetDisplayName() const
+        const QString& AssetBrowserEntry::GetDisplayName() const
         {
             return m_displayName;
         }

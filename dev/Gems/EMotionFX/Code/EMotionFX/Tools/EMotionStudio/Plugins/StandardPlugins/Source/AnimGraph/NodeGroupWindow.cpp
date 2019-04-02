@@ -68,7 +68,7 @@ namespace EMStudio
 
         // add the line edit
         mLineEdit = new QLineEdit();
-        connect(mLineEdit, SIGNAL(textEdited(const QString&)), this, SLOT(TextEdited(const QString&)));
+        connect(mLineEdit, &QLineEdit::textEdited, this, &NodeGroupRenameWindow::TextEdited);
         layout->addWidget(mLineEdit);
 
         // set the current name and select all
@@ -89,8 +89,8 @@ namespace EMStudio
         buttonLayout->addWidget(cancelButton);
 
         // connect the buttons
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(Accepted()));
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(mOKButton, &QPushButton::clicked, this, &NodeGroupRenameWindow::Accepted);
+        connect(cancelButton, &QPushButton::clicked, this, &NodeGroupRenameWindow::reject);
 
         // set the new layout
         layout->addLayout(buttonLayout);
@@ -173,17 +173,17 @@ namespace EMStudio
         // add the add button
         mAddButton = new QPushButton();
         EMStudioManager::MakeTransparentButton(mAddButton, "/Images/Icons/Plus.png", "Add new node group");
-        connect(mAddButton, SIGNAL(clicked()), this, SLOT(OnAddNodeGroup()));
+        connect(mAddButton, &QPushButton::clicked, this, &NodeGroupWindow::OnAddNodeGroup);
 
         // add the remove button
         mRemoveButton = new QPushButton();
         EMStudioManager::MakeTransparentButton(mRemoveButton, "/Images/Icons/Minus.png", "Remove selected node group");
-        connect(mRemoveButton, SIGNAL(clicked()), this, SLOT(OnRemoveSelectedGroups()));
+        connect(mRemoveButton, &QPushButton::clicked, this, &NodeGroupWindow::OnRemoveSelectedGroups);
 
         // add the clear button
         mClearButton = new QPushButton();
         EMStudioManager::MakeTransparentButton(mClearButton, "/Images/Icons/Clear.png", "Remove all node groups");
-        connect(mClearButton, SIGNAL(clicked()), this, SLOT(OnClearNodeGroups()));
+        connect(mClearButton, &QPushButton::clicked, this, &NodeGroupWindow::OnClearNodeGroups);
 
         // add the buttons to add, remove and clear the motions
         QHBoxLayout* buttonsLayout = new QHBoxLayout();
@@ -209,7 +209,7 @@ namespace EMStudio
         mTableWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
         mTableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
         mTableWidget->setContextMenuPolicy(Qt::DefaultContextMenu);
-        connect(mTableWidget, SIGNAL(itemSelectionChanged()), this, SLOT(UpdateInterface()));
+        connect(mTableWidget, &QTableWidget::itemSelectionChanged, this, &NodeGroupWindow::UpdateInterface);
         //connect( mTableWidget, SIGNAL(cellChanged(int, int)), this, SLOT(OnCellChanged(int, int)) );
         //connect( mTableWidget, SIGNAL(itemChanged(QTableWidgetItem*)), this, SLOT(OnNameEdited(QTableWidgetItem*)) );
 
@@ -360,7 +360,7 @@ namespace EMStudio
             visibilityCheckbox->setStyleSheet("background: transparent; padding-left: 5px; max-width: 13px;");
             visibilityCheckbox->setChecked(nodeGroup->GetIsVisible());
             mWidgetTable.Add(WidgetLookup(visibilityCheckbox, i));
-            connect(visibilityCheckbox, SIGNAL(stateChanged(int)), this, SLOT(OnIsVisible(int)));
+            connect(visibilityCheckbox, &QCheckBox::stateChanged, this, &NodeGroupWindow::OnIsVisible);
 
             // add the visibility checkbox in the table
             mTableWidget->setCellWidget(i, 0, visibilityCheckbox);
@@ -386,7 +386,7 @@ namespace EMStudio
             colorLayoutWidget->setLayout(colorLayout);
 
             mWidgetTable.Add(WidgetLookup(colorWidget, i));
-            connect(colorWidget, SIGNAL(ColorChangeEvent(const QColor&)), this, SLOT(OnColorChanged(const QColor&)));
+            connect(colorWidget, static_cast<void (MysticQt::ColorLabel::*)(const QColor&)>(&MysticQt::ColorLabel::ColorChangeEvent), this, &NodeGroupWindow::OnColorChanged);
 
             // add the color label in the table
             mTableWidget->setCellWidget(i, 1, colorLayoutWidget);
@@ -758,14 +758,14 @@ namespace EMStudio
         {
             QAction* removeAction = menu.addAction("Remove Selected Node Groups");
             removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Icons/Minus.png"));
-            connect(removeAction, SIGNAL(triggered()), this, SLOT(OnRemoveSelectedGroups()));
+            connect(removeAction, &QAction::triggered, this, &NodeGroupWindow::OnRemoveSelectedGroups);
         }
 
         // add rename if only one selected
         if (rowIndices.GetLength() == 1)
         {
             QAction* renameAction = menu.addAction("Rename Selected Node Group");
-            connect(renameAction, SIGNAL(triggered()), this, SLOT(OnRenameSelectedNodeGroup()));
+            connect(renameAction, &QAction::triggered, this, &NodeGroupWindow::OnRenameSelectedNodeGroup);
         }
 
         // show the menu at the given position

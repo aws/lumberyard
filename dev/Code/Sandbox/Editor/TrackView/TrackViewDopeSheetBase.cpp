@@ -17,7 +17,6 @@
 
 #include "TrackViewDialog.h"
 #include "AnimationContext.h"
-#include "TrackViewUndo.h"
 #include "TVCustomizeTrackColorsDlg.h"
 #include "TrackViewAnimNode.h"
 #include "TrackViewTrack.h"
@@ -471,25 +470,15 @@ void CTrackViewDopeSheetBase::OnLButtonDown(Qt::KeyboardModifiers modifiers, con
     {
         m_mouseMode = eTVMouseMode_None;
 
-        CTrackViewAnimNode* pAnimNode = GetAnimNodeFromPoint(m_mouseOverPos);
+        CTrackViewAnimNode* animNode = GetAnimNodeFromPoint(m_mouseOverPos);
         CTrackViewTrack* pTrack = GetTrackFromPoint(m_mouseOverPos);
 
-        if (pAnimNode)
+        if (animNode)
         {
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                CUndo undo("Paste Keys");
-                CUndo::Record(new CUndoAnimKeySelection(sequence));
-                sequence->DeselectAllKeys();
-                sequence->PasteKeysFromClipboard(pAnimNode, pTrack, ComputeSnappedMoveOffset());
-            }
-            else
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Paste Keys");
-                sequence->DeselectAllKeys();
-                sequence->PasteKeysFromClipboard(pAnimNode, pTrack, ComputeSnappedMoveOffset());
-                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-            }
+            AzToolsFramework::ScopedUndoBatch undoBatch("Paste Keys");
+            sequence->DeselectAllKeys();
+            sequence->PasteKeysFromClipboard(animNode, pTrack, ComputeSnappedMoveOffset());
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
         }
 
         SetMouseCursor(Qt::ArrowCursor);
@@ -505,9 +494,8 @@ void CTrackViewDopeSheetBase::OnLButtonDown(Qt::KeyboardModifiers modifiers, con
         CTrackViewKeyBundle selectedKeys = sequence->GetSelectedKeys();
         if (selectedKeys.GetKeyCount() > 0)
         {
-            /// Move/Clone Key Undo Begin
+            // Move/Clone Key Undo Begin
             GetIEditor()->BeginUndo();
-            sequence->StoreUndoForTracksWithSelectedKeys();
             StoreMementoForTracksWithSelectedKeys();
 
             m_keyTimeOffset = 0;
@@ -622,45 +610,23 @@ void CTrackViewDopeSheetBase::OnLButtonDblClk(Qt::KeyboardModifiers modifiers, c
     }
     else
     {
-        CUndoAnimKeySelection* undoKeySelection = new CUndoAnimKeySelection(sequence);
-
         CTrackViewTrack* pTrack = GetTrackFromPoint(point);
         if (pTrack)
         {
             CTrackViewSequenceNotificationContext context(sequence);
 
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            AzToolsFramework::ScopedUndoBatch undoBatch("Select key");
+
+            const std::vector<bool> beforeKeyState = sequence->SaveKeyStates();
+
+            sequence->DeselectAllKeys();
+            keyHandle.Select(true);
+
+            const std::vector<bool> afterKeyState = sequence->SaveKeyStates();
+
+            if (beforeKeyState != afterKeyState)
             {
-                GetIEditor()->BeginUndo();
-                CUndo::Record(undoKeySelection);
-
-                sequence->DeselectAllKeys();
-                keyHandle.Select(true);
-
-                if (undoKeySelection->IsSelectionChanged())
-                {
-                    GetIEditor()->AcceptUndo("Select Key");
-                }
-                else
-                {
-                    GetIEditor()->CancelUndo();
-                }
-            }
-            else
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Select key");
-
-                sequence->DeselectAllKeys();
-                keyHandle.Select(true);
-
-                if (undoKeySelection->IsSelectionChanged())
-                {
-                    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-                }
-
-                // Delete undo for non legacy sequences, for legacy sequences we need to 
-                // keep it around for the CUndo system.
-                delete undoKeySelection;
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
             }
 
             m_keyTimeOffset = 0;
@@ -1056,12 +1022,9 @@ void CTrackViewDopeSheetBase::SelectAllKeysWithinTimeFrame(const QRect& rc, cons
         return;
     }
 
-    CUndoAnimKeySelection* undoKeySelection = new CUndoAnimKeySelection(sequence);
-    if (sequence->GetSequenceType() == SequenceType::Legacy)
-    {
-        GetIEditor()->BeginUndo();
-        CUndo::Record(undoKeySelection);
-    }
+    AzToolsFramework::ScopedUndoBatch undoBatch("Select keys");
+
+    const std::vector<bool> beforeKeyState = sequence->SaveKeyStates();
 
     if (!bMultiSelection)
     {
@@ -1094,28 +1057,11 @@ void CTrackViewDopeSheetBase::SelectAllKeysWithinTimeFrame(const QRect& rc, cons
         }
     }
 
-    if (sequence->GetSequenceType() == SequenceType::Legacy)
-    {
-        if (undoKeySelection->IsSelectionChanged())
-        {
-            GetIEditor()->AcceptUndo("Select keys");
-        }
-        else
-        {
-            GetIEditor()->CancelUndo();
-        }
-    }
-    else
-    {
-        AzToolsFramework::ScopedUndoBatch undoBatch("Select keys");
-        if (undoKeySelection->IsSelectionChanged())
-        {
-            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-        }
+    const std::vector<bool> afterKeyState = sequence->SaveKeyStates();
 
-        // Delete undo for non legacy sequences, for legacy sequences we need to 
-        // keep it around for the CUndo system.
-        delete undoKeySelection;
+    if (beforeKeyState != afterKeyState)
+    {
+        undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
     }
 }
 
@@ -1374,42 +1320,22 @@ void CTrackViewDopeSheetBase::keyPressEvent(QKeyEvent* event)
 
             if (keyHandle.IsValid())
             {
-                CUndoAnimKeySelection* undoKeySelection = new CUndoAnimKeySelection(sequence);
                 CTrackViewSequenceNotificationContext context(sequence);
 
-                if (sequence->GetSequenceType() == SequenceType::Legacy)
+                const std::vector<bool> beforeKeyState = sequence->SaveKeyStates();
+
+                AzToolsFramework::ScopedUndoBatch undoBatch("Select Key");
+
+                sequence->DeselectAllKeys();
+                keyHandle.Select(true);
+
+                const std::vector<bool> afterKeyState = sequence->SaveKeyStates();
+
+                if (beforeKeyState != afterKeyState)
                 {
-                    GetIEditor()->BeginUndo();
-                    CUndo::Record(undoKeySelection);
-
-                    sequence->DeselectAllKeys();
-                    keyHandle.Select(true);
-
-                    if (undoKeySelection->IsSelectionChanged())
-                    {
-                        GetIEditor()->AcceptUndo("Select Key");
-                    }
-                    else
-                    {
-                        GetIEditor()->CancelUndo();
-                    }
+                    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
                 }
-                else
-                {
-                    AzToolsFramework::ScopedUndoBatch undoBatch("Select Key");
 
-                    sequence->DeselectAllKeys();
-                    keyHandle.Select(true);
-
-                    if (undoKeySelection->IsSelectionChanged())
-                    {
-                        undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-                    }
-
-                    // Delete undo for non legacy sequences, for legacy sequences we need to 
-                    // keep it around for the CUndo system.
-                    delete undoKeySelection;
-                }
             }
         }
 
@@ -1473,22 +1399,6 @@ bool CTrackViewDopeSheetBase::event(QEvent* e)
     }
 
     return QWidget::event(e);
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewDopeSheetBase::RecordTrackUndoLegacy(CTrackViewTrack* track)
-{
-    CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
-    if (track && sequence)
-    {
-        // Only use CUndo for legacy sequences, for component sequences
-        // just let AZ::Undo take care of things.
-        if (sequence->GetSequenceType() == SequenceType::Legacy)
-        {
-            CUndo undo("Track Modify");
-            CUndo::Record(new CUndoTrackObject(track, sequence));
-        }
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1637,10 +1547,6 @@ void CTrackViewDopeSheetBase::MouseMoveStartEndTimeAdjust(const QPoint& p, bool 
         }
     }
 
-    if (sequence->GetSequenceType() == SequenceType::Legacy)
-    {
-        CUndo::Record(new CUndoTrackObject(m_keyForTimeAdjust.GetTrack(), sequence));
-    }
     keyHandle.SetKey(timeRangeKey);
 
     update();
@@ -1986,10 +1892,6 @@ void CTrackViewDopeSheetBase::LButtonDownOnTimeAdjustBar(const QPoint& point, CT
         if (timeRangeKey->m_endTime == 0)
         {
             timeRangeKey->m_endTime = timeRangeKey->m_duration;
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack(), sequence));
-            }
             keyHandle.SetKey(timeRangeKey);
         }
         m_mouseMode = eTVMouseMode_EndTimeAdjust;
@@ -2003,47 +1905,30 @@ void CTrackViewDopeSheetBase::LButtonDownOnKey(const QPoint& point, CTrackViewKe
     CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
     AZ_Assert(sequence, "Expected a valid sequence.");
 
+    if (!sequence)
+    {
+        return;
+    }
+
     if (!keyHandle.IsSelected() && !(modifiers & Qt::ControlModifier))
     {
         CTrackViewSequenceNotificationContext context(sequence);
-        CUndoAnimKeySelection* undoKeySelection = new CUndoAnimKeySelection(sequence);
+        AzToolsFramework::ScopedUndoBatch undoBatch("Select keys");
 
-        if (sequence->GetSequenceType() == SequenceType::Legacy)
+        const std::vector<bool> beforeKeyState = sequence->SaveKeyStates();
+
+        sequence->DeselectAllKeys();
+        m_bJustSelected = true;
+        m_keyTimeOffset = 0;
+        keyHandle.Select(true);
+
+        ChangeSequenceTrackSelection(sequence, keyHandle.GetTrack());
+
+        const std::vector<bool> afterKeyState = sequence->SaveKeyStates();
+
+        if (beforeKeyState != afterKeyState)
         {
-            CUndo undo("Select Keys");
-            CUndo::Record(undoKeySelection);
-
-            sequence->DeselectAllKeys();
-            m_bJustSelected = true;
-            m_keyTimeOffset = 0;
-            keyHandle.Select(true);
-
-            ChangeSequenceTrackSelection(sequence, keyHandle.GetTrack());
-
-            if (!undoKeySelection->IsSelectionChanged())
-            {
-                undo.Cancel();
-            }
-        }
-        else
-        {
-            AzToolsFramework::ScopedUndoBatch undoBatch("Select keys");
-
-            sequence->DeselectAllKeys();
-            m_bJustSelected = true;
-            m_keyTimeOffset = 0;
-            keyHandle.Select(true);
-
-            ChangeSequenceTrackSelection(sequence, keyHandle.GetTrack());
-
-            if (undoKeySelection->IsSelectionChanged())
-            {
-                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-            }
-
-            // Delete undo for non legacy sequences, for legacy sequences we need to 
-            // keep it around for the CUndo system.
-            delete undoKeySelection;
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
         }
     }
     else
@@ -2051,9 +1936,8 @@ void CTrackViewDopeSheetBase::LButtonDownOnKey(const QPoint& point, CTrackViewKe
         GetIEditor()->CancelUndo();
     }
 
-    /// Move/Clone Key Undo Begin
+    // Move/Clone Key Undo Begin
     GetIEditor()->BeginUndo();
-    sequence->StoreUndoForTracksWithSelectedKeys();
     StoreMementoForTracksWithSelectedKeys();
 
     if (modifiers & Qt::ShiftModifier)
@@ -2148,47 +2032,24 @@ bool CTrackViewDopeSheetBase::CreateColorKey(CTrackViewTrack* pTrack, float keyT
         {
             CTrackViewSequenceNotificationContext context(sequence);
 
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
+            AzToolsFramework::ScopedUndoBatch undoBatch("Set Key");
+            const unsigned int numChildNodes = pTrack->GetChildCount();
+            for (int i = 0; i < numChildNodes; ++i)
             {
-                RecordTrackUndoLegacy(pTrack);
-                const unsigned int numChildNodes = pTrack->GetChildCount();
-                for (int i = 0; i < numChildNodes; ++i)
+                CTrackViewTrack* subTrack = static_cast<CTrackViewTrack*>(pTrack->GetChild(i));
+                if (IsOkToAddKeyHere(subTrack, keyTime))
                 {
-                    CTrackViewTrack* subTrack = static_cast<CTrackViewTrack*>(pTrack->GetChild(i));
-                    if (IsOkToAddKeyHere(subTrack, keyTime))
-                    {
-                        CTrackViewKeyHandle newKey = subTrack->CreateKey(keyTime);
+                    CTrackViewKeyHandle newKey = subTrack->CreateKey(keyTime);
 
-                        I2DBezierKey bezierKey;
-                        newKey.GetKey(&bezierKey);
-                        bezierKey.value = Vec2(keyTime, colArray[i]);
-                        newKey.SetKey(&bezierKey);
+                    I2DBezierKey bezierKey;
+                    newKey.GetKey(&bezierKey);
+                    bezierKey.value = Vec2(keyTime, colArray[i]);
+                    newKey.SetKey(&bezierKey);
 
-                        keyCreated = true;
-                    }
+                    keyCreated = true;
                 }
             }
-            else
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Set Key");
-                const unsigned int numChildNodes = pTrack->GetChildCount();
-                for (int i = 0; i < numChildNodes; ++i)
-                {
-                    CTrackViewTrack* subTrack = static_cast<CTrackViewTrack*>(pTrack->GetChild(i));
-                    if (IsOkToAddKeyHere(subTrack, keyTime))
-                    {
-                        CTrackViewKeyHandle newKey = subTrack->CreateKey(keyTime);
-
-                        I2DBezierKey bezierKey;
-                        newKey.GetKey(&bezierKey);
-                        bezierKey.value = Vec2(keyTime, colArray[i]);
-                        newKey.SetKey(&bezierKey);
-
-                        keyCreated = true;
-                    }
-                }
-                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-            }
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
         }
     }
 
@@ -2211,26 +2072,15 @@ void CTrackViewDopeSheetBase::UpdateColorKey(const QColor& color, bool addToUndo
     {
         CTrackViewSequenceNotificationContext context(sequence);
 
-        if (sequence->GetSequenceType() == SequenceType::Legacy)
+        if (addToUndo)
         {
-            if (addToUndo)
-            {
-                RecordTrackUndoLegacy(m_colorUpdateTrack);
-            }
+            AzToolsFramework::ScopedUndoBatch undoBatch("Set Key");
             UpdateColorKeyHelper(colArray);
+            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
         }
         else
         {
-            if (addToUndo)
-            {
-                AzToolsFramework::ScopedUndoBatch undoBatch("Set Key");
-                UpdateColorKeyHelper(colArray);
-                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-            }
-            else
-            {
-                UpdateColorKeyHelper(colArray);
-            }
+            UpdateColorKeyHelper(colArray);
         }
 
         // We want this to take affect now
@@ -2319,21 +2169,11 @@ void CTrackViewDopeSheetBase::AcceptUndo()
         {
             if (sequence && m_bKeysMoved)
             {
-                if (sequence->GetSequenceType() == SequenceType::Legacy)
-                {
-                    CUndo::Record(new CUndoAnimKeySelection(sequence));
-                    GetIEditor()->AcceptUndo("Move/Clone Keys");
-                }
-                else
-                {
-                    // Cancel legacy Undo, it shouldn't have recored anything. We can strip away all of this
-                    // IsRecording() code path when we remove SequenceType::Legacy sequence support.
-                    GetIEditor()->CancelUndo();
+                GetIEditor()->CancelUndo();
 
-                    // Keys Moved, mark the sequence dirty to get an AZ undo event.
-                    AzToolsFramework::ScopedUndoBatch undoBatch("Move/Clone Keys");
-                    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-                }
+                // Keys Moved, mark the sequence dirty to get an AZ undo event.
+                AzToolsFramework::ScopedUndoBatch undoBatch("Move/Clone Keys");
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
             }
             else
             {
@@ -2344,19 +2184,10 @@ void CTrackViewDopeSheetBase::AcceptUndo()
         {
             if (sequence)
             {
-                if (sequence->GetSequenceType() == SequenceType::Legacy)
-                {
-                    GetIEditor()->AcceptUndo("Adjust Start/End Time of an Animation Key");
-                }
-                else
-                {
-                    // Cancel legacy Undo, it shouldn't have recored anything. We can strip away all of this
-                    // IsRecording() code path when we remove SequenceType::Legacy sequence support.
-                    GetIEditor()->CancelUndo();
+                GetIEditor()->CancelUndo();
 
-                    AzToolsFramework::ScopedUndoBatch undoBatch("Adjust Start/End Time of an Animation Key");
-                    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-                }
+                AzToolsFramework::ScopedUndoBatch undoBatch("Adjust Start/End Time of an Animation Key");
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
             }
             else
             {
@@ -2424,17 +2255,10 @@ void CTrackViewDopeSheetBase::AddKeys(const QPoint& point, const bool bTryAddKey
                 {
                     if (IsOkToAddKeyHere(pCurrTrack, keyTime))
                     {
-                        if (sequence->GetSequenceType() == SequenceType::Legacy)
-                        {
-                            RecordTrackUndoLegacy(pCurrTrack);
-                            pCurrTrack->CreateKey(keyTime);
-                        }
-                        else
-                        {
-                            AzToolsFramework::ScopedUndoBatch undoBatch("Create Key");
-                            pCurrTrack->CreateKey(keyTime);
-                            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-                        }
+                        AzToolsFramework::ScopedUndoBatch undoBatch("Create Key");
+                        pCurrTrack->CreateKey(keyTime);
+                        undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+
                         keyCreated = true;
                     }
                 }
@@ -2445,17 +2269,10 @@ void CTrackViewDopeSheetBase::AddKeys(const QPoint& point, const bool bTryAddKey
                         CTrackViewTrack* pSubTrack = static_cast<CTrackViewTrack*>(pCurrTrack->GetChild(k));
                         if (IsOkToAddKeyHere(pSubTrack, keyTime))
                         {
-                            if (sequence->GetSequenceType() == SequenceType::Legacy)
-                            {
-                                RecordTrackUndoLegacy(pSubTrack);
-                                pSubTrack->CreateKey(keyTime);
-                            }
-                            else
-                            {
-                                AzToolsFramework::ScopedUndoBatch undoBatch("Create Key");
-                                pSubTrack->CreateKey(keyTime);
-                                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-                            }
+                            AzToolsFramework::ScopedUndoBatch undoBatch("Create Key");
+                            pSubTrack->CreateKey(keyTime);
+                            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+
                             keyCreated = true;
                         }
                     }
@@ -2466,17 +2283,10 @@ void CTrackViewDopeSheetBase::AddKeys(const QPoint& point, const bool bTryAddKey
         {
             if (IsOkToAddKeyHere(pTrack, keyTime))
             {
-                if (sequence->GetSequenceType() == SequenceType::Legacy)
-                {
-                    RecordTrackUndoLegacy(pTrack);
-                    pTrack->CreateKey(keyTime);
-                }
-                else
-                {
-                    AzToolsFramework::ScopedUndoBatch undoBatch("Create Key");
-                    pTrack->CreateKey(keyTime);
-                    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-                }
+                AzToolsFramework::ScopedUndoBatch undoBatch("Create Key");
+                pTrack->CreateKey(keyTime);
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
+
                 keyCreated = true;
             }
         }
@@ -2488,33 +2298,17 @@ void CTrackViewDopeSheetBase::AddKeys(const QPoint& point, const bool bTryAddKey
             }
             else
             {
-                if (sequence->GetSequenceType() == SequenceType::Legacy)
+                AzToolsFramework::ScopedUndoBatch undoBatch("Create Key");
+                for (int i = 0; i < pTrack->GetChildCount(); ++i)
                 {
-                    RecordTrackUndoLegacy(pTrack);
-                    for (int i = 0; i < pTrack->GetChildCount(); ++i)
+                    CTrackViewTrack* pSubTrack = static_cast<CTrackViewTrack*>(pTrack->GetChild(i));
+                    if (IsOkToAddKeyHere(pSubTrack, keyTime))
                     {
-                        CTrackViewTrack* pSubTrack = static_cast<CTrackViewTrack*>(pTrack->GetChild(i));
-                        if (IsOkToAddKeyHere(pSubTrack, keyTime))
-                        {
-                            pSubTrack->CreateKey(keyTime);
-                            keyCreated = true;
-                        }
+                        pSubTrack->CreateKey(keyTime);
+                        keyCreated = true;
                     }
                 }
-                else
-                {
-                    AzToolsFramework::ScopedUndoBatch undoBatch("Create Key");
-                    for (int i = 0; i < pTrack->GetChildCount(); ++i)
-                    {
-                        CTrackViewTrack* pSubTrack = static_cast<CTrackViewTrack*>(pTrack->GetChild(i));
-                        if (IsOkToAddKeyHere(pSubTrack, keyTime))
-                        {
-                            pSubTrack->CreateKey(keyTime);
-                            keyCreated = true;
-                        }
-                    }
-                    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-                }
+                undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
             }
         }
     }
@@ -2678,11 +2472,11 @@ void CTrackViewDopeSheetBase::DrawTrack(CTrackViewTrack* pTrack, QPainter* paint
     }
 
     // A disabled/muted track or any track in a disabled node also uses a custom color.
-    CTrackViewAnimNode* pAnimNode = pTrack->GetAnimNode();
+    CTrackViewAnimNode* animNode = pTrack->GetAnimNode();
     bool bTrackDisabled = pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Disabled;
     bool bTrackMuted = pTrack->GetFlags() & IAnimTrack::eAnimTrackFlags_Muted;
-    bool bTrackInvalid = !pTrack->IsSubTrack() && !pAnimNode->IsParamValid(pTrack->GetParameterType());
-    bool bTrackInDisabledNode = pAnimNode->AreFlagsSetOnNodeOrAnyParent(eAnimNodeFlags_Disabled);
+    bool bTrackInvalid = !pTrack->IsSubTrack() && !animNode->IsParamValid(pTrack->GetParameterType());
+    bool bTrackInDisabledNode = animNode->AreFlagsSetOnNodeOrAnyParent(eAnimNodeFlags_Disabled);
     if (bTrackDisabled || bTrackInDisabledNode || bTrackInvalid)
     {
         trackColor = colorForDisabled;
@@ -3081,10 +2875,10 @@ void CTrackViewDopeSheetBase::DrawClipboardKeys(QPainter* painter, const QRect& 
     const float timeOffset = ComputeSnappedMoveOffset();
 
     // Get node & track under cursor
-    CTrackViewAnimNode* pAnimNode = GetAnimNodeFromPoint(m_mouseOverPos);
+    CTrackViewAnimNode* animNode = GetAnimNodeFromPoint(m_mouseOverPos);
     CTrackViewTrack* pTrack = GetTrackFromPoint(m_mouseOverPos);
 
-    auto matchedLocations = pSequence->GetMatchedPasteLocations(m_clipboardKeys, pAnimNode, pTrack);
+    auto matchedLocations = pSequence->GetMatchedPasteLocations(m_clipboardKeys, animNode, pTrack);
 
     for (size_t i = 0; i < matchedLocations.size(); ++i)
     {
@@ -3293,15 +3087,16 @@ int CTrackViewDopeSheetBase::NumKeysFromPoint(const QPoint& point)
 void CTrackViewDopeSheetBase::SelectKeys(const QRect& rc, const bool bMultiSelection)
 {
     CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
-    CUndoAnimKeySelection* undoKeySelection = new CUndoAnimKeySelection(sequence);
-
     AZ_Assert(sequence != nullptr, "sequence should never be nullptr here");
 
-    if (sequence->GetSequenceType() == SequenceType::Legacy)
+    if (!sequence)
     {
-        GetIEditor()->BeginUndo();
-        CUndo::Record(undoKeySelection);
+        return;
     }
+
+    AzToolsFramework::ScopedUndoBatch undoBatch("Select Keys");
+
+    const std::vector<bool> beforeKeyState = sequence->SaveKeyStates();
 
     CTrackViewSequenceNotificationContext context(sequence);
     if (!bMultiSelection)
@@ -3349,26 +3144,11 @@ void CTrackViewDopeSheetBase::SelectKeys(const QRect& rc, const bool bMultiSelec
 
     ChangeSequenceTrackSelection(sequence, tracksToSelect, bMultiSelection);
 
-    if (sequence->GetSequenceType() == SequenceType::Legacy)
-    {
-        if (undoKeySelection->IsSelectionChanged())
-        {
-            GetIEditor()->AcceptUndo("Select keys");
-        }
-        else
-        {
-            GetIEditor()->CancelUndo();
-        }
-    }
-    else
-    {
-        if (undoKeySelection->IsSelectionChanged())
-        {
-            AzToolsFramework::ScopedUndoBatch undoBatch("Select keys");
-            undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-        }
+    const std::vector<bool> afterKeyState = sequence->SaveKeyStates();
 
-        delete undoKeySelection;
+    if (beforeKeyState != afterKeyState)
+    {
+        undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
     }
 }
 
@@ -3675,12 +3455,12 @@ void CTrackViewDopeSheetBase::DrawSummary(QPainter* painter, const QRect& rcUpda
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CTrackViewDopeSheetBase::DrawNodeTrack(CTrackViewAnimNode* pAnimNode, QPainter* painter, const QRect& trackRect)
+void CTrackViewDopeSheetBase::DrawNodeTrack(CTrackViewAnimNode* animNode, QPainter* painter, const QRect& trackRect)
 {
     const QFont prevFont = painter->font();
     painter->setFont(m_descriptionFont);
 
-    CTrackViewAnimNode* pDirectorNode = pAnimNode->GetDirector();
+    CTrackViewAnimNode* pDirectorNode = animNode->GetDirector();
 
     if (pDirectorNode->GetNodeType() != eTVNT_Sequence && !pDirectorNode->IsActiveDirector())
     {
@@ -3693,8 +3473,8 @@ void CTrackViewDopeSheetBase::DrawNodeTrack(CTrackViewAnimNode* pAnimNode, QPain
 
     const QRect textRect = trackRect.adjusted(4, 0, -4, 0);
 
-    QString sAnimNodeName = pAnimNode->GetName();
-    const bool hasObsoleteTrack = pAnimNode->HasObsoleteTrack();
+    QString sAnimNodeName = animNode->GetName();
+    const bool hasObsoleteTrack = animNode->HasObsoleteTrack();
 
     if (hasObsoleteTrack)
     {

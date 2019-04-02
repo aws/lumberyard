@@ -299,18 +299,8 @@ namespace AssetProcessor
                     unsigned int index = iterator.value();
                     m_cachedJobsLookup[jobInfo->m_elementId] = --index;
                 }
-                else
-                {
-                    AZ_TracePrintf(AssetProcessor::DebugChannel, "OnJobRemoved: Job ( Source: %s, Platform: %s, JobKey: %s ) not found.\n", 
-                        elementId.GetInputAssetName().toUtf8().data(), elementId.GetPlatform().toUtf8().data(), elementId.GetJobDescriptor().toUtf8().data());
-                }
             }
             endRemoveRows();
-        }
-        else
-        {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "OnJobRemoved: Job ( Source: %s, Platform: %s, JobKey: %s ) not found.\n ", 
-                elementId.GetInputAssetName().toUtf8().data(), elementId.GetPlatform().toUtf8().data(), elementId.GetJobDescriptor().toUtf8().data());
         }
     }
 } //namespace AssetProcessor

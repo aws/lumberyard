@@ -28,6 +28,8 @@ supported_compilers = ['clang', 'clang++',
 lock = threading.Lock()
 nodes = {}  # Cache the path -> Node lookup
 
+# platforms with old versions of clang which do not support -Xclang -fno-pch-timestamp
+_NO_PCH_TIMESTAMP_UNSUPPORTED_PLATFORMS = set(['linux_x64'])
 
 #############################################################################
 #############################################################################
@@ -110,11 +112,6 @@ def wrap_class_clang(class_name):
     def exec_command(self, *k, **kw):
         if self.env.CC_NAME in supported_compilers:
             return exec_command_clang(self, *k, **kw)
-        elif self.env.CC_NAME in ['gcc']:
-            # workaround: the previous module was intercepting commands to gcc and clang
-            # and issuing them with response files.  This new module only handled clang, and this
-            # this is the only place that needs response files
-            return exec_command_clang(self, *k, **kw)
         else:
             return super(derived_class, self).exec_command(*k, **kw)
 
@@ -194,6 +191,23 @@ def add_pch_clang(self):
 
     # Create PCH Task
     pch_task = self.create_task('pch_clang', pch_source, pch_file)
+
+    # By default, clang stores timestamps of all files used when building the PCH, so that it can later determine.
+    # if the PCH is out of date. In contrast, WAF uses file contents (e.g. MD5 signature) to determine when the
+    # PCH is out of date.
+    #
+    # Various scenarios result in timestamp change/variation without the contents changing.
+    # For example
+    #   - distributed build artifacts
+    #   - Perforce commits without contents changing
+    #     (workspaces which don't have "do not submit unchnaged files" checked)
+    #
+    # Since WAF properly manages dependencies, there is no need to also perform this check in Clang. The
+    # -fno-pch-timestamp was introduced specifically to address distributed build timestamp issue.
+    #
+    # NOTE: this is a clang "front end" option, so must be passed with -Xclang.
+    if self.env['PLATFORM'] not in _NO_PCH_TIMESTAMP_UNSUPPORTED_PLATFORMS:
+        pch_task.env['CXXFLAGS'].extend(['-Xclang', '-fno-pch-timestamp'])
 
     # we need to get the absolute path to the pch.h.pch
     # which we then need to include as pch.h

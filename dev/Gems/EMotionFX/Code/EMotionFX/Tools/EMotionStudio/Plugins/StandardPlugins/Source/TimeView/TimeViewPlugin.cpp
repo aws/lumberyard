@@ -19,6 +19,7 @@
 
 #include "../MotionWindow/MotionWindowPlugin.h"
 #include "../MotionWindow/MotionListWindow.h"
+#include "../MotionSetsWindow/MotionSetsWindowPlugin.h"
 #include "../MotionEvents/MotionEventsPlugin.h"
 #include "../MotionEvents/MotionEventPresetsWidget.h"
 
@@ -33,6 +34,7 @@
 
 #include <MCore/Source/LogManager.h>
 #include <MCore/Source/Compare.h>
+#include <MCore/Source/ReflectionSerializer.h>
 #include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/MotionInstance.h>
@@ -77,16 +79,18 @@ namespace EMStudio
         mEventHistoryItem   = nullptr;
         mActorInstanceData  = nullptr;
         mEventEmitterNode   = nullptr;
-        
+
         mMainWidget                 = nullptr;
         mMotionWindowPlugin         = nullptr;
         mMotionEventsPlugin         = nullptr;
         mMotionListWindow           = nullptr;
+        m_motionSetPlugin           = nullptr;
         mMotion                     = nullptr;
         mAdjustMotionCallback       = nullptr;
         mSelectCallback             = nullptr;
         mUnselectCallback           = nullptr;
         mClearSelectionCallback     = nullptr;
+        mRecorderClearCallback      = nullptr;
 
         mBrushCurTimeHandle = QBrush(QColor(255, 180, 0));
         mPenCurTimeHandle   = QPen(QColor(255, 180, 0));
@@ -102,10 +106,12 @@ namespace EMStudio
         GetCommandManager()->RemoveCommandCallback(mSelectCallback, false);
         GetCommandManager()->RemoveCommandCallback(mUnselectCallback, false);
         GetCommandManager()->RemoveCommandCallback(mClearSelectionCallback, false);
+        GetCommandManager()->RemoveCommandCallback(mRecorderClearCallback, false);
         delete mAdjustMotionCallback;
         delete mSelectCallback;
         delete mUnselectCallback;
         delete mClearSelectionCallback;
+        delete mRecorderClearCallback;
 
         RemoveAllTracks();
 
@@ -188,10 +194,12 @@ namespace EMStudio
         mSelectCallback = new CommandSelectCallback(false);
         mUnselectCallback = new CommandUnselectCallback(false);
         mClearSelectionCallback = new CommandClearSelectionCallback(false);
+        mRecorderClearCallback = new CommandRecorderClearCallback(false);
         GetCommandManager()->RegisterCommandCallback("AdjustMotion", mAdjustMotionCallback);
         GetCommandManager()->RegisterCommandCallback("Select", mSelectCallback);
         GetCommandManager()->RegisterCommandCallback("Unselect", mUnselectCallback);
         GetCommandManager()->RegisterCommandCallback("ClearSelection", mClearSelectionCallback);
+        GetCommandManager()->RegisterCommandCallback("RecorderClear", mRecorderClearCallback);
 
         // load the cursors
         mZoomInCursor       = new QCursor(QPixmap(AZStd::string(MysticQt::GetDataDir() + "Images/Rendering/ZoomInCursor.png").c_str()).scaled(32, 32));
@@ -225,8 +233,8 @@ namespace EMStudio
         bodyWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         bodyWidget->setWidgetResizable(true);
 
-        // scroll areas require an inner widget to hold the layout (instead of a layout 
-        // directly). 
+        // scroll areas require an inner widget to hold the layout (instead of a layout
+        // directly).
         QWidget* innerWidget = new QWidget(bodyWidget);
         QHBoxLayout* bodyLayout = new QHBoxLayout();
         bodyLayout->setMargin(0);
@@ -244,14 +252,14 @@ namespace EMStudio
         mTrackDataWidget = new TrackDataWidget(this, mDock);
         bodyLayout->addWidget(mTrackDataWidget);
 
-        connect(mTrackDataWidget, SIGNAL(SelectionChanged()), this, SLOT(OnSelectionChanged()));
+        connect(mTrackDataWidget, &TrackDataWidget::SelectionChanged, this, &TimeViewPlugin::OnSelectionChanged);
 
-        connect(mTrackDataWidget, SIGNAL(ElementTrackChanged(uint32, float, float, const char*, const char*)), this, SLOT(MotionEventTrackChanged(uint32, float, float, const char*, const char*)));
-        connect(mTrackDataWidget, SIGNAL(MotionEventChanged(TimeTrackElement*, double, double)), this, SLOT(MotionEventChanged(TimeTrackElement*, double, double)));
-        connect(this, SIGNAL(DeleteKeyPressed()), this, SLOT(RemoveSelectedMotionEvents()));
-        connect(mDock, SIGNAL(visibilityChanged(bool)), this, SLOT(VisibilityChanged(bool)));
+        connect(mTrackDataWidget, &TrackDataWidget::ElementTrackChanged, this, &TimeViewPlugin::MotionEventTrackChanged);
+        connect(mTrackDataWidget, &TrackDataWidget::MotionEventChanged, this, &TimeViewPlugin::MotionEventChanged);
+        connect(this, &TimeViewPlugin::DeleteKeyPressed, this, &TimeViewPlugin::RemoveSelectedMotionEvents);
+        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &TimeViewPlugin::VisibilityChanged);
 
-        connect(this, SIGNAL(ManualTimeChange(float)), this, SLOT(OnManualTimeChange(float)));
+        connect(this, &TimeViewPlugin::ManualTimeChange, this, &TimeViewPlugin::OnManualTimeChange);
 
         SetCurrentTime(0.0f);
         SetScale(1.0f);
@@ -1123,7 +1131,17 @@ namespace EMStudio
                 mMotionListWindow   = mMotionWindowPlugin->GetMotionListWindow();
 
                 // Attention: do this only once!
-                connect(mMotionListWindow, SIGNAL(MotionSelectionChanged()), this, SLOT(MotionSelectionChanged()));
+                connect(mMotionListWindow, &MotionListWindow::MotionSelectionChanged, this, &TimeViewPlugin::MotionSelectionChanged);
+            }
+        }
+
+        if (!m_motionSetPlugin)
+        {
+            EMStudioPlugin* motionSetBasePlugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionSetsWindowPlugin::CLASS_ID);
+            if (motionSetBasePlugin)
+            {
+                m_motionSetPlugin = (MotionSetsWindowPlugin*)motionSetBasePlugin;
+                connect(m_motionSetPlugin->GetMotionSetWindow(), &MotionSetWindow::MotionSelectionChanged, this, &TimeViewPlugin::MotionSelectionChanged);
             }
         }
 
@@ -1136,9 +1154,6 @@ namespace EMStudio
                 mMotionEventsPlugin->ValidatePluginLinks();
             }
         }
-
-        // in case one motion is selected
-        MotionSelectionChanged();
     }
 
 
@@ -1168,49 +1183,36 @@ namespace EMStudio
     void TimeViewPlugin::UpdateSelection()
     {
         mSelectedEvents.Clear(false);
-
-        if (mMotion == nullptr)
+        if (!mMotion)
         {
-            return;
-        }
-
-        if (EMotionFX::GetMotionManager().FindMotionIndex(mMotion) == MCORE_INVALIDINDEX32)
-        {
-            // set the motion first back to nullptr
-            mMotion = nullptr;
-
-            // then reinit the view, DO NOT change the order here
-            ReInit();
             return;
         }
 
         // get the motion event table
-        EMotionFX::MotionEventTable* eventTable = mMotion->GetEventTable();
+        const EMotionFX::MotionEventTable* eventTable = mMotion->GetEventTable();
 
         // get the number of tracks in the time view and iterate through them
         const uint32 numTracks = GetNumTracks();
-        for (uint32 i = 0; i < numTracks; ++i)
+        for (uint32 trackIndex = 0; trackIndex < numTracks; ++trackIndex)
         {
             // get the current time view track
-            TimeTrack* track = GetTrack(i);
+            const TimeTrack* track = GetTrack(trackIndex);
             if (track->GetIsVisible() == false)
             {
                 continue;
             }
 
-            const uint32 trackNr = eventTable->FindTrackIndexByName(track->GetName());
-            if (trackNr == MCORE_INVALIDINDEX32)
+            const AZ::Outcome<size_t> trackNr = eventTable->FindTrackIndexByName(track->GetName());
+            if (!trackNr.IsSuccess())
             {
                 continue;
             }
 
-            //MotionEventTrack* eventTrack = eventTable.GetTrack( trackNr );
-
             // get the number of elements in the track and iterate through them
             const uint32 numTrackElements = track->GetNumElements();
-            for (uint32 j = 0; j < numTrackElements; ++j)
+            for (uint32 elementIndex = 0; elementIndex < numTrackElements; ++elementIndex)
             {
-                TimeTrackElement* element = track->GetElement(j);
+                TimeTrackElement* element = track->GetElement(elementIndex);
                 if (element->GetIsVisible() == false)
                 {
                     continue;
@@ -1219,9 +1221,9 @@ namespace EMStudio
                 if (element->GetIsSelected())
                 {
                     EventSelectionItem selectionItem;
-                    selectionItem.mMotion   = mMotion;
-                    selectionItem.mTrackNr  = trackNr;
-                    selectionItem.mEventNr  = element->GetElementNumber();
+                    selectionItem.mMotion = mMotion;
+                    selectionItem.mTrackNr = trackNr.GetValue();
+                    selectionItem.mEventNr = element->GetElementNumber();
                     mSelectedEvents.Add(selectionItem);
                 }
             }
@@ -1231,23 +1233,20 @@ namespace EMStudio
 
     void TimeViewPlugin::ReInit()
     {
-        //Timer reinitTimer;
+        if (EMotionFX::GetMotionManager().FindMotionIndex(mMotion) == MCORE_INVALIDINDEX32)
+        {
+            // set the motion first back to nullptr
+            mMotion = nullptr;
+        }
 
         // update the selection and save it
         UpdateSelection();
-        //MCore::Array<EventSelectionItem> oldSelection = mSelectedEvents;
 
         ValidatePluginLinks();
-
-        //if (EMotionFX::GetRecorder().IsInPlayMode())
-        //      return;
 
         // if we have a recording, don't init things for the motions
         if (EMotionFX::GetRecorder().GetIsRecording() || EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon || EMotionFX::GetRecorder().GetIsInPlayMode())
         {
-            //if (EMotionFX::GetRecorder().IsRecording())
-            //SetScale( 1.0 );
-
             SetScrollX(0);
             mTrackHeaderWidget->ReInit();
             return;
@@ -1255,21 +1254,21 @@ namespace EMStudio
 
         if (mMotion)
         {
-            uint32 i;
+            size_t trackIndex;
             AZStd::string text;
 
-            EMotionFX::MotionEventTable* eventTable = mMotion->GetEventTable();
+            const EMotionFX::MotionEventTable* eventTable = mMotion->GetEventTable();
 
             // get the number of motion event tracks and iterate through them
-            const uint32 numEventTracks = eventTable->GetNumTracks();
-            for (i = 0; i < numEventTracks; ++i)
+            const size_t numEventTracks = eventTable->GetNumTracks();
+            for (trackIndex = 0; trackIndex < numEventTracks; ++trackIndex)
             {
-                EMotionFX::MotionEventTrack* eventTrack = eventTable->GetTrack(i);
+                const EMotionFX::MotionEventTrack* eventTrack = eventTable->GetTrack(trackIndex);
 
                 TimeTrack* timeTrack = nullptr;
-                if (i < GetNumTracks())
+                if (trackIndex < GetNumTracks())
                 {
-                    timeTrack = GetTrack(i);
+                    timeTrack = GetTrack(static_cast<uint32>(trackIndex));
                 }
                 else
                 {
@@ -1283,22 +1282,22 @@ namespace EMStudio
                 timeTrack->SetIsDeletable(eventTrack->GetIsDeletable());
 
                 // get the number of motion events and iterate through them
-                uint32 j;
-                const uint32 numMotionEvents = eventTrack->GetNumEvents();
+                size_t eventIndex;
+                const size_t numMotionEvents = eventTrack->GetNumEvents();
                 if (numMotionEvents == 0)
                 {
                     timeTrack->RemoveAllElements();
                 }
                 else
                 {
-                    for (j = 0; j < numMotionEvents; ++j)
+                    for (eventIndex = 0; eventIndex < numMotionEvents; ++eventIndex)
                     {
-                        const EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(j);
+                        const EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(eventIndex);
 
                         TimeTrackElement* element = nullptr;
-                        if (j < timeTrack->GetNumElements())
+                        if (eventIndex < timeTrack->GetNumElements())
                         {
-                            element = timeTrack->GetElement(j);
+                            element = timeTrack->GetElement(static_cast<uint32>(eventIndex));
                         }
                         else
                         {
@@ -1306,14 +1305,28 @@ namespace EMStudio
                             timeTrack->AddElement(element);
                         }
 
-                        text = AZStd::string::format("%s - %s", motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).c_str());
-                        uint32 color = GetEventPresetManager()->GetEventColor(motionEvent.GetEventTypeString(), motionEvent.GetParameterString(eventTrack).c_str());
+                        text = '{';
+                        AZStd::string delimiter;
+                        const EMotionFX::EventDataSet& eventDatas = motionEvent.GetEventDatas();
+                        for (const EMotionFX::EventDataPtr& data : eventDatas)
+                        {
+                            if (data)
+                            {
+                                text += delimiter + data->ToString() + "}";
+                            }
+                            else
+                            {
+                                text += "<null>}";
+                            }
+                            delimiter = ", {";
+                        }
+                        uint32 color = GetEventPresetManager()->GetEventColor(motionEvent.GetEventDatas());
                         QColor qColor = QColor(MCore::ExtractRed(color), MCore::ExtractGreen(color), MCore::ExtractBlue(color));
 
                         element->SetIsVisible(true);
                         element->SetName(text.c_str());
                         element->SetColor(qColor);
-                        element->SetElementNumber(j);
+                        element->SetElementNumber(static_cast<uint32>(eventIndex));
                         element->SetStartTime(motionEvent.GetStartTime());
                         element->SetEndTime(motionEvent.GetEndTime());
 
@@ -1344,15 +1357,29 @@ namespace EMStudio
                             tooltip += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%.3f s</p></td></tr>", motionEvent.GetEndTime());
                         }
 
-                        // type
-                        rowName = "Type";
-                        tooltip += AZStd::string::format("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.c_str());
-                        tooltip += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetEventTypeString());
-
-                        // parameters
-                        rowName = "Parameters";
-                        tooltip += AZStd::string::format("<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>", qColor.red(), qColor.green(), qColor.blue(), rowName.c_str());
-                        tooltip += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", motionEvent.GetParameterString(eventTrack).c_str());
+                        for (const EMotionFX::EventDataPtr& eventData : eventDatas)
+                        {
+                            if (!eventData.get())
+                            {
+                                continue;
+                            }
+                            const auto& motionDataProperties = MCore::ReflectionSerializer::SerializeIntoMap(eventData.get());
+                            if (motionDataProperties.IsSuccess())
+                            {
+                                for (const AZStd::pair<AZStd::string, AZStd::string>& keyValuePair : motionDataProperties.GetValue())
+                                {
+                                    tooltip += AZStd::string::format(
+                                            "<tr><td><p style=\"color:rgb(%i,%i,%i)\"><b>%s:&nbsp;</b></p></td>" // no comma, concat these 2 string literals
+                                            "<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>",
+                                            qColor.red(),
+                                            qColor.green(),
+                                            qColor.blue(),
+                                            keyValuePair.first.c_str(),
+                                            keyValuePair.second.c_str()
+                                            );
+                                }
+                            }
+                        }
 
                         tooltip += "</table>";
 
@@ -1360,25 +1387,21 @@ namespace EMStudio
                         element->SetToolTip(tooltip.c_str());
                     }
                 }
-                for (j = numMotionEvents; j < timeTrack->GetNumElements(); ++j)
-                {
-                    TimeTrackElement* element = timeTrack->GetElement(j);
-                    element->SetIsVisible(false);
-                }
+                timeTrack->SetElementCount(numMotionEvents);
             }
 
-            for (i = numEventTracks; i < GetNumTracks(); ++i)
+            for (trackIndex = numEventTracks; trackIndex < GetNumTracks(); ++trackIndex)
             {
-                TimeTrack* timeTrack = GetTrack(i);
+                TimeTrack* timeTrack = GetTrack(static_cast<uint32>(trackIndex));
                 timeTrack->SetIsVisible(false);
             }
         }
         else // mMotion == nullptr
         {
             const uint32 numEventTracks = GetNumTracks();
-            for (uint32 i = 0; i < numEventTracks; ++i)
+            for (uint32 trackIndex = 0; trackIndex < numEventTracks; ++trackIndex)
             {
-                TimeTrack* timeTrack = GetTrack(i);
+                TimeTrack* timeTrack = GetTrack(trackIndex);
                 timeTrack->SetIsVisible(false);
 
                 const uint32 numMotionEvents = timeTrack->GetNumElements();
@@ -1414,10 +1437,6 @@ namespace EMStudio
                 motionInfo->mScrollX    = 0.0;
             }
         }
-
-        // restore the old selection
-        //Select(oldSelection);
-        //LOG("MotionEventsPlugin::ReInit() took %.2f seconds.", reinitTimer.GetTime()*1000.0f);
     }
 
 
@@ -1469,7 +1488,7 @@ namespace EMStudio
         for (i = 0; i < numSelectedEvents; ++i)
         {
             const EventSelectionItem*   selectionItem   = &selection[i];
-            TimeTrack*                  track           = GetTrack(selectionItem->mTrackNr);
+            TimeTrack*                  track           = GetTrack(static_cast<uint32>(selectionItem->mTrackNr));
             TimeTrackElement*           element         = track->GetElement(selectionItem->mEventNr);
 
             element->SetIsSelected(true);
@@ -1514,6 +1533,8 @@ namespace EMStudio
         {
             return;
         }
+
+        SetRedrawFlag();
 
         // calculate the start time for the motion event
         double dropTimeInSeconds = PixelToTime(x);
@@ -1715,7 +1736,7 @@ namespace EMStudio
     // get the data times
     void TimeViewPlugin::GetDataTimes(double* outMaxTime, double* outClipStart, double* outClipEnd) const
     {
-        if (outMaxTime  )
+        if (outMaxTime)
         {
             *outMaxTime     = 0.0;
         }
@@ -1723,7 +1744,7 @@ namespace EMStudio
         {
             *outClipStart   = 0.0;
         }
-        if (outClipEnd  )
+        if (outClipEnd)
         {
             *outClipEnd     = 0.0;
         }
@@ -1731,11 +1752,11 @@ namespace EMStudio
         EMotionFX::Recorder& recorder = EMotionFX::GetRecorder();
         if (recorder.GetRecordTime() > MCore::Math::epsilon)
         {
-            if (outClipEnd  )
+            if (outClipEnd)
             {
                 *outClipEnd = recorder.GetRecordTime();
             }
-            if (outMaxTime  )
+            if (outMaxTime)
             {
                 *outMaxTime = recorder.GetRecordTime();
             }
@@ -1750,11 +1771,11 @@ namespace EMStudio
                 {
                     *outClipStart   = playbackInfo->mClipStartTime;
                 }
-                if (outClipEnd  )
+                if (outClipEnd)
                 {
                     *outClipEnd     = playbackInfo->mClipEndTime;
                 }
-                if (outMaxTime  )
+                if (outMaxTime)
                 {
                     *outMaxTime     = motion->GetMaxTime();
                 }
@@ -2043,6 +2064,9 @@ namespace EMStudio
     }
     bool TimeViewPlugin::CommandClearSelectionCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return MotionSelectionChangedTimeViewPlugin(); }
     bool TimeViewPlugin::CommandClearSelectionCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return MotionSelectionChangedTimeViewPlugin(); }
+
+    bool TimeViewPlugin::CommandRecorderClearCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)     { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitTimeViewPlugin(); }
+    bool TimeViewPlugin::CommandRecorderClearCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)        { MCORE_UNUSED(command); MCORE_UNUSED(commandLine); return ReInitTimeViewPlugin(); }
 
     // calculate the content heights
     uint32 TimeViewPlugin::CalcContentHeight() const

@@ -13,7 +13,6 @@
 # to ensure they cannot be brought into our environment - failure to do this may result
 # in runtime library mismatches and/or CRT violations.
 # This has to be done before anything else
-# (see http://stackoverflow.com/questions/14552348/runtime-error-r6034-in-embedded-python-application)
 
 import os
 import sys
@@ -25,11 +24,13 @@ from collections import defaultdict
 try:
     # Prevent non-sxs version of msvcr90.dll from being loaded by path environment variable.
     if 'path' in os.environ:
-        os.environ['path'] = os.pathsep.join(
-            path for path in os.environ['path'].split(os.pathsep)
-            if "msvcr90.dll" not in map(str.lower,
-                                        os.listdir(path) if os.path.isdir(path) else [])
-        )
+        system_paths_to_check = os.environ['path'].split(os.pathsep)
+        patched_system_paths = []
+        for system_path_to_check in system_paths_to_check:
+            if os.path.isdir(system_path_to_check):
+                if "msvcr90.dll" not in map(str.lower, os.listdir(system_path_to_check)):
+                    patched_system_paths.append(system_path_to_check)
+        os.environ['path'] = os.pathsep.join(patched_system_paths)
 except Exception, e:
     print 'error - {}'.format(e)
     raise

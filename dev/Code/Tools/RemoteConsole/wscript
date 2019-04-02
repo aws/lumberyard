@@ -28,7 +28,7 @@ def build(bld):
         export_includes         = ['Core'],
     )
 
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        remote_console_core['{}_file_list'.format(p)] = 'Core/{0}/remoteconsolecore_{0}.waf_files'.format(p)
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        remote_console_core['{}_file_list'.format(p3)] = 'Core/{0}/remoteconsolecore_{1}.waf_files'.format(p0, p1)
 
     bld.CryEngineStaticLibrary(**remote_console_core)

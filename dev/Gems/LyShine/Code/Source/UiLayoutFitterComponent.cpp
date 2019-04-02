@@ -233,6 +233,7 @@ void UiLayoutFitterComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiLayoutFitterComponent>("LayoutFitter", "A component that resizes its element to its content.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiLayoutFitter.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiLayoutFitter.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
@@ -270,6 +271,11 @@ void UiLayoutFitterComponent::Activate()
 {
     UiLayoutControllerBus::Handler::BusConnect(m_entity->GetId());
     UiLayoutFitterBus::Handler::BusConnect(m_entity->GetId());
+
+    // If this is the first time the entity has been activated this has no effect since the canvas
+    // is not known. But if a LayoutFitter component has just been pasted onto an existing entity
+    // we need to invalidate the layout in case that affects things.
+    CheckFitterAndInvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

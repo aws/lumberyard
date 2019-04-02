@@ -37,7 +37,6 @@ PLATFORM_TO_3RD_PARTY_SUBPATH = {
                                     'win_x64_vs2015'     : 'win_x64/vc140',
                                     'win_x64_clang'      : 'win_x64/vc140',
                                     'win_x64_vs2017'     : 'win_x64/vc140',  # Not an error, VS2017 links with VS2015 binaries
-                                    'android_armv7_gcc'  : 'win_x64/android_ndk_r12/android-19/armeabi-v7a/gcc-4.9',
                                     'android_armv7_clang': 'win_x64/android_ndk_r12/android-19/armeabi-v7a/clang-3.8',
                                     'android_armv8_clang': 'win_x64/android_ndk_r12/android-21/arm64-v8a/clang-3.8',
 
@@ -1195,13 +1194,13 @@ THIRD_PARTY_CONFIG_KEY_WEIGHT_TABLE = {
     'win_x64_vs2015': 102,
     'win_x64_vs2017': 103,
     'win_x64_clang': 104,
-    'darwin_x64': 120,
-    'ios': 121,
-    'appletv': 122,
-    'android_armv7_gcc': 130,
-    'android_armv7_clang': 131,
-    'android_armv8_clang': 132,
-    'linux_x64': 140
+    'darwin_x64': 108,
+    'ios': 109,
+    'appletv': 110,
+    'android_armv7_gcc': 111,
+    'android_armv7_clang': 112,
+    'android_armv8_clang': 113,
+    'linux_x64': 114
 }
 
 
@@ -1682,14 +1681,14 @@ class ThirdPartySettings:
                             if restricted_platform not in sdk_symlink_hostos:
                                 # hostOS does not match the current host platform
                                 continue
-                                
+
                         # Check roles
                         sdk_symlink_roles = sdk_symlink.get("roles")
                         if sdk_symlink_roles:
                             if sdk_symlink_roles not in filter_roles:
                                 # roles does not match the current roles
                                 continue
-                                
+
                         sdk_symlink_check_source = sdk_symlink.get("source")
                         if not sdk_symlink_check_source:
                             continue

@@ -32,7 +32,7 @@ namespace MysticQt
         mColor = QColor(startColor.r * 255, startColor.g * 255, startColor.b * 255, startColor.a * 255);
 
         mColorDialog = new QColorDialog(mColor, this);
-        connect(mColorDialog, SIGNAL(colorSelected(QColor)), this, SLOT(ColorChanged(QColor)));
+        connect(mColorDialog, &QColorDialog::colorSelected, this, &MysticQt::ColorLabel::ColorChanged);
 
         // update color
         ColorChanged(mColor);

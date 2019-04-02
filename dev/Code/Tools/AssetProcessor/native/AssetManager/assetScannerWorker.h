@@ -35,8 +35,8 @@ namespace AssetProcessor
 
 Q_SIGNALS:
         void ScanningStateChanged(AssetProcessor::AssetScanningStatus status);
-        void FileOfInterestFound(QString filepath);
-        void FolderOfInterestFound(QString folderpath);
+        void FilesFound(QSet<QString> files); // QSet<QString> is a refcounted copy-on-write object, do not pass by ref.
+        void FoldersFound(QSet<QString> folders); // QSet<QString> is a refcounted copy-on-write object, do not pass by ref.
 
     public Q_SLOTS:
         void StartScan();

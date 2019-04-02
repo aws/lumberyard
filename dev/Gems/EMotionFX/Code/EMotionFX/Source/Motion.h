@@ -45,6 +45,7 @@ namespace EMotionFX
         AZ_CLASS_ALLOCATOR_DECL
 
     public:
+        AZ_RTTI(Motion, "{CCC21150-37F5-477A-9EBF-B5E71C0B5D71}", BaseObject)
         /**
          * Set the name of the motion.
          * @param name The name of the motion.
@@ -177,6 +178,12 @@ namespace EMotionFX
         MotionEventTable* GetEventTable() const;
 
         /**
+         * Set the event table.
+         * @param newTable The new motion event table for the Motion to use.
+         */
+        void SetEventTable(MotionEventTable* newTable);
+
+        /**
          * Set the motion framerate.
          * @param motionFPS The number of keyframes per second.
          */
@@ -281,6 +288,18 @@ namespace EMotionFX
         bool GetAutoUnregister() const;
 
         /**
+        * Set if we want to make the motion an additive motion.
+        * @result if true the motion becomes an additive motion, otherwise it is not.
+        */
+        void SetIsAdditive(bool isAdditive);
+
+        /**
+        * Get if the motion is an additive motion.
+        * @result Return true when it is an additive motion.
+        */
+        bool GetIsAdditive() const;
+
+        /**
          * Marks the object as used by the engine runtime, as opposed to the tool suite.
          */
         void SetIsOwnedByRuntime(bool isOwnedByRuntime);
@@ -321,6 +340,7 @@ namespace EMotionFX
         EMotionExtractionFlags      mExtractionFlags;       /**< The motion extraction flags, which define behavior of the motion extraction system when applied to this motion. */
         bool                        mDirtyFlag;             /**< The dirty flag which indicates whether the user has made changes to the motion since the last file save operation. */
         bool                        mAutoUnregister;        /**< Automatically unregister the motion from the motion manager when this motion gets deleted? Default is true. */
+        bool                        mIsAdditive;            /**< Additive motion should only be used as the 2nd input in BlendTreeBlend2AdditiveNode. */
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         bool                        mIsOwnedByRuntime;

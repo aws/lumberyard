@@ -13,34 +13,47 @@
 #pragma once
 
 #include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 #include <MCore/Source/StandardHeaders.h>
-#include <EMotionFX/Source/AnimGraph.h>
 #include "../StandardPluginsConfig.h"
-#include <MysticQt/Source/ButtonGroup.h>
-#include <EMotionFX/CommandSystem/Source/SelectionCommands.h>
-#include <QDialog>
+#include <QWidget>
 
 
 // forward declarations
-QT_FORWARD_DECLARE_CLASS(QLabel)
-QT_FORWARD_DECLARE_CLASS(QIcon)
-QT_FORWARD_DECLARE_CLASS(QTreeWidget)
-QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
-QT_FORWARD_DECLARE_CLASS(QLineEdit)
+QT_FORWARD_DECLARE_CLASS(QTreeView);
+QT_FORWARD_DECLARE_CLASS(QItemSelection);
 
 namespace AzQtComponents
 {
     class FilteredSearchWidget;
 }
 
+namespace CommandSystem
+{
+    class SelectionList;
+}
+
 struct AnimGraphSelectionItem
 {
+    AnimGraphSelectionItem(uint32 animGraphID, const AZStd::string& nodeName)
+        : mAnimGraphID(animGraphID)
+        , mNodeName(nodeName)
+    {}
+
     uint32          mAnimGraphID;
     AZStd::string   mNodeName;
 };
 
+namespace EMotionFX
+{
+    class AnimGraph;
+}
+
 namespace EMStudio
 {
+    class AnimGraphPlugin;
+    class AnimGraphSortFilterProxyModel;
+
     class AnimGraphHierarchyWidget
         : public QWidget
     {
@@ -48,36 +61,30 @@ namespace EMStudio
         MCORE_MEMORYOBJECTCATEGORY(AnimGraphHierarchyWidget, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH)
 
     public:
-        AnimGraphHierarchyWidget(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList = nullptr, const AZ::TypeId& visibilityFilterNodeType = AZ::TypeId::CreateNull(), bool showStatesOnly = false);
-        virtual ~AnimGraphHierarchyWidget();
+        explicit AnimGraphHierarchyWidget(QWidget* parent = nullptr);
 
-        void SetSelectionMode(bool useSingleSelection);
-        void Update(uint32 animGraphID, CommandSystem::SelectionList* selectionList = nullptr);
-        void FireSelectionDoneSignal();
-        MCORE_INLINE QTreeWidget* GetTreeWidget()                                                               { return mHierarchy; }
-        MCORE_INLINE AzQtComponents::FilteredSearchWidget* GetSearchWidget()                                    { return m_searchWidget; }
+        void SetSingleSelectionMode(bool useSingleSelection);
+        void SetFilterNodeType(const AZ::TypeId& filterNodeType);
+        void SetFilterStatesOnly(bool showStatesOnly);
+        void SetRootIndex(const QModelIndex& index);
+        void SetRootAnimGraph(const EMotionFX::AnimGraph* graph);
 
-        // Calls UpdateSelection() and then returns the member array containing the selected items.
-        AZStd::vector<AnimGraphSelectionItem>& GetSelectedItems();
+        // Returns the current selected items.
+        AZStd::vector<AnimGraphSelectionItem> GetSelectedItems() const;
+        bool HasSelectedItems() const;
 
     signals:
+        // Triggered when a selection is done in singleSelection mode
         void OnSelectionDone(AZStd::vector<AnimGraphSelectionItem> selectedNodes);
+        void OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected);
 
     public slots:
-        void Update();
-        void UpdateSelection();
-        void ItemDoubleClicked(QTreeWidgetItem* item, int column);
+        void OnItemDoubleClicked(const QModelIndex& index);
         void OnTextFilterChanged(const QString& text);
 
     private:
-        QTreeWidget*                            mHierarchy;
+        QTreeView*                              m_treeView;
         AzQtComponents::FilteredSearchWidget*   m_searchWidget;
-        AZStd::string                           m_searchWidgetText;
-        AZ::TypeId                              mFilterNodeType;
-        uint32                                  mAnimGraphID;
-        bool                                    mShowStatesOnly;
-        AZStd::vector<AnimGraphSelectionItem>   mSelectedNodes;
-        CommandSystem::SelectionList*           mCurrentSelectionList;
-        bool                                    mUseSingleSelection;
+        AnimGraphSortFilterProxyModel*          m_filterProxyModel;
     };
 } // namespace EMStudio

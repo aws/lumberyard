@@ -1,0 +1,86 @@
+########################################################################################
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or
+# a third party where indicated.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+########################################################################################
+
+import os
+from runpy import run_path
+
+def build(bld):
+
+    #==============================
+    # Common
+    #==============================
+    includes    = ['include', 
+                'Source', 
+                bld.ThirdPartyPath('squish')]          # for CTSquish compressor
+
+    #use NDEBUG to remove asserts in squishccr plugin in debug version
+    defines      = ['NDEBUG'] 
+               
+    win_lib     = []
+    win_libpath = []
+    win_copy_dependent_files = []
+    darwin_copy_dependent_files = []
+    
+    generated_file_list =  [ 'imageprocessing.waf_files' ]
+
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        generated_file_list.append('{0}/imageprocessing_{1}.waf_files'.format(p0, p1))
+        script_dir, script_base = os.path.split(bld.cur_script.abspath())
+        restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_base, p1))
+        if os.path.exists(restricted_script_filename):
+            restricted_script = run_path(restricted_script_filename)
+            if 'if_platform_supported' in restricted_script:
+                restricted_script['if_platform_supported'](bld, lambda *args: os.path.join(*args), includes, win_copy_dependent_files, win_lib, win_libpath)
+    
+    bld.DefineGem(
+
+        ########################################
+        # Editor Gem configuration
+        editor = dict(
+            #==============================
+            # Settings
+            #==============================
+            
+            file_list                   = generated_file_list,
+            pch                         = 'Source/ImageProcessing_precompiled.cpp',
+            use                         = ['AzToolsFramework', 
+                                            'AzQtComponents',
+                                            'AssetBuilderSDK'],
+
+            includes                    = includes,
+            defines                     = defines,
+
+            autod_uselib                = ['QT5CORE',
+                                            'QT5GUI',
+                                            'QT5WIDGETS',
+                                            'TIFF',
+                                            'PVR_TEX_TOOL',
+                                            'ETC2COMP'],
+            
+            platforms                   = ['win', 'darwin'],
+
+            #==============================
+            # Windows
+            #==============================
+            win_defines                 = ['_WIN64'],
+            win_copy_dependent_files    = win_copy_dependent_files,
+            win_lib                     = win_lib,
+            win_libpath                 = win_libpath,
+
+            #==============================
+            # Testing
+            #==============================
+            test_all_file_list          = ['imageprocessing_tests.waf_files'],
+        ),
+    )
+   

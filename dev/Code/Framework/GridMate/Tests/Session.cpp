@@ -48,7 +48,11 @@
 
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
 using namespace GridMate;
@@ -583,7 +587,11 @@ namespace UnitTest
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2164,12 +2172,20 @@ namespace UnitTest
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_TEST_VOICECHAT)
@@ -2187,7 +2203,11 @@ namespace UnitTest
             // User service
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
             m_userService->EnableUserSlot(true, 0);
@@ -2213,12 +2233,20 @@ namespace UnitTest
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
             // Hook to session events bus.
@@ -2232,12 +2260,20 @@ namespace UnitTest
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_9
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
         }
 
@@ -2247,7 +2283,11 @@ namespace UnitTest
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_10
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
             Gamepad gamepad(m_userService->GetUser(0));
@@ -2267,14 +2307,22 @@ namespace UnitTest
             {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_11
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
             }
             else
             {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_12
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
             }
 
@@ -2368,7 +2416,11 @@ namespace UnitTest
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_13
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
     };
 #endif // AZ_TEST_VOICECHAT
@@ -2390,12 +2442,20 @@ GM_TEST(Integ_LANLatencySessionTest)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_14
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SESSION_CPP_SECTION_15
-#include AZ_RESTRICTED_FILE(Session_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_TEST_VOICECHAT)

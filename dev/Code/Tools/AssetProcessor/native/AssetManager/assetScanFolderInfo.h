@@ -95,7 +95,7 @@ namespace AssetProcessor
             return m_portableKey;
         }
 
-        AZStd::vector<AssetBuilderSDK::PlatformInfo> GetPlatforms() const
+        const AZStd::vector<AssetBuilderSDK::PlatformInfo>& GetPlatforms() const
         {
             return m_platforms;
         }

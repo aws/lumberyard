@@ -22,6 +22,7 @@
 #include <AzCore/Asset/AssetCommon.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/UI/SearchWidget/SearchCriteriaWidget.hxx>
+#include "OutlinerSearchWidget.h"
 
 #include <AzToolsFramework/ToolsComponents/EditorLockComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
@@ -66,7 +67,8 @@ public:
     {
         EntityType,
         SliceEntityType,
-        SliceHandleType
+        SliceHandleType,
+        LayerType
     };
 
     enum Roles
@@ -76,10 +78,13 @@ public:
         SliceEntityOverrideRole,
         EntityIdRole,
         EntityTypeRole,
+        LayerColorRole,
         SelectedRole,
         ChildSelectedRole,
         PartiallyVisibleRole,
         PartiallyLockedRole,
+        InLockedLayerRole,
+        InInvisibleLayerRole,
         ChildCountRole,
         ExpandedRole,
         RoleCount
@@ -93,8 +98,22 @@ public:
         StandardEntityIcon          // Icon used to decorate entities that are not part of a slice instantiation
     };
 
-    // 8 Pixels of spacing is appropriate and matches the outliner concept work from the UI team.
-    static const int s_OutlinerSpacing = 8;
+    enum class GlobalSearchCriteriaFlags : int
+    {
+        Unlocked = 1 << static_cast<int>(AzQtComponents::OutlinerSearchWidget::GlobalSearchCriteria::Unlocked),
+        Locked = 1 << static_cast<int>(AzQtComponents::OutlinerSearchWidget::GlobalSearchCriteria::Locked),
+        Visible = 1 << static_cast<int>(AzQtComponents::OutlinerSearchWidget::GlobalSearchCriteria::Visible),
+        Hidden = 1 << static_cast<int>(AzQtComponents::OutlinerSearchWidget::GlobalSearchCriteria::Hidden)
+    };
+
+    struct ComponentTypeValue
+    {
+        AZ::Uuid m_uuid;
+        int m_globalVal;
+    };
+
+    // Spacing is appropriate and matches the outliner concept work from the UI team.
+    static const int s_OutlinerSpacing = 5;
 
     static bool s_paintingName;
 
@@ -135,8 +154,12 @@ public:
         return m_filterString;
     }
 
-    void SetSortMode(EntityOutliner::DisplaySortMode sortMode) { m_sortMode = sortMode; }
+    static int GetLayerStripeWidth()
+    {
+        return 1;
+    }
 
+    void SetSortMode(EntityOutliner::DisplaySortMode sortMode) { m_sortMode = sortMode; }
     void SetDropOperationInProgress(bool inProgress);
 Q_SIGNALS:
     void ExpandEntity(const AZ::EntityId& entityId, bool expand);
@@ -147,7 +170,7 @@ Q_SIGNALS:
 
     public Q_SLOTS:
     void SearchStringChanged(const AZStd::string& filter);
-    void SearchFilterChanged(const AZStd::vector<AZ::Uuid>& componentFilters);
+    void SearchFilterChanged(const AZStd::vector<ComponentTypeValue>& componentFilters);
     void OnEntityExpanded(const AZ::EntityId& entityId);
     void OnEntityCollapsed(const AZ::EntityId& entityId);
 
@@ -168,11 +191,16 @@ protected:
     //! Setting the editor lock state on a parent will recursively set the flag on all descendants as well. (to match visibility)
     void ToggleEditorLockState(const AZ::EntityId& entityId);
     void SetEditorLockState(const AZ::EntityId& entityId, bool isLocked);
+    void SetEditorLockStateRecursively(const AZ::EntityId& entityId, bool isLocked, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer);
 
     //! Editor Visibility interface to enable/disable rendering in the viewport.
     //! Setting the editor visibility on a parent will recursively set the flag on all descendants as well.
     void ToggleEditorVisibility(const AZ::EntityId& entityId);
     void SetEditorVisibility(const AZ::EntityId& entityId, bool isVisible);
+    void SetEditorVisibilityStateRecursively(const AZ::EntityId& entityId, bool isVisible, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer);
+
+    bool IsEntityVisible(const AZ::EntityId& entityId) const;
+    void SetEntityVisibility(const AZ::EntityId& entityId, bool visibility) const;
 
     void QueueEntityUpdate(AZ::EntityId entityId);
     void QueueAncestorUpdate(AZ::EntityId entityId);
@@ -190,7 +218,8 @@ protected:
     bool m_layoutResetQueued = false;
 
     AZStd::string m_filterString;
-    AZStd::vector<AZ::Uuid> m_componentFilters;
+    AZStd::vector<ComponentTypeValue> m_componentFilters;
+    bool m_isFilterDirty = true;
 
     void OnEntityCompositionChanged(const AzToolsFramework::EntityIdList& entityIds) override;
 
@@ -211,6 +240,8 @@ protected:
     void OnEntityInfoUpdatedLocked(AZ::EntityId entityId, bool locked) override;
     void OnEntityInfoUpdatedVisibility(AZ::EntityId entityId, bool visible) override;
     void OnEntityInfoUpdatedName(AZ::EntityId entityId, const AZStd::string& name) override;
+    void OnEntityInfoUpdateSliceOwnership(AZ::EntityId entityId) override;
+    void OnEntityInfoUpdatedUnsavedChanges(AZ::EntityId entityId) override;
 
     // Drag/Drop of components from Component Palette.
     bool dropMimeDataComponentPalette(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent);
@@ -250,6 +281,13 @@ protected:
     bool AreAllDescendantsSameLockState(const AZ::EntityId& entityId) const;
     bool AreAllDescendantsSameVisibleState(const AZ::EntityId& entityId) const;
 
+    enum LayerProperty
+    {
+        Locked,
+        Invisible
+    };
+    bool IsInLayerWithProperty(AZ::EntityId entityId, const LayerProperty& layerProperty) const;
+
     // These are needed until we completely disassociated selection control from the outliner state to
     // keep track of selection state before/during/after filtering and searching
     AzToolsFramework::EntityIdList m_unfilteredSelectionEntityIds;
@@ -261,6 +299,7 @@ protected:
 
 private:
     QVariant GetEntityIcon(const AZ::EntityId& id) const;
+    QVariant GetEntityTooltip(const AZ::EntityId& id) const;
 
     const char* circleIconColor = "#ff7b00";
     const int circleIconDiameter = 5;
@@ -291,18 +330,38 @@ public:
 
     OutlinerItemDelegate(QWidget* parent = nullptr);
 
+    QString GetColumnHighlightedStylesheet(int column, bool highlighted) const;
+
     // Qt overrides
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 private:
+    // The layer stripe is a continuous line from the layer's color box to the last entity in the layer.
+    // Two layer stripes are drawn, one in the color of the layer and other in the border box color.
+    void DrawLayerStripeAndBorder(QPainter* painter, int stripeX, int top, int bottom, QColor layerBorderColor, QColor layerColor) const;
+
+    // Draws all UI related to layers for the current row.
+    void DrawLayerUI(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index, const AZ::EntityId& entityId, bool isSelected) const;
+
+    // Layers with unsaved changes, and layers with errors, have additional text added to their strings.
+    QString GetLayerInfoString(const AZ::EntityId& entityId) const;
+
+    // Entity names are offset vertically if they are in a layer, and generally to better line up with icons.
+    int GetEntityNameVerticalOffset(const AZ::EntityId& entityId) const;
+
     // Mutability added because these are being used ONLY as renderers
     // for custom check boxes. The decision of whether or not to draw
     // them checked is tracked by the individual entities and items in
     // the hierarchy cache.
     mutable OutlinerVisibilityCheckBox m_visibilityCheckBox;
     mutable OutlinerVisibilityCheckBox m_visibilityCheckBoxWithBorder;
+    mutable OutlinerVisibilityCheckBox m_visibilityCheckBoxLayerOverride;
     mutable OutlinerLockCheckBox m_lockCheckBox;
     mutable OutlinerLockCheckBox m_lockCheckBoxWithBorder;
+    mutable OutlinerLockCheckBox m_lockCheckBoxLayerOverride;
+
+    const int m_layerDividerLineHeight = 1;
+    const int m_lastEntityInLayerDividerLineHeight = 1;
 };
 
 Q_DECLARE_METATYPE(AZ::ComponentTypeList); // allows type to be stored by QVariable

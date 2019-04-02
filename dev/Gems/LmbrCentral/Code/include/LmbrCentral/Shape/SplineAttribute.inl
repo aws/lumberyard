@@ -48,10 +48,48 @@ namespace LmbrCentral
         if (AZ::EditContext* editContext = context.GetEditContext())
         {
             editContext->Class<SplineAttribute<AttributeType>>("SplineAttribute", "Attribute of a spline")
+                // The dynamic edit data provider allows us to have different UI edit controls for each instance of a SplineAttribute.
+                ->SetDynamicEditDataProvider(&SplineAttribute<AttributeType>::GetElementDynamicEditData)
                 ->DataElement(0, &SplineAttribute<AttributeType>::m_elements, "Elements", "Elements in the attribute")
                 ->Attribute(AZ::Edit::Attributes::ContainerCanBeModified, false)
                 ;
         }
+    }
+
+    /**
+     * Dynamic edit data provider function.  We use this to dynamically override the edit context for each element in the SplineAttribute.
+     * This enables components to set component-specific ranges and UI controls.
+     * handlerPtr: pointer to the object whose edit data registered the handler (i.e. the class instance pointer)
+     * elementPtr: pointer to the sub-member of handlePtr that we are querying edit data for (i.e. the member variable)
+     * elementType: uuid of the specific class type of the elementPtr
+     * The function can either return a pointer to the ElementData to use, or nullptr to use the default one.
+     */
+    template<typename AttributeType>
+    const AZ::Edit::ElementData* SplineAttribute<AttributeType>::GetElementDynamicEditData(const void* handlerPtr, const void* elementPtr, const AZ::Uuid& elementType)
+    {
+        const SplineAttribute<AttributeType>* classInstance = reinterpret_cast<const SplineAttribute<AttributeType>*>(handlerPtr);
+        if (classInstance)
+        {
+            // If our elementPtr isn't m_elements, we assume it must be one of the actual elements.
+            // WARNING:  If the members of SplineAttribute ever gets modified, this check will need to change to encompass the
+            // new set of members as well.
+            if (elementPtr != &(classInstance->m_elements))
+            {
+                // Secondary check - make sure the type matches the element type in m_elements.
+                if (elementType == AZ::AzTypeInfo<AttributeType>::Uuid())
+                {
+                    // Yes, so return our overridden edit data context if it was set (or the default if it wasn't).
+                    if (classInstance->m_elementEditData.m_name != nullptr)
+                    {
+                        return &(classInstance->m_elementEditData);
+                    }
+                }
+
+            }
+        }
+
+        // This wasn't one of the attribute elements, so don't override the edit context.
+        return nullptr;
     }
 
     template<typename AttributeType>
@@ -137,4 +175,17 @@ namespace LmbrCentral
         m_elements.clear();
         SplineAttributeNotificationBus::Event(m_entityId, &SplineAttributeNotifications::OnAttributesCleared);
     }
+
+    template<typename AttributeType>
+    const AZ::Edit::ElementData& SplineAttribute<AttributeType>::GetElementEditData() const
+    {
+        return m_elementEditData;
+    }
+
+    template<typename AttributeType>
+    void SplineAttribute<AttributeType>::SetElementEditData(const AZ::Edit::ElementData &elementData)
+    {
+        m_elementEditData = elementData;
+    }
+
 }

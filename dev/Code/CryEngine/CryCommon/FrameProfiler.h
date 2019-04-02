@@ -28,7 +28,7 @@
     X(PROFILE_ANIMATION,    "Animation")    \
     X(PROFILE_MOVIE,        "Movie")        \
     X(PROFILE_ENTITY,       "Entity")       \
-    X(PROFILE_FONT,         "Font")         \
+    X(PROFILE_UI,           "UI")           \
     X(PROFILE_NETWORK,      "Network")      \
     X(PROFILE_PHYSICS,      "Physics")      \
     X(PROFILE_SCRIPT,       "Script")       \

@@ -18,6 +18,7 @@
 #include <AzCore/Math/Vector3.h>
 #include <AzCore/Math/Matrix4x4.h>
 #include <AzCore/Math/MathUtils.h>
+#include <AzFramework/Math/MathUtils.h>
 
 #include <MCore/Source/Quaternion.h>
 #include <MCore/Source/Vector.h>
@@ -34,7 +35,7 @@ protected:
     {
         m_azNormalizedVector3_a = AZ::Vector3(s_x1, s_y1, s_z1);
         m_azNormalizedVector3_a.Normalize();
-        m_emQuaternion_a =  MCore::Quaternion(m_azNormalizedVector3_a, s_angle_a);
+        m_emQuaternion_a = MCore::Quaternion(m_azNormalizedVector3_a, s_angle_a);
         m_azQuaternion_a = AZ::Quaternion::CreateFromAxisAngle(m_azNormalizedVector3_a, s_angle_a);
     }
 
@@ -153,15 +154,15 @@ protected:
     MCore::Quaternion   m_emQuaternion_a;
 };
 
-const float EmotionFXMathLibTests::s_toleranceHigh        = 0.00001f;
-const float EmotionFXMathLibTests::s_toleranceMedium      = 0.0001f;
-const float EmotionFXMathLibTests::s_toleranceLow         = 0.001f;
-const float EmotionFXMathLibTests::s_toleranceReallyLow   = 0.02f;
+const float EmotionFXMathLibTests::s_toleranceHigh = 0.00001f;
+const float EmotionFXMathLibTests::s_toleranceMedium = 0.0001f;
+const float EmotionFXMathLibTests::s_toleranceLow = 0.001f;
+const float EmotionFXMathLibTests::s_toleranceReallyLow = 0.02f;
 
-const float EmotionFXMathLibTests::s_x1         = 0.2f;
-const float EmotionFXMathLibTests::s_y1         = 0.3f;
-const float EmotionFXMathLibTests::s_z1         = 0.4f;
-const float EmotionFXMathLibTests::s_angle_a    = 0.5f;
+const float EmotionFXMathLibTests::s_x1 = 0.2f;
+const float EmotionFXMathLibTests::s_y1 = 0.3f;
+const float EmotionFXMathLibTests::s_z1 = 0.4f;
+const float EmotionFXMathLibTests::s_angle_a = 0.5f;
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -217,7 +218,7 @@ TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_SetToAxisAngleEquivalent_
     ASSERT_TRUE(AZQuaternionCompareClose(azQuaternion, emQuaternion.x, emQuaternion.y, emQuaternion.z, emQuaternion.w, s_toleranceLow));
 }
 
-// Compare equivalent conversions quaternions -> (axis, angle) between systems
+// Compare equivalent coversions quaternions -> (axis, angle) between systems
 TEST_F(EmotionFXMathLibTests, AZEMQuaternionConversion_ToAxisAngleEquivalent_Success)
 {
     //populate Quaternions with same data
@@ -323,8 +324,8 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet1ComponentAxis_Success)
     vertexOut1 = azQuaternion1 * vertexIn;
 
     //euler out and in
-    euler1 = azQuaternion1.GetEulerRadians();
-    test1.SetFromEulerRadians(euler1);
+    euler1 = AZ::ConvertQuaternionToEulerRadians(azQuaternion1);
+    test1 = AZ::ConvertEulerRadiansToQuaternion(euler1);
 
     //generate vertex value 2
     vertexOut2 = test1 * vertexIn;
@@ -348,8 +349,8 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet2ComponentAxis_Success)
     vertexOut1 = azQuaternion1 * vertexIn;
 
     //euler out and in
-    euler1 = azQuaternion1.GetEulerRadians();
-    test1.SetFromEulerRadians(euler1);
+    euler1 = AZ::ConvertQuaternionToEulerRadians(azQuaternion1);
+    test1 = AZ::ConvertEulerRadiansToQuaternion(euler1);
 
     //generate vertex value 2
     vertexOut2 = test1 * vertexIn;
@@ -373,8 +374,8 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerInOutRotationTest3DAxis_Success)
     vertexOut1 = azQuaternion1 * vertexIn;
 
     //euler out and in
-    euler1 = azQuaternion1.GetEulerRadians();
-    test1.SetFromEulerRadians(euler1);
+    euler1 = AZ::ConvertQuaternionToEulerRadians(azQuaternion1);
+    test1 = AZ::ConvertEulerRadiansToQuaternion(euler1);
 
     //generate vertex value 2
     vertexOut2 = test1 * vertexIn;
@@ -400,13 +401,13 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet3ComponentAxisCompareTrans
 
     //use Transform to generate euler
     AZ::Transform TransformFromQuat = AZ::Transform::CreateFromQuaternion(azQuaternion1);
-    eulerVectorFromTransform = TransformFromQuat.GetEulerRadians();
-    testTransformQuat.SetFromEulerRadians(eulerVectorFromTransform);
+    eulerVectorFromTransform = AZ::ConvertTransformToEulerRadians(TransformFromQuat);
+    testTransformQuat = AZ::ConvertEulerRadiansToQuaternion(eulerVectorFromTransform);
     vertexTransform = testTransformQuat * vertexIn;
 
     //use existing convert function
-    euler1 = azQuaternion1.GetEulerRadians();
-    test1.SetFromEulerRadians(euler1);
+    euler1 = AZ::ConvertQuaternionToEulerRadians(azQuaternion1);
+    test1 = AZ::ConvertEulerRadiansToQuaternion(euler1);
 
     //generate vertex value 2
     vertexOut2 = test1 * vertexIn;
@@ -439,7 +440,7 @@ TEST_F(EmotionFXMathLibTests, AZQuaternion_EulerGetSet3ComponentAxisCompareTrans
 //    MCore::Quaternion emTest;
 //
 //    emTest.SetEuler(emEulerIn.x, emEulerIn.y, emEulerIn.z);
-//    azTest.SetFromEulerRadians(azEulerIn);
+//    azTest = AzFramework::ConvertEulerRadiansToQuaternion(azEulerIn);
 //
 //    AZ::Vector3 azVectorIn(5, 0, 5);
 //    MCore::Vector3 emVectorIn(5, 0, 5);
@@ -475,17 +476,17 @@ TEST_F(EmotionFXMathLibTests, AZQuaternionConversion_ToEulerEquivalent_Success)
     AZ::Quaternion test, test2;
     AZ::Vector3 eulerOut1, eulerOut2;
 
-    test.SetFromEulerRadians(eulerIn);
+    test = AZ::ConvertEulerRadiansToQuaternion(eulerIn);
     test.Normalize();
     outVertex1 = test * testVertex;
 
-    eulerOut1 = test.GetEulerRadians();
+    eulerOut1 = AZ::ConvertQuaternionToEulerRadians(test);
 
-    test2.SetFromEulerRadians(eulerOut1);
+    test2 = AZ::ConvertEulerRadiansToQuaternion(eulerOut1);
     test2.Normalize();
     outVertex2 = test2 * testVertex;
 
-    eulerOut2 = test2.GetEulerRadians();
+    eulerOut2 = AZ::ConvertQuaternionToEulerRadians(test2);
     ASSERT_TRUE(AZVector3CompareClose(eulerOut1, eulerOut2, s_toleranceReallyLow));
 }
 

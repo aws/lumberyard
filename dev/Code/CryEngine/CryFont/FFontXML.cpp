@@ -32,13 +32,15 @@
 
 enum
 {
-    ELEMENT_UNKNOWN              = 0,
-    ELEMENT_FONT                     = 1,
-    ELEMENT_EFFECT               = 2,
-    ELEMENT_PASS                     = 4,
-    ELEMENT_PASS_COLOR       = 5,
-    ELEMENT_PASS_POSOFFSET = 12,
-    ELEMENT_PASS_BLEND       = 14
+
+    ELEMENT_UNKNOWN         = 0,
+    ELEMENT_FONT            = 1,
+    ELEMENT_EFFECT          = 2,
+    ELEMENT_EFFECTFILE      = 3,
+    ELEMENT_PASS            = 4,
+    ELEMENT_PASS_COLOR      = 5,
+    ELEMENT_PASS_POSOFFSET  = 12,
+    ELEMENT_PASS_BLEND      = 14
 };
 
 static inline int GetBlendModeFromString(const string& str, bool dst)
@@ -194,6 +196,10 @@ private:
         {
             m_nElement = ELEMENT_EFFECT;
         }
+        else if (name == "effectfile")
+        {
+            m_nElement = ELEMENT_EFFECTFILE;
+        }
         else if (name == "pass")
         {
             m_pPass = NULL;
@@ -289,6 +295,13 @@ private:
             }
             break;
 
+        case ELEMENT_EFFECTFILE:
+            if (name == "path")
+            {
+                m_strFontEffectPath = value;
+            }
+            break;
+
         case ELEMENT_PASS_COLOR:
             if (!m_pPass)
             {
@@ -370,6 +383,7 @@ public:
     CFFont::SRenderingPass* m_pPass;
 
     string    m_strFontPath;
+    string    m_strFontEffectPath;
     vector2l  m_FontTexSize;
     Vec2i     m_SlotSizes;
     float     m_SizeRatio = IFFontConstants::defaultSizeRatio;
@@ -401,6 +415,29 @@ bool CFFont::Load(const char* pXMLFile)
     if (!m_pFontTexture || !m_pFontBuffer)
     {
         return false;
+    }
+
+    // if there was a font effect file then parse that for effects
+    if (!xmlfs.m_strFontEffectPath.empty())
+    {
+        XmlNodeRef fontEffectRoot = GetISystem()->LoadXmlFromFile(xmlfs.m_strFontEffectPath.c_str());
+        if (!fontEffectRoot)
+        {
+            AZ_Warning("Font", false, "Error parsing font file %s, 'effectfile' pathname %s could not be found.",
+                pXMLFile, xmlfs.m_strFontEffectPath.c_str());
+            return false;
+        }
+
+        if (m_effects.size() > 1 || (m_effects.size() == 1 && (m_effects[0].m_name != "default" || m_effects[0].m_passes.size() > 1)))
+        {
+            AZ_Warning("Font", false, "Error parsing font file %s, 'effectfile' and 'effect' cannot both be used in the same font file.",
+                pXMLFile);
+            m_effects.clear();
+        }
+
+        // parse the font effects file, adding to this font object
+        CXmlFontShader xmlfsEffect(this);
+        xmlfsEffect.ScanXmlNodesRecursively(fontEffectRoot);
     }
 
     return true;

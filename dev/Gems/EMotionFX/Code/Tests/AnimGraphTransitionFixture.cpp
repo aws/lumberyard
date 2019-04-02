@@ -39,6 +39,8 @@ namespace EMotionFX
         mActor = Actor::Create("testActor");
         Node* rootNode = Node::Create("rootNode", mActor->GetSkeleton());
         mActor->AddNode(rootNode);
+        mActor->ResizeTransformData();
+        mActor->PostCreateInit();
 
         mAnimGraph = aznew AnimGraph();
 

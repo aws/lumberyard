@@ -19,10 +19,8 @@
 #include "AnimSplineTrack.h"
 #include "AnimSerializer.h"
 #include "AnimSequence.h"
-#include "EntityNode.h"
 #include "CVarNode.h"
 #include "ScriptVarNode.h"
-#include "AnimCameraNode.h"
 #include "SceneNode.h"
 #include "MaterialNode.h"
 #include "EventNode.h"
@@ -43,9 +41,9 @@
 #include <IGameFramework.h>
 #include <IGame.h>
 #include <IViewSystem.h>
-#include "Maestro/Types/AnimNodeType.h"
-#include "Maestro/Types/SequenceType.h"
-#include "Maestro/Types/AnimParamType.h"
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Types/SequenceType.h>
+#include <Maestro/Types/AnimParamType.h>
 
 int CMovieSystem::m_mov_NoCutscenes = 0;
 float CMovieSystem::m_mov_cameraPrecacheTime = 1.f;
@@ -65,10 +63,10 @@ struct SMovieSequenceAutoComplete
 
     virtual const char* GetValue(int nIndex) const
     {
-        IAnimSequence* pSequence = gEnv->pMovieSystem->GetSequence(nIndex);
-        if (pSequence)
+        IAnimSequence* sequence = gEnv->pMovieSystem->GetSequence(nIndex);
+        if (sequence)
         {
-            return pSequence->GetName();
+            return sequence->GetName();
         }
 
         return "";
@@ -255,53 +253,12 @@ CMovieSystem::CMovieSystem()
 //////////////////////////////////////////////////////////////////////////
 void CMovieSystem::DoNodeStaticInitialisation()
 {
-    CAnimCameraNode::Initialize();
-    CAnimEntityNode::Initialize();
     CAnimMaterialNode::Initialize();
     CAnimPostFXNode::Initialize();
     CAnimSceneNode::Initialize();
     CAnimScreenFaderNode::Initialize();
     CCommentNode::Initialize();
     CLayerNode::Initialize();
-}
-
-//////////////////////////////////////////////////////////////////////////
-bool CMovieSystem::Load(const char* pszFile, const char* pszMission)
-{
-    INDENT_LOG_DURING_SCOPE (true, "Movie system is loading the file '%s' (mission='%s')", pszFile, pszMission);
-    LOADING_TIME_PROFILE_SECTION(GetISystem());
-
-    XmlNodeRef rootNode = m_pSystem->LoadXmlFromFile(pszFile);
-    if (!rootNode)
-    {
-        return false;
-    }
-
-    XmlNodeRef Node = NULL;
-
-    for (int i = 0; i < rootNode->getChildCount(); i++)
-    {
-        XmlNodeRef missionNode = rootNode->getChild(i);
-        XmlString sName;
-        if (!(sName = missionNode->getAttr("Name")))
-        {
-            continue;
-        }
-        if (_stricmp(sName.c_str(), pszMission))
-        {
-            continue;
-        }
-        Node = missionNode;
-        break;
-    }
-
-    if (!Node)
-    {
-        return false;
-    }
-
-    Serialize(Node, true, true, false);
-    return true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -314,43 +271,7 @@ IAnimSequence* CMovieSystem::CreateSequence(const char* sequenceName, bool load,
 
     IAnimSequence* sequence = aznew CAnimSequence(this, id, sequenceType);
     sequence->SetName(sequenceName);
-
-    if (sequenceType == SequenceType::SequenceComponent)
-    {
-        sequence->SetSequenceEntityId(entityId);
-    }
-
-    m_sequences.push_back(sequence);;
-
-    return sequence;
-}
-
-//////////////////////////////////////////////////////////////////////////
-IAnimSequence* CMovieSystem::LoadSequence(const char* pszFilePath)
-{
-    XmlNodeRef sequenceNode = m_pSystem->LoadXmlFromFile(pszFilePath);
-    if (sequenceNode)
-    {
-        return LoadSequence(sequenceNode);
-    }
-
-    return NULL;
-}
-
-//////////////////////////////////////////////////////////////////////////
-IAnimSequence* CMovieSystem::LoadSequence(XmlNodeRef& xmlNode, bool loadEmpty)
-{
-    IAnimSequence* sequence = aznew CAnimSequence(this, 0);
-    sequence->Serialize(xmlNode, true, loadEmpty);
-
-    // Delete previous sequence with the same name.
-    const char* fullName = sequence->GetName();
-
-    IAnimSequence* prevSeq = FindLegacySequenceByName(fullName);
-    if (prevSeq)
-    {
-        RemoveSequence(prevSeq);
-    }
+    sequence->SetSequenceEntityId(entityId);
 
     m_sequences.push_back(sequence);;
 
@@ -420,13 +341,13 @@ IAnimSequence* CMovieSystem::FindSequenceById(uint32 id) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMovieSystem::FindSequence(IAnimSequence* pSequence, PlayingSequences::const_iterator& sequenceIteratorOut) const
+bool CMovieSystem::FindSequence(IAnimSequence* sequence, PlayingSequences::const_iterator& sequenceIteratorOut) const
 {
     PlayingSequences::const_iterator itend = m_playingSequences.end();
 
     for (sequenceIteratorOut = m_playingSequences.begin(); sequenceIteratorOut != itend; ++sequenceIteratorOut)
     {
-        if (sequenceIteratorOut->sequence == pSequence)
+        if (sequenceIteratorOut->sequence == sequence)
         {
             return true;
         }
@@ -436,13 +357,13 @@ bool CMovieSystem::FindSequence(IAnimSequence* pSequence, PlayingSequences::cons
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMovieSystem::FindSequence(IAnimSequence* pSequence, PlayingSequences::iterator& sequenceIteratorOut)
+bool CMovieSystem::FindSequence(IAnimSequence* sequence, PlayingSequences::iterator& sequenceIteratorOut)
 {
     PlayingSequences::const_iterator itend = m_playingSequences.end();
 
     for (sequenceIteratorOut = m_playingSequences.begin(); sequenceIteratorOut != itend; ++sequenceIteratorOut)
     {
-        if (sequenceIteratorOut->sequence == pSequence)
+        if (sequenceIteratorOut->sequence == sequence)
         {
             return true;
         }
@@ -692,10 +613,10 @@ void CMovieSystem::RemoveAllSequences()
 //////////////////////////////////////////////////////////////////////////
 void CMovieSystem::PlaySequence(const char* pSequenceName, IAnimSequence* pParentSeq, bool bResetFx, bool bTrackedSequence, float startTime, float endTime)
 {
-    IAnimSequence* pSequence = FindLegacySequenceByName(pSequenceName);
-    if (pSequence)
+    IAnimSequence* sequence = FindLegacySequenceByName(pSequenceName);
+    if (sequence)
     {
-        PlaySequence(pSequence, pParentSeq, bResetFx, bTrackedSequence, startTime, endTime);
+        PlaySequence(sequence, pParentSeq, bResetFx, bTrackedSequence, startTime, endTime);
     }
     else
     {
@@ -704,16 +625,16 @@ void CMovieSystem::PlaySequence(const char* pSequenceName, IAnimSequence* pParen
 }
 
 //////////////////////////////////////////////////////////////////////////
-void CMovieSystem::PlaySequence(IAnimSequence* pSequence, IAnimSequence* parentSeq,
+void CMovieSystem::PlaySequence(IAnimSequence* sequence, IAnimSequence* parentSeq,
     bool bResetFx, bool bTrackedSequence, float startTime, float endTime)
 {
-    assert(pSequence != 0);
-    if (!pSequence || IsPlaying(pSequence))
+    assert(sequence != 0);
+    if (!sequence || IsPlaying(sequence))
     {
         return;
     }
 
-    if ((pSequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene) || (pSequence->GetFlags() & IAnimSequence::eSeqFlags_NoHUD))
+    if ((sequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene) || (sequence->GetFlags() & IAnimSequence::eSeqFlags_NoHUD))
     {
         // Don't play cut-scene if this console variable set.
         if (m_mov_NoCutscenes != 0)
@@ -723,30 +644,30 @@ void CMovieSystem::PlaySequence(IAnimSequence* pSequence, IAnimSequence* parentS
     }
 
     // If this sequence is cut scene disable player.
-    if (pSequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene)
+    if (sequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene)
     {
         OnCameraCut();
 
-        pSequence->SetParentSequence(parentSeq);
+        sequence->SetParentSequence(parentSeq);
 
         if (!gEnv->IsEditing() || !m_bCutscenesPausedInEditor)
         {
             if (m_pUser)
             {
-                m_pUser->BeginCutScene(pSequence, pSequence->GetCutSceneFlags(), bResetFx);
+                m_pUser->BeginCutScene(sequence, sequence->GetCutSceneFlags(), bResetFx);
             }
         }
     }
 
-    pSequence->Activate();
-    pSequence->Resume();
-    static_cast<CAnimSequence*>(pSequence)->OnStart();
+    sequence->Activate();
+    sequence->Resume();
+    static_cast<CAnimSequence*>(sequence)->OnStart();
 
     PlayingSequence ps;
-    ps.sequence = pSequence;
-    ps.startTime = startTime == -FLT_MAX ? pSequence->GetTimeRange().start : startTime;
-    ps.endTime = endTime == -FLT_MAX ? pSequence->GetTimeRange().end : endTime;
-    ps.currentTime = startTime == -FLT_MAX ? pSequence->GetTimeRange().start : startTime;
+    ps.sequence = sequence;
+    ps.startTime = startTime == -FLT_MAX ? sequence->GetTimeRange().start : startTime;
+    ps.endTime = endTime == -FLT_MAX ? sequence->GetTimeRange().end : endTime;
+    ps.currentTime = startTime == -FLT_MAX ? sequence->GetTimeRange().start : startTime;
     ps.currentSpeed = 1.0f;
     ps.trackedSequence = bTrackedSequence;
     ps.bSingleFrame = false;
@@ -754,21 +675,21 @@ void CMovieSystem::PlaySequence(IAnimSequence* pSequence, IAnimSequence* parentS
     m_playingSequences.push_back(ps);
 
     // tell all interested listeners
-    NotifyListeners(pSequence, IMovieListener::eMovieEvent_Started);
+    NotifyListeners(sequence, IMovieListener::eMovieEvent_Started);
 }
 
-void CMovieSystem::NotifyListeners(IAnimSequence* pSequence, IMovieListener::EMovieEvent event)
+void CMovieSystem::NotifyListeners(IAnimSequence* sequence, IMovieListener::EMovieEvent event)
 {
     ////////////////////////////////
     // Legacy Notification System
-    TMovieListenerMap::iterator found (m_movieListenerMap.find(pSequence));
+    TMovieListenerMap::iterator found (m_movieListenerMap.find(sequence));
     if (found != m_movieListenerMap.end())
     {
         TMovieListenerVec listForSeq = (*found).second;
         TMovieListenerVec::iterator iter (listForSeq.begin());
         while (iter != listForSeq.end())
         {
-            (*iter)->OnMovieEvent(event, pSequence);
+            (*iter)->OnMovieEvent(event, sequence);
             ++iter;
         }
     }
@@ -783,7 +704,7 @@ void CMovieSystem::NotifyListeners(IAnimSequence* pSequence, IMovieListener::EMo
             TMovieListenerVec::iterator iter (listForSeq.begin());
             while (iter != listForSeq.end())
             {
-                (*iter)->OnMovieEvent(event, pSequence);
+                (*iter)->OnMovieEvent(event, sequence);
                 ++iter;
             }
         }
@@ -791,50 +712,47 @@ void CMovieSystem::NotifyListeners(IAnimSequence* pSequence, IMovieListener::EMo
 
     /////////////////////////////////////
     // SequenceComponentNotification EBus
-    if (pSequence->GetSequenceType() == SequenceType::SequenceComponent)
+    const AZ::EntityId& sequenceComponentEntityId = sequence->GetSequenceEntityId();
+    switch (event)
     {
-        const AZ::EntityId& sequenceComponentEntityId = pSequence->GetSequenceEntityId();
-        switch (event)
+        /*
+            * When a sequence is stopped, Resume is called just before stopped (not sure why). To ensure that a OnStop notification is sent out after the Resume,
+            * notifications for eMovieEvent_Started and eMovieEvent_Stopped are handled in IAnimSequence::OnStart and IAnimSequence::OnStop 
+            */
+        case IMovieListener::eMovieEvent_Aborted:
         {
-            /*
-             * When a sequence is stopped, Resume is called just before stopped (not sure why). To ensure that a OnStop notification is sent out after the Resume,
-             * notifications for eMovieEvent_Started and eMovieEvent_Stopped are handled in IAnimSequence::OnStart and IAnimSequence::OnStop 
-             */
-            case IMovieListener::eMovieEvent_Aborted:
-            {
-                Maestro::SequenceComponentNotificationBus::Event(sequenceComponentEntityId, &Maestro::SequenceComponentNotificationBus::Events::OnAbort, GetPlayingTime(pSequence));
-                break;
-            }
-            case IMovieListener::eMovieEvent_Updated:
-            {
-                Maestro::SequenceComponentNotificationBus::Event(sequenceComponentEntityId, &Maestro::SequenceComponentNotificationBus::Events::OnUpdate, GetPlayingTime(pSequence));
-                break;
-            }
-            default:
-            {
-                // do nothing for unhandled IMovieListener events
-                break;
-            }
+            Maestro::SequenceComponentNotificationBus::Event(sequenceComponentEntityId, &Maestro::SequenceComponentNotificationBus::Events::OnAbort, GetPlayingTime(sequence));
+            break;
         }
-    } 
+        case IMovieListener::eMovieEvent_Updated:
+        {
+            Maestro::SequenceComponentNotificationBus::Event(sequenceComponentEntityId, &Maestro::SequenceComponentNotificationBus::Events::OnUpdate, GetPlayingTime(sequence));
+            break;
+        }
+        default:
+        {
+            // do nothing for unhandled IMovieListener events
+            break;
+        }
+    }    
 }
 
 //////////////////////////////////////////////////////////////////////////
 bool CMovieSystem::StopSequence(const char* pSequenceName)
 {
-    IAnimSequence* pSequence = FindLegacySequenceByName(pSequenceName);
-    if (pSequence)
+    IAnimSequence* sequence = FindLegacySequenceByName(pSequenceName);
+    if (sequence)
     {
-        return StopSequence(pSequence);
+        return StopSequence(sequence);
     }
 
     return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMovieSystem::StopSequence(IAnimSequence* pSequence)
+bool CMovieSystem::StopSequence(IAnimSequence* sequence)
 {
-    return InternalStopSequence(pSequence, false, true);
+    return InternalStopSequence(sequence, false, true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -849,60 +767,60 @@ void CMovieSystem::InternalStopAllSequences(bool bAbort, bool bAnimate)
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMovieSystem::InternalStopSequence(IAnimSequence* pSequence, bool bAbort, bool bAnimate)
+bool CMovieSystem::InternalStopSequence(IAnimSequence* sequence, bool bAbort, bool bAnimate)
 {
-    assert(pSequence != 0);
+    assert(sequence != 0);
 
     bool bRet = false;
     PlayingSequences::iterator it;
 
-    if (FindSequence(pSequence, it))
+    if (FindSequence(sequence, it))
     {
         if (bAnimate)
         {
             if (m_sequenceStopBehavior == eSSB_GotoEndTime)
             {
                 SAnimContext ac;
-                ac.bSingleFrame = true;
-                ac.time = pSequence->GetTimeRange().end;
-                pSequence->Animate(ac);
+                ac.singleFrame = true;
+                ac.time = sequence->GetTimeRange().end;
+                sequence->Animate(ac);
             }
             else if (m_sequenceStopBehavior == eSSB_GotoStartTime)
             {
                 SAnimContext ac;
-                ac.bSingleFrame = true;
-                ac.time = pSequence->GetTimeRange().start;
-                pSequence->Animate(ac);
+                ac.singleFrame = true;
+                ac.time = sequence->GetTimeRange().start;
+                sequence->Animate(ac);
             }
 
-            pSequence->Deactivate();
+            sequence->Deactivate();
         }
 
         // If this sequence is cut scene end it.
-        if (pSequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene)
+        if (sequence->GetFlags() & IAnimSequence::eSeqFlags_CutScene)
         {
             if (!gEnv->IsEditing() || !m_bCutscenesPausedInEditor)
             {
                 if (m_pUser)
                 {
-                    m_pUser->EndCutScene(pSequence, pSequence->GetCutSceneFlags(true));
+                    m_pUser->EndCutScene(sequence, sequence->GetCutSceneFlags(true));
                 }
             }
 
-            pSequence->SetParentSequence(NULL);
+            sequence->SetParentSequence(NULL);
         }
 
         // tell all interested listeners
-        NotifyListeners(pSequence, bAbort ? IMovieListener::eMovieEvent_Aborted : IMovieListener::eMovieEvent_Stopped);
+        NotifyListeners(sequence, bAbort ? IMovieListener::eMovieEvent_Aborted : IMovieListener::eMovieEvent_Stopped);
 
         // erase the sequence after notifying listeners so if they choose to they can get the ending time of this sequence
-        if (FindSequence(pSequence, it))
+        if (FindSequence(sequence, it))
         {
             m_playingSequences.erase(it);
         }
 
-        pSequence->Resume();
-        static_cast<CAnimSequence*>(pSequence)->OnStop();
+        sequence->Resume();
+        static_cast<CAnimSequence*>(sequence)->OnStop();
         bRet = true;
     }
 
@@ -910,9 +828,9 @@ bool CMovieSystem::InternalStopSequence(IAnimSequence* pSequence, bool bAbort, b
 }
 
 //////////////////////////////////////////////////////////////////////////
-bool CMovieSystem::AbortSequence(IAnimSequence* pSequence, bool bLeaveTime)
+bool CMovieSystem::AbortSequence(IAnimSequence* sequence, bool bLeaveTime)
 {
-    assert(pSequence);
+    assert(sequence);
 
     // to avoid any camera blending after aborting a cut scene
     IViewSystem* pViewSystem = gEnv->pSystem->GetIViewSystem();
@@ -926,7 +844,7 @@ bool CMovieSystem::AbortSequence(IAnimSequence* pSequence, bool bLeaveTime)
         }
     }
 
-    return InternalStopSequence(pSequence, true, !bLeaveTime);
+    return InternalStopSequence(sequence, true, !bLeaveTime);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -973,19 +891,9 @@ bool CMovieSystem::IsPlaying(IAnimSequence* sequence) const
 
     for (PlayingSequences::const_iterator it = m_playingSequences.begin(); it != m_playingSequences.end(); ++it)
     {
-        if (sequence->GetSequenceType() == SequenceType::Legacy)
+        if (it->sequence->GetSequenceEntityId() == sequence->GetSequenceEntityId())
         {
-            if (it->sequence == sequence)
-            {
-                return true;
-            }
-        }
-        else
-        {
-            if (it->sequence->GetSequenceEntityId() == sequence->GetSequenceEntityId())
-            {
-                return true;
-            }
+            return true;
         }
     }
 
@@ -1024,7 +932,7 @@ void CMovieSystem::Reset(bool bPlayOnReset, bool bSeekToStart)
     // Reset camera.
     SCameraParams CamParams = GetCameraParams();
     CamParams.cameraEntityId.SetInvalid();
-    CamParams.fFOV = 0.0f;
+    CamParams.fov = 0.0f;
     CamParams.justActivated = true;
     SetCameraParams(CamParams);
 }
@@ -1034,17 +942,17 @@ void CMovieSystem::PlayOnLoadSequences()
 {
     for (Sequences::iterator sit = m_sequences.begin(); sit != m_sequences.end(); ++sit)
     {
-        IAnimSequence* pSequence = sit->get();
-        if (pSequence->GetFlags() & IAnimSequence::eSeqFlags_PlayOnReset)
+        IAnimSequence* sequence = sit->get();
+        if (sequence->GetFlags() & IAnimSequence::eSeqFlags_PlayOnReset)
         {
-            PlaySequence(pSequence);
+            PlaySequence(sequence);
         }
     }
 
     // Reset camera.
     SCameraParams CamParams = GetCameraParams();
     CamParams.cameraEntityId.SetInvalid();
-    CamParams.fFOV = 0.0f;
+    CamParams.fov = 0.0f;
     CamParams.justActivated = true;
     SetCameraParams(CamParams);
 }
@@ -1202,7 +1110,7 @@ void CMovieSystem::UpdateInternal(const float deltaTime, const bool bPreUpdate)
         }
 
         animContext.time = playingSequence.currentTime;
-        animContext.pSequence = playingSequence.sequence.get();
+        animContext.sequence = playingSequence.sequence.get();
         animContext.dt = scaledTimeDelta;
         animContext.fps = fps;
         animContext.startTime = playingSequence.startTime;
@@ -1245,7 +1153,7 @@ void CMovieSystem::UpdateInternal(const float deltaTime, const bool bPreUpdate)
             NotifyListeners(playingSequence.sequence.get(), IMovieListener::eMovieEvent_Updated);
         }
 
-        animContext.bSingleFrame = playingSequence.bSingleFrame;
+        animContext.singleFrame = playingSequence.bSingleFrame;
         playingSequence.bSingleFrame = false;
 
         // Animate sequence. (Can invalidate iterator)
@@ -1292,46 +1200,6 @@ void CMovieSystem::Callback(IMovieCallback::ECallbackReason reason, IAnimNode* p
 }
 
 //////////////////////////////////////////////////////////////////////////
-/// @deprecated Serialization for Sequence data in Component Entity Sequences now occurs through AZ::SerializeContext and the Sequence Component
-void CMovieSystem::Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bRemoveOldNodes, bool bLoadEmpty)
-{
-    if (bLoading)
-    {
-        //////////////////////////////////////////////////////////////////////////
-        // Load sequences from XML.
-        //////////////////////////////////////////////////////////////////////////
-        XmlNodeRef seqNode = xmlNode->findChild("SequenceData");
-        if (seqNode)
-        {
-            INDENT_LOG_DURING_SCOPE(true, "SequenceData tag contains %u sequences", seqNode->getChildCount());
-
-            for (int i = 0; i < seqNode->getChildCount(); i++)
-            {
-                XmlNodeRef childNode = seqNode->getChild(i);
-                if (!LoadSequence(childNode, bLoadEmpty))
-                {
-                    return;
-                }
-            }
-        }
-    }
-    else
-    {
-        XmlNodeRef sequencesNode = xmlNode->newChild("SequenceData");
-        for (int i = 0; i < GetNumSequences(); ++i)
-        {
-            // Only serialize legacy object sequences. Sequence Components will be saved through AZ::Serialization
-            IAnimSequence* pSequence = GetSequence(i);
-            if (pSequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                XmlNodeRef sequenceNode = sequencesNode->newChild("Sequence");
-                pSequence->Serialize(sequenceNode, false);
-            }
-        }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
 /*static*/ void CMovieSystem::Reflect(AZ::SerializeContext* serializeContext)
 {
     serializeContext->Class<CMovieSystem>()
@@ -1347,7 +1215,7 @@ void CMovieSystem::SetCameraParams(const SCameraParams& Params)
     m_ActiveCameraParams = Params;
 
     // Make sure the camera entity is valid
-    if (m_ActiveCameraParams.cameraEntityId.IsValid() && !IsLegacyEntityId(m_ActiveCameraParams.cameraEntityId))
+    if (m_ActiveCameraParams.cameraEntityId.IsValid())
     {
         // Component Camera
         AZ::Entity* entity = nullptr;
@@ -1435,15 +1303,15 @@ void CMovieSystem::ResumeCutScenes()
 }
 
 //////////////////////////////////////////////////////////////////////////
-float CMovieSystem::GetPlayingTime(IAnimSequence* pSequence)
+float CMovieSystem::GetPlayingTime(IAnimSequence* sequence)
 {
-    if (!pSequence || !IsPlaying(pSequence))
+    if (!sequence || !IsPlaying(sequence))
     {
         return -1.0;
     }
 
     PlayingSequences::const_iterator it;
-    if (FindSequence(pSequence, it))
+    if (FindSequence(sequence, it))
     {
         return it->currentTime;
     }
@@ -1451,15 +1319,15 @@ float CMovieSystem::GetPlayingTime(IAnimSequence* pSequence)
     return -1.0f;
 }
 
-float CMovieSystem::GetPlayingSpeed(IAnimSequence* pSequence)
+float CMovieSystem::GetPlayingSpeed(IAnimSequence* sequence)
 {
-    if (!pSequence || !IsPlaying(pSequence))
+    if (!sequence || !IsPlaying(sequence))
     {
         return -1.0f;
     }
 
     PlayingSequences::const_iterator it;
-    if (FindSequence(pSequence, it))
+    if (FindSequence(sequence, it))
     {
         return it->currentSpeed;
     }
@@ -1467,36 +1335,36 @@ float CMovieSystem::GetPlayingSpeed(IAnimSequence* pSequence)
     return -1.0f;
 }
 
-bool CMovieSystem::SetPlayingTime(IAnimSequence* pSequence, float fTime)
+bool CMovieSystem::SetPlayingTime(IAnimSequence* sequence, float fTime)
 {
-    if (!pSequence || !IsPlaying(pSequence))
+    if (!sequence || !IsPlaying(sequence))
     {
         return false;
     }
 
     PlayingSequences::iterator it;
-    if (FindSequence(pSequence, it) && !(pSequence->GetFlags() & IAnimSequence::eSeqFlags_NoSeek))
+    if (FindSequence(sequence, it) && !(sequence->GetFlags() & IAnimSequence::eSeqFlags_NoSeek))
     {
         it->currentTime = fTime;
         it->bSingleFrame = true;
-        NotifyListeners(pSequence, IMovieListener::eMovieEvent_Updated);
+        NotifyListeners(sequence, IMovieListener::eMovieEvent_Updated);
         return true;
     }
 
     return false;
 }
 
-bool CMovieSystem::SetPlayingSpeed(IAnimSequence* pSequence, float fSpeed)
+bool CMovieSystem::SetPlayingSpeed(IAnimSequence* sequence, float fSpeed)
 {
-    if (!pSequence)
+    if (!sequence)
     {
         return false;
     }
 
     PlayingSequences::iterator it;
-    if (FindSequence(pSequence, it) && !(pSequence->GetFlags() & IAnimSequence::eSeqFlags_NoSpeed))
+    if (FindSequence(sequence, it) && !(sequence->GetFlags() & IAnimSequence::eSeqFlags_NoSpeed))
     {
-        NotifyListeners(pSequence, IMovieListener::eMovieEvent_Updated);
+        NotifyListeners(sequence, IMovieListener::eMovieEvent_Updated);
         it->currentSpeed = fSpeed;
         return true;
     }
@@ -1504,18 +1372,18 @@ bool CMovieSystem::SetPlayingSpeed(IAnimSequence* pSequence, float fSpeed)
     return false;
 }
 
-bool CMovieSystem::GetStartEndTime(IAnimSequence* pSequence, float& fStartTime, float& fEndTime)
+bool CMovieSystem::GetStartEndTime(IAnimSequence* sequence, float& fStartTime, float& fEndTime)
 {
     fStartTime = 0.0f;
     fEndTime = 0.0f;
 
-    if (!pSequence || !IsPlaying(pSequence))
+    if (!sequence || !IsPlaying(sequence))
     {
         return false;
     }
 
     PlayingSequences::const_iterator it;
-    if (FindSequence(pSequence, it))
+    if (FindSequence(sequence, it))
     {
         fStartTime = it->startTime;
         fEndTime = it->endTime;
@@ -1553,28 +1421,28 @@ IMovieSystem::ESequenceStopBehavior CMovieSystem::GetSequenceStopBehavior()
     return m_sequenceStopBehavior;
 }
 
-bool CMovieSystem::AddMovieListener(IAnimSequence* pSequence, IMovieListener* pListener)
+bool CMovieSystem::AddMovieListener(IAnimSequence* sequence, IMovieListener* pListener)
 {
     assert (pListener != 0);
-    if (pSequence != NULL && std::find(m_sequences.begin(), m_sequences.end(), pSequence) == m_sequences.end())
+    if (sequence != NULL && std::find(m_sequences.begin(), m_sequences.end(), sequence) == m_sequences.end())
     {
-        gEnv->pLog->Log ("CMovieSystem::AddMovieListener: Sequence %p unknown to CMovieSystem", pSequence);
+        gEnv->pLog->Log ("CMovieSystem::AddMovieListener: Sequence %p unknown to CMovieSystem", sequence);
         return false;
     }
 
-    return stl::push_back_unique(m_movieListenerMap[pSequence], pListener);
+    return stl::push_back_unique(m_movieListenerMap[sequence], pListener);
 }
 
-bool CMovieSystem::RemoveMovieListener(IAnimSequence* pSequence, IMovieListener* pListener)
+bool CMovieSystem::RemoveMovieListener(IAnimSequence* sequence, IMovieListener* pListener)
 {
     assert (pListener != 0);
-    if (pSequence != NULL
-        && std::find(m_sequences.begin(), m_sequences.end(), pSequence) == m_sequences.end())
+    if (sequence != NULL
+        && std::find(m_sequences.begin(), m_sequences.end(), sequence) == m_sequences.end())
     {
-        gEnv->pLog->Log ("CMovieSystem::AddMovieListener: Sequence %p unknown to CMovieSystem", pSequence);
+        gEnv->pLog->Log ("CMovieSystem::AddMovieListener: Sequence %p unknown to CMovieSystem", sequence);
         return false;
     }
-    return stl::find_and_erase(m_movieListenerMap[pSequence], pListener);
+    return stl::find_and_erase(m_movieListenerMap[sequence], pListener);
 }
 
 #if !defined(_RELEASE)
@@ -1768,12 +1636,6 @@ void CMovieSystem::ControlCapture()
 bool CMovieSystem::IsCapturing() const
 {
     return m_cvar_capture_frames ? m_cvar_capture_frames->GetIVal() != 0 : false;
-}
-
-//////////////////////////////////////////////////////////////////////////
-int CMovieSystem::GetEntityNodeParamCount() const
-{
-    return CAnimEntityNode::GetParamCountStatic();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1973,19 +1835,6 @@ const char* CMovieSystem::GetParamTypeName(const CAnimParamType& animParamType)
 }
 
 //////////////////////////////////////////////////////////////////////////
-CAnimParamType CMovieSystem::GetEntityNodeParamType(int index) const
-{
-    CAnimNode::SParamInfo info;
-
-    if (CAnimEntityNode::GetParamInfoStatic(index, info))
-    {
-        return info.paramType;
-    }
-
-    return AnimParamType::Invalid;
-}
-
-//////////////////////////////////////////////////////////////////////////
 void CMovieSystem::OnCameraCut()
 {
 }
@@ -2140,32 +1989,6 @@ void CLightAnimWrapper::CacheLightAnim(const char* name, CLightAnimWrapper* p)
 void CLightAnimWrapper::RemoveCachedLightAnim(const char* name)
 {
     ms_lightAnimWrapperCache.erase(CONST_TEMP_STRING(name));
-}
-
-//////////////////////////////////////////////////////////////////////////
-const char* CMovieSystem::GetEntityNodeParamName(int index) const
-{
-    CAnimNode::SParamInfo info;
-
-    if (CAnimEntityNode::GetParamInfoStatic(index, info))
-    {
-        return info.name;
-    }
-
-    return NULL;
-}
-
-//////////////////////////////////////////////////////////////////////////
-IAnimNode::ESupportedParamFlags CMovieSystem::GetEntityNodeParamFlags(int index) const
-{
-    CAnimNode::SParamInfo info;
-
-    if (CAnimEntityNode::GetParamInfoStatic(index, info))
-    {
-        return info.flags;
-    }
-
-    return IAnimNode::ESupportedParamFlags(0);
 }
 
 #ifdef MOVIESYSTEM_SUPPORT_EDITING

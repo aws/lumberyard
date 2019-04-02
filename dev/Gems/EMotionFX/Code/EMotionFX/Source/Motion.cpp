@@ -37,7 +37,7 @@ namespace EMotionFX
         mDefaultPlayBackInfo    = nullptr;
         mNameID                 = MCORE_INVALIDINDEX32;
         mID                     = MCore::GetIDGenerator().GenerateID();
-        mEventTable             = MotionEventTable::Create();
+        mEventTable             = aznew MotionEventTable();
         mUnitType               = GetEMotionFX().GetUnitType();
         mFileUnitType           = mUnitType;
         mExtractionFlags        = static_cast<EMotionExtractionFlags>(0);
@@ -51,6 +51,7 @@ namespace EMotionFX
         mMotionFPS              = 30.0f;
         mDirtyFlag              = false;
         mAutoUnregister         = true;
+        mIsAdditive             = false;
 
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime       = false;
@@ -123,6 +124,16 @@ namespace EMotionFX
     bool Motion::GetAutoUnregister() const
     {
         return mAutoUnregister;
+    }
+
+    void Motion::SetIsAdditive(bool isAdditive)
+    {
+        mIsAdditive = isAdditive;
+    }
+
+    bool Motion::GetIsAdditive() const
+    {
+        return mIsAdditive;
     }
 
     void Motion::SetIsOwnedByRuntime(bool isOwnedByRuntime)
@@ -231,6 +242,15 @@ namespace EMotionFX
     MotionEventTable* Motion::GetEventTable() const
     {
         return mEventTable;
+    }
+
+    void Motion::SetEventTable(MotionEventTable* newTable)
+    {
+        if (mEventTable && mEventTable != newTable)
+        {
+            mEventTable->Destroy();
+        }
+        mEventTable = newTable;
     }
 
 

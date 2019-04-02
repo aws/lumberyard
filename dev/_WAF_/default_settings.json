@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.17.0.0", 
+            "default_value": "1.18.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -249,6 +249,12 @@
             "description": "Absolute or relative Orbis for VS2015 build output path"
         }, 
         {
+            "long_form": "--output-folder-orbis-vs2017", 
+            "attribute": "out_folder_orbis_vs2017", 
+            "default_value": "BinOrbisVc141", 
+            "description": "Absolute or relative Orbis for VS2017 build output path"
+        }, 
+        {
             "long_form": "--output-folder-ios", 
             "attribute": "out_folder_ios", 
             "default_value": "BinIos", 
@@ -265,12 +271,6 @@
             "attribute": "out_folder_linux64", 
             "default_value": "BinLinux64", 
             "description": "Absolute or relative Linux64 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-android-armv7-gcc", 
-            "attribute": "out_folder_android_armv7_gcc", 
-            "default_value": "BinAndroidArmv7Gcc", 
-            "description": "Absolute or relative Android ARMv7 gcc build output path"
         }, 
         {
             "long_form": "--output-folder-android-armv7-clang", 
@@ -391,7 +391,7 @@
         {
             "long_form": "--win-vs2017-vswhere-args", 
             "attribute": "win_vs2017_vswhere_args", 
-            "default_value": "-version [15.7.27703.2035,15.9.28307.108]", 
+            "default_value": "-version [15.7.27703.2035,15.9.28307.423]", 
             "description": "The arguments to pass to vswhere when locating vs2017 executables. The default maximum is the last version that Lumberyard was tested against before release. The default minimum is the last known ABI incompatiblity for Lumberyard builds."
         }, 
         {

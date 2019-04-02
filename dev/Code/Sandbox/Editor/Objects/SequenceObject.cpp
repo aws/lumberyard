@@ -33,7 +33,7 @@
 //////////////////////////////////////////////////////////////////////////
 CSequenceObject::CSequenceObject()
 {
-    m_pSequence = 0;
+    m_sequence = 0;
     m_bValidSettings = false;
     m_sequenceId = 0;
 }
@@ -66,15 +66,15 @@ bool CSequenceObject::Init(IEditor* ie, CBaseObject* prev, const QString& file)
 //////////////////////////////////////////////////////////////////////////
 bool CSequenceObject::CreateGameObject()
 {
-    if (!m_pSequence)
+    if (!m_sequence)
     {
         CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        m_pSequence = pSequenceManager->OnCreateSequenceObject(GetName());
+        m_sequence = pSequenceManager->OnCreateSequenceObject(GetName());
     }
 
-    if (m_pSequence)
+    if (m_sequence)
     {
-        m_pSequence->SetLegacySequenceObject(this);
+        m_sequence->SetLegacySequenceObject(this);
     }
 
     return true;
@@ -83,15 +83,13 @@ bool CSequenceObject::CreateGameObject()
 //////////////////////////////////////////////////////////////////////////
 void CSequenceObject::Done()
 {
-    assert(m_pSequence);
-
-    if (m_pSequence)
+    if (m_sequence)
     {
-        GetIEditor()->GetSequenceManager()->OnDeleteSequenceEntity(m_pSequence->GetSequenceEntityId());
-        m_pSequence->SetLegacySequenceObject(nullptr);
+        GetIEditor()->GetSequenceManager()->OnDeleteSequenceEntity(m_sequence->GetSequenceEntityId());
+        m_sequence->SetLegacySequenceObject(nullptr);
     }
 
-    m_pSequence = nullptr;
+    m_sequence = nullptr;
 
     CBaseObject::Done();
 }
@@ -99,11 +97,11 @@ void CSequenceObject::Done()
 //////////////////////////////////////////////////////////////////////////
 void CSequenceObject::OnNameChanged()
 {
-    assert(m_pSequence);
+    assert(m_sequence);
 
-    if (m_pSequence)
+    if (m_sequence)
     {
-        string fullname = m_pSequence->GetName();
+        string fullname = m_sequence->GetName();
         CBaseObject::SetName(fullname.c_str());
 
         OnModified();
@@ -152,77 +150,6 @@ void CSequenceObject::Display(DisplayContext& dc)
     */
 
     DrawDefault(dc);
-}
-
-
-//////////////////////////////////////////////////////////////////////////
-void CSequenceObject::Serialize(CObjectArchive& ar)
-{
-    CBaseObject::Serialize(ar);
-
-    if (ar.bLoading)
-    {
-        XmlNodeRef settingsNode = ar.node->findChild("ZoomScrollSettings");
-        if (settingsNode)
-        {
-            if (m_zoomScrollSettings.Load(settingsNode))
-            {
-                m_bValidSettings = true;
-            }
-        }
-
-        XmlNodeRef idNode = ar.node->findChild("ID");
-        if (idNode)
-        {
-            idNode->getAttr("value", m_sequenceId);
-            if (GetIEditor()->GetMovieSystem()->FindSequenceById(m_sequenceId)
-                || ar.IsAmongPendingIds(m_sequenceId))  // A collision found!
-            {
-                uint32 newId = GetIEditor()->GetMovieSystem()->GrabNextSequenceId();
-                ar.AddSequenceIdMapping(m_sequenceId, newId);
-                m_sequenceId = newId;
-            }
-        }
-    }
-    else
-    {
-        assert(m_pSequence);
-        if (m_pSequence)
-        {
-            XmlNodeRef sequenceNode = ar.node->newChild("Sequence");
-            m_pSequence->Serialize(sequenceNode, false);
-
-            XmlNodeRef settingsNode = ar.node->newChild("ZoomScrollSettings");
-            m_zoomScrollSettings.Save(settingsNode);
-
-            // The id should be saved here again so that it can be restored
-            // early enough. This is required for a proper saving of FG nodes like
-            // the 'TrackEvent' node with the new id-based sequence identification.
-            XmlNodeRef idNode = ar.node->newChild("ID");
-            idNode->setAttr("value", m_pSequence->GetId());
-        }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CSequenceObject::PostLoad(CObjectArchive& ar)
-{
-    XmlNodeRef sequenceNode = ar.node->findChild("Sequence");
-    if (m_pSequence != NULL && sequenceNode != NULL)
-    {
-        m_pSequence->Serialize(sequenceNode, true, true, m_sequenceId, ar.bUndo);
-        CTrackViewSequence* pTrackViewSequence = GetIEditor()->GetSequenceManager()->GetLegacySequenceByName(m_pSequence->GetName());
-        if (pTrackViewSequence)
-        {
-            pTrackViewSequence->Load();
-        }
-
-        CTrackViewSequenceManager* pSequenceManager = GetIEditor()->GetSequenceManager();
-        if (pSequenceManager != nullptr)
-        {
-            pSequenceManager->OnLegacySequencePostLoad(pTrackViewSequence, ar.bUndo);
-        }
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////

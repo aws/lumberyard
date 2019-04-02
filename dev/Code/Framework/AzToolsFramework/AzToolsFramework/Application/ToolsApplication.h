@@ -40,7 +40,7 @@ namespace AzToolsFramework
 
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
 
-        AZ::Outcome<AZStd::string, AZStd::string> ResolveConfigToolsPath(const char* toolApplicationName) const override;
+        AzToolsFramework::ToolsApplicationRequests::ResolveToolPathOutcome ResolveConfigToolsPath(const char* toolApplicationName) const override;
 
         //////////////////////////////////////////////////////////////////////////
         // AzFramework::Application
@@ -64,7 +64,11 @@ namespace AzToolsFramework
         void PostExportEntity(AZ::Entity& source, AZ::Entity& target) override;
 
         void MarkEntitySelected(AZ::EntityId entityId) override;
+        void MarkEntitiesSelected(const EntityIdList& entitiesToSelect) override;
+
         void MarkEntityDeselected(AZ::EntityId entityId) override;
+        void MarkEntitiesDeselected(const EntityIdList& entitiesToDeselect) override;
+
         void SetEntityHighlighted(AZ::EntityId entityId, bool highlighted) override;
 
         void AddDirtyEntity(AZ::EntityId entityId) override;
@@ -99,6 +103,9 @@ namespace AzToolsFramework
         void DeleteSelected() override;
         void DeleteEntities(const EntityIdList& entities) override;
         void DeleteEntitiesAndAllDescendants(const EntityIdList& entities) override;
+
+        bool DetachEntities(const AZStd::vector<AZ::EntityId>& entitiesToDetach, AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityRestoreInfo>>& restoreInfos) override;
+
         bool FindCommonRoot(const EntityIdSet& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, EntityIdList* topLevelEntities = nullptr) override;
         bool FindCommonRootInactive(const EntityList& entitiesToBeChecked, AZ::EntityId& commonRootEntityId, EntityList* topLevelEntities = nullptr) override;
         void FindTopLevelEntityIdsInactive(const EntityIdList& entityIdsToCheck, EntityIdList& topLevelEntityIds) override;
@@ -106,7 +113,9 @@ namespace AzToolsFramework
         AZ::EntityId GetRootEntityIdOfSliceInstance(AZ::SliceComponent::SliceInstanceAddress sliceAddress) override;
 
         bool RequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const RequestEditProgressCallback& progressCallback) override;
+        bool CheckSourceControlConnectionAndRequestEditForFileBlocking(const char* assetPath, const char* progressMessage, const RequestEditProgressCallback& progressCallback) override;
         void RequestEditForFile(const char* assetPath, RequestEditResultCallback resultCallback) override;
+        void CheckSourceControlConnectionAndRequestEditForFile(const char* assetPath, RequestEditResultCallback resultCallback) override;
 
         void EnterEditorIsolationMode() override;
         void ExitEditorIsolationMode() override;

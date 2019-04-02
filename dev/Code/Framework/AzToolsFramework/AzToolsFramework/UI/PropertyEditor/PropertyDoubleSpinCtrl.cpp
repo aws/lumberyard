@@ -99,6 +99,12 @@ namespace AzToolsFramework
         ((QAbstractSpinBox*)m_pSpinBox)->selectAll();
     }
 
+    void PropertyDoubleSpinCtrl::focusOutEvent(QFocusEvent* e)
+    {
+        // needed to ensure that the correct selection of the spinbox text occurs
+        ((QAbstractSpinBox*)m_pSpinBox)->event(e);
+    }
+
     void PropertyDoubleSpinCtrl::setMinimum(double value)
     {
         m_pSpinBox->blockSignals(true);

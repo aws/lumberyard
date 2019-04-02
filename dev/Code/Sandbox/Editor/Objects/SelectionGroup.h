@@ -48,6 +48,9 @@ public:
     void RemoveObject(CBaseObject* obj);
     //! Remove all objects from selection.
     void RemoveAll();
+    //! Remove all objects from selection except for the LegacyObjects list
+    //! This is used in a performance improvement for deselecting legacy objects
+    void RemoveAllExceptLegacySet();
     //! Check if object contained in selection list.
     bool IsContainObject(CBaseObject* obj);
     //! Return true if selection doesnt contain any object.
@@ -64,6 +67,8 @@ public:
     CBaseObject* GetObjectByGuid(REFGUID guid) const;
     //! Get object from a GUID in a prefab
     CBaseObject* GetObjectByGuidInPrefab(REFGUID guid) const;
+    //! Get set of legacy objects
+    std::set<CBaseObjectPtr>& GetLegacyObjects();
 
     //! Get mass center of selected objects.
     Vec3    GetCenter() const;
@@ -141,6 +146,10 @@ private:
     Objects m_objects;
     // Objects set, for fast searches.
     std::set<CBaseObject*> m_objectsSet;
+
+    // Legacy objects aren't deselected through Ebuses, so keeping a 
+    // separate set for them helps improve performance of deselection
+    std::set<CBaseObjectPtr> m_legacyObjectsSet;
 
     //! Selection list with child objecs filtered out.
     std::vector<CBaseObject*> m_filtered;

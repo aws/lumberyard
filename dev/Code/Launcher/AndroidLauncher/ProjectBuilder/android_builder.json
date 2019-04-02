@@ -4,9 +4,12 @@
         "main" :
         {
             "java" :
-            [
-                "NO_OP"
-            ],
+            {
+                "${ANDROID_PACKAGE_PATH}" :
+                {
+                    "ProjectActivity.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
+                }
+            },
             "res" :
             {
                 "values" :
@@ -76,36 +79,6 @@
             [
                 "AndroidManifest.xml"
             ]
-        },
-        "android_armv7_gcc" :
-        {
-            "java" :
-            {
-                "${ANDROID_PACKAGE_PATH}" :
-                {
-                    "ProjectActivity_GCC.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
-                }
-            }
-        },
-        "android_armv7_clang" :
-        {
-            "java" :
-            {
-                "${ANDROID_PACKAGE_PATH}" :
-                {
-                    "ProjectActivity_Clang.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
-                }
-            }
-        },
-        "android_armv8_clang" :
-        {
-            "java" :
-            {
-                "${ANDROID_PACKAGE_PATH}" :
-                {
-                    "ProjectActivity_Clang.java" : "${ANDROID_PROJECT_ACTIVITY}.java"
-                }
-            }
         }
     },
     "" :

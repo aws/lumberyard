@@ -12,7 +12,7 @@
 
 #pragma once
 
-// include MCore related files
+#include <AzCore/Outcome/Outcome.h>
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include <MCore/Source/Array.h>

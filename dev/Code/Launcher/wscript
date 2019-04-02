@@ -24,6 +24,6 @@ def build(bld):
     # Recursive into all sub projects - its okay if no wscript exists for them at the moment.
     for subfolder in SUBFOLDERS:
         bld.recurse(subfolder, mandatory = False)
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        bld.recurse(p[0].upper() + p[1:] + 'Launcher', mandatory = False)
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        bld.recurse(p0 + 'Launcher', mandatory = False)
 

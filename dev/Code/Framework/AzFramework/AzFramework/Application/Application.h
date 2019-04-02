@@ -183,12 +183,7 @@ namespace AzFramework
 
         //////////////////////////////////////////////////////////////////////////
         //! UserSettingsFileLocatorBus
-        AZStd::string ResolveFilePath(AZ::u32 providerId) override
-        {
-            (void)providerId;
-
-            return AZStd::string(GetAppRoot()) + "/UserSettings.xml";
-        }
+        AZStd::string ResolveFilePath(AZ::u32 providerId) override;
         //////////////////////////////////////////////////////////////////////////
 
         AZ::Component* EnsureComponentAdded(AZ::Entity* systemEntity, const AZ::Uuid& typeId);

@@ -42,11 +42,11 @@ struct D3DBaseTexture;
 
 #if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_DEFINES
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/TextureSplitter_h_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_DEFINES
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PROVO)
+    #include "Provo/TextureSplitter_h_provo.inl"
 #endif
 #endif
 
@@ -158,11 +158,11 @@ protected:
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_CTEXTURE
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/TextureSplitter_h_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_CTEXTURE
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PROVO)
+    #include "Provo/TextureSplitter_h_provo.inl"
 #endif
 #endif
 
@@ -227,11 +227,11 @@ protected:
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_SMARTPOINTER
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/TextureSplitter_h_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION TEXTURESPLITTER_H_SECTION_SMARTPOINTER
-#include AZ_RESTRICTED_FILE(TextureSplitter_h, TOOLS_SUPPORT_PROVO)
+    #include "Provo/TextureSplitter_h_provo.inl"
 #endif
 #endif
 

@@ -16,8 +16,8 @@
 #include "TrackViewTrack.h"
 #include "TrackViewAnimNode.h"
 #include "TrackViewSequence.h"
-#include "TrackViewUndo.h"
 #include "TrackViewNodeFactories.h"
+#include "TrackViewUndo.h"
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/SequenceType.h>
 
@@ -308,15 +308,18 @@ void CTrackViewTrack::SlideKeys(const float time0, const float timeOffset)
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewTrack::OffsetKeyPosition(const Vec3& offset)
 {
-    CUndo::Record(new CUndoTrackObject(this, GetSequence()));
+    // Use the CUndoComponentEntityTrackObject here and not the AZ Undo system because
+    // the Editor movement system uses CUndo as part of its move function (canceling last frame of undo whilst dragging).
+    CUndo::Record(new CUndoComponentEntityTrackObject(this));
     m_pAnimTrack->OffsetKeyPosition(offset);
 }
 
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewTrack::UpdateKeyDataAfterParentChanged(const AZ::Transform& oldParentWorldTM, const AZ::Transform& newParentWorldTM)
 {
-    CUndo::Record(new CUndoTrackObject(this, GetSequence()));
+    AzToolsFramework::ScopedUndoBatch undoBatch("Update Key Data After Parent Changed");
     m_pAnimTrack->UpdateKeyDataAfterParentChanged(oldParentWorldTM, newParentWorldTM);
+    undoBatch.MarkEntityDirty(GetSequence()->GetSequenceComponentEntityId());
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -721,16 +724,7 @@ void CTrackViewTrack::OnStartPlayInEditor()
                 if (entityIdToRemap.IsValid())
                 {
                     AZ::EntityId remappedId;
-
-                    // for legacy sequences, sequenceEntityId will return true for IsLegacyEntityId() - don't remap these (i.e. leave them as is)
-                    if (IsLegacyEntityId(entityIdToRemap))
-                    {
-                        remappedId = entityIdToRemap;
-                    }
-                    else
-                    {
-                        AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::MapEditorIdToRuntimeId, entityIdToRemap, remappedId);
-                    }
+                    AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequestBus::Events::MapEditorIdToRuntimeId, entityIdToRemap, remappedId);
 
                     // remap
                     if (paramType == AnimParamType::Camera)
@@ -822,17 +816,7 @@ void CTrackViewTrack::PasteKeys(XmlNodeRef xmlNode, const float timeOffset)
     CTrackViewSequence* sequence = GetSequence();
     AZ_Assert(sequence, "Expected sequence not to be null.");
 
-    if (sequence->GetSequenceType() == SequenceType::Legacy)
-    {
-        AZ_Assert(CUndo::IsRecording(), "Expected Undo Recording");
-        CUndo::Record(new CUndoTrackObject(this, sequence));
-        m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
-        CUndo::Record(new CUndoAnimKeySelection(sequence));
-    }
-    else
-    {
-        AzToolsFramework::ScopedUndoBatch undoBatch("Paste Keys");
-        m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
-        undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
-    }
+    AzToolsFramework::ScopedUndoBatch undoBatch("Paste Keys");
+    m_pAnimTrack->SerializeSelection(xmlNode, true, true, timeOffset);
+    undoBatch.MarkEntityDirty(sequence->GetSequenceComponentEntityId());
 }

@@ -18,6 +18,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzFramework/Asset/AssetProcessorMessages.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
+#include <native/assetprocessor.h>
 #include <QByteArray>
 
 //This EBUS broadcasts the platform of the connection the AssetProcessor connected or disconnected with
@@ -131,7 +132,9 @@ namespace AssetProcessor
         virtual ~AssetBuilderInfoBusTraits() {}
 
         // For a given asset returns a list of all asset builder that are interested in it.
-        virtual void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList) {};
+
+        virtual void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& /*builderInfoList*/) = 0;
+        virtual void GetAllBuildersInfo(AssetProcessor::BuilderInfoList& /*builderInfoList*/) = 0;
     };
 
     using  AssetBuilderInfoBus = AZ::EBus<AssetBuilderInfoBusTraits>;
@@ -158,6 +161,7 @@ namespace AssetProcessor
         //! this path MUST be in normalized format - that is, forward slashes, correct case, absolute full path
         //! and on windows, drive letter capital.
         virtual void StopIgnoringCacheFileDelete(const char* /*productPath*/, bool /*queueAgainForProcessing*/) {};
+        virtual AZ::u32 GetJobFingerprint(const AssetProcessor::JobIndentifier& /*jobIndentifier*/) { return 0; };
     };
 
     using ProcessingJobInfoBus = AZ::EBus<ProcessingJobInfoBusTraits>;

@@ -105,6 +105,7 @@ protected:
     DXGI_RATIONAL m_refreshRate;
     DXGI_RATIONAL m_desktopRefreshRate;
 
+    DXGI_ADAPTER_FLAG m_adapterFlag;
     D3D_DRIVER_TYPE m_driverType;
     unsigned int m_creationFlags;
     D3D_FEATURE_LEVEL m_featureLevel;

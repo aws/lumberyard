@@ -60,6 +60,12 @@ AzAssetBrowserDialog::AzAssetBrowserDialog(AssetSelectionModel& selection, QWidg
     m_ui->m_buttonBox->buttons().constLast()->setProperty("class", "Secondary");
 
     connect(m_ui->m_searchWidget->GetFilter().data(), &AssetBrowserEntryFilter::updatedSignal, m_filterModel.data(), &AssetBrowserFilterModel::filterUpdatedSlot);
+    connect(m_filterModel.data(), &AssetBrowserFilterModel::filterChanged, this, [this]()
+    {
+        const bool hasFilter = !m_ui->m_searchWidget->GetFilterString().isEmpty();
+        const bool selectFirstFilteredIndex = true;
+        m_ui->m_assetBrowserTreeViewWidget->UpdateAfterFilter(hasFilter, selectFirstFilteredIndex);
+    });
     connect(m_ui->m_assetBrowserTreeViewWidget, &QAbstractItemView::doubleClicked, this, &AzAssetBrowserDialog::DoubleClickedSlot);
     connect(m_ui->m_assetBrowserTreeViewWidget, &AssetBrowserTreeView::selectionChangedSignal, this,
         [this](const QItemSelection&, const QItemSelection&){ AzAssetBrowserDialog::SelectionChangedSlot(); });

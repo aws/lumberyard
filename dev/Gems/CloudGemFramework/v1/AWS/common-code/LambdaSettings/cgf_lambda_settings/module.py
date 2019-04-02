@@ -27,7 +27,8 @@ class LambdaSettingsModule(object):
 
         settings_file_path = os.path.join(os.path.dirname(__file__), 'settings.json')
         if not os.path.isfile(settings_file_path):
-            raise RuntimeError('There is no settings file at {}.'.format(settings_file_path))
+            print 'There is no settings file at {}.'.format(settings_file_path)
+            return Data({}, read_only=True)
 
         with open(settings_file_path, 'r') as file:
             content = json.load(file)

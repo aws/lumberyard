@@ -12,9 +12,10 @@
 
 #pragma once
 
-#include "EMotionFXConfig.h"
 #include <AzCore/std/containers/vector.h>
-#include "AnimGraphNode.h"
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/EMotionFXConfig.h>
+#include <EMotionFX/Source/ObjectAffectedByParameterChanges.h>
 
 
 namespace EMotionFX
@@ -25,13 +26,14 @@ namespace EMotionFX
      */
     class EMFX_API BlendTreeParameterNode
         : public AnimGraphNode
+        , public ObjectAffectedByParameterChanges
     {
     public:
-        AZ_RTTI(BlendTreeParameterNode, "{4510529A-323F-40F6-B773-9FA8FC4DE53D}", AnimGraphNode)
+        AZ_RTTI(BlendTreeParameterNode, "{4510529A-323F-40F6-B773-9FA8FC4DE53D}", AnimGraphNode, ObjectAffectedByParameterChanges)
         AZ_CLASS_ALLOCATOR_DECL
 
         BlendTreeParameterNode();
-        ~BlendTreeParameterNode();
+        ~BlendTreeParameterNode() override;
 
         void Reinit() override;
         bool InitAfterLoading(AnimGraph* animGraph) override;
@@ -44,25 +46,12 @@ namespace EMotionFX
         const AZStd::vector<AZ::u32>& GetParameterIndices() const;
         uint32 GetParameterIndex(uint32 portNr) const;
 
-        /**
-         * Find the port index for the given value parameter index.
-         * @param[in] valueParameterIndex The index of the value parameter in the range [0, AnimGraph::GetNumValueParameters()].
-         * @result The port index for the given parameter. In case a parameter mask is specified, the port number equals the value parameter index.
-         *         In case a parameter mask is specified and the parameter is part of the mask, the parameter's local mask index equals the port and is returned.
-         *         In case a parameter mask is specified while the parameter is not in the mask, MCORE_INVALIDINDEX32 is returned.
-         */
-        size_t FindPortForParameterIndex(size_t valueParameterIndex) const;
-
-        size_t CalcNewPortIndexForParameter(const AZStd::string& parameterName, const AZStd::vector<AZStd::string>& parametersToBeRemoved) const;
-
         /// Add a parameter to the parameter mask and also add a port for it.
         void AddParameter(const AZStd::string& parameterName);
 
         /// Set the parameter mask and create ports for each of them. (An empty parameter list means that all parameters are shown).
         void SetParameters(const AZStd::string& parameterNamesWithSemicolons);
         void SetParameters(const AZStd::vector<AZStd::string>& parameterNames);
-
-        const AZStd::vector<AZStd::string>& GetParameters() const;
 
         /// Construct a string containing all parameter names separated by semicolons.
         AZStd::string ConstructParameterNamesString() const;
@@ -78,10 +67,17 @@ namespace EMotionFX
         /// Sort the parameter names based on the order of the parameters in the anim graph.
         static void SortParameterNames(AnimGraph* animGraph, AZStd::vector<AZStd::string>& outParameterNames);
 
-        /// Get the names of the parameters whose ports are connected.
-        void CalcConnectedParameterNames(AZStd::vector<AZStd::string>& outParameterNames);
-
         static void Reflect(AZ::ReflectContext* context);
+
+        // ParameterDrivenPorts
+        AZStd::vector<AZStd::string> GetParameters() const override;
+        AnimGraph* GetParameterAnimGraph() const override;
+        void ParameterMaskChanged(const AZStd::vector<AZStd::string>& newParameterMask) override;
+        void AddRequiredParameters(AZStd::vector<AZStd::string>& parameterNames) const override;
+        void ParameterAdded(size_t newParameterIndex) override;
+        void ParameterRenamed(const AZStd::string& oldParameterName, const AZStd::string& newParameterName) override;
+        void ParameterOrderChanged(const ValueParameterVector& beforeChange, const ValueParameterVector& afterChange) override;
+        void ParameterRemoved(const AZStd::string& oldParameterName) override;
 
     private:
         bool GetTypeSupportsFloat(uint32 parameterType);
@@ -89,7 +85,6 @@ namespace EMotionFX
         AZStd::vector<AZStd::string>    m_parameterNames;
         AZStd::vector<AZ::u32>          m_parameterIndices;              /**< The indices of the visible and available parameters. */
 
-        bool CheckIfParameterIndexUpdateNeeded() const;
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
     };
 } // namespace EMotionFX

@@ -62,7 +62,11 @@ using InjectEnvironmentFunction = void(*)(void*);
 using DetachEnvironmentFunction = void(*)();
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-    #include AZ_RESTRICTED_FILE(CryLibrary_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryLibrary_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryLibrary_h_provo.inl"
+    #endif
 #elif defined(WIN32)
     #if !defined(WIN32_LEAN_AND_MEAN)
         #define WIN32_LEAN_AND_MEAN

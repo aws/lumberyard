@@ -13,6 +13,7 @@
 #include <Editor/PropertyWidgets/AnimGraphParameterHandler.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/EventManager.h>
+#include <EMotionFX/Source/ObjectAffectedByParameterChanges.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterSelectionWindow.h>
 #include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.h>
@@ -28,13 +29,13 @@ namespace EMotionFX
 
     AnimGraphParameterPicker::AnimGraphParameterPicker(QWidget* parent, bool singleSelection, bool parameterMaskMode)
         : QWidget(parent)
-        , m_parameterMaskMode(parameterMaskMode)
         , m_animGraph(nullptr)
-        , m_parameterNode(nullptr)
+        , m_affectedByParameterChanges(nullptr)
         , m_pickButton(nullptr)
         , m_resetButton(nullptr)
         , m_shrinkButton(nullptr)
         , m_singleSelection(singleSelection)
+        , m_parameterMaskMode(parameterMaskMode)
     {
         QHBoxLayout* hLayout = new QHBoxLayout();
         hLayout->setMargin(0);
@@ -57,25 +58,8 @@ namespace EMotionFX
         }
 
         setLayout(hLayout);
+        UpdateInterface();
     }
-
-
-    void AnimGraphParameterPicker::SetAnimGraph(AnimGraph* animGraph)
-    {
-        m_animGraph = animGraph;
-    }
-
-
-    void AnimGraphParameterPicker::SetParameterNode(BlendTreeParameterNode* parameterNode)
-    {
-        m_parameterNode = parameterNode;
-
-        if (m_parameterNode)
-        {
-            m_animGraph = m_parameterNode->GetAnimGraph();
-        }
-    }
-
 
     void AnimGraphParameterPicker::OnResetClicked()
     {
@@ -83,25 +67,24 @@ namespace EMotionFX
         {
             return;
         }
-
-        SetParameterNames(AZStd::vector<AZStd::string>());
-        emit ParametersChanged();
+        UpdateParameterNames(AZStd::vector<AZStd::string>());
     }
 
 
     void AnimGraphParameterPicker::OnShrinkClicked()
     {
-        if (!m_parameterNode)
+        if (!m_affectedByParameterChanges)
         {
-            AZ_Error("EMotionFX", false, "Cannot shrink parameter mask. No valid parameter node.");
+            AZ_Error("EMotionFX", false, "Cannot shrink parameter mask. No valid parameter picker rule.");
             return;
         }
 
-        AZStd::vector<AZStd::string> connectedParameterNames;
-        m_parameterNode->CalcConnectedParameterNames(connectedParameterNames);
-
-        SetParameterNames(connectedParameterNames);
-        emit ParametersChanged();
+        AZStd::vector<AZStd::string> parameterNames;
+        if (m_affectedByParameterChanges)
+        {
+            m_affectedByParameterChanges->AddRequiredParameters(parameterNames);
+        }
+        UpdateParameterNames(parameterNames);
     }
 
 
@@ -146,13 +129,37 @@ namespace EMotionFX
         m_pickButton->setToolTip(tooltip);
     }
 
-
-    void AnimGraphParameterPicker::SetParameterNames(const AZStd::vector<AZStd::string>& parameterNames)
+    void AnimGraphParameterPicker::SetObjectAffectedByParameterChanges(ObjectAffectedByParameterChanges* affectedObject)
     {
-        m_parameterNames = parameterNames;
+        m_affectedByParameterChanges = affectedObject;
+        m_parameterNames = m_affectedByParameterChanges->GetParameters();
         UpdateInterface();
     }
 
+    void AnimGraphParameterPicker::InitializeParameterNames(const AZStd::vector<AZStd::string>& parameterNames)
+    {
+        if (m_parameterNames != parameterNames)
+        {
+            m_parameterNames = parameterNames;
+            UpdateInterface();
+        }
+    }
+
+    void AnimGraphParameterPicker::UpdateParameterNames(const AZStd::vector<AZStd::string>& parameterNames)
+    {
+        if (m_parameterNames != parameterNames)
+        {
+            m_parameterNames = parameterNames;
+            
+            if (m_affectedByParameterChanges)
+            {
+                m_affectedByParameterChanges->ParameterMaskChanged(m_parameterNames);
+            }
+            emit ParametersChanged(m_parameterNames);
+            
+            UpdateInterface();
+        }
+    }
 
     const AZStd::vector<AZStd::string>& AnimGraphParameterPicker::GetParameterNames() const
     {
@@ -169,7 +176,7 @@ namespace EMotionFX
             parameterNames.emplace_back(parameterName);   
         }
 
-        SetParameterNames(parameterNames);
+        InitializeParameterNames(parameterNames);
     }
 
 
@@ -199,28 +206,17 @@ namespace EMotionFX
 
         if (selectionWindow.exec() != QDialog::Rejected)
         {
+            AZStd::vector<AZStd::string> parameterNames = selectionWindow.GetParameterWidget()->GetSelectedParameters();
+
             if (m_parameterMaskMode)
             {
-                // Add all parameter names that are connected (essential parameters). If we don't do this, we are forced to remove connections automatically which might be overseen by the user.
-                m_parameterNode->CalcConnectedParameterNames(m_parameterNames);
-
-                // Add the selected parameters on top of it.
-                const AZStd::vector<AZStd::string>& selectedParameterNames = selectionWindow.GetParameterWidget()->GetSelectedParameters();
-                for (const AZStd::string& selectedParameterName : selectedParameterNames)
+                if (m_affectedByParameterChanges)
                 {
-                    if (AZStd::find(m_parameterNames.begin(), m_parameterNames.end(), selectedParameterName) == m_parameterNames.end())
-                    {
-                        m_parameterNames.emplace_back(selectedParameterName);
-                    }
+                    m_affectedByParameterChanges->AddRequiredParameters(parameterNames);
                 }
             }
-            else
-            {
-                m_parameterNames = selectionWindow.GetParameterWidget()->GetSelectedParameters();
-            }
 
-            UpdateInterface();
-            emit ParametersChanged();
+            UpdateParameterNames(parameterNames);
         }
     }
 
@@ -243,7 +239,7 @@ namespace EMotionFX
     {
         AnimGraphParameterPicker* picker = aznew AnimGraphParameterPicker(parent, true);
 
-        connect(picker, &AnimGraphParameterPicker::ParametersChanged, this, [picker]()
+        connect(picker, &AnimGraphParameterPicker::ParametersChanged, this, [picker](const AZStd::vector<AZStd::string>& newParameters)
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
         });
@@ -303,7 +299,7 @@ namespace EMotionFX
     {
         AnimGraphParameterPicker* picker = aznew AnimGraphParameterPicker(parent, false);
 
-        connect(picker, &AnimGraphParameterPicker::ParametersChanged, this, [picker]()
+        connect(picker, &AnimGraphParameterPicker::ParametersChanged, this, [picker](const AZStd::vector<AZStd::string>& newParameters)
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
         });
@@ -340,7 +336,7 @@ namespace EMotionFX
     bool AnimGraphMultipleParameterHandler::ReadValuesIntoGUI(size_t index, AnimGraphParameterPicker* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
         QSignalBlocker signalBlocker(GUI);
-        GUI->SetParameterNames(instance);
+        GUI->InitializeParameterNames(instance);
         return true;
     }
 

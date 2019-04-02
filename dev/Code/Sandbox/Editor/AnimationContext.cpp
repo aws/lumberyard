@@ -623,24 +623,12 @@ void CAnimationContext::SetAutoRecording(bool bEnable, float fTimeStep)
     {
         m_bAutoRecording = true;
         m_fRecordingTimeStep = fTimeStep;
-
-        // Enables physics/ai if legacy sequence. Don't enable for Component Entity Sequences because Editor position/rotation gizmos would disappear
-        if (m_pSequence && m_pSequence->GetSequenceType() == SequenceType::Legacy)
-        {
-            GetIEditor()->GetGameEngine()->SetSimulationMode(true);
-        }
         SetRecording(bEnable);
     }
     else
     {
         m_bAutoRecording = false;
         m_fRecordingTimeStep = 0;
-
-        // Disables physics/ai mode (enabled only for Legacy sequences)
-        if (m_pSequence && m_pSequence->GetSequenceType() == SequenceType::Legacy)
-        {
-            GetIEditor()->GetGameEngine()->SetSimulationMode(false);
-        }
     }
 }
 
@@ -682,8 +670,8 @@ void CAnimationContext::OnPostRender()
         ac.dt = 0;
         ac.fps = GetIEditor()->GetSystem()->GetITimer()->GetFrameRate();
         ac.time = m_currTime;
-        ac.bSingleFrame = true;
-        ac.bForcePlay = true;
+        ac.singleFrame = true;
+        ac.forcePlay = true;
         m_pSequence->Render(ac);
     }
 }
@@ -835,8 +823,8 @@ void CAnimationContext::AnimateActiveSequence()
     ac.dt = 0;
     ac.fps = GetIEditor()->GetSystem()->GetITimer()->GetFrameRate();
     ac.time = m_currTime;
-    ac.bSingleFrame = true;
-    ac.bForcePlay = true;
+    ac.singleFrame = true;
+    ac.forcePlay = true;
 
     CViewport* pViewport = GetIEditor()->GetActiveView();
     if (CRenderViewport* pRenderViewport = viewport_cast<CRenderViewport*>(pViewport))

@@ -14,6 +14,8 @@
 
 #include "ConfigFileContainer.h"
 
+enum class PlatformOptions : unsigned char; 
+
 // interface to read/modify bootstrap.cfg
 class BootstrapConfigContainer
     : public ConfigFileContainer
@@ -24,6 +26,8 @@ public:
 
     StringOutcome ApplyConfiguration(const DeploymentConfig& deploymentConfig) override;
 
+    AZStd::string GetHostAssetsType() const;
+    AZStd::string GetAssetsTypeForPlatform(PlatformOptions platform) const;
     AZStd::string GetGameFolder() const;
     AZStd::string GetRemoteIP() const;
 

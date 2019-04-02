@@ -256,8 +256,7 @@ namespace CommandSystem
             EMotionFX::Importer::SkeletalMotionSettings settings;
 
             // extract default values from the command syntax automatically, if they aren't specified explicitly
-            settings.mLoadMotionEvents          = parameters.GetValueAsBool("loadMotionEvents",     this);
-            settings.mAutoRegisterEvents        = parameters.GetValueAsBool("autoRegisterEvents",   this);
+            settings.mLoadMotionEvents = parameters.GetValueAsBool("loadMotionEvents",     this);
 
             // try to load the actor
             motion = EMotionFX::GetImporter().LoadSkeletalMotion(filename.c_str(), &settings);

@@ -21,6 +21,7 @@ namespace ViewportHelpers
     const AZ::Color unselectedColor(0.800f, 0.800f, 0.800f, 0.500f);        // #CCCCCC, RGBA: 204, 204, 204, 128
     const AZ::Color highlightColor(1.000f, 0.600f, 0.000f, 1.0f);           // #FF9900, RGBA: 255, 153, 0, 255
     const AZ::Color anchorColor(0.192f, 0.565f, 0.933f, 1.0f);              // #3190EE, RGBA: 49, 144, 238, 255
+    const AZ::Color anchorColorDisabled(0.85f, 0.85f, 0.85f, 0.5f);
     const AZ::Color pivotColor(anchorColor);
     const AZ::Color xColor(1.00f, 0.00f, 0.00f, 1.0f);
     const AZ::Color yColor(0.00f, 1.00f, 0.00f, 1.0f);
@@ -161,6 +162,10 @@ namespace ViewportHelpers
         ViewportInteraction* viewportInteraction,
         const ViewportPivot* viewportPivot,
         Draw2dHelper& draw2d);
+
+    void DrawCursorText(const AZStd::string& textLabel,
+        Draw2dHelper& draw2d,
+        const ViewportWidget* viewport);
 
     //-------------------------------------------------------------------------------
 }   // namespace ViewportHelpers

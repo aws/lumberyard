@@ -96,7 +96,7 @@ namespace AZ
 
             //! \deprecated This function is no longer available.
             //! \brief Get the game project name from the Java string resources.
-            AZ_INLINE const char* AZ_DEPRECATED(GetGameProjectName(), "This function is no longer available.")
+            AZ_DEPRECATED(AZ_INLINE const char* GetGameProjectName(), "This function is no longer available.")
             {
                 AZ_Assert(false, "Using unsupported function call to AZ::Android::Utils::GetGameProjectName.");
                 return nullptr;
@@ -105,7 +105,7 @@ namespace AZ
             //! \deprecated This function is no longer available.
             //! \brief Get the root directory for public storage.
             //!        e.g. /storage/sdcard0/, /storage/self/primary/, etc.
-            AZ_INLINE const char* AZ_DEPRECATED(GetExternalStorageRoot(), "This function is no longer available.")
+            AZ_DEPRECATED(AZ_INLINE const char* GetExternalStorageRoot(), "This function is no longer available.")
             {
                 AZ_Assert(false, "Using unsupported function call to AZ::Android::Utils::GetExternalStorageRoot.");
                 return nullptr;
@@ -113,7 +113,7 @@ namespace AZ
 
             //! \deprecated This function is no longer available.
             //! Get the value of a boolean Java resource.
-            AZ_INLINE bool AZ_DEPRECATED(GetBooleanResource(const char* resourceName), "This function is no longer available.")
+            AZ_DEPRECATED(AZ_INLINE bool GetBooleanResource(const char* resourceName), "This function is no longer available.")
             {
                 AZ_Assert(false, "Using unsupported function call to AZ::Android::Utils::GetBooleanResource.");
                 return false;
@@ -122,7 +122,7 @@ namespace AZ
             //! \deprecated Use AZ::Android::Utils::GetAppPrivateStoragePath instead
             //! \brief Get the hidden internal storage, typically this is where the application is installed on the device.
             //!        e.g. /data/data/<package_name>/files
-            AZ_INLINE const char* AZ_DEPRECATED(GetInternalStoragePath(), "Use AZ::Android::Utils::GetAppPrivateStoragePath instead")
+            AZ_DEPRECATED(AZ_INLINE const char* GetInternalStoragePath(), "Use AZ::Android::Utils::GetAppPrivateStoragePath instead")
             {
                 return GetAppPrivateStoragePath();
             }
@@ -130,7 +130,7 @@ namespace AZ
             //! \deprecated Use AZ::Android::Utils::GetAppPublicStoragePath instead
             //! \brief Get the application specific directory for public storage.
             //!        e.g. <public_storage>/Android/data/<package_name>/files
-            AZ_INLINE const char* AZ_DEPRECATED(GetExternalStoragePath(), "Use AZ::Android::Utils::GetAppPublicStoragePath instead")
+            AZ_DEPRECATED(AZ_INLINE const char* GetExternalStoragePath(), "Use AZ::Android::Utils::GetAppPublicStoragePath instead")
             {
                 return GetAppPublicStoragePath();
             }

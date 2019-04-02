@@ -10,7 +10,7 @@
 *
 */
 
-// include the required headers
+#include <AzCore/std/containers/unordered_set.h>
 #include "EMotionFXConfig.h"
 #include "EventManager.h"
 #include "MotionInstance.h"
@@ -19,32 +19,30 @@
 #include "AnimGraph.h"
 #include <EMotionFX/Source/Allocators.h>
 
+
 namespace EMotionFX
 {
     AZ_CLASS_ALLOCATOR_IMPL(EventManager, MotionEventManagerAllocator, 0)
-
 
     // the constructor
     EventManager::EventManager()
         : BaseObject()
     {
-        mRegisteredEventTypes.SetMemoryCategory(EMFX_MEMCATEGORY_EVENTS);
-        mEventHandlers.SetMemoryCategory(EMFX_MEMCATEGORY_EVENTHANDLERS);
+        m_eventHandlersByEventType.resize(EVENT_TYPE_COUNT);
     }
 
 
     // the destructor
     EventManager::~EventManager()
     {
-        // destroy all event handlers
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        // Collect all event handlers (avoiding duplicates)
+#ifdef DEBUG
+        for (const EventHandlerVector& eventHandlers : m_eventHandlersByEventType)
         {
-            mEventHandlers[i]->Destroy();
+            AZ_Assert(eventHandlers.empty(), "Expected all events to be removed");
         }
-        mEventHandlers.Clear();
-
-        mRegisteredEventTypes.Clear();
+#endif
+        m_eventHandlersByEventType.clear();
     }
 
 
@@ -72,351 +70,60 @@ namespace EMotionFX
     // register event handler to the manager
     void EventManager::AddEventHandler(EventHandler* eventHandler)
     {
-        mEventHandlers.Add(eventHandler);
-    }
+        MCore::LockGuardRecursive lock(mLock);
 
-
-    // find the index of the given event handler
-    uint32 EventManager::FindEventHandlerIndex(EventHandler* eventHandler) const
-    {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        AZ_Assert(eventHandler, "Expected non-null event handler");
+        for (const EventTypes eventType : eventHandler->GetHandledEventTypes())
         {
-            // compare the event handlers and return the index in case they are equal
-            if (eventHandler == mEventHandlers[i])
-            {
-                return i;
-            }
+            AZ_Assert(AZStd::find(m_eventHandlersByEventType[eventType].begin(), m_eventHandlersByEventType[eventType].end(), eventHandler) == m_eventHandlersByEventType[eventType].end(), 
+                "Event handler already added to manager");
+            m_eventHandlersByEventType[eventType].emplace_back(eventHandler);
         }
-
-        // failure, the event handler hasn't been found
-        return MCORE_INVALIDINDEX32;
     }
 
 
     // unregister event handler from the manager
-    bool EventManager::RemoveEventHandler(EventHandler* eventHandler, bool delFromMem)
-    {
-        // get the index of the event handler
-        const uint32 index = FindEventHandlerIndex(eventHandler);
-        if (index == MCORE_INVALIDINDEX32)
-        {
-            return false;
-        }
-
-        // remove the given event handler
-        RemoveEventHandler(index, delFromMem);
-        return true;
-    }
-
-
-    // unregister event handler from the manager
-    void EventManager::RemoveEventHandler(uint32 index, bool delFromMem)
-    {
-        if (delFromMem)
-        {
-            mEventHandlers[index]->Destroy();
-        }
-
-        mEventHandlers.Remove(index);
-    }
-
-
-    // register a given event
-    uint32 EventManager::RegisterEventType(const char* eventType, uint32 uniqueEventID)
+    void EventManager::RemoveEventHandler(EventHandler* eventHandler)
     {
         MCore::LockGuardRecursive lock(mLock);
 
-        // if we want to auto-assign a unique ID to the stuff
-        if (uniqueEventID == MCORE_INVALIDINDEX32)
+        for (const EventTypes eventType : eventHandler->GetHandledEventTypes())
         {
-            // check if there is already an event registered with the given type, if so, return the event ID for that
-            const uint32 index = FindEventTypeIndex(eventType);
-            if (index != MCORE_INVALIDINDEX32) // if there is one with the same name
-            {
-                return mRegisteredEventTypes[index].mEventID;
-            }
-
-            // the new ID we will assign
-            uint32 curID = MCORE_INVALIDINDEX32;
-
-            // if the event type hasn't been registered yet, we have to generate a new ID for this event type
-            // first try to get the last registered event ID, and add one to it, if that doesn't work, we will
-            // go into the slow way of finding a free event ID
-            if (mRegisteredEventTypes.GetLength() > 0)
-            {
-                uint32 newEventID = mRegisteredEventTypes.GetLast().mEventID + 1;
-                if (CheckIfHasEventType(newEventID) == false)
-                {
-                    curID = newEventID;
-                }
-            }
-
-            // find a free ID the slow way by trying out all numbers
-            // until a free one has been found
-            // but only do this when our previous quick test didn't result in a free ID
-            if (curID == MCORE_INVALIDINDEX32)
-            {
-                const uint32 maxInt = (uint32)(1 << 31);
-                curID = 0;
-                while (curID < maxInt)
-                {
-                    // check if the ID is already in use, if not break out of the loop
-                    if (CheckIfHasEventType(curID) == false)
-                    {
-                        break;
-                    }
-
-                    // increase the ID counter
-                    ++curID;
-                }
-            }
-
-            // register the event type
-            mRegisteredEventTypes.AddEmpty();
-            mRegisteredEventTypes.GetLast().mEventID            = curID;
-            mRegisteredEventTypes.GetLast().mEventType          = eventType;
-
-            // return the new ID that we generated
-            return curID;
+            EventHandlerVector& eventHandlers = m_eventHandlersByEventType[eventType];
+            eventHandlers.erase(AZStd::remove(eventHandlers.begin(), eventHandlers.end(), eventHandler), eventHandlers.end());
         }
-        else
-        {
-            // check if there is already an event with the same name
-            const uint32 index = FindEventTypeIndex(eventType);
-
-            // if there is one with the same name
-            if (index != MCORE_INVALIDINDEX32)
-            {
-                // if the event ID's are different, return an error
-                if (mRegisteredEventTypes[index].mEventID != uniqueEventID)
-                {
-                    MCORE_ASSERT(false); // you are trying to register an event type with the same name, but with another ID
-                    // so for example you first try to link "SOUND" with an ID of 10, and now you
-                    // try to register "SOUND" again, but another ID value
-
-                    return MCORE_INVALIDINDEX32;
-                }
-                else // you are registering the same event type again, so just skip the registration part and return the ID
-                {
-                    return uniqueEventID;
-                }
-            }
-
-            // if there isn't an event with the specified name yet, make sure there is no event
-            // that has the same ID yet
-            const bool hasEventTypeWithSameID = CheckIfHasEventType(uniqueEventID);
-
-            // assert in case there is an event with the same ID already, as that shouldn't happen
-            MCORE_ASSERT(hasEventTypeWithSameID == false);
-
-            // in release mode exit this function, debug mode will give an assert
-            if (hasEventTypeWithSameID)
-            {
-                return MCORE_INVALIDINDEX32;
-            }
-
-            // register the event type
-            mRegisteredEventTypes.AddEmpty();
-            mRegisteredEventTypes.GetLast().mEventID            = uniqueEventID;
-            mRegisteredEventTypes.GetLast().mEventType          = eventType;
-
-            return uniqueEventID;
-        }
-    }
-
-
-
-    // unregister a given event type with a given ID
-    void EventManager::UnregisterEventType(uint32 eventID)
-    {
-        // iterate through all registered event types
-        const uint32 numEvents = mRegisteredEventTypes.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            // check if this event ID matches with the one we are searching for
-            if (mRegisteredEventTypes[i].mEventID == eventID)
-            {
-                // remove it from the registered event collection and return
-                mRegisteredEventTypes.Remove(i);
-                return;
-            }
-        }
-    }
-
-
-    // unregister a given event type
-    void EventManager::UnregisterEventType(const char* eventType)
-    {
-        // iterate through all registered events
-        const uint32 numEvents = mRegisteredEventTypes.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            // check if this event type name matches with the one we are searching for
-            if (mRegisteredEventTypes[i].mEventType == eventType)
-            {
-                // remove it from the registered event collection and return
-                mRegisteredEventTypes.Remove(i);
-                return;
-            }
-        }
-    }
-
-
-    // try to locate the event ID of a given event
-    uint32 EventManager::FindEventID(const char* eventType) const
-    {
-        // iterate through all registered events
-        const uint32 numEvents = mRegisteredEventTypes.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            if (AzFramework::StringFunc::Equal(mRegisteredEventTypes[i].mEventType.c_str(), eventType, false /* no case */))
-            {
-                return mRegisteredEventTypes[i].mEventID;
-            }
-        }
-
-        // no event type with the given string found
-        return MCORE_INVALIDINDEX32;
-    }
-
-
-
-    // check if a given event type has been registered
-    bool EventManager::CheckIfHasEventType(uint32 eventID) const
-    {
-        // iterate through all registered events
-        const uint32 numEvents = mRegisteredEventTypes.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            if (mRegisteredEventTypes[i].mEventID == eventID)
-            {
-                return true;
-            }
-        }
-
-        // no such event type found
-        return false;
-    }
-
-
-    // check if a given event type has been registered
-    bool EventManager::CheckIfHasEventType(const char* eventType) const
-    {
-        return (FindEventID(eventType) != MCORE_INVALIDINDEX32);
-    }
-
-
-    // get the number of registered event types
-    uint32 EventManager::GetNumRegisteredEventTypes() const
-    {
-        return mRegisteredEventTypes.GetLength();
-    }
-
-
-    // get the event type ID for a given event number
-    uint32 EventManager::GetEventTypeID(uint32 eventIndex) const
-    {
-        return mRegisteredEventTypes[eventIndex].mEventID;
-    }
-
-
-    // get a event type string for a given event number
-    const char* EventManager::GetEventTypeString(uint32 eventIndex) const
-    {
-        return mRegisteredEventTypes[eventIndex].mEventType.c_str();
-    }
-
-
-    // get a event type string for a given event number
-    const AZStd::string& EventManager::GetEventTypeStringAsString(uint32 eventIndex) const
-    {
-        return mRegisteredEventTypes[eventIndex].mEventType;
-    }
-
-
-    // find the event
-    uint32 EventManager::FindEventTypeIndex(uint32 eventTypeID) const
-    {
-        // iterate through all registered events
-        const uint32 numEvents = mRegisteredEventTypes.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            if (mRegisteredEventTypes[i].mEventID == eventTypeID)
-            {
-                return i;
-            }
-        }
-
-        // no such event type found
-        return MCORE_INVALIDINDEX32;
-    }
-
-
-    // find the registered event type index for a given event type string
-    uint32 EventManager::FindEventTypeIndex(const char* eventType) const
-    {
-        // iterate through all registered events
-        const uint32 numEvents = mRegisteredEventTypes.GetLength();
-        for (uint32 i = 0; i < numEvents; ++i)
-        {
-            if (AzFramework::StringFunc::Equal(mRegisteredEventTypes[i].mEventType.c_str(), eventType, false /* no case */))
-            {
-                return i;
-            }
-        }
-
-        // no such event type found
-        return MCORE_INVALIDINDEX32;
-    }
-
-
-    // dump a list of registered events to the log system
-    void EventManager::LogRegisteredEventTypes()
-    {
-        // get the number of events
-        const uint32 numEventTypes = GetNumRegisteredEventTypes();
-
-        MCore::LogInfo("---------------------------------");
-        MCore::LogInfo("Total Registered Events = %d", GetNumRegisteredEventTypes());
-        MCore::LogInfo("---------------------------------");
-
-        // dump all events
-        for (uint32 i = 0; i < numEventTypes; ++i)
-        {
-            MCore::LogInfo("Event #%d: Name = '%s'   -    Unique ID = %d", i, GetEventTypeString(i), GetEventTypeID(i));
-        }
-
-        MCore::LogInfo("---------------------------------");
     }
 
 
     // trigger an event in all handlers
     void EventManager::OnEvent(const EventInfo& eventInfo)
     {
+        if (eventInfo.m_eventState == EventInfo::EventState::ACTIVE)
+        {
+            return;
+        }
+
         // trigger the event handlers inside the motion instance
         if (eventInfo.mMotionInstance)
         {
             eventInfo.mMotionInstance->OnEvent(eventInfo);
         }
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        // Call event handlers
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_EVENT];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnEvent(eventInfo);
+            eventHandler->OnEvent(eventInfo);
         }
     }
 
 
     void EventManager::OnPlayMotion(Motion* motion, PlayBackInfo* info)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_PLAY_MOTION];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnPlayMotion(motion, info);
+            eventHandler->OnPlayMotion(motion, info);
         }
     }
 
@@ -426,11 +133,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnStartMotionInstance(info);
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_MOTION_INSTANCE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStartMotionInstance(motionInstance, info);
+            eventHandler->OnStartMotionInstance(motionInstance, info);
         }
     }
 
@@ -440,22 +146,20 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnDeleteMotionInstance();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_MOTION_INSTANCE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteMotionInstance(motionInstance);
+            eventHandler->OnDeleteMotionInstance(motionInstance);
         }
     }
 
 
     void EventManager::OnDeleteMotion(Motion* motion)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_MOTION];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteMotion(motion);
+            eventHandler->OnDeleteMotion(motion);
         }
     }
 
@@ -465,11 +169,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnStop();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STOP];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStop(motionInstance);
+            eventHandler->OnStop(motionInstance);
         }
     }
 
@@ -479,11 +182,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnHasLooped();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_LOOPED];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnHasLooped(motionInstance);
+            eventHandler->OnHasLooped(motionInstance);
         }
     }
 
@@ -493,11 +195,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnHasReachedMaxNumLoops();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_REACHED_MAX_NUM_LOOPS];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnHasReachedMaxNumLoops(motionInstance);
+            eventHandler->OnHasReachedMaxNumLoops(motionInstance);
         }
     }
 
@@ -507,11 +208,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnHasReachedMaxPlayTime();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_HAS_REACHED_MAX_PLAY_TIME];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnHasReachedMaxPlayTime(motionInstance);
+            eventHandler->OnHasReachedMaxPlayTime(motionInstance);
         }
     }
 
@@ -521,11 +221,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnIsFrozenAtLastFrame();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_IS_FROZEN_AT_LAST_FRAME];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnIsFrozenAtLastFrame(motionInstance);
+            eventHandler->OnIsFrozenAtLastFrame(motionInstance);
         }
     }
 
@@ -535,11 +234,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnChangedPauseState();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CHANGED_PAUSE_STATE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnChangedPauseState(motionInstance);
+            eventHandler->OnChangedPauseState(motionInstance);
         }
     }
 
@@ -549,11 +247,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnChangedActiveState();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CHANGED_ACTIVE_STATE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnChangedActiveState(motionInstance);
+            eventHandler->OnChangedActiveState(motionInstance);
         }
     }
 
@@ -563,11 +260,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnStartBlending();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_BLENDING];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStartBlending(motionInstance);
+            eventHandler->OnStartBlending(motionInstance);
         }
     }
 
@@ -577,11 +273,10 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnStopBlending();
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STOP_BLENDING];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStopBlending(motionInstance);
+            eventHandler->OnStopBlending(motionInstance);
         }
     }
 
@@ -591,33 +286,30 @@ namespace EMotionFX
         // trigger the event handlers inside the motion instance
         motionInstance->OnQueueMotionInstance(info);
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_QUEUE_MOTION_INSTANCE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnQueueMotionInstance(motionInstance, info);
+            eventHandler->OnQueueMotionInstance(motionInstance, info);
         }
     }
 
 
     void EventManager::OnDeleteActor(Actor* actor)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_ACTOR];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteActor(actor);
+            eventHandler->OnDeleteActor(actor);
         }
     }
 
 
     void EventManager::OnDeleteActorInstance(ActorInstance* actorInstance)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_ACTOR_INSTANCE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteActorInstance(actorInstance);
+            eventHandler->OnDeleteActorInstance(actorInstance);
         }
     }
 
@@ -625,11 +317,10 @@ namespace EMotionFX
     // draw a debug line
     void EventManager::OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DRAW_LINE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDrawLine(posA, posB, color);
+            eventHandler->OnDrawLine(posA, posB, color);
         }
     }
 
@@ -637,11 +328,10 @@ namespace EMotionFX
     // draw a debug triangle
     void EventManager::OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DRAW_TRIANGLE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDrawTriangle(posA, posB, posC, normalA, normalB, normalC, color);
+            eventHandler->OnDrawTriangle(posA, posB, posC, normalA, normalB, normalC, color);
         }
     }
 
@@ -649,11 +339,10 @@ namespace EMotionFX
     // draw the triangles that got added using OnDrawTriangles()
     void EventManager::OnDrawTriangles()
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DRAW_TRIANGLES];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDrawTriangles();
+            eventHandler->OnDrawTriangles();
         }
     }
 
@@ -661,33 +350,30 @@ namespace EMotionFX
     // simulate physics
     void EventManager::OnSimulatePhysics(float timeDelta)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_SIMULATE_PHYSICS];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnSimulatePhysics(timeDelta);
+            eventHandler->OnSimulatePhysics(timeDelta);
         }
     }
 
 
     void EventManager::OnCustomEvent(uint32 eventType, void* data)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CUSTOM_EVENT];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCustomEvent(eventType, data);
+            eventHandler->OnCustomEvent(eventType, data);
         }
     }
 
 
     void EventManager::OnStateEnter(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STATE_ENTER];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStateEnter(animGraphInstance, state);
+            eventHandler->OnStateEnter(animGraphInstance, state);
         }
 
         // pass the callback call to the anim graph instance
@@ -697,11 +383,10 @@ namespace EMotionFX
 
     void EventManager::OnStateEntering(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STATE_ENTERING];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStateEntering(animGraphInstance, state);
+            eventHandler->OnStateEntering(animGraphInstance, state);
         }
 
         // pass the callback call to the anim graph instance
@@ -711,11 +396,10 @@ namespace EMotionFX
 
     void EventManager::OnStateExit(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STATE_EXIT];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStateExit(animGraphInstance, state);
+            eventHandler->OnStateExit(animGraphInstance, state);
         }
 
         // pass the callback call to the anim graph instance
@@ -725,11 +409,10 @@ namespace EMotionFX
 
     void EventManager::OnStateEnd(AnimGraphInstance* animGraphInstance, AnimGraphNode* state)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_STATE_END];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStateEnd(animGraphInstance, state);
+            eventHandler->OnStateEnd(animGraphInstance, state);
         }
 
         // pass the callback call to the anim graph instance
@@ -739,11 +422,10 @@ namespace EMotionFX
 
     void EventManager::OnStartTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_START_TRANSITION];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnStartTransition(animGraphInstance, transition);
+            eventHandler->OnStartTransition(animGraphInstance, transition);
         }
 
         // pass the callback call to the anim graph instance
@@ -753,11 +435,10 @@ namespace EMotionFX
 
     void EventManager::OnEndTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_END_TRANSITION];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnEndTransition(animGraphInstance, transition);
+            eventHandler->OnEndTransition(animGraphInstance, transition);
         }
 
         // pass the callback call to the anim graph instance
@@ -768,11 +449,10 @@ namespace EMotionFX
     // call the callbacks for when we renamed a node
     void EventManager::OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_RENAMED_NODE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnRenamedNode(animGraph, node, oldName);
+            eventHandler->OnRenamedNode(animGraph, node, oldName);
         }
     }
 
@@ -780,11 +460,10 @@ namespace EMotionFX
     // call the callbacks for a node creation
     void EventManager::OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATED_NODE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreatedNode(animGraph, node);
+            eventHandler->OnCreatedNode(animGraph, node);
         }
     }
 
@@ -796,11 +475,10 @@ namespace EMotionFX
         AnimGraphStateMachine* rootSM = animGraph->GetRootStateMachine();
         rootSM->OnRemoveNode(animGraph, nodeToRemove);
 
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_REMOVE_NODE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnRemoveNode(animGraph, nodeToRemove);
+            eventHandler->OnRemoveNode(animGraph, nodeToRemove);
         }
     }
 
@@ -808,111 +486,103 @@ namespace EMotionFX
     // call the callbacks
     void EventManager::OnRemovedChildNode(AnimGraph* animGraph, AnimGraphNode* parentNode)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_REMOVED_CHILD_NODE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnRemovedChildNode(animGraph, parentNode);
-        }
-    }
-
-
-    void EventManager::Sync(AnimGraphInstance* animGraphInstance, AnimGraphNode* animGraphNode)
-    {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
-        {
-            mEventHandlers[i]->Sync(animGraphInstance, animGraphNode);
+            eventHandler->OnRemovedChildNode(animGraph, parentNode);
         }
     }
 
 
     void EventManager::OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_SET_VISUAL_MANIPULATOR_OFFSET];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnSetVisualManipulatorOffset(animGraphInstance, paramIndex, offset);
+            eventHandler->OnSetVisualManipulatorOffset(animGraphInstance, paramIndex, offset);
         }
     }
 
 
-    void EventManager::OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode, const AZStd::vector<AZStd::string>& newParameterMask)
+    void EventManager::OnInputPortsChanged(AnimGraphNode* node, const AZStd::vector<AZStd::string>& newInputPorts, const AZStd::string& memberName, const AZStd::vector<AZStd::string>& memberValue)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_INPUT_PORTS_CHANGED];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnParameterNodeMaskChanged(parameterNode, newParameterMask);
+            eventHandler->OnInputPortsChanged(node, newInputPorts, memberName, memberValue);
+        }
+    }
+
+
+    void EventManager::OnOutputPortsChanged(AnimGraphNode* node, const AZStd::vector<AZStd::string>& newOutputPorts, const AZStd::string& memberName, const AZStd::vector<AZStd::string>& memberValue)
+    {
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_OUTPUT_PORTS_CHANGED];
+        for (EventHandler* eventHandler : eventHandlers)
+        {
+            eventHandler->OnOutputPortsChanged(node, newOutputPorts, memberName, memberValue);
         }
     }
 
 
     void EventManager::OnProgressStart()
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_PROGRESS_START];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnProgressStart();
-            mEventHandlers[i]->OnProgressValue(0.0f);
+            eventHandler->OnProgressStart();
+            eventHandler->OnProgressValue(0.0f);
         }
     }
 
 
     void EventManager::OnProgressEnd()
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_PROGRESS_END];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnProgressValue(100.0f);
-            mEventHandlers[i]->OnProgressEnd();
+            eventHandler->OnProgressValue(100.0f);
+            eventHandler->OnProgressEnd();
+
         }
     }
 
 
     void EventManager::OnProgressText(const char* text)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_PROGRESS_TEXT];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnProgressText(text);
+            eventHandler->OnProgressText(text);
         }
     }
 
 
     void EventManager::OnProgressValue(float percentage)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_PROGRESS_VALUE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnProgressValue(percentage);
+            eventHandler->OnProgressValue(percentage);
         }
     }
 
 
     void EventManager::OnSubProgressText(const char* text)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_SUB_PROGRESS_TEXT];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnSubProgressText(text);
+            eventHandler->OnSubProgressText(text);
         }
     }
 
 
     void EventManager::OnSubProgressValue(float percentage)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_SUB_PROGRESS_VALUE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnSubProgressValue(percentage);
+            eventHandler->OnSubProgressValue(percentage);
         }
     }
 
@@ -920,17 +590,15 @@ namespace EMotionFX
     // perform a ray intersection test
     bool EventManager::OnRayIntersectionTest(const AZ::Vector3& start, const AZ::Vector3& end, IntersectionInfo* outIntersectInfo)
     {
-        // get the number of event handlers and iterate through them
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_RAY_INTERSECTION_TEST];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            bool result = mEventHandlers[i]->OnRayIntersectionTest(start, end, outIntersectInfo);
+            const bool result = eventHandler->OnRayIntersectionTest(start, end, outIntersectInfo);
             if (outIntersectInfo->mIsValid)
             {
                 return result;
             }
         }
-
         return false;
     }
 
@@ -938,10 +606,10 @@ namespace EMotionFX
     // create an animgraph
     void EventManager::OnCreateAnimGraph(AnimGraph* animGraph)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATE_ANIM_GRAPH];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreateAnimGraph(animGraph);
+            eventHandler->OnCreateAnimGraph(animGraph);
         }
     }
 
@@ -949,10 +617,10 @@ namespace EMotionFX
     // create an animgraph instance
     void EventManager::OnCreateAnimGraphInstance(AnimGraphInstance* animGraphInstance)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATE_ANIM_GRAPH_INSTANCE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreateAnimGraphInstance(animGraphInstance);
+            eventHandler->OnCreateAnimGraphInstance(animGraphInstance);
         }
     }
 
@@ -960,10 +628,10 @@ namespace EMotionFX
     // create a motion
     void EventManager::OnCreateMotion(Motion* motion)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATE_MOTION];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreateMotion(motion);
+            eventHandler->OnCreateMotion(motion);
         }
     }
 
@@ -971,10 +639,10 @@ namespace EMotionFX
     // create a motion set
     void EventManager::OnCreateMotionSet(MotionSet* motionSet)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATE_MOTION_SET];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreateMotionSet(motionSet);
+            eventHandler->OnCreateMotionSet(motionSet);
         }
     }
 
@@ -982,10 +650,10 @@ namespace EMotionFX
     // create a motion instance
     void EventManager::OnCreateMotionInstance(MotionInstance* motionInstance)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATE_MOTION_INSTANCE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreateMotionInstance(motionInstance);
+            eventHandler->OnCreateMotionInstance(motionInstance);
         }
     }
 
@@ -993,10 +661,10 @@ namespace EMotionFX
     // create a motion system
     void EventManager::OnCreateMotionSystem(MotionSystem* motionSystem)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATE_MOTION_SYSTEM];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreateMotionSystem(motionSystem);
+            eventHandler->OnCreateMotionSystem(motionSystem);
         }
     }
 
@@ -1004,10 +672,10 @@ namespace EMotionFX
     // create an actor
     void EventManager::OnCreateActor(Actor* actor)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATE_ACTOR];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreateActor(actor);
+            eventHandler->OnCreateActor(actor);
         }
     }
 
@@ -1015,10 +683,10 @@ namespace EMotionFX
     // create an actor instance
     void EventManager::OnCreateActorInstance(ActorInstance* actorInstance)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_CREATE_ACTOR_INSTANCE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnCreateActorInstance(actorInstance);
+            eventHandler->OnCreateActorInstance(actorInstance);
         }
     }
 
@@ -1026,10 +694,10 @@ namespace EMotionFX
     // on post create actor
     void EventManager::OnPostCreateActor(Actor* actor)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_POST_CREATE_ACTOR];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnPostCreateActor(actor);
+            eventHandler->OnPostCreateActor(actor);
         }
     }
 
@@ -1037,10 +705,10 @@ namespace EMotionFX
     // delete an animgraph
     void EventManager::OnDeleteAnimGraph(AnimGraph* animGraph)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_ANIM_GRAPH];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteAnimGraph(animGraph);
+            eventHandler->OnDeleteAnimGraph(animGraph);
         }
     }
 
@@ -1048,10 +716,10 @@ namespace EMotionFX
     // delete an animgraph instance
     void EventManager::OnDeleteAnimGraphInstance(AnimGraphInstance* animGraphInstance)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_ANIM_GRAPH_INSTANCE];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteAnimGraphInstance(animGraphInstance);
+            eventHandler->OnDeleteAnimGraphInstance(animGraphInstance);
         }
     }
 
@@ -1059,10 +727,10 @@ namespace EMotionFX
     // delete motion set
     void EventManager::OnDeleteMotionSet(MotionSet* motionSet)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_MOTION_SET];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteMotionSet(motionSet);
+            eventHandler->OnDeleteMotionSet(motionSet);
         }
     }
 
@@ -1070,10 +738,10 @@ namespace EMotionFX
     // delete a motion system
     void EventManager::OnDeleteMotionSystem(MotionSystem* motionSystem)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DELETE_MOTION_SYSTEM];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnDeleteMotionSystem(motionSystem);
+            eventHandler->OnDeleteMotionSystem(motionSystem);
         }
     }
 
@@ -1081,10 +749,10 @@ namespace EMotionFX
     // scale actor data
     void EventManager::OnScaleActorData(Actor* actor, float scaleFactor)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_SCALE_ACTOR_DATA];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnScaleActorData(actor, scaleFactor);
+            eventHandler->OnScaleActorData(actor, scaleFactor);
         }
     }
 
@@ -1092,10 +760,10 @@ namespace EMotionFX
     // scale motion data
     void EventManager::OnScaleMotionData(Motion* motion, float scaleFactor)
     {
-        const uint32 numEventHandlers = mEventHandlers.GetLength();
-        for (uint32 i = 0; i < numEventHandlers; ++i)
+        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_SCALE_MOTION_DATA];
+        for (EventHandler* eventHandler : eventHandlers)
         {
-            mEventHandlers[i]->OnScaleMotionData(motion, scaleFactor);
+            eventHandler->OnScaleMotionData(motion, scaleFactor);
         }
     }
 

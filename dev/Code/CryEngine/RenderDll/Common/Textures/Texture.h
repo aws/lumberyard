@@ -32,6 +32,9 @@
 #include <AzCore/std/containers/map.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+#include <RenderContextConfig.h>
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #undef AZ_RESTRICTED_SECTION
@@ -892,7 +895,11 @@ public:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_1
-#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_h_provo.inl"
+    #endif
 #endif
 
     IReadStreamPtr                  m_pStreams[MaxStreams];
@@ -947,7 +954,11 @@ public:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_2
-#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_h_provo.inl"
+    #endif
 #endif
 };
 #endif
@@ -1340,7 +1351,11 @@ struct RenderTargetData
     };
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_3
-#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_h_provo.inl"
+    #endif
 #endif
     TArray<SResourceView> m_ResourceViews;
     CDeviceTexture* m_pDeviceTextureMSAA;
@@ -1351,7 +1366,11 @@ struct RenderTargetData
         m_nRTSetFrameID = -1;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_4
-#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_h_provo.inl"
+    #endif
 #endif
     }
     ~RenderTargetData();
@@ -1521,7 +1540,7 @@ private:
     D3DShaderResourceView* m_pDeviceShaderResourceSRGB;
 
     typedef AZStd::function<void(uint32)> InvalidateCallbackType;
-    AZStd::vector<AZStd::pair<void*, InvalidateCallbackType> > m_invalidateCallbacks;
+    AZStd::unordered_multimap<void*, InvalidateCallbackType> m_invalidateCallbacks;
     AZStd::mutex m_invalidateCallbacksMutex;
 
     bool m_bisTextureMissing = false;
@@ -1880,7 +1899,11 @@ public:
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_5
-#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_h_provo.inl"
+    #endif
 #endif
 
     bool IsFPFormat() const { return CImageExtensionHelper::IsRangeless(m_eTFDst); };
@@ -2070,7 +2093,11 @@ public:
     static void CopySliceChain(CDeviceTexture* const pDevTexture, int ownerMips, int nDstSlice, int nDstMip, CDeviceTexture* pSrcDevTex, int nSrcSlice, int nSrcMip, int nSrcMips, int nNumMips);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_6
-#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_h_provo.inl"
+    #endif
 #endif
 #if defined(TEXSTRM_DEFERRED_UPLOAD)
     ID3D11CommandList* StreamCreateDeferred(int nStartMip, int nEndMip, STexPoolItem* pNewPoolItem, STexPoolItem* pSrcPoolItem);
@@ -2178,16 +2205,6 @@ public:
     static void ReleaseMiscTargets();
     static void ReleaseSystemTextures();
     static void LoadDefaultSystemTextures();
-    static inline void ResetTMUs()
-    {
-        for (int j = 0; j < eHWSC_Num; j++)
-        {
-            for (int i = 0; i < MAX_TMU; i++)
-            {
-                s_TexStateIDs[j][i] = -1;
-            }
-        }
-    }
 
     static bool ReloadFile(const char* szFileName);
     static bool ReloadFile_Request(const char* szFileName);
@@ -2285,6 +2302,11 @@ public:
 
     static SEnvTexture* FindSuitableEnvTex(Vec3& Pos, Ang3& Angs, bool bMustExist, int RendFlags, bool bUseExistingREs, CShader* pSH, CShaderResources* pRes, CRenderObject* pObj, bool bReflect, IRenderElement* pRE, bool* bMustUpdate);
     static bool RenderEnvironmentCMHDR(int size, Vec3& Pos, TArray<unsigned short>& vecData);
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    static bool RenderToTexture(int handle, const CCamera& camera, AzRTT::RenderContextId contextId);
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     static void DrawCubeSide(Vec3& Pos, int tex_size, int side, float fMaxDist);
     static void DrawSceneToCubeSide(Vec3& Pos, int tex_size, int side);
     static void GetAverageColor(SEnvTexture* cm, int nSide);
@@ -2322,7 +2344,6 @@ public:
 
     static STexState s_sDefState;
     static STexStageInfo s_TexStages[MAX_TMU];
-    static int s_TexStateIDs[eHWSC_Num][MAX_TMU];
     static uint32 s_TexState_MipSRGBMask[MAX_TMU];
 
     static ETEX_Format s_eTFZ;
@@ -2356,7 +2377,11 @@ public:
     static CTexture* s_ptexSceneSpecular;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION TEXTURE_H_SECTION_7
-#include AZ_RESTRICTED_FILE(Texture_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Texture_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Texture_h_provo.inl"
+    #endif
 #endif
     static CTexture* s_ptexAmbientLookup;
 

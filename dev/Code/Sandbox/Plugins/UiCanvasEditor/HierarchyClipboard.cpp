@@ -225,3 +225,39 @@ AZStd::string HierarchyClipboard::GetXmlForDiff(AZ::EntityId canvasEntityId)
     EBUS_EVENT_ID_RESULT(xmlString, canvasEntityId, UiCanvasBus, SaveToXmlString);
     return xmlString;
 }
+
+void HierarchyClipboard::BeginUndoableEntitiesChange(EditorWindow* editorWindow, SerializeHelpers::SerializedEntryList& preChangeState)
+{
+    preChangeState.clear(); // Serialize just adds to the list, so we want to clear it first
+
+    // This is used to save the "before" undo data.
+    HierarchyClipboard::Serialize(editorWindow->GetHierarchy(),
+        editorWindow->GetHierarchy()->selectedItems(),
+        nullptr,
+        preChangeState,
+        true);
+}
+
+void HierarchyClipboard::EndUndoableEntitiesChange(EditorWindow* editorWindow, const char* commandName, SerializeHelpers::SerializedEntryList& preChangeState)
+{
+    // Before saving the current entity state, make sure that all marked layouts are recomputed.
+    // Otherwise they will be recomputed on the next update which will be after the entity state is saved.
+    // An example where this is needed is when changing the properties of a layout fitter component
+    EBUS_EVENT_ID(editorWindow->GetActiveCanvasEntityId(), UiCanvasBus, RecomputeChangedLayouts);
+
+    // This is used to save the "after" undo data. It puts a command on the undo stack with the given name.
+    CommandPropertiesChange::Push(editorWindow->GetActiveStack(),
+        editorWindow->GetHierarchy(),
+        preChangeState,
+        commandName);
+
+    // Notify other systems (e.g. Animation) for each UI entity that changed
+    LyShine::EntityArray selectedElements = SelectionHelpers::GetTopLevelSelectedElements(
+            editorWindow->GetHierarchy(), editorWindow->GetHierarchy()->selectedItems());
+    for (auto element : selectedElements)
+    {
+        EBUS_EVENT_ID(element->GetId(), UiElementChangeNotificationBus, UiElementPropertyChanged);
+    }
+}
+
+

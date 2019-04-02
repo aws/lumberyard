@@ -150,6 +150,8 @@ namespace AZ
 
         void RemoveClassData(SerializeContext::ClassData* classData);
 
+        const Edit::ElementData* GetEnumElementData(const AZ::Uuid& enumId) const;
+
     private:
         EditContext(const EditContext&);
         EditContext& operator=(const EditContext&);
@@ -234,6 +236,28 @@ namespace AZ
              * then in each DataElement you can attach the appropriate group attribute.
              */
             ClassBuilder*  ClassElement(Crc32 elementIdCrc, const char* description);
+
+            /**
+             * Declare element with an associated UI handler that does not represent a specific class member variable.
+             * \param uiId - name of a UI handler used to display the element
+             * \param description - description that will appear as the ID's label by default
+             */
+            ClassBuilder* UIElement(const char* uiId, const char* description);
+
+            /**
+            * Declare element with an associated UI handler that does not represent a specific class member variable.
+            * \param uiId - crc32 of a UI handler used to display the element
+            * \param description - description that will appear as the ID's label by default
+            */
+            ClassBuilder* UIElement(Crc32 uiIdCrc, const char* description);
+
+            /**
+            * Declare element with an associated UI handler that does not represent a specific class member variable.
+            * \param uiId - crc32 of a UI handler used to display the element
+            * \param name - descriptive name of the field.
+            * \param description - description that will appear as the ID's label by default
+            */
+            ClassBuilder* UIElement(Crc32 uiIdCrc, const char* name, const char* description);
 
             /** Declare element that will handle a specific class member variable (SerializeContext::ClassBuilder::Field).
              * \param uiId - us element ID ("Int" or "Real", etc. how to edit the memberVariable)
@@ -481,6 +505,39 @@ namespace AZ
     }
 
     //=========================================================================
+    // UIElement
+    //=========================================================================
+    inline EditContext::ClassBuilder*
+    EditContext::ClassBuilder::UIElement(const char* uiId, const char* description)
+    {
+        return UIElement(Crc32(uiId), description);
+    }
+
+    //=========================================================================
+    // UIElement
+    //=========================================================================
+    inline EditContext::ClassBuilder*
+    EditContext::ClassBuilder::UIElement(Crc32 uiIdCrc, const char* description)
+    {
+        auto* classBuilder = ClassElement(AZ::Edit::ClassElements::UIElement, description)->Attribute(AZ::Edit::UIHandlers::Handler, uiIdCrc);
+        classBuilder->m_editElement->m_name = classBuilder->m_editElement->m_description;
+
+        return classBuilder;
+    }
+
+    //=========================================================================
+    // UIElement
+    //=========================================================================
+    inline EditContext::ClassBuilder*
+        EditContext::ClassBuilder::UIElement(Crc32 uiIdCrc, const char* name, const char* description)
+    {
+        auto* classBuilder = ClassElement(AZ::Edit::ClassElements::UIElement, description)->Attribute(AZ::Edit::UIHandlers::Handler, uiIdCrc);
+        classBuilder->m_editElement->m_name = name;
+
+        return classBuilder;
+    }
+
+    //=========================================================================
     // DataElement
     //=========================================================================
     template<class T>
@@ -503,7 +560,6 @@ namespace AZ
         }
 
         using ElementTypeInfo = typename SerializeInternal::ElementInfo<T>;
-        using EnumElementType = typename AZStd::Utils::if_c<AZStd::is_enum<typename ElementTypeInfo::Type>::value, typename ElementTypeInfo::Type, void>::type;
         AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", name);
 
         // Not really portable but works for the supported compilers
@@ -525,13 +581,6 @@ namespace AZ
 
         m_classElement->m_elements.push_back();
         Edit::ElementData* ed = &m_classElement->m_elements.back();
-        
-        // If this is an enum that is globally reflected, copy value attributes
-        const bool isSpecializedEnum = AZStd::is_enum<EnumElementType>::value && !AzTypeInfo<EnumElementType>::Uuid().IsNull();
-        if (isSpecializedEnum)
-        {
-            CopyEnumValues<EnumElementType>(ed);
-        }
         
         classElement->m_editData = ed;
         m_editElement = ed;
@@ -557,6 +606,10 @@ namespace AZ
         using ElementType = typename AZStd::Utils::if_c<AZStd::is_enum<typename ElementTypeInfo::Type>::value, typename ElementTypeInfo::Type, typename ElementTypeInfo::ElementType>::type;
         AZ_Assert(m_classData->m_typeId == AzTypeInfo<typename ElementTypeInfo::ClassType>::Uuid(), "Data element (%s) belongs to a different class!", AzTypeInfo<typename ElementTypeInfo::ValueType>::Name());
 
+#if defined(AZ_COMPILER_MSVC)
+#   pragma warning(push)
+#   pragma warning(disable: 4127) // conditional expression is constant
+#endif
         const SerializeContext::ClassData* classData = m_context->m_serializeContext.FindClassData(AzTypeInfo<typename ElementTypeInfo::ValueType>::Uuid());
         if (classData && classData->m_editData)
         {
@@ -570,6 +623,9 @@ namespace AZ
                 return DataElement<T>(uiId, memberVariable, enumIter->second.m_name, enumIter->second.m_description);
             }
         }
+#if defined(AZ_COMPILER_MSVC)
+#   pragma warning(pop)
+#endif
         
         const char* typeName = AzTypeInfo<typename ElementTypeInfo::ValueType>::Name();
         return DataElement<T>(uiId, memberVariable, typeName, typeName);
@@ -709,30 +765,6 @@ namespace AZ
             }
         }
         return this;
-    }
-
-    //=========================================================================
-    // CopyEnumValues
-    //=========================================================================
-    template<class E>
-    typename AZStd::enable_if<AZStd::is_enum<E>::value>::type
-    EditContext::ClassBuilder::CopyEnumValues(Edit::ElementData* ed)
-    {
-        AZ_Assert(IsValid(), "Cannot perform CopyEnumValues from an invalid ClassBuilder");
-        AZ_STATIC_ASSERT(AZStd::is_enum<E>::value, "You cannot copy enum values for a non-enum type!");
-        using ContainerType = Edit::AttributeData<Edit::EnumConstant<E>>;
-        auto enumIter = m_context->m_enumData.find(AzTypeInfo<E>::Uuid());
-        if (enumIter != m_context->m_enumData.end())
-        {
-            // have to deep copy the attribute data, since it will be deleted independently
-            const Edit::ElementData& enumData = enumIter->second;
-            for (const Edit::AttributePair& attr : enumData.m_attributes)
-            {
-                AZ_Assert(azrtti_cast<ContainerType*>(attr.second), "There is non-EnumConstant data in the global reflection of enum %s", enumData.m_name);
-                Edit::AttributePair newAttr(attr.first, aznew ContainerType(static_cast<ContainerType*>(attr.second)->Get(nullptr)));
-                ed->m_attributes.push_back(newAttr);
-            }
-        }
     }
 
     //=========================================================================

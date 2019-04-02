@@ -17,7 +17,6 @@
 #include "TrackViewSequence.h"
 #include "TrackViewTrack.h"
 #include "TrackViewSequenceManager.h"
-#include "TrackViewUndo.h"
 #include <Maestro/Types/AnimParamType.h>
 #include <Maestro/Types/SequenceType.h>
 
@@ -60,6 +59,7 @@ public:
     }
 
 private:
+    bool m_skipOnUIChange = false;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -129,8 +129,12 @@ bool CSequenceKeyUIControls::OnKeySelectionChange(CTrackViewKeyBundle& selectedK
                 }
             }
 
+            // Don't trigger an OnUIChange event, since this code is the one
+            // updating the start/end ui elements, not the user setting new values.
+            m_skipOnUIChange = true;
             mv_startTime = sequenceKey.fStartTime;
             mv_endTime = sequenceKey.fEndTime;
+            m_skipOnUIChange = false;
 
             bAssigned = true;
         }
@@ -143,7 +147,7 @@ void CSequenceKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
 {
     CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
 
-    if (!sequence || !selectedKeys.AreAllKeysOfSameType())
+    if (!sequence || !selectedKeys.AreAllKeysOfSameType() || m_skipOnUIChange)
     {
         return;
     }
@@ -203,12 +207,7 @@ void CSequenceKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
             bool isDuringUndo = false;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
 
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-                keyHandle.SetKey(&sequenceKey);
-            }
-            else if (isDuringUndo)
+            if (isDuringUndo)
             {
                 keyHandle.SetKey(&sequenceKey);
             }

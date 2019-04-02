@@ -10,156 +10,114 @@
 *
 */
 
-// include the required headers
-#include "GraphNodeFactory.h"
-#include "GraphNode.h"
-#include <MCore/Source/LogManager.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendTreeVisualNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/GraphNodeFactory.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/GraphNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/StateGraphNode.h>
 
 
 namespace EMStudio
 {
-    //--------------------------------------------------------------------------------------
-    // class GraphNodeCreator
-    //--------------------------------------------------------------------------------------
-
-    // constructor
-    GraphNodeCreator::GraphNodeCreator()
-    {
-    }
-
-
-    // destructor
-    GraphNodeCreator::~GraphNodeCreator()
-    {
-    }
-
-
-    // create the node
-    GraphNode* GraphNodeCreator::CreateGraphNode(const char* name)
-    {
-        return new GraphNode(name);
-    }
-
-
-    // create the attribute widget
-    QWidget* GraphNodeCreator::CreateAttributeWidget()
-    {
-        return nullptr; // nullptr means it will auto generate it based on its parameters
-    }
-
-
-
-    //--------------------------------------------------------------------------------------
-    // class GraphNodeFactory
-    //--------------------------------------------------------------------------------------
-
-    // constructor
     GraphNodeFactory::GraphNodeFactory()
     {
-        // pre-alloc some space
-        mCreators.Reserve(20);
-        mCreators.SetMemoryCategory(MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
+        m_creators.reserve(20);
     }
 
-
-    // destructor
     GraphNodeFactory::~GraphNodeFactory()
     {
         UnregisterAll(true); // true = delete objects from memory as well
     }
 
-
-    // register
-    bool GraphNodeFactory::Register(GraphNodeCreator* creator)
+    void GraphNodeFactory::Register(GraphNodeCreator* creator)
     {
-        assert(creator);
+        AZ_Assert(creator, "Expected non null GraphNodeCreator");
 
         // check if we already registered this one before
-        if (FindCreator(creator->GetAnimGraphNodeType()))
-        {
-            MCore::LogWarning("GraphNodeFactory::Register() - There has already been a creator registered for the given node type %d.", creator->GetAnimGraphNodeType());
-            return false;
-        }
+        AZ_Assert(!FindCreator(creator->GetAnimGraphNodeType()), "GraphNodeFactory::Register() - There has already been a creator registered for the given node type %d.", creator->GetAnimGraphNodeType());
 
         // register it
-        mCreators.Add(creator);
-
-        return true;
+        m_creators.push_back(creator);
     }
 
-
-    // unregister
     void GraphNodeFactory::Unregister(GraphNodeCreator* creator, bool delFromMem)
     {
-        mCreators.RemoveByValue(creator);
+        m_creators.erase(AZStd::remove(m_creators.begin(), m_creators.end(), creator), m_creators.end());
         if (delFromMem)
         {
             delete creator;
         }
     }
 
-
-    // unregister all
     void GraphNodeFactory::UnregisterAll(bool delFromMem)
     {
         // if we want to delete the creators from memory as well
         if (delFromMem)
         {
-            const uint32 numCreators = mCreators.GetLength();
-            for (uint32 i = 0; i < numCreators; ++i)
+            for (GraphNodeCreator* creator : m_creators)
             {
-                delete mCreators[i];
+                delete creator;
             }
         }
 
         // clear the array
-        mCreators.Clear();
+        m_creators.clear();
     }
 
-
-    // create a given node
-    GraphNode* GraphNodeFactory::CreateGraphNode(const AZ::TypeId& animGraphNodeType, const char* name)
+    GraphNode* GraphNodeFactory::CreateGraphNode(const QModelIndex& modelIndex, AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node)
     {
-        // try to locate the creator
-        GraphNodeCreator* creator = FindCreator(animGraphNodeType);
-        if (creator == nullptr)
+        EMotionFX::AnimGraphNode* parent = node->GetParentNode();
+        if (parent)
         {
-            return nullptr;
+            if (azrtti_typeid(parent) == azrtti_typeid<EMotionFX::AnimGraphStateMachine>())
+            {
+                return new StateGraphNode(modelIndex, plugin, node);
+            }
+            else
+            {
+                GraphNodeCreator* creator = FindCreator(azrtti_typeid(node));
+                if (!creator)
+                {
+                    return new BlendTreeVisualNode(modelIndex, plugin, node);
+                }
+                return creator->CreateGraphNode(modelIndex, plugin, node);
+            }
         }
 
-        return creator->CreateGraphNode(name);
+        // try to locate the creator
+        GraphNodeCreator* creator = FindCreator(azrtti_typeid(node));
+        if (creator)
+        {
+            return creator->CreateGraphNode(modelIndex, plugin, node);
+        }
+
+        return new GraphNode(modelIndex, node->GetName());
     }
 
-
-    // create an attribute widget
     QWidget* GraphNodeFactory::CreateAttributeWidget(const AZ::TypeId& animGraphNodeType)
     {
         // try to locate the creator
         GraphNodeCreator* creator = FindCreator(animGraphNodeType);
-        if (creator == nullptr)
+        if (creator)
         {
-            return nullptr;
-        }
-
-        return creator->CreateAttributeWidget();
-    }
-
-
-    // search for the right creator
-    GraphNodeCreator* GraphNodeFactory::FindCreator(const AZ::TypeId& animGraphNodeType) const
-    {
-        // locate the creator linked to the specified type ID
-        const uint32 numCreators = mCreators.GetLength();
-        for (uint32 i = 0; i < numCreators; ++i)
-        {
-            if (mCreators[i]->GetAnimGraphNodeType() == animGraphNodeType)
-            {
-                return mCreators[i];
-            }
+            return creator->CreateAttributeWidget();
         }
 
         return nullptr;
     }
-} // namespace EMStudio
 
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/GraphNodeFactory.moc>
+    // search for the right creator
+    GraphNodeCreator* GraphNodeFactory::FindCreator(const AZ::TypeId& animGraphNodeType) const
+    {
+        for (GraphNodeCreator* creator : m_creators)
+        {
+            if (creator->GetAnimGraphNodeType() == animGraphNodeType)
+            {
+                return creator;
+            }
+        }
+        return nullptr;
+    }
+
+} // namespace EMStudio

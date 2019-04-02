@@ -26,7 +26,6 @@ namespace EMStudio
 {
     class EMSTUDIO_API RenderOptions 
         : public PluginOptions
-        , private PluginOptionsNotificationsBus::Handler
     {
     public:
         AZ_RTTI(RenderOptions, "{D661AA14-F61D-4917-9F19-2B32494556B1}", PluginOptions);
@@ -75,6 +74,13 @@ namespace EMStudio
         static const char* s_mainAxisColorOptionName;
         static const char* s_subStepColorOptionName;
         static const char* s_trajectoryArrowInnerColorOptionName;
+        static const char* s_hitDetectionColliderColorOptionName;
+        static const char* s_selectedHitDetectionColliderColorOptionName;
+        static const char* s_ragdollColliderColorOptionName;
+        static const char* s_selectedRagdollColliderColorOptionName;
+        static const char* s_violatedJointLimitColorOptionName;
+        static const char* s_clothColliderColorOptionName;
+        static const char* s_selectedClothColliderColorOptionName;
         static const char* s_lastUsedLayoutOptionName;
         static const char* s_renderSelectionBoxOptionName;
 
@@ -219,6 +225,27 @@ namespace EMStudio
         AZ::Color GetSubStepColor() const { return m_subStepColor; }
         void SetSubStepColor(const AZ::Color& subStepColor);
 
+        AZ::Color GetHitDetectionColliderColor() const { return m_hitDetectionColliderColor; }
+        void SetHitDetectionColliderColor(const AZ::Color& colliderColor);
+
+        AZ::Color GetSelectedHitDetectionColliderColor() const { return m_selectedHitDetectionColliderColor; }
+        void SetSelectedHitDetectionColliderColor(const AZ::Color& colliderColor);
+
+        AZ::Color GetRagdollColliderColor() const { return m_ragdollColliderColor; }
+        void SetRagdollColliderColor(const AZ::Color& color);
+
+        AZ::Color GetSelectedRagdollColliderColor() const { return m_selectedRagdollColliderColor; }
+        void SetSelectedRagdollColliderColor(const AZ::Color& color);
+
+        AZ::Color GetViolatedJointLimitColor() const { return m_violatedJointLimitColor; }
+        void SetViolatedJointLimitColor(const AZ::Color& color);
+
+        AZ::Color GetClothColliderColor() const { return m_clothColliderColor; }
+        void SetClothColliderColor(const AZ::Color& colliderColor);
+
+        AZ::Color GetSelectedClothColliderColor() const { return m_selectedClothColliderColor; }
+        void SetSelectedClothColliderColor(const AZ::Color& colliderColor);
+
         AZ::Color GetTrajectoryArrowInnerColor() const { return m_trajectoryArrowInnerColor; }
         void SetTrajectoryArrowInnerColor(const AZ::Color& trajectoryArrowInnerColor);
         
@@ -229,8 +256,6 @@ namespace EMStudio
         void SetRenderSelectionBox(bool renderSelectionBox);
 
     private:
-        void OnOptionChanged(const AZStd::string& optionChanged) override;
-
         void OnGridUnitSizeChangedCallback() const;
         void OnVertexNormalsScaleChangedCallback() const;
         void OnFaceNormalsScaleChangedCallback() const;
@@ -275,6 +300,13 @@ namespace EMStudio
         void OnMainAxisColorChangedCallback() const;
         void OnSubStepColorChangedCallback() const;
         void OnTrajectoryArrowInnerColorChangedCallback() const;
+        void OnHitDetectionColliderColorChangedCallback() const;
+        void OnSelectedHitDetectionColliderColorChangedCallback() const;
+        void OnRagdollColliderColorChangedCallback() const;
+        void OnSelectedRagdollColliderColorChangedCallback() const;
+        void OnViolatedJointLimitColorChangedCallback() const;
+        void OnClothColliderColorChangedCallback() const;
+        void OnSelectedClothColliderColorChangedCallback() const;
         void OnLastUsedLayoutChangedCallback() const;
         void OnRenderSelectionBoxChangedCallback() const;
 
@@ -326,6 +358,13 @@ namespace EMStudio
         AZ::Color        m_mainAxisColor;
         AZ::Color        m_subStepColor;
         AZ::Color        m_trajectoryArrowInnerColor;
+        AZ::Color        m_hitDetectionColliderColor;
+        AZ::Color        m_selectedHitDetectionColliderColor;
+        AZ::Color        m_ragdollColliderColor;
+        AZ::Color        m_selectedRagdollColliderColor;
+        AZ::Color        m_violatedJointLimitColor;
+        AZ::Color        m_clothColliderColor;
+        AZ::Color        m_selectedClothColliderColor;
 
         // The following are not in the  UI
         AZStd::string    m_lastUsedLayout;

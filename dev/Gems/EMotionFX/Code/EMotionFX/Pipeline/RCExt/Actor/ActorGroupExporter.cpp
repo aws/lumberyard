@@ -14,6 +14,7 @@
 #include <EMotionFX/Source/Importer/Importer.h>
 #include <EMotionFX/CommandSystem/Source/MetaData.h>
 #include <EMotionFX/Exporters/ExporterLib/Exporter/Exporter.h>
+#include <SceneAPIExt/Rules/ActorPhysicsSetupRule.h>
 
 #include <SceneAPI/SceneCore/Utilities/FileUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/Reporting.h>
@@ -83,6 +84,12 @@ namespace EMotionFX
                 {
                     AZ_Error("EMotionFX", false, "Applying meta data to '%s' failed.", filename.c_str());
                 }
+            }
+
+            AZStd::shared_ptr<EMotionFX::PhysicsSetup> physicsSetup;
+            if (EMotionFX::Pipeline::Rule::LoadGromGroup<EMotionFX::Pipeline::Rule::ActorPhysicsSetupRule, AZStd::shared_ptr<EMotionFX::PhysicsSetup>>(actorGroup, physicsSetup))
+            {
+                actor->SetPhysicsSetup(physicsSetup);
             }
 
             ExporterLib::SaveActor(filename, actor, MCore::Endian::ENDIAN_LITTLE);

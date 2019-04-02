@@ -110,7 +110,11 @@ void CD3D9Renderer::SetDepthBoundTest(float fMin, float fMax, bool bEnable)
         DXGLSetDepthBoundsTest(true, fMin, fMax);
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DAMBIENTOCCLUSION_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DAmbientOcclusion_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DAmbientOcclusion_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DAmbientOcclusion_cpp_provo.inl"
+    #endif
 #elif defined (USE_NV_API) //transparent execution without NVDB
         NvAPI_Status status = NvAPI_D3D11_SetDepthBoundsTest(&GetDevice(), bEnable, fMin, fMax);
         assert(status == NVAPI_OK);
@@ -124,7 +128,11 @@ void CD3D9Renderer::SetDepthBoundTest(float fMin, float fMax, bool bEnable)
         DXGLSetDepthBoundsTest(false, 0.0f, 1.0f);
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DAMBIENTOCCLUSION_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DAmbientOcclusion_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DAmbientOcclusion_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DAmbientOcclusion_cpp_provo.inl"
+    #endif
 #elif defined (USE_NV_API)
         NvAPI_Status status = NvAPI_D3D11_SetDepthBoundsTest(&GetDevice(), bEnable, fMin, fMax);
         assert(status == NVAPI_OK);

@@ -70,8 +70,8 @@ namespace EMStudio
 
         layout->addLayout(hLayout);
 
-        connect(mOK, SIGNAL(clicked()), this, SLOT(OnOKButton()));
-        connect(mCancel, SIGNAL(clicked()), this, SLOT(OnCancelButton()));
+        connect(mOK, &QPushButton::clicked, this, &UnitScaleWindow::OnOKButton);
+        connect(mCancel, &QPushButton::clicked, this, &UnitScaleWindow::OnCancelButton);
     }
 
 

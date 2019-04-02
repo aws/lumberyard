@@ -242,7 +242,7 @@ namespace AzToolsFramework
         if (container)
         {
             m_isContainer = true;
-            m_containerEditable = true;
+            m_containerEditable = !container->IsFixedSize() || container->IsSmartPointer();
             m_isFixedSizeOrSmartPtrContainer = container->IsFixedSize() || container->IsSmartPointer();
 
             AZStd::size_t numElements = container->Size(dataNode->GetInstance(0));
@@ -269,6 +269,23 @@ namespace AzToolsFramework
             if (dataNode->GetElementEditMetadata())
             {
                 m_handlerName = dataNode->GetElementEditMetadata()->m_elementId;
+            }
+
+            // If we're an enum type under the hood, our default handler should be the enum ComboBox handler
+            if (!m_handlerName || m_handlerName == AZ_CRC("Default", 0xe35e00df))
+            {
+                auto elementMetadata = dataNode->GetElementMetadata();
+                if (elementMetadata)
+                {
+                    for (const auto& attributePair : elementMetadata->m_attributes)
+                    {
+                        if (attributePair.first == AZ::Edit::InternalAttributes::EnumType)
+                        {
+                            m_handlerName = AZ::Edit::UIHandlers::ComboBox;
+                            break;
+                        }
+                    }
+                }
             }
 
             RefreshAttributesFromNode(true);
@@ -671,12 +688,11 @@ namespace AzToolsFramework
 
         if (m_sourceNode->GetElementMetadata())
         {
-            const AZ::Edit::ElementData* elementEdit = m_sourceNode->GetElementEditMetadata();
-            if (elementEdit)
+            auto consumeAttributes = [&](const auto& attributes)
             {
-                for (size_t i = 0; i < elementEdit->m_attributes.size(); ++i)
+                for (size_t i = 0; i < attributes.size(); ++i)
                 {
-                    const AZ::Edit::AttributePair& attrPair = elementEdit->m_attributes[i];
+                    const AZ::Edit::AttributePair& attrPair = attributes[i];
 
                     if (attrPair.second->m_describesChildren)
                     {
@@ -686,6 +702,18 @@ namespace AzToolsFramework
                     PropertyAttributeReader reader(m_sourceNode->GetParent()->FirstInstance(), attrPair.second);
                     ConsumeAttribute(attrPair.first, reader, initial, &newToolTip, &foundDescription);
                 }
+            };
+
+            const AZ::SerializeContext::ClassElement* element = m_sourceNode->GetElementMetadata();
+            if (element)
+            {
+                consumeAttributes(element->m_attributes);
+            }
+
+            const AZ::Edit::ElementData* elementEdit = m_sourceNode->GetElementEditMetadata();
+            if (elementEdit)
+            {
+                consumeAttributes(elementEdit->m_attributes);
 
                 if (!foundDescription && (elementEdit->m_description) && (strlen(elementEdit->m_description) > 0))
                 {

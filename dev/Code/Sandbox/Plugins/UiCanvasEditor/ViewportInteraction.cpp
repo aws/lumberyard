@@ -14,7 +14,13 @@
 #include "EditorCommon.h"
 #include "ViewportNudge.h"
 #include "ViewportElement.h"
+#include "QtHelpers.h"
+#include "GuideHelpers.h"
+#include "AlignToolbarSection.h"
+#include "ViewportMoveInteraction.h"
+#include "ViewportMoveGuideInteraction.h"
 #include <LyShine/UiComponentTypes.h>
+#include <LyShine/Bus/UiEditorCanvasBus.h>
 
 static const float g_elementEdgeForgiveness = 10.0f;
 
@@ -29,7 +35,7 @@ static const float g_minAreaSelectionDistance2 = 100.0f;
 
 namespace
 {
-    const float defaultCanvasToViewportScaleIncrement = 0.15f;
+    const float defaultCanvasToViewportScaleIncrement = 0.20f;
 
     ViewportInteraction::InteractionMode PersistentGetInteractionMode()
     {
@@ -120,6 +126,7 @@ ViewportInteraction::ViewportInteraction(EditorWindow* editorWindow)
     , m_lineSquareY(new ViewportIcon("Editor/Plugins/UiCanvasEditor/CanvasIcons/Transform_Gizmo_Line_Square_Y.tif"))
     , m_centerSquare(new ViewportIcon("Editor/Plugins/UiCanvasEditor/CanvasIcons/Transform_Gizmo_Center_Square.tif"))
     , m_dottedLine(new ViewportIcon("Editor/Plugins/UiCanvasEditor/CanvasIcons/DottedLine.tif"))
+    , m_dragInteraction(nullptr)
 {
 }
 
@@ -141,6 +148,59 @@ void ViewportInteraction::ClearInteraction(bool clearSpaceBarIsActive)
     m_grabbedAnchors = ViewportHelpers::SelectedAnchors();
     m_grabbedGizmoParts = ViewportHelpers::GizmoParts();
     m_selectedElementsAtSelectionStart.clear();
+    m_isAreaSelectionActive = false;
+    m_reversibleActionStarted = false;
+
+    SAFE_DELETE(m_dragInteraction);
+}
+
+void ViewportInteraction::Nudge(NudgeDirection direction, NudgeSpeed speed)
+{
+    const AZ::Uuid& transformComponentType = InitAndGetTransformComponentType();
+
+        ViewportNudge::Nudge(m_editorWindow,
+            m_interactionMode,
+            m_editorWindow->GetViewport(),
+            direction,
+            speed,
+            m_editorWindow->GetHierarchy()->selectedItems(),
+            m_coordinateSystem,
+            transformComponentType);
+}
+
+void ViewportInteraction::StartObjectPickMode()
+{
+    // Temporarily set the viewport interaction mode to "Selection" and disable the toolbar
+    m_interactionModeBeforePickMode = GetMode();
+    SetMode(InteractionMode::SELECTION);
+    m_editorWindow->GetModeToolbar()->setEnabled(false);
+
+    InvalidateHoverElement();
+
+    UpdateCursor();
+}
+
+void ViewportInteraction::StopObjectPickMode()
+{
+    bool mousePressed = GetLeftButtonIsActive();
+
+    m_editorWindow->GetModeToolbar()->setEnabled(true);
+    SetMode(m_interactionModeBeforePickMode);
+
+    SetCursorStr("");
+
+    m_hoverElement.SetInvalid();
+
+    // Update interaction type and cursor right away if the mouse is already released (user pressed ESC to cancel pick mode)
+    // instead of waiting for a mouse move/release event
+    if (!mousePressed)
+    {
+        QPoint viewportCursorPos = m_editorWindow->GetViewport()->mapFromGlobal(QCursor::pos());
+        QTreeWidgetItemRawPtrQList selectedItems = m_editorWindow->GetHierarchy()->selectedItems();
+        UpdateInteractionType(AZ::Vector2(viewportCursorPos.x(), viewportCursorPos.y()), selectedItems);
+    }
+
+    UpdateCursor();
 }
 
 bool ViewportInteraction::GetLeftButtonIsActive()
@@ -153,9 +213,33 @@ bool ViewportInteraction::GetSpaceBarIsActive()
     return m_spaceBarIsActive;
 }
 
+void ViewportInteraction::ActivateSpaceBar()
+{
+    m_spaceBarIsActive = true;
+    UpdateCursor();
+
+    if (m_editorWindow->GetViewport()->IsInObjectPickMode())
+    {
+        // Don't highlight the hover element during a pan
+        InvalidateHoverElement();
+    }
+}
+
 void ViewportInteraction::Draw(Draw2dHelper& draw2d,
     const QTreeWidgetItemRawPtrQList& selectedItems)
 {
+    // Draw border around hover UI element
+    if (m_hoverElement.IsValid())
+    {
+        m_editorWindow->GetViewport()->GetViewportHighlight()->DrawHover(draw2d, m_hoverElement);
+    }
+
+    // Draw the guide lines
+    if (m_editorWindow->GetViewport()->AreGuidesShown())
+    {
+        GuideHelpers::DrawGuideLines(m_editorWindow->GetCanvas(), m_editorWindow->GetViewport(), draw2d);
+    }
+
     // Draw the transform gizmo where appropriate
     if (m_interactionMode != InteractionMode::SELECTION)
     {
@@ -163,6 +247,7 @@ void ViewportInteraction::Draw(Draw2dHelper& draw2d,
         switch (m_interactionMode)
         {
         case InteractionMode::MOVE:
+        case InteractionMode::ANCHOR:
             for (auto element : selectedElements)
             {
                 if (!ViewportHelpers::IsControlledByLayout(element))
@@ -194,17 +279,29 @@ void ViewportInteraction::Draw(Draw2dHelper& draw2d,
     {
         m_dottedLine->DrawAxisAlignedBoundingBox(draw2d, m_startMouseDragPos, m_lastMouseDragPos);
     }
+
+    // If there is an active drag interaction give it a chance to render its interaction display
+    if (m_dragInteraction)
+    {
+        m_dragInteraction->Render(draw2d);
+    }
+
+    // Draw the cursor string
+    if (!m_cursorStr.empty() && m_editorWindow->GetViewport()->underMouse())
+    {
+        ViewportHelpers::DrawCursorText(m_cursorStr, draw2d, m_editorWindow->GetViewport());
+    }
 }
 
 bool ViewportInteraction::AreaSelectionIsActive()
 {
-    return ((!m_spaceBarIsActive) && m_leftButtonIsActive && m_interactionType == InteractionType::NONE);
+    return m_isAreaSelectionActive;
 }
 
 void ViewportInteraction::BeginReversibleAction(const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     if ((m_reversibleActionStarted) ||
-        (m_interactionType == InteractionType::NONE) ||
+        (m_interactionType == InteractionType::NONE || m_interactionType == InteractionType::GUIDE) ||
         (m_interactionMode == InteractionMode::SELECTION))
     {
         // Nothing to do.
@@ -215,11 +312,11 @@ void ViewportInteraction::BeginReversibleAction(const QTreeWidgetItemRawPtrQList
     m_reversibleActionStarted = true;
 
     // Tell the Properties panel that we're about to do a reversible action
-    m_editorWindow->GetProperties()->BeforePropertyModified(nullptr);
+    HierarchyClipboard::BeginUndoableEntitiesChange(m_editorWindow, m_selectedEntitiesUndoState);
 
     // Snapping.
     bool isSnapping = false;
-    EBUS_EVENT_ID_RESULT(isSnapping, m_editorWindow->GetCanvas(), UiCanvasBus, GetIsSnapEnabled);
+    EBUS_EVENT_ID_RESULT(isSnapping, m_editorWindow->GetCanvas(), UiEditorCanvasBus, GetIsSnapEnabled);
     if (isSnapping)
     {
         // Set all initial non-snapped values.
@@ -255,15 +352,20 @@ void ViewportInteraction::EndReversibleAction()
         return;
     }
 
-    m_editorWindow->GetProperties()->AfterPropertyModified(nullptr);
+    // Note that EndReversibleAction is not used for interactions that handle undo in a m_dragInteraction
+    // Ideally we will change them all to use m_dragInteraction and handle the undo there.
+    HierarchyClipboard::EndUndoableEntitiesChange(m_editorWindow, "viewport interaction", m_selectedEntitiesUndoState);
 }
 
 void ViewportInteraction::MousePressEvent(QMouseEvent* ev)
 {
-    AZ::Vector2 mousePosition = EntityHelpers::QPointFToVec2(ev->localPos());
+    AZ::Vector2 mousePosition = QtHelpers::QPointFToVector2(ev->localPos());
     m_startMouseDragPos = m_lastMouseDragPos = mousePosition;
     const bool ctrlKeyPressed = ev->modifiers().testFlag(Qt::ControlModifier);
-    m_reversibleActionStarted = false;
+
+    // Detect whether an entity was picked on the mouse press so that
+    // mouse move/release events can be handled appropriately
+    m_entityPickedOnMousePress = false;
 
     // Prepare to handle panning
     if ((!m_leftButtonIsActive) &&
@@ -278,43 +380,106 @@ void ViewportInteraction::MousePressEvent(QMouseEvent* ev)
 
         m_leftButtonIsActive = true;
 
-        if ((m_activeElementId.IsValid()) && m_grabbedAnchors.Any())
+        if (m_activeElementId.IsValid())
         {
-            // Prepare to move anchors
-            EBUS_EVENT_ID_RESULT(m_startAnchors, m_activeElementId, UiTransform2dBus, GetAnchors);
+            if (m_grabbedAnchors.Any())
+            {
+                // Prepare to move anchors
+                EBUS_EVENT_ID_RESULT(m_startAnchors, m_activeElementId, UiTransform2dBus, GetAnchors);
+            }
+            else if (m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR)
+            {
+                // Prepare for moving elements by offsets or anchors
+                QTreeWidgetItemRawPtrQList selectedItems = m_editorWindow->GetHierarchy()->selectedItems();
+                m_dragInteraction = new ViewportMoveInteraction(m_editorWindow->GetHierarchy(), selectedItems,
+                    m_editorWindow->GetCanvas(), GetActiveElement(), m_coordinateSystem, m_grabbedGizmoParts, m_interactionMode, m_interactionType, mousePosition);
+            }
+        }
+        else if (m_interactionType == InteractionType::GUIDE)
+        {
+            // We are hovering over a guide with the move guide icon displayed so start the move guide interaction
+            m_dragInteraction = new ViewportMoveGuideInteraction(m_editorWindow, m_editorWindow->GetCanvas(),
+                m_activeGuideIsVertical, m_activeGuideIndex, mousePosition);
         }
     }
 
     // If there isn't another interaction happening, try to select an element
     if ((!m_spaceBarIsActive && !m_middleButtonIsActive && m_interactionType == InteractionType::NONE) ||
-        m_interactionMode == InteractionMode::MOVE && m_interactionType == InteractionType::DIRECT && ctrlKeyPressed)
+        ((m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR) && m_interactionType == InteractionType::DIRECT && ctrlKeyPressed))
     {
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element, m_editorWindow->GetCanvas(), UiCanvasBus, PickElement, mousePosition);
-
-        HierarchyWidget* hierarchyWidget = m_editorWindow->GetHierarchy();
-        QTreeWidgetItem* widgetItem = nullptr;
-        bool itemDeselected = false;
-
-        // store the selected items at the start of the selection
-        QTreeWidgetItemRawPtrQList selectedItems = m_editorWindow->GetHierarchy()->selectedItems();
-        m_selectedElementsAtSelectionStart = SelectionHelpers::GetSelectedElements(m_editorWindow->GetHierarchy(), selectedItems);
-
-        if (element)
+        if (m_editorWindow->GetViewport()->IsInObjectPickMode())
         {
-            widgetItem = HierarchyHelpers::ElementToItem(hierarchyWidget, element, false);
+            AZ::Entity* element = nullptr;
+            EBUS_EVENT_ID_RESULT(element, m_editorWindow->GetCanvas(), UiCanvasBus, PickElement, mousePosition);
 
-            // If user is selecting something with the control key pressed, the
-            // element may need to be de-selected (if it's already selected).
-            itemDeselected = HierarchyHelpers::HandleDeselect(widgetItem, ctrlKeyPressed);
+            m_editorWindow->GetViewport()->PickItem(element ? element->GetId() : AZ::EntityId());
+            m_entityPickedOnMousePress = true;
         }
-
-        // If the item didn't need to be de-selected, then we should select it
-        if (!itemDeselected)
+        else
         {
-            // Note that widgetItem could still be null at this point, but
-            // SetSelectedItem will handle this situation for us.
-            HierarchyHelpers::SetSelectedItem(hierarchyWidget, element);
+            QTreeWidgetItemRawPtrQList selectedItems = m_editorWindow->GetHierarchy()->selectedItems();
+
+            // Because we draw the Anchors (grayed out) in MOVE mode or when multiple items are selected in ANCHOR mode then it is confusing if you
+            // click on them, thinking it might do something, and it changes the selection.
+            // But if the click is inside the element that the anchor belongs to we do want to consider it a select or it would get in the way.
+            // So a compromise is that, if you click on them, and the click is outside the element they belong to, then the click is ignored.
+            bool ignoreClickForSelection = false;
+            if ((m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR) && m_interactionType == InteractionType::NONE)
+            {
+                LyShine::EntityArray topLevelSelectedElements = SelectionHelpers::GetTopLevelSelectedElements(m_editorWindow->GetHierarchy(), selectedItems);
+                for (auto elementWithAnchors : topLevelSelectedElements)
+                {
+                    ViewportHelpers::SelectedAnchors grabbedAnchors;
+                    if (!ViewportHelpers::IsControlledByLayout(elementWithAnchors) &&
+                        ViewportElement::PickAnchors(elementWithAnchors, mousePosition, m_anchorWhole->GetTextureSize(), grabbedAnchors))
+                    {
+                        // Hovering over anchors, if the click is outside the element with the anchors then ignore
+                        bool isElementUnderCursor = false;
+                        EBUS_EVENT_ID_RESULT(isElementUnderCursor, elementWithAnchors->GetId(), UiTransformBus, IsPointInRect, mousePosition);
+                        if (!isElementUnderCursor)
+                        {
+                            ignoreClickForSelection = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!ignoreClickForSelection)
+            {
+                AZ::Entity* element = nullptr;
+                EBUS_EVENT_ID_RESULT(element, m_editorWindow->GetCanvas(), UiCanvasBus, PickElement, mousePosition);
+
+                HierarchyWidget* hierarchyWidget = m_editorWindow->GetHierarchy();
+                QTreeWidgetItem* widgetItem = nullptr;
+                bool itemDeselected = false;
+
+                // store the selected items at the start of the selection
+                m_selectedElementsAtSelectionStart = SelectionHelpers::GetSelectedElements(m_editorWindow->GetHierarchy(), selectedItems);
+
+                if (element)
+                {
+                    widgetItem = HierarchyHelpers::ElementToItem(hierarchyWidget, element, false);
+
+                    // If user is selecting something with the control key pressed, the
+                    // element may need to be de-selected (if it's already selected).
+                    itemDeselected = HierarchyHelpers::HandleDeselect(widgetItem, ctrlKeyPressed);
+                }
+
+                // If the item didn't need to be de-selected, then we should select it
+                if (!itemDeselected)
+                {
+                    // Note that widgetItem could still be null at this point, but
+                    // SetSelectedItem will handle this situation for us.
+                    HierarchyHelpers::SetSelectedItem(hierarchyWidget, element);
+                }
+
+                // ClearInteraction gets called if the selection changes to empty but we do not want to clear these since we can start a drag now
+                m_leftButtonIsActive = true;
+                m_startMouseDragPos = m_lastMouseDragPos = mousePosition;
+
+                m_isAreaSelectionActive = true;
+            }
         }
     }
 
@@ -343,7 +508,7 @@ const AZ::Uuid& ViewportInteraction::InitAndGetTransformComponentType()
 void ViewportInteraction::MouseMoveEvent(QMouseEvent* ev,
     const QTreeWidgetItemRawPtrQList& selectedItems)
 {
-    AZ::Vector2 mousePosition = EntityHelpers::QPointFToVec2(ev->localPos());
+    AZ::Vector2 mousePosition = QtHelpers::QPointFToVector2(ev->localPos());
 
     if (m_spaceBarIsActive)
     {
@@ -354,10 +519,13 @@ void ViewportInteraction::MouseMoveEvent(QMouseEvent* ev,
     }
     else if (m_leftButtonIsActive)
     {
-        // Click and drag
-        ProcessInteraction(mousePosition,
-            ev->modifiers(),
-            selectedItems);
+        if (!m_entityPickedOnMousePress)
+        {
+            // Click and drag
+            ProcessInteraction(mousePosition,
+                ev->modifiers(),
+                selectedItems);
+        }
     }
     else if (m_middleButtonIsActive)
     {
@@ -367,14 +535,22 @@ void ViewportInteraction::MouseMoveEvent(QMouseEvent* ev,
     {
         // Hover
 
-        m_interactionType = InteractionType::NONE;
-        m_grabbedEdges.SetAll(false);
-        m_grabbedAnchors.SetAll(false);
-        m_grabbedGizmoParts.SetBoth(false);
+        if (m_editorWindow->GetViewport()->IsInObjectPickMode())
+        {
+            // Update hover element. We only display the hover element in object pick mode
+            UpdateHoverElement(mousePosition);
+        }
+        else
+        {
+            m_interactionType = InteractionType::NONE;
+            m_grabbedEdges.SetAll(false);
+            m_grabbedAnchors.SetAll(false);
+            m_grabbedGizmoParts.SetBoth(false);
 
-        UpdateInteractionType(mousePosition,
-            selectedItems);
-        UpdateCursor();
+            UpdateInteractionType(mousePosition,
+                selectedItems);
+            UpdateCursor();
+        }
     }
 
     m_lastMouseDragPos = mousePosition;
@@ -383,46 +559,86 @@ void ViewportInteraction::MouseMoveEvent(QMouseEvent* ev,
 void ViewportInteraction::MouseReleaseEvent(QMouseEvent* ev,
     const QTreeWidgetItemRawPtrQList& selectedItems)
 {
-    // if the mouse press and release were in the same position and
-    // no changes have been made then we can treat it as a mouse-click which can
-    // do selection. This is useful in the case where we are in move mode but just
-    // clicked on something that is either:
-    // - one of multiple things selected and we want to just select this
-    // - an element in front of something that is selected
-    // In this case the mouse press will not have been treated as selection in
-    // MousePressEvent so we need to handle this as a special case
-    if (!m_reversibleActionStarted && m_lastMouseDragPos == m_startMouseDragPos &&
-        ev->button() == Qt::LeftButton && !ev->modifiers().testFlag(Qt::ControlModifier) &&
-        m_interactionMode == InteractionMode::MOVE && m_interactionType == InteractionType::DIRECT)
+    if (!m_entityPickedOnMousePress)
     {
-        AZ::Vector2 mousePosition = EntityHelpers::QPointFToVec2(ev->localPos());
-
-        AZ::Entity* element = nullptr;
-        EBUS_EVENT_ID_RESULT(element, m_editorWindow->GetCanvas(), UiCanvasBus, PickElement, mousePosition);
-
-        HierarchyWidget* hierarchyWidget = m_editorWindow->GetHierarchy();
-        if (element)
+        // if the mouse press and release were in the same position and
+        // no changes have been made then we can treat it as a mouse-click which can
+        // do selection. This is useful in the case where we are in move mode but just
+        // clicked on something that is either:
+        // - one of multiple things selected and we want to just select this
+        // - an element in front of something that is selected
+        // In this case the mouse press will not have been treated as selection in
+        // MousePressEvent so we need to handle this as a special case
+        if (!m_reversibleActionStarted && m_lastMouseDragPos == m_startMouseDragPos &&
+            ev->button() == Qt::LeftButton && !ev->modifiers().testFlag(Qt::ControlModifier) &&
+            (m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR)
+            && (m_interactionType == InteractionType::DIRECT || m_interactionType == InteractionType::TRANSFORM_GIZMO))
         {
-            HierarchyHelpers::SetSelectedItem(hierarchyWidget, element);
+            AZ::Vector2 mousePosition = QtHelpers::QPointFToVector2(ev->localPos());
+
+            bool ignoreClick = false;
+            if (m_interactionType == InteractionType::TRANSFORM_GIZMO)
+            {
+                // if we clicked on a gizmo but didn't move then we want to consider this a select click as long as the click
+                // was inside the active element. (the square part of the gizmo can cover a large area of the element so ignoring
+                // the click is confusing).
+                if (m_activeElementId.IsValid())
+                {
+                    bool isActiveElementUnderCursor = false;
+                    EBUS_EVENT_ID_RESULT(isActiveElementUnderCursor, m_activeElementId, UiTransformBus, IsPointInRect, mousePosition);
+                    if (!isActiveElementUnderCursor)
+                    {
+                        ignoreClick = true;
+                    }
+                }
+            }
+
+            if (!ignoreClick)
+            {
+                AZ::Entity* element = nullptr;
+                EBUS_EVENT_ID_RESULT(element, m_editorWindow->GetCanvas(), UiCanvasBus, PickElement, mousePosition);
+
+                HierarchyWidget* hierarchyWidget = m_editorWindow->GetHierarchy();
+                if (element)
+                {
+                    HierarchyHelpers::SetSelectedItem(hierarchyWidget, element);
+                }
+            }
         }
+
+        if (m_dragInteraction)
+        {
+            // test to see if the mouse position is inside the viewport on each axis
+            const QPoint& pos = ev->pos();
+            const QSize& size = m_editorWindow->GetViewport()->size();
+
+            ViewportDragInteraction::EndState inWidget;
+            if (pos.x() >= 0 && pos.x() < size.width())
+                inWidget = pos.y() >= 0 && pos.y() < size.height() ? ViewportDragInteraction::EndState::Inside : ViewportDragInteraction::EndState::OutsideY;
+            else
+                inWidget = pos.y() >= 0 && pos.y() < size.height() ? ViewportDragInteraction::EndState::OutsideX : ViewportDragInteraction::EndState::OutsideXY;
+
+            // Some interactions end differently depending on whether the mouse was released inside or outside the viewport
+            m_dragInteraction->EndInteraction(inWidget);
+        }
+
+        // Tell the Properties panel to update
+        const AZ::Uuid& transformComponentType = InitAndGetTransformComponentType();
+        m_editorWindow->GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_Values, &transformComponentType);
+
+        // Tell the Properties panel that the reversible action is complete
+        EndReversibleAction();
     }
-
-    // Tell the Properties panel to update
-    const AZ::Uuid& transformComponentType = InitAndGetTransformComponentType();
-    m_editorWindow->GetProperties()->TriggerRefresh(AzToolsFramework::PropertyModificationRefreshLevel::Refresh_Values, &transformComponentType);
-
-    // Tell the Properties panel that the reversible action is complete
-    EndReversibleAction();
 
     // Reset the interaction
     ClearInteraction(false);
 
     if (!m_spaceBarIsActive)
     {
-        // Immediately update the interaction type and cursor
-        AZ::Vector2 mousePosition = EntityHelpers::QPointFToVec2(ev->localPos());
+        // Immediately update the interaction type and cursor (using the possibly new selection)
+        AZ::Vector2 mousePosition = QtHelpers::QPointFToVector2(ev->localPos());
         UpdateInteractionType(mousePosition,
-            selectedItems);
+            m_editorWindow->GetHierarchy()->selectedItems());
     }
 
     UpdateCursor();
@@ -449,23 +665,29 @@ void ViewportInteraction::MouseWheelEvent(QWheelEvent* ev)
         Vec2i pivotPoint(
             static_cast<int>(ev->posF().x()),
             static_cast<int>(ev->posF().y()));
-        SetCanvasToViewportScale(m_canvasViewportMatrixProps.scale + numScrollDegress * zoomMultiplier, &pivotPoint);
+
+        float newScale = m_canvasViewportMatrixProps.scale + numScrollDegress * zoomMultiplier;
+
+        SetCanvasToViewportScale(QuantizeZoomScale(newScale), &pivotPoint);
     }
 }
 
-void ViewportInteraction::KeyPressEvent(QKeyEvent* ev)
+bool ViewportInteraction::KeyPressEvent(QKeyEvent* ev)
 {
     if (ev->key() == Qt::Key_Space)
     {
         if (!ev->isAutoRepeat())
         {
-            m_spaceBarIsActive = true;
-            UpdateCursor();
+            ActivateSpaceBar();
         }
+
+        return true;
     }
+
+    return false;
 }
 
-void ViewportInteraction::KeyReleaseEvent(QKeyEvent* ev)
+bool ViewportInteraction::KeyReleaseEvent(QKeyEvent* ev)
 {
     if (ev->key() == Qt::Key_Space)
     {
@@ -473,20 +695,19 @@ void ViewportInteraction::KeyReleaseEvent(QKeyEvent* ev)
         {
             ClearInteraction();
             UpdateCursor();
-        }
-    }
-    else
-    {
-        const AZ::Uuid& transformComponentType = InitAndGetTransformComponentType();
 
-        ViewportNudge::KeyReleaseEvent(m_editorWindow,
-            m_interactionMode,
-            m_editorWindow->GetViewport(),
-            ev,
-            m_editorWindow->GetHierarchy()->selectedItems(),
-            m_coordinateSystem,
-            transformComponentType);
+            if (m_editorWindow->GetViewport()->IsInObjectPickMode())
+            {
+                // Update hover element right away in case mouse is over an element
+                QPoint viewportCursorPos = m_editorWindow->GetViewport()->mapFromGlobal(QCursor::pos());
+                UpdateHoverElement(AZ::Vector2(viewportCursorPos.x(), viewportCursorPos.y()));
+            }
+        }
+
+        return true;
     }
+
+    return false;
 }
 
 void ViewportInteraction::SetMode(InteractionMode m)
@@ -495,6 +716,8 @@ void ViewportInteraction::SetMode(InteractionMode m)
     m_interactionMode = m;
     PersistentSetInteractionMode(m_interactionMode);
     m_editorWindow->GetModeToolbar()->SetCheckedItem(static_cast<int>(m_interactionMode));
+    m_editorWindow->GetModeToolbar()->GetAlignToolbarSection()->SetIsVisible(
+        m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR);
     UpdateCoordinateSystemToolbarSection();
     m_editorWindow->GetViewport()->Refresh();
 }
@@ -525,6 +748,8 @@ ViewportInteraction::CoordinateSystem ViewportInteraction::GetCoordinateSystem()
 void ViewportInteraction::InitializeToolbars()
 {
     m_editorWindow->GetModeToolbar()->SetCheckedItem(static_cast<int>(m_interactionMode));
+    m_editorWindow->GetModeToolbar()->GetAlignToolbarSection()->SetIsVisible(m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR);
+
     m_editorWindow->GetCoordinateSystemToolbarSection()->SetCurrentIndex(static_cast<int>(m_coordinateSystem));
 
     UpdateCoordinateSystemToolbarSection();
@@ -549,7 +774,7 @@ void ViewportInteraction::InitializeToolbars()
 
     {
         bool isSnapping = false;
-        EBUS_EVENT_ID_RESULT(isSnapping, m_editorWindow->GetCanvas(), UiCanvasBus, GetIsSnapEnabled);
+        EBUS_EVENT_ID_RESULT(isSnapping, m_editorWindow->GetCanvas(), UiEditorCanvasBus, GetIsSnapEnabled);
 
         m_editorWindow->GetCoordinateSystemToolbarSection()->SetSnapToGridIsChecked(isSnapping);
     }
@@ -633,17 +858,22 @@ void ViewportInteraction::GetScaleToFitTransformProps(const AZ::Vector2* newCanv
 
 void ViewportInteraction::DecreaseCanvasToViewportScale()
 {
-    SetCanvasToViewportScale(m_canvasViewportMatrixProps.scale - defaultCanvasToViewportScaleIncrement);
+    SetCanvasToViewportScale(QuantizeZoomScale(m_canvasViewportMatrixProps.scale - defaultCanvasToViewportScaleIncrement));
 }
 
 void ViewportInteraction::IncreaseCanvasToViewportScale()
 {
-    SetCanvasToViewportScale(m_canvasViewportMatrixProps.scale + defaultCanvasToViewportScaleIncrement);
+    SetCanvasToViewportScale(QuantizeZoomScale(m_canvasViewportMatrixProps.scale + defaultCanvasToViewportScaleIncrement));
 }
 
 void ViewportInteraction::ResetCanvasToViewportScale()
 {
     SetCanvasToViewportScale(1.0f);
+}
+
+void ViewportInteraction::SetCanvasZoomPercent(float percent)
+{
+    SetCanvasToViewportScale(percent / 100.0f);
 }
 
 void ViewportInteraction::SetCanvasToViewportScale(float newScale, Vec2i* optionalPivotPoint)
@@ -712,10 +942,20 @@ void ViewportInteraction::SetCanvasToViewportScale(float newScale, Vec2i* option
     UpdateShouldScaleToFitOnResize();
 }
 
+float ViewportInteraction::QuantizeZoomScale(float newScale)
+{
+    // Fit to canvas can result in odd zoom scales - when manually zooming we snap it to one of the prefered intervals
+    // The prefered intervals are in steps of defaultCanvasToViewportScaleIncrement starting at 100% (or a scale of 1.0)
+    float scaleRelativeto1 = newScale - 1.0f;
+    float roundedRelative = round(scaleRelativeto1 / defaultCanvasToViewportScaleIncrement) * defaultCanvasToViewportScaleIncrement;
+    float quantizedScale = roundedRelative + 1.0f;
+    return quantizedScale;
+}
+
 void ViewportInteraction::UpdateZoomFactorLabel()
 {
     float percentage = m_canvasViewportMatrixProps.scale * 100.0f;
-    m_editorWindow->GetMainToolbar()->GetZoomFactorLabel()->setText(QString("Zoom: %1 %").arg(QString::number(percentage, 'f', 0)));
+    m_editorWindow->GetMainToolbar()->SetZoomPercent(percentage);
 }
 
 AZ::Entity* ViewportInteraction::GetActiveElement() const
@@ -733,16 +973,16 @@ ViewportHelpers::SelectedAnchors ViewportInteraction::GetGrabbedAnchors() const
     return m_grabbedAnchors;
 }
 
-
 void ViewportInteraction::UpdateInteractionType(const AZ::Vector2& mousePosition,
     const QTreeWidgetItemRawPtrQList& selectedItems)
 {
     switch (m_interactionMode)
     {
     case InteractionMode::MOVE:
+    case InteractionMode::ANCHOR:
     {
         auto selectedElements = SelectionHelpers::GetSelectedElements(m_editorWindow->GetHierarchy(), selectedItems);
-        if (selectedElements.size() == 1)
+        if (selectedElements.size() == 1 && m_interactionMode == InteractionMode::ANCHOR)
         {
             auto selectedElement = selectedElements.front();
             if (!ViewportHelpers::IsControlledByLayout(selectedElement) &&
@@ -764,6 +1004,17 @@ void ViewportInteraction::UpdateInteractionType(const AZ::Vector2& mousePosition
                 // Hovering over move gizmo
                 m_interactionType = InteractionType::TRANSFORM_GIZMO;
                 m_activeElementId = element->GetId();
+                return;
+            }
+        }
+
+        // if hovering over a guide line, then allow moving it or deleting it by moving out of viewport
+        if (m_editorWindow->GetViewport()->AreGuidesShown() && !GuideHelpers::AreGuidesLocked(m_editorWindow->GetCanvas()))
+        {
+            if (GuideHelpers::PickGuide(m_editorWindow->GetCanvas(), mousePosition, m_activeGuideIsVertical, m_activeGuideIndex))
+            {
+                m_interactionType = InteractionType::GUIDE;
+                m_activeElementId.SetInvalid();
                 return;
             }
         }
@@ -862,9 +1113,20 @@ void ViewportInteraction::UpdateCursor()
     {
         cursor = (m_leftButtonIsActive || m_middleButtonIsActive ? Qt::ClosedHandCursor : Qt::OpenHandCursor);
     }
+    else if (m_interactionType == InteractionType::GUIDE)
+    {
+        if (m_activeGuideIsVertical)
+        {
+            cursor = Qt::SplitHCursor; // vertical guide
+        }
+        else
+        {
+            cursor = Qt::SplitVCursor; // horizontal guide
+        }
+    }
     else if (m_activeElementId.IsValid())
     {
-        if (m_interactionMode == InteractionMode::MOVE &&
+        if ((m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR) &&
             m_interactionType == InteractionType::DIRECT)
         {
             cursor = Qt::SizeAllCursor;
@@ -903,8 +1165,39 @@ void ViewportInteraction::UpdateCursor()
             }
         }
     }
+    else if (m_editorWindow->GetViewport()->IsInObjectPickMode())
+    {
+        cursor = m_editorWindow->GetEntityPickerCursor();
+    }
 
     m_editorWindow->GetViewport()->setCursor(cursor);
+}
+
+void ViewportInteraction::UpdateHoverElement(const AZ::Vector2 mousePosition)
+{
+    m_hoverElement.SetInvalid();
+    AZ::Entity* element = nullptr;
+    EBUS_EVENT_ID_RESULT(element, m_editorWindow->GetCanvas(), UiCanvasBus, PickElement, mousePosition);
+    if (element)
+    {
+        m_hoverElement = element->GetId();
+        SetCursorStr(element->GetName());
+    }
+    else
+    {
+        SetCursorStr("");
+    }
+}
+
+void ViewportInteraction::InvalidateHoverElement()
+{
+    m_hoverElement.SetInvalid();
+    SetCursorStr("");
+}
+
+void ViewportInteraction::SetCursorStr(const AZStd::string& cursorStr)
+{
+    m_cursorStr = cursorStr;
 }
 
 void ViewportInteraction::UpdateCanvasToViewportMatrix()
@@ -916,6 +1209,9 @@ void ViewportInteraction::UpdateCanvasToViewportMatrix()
     EBUS_EVENT_ID(m_editorWindow->GetCanvas(), UiCanvasBus, SetCanvasToViewportMatrix, updatedMatrix);
 
     UpdateZoomFactorLabel();
+
+    // when the zoom or pan changes we need to redraw the rulers
+    m_editorWindow->GetViewport()->RefreshRulers();
 }
 
 void ViewportInteraction::UpdateShouldScaleToFitOnResize()
@@ -940,46 +1236,49 @@ void ViewportInteraction::ProcessInteraction(const AZ::Vector2& mousePosition,
     bool ctrlIsPressed = modifiers.testFlag(Qt::ControlModifier);
     if (m_interactionType == InteractionType::NONE)
     {
-        float mouseDragDistance2 = (mousePosition - m_startMouseDragPos).GetLengthSq();
-        if (mouseDragDistance2 >= g_minAreaSelectionDistance2)
+        if (m_isAreaSelectionActive)
         {
-            // Area selection
-            AZ::Vector2 rectMin(min(m_startMouseDragPos.GetX(), mousePosition.GetX()), min(m_startMouseDragPos.GetY(), mousePosition.GetY()));
-            AZ::Vector2 rectMax(max(m_startMouseDragPos.GetX(), mousePosition.GetX()), max(m_startMouseDragPos.GetY(), mousePosition.GetY()));
-
-            LyShine::EntityArray elementsToSelect;
-            EBUS_EVENT_ID_RESULT(elementsToSelect, m_editorWindow->GetCanvas(), UiCanvasBus, PickElements, rectMin, rectMax);
-
-            if (ctrlIsPressed)
+            float mouseDragDistance2 = (mousePosition - m_startMouseDragPos).GetLengthSq();
+            if (mouseDragDistance2 >= g_minAreaSelectionDistance2)
             {
-                // NOTE: We are fighting against SetSelectedItems a bit here. SetSelectedItems uses Qt
-                // to set the selection and the control and shift modifiers affect its behavior.
-                // When Ctrl is down, unless you pass null or an empty list it adds to the existing
-                // selected items. To get the behavior we want when ctrl is held down we have to clear
-                // the selection before setting it. NOTE: if you area select over a group and (during
-                // same drag) move the cursor so that they are not in the box then they should not
-                // be added to the selection.
-                HierarchyHelpers::SetSelectedItem(m_editorWindow->GetHierarchy(), nullptr);
+                // Area selection
+                AZ::Vector2 rectMin(min(m_startMouseDragPos.GetX(), mousePosition.GetX()), min(m_startMouseDragPos.GetY(), mousePosition.GetY()));
+                AZ::Vector2 rectMax(max(m_startMouseDragPos.GetX(), mousePosition.GetX()), max(m_startMouseDragPos.GetY(), mousePosition.GetY()));
 
-                // when control is pressed we add the selected elements in a drag select to the already selected elements
-                // NOTE: It would be nice to allow ctrl-area-select to deselect already selected items. However, the main
-                // level editor does not behave that way and we are trying to be consistent (see LMBR-10377)
-                for (auto element : m_selectedElementsAtSelectionStart)
+                LyShine::EntityArray elementsToSelect;
+                EBUS_EVENT_ID_RESULT(elementsToSelect, m_editorWindow->GetCanvas(), UiCanvasBus, PickElements, rectMin, rectMax);
+
+                if (ctrlIsPressed)
                 {
-                    // if not already in the selectedElements then add it
-                    auto iter = AZStd::find(elementsToSelect.begin(), elementsToSelect.end(), element);
-                    if (iter == elementsToSelect.end())
+                    // NOTE: We are fighting against SetSelectedItems a bit here. SetSelectedItems uses Qt
+                    // to set the selection and the control and shift modifiers affect its behavior.
+                    // When Ctrl is down, unless you pass null or an empty list it adds to the existing
+                    // selected items. To get the behavior we want when ctrl is held down we have to clear
+                    // the selection before setting it. NOTE: if you area select over a group and (during
+                    // same drag) move the cursor so that they are not in the box then they should not
+                    // be added to the selection.
+                    HierarchyHelpers::SetSelectedItem(m_editorWindow->GetHierarchy(), nullptr);
+
+                    // when control is pressed we add the selected elements in a drag select to the already selected elements
+                    // NOTE: It would be nice to allow ctrl-area-select to deselect already selected items. However, the main
+                    // level editor does not behave that way and we are trying to be consistent (see LMBR-10377)
+                    for (auto element : m_selectedElementsAtSelectionStart)
                     {
-                        elementsToSelect.push_back(element);
+                        // if not already in the selectedElements then add it
+                        auto iter = AZStd::find(elementsToSelect.begin(), elementsToSelect.end(), element);
+                        if (iter == elementsToSelect.end())
+                        {
+                            elementsToSelect.push_back(element);
+                        }
                     }
                 }
-            }
 
-            HierarchyHelpers::SetSelectedItems(m_editorWindow->GetHierarchy(), &elementsToSelect);
-        }
-        else
-        {
-            // Selection area too small, ignore
+                HierarchyHelpers::SetSelectedItems(m_editorWindow->GetHierarchy(), &elementsToSelect);
+            }
+            else
+            {
+                // Selection area too small, ignore
+            }
         }
     }
     else if (m_interactionType == InteractionType::PIVOT)
@@ -998,7 +1297,11 @@ void ViewportInteraction::ProcessInteraction(const AZ::Vector2& mousePosition,
         switch (m_interactionMode)
         {
         case InteractionMode::MOVE:
-            ViewportElement::Move(m_editorWindow->GetHierarchy(), selectedItems, EntityHelpers::GetEntity(m_activeElementId), m_editorWindow->GetCanvas(), m_coordinateSystem, m_grabbedGizmoParts, m_interactionType, mouseTranslation);
+        case InteractionMode::ANCHOR:
+            if (m_dragInteraction)
+            {
+                m_dragInteraction->Update(mousePosition);
+            }
             break;
         case InteractionMode::ROTATE:
         {
@@ -1032,7 +1335,11 @@ void ViewportInteraction::ProcessInteraction(const AZ::Vector2& mousePosition,
         switch (m_interactionMode)
         {
         case InteractionMode::MOVE:
-            ViewportElement::Move(m_editorWindow->GetHierarchy(), selectedItems, EntityHelpers::GetEntity(m_activeElementId), m_editorWindow->GetCanvas(), m_coordinateSystem, m_grabbedGizmoParts, m_interactionType, mouseTranslation);
+        case InteractionMode::ANCHOR:
+            if (m_dragInteraction)
+            {
+                m_dragInteraction->Update(mousePosition);
+            }
             break;
         case InteractionMode::RESIZE:
             // Exception: Direct resizing (grabbing an edge) only affects the element you grabbed
@@ -1041,6 +1348,13 @@ void ViewportInteraction::ProcessInteraction(const AZ::Vector2& mousePosition,
         default:
             AZ_Assert(0, "Unexpected combination of m_interactionMode and m_interactionType.");
             break;
+        }
+    }
+    else if (m_interactionType == InteractionType::GUIDE)
+    {
+        if (m_dragInteraction)
+        {
+            m_dragInteraction->Update(mousePosition);
         }
     }
     else
@@ -1060,12 +1374,14 @@ void ViewportInteraction::DrawAxisGizmo(Draw2dHelper& draw2d, const AZ::Entity* 
         AZ::Vector2 pivotPosition;
         AZ::Matrix4x4 transform;
 
+        bool isMoveOrAnchorMode = m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR;
+
         if (coordinateSystem == CoordinateSystem::LOCAL)
         {
             EBUS_EVENT_ID_RESULT(pivotPosition, element->GetId(), UiTransformBus, GetCanvasSpacePivotNoScaleRotate);
 
             // LOCAL MOVE in the parent element's LOCAL space.
-            AZ::EntityId elementId(m_interactionMode == InteractionMode::MOVE ? EntityHelpers::GetParentElement(element)->GetId() : element->GetId());
+            AZ::EntityId elementId(isMoveOrAnchorMode ? EntityHelpers::GetParentElement(element)->GetId() : element->GetId());
             EBUS_EVENT_ID(elementId, UiTransformBus, GetTransformToViewport, transform);
         }
         else
@@ -1076,21 +1392,21 @@ void ViewportInteraction::DrawAxisGizmo(Draw2dHelper& draw2d, const AZ::Entity* 
         }
 
         // Draw up axis
-        if (m_interactionMode == InteractionMode::MOVE || !ViewportHelpers::IsVerticallyFit(element))
+        if (isMoveOrAnchorMode || !ViewportHelpers::IsVerticallyFit(element))
         {
             AZ::Color color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.m_top) ? ViewportHelpers::highlightColor : ViewportHelpers::yColor;
             lineTextureY->Draw(draw2d, pivotPosition, transform, 0.0f, color);
         }
 
         // Draw right axis
-        if (m_interactionMode == InteractionMode::MOVE || !ViewportHelpers::IsHorizontallyFit(element))
+        if (isMoveOrAnchorMode || !ViewportHelpers::IsHorizontallyFit(element))
         {
             AZ::Color color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.m_right) ? ViewportHelpers::highlightColor : ViewportHelpers::xColor;
             lineTextureX->Draw(draw2d, pivotPosition, transform, 0.0f, color);
         }
 
         // Draw center square
-        if (m_interactionMode == InteractionMode::MOVE || !ViewportHelpers::IsHorizontallyFit(element) && !ViewportHelpers::IsVerticallyFit(element))
+        if (isMoveOrAnchorMode || !ViewportHelpers::IsHorizontallyFit(element) && !ViewportHelpers::IsVerticallyFit(element))
         {
             AZ::Color color = ((m_activeElementId == element->GetId()) && m_grabbedGizmoParts.Both()) ? ViewportHelpers::highlightColor : ViewportHelpers::zColor;
             m_centerSquare->Draw(draw2d, pivotPosition, transform, 0.0f, color);
@@ -1113,8 +1429,9 @@ void ViewportInteraction::DrawCircleGizmo(Draw2dHelper& draw2d, const AZ::Entity
 
 void ViewportInteraction::UpdateCoordinateSystemToolbarSection()
 {
-    // the coordinate system toolbar should only be enabled in move mode
-    m_editorWindow->GetCoordinateSystemToolbarSection()->SetIsEnabled(m_interactionMode == InteractionMode::MOVE);
+    // the coordinate system toolbar should only be enabled in move or anchor mode
+    bool isMoveOrAnchorMode = m_interactionMode == InteractionMode::MOVE || m_interactionMode == InteractionMode::ANCHOR;
+    m_editorWindow->GetCoordinateSystemToolbarSection()->SetIsEnabled(isMoveOrAnchorMode);
 }
 
 #include <ViewportInteraction.moc>

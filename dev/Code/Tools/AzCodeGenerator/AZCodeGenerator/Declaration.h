@@ -39,6 +39,16 @@ namespace CodeGenerator
             writer->WriteString(GetNameForDecl(decl, false).c_str());
             writer->WriteString("qualified_name");
             writer->WriteString(GetNameForDecl(decl, true).c_str());
+
+            // Dump out the decl location for error printing purposes
+            auto& sourceManager = decl->getASTContext().getSourceManager();
+            auto presumedLocation = sourceManager.getPresumedLoc(decl->getLocation());
+            auto fileName = presumedLocation.getFilename();
+            auto lineNumber = presumedLocation.getLine();
+            writer->WriteString("file_name");
+            writer->WriteString(fileName);
+            writer->WriteString("line_number");
+            writer->WriteUInt(lineNumber);
         }
 
         std::string GetTemplateArgumentAsString(const clang::TemplateArgument& templateArgument, bool useQualifiedName, clang::ASTContext& astContext)

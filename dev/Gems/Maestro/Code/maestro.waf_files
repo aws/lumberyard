@@ -9,9 +9,7 @@
             "Source/Cinematics/ShadowsSetupNode.h",
             "Source/Cinematics/ShadowsSetupNode.cpp",
             "Source/Cinematics/AnimEnvironmentNode.h",
-            "Source/Cinematics/AnimEnvironmentNode.cpp",
-            "Source/Cinematics/AnimGeomCacheNode.h",
-            "Source/Cinematics/AnimGeomCacheNode.cpp"
+            "Source/Cinematics/AnimEnvironmentNode.cpp"
         ]
     },
     "auto": {
@@ -80,8 +78,6 @@
         ],
         "Source/Cinematics/Nodes": [
             "Source/Cinematics/AnimAZEntityNode.cpp",
-            "Source/Cinematics/AnimLightNode.cpp",
-            "Source/Cinematics/AnimCameraNode.cpp",
             "Source/Cinematics/AnimNode.cpp",
             "Source/Cinematics/AnimNodeGroup.cpp",
             "Source/Cinematics/AnimPostFXNode.cpp",
@@ -89,22 +85,18 @@
             "Source/Cinematics/CommentNode.cpp",
             "Source/Cinematics/AnimComponentNode.cpp",
             "Source/Cinematics/CVarNode.cpp",
-            "Source/Cinematics/EntityNode.cpp",
             "Source/Cinematics/EventNode.cpp",
             "Source/Cinematics/LayerNode.cpp",
             "Source/Cinematics/MaterialNode.cpp",
             "Source/Cinematics/SceneNode.cpp",
             "Source/Cinematics/ScriptVarNode.cpp",
             "Source/Cinematics/AnimAZEntityNode.h",
-            "Source/Cinematics/AnimLightNode.h",
-            "Source/Cinematics/AnimCameraNode.h",
             "Source/Cinematics/AnimNode.h",
             "Source/Cinematics/AnimPostFXNode.h",
             "Source/Cinematics/AnimScreenFaderNode.h",
             "Source/Cinematics/CommentNode.h",
             "Source/Cinematics/AnimComponentNode.h",
             "Source/Cinematics/CVarNode.h",
-            "Source/Cinematics/EntityNode.h",
             "Source/Cinematics/EventNode.h",
             "Source/Cinematics/LayerNode.h",
             "Source/Cinematics/MaterialNode.h",

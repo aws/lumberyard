@@ -25,7 +25,8 @@ ViewportAnchor::~ViewportAnchor()
 {
 }
 
-void ViewportAnchor::Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUnTransformedRect, bool drawAnchorLines, ViewportHelpers::SelectedAnchors highlightedAnchors) const
+void ViewportAnchor::Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUnTransformedRect, bool drawAnchorLines, bool drawLinesToParent,
+    bool anchorInteractionEnabled, ViewportHelpers::SelectedAnchors highlightedAnchors) const
 {
     if (!element || ViewportHelpers::IsControlledByLayout(element))
     {
@@ -56,11 +57,6 @@ void ViewportAnchor::Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUn
 
     UiTransformInterface::RectPoints elemRect;
     EBUS_EVENT_ID(element->GetId(), UiTransformBus, GetCanvasSpacePointsNoScaleRotate, elemRect);
-
-    // if the anchors are highlighted (whether actually moving or not) we want to draw distance
-    // lines from the anchor to the edges of it's parent rect. In this case we do NOT want to
-    // draw the lines from the anchor to this element's rect or pivot
-    bool drawLinesToParent = highlightedAnchors.Any();
 
     // Here we optionally draw a rect outline, either the element's rect or the parent element's
     // rect depending on the situation
@@ -100,6 +96,9 @@ void ViewportAnchor::Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUn
         drawAnchorLines = false;
     }
 
+    // we draw the anchors in a different color if anchor interaction is disabled
+    AZ::Color anchorColor = (anchorInteractionEnabled) ? ViewportHelpers::anchorColor : ViewportHelpers::anchorColorDisabled;
+
     // the anchors we draw depend on whether the left/right and top/bottom anchors are together or split apart
     if (anchors.m_left == anchors.m_right)
     {
@@ -115,7 +114,7 @@ void ViewportAnchor::Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUn
                 m_dottedLine->DrawAnchorLines(draw2d, anchorPos, pivot, parentTransform, true, true, true);
             }
 
-            m_anchorWhole->Draw(draw2d, anchorPos, parentTransform, 0.0f, ViewportHelpers::anchorColor);
+            m_anchorWhole->Draw(draw2d, anchorPos, parentTransform, 0.0f, anchorColor);
         }
         else
         {
@@ -137,8 +136,8 @@ void ViewportAnchor::Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUn
                 m_dottedLine->DrawAnchorLinesSplit(draw2d, topAnchorPos, bottomAnchorPos, pivot, parentTransform, false);
             }
 
-            m_anchorLeft->Draw(draw2d, topAnchorPos, parentTransform, 90.0f, ViewportHelpers::anchorColor);
-            m_anchorLeft->Draw(draw2d, bottomAnchorPos, parentTransform, -90.0f, ViewportHelpers::anchorColor);
+            m_anchorLeft->Draw(draw2d, topAnchorPos, parentTransform, 90.0f, anchorColor);
+            m_anchorLeft->Draw(draw2d, bottomAnchorPos, parentTransform, -90.0f, anchorColor);
         }
     }
     else
@@ -163,8 +162,8 @@ void ViewportAnchor::Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUn
                 m_dottedLine->DrawAnchorLinesSplit(draw2d, leftAnchorPos, rightAnchorPos, pivot, parentTransform, true);
             }
 
-            m_anchorLeft->Draw(draw2d, leftAnchorPos, parentTransform, 0.0f, ViewportHelpers::anchorColor);
-            m_anchorLeft->Draw(draw2d, rightAnchorPos, parentTransform, 180.0f, ViewportHelpers::anchorColor);
+            m_anchorLeft->Draw(draw2d, leftAnchorPos, parentTransform, 0.0f, anchorColor);
+            m_anchorLeft->Draw(draw2d, rightAnchorPos, parentTransform, 180.0f, anchorColor);
         }
         else
         {
@@ -195,10 +194,10 @@ void ViewportAnchor::Draw(Draw2dHelper& draw2d, AZ::Entity* element, bool drawUn
                 m_dottedLine->DrawAnchorLinesSplit(draw2d, topRightAnchorPos, bottomRightAnchorPos, rightTarget, parentTransform, false);
             }
 
-            m_anchorLeftTop->Draw(draw2d, topLeftAnchorPos, parentTransform, 0.0f, ViewportHelpers::anchorColor);
-            m_anchorLeftTop->Draw(draw2d, topRightAnchorPos, parentTransform, 90.0f, ViewportHelpers::anchorColor);
-            m_anchorLeftTop->Draw(draw2d, bottomRightAnchorPos, parentTransform, 180.0f, ViewportHelpers::anchorColor);
-            m_anchorLeftTop->Draw(draw2d, bottomLeftAnchorPos, parentTransform, -90.0f, ViewportHelpers::anchorColor);
+            m_anchorLeftTop->Draw(draw2d, topLeftAnchorPos, parentTransform, 0.0f, anchorColor);
+            m_anchorLeftTop->Draw(draw2d, topRightAnchorPos, parentTransform, 90.0f, anchorColor);
+            m_anchorLeftTop->Draw(draw2d, bottomRightAnchorPos, parentTransform, 180.0f, anchorColor);
+            m_anchorLeftTop->Draw(draw2d, bottomLeftAnchorPos, parentTransform, -90.0f, anchorColor);
         }
     }
 
@@ -258,7 +257,7 @@ void ViewportAnchor::DrawAnchorToParentLines(Draw2dHelper& draw2d, const UiTrans
     bool drawVert = true;
 
     // if we have just one side of the anchors selected we only draw one line
-    if (!highlightedAnchors.All())
+    if (!highlightedAnchors.All() && highlightedAnchors.Any())
     {
         if (!(highlightedAnchors.m_left || highlightedAnchors.m_right))
         {

@@ -67,7 +67,7 @@ def build(bld):
         test_all_file_list = ['game_tests.waf_files'],
     )
 
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = ['Core/{0}/game_{0}.waf_files'.format(p)]
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = ['Core/{0}/game_{1}.waf_files'.format(p0, p1)]
 
     bld.CryEngineModule(**kw)

@@ -186,11 +186,22 @@ namespace AzToolsFramework
             }
         }
 
+        void BaseLogView::showEvent(QShowEvent *event)
+        {
+            Q_UNUSED(event)
+
+            m_ptrLogView->resizeRowsToContents();
+        }
+
         void BaseLogView::rowsInserted(const QModelIndex& /*parent*/, int start, int end)
         {
-            for (int i = start; i <= end; ++i)
+            // This is slow, only do it when we're actually showing logs
+            if (isVisible())
             {
-                m_ptrLogView->resizeRowToContents(i);
+                for (int i = start; i <= end; ++i)
+                {
+                    m_ptrLogView->resizeRowToContents(i);
+                }
             }
         }
 

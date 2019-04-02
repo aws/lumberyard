@@ -788,7 +788,7 @@ namespace AZ
                 {
                     // Wrap the stream
                     IO::GenericStream* currentStream = &m_inStream;
-                    IO::MemoryStream memStream(m_inStream.GetData()->data(), 0, static_cast<size_t>(m_inStream.GetCurPos()));
+                    IO::MemoryStream memStream(m_inStream.GetData()->data(), 0, element.m_dataSize);
                     currentStream = &memStream;
 
                     if (element.m_byteStream.GetLength() > 0)
@@ -944,11 +944,9 @@ namespace AZ
                 // find the registered class data
                 cd = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
 
-                if (m_version <= 1 && cd)
+                if (cd)
                 {
-                    // For version 1 the stored typeId was statically associated with the GenericClassInfo, which is now the generic type id
-                    // Therefore the GenericClassInfo is looked up using the generic typeId on the ClassData object
-                    // Afterwards the element.m_id field is updated with the specialized type id
+                    // Lookup the SpecializedTypeId from the class if it has GenericClassInfo registered with it
                     if (GenericClassInfo* genericClassInfo = sc.FindGenericClassInfo(cd->m_typeId))
                     {
                         element.m_id = genericClassInfo->GetSpecializedTypeId();
@@ -1073,11 +1071,9 @@ namespace AZ
 
                 // find the registered class data
                 cd = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
-                if (m_version <= 1 && cd)
+                if (cd)
                 {
-                    // For version 1 the stored typeId was statically associated with the GenericClassInfo, which is now the generic type id
-                    // Therefore the GenericClassInfo is looked up using the generic typeId on the ClassData object
-                    // Afterwards the element.m_id field is updated with the specialized type id
+                    // Lookup the SpecializedTypeId from the class if it has GenericClassInfo registered with it
                     if (GenericClassInfo* genericClassInfo = sc.FindGenericClassInfo(cd->m_typeId))
                     {
                         element.m_id = genericClassInfo->GetSpecializedTypeId();
@@ -1185,11 +1181,9 @@ namespace AZ
 
                 // find the registered class data
                 cd = sc.FindClassData(element.m_id, parent, element.m_nameCrc);
-                if (m_version <= 1 && cd)
+                if (cd)
                 {
-                    // For version 1 the stored typeId was statically associated with the GenericClassInfo, which is now the generic type id
-                    // Therefore the GenericClassInfo is looked up using the generic typeId on the ClassData object
-                    // Afterwards the element.m_id field is updated with the specialized type id
+                    // Lookup the SpecializedTypeId from the class if it has GenericClassInfo registered with it
                     if (GenericClassInfo* genericClassInfo = sc.FindGenericClassInfo(cd->m_typeId))
                     {
                         element.m_id = genericClassInfo->GetSpecializedTypeId();

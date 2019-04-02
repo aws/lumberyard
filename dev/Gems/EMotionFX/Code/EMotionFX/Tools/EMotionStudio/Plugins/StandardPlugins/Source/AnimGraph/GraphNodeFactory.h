@@ -10,19 +10,27 @@
 *
 */
 
-#ifndef __EMSTUDIO_GRAPHNODEFACTORY_H
-#define __EMSTUDIO_GRAPHNODEFACTORY_H
+#pragma once
 
 // include required headers
-#include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/Array.h>
-#include "../StandardPluginsConfig.h"
-#include <QWidget>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/RTTI/TypeInfo.h>
+#include <QtGlobal>
 
+QT_FORWARD_DECLARE_CLASS(QModelIndex)
+QT_FORWARD_DECLARE_CLASS(QWidget)
+
+
+namespace EMotionFX
+{
+    class AnimGraphNode;
+}
 
 namespace EMStudio
 {
     // forward declarations
+    class AnimGraphPlugin;
     class GraphNode;
 
     /**
@@ -31,18 +39,14 @@ namespace EMStudio
      */
     class GraphNodeCreator
     {
-        MCORE_MEMORYOBJECTCATEGORY(GraphNodeCreator, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
-
     public:
-        GraphNodeCreator();
-        virtual ~GraphNodeCreator();
+        GraphNodeCreator() {}
+        virtual ~GraphNodeCreator() {}
 
-        virtual GraphNode* CreateGraphNode(const char* name);   // creates a new GraphNode on default
-        virtual QWidget* CreateAttributeWidget();               // returns nullptr on default, indicating it should auto generate its interface widget
-
-        virtual AZ::TypeId GetAnimGraphNodeType() = 0;            // return the TypeId for the EMotionFX::AnimGraphNode that it is linked to
+        virtual GraphNode* CreateGraphNode(const QModelIndex& modelIndex, AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node) = 0;
+        virtual QWidget* CreateAttributeWidget() { return nullptr; }   // returns nullptr on default, indicating it should auto generate its interface widget
+        virtual const AZ::TypeId& GetAnimGraphNodeType() = 0;          // return the TypeId for the EMotionFX::AnimGraphNode that it is linked to
     };
-
 
     /**
      *
@@ -50,24 +54,22 @@ namespace EMStudio
      */
     class GraphNodeFactory
     {
-        MCORE_MEMORYOBJECTCATEGORY(GraphNodeFactory, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
-
     public:
         GraphNodeFactory();
         ~GraphNodeFactory();
 
-        bool Register(GraphNodeCreator* creator);
+        void Register(GraphNodeCreator* creator);
         void Unregister(GraphNodeCreator* creator, bool delFromMem = true);
         void UnregisterAll(bool delFromMem = true);
 
-        GraphNode* CreateGraphNode(const AZ::TypeId& animGraphNodeType, const char* name);
+        GraphNode* CreateGraphNode(const QModelIndex& modelIndex, AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node);
         QWidget* CreateAttributeWidget(const AZ::TypeId& animGraphNodeType);
 
         GraphNodeCreator* FindCreator(const AZ::TypeId& animGraphNodeType) const;
 
     private:
-        MCore::Array<GraphNodeCreator*> mCreators;
+        // Using a vector since we expect this to be small
+        AZStd::vector<GraphNodeCreator*> m_creators;
     };
-}   // namespace EMStudio
 
-#endif
+}   // namespace EMStudio

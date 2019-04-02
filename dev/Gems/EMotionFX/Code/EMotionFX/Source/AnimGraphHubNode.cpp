@@ -20,6 +20,7 @@
 #include <EMotionFX/Source/AnimGraphRefCountedData.h>
 #include <EMotionFX/Source/AnimGraphStateTransition.h>
 #include <EMotionFX/Source/AnimGraph.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 
 
 namespace EMotionFX
@@ -96,6 +97,8 @@ namespace EMotionFX
             uniqueData = aznew UniqueData(this, animGraphInstance);
             animGraphInstance->RegisterUniqueObjectData(uniqueData);
         }
+
+        OnUpdateTriggerActionsUniqueData(animGraphInstance);
     }
 
 
@@ -111,15 +114,17 @@ namespace EMotionFX
             outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
             outputPose->InitFromBindPose(animGraphInstance->GetActorInstance());
 
-            #ifdef EMFX_EMSTUDIOBUILD
+            if (GetEMotionFX().GetIsInEditorMode())
+            {
                 SetHasError(animGraphInstance, true);
-            #endif
+            }
         }
         else
         {
-            #ifdef EMFX_EMSTUDIOBUILD
+            if (GetEMotionFX().GetIsInEditorMode())
+            {
                 SetHasError(animGraphInstance, false);
-            #endif
+            }
 
             // Get the output pose of the source node into our output pose.
             sourceNode->PerformOutput(animGraphInstance);
@@ -130,12 +135,10 @@ namespace EMotionFX
         }
 
         // Visualize the output pose.
-        #ifdef EMFX_EMSTUDIOBUILD
-            if (GetCanVisualize(animGraphInstance))
-            {
-                animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
-            }
-        #endif
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
+        {
+            animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
+        }
     }
 
 

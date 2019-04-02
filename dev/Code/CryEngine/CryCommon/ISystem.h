@@ -478,12 +478,20 @@ enum ESystemEvent
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_1
-#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ISystem_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ISystem_h_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_2
-#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ISystem_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ISystem_h_provo.inl"
+    #endif
 #endif
     ESYSTEM_EVENT_STREAMING_INSTALL_ERROR,
 
@@ -641,7 +649,11 @@ struct ICVarsWhitelist
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_3
-#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ISystem_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ISystem_h_provo.inl"
+    #endif
 #endif
 
 namespace AZ
@@ -966,7 +978,11 @@ struct SSystemGlobalEnvironment
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_4
-#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ISystem_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ISystem_h_provo.inl"
+    #endif
 #endif
 
     ISystemScheduler*          pSystemScheduler;
@@ -1692,6 +1708,13 @@ struct ISystem
     //////////////////////////////////////////////////////////////////////////
 
     // Summary:
+    //  Enable/Disable drawing the console 
+    virtual void SetConsoleDrawEnabled(bool enabled) = 0;
+
+    //  Enable/Disable drawing the UI 
+    virtual void SetUIDrawEnabled(bool enabled) = 0;
+
+    // Summary:
     //   Get the index of the currently running Crytek application. (0 = first instance, 1 = second instance, etc)
     virtual int GetApplicationInstance() = 0;
 
@@ -1812,7 +1835,7 @@ struct ISystem
     virtual void UnregisterWindowMessageHandler(IWindowMessageHandler* pHandler) = 0;
 
     // Deprecated, use AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty instead
-    virtual int AZ_DEPRECATED(PumpWindowMessage(bool bAll, WIN_HWND hWnd = 0),
+    AZ_DEPRECATED(virtual int PumpWindowMessage(bool bAll, WIN_HWND hWnd = 0),
         "PumpWindowMessage has been deprecated, use AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty instead.")
     {
         // AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::PumpSystemEventLoopUntilEmpty);
@@ -2067,7 +2090,11 @@ inline void CryWarning(EValidatorModule module, EValidatorSeverity severity, con
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION ISYSTEM_H_SECTION_5
-#include AZ_RESTRICTED_FILE(ISystem_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ISystem_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ISystem_h_provo.inl"
+    #endif
 #endif
 #if defined(_RELEASE) && defined(IS_CONSOLE_PLATFORM)
 #ifndef LOG_CONST_CVAR_ACCESS

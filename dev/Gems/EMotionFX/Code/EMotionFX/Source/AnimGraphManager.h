@@ -54,6 +54,7 @@ namespace EMotionFX
 
         MCORE_INLINE uint32 GetNumAnimGraphs() const                                { MCore::LockGuardRecursive lock(mAnimGraphLock); return static_cast<uint32>(mAnimGraphs.size()); }
         MCORE_INLINE AnimGraph* GetAnimGraph(uint32 index) const                    { MCore::LockGuardRecursive lock(mAnimGraphLock); return mAnimGraphs[index]; }
+        AnimGraph* GetFirstAnimGraph() const;
 
         uint32 FindAnimGraphIndex(AnimGraph* animGraph) const;
         AnimGraph* FindAnimGraphByFileName(const char* filename, bool isTool = true) const;
@@ -73,6 +74,8 @@ namespace EMotionFX
         uint32 FindAnimGraphInstanceIndex(AnimGraphInstance* animGraphInstance) const;
 
         void SetAnimGraphVisualizationEnabled(bool enabled);
+
+        void RecursiveCollectObjectsAffectedBy(AnimGraph* animGraph, AZStd::vector<EMotionFX::AnimGraphObject*>& affectedObjects);
 
     private:
         AZStd::vector<AnimGraph*>           mAnimGraphs;

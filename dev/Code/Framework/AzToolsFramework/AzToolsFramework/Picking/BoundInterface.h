@@ -33,12 +33,12 @@ namespace AzToolsFramework
             explicit BoundShapeInterface(RegisteredBoundId boundId, AZ::u64 userContext = 0) 
                 : m_boundId(boundId)
                 , m_userContext(userContext) 
-                , m_isValid(false)
+                , m_valid(false)
             {}
 
-            virtual ~BoundShapeInterface() {};
+            virtual ~BoundShapeInterface() = default;
 
-            RegisteredBoundId GetBoundID() const { return m_boundId; }
+            RegisteredBoundId GetBoundId() const { return m_boundId; }
             AZ::u64 GetUserContext() const { return m_userContext; }
 
             /**
@@ -51,13 +51,13 @@ namespace AzToolsFramework
 
             virtual void SetShapeData(const BoundRequestShapeBase& shapeData) = 0;
 
-            void SetValidity(bool isValid) { m_isValid = isValid; }
-            bool IsValid() const { return m_isValid; }
+            void SetValidity(bool valid) { m_valid = valid; }
+            bool IsValid() const { return m_valid; }
 
         private:
             RegisteredBoundId m_boundId;
             AZ::u64 m_userContext;
-            bool m_isValid;
+            bool m_valid;
         };
     } // namespace Picking
 } // namespace AzToolsFramework

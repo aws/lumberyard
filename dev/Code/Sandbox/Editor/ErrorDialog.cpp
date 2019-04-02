@@ -42,6 +42,13 @@ namespace SandboxEditor
         AZ_Assert(m_ui != nullptr, "ErrorDialog's AddMessages cannot be used without a valid UI.");
         for (const QString& message : messages)
         {
+            // filter out duplicate messages
+            if (m_uniqueStrings.contains(message))
+            {
+                continue;
+            }
+            m_uniqueStrings.insert(message);
+
             // Attempt to split the message up by newline, so the list of errors can be kept shorter.
             // This returns a QStringList with one element, the original string, if the split fails.
             QStringList messageSplitPerLine = message.split('\n');

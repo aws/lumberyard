@@ -230,7 +230,7 @@ namespace ExporterLib
         EMotionFX::Pose& bindPose = *actor->GetBindPose();
         for (i = 0; i < numActorNodes; ++i)
         {
-            transformBackup[i] = bindPose.GetLocalTransform(i);
+            transformBackup[i] = bindPose.GetLocalSpaceTransform(i);
         }
 
         // remap the parent indices and the transform data
@@ -253,7 +253,7 @@ namespace ExporterLib
             {
                 // copy over correct transform datas as the indices have changed
                 //TransformData* transformData = actor->GetTransformData();
-                bindPose.SetLocalTransform(newNodeIndex, transformBackup[oldNodeIndex]);
+                bindPose.SetLocalSpaceTransform(newNodeIndex, transformBackup[oldNodeIndex]);
 
                 /*          transformData->SetLocalPos( newNodeIndex, transformBackup.GetLocalPos( oldNodeIndex ) );
                             transformData->SetLocalRot( newNodeIndex, transformBackup.GetLocalRot( oldNodeIndex ) );
@@ -437,7 +437,7 @@ namespace ExporterLib
 
                 // add the mesh name post fix to the filename
                 AzFramework::StringFunc::Path::GetFileName(fileNameWithoutExtension, tempFileName);
-                
+
                 nodeName = node->GetName();
                 AzFramework::StringFunc::Replace(nodeName, " ", "", true);
                 AzFramework::StringFunc::Replace(nodeName, "\t", "", true);
@@ -460,10 +460,11 @@ namespace ExporterLib
 
                 // save the actor
                 Exporter* exporter = Exporter::Create();
-                MCore::FileSystem::SaveToFileSecured(tempFileName.c_str(), 
-                    [exporter, tempFileName, clone, targetEndianType] { 
+                MCore::FileSystem::SaveToFileSecured(tempFileName.c_str(),
+                    [exporter, tempFileName, clone, targetEndianType]
+                    {
                         return exporter->SaveActor(tempFileName, clone, targetEndianType);
-                    }, 
+                    },
                     commandManager);
                 exporter->Destroy();
 
@@ -497,10 +498,11 @@ namespace ExporterLib
 
         // save the actor
         Exporter* exporter = Exporter::Create();
-        MCore::FileSystem::SaveToFileSecured(tempFileName.c_str(), 
-            [exporter, tempFileName, skeleton, targetEndianType] { 
+        MCore::FileSystem::SaveToFileSecured(tempFileName.c_str(),
+            [exporter, tempFileName, skeleton, targetEndianType]
+            {
                 return exporter->SaveActor(tempFileName, skeleton, targetEndianType);
-            }, 
+            },
             commandManager);
         exporter->Destroy();
 

@@ -52,6 +52,9 @@ namespace LuaBuilder
             builderDescriptor.m_processJobFunction = AZStd::bind(&LuaBuilderWorker::ProcessJob, &m_luaBuilder, AZStd::placeholders::_1, AZStd::placeholders::_2);
             m_luaBuilder.BusConnect(builderDescriptor.m_busId);
 
+            // (optimization) this builder does not emit source dependencies:
+            builderDescriptor.m_flags |= AssetBuilderSDK::AssetBuilderDesc::BF_EmitsNoDependencies;
+
             AssetBuilderSDK::AssetBuilderBus::Broadcast(&AssetBuilderSDK::AssetBuilderBusTraits::RegisterBuilderInformation, builderDescriptor);
         }
 

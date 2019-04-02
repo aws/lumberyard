@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -33,9 +33,11 @@ namespace ScriptCanvas
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<String>("String", "")->
-                        ClassElement(AZ::Edit::ClassElements::EditorData, "")->
-                        Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Libraries/String.png")
+                    editContext->Class<String>("String", "")
+                        ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Libraries/String.png")
+                        ->Attribute(AZ::Edit::Attributes::CategoryStyle, ".string")
+                        ->Attribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride, "StringNodeTitlePalette")
                         ;
                 }
             }
@@ -48,14 +50,32 @@ namespace ScriptCanvas
             using namespace ScriptCanvas::Nodes::String;
             AddNodeToRegistry<String, Format>(nodeRegistry);
             AddNodeToRegistry<String, Print>(nodeRegistry);
+            AddNodeToRegistry<String, Replace>(nodeRegistry);
+            AddNodeToRegistry<String, Contains>(nodeRegistry);
+            AddNodeToRegistry<String, StartsWith>(nodeRegistry);
+            AddNodeToRegistry<String, EndsWith>(nodeRegistry);
+            AddNodeToRegistry<String, Split>(nodeRegistry);
+            AddNodeToRegistry<String, Join>(nodeRegistry);
+
+            StringNodes::Registrar::AddToRegistry<String>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> String::GetComponentDescriptors()
         {
-            return AZStd::vector<AZ::ComponentDescriptor*>({
+            AZStd::vector<AZ::ComponentDescriptor*> descriptors = {
                 ScriptCanvas::Nodes::String::Format::CreateDescriptor(),
                 ScriptCanvas::Nodes::String::Print::CreateDescriptor(),
-            });
+                ScriptCanvas::Nodes::String::Replace::CreateDescriptor(),
+                ScriptCanvas::Nodes::String::Contains::CreateDescriptor(),
+                ScriptCanvas::Nodes::String::StartsWith::CreateDescriptor(),
+                ScriptCanvas::Nodes::String::EndsWith::CreateDescriptor(),
+                ScriptCanvas::Nodes::String::Split::CreateDescriptor(),
+                ScriptCanvas::Nodes::String::Join::CreateDescriptor()
+            };
+
+            StringNodes::Registrar::AddDescriptors(descriptors);
+
+            return descriptors;
         }
     }
 }

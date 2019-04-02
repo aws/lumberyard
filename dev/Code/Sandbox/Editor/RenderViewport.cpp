@@ -470,6 +470,12 @@ void CRenderViewport::OnRButtonDown(Qt::KeyboardModifiers modifiers, const QPoin
         m_bInRotateMode = true;
     }
 
+    // mouse buttons are treated as keys as well
+    if (m_pressedKeyState == KeyPressedState::AllUp)
+    {
+        m_pressedKeyState = KeyPressedState::PressedThisFrame;
+    }
+
     m_mousePos = scaledPoint;
     m_prevMousePos = m_mousePos;
 
@@ -526,6 +532,12 @@ void CRenderViewport::OnMButtonDown(Qt::KeyboardModifiers modifiers, const QPoin
         else
         {
             m_bInMoveMode = true;
+        }
+
+        // mouse buttons are treated as keys as well
+        if (m_pressedKeyState == KeyPressedState::AllUp)
+        {
+            m_pressedKeyState = KeyPressedState::PressedThisFrame;
         }
 
         m_mousePos = scaledPoint;
@@ -602,11 +614,6 @@ void CRenderViewport::ProcessMouse()
     }
 
     const auto point = WidgetToViewport(mapFromGlobal(QCursor::pos()));
-
-    if (!m_nPresedKeyState)
-    {
-        m_nPresedKeyState   =   1;
-    }
 
     if (point == m_prevMousePos)
     {
@@ -796,7 +803,7 @@ bool  CRenderViewport::event(QEvent* event)
             }
             else
             {
-                if (!(keyEvent->modifiers() & Qt::ControlModifier) && !(keyEvent->modifiers() & Qt::AltModifier))
+                if (!(keyEvent->modifiers() & Qt::ControlModifier))
                 {
                     switch (keyEvent->key())
                     {
@@ -1894,6 +1901,16 @@ float CRenderViewport::GridSize()
     return grid->scale * grid->size;
 }
 
+bool CRenderViewport::AngleSnappingEnabled()
+{
+    return GetViewManager()->GetGrid()->IsAngleSnapEnabled();
+}
+
+float CRenderViewport::AngleStep()
+{
+    return GetViewManager()->GetGrid()->GetAngleSnap();
+}
+
 AZ::Vector3 CRenderViewport::PickSurface(const AZ::Vector2& point)
 {
     return LYVec3ToAZVec3(ViewToWorld(QPoint(point.GetX(), point.GetY())));
@@ -2401,29 +2418,36 @@ void    CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
                 lookThroughEntityCorrection, m_viewEntityId, 
                 &LmbrCentral::EditorCameraCorrectionRequests::GetInverseTransformCorrection);
         }
-        if (!m_nPresedKeyState   || m_nPresedKeyState == 1)
+        if (m_pressedKeyState != KeyPressedState::PressedInPreviousFrame)
         {
             CUndo undo("Move Camera");
             if (bMoveOnly)
             {
-                cameraObject->SetWorldPos(camMatrix.GetTranslation());
+                // specify eObjectUpdateFlags_UserInput so that an undo command gets logged
+                cameraObject->SetWorldPos(camMatrix.GetTranslation(), eObjectUpdateFlags_UserInput);
             }
             else
             {
-                cameraObject->SetWorldTM(camMatrix * AZMatrix3x3ToLYMatrix3x3(lookThroughEntityCorrection));
+                // specify eObjectUpdateFlags_UserInput so that an undo command gets logged
+                cameraObject->SetWorldTM(camMatrix * AZMatrix3x3ToLYMatrix3x3(lookThroughEntityCorrection), eObjectUpdateFlags_UserInput);
             }
         }
         else
         {
             if (bMoveOnly)
             {
+                // Do not specify eObjectUpdateFlags_UserInput, so that an undo command does not get logged; we covered it already when m_pressedKeyState was PressedThisFrame
                 cameraObject->SetWorldPos(camMatrix.GetTranslation());
             }
             else
             {
+                // Do not specify eObjectUpdateFlags_UserInput, so that an undo command does not get logged; we covered it already when m_pressedKeyState was PressedThisFrame
                 cameraObject->SetWorldTM(camMatrix * AZMatrix3x3ToLYMatrix3x3(lookThroughEntityCorrection));
             }
         }
+
+        using namespace AzToolsFramework;
+        ComponentEntityObjectRequestBus::Event(cameraObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
     }
     else if (m_viewEntityId.IsValid())
     {
@@ -2433,7 +2457,7 @@ void    CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
             return;
         }
 
-        if (!m_nPresedKeyState || m_nPresedKeyState == 1)
+        if (m_pressedKeyState != KeyPressedState::PressedInPreviousFrame)
         {
             CUndo undo("Move Camera");
             if (bMoveOnly)
@@ -2459,9 +2483,9 @@ void    CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues);
     }
 
-    if (m_nPresedKeyState == 1)
+    if (m_pressedKeyState == KeyPressedState::PressedThisFrame)
     {
-        m_nPresedKeyState = 2;
+        m_pressedKeyState = KeyPressedState::PressedInPreviousFrame;
     }
     QtViewport::SetViewTM(camMatrix);
 
@@ -2674,7 +2698,6 @@ void CRenderViewport::ProcessKeys()
     speedScale *= GetCameraMoveSpeed();
 
     // Use the global modifier keys instead of our keymap. It's more reliable.
-    bool altPressed = QGuiApplication::queryKeyboardModifiers() & Qt::AltModifier;
     bool shiftPressed = QGuiApplication::queryKeyboardModifiers() & Qt::ShiftModifier;
     bool controlPressed = QGuiApplication::queryKeyboardModifiers() & Qt::ControlModifier;
     if (shiftPressed)
@@ -2682,7 +2705,7 @@ void CRenderViewport::ProcessKeys()
         speedScale *= gSettings.cameraFastMoveSpeed;
     }
 
-    if (controlPressed || altPressed)
+    if (controlPressed)
     {
         return;
     }
@@ -2693,70 +2716,63 @@ void CRenderViewport::ProcessKeys()
     {
         // move forward
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos + (speedScale * m_moveSpeed * ydir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_Down) || IsKeyDown(Qt::Key_S))
     {
         // move backward
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos - (speedScale * m_moveSpeed * ydir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_Left) || IsKeyDown(Qt::Key_A))
     {
         // move left
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos - (speedScale * m_moveSpeed * xdir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_Right) || IsKeyDown(Qt::Key_D))
     {
         // move right
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos + (speedScale * m_moveSpeed * xdir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_E))
     {
         // move Up
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos + (speedScale * m_moveSpeed * zdir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_Q))
     {
         // move down
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos - (speedScale * m_moveSpeed * zdir);
+    }
+
+    if (bIsPressedSome)
+    {
+        // Only change the keystate to pressed if it wasn't already marked in
+        // a previous frame. Otherwise, the undo/redo stack will be all off
+        // from what SetViewTM() does.
+        if (m_pressedKeyState == KeyPressedState::AllUp)
+        {
+            m_pressedKeyState = KeyPressedState::PressedThisFrame;
+        }
+
         m.SetTranslation(pos);
         SetViewTM(m, true);
     }
 
-    if (QGuiApplication::mouseButtons() & (Qt::RightButton | Qt::MiddleButton))
-    {
-        bIsPressedSome = true;
-    }
+    bool mouseModifierKeysDown = ((QGuiApplication::mouseButtons() & (Qt::RightButton | Qt::MiddleButton)) != 0);
 
-    if (!bIsPressedSome)
+    if (!bIsPressedSome && !mouseModifierKeysDown)
     {
-        m_nPresedKeyState = 0;
+        m_pressedKeyState = KeyPressedState::AllUp;
     }
 }
 

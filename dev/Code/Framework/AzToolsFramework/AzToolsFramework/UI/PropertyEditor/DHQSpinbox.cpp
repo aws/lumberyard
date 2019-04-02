@@ -99,11 +99,29 @@ namespace AzToolsFramework
                 {
                     QWheelEvent* wheelEvent = static_cast<QWheelEvent*>(event);
                     QSpinBox::wheelEvent(wheelEvent);
+                    return true;
                 }
                 else
                 {
                     event->ignore();
                     return true;
+                }
+            }
+            else if (event->type() == QEvent::ShortcutOverride)
+            {
+                // This should be handled in the base class, but since that's part of Qt, do it here.
+                // The Up and Down keys have a function while this widget is in focus, so prevent those shortcuts from firing
+                QKeyEvent* kev = static_cast<QKeyEvent*>(event);
+                switch (kev->key())
+                {
+                case (Qt::Key_Up):
+                case (Qt::Key_Down):
+                    event->accept();
+                    return true;
+                    break;
+
+                default:
+                    break;
                 }
             }
             else
@@ -199,6 +217,23 @@ namespace AzToolsFramework
                 {
                     event->ignore();
                     return true;
+                }
+            }
+            else if (event->type() == QEvent::ShortcutOverride)
+            {
+                // This should be handled in the base class, but since that's part of Qt, do it here.
+                // The Up and Down keys have a function while this widget is in focus, so prevent those shortcuts from firing
+                QKeyEvent* kev = static_cast<QKeyEvent*>(event);
+                switch (kev->key())
+                {
+                case (Qt::Key_Up):
+                case (Qt::Key_Down):
+                    event->accept();
+                    return true;
+                    break;
+
+                default:
+                    break;
                 }
             }
             else
@@ -314,14 +349,30 @@ namespace AzToolsFramework
 
     void DHQDoubleSpinbox::focusInEvent(QFocusEvent* event)
     {
-        QDoubleSpinBox::focusInEvent(event);
-
         // We need to set the special value text to an empty string, which
         // effectively makes no change, but actually triggers the line edit
         // display value to be updated so that when we receive focus to
         // begin editing, we display the full decimal precision instead of
         // the truncated display value
         setSpecialValueText(QString());
+
+        // Remove the suffix while editing
+        m_lastSuffix = suffix();
+        setSuffix(QString());
+
+        QDoubleSpinBox::focusInEvent(event);
+    }
+
+    void DHQDoubleSpinbox::focusOutEvent(QFocusEvent* event)
+    {
+        QDoubleSpinBox::focusOutEvent(event);
+
+        // restore the suffix now, if needed
+        if (m_lastSuffix.length() > 0)
+        {
+            setSuffix(m_lastSuffix);
+            m_lastSuffix.clear();
+        }
     }
 }
 

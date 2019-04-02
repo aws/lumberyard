@@ -48,6 +48,7 @@ namespace EMotionFX
     ((AnimGraphConditionAllocator)               (PoolAllocator)   (NoSubAllocator)     ("{F5406A89-3F11-4791-9F83-6A71D0F8DD81}")("EMotionFX anim graph condition memory allocator")) \
     ((AnimGraphObjectDataAllocator)              (PoolAllocator)   (NoSubAllocator)     ("{E00ADC25-A311-4003-849E-85C125089C74}")("EMotionFX anim graph object data memory allocator")) \
     ((AnimGraphObjectUniqueDataAllocator)        (PoolAllocator)   (NoSubAllocator)     ("{C74F51E0-E6B0-4EF8-A3BF-0968CAEF1333}")("EMotionFX anim graph object unique data memory allocator")) \
+    ((CommandAllocator)                          (SystemAllocator) (NoSubAllocator)     ("{5258FFBC-8E1E-451B-9FD7-073B9C409001}")("EMotionFX commands allocator")) \
     ((GeneralAllocator)                          (SystemAllocator) (NoSubAllocator)     ("{E259DA95-75DB-4A59-A190-6FB2433D348B}")("EMotionFX general memory allocator")) \
     ((MotionAllocator)                           (SystemAllocator) (NoSubAllocator)     ("{CAF0B1DB-665F-418B-BEEC-870D8C91C235}")("EMotionFX motion memory allocator")) \
     ((ActorInstanceAllocator)                    (SystemAllocator) (ActorAllocator)     ("{AF2485D0-93B7-4A45-9ACB-A3EFEAAB1746}")("EMotionFX actor instance memory allocator")) \
@@ -78,6 +79,7 @@ namespace EMotionFX
     ((SoftSkinManagerAllocator)                  (SystemAllocator) (ActorAllocator)     ("{3E70C86F-AC01-475D-9DDC-172287E92F5F}")("EMotionFX soft skin manager memory allocator")) \
     ((ThreadDataAllocator)                       (SystemAllocator) (GeneralAllocator)   ("{E5598A5D-D129-476F-BA46-B316AD491F44}")("EMotionFX thread data memory allocator")) \
     ((TransformDataAllocator)                    (SystemAllocator) (ActorAllocator)     ("{2EFFDE9B-EC69-4F3F-A7F6-F1F47437DF91}")("EMotionFX transform data memory allocator")) \
+    ((PoseAllocator)                             (SystemAllocator) (ActorAllocator)     ("{12284635-9AE3-40BD-A0AF-899CE0152352}")("EMotionFX pose memory allocator")) \
     ((WaveletCacheAllocator)                     (SystemAllocator) (MotionAllocator)    ("{A6737B93-EB3C-48D3-9E90-EAB88DA18547}")("EMotionFX wavelet cache memory allocator")) \
 
     // if it exceeds 50, needs adjustments in AzCore/Preprocessor/Sequences.h
@@ -126,5 +128,49 @@ namespace EMotionFX
 
         static void ShrinkPools();
     };
-    
+
+    template <typename Allocator>
+    class STLAllocator
+    {
+    public:
+        typedef void*               pointer_type;
+        typedef AZStd::size_t       size_type;
+        typedef AZStd::ptrdiff_t    difference_type;
+        typedef AZStd::false_type   allow_memory_leaks;
+
+        STLAllocator()
+            : m_allocator(AZ::AllocatorInstance<Allocator>::Get())
+        {
+        }
+
+        STLAllocator(const STLAllocator& other) 
+            : m_allocator(other.m_allocator)
+        { 
+        }
+
+        STLAllocator& operator=(const STLAllocator& rhs) 
+        { 
+            AZ_Assert(&m_allocator == &rhs.m_allocator, "Wrong assignment, expected same allocators");
+            return *this; 
+        }
+
+        AZ_FORCE_INLINE const char*  get_name() const { return m_allocator.GetName(); }
+        AZ_FORCE_INLINE void         set_name(const char*) {}
+
+        pointer_type    allocate(size_type byteSize, size_type alignment, int flags = 0) { return m_allocator.Allocate(byteSize, alignment, flags); }
+        void            deallocate(pointer_type ptr, size_type byteSize, size_type alignment) { m_allocator.DeAllocate(ptr, byteSize, alignment); }
+        size_type       resize(pointer_type ptr, size_type newSize) { return m_allocator.Resize(ptr, newSize); }
+        size_type       get_max_size() const { return m_allocator.GetMaxAllocationSize(); }
+        size_type       get_allocated_size() const { return m_allocator.NumAllocatedBytes(); }
+        AZ_FORCE_INLINE bool is_lock_free() { return false; }
+        AZ_FORCE_INLINE bool is_stale_read_allowed() { return false; }
+        AZ_FORCE_INLINE bool is_delayed_recycling() { return false; } 
+
+        AZ_FORCE_INLINE bool operator==(const STLAllocator<Allocator>& other) const { return &m_allocator == &other.m_allocator; }
+        AZ_FORCE_INLINE bool operator!=(const STLAllocator<Allocator>& other) const { return &m_allocator != &other.m_allocator; }
+
+    private:
+        Allocator& m_allocator;
+    };
+
 } // namespace EMotionFX

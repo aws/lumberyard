@@ -15,7 +15,8 @@
 
 CommandPropertiesChange::CommandPropertiesChange(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    SerializeHelpers::SerializedEntryList& preValueChanges)
+    SerializeHelpers::SerializedEntryList& preValueChanges,
+    const char* commandName)
     : QUndoCommand()
     , m_stack(stack)
     , m_isFirstExecution(true)
@@ -25,7 +26,7 @@ CommandPropertiesChange::CommandPropertiesChange(UndoStack* stack,
 {
     AZ_Assert(!m_entryList.empty(), "Entry list is empty");
 
-    setText("properties change");
+    setText(commandName);
 }
 
 void CommandPropertiesChange::undo()
@@ -66,7 +67,8 @@ void CommandPropertiesChange::Recreate(bool isUndo)
 
 void CommandPropertiesChange::Push(UndoStack* stack,
     HierarchyWidget* hierarchy,
-    SerializeHelpers::SerializedEntryList& preValueChanges)
+    SerializeHelpers::SerializedEntryList& preValueChanges,
+    const char* commandName)
 {
     if (stack->GetIsExecuting())
     {
@@ -76,6 +78,7 @@ void CommandPropertiesChange::Push(UndoStack* stack,
     }
 
     stack->push(new CommandPropertiesChange(stack,
-            hierarchy,
-            preValueChanges));
+        hierarchy,
+        preValueChanges,
+        commandName));
 }

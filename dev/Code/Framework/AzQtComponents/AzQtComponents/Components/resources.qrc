@@ -6,7 +6,9 @@
     <file>img/dockWidgetSeparatorDots_horiz.png</file>
     <file>img/dockWidgetSeparatorDots_vert.png</file>
     <file>img/filter.png</file>
+    <file>img/filter_selected.png</file>
     <file>img/menu.png</file>
+    <file>img/menu_selected.png</file>
     <file>img/radio-hover.png</file>
     <file>img/radio-selected.png</file>
     <file>img/radio-unselected.png</file>

@@ -110,6 +110,13 @@ namespace MCore
         /**
          * Get the default value for a parameter with a given name.
          * @param paramName The parameter name to check for.
+         * @result The string that will receive the default value.
+         */
+        const AZStd::string& GetDefaultValue(const char* paramName) const;
+
+        /**
+         * Get the default value for a parameter with a given name.
+         * @param paramName The parameter name to check for.
          * @param outDefaultValue The string that will receive the default value.
          * @result Returns true when the parameter default value has been looked up successfully, otherwise false is returned (no parameter with such name found).
          */

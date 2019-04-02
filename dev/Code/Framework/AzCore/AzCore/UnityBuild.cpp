@@ -30,7 +30,11 @@
 #elif defined(AZ_PLATFORM_LINUX) || defined(AZ_PLATFORM_ANDROID) || defined(AZ_PLATFORM_APPLE)
 #   include "std/parallel/internal/thread_linux.cpp"
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(UnityBuild_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/UnityBuild_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/UnityBuild_cpp_provo.inl"
+    #endif
 #endif
 
 #include "Debug/Trace.cpp"

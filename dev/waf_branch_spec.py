@@ -78,7 +78,7 @@ with open(os.path.join(SCRIPT_PATH, LUMBERYARD_ENGINE_VERSION_CONFIG_FILENAME)) 
 
 LUMBERYARD_VERSION = ENGINE_JSON_DATA.get('LumberyardVersion', '0.0.0.0').encode("ascii", "ignore")
 LUMBERYARD_COPYRIGHT_YEAR = ENGINE_JSON_DATA.get('LumberyardCopyrightYear', 2017)
-LUMBERYARD_BUILD = 785010
+LUMBERYARD_BUILD = 866460
 LUMBERYARD_ENGINE_PATH = os.path.normpath(ENGINE_JSON_DATA.get('ExternalEnginePath', '.').encode("ascii", "ignore"))
 
 # validate the Lumberyard version string above
@@ -154,7 +154,6 @@ for configuration_alias_key in CONFIGURATION_SHORTCUT_ALIASES:
 # not all platform/configuration commands are valid.
 # if an entry exists in this dictionary, only the configurations listed will be built
 non_test_platforms = (
-    'android_armv7_gcc',
     'android_armv7_clang',
     'android_armv8_clang',
     'appletv',
@@ -162,7 +161,6 @@ non_test_platforms = (
 )
 
 non_dedicated_platforms = (
-    'android_armv7_gcc',
     'android_armv7_clang',
     'android_armv8_clang',
     'appletv',

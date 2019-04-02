@@ -136,6 +136,16 @@ namespace AzToolsFramework
             m_impl->storageID = id;
         }
 
+        int BaseLogPanel::GetTabWidgetCount()
+        {
+            return m_impl->pTabWidget->count();
+        }
+
+        QWidget* BaseLogPanel::GetTabWidgetAtIndex(int index)
+        {
+            return m_impl->pTabWidget->widget(index);
+        }
+
         void BaseLogPanel::Reflect(AZ::ReflectContext* reflection)
         {
             SavedState::Reflect(reflection);
@@ -380,6 +390,11 @@ namespace AzToolsFramework
             }
 
             return 0;
+        }
+
+        const Logging::LogLine& RingBufferLogDataModel::GetLineFromIndex(const QModelIndex& index)
+        {
+            return m_lines[index.row()];
         }
 
         void RingBufferLogDataModel::CommitAdd()

@@ -38,7 +38,11 @@ namespace AZ
          *      THREAD_PRIORITY_TIME_CRITICAL
          */
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(JobManagerDesc_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/JobManagerDesc_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/JobManagerDesc_h_provo.inl"
+    #endif
 #endif
 
         int     m_priority;

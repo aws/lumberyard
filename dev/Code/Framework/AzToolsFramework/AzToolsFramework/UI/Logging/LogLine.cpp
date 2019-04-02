@@ -26,12 +26,13 @@ namespace AzToolsFramework
 {
     namespace Logging
     {
-        LogLine::LogLine(const char* inMessage, const char* inWindow, LogType inType, AZ::u64 inTime)
+        LogLine::LogLine(const char* inMessage, const char* inWindow, LogType inType, AZ::u64 inTime, void* data)
             : m_message(inMessage)
             , m_window(inWindow)
             , m_type(inType)
             , m_messageTime(inTime)
             , m_processed(false)
+            , m_userData(data)
         {
             Process();
         }
@@ -56,6 +57,7 @@ namespace AzToolsFramework
                 m_messageTime = other.m_messageTime;
                 m_isRichText = other.m_isRichText;
                 m_processed = other.m_processed;
+                m_userData = other.m_userData;
             }
             return *this;
         }
@@ -70,6 +72,7 @@ namespace AzToolsFramework
                 m_messageTime = other.m_messageTime;
                 m_isRichText = other.m_isRichText;
                 m_processed = other.m_processed;
+                m_userData = other.m_userData;
             }
             return *this;
         }
@@ -160,6 +163,15 @@ namespace AzToolsFramework
         AZ::u64 LogLine::GetLogTime() const
         {
             return m_messageTime;
+        }
+
+        void* LogLine::GetUserData() const
+        {
+            return m_userData;
+        }
+        void LogLine::SetUserData(void* data)
+        {
+            m_userData = data;
         }
 
         AZStd::string LogLine::ToString()

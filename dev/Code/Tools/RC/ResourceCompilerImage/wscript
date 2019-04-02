@@ -35,9 +35,9 @@ def build(bld):
 
     darwin_copy_dependent_files = []
 
-    for p in bld.env['RESTRICTED_PLATFORMS']:
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
         script_dir, script_base = os.path.split(bld.cur_script.abspath())
-        restricted_script_filename = os.path.join(script_dir, p, '{0}_{1}'.format(script_base, p))
+        restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_base, p1))
         if os.path.exists(restricted_script_filename):
             restricted_script = run_path(restricted_script_filename)
             if 'if_platform_supported' in restricted_script:
@@ -95,6 +95,6 @@ def build(bld):
         # Testing
         test_all_file_list          = ['resourcecompilerimage_test.waf_files'],
     )
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['file_list'] += ['{0}/resourcecompilerimage_{0}.waf_files'.format(p)]
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['file_list'] += ['{0}/resourcecompilerimage_{1}.waf_files'.format(p0, p1)]
     bld.CryResourceCompilerModule(**kw)

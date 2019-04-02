@@ -21,13 +21,11 @@ def build(bld):
     ]
 
     development_defines = [
-        'EMFX_DEVELOPMENT_BUILD',       # This is a dev build.
-        'EMFX_EMSTUDIOBUILD'            # Support EMStudio tools - we'd like to strip this in release builds at some point.
+        'EMFX_DEVELOPMENT_BUILD'        # This is a dev build.
     ]
 
     editor_defines = [
         'EMFX_DEVELOPMENT_BUILD',
-        'EMFX_EMSTUDIOBUILD',
         'EMFX_EMSTUDIOLYEMBEDDED',      # EMotionFX tool needs to know it's embedded in another Qt app.
         'EMOTIONFXANIMATION_EDITOR'     # Editor build of Gem code needs to register additional components.
     ]
@@ -48,7 +46,7 @@ def build(bld):
                                        'EMotionFX/CommandSystem/commandsystem.waf_files',
                                        'EMotionFX/Exporters/ExporterLib/exporterlib.waf_files'
                                       ],
-        use                         = ['AzFramework', 'LmbrCentral'],
+        use                         = ['AzFramework'],
         win_features                = ['crcfix'],
         #msvc_cxxflags               = msvc_cxx_flags,
         includes                    = ['./Include',
@@ -69,8 +67,8 @@ def build(bld):
         test_all_defines            = list(development_defines)
     )
     
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = ['MCore/Source/{0}/mcore_{0}.waf_files'.format(p)]
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = ['MCore/Source/{0}/mcore_{1}.waf_files'.format(p0, p1)]
 
     bld.CryEngineStaticLibrary(**kw)
 
@@ -115,9 +113,10 @@ def build(bld):
                               ],
             use             = ['AzToolsFramework',
                                'AzQtComponents',
-                               'EMotionFXStaticLib', 
-                               'SceneCore', 
-                               'SceneData'
+                               'EMotionFXStaticLib',
+                               'SceneCore',
+                               'SceneData',
+                               'SceneUI'
                               ] + bld.make_aws_library_task_list(['LyMetricsShared', 'LyIdentity', 'LyMetricsProducer']), #Do not change the order of 'LyMetricsShared', 'LyIdentity', 'LyMetricsProducer'
             features        = ['ExternalLyMetrics', 'ExternalLyIdentity'],
             uselib          = ['QT5OPENGL',
@@ -141,7 +140,9 @@ def build(bld):
             pch             = '',
 
             debug_defines   = list(editor_defines) + list(debug_defines),
+            debug_test_defines = list(editor_defines) + list(debug_defines),
             profile_defines = list(editor_defines),
+            profile_test_defines = list(editor_defines) + list(debug_defines),
 
             win_lib         = ['opengl32', 'dxguid', 'dinput8'],
             #msvc_cxxflags   = msvc_cxx_flags,

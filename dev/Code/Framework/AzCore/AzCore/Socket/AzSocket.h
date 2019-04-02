@@ -44,7 +44,11 @@
 #   define SD_BOTH     0x02
 
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(AzSocket_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AzSocket_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AzSocket_h_provo.inl"
+    #endif
 #endif
 typedef fd_set  AZFD_SET;
 typedef timeval AZTIMEVAL;

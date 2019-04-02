@@ -16,10 +16,9 @@
 #include <MCore/Source/Array.h>
 #include <MCore/Source/Color.h>
 #include <MCore/Source/StringIdPool.h>
-#include <EMotionFX/Source/AnimGraphNodeId.h>
 #include "../StandardPluginsConfig.h"
 #include <QPainter>
-#include <QIcon>
+#include <QModelIndex>
 #include <QPixmap>
 #include <QStaticText>
 
@@ -27,6 +26,11 @@
 // specify the maximum node with here, if the node headers or info text gets longer than this they will get elided
 #define MAX_NODEWIDTH 180
 #define BORDER_RADIUS 7.0
+
+namespace EMotionFX
+{
+    class AnimGraphInstance;
+}
 
 namespace EMStudio
 {
@@ -78,8 +82,10 @@ namespace EMStudio
             TYPE_ID = 0x00000001
         };
 
-        GraphNode(const char* name, uint32 numInputs = 0, uint32 numOutputs = 1);
+        GraphNode(const QModelIndex& modelIndex, const char* name, uint32 numInputs = 0, uint32 numOutputs = 0);
         virtual ~GraphNode();
+
+        const QModelIndex& GetModelIndex() const                            { return m_modelIndex; }
 
         MCORE_INLINE void UpdateNameAndPorts()                              { mNameAndPortsUpdated = false; }
         MCORE_INLINE MCore::Array<NodeConnection*>& GetConnections()        { return mConnections; }
@@ -98,9 +104,6 @@ namespace EMStudio
         MCORE_INLINE bool GetIsVisible() const                              { return mIsVisible; }
         MCORE_INLINE const char* GetName() const                            { return mName.c_str(); }
         MCORE_INLINE const AZStd::string& GetNameString() const             { return mName; }
-
-        EMotionFX::AnimGraphNodeId GetId() const                            { return m_id; }
-        void SetId(EMotionFX::AnimGraphNodeId id)                           { m_id = id; }
 
         MCORE_INLINE bool GetCreateConFromOutputOnly() const                { return mConFromOutputOnly; }
         MCORE_INLINE void SetCreateConFromOutputOnly(bool enable)           { mConFromOutputOnly = enable; }
@@ -145,11 +148,7 @@ namespace EMStudio
         void RemoveAllOutputPorts();
         void RemoveAllConnections();
 
-        NodeConnection* FindConnection(uint32 targetPortNr, GraphNode* sourceNode, uint32 sourcePortNr);
-        //NodeConnection* FindConnection(GraphNode* sourceNode);
-        NodeConnection* FindConnectionByID(uint32 connectionID);
-        virtual bool RemoveConnection(uint32 targetPortNr, GraphNode* sourceNode, uint32 sourcePortNr, uint32 connectionID);
-        bool RemoveConnection(NodeConnection* connection, bool delFromMem = true);
+        bool RemoveConnection(const void* connection, bool removeFromMemory = true);
 
         virtual int32 CalcRequiredHeight() const;
         virtual int32 CalcRequiredWidth();
@@ -160,20 +159,17 @@ namespace EMStudio
         bool GetIsInside(const QPoint& globalPoint) const;
         void SetIsSelected(bool selected);
         bool GetIsSelected() const;
-        bool ToggleSelected();
-
+        
         void MoveRelative(const QPoint& deltaMove);
         void MoveAbsolute(const QPoint& newUpperLeft);
         virtual void Update(const QRect& visibleRect, const QPoint& mousePos);
         void UpdateRects();
 
-        static void RenderConnections(GraphNode* node, QPainter& painter, QPen* pen, QBrush* brush, const QRect& invMappedVisibleRect, int32 stepSize);
+        void RenderConnections(QPainter& painter, QPen* pen, QBrush* brush, const QRect& invMappedVisibleRect, int32 stepSize);
 
         virtual void SetName(const char* name, bool updatePixmap = true);
 
-        void SetNodeInfo(const char* info);
-        MCORE_INLINE const char* GetNodeInfo() const                        { return mNodeInfo.c_str(); }
-        MCORE_INLINE const AZStd::string& GetNodeInfoString() const         { return mNodeInfo; }
+        void SetNodeInfo(const AZStd::string& info);
 
         virtual uint32 GetType() const      { return GraphNode::TYPE_ID; }
 
@@ -213,12 +209,9 @@ namespace EMStudio
     protected:
         void RenderShadow(QPainter& painter);
 
-        // render connections
-        void RenderConnections(QPainter& painter, QPen* pen, QBrush* brush, const QRect& invMappedVisibleRect, int32 stepSize);
-        void RenderConnectionsCollapsed(QPainter& painter, QPen* pen, QBrush* brush, const QRect& invMappedVisibleRect, int32 stepSize);
-
         void GetNodePortColors(NodePort* nodePort, const QColor& borderColor, const QColor& headerBgColor, QColor* outBrushColor, QColor* outPenColor);
 
+        QPersistentModelIndex           m_modelIndex;
         AZStd::string                   mName;
         QString                         mElidedName;
 
@@ -229,7 +222,6 @@ namespace EMStudio
         AZStd::string                   mNodeInfo;
         QString                         mElidedNodeInfo;
         QBrush                          mBrush;
-        EMotionFX::AnimGraphNodeId      m_id;
         QColor                          mBaseColor;
         QRect                           mRect;
         QRect                           mFinalRect;

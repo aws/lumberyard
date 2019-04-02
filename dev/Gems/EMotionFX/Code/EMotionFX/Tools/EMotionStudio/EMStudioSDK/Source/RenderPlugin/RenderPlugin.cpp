@@ -1,4 +1,4 @@
- /*
+/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -10,8 +10,8 @@
 *
 */
 
-// include the required headers
 #include <AzCore/RTTI/ReflectContext.h>
+#include <EMotionFX/Source/Actor.h>
 #include <EMotionFX/Source/ActorInstance.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
 #include <EMotionFX/Source/TransformData.h>
@@ -21,6 +21,8 @@
 #include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderLayouts.h>
 #include <EMotionStudio/EMStudioSDK/Source/RenderPlugin/RenderPlugin.h>
 #include <MysticQt/Source/KeyboardShortcutManager.h>
+#include <QMessageBox>
+
 
 namespace EMStudio
 {
@@ -75,12 +77,11 @@ namespace EMStudio
     }
 
 
-    // destructor
     RenderPlugin::~RenderPlugin()
     {
-        SaveRenderOptions();
+        EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusDisconnect();
 
-        // get rid of the emstudio actors
+        SaveRenderOptions();
         CleanEMStudioActors();
 
         // Get rid of the OpenGL view widgets.
@@ -264,26 +265,82 @@ namespace EMStudio
         {
         case RenderPlugin::MODE_TRANSLATIONMANIPULATOR:
         {
-            mTranslateManipulator->Init(actorInstance->GetLocalPosition());
-            mTranslateManipulator->SetCallback(new TranslateManipulatorCallback(actorInstance, actorInstance->GetLocalPosition()));
+            mTranslateManipulator->Init(actorInstance->GetLocalSpaceTransform().mPosition);
+            mTranslateManipulator->SetCallback(new TranslateManipulatorCallback(actorInstance, actorInstance->GetLocalSpaceTransform().mPosition));
             break;
         }
         case RenderPlugin::MODE_ROTATIONMANIPULATOR:
         {
-            mRotateManipulator->Init(actorInstance->GetLocalPosition());
-            mRotateManipulator->SetCallback(new RotateManipulatorCallback(actorInstance, actorInstance->GetLocalRotation()));
+            mRotateManipulator->Init(actorInstance->GetLocalSpaceTransform().mPosition);
+            mRotateManipulator->SetCallback(new RotateManipulatorCallback(actorInstance, actorInstance->GetLocalSpaceTransform().mRotation));
             break;
         }
         case RenderPlugin::MODE_SCALEMANIPULATOR:
         {
-            mScaleManipulator->Init(actorInstance->GetLocalPosition());
-            mScaleManipulator->SetCallback(new ScaleManipulatorCallback(actorInstance, actorInstance->GetLocalScale()));
+            mScaleManipulator->Init(actorInstance->GetLocalSpaceTransform().mPosition);
+            mScaleManipulator->SetCallback(new ScaleManipulatorCallback(actorInstance, actorInstance->GetLocalSpaceTransform().mScale));
             break;
         }
         default:
         {
             break;
         }
+        }
+    }
+
+
+    void RenderPlugin::ZoomToJoints(EMotionFX::ActorInstance* actorInstance, const AZStd::vector<EMotionFX::Node*>& joints)
+    {
+        if (!actorInstance || joints.empty())
+        {
+            return;
+        }
+
+        MCore::AABB aabb;
+        aabb.Init();
+
+        const EMotionFX::Actor* actor = actorInstance->GetActor();
+        const EMotionFX::Skeleton* skeleton = actor->GetSkeleton();
+        const EMotionFX::Pose* pose = actorInstance->GetTransformData()->GetCurrentPose();
+
+        for (const EMotionFX::Node* joint : joints)
+        {
+            const AZ::Vector3 jointPosition = pose->GetWorldSpaceTransform(joint->GetNodeIndex()).mPosition;
+
+            aabb.Encapsulate(jointPosition);
+
+            const AZ::u32 childCount = joint->GetNumChildNodes();
+            for (AZ::u32 i = 0; i < childCount; ++i)
+            {
+                EMotionFX::Node* childJoint = skeleton->GetNode(joint->GetChildIndex(i));
+                const AZ::Vector3 childPosition = pose->GetWorldSpaceTransform(childJoint->GetNodeIndex()).mPosition;
+                aabb.Encapsulate(childPosition);
+            }
+        }
+
+        if (aabb.CheckIfIsValid())
+        {
+            aabb.Widen(aabb.CalcRadius());
+
+            bool isFollowModeActive = false;
+            const uint32 numViewWidgets = mViewWidgets.GetLength();
+            for (AZ::u32 i = 0; i < numViewWidgets; ++i)
+            {
+                const RenderViewWidget* renderViewWidget = mViewWidgets[i];
+                RenderWidget* current = renderViewWidget->GetRenderWidget();
+
+                if (renderViewWidget->GetIsCharacterFollowModeActive())
+                {
+                    isFollowModeActive = true;
+                }
+
+                current->ViewCloseup(aabb, 1.0f);
+            }
+
+            if (isFollowModeActive)
+            {
+                QMessageBox::warning(mDock, "Please disable character follow mode", "Zoom to joints is only working in case character follow mode is disabled.\nPlease disable character follow mode in the render view menu: Camera -> Follow Mode", QMessageBox::Ok);
+            }
         }
     }
 
@@ -484,7 +541,7 @@ namespace EMStudio
         {
             EMStudioRenderActor* emstudioActor = mActors[i];
 
-            for (uint32 j = 0; j < emstudioActor->mActorInstances.GetLength(); )
+            for (uint32 j = 0; j < emstudioActor->mActorInstances.GetLength();)
             {
                 EMotionFX::ActorInstance* emstudioActorInstance = emstudioActor->mActorInstances[j];
                 bool found = false;
@@ -534,9 +591,6 @@ namespace EMStudio
         mCharacterHeight            = 0.0f;
         mOffsetFromTrajectoryNode   = 0.0f;
         mMustCalcNormalScale        = true;
-
-        // calculate the global space bind pose matrices
-        actor->GetSkeleton()->CalcBindPoseGlobalMatrices(mBindPoseGlobalMatrices);
 
         // extract the bones from the actor and add it to the array
         actor->ExtractBoneList(0, &mBoneList);
@@ -591,7 +645,7 @@ namespace EMStudio
 
     void RenderPlugin::EMStudioRenderActor::CalculateNormalScaleMultiplier()
     {
-        // calculate the max extend of the character
+        // calculate the max extent of the character
         EMotionFX::ActorInstance* actorInstance = EMotionFX::ActorInstance::Create(mActor);
         actorInstance->UpdateMeshDeformers(0.0f, true);
 
@@ -634,13 +688,13 @@ namespace EMStudio
                 for (i = 0; i < numViewWidgets; ++i)
                 {
                     RenderWidget* current = mViewWidgets[i]->GetRenderWidget();
-                    current->ViewCloseup(selectedInstancesOnly, flightTime);
+                    current->ViewCloseup(sceneAABB, flightTime);
                 }
             }
             // only apply it to the given view widget
             else
             {
-                renderWidget->ViewCloseup(selectedInstancesOnly, flightTime);
+                renderWidget->ViewCloseup(sceneAABB, flightTime);
             }
         }
     }
@@ -711,8 +765,8 @@ namespace EMStudio
         mSignalMapper       = new QSignalMapper(this);
         mCurrentSelection   = &GetCommandManager()->GetCurrentSelection();
 
-        connect(mSignalMapper, SIGNAL(mapped(const QString&)), this, SLOT(LayoutButtonPressed(const QString&)));
-        connect(mDock, SIGNAL(visibilityChanged(bool)), this, SLOT(VisibilityChanged(bool)));
+        connect(mSignalMapper, static_cast<void (QSignalMapper::*)(const QString&)>(&QSignalMapper::mapped), this, &RenderPlugin::LayoutButtonPressed);
+        connect(mDock, &MysticQt::DockWidget::visibilityChanged, this, &RenderPlugin::VisibilityChanged);
 
         // add the available render template layouts
         RegisterRenderPluginLayouts(this);
@@ -736,13 +790,13 @@ namespace EMStudio
         mToolbarLayout->setMargin(5);
 
         mSelectionModeButton = AddLayoutButton("Images/Rendering/Select.png");
-        connect(mSelectionModeButton, SIGNAL(clicked()), this, SLOT(SetSelectionMode()));
+        connect(mSelectionModeButton, &QPushButton::clicked, this, &RenderPlugin::SetSelectionMode);
         mTranslationModeButton = AddLayoutButton("Images/Rendering/Translate.png");
-        connect(mTranslationModeButton, SIGNAL(clicked()), this, SLOT(SetTranslationMode()));
+        connect(mTranslationModeButton, &QPushButton::clicked, this, &RenderPlugin::SetTranslationMode);
         mRotationModeButton = AddLayoutButton("Images/Rendering/Rotate.png");
-        connect(mRotationModeButton, SIGNAL(clicked()), this, SLOT(SetRotationMode()));
+        connect(mRotationModeButton, &QPushButton::clicked, this, &RenderPlugin::SetRotationMode);
         mScaleModeButton = AddLayoutButton("Images/Rendering/Scale.png");
-        connect(mScaleModeButton, SIGNAL(clicked()), this, SLOT(SetScaleMode()));
+        connect(mScaleModeButton, &QPushButton::clicked, this, &RenderPlugin::SetScaleMode);
 
         // get the render layout templates and iterate through them
         const uint32 numLayouts = mLayouts.GetLength();
@@ -753,7 +807,7 @@ namespace EMStudio
 
             // create the button and connect it to the signal mapper
             QPushButton* button = AddLayoutButton(layout->GetImageFileName());
-            connect(button, SIGNAL(clicked()), mSignalMapper, SLOT(map()));
+            connect(button, &QPushButton::clicked, mSignalMapper, static_cast<void (QSignalMapper::*)()>(&QSignalMapper::map));
             mSignalMapper->setMapping(button, layout->GetName());
         }
 
@@ -790,6 +844,8 @@ namespace EMStudio
 
         // set the default rendering layout
         LayoutButtonPressed(mRenderOptions.GetLastUsedLayout().c_str());
+
+        EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusConnect();
         return true;
     }
 
@@ -1192,8 +1248,7 @@ namespace EMStudio
             const EMotionFX::Node* motionExtractionNode = actor->GetMotionExtractionNode();
             if (motionExtractionNode)
             {
-                // get access to the global space matrix of the actor instance
-                const MCore::Matrix globalTM = actorInstance->GetGlobalTransform().ToMatrix();
+                const MCore::Matrix worldTM = actorInstance->GetWorldSpaceTransform().ToMatrix();
 
                 bool distanceTraveledEnough = false;
                 if (trajectoryPath->mTraceParticles.GetIsEmpty())
@@ -1203,13 +1258,13 @@ namespace EMStudio
                 else
                 {
                     const uint32 numParticles = trajectoryPath->mTraceParticles.GetLength();
-                    const MCore::Matrix oldGlobalTM = trajectoryPath->mTraceParticles[numParticles - 1].mGlobalTM;
+                    const MCore::Matrix& oldWorldTM = trajectoryPath->mTraceParticles[numParticles - 1].mWorldTM;
 
-                    const AZ::Vector3 oldPos = oldGlobalTM.GetTranslation();
-                    const MCore::Quaternion oldRot(oldGlobalTM.Normalized());
-                    const MCore::Quaternion rotation(globalTM.Normalized());
+                    const AZ::Vector3& oldPos = oldWorldTM.GetTranslation();
+                    const MCore::Quaternion oldRot(oldWorldTM.Normalized());
+                    const MCore::Quaternion rotation(worldTM.Normalized());
 
-                    const AZ::Vector3 deltaPos = globalTM.GetTranslation() - oldPos;
+                    const AZ::Vector3 deltaPos = worldTM.GetTranslation() - oldPos;
                     const float deltaRot = MCore::Math::Abs(rotation.Dot(oldRot));
                     if (MCore::SafeLength(deltaPos) > 0.0001f || deltaRot < 0.99f)
                     {
@@ -1225,7 +1280,7 @@ namespace EMStudio
                 {
                     // create the particle, fill its data and add it to the trajectory trace path
                     MCommon::RenderUtil::TrajectoryPathParticle trajectoryParticle;
-                    trajectoryParticle.mGlobalTM = globalTM;
+                    trajectoryParticle.mWorldTM = worldTM;
                     trajectoryPath->mTraceParticles.Add(trajectoryParticle);
 
                     // reset the time passed as we just added a new particle
@@ -1263,12 +1318,8 @@ namespace EMStudio
         RenderViewWidget*   widget          = GetActiveViewWidget();
         RenderOptions*      renderOptions   = GetRenderOptions();
 
-        MCore::Array<uint32>* visibleNodeIndices = &(GetManager()->GetVisibleNodeIndices());
-        MCore::Array<uint32>* selectedNodeIndices = &(GetManager()->GetSelectedNodeIndices());
-        if (selectedNodeIndices->GetIsEmpty())
-        {
-            selectedNodeIndices = nullptr;
-        }
+        const AZStd::unordered_set<AZ::u32>& visibleJointIndices = GetManager()->GetVisibleJointIndices();
+        const AZStd::unordered_set<AZ::u32>& selectedJointIndices = GetManager()->GetSelectedJointIndices();
 
         // render the AABBs
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_AABB))
@@ -1284,11 +1335,33 @@ namespace EMStudio
 
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_OBB))
         {
-            renderUtil->RenderOBBs(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->GetOBBsColor(), renderOptions->GetSelectedObjectColor());
+            renderUtil->RenderOBBs(actorInstance, &visibleJointIndices, &selectedJointIndices, renderOptions->GetOBBsColor(), renderOptions->GetSelectedObjectColor());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_LINESKELETON))
         {
-            renderUtil->RenderSimpleSkeleton(actorInstance, visibleNodeIndices, selectedNodeIndices, renderOptions->GetLineSkeletonColor(), renderOptions->GetSelectedObjectColor());
+            const MCommon::Camera* camera = widget->GetRenderWidget()->GetCamera();
+            const AZ::Vector3& cameraPos = camera->GetPosition();
+
+            MCore::AABB aabb;
+            actorInstance->CalcNodeBasedAABB(&aabb);
+            const AZ::Vector3 aabbMid = aabb.CalcMiddle();
+            const float aabbRadius = aabb.CalcRadius();
+            const float camDistance = fabs((cameraPos - aabbMid).GetLength());
+
+            // Avoid rendering too big joint spheres when zooming in onto a joint.
+            float scaleMultiplier = 1.0f;
+            if (camDistance < aabbRadius)
+            {
+                scaleMultiplier = camDistance / aabbRadius;
+            }
+
+            // Scale the joint spheres based on the character's extents, to avoid really large joint spheres
+            // on small characters and too small spheres on large characters.
+            static const float baseRadius = 0.005f;
+            const float jointSphereRadius = aabb.CalcRadius() * scaleMultiplier * baseRadius;
+
+            renderUtil->RenderSimpleSkeleton(actorInstance, &visibleJointIndices, &selectedJointIndices,
+                renderOptions->GetLineSkeletonColor(), renderOptions->GetSelectedObjectColor(), jointSphereRadius);
         }
 
         bool cullingEnabled = renderUtil->GetCullingEnabled();
@@ -1297,22 +1370,21 @@ namespace EMStudio
         renderUtil->EnableLighting(false); // disable lighting
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_SKELETON))
         {
-            renderUtil->RenderSkeleton(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, renderOptions->GetSkeletonColor(), renderOptions->GetSelectedObjectColor());
+            renderUtil->RenderSkeleton(actorInstance, emstudioActor->mBoneList, &visibleJointIndices, &selectedJointIndices, renderOptions->GetSkeletonColor(), renderOptions->GetSelectedObjectColor());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_NODEORIENTATION))
         {
-            renderUtil->RenderNodeOrientations(actorInstance, emstudioActor->mBoneList, visibleNodeIndices, selectedNodeIndices, emstudioActor->mNormalsScaleMultiplier * renderOptions->GetNodeOrientationScale(), renderOptions->GetScaleBonesOnLength());
+            renderUtil->RenderNodeOrientations(actorInstance, emstudioActor->mBoneList, &visibleJointIndices, &selectedJointIndices, emstudioActor->mNormalsScaleMultiplier * renderOptions->GetNodeOrientationScale(), renderOptions->GetScaleBonesOnLength());
         }
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_ACTORBINDPOSE))
         {
-            renderUtil->RenderBindPose(actorInstance, emstudioActor->mBindPoseGlobalMatrices);
+            renderUtil->RenderBindPose(actorInstance);
         }
 
         // render motion extraction debug info
         if (widget->GetRenderFlag(RenderViewWidget::RENDER_MOTIONEXTRACTION))
         {
             // render an arrow for the trajectory
-            //renderUtil->RenderTrajectoryNode(actorInstance, renderOptions->mTrajectoryArrowInnerColor, renderOptions->mTrajectoryArrowBorderColor, emstudioActor->mCharacterHeight*0.05f);
             renderUtil->RenderTrajectoryPath(FindTracePath(actorInstance), renderOptions->GetTrajectoryArrowInnerColor(), emstudioActor->mCharacterHeight * 0.05f);
         }
         renderUtil->EnableCulling(cullingEnabled); // reset to the old state
@@ -1322,43 +1394,49 @@ namespace EMStudio
         const bool renderFaceNormals    = widget->GetRenderFlag(RenderViewWidget::RENDER_FACENORMALS);
         const bool renderTangents       = widget->GetRenderFlag(RenderViewWidget::RENDER_TANGENTS);
         const bool renderWireframe      = widget->GetRenderFlag(RenderViewWidget::RENDER_WIREFRAME);
-        const bool renderCollisionMeshes = widget->GetRenderFlag(RenderViewWidget::RENDER_COLLISIONMESHES);
+        const bool renderCollisionMeshes= widget->GetRenderFlag(RenderViewWidget::RENDER_COLLISIONMESHES);
+
+        const EMotionFX::Actor* actor = actorInstance->GetActor();
 
         if (renderVertexNormals || renderFaceNormals || renderTangents || renderWireframe || renderCollisionMeshes)
         {
             // iterate through all enabled nodes
-            MCore::Matrix* globalMatrices = actorInstance->GetTransformData()->GetGlobalInclusiveMatrices();
+            const EMotionFX::Pose* pose = actorInstance->GetTransformData()->GetCurrentPose();
+            const MCore::Matrix actorInstanceWorldTM = actorInstance->GetWorldSpaceTransform().ToMatrix();
+
             const uint32 geomLODLevel   = actorInstance->GetLODLevel();
             const uint32 numEnabled     = actorInstance->GetNumEnabledNodes();
             for (uint32 i = 0; i < numEnabled; ++i)
             {
-                EMotionFX::Node*    node            = emstudioActor->mActor->GetSkeleton()->GetNode(actorInstance->GetEnabledNode(i));
-                EMotionFX::Mesh*    mesh            = emstudioActor->mActor->GetMesh(geomLODLevel, node->GetNodeIndex());
-                MCore::Matrix       globalTM        = globalMatrices[ node->GetNodeIndex() ];
+                EMotionFX::Node*    node      = emstudioActor->mActor->GetSkeleton()->GetNode(actorInstance->GetEnabledNode(i));
+                const AZ::u32       nodeIndex = node->GetNodeIndex();
+                EMotionFX::Mesh*    mesh      = emstudioActor->mActor->GetMesh(geomLODLevel, nodeIndex);
 
                 renderUtil->ResetCurrentMesh();
 
-                if (mesh == nullptr)
+                if (!mesh)
                 {
                     continue;
                 }
 
-                if (mesh->GetIsCollisionMesh() == false)
+                const MCore::Matrix worldTM = pose->GetMeshNodeWorldSpaceTransform(geomLODLevel, nodeIndex).ToMatrix();
+
+                if (!mesh->GetIsCollisionMesh())
                 {
-                    renderUtil->RenderNormals(mesh, globalTM, renderVertexNormals, renderFaceNormals, renderOptions->GetVertexNormalsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetFaceNormalsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetVertexNormalsColor(), renderOptions->GetFaceNormalsColor());
+                    renderUtil->RenderNormals(mesh, worldTM, renderVertexNormals, renderFaceNormals, renderOptions->GetVertexNormalsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetFaceNormalsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetVertexNormalsColor(), renderOptions->GetFaceNormalsColor());
                     if (renderTangents)
                     {
-                        renderUtil->RenderTangents(mesh, globalTM, renderOptions->GetTangentsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetTangentsColor(), renderOptions->GetMirroredBitangentsColor(), renderOptions->GetBitangentsColor());
+                        renderUtil->RenderTangents(mesh, worldTM, renderOptions->GetTangentsScale() * emstudioActor->mNormalsScaleMultiplier, renderOptions->GetTangentsColor(), renderOptions->GetMirroredBitangentsColor(), renderOptions->GetBitangentsColor());
                     }
                     if (renderWireframe)
                     {
-                        renderUtil->RenderWireframe(mesh, globalTM, renderOptions->GetWireframeColor(), false, emstudioActor->mNormalsScaleMultiplier);
+                        renderUtil->RenderWireframe(mesh, worldTM, renderOptions->GetWireframeColor(), false, emstudioActor->mNormalsScaleMultiplier);
                     }
                 }
                 else
                 if (renderCollisionMeshes)
                 {
-                    renderUtil->RenderWireframe(mesh, globalTM, renderOptions->GetCollisionMeshColor(), false, emstudioActor->mNormalsScaleMultiplier);
+                    renderUtil->RenderWireframe(mesh, worldTM, renderOptions->GetCollisionMeshColor(), false, emstudioActor->mNormalsScaleMultiplier);
                 }
             }
         }
@@ -1378,7 +1456,7 @@ namespace EMStudio
             const uint32        screenWidth     = widget->GetRenderWidget()->GetScreenWidth();
             const uint32        screenHeight    = widget->GetRenderWidget()->GetScreenHeight();
 
-            renderUtil->RenderNodeNames(actorInstance, camera, screenWidth, screenHeight, renderOptions->GetNodeNameColor(), renderOptions->GetSelectedObjectColor(), GetManager()->GetVisibleNodeIndices(), GetManager()->GetSelectedNodeIndices());
+            renderUtil->RenderNodeNames(actorInstance, camera, screenWidth, screenHeight, renderOptions->GetNodeNameColor(), renderOptions->GetSelectedObjectColor(), visibleJointIndices, selectedJointIndices);
         }
     }
 

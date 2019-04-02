@@ -24,7 +24,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CUSTOMMEMORYHEAP_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(CustomMemoryHeap_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CustomMemoryHeap_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CustomMemoryHeap_cpp_provo.inl"
+    #endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -91,7 +95,11 @@ ICustomMemoryBlock* CCustomMemoryHeap::AllocateBlock(size_t const nAllocateSize,
         break;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CUSTOMMEMORYHEAP_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(CustomMemoryHeap_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CustomMemoryHeap_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CustomMemoryHeap_cpp_provo.inl"
+    #endif
 #endif
     default:
         CryFatalError("CCustomMemoryHeap: unknown allocation policy during AllocateBlock!");
@@ -118,7 +126,11 @@ void CCustomMemoryHeap::DeallocateBlock(CCustomMemoryHeapBlock* pBlock)
         break;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CUSTOMMEMORYHEAP_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(CustomMemoryHeap_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CustomMemoryHeap_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CustomMemoryHeap_cpp_provo.inl"
+    #endif
 #endif
     default:
         CryFatalError("CCustomMemoryHeap: unknown allocation policy during DeallocateBlock!");

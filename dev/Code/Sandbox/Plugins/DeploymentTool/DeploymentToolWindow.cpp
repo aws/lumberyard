@@ -17,7 +17,9 @@
 #include <QtNetwork/qabstractsocket.h>
 #include <QTimer.h>
 
-#include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzFramework/API/ApplicationAPI.h>
+
+#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 
 #include <ILevelSystem.h>
 #include <ISystem.h>
@@ -62,7 +64,7 @@ namespace
     };
 
 
-    const int waitTimeForAssetCatalogUpdateInMilliseconds = 500;
+    const int assetProcessorPollFrequencyInMilliseconds = 500;
     const int devicePollFrequencyInMilliseconds = 10 * 1000; // check for devices every 10 seconds
 
     const Range hostRemoteLogPortRange = { 4700, 4750 };
@@ -103,52 +105,6 @@ namespace
     }
 }
 
-class AssetSystemListener
-    : public AzFramework::AssetSystemInfoBus::Handler
-{
-
-public:
-    AssetSystemListener()
-    {
-        AzFramework::AssetSystemInfoBus::Handler::BusConnect();
-    }
-
-    ~AssetSystemListener()
-    {
-        AzFramework::AssetSystemInfoBus::Handler::BusDisconnect();
-    }
-
-    int GetJobsCount() const
-    {
-        return m_pendingJobsCount;
-    }
-
-    AZStd::string LastAssetProcessorTask() const
-    {
-        return m_lastAssetProcessorTask;
-    }
-
-    virtual void AssetCompilationSuccess(const AZStd::string& assetPath) override
-    {
-        m_lastAssetProcessorTask = assetPath;
-    }
-
-    virtual void AssetCompilationFailed(const AZStd::string& assetPath) override
-    {
-        m_failedJobs.insert(assetPath);
-    }
-
-    virtual void CountOfAssetsInQueue(const int& count) override
-    {
-        m_pendingJobsCount = count;
-    }
-
-private:
-    int m_pendingJobsCount = 0;
-    AZStd::set<AZStd::string> m_failedJobs;
-    AZStd::string m_lastAssetProcessorTask;
-};
-
 
 DeploymentToolWindow::DeploymentToolWindow()
     : m_ui(new Ui::DeploymentToolWindow())
@@ -160,7 +116,6 @@ DeploymentToolWindow::DeploymentToolWindow()
     , m_defaultDeployOutputBrush()
     , m_defaultRemoteDeviceOutputBrush()
 
-    , m_assetSystemListener(new AssetSystemListener())
     , m_devicePollTimer(new QTimer(this))
     , m_deployWorker(nullptr)
 
@@ -181,20 +136,26 @@ DeploymentToolWindow::DeploymentToolWindow()
         LogToWindow(DeployTool::LogStream::DeployOutput, DeployTool::LogSeverity::Error, error.c_str());
     }
 
-    InitializeUi();
-
     connect(m_devicePollTimer.data(), &QTimer::timeout, this, &DeploymentToolWindow::OnDevicePollTimer);
     m_devicePollTimer->start(0);
 
     // force all connections to be queued to ensure any event that modifies UI will be processed on the correct thread.
     connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnLog, this, &DeploymentToolWindow::LogToWindow, Qt::QueuedConnection);
+    connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnDeployProcessStatusChange, this, &DeploymentToolWindow::OnDeployStatusChange, Qt::QueuedConnection);
     connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnDeployProcessFinished, this, &DeploymentToolWindow::OnDeployFinished, Qt::QueuedConnection);
     connect(&m_notificationsBridge, &DeployTool::NotificationsQBridge::OnRemoteLogConnectionStateChange, this, &DeploymentToolWindow::OnRemoteLogConnectionStateChange, Qt::QueuedConnection);
+
+    InitializeUi();
 }
 
 DeploymentToolWindow::~DeploymentToolWindow()
 {
     SaveUiState();
+}
+
+void DeploymentToolWindow::OnDeployStatusChange(const QString& status)
+{
+    m_ui->deployStatusLabel->setText(status);
 }
 
 void DeploymentToolWindow::OnDeployFinished(bool success)
@@ -222,9 +183,9 @@ void DeploymentToolWindow::OnDeployFinished(bool success)
 void DeploymentToolWindow::OnRemoteLogConnectionStateChange(bool isConnected)
 {
     const QIcon& statusIcon = (isConnected ? m_connectedIcon : m_notConnectedIcon);
-    m_ui->statusIconLabel->setPixmap(statusIcon.pixmap(QSize(16, 16)));
+    m_ui->remoteStatusIconLabel->setPixmap(statusIcon.pixmap(QSize(16, 16)));
 
-    m_ui->statusLabel->setText(
+    m_ui->remoteStatusLabel->setText(
         isConnected ?
         QString("Connected to %1").arg(m_lastDeployedDevice) :
         "Not Connected");
@@ -261,6 +222,22 @@ void DeploymentToolWindow::OnPlatformChanged(const QString& currentplatform)
     if (m_deployWorker)
     {
         UpdateUiFromSystemConfig(m_deployWorker->GetSystemConfigFileName());
+
+        // make sure the assets are enabled for this platform and disable the deploy button if not
+        const AZStd::string platformAssets = m_bootstrapConfig.GetAssetsTypeForPlatform(m_deploymentCfg.m_platformOption);
+
+        bool isPlatformAssetsEnabled = false;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(isPlatformAssetsEnabled, 
+                &AzToolsFramework::AssetSystemRequestBus::Events::IsAssetPlatformEnabled, platformAssets.c_str());
+
+        if (!isPlatformAssetsEnabled)
+        {
+            DEPLOY_LOG_ERROR(
+                "[ERROR] Asset processing for platform \"%s\" is not enabled!  Update AssetProcessorPlatfromConfig.ini to enable asset type \"%s\" then restart the Editor and Asset Processor.",
+                currentplatform.toStdString().c_str(), platformAssets.c_str());
+        }
+
+        m_ui->deployButton->setEnabled(isPlatformAssetsEnabled);
     }
 
     m_ui->platformOptionsGroup->setHidden(hidePlatformOptions);
@@ -350,20 +327,9 @@ void DeploymentToolWindow::OnDeployClick()
     // reset the current tab to the deploy output
     m_ui->outputTabWidget->setCurrentIndex(0);
 
-    // first make sure a level is loaded, otherwise this will fail and cancel the deploy operation
-    if (IsAnyLevelLoaded())
-    {
-        // make sure the level is updated for use in the runtime
-        if (!CCryEditApp::Command_ExportToEngine())
-        {
-            InternalDeployFailure("Failed to export the level for runtime");
-            return;
-        }
-    }
-
     if (!PopulateDeploymentConfigFromUi())
     {
-        InternalDeployFailure("Invalid deployment config!");
+        InternalDeployFailure("Invalid deployment configuration!");
         return;
     }
 
@@ -399,9 +365,19 @@ void DeploymentToolWindow::OnDeployClick()
         return;
     }
 
-    WaitForAssetProcessorToFinish();
+    // first make sure a level is loaded, otherwise this will fail and cancel the deploy operation
+    if (IsAnyLevelLoaded())
+    {
+        // make sure the level is updated for use in the runtime
+        if (!CCryEditApp::Command_ExportToEngine())
+        {
+            InternalDeployFailure("Failed to export the level for runtime");
+            return;
+        }
+    }
 
-    m_deployWorker->Run();
+    DEPLOY_LOG_INFO("[INFO] Processing assets...");
+    Run();
 }
 
 void DeploymentToolWindow::ToggleInteractiveUI(bool enabled)
@@ -426,7 +402,7 @@ void DeploymentToolWindow::ToggleInteractiveUI(bool enabled)
     // other
     m_ui->deployButton->setEnabled(enabled);
 
-    // re-eval the IP options if we are enabling edits again
+    // re-evaluate the IP options if we are enabling edits again
     if (enabled)
     {
         UpdateIpAddressOptions();
@@ -490,33 +466,44 @@ bool DeploymentToolWindow::PopulateDeploymentConfigFromUi()
     return true;
 }
 
-void DeploymentToolWindow::WaitForAssetProcessorToFinish()
+void DeploymentToolWindow::Run()
 {
-    int previousCount = 0;
-    while (m_assetSystemListener->GetJobsCount() != 0)
-    {
-        if (previousCount != m_assetSystemListener->GetJobsCount())
-        {
-            DEPLOY_LOG_INFO("[INFO] Waiting for AssetProcessor to finish processing %d jobs...", m_assetSystemListener->GetJobsCount());
-            previousCount = m_assetSystemListener->GetJobsCount();
-        }
-        Sleep(1);
-    }
+    using namespace AzToolsFramework;
 
-    // AssetProcessor writes out an assetcatalog.xml file in the game project cache folder
-    // but does not count it as an asset that is being processed and so when we go to run
-    // and adb push command on android it will fail copying the game project folder because
-    // AssetProcessor has a lock on the file, which fails the deploy. Sleep for a bit (found
-    // emperically that 500 ms is enough time) to give AssetProcessor the time it needs to
-    // write out the file before doing the actual deploy.
-    DEPLOY_LOG_INFO("[INFO] Waiting for assetcatalog.xml to be updated.");
-    Sleep(waitTimeForAssetCatalogUpdateInMilliseconds);
+    const AZStd::string hostAssets = m_bootstrapConfig.GetHostAssetsType();
+    const AZStd::string platformAssets = m_bootstrapConfig.GetAssetsTypeForPlatform(m_deploymentCfg.m_platformOption);
+
+    int hostAssetsLeft = -1;
+    AssetSystemRequestBus::BroadcastResult(hostAssetsLeft, 
+            &AssetSystemRequestBus::Events::GetPendingAssetsForPlatform, hostAssets.c_str());
+
+    int platformAssetsLeft = -1;
+    AssetSystemRequestBus::BroadcastResult(platformAssetsLeft, 
+            &AssetSystemRequestBus::Events::GetPendingAssetsForPlatform, platformAssets.c_str());
+
+    if (platformAssetsLeft == -1)
+    {
+        InternalDeployFailure("Failed to query the status of the Asset Processor!  Check the status tray to verify the Asset Processor is running.");
+    }
+    else if (platformAssetsLeft > 0)
+    {
+        hostAssetsLeft = max(hostAssetsLeft, 0);
+        AZStd::string status(AZStd::string::format("Remaining assets to process - %d host / %d platform", hostAssetsLeft, platformAssetsLeft));
+
+        DeployTool::Notifications::Bus::Broadcast(&DeployTool::Notifications::DeployProcessStatusChange, status);
+
+        QTimer::singleShot(assetProcessorPollFrequencyInMilliseconds, this, &DeploymentToolWindow::Run);
+    }
+    else
+    {
+        m_deployWorker->Run();
+    }
 }
 
 void DeploymentToolWindow::InternalDeployFailure(const AZStd::string& reason)
 {
     DEPLOY_LOG_ERROR("[ERROR] %s", reason.c_str());
-    OnDeployFinished(false);
+    DeployTool::Notifications::Bus::Broadcast(&DeployTool::Notifications::DeployProcessFinished, false);
 }
 
 void DeploymentToolWindow::LogToWindow(DeployTool::LogStream stream, DeployTool::LogSeverity logSeverity, const QString& message)
@@ -537,7 +524,7 @@ void DeploymentToolWindow::LogToWindow(DeployTool::LogStream stream, DeployTool:
             break;
 
         default:
-            AZ_Assert(false, "Invalid stream type recieved on DeployLogNotificationBus");
+            AZ_Assert(false, "Invalid stream type received on DeployLogNotificationBus");
             return;
     }
 
@@ -583,8 +570,9 @@ void DeploymentToolWindow::Reset()
 {
     m_animatedSpinningIcon.stop();
     m_ui->deploySpinnerLabel->setHidden(true);
-
     m_ui->deployButton->setText("Deploy");
+
+    m_ui->deployStatusLabel->setText("Idle");
     ToggleInteractiveUI(true);
 
     m_devicePollTimer->start(0);
@@ -599,12 +587,14 @@ void DeploymentToolWindow::InitializeUi()
 
     m_ui->deployButton->setProperty("class", "Primary");
 
-    m_ui->statusIconLabel->setPixmap(m_notConnectedIcon.pixmap(QSize(16, 16)));
+    m_ui->remoteStatusIconLabel->setPixmap(m_notConnectedIcon.pixmap(QSize(16, 16)));
 
     m_ui->deploySpinnerLabel->setMovie(&m_animatedSpinningIcon);
     m_ui->deploySpinnerLabel->setHidden(true);
 
     m_animatedSpinningIcon.setScaledSize(QSize(16, 16));
+
+    m_ui->outputTabWidget->setCurrentIndex(0);
 
     connect(m_ui->platformComboBox, &QComboBox::currentTextChanged, this, &DeploymentToolWindow::OnPlatformChanged);
     connect(m_ui->assetModeComboBox, &QComboBox::currentTextChanged, this, &DeploymentToolWindow::OnAssetModeChanged);
@@ -616,7 +606,7 @@ void DeploymentToolWindow::InitializeUi()
 
     // base options
 #if defined(AZ_PLATFORM_APPLE_OSX)
-    // matching by default is case insesitive unless Qt::MatchCaseSensitive specified
+    // matching by default is case insensitive unless Qt::MatchCaseSensitive specified
     int index = m_ui->platformComboBox->findText("ios", Qt::MatchExactly);
     if (index == -1)
     {

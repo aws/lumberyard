@@ -16,9 +16,14 @@
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include "MotionEvent.h"
+#include <MCore/Source/StringIdPool.h>
 
-#include <MCore/Source/Array.h>
+#include <AzCore/std/containers/vector.h>
 
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace EMotionFX
 {
@@ -27,6 +32,7 @@ namespace EMotionFX
     class ActorInstance;
     class Motion;
     class AnimGraphEventBuffer;
+    class EventInfo;
 
     /**
      * The motion event track, which stores all events and their data on a memory efficient way.
@@ -39,10 +45,33 @@ namespace EMotionFX
     class EMFX_API MotionEventTrack
         : public BaseObject
     {
-        AZ_CLASS_ALLOCATOR_DECL
         friend class MotionEvent;
 
     public:
+        AZ_RTTI(MotionEventTrack, "{D142399D-C7DF-4E4A-A099-7E4E662F1E81}", BaseObject)
+        AZ_CLASS_ALLOCATOR_DECL
+
+        MotionEventTrack() {}
+
+        /**
+         * The constructor.
+         * @param motion The motion object this track belongs to.
+         */
+        MotionEventTrack(Motion* motion);
+
+        /**
+         * Extended constructor.
+         * @param name The name of the track.
+         * @param motion The motion object this track belongs to.
+         */
+        MotionEventTrack(const char* name, Motion* motion);
+
+        MotionEventTrack(const MotionEventTrack& other);
+
+        MotionEventTrack& operator=(const MotionEventTrack& other);
+
+        static void Reflect(AZ::ReflectContext* context);
+
         /**
          * Creation method.
          * @param motion The motion object this track belongs to.
@@ -63,92 +92,20 @@ namespace EMotionFX
         void SetName(const char* name);
 
         /**
-         * Get the index inside the parameter array for a given parameter string.
-         * Imagine there are 100 events in a motion all having the same parameters, for example "Footstep.wav".
-         * Using this method we only store the "Footstep" string once in memory and only store indices
-         * into this string array inside each event to describe its parameters.
-         * @param parameters The string that contains the parameters for the event.
-         * @result Returns the index number inside the array of parameter strings, or MCORE_INVALIDINDEX32 when no parameter string exists
-         *         which equals the specified parameter.
-         */
-        uint32 GetParameterIndex(const char* parameters) const;
-
-        /**
-         * Get the parameter string of a given parameter stored in the table.
-         * @param nr The parameter number, which must be in range of [0..GetNumParameters() - 1].
-         * @result The string containing the parameter.
-         */
-        const char* GetParameter(uint32 nr) const;
-
-        /**
-         * Get the parameter string of a given parameter stored in the table.
-         * @param nr The parameter number, which must be in range of [0..GetNumParameters() - 1].
-         * @result The string containing the parameter.
-         */
-        const AZStd::string& GetParameterString(uint32 nr) const;
-
-        /**
-         * Get the number of parameter strings stored inside the table.
-         * @result The number of parameter strings stored inside the table.
-         * @see GetParameter
-         */
-        uint32 GetNumParameters() const;
-
-        /**
-         * Remove all parameters.
-         */
-        void RemoveAllParameters();
-
-        /**
-         * Add a new parameter to the event track in case it is not in the list yet.
-         * @param parameters The parameters of the event, which could be the filename of a sound file or anything else.
-         * @result Returns the index number inside the array of parameter strings, or MCORE_INVALIDINDEX32 when no parameter string exists
-         *         which equals the specified parameter.
-         */
-        uint32 AddParameter(const char* parameters);
-
-        /**
-         * Add an event to the event table.
+         * Add a tick event to the event table.
+         *
+         * A tick event is an event whose start time and end time are the same.
          * The events can be ordered in any order on time. So you do not need to add them in a sorted order based on time.
          * This is already done automatically. The events will internally be stored sorted on time value.
          * @param timeValue The time, in seconds, at which the event should occur.
          * @param eventType The string describing the type of the event, this could for example be "SOUND" or whatever your game can process.
          * @param parameters The parameters of the event, which could be the filename of a sound file or anything else.
-         * @param mirrorType The mirror type, which can be like "RightFoot" for an eventType of "LeftFoot".
          * @result Returns the index to the event inside the table.
          * @note Please beware that when you use this method, the event numbers/indices might change! This is because the events are stored
          *       in an ordered way, sorted on their time value. Adding events might insert events somewhere in the middle of the array, changing all event numbers.
          */
-        uint32 AddEvent(float timeValue, const char* eventType, const char* parameters, const char* mirrorType);
-
-        /**
-         * Add an event to the event table.
-         * The events can be ordered in any order on time. So you do not need to add them in a sorted order based on time.
-         * This is already done automatically. The events will internally be stored sorted on time value.
-         * @param timeValue The time, in seconds, at which the event should occur.
-         * @param eventTypeID The unique event ID that you wish to add. Please keep in mind that you need to have the events registered with the EMotion FX event manager before you can add them!
-         * @param parameters The parameters of the event, which could be the filename of a sound file or anything else.
-         * @param mirrorTypeID The mirror type, which can be like "RightFoot" for an eventType of "LeftFoot".
-         * @result Returns the index to the event inside the table.
-         * @note Please beware that when you use this method, the event numbers/indices might change! This is because the events are stored
-         *       in an ordered way, sorted on their time value. Adding events might insert events somewhere in the middle of the array, changing all event numbers.
-         */
-        uint32 AddEvent(float timeValue, uint32 eventTypeID, const char* parameters, uint32 mirrorTypeID);
-
-        /**
-         * Add an event to the event table.
-         * The events can be ordered in any order on time. So you do not need to add them in a sorted order based on time.
-         * This is already done automatically. The events will internally be stored sorted on time value.
-         * @param startTimeValue The start time, in seconds, at which the event should occur.
-         * @param endTimeValue The end time, in seconds, at which this event should stop.
-         * @param eventType The string describing the type of the event, this could for example be "SOUND" or whatever your game can process.
-         * @param parameters The parameters of the event, which could be the filename of a sound file or anything else.
-         * @param mirrorType The mirror type, which can be like "RightFoot" for an eventType of "LeftFoot".
-         * @result Returns the index to the event inside the table.
-         * @note Please beware that when you use this method, the event numbers/indices might change! This is because the events are stored
-         *       in an ordered way, sorted on their time value. Adding events might insert events somewhere in the middle of the array, changing all event numbers.
-         */
-        uint32 AddEvent(float startTimeValue, float endTimeValue, const char* eventType, const char* parameters, const char* mirrorType);
+        size_t AddEvent(float timeValue, EventDataPtr&& data);
+        size_t AddEvent(float timeValue, EventDataSet&& datas);
 
         /**
          * Add an event to the event table.
@@ -158,12 +115,12 @@ namespace EMotionFX
          * @param endTimeValue The end time, in seconds, at which this event should stop.
          * @param eventTypeID The unique event ID that you wish to add. Please keep in mind that you need to have the events registered with the EMotion FX event manager before you can add them!
          * @param parameters The parameters of the event, which could be the filename of a sound file or anything else.
-         * @param mirrorTypeID The mirror type, which can be like "RightFoot" for an eventType of "LeftFoot".
          * @result Returns the index to the event inside the table.
          * @note Please beware that when you use this method, the event numbers/indices might change! This is because the events are stored
          *       in an ordered way, sorted on their time value. Adding events might insert events somewhere in the middle of the array, changing all event numbers.
          */
-        uint32 AddEvent(float startTimeValue, float endTimeValue, uint32 eventTypeID, const char* parameters, uint32 mirrorTypeID);
+        size_t AddEvent(float startTimeValue, float endTimeValue, EventDataPtr&& data);
+        size_t AddEvent(float startTimeValue, float endTimeValue, EventDataSet&& data);
 
         /**
          * Process all events within a given time range.
@@ -173,38 +130,36 @@ namespace EMotionFX
          * @param motionInstance The motion instance which triggers the event.
          * @note The end time is also allowed to be smaller than the start time.
          */
-        void ProcessEvents(float startTime, float endTime, ActorInstance* actorInstance, MotionInstance* motionInstance);
+        void ProcessEvents(float startTime, float endTime, MotionInstance* motionInstance) const;
 
-        void ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer);
-
-        void RemoveUnusedParameters();
+        void ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, AnimGraphEventBuffer* outEventBuffer) const;
 
         /**
          * Get the number of events stored inside the table.
          * @result The number of events stored inside this table.
          * @see GetEvent
          */
-        uint32 GetNumEvents() const;
+        size_t GetNumEvents() const;
 
         /**
          * Get a given event from the table.
          * @param eventNr The event number you wish to retrieve. This must be in range of 0..GetNumEvents() - 1.
          * @result A const reference to the event.
          */
-        MCORE_INLINE const MotionEvent& GetEvent(uint32 eventNr) const          { return mEvents[eventNr]; }
+        const MotionEvent& GetEvent(size_t eventNr) const { return m_events[eventNr]; }
 
         /**
          * Get a given event from the table.
          * @param eventNr The event number you wish to retrieve. This must be in range of 0..GetNumEvents() - 1.
          * @result A reference to the event.
          */
-        MCORE_INLINE MotionEvent& GetEvent(uint32 eventNr)                      { return mEvents[eventNr]; }
+        MotionEvent& GetEvent(size_t eventNr) { return m_events[eventNr]; }
 
         /**
          * Remove a given event from the table.
          * @param eventNr The event number to remove. This must be in range of 0..GetNumEvents() - 1.
          */
-        void RemoveEvent(uint32 eventNr);
+        void RemoveEvent(size_t eventNr);
 
         /**
          * Remove all motion events from the table. Does not remove the parameters.
@@ -228,36 +183,30 @@ namespace EMotionFX
         void SetIsDeletable(bool isDeletable);
 
         Motion* GetMotion() const;
+        void SetMotion(Motion* newMotion);
 
-        void CopyTo(MotionEventTrack* targetTrack);
-        void ReserveNumEvents(uint32 numEvents);
-        void ReserveNumParameters(uint32 numParamStrings);
+        void CopyTo(MotionEventTrack* targetTrack) const;
+        void ReserveNumEvents(size_t numEvents);
+
+    protected:
+        /// The collection of motion events.
+        AZStd::vector<MotionEvent> m_events;
+
+        /// The motion where this track belongs to.
+        Motion* mMotion;
+
+        /// The name ID.
+        MCore::StringIdPoolIndex mNameID;
+
+        /// Is this track enabled?
+        bool mEnabled;
+        bool mDeletable;
 
     private:
-        MCore::Array< MotionEvent >     mEvents;        /**< The collection of motion events. */
-        MCore::Array< AZStd::string >   mParameters;    /**< The collection of different parameters for a specific motion. */
-        Motion*                         mMotion;        /**< The motion where this track belongs to. */
-        uint32                          mNameID;        /**< The name ID. */
-        bool                            mEnabled;       /**< Is this track enabled? */
-        bool                            mDeletable;
+        void ProcessEventsImpl(float startTime, float endTime, ActorInstance* actorInstance, MotionInstance* motionInstance, const AZStd::function<void(EMotionFX::EventInfo&)>& processFunc);
 
-        /**
-         * The constructor.
-         * @param motion The motion object this track belongs to.
-         */
-        MotionEventTrack(Motion* motion);
+        template <typename Functor>
+        void ExtractEvents(float startTime, float endTime, MotionInstance* motionInstance, const Functor& processFunc) const;
 
-        /**
-         * Extended constructor.
-         * @param name The name of the track.
-         * @param motion The motion object this track belongs to.
-         */
-        MotionEventTrack(const char* name, Motion* motion);
-
-        /**
-         * The destructor.
-         */
-        ~MotionEventTrack();
     };
 } // namespace EMotionFX
-

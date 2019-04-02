@@ -47,6 +47,8 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 #include <AzToolsFramework/AssetBrowser/AssetSelectionModel.h>
+#include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <AzFramework/Physics/Material.h>
 
 enum Columns
 {
@@ -759,6 +761,17 @@ void CTerrainTextureDialog::OnInitDialog()
     m_ui->layerTableView->viewport()->setMouseTracking(true);
     m_ui->layerTableView->viewport()->setAttribute(Qt::WA_Hover, true);
 
+    AZ::SerializeContext* m_serializeContext;
+    AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+    AZ_Assert(m_serializeContext, "Failed to retrieve serialize context.");
+
+    m_propertyEditor = new AzToolsFramework::ReflectedPropertyEditor(m_ui->widget);
+    m_propertyEditor->Setup(m_serializeContext, this, false, 150);
+    m_propertyEditor->show();
+    m_ui->materialSelection->addWidget(m_propertyEditor);
+
+    m_selection = AZStd::make_unique<Physics::MaterialSelection>();
+
     // Load the layer list from the document
     ReloadLayerList();
 
@@ -807,6 +820,13 @@ void CTerrainTextureDialog::EnableControls()
     m_ui->moveLayerDownClickable->setEnabled(selection);
     m_ui->changeLayerTextureClickable->setEnabled(selection);
 
+    if (!selection)
+    {
+        blockSignals(true);
+        m_propertyEditor->ClearInstances();
+        m_propertyEditor->InvalidateAll();
+        blockSignals(false);
+    }
 
     m_ui->exportLayersAction->setEnabled(m_model->size() > 0);
     m_ui->showLargePreviewAction->setEnabled(m_model->size() > 0);
@@ -836,12 +856,16 @@ void CTerrainTextureDialog::UpdateControlData()
         m_ui->texturePreviewLabel->setPixmap(generatePreview(pSelLayer, QSize(128, 128)));
 
         QString layerIdCaption = tr("LayerId");
-        QString textureInfo = QString("%1\n%2x%3 %4 %5")
+        QString surfaceIdCaption = tr("Surface (Physics Material) Id");
+        QString textureInfo = QString("%1\n%2x%3 %4 %5\n%6 %7")
                 .arg(pSelLayer->GetTextureFilename())
                 .arg(pSelLayer->GetTextureWidth())
                 .arg(pSelLayer->GetTextureHeight())
                 .arg(layerIdCaption)
-                .arg(pSelLayer->GetCurrentLayerId());
+                .arg(pSelLayer->GetCurrentLayerId())
+                .arg(surfaceIdCaption)
+                .arg(pSelLayer->GetEngineSurfaceTypeId())
+            ;
         m_ui->layerTextureInfoLabel->setText(textureInfo);
 
         int nNumSurfaceTypes = GetIEditor()->GetTerrainManager()->GetSurfaceTypeCount();
@@ -853,6 +877,19 @@ void CTerrainTextureDialog::UpdateControlData()
                 .arg(surfaceTypeCountCaption)
                 .arg(nNumSurfaceTypes);
         m_ui->layerInfoLabel->setText(layerInfo);
+
+        bool materialFound = false;
+        Physics::MaterialSelection selection;
+        int surfaceId = pSelLayer->GetEngineSurfaceTypeId();
+        Physics::EditorTerrainMaterialRequestsBus::BroadcastResult(
+            materialFound, &Physics::EditorTerrainMaterialRequests::GetMaterialSelectionForSurfaceId, surfaceId, selection);
+        *m_selection.get() = selection;
+
+        blockSignals(true);
+        m_propertyEditor->ClearInstances();
+        m_propertyEditor->AddInstance(m_selection.get());
+        m_propertyEditor->InvalidateAll();
+        blockSignals(false);
     }
     else
     {
@@ -1122,7 +1159,7 @@ void CTerrainTextureDialog::OnLayerExportTexture()
         return;
     }
 
-    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "png", {}, 
+    CAutoDirectoryRestoreFileDialog dlg(QFileDialog::AcceptSave, QFileDialog::AnyFile, "png", {},
                                         "PNG Files (*.png);;BMP Files (*.bmp);;JPEG Files (*.jpg);;PGM Files (*.pgm);;All files (*.*)", {}, {}, this);
     if (dlg.exec())
     {
@@ -1355,6 +1392,42 @@ void CTerrainTextureDialog::OnReportHyperlink(CLayer* layer)
     {
         GetIEditor()->GetMaterialManager()->GotoMaterial(pMtl);
     }
+}
+
+void CTerrainTextureDialog::BeforePropertyModified(AzToolsFramework::InstanceDataNode *)
+{
+}
+
+void CTerrainTextureDialog::AfterPropertyModified(AzToolsFramework::InstanceDataNode *)
+{
+    Layers layers = GetSelectedLayers();
+    if (layers.size())
+    {
+        CLayer* pSelLayer = layers[0];
+        if (pSelLayer)
+        {
+            AZ_Warning("Physics", Physics::EditorTerrainMaterialRequestsBus::HasHandlers(),
+                "There is no Handler attached to the EditorTerrainMaterialRequestsBus - This is"
+                " most likely caused by not having a PhysX Terrain Component in the scene. Please"
+                " ensure one is added.");
+
+            Physics::EditorTerrainMaterialRequestsBus::Broadcast(
+                &Physics::EditorTerrainMaterialRequests::SetMaterialSelectionForSurfaceId,
+                pSelLayer->GetEngineSurfaceTypeId(), *m_selection);
+        }
+    }
+}
+
+void CTerrainTextureDialog::SetPropertyEditingActive(AzToolsFramework::InstanceDataNode *)
+{
+}
+
+void CTerrainTextureDialog::SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode *)
+{
+}
+
+void CTerrainTextureDialog::SealUndoStack()
+{
 }
 
 //////////////////////////////////////////////////////////////////////////

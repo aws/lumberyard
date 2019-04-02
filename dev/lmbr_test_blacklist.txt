@@ -9,6 +9,7 @@ glut32\.(dll|dylib|so)
 fuel[\\/].*
 glew32.*
 icu.*
+imguilib.*
 lib(eay32|EGL|fbxsdk|GLES|ogg|opus|vo).*
 libSce.*
 Microsoft.*

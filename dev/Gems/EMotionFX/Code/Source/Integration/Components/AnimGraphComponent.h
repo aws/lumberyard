@@ -24,6 +24,7 @@
 #include <Integration/Assets/MotionSetAsset.h>
 #include <Integration/ActorComponentBus.h>
 #include <Integration/AnimGraphComponentBus.h>
+#include <Integration/AnimGraphNetworkingBus.h>
 
 namespace EMotionFX
 {
@@ -34,6 +35,8 @@ namespace EMotionFX
             , private AZ::Data::AssetBus::MultiHandler
             , private ActorComponentNotificationBus::Handler
             , private AnimGraphComponentRequestBus::Handler
+            , private AnimGraphComponentNotificationBus::Handler
+            , private AnimGraphComponentNetworkRequestBus::Handler
         {
         public:
 
@@ -91,7 +94,7 @@ namespace EMotionFX
 
             AnimGraphComponent(const Configuration* config = nullptr);
             ~AnimGraphComponent() override;
-
+            
             //////////////////////////////////////////////////////////////////////////
             // AZ::Component interface implementation
             void Init() override;
@@ -103,6 +106,7 @@ namespace EMotionFX
             // AnimGraphComponentRequestBus::Handler
             EMotionFX::AnimGraphInstance* GetAnimGraphInstance() override { return m_animGraphInstance ? m_animGraphInstance.get() : nullptr; }
             AZ::u32 FindParameterIndex(const char* parameterName) override;
+            const char* FindParameterName(AZ::u32 parameterIndex) override;
             void SetParameterFloat(AZ::u32 parameterIndex, float value) override;
             void SetParameterBool(AZ::u32 parameterIndex, bool value) override;
             void SetParameterString(AZ::u32 parameterIndex, const char* value) override;
@@ -131,12 +135,31 @@ namespace EMotionFX
             AZ::Vector3 GetNamedParameterVector3(const char* parameterName) override;
             AZ::Vector3 GetNamedParameterRotationEuler(const char* parameterName) override;
             AZ::Quaternion GetNamedParameterRotation(const char* parameterName) override;
+            void SyncAnimGraph(AZ::EntityId masterEntityId) override;
+            void DesyncAnimGraph(AZ::EntityId masterEntityId) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
             // ActorComponentNotificationBus::Handler
             void OnActorInstanceCreated(EMotionFX::ActorInstance* /*actorInstance*/) override;
             void OnActorInstanceDestroyed(EMotionFX::ActorInstance* /*actorInstance*/) override;
+            //////////////////////////////////////////////////////////////////////////
+
+            // AnimGraphComponentNetworkRequestBus
+            bool IsAssetReady() const override;
+            bool HasSnapshot() const override;
+            void CreateSnapshot(bool isAuthoritative) override;
+            void SetActiveStates(const NodeIndexContainer& activeStates) override;
+            const NodeIndexContainer& GetActiveStates() const override;
+            void SetMotionPlaytimes(const MotionNodePlaytimeContainer& motionNodePlaytimes) override;
+            const MotionNodePlaytimeContainer& GetMotionPlaytimes() const override;
+            void UpdateActorExternal(float deltatime) override;
+            void SetNetworkRandomSeed(AZ::u64 seed) override;
+            AZ::u64 GetNetworkRandomSeed() const override;
+            //////////////////////////////////////////////////////////////////////////
+            // AnimGraphComponentNotificationBus::Handler
+            void OnAnimGraphSynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) override;
+            void OnAnimGraphDesynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) override;
             //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////

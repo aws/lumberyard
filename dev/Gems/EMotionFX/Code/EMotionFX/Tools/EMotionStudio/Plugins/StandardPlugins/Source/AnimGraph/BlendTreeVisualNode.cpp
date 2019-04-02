@@ -10,22 +10,18 @@
 *
 */
 
-// include required headers
-#include "BlendTreeVisualNode.h"
-#include "NodeGraph.h"
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
-#include <QPainterPath>
-#include <QGraphicsEffect>
-#include "AnimGraphPlugin.h"
-#include "BlendGraphWidget.h"
-#include <EMotionFX/CommandSystem/Source/SelectionList.h>
+#include <EMotionFX/Source/AnimGraphNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphModel.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendTreeVisualNode.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeConnection.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeGraph.h>
 
 
 namespace EMStudio
 {
     // the constructor
-    BlendTreeVisualNode::BlendTreeVisualNode(AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node, bool syncWithEMFX)
-        : AnimGraphVisualNode(plugin, node, syncWithEMFX)
+    BlendTreeVisualNode::BlendTreeVisualNode(const QModelIndex& modelIndex, AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node)
+        : AnimGraphVisualNode(modelIndex, plugin, node)
     {
         SetSubTitle(node->GetPaletteName(), false);
     }
@@ -38,19 +34,16 @@ namespace EMStudio
 
 
     // update port names and number of ports etc
-    void BlendTreeVisualNode::SyncWithEMFX()
+    void BlendTreeVisualNode::Sync()
     {
         // remove all ports and connections
         RemoveAllInputPorts();
         RemoveAllOutputPorts();
         RemoveAllConnections();
 
-        SetName(mEMFXNode->GetName());
-        SetNodeInfo(mEMFXNode->GetNodeInfo());
-
         // add all input ports
-        const MCore::Array<EMotionFX::AnimGraphNode::Port>& inPorts = mEMFXNode->GetInputPorts();
-        const uint32 numInputs = inPorts.GetLength();
+        const AZStd::vector<EMotionFX::AnimGraphNode::Port>& inPorts = mEMFXNode->GetInputPorts();
+        const uint32 numInputs = static_cast<uint32>(inPorts.size());
         mInputPorts.Reserve(numInputs);
         for (uint32 i = 0; i < numInputs; ++i)
         {
@@ -62,9 +55,9 @@ namespace EMStudio
         if (GetHasVisualOutputPorts())
         {
             // add all output ports
-            const MCore::Array<EMotionFX::AnimGraphNode::Port>& outPorts = mEMFXNode->GetOutputPorts();
-            const uint32 numOutputs = outPorts.GetLength();
-            mInputPorts.Reserve(numOutputs);
+            const AZStd::vector<EMotionFX::AnimGraphNode::Port>& outPorts = mEMFXNode->GetOutputPorts();
+            const uint32 numOutputs = static_cast<uint32>(outPorts.size());
+            mOutputPorts.Reserve(numOutputs);
             for (uint32 i = 0; i < numOutputs; ++i)
             {
                 NodePort* port = AddOutputPort(false);
@@ -74,31 +67,27 @@ namespace EMStudio
         }
 
         // Recreate connections
-        const uint32 numConnections = mEMFXNode->GetNumConnections();
-        for (uint32 c = 0; c < numConnections; ++c)
+        const int rows = m_modelIndex.model()->rowCount(m_modelIndex);
+        for (int row = 0; row < rows; ++row)
         {
-            EMotionFX::BlendTreeConnection* connection = mEMFXNode->GetConnection(c);
-            GraphNode* source = mParentGraph->FindNodeById(connection->GetSourceNode()->GetId());
-            GraphNode* target = mParentGraph->FindNodeById(mEMFXNode->GetId());
-            const uint32 sourcePort = connection->GetSourcePort();
-            const uint32 targetPort = connection->GetTargetPort();
+            const QModelIndex childIndex = m_modelIndex.child(row, 0);
+            if (childIndex.data(AnimGraphModel::ROLE_MODEL_ITEM_TYPE).value<AnimGraphModel::ModelItemType>() == AnimGraphModel::ModelItemType::CONNECTION)
+            {
+                EMotionFX::BlendTreeConnection* connection = childIndex.data(AnimGraphModel::ROLE_CONNECTION_POINTER).value<EMotionFX::BlendTreeConnection*>();
 
-            NodeConnection* visualConnection = new NodeConnection(target, targetPort, source, sourcePort);
-            target->AddConnection(visualConnection);
+                GraphNode* source = mParentGraph->FindGraphNode(connection->GetSourceNode());
+                GraphNode* target = this;
+                const uint32 sourcePort = connection->GetSourcePort();
+                const uint32 targetPort = connection->GetTargetPort();
+
+                NodeConnection* visualConnection = new NodeConnection(childIndex, target, targetPort, source, sourcePort);
+                target->AddConnection(visualConnection);
+            }
         }
 
-        //  UpdatePortTextPath();
-
-        // set visualization flag
-        SetIsVisualized(mEMFXNode->GetIsVisualizationEnabled());
-        SetCanVisualize(mEMFXNode->GetSupportsVisualization());
-        SetIsEnabled(mEMFXNode->GetIsEnabled());
-        SetVisualizeColor(mEMFXNode->GetVisualizeColor());
-        SetHasVisualOutputPorts(mEMFXNode->GetHasVisualOutputPorts());
-
         UpdateNameAndPorts();
-        UpdateRects();
-        UpdateTextPixmap();
+
+        AnimGraphVisualNode::Sync();
     }
 
 
@@ -292,9 +281,9 @@ namespace EMStudio
             painter.drawRoundedRect(mRect, BORDER_RADIUS, BORDER_RADIUS);
 
             // if the scale is so small that we can't see those small things anymore
-            QRect fullHeaderRect(mRect.left(), mRect.top(), mRect.width(), 25);
+            QRect fullHeaderRect(mRect.left(), mRect.top(), mRect.width(), 30);
             QRect headerRect(mRect.left(), mRect.top(), mRect.width(), 15);
-            QRect subHeaderRect(mRect.left(), mRect.top() + 13, mRect.width(), 10);
+            QRect subHeaderRect(mRect.left(), mRect.top() + 13, mRect.width(), 15);
 
             // if the scale is so small that we can't see those small things anymore
             if (mParentGraph->GetScale() < 0.3f)
@@ -364,9 +353,9 @@ namespace EMStudio
             }
 
             // if the scale is so small that we can't see those small things anymore
-            QRect fullHeaderRect(mRect.left(), mRect.top(), mRect.width(), 25);
+            QRect fullHeaderRect(mRect.left(), mRect.top(), mRect.width(), 30);
             QRect headerRect(mRect.left(), mRect.top(), mRect.width(), 15);
-            QRect subHeaderRect(mRect.left(), mRect.top() + 13, mRect.width(), 10);
+            QRect subHeaderRect(mRect.left(), mRect.top() + 13, mRect.width(), 15);
 
             // draw the header
             painter.setPen(borderColor);
@@ -454,7 +443,7 @@ namespace EMStudio
 
         // draw the subtitle
         painter.setFont(mSubTitleFont);
-        painter.drawStaticText(mRect.left(), mRect.top() + mTitleText.size().height() - 1, mSubTitleText);
+        painter.drawStaticText(mRect.left(), mRect.top() + mTitleText.size().height() - 3, mSubTitleText);
 
         // draw the info text
         if (mIsCollapsed == false)
@@ -479,7 +468,7 @@ namespace EMStudio
                 {
                     continue;
                 }
-                painter.drawStaticText(mRect.left() + 8, portRect.top() - 1, mInputPortText[i]);
+                painter.drawStaticText(mRect.left() + 8, portRect.top() - 3, mInputPortText[i]);
             }
 
             // draw output port text
@@ -492,7 +481,7 @@ namespace EMStudio
                 {
                     continue;
                 }
-                painter.drawStaticText(mRect.right() - 10 - mOutputPortText[i].size().width(), portRect.top() - 1, mOutputPortText[i]);
+                painter.drawStaticText(mRect.right() - 10 - mOutputPortText[i].size().width(), portRect.top() - 3, mOutputPortText[i]);
             }
         }
 
@@ -508,5 +497,3 @@ namespace EMStudio
         return GraphNode::CalcRequiredHeight() + 12;
     }
 }   // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendTreeVisualNode.moc>

@@ -129,6 +129,9 @@ namespace MysticQt
 
         void resizeEvent(QResizeEvent* event) override;
 
+        void SetStyleToError();
+        void SetStyleToOk();
+
     signals:
         void ValueChangedByTextFinished(double value);
         void ValueChangedMouseReleased(double value);
@@ -138,6 +141,9 @@ namespace MysticQt
     private slots:
         void OnEditingFinished();
         void OnTextEdited(const QString& newText);
+        void UpdateStyleForRangeCheck(float newValue);
+
+
 
     protected:
         //void wheelEvent(QWheelEvent* event);

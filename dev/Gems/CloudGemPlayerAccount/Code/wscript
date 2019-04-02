@@ -34,6 +34,6 @@ def build(bld):
  
         restricted_script = 'update_restricted_parameters',
     )
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p)] = ['Source/{0}/cloudgemplayeraccount_{0}.waf_files'.format(p)]
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['{}_file_list'.format(p3)] = ['Source/{0}/cloudgemplayeraccount_{1}.waf_files'.format(p0, p1)]
     bld.DefineGem(**kw)

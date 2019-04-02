@@ -96,6 +96,7 @@ void LoadScreenComponent::Reset()
             if (canvasEntity)
             {
                 GetGlobalEnv()->pLyShine->ReleaseCanvas(m_gameCanvasEntityId, false);
+                GetGlobalEnv()->pLyShine->OnLoadScreenUnloaded();
             }
         }
 
@@ -106,6 +107,7 @@ void LoadScreenComponent::Reset()
             if (canvasEntity)
             {
                 GetGlobalEnv()->pLyShine->ReleaseCanvas(m_levelCanvasEntityId, false);
+                GetGlobalEnv()->pLyShine->OnLoadScreenUnloaded();
             }
         }
     }
@@ -160,6 +162,9 @@ AZ::EntityId LoadScreenComponent::loadFromCfg(const char* pathVarName, const cha
     }
 
     EBUS_EVENT_ID(canvasId, UiCanvasBus, SetKeepLoadedOnLevelUnload, true);
+
+    // Set the load screen draw order so it renders in front of other canvases that may load during the level load
+    EBUS_EVENT_ID(canvasId, UiCanvasBus, SetDrawOrder, std::numeric_limits<int>::max());
 
     ICVar* autoPlayVar = GetGlobalEnv()->pConsole->GetCVar(autoPlayVarName);
     string sequence = autoPlayVar ? autoPlayVar->GetString() : "";

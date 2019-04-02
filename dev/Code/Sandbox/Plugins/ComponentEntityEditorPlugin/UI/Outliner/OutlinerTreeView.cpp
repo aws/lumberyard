@@ -75,6 +75,7 @@ private:
 OutlinerTreeView::OutlinerTreeView(QWidget* pParent)
     : QTreeView(pParent)
     , m_mousePressedQueued(false)
+    , m_draggingUnselectedItem(false)
     , m_mousePressedPos()
 {
     setStyle(new OutlinerTreeViewProxyStyle());
@@ -92,21 +93,33 @@ void OutlinerTreeView::setAutoExpandDelay(int delay)
     m_expandOnlyDelay = delay;
 }
 
-void OutlinerTreeView::mousePressEvent(QMouseEvent* /*event*/)
+void OutlinerTreeView::mousePressEvent(QMouseEvent* event)
 {
     //postponing normal mouse pressed logic until mouse is released or dragged
     //this means selection occurs on mouse released now
     //this is to support drag/drop of non-selected items
     m_mousePressedQueued = true;
+
+    m_mousePressedPos = event->pos();
 }
 
 void OutlinerTreeView::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (m_mousePressedQueued)
+    if (m_mousePressedQueued && !m_draggingUnselectedItem)
     {
+        // mouseMoveEvent will set the state to be DraggingState, which will make Qt ignore 
+        // mousePressEvent in QTreeViewPrivate::expandOrCollapseItemAtPos. So we manually 
+        // and temporarily set it to EditingState.
+        QAbstractItemView::State stateBefore = QAbstractItemView::state();
+        QAbstractItemView::setState(QAbstractItemView::State::EditingState);
+
         //treat this as a mouse pressed event to process selection etc
         processQueuedMousePressedEvent(event);
+
+        QAbstractItemView::setState(stateBefore);
     }
+    m_mousePressedQueued = false;
+    m_draggingUnselectedItem = false;
 
     QTreeView::mouseReleaseEvent(event);
 }
@@ -153,9 +166,6 @@ void OutlinerTreeView::focusOutEvent(QFocusEvent* event)
 
 void OutlinerTreeView::startDrag(Qt::DropActions supportedActions)
 {
-    //cancel pending mouse press, which should be done already
-    m_mousePressedQueued = false;
-
     //if we are attempting to drag an unselected item then we must special case drag and drop logic
     //QAbstractItemView::startDrag only supports selected items
     QModelIndex index = indexAt(m_mousePressedPos);
@@ -193,150 +203,135 @@ void OutlinerTreeView::dropEvent(QDropEvent* event)
     QTreeView::dropEvent(event);
 }
 
+QColor GetHierarchyLineColor(bool isSliceEntity, bool isSelected)
+{
+    if (isSliceEntity && isSelected)
+    {
+        return GetIEditor()->GetColorByName("HierarchyLinesSlicesSelected");
+    }
+    else if(isSliceEntity)
+    {
+        return GetIEditor()->GetColorByName("HierarchyLinesSlices");
+    }
+    else if (isSelected)
+    {
+        return GetIEditor()->GetColorByName("HierarchyLinesNonSliceEntitiesSelected");
+    }
+    else
+    {
+        return GetIEditor()->GetColorByName("HierarchyLinesNonSliceEntities");
+    }
+}
+
+void OutlinerTreeView::DrawLayerUI(QPainter* painter, const QRect& rect, const QModelIndex& index) const
+{
+    static const QColor outlinerHighlightColor(GetIEditor()->GetColorByName("LayerChildBGSelectionColor"));
+    static const QColor layerChildBGColor(GetIEditor()->GetColorByName("LayerChildBackgroundColor"));
+    bool isSelected = selectionModel()->isSelected(index);
+
+    QColor layerBranchesBGColor = isSelected ? outlinerHighlightColor : layerChildBGColor;
+
+    painter->save();
+    painter->setRenderHint(QPainter::RenderHint::Antialiasing, false);
+
+    bool hasLayerAncestor = false;
+    for (QModelIndex ancestorIndex = index.parent(); ancestorIndex.isValid(); ancestorIndex = ancestorIndex.parent())
+    {
+        auto ancestorType = OutlinerListModel::EntryType(ancestorIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
+        if (ancestorType == OutlinerListModel::LayerType)
+        {
+            hasLayerAncestor = true;
+            break;
+        }
+    }
+
+    if (hasLayerAncestor)
+    {
+        QPainterPath layerBGPath;
+        QRect layerBGRect(rect);
+        layerBGRect.setLeft(layerBGRect.left() + indentation());
+        layerBGPath.addRect(layerBGRect);
+        painter->fillPath(layerBGPath, layerBranchesBGColor);
+    }
+
+    OutlinerListModel::EntryType indexEntryType = OutlinerListModel::EntryType(index.data(OutlinerListModel::EntityTypeRole).value<int>());
+    if (indexEntryType == OutlinerListModel::LayerType)
+    {
+        QColor layerColor = index.data(OutlinerListModel::LayerColorRole).value<QColor>();
+        QPainterPath layerIconPath;
+        const int layerSquareSize = GetLayerSquareSize();
+        QPoint layerBoxOffset(1 + OutlinerListModel::GetLayerStripeWidth()*2, (rect.height() - layerSquareSize) / 2);
+        QRect layerIconRect(rect.topRight() + layerBoxOffset, QSize(layerSquareSize, layerSquareSize));
+        layerIconPath.addRect(layerIconRect);
+        painter->fillPath(layerIconPath, layerColor);
+    }
+
+    painter->restore();
+}
+
 void OutlinerTreeView::drawBranches(QPainter* painter, const QRect& rect, const QModelIndex& index) const
 {
+    DrawLayerUI(painter, rect, index);
+
+    // Make sure the base class is called after the layer rect is drawn,
+    // so that the foldout arrow draws on top of the layer color.
     QTreeView::drawBranches(painter, rect, index);
 
+    // No need to draw connecting lines if this has no parent.
     if (!index.parent().isValid())
     {
         return;
     }
 
-    // determine the color of the pen based on entity type:
-    // if the current entity is not part of a slice, it's line is always white.
-    // if the current entity is part of a slice, the line color is determined by it's parent type.
-    auto type = OutlinerListModel::EntryType(index.data(OutlinerListModel::EntityTypeRole).value<int>());
-    bool isSliceEntity = (type != OutlinerListModel::EntityType);
+    QPen branchLinePen;
+    branchLinePen.setWidthF(m_branchLineWidth);
 
-    if (!isSliceEntity)
-    {
-        bool isDescendantOfSlice = false;
-        for (QModelIndex ancestorIndex = index.parent(); ancestorIndex.isValid(); ancestorIndex = ancestorIndex.parent())
-        {
-            auto type = OutlinerListModel::EntryType(ancestorIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
-            if (type != OutlinerListModel::EntityType)
-            {
-                isDescendantOfSlice = true;
-                break;
-            }
-        }
-
-        if (!isDescendantOfSlice)
-        {
-            // Don't draw the lines for entities, only for slices or entities that are children of slices
-            return;
-
-        }
-    }
-
-    painter->save();
-
-    painter->setRenderHint(QPainter::RenderHint::Antialiasing, false);
-
-    static const QColor sliceEntityColor(GetIEditor()->GetColorByName("SliceEntityColor"));
-    static const QColor sliceOverrideColor(GetIEditor()->GetColorByName("SliceOverrideColor"));
-
-    // The pen we're going to use the draw the branch line
-    // Pen color and style are dependent on the type of the entity and its parent.
-    QPen pen;
-    pen.setWidthF(2.5f);
-
-    auto foregroundIndex = type != OutlinerListModel::EntryType::EntityType ? index.parent() : index;
-    QVariant data = foregroundIndex.data(Qt::ForegroundRole);
-    if (data.canConvert<QBrush>())
-    {
-        auto targetColor = data.value<QBrush>().color();
-        if (isSliceEntity)
-        {
-            bool hasOverrides = index.data(OutlinerListModel::SliceEntityOverrideRole).value<bool>();
-            targetColor = (hasOverrides ? sliceOverrideColor : sliceEntityColor);
-        }
-        pen.setColor(targetColor);
-        painter->setPen(pen);
-    }
-
-    // draw a horizontal line from the parent branch to the item
-    // if the item has children offset the drawn line to compensate for drawn expander buttons
-    bool hasChildren = index.child(0, 0).isValid();
-    int rectHalfHeight = rect.height() / 2;
-    int horizontalLineY = rect.top() + rectHalfHeight;
-    int horizontalLineLeft = rect.right() - indentation() * 1.5f;
-    int horizontalLineRight = hasChildren ? (rect.right() - indentation()) : (rect.right() - indentation() * 0.5f);
-    painter->drawLine(horizontalLineLeft, horizontalLineY, horizontalLineRight, horizontalLineY);
-
-    // draw a vertical line segment connecting parent to child and child to child
-    // if this is the last item, only draw half the line to terminate the segment
-    bool hasNext = index.sibling(index.row() + 1, index.column()).isValid();
-    int verticalLineX = rect.right() - indentation() * 1.5f;
-    int verticalLineTop = rect.top();
-    int verticalLineBottom = hasNext ? rect.bottom() : rect.bottom() - rectHalfHeight;
-    painter->drawLine(verticalLineX, verticalLineTop, verticalLineX, verticalLineBottom);
-
-    // for all ancestors with immediate/next siblings, draw vertical line segments offset from the current item
-    // each individual segment will align to form connections between non-immediate parents and siblings
-
-    // offset the line horizontally to account for parent depth
-    float depthMultiplier = 2.5f;
+    int lineBaseX = rect.right();
+    QModelIndex previousIndex = index;
     for (QModelIndex ancestorIndex = index.parent(); ancestorIndex.isValid(); ancestorIndex = ancestorIndex.parent())
     {
-        // If that parent has a sibling, draw a line to them!
-        auto uncleIndex = ancestorIndex.sibling(ancestorIndex.row() + 1, ancestorIndex.column());
-        if (uncleIndex.isValid())
+        auto ancestorType = OutlinerListModel::EntryType(ancestorIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
+        bool isSliceEntity = ancestorType == OutlinerListModel::SliceEntityType || ancestorType == OutlinerListModel::SliceHandleType;
+        bool isSelected = selectionModel()->isSelected(index);
+        branchLinePen.setColor(GetHierarchyLineColor(isSliceEntity, isSelected));
+
+        // Layers don't have connecting lines drawn.
+        if (ancestorType == OutlinerListModel::LayerType)
         {
-            auto ancestorType = OutlinerListModel::EntryType(ancestorIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
-            bool ancestorIsSliceEntity = (ancestorType != OutlinerListModel::EntryType::EntityType);
-
-            auto uncleType = OutlinerListModel::EntryType(uncleIndex.data(OutlinerListModel::EntityTypeRole).value<int>());
-            bool uncleIsSliceEntity = (uncleType != OutlinerListModel::EntryType::EntityType);
-
-            if (ancestorIsSliceEntity && uncleIsSliceEntity)
-            {
-                if (ancestorIndex.data(OutlinerListModel::SliceEntityOverrideRole).value<bool>())
-                {
-                    pen.setColor(sliceOverrideColor);
-                }
-                else
-                {
-                    pen.setColor(sliceEntityColor);
-                }
-                painter->setPen(pen);
-            }
-            else if (uncleIsSliceEntity)
-            {
-                auto parent = uncleIndex.parent();
-                QVariant data = parent.data(Qt::ForegroundRole);
-                if (data.canConvert<QBrush>())
-                {
-                    auto type = parent.data(OutlinerListModel::EntityTypeRole).value<int>();
-                    if (type != OutlinerListModel::EntryType::EntityType)
-                    {
-                        bool parentHasOverrides = parent.data(OutlinerListModel::SliceEntityOverrideRole).value<bool>();
-                        pen.setColor(parentHasOverrides ? sliceOverrideColor : sliceEntityColor);
-                    }
-                    else
-                    {
-                        pen.setColor(data.value<QBrush>().color());
-                    }
-
-                    painter->setPen(pen);
-                }
-            }
-            else
-            {
-                QVariant data = uncleIndex.data(Qt::ForegroundRole);
-                if (data.canConvert<QBrush>())
-                {
-                    pen.setColor(data.value<QBrush>().color());
-                    painter->setPen(pen);
-                }
-            }
-
-            // draw vertical line segment
-            verticalLineX = rect.right() - indentation() * depthMultiplier;
-            painter->drawLine(verticalLineX, rect.top(), verticalLineX, rect.bottom());
+            // Layers can only have other layers as parents, so once a layer is found in a hierarchy
+            // the line drawing can stop.
+            break;
+        }
+        painter->save();
+        painter->setRenderHint(QPainter::RenderHint::Antialiasing, false);
+        painter->setPen(branchLinePen);
+        int rectHalfHeight = rect.height() / 2;
+        if (previousIndex == index)
+        {
+            // draw a horizontal line from the parent branch to the item
+            // if the item has children offset the drawn line to compensate for drawn expander buttons
+            bool hasChildren = previousIndex.child(0, 0).isValid();
+            int horizontalLineY = rect.top() + rectHalfHeight;
+            int horizontalLineLeft = rect.right() - indentation() * 1.5f;
+            int horizontalLineRight = hasChildren ? (lineBaseX - indentation()) : (lineBaseX - indentation() * 0.5f);
+            painter->drawLine(horizontalLineLeft, horizontalLineY, horizontalLineRight, horizontalLineY);
         }
 
-        depthMultiplier += 1.0f;
+        // draw a vertical line segment connecting parent to child and child to child
+        // if this is the last item, only draw half the line to terminate the segment
+        bool hasNext = previousIndex.sibling(previousIndex.row() + 1, previousIndex.column()).isValid();
+        if (hasNext || previousIndex == index)
+        {
+            int verticalLineX = lineBaseX - indentation() * 1.5f;
+            int verticalLineTop = rect.top();
+            int verticalLineBottom = hasNext ? rect.bottom() : rect.bottom() - rectHalfHeight;
+            painter->drawLine(verticalLineX, verticalLineTop, verticalLineX, verticalLineBottom);
+        }
+
+        painter->restore();
+
+        lineBaseX -= indentation();
+        previousIndex = ancestorIndex;
     }
 
     painter->restore();
@@ -365,8 +360,6 @@ void OutlinerTreeView::timerEvent(QTimerEvent* event)
 void OutlinerTreeView::processQueuedMousePressedEvent(QMouseEvent* event)
 {
     //interpret the mouse event as a button press
-    m_mousePressedQueued = false;
-    m_mousePressedPos = event->pos();
     QMouseEvent mousePressedEvent(
         QEvent::MouseButtonPress,
         event->localPos(),
@@ -381,6 +374,8 @@ void OutlinerTreeView::processQueuedMousePressedEvent(QMouseEvent* event)
 
 void OutlinerTreeView::startCustomDrag(const QModelIndexList& indexList, Qt::DropActions supportedActions)
 {
+    m_draggingUnselectedItem = true;
+
     //sort by container entity depth and order in hierarchy for proper drag image and drop order
     QModelIndexList indexListSorted = indexList;
     AZStd::unordered_map<AZ::EntityId, AZStd::list<AZ::u64>> locations;

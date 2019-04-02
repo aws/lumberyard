@@ -87,7 +87,7 @@ void CLayerNode::Animate(SAnimContext& ec)
         switch (paramType.GetType())
         {
         case AnimParamType::Visibility:
-            if (!ec.bResetting)
+            if (!ec.resetting)
             {
                 IAnimTrack* visTrack = pTrack;
                 bool visible = true;

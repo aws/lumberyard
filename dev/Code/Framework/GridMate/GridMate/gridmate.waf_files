@@ -77,6 +77,7 @@
         "Replica":
         [
             "Replica/BasicHostChunkDescriptor.h",
+            "Replica/DeltaCompressedDataSet.h",
             "Replica/DataSet.cpp",
             "Replica/DataSet.h",
             "Replica/Interpolators.h",

@@ -12,13 +12,118 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "CanvasHelpers.h"
 #include <AzToolsFramework/Slice/SliceUtilities.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
 #include <LyShine/Bus/UiSystemBus.h>
 
 //-------------------------------------------------------------------------------
 
-#define UICANVASEDITOR_EXTRA_VERTICAL_PADDING_IN_PIXELS (8)
+//we require an overlay widget to act as a canvas to draw on top of everything in the inspector
+//attaching to inspector rather than component editors so we can draw outside of bounds
+class PropertyContainerOverlay : public QWidget
+{
+public:
+    PropertyContainerOverlay(PropertiesContainer* editor, QWidget* parent)
+        : QWidget(parent)
+        , m_editor(editor)
+        , m_edgeRadius(3)
+        , m_dropIndicatorOffset(7)
+        , m_dropIndicatorColor("#999999")
+        , m_dragIndicatorColor("#E57829")
+        , m_selectIndicatorColor("#E57829")
+    {
+        setPalette(Qt::transparent);
+        setWindowFlags(Qt::FramelessWindowHint);
+        setAttribute(Qt::WA_NoSystemBackground);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+    }
+
+protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        QWidget::paintEvent(event);
+
+        QPainter painter(this);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+        QRect currRect;
+        bool drag = false;
+        bool drop = false;
+
+        for (auto componentEditor : m_editor->m_componentEditors)
+        {
+            if (!componentEditor->isVisible())
+            {
+                continue;
+            }
+
+            QRect globalRect = m_editor->GetWidgetGlobalRect(componentEditor);
+
+            currRect = QRect(mapFromGlobal(globalRect.topLeft()), mapFromGlobal(globalRect.bottomRight()));
+            currRect.setWidth(currRect.width() - 1);
+            currRect.setHeight(currRect.height() - 1);
+
+            if (componentEditor->IsDragged())
+            {
+                drawDragIndicator(painter, currRect);
+                drag = true;
+            }
+
+            if (componentEditor->IsDropTarget())
+            {
+                drawDropIndicator(painter, currRect.left(), currRect.right(), currRect.top() - m_dropIndicatorOffset);
+                drop = true;
+            }
+
+            if (componentEditor->IsSelected())
+            {
+                drawSelectIndicator(painter, currRect);
+            }
+        }
+
+        if (drag && !drop)
+        {
+            drawDropIndicator(painter, currRect.left(), currRect.right(), currRect.bottom() + m_dropIndicatorOffset);
+        }
+    }
+
+private:
+    void drawDragIndicator(QPainter& painter, const QRect& currRect)
+    {
+        painter.save();
+        painter.setBrush(QBrush(m_dropIndicatorColor));
+        painter.drawRoundedRect(currRect, m_edgeRadius, m_edgeRadius);
+        painter.restore();
+    }
+
+    void drawDropIndicator(QPainter& painter, int x1, int x2, int y)
+    {
+        painter.save();
+        painter.setPen(QPen(m_dragIndicatorColor, 1));
+        painter.drawEllipse(QPoint(x1 + m_edgeRadius, y), m_edgeRadius, m_edgeRadius);
+        painter.drawLine(QPoint(x1 + m_edgeRadius * 2, y), QPoint(x2 - m_edgeRadius * 2, y));
+        painter.drawEllipse(QPoint(x2 - m_edgeRadius, y), m_edgeRadius, m_edgeRadius);
+        painter.restore();
+    }
+
+    void drawSelectIndicator(QPainter& painter, const QRect& currRect)
+    {
+        painter.save();
+        painter.setPen(QPen(m_selectIndicatorColor, 1));
+        painter.drawRoundedRect(currRect, m_edgeRadius, m_edgeRadius);
+        painter.restore();
+    }
+
+    PropertiesContainer* m_editor;
+    int m_edgeRadius;
+    int m_dropIndicatorOffset;
+    QColor m_dragIndicatorColor;
+    QColor m_dropIndicatorColor;
+    QColor m_selectIndicatorColor;
+};
 
 //-------------------------------------------------------------------------------
 
@@ -27,25 +132,182 @@ PropertiesContainer::PropertiesContainer(PropertiesWidget* propertiesWidget,
     : QScrollArea(propertiesWidget)
     , m_propertiesWidget(propertiesWidget)
     , m_editorWindow(editorWindow)
-    , m_containerWidget(new QWidget(this))
-    , m_rowLayout(new QVBoxLayout(m_containerWidget))
     , m_selectedEntityDisplayNameWidget(nullptr)
     , m_selectionHasChanged(false)
     , m_isCanvasSelected(false)
+    , m_selectionEventAccepted(false)
+    , m_componentEditorLastSelectedIndex(-1)
 {
-    // Hide the border.
-    setStyleSheet("QScrollArea { border: 0px hidden transparent; }");
-
-    m_rowLayout->setContentsMargins(0, 0, 0, 0);
-    m_rowLayout->setSpacing(0);
-
-    setWidgetResizable(true);
     setFocusPolicy(Qt::ClickFocus);
-    setWidget(m_containerWidget);
+    setFrameShape(QFrame::NoFrame);
+    setFrameShadow(QFrame::Plain);
+    setLineWidth(0);
+    setWidgetResizable(true);
+
+    m_componentListContents = new QWidget();
+    m_componentListContents->setGeometry(QRect(0, 0, 382, 537));
+    QSizePolicy sizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    sizePolicy.setHeightForWidth(m_componentListContents->sizePolicy().hasHeightForWidth());
+    m_componentListContents->setSizePolicy(sizePolicy);
+    m_rowLayout = new QVBoxLayout(m_componentListContents);
+    m_rowLayout->setSpacing(10);
+    m_rowLayout->setContentsMargins(0, 0, 0, 0);
+    m_rowLayout->setAlignment(Qt::AlignTop);
+
+    setWidget(m_componentListContents);
+
+    m_overlay = new PropertyContainerOverlay(this, m_componentListContents);
+    UpdateOverlay();
+
+    CreateActions();
 
     // Get the serialize context.
     EBUS_EVENT_RESULT(m_serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
     AZ_Assert(m_serializeContext, "We should have a valid context!");
+
+    QObject::connect(m_editorWindow->GetHierarchy(),
+        &HierarchyWidget::editorOnlyStateChangedOnSelectedElements,
+        [this]()
+    {
+        UpdateEditorOnlyCheckbox();
+    });
+}
+
+void PropertiesContainer::resizeEvent(QResizeEvent* event)
+{
+    QScrollArea::resizeEvent(event);
+    UpdateOverlay();
+}
+
+void PropertiesContainer::contextMenuEvent(QContextMenuEvent* event)
+{
+    OnDisplayUiComponentEditorMenu(event->globalPos());
+    event->accept();
+}
+
+//overridden to intercept application level mouse events for component editor selection
+bool PropertiesContainer::eventFilter(QObject* object, QEvent* event)
+{
+    HandleSelectionEvents(object, event);
+    return false;
+}
+
+bool PropertiesContainer::HandleSelectionEvents(QObject* object, QEvent* event)
+{
+    (void)object;
+    if (m_selectedEntities.empty())
+    {
+        return false;
+    }
+
+    if (event->type() != QEvent::MouseButtonPress &&
+        event->type() != QEvent::MouseButtonDblClick &&
+        event->type() != QEvent::MouseButtonRelease)
+    {
+        return false;
+    }
+
+    QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+
+    //selection now occurs on mouse released
+    //reset selection flag when mouse is clicked to allow additional selection changes
+    if (event->type() == QEvent::MouseButtonPress)
+    {
+        m_selectionEventAccepted = false;
+        return false;
+    }
+
+    //reject input if selection already occurred for this click
+    if (m_selectionEventAccepted)
+    {
+        return false;
+    }
+
+    //reject input if a popup or modal window is active
+    if (QApplication::activeModalWidget() != nullptr ||
+        QApplication::activePopupWidget() != nullptr)
+    {
+        return false;
+    }
+
+    const QRect globalRect(mouseEvent->globalPos(), mouseEvent->globalPos());
+
+    //reject input outside of the inspector's component list
+    if (!DoesOwnFocus() ||
+        !DoesIntersectWidget(globalRect, this))
+    {
+        return false;
+    }
+
+    //reject input from other buttons
+    if ((mouseEvent->button() != Qt::LeftButton) &&
+        (mouseEvent->button() != Qt::RightButton))
+    {
+        return false;
+    }
+
+    //right click is allowed if the component editor under the mouse is not selected
+    if (mouseEvent->button() == Qt::RightButton)
+    {
+        if (DoesIntersectSelectedComponentEditor(globalRect))
+        {
+            return false;
+        }
+
+        ClearComponentEditorSelection();
+        SelectIntersectingComponentEditors(globalRect, true);
+    }
+    else if (mouseEvent->button() == Qt::LeftButton)
+    {
+        //if shift or control is pressed this is a multi=-select operation, otherwise reset the selection
+        if (mouseEvent->modifiers() & Qt::ControlModifier)
+        {
+            ToggleIntersectingComponentEditors(globalRect);
+        }
+        else if (mouseEvent->modifiers() & Qt::ShiftModifier)
+        {
+            ComponentEditorVector intersections = GetIntersectingComponentEditors(globalRect);
+            if (!intersections.empty())
+            {
+                SelectRangeOfComponentEditors(m_componentEditorLastSelectedIndex, GetComponentEditorIndex(intersections.front()), true);
+            }
+        }
+        else
+        {
+            ClearComponentEditorSelection();
+            SelectIntersectingComponentEditors(globalRect, true);
+        }
+    }
+
+    UpdateInternalState();
+
+    //ensure selection logic executes only once per click since eventFilter may execute multiple times for a single click
+    m_selectionEventAccepted = true;
+    return true;
+}
+
+AZ::Entity::ComponentArrayType PropertiesContainer::GetSelectedComponents()
+{
+    ComponentEditorVector selectedComponentEditors;
+
+    selectedComponentEditors.reserve(m_componentEditors.size());
+    for (auto componentEditor : m_componentEditors)
+    {
+        if (componentEditor->isVisible() && componentEditor->IsSelected())
+        {
+            selectedComponentEditors.push_back(componentEditor);
+        }
+    }
+
+    AZ::Entity::ComponentArrayType selectedComponents;
+
+    for (auto componentEditor : selectedComponentEditors)
+    {
+        const auto& components = componentEditor->GetComponents();
+        selectedComponents.insert(selectedComponents.end(), components.begin(), components.end());
+    }
+
+    return selectedComponents;
 }
 
 void PropertiesContainer::BuildSharedComponentList(ComponentTypeMap& sharedComponentsByType, const AzToolsFramework::EntityIdList& entitiesShown)
@@ -230,6 +492,8 @@ void PropertiesContainer::BuildSharedComponentUI(ComponentTypeMap& sharedCompone
         }
     }
 
+    m_componentEditors.clear();
+
     for (auto& componentType : componentOrdering)
     {
         if (sharedComponentsByType.count(componentType) <= 0)
@@ -248,62 +512,259 @@ void PropertiesContainer::BuildSharedComponentUI(ComponentTypeMap& sharedCompone
                 "sharedComponentsByType should only contain valid entries at this point");
 
             // Create an editor if necessary
-            AZStd::vector<AzToolsFramework::ReflectedPropertyEditor*>& componentEditors = m_componentEditorsByType[componentType];
-            bool createdEditor = false;
+            ComponentEditorVector& componentEditors = m_componentEditorsByType[componentType];
             if (sharedComponentIndex >= componentEditors.size())
             {
-                componentEditors.push_back(CreatePropertyEditor());
-                createdEditor = true;
+                componentEditors.push_back(CreateComponentEditor(*sharedComponent.m_instances[0]));
+            }
+            else
+            {
+                // Place existing editor in correct order
+                m_rowLayout->removeWidget(componentEditors[sharedComponentIndex]);
+                m_rowLayout->addWidget(componentEditors[sharedComponentIndex]);
             }
 
-            AzToolsFramework::ReflectedPropertyEditor& componentEditor = *componentEditors[sharedComponentIndex];
+            AzToolsFramework::ComponentEditor* componentEditor = componentEditors[sharedComponentIndex];
+
+            // Save a list of components in order shown
+            m_componentEditors.push_back(componentEditor);
 
             // Add instances to componentEditor
-            for (AZ::Component* componentInstance : sharedComponent.m_instances)
+            auto& componentInstances = sharedComponent.m_instances;
+            for (AZ::Component* componentInstance : componentInstances)
             {
-                // Note that in the case of a GenericComponentWrapper,
-                // we give the editor the GenericComponentWrapper
-                // rather than the underlying type.
-                void* classPtr = componentInstance;
-                const AZ::Uuid& classType = azrtti_typeid(componentInstance);
-
                 // non-first instances are aggregated under the first instance
-                void* aggregateInstance = nullptr;
-                if (componentInstance != sharedComponent.m_instances.front())
-                {
-                    aggregateInstance = sharedComponent.m_instances.front();
-                }
+                AZ::Component* aggregateInstance = componentInstance != componentInstances.front() ? componentInstances.front() : nullptr;
 
-                void* compareInstance = sharedComponent.m_compareInstance;
+                // Reference the slice entity if we are a slice so we can indicate differences from base
+                AZ::Component* compareInstance = sharedComponent.m_compareInstance;
 
-                componentEditor.AddInstance(classPtr, classType, aggregateInstance, compareInstance);
+                componentEditor->AddInstance(componentInstance, aggregateInstance, compareInstance);
             }
 
             // Refresh editor
-            componentEditor.InvalidateAll();
-            componentEditor.show();
+            componentEditor->InvalidateAll();
+            componentEditor->show();
         }
     }
 }
 
-AzToolsFramework::ReflectedPropertyEditor* PropertiesContainer::CreatePropertyEditor()
+AzToolsFramework::ComponentEditor* PropertiesContainer::CreateComponentEditor(const AZ::Component& componentInstance)
 {
-    AzToolsFramework::ReflectedPropertyEditor* editor = new AzToolsFramework::ReflectedPropertyEditor(nullptr);
+    AzToolsFramework::ComponentEditor* editor = new AzToolsFramework::ComponentEditor(m_serializeContext, m_propertiesWidget, this);
+    connect(editor, &AzToolsFramework::ComponentEditor::OnDisplayComponentEditorMenu, this, &PropertiesContainer::OnDisplayUiComponentEditorMenu);
+    
     m_rowLayout->addWidget(editor);
     editor->hide();
 
-    const int propertyLabelWidth = 150;
-    editor->Setup(m_serializeContext, m_propertiesWidget, true, propertyLabelWidth);
-    editor->SetSavedStateKey(AZ_CRC("UiCanvasEditor_PropertyEditor", 0xc402ebcc));
-    editor->SetLabelAutoResizeMinimumWidth(propertyLabelWidth);
-    editor->SetAutoResizeLabels(true);
-
-    QObject::connect(editor,
-        &AzToolsFramework::ReflectedPropertyEditor::OnExpansionContractionDone,
-        this,
-        &PropertiesContainer::SetHeightOfContentRect);
-
     return editor;
+}
+
+bool PropertiesContainer::DoesOwnFocus() const
+{
+    QWidget* widget = QApplication::focusWidget();
+    return this == widget || isAncestorOf(widget);
+}
+
+QRect PropertiesContainer::GetWidgetGlobalRect(const QWidget* widget) const
+{
+    return QRect(
+        widget->mapToGlobal(widget->rect().topLeft()),
+        widget->mapToGlobal(widget->rect().bottomRight()));
+}
+
+bool PropertiesContainer::DoesIntersectWidget(const QRect& globalRect, const QWidget* widget) const
+{
+    return widget->isVisible() && globalRect.intersects(GetWidgetGlobalRect(widget));
+}
+
+bool PropertiesContainer::DoesIntersectSelectedComponentEditor(const QRect& globalRect) const
+{
+    for (auto componentEditor : GetIntersectingComponentEditors(globalRect))
+    {
+        if (componentEditor->IsSelected())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool PropertiesContainer::DoesIntersectNonSelectedComponentEditor(const QRect& globalRect) const
+{
+    for (auto componentEditor : GetIntersectingComponentEditors(globalRect))
+    {
+        if (!componentEditor->IsSelected())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void PropertiesContainer::ClearComponentEditorSelection()
+{
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+    for (auto componentEditor : m_componentEditors)
+    {
+        componentEditor->SetSelected(false);
+    }
+
+    UpdateInternalState();
+}
+
+void PropertiesContainer::SelectRangeOfComponentEditors(const AZ::s32 index1, const AZ::s32 index2, bool selected)
+{
+    if (index1 >= 0 && index2 >= 0)
+    {
+        const AZ::s32 min = AZStd::min(index1, index2);
+        const AZ::s32 max = AZStd::max(index1, index2);
+        for (AZ::s32 index = min; index <= max; ++index)
+        {
+            m_componentEditors[index]->SetSelected(selected);
+        }
+        m_componentEditorLastSelectedIndex = index2;
+    }
+
+    UpdateInternalState();
+}
+
+void PropertiesContainer::SelectIntersectingComponentEditors(const QRect& globalRect, bool selected)
+{
+    for (auto componentEditor : GetIntersectingComponentEditors(globalRect))
+    {
+        componentEditor->SetSelected(selected);
+        m_componentEditorLastSelectedIndex = GetComponentEditorIndex(componentEditor);
+    }
+
+    UpdateInternalState();
+}
+
+void PropertiesContainer::ToggleIntersectingComponentEditors(const QRect& globalRect)
+{
+    for (auto componentEditor : GetIntersectingComponentEditors(globalRect))
+    {
+        componentEditor->SetSelected(!componentEditor->IsSelected());
+        m_componentEditorLastSelectedIndex = GetComponentEditorIndex(componentEditor);
+    }
+
+    UpdateInternalState();
+}
+
+AZ::s32 PropertiesContainer::GetComponentEditorIndex(const AzToolsFramework::ComponentEditor* componentEditor) const
+{
+    AZ::s32 index = 0;
+    for (auto componentEditorToCompare : m_componentEditors)
+    {
+        if (componentEditorToCompare == componentEditor)
+        {
+            return index;
+        }
+        ++index;
+    }
+    return -1;
+}
+
+AZStd::vector<AzToolsFramework::ComponentEditor*> PropertiesContainer::GetIntersectingComponentEditors(const QRect& globalRect) const
+{
+    ComponentEditorVector intersectingComponentEditors;
+    intersectingComponentEditors.reserve(m_componentEditors.size());
+    for (auto componentEditor : m_componentEditors)
+    {
+        if (DoesIntersectWidget(globalRect, componentEditor))
+        {
+            intersectingComponentEditors.push_back(componentEditor);
+        }
+    }
+    return intersectingComponentEditors;
+}
+
+void PropertiesContainer::CreateActions()
+{
+    QAction* seperator1 = new QAction(this);
+    seperator1->setSeparator(true);
+    addAction(seperator1);
+
+    m_actionToAddComponents = new QAction(tr("Add component"), this);
+    m_actionToAddComponents->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    connect(m_actionToAddComponents, &QAction::triggered, this, &PropertiesContainer::OnAddComponent);
+    addAction(m_actionToAddComponents);
+
+    m_actionToDeleteComponents = ComponentHelpers::CreateRemoveComponentsAction(this);
+    addAction(m_actionToDeleteComponents);
+
+    QAction* seperator2 = new QAction(this);
+    seperator2->setSeparator(true);
+    addAction(seperator2);
+
+    m_actionToCutComponents = ComponentHelpers::CreateCutComponentsAction(this);
+    addAction(m_actionToCutComponents);
+
+    m_actionToCopyComponents = ComponentHelpers::CreateCopyComponentsAction(this);
+    addAction(m_actionToCopyComponents);
+
+    m_actionToPasteComponents = ComponentHelpers::CreatePasteComponentsAction(this);
+    addAction(m_actionToPasteComponents);
+
+    UpdateInternalState();
+}
+
+void PropertiesContainer::UpdateActions()
+{
+    ComponentHelpers::UpdateRemoveComponentsAction(m_actionToDeleteComponents);
+    ComponentHelpers::UpdateCutComponentsAction(m_actionToCutComponents);
+    ComponentHelpers::UpdateCopyComponentsAction(m_actionToCopyComponents);
+    // The paste components action always remains enabled except for when the context menu is up
+    // This is so a paste can be performed after a copy operation was made via the shortcut keys (since we don't know when a copy was performed)
+}
+
+void PropertiesContainer::UpdateOverlay()
+{
+    m_overlay->setVisible(true);
+    m_overlay->setGeometry(m_componentListContents->rect());
+    m_overlay->raise();
+    m_overlay->update();
+}
+
+void PropertiesContainer::UpdateInternalState()
+{
+    UpdateActions();
+    UpdateOverlay();
+}
+
+void PropertiesContainer::OnAddComponent()
+{
+    HierarchyMenu contextMenu(m_editorWindow->GetHierarchy(),
+        HierarchyMenu::Show::kAddComponents,
+        true);
+
+    contextMenu.exec(QCursor::pos());
+}
+
+void PropertiesContainer::OnDisplayUiComponentEditorMenu(const QPoint& position)
+{
+    ShowContextMenu(position);
+}
+
+void PropertiesContainer::ShowContextMenu(const QPoint& position)
+{
+    UpdateInternalState();
+    // The paste components action is only updated right before the context menu appears, otherwise it remains enabled
+    ComponentHelpers::UpdatePasteComponentsAction(m_actionToPasteComponents);
+
+    HierarchyMenu contextMenu(m_editorWindow->GetHierarchy(),
+        HierarchyMenu::Show::kPushToSlice,
+        false);
+
+    contextMenu.addActions(actions());
+
+    if (!contextMenu.isEmpty())
+    {
+        contextMenu.exec(position);
+    }
+
+    // Keep the paste components action enabled when the context menu is not showing in order to handle pastes after a copy was performed
+    m_actionToPasteComponents->setEnabled(true);
 }
 
 void PropertiesContainer::Update()
@@ -343,20 +804,33 @@ void PropertiesContainer::Update()
     if (m_selectedEntityDisplayNameWidget != nullptr)
     {
         m_selectedEntityDisplayNameWidget->setText(displayName);
+
+        // Preventing renaming entities if the canvas entity is selected or
+        // multiple entities are selected.
+        if (m_isCanvasSelected || selectedEntitiesAmount > 1)
+        {
+            m_selectedEntityDisplayNameWidget->setEnabled(false);
+        }
+        else
+        {
+            m_selectedEntityDisplayNameWidget->setEnabled(true);
+        }
     }
 
     // Clear content.
     {
         for (int j = m_rowLayout->count(); j > 0; --j)
         {
-            AzToolsFramework::ReflectedPropertyEditor* editor = static_cast<AzToolsFramework::ReflectedPropertyEditor*>(m_rowLayout->itemAt(j - 1)->widget());
+            AzToolsFramework::ComponentEditor* editor = static_cast<AzToolsFramework::ComponentEditor*>(m_rowLayout->itemAt(j - 1)->widget());
 
             editor->hide();
-            editor->ClearInstances();
+            editor->ClearInstances(true);
         }
 
         m_compareToEntity.reset();
     }
+
+    UpdateEditorOnlyCheckbox();
 
     if (m_selectedEntities.empty())
     {
@@ -366,35 +840,67 @@ void PropertiesContainer::Update()
     ComponentTypeMap sharedComponentList;
     BuildSharedComponentList(sharedComponentList, m_selectedEntities);
     BuildSharedComponentUI(sharedComponentList, m_selectedEntities);
-    SetHeightOfContentRect();
+
+    UpdateInternalState();
 }
 
-void PropertiesContainer::SetHeightOfContentRect()
+void PropertiesContainer::UpdateEditorOnlyCheckbox()
 {
-    int sumContentsRect = 0;
-
-    for (auto& componentEditorsPair : m_componentEditorsByType)
+    if (m_isCanvasSelected)
     {
-        for (AzToolsFramework::ReflectedPropertyEditor* editor : componentEditorsPair.second)
+        // The canvas itself can't be editor-only, so don't show the checkbox when the
+        // canvas is displayed in the properties pane.
+        m_editorOnlyCheckbox->setVisible(false);
+    }
+    else
+    {
+        QSignalBlocker noSignals(m_editorOnlyCheckbox);
+
+        if (m_selectedEntities.empty())
         {
-            if (editor)
+            m_editorOnlyCheckbox->setVisible(false);
+            return;
+        }
+
+        m_editorOnlyCheckbox->setVisible(true);
+
+        bool allEditorOnly = true;
+        bool noneEditorOnly = true;
+
+        for (AZ::EntityId id : m_selectedEntities)
+        {
+            // If any of the entities is a slice root, grey out the checkbox.
+            bool isSliceRoot = false;
+            AzToolsFramework::EditorEntityInfoRequestBus::EventResult(isSliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
+            if (isSliceRoot)
             {
-                // We DON'T want to scroll thru individual editors.
-                // We ONLY want to scroll thru the ENTIRE layout of editors.
-                // We achieve this by setting each editor's minimum height
-                // to its full layout and setting the container's height
-                // (this class) to the full span of all its sub-editors.
-                int minimumHeight = editor->GetContentHeight() + UICANVASEDITOR_EXTRA_VERTICAL_PADDING_IN_PIXELS;
-
-                editor->setMinimumHeight(minimumHeight);
-
-                sumContentsRect += minimumHeight;
+                m_editorOnlyCheckbox->setChecked(false);
+                m_editorOnlyCheckbox->setEnabled(false);
+                return;
             }
+
+            bool isEditorOnly = false;
+            AzToolsFramework::EditorOnlyEntityComponentRequestBus::EventResult(isEditorOnly, id, &AzToolsFramework::EditorOnlyEntityComponentRequests::IsEditorOnlyEntity);
+
+            allEditorOnly &= isEditorOnly;
+            noneEditorOnly &= !isEditorOnly;
+        }
+
+        m_editorOnlyCheckbox->setEnabled(true);
+
+        if (allEditorOnly)
+        {
+            m_editorOnlyCheckbox->setCheckState(Qt::CheckState::Checked);
+        }
+        else if (noneEditorOnly)
+        {
+            m_editorOnlyCheckbox->setCheckState(Qt::CheckState::Unchecked);
+        }
+        else // Some marked editor-only, some not
+        {
+            m_editorOnlyCheckbox->setCheckState(Qt::CheckState::PartiallyChecked);
         }
     }
-
-    // Set the container's maximum height.
-    m_containerWidget->setMaximumHeight(sumContentsRect);
 }
 
 void PropertiesContainer::Refresh(AzToolsFramework::PropertyModificationRefreshLevel refreshLevel, const AZ::Uuid* componentType)
@@ -410,11 +916,11 @@ void PropertiesContainer::Refresh(AzToolsFramework::PropertyModificationRefreshL
         {
             if (!componentType || (*componentType == componentEditorsPair.first))
             {
-                for (AzToolsFramework::ReflectedPropertyEditor* editor : componentEditorsPair.second)
+                for (AzToolsFramework::ComponentEditor* editor : componentEditorsPair.second)
                 {
-                    if (editor)
+                    if (editor->isVisible())
                     {
-                        editor->QueueInvalidation(refreshLevel);
+                        editor->QueuePropertyEditorInvalidation(refreshLevel);
                     }
                 }
             }
@@ -442,6 +948,8 @@ void PropertiesContainer::Refresh(AzToolsFramework::PropertyModificationRefreshL
 
 void PropertiesContainer::SelectionChanged(HierarchyItemRawPtrList* items)
 {
+    ClearComponentEditorSelection();
+
     m_selectedEntities.clear();
     if (items)
     {
@@ -475,42 +983,63 @@ void PropertiesContainer::SelectedEntityPointersChanged()
 
 void PropertiesContainer::RequestPropertyContextMenu(AzToolsFramework::InstanceDataNode* node, const QPoint& globalPos)
 {
-    AZ::Component* componentToRemove = nullptr;
+    ShowContextMenu(globalPos);
+}
+
+void PropertiesContainer::SetSelectedEntityDisplayNameWidget(QLineEdit* selectedEntityDisplayNameWidget)
+{
+    if (selectedEntityDisplayNameWidget)
     {
-        while (node)
+        if (m_selectedEntityDisplayNameWidget)
         {
-            if ((node->GetClassMetadata()) && (node->GetClassMetadata()->m_azRtti))
-            {
-                if (node->GetClassMetadata()->m_azRtti->IsTypeOf(AZ::Component::RTTI_Type()))
-                {
-                    AZ::Component* component = static_cast<AZ::Component*>(node->FirstInstance());
-                    // Only break if the component we got was a component on an entity, not just a member variable component
-                    if (component->GetEntity() != nullptr)
-                    {
-                        componentToRemove = component;
-                        break;
-                    }
-                }
-            }
-
-            node = node->GetParent();
+            QObject::disconnect(m_selectedEntityDisplayNameWidget);
         }
-    }
 
-    HierarchyMenu contextMenu(m_editorWindow->GetHierarchy(),
-        HierarchyMenu::Show::kRemoveComponents | HierarchyMenu::Show::kPushToSlice,
-        false,
-        componentToRemove);
+        m_selectedEntityDisplayNameWidget = selectedEntityDisplayNameWidget;
 
-    if (!contextMenu.isEmpty())
-    {
-        contextMenu.exec(globalPos);
+        // Listen for changes to the line edit field
+        QObject::connect(m_selectedEntityDisplayNameWidget,
+            &QLineEdit::editingFinished,
+            [this]()
+            {
+                // Ignore editing when this field is read-only or if there is more than one
+                // entity selected.
+                if (!m_selectedEntityDisplayNameWidget->isEnabled() || m_selectedEntities.size() != 1)
+                {
+                    return;
+                }
+
+                AZ::EntityId selectedEntityId = m_selectedEntities.front();
+                AZ::Entity* selectedEntity = nullptr;
+                EBUS_EVENT_RESULT(selectedEntity, AZ::ComponentApplicationBus, FindEntity, selectedEntityId);
+                if (selectedEntity)
+                {
+                    AZStd::string currentName = selectedEntity->GetName();
+                    AZStd::string newName = m_selectedEntityDisplayNameWidget->text().toUtf8().constData();
+
+                    CommandHierarchyItemRename::Push(m_editorWindow->GetActiveStack(),
+                        m_editorWindow->GetHierarchy(),
+                        selectedEntityId,
+                        currentName.c_str(),
+                        newName.c_str());
+                }
+            });
     }
 }
 
-void PropertiesContainer::SetSelectedEntityDisplayNameWidget(QLabel* selectedEntityDisplayNameWidget)
+void PropertiesContainer::SetEditorOnlyCheckbox(QCheckBox* editorOnlyCheckbox)
 {
-    m_selectedEntityDisplayNameWidget = selectedEntityDisplayNameWidget;
+    m_editorOnlyCheckbox = editorOnlyCheckbox;
+
+    QObject::connect(m_editorOnlyCheckbox,
+        &QCheckBox::stateChanged,
+        [this](int value)
+        {
+            QSignalBlocker blocker(this);
+
+            QMetaObject::invokeMethod(m_editorWindow->GetHierarchy(), "SetEditorOnlyForSelectedItems", Qt::QueuedConnection, Q_ARG(bool, value));
+        }
+    );
 }
 
 #include <PropertiesContainer.moc>

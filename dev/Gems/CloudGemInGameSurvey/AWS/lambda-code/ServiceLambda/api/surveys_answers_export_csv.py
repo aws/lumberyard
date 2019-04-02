@@ -85,7 +85,7 @@ def get_status_file_key(request_id):
     return '{}/{}'.format(request_id, 'status.json')
 
 def get_export_file_key(request_id):
-    return '{}/{}'.format(request_id, 'export.txt')
+    return '{}/{}'.format(request_id, 'export.csv')
 
 def create_status_file(status_file_key):
     bucket = survey_utils.get_answer_submissions_export_s3_bucket()

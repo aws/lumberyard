@@ -139,6 +139,11 @@ namespace AssetBuilderSDK
     {
     }
 
+    AZStd::string AssetBuilderPattern::ToString() const
+    {
+        return AZStd::string::format("{%s:%s}", m_type == Wildcard ? "WildCard" : "Regex", m_pattern.c_str());
+    }
+
     void AssetBuilderPattern::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -323,7 +328,7 @@ namespace AssetBuilderSDK
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<JobDescriptor>()->
-                Version(2)->
+                Version(3)->
                 Field("Additional Fingerprint Info", &JobDescriptor::m_additionalFingerprintInfo)->
 #if defined(ENABLE_LEGACY_PLATFORMFLAGS_SUPPORT)
             EventHandler(&Internal::s_jobDescriptorSerializeEventHandlerInstance)->
@@ -335,7 +340,8 @@ namespace AssetBuilderSDK
                 Field("Priority", &JobDescriptor::m_priority)->
                 Field("Job Parameters", &JobDescriptor::m_jobParameters)->
                 Field("Check Exclusive Lock", &JobDescriptor::m_checkExclusiveLock)->
-                Field("Fail On Error", &JobDescriptor::m_failOnError);
+                Field("Fail On Error", &JobDescriptor::m_failOnError)->
+                Field("Job Dependency List", &JobDescriptor::m_jobDependencyList);
         }
     }
 
@@ -537,11 +543,6 @@ namespace AssetBuilderSDK
             m_productSubID = InferSubIDFromProductFileName(m_productAssetType, m_productFileName.c_str());
         }
         //////////////////////////////////////////////////////////////////////////
-    }
-
-    JobProduct::JobProduct(JobProduct&& other)
-    {
-        *this = AZStd::move(other);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -957,19 +958,6 @@ namespace AssetBuilderSDK
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
 
-    AssetBuilderSDK::JobProduct& JobProduct::operator=(JobProduct&& other)
-    {
-        if (this != &other)
-        {
-            m_productFileName = AZStd::move(other.m_productFileName);
-            m_productAssetType = AZStd::move(other.m_productAssetType);
-            m_productSubID = other.m_productSubID;
-            m_legacySubIDs = AZStd::move(other.m_legacySubIDs);
-            m_dependencies = AZStd::move(other.m_dependencies);
-        }
-        return *this;
-    }
-
     void ProcessJobRequest::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -1013,11 +1001,12 @@ namespace AssetBuilderSDK
         AZ_Assert(serializeContext, "Unable to retrieve serialize context.");
 
         SourceFileDependency::Reflect(serializeContext);
+        JobDependency::Reflect(serializeContext);
         JobDescriptor::Reflect(serializeContext);
         AssetBuilderPattern::Reflect(serializeContext);
         ProductDependency::Reflect(serializeContext);
         JobProduct::Reflect(serializeContext);
-        AssetBuilderRegistrationDesc::Reflect(serializeContext);
+        AssetBuilderDesc::Reflect(serializeContext);
 
         RegisterBuilderRequest::Reflect(serializeContext);
         RegisterBuilderResponse::Reflect(serializeContext);
@@ -1055,21 +1044,9 @@ namespace AssetBuilderSDK
         return m_cancelled;
     }
 
-    AssetBuilderSDK::SourceFileDependency& SourceFileDependency::operator=(const SourceFileDependency& other)
+    AZStd::string SourceFileDependency::ToString() const
     {
-        m_sourceFileDependencyPath = other.m_sourceFileDependencyPath;
-        m_sourceFileDependencyUUID = other.m_sourceFileDependencyUUID;
-        return *this;
-    }
-
-    AssetBuilderSDK::SourceFileDependency& SourceFileDependency::operator=(SourceFileDependency&& other)
-    {
-        if (this != &other)
-        {
-            m_sourceFileDependencyPath = AZStd::move(other.m_sourceFileDependencyPath);
-            m_sourceFileDependencyUUID = other.m_sourceFileDependencyUUID;
-        }
-        return *this;
+        return AZStd::string::format("SourceFileDependency UUID: %s NAME: %s", m_sourceFileDependencyUUID.ToString<AZStd::string>().c_str(), m_sourceFileDependencyPath.c_str());
     }
 
     void SourceFileDependency::Reflect(AZ::ReflectContext* context)
@@ -1093,16 +1070,18 @@ namespace AssetBuilderSDK
         }
     }
 
-    void AssetBuilderRegistrationDesc::Reflect(AZ::ReflectContext* context)
+    void AssetBuilderDesc::Reflect(AZ::ReflectContext* context)
     {
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serializeContext->Class<AssetBuilderRegistrationDesc>()
-                ->Version(1)
-                ->Field("Name", &AssetBuilderRegistrationDesc::m_name)
-                ->Field("Patterns", &AssetBuilderRegistrationDesc::m_patterns)
-                ->Field("BusId", &AssetBuilderRegistrationDesc::m_busId)
-                ->Field("Version", &AssetBuilderRegistrationDesc::m_version);
+            serializeContext->Class<AssetBuilderDesc>()
+                ->Version(2)
+                ->Field("Flags", &AssetBuilderDesc::m_flags)
+                ->Field("Name", &AssetBuilderDesc::m_name)
+                ->Field("Patterns", &AssetBuilderDesc::m_patterns)
+                ->Field("BusId", &AssetBuilderDesc::m_busId)
+                ->Field("Version", &AssetBuilderDesc::m_version)
+                ->Field("AnalysisFingerprint", &AssetBuilderDesc::m_analysisFingerprint);
         }
     }
 
@@ -1253,6 +1232,27 @@ namespace AssetBuilderSDK
     unsigned int ProcessJobNetResponse::GetMessageType() const
     {
         return ProcessJobNetRequest::MessageType();
+    }
+
+    JobDependency::JobDependency(const AZStd::string& jobKey, const AZStd::string& platformIdentifier, const JobDependencyType& type, const SourceFileDependency& sourceFile)
+        : m_jobKey(jobKey)
+        , m_platformIdentifier(platformIdentifier)
+        , m_type(type)
+        , m_sourceFile(sourceFile)
+    {
+    }
+
+    void JobDependency::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<JobDependency>()->
+                Version(1)->
+                Field("Source File", &JobDependency::m_sourceFile)->
+                Field("Job Key", &JobDependency::m_jobKey)->
+                Field("Platform Identifier", &JobDependency::m_platformIdentifier)->
+                Field("Job Dependency Type", &JobDependency::m_type);
+        }
     }
 
     AssertAbsorber::AssertAbsorber()

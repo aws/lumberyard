@@ -14,7 +14,7 @@ import plistlib
 import shutil
 import subprocess
 
-from branch_spec import spec_modules
+from branch_spec import get_supported_configurations, spec_modules
 from gems import Gem
 from lumberyard_sdks import get_dynamic_lib_extension, get_platform_lib_prefix
 from qt5 import QT5_LIBS
@@ -31,7 +31,13 @@ from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 DEFAULT_RC_JOB = os.path.join('Bin64', 'rc', 'RCJob_Generic_MakePaks.xml')
 #                                                              #
 ################################################################
+def get_python_path(ctx):
+    python_cmd = 'python'
 
+    if Utils.unversioned_sys_platform() == "win32":
+        python_cmd = '"{}"'.format(ctx.path.find_resource('Tools/Python/python.cmd').abspath())
+
+    return python_cmd
 
 def run_subprocess(command_args, working_dir = None, as_shell = False):
     exe_name = os.path.basename(command_args[0])
@@ -121,7 +127,62 @@ def run_rc_job(ctx, game, job, assets_platform, source_path, target_path, is_obb
     # Invoking RC as non-shell exposes how rigid it's command line parsing is...
     return run_subprocess(rc_cmd, working_dir = ctx.launch_dir, as_shell = True)
 
+def get_shader_cache_gen_path(ctx):
+    output_folders = [ output.abspath() for output in ctx.get_standard_host_output_folders()]
+    if not output_folders:
+        ctx.fatal('[ERROR] Unable to determine possible binary directories for host {}'.format(Utils.unversioned_sys_platform()))
 
+    try:
+        return ctx.find_program('ShaderCacheGen', path_list = output_folders, silent_output = True)
+    except:
+        ctx.fatal('[ERROR] Failed to find the ShaderCacheGen in paths: {}'.format(output_folders))
+
+def generate_shaders_pak(ctx, game, assets_platform, shader_type):
+    shader_cache_gen_path = get_shader_cache_gen_path(ctx)
+    gen_shaders_script = ctx.engine_node.find_resource('Tools/PakShaders/gen_shaders.py')
+    command_args = [
+        get_python_path(ctx),
+        '"{}"'.format(gen_shaders_script.abspath()),
+        '{}'.format(game),
+        '{}'.format(assets_platform),
+        '{}'.format(shader_type),
+        '{}'.format(os.path.basename(os.path.dirname(shader_cache_gen_path))),
+        '-g "{}"'.format(ctx.launch_dir),
+        '-e "{}"'.format(ctx.engine_path)
+    ]
+
+    command = ' '.join(command_args)
+    Logs.debug('package: Running command - {}'.format(command))
+    try:
+        subprocess.check_call(command, shell = True)
+    except subprocess.CalledProcessError:
+        ctx.fatal('[ERROR] Failed generate shaders for type {}'.format(shader_type))
+
+    pak_shaders_script = ctx.engine_node.find_resource('Tools/PakShaders/pak_shaders.py')
+
+    shaders_pak_dir = ctx.path.make_node("build/{}/{}".format(assets_platform, game).lower())
+    if os.path.isdir(shaders_pak_dir.abspath()):
+        shutil.rmtree(shaders_pak_dir.abspath())
+    shaders_pak_dir.mkdir()
+
+    shaders_source = ctx.path.make_node("Cache/{}/{}/user/cache/shaders/cache".format(game, assets_platform))
+
+    command_args = [
+        get_python_path(ctx),
+        '"{}"'.format(pak_shaders_script.abspath()),
+        '"{}"'.format(shaders_pak_dir.abspath()),
+        '-s {}'.format(shader_type),
+        '-r "{}"'.format(shaders_source.abspath())
+    ]
+    command = ' '.join(command_args)
+    Logs.debug('package: Running command - {}'.format(command))
+    try:
+        subprocess.check_call(command, shell = True)
+    except subprocess.CalledProcessError:
+        ctx.fatal('[ERROR] Failed pack shaders for type {}'.format(shader_type))
+
+    return shaders_pak_dir
+           
 def should_copy_and_not_link(pkg):
     return (   Utils.is_win32
             or 'release' in pkg.config
@@ -452,7 +513,7 @@ def execute(self):
     self.add_group('packaging')
     self.set_group('build')
         
-    self.project = self.get_bootstrap_game()
+    self.project = self.get_bootstrap_game_folder()
     self.restore()
     if not self.all_envs:
         self.load_envs()
@@ -726,21 +787,18 @@ def create_symlink_or_copy(self, source_node, destination_path, **kwargs):
                 Logs.debug("package: -> need to copy so calling install_files for the file {} {}".format(destination_path, source_node.abspath()))
                 self.install_files(destination_path, [source_node], **kwargs)
             else:
-                Logs.debug("package: -> calling symlink_as {} / {} ".format(destination_path, source_node.name))
-                self.symlink_as(destination_path + "/" + source_node.name, source_path_and_name, **kwargs)
+                kwargs.pop('chmod', None) # optional chmod arg is only needed when install_files is used
+                dest_path = '{}/{}'.format(destination_path, source_node.name)
+                Logs.debug('package: -> calling symlink_as {}'.format(dest_path))
+                self.symlink_as(dest_path, source_path_and_name, **kwargs)
 
     except Exception as err:
         Logs.debug("package: -> got an exception {}".format(err))
 
 
 for platform in PLATFORMS[Utils.unversioned_sys_platform()]:
-    for configuration in CONFIGURATIONS:
+    for configuration in get_supported_configurations(platform):
         platform_config_key = platform + '_' + configuration
-
-        # for platform/configuration generates invalid configurations if a filter exists, don't generate all combinations
-        if platform in PLATFORM_CONFIGURATION_FILTER:
-            if configuration not in PLATFORM_CONFIGURATION_FILTER[platform]:
-                continue
 
         # Create new class to execute package command with variant
         class_attributes = {

@@ -17,7 +17,11 @@
 #include "ShadersResourcesGroups/PerFrame.h"
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(ShaderComponents_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/ShaderComponents_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/ShaderComponents_h_provo.inl"
+    #endif
 #endif
 
 #if defined(PF_LOCAL) && !(PF_LOCAL == 1)

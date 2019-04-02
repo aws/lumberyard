@@ -375,25 +375,10 @@ namespace AZ
 
         AZ_Assert(m_state == ES_INIT, "Entity should be in Init state to be Activated!");
 
-        const DependencySortResult dependencySortResult = EvaluateDependencies();
-        switch (dependencySortResult)
+        const DependencySortOutcome sortOutcome = EvaluateDependenciesGetDetails();
+        if (!sortOutcome.IsSuccess())
         {
-        case DependencySortResult::Success:
-            break;
-        case DependencySortResult::MissingRequiredService:
-            AZ_Error("Entity", false, "Entity '%s' [0x%llx] has missing required services and cannot be activated.\n", m_name.c_str(), m_id);
-            return;
-        case DependencySortResult::HasCyclicDependency:
-            AZ_Error("Entity", false, "Entity '%s' [0x%llx] cannot be activated due to a cyclic dependency between components.\n", m_name.c_str(), m_id);
-            return;
-        case DependencySortResult::HasIncompatibleServices:
-            AZ_Error("Entity", false, "Entity '%s' [0x%llx] cannot be activated due to incompatible components.\n", m_name.c_str(), m_id);
-            return;
-        case DependencySortResult::DescriptorNotRegistered:
-            AZ_Error("Entity", false, "Entity '%s' [0x%llx] cannot be activated because a component did not register its descriptor with the component application.\n", m_name.c_str(), m_id);
-            return;
-        default:
-            AZ_Error("Entity", false, "Entity '%s' [0x%llx] cannot be activated due to unexpected issues with its components.\n", m_name.c_str(), m_id);
+            AZ_Error("Entity", false, "Entity '%s' %s cannot be activated. %s", m_name.c_str(), m_id.ToString().c_str(), sortOutcome.GetError().m_message.c_str());
             return;
         }
 
@@ -444,15 +429,22 @@ namespace AZ
     //=========================================================================
     Entity::DependencySortResult Entity::EvaluateDependencies()
     {
-        DependencySortResult result = DependencySortResult::Success;
+        DependencySortOutcome outcome = EvaluateDependenciesGetDetails();
+        return outcome.IsSuccess() ? DependencySortResult::Success : outcome.GetError().m_code;
+    }
+
+    //=========================================================================
+    Entity::DependencySortOutcome Entity::EvaluateDependenciesGetDetails()
+    {
+        DependencySortOutcome outcome = AZ::Success();
 
         if (!m_isDependencyReady)
         {
-            result = DependencySort(m_components);
-            m_isDependencyReady = (result == DependencySortResult::Success);
+            outcome = DependencySort(m_components);
+            m_isDependencyReady = outcome.IsSuccess();
         }
 
-        return result;
+        return outcome;
     }
 
     //=========================================================================
@@ -1150,10 +1142,86 @@ namespace AZ
             candidates.pop_back();
             return candidateInfo;
         }
+
+        // Shortcut for returning a FailedSortDetails as an AZ::Failure.
+        static FailureValue<Entity::FailedSortDetails> FailureCode(Entity::DependencySortResult code, const char* formatMessage, ...)
+        {
+            va_list args;
+            va_start(args, formatMessage);
+
+            return Failure(Entity::FailedSortDetails{ code, AZStd::string::format_arg(formatMessage, args) });
+        }
+
+        // Function that creates a nice error message when incompatible components are found.
+        static AZStd::string CreateIncompatibilityMessage(ComponentServiceType service, const IncompatibleServiceInfo& incompatibleServiceInfo, const ProvidedServiceInfo& providedServiceInfo, const AZStd::vector<ComponentInfo>& componentInfos)
+        {
+            const ComponentInfo* componentProvidingService = providedServiceInfo.m_anyComponentProvidingService;
+            const ComponentInfo* componentIncompatibleWithService = incompatibleServiceInfo.m_anyComponentIncompatibleWithService;
+
+            // find two different components that we can report are incompatible with each other.
+            //
+            // we currently know one component which provides this service,
+            // and one component which is incompatible with this service,
+            // but these might be the same component.
+            if (componentProvidingService == componentIncompatibleWithService)
+            {
+                ComponentDescriptor::DependencyArrayType servicesTmp;
+
+                if (incompatibleServiceInfo.m_componentsIncompatibleWithServiceCount > 1)
+                {
+                    // multiple components are incompatible with this service,
+                    // find one that's different from the component providing this service.
+                    for (const ComponentInfo& componentInfo : componentInfos)
+                    {
+                        if (&componentInfo == componentProvidingService)
+                        {
+                            continue;
+                        }
+
+                        componentInfo.m_descriptor->GetIncompatibleServices(servicesTmp, componentInfo.m_component);
+                        if (AZStd::find(servicesTmp.begin(), servicesTmp.end(), service) != servicesTmp.end())
+                        {
+                            componentProvidingService = &componentInfo;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    // multiple components are providing this service,
+                    // find one that different from the component incompatible with this service.
+                    for (const ComponentInfo& componentInfo : componentInfos)
+                    {
+                        if (&componentInfo == componentIncompatibleWithService)
+                        {
+                            continue;
+                        }
+
+                        componentInfo.m_descriptor->GetProvidedServices(servicesTmp, componentInfo.m_component);
+                        if (AZStd::find(servicesTmp.begin(), servicesTmp.end(), service) != servicesTmp.end())
+                        {
+                            componentIncompatibleWithService = &componentInfo;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // different error message for multiple components of the same type
+            if (componentProvidingService->m_underlyingTypeId == componentIncompatibleWithService->m_underlyingTypeId)
+            {
+                return AZStd::string::format("Multiple '%s' found, but this component is incompatible with others of the same type.",
+                    componentProvidingService->m_component->RTTI_GetTypeName());
+            }
+
+            return AZStd::string::format("Components '%s' and '%s' are incompatible.",
+                componentIncompatibleWithService->m_component->RTTI_GetTypeName(),
+                componentProvidingService->m_component->RTTI_GetTypeName());
+        }
     }
 
     //=========================================================================
-    Entity::DependencySortResult Entity::DependencySort(ComponentArrayType& inOutComponents)
+    Entity::DependencySortOutcome Entity::DependencySort(ComponentArrayType& inOutComponents)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
 
@@ -1164,9 +1232,13 @@ namespace AZ
         using DependencySortInternal::DependentComponentEntry;
         using DependencySortInternal::PushCandidate;
         using DependencySortInternal::PopCandidate;
+        using DependencySortInternal::FailureCode;
+        using DependencySortInternal::CreateIncompatibilityMessage;
 
         // Conceptually, this is a topological sort where components
         // are the nodes and dependent services are the links between nodes.
+        //
+        // Be sure to benchmark before and after making changes to this algorithm (see BM_ComponentDependencySort)
 
         // Info about each component
         AZStd::vector<ComponentInfo> componentInfos;
@@ -1211,8 +1283,7 @@ namespace AZ
             ComponentDescriptorBus::EventResult(componentDescriptor, azrtti_typeid(component), &ComponentDescriptorBus::Events::GetDescriptor);
             if (!componentDescriptor)
             {
-                AZ_Assert(false, "Component class %s descriptor is not created! It must be before you can use it!", component->RTTI_GetTypeName());
-                return DependencySortResult::DescriptorNotRegistered;
+                return FailureCode(DependencySortResult::MissingDescriptor, "No descriptor found for Component class '%s'.", component->RTTI_GetTypeName());
             }
 
             componentInfos.push_back();
@@ -1269,15 +1340,15 @@ namespace AZ
                 // but it's an error if more than one component is involved in the service overlap
                 const IncompatibleServiceInfo& incompatibleInfo = incompatible.second;
                 const ProvidedServiceInfo& providedInfo = foundProvidedService->second;
+
                 if (incompatibleInfo.m_componentsIncompatibleWithServiceCount > 1
                     || providedInfo.m_componentsProvidingServiceCount > 1
                     || incompatibleInfo.m_anyComponentIncompatibleWithService != providedInfo.m_anyComponentProvidingService)
                 {
-                    AZ_Assert(false,
-                        "Component class %s has incompatible services with another component on the entity. Please remove one of the components that provides service [0x%x]",
-                        incompatibleInfo.m_anyComponentIncompatibleWithService->m_descriptor->GetName(),
-                        incompatible.first);
-                    return DependencySortResult::HasIncompatibleServices;
+                    // We know there's an incompatibility, but we don't have enough data to give a super useful error message.
+                    // Tracking more data slows down this algorithm in the common case, when nothing is going wrong.
+                    // CreateIncompatibilityMessage() gathers more data so we can provide a better message in the uncommon case that things go wrong.
+                    return FailureCode(DependencySortResult::HasIncompatibleServices, CreateIncompatibilityMessage(incompatible.first, incompatibleInfo, providedInfo, componentInfos).c_str());
                 }
             }
         }
@@ -1309,10 +1380,8 @@ namespace AZ
                     {
                         if (processingRequiredServices)
                         {
-                            AZ_Assert(false,
-                                "Entity has missing required services. Please add a component to the entity which provides service [0x%x]",
-                                service);
-                            return DependencySortResult::MissingRequiredService;
+                            return FailureCode(DependencySortResult::MissingRequiredService, "Component '%s' is missing another required component.",
+                                componentInfo.m_component->RTTI_GetTypeName());
                         }
                         else
                         {
@@ -1383,12 +1452,38 @@ namespace AZ
         // if we failed to sort every component, there must be a cyclic dependency
         if (sortedComponents.size() != componentInfos.size())
         {
-            return DependencySortResult::HasCyclicDependency;
+            // Format message like: "Cycle exists amongst: ComponentA, ComponentB, ComponentC, ..."
+            AZStd::string message = "Infinite loop of service dependencies amongst components: ";
+            size_t foundUnsorted = 0;
+            for (ComponentInfo& componentInfo : componentInfos)
+            {
+                if (AZStd::find(sortedComponents.begin(), sortedComponents.end(), componentInfo.m_component) == sortedComponents.end())
+                {
+                    if (foundUnsorted > 0)
+                    {
+                        message += ", ";
+                    }
+
+                    if (foundUnsorted == 3)
+                    {
+                        message += "...";
+                        break;
+                    }
+                    else
+                    {
+                        message += componentInfo.m_component->RTTI_GetTypeName();
+                    }
+
+                    foundUnsorted++;
+                }
+            }
+
+            return FailureCode(DependencySortResult::HasCyclicDependency, message.c_str());
         }
 
         // success!
         inOutComponents = sortedComponents;
-        return DependencySortResult::Success;
+        return Success();
     }
 
     //32 bit crc of machine ID, process ID, and process start time

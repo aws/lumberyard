@@ -152,6 +152,7 @@ namespace
             lightParams.m_ProbeExtents.x = configuration.m_probeArea.GetX() / 2.0f;
             lightParams.m_ProbeExtents.y = configuration.m_probeArea.GetY() / 2.0f;
             lightParams.m_ProbeExtents.z = configuration.m_probeArea.GetZ() / 2.0f;
+            lightParams.m_fRadius = lightParams.m_ProbeExtents.len();
             lightParams.m_nSortPriority = configuration.m_probeSortPriority;
             lightParams.m_fProbeAttenuation = configuration.m_probeFade;
 

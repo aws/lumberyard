@@ -13,6 +13,7 @@
 #include <Editor/PropertyWidgets/AnimGraphNodeHandler.h>
 #include <EMotionFX/Source/AnimGraphNode.h>
 #include <EMotionFX/Source/AnimGraphMotionNode.h>
+#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphHierarchyWidget.h>
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendNodeSelectionWindow.h>
 #include <Editor/AnimGraphEditorBus.h>
 #include <QHBoxLayout>
@@ -104,13 +105,16 @@ namespace EMotionFX
         }
 
         // create and show the node picker window
-        EMStudio::BlendNodeSelectionWindow dialog(this, true, nullptr, m_nodeFilterType, m_showStatesOnly);
-        dialog.Update(m_animGraph->GetID(), nullptr);
+        EMStudio::BlendNodeSelectionWindow dialog(this);
+        dialog.GetAnimGraphHierarchyWidget().SetSingleSelectionMode(true);
+        dialog.GetAnimGraphHierarchyWidget().SetFilterNodeType(m_nodeFilterType);
+        dialog.GetAnimGraphHierarchyWidget().SetFilterStatesOnly(m_showStatesOnly);
+        dialog.GetAnimGraphHierarchyWidget().SetRootAnimGraph(m_animGraph);
         dialog.setModal(true);
 
         if (dialog.exec() != QDialog::Rejected)
         {
-            const AZStd::vector<AnimGraphSelectionItem>& selectedNodes = dialog.GetAnimGraphHierarchyWidget()->GetSelectedItems();
+            const AZStd::vector<AnimGraphSelectionItem>& selectedNodes = dialog.GetAnimGraphHierarchyWidget().GetSelectedItems();
             if (!selectedNodes.empty())
             {
                 AnimGraphNode* selectedNode = m_animGraph->RecursiveFindNodeByName(selectedNodes[0].mNodeName.c_str());

@@ -22,7 +22,11 @@
 #if !defined(CRY_USE_DX12_NATIVE)
 #define DEVICEWRAPPER12_D3D11_CPP_WRAP_DX11
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(DeviceWrapper12_D3D11_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/DeviceWrapper12_D3D11_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/DeviceWrapper12_D3D11_cpp_provo.inl"
+    #endif
 #endif
 #if defined(DEVICEWRAPPER12_D3D11_CPP_WRAP_DX11)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

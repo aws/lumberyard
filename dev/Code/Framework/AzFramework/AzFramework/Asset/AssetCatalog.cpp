@@ -362,7 +362,7 @@ namespace AzFramework
             {
                 if (AZ::IO::FileIOBase::GetInstance()->Open(catalogRegistryFile, AZ::IO::OpenMode::ModeRead, handle))
                 {
-                    bytes.resize(size);
+                    bytes.resize_no_construct(size);
                     // this call will fail on purpose if bytes.size() != size successfully actually read from disk.
                     if (!AZ::IO::FileIOBase::GetInstance()->Read(handle, bytes.data(), bytes.size(), true))
                     {

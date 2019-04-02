@@ -104,7 +104,7 @@ void UiParticle::Update(float deltaTime, const UiParticleUpdateParameters& updat
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiParticle::FillVertices(SVF_P3F_C4B_T2F* outputVertices, const UiParticleRenderParameters& renderParameters, AZ::u32& particlesInserted, const AZ::Matrix4x4& transform)
+bool UiParticle::FillVertices(SVF_P2F_C4B_T2F_F4B* outputVertices, const UiParticleRenderParameters& renderParameters, const AZ::Matrix4x4& transform)
 {
     float particleLifetimePercentage = (renderParameters.isParticleInfinite ? 0.0f : m_particleAge / m_particleLifetime);
     float alphaStrength = 1.0f;
@@ -128,8 +128,7 @@ void UiParticle::FillVertices(SVF_P3F_C4B_T2F* outputVertices, const UiParticleR
 
     if (currentAlpha == 0)
     {
-        particlesInserted = 0;
-        return;
+        return false;
     }
 
     int currentIndex = m_spriteCellIndex;
@@ -214,11 +213,16 @@ void UiParticle::FillVertices(SVF_P3F_C4B_T2F* outputVertices, const UiParticleR
         AZ::Vector3 point3(cornerVector.GetX(), cornerVector.GetY(), 1.0f);
         point3 = transform * point3;
 
-        outputVertices[i].xyz = Vec3(point3.GetX(), point3.GetY(), 1.0f);
+        outputVertices[i].xy = Vec2(point3.GetX(), point3.GetY());
         outputVertices[i].color.dcolor = packedColor;
         outputVertices[i].st = Vec2(uvs[i].GetX(), uvs[i].GetY());
+        outputVertices[i].texIndex = 0;
+        outputVertices[i].texHasColorChannel = 1;
+        outputVertices[i].texIndex2 = 0;
+        outputVertices[i].pad = 0;
     }
-    particlesInserted = 1;
+
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

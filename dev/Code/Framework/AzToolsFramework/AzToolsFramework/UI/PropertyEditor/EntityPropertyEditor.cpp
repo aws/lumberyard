@@ -52,6 +52,7 @@
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
 #include <AzToolsFramework/ToolsMessaging/EntityHighlightBus.h>
+#include <AzToolsFramework/UI/ComponentPalette/ComponentPaletteUtil.hxx>
 #include <AzToolsFramework/UI/ComponentPalette/ComponentPaletteWidget.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
 #include <AzToolsFramework/UI/PropertyEditor/ComponentEditorHeader.hxx>
@@ -282,10 +283,15 @@ namespace AzToolsFramework
         m_instances.push_back(component);
     }
 
+    ComponentFilter GetDefaultComponentFilter()
+    {
+        return AppearsInGameComponentMenu;
+    }
+
     EntityPropertyEditor::EntityPropertyEditor(QWidget* pParent, Qt::WindowFlags flags)
         : QWidget(pParent, flags)
         , m_propertyEditBusy(0)
-        , m_componentFilter(AppearsInGameComponentMenu)
+        , m_componentFilter(GetDefaultComponentFilter())
         , m_componentPalette(nullptr)
         , m_autoScrollCount(0)
         , m_autoScrollMargin(16)
@@ -545,6 +551,7 @@ namespace AzToolsFramework
         if (IsSingleEntitySelected(entityId))
         {
             m_gui->m_entityNameEditor->setText(QString(name.c_str()));
+            SelectedEntityNameChanged(entityId, name);
         }
     }
 
@@ -609,7 +616,7 @@ namespace AzToolsFramework
         if (m_selectedEntityIds.size() > 1)
         {
             m_gui->m_entityDetailsLabel->setVisible(true);
-            m_gui->m_entityDetailsLabel->setText(tr("Only common components shown"));
+            m_gui->m_entityDetailsLabel->setText(tr("Common components shown"));
             m_gui->m_entityNameEditor->setText(tr("%n entities selected", "", static_cast<int>(m_selectedEntityIds.size())));
             m_gui->m_entityNameEditor->setReadOnly(true);
         }
@@ -627,6 +634,65 @@ namespace AzToolsFramework
             auto entity = GetEntityById(entityId);
             m_gui->m_entityNameEditor->setText(entity ? entity->GetName().data() : "Entity Not Found");
         }
+    }
+
+    EntityPropertyEditor::SelectionEntityTypeInfo EntityPropertyEditor::GetSelectionEntityTypeInfo(const EntityIdList& selection) const
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+        SelectionEntityTypeInfo result = SelectionEntityTypeInfo::None;
+        for (AZ::EntityId selectedEntityId : selection)
+        {
+            bool isLayerEntity = false;
+            AzToolsFramework::Layers::EditorLayerComponentRequestBus::EventResult(
+                isLayerEntity,
+                selectedEntityId,
+                &AzToolsFramework::Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+            if (isLayerEntity)
+            {
+                if (result == SelectionEntityTypeInfo::None)
+                {
+                    result = SelectionEntityTypeInfo::OnlyLayerEntities;
+                }
+                else if(result == SelectionEntityTypeInfo::OnlyStandardEntities)
+                {
+                    result = SelectionEntityTypeInfo::Mixed;
+                    // An entity of both layer and non-layer type have been found, so break out of the loop.
+                    break;
+                }
+            }
+            else
+            {
+                if (result == SelectionEntityTypeInfo::None)
+                {
+                    result = SelectionEntityTypeInfo::OnlyStandardEntities;
+                }
+                else if (result == SelectionEntityTypeInfo::OnlyLayerEntities)
+                {
+                    result = SelectionEntityTypeInfo::Mixed;
+                    // An entity of both layer and non-layer type have been found, so break out of the loop.
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+
+    bool EntityPropertyEditor::CanAddComponentsToSelection(const SelectionEntityTypeInfo& selectionEntityTypeInfo) const
+    {
+        if (selectionEntityTypeInfo == SelectionEntityTypeInfo::Mixed ||
+            selectionEntityTypeInfo == SelectionEntityTypeInfo::None)
+        {
+            // Can't add components in mixed selection, or if nothing is selected.
+            return false;
+        }
+
+        ComponentPaletteUtil::ComponentDataTable componentDataTable;
+        ComponentPaletteUtil::ComponentIconTable componentIconTable;
+        // This follows the pattern in OnAddComponent, which also uses an empty filter.
+        AZStd::vector<AZ::ComponentServiceType> serviceFilter;
+        ComponentPaletteUtil::BuildComponentTables(m_serializeContext, m_componentFilter, serviceFilter, componentDataTable, componentIconTable);
+        // Components can't be added if there are none available to be added.
+        return componentDataTable.size() != 0;
     }
 
     void EntityPropertyEditor::UpdateContents()
@@ -656,29 +722,79 @@ namespace AzToolsFramework
 
         // Hide the entity stuff and add component button if no entities are displayed
         bool hasEntitiesDisplayed = !m_selectedEntityIds.empty();
-        m_gui->m_entityDetailsLabel->setText(hasEntitiesDisplayed ? "" : IsLockedToSpecificEntities() ? tr("The entity this inspector was pinned to has been deleted.") : tr("Select an entity to show its properties in the inspector."));
-        m_gui->m_entityDetailsLabel->setVisible(!hasEntitiesDisplayed);
-        m_gui->m_addComponentButton->setEnabled(hasEntitiesDisplayed);
-        m_gui->m_addComponentButton->setVisible(hasEntitiesDisplayed);
+
+        SelectionEntityTypeInfo selectionEntityTypeInfo = GetSelectionEntityTypeInfo(m_selectedEntityIds);
+
+        QString entityDetailsLabelText("");
+        bool entityDetailsVisible = false;
+        if (!hasEntitiesDisplayed)
+        {
+            entityDetailsVisible = true;
+            if (IsLockedToSpecificEntities())
+            {
+                entityDetailsLabelText = tr("The entity this inspector was pinned to has been deleted.");
+            }
+            else
+            {
+                entityDetailsLabelText = tr("Select an entity to show its properties in the inspector.");
+            }
+        }
+        else if (selectionEntityTypeInfo == SelectionEntityTypeInfo::OnlyLayerEntities)
+        {
+            // If a customer filter is not already in use, only show layer components.
+            if (!m_customFilterSet)
+            {
+                // Don't call SetAddComponentMenuFilter because it will set the custom filter flag.
+                m_componentFilter = AZStd::move(AppearsInLayerComponentMenu);
+            }
+        }
+        else if (selectionEntityTypeInfo == SelectionEntityTypeInfo::OnlyStandardEntities)
+        {
+            // If a customer filter is not already in use, reset to default in case we were previously only showing layers.
+            if (!m_customFilterSet)
+            {
+                // Don't call SetAddComponentMenuFilter because it will set the custom filter flag.
+                m_componentFilter = AZStd::move(GetDefaultComponentFilter());
+            }
+        }
+
+        m_gui->m_entityDetailsLabel->setText(entityDetailsLabelText);
+        m_gui->m_entityDetailsLabel->setVisible(entityDetailsVisible);
         m_gui->m_entityNameEditor->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityNameLabel->setVisible(hasEntitiesDisplayed);
         m_gui->m_entityIcon->setVisible(hasEntitiesDisplayed);
         m_gui->m_pinButton->setVisible(m_overrideSelectedEntityIds.size() == 0 && hasEntitiesDisplayed && !m_isSystemEntityEditor);
         m_gui->m_statusLabel->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);
         m_gui->m_statusComboBox->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);
-        m_gui->m_darkBox->setVisible(hasEntitiesDisplayed && !m_isSystemEntityEditor);        m_gui->m_entitySearchBox->setVisible(hasEntitiesDisplayed);
-        m_gui->m_buttonClearFilter->setVisible(hasEntitiesDisplayed);
 
+        bool displayComponentSearchBox = hasEntitiesDisplayed;
         if (hasEntitiesDisplayed)
         {
             // Build up components to display
             SharedComponentArray sharedComponentArray;
-            BuildSharedComponentArray(sharedComponentArray);
-            BuildSharedComponentUI(sharedComponentArray);
+            BuildSharedComponentArray(sharedComponentArray, selectionEntityTypeInfo != SelectionEntityTypeInfo::OnlyStandardEntities);
+
+            if (sharedComponentArray.size() == 0)
+            {
+                // Don't display the search box if there were no common components.
+                displayComponentSearchBox = false;
+            }
+            else
+            {
+                BuildSharedComponentUI(sharedComponentArray);
+            }
 
             UpdateEntityIcon();
             UpdateEntityDisplay();
         }
+
+        m_gui->m_darkBox->setVisible(displayComponentSearchBox && !m_isSystemEntityEditor);
+        m_gui->m_entitySearchBox->setVisible(displayComponentSearchBox);
+        m_gui->m_buttonClearFilter->setVisible(displayComponentSearchBox);
+
+        bool displayAddComponentMenu = CanAddComponentsToSelection(selectionEntityTypeInfo);
+        m_gui->m_addComponentButton->setEnabled(displayAddComponentMenu);
+        m_gui->m_addComponentButton->setVisible(displayAddComponentMenu);
 
         QueueScrollToNewComponent();
         LoadComponentEditorState();
@@ -789,11 +905,48 @@ namespace AzToolsFramework
         EditorInspectorComponentRequestBus::Event(entityId, &EditorInspectorComponentRequests::SetComponentOrderArray, componentOrder);
     }
 
+    bool EntityPropertyEditor::DoesComponentPassFilter(const AZ::Component* component) const
+    {
+        auto componentClassData = component ? GetComponentClassData(component) : nullptr;
+        return componentClassData && m_componentFilter(*componentClassData);
+    }
+
     bool EntityPropertyEditor::IsComponentRemovable(const AZ::Component* component) const
     {
         // Determine if this component can be removed.
         auto componentClassData = component ? GetComponentClassData(component) : nullptr;
-        return componentClassData && m_componentFilter(*componentClassData);
+        if (componentClassData && componentClassData->m_editData)
+        {
+            if (auto editorDataElement = componentClassData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData))
+            {
+                if (auto attribute = editorDataElement->FindAttribute(AZ::Edit::Attributes::RemoveableByUser))
+                {
+                    if (auto attributeData = azdynamic_cast<AZ::Edit::AttributeData<bool>*>(attribute))
+                    {
+                        if (!attributeData->Get(nullptr))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (componentClassData && m_componentFilter(*componentClassData))
+        {
+            return true;
+        }
+        
+        // If this is a GenericComponentWrapper which wraps a nullptr, let                  }// If this is a GenericComponentWrapper which wraps a nullptr, let the user remove it.
+        if (auto genericComponentWrapper = azrtti_cast<const Components::GenericComponentWrapper*>(component))
+        {
+            if (!genericComponentWrapper->GetTemplate())
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     bool EntityPropertyEditor::AreComponentsRemovable(const AZ::Entity::ComponentArrayType& components) const
@@ -803,6 +956,22 @@ namespace AzToolsFramework
             if (!IsComponentRemovable(component))
             {
                 return false;
+            }
+        }
+        return true;
+    }
+
+    bool EntityPropertyEditor::AreComponentsCopyable(const AZ::Entity::ComponentArrayType& components) const
+    {
+        for (auto component : components)
+        {
+            if (!DoesComponentPassFilter(component))
+            {
+                auto editorComponentDescriptor = GetEditorComponentDescriptor(component);
+                if (!editorComponentDescriptor || !editorComponentDescriptor->SupportsPasteOver())
+                {
+                    return false;
+                }
             }
         }
         return true;
@@ -872,11 +1041,18 @@ namespace AzToolsFramework
         return true;
     }
 
-    void EntityPropertyEditor::BuildSharedComponentArray(SharedComponentArray& sharedComponentArray)
+    void EntityPropertyEditor::BuildSharedComponentArray(SharedComponentArray& sharedComponentArray, bool containsLayerEntity)
     {
         AZ_Assert(!m_selectedEntityIds.empty(), "BuildSharedComponentArray should only be called if there are entities being displayed");
 
-        auto entityId = m_selectedEntityIds.front();
+        AZ::EntityId entityId = m_selectedEntityIds.front();
+        AZ::Entity* entity = GetEntityById(entityId);
+
+        // Skip building sharedComponentArray if a runtime entity isn't already activated
+        if (!entity || (!m_isSystemEntityEditor && entity->GetState() != AZ::Entity::State::ES_ACTIVE))
+        {
+            return;
+        }
 
         // For single selection of a slice-instanced entity, gather the direct slice ancestor
         // so we can visualize per-component differences.
@@ -901,7 +1077,6 @@ namespace AzToolsFramework
         }
 
         // Gather initial list of eligible display components from the first entity
-        auto entity = GetEntityById(entityId);
 
         AZ::Entity::ComponentArrayType entityComponents;
         GetAllComponentsForEntityInOrder(entity, entityComponents);
@@ -913,6 +1088,17 @@ namespace AzToolsFramework
             if (!ShouldInspectorShowComponent(component))
             {
                 continue;
+            }
+            // Filters for non-layer entities aren't setup in the same way as layer entities,
+            // inclusion in the add components menu does not match the list of what components will display.
+            // Layers are setup in this way.
+            if (containsLayerEntity)
+            {
+                const AZ::SerializeContext::ClassData* componentClassData = GetComponentClassData(component);
+                if (componentClassData && !m_componentFilter(*componentClassData))
+                {
+                    continue;
+                }
             }
 
             // Grab the slice reference component, if we have a slice compare entity
@@ -1384,6 +1570,13 @@ namespace AzToolsFramework
                 AddMenuOptionsForFields(node, componentNode, componentClassData, menu);
 
                 AddMenuOptionsForRevert(node, componentNode, componentClassData, menu);
+
+                AzToolsFramework::Components::EditorComponentBase* editorComponent = static_cast<AzToolsFramework::Components::EditorComponentBase*>(component);
+
+                if (editorComponent)
+                {
+                    editorComponent->AddContextMenuActions(&menu);
+                }
 
                 if (!menu.actions().empty())
                 {
@@ -2065,7 +2258,6 @@ namespace AzToolsFramework
         bool someActive = false;
         bool someInactive = false;
         bool someEditorOnly = false;
-        bool isSliceRoot2 = false;
 
         for (AZ::EntityId id : m_selectedEntityIds)
         {
@@ -2077,7 +2269,6 @@ namespace AzToolsFramework
                 bool isSliceRoot = false;
                 EditorEntityInfoRequestBus::EventResult(isSliceRoot, id, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSliceRoot);
 
-                isSliceRoot2 |= isSliceRoot;
                 allEditorOnly &= true;
                 someEditorOnly = true;
                 allActive = false;
@@ -2115,12 +2306,9 @@ namespace AzToolsFramework
         else
         if (allEditorOnly)
         {
-            if (!isSliceRoot2)
-            {
-                m_gui->m_statusComboBox->setHeaderOverride(m_itemNames[StatusType::StatusEditorOnly]);
-                m_gui->m_statusComboBox->setCurrentIndex(StatusType::StatusEditorOnly);
-                m_comboItems[StatusType::StatusEditorOnly]->setIcon(m_checkmarkIcon);
-            }
+            m_gui->m_statusComboBox->setHeaderOverride(m_itemNames[StatusType::StatusEditorOnly]);
+            m_gui->m_statusComboBox->setCurrentIndex(StatusType::StatusEditorOnly);
+            m_comboItems[StatusType::StatusEditorOnly]->setIcon(m_checkmarkIcon);
         }
         else // Some marked active, some not
         {
@@ -2134,7 +2322,7 @@ namespace AzToolsFramework
             {
                 m_comboItems[StatusType::StatusStartInactive]->setIcon(m_rectangleIcon);
             }
-            if (someEditorOnly && !isSliceRoot2)
+            if (someEditorOnly)
             {
                 m_comboItems[StatusType::StatusEditorOnly]->setIcon(m_rectangleIcon);
             }
@@ -2157,6 +2345,17 @@ namespace AzToolsFramework
         }
 
         AddMenuOptionsForRevert(nullptr, nullptr, nullptr, menu);
+
+        const auto& componentsToEdit = GetSelectedComponents();
+        if (componentsToEdit.size() > 0)
+        {
+            AzToolsFramework::Components::EditorComponentBase* editorComponent = static_cast<AzToolsFramework::Components::EditorComponentBase*>(componentsToEdit.front());
+
+            if (editorComponent)
+            {
+                editorComponent->AddContextMenuActions(&menu);
+            }
+        }
 
         if (!menu.actions().empty())
         {
@@ -2198,6 +2397,7 @@ namespace AzToolsFramework
     void EntityPropertyEditor::SetAddComponentMenuFilter(ComponentFilter componentFilter)
     {
         m_componentFilter = AZStd::move(componentFilter);
+        m_customFilterSet = true;
     }
 
     void EntityPropertyEditor::CreateActions()
@@ -2282,13 +2482,14 @@ namespace AzToolsFramework
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         const auto& componentsToEdit = GetSelectedComponents();
 
-        bool allowRemove = !m_selectedEntityIds.empty() && !componentsToEdit.empty() && AreComponentsRemovable(componentsToEdit);
+        const bool hasComponents = !m_selectedEntityIds.empty() && !componentsToEdit.empty();
+        const bool allowRemove = hasComponents && AreComponentsRemovable(componentsToEdit);
+        const bool allowCopy = hasComponents && AreComponentsCopyable(componentsToEdit);
 
-        m_actionToAddComponents->setEnabled(!m_selectedEntityIds.empty());
         m_actionToDeleteComponents->setEnabled(allowRemove);
-        m_actionToCutComponents->setEnabled(allowRemove);
-        m_actionToCopyComponents->setEnabled(allowRemove);
-        m_actionToPasteComponents->setEnabled(!m_selectedEntityIds.empty() && ComponentMimeData::GetComponentMimeDataFromClipboard());
+        m_actionToCutComponents->setEnabled(allowRemove && allowCopy);
+        m_actionToCopyComponents->setEnabled(allowCopy);
+        m_actionToPasteComponents->setEnabled(!m_selectedEntityIds.empty() && CanPasteComponentsOnSelectedEntities());
         m_actionToMoveComponentsUp->setEnabled(allowRemove && IsMoveComponentsUpAllowed());
         m_actionToMoveComponentsDown->setEnabled(allowRemove && IsMoveComponentsDownAllowed());
         m_actionToMoveComponentsTop->setEnabled(allowRemove && IsMoveComponentsUpAllowed());
@@ -2317,6 +2518,14 @@ namespace AzToolsFramework
             }
         }
 
+        // Even though this causes two loops on the selected entity list, calling GetSelectionEntityTypeInfo avoids duplicating code.
+        SelectionEntityTypeInfo selectionTypeInfo;
+        {
+            AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::AzToolsFramework, "EntityPropertyEditor::UpdateActions GetSelectionEntityTypeInfo");
+            selectionTypeInfo = GetSelectionEntityTypeInfo(m_selectedEntityIds);
+        }
+        m_actionToAddComponents->setEnabled(CanAddComponentsToSelection(selectionTypeInfo));
+
         //if any components remain in the selected set, assume they can be disabled
         allowDisable = !enabledComponents.empty();
 
@@ -2327,6 +2536,72 @@ namespace AzToolsFramework
         //additional request to hide actions when not allowed so enable and disable aren't shown at the same time
         m_actionToEnableComponents->setVisible(allowRemove && allowEnable);
         m_actionToDisableComponents->setVisible(allowRemove && allowDisable);
+    }
+
+    bool EntityPropertyEditor::CanPasteComponentsOnSelectedEntities() const
+    {
+        if (m_selectedEntityIds.empty())
+        {
+            return false;
+        }
+
+        // Grab component data from clipboard, if exists
+        const QMimeData* mimeData = ComponentMimeData::GetComponentMimeDataFromClipboard();
+
+        if (!mimeData)
+        {
+            return false;
+        }
+
+        // Create class data from mime data
+        ComponentTypeMimeData::ClassDataContainer classDataForComponentsToPaste;
+        ComponentTypeMimeData::Get(mimeData, classDataForComponentsToPaste);
+
+        if (classDataForComponentsToPaste.empty())
+        {
+            return false;
+        }
+
+        bool canPaste = true;
+
+        // Check if all components from mime data can be pasted onto all selected entities
+        for (const AZ::EntityId& entityId : m_selectedEntityIds)
+        {
+            auto entity = GetEntityById(entityId);
+            if (!entity || !CanPasteComponentsOnEntity(classDataForComponentsToPaste, entity))
+            {
+                canPaste = false;
+                break;
+            }
+        }
+
+        return canPaste;
+    }
+
+    bool EntityPropertyEditor::CanPasteComponentsOnEntity(const ComponentTypeMimeData::ClassDataContainer& classDataForComponentsToPaste, const AZ::Entity* entity) const
+    {
+        if (!entity || classDataForComponentsToPaste.empty())
+        {
+            return false;
+        }
+
+        bool canPaste = true;
+
+        for (auto componentClassData : classDataForComponentsToPaste)
+        {
+            if (componentClassData)
+            {
+                // A component can be pasted onto an entity if it appears in the game component menu or if it already exists on the entity
+                auto existingComponent = entity->FindComponent(componentClassData->m_typeId);
+                if (!existingComponent && !AppearsInGameComponentMenu(*componentClassData))
+                {
+                    canPaste = false;
+                    break;
+                }
+            }
+        }
+
+        return canPaste;
     }
 
     AZ::Entity::ComponentArrayType EntityPropertyEditor::GetCopyableComponents() const
@@ -2390,7 +2665,7 @@ namespace AzToolsFramework
     void EntityPropertyEditor::CopyComponents()
     {
         const auto& componentsToEdit = GetCopyableComponents();
-        if (!componentsToEdit.empty() && AreComponentsRemovable(componentsToEdit))
+        if (!componentsToEdit.empty() && AreComponentsCopyable(componentsToEdit))
         {
             EntityCompositionRequestBus::Broadcast(&EntityCompositionRequests::CopyComponents, componentsToEdit);
         }
@@ -2398,7 +2673,7 @@ namespace AzToolsFramework
 
     void EntityPropertyEditor::PasteComponents()
     {
-        if (!m_selectedEntityIds.empty() && ComponentMimeData::GetComponentMimeDataFromClipboard())
+        if (!m_selectedEntityIds.empty() && CanPasteComponentsOnSelectedEntities())
         {
             ScopedUndoBatch undoBatch("Paste components.");
 

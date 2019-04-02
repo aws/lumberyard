@@ -79,10 +79,10 @@ namespace EMotionFX
             result += SceneEvents::Process<MotionDataBuilderContext>(dataBuilderContext, AZ::RC::Phase::Finalizing);
 
             // Check if there is meta data and apply it to the motion.
-            AZStd::string metaDataString;
-            if (Rule::MetaDataRule::LoadMetaData(motionGroup, metaDataString))
+            AZStd::vector<MCore::Command*> metaDataCommands;
+            if (Rule::MetaDataRule::LoadMetaData(motionGroup, metaDataCommands))
             {
-                if (!CommandSystem::MetaData::ApplyMetaDataOnMotion(motion, metaDataString))
+                if (!CommandSystem::MetaData::ApplyMetaDataOnMotion(motion, metaDataCommands))
                 {
                     AZ_Error("EMotionFX", false, "Applying meta data to '%s' failed.", filename.c_str());
                 }

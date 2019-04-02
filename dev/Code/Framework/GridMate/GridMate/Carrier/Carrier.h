@@ -279,7 +279,11 @@ namespace GridMate
 
         const char*                     m_securityData;             ///< Pointer to string with security data
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Carrier_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Carrier_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Carrier_h_provo.inl"
+    #endif
 #endif
 
         bool                            m_enableDisconnectDetection; ///< Enable/Disable disconnect detection. (should be set to false ONLY for debug purpose)

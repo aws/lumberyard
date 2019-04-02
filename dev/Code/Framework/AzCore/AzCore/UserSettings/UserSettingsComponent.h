@@ -22,6 +22,9 @@ namespace AZ
         virtual void Load() = 0;
         virtual void Save() = 0;
         virtual void Finalize() = 0;
+
+        // Used for unit tests that shouldn't save user settings.
+        virtual void DisableSaveOnFinalize() = 0;
     };
     using UserSettingsComponentRequestBus = AZ::EBus<UserSettingsComponentRequests>;
 
@@ -53,6 +56,7 @@ namespace AZ
         void Load() override;
         void Save() override;
         void Finalize() override;
+        void DisableSaveOnFinalize() override { m_saveOnFinalize = false; }
         //////////////////////////////////////////////////////////////////////////
 
         /// \ref ComponentDescriptor::GetProvidedServices
@@ -65,5 +69,6 @@ namespace AZ
         UserSettingsProvider    m_provider;
         u32                     m_providerId;
         bool                    m_saveOnShutdown = true;
+        bool                    m_saveOnFinalize = true;
     };
 }   // namespace AZ

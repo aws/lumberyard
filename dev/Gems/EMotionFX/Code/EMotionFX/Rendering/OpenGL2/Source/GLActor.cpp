@@ -195,10 +195,10 @@ namespace RenderGL
                     Primitive newPrimitive;
                     newPrimitive.mNodeIndex     = n;
                     newPrimitive.mNumVertices   = subMesh->GetNumVertices();
-                    newPrimitive.mNumTriangles  = subMesh->CalcNumTriangles();//subMesh->GetNumIndices() / 3;
+                    newPrimitive.mNumTriangles  = subMesh->CalcNumTriangles();  // subMesh->GetNumIndices() / 3;
                     newPrimitive.mIndexOffset   = totalNumIndices[ meshType ];
                     newPrimitive.mVertexOffset  = totalNumVerts[ meshType ];
-                    newPrimitive.mMaterialIndex = subMesh->GetMaterial();
+                    newPrimitive.mMaterialIndex = 0;                            // Since GL actor only uses the default material, we should only pass in 0.
 
                     // copy over the used bones from the submesh
                     if (subMesh->GetNumBones() > 0)

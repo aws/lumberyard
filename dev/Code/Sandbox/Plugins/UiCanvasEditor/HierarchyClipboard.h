@@ -57,4 +57,10 @@ public:
     static AZStd::string GetXmlForDiff(AZ::EntityId canvasEntityId);
 
     //-------------------------------------------------------------------------------
+
+    //! Record the state of all selected entities before a change
+    static void BeginUndoableEntitiesChange(EditorWindow* editorWindow, SerializeHelpers::SerializedEntryList& preChangeState);
+
+    //! Record an undo command of the changes to the selected entities
+    static void EndUndoableEntitiesChange(EditorWindow* editorWindow, const char* commandName, SerializeHelpers::SerializedEntryList& preChangeState);
 };

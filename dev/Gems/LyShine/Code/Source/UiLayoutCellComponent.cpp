@@ -64,6 +64,7 @@ void UiLayoutCellComponent::SetMinWidth(float width)
         m_minWidth = -1.0f;
         m_minWidthOverridden = false;
     }
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +86,7 @@ void UiLayoutCellComponent::SetMinHeight(float height)
         m_minHeight = -1.0f;
         m_minHeightOverridden = false;
     }
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +108,8 @@ void UiLayoutCellComponent::SetTargetWidth(float width)
         m_targetWidth = -1.0f;
         m_targetWidthOverridden = false;
     }
+
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,6 +131,8 @@ void UiLayoutCellComponent::SetTargetHeight(float height)
         m_targetHeight = -1.0f;
         m_targetHeightOverridden = false;
     }
+
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -148,6 +154,8 @@ void UiLayoutCellComponent::SetExtraWidthRatio(float width)
         m_extraWidthRatio = -1.0f;
         m_extraWidthRatioOverridden = false;
     }
+
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,6 +177,8 @@ void UiLayoutCellComponent::SetExtraHeightRatio(float height)
         m_extraHeightRatio = -1.0f;
         m_extraHeightRatioOverridden = false;
     }
+
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +212,7 @@ void UiLayoutCellComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiLayoutCellComponent>("LayoutCell", "Allows default layout cell properties to be overridden.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiLayoutCell.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiLayoutCell.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))
@@ -210,68 +221,68 @@ void UiLayoutCellComponent::Reflect(AZ::ReflectContext* context)
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiLayoutCellComponent::m_minWidthOverridden, "Min Width",
                 "Check this box to override the minimum width.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c))
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(0, &UiLayoutCellComponent::m_minWidth, "Value",
                 "Specify minimum width.")
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiLayoutCellComponent::m_minWidthOverridden)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiLayoutCellComponent::m_minHeightOverridden, "Min Height",
                 "Check this box to override the minimum height.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c))
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(0, &UiLayoutCellComponent::m_minHeight, "Value",
                 "Specify minimum height.")
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiLayoutCellComponent::m_minHeightOverridden)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiLayoutCellComponent::m_targetWidthOverridden, "Target Width",
                 "Check this box to override the target width.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c))
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(0, &UiLayoutCellComponent::m_targetWidth, "Value",
                 "Specify target width.")
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiLayoutCellComponent::m_targetWidthOverridden)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiLayoutCellComponent::m_targetHeightOverridden, "Target Height",
                 "Check this box to override the target height.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c))
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(0, &UiLayoutCellComponent::m_targetHeight, "Value",
                 "Specify target height.")
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiLayoutCellComponent::m_targetHeightOverridden)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiLayoutCellComponent::m_extraWidthRatioOverridden, "Extra Width Ratio",
                 "Check this box to override the extra width ratio.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c))
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(0, &UiLayoutCellComponent::m_extraWidthRatio, "Value",
                 "Specify extra width ratio.")
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiLayoutCellComponent::m_extraWidthRatioOverridden)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(AZ::Edit::UIHandlers::CheckBox, &UiLayoutCellComponent::m_extraHeightRatioOverridden, "Extra Height Ratio",
                 "Check this box to override the extra height ratio.")
                 ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ_CRC("RefreshEntireTree", 0xefbc823c))
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
 
             editInfo->DataElement(0, &UiLayoutCellComponent::m_extraHeightRatio, "Value",
                 "Specify extra height ratio.")
                 ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
                 ->Attribute(AZ::Edit::Attributes::Visibility, &UiLayoutCellComponent::m_extraHeightRatioOverridden)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateParentLayout);
+                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &UiLayoutCellComponent::InvalidateLayout);
         }
     }
 
@@ -310,6 +321,11 @@ void UiLayoutCellComponent::Reflect(AZ::ReflectContext* context)
 void UiLayoutCellComponent::Activate()
 {
     UiLayoutCellBus::Handler::BusConnect(GetEntityId());
+
+    // If this is the first time the entity has been activated this has no effect since the canvas
+    // is not known. But if a LayoutCell component has just been pasted onto an existing entity
+    // we need to invalidate the layout in case that affects things.
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -317,13 +333,19 @@ void UiLayoutCellComponent::Deactivate()
 {
     UiLayoutCellBus::Handler::BusDisconnect();
 
-    InvalidateParentLayout();
+    // We could be about to remove this component and then reactivate the entity
+    // which could affect the layout if there is a parent layout component
+    InvalidateLayout();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void UiLayoutCellComponent::InvalidateParentLayout()
+void UiLayoutCellComponent::InvalidateLayout()
 {
+    // Invalidate the parent's layout
     AZ::EntityId canvasEntityId;
     EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
     EBUS_EVENT_ID(canvasEntityId, UiLayoutManagerBus, MarkToRecomputeLayoutsAffectedByLayoutCellChange, GetEntityId(), false);
+
+    // Invalidate the element's layout
+    EBUS_EVENT_ID(canvasEntityId, UiLayoutManagerBus, MarkToRecomputeLayout, GetEntityId());
 }

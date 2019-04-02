@@ -28,7 +28,6 @@ namespace Ui
     class DeploymentToolWindow;
 }
 
-class AssetSystemListener;
 class DeployWorkerBase;
 
 class QTimer;
@@ -59,6 +58,7 @@ private:
     AZ_DISABLE_COPY_MOVE(DeploymentToolWindow);
 
     // callbacks
+    void OnDeployStatusChange(const QString& status);
     void OnDeployFinished(bool success);
     void OnRemoteLogConnectionStateChange(bool isConnected);
     void OnPlatformChanged(const QString& currentplatform);
@@ -73,7 +73,7 @@ private:
     void UpdateUiFromSystemConfig(const char* systemConfigFile);
     bool PopulateDeploymentConfigFromUi();
 
-    void WaitForAssetProcessorToFinish();
+    void Run();
 
     void InternalDeployFailure(const AZStd::string& reason);
     void LogToWindow(DeployTool::LogStream stream, DeployTool::LogSeverity logSeverity, const QString& message);
@@ -92,7 +92,6 @@ private:
     QBrush m_defaultDeployOutputBrush;
     QBrush m_defaultRemoteDeviceOutputBrush;
 
-    QScopedPointer<AssetSystemListener> m_assetSystemListener;
     QScopedPointer<QTimer> m_devicePollTimer;
     QScopedPointer<DeployWorkerBase> m_deployWorker;
 

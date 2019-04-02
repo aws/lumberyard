@@ -63,7 +63,6 @@ namespace EMotionFX
         mBlendSpaceManager = aznew BlendSpaceManager();
 
         // register custom attribute types
-        MCore::GetAttributeFactory().RegisterAttribute(aznew AttributeRotation());
         MCore::GetAttributeFactory().RegisterAttribute(aznew AttributePose());
         MCore::GetAttributeFactory().RegisterAttribute(aznew AttributeMotionInstance());
     }
@@ -112,6 +111,11 @@ namespace EMotionFX
                 RemoveAnimGraphInstance(mAnimGraphInstances[i]);
             }
         }
+
+        // Need to remove it from the list of anim graphs first since deleting it can cause assets to get unloaded and
+        // this function to be called recursively (making the index to shift)
+        mAnimGraphs.erase(mAnimGraphs.begin() + index);
+
         if (delFromMemory)
         {
             // Destroy the memory of the anim graph and disable auto-unregister so that  the destructor of the anim graph does not
@@ -119,8 +123,6 @@ namespace EMotionFX
             animGraph->SetAutoUnregister(false);
             delete animGraph;
         }
-
-        mAnimGraphs.erase(mAnimGraphs.begin() + index);
     }
 
 
@@ -289,6 +291,19 @@ namespace EMotionFX
     }
 
 
+    // Find the first available anim graph
+    AnimGraph* AnimGraphManager::GetFirstAnimGraph() const
+    {
+        MCore::LockGuardRecursive lock(mAnimGraphLock);
+
+        if (mAnimGraphs.size() > 0)
+        {
+            return mAnimGraphs[0];
+        }
+        return nullptr;
+    }
+
+
     void AnimGraphManager::SetAnimGraphVisualizationEnabled(bool enabled)
     {
         MCore::LockGuardRecursive lock(mAnimGraphInstanceLock);
@@ -300,6 +315,17 @@ namespace EMotionFX
         }
     }
 
+
+    void AnimGraphManager::RecursiveCollectObjectsAffectedBy(AnimGraph* animGraph, AZStd::vector<EMotionFX::AnimGraphObject*>& affectedObjects)
+    {
+        for (EMotionFX::AnimGraph* potentiallyAffected : mAnimGraphs)
+        {
+            if (potentiallyAffected != animGraph) // exclude the passed one since that will always be affected
+            {
+                potentiallyAffected->RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
+            }
+        }
+    }
 
     void AnimGraphManager::UpdateInstancesUniqueDataUsingMotionSet(EMotionFX::MotionSet* motionSet)
     {

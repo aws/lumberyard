@@ -219,6 +219,19 @@ StatusBarItem[clickable="true"]:hover
 	background-color: @ToolButtonHoverBackgroundColor
 }
 
+OutlinerTreeView::branch:has-children:closed
+{
+    image: url(:/PropertyEditor/Resources/group_closed.png);
+}
+
+OutlinerTreeView::branch:has-children:open
+{
+    image: url(:/PropertyEditor/Resources/group_open.png);
+}
+OutlinerTreeView
+{
+    show-decoration-selected:0;
+}
 
 /* ============================================================= */
 /* Styles applied through programmatically-set QT properties      */
@@ -583,6 +596,28 @@ QWidget#SliceHierarchyMenuItem QMessageBox#ContextWarning QLabel:hover
 QWidget#SliceHierarchyMenuItem QLabel:hover
 {
     color: @LinkColor;
+}
+
+QWidget#LayerHierarchyMenuItem
+{
+    background-color: transparent;
+}
+
+QWidget#LayerHierarchyMenuItem QLabel
+{
+    background-color: transparent;
+    color: @MenuEnabledTextColor;
+}
+
+QWidget#LayerHierarchyMenuItem QLabel:disabled
+{
+    background-color: transparent;
+    color: @LayerMenuDisabled;
+}
+
+QWidget#LayerHierarchyMenuItem:hover
+{
+    background-color: @LayerMenuSelected;
 }
 
 MessageDetailWidget
@@ -1135,6 +1170,49 @@ QLineEdit#filteredSearchWidget
     background-position: left;
     padding: 2 2 2 24;
     color: rgb(255, 255, 255);
+}
+
+QPushButton#m_display_options:menu-indicator
+{
+    image:  url(none.jpg)
+}
+
+QPushButton#m_display_options
+{
+    border: none;
+    image : url(:/stylesheet/img/menu.png);
+    padding: 0 2 0 0;
+}
+
+QPushButton#m_display_options:hover
+{
+    border: none;
+    image : url(:/stylesheet/img/menu_selected.png);
+}
+
+QPushButton#m_display_options:focus
+{
+    border: none;
+    image : url(:/stylesheet/img/menu_selected.png);
+}
+
+QPushButton#assetTypeSelector
+{
+    border: none;
+    image : url(:/stylesheet/img/filter.png);
+    padding: 0 0 0 2;
+}
+
+QPushButton#assetTypeSelector:hover
+{
+    border: none;
+    image : url(:/stylesheet/img/filter_selected.png);
+}
+
+QPushButton#assetTypeSelector:focus
+{
+    border: none;
+    image : url(:/stylesheet/img/filter_selected.png);
 }
 
 /*****************************************************************************
@@ -2126,6 +2204,29 @@ QWidget[tableRow="Even"]
 }
 
 /* ============================================================= */
+/* Style specific to the outliner                                */
+/* ============================================================= */
+QTreeView#m_objectTree::branch
+{
+    image: none;
+}
+
+QTreeView#m_objectTree::branch::open
+{
+    image: url(:/Icons/Default_open.svg);
+}
+
+QTreeView#m_objectTree::branch::!has-children
+{
+    image: none;
+}
+
+QTreeView#m_objectTree::branch::closed:has-children
+{
+    image: url(:/Icons/Default_closed.svg);
+}
+
+/* ============================================================= */
 /* Style specific to the outliner visibility and lock icons      */
 /* ============================================================= */
 
@@ -2138,21 +2239,21 @@ OutlinerVisibilityCheckBox
     line-height: 0px;
     font-size: 0px;
     margin: 2px;
+    background-color: none;
 }
 
 OutlinerVisibilityCheckBox::indicator:checked
 , OutlinerVisibilityCheckBox::indicator:unchecked
 , OutlinerVisibilityCheckBox::indicator:indeterminate
 {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
     image-position:center;
 
-    border: 1px solid transparent;
-    border-radius: 3px;
+    border: none;
     image: none;
     spacing: 0px;
-    padding: 0px;
+    padding: 2px;
     line-height: 0px;
     font-size: 0px;
     margin: 0px;
@@ -2160,12 +2261,22 @@ OutlinerVisibilityCheckBox::indicator:checked
 
 OutlinerVisibilityCheckBox::indicator:checked
 {
-    image: url(:/Icons/Eye_Open.tif);
+    image: url(:/Icons/vis_circle_default.svg);
 }
 
 OutlinerVisibilityCheckBox::indicator:unchecked
 {
-    image: url(:/Icons/Eye_Slash.tif);
+    image: url(:/Icons/vis_on_NotTransparent.svg);
+}
+
+OutlinerVisibilityCheckBox#visibilityLayerOverride::indicator:checked
+{
+    image: url(:/Icons/vis_circle_transparent.svg);
+}
+
+OutlinerVisibilityCheckBox#visibilityLayerOverride::indicator:unchecked
+{
+    image: url(:/Icons/vis_on_transparent.svg);
 }
 
 OutlinerVisibilityCheckBox#bordered::indicator:checked
@@ -2185,21 +2296,21 @@ OutlinerLockCheckBox
     line-height: 0px;
     font-size: 0px;
     margin: 2px;
+    background-color: none;
 }
 
 OutlinerLockCheckBox::indicator:checked
 , OutlinerLockCheckBox::indicator:unchecked
 , OutlinerLockCheckBox::indicator:indeterminate
 {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
     image-position:center;
 
-    border: 1px solid transparent;
-    border-radius: 3px;
+    border: none;
     image: none;
     spacing: 0px;
-    padding: 0px;
+    padding: 2px;
     line-height: 0px;
     font-size: 0px;
     margin: 0px;
@@ -2207,12 +2318,22 @@ OutlinerLockCheckBox::indicator:checked
 
 OutlinerLockCheckBox::indicator:unchecked
 {
-    image: url(:/Icons/Padlock_Disabled.tif);
+    image: url(:/Icons/lock_circle_default.svg);
 }
 
 OutlinerLockCheckBox::indicator:checked
 {
-    image: url(:/Icons/Padlock_Enabled_Hover.tif);
+    image: url(:/Icons/lock_on_NotTransparent.svg);
+}
+
+OutlinerLockCheckBox#lockLayerOverride::indicator:unchecked
+{
+    image: url(:/Icons/lock_circle_transparent.svg);
+}
+
+OutlinerLockCheckBox#lockLayerOverride::indicator:checked
+{
+    image: url(:/Icons/lock_on_transparent.svg);
 }
 
 OutlinerLockCheckBox#bordered::indicator:checked
@@ -2246,6 +2367,11 @@ AzQtComponents--Card
     padding: 0px;
     border: 1px solid rgb(33, 34, 35);
     border-radius: 2px;
+}
+
+AzQtComponents--Card[hideFrame=true]
+{
+    border: 1px transparent rgba(0, 0, 0, 0);
 }
 
 AzQtComponents--CardNotification

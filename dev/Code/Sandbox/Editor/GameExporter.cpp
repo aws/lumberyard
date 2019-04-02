@@ -25,7 +25,6 @@
 
 #include "ParticleExporter.h"
 
-#include "AnimationSerializer.h"
 #include "Material/MaterialManager.h"
 #include "Material/MaterialLibrary.h"
 #include "Particles/ParticleManager.h"
@@ -252,11 +251,6 @@ bool CGameExporter::Export(unsigned int flags, EEndian eExportEndian, const char
     CLogFile::WriteLine("Exporting Game Data...");
     ExportGameData(sLevelPath);
     CLogFile::WriteLine("Exporting Game Data done");
-
-    //////////////////////////////////////////////////////////////////////////
-    // Start Movie System animations.
-    //////////////////////////////////////////////////////////////////////////
-    ExportLegacyAnimations(sLevelPath);
 
     //////////////////////////////////////////////////////////////////////////
     // Export Brushes.
@@ -525,17 +519,6 @@ void CGameExporter::ExportOcclusionMesh(const char* pszGamePath)
         FileOut.Write(Temp.GetBuffer(), Size);
         m_levelPak.m_pakFile.UpdateFile(levelDataFile.toUtf8().data(), FileOut);
     }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CGameExporter::ExportLegacyAnimations(const QString& path)
-{
-    IEditor* pEditor = GetIEditor();
-    pEditor->SetStatusText(QObject::tr("Exporting Animation Sequences..."));
-    CLogFile::WriteLine("Export Legacy animation sequences...");
-    CAnimationSerializer animSaver;
-    animSaver.SaveAllLegacySequences(path.toUtf8().data(), m_levelPak.m_pakFile);
-    CLogFile::WriteString("Done.");
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -34,10 +34,10 @@ namespace EMStudio
 
     // constructor
     RenderWidget::RenderWidget(RenderPlugin* renderPlugin, RenderViewWidget* viewWidget)
+        : mEventHandler(this)
     {
         // create our event handler
-        mEventHandler = aznew EventHandler(this);
-        EMotionFX::GetEventManager().AddEventHandler(mEventHandler);
+        EMotionFX::GetEventManager().AddEventHandler(&mEventHandler);
 
         mLines.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
         mLines.Reserve(2048);
@@ -61,7 +61,6 @@ namespace EMStudio
         mActiveTransformManip   = nullptr;
         mSkipFollowCalcs        = false;
         mNeedDisableFollowMode  = true;
-        mViewClosupSelectedInstancesOnly  = false;
     }
 
 
@@ -69,7 +68,7 @@ namespace EMStudio
     RenderWidget::~RenderWidget()
     {
         // get rid of the event handler
-        EMotionFX::GetEventManager().RemoveEventHandler(mEventHandler, true);
+        EMotionFX::GetEventManager().RemoveEventHandler(&mEventHandler);
 
         // get rid of the camera objects
         delete mCamera;
@@ -78,11 +77,19 @@ namespace EMStudio
 
 
     // start view closeup flight
+    void RenderWidget::ViewCloseup(const MCore::AABB& aabb, float flightTime, uint32 viewCloseupWaiting)
+    {
+        //LogError("ViewCloseup: AABB: Pos=(%.3f, %.3f, %.3f), Width=%.3f, Height=%.3f, Depth=%.3f", aabb.CalcMiddle().x, aabb.CalcMiddle().y, aabb.CalcMiddle().z, aabb.CalcWidth(), aabb.CalcHeight(), aabb.CalcDepth());
+        mViewCloseupWaiting     = viewCloseupWaiting;
+        mViewCloseupAABB        = aabb;
+        mViewCloseupFlightTime  = flightTime;
+    }
+
     void RenderWidget::ViewCloseup(bool selectedInstancesOnly, float flightTime, uint32 viewCloseupWaiting)
     {
         //LogError("ViewCloseup: AABB: Pos=(%.3f, %.3f, %.3f), Width=%.3f, Height=%.3f, Depth=%.3f", aabb.CalcMiddle().x, aabb.CalcMiddle().y, aabb.CalcMiddle().z, aabb.CalcWidth(), aabb.CalcHeight(), aabb.CalcDepth());
         mViewCloseupWaiting     = viewCloseupWaiting;
-        mViewClosupSelectedInstancesOnly  = selectedInstancesOnly;
+        mViewCloseupAABB        = mPlugin->GetSceneAABB(selectedInstancesOnly);
         mViewCloseupFlightTime  = flightTime;
     }
 
@@ -164,7 +171,7 @@ namespace EMStudio
         // calculate cam distance for the orthographic cam mode
         if (mCamera->GetProjectionMode() == MCommon::Camera::PROJMODE_ORTHOGRAPHIC)
         {
-            camDist = 0.75f; 
+            camDist = 0.75f;
             switch (GetCameraMode())
             {
             case CAMMODE_FRONT:
@@ -222,7 +229,7 @@ namespace EMStudio
         EMotionFX::ActorInstance* actorInstance = callback->GetActorInstance();
         if (actorInstance)
         {
-            activeManipulator->Init(actorInstance->GetLocalPosition());
+            activeManipulator->Init(actorInstance->GetLocalSpaceTransform().mPosition);
         }
     }
 
@@ -529,8 +536,20 @@ namespace EMStudio
         // handle visual mouse selection
         if (EMStudio::GetCommandManager()->GetLockSelection() == false && gizmoHit == false) // avoid selection operations when there is only one actor instance
         {
+            AZ::u32 editorActorInstanceCount = 0;
+            const EMotionFX::ActorManager& actorManager = EMotionFX::GetActorManager();
+            const AZ::u32 totalActorInstanceCount = actorManager.GetNumActorInstances();
+            for (AZ::u32 i = 0; i < totalActorInstanceCount; ++i)
+            {
+                const EMotionFX::ActorInstance* actorInstance = actorManager.GetActorInstance(i);
+                if (!actorInstance->GetIsOwnedByRuntime())
+                {
+                    editorActorInstanceCount++;
+                }
+            }
+
             // only allow selection changes when there are multiple actors or when there is only one actor but that one is not selected
-            if (EMotionFX::GetActorManager().GetNumActorInstances() != 1 || (EMotionFX::GetActorManager().GetNumActorInstances() == 1 && selection.GetSingleActorInstance() == nullptr))
+            if (editorActorInstanceCount != 1 || !selection.GetSingleActorInstance())
             {
                 if (event->buttons() & Qt::LeftButton &&
                     (event->modifiers() & Qt::AltModifier) == false &&
@@ -658,7 +677,7 @@ namespace EMStudio
                 mouseOveredManip->ProcessMouseInput(mCamera, 0, 0, 0, 0, false, false, false);
 
                 // reset the camera follow mode state
-                if (callback->GetResetFollowMode() && mIsCharacterFollowModeActive)
+                if (callback && callback->GetResetFollowMode() && mIsCharacterFollowModeActive)
                 {
                     mViewWidget->SetCharacterFollowModeActive(mIsCharacterFollowModeActive);
                     mSkipFollowCalcs = true;
@@ -919,11 +938,11 @@ namespace EMStudio
         MCore::Matrix inverseCameraMatrix = camera->GetViewMatrix();
         inverseCameraMatrix.Inverse();
 
-        MCore::Matrix globalTM;
-        globalTM.SetTranslationMatrix(axisPosition);
+        MCore::Matrix worldTM;
+        worldTM.SetTranslationMatrix(axisPosition);
 
         axisRenderingSettings.mSize             = size;
-        axisRenderingSettings.mGlobalTM         = globalTM;
+        axisRenderingSettings.mWorldTM          = worldTM;
         axisRenderingSettings.mCameraRight      = inverseCameraMatrix.GetRight().GetNormalized();
         axisRenderingSettings.mCameraUp         = inverseCameraMatrix.GetUp().GetNormalized();
         axisRenderingSettings.mRenderXAxisName  = true;
@@ -974,9 +993,10 @@ namespace EMStudio
 
             if (followInstance && mCamera)
             {
-                mPlugin->GetTranslateManipulator()->Init(followInstance->GetLocalPosition());
-                mPlugin->GetRotateManipulator()->Init(followInstance->GetLocalPosition());
-                mPlugin->GetScaleManipulator()->Init(followInstance->GetLocalPosition());
+                const AZ::Vector3& localPos = followInstance->GetLocalSpaceTransform().mPosition;
+                mPlugin->GetTranslateManipulator()->Init(localPos);
+                mPlugin->GetRotateManipulator()->Init(localPos);
+                mPlugin->GetScaleManipulator()->Init(localPos);
 
                 AZ::Vector3 actorInstancePos;
 
@@ -984,17 +1004,17 @@ namespace EMStudio
                 const uint32 motionExtractionNodeIndex = followActor->GetMotionExtractionNodeIndex();
                 if (motionExtractionNodeIndex != MCORE_INVALIDINDEX32)
                 {
-                    actorInstancePos = followInstance->GetGlobalPosition();
+                    actorInstancePos = followInstance->GetWorldSpaceTransform().mPosition;
                     RenderPlugin::EMStudioRenderActor* emstudioActor = mPlugin->FindEMStudioActor(followActor);
                     if (emstudioActor)
                     {
-                        const float scaledOffsetFromTrajectoryNode = followInstance->GetGlobalScale().GetZ() * emstudioActor->mOffsetFromTrajectoryNode;
+                        const float scaledOffsetFromTrajectoryNode = followInstance->GetWorldSpaceTransform().mScale.GetZ() * emstudioActor->mOffsetFromTrajectoryNode;
                         actorInstancePos.SetZ(actorInstancePos.GetZ() + scaledOffsetFromTrajectoryNode);
                     }
                 }
                 else
                 {
-                    actorInstancePos = followInstance->GetGlobalPosition();
+                    actorInstancePos = followInstance->GetWorldSpaceTransform().mPosition;
                 }
 
                 // Calculate movement since last frame.
@@ -1010,38 +1030,38 @@ namespace EMStudio
 
                 switch (mCamera->GetType())
                 {
-                    case MCommon::OrbitCamera::TYPE_ID:
+                case MCommon::OrbitCamera::TYPE_ID:
+                {
+                    MCommon::OrbitCamera* orbitCamera = static_cast<MCommon::OrbitCamera*>(mCamera);
+
+                    if (orbitCamera->GetIsFlightActive())
                     {
-                        MCommon::OrbitCamera* orbitCamera = static_cast<MCommon::OrbitCamera*>(mCamera);
-
-                        if (orbitCamera->GetIsFlightActive())
-                        {
-                            orbitCamera->SetFlightTargetPosition(actorInstancePos);
-                        }
-                        else
-                        {
-                            orbitCamera->SetPosition(orbitCamera->GetPosition() + deltaPos);
-                            orbitCamera->SetTarget(orbitCamera->GetTarget() + deltaPos);
-                        }
-
-                        break;
+                        orbitCamera->SetFlightTargetPosition(actorInstancePos);
+                    }
+                    else
+                    {
+                        orbitCamera->SetPosition(orbitCamera->GetPosition() + deltaPos);
+                        orbitCamera->SetTarget(orbitCamera->GetTarget() + deltaPos);
                     }
 
-                    case MCommon::OrthographicCamera::TYPE_ID:
+                    break;
+                }
+
+                case MCommon::OrthographicCamera::TYPE_ID:
+                {
+                    MCommon::OrthographicCamera* orthoCamera = static_cast<MCommon::OrthographicCamera*>(mCamera);
+
+                    if (orthoCamera->GetIsFlightActive())
                     {
-                        MCommon::OrthographicCamera* orthoCamera = static_cast<MCommon::OrthographicCamera*>(mCamera);
-
-                        if (orthoCamera->GetIsFlightActive())
-                        {
-                            orthoCamera->SetFlightTargetPosition(actorInstancePos);
-                        }
-                        else
-                        {
-                            orthoCamera->SetPosition(orthoCamera->GetPosition() + deltaPos);
-                        }
-
-                        break;
+                        orthoCamera->SetFlightTargetPosition(actorInstancePos);
                     }
+                    else
+                    {
+                        orthoCamera->SetPosition(orthoCamera->GetPosition() + deltaPos);
+                    }
+
+                    break;
+                }
                 }
             }
         }
@@ -1165,7 +1185,7 @@ namespace EMStudio
         EMotionFX::GetAnimGraphManager().SetAnimGraphVisualizationEnabled(true);
 
         // Only keep the following line when we do not link to the update system component OnTick anymore.
-/////        EMotionFX::GetEMotionFX().Update(0.0f);
+        /////        EMotionFX::GetEMotionFX().Update(0.0f);
 
         // render
         const uint32 numActorInstances = EMotionFX::GetActorManager().GetNumActorInstances();
@@ -1203,8 +1223,7 @@ namespace EMStudio
             mViewCloseupWaiting--;
             if (mViewCloseupWaiting == 0)
             {
-                const MCore::AABB sceneAABB = mPlugin->GetSceneAABB(mViewClosupSelectedInstancesOnly);
-                mCamera->ViewCloseup(sceneAABB, mViewCloseupFlightTime);
+                mCamera->ViewCloseup(mViewCloseupAABB, mViewCloseupFlightTime);
                 //mViewCloseupWaiting = 0;
             }
         }

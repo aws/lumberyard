@@ -14,6 +14,7 @@
 
 #include "PhysicsNodeLibrary.h"
 #include "RayCast.h"
+#include "WorldNodes.h"
 
 #include <AzCore/Serialization/EditContext.h>
 #include <ScriptCanvas/Libraries/Libraries.h>
@@ -45,6 +46,7 @@ namespace ScriptCanvasPhysics
     void PhysicsNodeLibrary::InitNodeRegistry(ScriptCanvas::NodeRegistry& nodeRegistry)
     {
         RayCastNodes::Registrar::AddToRegistry<PhysicsNodeLibrary>(nodeRegistry);
+        WorldNodes::Registrar::AddToRegistry<PhysicsNodeLibrary>(nodeRegistry);
     }
 
     AZStd::vector<AZ::ComponentDescriptor*> PhysicsNodeLibrary::GetComponentDescriptors()
@@ -52,6 +54,7 @@ namespace ScriptCanvasPhysics
         AZStd::vector<AZ::ComponentDescriptor*> descriptors;
 
         RayCastNodes::Registrar::AddDescriptors(descriptors);
+        WorldNodes::Registrar::AddDescriptors(descriptors);
 
         return descriptors;
     }

@@ -526,7 +526,11 @@ void CLog::LogV(const ELogType type, int flags, const char* szFormat, va_list ar
     if (bufferlen > 0)
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Log_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Log_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Log_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -1360,6 +1364,8 @@ void CLog::CreateBackupFile() const
     string bakdest = PathUtil::Make(LOG_BACKUP_PATH, sFileWithoutExt + sBackupNameAttachment + "." + sExt);
     fileSystem->CreatePath(LOG_BACKUP_PATH);
     cry_strcpy(m_sBackupFilename, bakdest.c_str());
+    // Remove any existing backup file with the same name first since the copy will fail otherwise.
+    fileSystem->Remove(m_sBackupFilename);
     fileSystem->Copy(m_szFilename, bakdest);
 #endif // AZ_LEGACY_CRYSYSTEM_TRAIT_ALLOW_CREATE_BACKUP_LOG_FILE
 }

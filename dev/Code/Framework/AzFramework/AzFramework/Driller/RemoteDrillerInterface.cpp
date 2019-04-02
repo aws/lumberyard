@@ -166,7 +166,7 @@ namespace AzFramework
             AZ::IO::SystemFile::SizeType bytesRemaining = m_captureFile.Length();
             AZ::IO::SystemFile::SizeType maxReadChunkSize = 1024 * 1024;
             AZStd::vector<char> readBuffer;
-            readBuffer.resize(static_cast<size_t>(maxReadChunkSize));
+            readBuffer.resize_no_construct(static_cast<size_t>(maxReadChunkSize));
             while (bytesRemaining > 0)
             {
                 AZ::IO::SystemFile::SizeType bytesToRead = bytesRemaining < maxReadChunkSize ? bytesRemaining : maxReadChunkSize;

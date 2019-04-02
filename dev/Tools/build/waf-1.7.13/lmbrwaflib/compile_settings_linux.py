@@ -36,20 +36,12 @@ def load_linux_common_settings(v):
     v['cxxstlib_PATTERN']   = 'lib%s.a'
 
     # For now compile for SSE2
-    v['CXXFLAGS'] += [
+    common_flags = [
         '-msse2',
-        '-Wno-unused-lambda-capture',
-
-        # Workaround for compiler seeing file case differently from what OS show in console.
-        '-Wno-nonportable-include-path'
     ]
-    v['CFLAGS'] += [
-        '-msse2',
-        '-Wno-unused-lambda-capture',
 
-        # Workaround for compiler seeing file case differently from what OS show in console.
-        '-Wno-nonportable-include-path'
-    ]
+    v['CXXFLAGS'] += common_flags[:]
+    v['CFLAGS']  += common_flags[:]
 
     v['LINKFLAGS'] += ['-stdlib=libc++']
 

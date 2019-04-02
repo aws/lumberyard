@@ -16,6 +16,7 @@
 #include <AzCore/base.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
+#include <QBasicTimer>
 #include <QEvent>
 #include <QTreeView>
 
@@ -42,6 +43,8 @@ public:
     virtual ~OutlinerTreeView();
 
     void setAutoExpandDelay(int delay);
+
+    static int GetLayerSquareSize() { return 20; }
 Q_SIGNALS:
     void ItemDropped();
 
@@ -67,11 +70,16 @@ private:
 
     QImage createDragImage(const QModelIndexList& indexList);
 
+    void DrawLayerUI(QPainter* painter, const QRect& rect, const QModelIndex& index) const;
+
     bool m_mousePressedQueued;
+    bool m_draggingUnselectedItem; // This is set when an item is dragged outside its bounding box.
     QPoint m_mousePressedPos;
 
     int m_expandOnlyDelay = -1;
     QBasicTimer m_expandTimer;
+    
+    const int m_branchLineWidth = 1;
 };
 
 #endif

@@ -28,19 +28,7 @@
 #include <QTemporaryDir>
 #include <QMetaObject>
 
-
-class AssetProcessorManager_Test
-    : public AssetProcessor::AssetProcessorManager
-{
-public:
-    friend class GTEST_TEST_CLASS_NAME_(AssetProcessorManagerTest, AssetProcessedImpl_DifferentProductDependenciesPerProduct_SavesCorrectlyToDatabase);
-
-    explicit AssetProcessorManager_Test(AssetProcessor::PlatformConfiguration* config, QObject* parent = nullptr);
-    ~AssetProcessorManager_Test() override;
-public:
-    bool CheckJobKeyToJobRunKeyMap(AZStd::string jobKey);
-    bool CheckSourceUUIDToSourceNameMap(AZ::Uuid sourceUUID);
-};
+class AssetProcessorManager_Test;
 
 class AssetProcessorManagerTest
     : public AssetProcessor::AssetProcessorTest

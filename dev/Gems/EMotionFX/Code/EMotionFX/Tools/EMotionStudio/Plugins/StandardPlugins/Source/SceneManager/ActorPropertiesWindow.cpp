@@ -69,7 +69,7 @@ namespace EMStudio
         rowNr = 0;
         layout->addWidget(new QLabel("Actor Name:"), rowNr, 0);
         mNameEdit = new QLineEdit();
-        connect(mNameEdit, SIGNAL(editingFinished()), this, SLOT(NameEditChanged()));
+        connect(mNameEdit, &QLineEdit::editingFinished, this, &ActorPropertiesWindow::NameEditChanged);
         layout->addWidget(mNameEdit, rowNr, 1);
 
         // add the motion extraction node selection
@@ -92,7 +92,7 @@ namespace EMStudio
         mFindBestMatchButton->setMaximumHeight(20);
         mFindBestMatchButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         extractNodeLayout->addWidget(mFindBestMatchButton);
-        connect(mFindBestMatchButton, SIGNAL(clicked()), this, SLOT(OnFindBestMatchingNode()));
+        connect(mFindBestMatchButton, &QPushButton::clicked, this, &ActorPropertiesWindow::OnFindBestMatchingNode);
 
         QWidget* dummyWidget = new QWidget();
         dummyWidget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Maximum);
@@ -101,8 +101,8 @@ namespace EMStudio
         layout->addLayout(extractNodeLayout, rowNr, 1);
 
         // motion extraction node
-        connect(mResetMotionExtractionNodeButton, SIGNAL(clicked()), this, SLOT(ResetMotionExtractionNode()));
-        connect(mMotionExtractionNode, SIGNAL(clicked()), this, SLOT(OnSelectMotionExtractionNode()));
+        connect(mResetMotionExtractionNodeButton, &QPushButton::clicked, this, &ActorPropertiesWindow::ResetMotionExtractionNode);
+        connect(mMotionExtractionNode, &MysticQt::LinkWidget::clicked, this, &ActorPropertiesWindow::OnSelectMotionExtractionNode);
 
 
         // add the retarget root selection
@@ -124,8 +124,8 @@ namespace EMStudio
         retargetRootNodeLayout->addWidget(dummyWidget);
 
         layout->addLayout(retargetRootNodeLayout, rowNr, 1);
-        connect(mResetRetargetRootNodeButton, SIGNAL(clicked()), this, SLOT(ResetRetargetRootNode()));
-        connect(mRetargetRootNode, SIGNAL(clicked()), this, SLOT(OnSelectRetargetRootNode()));
+        connect(mResetRetargetRootNodeButton, &QPushButton::clicked, this, &ActorPropertiesWindow::ResetRetargetRootNode);
+        connect(mRetargetRootNode, &MysticQt::LinkWidget::clicked, this, &ActorPropertiesWindow::OnSelectRetargetRootNode);
 
 
         // bounding box nodes
@@ -146,8 +146,8 @@ namespace EMStudio
 
         layout->addLayout(excludedNodesLayout, rowNr, 1);
 
-        connect(mResetExcludedNodesButton,                                                 SIGNAL(clicked()),                                      this, SLOT(ResetExcludedNodes()));
-        connect(mExcludedNodesLink,                                                        SIGNAL(clicked()),                                      this, SLOT(OnSelectExcludedNodes()));
+        connect(mResetExcludedNodesButton,                                                 &QPushButton::clicked,                                      this, &ActorPropertiesWindow::ResetExcludedNodes);
+        connect(mExcludedNodesLink,                                                        &MysticQt::LinkWidget::clicked,                                      this, static_cast<void (ActorPropertiesWindow::*)()>(&ActorPropertiesWindow::OnSelectExcludedNodes));
 
         // collision meshes nodes
         rowNr++;
@@ -158,7 +158,7 @@ namespace EMStudio
         mCollisionMeshesSetupLink->setText("Click to setup");
         layout->addWidget(new QLabel("Collision Mesh Setup:"), rowNr, 0);
         layout->addWidget(mCollisionMeshesSetupLink, rowNr, 1);
-        connect(mCollisionMeshesSetupLink, SIGNAL(clicked()), this, SLOT(OnCollisionMeshesSetup()));
+        connect(mCollisionMeshesSetupLink, &MysticQt::LinkWidget::clicked, this, &ActorPropertiesWindow::OnCollisionMeshesSetup);
 
         // mirror setup
         rowNr++;
@@ -169,7 +169,7 @@ namespace EMStudio
         mMirrorSetupLink->setText("Click to setup");
         layout->addWidget(new QLabel("Mirror Setup:"), rowNr, 0);
         layout->addWidget(mMirrorSetupLink, rowNr, 1);
-        connect(mMirrorSetupLink, SIGNAL(clicked()), this, SLOT(OnMirrorSetup()));
+        connect(mMirrorSetupLink, &MysticQt::LinkWidget::clicked, this, &ActorPropertiesWindow::OnMirrorSetup);
 
         UpdateInterface();
     }
@@ -375,12 +375,12 @@ namespace EMStudio
 
         NodeSelectionWindow motionExtractionNodeSelectionWindow(this, true);
 
-        connect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnMotionExtractionNodeSelected(MCore::Array<SelectionItem>)));
+        connect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &ActorPropertiesWindow::OnMotionExtractionNodeSelected);
 
         motionExtractionNodeSelectionWindow.Update(mActorInstance->GetID(), mSelectionList);
         motionExtractionNodeSelectionWindow.exec();
 
-        disconnect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnMotionExtractionNodeSelected(MCore::Array<SelectionItem>)));
+        disconnect(motionExtractionNodeSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &ActorPropertiesWindow::OnMotionExtractionNodeSelected);
     }
 
 
@@ -409,11 +409,11 @@ namespace EMStudio
         }
 
         NodeSelectionWindow nodeSelectionWindow(this, true);
-        connect(nodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnRetargetRootNodeSelected(MCore::Array<SelectionItem>)));
+        connect(nodeSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &ActorPropertiesWindow::OnRetargetRootNodeSelected);
         nodeSelectionWindow.Update(mActorInstance->GetID(), mSelectionList);
         nodeSelectionWindow.exec();
 
-        disconnect(nodeSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnRetargetRootNodeSelected(MCore::Array<SelectionItem>)));
+        disconnect(nodeSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &ActorPropertiesWindow::OnRetargetRootNodeSelected);
     }
 
     void ActorPropertiesWindow::GetNodeName(const MCore::Array<SelectionItem>& selection, AZStd::string* outNodeName, uint32* outActorID)
@@ -610,16 +610,16 @@ namespace EMStudio
         NodeSelectionWindow excludedNodesSelectionWindow(this, false);
         mExcludedNodesSelectionWindow = &excludedNodesSelectionWindow;
 
-        connect(excludedNodesSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnSelectExcludedNodes(MCore::Array<SelectionItem>)));
-        connect(&excludedNodesSelectionWindow, SIGNAL(rejected()), this, SLOT(OnCancelExcludedNodes()));
-        connect(excludedNodesSelectionWindow.GetNodeHierarchyWidget()->GetTreeWidget(), SIGNAL(itemSelectionChanged()), this, SLOT(OnExcludeNodeSelectionChanged()));
+        connect(excludedNodesSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, static_cast<void (ActorPropertiesWindow::*)(MCore::Array<SelectionItem>)>(&ActorPropertiesWindow::OnSelectExcludedNodes));
+        connect(&excludedNodesSelectionWindow, &NodeSelectionWindow::rejected, this, &ActorPropertiesWindow::OnCancelExcludedNodes);
+        connect(excludedNodesSelectionWindow.GetNodeHierarchyWidget()->GetTreeWidget(), &QTreeWidget::itemSelectionChanged, this, &ActorPropertiesWindow::OnExcludeNodeSelectionChanged);
 
         excludedNodesSelectionWindow.Update(mActorInstance->GetID(), &mExcludedNodeSelectionList);
         excludedNodesSelectionWindow.exec();
 
-        disconnect(excludedNodesSelectionWindow.GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(OnSelectExcludedNodes(MCore::Array<SelectionItem>)));
-        disconnect(&excludedNodesSelectionWindow, SIGNAL(rejected()), this, SLOT(OnCancelExcludedNodes()));
-        disconnect(excludedNodesSelectionWindow.GetNodeHierarchyWidget()->GetTreeWidget(), SIGNAL(itemSelectionChanged()), this, SLOT(OnExcludeNodeSelectionChanged()));
+        disconnect(excludedNodesSelectionWindow.GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, static_cast<void (ActorPropertiesWindow::*)(MCore::Array<SelectionItem>)>(&ActorPropertiesWindow::OnSelectExcludedNodes));
+        disconnect(&excludedNodesSelectionWindow, &NodeSelectionWindow::rejected, this, &ActorPropertiesWindow::OnCancelExcludedNodes);
+        disconnect(excludedNodesSelectionWindow.GetNodeHierarchyWidget()->GetTreeWidget(), &QTreeWidget::itemSelectionChanged, this, &ActorPropertiesWindow::OnExcludeNodeSelectionChanged);
         mExcludedNodesSelectionWindow = nullptr;
     }
 

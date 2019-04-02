@@ -22,7 +22,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION VERTEXCACHEOPTIMIZER_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(VertexCacheOptimizer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/VertexCacheOptimizer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/VertexCacheOptimizer_cpp_provo.inl"
+    #endif
 #endif
 
 namespace vcache
@@ -31,7 +35,11 @@ namespace vcache
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION VERTEXCACHEOPTIMIZER_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(VertexCacheOptimizer_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/VertexCacheOptimizer_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/VertexCacheOptimizer_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

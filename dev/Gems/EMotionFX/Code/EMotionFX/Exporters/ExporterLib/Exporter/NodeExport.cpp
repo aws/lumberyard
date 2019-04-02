@@ -32,7 +32,7 @@ namespace ExporterLib
         const uint32                nodeIndex           = node->GetNodeIndex();
         const uint32                parentIndex         = node->GetParentIndex();
         const uint32                numChilds           = node->GetNumChildNodes();
-        const EMotionFX::Transform& transform           = actor->GetBindPose()->GetLocalTransform(nodeIndex);
+        const EMotionFX::Transform& transform           = actor->GetBindPose()->GetLocalSpaceTransform(nodeIndex);
         AZ::PackedVector3f          position            = AZ::PackedVector3f(transform.mPosition);
         MCore::Quaternion           rotation            = transform.mRotation;
         AZ::PackedVector3f          scale               = AZ::PackedVector3f(transform.mScale);

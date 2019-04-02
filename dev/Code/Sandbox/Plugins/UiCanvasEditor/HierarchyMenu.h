@@ -36,19 +36,18 @@ public:
         kNew_ElementFromPrefabsAtRoot   = 0x0020,
         kAddComponents                  = 0x0040,
         kDeleteElement                  = 0x0080,
-        kRemoveComponents               = 0x0100,
-        kNewSlice                       = 0x0200,
-        kNew_InstantiateSlice           = 0x0400,
-        kNew_InstantiateSliceAtRoot     = 0x0800,
-        kPushToSlice                    = 0x1000,
-
+        kNewSlice                       = 0x0100,
+        kNew_InstantiateSlice           = 0x0200,
+        kNew_InstantiateSliceAtRoot     = 0x0400,
+        kPushToSlice                    = 0x0800,
+        kEditorOnly                     = 0x1000,
+        kFindElements                   = 0x2000,
         kAll                            = 0xffff
     };
 
     HierarchyMenu(HierarchyWidget* hierarchy,
         size_t showMask,
         bool addMenuForNewElement,
-        AZ::Component* componentToRemove,
         const QPoint* optionalPos = nullptr);
 
 private:
@@ -85,7 +84,9 @@ private:
     void DeleteElement(HierarchyWidget* hierarchy,
         QTreeWidgetItemRawPtrQList& selectedItems);
 
-    void RemoveComponents(HierarchyWidget* hierarchy,
-        QTreeWidgetItemRawPtrQList& selectedItems,
-        const AZ::Component* componentToRemove);
+    void FindElements(HierarchyWidget* hierarchy,
+        QTreeWidgetItemRawPtrQList& selectedItems);
+
+    void EditorOnly(HierarchyWidget* hierarchy,
+        QTreeWidgetItemRawPtrQList& selectedItems);
 };

@@ -47,7 +47,7 @@ namespace AzToolsFramework
             // ========= Constructors\Destructor =========
             // Construction and copying operations are supported:
             LogLine() = default;
-            LogLine(const char* inMessage, const char* inWindow, LogType inType, AZ::u64 inTime);
+            LogLine(const char* inMessage, const char* inWindow, LogType inType, AZ::u64 inTime, void* data = nullptr);
             LogLine(const LogLine& other);
             LogLine& operator=(const LogLine& other);
             
@@ -63,6 +63,10 @@ namespace AzToolsFramework
             const AZStd::string& GetLogWindow() const;
             LogType GetLogType() const;
             AZ::u64 GetLogTime() const;
+
+
+            void* GetUserData() const;
+            void SetUserData(void* data);
 
             // ========= Utilities =========
             AZStd::string ToString(); // for writing it out to logs and copy/paste
@@ -92,6 +96,7 @@ namespace AzToolsFramework
             LogType m_type = TYPE_MESSAGE;
             bool m_isRichText = false;
             bool m_processed = false;
+            void* m_userData = nullptr;
         };
     }
 }

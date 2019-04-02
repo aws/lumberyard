@@ -38,7 +38,6 @@ public:
     uint32              mOldLODLevel;
     bool                mOldIsVisible;
     bool                mOldDoRender;
-    bool                mOldAttachmentFastUpdate;
     bool                mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
 
@@ -52,7 +51,6 @@ public:
     uint32              mOldLODLevel;
     bool                mOldIsVisible;
     bool                mOldDoRender;
-    bool                mOldAttachmentFastUpdate;
     bool                mOldWorkspaceDirtyFlag;
     MCORE_DEFINECOMMAND_END
 

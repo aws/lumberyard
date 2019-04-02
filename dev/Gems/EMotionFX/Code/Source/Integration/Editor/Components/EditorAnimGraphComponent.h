@@ -83,8 +83,8 @@ namespace EMotionFX
             AZ::Data::Asset<MotionSetAsset>* GetMotionAsset() { return &m_motionSetAsset; }
 
             // Property callbacks.
-            void OnAnimGraphAssetSelected();
-            void OnMotionSetAssetSelected();
+            AZ::u32 OnAnimGraphAssetSelected();
+            AZ::u32 OnMotionSetAssetSelected();
 
             // Called at edit-time when creating the component directly from an asset.
             void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;

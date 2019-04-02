@@ -33,14 +33,17 @@ namespace AZ
 
         ~LegacyJobExecutor()
         {
-            WaitForCompletion();
+            WaitForCompletion(true);
         }
 
         template <class Function>
         inline void StartJob(const Function& processFunction, JobContext* context = nullptr)
         {
-            Job * job = aznew JobFunctionExecutorHelper<Function>(processFunction, *this, context);
-            StartJobInternal(job);
+            if (!IsClosing())
+            {
+                Job * job = aznew JobFunctionExecutorHelper<Function>(processFunction, *this, context);
+                StartJobInternal(job);
+            }
         }
 
         // SetPostJob - This API exists to support backwards compatibility and is not a recommended pattern to be copied.
@@ -70,15 +73,19 @@ namespace AZ
             AZ_Assert(!IsRunning(), "LegacyJobExecutor::Reset() called while jobs in flight");
         }
 
-        inline void WaitForCompletion()
+        inline void WaitForCompletion(bool isClosing = false)
         {
             AZStd::unique_lock<decltype(m_conditionLock)> uniqueLock(m_conditionLock);
 
-            while (m_jobCount)
+            while (m_jobCount && !IsClosing())
             {
+                SetClosingOnce(isClosing);
+
                 AZ_PROFILE_FUNCTION_STALL(AZ::Debug::ProfileCategory::AzCore);
                 m_completionCondition.wait(uniqueLock, [this] { return this->m_jobCount == 0; });
             }
+
+            SetClosingOnce(isClosing);
         }
 
         // Push a logical fence that will cause WaitForCompletion to wait until PopCompletionFence is called and all jobs are complete.  Analogue to the legacy API SJobState::SetStarted()
@@ -100,6 +107,21 @@ namespace AZ
         {
             LockGuard lockGuard(m_conditionLock);
             return m_jobCount != 0;
+        }
+
+        inline bool IsClosing()
+        {
+            LockGuard lockGuard(m_closeLock);
+            return m_isClosing;
+        }
+
+        inline void SetClosingOnce(bool isClosing)
+        {
+            LockGuard lockGuard(m_closeLock);
+            if (!m_isClosing)
+            {
+                m_isClosing = isClosing;
+            }
         }
 
     private:
@@ -187,7 +209,9 @@ namespace AZ
         AZStd::condition_variable m_completionCondition;
         Lock m_conditionLock;
         AZStd::unique_ptr<JobExecutorHelper> m_postJob;
-        AZ::u32 m_jobCount = 0;
+        volatile AZ::u32 m_jobCount = 0;
+        bool m_isClosing = false;
+        Lock m_closeLock;
     };
 }
 

@@ -19,7 +19,6 @@ def build(bld):
         pch               = "Source/PhysX_precompiled.cpp",
         use               = ['AzFramework',
                              'LmbrCentral', 'PHYSX_SDK'],
-        linux_includes    = [bld.Path('Gems/LmbrCentral/Code/include')],
         test_all_use      = ['AzPhysicsTests'],
         win_features      = ['crcfix'],
 

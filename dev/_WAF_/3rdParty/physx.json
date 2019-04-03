@@ -49,7 +49,6 @@
             "PhysXDevice64"
         ],
         "lib_names_shared": [
-            "PhysX3Gpu",
             "${lib_names}"
         ],
         "lib_paths": [

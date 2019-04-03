@@ -33,7 +33,9 @@ namespace SandboxEditor
     {
         // Asserts are more fatal than errors, and need to be displayed right away.
         // After the assert occurs, nothing else may be functional enough to collect and display messages.
-        OnMessage(message, nullptr, MessageDisplayBehavior::AlwaysShow);
+        char stack[1024] = { 0 };
+        azsprintf(stack, "Assertion failed in %s %s:%i\n%s", func, fileName, line, message);
+        OnMessage(stack, nullptr, MessageDisplayBehavior::AlwaysShow);
         // Return false so other listeners can handle this. The StartupTraceHandler won't report messages 
         // until the next time the main thread updates the system tick bus function queue. The editor 
         // will probably crash before that occurs, because this is an assert.

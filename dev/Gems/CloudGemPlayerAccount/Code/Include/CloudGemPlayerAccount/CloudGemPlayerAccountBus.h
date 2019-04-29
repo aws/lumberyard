@@ -15,13 +15,6 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
-// #pragma warning(push)
-// #pragma warning(disable: 4355 4251) // <future> includes ppltasks.h which throws a C4355 warning: 'this' used in base member initializer list
-// #include <aws/cognito-idp/CognitoIdentityProviderClient.h>
-// #include <aws/core/client/AWSError.h>
-// #include <aws/core/utils/Outcome.h>
-// #pragma warning(pop)
-
 #include <CloudGemPlayerAccount/AccountResultInfo.h>
 #include <CloudGemPlayerAccount/BasicResultInfo.h>
 #include <CloudGemPlayerAccount/DeliveryDetails.h>

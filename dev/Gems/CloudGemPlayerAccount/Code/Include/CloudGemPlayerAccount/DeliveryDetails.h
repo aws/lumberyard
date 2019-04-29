@@ -18,9 +18,6 @@
 
 #include <vector>
 
-// #include <aws/cognito-idp/model/CodeDeliveryDetailsType.h>
-// #include <aws/core/utils/memory/stl/AWSVector.h>
-
 namespace Aws
 {
     namespace CognitoIdentityProvider

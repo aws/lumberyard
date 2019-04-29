@@ -11,7 +11,7 @@
 */
 #include "CloudGemPlayerAccount_precompiled.h"
 
-#include "AccountResultInfo.h"
+#include <CloudGemPlayerAccount/AccountResultInfo.h>
 
 #include <AzCore/base.h>
 #include <AzCore/Memory/Memory.h>

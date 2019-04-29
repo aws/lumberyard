@@ -21,6 +21,10 @@
 #include <aws/cognito-idp/model/InitiateAuthRequest.h>
 #include <aws/core/utils/memory/stl/AWSString.h>
 #include <aws/identity-management/auth/PersistentCognitoIdentityProvider.h>
+// amazon headers originally included from cloudgemplayeraccountbus.h
+#include <aws/cognito-idp/CognitoIdentityProviderClient.h>
+#include <aws/core/client/AWSError.h>
+#include <aws/core/utils/Outcome.h>
 #pragma warning(pop)
 
 #include "AuthTokenGroup.h"

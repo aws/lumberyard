@@ -63,7 +63,7 @@ namespace NRemoteCompiler
         EShaderCompiler GetShaderCompiler() const;
         const char *GetShaderCompilerName() const;
 
-        AZStd::string GetShaderCompilerFlags(EHWShaderClass eClass, UPipelineState pipelineState) const;
+        AZStd::string GetShaderCompilerFlags(EHWShaderClass eClass, UPipelineState pipelineState, uint32 MDVMask) const;
 
         static CShaderSrv& Instance();
 

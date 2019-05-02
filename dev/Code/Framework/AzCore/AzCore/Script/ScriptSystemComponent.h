@@ -67,6 +67,7 @@ namespace AZ
         void GarbageCollectStep(int numberOfSteps) override;
 
         bool Load(const Data::Asset<ScriptAsset>& asset, ScriptContextId id) override;
+        void ClearAssetReferences(Data::AssetId assetBaseId);
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -156,8 +157,6 @@ namespace AZ
         ContextContainer*       GetContextContainer(ScriptContextId id);
         /// Default require hook installed on new contexts
         int                     DefaultRequireHook(lua_State* l, ScriptContext* context, const char* module);
-
-        void ClearAssetReferences(Data::AssetId assetBaseId);
 
         AZStd::vector<ContextContainer> m_contexts;
 

@@ -46,7 +46,7 @@ namespace EMStudio
         mTableWidget->horizontalHeader()->setStretchLastSection(true);
         mTableWidget->setCornerButtonEnabled(false);
         mTableWidget->setContextMenuPolicy(Qt::DefaultContextMenu);
-        connect(mTableWidget, SIGNAL(itemSelectionChanged()), this, SLOT(OnSelectionChanged()));
+        connect(mTableWidget, &QTableWidget::itemSelectionChanged, this, &StateFilterSelectionWindow::OnSelectionChanged);
 
         mainLayout->addWidget(mTableWidget);
 
@@ -56,11 +56,11 @@ namespace EMStudio
         QPushButton* okButton = new QPushButton("OK");
         okButton->setDefault(true);
         buttonLayout->addWidget(okButton);
-        connect(okButton, SIGNAL(clicked()), this, SLOT(accept()));
+        connect(okButton, &QPushButton::clicked, this, &StateFilterSelectionWindow::accept);
 
         QPushButton* cancelButton = new QPushButton("Cancel");
         buttonLayout->addWidget(cancelButton);
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(cancelButton, &QPushButton::clicked, this, &StateFilterSelectionWindow::reject);
 
         setMinimumSize(400, 800);
     }

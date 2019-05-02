@@ -96,7 +96,7 @@ namespace LmbrCentral
         AZ::Vector3 m_probeArea;
         AZ::u32 m_probeSortPriority;
         ResolutionSetting m_probeCubemapResolution;
-        AZStd::string m_probeCubemap;
+        AzFramework::SimpleAssetReference<TextureAsset> m_probeCubemap;
         //parameter to enable box projection  
         bool m_isBoxProjected;
         float m_boxWidth;
@@ -148,6 +148,8 @@ namespace LmbrCentral
         virtual AZ::Crc32 MinorPropertyChanged() { return 0; }
         virtual AZ::Crc32 MajorPropertyChanged() { return 0; }
         virtual AZ::Crc32 OnAnimationSettingChanged() { return 0; }
+        virtual AZ::Crc32 OnCubemapAssetChanged() { return 0; }
+        virtual bool CanGenerateCubemap() const { return false; }
 
     private:
 

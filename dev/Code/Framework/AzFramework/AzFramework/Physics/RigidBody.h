@@ -1,133 +1,129 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+* its licensors.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*
+*/
 
 #pragma once
 
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Vector3.h>
-#include <AzCore/Math/Vector4.h>
 #include <AzCore/Math/Aabb.h>
-#include <AzCore/Math/Quaternion.h>
 
-#include <AzFramework/Physics/Base.h>
-#include <AzFramework/Physics/CollisionFilter.h>
 #include <AzFramework/Physics/WorldBody.h>
 #include <AzFramework/Physics/ShapeConfiguration.h>
+
+namespace
+{
+    class ReflectContext;
+}
 
 namespace Physics
 {
     class ShapeConfiguration;
     class World;
-    struct MaterialProperties;
+    class Shape;
 
-    /**
-     * 
-     */
-    enum class MotionType : AZ::u8
+    /// Default values used for initializing RigidBodySettings.
+    /// These can be modified by Physics Implementation gems.
+    struct DefaultRigidBodyConfiguration
     {
-        Static,         ///< Body is collidable, but static (does not simulate). Useful for static geometry.
-        Dynamic,        ///< Body is fully dynamic and simulated. Useful for all types of real-time simulated objects.
-        Keyframed,      ///< Body is collidable and controlled directly (does not simulate). Useful for moving platforms or animated objects.
+        static float m_mass;
+        static bool  m_computeInertiaTensor;
+        static float m_linearDamping;
+        static float m_angularDamping;
+        static float m_sleepMinEnergy;
     };
 
-    /**
-     * 
-     */
-    enum class SleepType : AZ::u8
-    {
-        None,
-        Simple,
-        Energy,
-    };
-
-    /**
-     * 
-     */
-    enum class ContinuousType : AZ::u8
-    {
-        None,
-        Simple,
-        Full,
-    };
-
-    /**
-     * 
-     */
-    class RigidBodySettings : public WorldBodySettings
+    class RigidBodyConfiguration
+        : public WorldBodyConfiguration
     {
     public:
+        AZ_CLASS_ALLOCATOR(RigidBodyConfiguration, AZ::SystemAllocator, 0);
+        AZ_RTTI(RigidBodyConfiguration, "{ACFA8900-8530-4744-AF00-AA533C868A8E}", WorldBodyConfiguration);
+        static void Reflect(AZ::ReflectContext* context);
 
-        AZ_CLASS_ALLOCATOR(RigidBodySettings, AZ::SystemAllocator, 0);
-        AZ_RTTI(RigidBodySettings, "{ACFA8900-8530-4744-AF00-AA533C868A8E}", WorldBodySettings);
-
-        static Ptr<RigidBodySettings> Create()
+        enum PropertyVisibility : AZ::u16
         {
-            return aznew RigidBodySettings();
-        }
+            InitialVelocities = 1 << 0, ///< Whether the initial linear and angular velocities are visible.
+            InertiaProperties = 1 << 1, ///< Whether the whole category of inertia properties (mass, compute inertia,
+                                        ///< inertia tensor etc) is visible.
+            Damping = 1 << 2, ///< Whether linear and angular damping are visible.
+            SleepOptions = 1 << 3, ///< Whether the sleep threshold and start asleep options are visible.
+            Interpolation = 1 << 4, ///< Whether the interpolation option is visible.
+            Gravity = 1 << 5, ///< Whether the effected by gravity option is visible.
+            Kinematic = 1 << 6, ///< Whether the option to make the body kinematic is visible.
+            ContinuousCollisionDetection = 1 << 7 ///< Whether the option to enable continuous collision detection is visible.
+        };
+
+        RigidBodyConfiguration() = default;
+        RigidBodyConfiguration(const RigidBodyConfiguration& settings) = default;
+
+        // Visibility functions.
+        AZ::Crc32 GetPropertyVisibility(PropertyVisibility property) const;
+        void SetPropertyVisibility(PropertyVisibility property, bool isVisible);
+
+        AZ::Crc32 GetInitialVelocitiesVisibility() const;
+        /// Returns whether the whole category of inertia settings (mass, inertia, center of mass offset etc) is visible.
+        AZ::Crc32 GetInertiaSettingsVisibility() const;
+        /// Returns whether the individual inertia tensor field is visible or is hidden because the compute inertia option is selected.
+        AZ::Crc32 GetInertiaVisibility() const;
+        /// Returns whether the individual centre of mass offset field is visible or is hidden because compute CoM option is selected.
+        AZ::Crc32 GetCoMVisibility() const;
+        AZ::Crc32 GetDampingVisibility() const;
+        AZ::Crc32 GetSleepOptionsVisibility() const;
+        AZ::Crc32 GetInterpolationVisibility() const;
+        AZ::Crc32 GetGravityVisibility() const;
+        AZ::Crc32 GetKinematicVisibility() const;
+        AZ::Crc32 GetCCDVisibility() const;
 
         // Basic initial settings.
-        MotionType                      m_motionType                = MotionType::Static;
-        AZ::Vector3                     m_initialLinearVelocity     = AZ::Vector3::CreateZero();
-        AZ::Vector3                     m_initialAngularVelocity    = AZ::Vector3::CreateZero();
-        Ptr<ShapeConfiguration>         m_bodyShape                 = nullptr;
+        AZ::Vector3 m_initialLinearVelocity = AZ::Vector3::CreateZero();
+        AZ::Vector3 m_initialAngularVelocity = AZ::Vector3::CreateZero();
+        AZ::Vector3 m_centerOfMassOffset = AZ::Vector3::CreateZero();
+        bool m_computeCenterOfMass = true;
 
         // Simulation parameters.
-        float                           m_mass                      = 1.f;
-        AZ::Matrix3x3                   m_inertiaTensor             = AZ::Matrix3x3::CreateIdentity();
-        bool                            m_computeInertiaTensor      = false;
-        float                           m_linearDamping             = 0.05f;
-        float                           m_angularDamping            = 0.15f;
-        SleepType                       m_sleepType                 = SleepType::Energy;
-        float                           m_sleepMinEnergy            = 0.5f; 
-        ContinuousType                  m_continuousType            = ContinuousType::None;
+        float m_mass = DefaultRigidBodyConfiguration::m_mass;
+        AZ::Matrix3x3 m_inertiaTensor = AZ::Matrix3x3::CreateIdentity();
+        bool m_computeInertiaTensor = DefaultRigidBodyConfiguration::m_computeInertiaTensor;
+        float m_linearDamping = DefaultRigidBodyConfiguration::m_linearDamping;
+        float m_angularDamping = DefaultRigidBodyConfiguration::m_angularDamping;
+        float m_sleepMinEnergy = DefaultRigidBodyConfiguration::m_sleepMinEnergy;
+        bool m_startAsleep = false;
+        bool m_interpolateMotion = false;
+        bool m_gravityEnabled = true;
+        bool m_simulated = true;
+        bool m_kinematic = false;
+        bool m_ccdEnabled = false; ///< Whether continuous collision detection is enabled.
 
-    private:
-        RigidBodySettings()
-        {}
+        // Visibility settings.
+        AZ::u16 m_propertyVisibilityFlags = (std::numeric_limits<AZ::u16>::max)();
     };
 
-    /**
-     * 
-     */
-    class RigidBodyEventHandler : public ReferenceBase
-    {
-    public:
-
-        friend class RigidBody;
-
-        AZ_CLASS_ALLOCATOR(RigidBodyEventHandler, AZ::SystemAllocator, 0);
-
-        virtual ~RigidBodyEventHandler() = default;
-
-        virtual void OnWake(const Ptr<RigidBody>& rigidBody) = 0;
-        virtual void OnSleep(const Ptr<RigidBody>& rigidBody) = 0;
-
-    private:
-
-        Ptr<RigidBody> m_owningBody;
-    };
-
-    /**
-     * Helper routine for certain physics engines that don't directly expose this property on rigid bodies.
-     */
-    AZ_INLINE AZ::Matrix3x3 InverseInertiaLocalToWorld(const AZ::Vector3& diag, const AZ::Matrix3x3& rotationToWorld)
-    {
-        return rotationToWorld * AZ::Matrix3x3::CreateDiagonal(diag) * rotationToWorld.GetTranspose();
-    }
-
-    /**
-     * 
-     */
-    class RigidBody : public WorldBody
+    /// Dynamic rigid body.
+    class RigidBody
+        : public WorldBody
     {
     public:
 
         AZ_CLASS_ALLOCATOR(RigidBody, AZ::SystemAllocator, 0);
         AZ_RTTI(RigidBody, "{156E459F-7BB7-4B4E-ADA0-2130D96B7E80}", WorldBody);
 
-        friend class AZStd::intrusive_ptr<RigidBody>;
-
     public:
+        RigidBody() = default;
+        explicit RigidBody(const RigidBodyConfiguration& settings);
 
-        virtual Ptr<NativeShape> GetNativeShape() { return Ptr<NativeShape>(); }
+        virtual void AddShape(AZStd::shared_ptr<Shape> shape) = 0;
+        virtual void RemoveShape(AZStd::shared_ptr<Shape> shape) = 0;
+        virtual AZ::u32 GetShapeCount() { return 0; }
+        virtual AZStd::shared_ptr<Shape> GetShape(AZ::u32 /*index*/) { return nullptr; }
 
         virtual AZ::Vector3 GetCenterOfMassWorld() const = 0;
         virtual AZ::Vector3 GetCenterOfMassLocal() const = 0;
@@ -135,82 +131,54 @@ namespace Physics
         virtual AZ::Matrix3x3 GetInverseInertiaWorld() const = 0;
         virtual AZ::Matrix3x3 GetInverseInertiaLocal() const = 0;
 
-        virtual float GetEnergy() const = 0;
-
-        virtual MotionType GetMotionType() const = 0;
-        virtual void SetMotionType(MotionType motionType) = 0;
-
         virtual float GetMass() const = 0;
         virtual float GetInverseMass() const = 0;
-        virtual void SetMass(float mass) const = 0;
+        virtual void SetMass(float mass) = 0;
+        virtual void SetCenterOfMassOffset(const AZ::Vector3& comOffset) = 0;
 
         /// Retrieves the velocity at center of mass; only linear velocity, no rotational velocity contribution.
         virtual AZ::Vector3 GetLinearVelocity() const = 0;
-        virtual void SetLinearVelocity(AZ::Vector3 velocity) = 0;
-
+        virtual void SetLinearVelocity(const AZ::Vector3& velocity) = 0;
         virtual AZ::Vector3 GetAngularVelocity() const = 0;
-        virtual void SetAngularVelocity(AZ::Vector3 angularVelocity) = 0;
+        virtual void SetAngularVelocity(const AZ::Vector3& angularVelocity) = 0;
+        virtual AZ::Vector3 GetLinearVelocityAtWorldPoint(const AZ::Vector3& worldPoint) = 0;
+        virtual void ApplyLinearImpulse(const AZ::Vector3& impulse) = 0;
+        virtual void ApplyLinearImpulseAtWorldPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldPoint) = 0;
+        virtual void ApplyAngularImpulse(const AZ::Vector3& angularImpulse) = 0;
 
-        /// Get the world linear velocity of a world space point attached to this body
-        virtual AZ::Vector3 GetLinearVelocityAtWorldPoint(AZ::Vector3 worldPoint) = 0;
-
-        /// Applies an impulse to only the linear components of the rigid body
-        virtual void ApplyLinearImpulse(AZ::Vector3 impulse) = 0;
-
-        /// Applies an impulse at a point on the rigid body specified in world space
-        virtual void ApplyLinearImpulseAtWorldPoint(AZ::Vector3 impulse, AZ::Vector3 worldPoint) = 0;
-
-        virtual void ApplyAngularImpulse(AZ::Vector3 angularImpulse) = 0;
+        virtual float GetLinearDamping() const = 0;
+        virtual void SetLinearDamping(float damping) = 0;
+        virtual float GetAngularDamping() const = 0;
+        virtual void SetAngularDamping(float damping) = 0;
 
         virtual bool IsAwake() const = 0;
         virtual void ForceAsleep() = 0;
         virtual void ForceAwake() = 0;
+        virtual float GetSleepThreshold() const = 0;
+        virtual void SetSleepThreshold(float threshold) = 0;
 
-        virtual void RegisterEventHandler(const Ptr<RigidBodyEventHandler>& handler)
-        {
-            AZ_Assert(m_eventHandlers.end() == AZStd::find(m_eventHandlers.begin(), m_eventHandlers.end(), handler), "Event handler is already registered.");
+        virtual bool IsKinematic() const = 0;
+        virtual void SetKinematic(bool kinematic) = 0;
+        virtual void SetKinematicTarget(const AZ::Transform& targetPosition) = 0;
 
-            m_eventHandlers.push_back(handler.get());
-        }
+        virtual void SetGravityEnabled(bool enabled) = 0;
+        virtual void SetSimulationEnabled(bool enabled) = 0;
+        virtual void SetCCDEnabled(bool enabled) = 0;
 
-        virtual void UnregisterEventHandler(const Ptr<RigidBodyEventHandler>& handler)
-        {
-            auto iter = AZStd::find(m_eventHandlers.begin(), m_eventHandlers.end(), handler);
-            if (iter != m_eventHandlers.end())
-            {
-                m_eventHandlers.erase(iter);
-            }
-        }
-
-        const AZStd::vector<Ptr<RigidBodyEventHandler>>& GetRigidBodyEventHandlers() const
-        {
-            return m_eventHandlers;
-        }
-
-    protected:
-
-        RigidBody()
-            : WorldBody(RigidBodySettings::Create())
-        {
-        }
-
-        explicit RigidBody(const Ptr<RigidBodySettings>& settings)
-            : WorldBody(settings)
-        {
-            if (settings && settings->m_bodyShape)
-            {
-                m_shapeHierarchyMaterialMap = settings->m_bodyShape->m_shapeHierarchyMaterialMap;
-            }
-        }
-
-        ~RigidBody() override
-        {
-        }
-
-        AZStd::vector<Ptr<RigidBodyEventHandler>> m_eventHandlers;
-
-    private:
-        AZ_DISABLE_COPY_MOVE(RigidBody);
+        virtual void UpdateCenterOfMassAndInertia(bool computeCenterOfMass, const AZ::Vector3& centerOfMassOffset,
+            bool computeInertia, const AZ::Matrix3x3& inertiaTensor) = 0;
     };
-    
+
+    /// Static rigid body.
+    class RigidBodyStatic
+        : public WorldBody
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(RigidBodyStatic, AZ::SystemAllocator, 0);
+        AZ_RTTI(RigidBodyStatic, "{13A677BB-7085-4EDB-BCC8-306548238692}", WorldBody);
+
+        virtual void AddShape(const AZStd::shared_ptr<Shape>& shape) = 0;
+        virtual AZ::u32 GetShapeCount() { return 0; }
+        virtual AZStd::shared_ptr<Shape> GetShape(AZ::u32 /*index*/) { return nullptr; }
+    };
 } // namespace Physics

@@ -128,15 +128,15 @@ namespace EMStudio
         setLayout(layout);
 
         // connect controls to the slots
-        connect(mSelectNodesButton, SIGNAL(clicked()), this, SLOT(SelectNodesButtonPressed()));
-        connect(mAddNodesButton, SIGNAL(clicked()), this, SLOT(SelectNodesButtonPressed()));
-        connect(mRemoveNodesButton, SIGNAL(clicked()), this, SLOT(RemoveNodesButtonPressed()));
-        connect(mNodeTable, SIGNAL(itemSelectionChanged()), this, SLOT(OnItemSelectionChanged()));
+        connect(mSelectNodesButton, &QPushButton::clicked, this, &NodeGroupWidget::SelectNodesButtonPressed);
+        connect(mAddNodesButton, &QPushButton::clicked, this, &NodeGroupWidget::SelectNodesButtonPressed);
+        connect(mRemoveNodesButton, &QPushButton::clicked, this, &NodeGroupWidget::RemoveNodesButtonPressed);
+        connect(mNodeTable, &QTableWidget::itemSelectionChanged, this, &NodeGroupWidget::OnItemSelectionChanged);
         //connect( mEnabledOnDefaultCheckbox, SIGNAL(clicked()), this, SLOT(EnabledOnDefaultChanged()) );
         //connect( mNodeGroupNameEdit, SIGNAL(editingFinished()), this, SLOT(NodeGroupNameEditingFinished()) );
         //connect( mNodeGroupNameEdit, SIGNAL(textChanged(QString)), this, SLOT(NodeGroupNameEditChanged(QString)) );
-        connect(mNodeSelectionWindow->GetNodeHierarchyWidget(), SIGNAL(OnSelectionDone(MCore::Array<SelectionItem>)), this, SLOT(NodeSelectionFinished(MCore::Array<SelectionItem>)));
-        connect(mNodeSelectionWindow->GetNodeHierarchyWidget(), SIGNAL(OnDoubleClicked(MCore::Array<SelectionItem>)), this, SLOT(NodeSelectionFinished(MCore::Array<SelectionItem>)));
+        connect(mNodeSelectionWindow->GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnSelectionDone), this, &NodeGroupWidget::NodeSelectionFinished);
+        connect(mNodeSelectionWindow->GetNodeHierarchyWidget(), static_cast<void (NodeHierarchyWidget::*)(MCore::Array<SelectionItem>)>(&NodeHierarchyWidget::OnDoubleClicked), this, &NodeGroupWidget::NodeSelectionFinished);
     }
 
 

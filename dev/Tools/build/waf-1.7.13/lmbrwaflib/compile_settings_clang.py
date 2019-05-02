@@ -95,6 +95,10 @@ def load_clang_common_settings(conf):
         '-Wno-unused-variable',
         '-Wno-non-pod-varargs',
         '-Wno-unused-lambda-capture',
+
+        # Workaround for compiler seeing file case differently from what OS show in console.
+        '-Wno-nonportable-include-path',
+
         # Other
         '-ffast-math',
         '-fvisibility=hidden',

@@ -10,21 +10,36 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+#import <AppKit/NSEvent.h>
+
 #include "StdAfx.h"
 
 #include "QtEditorApplication.h"
 
 #include <AzFramework/Input/Buses/Notifications/RawInputNotificationBus_darwin.h>
 
+#include <QCursor>
+
 namespace Editor
 {
     bool EditorQtApplication::nativeEventFilter(const QByteArray& eventType, void* message, long* result)
     {
+        NSEvent* event = (NSEvent*)message;
         if (GetIEditor()->IsInGameMode())
         {
-            NSEvent* event = (NSEvent*)message;
             EBUS_EVENT(AzFramework::RawInputNotificationBusOsx, OnRawInputEvent, event);
             return true;
+        }
+
+        if ([event type] == NSEventTypeMouseEntered)
+        {
+            // filter out mouse enter events when the widget the mouse entered into
+            // does not exist anymore. This happened occasionally on startup when hovering
+            // over the splash screen - LY-84100
+            if (widgetAt(QCursor::pos()) == nullptr)
+            {
+                return true;
+            }
         }
 
         return false;

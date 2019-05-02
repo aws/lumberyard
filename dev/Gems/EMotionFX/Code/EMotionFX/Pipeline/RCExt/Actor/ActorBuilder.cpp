@@ -1,3 +1,4 @@
+
 /*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
@@ -29,11 +30,13 @@
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IBlendShapeRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
+#include <SceneAPI/SceneCore/Events/GraphMetaInfoBus.h>
 #include <SceneAPI/SceneData/Rules/TangentsRule.h>
 
 #include <SceneAPIExt/Rules/MorphTargetRule.h>
 #include <SceneAPIExt/Rules/IMeshRule.h>
 #include <SceneAPIExt/Rules/ISkinRule.h>
+#include <SceneAPIExt/Rules/LodRule.h>
 #include <SceneAPIExt/Rules/IActorScaleRule.h>
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
 #include <SceneAPIExt/Groups/ActorGroup.h>
@@ -73,13 +76,12 @@ namespace EMotionFX
         namespace SceneViews = AZ::SceneAPI::Containers::Views;
         namespace SceneDataTypes = AZ::SceneAPI::DataTypes;
 
-
         AZ_FORCE_INLINE EMotionFX::Transform AzTransformToEmfxTransformConverted(const AZ::Transform& azTransform, const CoordinateSystemConverter& coordSysConverter)
         {
             return EMotionFX::Transform(
                 coordSysConverter.ConvertVector3(azTransform.GetTranslation()),
                 MCore::AzQuatToEmfxQuat(coordSysConverter.ConvertQuaternion(AZ::Quaternion::CreateFromTransform(azTransform))),
-                coordSysConverter.ConvertScale(azTransform.RetrieveScale()));
+                coordSysConverter.ConvertScale(azTransform.RetrieveScaleExact()));
         }
 
 
@@ -157,6 +159,7 @@ namespace EMotionFX
             const Group::IActorGroup& actorGroup = context.m_group;
             const char* rootBoneName = actorGroup.GetSelectedRootBone().c_str();
             AZ_TraceContext("Root bone", rootBoneName);
+
             SceneContainers::SceneGraph::NodeIndex rootBoneNodeIndex = graph.Find(rootBoneName);
             if (!rootBoneNodeIndex.IsValid())
             {
@@ -189,7 +192,7 @@ namespace EMotionFX
             // Collect the node indices that emfx cares about and construct the boneNameEmfxIndex map for quick search.
             AZStd::vector<SceneContainers::SceneGraph::NodeIndex> nodeIndices;
             BoneNameEmfxIndexMap boneNameEmfxIndexMap;
-            BuildPreExportStructure(graph, rootBoneNodeIndex, selectedMeshNodeIndices, nodeIndices, boneNameEmfxIndexMap);
+            BuildPreExportStructure(context, rootBoneNodeIndex, selectedMeshNodeIndices, nodeIndices, boneNameEmfxIndexMap);
 
             EMotionFX::Actor* actor = context.m_actor;
             EMotionFX::Skeleton* actorSkeleton = actor->GetSkeleton();
@@ -212,7 +215,8 @@ namespace EMotionFX
             for (AZ::u32 emfxNodeIndex = 0; emfxNodeIndex < exfxNodeCount; ++emfxNodeIndex)
             {
                 const SceneContainers::SceneGraph::NodeIndex& nodeIndex = nodeIndices[emfxNodeIndex];
-                const char* nodeName = graph.GetNodeName(nodeIndex).GetName();
+                const SceneContainers::SceneGraph::Name& graphNodeName = graph.GetNodeName(nodeIndex);
+                const char* nodeName = graphNodeName.GetName();
                 EMotionFX::Node* emfxNode = EMotionFX::Node::Create(nodeName, actorSkeleton);
 
                 emfxNode->SetNodeIndex(emfxNodeIndex);
@@ -263,10 +267,39 @@ namespace EMotionFX
                         outTransform = AzTransformToEmfxTransformConverted(transformData->GetMatrix(), coordSysConverter);
                     }
                 }
-                bindPose->SetLocalTransform(emfxNodeIndex, outTransform);
+                bindPose->SetLocalSpaceTransform(emfxNodeIndex, outTransform);
             }
+
+            // Add LOD Level to actor.
+            const AZ::SceneAPI::Containers::RuleContainer& rules = actorGroup.GetRuleContainerConst();
+            AZStd::shared_ptr<Rule::LodRule> lodRule = rules.FindFirstByType<Rule::LodRule>();
+            if (lodRule)
+            {
+                // LOD rules contain rules that starts from 1. The number of lod level in actor start from 0.
+                const AZ::u32 lodRuleCount = static_cast<AZ::u32>(lodRule->GetLodRuleCount());
+                const AZ::u32 lodLevelCount = lodRuleCount + 1;
+                while (actor->GetNumLODLevels() < lodLevelCount)
+                {
+                    actor->AddLODLevel();
+                }
+
+                // Set up the LOD mask for bones.
+                for (AZ::u32 emfxNodeIndex = 0; emfxNodeIndex < exfxNodeCount; ++emfxNodeIndex)
+                {
+                    EMotionFX::Node* emfxNode = actorSkeleton->GetNode(emfxNodeIndex);
+                    const char* emfxNodeName = emfxNode->GetName();
+                    for (AZ::u32 ruleIndex = 0; ruleIndex < lodRuleCount; ++ruleIndex)
+                    {
+                        const bool containSkeleton = lodRule->ContainsNodeByRuleIndex(emfxNodeName, ruleIndex);
+                        // lod Rule 0 contains information about LOD 1, so we pass in index + 1 to emfx node.
+                        emfxNode->SetSkeletalLODStatus(ruleIndex + 1, containSkeleton);
+                    }
+                }
+            }
+
+            // Process meshs
             SceneEvents::ProcessingResultCombiner result;
-            if (actorSettings.m_loadMeshes && !selectedMeshNodeIndices.empty())
+            if (actorSettings.m_loadMeshes)
             {
                 GetMaterialInfoForActorGroup(context);
                 if (m_materialGroup)
@@ -283,20 +316,62 @@ namespace EMotionFX
                     AZ_Assert(materialCount == actor->GetNumMaterials(0), "Didn't add the desired number of materials to the actor");
                 }
 
-                AZStd::vector<AZ::u32> meshIndices;
+                // Process meshes
                 for (auto& nodeIndex : selectedMeshNodeIndices)
                 {
                     AZStd::shared_ptr<const SceneDataTypes::IMeshData> nodeMesh = azrtti_cast<const SceneDataTypes::IMeshData*>(graph.GetNodeContent(nodeIndex));
                     AZ_Assert(nodeMesh, "Node is expected to be a mesh, but isn't.");
                     if (nodeMesh)
                     {
+                        // Rename the mesh node in emfx without the postfix _lodx.
+                        if (actorSkeletonLookup.find(nodeIndex.AsNumber()) == actorSkeletonLookup.end())
+                        {
+                            AZ_Warning(SceneUtil::WarningWindow, false, "Mesh %s does not belong under the root bone %s, skip building this mesh", graph.GetNodeName(nodeIndex).GetName(), rootBoneName);
+                            continue;
+                        }
                         EMotionFX::Node* emfxNode = actorSkeletonLookup[nodeIndex.AsNumber()];
-                        BuildMesh(context, emfxNode, nodeMesh, nodeIndex, boneNameEmfxIndexMap, actorSettings, coordSysConverter);
-                        meshIndices.push_back(nodeIndex.AsNumber());
+                        AZStd::string_view nodeName = RemoveLODSuffix(emfxNode->GetName());
+                        emfxNode->SetName(nodeName.to_string().c_str());
+                        BuildMesh(context, emfxNode, nodeMesh, nodeIndex, boneNameEmfxIndexMap, actorSettings, coordSysConverter, 0);
                     }
                 }
-                //Process Morph Targets
+
+                // Process meshes for each lod.
+                for (size_t ruleIndex = 0; lodRule && ruleIndex < lodRule->GetLodRuleCount(); ++ruleIndex)
                 {
+                    SceneData::SceneNodeSelectionList& lodNodeList = lodRule->GetSceneNodeSelectionList(ruleIndex);
+                    for (size_t i = 0, count = lodNodeList.GetSelectedNodeCount(); i < count; ++i)
+                    {
+                        const AZStd::string& nodePath = lodNodeList.GetSelectedNode(i);
+                        SceneContainers::SceneGraph::NodeIndex nodeIndex = graph.Find(nodePath);
+                        AZ_Assert(nodeIndex.IsValid(), "Invalid scene graph node index");
+                        if (nodeIndex.IsValid())
+                        {
+                            AZStd::shared_ptr<const SceneDataTypes::IMeshData> meshData =
+                                azrtti_cast<const SceneDataTypes::IMeshData*>(graph.GetNodeContent(nodeIndex));
+                            if (meshData)
+                            {
+                                // Find the Lod mesh node in emfx
+                                AZStd::string_view nodeName = RemoveLODSuffix(graph.GetNodeName(nodeIndex).GetName());
+                                EMotionFX::Node* emfxNode = actorSkeleton->FindNodeByName(nodeName.to_string().c_str());
+                                if (!emfxNode)
+                                {
+                                    AZ_Assert(false, "Tried to find the lod mesh %s in the actor hierarchy but didn't find any match.", nodeName.to_string().c_str());
+                                    continue;
+                                }
+                                BuildMesh(context, emfxNode, meshData, nodeIndex, boneNameEmfxIndexMap, actorSettings, coordSysConverter, ruleIndex + 1);
+                            }
+                        }
+                    }
+                }
+
+                // Process Morph Targets
+                {
+                    AZStd::vector< AZ::u32>  meshIndices;
+                    for (auto& nodeIndex : selectedMeshNodeIndices)
+                    {
+                        meshIndices.push_back(nodeIndex.AsNumber());
+                    }
                     ActorMorphBuilderContext actorMorphBuilderContext(context.m_scene, actorSettings.m_optimizeTriangleList, &meshIndices, context.m_group, context.m_actor, coordSysConverter, AZ::RC::Phase::Construction);
                     result += SceneEvents::Process(actorMorphBuilderContext);
                     result += SceneEvents::Process<ActorMorphBuilderContext>(actorMorphBuilderContext, AZ::RC::Phase::Filling);
@@ -327,10 +402,12 @@ namespace EMotionFX
             return AZ::SceneAPI::Events::ProcessingResult::Failure;
         }
 
-
-        void ActorBuilder::BuildPreExportStructure(const SceneContainers::SceneGraph& graph, const SceneContainers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
+        void ActorBuilder::BuildPreExportStructure(ActorBuilderContext& context, const SceneContainers::SceneGraph::NodeIndex& rootBoneNodeIndex, const NodeIndexSet& selectedMeshNodeIndices,
             AZStd::vector<SceneContainers::SceneGraph::NodeIndex>& outNodeIndices, BoneNameEmfxIndexMap& outBoneNameEmfxIndexMap)
         {
+            const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
+            const Group::IActorGroup& group = context.m_group;
+
             auto nameStorage = graph.GetNameStorage();
             auto contentStorage = graph.GetContentStorage();
             auto nameContentView = SceneViews::MakePairView(nameStorage, contentStorage);
@@ -378,18 +455,15 @@ namespace EMotionFX
                 outNodeIndices.push_back(nodeIndex);
             }
 
-            // We then search from the graph root to find all the meshes that we selected.
-            auto graphDownwardsView = SceneViews::MakeSceneGraphDownwardsView<SceneViews::BreadthFirst>(graph, graph.GetRoot(), nameContentView.begin(), true);
-            for (auto it = graphDownwardsView.begin(); it != graphDownwardsView.end(); ++it)
-            {
-                const SceneContainers::SceneGraph::NodeIndex& nodeIndex = graph.ConvertToNodeIndex(it.GetHierarchyIterator());
-                if (!it->second)
-                {
-                    continue;
-                }
 
+            // We then search from the graph root to find all the meshes that we selected.
+            auto current = graph.ConvertToStorageIterator(rootBoneNodeIndex);
+            auto meshView = SceneContainers::Views::MakeFilterView(current, graph.GetContentStorage().end(), AZ::SceneAPI::Containers::DerivedTypeFilter<AZ::SceneAPI::DataTypes::IMeshData>());
+            for (auto it = meshView.begin(); it != meshView.end(); ++it)
+            {
                 // If the node is a mesh and it is one of the selected ones, add it.
-                auto mesh = azrtti_cast<const SceneDataTypes::IMeshData*>(it->second);
+                auto mesh = azrtti_cast<const SceneDataTypes::IMeshData*>(*it);
+                const SceneContainers::SceneGraph::NodeIndex& nodeIndex = graph.ConvertToNodeIndex(it.GetBaseIterator());
                 if (mesh && (selectedMeshNodeIndices.find(nodeIndex) != selectedMeshNodeIndices.end()))
                 {
                     outNodeIndices.push_back(nodeIndex);
@@ -411,7 +485,8 @@ namespace EMotionFX
         // The newly added method IMeshData::GetUsedPointIndexForControlPoint(...) provides unique 0 based contiguous indices to the control points actually used in MeshData.
         //
         void ActorBuilder::BuildMesh(const ActorBuilderContext& context, EMotionFX::Node* emfxNode, AZStd::shared_ptr<const SceneDataTypes::IMeshData> meshData,
-            const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex, const BoneNameEmfxIndexMap& boneNameEmfxIndexMap, const ActorSettings& settings, const CoordinateSystemConverter& coordSysConverter)
+            const SceneContainers::SceneGraph::NodeIndex& meshNodeIndex, const BoneNameEmfxIndexMap& boneNameEmfxIndexMap, const ActorSettings& settings,
+            const CoordinateSystemConverter& coordSysConverter, AZ::u8 lodLevel)
         {
             SetupMaterialDataForMesh(context, meshNodeIndex);
 
@@ -656,7 +731,7 @@ namespace EMotionFX
                     AZ_Error("EMotionFX", "Failed to generate tangents for node '%s'.", emfxNode->GetName());
                 }
             }
-            actor->SetMesh(0, emfxNode->GetNodeIndex(), emfxMesh);
+            actor->SetMesh(lodLevel, emfxNode->GetNodeIndex(), emfxMesh);
 
             if (!skinningInfo && settings.m_loadSkinningInfo)
             {
@@ -790,27 +865,41 @@ namespace EMotionFX
 
             AZStd::string materialPath = context.m_scene.GetSourceFilename();
             AzFramework::StringFunc::Path::ReplaceExtension(materialPath, AZ::GFxFramework::MaterialExport::g_mtlExtension);
-            AZ_TraceContext("Material File", materialPath.c_str());
 
             m_materialGroup = AZStd::make_shared<AZ::GFxFramework::MaterialGroup>();
             bool fileRead = m_materialGroup->ReadMtlFile(materialPath.c_str());
-            if (!fileRead)
+            // INTENSITY_START - rhhong - 2018-10-16 - [JIRA:LY-88483] Asset's Materials Do Not Visually Load Immediately - Need to Export Twice
+            if (fileRead)
             {
-                // Otherwise, if the user has never modified the material, it should've been generated by the material exporter
-                // and live in the output directory.
-                const AZStd::string filePath =
-                    SceneUtil::FileUtilities::CreateOutputFileName(context.m_group.GetName(),
-                        context.m_outputDirectory, AZ::GFxFramework::MaterialExport::g_mtlExtension);
-
-                fileRead = m_materialGroup->ReadMtlFile(filePath.c_str());
-                if (!fileRead)
-                {
-                    AZ_TracePrintf(SceneUtil::WarningWindow, "Material file could not be loaded.\n");
-                    m_materialGroup = nullptr;
-                    return false;
-                }
+                AZ_TracePrintf(SceneUtil::LogWindow, "Actor builder uses user material %s.\n", materialPath.c_str());
+                return true;
             }
-            return fileRead;
+
+            // If user material doesn't exist, use the source material.
+            materialPath = SceneUtil::FileUtilities::CreateOutputFileName(context.m_group.GetName(),
+                    context.m_outputDirectory, AZ::GFxFramework::MaterialExport::g_mtlExtension);
+            fileRead = m_materialGroup->ReadMtlFile(materialPath.c_str());
+            if (fileRead)
+            {
+                AZ_TracePrintf(SceneUtil::LogWindow, "Actor builder uses source material %s.\n", materialPath.c_str());
+                return true;
+            }
+
+            // If source material doesn't exist, use the cached dcc material.
+            materialPath = SceneUtil::FileUtilities::CreateOutputFileName(context.m_group.GetName(),
+                    context.m_outputDirectory, AZ::GFxFramework::MaterialExport::g_dccMaterialExtension);
+            fileRead = m_materialGroup->ReadMtlFile(materialPath.c_str());
+            if (fileRead)
+            {
+                AZ_TracePrintf(SceneUtil::LogWindow, "Actor builder uses cached dcc material %s.\n", materialPath.c_str());
+                return true;
+            }
+
+            // If user material, source material and dcc material all doesn't exist, we can still build the actor, but its mtl indices probably not match the mtl file.
+            AZ_TracePrintf(SceneUtil::WarningWindow, "Actor builder can't find any material to get the correct actor indices.\n", materialPath.c_str());
+            m_materialGroup = nullptr;
+            return false;
+            // INTENSITY_END
         }
 
 
@@ -849,11 +938,13 @@ namespace EMotionFX
         {
             meshNodeIndexSet.clear();
 
+            // When we prebuild the selected mesh node indices, we only care about the base meshes because we will later add the LOD mesh to the base mesh.
             const SceneContainers::SceneGraph& graph = context.m_scene.GetGraph();
-            const SceneDataTypes::ISceneNodeSelectionList& nodeSelectionList = context.m_group.GetSceneNodeSelectionList();
-            for (size_t i = 0, count = nodeSelectionList.GetSelectedNodeCount(); i < count; ++i)
+            const SceneDataTypes::ISceneNodeSelectionList& baseNodeSelectionList = context.m_group.GetBaseNodeSelectionList();
+            const size_t count = baseNodeSelectionList.GetSelectedNodeCount();
+            for (size_t i = 0; i < count; ++i)
             {
-                const AZStd::string& nodePath = nodeSelectionList.GetSelectedNode(i);
+                const AZStd::string& nodePath = baseNodeSelectionList.GetSelectedNode(i);
                 SceneContainers::SceneGraph::NodeIndex nodeIndex = graph.Find(nodePath);
                 AZ_Assert(nodeIndex.IsValid(), "Invalid scene graph node index");
                 if (nodeIndex.IsValid())
@@ -865,6 +956,17 @@ namespace EMotionFX
                     }
                 }
             }
+        }
+
+        AZStd::string_view ActorBuilder::RemoveLODSuffix(const AZStd::string_view& lodName)
+        {
+            AZStd::string_view result = lodName;
+            const size_t pos = AzFramework::StringFunc::Find(result.to_string().c_str(), "_lod");
+            if (pos != AZStd::string::npos)
+            {
+                result.remove_suffix(result.length() - pos);
+            }
+            return result;
         }
     } // namespace Pipeline
 } // namespace EMotionFX

@@ -15,6 +15,7 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Network/NetBindingSystemImpl.h>
 #include <AzFramework/Network/NetBindable.h>
+#include <AzFramework/Network/NetBindingSystemComponent.h>
 
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Memory/AllocationRecords.h>
@@ -70,6 +71,8 @@ namespace UnitTest
         AZStd::unique_ptr<MockGameEntityContext> m_gameEntityMock;
         AZStd::unique_ptr<MockReplicaManager> m_replicaManagerMock;
         ReplicaPtr m_replicaMock;
+
+        ComponentDescriptor* m_netBindingSystemComponentDescriptor = nullptr;
 
         AZStd::intrusive_ptr<MockNetBindingSystemContextData> m_contextChunkMock;
 
@@ -127,6 +130,8 @@ namespace UnitTest
             ON_CALL(*m_gameEntityMock, GetGameEntityContextId())
                 .WillByDefault(Return(EntityContextId::CreateRandom()));
 
+            m_netBindingSystemComponentDescriptor = NetBindingSystemComponent::CreateDescriptor();
+
             ReplicaChunkDescriptorTable::Get().RegisterChunkType<MockNetBindingSystemContextData>();
             m_contextChunkMock.reset(CreateReplicaChunk<NiceMock<MockNetBindingSystemContextData>>());
 
@@ -174,6 +179,8 @@ namespace UnitTest
             m_netBindingImpl.reset();
 
             ReplicaChunkDescriptorTable::Get().UnregisterReplicaChunkDescriptor(ReplicaChunkClassId(MockNetBindingSystemContextData::GetChunkName()));
+
+            m_netBindingSystemComponentDescriptor->ReleaseDescriptor();
 
             m_componentApplication.reset();
             m_gameEntityMock.reset();

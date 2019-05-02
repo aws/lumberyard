@@ -4409,7 +4409,7 @@ void TranslateInstruction(HLSLCrossCompilerContext* psContext, Instruction* psIn
         AddIndentation(psContext);
 
         bcatcstr(glsl, "case ");
-        TranslateOperand(psContext, &psInst->asOperands[0], TO_FLAG_NONE);
+        TranslateOperand(psContext, &psInst->asOperands[0], TO_FLAG_INTEGER);
         bcatcstr(glsl, ":\n");
 
         ++psContext->indent;

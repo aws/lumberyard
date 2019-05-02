@@ -7,8 +7,9 @@
             "base.cpp",
             "Docs.h",
             "PlatformDef.h",
-            "PlatformRestrictedFileDef.h",
-            "PlatformIncl.h"
+            "PlatformIncl.h",
+            "AzCoreModule.h",
+            "AzCoreModule.cpp"
         ],
         "Asset":
         [
@@ -43,6 +44,7 @@
             "Component/ComponentApplicationBus.h",
             "Component/ComponentBus.cpp",
             "Component/ComponentBus.h",
+            "Component/ComponentExport.h",
             "Component/Entity.cpp",
             "Component/Entity.h",
             "Component/EntityBus.h",
@@ -205,8 +207,7 @@
             "Jobs/MultipleDependentJob.h",
             "Jobs/task_group.h"
         ],
-        "Math":
-        [
+        "Math": [
             "Math/Aabb.cpp",
             "Math/Aabb.h",
             "Math/Crc.cpp",
@@ -275,7 +276,9 @@
             "Math/PackedVector3.h",
             "Math/Color.h",
             "Math/VectorFloat.cpp",
-            "Math/VectorFloat.h"
+            "Math/VectorFloat.h",
+            "Math/ToString.h",
+            "Math/ToString.cpp"
         ],
         "Memory":
         [

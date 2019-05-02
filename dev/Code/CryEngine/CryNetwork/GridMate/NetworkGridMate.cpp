@@ -39,7 +39,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION NETWORKGRIDMATE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(NetworkGridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/NetworkGridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/NetworkGridMate_cpp_provo.inl"
+    #endif
 #endif
 
 namespace GridMate
@@ -605,7 +609,11 @@ namespace GridMate
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION NETWORKGRIDMATE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(NetworkGridMate_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/NetworkGridMate_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/NetworkGridMate_cpp_provo.inl"
+    #endif
 #endif
     }
 

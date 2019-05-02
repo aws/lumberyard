@@ -69,6 +69,11 @@ namespace AzQtComponents
         /*!
         * Used to get a global color value by name.
         * Deprecated; do not use.
+        * This was implemented to support skinning of the Editor,
+        * but that functionality is no longer supported. If you
+        * want to load a color instead of hard coding it, please
+        * embed the color into a stylesheet instead of using
+        * GetColorByName.
         */
         const QColor& GetColorByName(const QString& name);
 

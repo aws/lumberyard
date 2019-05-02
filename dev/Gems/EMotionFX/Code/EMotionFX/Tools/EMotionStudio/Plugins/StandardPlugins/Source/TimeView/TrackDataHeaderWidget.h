@@ -57,7 +57,6 @@ namespace EMStudio
         void dragMoveEvent(QDragMoveEvent* event) override;
         void keyPressEvent(QKeyEvent* event) override;
         void keyReleaseEvent(QKeyEvent* event) override;
-        void contextMenuEvent(QContextMenuEvent* event) override;
 
     private:
         QBrush              mBrushBackgroundOutOfRange;

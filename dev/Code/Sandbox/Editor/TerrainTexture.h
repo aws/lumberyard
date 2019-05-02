@@ -18,14 +18,22 @@
 #include <QDialog>
 #include <QAtomicInteger>
 #include <QAbstractTableModel>
+#include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
+#include <IEditor.h>
 
 #include "IDataBaseManager.h"
 
 // forward declarations.
 class CLayer;
 
-namespace Ui {
+namespace Ui 
+{
     class TerrainTextureDialog;
+}
+
+namespace Physics
+{
+    class MaterialSelection;
 }
 
 class QItemSelection;
@@ -57,6 +65,7 @@ class CTerrainTextureDialog
     : public QDialog
     , public IEditorNotifyListener
     , public IDataBaseManagerListener
+    , private AzToolsFramework::IPropertyEditorNotify
 {
     Q_OBJECT
 
@@ -128,9 +137,17 @@ protected:
     void OnReportSelChange(const QItemSelection& selected, const QItemSelection& deselected);
     void OnReportHyperlink(CLayer* layer);
 
+    void BeforePropertyModified(AzToolsFramework::InstanceDataNode* /*node*/) override;
+    void AfterPropertyModified(AzToolsFramework::InstanceDataNode* /*node*/) override;
+    void SetPropertyEditingActive(AzToolsFramework::InstanceDataNode* /*node*/) override;
+    void SetPropertyEditingComplete(AzToolsFramework::InstanceDataNode* /*node*/) override;
+    void SealUndoStack() override;
+
 private:
 
     QScopedPointer<Ui::TerrainTextureDialog> m_ui;
+    AzToolsFramework::ReflectedPropertyEditor* m_propertyEditor;
+    AZStd::unique_ptr<Physics::MaterialSelection> m_selection;
 
     bool m_alive = 1;
 

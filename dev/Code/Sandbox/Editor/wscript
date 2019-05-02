@@ -178,8 +178,8 @@ def build(bld):
         test_all_file_list  = ['editor_lib_test.waf_files'],
     )
     
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['win_file_list'].append('{0}/editor_lib_{0}.waf_files'.format(p))
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['win_file_list'].append('{0}/editor_lib_{1}.waf_files'.format(p0, p1))
 
     bld.CryEditorLib(**kw)
 
@@ -293,4 +293,3 @@ def build(bld):
     if tsk_gen != None:
         # Copy Resource.h for Ribbon UI
         tsk_gen.create_task('copy_outputs', tsk_gen.path.make_node('Resource.h'), bld.srcnode.make_node('Editor/UI/Resource.h') )
-

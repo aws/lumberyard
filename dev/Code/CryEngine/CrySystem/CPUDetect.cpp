@@ -133,7 +133,11 @@ bool IsAMD()
     #define AZ_SUPPORTS_AMD
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CPUDETECT_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(CPUDetect_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CPUDetect_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CPUDetect_cpp_provo.inl"
+    #endif
 #endif
 
 #if defined(AZ_SUPPORTS_AMD)
@@ -1514,7 +1518,11 @@ void CCpuFeatures::Detect(void)
 
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CPUDETECT_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(CPUDetect_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CPUDetect_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CPUDetect_cpp_provo.inl"
+    #endif
 #endif
 
 

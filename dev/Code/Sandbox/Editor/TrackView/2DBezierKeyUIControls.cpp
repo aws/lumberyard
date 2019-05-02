@@ -14,7 +14,6 @@
 #include "StdAfx.h"
 #include "TrackViewKeyPropertiesDlg.h"
 #include "TrackViewTrack.h"
-#include "TrackViewUndo.h"
 
 #include "Controls/ReflectedPropertyControl/ReflectedPropertyItem.h"
 #include <Maestro/Types/SequenceType.h>
@@ -135,12 +134,7 @@ void C2DBezierKeyUIControls::OnUIChange(IVariable* pVar, CTrackViewKeyBundle& se
             bool isDuringUndo = false;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
 
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                CUndo::Record(new CUndoTrackObject(keyHandle.GetTrack()));
-                keyHandle.SetKey(&bezierKey);
-            }
-            else if (isDuringUndo)
+            if (isDuringUndo)
             {
                 keyHandle.SetKey(&bezierKey);
             }

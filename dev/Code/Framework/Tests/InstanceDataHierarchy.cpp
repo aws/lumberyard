@@ -17,7 +17,13 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/containers/stack.h>
 #include <AzCore/std/containers/map.h>
+#include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/set.h>
+#include <AzCore/std/containers/unordered_set.h>
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <AzCore/Serialization/ObjectStream.h>
+#include <AzCore/Serialization/Utils.h>
 
 using namespace AZ;
 using namespace AZ::IO;
@@ -94,8 +100,6 @@ namespace UnitTest
                     ->Field("NormalContainer", &TestComponent::m_normalContainer)
                     ->Field("PointerContainer", &TestComponent::m_pointerContainer)
                     ->Field("SubData", &TestComponent::m_subData)
-                    ->Field("MapNormalContainer", &TestComponent::m_mapNormalContainer)
-                    ->Field("NestedMapNormalContainer", &TestComponent::m_nestedMapNormalContainer)
                     ;
 
                 if (AZ::EditContext* edit = serializeContext->GetEditContext())
@@ -103,11 +107,9 @@ namespace UnitTest
                     edit->Class<TestComponent>("Test Component", "A test component")
                         ->DataElement(0, &TestComponent::m_float, "Float Field", "A float field")
                         ->DataElement(0, &TestComponent::m_string, "String Field", "A string field")
-                        ->DataElement(0, &TestComponent::m_normalContainer, "Normal Container", "A container of data")
-                        ->DataElement(0, &TestComponent::m_pointerContainer, "Pointer Container", "A container of pointers to data")
+                        ->DataElement(0, &TestComponent::m_normalContainer, "Normal Container", "A container")
+                        ->DataElement(0, &TestComponent::m_pointerContainer, "Pointer Container", "A container")
                         ->DataElement(0, &TestComponent::m_subData, "Struct Field", "A sub data type")
-                        ->DataElement(0, &TestComponent::m_mapNormalContainer, "Map Normal Container", "An associative container of integers to data")
-                        ->DataElement(0, &TestComponent::m_nestedMapNormalContainer, "Nested Map Normal Container", "A nested associative container of integers to associative containers of integers to data")
                         ;
 
                     edit->Class<SubData>("Test Component", "A test component")
@@ -132,10 +134,6 @@ namespace UnitTest
         AZStd::vector<SubData*> m_pointerContainer;
 
         SubData m_subData;
-
-        AZStd::map<int, SubData> m_mapNormalContainer;
-
-        AZStd::map<int, AZStd::map<int, SubData>> m_nestedMapNormalContainer;
 
         size_t m_serializeOnReadBegin = 0;
         size_t m_serializeOnReadEnd = 0;
@@ -166,7 +164,6 @@ namespace UnitTest
         void run()
         {
             using namespace AzToolsFramework;
-            using SubData = TestComponent::SubData;
 
             AZ::SerializeContext serializeContext;
             serializeContext.CreateEditContext();
@@ -176,43 +173,38 @@ namespace UnitTest
             // Test building of hierarchies, and copying of data from testEntity1 to testEntity2->
             {
                 AZStd::unique_ptr<AZ::Entity> testEntity1(new AZ::Entity());
-                auto* testComponent1 = testEntity1->CreateComponent<TestComponent>();
+                testEntity1->CreateComponent<TestComponent>();
                 AZStd::unique_ptr<AZ::Entity> testEntity2(serializeContext.CloneObject(testEntity1.get()));
-                auto* testComponent2 = testEntity2->FindComponent<TestComponent>();
 
-                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadBegin == 1);
-                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadEnd == 1);
-                AZ_TEST_ASSERT(testComponent2->m_serializeOnWriteBegin == 1);
-                AZ_TEST_ASSERT(testComponent2->m_serializeOnWriteEnd == 1);
+                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadBegin == 1);
+                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadEnd == 1);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnWriteBegin == 1);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnWriteEnd == 1);
 
-                testComponent1->m_float = 1.f;
-                testComponent1->m_normalContainer.push_back(SubData(1));
-                testComponent1->m_normalContainer.push_back(SubData(2));
-                testComponent1->m_pointerContainer.push_back(aznew SubData(1));
-                testComponent1->m_pointerContainer.push_back(aznew SubData(2));
-                testComponent1->m_mapNormalContainer.insert(AZStd::make_pair(1, SubData(1)));
-                testComponent1->m_mapNormalContainer.insert(AZStd::make_pair(2, SubData(2)));
-                testComponent1->m_nestedMapNormalContainer.insert(AZStd::make_pair(1, testComponent1->m_mapNormalContainer));
-                testComponent1->m_nestedMapNormalContainer.insert(AZStd::make_pair(2, testComponent1->m_mapNormalContainer));
+                testEntity1->FindComponent<TestComponent>()->m_float = 1.f;
+                testEntity1->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(1));
+                testEntity1->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(2));
+                testEntity1->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
+                testEntity1->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(2));
 
                 // First entity has more entries, so we'll be adding elements to testEntity2->
-                testComponent2->m_float = 2.f;
-                testComponent2->m_normalContainer.push_back(SubData(1));
-                testComponent2->m_pointerContainer.push_back(aznew SubData(1));
+                testEntity2->FindComponent<TestComponent>()->m_float = 2.f;
+                testEntity2->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(1));
+                testEntity2->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
 
                 InstanceDataHierarchy idh1;
                 idh1.AddRootInstance(testEntity1.get());
                 idh1.Build(&serializeContext, 0);
 
-                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadBegin == 2);
-                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadEnd == 2);
+                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadBegin == 2);
+                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadEnd == 2);
 
                 InstanceDataHierarchy idh2;
                 idh2.AddRootInstance(testEntity2.get());
                 idh2.Build(&serializeContext, 0);
 
-                AZ_TEST_ASSERT(testComponent2->m_serializeOnReadBegin == 1);
-                AZ_TEST_ASSERT(testComponent2->m_serializeOnReadEnd == 1);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnReadBegin == 1);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnReadEnd == 1);
 
                 // Verify IDH structure.
                 InstanceDataNode* root1 = idh1.GetRootNode();
@@ -259,36 +251,33 @@ namespace UnitTest
                 bool result = InstanceDataHierarchy::CopyInstanceData(componentNode1, foundIn2, &serializeContext);
                 AZ_TEST_ASSERT(result);
 
-                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadBegin == 2);
-                AZ_TEST_ASSERT(testComponent1->m_serializeOnReadEnd == 2);
-                AZ_TEST_ASSERT(testComponent2->m_serializeOnWriteBegin == 2);
-                AZ_TEST_ASSERT(testComponent2->m_serializeOnWriteEnd == 2);
+                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadBegin == 2);
+                AZ_TEST_ASSERT(testEntity1->FindComponent<TestComponent>()->m_serializeOnReadEnd == 2);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnWriteBegin == 2);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_serializeOnWriteEnd == 2);
 
-                AZ_TEST_ASSERT(testComponent2->m_normalContainer.size() == 2);
-                AZ_TEST_ASSERT(testComponent2->m_pointerContainer.size() == 2);
-                AZ_TEST_ASSERT(testComponent2->m_float == 1.f);
-                AZ_TEST_ASSERT(testComponent2->m_mapNormalContainer.size() == 2);
-                AZ_TEST_ASSERT(testComponent2->m_nestedMapNormalContainer.size() == 2);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_normalContainer.size() == 2);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_pointerContainer.size() == 2);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_float == 1.f);
             }
 
             // Test removal of container elements during instance data copying.
             {
                 AZStd::unique_ptr<AZ::Entity> testEntity1(new AZ::Entity());
-                auto* testComponent1 = testEntity1->CreateComponent<TestComponent>();
+                testEntity1->CreateComponent<TestComponent>();
                 AZStd::unique_ptr<AZ::Entity> testEntity2(serializeContext.CloneObject(testEntity1.get()));
-                auto* testComponent2 = testEntity2->FindComponent<TestComponent>();
 
                 // First entity has more in container 1, fewer in container 2 as compared to second entity.
-                testComponent1->m_normalContainer.push_back(TestComponent::SubData(1));
-                testComponent1->m_normalContainer.push_back(TestComponent::SubData(2));
-                testComponent1->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
+                testEntity1->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(1));
+                testEntity1->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(2));
+                testEntity1->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
 
-                testComponent2->m_normalContainer.push_back(TestComponent::SubData(1));
-                testComponent2->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
-                testComponent2->m_pointerContainer.push_back(aznew TestComponent::SubData(2));
+                testEntity2->FindComponent<TestComponent>()->m_normalContainer.push_back(TestComponent::SubData(1));
+                testEntity2->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(1));
+                testEntity2->FindComponent<TestComponent>()->m_pointerContainer.push_back(aznew TestComponent::SubData(2));
 
                 // Change a field.
-                testComponent2->m_float = 2.f;
+                testEntity2->FindComponent<TestComponent>()->m_float = 2.f;
 
                 InstanceDataHierarchy idh1;
                 idh1.AddRootInstance(testEntity1.get());
@@ -373,8 +362,8 @@ namespace UnitTest
                 bool result = InstanceDataHierarchy::CopyInstanceData(componentNode1, foundIn2, &serializeContext);
                 AZ_TEST_ASSERT(result);
 
-                AZ_TEST_ASSERT(testComponent2->m_normalContainer.size() == 2);
-                AZ_TEST_ASSERT(testComponent2->m_pointerContainer.size() == 1);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_normalContainer.size() == 2);
+                AZ_TEST_ASSERT(testEntity2->FindComponent<TestComponent>()->m_pointerContainer.size() == 1);
             }
 
             // Test FindNodeByPartialAddress functionality and Read/Write of InstanceDataNode
@@ -648,12 +637,460 @@ namespace UnitTest
         }
     };
 
+    enum class TestEnum
+    {
+        Value1 = 0x01,
+        Value2 = 0x02,
+        Value3 = 0xFF,
+    };
+}
+
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(UnitTest::TestEnum, "{52DBDCC6-0829-4602-A650-E6FC32AFC5F2}");
+}
+
+namespace UnitTest
+{
+    class InstanceDataHierarchyEnumContainerTest
+        : public AllocatorsFixture
+    {
+    public:
+        class EnumContainer
+        {
+        public:
+            AZ_TYPE_INFO(EnumContainer, "{7F9EED53-7587-4616-B4A7-10B3AF95475E}");
+            AZ_CLASS_ALLOCATOR(EnumContainer, AZ::SystemAllocator, 0);
+
+            TestEnum m_enum;
+            AZStd::vector<TestEnum> m_enumVector;
+
+            static void Reflect(AZ::SerializeContext& context)
+            {
+                context.Class<EnumContainer>()
+                    ->Field("Enum", &EnumContainer::m_enum)
+                    ->Field("EnumVector", &EnumContainer::m_enumVector)
+                    ;
+
+                if (EditContext* edit = context.GetEditContext())
+                {
+                    edit->Enum<UnitTest::TestEnum>("TestEnum", "No Description")
+                        ->Value("Value1", UnitTest::TestEnum::Value1)
+                        ->Value("Value2", UnitTest::TestEnum::Value2)
+                        ->Value("Value3", UnitTest::TestEnum::Value3)
+                        ;
+
+                    edit->Class<EnumContainer>("Enum Container", "Test container that has an external enum")
+                        ->DataElement(0, &EnumContainer::m_enum, "Enum Field", "An enum value")
+                        ->DataElement(0, &EnumContainer::m_enumVector, "Enum Vector Field", "A vector of enum values")
+                        ;
+                }
+            }
+        };
+
+        void run()
+        {
+            using namespace AzToolsFramework;
+
+            AZ::SerializeContext serializeContext;
+            serializeContext.CreateEditContext();
+            EnumContainer::Reflect(serializeContext);
+
+            EnumContainer ec;
+            ec.m_enumVector.emplace_back(UnitTest::TestEnum::Value3);
+
+            InstanceDataHierarchy idh;
+            idh.AddRootInstance(&ec, azrtti_typeid<EnumContainer>());
+            idh.Build(&serializeContext, 0);
+
+            InstanceDataNode* enumNode = idh.FindNodeByPartialAddress({ AZ_CRC("Enum") });
+            InstanceDataNode* enumVectorNode = idh.FindNodeByPartialAddress({ AZ_CRC("EnumVector") });
+
+            ASSERT_NE(enumNode, nullptr);
+            ASSERT_NE(enumVectorNode, nullptr);
+
+            auto getEnumData = [&ec](const AzToolsFramework::InstanceDataNode& node) -> Uuid
+            {
+                Uuid id;
+                auto attribute = node.GetElementMetadata()->FindAttribute(AZ_CRC("EnumType"));
+                auto attributeData = azrtti_cast<AttributeData<AZ::TypeId>*>(attribute);
+                if (attributeData)
+                {
+                    id = attributeData->Get(&ec);
+                }
+                return id;
+            };
+            EXPECT_EQ(getEnumData(*enumNode), RttiTypeId<UnitTest::TestEnum>());
+
+            const auto& vectorEntries = enumVectorNode->GetChildren();
+            ASSERT_EQ(vectorEntries.size(), 1);
+            EXPECT_EQ(getEnumData(*vectorEntries.begin()), RttiTypeId<UnitTest::TestEnum>());
+        }
+
+    };
+
+    class InstanceDataHierarchyKeyedContainerTest
+        : public AllocatorsFixture
+    {
+    public:
+        class KeyedContainer
+        {
+        public:
+            AZ_TYPE_INFO(KeyedContainer, "{53A7416F-2D84-4256-97B0-BE4B6EF6DBAF}");
+            AZ_CLASS_ALLOCATOR(KeyedContainer, AZ::SystemAllocator, 0);
+
+            AZStd::map<AZStd::string, float> m_map;
+            AZStd::unordered_map<AZStd::pair<int, double>, int> m_unorderedMap;
+            AZStd::set<int> m_set;
+            AZStd::unordered_set<AZ::u64> m_unorderedSet;
+            AZStd::unordered_multimap<int, AZStd::string> m_multiMap;
+            AZStd::unordered_map<int, AZStd::unordered_map<int, int>> m_nestedMap;
+
+            static void Reflect(AZ::SerializeContext& context)
+            {
+                context.Class<KeyedContainer>()
+                    ->Field("map", &KeyedContainer::m_map)
+                    ->Field("unorderedMap", &KeyedContainer::m_unorderedMap)
+                    ->Field("set", &KeyedContainer::m_set)
+                    ->Field("unorderedSet", &KeyedContainer::m_unorderedSet)
+                    ->Field("multiMap", &KeyedContainer::m_multiMap)
+                    ->Field("nestedMap", &KeyedContainer::m_nestedMap);
+            }
+        };
+
+        struct KeyTestData
+        {
+            virtual void InsertAndVerifyKeys(AZ::SerializeContext::IDataContainer* container, void* key, void* instance, const AZ::SerializeContext::ClassElement* classElement) const = 0;
+            virtual AZ::Uuid ExpectedKeyType() const = 0;
+            virtual size_t NumberOfKeys() const = 0;
+            virtual ~KeyTestData() {}
+        };
+
+        template <class T>
+        struct TypedKeyTestData : public KeyTestData
+        {
+            AZStd::vector<T> keysToInsert;
+            TypedKeyTestData(std::initializer_list<T> keys)
+                : keysToInsert(keys)
+            {
+            }
+
+            void InsertAndVerifyKeys(AZ::SerializeContext::IDataContainer* container, void* key, void* instance, const AZ::SerializeContext::ClassElement* classElement) const
+            {
+                T* keyContainer = reinterpret_cast<T*>(key);
+                for (const T& keyToInsert : keysToInsert)
+                {
+                    *keyContainer = keyToInsert;
+                    void* element = container->ReserveElement(instance, classElement);
+                    auto associativeInterface = container->GetAssociativeContainerInterface();
+                    associativeInterface->SetElementKey(element, key);
+                    container->StoreElement(instance, element);
+                    auto lookupKey = associativeInterface->GetElementByKey(instance, classElement, (void*)(&keyToInsert));
+                    EXPECT_NE(lookupKey, nullptr);
+                }
+            }
+
+            AZ::Uuid ExpectedKeyType() const override
+            {
+                return azrtti_typeid<AZ::Internal::RValueToLValueWrapper<T>>();
+            }
+
+            size_t NumberOfKeys() const override
+            {
+                return keysToInsert.size();
+            }
+
+            static AZStd::unique_ptr<TypedKeyTestData<T>> Create(std::initializer_list<T> keys)
+            {
+                return AZStd::make_unique<TypedKeyTestData<T>>(keys);
+            }
+        };
+
+        void run()
+        {
+            using namespace AzToolsFramework;
+
+            AZ::SerializeContext serializeContext;
+            serializeContext.CreateEditContext();
+            KeyedContainer::Reflect(serializeContext);
+
+            KeyedContainer kc;
+
+            InstanceDataHierarchy idh;
+            idh.AddRootInstance(&kc, azrtti_typeid<KeyedContainer>());
+            idh.Build(&serializeContext, 0);
+
+            AZStd::unordered_map<AZ::u32, AZStd::unique_ptr<KeyTestData>> keyTestData;
+            keyTestData[AZ_CRC("map")] = TypedKeyTestData<AZStd::string>::Create({"A", "B", "lorem ipsum"});
+            keyTestData[AZ_CRC("unorderedMap")] = TypedKeyTestData<AZStd::pair<int, double>>::Create({ {5, 1.0}, {5, -2.0} });
+            keyTestData[AZ_CRC("set")] = TypedKeyTestData<int>::Create({2, 4, -255, 999});
+            keyTestData[AZ_CRC("unorderedSet")] = TypedKeyTestData<AZ::u64>::Create({500000, 9, 0, 42, 42});
+            keyTestData[AZ_CRC("multiMap")] = TypedKeyTestData<int>::Create({-1, 2, -3, 4, -5, 6});
+            keyTestData[AZ_CRC("nestedMap")] = TypedKeyTestData<int>::Create({1, 10, 100, 1000});
+
+            auto insertKeysIntoContainer = [&serializeContext](AzToolsFramework::InstanceDataNode& node, KeyTestData* keysToInsert)
+            {
+                const AZ::SerializeContext::ClassElement* element = node.GetElementMetadata();
+                AZ::SerializeContext::IDataContainer* container = node.GetClassMetadata()->m_container;
+
+                ASSERT_NE(element, nullptr);
+                ASSERT_NE(container, nullptr);
+
+                const AZ::SerializeContext::ClassElement* containerClassElement = container->GetElement(container->GetDefaultElementNameCrc());
+                auto associativeInterface = container->GetAssociativeContainerInterface();
+                ASSERT_NE(associativeInterface, nullptr);
+                auto key = associativeInterface->CreateKey();
+
+                auto attribute = containerClassElement ->FindAttribute(AZ_CRC("KeyType"));
+                auto attributeData = azrtti_cast<AttributeData<AZ::TypeId>*>(attribute);
+                ASSERT_NE(attributeData, nullptr);
+                auto keyId = attributeData->Get(node.FirstInstance());
+                ASSERT_EQ(keyId, keysToInsert->ExpectedKeyType());
+
+                // Ensure we can build an InstanceDataHierarchy at runtime from the container's KeyType
+                InstanceDataHierarchy idh2;
+                idh2.AddRootInstance(key.get(), keyId);
+                idh2.Build(&serializeContext, 0);
+                auto children = idh2.GetChildren();
+                EXPECT_EQ(children.size(), 1);
+
+                keysToInsert->InsertAndVerifyKeys(container, key.get(), node.FirstInstance(), element);
+            };
+
+            for (InstanceDataNode& node : idh.GetChildren())
+            {
+                const AZ::SerializeContext::ClassElement* element = node.GetElementMetadata();
+                auto insertIterator = keyTestData.find(element->m_nameCrc);
+                ASSERT_NE(insertIterator, keyTestData.end());
+                auto keysToInsert = insertIterator->second.get();
+
+                insertKeysIntoContainer(node, keysToInsert);
+            }
+
+            auto nestedKeys = TypedKeyTestData<int>::Create({2, 4, 8, 16});
+            idh.Build(&serializeContext, 0);
+            for (InstanceDataNode& node : idh.GetChildren())
+            {
+                const AZ::SerializeContext::ClassElement* element = node.GetElementMetadata();
+                if (element->m_nameCrc == AZ_CRC("nestedMap"))
+                {
+                    auto children = node.GetChildren();
+                    // We should have entries for each inserted key in the nested map
+                    EXPECT_EQ(children.size(), keyTestData[AZ_CRC("nestedMap")]->NumberOfKeys());
+                    for (AzToolsFramework::InstanceDataNode& child : children)
+                    {
+                        insertKeysIntoContainer(child.GetChildren().back(), nestedKeys.get());
+                    }
+                }
+            }
+
+            // Ensure IgnoreKeyValuePairs is respected
+            idh.SetBuildFlags(InstanceDataHierarchy::Flags::IgnoreKeyValuePairs);
+            idh.Build(&serializeContext, 0);
+            for (InstanceDataNode& node : idh.GetChildren())
+            {
+                const AZ::SerializeContext::ClassElement* element = node.GetElementMetadata();
+                if (element->m_nameCrc == AZ_CRC("map") || element->m_nameCrc == AZ_CRC("unorderedMap") || element->m_nameCrc == AZ_CRC("nestedMap"))
+                {
+                    for (InstanceDataNode& pair : node.GetChildren())
+                    {
+                        EXPECT_EQ(pair.GetChildren().size(), 2);
+                    }
+                }
+            }
+        }
+    };
+
+    class InstanceDataHierarchyCompareAssociativeContainerTest
+        : public AllocatorsFixture
+    {
+    public:
+        class Container
+        {
+        public:
+            AZ_TYPE_INFO(Container, "{9920B5BD-F21C-4353-9449-9C3FD38E50FC}");
+            AZ_CLASS_ALLOCATOR(Container, AZ::SystemAllocator, 0);
+
+            AZStd::unordered_map<AZStd::string, int> m_map;
+
+            static void Reflect(AZ::SerializeContext& context)
+            {
+                context.Class<Container>()
+                    ->Field("map", &Container::m_map);
+            }
+        };
+
+        void run()
+        {
+            using namespace AzToolsFramework;
+
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
+
+            AZ::SerializeContext serializeContext;
+            Container::Reflect(serializeContext);
+
+            Container c1;
+            c1.m_map = {
+                {"A", 1},
+                {"B", 2},
+                {"C", 3}
+            };
+
+            Container c2;
+            c2.m_map = {
+                {"C", 1},
+                {"A", 2},
+                {"B", 3}
+            };
+
+            Container c3;
+            c3.m_map = {
+                {"A", 2},
+                {"D", 3}
+            };
+
+            auto testComparison = [&](Container& baseInstance, 
+                Container& compareInstance, 
+                AZStd::unordered_set<AZStd::string> expectedAdds,
+                AZStd::unordered_set<AZStd::string> expectedRemoves,
+                AZStd::unordered_set<AZStd::string> expectedChanges)
+            {
+                InstanceDataHierarchy idhBase;
+                idhBase.AddRootInstance(&baseInstance, azrtti_typeid<Container>());
+                idhBase.Build(&serializeContext, 0);
+
+                InstanceDataHierarchy idhCompare;
+                idhCompare.AddRootInstance(&compareInstance, azrtti_typeid<Container>());
+                idhCompare.Build(&serializeContext, 0);
+
+                AZStd::unordered_set<AZStd::string> actualAdds;
+                AZStd::unordered_set<AZStd::string> actualRemoves;
+                AZStd::unordered_set<AZStd::string> actualChanges;
+
+                auto newNodeCB = [&](InstanceDataNode* newNode, AZStd::vector<AZ::u8>&)
+                {
+                    actualAdds.insert(newNode->GetElementEditMetadata()->m_name);
+                };
+
+                auto removedNodeCB = [&](const InstanceDataNode* sourceNode, InstanceDataNode*)
+                {
+                    actualRemoves.insert(sourceNode->GetElementEditMetadata()->m_name);
+                };
+
+                auto changedNodeCB = [&](const InstanceDataNode* sourceNode, const InstanceDataNode*, AZStd::vector<AZ::u8>&, AZStd::vector<AZ::u8>&)
+                {
+                    actualChanges.insert(sourceNode->GetParent()->GetElementEditMetadata()->m_name);
+                };
+
+                InstanceDataHierarchy::CompareHierarchies(&idhBase, 
+                    &idhCompare, 
+                    &InstanceDataHierarchy::DefaultValueComparisonFunction,
+                    &serializeContext,
+                    newNodeCB,
+                    removedNodeCB,
+                    changedNodeCB
+                );
+
+                EXPECT_EQ(expectedAdds, actualAdds);
+                EXPECT_EQ(expectedRemoves, actualRemoves);
+                EXPECT_EQ(expectedChanges, actualChanges);
+            };
+
+            Container cCopy = c1;
+            testComparison(c1, cCopy, {}, {}, {});
+            testComparison(c1, c3, {"D", "[0]", "[1]"}, {"B", "C"}, {"A"});
+            testComparison(c3, c1, {"B", "C", "[0]", "[1]"}, {"D"}, {"A"});
+            testComparison(c1, c2, {}, {}, {"A", "B", "C"});
+
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
+        }
+    };
+
+
+    class InstanceDataHierarchyElementTest
+        : public AllocatorsFixture
+    {
+    public:
+        class UIElementContainer
+        {
+        public:
+            AZ_TYPE_INFO(UIElementContainer, "{83B7BDFD-8B60-4C52-B7C5-BF3C824620F5}");
+            AZ_CLASS_ALLOCATOR(UIElementContainer, AZ::SystemAllocator, 0);
+
+            int m_data;
+
+            static void Reflect(AZ::SerializeContext& context)
+            {
+                context.Class<UIElementContainer>();
+
+                if (auto editContext = context.GetEditContext())
+                {
+                    editContext->Class<UIElementContainer>("Test", "")
+                        ->UIElement("TestHandler", "UIElement")
+                        ->UIElement(AZ_CRC("TestHandler2"), "UIElement2")
+                    ;
+                }
+            }
+        };
+
+        void run()
+        {
+            using namespace AzToolsFramework;
+
+            AZ::SerializeContext serializeContext;
+            serializeContext.CreateEditContext();
+            UIElementContainer::Reflect(serializeContext);
+
+            UIElementContainer test;
+            InstanceDataHierarchy idh;
+            idh.AddRootInstance(&test, azrtti_typeid<UIElementContainer>());
+            idh.Build(&serializeContext, 0);
+
+            auto children = idh.GetChildren();
+            ASSERT_EQ(children.size(), 2);
+            auto it = children.begin();
+
+            Crc32 uiHandler = 0;
+            EXPECT_EQ(it->ReadAttribute(AZ::Edit::UIHandlers::Handler, uiHandler), true);
+            EXPECT_EQ(uiHandler, AZ_CRC("TestHandler"));
+            EXPECT_EQ(it->GetElementMetadata()->m_name, "UIElement");
+            EXPECT_EQ(it->GetElementMetadata()->m_nameCrc, AZ_CRC("UIElement"));
+
+            uiHandler = 0;
+            ++it;
+            EXPECT_EQ(it->ReadAttribute(AZ::Edit::UIHandlers::Handler, uiHandler), true);
+            EXPECT_EQ(uiHandler, AZ_CRC("TestHandler2"));
+            EXPECT_EQ(it->GetElementMetadata()->m_name, "UIElement2");
+            EXPECT_EQ(it->GetElementMetadata()->m_nameCrc, AZ_CRC("UIElement2"));
+        }
+    };
+
     TEST_F(InstanceDataHierarchyBasicTest, Test)
     {
         run();
     }
 
     TEST_F(InstanceDataHierarchyCopyContainerChangesTest, Test)
+    {
+        run();
+    }
+
+    TEST_F(InstanceDataHierarchyEnumContainerTest, Test)
+    {
+        run();
+    }
+
+    TEST_F(InstanceDataHierarchyKeyedContainerTest, Test)
+    {
+        run();
+    }
+
+    TEST_F(InstanceDataHierarchyCompareAssociativeContainerTest, Test)
+    {
+        run();
+    }
+
+    TEST_F(InstanceDataHierarchyElementTest, Test)
     {
         run();
     }

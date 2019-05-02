@@ -111,7 +111,7 @@ namespace EMotionFX
             }
             else
             {
-                finalTrajectoryDelta.BlendAdditive(trajectoryDelta, bindPose->GetLocalTransform(motionExtractNode->GetNodeIndex()), weight);
+                finalTrajectoryDelta.BlendAdditive(trajectoryDelta, bindPose->GetLocalSpaceTransform(motionExtractNode->GetNodeIndex()), weight);
             }
         }
 

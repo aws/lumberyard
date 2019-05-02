@@ -127,11 +127,14 @@ void SEnviropment::InitializePlatformAttributes()
     m_ShaderLanguages.insert("Orbis"); // ACCEPTED_USE
     m_ShaderLanguages.insert("Durango"); // ACCEPTED_USE
     m_ShaderLanguages.insert("D3D11");
+    m_ShaderLanguages.insert("METAL");
+    m_ShaderLanguages.insert("GL4");
+    m_ShaderLanguages.insert("GLES3");
+    // These are added for legacy support (GLES3_0 and GLES3_1 are combined into just GLES3)
     m_ShaderLanguages.insert("GL4_1");
     m_ShaderLanguages.insert("GL4_4");
     m_ShaderLanguages.insert("GLES3_0");
     m_ShaderLanguages.insert("GLES3_1");
-    m_ShaderLanguages.insert("METAL");
     
     // Initialize valid Shader Compilers ID and Executables.
     // Intentionally put a space after the executable name so that attackers can't try to change the executable name that we are going to run.

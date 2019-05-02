@@ -501,6 +501,11 @@ class CTexture;
 #define MDV_WIND               0x800
 #define MDV_DEPTH_OFFSET       0x2000
 
+// Does the vertex shader require position-invariant compilation?
+// This would be true of shaders rendering multiple times with different vertex shaders - for example during zprepass and the gbuffer pass
+// Note this is different than the technique flag FHF_POSITION_INVARIANT as that does custom behavior for terrain
+#define MDV_POSITION_INVARIANT 0x4000
+
 // Summary:
 //   Deformations/Morphing types.
 enum EDeformType
@@ -841,6 +846,7 @@ struct SRenderObjData
         m_pBending = nullptr;
         m_BendingPrev = nullptr;
         m_pShaderParams = nullptr;
+        m_FogVolumeContribIdx[0] = m_FogVolumeContribIdx[1] = static_cast<uint16>(-1);
 
         // The following should be changed to be something like 0xac to indicate invalid data so that by default 
         // data that was not set will break render features and will be traced (otherwise, default 0 just might pass)
@@ -1574,6 +1580,11 @@ struct STexSamplerRT
 
     bool        m_bGlobal;
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // CRC of texture name if this is an engine texture
+    uint32_t m_nCrc;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     STexSamplerRT()
     {
         m_nTexState = -1;
@@ -1585,6 +1596,9 @@ struct STexSamplerRT
         m_nSamplerSlot = -1;
         m_nTextureSlot = -1;
         m_bGlobal = false;
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED       
+        m_nCrc = 0;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     }
     ~STexSamplerRT()
     {
@@ -1635,6 +1649,9 @@ struct STexSamplerRT
         m_nSamplerSlot = src.m_nSamplerSlot;
         m_nTextureSlot = src.m_nTextureSlot;
         m_bGlobal = src.m_bGlobal;
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        m_nCrc = src.m_nCrc;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     }
     NO_INLINE STexSamplerRT& operator = (const STexSamplerRT& src)
     {
@@ -1657,6 +1674,9 @@ struct STexSamplerRT
         m_nSamplerSlot = -1;
         m_nTextureSlot = -1;
         m_bGlobal = (src.m_nTexFlags & FT_FROMIMAGE) != 0;
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        m_nCrc = 0;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     }
     inline bool operator != (const STexSamplerRT& m) const
     {
@@ -2909,6 +2929,7 @@ struct SRenderLight
         m_nAttenFalloffMax = 255;
         m_fAttenuationBulbSize = 0.1f;
         m_fProbeAttenuation = 1.0f;
+        m_lightId = -1;
     }
 
     const Vec3& GetPosition() const
@@ -3069,6 +3090,7 @@ struct SRenderLight
     int16 m_sY;
     int16 m_sWidth;
     int16 m_sHeight;
+    int m_lightId;
 
     // Env. probes
     ITexture* m_pDiffuseCubemap;                    // Very small cubemap texture to make a lookup for diffuse.
@@ -3324,12 +3346,14 @@ struct SDeferredDecal
     {
         ZeroStruct(*this);
         rectTexture.w = rectTexture.h = 1.f;
+        angleAttenuation = 1.0f;
     }
 
     Matrix34 projMatrix; // defines where projection should be applied in the world
     _smart_ptr<IMaterial> pMaterial; // decal material
     float fAlpha; // transparency of decal, used mostly for distance fading
     float fGrowAlphaRef;
+    float angleAttenuation;
     RectF rectTexture; // subset of texture to render
     uint32 nFlags;
     uint8 nSortOrder; // user defined sort order

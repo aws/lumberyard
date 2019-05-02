@@ -15,10 +15,11 @@ class ViewportNudge
 {
 public:
 
-    static void KeyReleaseEvent(EditorWindow* editorWindow,
+    static void Nudge(EditorWindow* editorWindow,
         ViewportInteraction::InteractionMode interactionMode,
         ViewportWidget* viewport,
-        QKeyEvent* ev,
+        ViewportInteraction::NudgeDirection direction,
+        ViewportInteraction::NudgeSpeed speed,
         const QTreeWidgetItemRawPtrQList& selectedItems,
         ViewportInteraction::CoordinateSystem coordinateSystem,
         const AZ::Uuid& transformComponentType);

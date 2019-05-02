@@ -18,12 +18,12 @@
 #include <AzFramework/Input/Events/InputChannelEventListener.h>
 #include <AzFramework/Input/Events/InputTextEventListener.h>
 
-#if defined(_DEBUG)
-//#define LYSHINE_INTERNAL_UNIT_TEST
+#if !defined(_RELEASE)
+#define LYSHINE_INTERNAL_UNIT_TEST
 #endif
 
-#if !defined(_DEBUG) && defined(LYSHINE_INTERNAL_UNIT_TEST)
-#error "Internal unit test enabled on non-debug build! Please disable."
+#if defined(_RELEASE) && defined(LYSHINE_INTERNAL_UNIT_TEST)
+#error "Internal unit test enabled on release build! Please disable."
 #endif
 
 class CDraw2d;
@@ -51,7 +51,6 @@ public:
     void Release() override;
 
     IDraw2d* GetDraw2d() override;
-    IUiRenderer* GetUiRenderer() override;
 
     AZ::EntityId CreateCanvas() override;
     AZ::EntityId LoadCanvas(const string& assetIdPathname) override;
@@ -66,6 +65,7 @@ public:
 
     ISprite* LoadSprite(const string& pathname) override;
     ISprite* CreateSprite(const string& renderTargetName) override;
+    bool DoesSpriteTextureAssetExist(const AZStd::string& pathname) override;
 
     void PostInit() override;
 
@@ -76,6 +76,7 @@ public:
 
     void Reset() override;
     void OnLevelUnload() override;
+    void OnLoadScreenUnloaded() override;
 
     // ~ILyShine
 
@@ -102,21 +103,51 @@ public:
     bool OnInputTextEventFiltered(const AZStd::string& textUTF8) override;
     // ~InputTextEventListener
 
+    // Get the UIRenderer (which is owned by CLyShine). This is not exposed outside the gem.
+    UiRenderer* GetUiRenderer();
+
+public: // static member functions
+
+#if defined(LYSHINE_INTERNAL_UNIT_TEST)
+    static void RunUnitTests(IConsoleCmdArgs* cmdArgs);
+#endif
+
 private: // member functions
 
     AZ_DISABLE_COPY_MOVE(CLyShine);
 
     void RenderUiCursor();
 
+private:  // static member functions
+
+#ifndef _RELEASE
+    static void DebugReportDrawCalls(IConsoleCmdArgs* cmdArgs);
+#endif
+
 private: // data
 
     ISystem* m_system;     // store a pointer to system rather than relying on env.pSystem
 
     std::unique_ptr<CDraw2d> m_draw2d;  // using a pointer rather than an instance to avoid including Draw2d.h
-    std::unique_ptr<UiRenderer> m_uiRenderer;  // using a pointer rather than an instance to avoid including Draw2d.h
+    std::unique_ptr<UiRenderer> m_uiRenderer;  // using a pointer rather than an instance to avoid including UiRenderer.h
 
     std::unique_ptr<UiCanvasManager> m_uiCanvasManager;
 
     ITexture* m_uiCursorTexture;
     int m_uiCursorVisibleCounter;
+
+    bool m_updatingLoadedCanvases = false;  // guard against nested updates
+
+    // Console variables
+#ifndef _RELEASE
+    DeclareStaticConstIntCVar(CV_ui_DisplayTextureData, 0);
+    DeclareStaticConstIntCVar(CV_ui_DisplayCanvasData, 0);
+    DeclareStaticConstIntCVar(CV_ui_DisplayDrawCallData, 0);
+    DeclareStaticConstIntCVar(CV_ui_DisplayElemBounds, 0);
+    DeclareStaticConstIntCVar(CV_ui_DisplayElemBoundsCanvasIndex, -1);
+#endif
+
+#if defined(LYSHINE_INTERNAL_UNIT_TEST)
+    DeclareStaticConstIntCVar(CV_ui_RunUnitTestsOnStartup, 0);
+#endif
 };

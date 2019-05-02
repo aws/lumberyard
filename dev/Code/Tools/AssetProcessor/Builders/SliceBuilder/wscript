@@ -21,7 +21,11 @@ def build(bld):
         platforms          = ['win', 'darwin'],
         configurations     = ['debug_all', 'profile_all'],
         disable_pch        = True,
-        win_features        = ['crcfix'],
+        win_features       = ['crcfix'],
+        features           = ['qt5'],
+        uselib             = ['QT5CORE',
+                              'QT5GUI',
+                              'QT5WIDGETS'],
         includes           = ['..'], #so that we can specify the module name of SliceBuilder in the include statements.
         test_all_file_list = ['slicebuilder_tests.waf_files'],
     )

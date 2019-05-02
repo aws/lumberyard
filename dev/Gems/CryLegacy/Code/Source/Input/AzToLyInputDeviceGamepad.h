@@ -27,12 +27,16 @@ protected:
 };
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AzToLyInputDeviceGamepad_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AzToLyInputDeviceGamepad_h_provo.inl"
+    #endif
 #elif defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
-#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/AzToLyInputDeviceGamepad_h_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
-#include AZ_RESTRICTED_FILE(AzToLyInputDeviceGamepad_h, TOOLS_SUPPORT_PROVO)
+    #include "Provo/AzToLyInputDeviceGamepad_h_provo.inl"
 #endif
 #endif

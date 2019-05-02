@@ -12,15 +12,15 @@
 
 #pragma once
 
-#include "AnimGraphNodeWidget.h"
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendSpaceNodeWidget.h>
-#include "AnimGraphPlugin.h"
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphNodeWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphPlugin.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendSpaceNodeWidget.h>
 #include <EMotionFX/Source/BlendSpace1DNode.h>
 #include <QBrush>
 #include <QPen>
 
-class QMouseEvent;
-class QFontMetrics;
+QT_FORWARD_DECLARE_CLASS(QMouseEvent)
+QT_FORWARD_DECLARE_CLASS(QFontMetrics)
 
 namespace EMStudio
 {

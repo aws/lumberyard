@@ -1,3 +1,14 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
 
 #include "Footsteps_precompiled.h"
 
@@ -143,10 +154,24 @@ namespace Footsteps
                 pe_status_living livingStatus;
                 livingStatus.groundSlope.Set(0.f, 0.f, 1.f);
                 LmbrCentral::CryPhysicsComponentRequestBus::Event(GetEntityId(), &LmbrCentral::CryPhysicsComponentRequestBus::Events::GetPhysicsStatus, livingStatus);
-                effectId = pMaterialEffects->GetEffectId(fxLibName.c_str(), livingStatus.groundSurfaceIdx);
-                if (effectId == InvalidEffectId)
+
+                if (livingStatus.groundSurfaceIdx >= 0)  // Filter out the surface id -1 as this means the entity was not in contact with the ground
                 {
-                    AZ_Warning("FootstepComponent", false, "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+                    effectId = pMaterialEffects->GetEffectId(fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+                    if (effectId == InvalidEffectId)
+                    {
+                        // In non release builds, make sure that we don't spam the log output by only warning once per surface
+#if defined( AZ_ENABLE_TRACING )
+                        static AZStd::vector<int> s_surfacesWarnedAbout;
+                        if (AZStd::find(s_surfacesWarnedAbout.begin(), s_surfacesWarnedAbout.end(), livingStatus.groundSurfaceIdx) == s_surfacesWarnedAbout.end())
+                        {
+                            AZ_Warning("FootstepComponent", false, "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+                            s_surfacesWarnedAbout.push_back(livingStatus.groundSurfaceIdx);
+                        }
+#else
+                        AZ_Warning("FootstepComponent", false, "Failed to find material for footstep sounds in FXLib %s, SurfaceIdx: %d", fxLibName.c_str(), livingStatus.groundSurfaceIdx);
+#endif
+                    }
                 }
             }
 

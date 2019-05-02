@@ -179,7 +179,11 @@ void CTiledShading::CreateResources()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTILEDSHADING_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(D3DTiledShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTiledShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #endif
 #endif
     }
 
@@ -199,7 +203,11 @@ void CTiledShading::CreateResources()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTILEDSHADING_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(D3DTiledShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTiledShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #endif
 #endif
     }
 
@@ -216,7 +224,11 @@ void CTiledShading::CreateResources()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION D3DTILEDSHADING_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(D3DTiledShading_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DTiledShading_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DTiledShading_cpp_provo.inl"
+    #endif
 #endif
     }
 
@@ -662,7 +674,7 @@ void CTiledShading::PrepareLightList(TArray<SRenderLight>& envProbes, TArray<SRe
                 if (!ambientLight && lightIdx >= firstShadowLight && lightIdx < curShadowPoolLight)
                 {
                     int numDLights = rd->m_RP.m_DLights[nThreadID][nRecurseLevel].size();
-                    int frustumIdx = lightIdx + numDLights;
+                    int frustumIdx = renderLight.m_lightId + numDLights;
                     int startIdx = SRendItem::m_StartFrust[nThreadID][frustumIdx];
                     int endIdx = SRendItem::m_EndFrust[nThreadID][frustumIdx];
 
@@ -819,7 +831,7 @@ void CTiledShading::PrepareShadowCastersList(TArray<SRenderLight>& defLights)
         const SRenderLight& light = defLights[lightIdx];
         if (light.m_Flags & DLF_CASTSHADOW_MAPS)
         {
-            m_arrShadowCastingLights.Add(lightIdx);
+            m_arrShadowCastingLights.Add(light.m_lightId);
         }
     }
 }

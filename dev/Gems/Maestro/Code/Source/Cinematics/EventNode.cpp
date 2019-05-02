@@ -98,7 +98,7 @@ void CAnimEventNode::Animate(SAnimContext& ec)
                 bool bKeyAfterStartTime = key.time >= ec.startTime;
                 if (bKeyAfterStartTime)
                 {
-                    ec.pSequence->TriggerTrackEvent(key.event.c_str(), key.eventValue.c_str());
+                    ec.sequence->TriggerTrackEvent(key.event.c_str(), key.eventValue.c_str());
                 }
             }
             m_lastEventKey = nEventKey;

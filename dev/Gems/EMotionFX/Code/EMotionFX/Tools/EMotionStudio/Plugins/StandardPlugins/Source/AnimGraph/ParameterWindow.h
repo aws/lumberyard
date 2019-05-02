@@ -13,23 +13,18 @@
 #pragma once
 
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
-#include <EMotionFX/CommandSystem/Source/AnimGraphCommands.h>
-#include <EMotionFX/CommandSystem/Source/AnimGraphConnectionCommands.h>
-#include <EMotionFX/CommandSystem/Source/AnimGraphNodeCommands.h>
-#include <EMotionFX/CommandSystem/Source/AnimGraphParameterCommands.h>
-#include <EMotionFX/Source/AnimGraph.h>
-#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AttributesWindow.h>
-#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/ParameterEditor/ValueParameterEditor.h>
+#include <EMotionFX/Source/AnimGraphBus.h>
 #include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
-#include <MCore/Source/Array.h>
-#include <MCore/Source/StandardHeaders.h>
-#include <QGridLayout>
 #include <QPointer>
-#include <QPushButton>
-#include <QScrollArea>
-#include <QTreeWidget>
-#include <QVBoxLayout>
 #include <QWidget>
+
+QT_FORWARD_DECLARE_CLASS(QLineEdit)
+QT_FORWARD_DECLARE_CLASS(QPushButton)
+QT_FORWARD_DECLARE_CLASS(QScrollArea)
+QT_FORWARD_DECLARE_CLASS(QTreeWidget)
+QT_FORWARD_DECLARE_CLASS(QTreeWidgetItem)
+QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
+
 
 namespace EMotionFX
 {
@@ -45,6 +40,7 @@ namespace AzQtComponents
 namespace EMStudio
 {
     class AnimGraphPlugin;
+    class ValueParameterEditor;
     
     class ParameterCreateRenameWindow
         : public QDialog
@@ -75,6 +71,7 @@ namespace EMStudio
     class ParameterWindow
         : public QWidget
         , private AzToolsFramework::IPropertyEditorNotify
+        , protected EMotionFX::AnimGraphNotificationBus::Handler
     {
         Q_OBJECT
         MCORE_MEMORYOBJECTCATEGORY(ParameterWindow, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
@@ -83,7 +80,7 @@ namespace EMStudio
         ParameterWindow(AnimGraphPlugin* plugin);
         ~ParameterWindow();
 
-        void Init();
+        void Reinit(bool forceReinit = false);
 
         // retrieve current selection
         const EMotionFX::Parameter* GetSingleSelectedParameter() const;
@@ -103,6 +100,12 @@ namespace EMStudio
         void UpdateParameterValue(const EMotionFX::Parameter* parameter);
 
         void UpdateParameterValues();
+
+        // AnimGraphNotificationBus
+        void OnParameterActionTriggered(const EMotionFX::ValueParameter* valueParameter) override;
+
+    public slots:
+        void OnRecorderStateChanged();
 
     private slots:
         void UpdateInterface();
@@ -125,7 +128,6 @@ namespace EMStudio
         void OnMakeDefaultValue();
 
         void OnGamepadControlToggle();
-        void OnRecorderStateChanged();
 
     private:
         void contextMenuEvent(QContextMenuEvent* event) override;
@@ -137,6 +139,22 @@ namespace EMStudio
         void keyReleaseEvent(QKeyEvent* event) override;
 
         void AddParameterToInterface(EMotionFX::AnimGraph* animGraph, const EMotionFX::Parameter* parameter, QTreeWidgetItem* parentWidgetItem);
+
+        /**
+         * Update the attributes the parameter widgets modify when they are being changed in the interface.
+         * Iterate through the selected actor instances and check for the ones that are running the anim graph whose parameters
+         * we're showing. This will make sure that e.g. when changing a slider in the parameter window, the corresponding
+         * anim graph instances get informed about the changed values.
+         */
+        void UpdateAttributesForParameterWidgets();
+
+        /**
+         * Get the attributes for the given parameter that are influenced by any of the currently selected actor instances
+         * that are running the anim graph whose parameters we're showing.
+         * @param[in] parameterIndex The parameter index to get the influenced attributes for.
+         * @result The list of influenced attributes from the anim graph instances.
+         */
+        AZStd::vector<MCore::Attribute*> GetAttributesForParameter(size_t parameterIndex) const;
 
         /**
          * Check if the gamepad control mode is enabled for the given parameter and if its actually being controlled or not.
@@ -154,21 +172,7 @@ namespace EMStudio
         void RequestPropertyContextMenu(AzToolsFramework::InstanceDataNode*, const QPoint&) override;
         void PropertySelectionChanged(AzToolsFramework::InstanceDataNode *, bool) override;
 
-        // command callbacks
-        MCORE_DEFINECOMMANDCALLBACK(CommandCreateBlendParameterCallback);
-        MCORE_DEFINECOMMANDCALLBACK(CommandRemoveBlendParameterCallback);
-        MCORE_DEFINECOMMANDCALLBACK(CommandAdjustBlendParameterCallback);
-        MCORE_DEFINECOMMANDCALLBACK(CommandAnimGraphAdjustGroupParameterCallback);
-        MCORE_DEFINECOMMANDCALLBACK(CommandAnimGraphAddGroupParameterCallback);
-        MCORE_DEFINECOMMANDCALLBACK(CommandAnimGraphRemoveGroupParameterCallback);
-        CommandCreateBlendParameterCallback*            mCreateCallback;
-        CommandRemoveBlendParameterCallback*            mRemoveCallback;
-        CommandAdjustBlendParameterCallback*            mAdjustCallback;
-        CommandAnimGraphAddGroupParameterCallback*     mAddGroupCallback;
-        CommandAnimGraphRemoveGroupParameterCallback*  mRemoveGroupCallback;
-        CommandAnimGraphAdjustGroupParameterCallback*  mAdjustGroupCallback;
-
-        EMotionFX::AnimGraph*           mAnimGraph;
+        EMotionFX::AnimGraph*           m_animGraph;
 
         // toolbar buttons
         QPushButton*                    mAddButton;

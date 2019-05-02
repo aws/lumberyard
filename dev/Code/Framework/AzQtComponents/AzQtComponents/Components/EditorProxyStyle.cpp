@@ -403,7 +403,7 @@ namespace AzQtComponents
             qobject_cast<const QDockWidget*>(w) ||
             qobject_cast<const QFileDialog*>(w) || // QFileDialog is native
 #if defined(AZ_PLATFORM_APPLE)
-            qobject_cast<const QColorDialog*>(w) || // QColorDialog is native on macOS
+            (qobject_cast<const QColorDialog*>(w) && !qobject_cast<const QColorDialog*>(w)->testOption(QColorDialog::DontUseNativeDialog)) || // QColorDialog might be native on macOS
             qobject_cast<const QMacNativeWidget*>(w) ||
 #endif
             w->property("HasNoWindowDecorations").toBool() || // Allows decorations to be disabled

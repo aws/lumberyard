@@ -21,7 +21,8 @@
 namespace EMStudio
 {
     // constructor
-    NodeConnection::NodeConnection(GraphNode* targetNode, uint32 portNr, GraphNode* sourceNode, uint32 sourceOutputPortNr)
+    NodeConnection::NodeConnection(const QModelIndex& modelIndex, GraphNode* targetNode, uint32 portNr, GraphNode* sourceNode, uint32 sourceOutputPortNr)
+        : m_modelIndex(modelIndex)
     {
         mSourceNode     = sourceNode;
         mSourcePortNr   = sourceOutputPortNr;
@@ -34,9 +35,7 @@ namespace EMStudio
         mIsDisabled     = false;
         mIsHeadHighlighted = false;
         mIsTailHighlighted = false;
-        mIsTransitioning    = false;
         mIsSynced       = false;
-        mID             = MCORE_INVALIDINDEX32;
         mColor          = QColor(128, 255, 128);
     }
 
@@ -90,9 +89,9 @@ namespace EMStudio
     // render the connection
     void NodeConnection::Render(QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor)
     {
-        MCORE_UNUSED(brush);
-        MCORE_UNUSED(stepSize);
-        MCORE_UNUSED(visibleRect);
+        AZ_UNUSED(brush);
+        AZ_UNUSED(stepSize);
+        AZ_UNUSED(visibleRect);
 
         // used when relinking
         if (mIsDashed)
@@ -373,5 +372,3 @@ namespace EMStudio
         return QRect();
     }
 }   // namespace EMotionFX
-
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodeConnection.moc>

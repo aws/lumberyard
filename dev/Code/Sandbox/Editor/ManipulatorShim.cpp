@@ -18,7 +18,6 @@
 #include "Editor/Objects/ObjectManager.h"
 #include "Editor/Objects/AxisGizmo.h"
 #include "ViewManager.h"
-#include "ISystem.h"
 
 #include <AzCore/Component/TransformBus.h>
 #include <AzToolsFramework/Manipulators/ManipulatorBus.h>
@@ -37,7 +36,7 @@ static void ProcessSelectedEntities(Func request)
     }
 }
 
-static AZ_FORCE_INLINE bool ShiftCtrlHeld(int flags)
+static AZ_FORCE_INLINE bool ShiftCtrlHeld(const int flags)
 {
     return (flags & MK_CONTROL) != 0 && (flags & MK_SHIFT) != 0;
 }
@@ -46,7 +45,7 @@ ManipulatorShim::ManipulatorShim()
 {
     // hide current gizmo for entity (translate/rotate/scale)
     IGizmoManager* gizmoManager = GetIEditor()->GetObjectManager()->GetGizmoManager();
-    for (size_t i = 0; i < gizmoManager->GetGizmoCount(); ++i)
+    for (size_t i = 0; i < static_cast<size_t>(gizmoManager->GetGizmoCount()); ++i)
     {
         gizmoManager->RemoveGizmo(gizmoManager->GetGizmoByIndex(i));
     }
@@ -65,10 +64,11 @@ const GUID& ManipulatorShim::GetClassID()
 
 void ManipulatorShim::RegisterTool(CRegistrationContext& rc)
 {
-    rc.pClassFactory->RegisterClass(new CQtViewClass<ManipulatorShim>("EditTool.Manipulator", "Select", ESYSTEM_CLASS_EDITTOOL));
+    rc.pClassFactory->RegisterClass(
+        new CQtViewClass<ManipulatorShim>("EditTool.Manipulator", "Select", ESYSTEM_CLASS_EDITTOOL));
 }
 
-bool ManipulatorShim::MouseCallback(CViewport* view, EMouseEvent event, QPoint& point, int flags)
+bool ManipulatorShim::MouseCallback(CViewport* view, const EMouseEvent event, QPoint& point, const int flags)
 {
     switch (event)
     {
@@ -77,9 +77,9 @@ bool ManipulatorShim::MouseCallback(CViewport* view, EMouseEvent event, QPoint& 
             if (ShiftCtrlHeld(flags))
             {
                 AzToolsFramework::ScopedUndoBatch surfaceSnapUndo("SurfaceSnap");
-                ProcessSelectedEntities([view, &point, &surfaceSnapUndo](AZ::EntityId entityId)
+                ProcessSelectedEntities([view, &point](AZ::EntityId entityId)
                 {
-                    surfaceSnapUndo.MarkEntityDirty(entityId);
+                    AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(entityId);
 
                     const int viewportId = view->GetViewportId();
                     // get unsnapped terrain position (world space)
@@ -137,16 +137,16 @@ bool ManipulatorShim::MouseCallback(CViewport* view, EMouseEvent event, QPoint& 
     }
 }
 
-bool ManipulatorShim::OnKeyDown(CViewport* view, uint32 nChar, uint32 nRepCnt, uint32 nFlags)
+bool ManipulatorShim::OnKeyDown(CViewport* /*view*/, const uint32 nChar, uint32 /*nRepCnt*/, uint32 /*nFlags*/)
 {
     switch (nChar)
     {
     case VK_DELETE:
         {
             AzToolsFramework::ScopedUndoBatch deleteUndo("DeleteUndo");
-            ProcessSelectedEntities([&deleteUndo](AZ::EntityId entityId)
+            ProcessSelectedEntities([](AZ::EntityId entityId)
             {
-                deleteUndo.MarkEntityDirty(entityId);
+                AzToolsFramework::ScopedUndoBatch::MarkEntityDirty(entityId);
                 AzToolsFramework::DestructiveManipulatorRequestBus::Event(
                     entityId, &AzToolsFramework::DestructiveManipulatorRequestBus::Events::DestroySelected);
             });

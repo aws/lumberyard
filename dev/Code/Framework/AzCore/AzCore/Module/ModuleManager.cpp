@@ -724,25 +724,10 @@ namespace AZ
         }
         
         // Topo sort components, activate them
-        Entity::DependencySortResult result = ModuleEntity::DependencySort(componentsToActivate);
-        switch (result)
+        Entity::DependencySortOutcome outcome = ModuleEntity::DependencySort(componentsToActivate);
+        if (!outcome.IsSuccess())
         {
-        case Entity::DependencySortResult::Success:
-            break;
-        case Entity::DependencySortResult::MissingRequiredService:
-            AZ_Error(s_moduleLoggingScope, false, "Module Entities have missing required services and cannot be activated.");
-            return;
-        case Entity::DependencySortResult::HasCyclicDependency:
-            AZ_Error(s_moduleLoggingScope, false, "Module Entities' components order have cyclic dependency and cannot be activated.");
-            return;
-        case Entity::DependencySortResult::HasIncompatibleServices:
-            AZ_Error(s_moduleLoggingScope, false, "Module Entities' components are incompatible and cannot be activated.");
-            return;
-        case Entity::DependencySortResult::DescriptorNotRegistered:
-            AZ_Error(s_moduleLoggingScope, false, "Module Entities' components are not registered with the component application.");
-            return;
-        default:
-            AZ_Error(s_moduleLoggingScope, false, "Module Entities's components have an unexpected issue and cannot be activated.");
+            AZ_Error(s_moduleLoggingScope, false, "Modules Entities cannot be activated. %s", outcome.GetError().m_message.c_str());
             return;
         }
         

@@ -44,6 +44,8 @@ def build(bld):
         darwin_framework    = [ 'Metal', 'CoreGraphics', 'CoreServices', 'QuartzCore' ],
         darwin_defines      = ['CRY_USE_METAL'],
 
+        restricted_script   = 'update_restricted_parameters',
+
 
         ## Editor build configuration
         editor = dict(

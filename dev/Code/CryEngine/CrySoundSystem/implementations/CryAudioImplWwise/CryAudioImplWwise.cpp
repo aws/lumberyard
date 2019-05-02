@@ -32,7 +32,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYAUDIOIMPLWWISE_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(CryAudioImplWwise_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAudioImplWwise_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAudioImplWwise_cpp_provo.inl"
+    #endif
 #endif
 
 namespace Audio
@@ -93,7 +97,11 @@ class CEngineModule_CryAudioImplWwise
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYAUDIOIMPLWWISE_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(CryAudioImplWwise_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAudioImplWwise_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAudioImplWwise_cpp_provo.inl"
+    #endif
     #endif
 
         g_audioImplMemoryPoolSecondary_wwise.InitMem(nSecondarySize, (uint8*)pSecondaryMemory);

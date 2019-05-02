@@ -2,6 +2,20 @@
     <qresource prefix="/EMotionFX">
         <file>ActorComponent.png</file>
         <file>AnimGraphComponent.png</file>
+        <file>ClothCollider_Purple.png</file>
+        <file>ClothCollider_PurpleBG.png</file>
+        <file>ClothCollider_White.png</file>
+        <file>ClothCollider_Grey.png</file>
+        <file>HitDetection_Blue.png</file>
+        <file>HitDetection_BlueBG.png</file>
+        <file>HitDetection_White.png</file>
+        <file>Joint.png</file>
+        <file>RagdollCollider_Orange.png</file>
+        <file>RagdollCollider_White.png</file>
+        <file>RagdollCollider_OrangeBG.png</file>
+        <file>RagdollJointLimit_OrangeBG.png</file>
+        <file>RagdollJointLimit_Orange.png</file>
+        <file>RagdollJointLimit_White.png</file>
         <file>Restore.png</file>
         <file>Trash.png</file>
         <file>ArrowDownGray.png</file>

@@ -25,7 +25,7 @@ namespace EMotionFX
     {
         // setup the input ports
         InitInputPorts(1);
-        SetupInputPort("Vector", INPUTPORT_VECTOR, MCore::AttributeVector4::TYPE_ID, PORTID_INPUT_VECTOR);
+        SetupInputPortAsVector4("Vector", INPUTPORT_VECTOR, PORTID_INPUT_VECTOR);
 
         // setup the output ports
         InitOutputPorts(4);
@@ -81,7 +81,8 @@ namespace EMotionFX
             return;
         }
 
-        AZ::Vector4 value = GetInputVector4(animGraphInstance, INPUTPORT_VECTOR)->GetValue();
+        AZ::Vector4 value = AZ::Vector4::CreateZero();
+        TryGetInputVector4(animGraphInstance, INPUTPORT_VECTOR, value);
         GetOutputFloat(animGraphInstance, OUTPUTPORT_X)->SetValue(value.GetX());
         GetOutputFloat(animGraphInstance, OUTPUTPORT_Y)->SetValue(value.GetY());
         GetOutputFloat(animGraphInstance, OUTPUTPORT_Z)->SetValue(value.GetZ());

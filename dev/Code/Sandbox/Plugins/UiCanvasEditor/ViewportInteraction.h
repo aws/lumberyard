@@ -23,12 +23,28 @@ class QMouseEvent;
 class QKeyEvent;
 class QWheelEvent;
 
+class ViewportDragInteraction;
+
 class ViewportInteraction
     : public QObject
 {
     Q_OBJECT
 
 public: // types
+
+    enum class NudgeDirection
+    {
+        Up,
+        Down,
+        Left,
+        Right
+    };
+
+    enum class NudgeSpeed
+    {
+        Slow,
+        Fast
+    };
 
     struct TranslationAndScale
     {
@@ -52,6 +68,7 @@ public: // member functions
 
     bool GetLeftButtonIsActive();
     bool GetSpaceBarIsActive();
+    void ActivateSpaceBar();
 
     void Draw(Draw2dHelper& draw2d,
         const QTreeWidgetItemRawPtrQList& selectedItems);
@@ -63,8 +80,8 @@ public: // member functions
         const QTreeWidgetItemRawPtrQList& selectedItems);
     void MouseWheelEvent(QWheelEvent* ev);
 
-    void KeyPressEvent(QKeyEvent* ev);
-    void KeyReleaseEvent(QKeyEvent* ev);
+    bool KeyPressEvent(QKeyEvent* ev);
+    bool KeyReleaseEvent(QKeyEvent* ev);
 
     //! Mode of interaction in the viewport
     //! This is driven by a toolbar.
@@ -73,7 +90,8 @@ public: // member functions
         SELECTION,
         MOVE,
         ROTATE,
-        RESIZE
+        RESIZE,
+        ANCHOR
     };
 
     //! Type of coordinate system in the viewport
@@ -91,6 +109,7 @@ public: // member functions
         TRANSFORM_GIZMO, //!< The base axes or circular manipulator.
         ANCHORS,
         PIVOT, //!< The dot.
+        GUIDE,
         NONE
     };
 
@@ -136,6 +155,9 @@ public: // member functions
     //! Assigns a scale of 1.0 to the canvas-to-viewport matrix.
     void ResetCanvasToViewportScale();
 
+    //! Sets the scale of the canvas-to-viewport matrix.
+    void SetCanvasZoomPercent(float scale);
+
     //! Return whether the canvas should be scaled to fit when the viewport is resized
     bool ShouldScaleToFitOnViewportResize() const { return m_shouldScaleToFitOnViewportResize; }
 
@@ -143,6 +165,13 @@ public: // member functions
 
     //! Reset all transform interaction variables except the interaction mode
     void ClearInteraction(bool clearSpaceBarIsActive = true);
+
+    //! Move the selected elements a certain number of pixels at a time
+    void Nudge(NudgeDirection direction, NudgeSpeed speed);
+
+    //! Start/stop object pick mode for assigning an entityId property
+    void StartObjectPickMode();
+    void StopObjectPickMode();
 
 private: // types
 
@@ -155,6 +184,15 @@ private: // member functions
     //! Update the cursor based on the current interaction
     void UpdateCursor();
 
+    //! Update which element is being hovered over
+    void UpdateHoverElement(const AZ::Vector2 mousePosition);
+
+    //! Clear the hover element
+    void InvalidateHoverElement();
+
+    //! Set the string that is to be displayed near the cursor
+    void SetCursorStr(const AZStd::string& cursorStr);
+
     //! Should be called when our translation and scale properties change for the canvas-to-viewport matrix.
     void UpdateCanvasToViewportMatrix();
 
@@ -163,6 +201,9 @@ private: // member functions
     //! Note that this method is private since ViewportInteraction matrix exclusively manages
     //! the viewport-to-canvas matrix.
     void SetCanvasToViewportScale(float newScale, Vec2i* optionalPivotPoint = nullptr);
+
+    //! Given a zoom scale quantize it to be a multiple of the zoom step
+    float QuantizeZoomScale(float newScale);
 
     void GetScaleToFitTransformProps(const AZ::Vector2* newCanvasSize, TranslationAndScale& propsOut);
 
@@ -175,7 +216,7 @@ private: // member functions
         Qt::KeyboardModifiers modifiers,
         const QTreeWidgetItemRawPtrQList& selectedItems);
 
-    // Draw a transform gizmo on the element
+    //! Draw a transform gizmo on the element
     void DrawAxisGizmo(Draw2dHelper& draw2d, const AZ::Entity* element, CoordinateSystem coordinateSystem, const ViewportIcon* lineTextureX, const ViewportIcon* lineTextureY);
     void DrawCircleGizmo(Draw2dHelper& draw2d, const AZ::Entity* element);
 
@@ -217,6 +258,14 @@ private: // data
     LyShine::EntityArray m_selectedElementsAtSelectionStart;
     TranslationAndScale m_canvasViewportMatrixProps;            //!< Stores translation and scale properties for canvasToViewport matrix.
                                                                 //!< Used for zoom and pan functionality.
+
+    AZStd::string m_cursorStr;
+    
+    bool m_inObjectPickMode = false;
+    ViewportInteraction::InteractionMode m_interactionModeBeforePickMode;
+    AZ::EntityId m_hoverElement;
+    bool m_entityPickedOnMousePress; // used to ignore mouse move/release events if element was picked on the mouse press
+
     bool m_shouldScaleToFitOnViewportResize;
 
     // Used to refresh the properties panel
@@ -238,12 +287,19 @@ private: // data
     // Used for rubber band selection
     std::unique_ptr< ViewportIcon > m_dottedLine;
 
-    std::unique_ptr< ViewportInteraction > m_viewportInteraction;
+    ViewportDragInteraction* m_dragInteraction;
+    bool m_isAreaSelectionActive = false; //!< True while left mouse is held down for a drag select
+
+    // Variables set when InteractionType is GUIDE
+    bool m_activeGuideIsVertical = false;
+    int m_activeGuideIndex = 0;
+
+    SerializeHelpers::SerializedEntryList m_selectedEntitiesUndoState;  //! This can be eliminated once the dragInteractions all use ViewportDragInteraction
 };
 
 ADD_ENUM_CLASS_ITERATION_OPERATORS(ViewportInteraction::InteractionMode,
     ViewportInteraction::InteractionMode::SELECTION,
-    ViewportInteraction::InteractionMode::RESIZE);
+    ViewportInteraction::InteractionMode::ANCHOR);
 
 ADD_ENUM_CLASS_ITERATION_OPERATORS(ViewportInteraction::CoordinateSystem,
     ViewportInteraction::CoordinateSystem::LOCAL,

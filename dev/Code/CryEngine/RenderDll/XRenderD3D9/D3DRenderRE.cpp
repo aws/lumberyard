@@ -2123,7 +2123,11 @@ bool CREHDRProcess::mfDraw(CShader* ef, SShaderPass* sfm)
 bool CREBeam::mfDraw(CShader* ef, SShaderPass* sl)
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(D3DRenderRE_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DRenderRE_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DRenderRE_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -2469,7 +2473,20 @@ bool CREGeomCache::mfDraw(CShader* ef, SShaderPass* sfm)
     const CCamera& camera = bIsShadowPass ? rRP.m_ShadowInfo.m_pCurShadowFrustum->FrustumPlanes[rRP.m_ShadowInfo.m_nOmniLightSide] : gRenDev->GetCamera();
 
     Matrix44A prevMatrix;
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // render to texture does not currently support motion blur in the render target
+    if (threadInfo.m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE)
+    {
+        prevMatrix = rRP.m_pCurObject->m_II.m_Matrix;
+    }
+    else
+    {
+        CMotionBlur::GetPrevObjToWorldMat(rRP.m_pCurObject, prevMatrix);
+    }
+#else
     CMotionBlur::GetPrevObjToWorldMat(rRP.m_pCurObject, prevMatrix);
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     const uint64 oldFlagsShader_RT = rRP.m_FlagsShader_RT;
     uint64 flagsShader_RT = rRP.m_FlagsShader_RT;

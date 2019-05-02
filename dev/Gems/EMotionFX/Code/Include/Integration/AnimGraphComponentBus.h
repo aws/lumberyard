@@ -50,6 +50,11 @@ namespace EMotionFX
             /// \return parameter index
             virtual AZ::u32 FindParameterIndex(const char* parameterName) = 0;
 
+            /// Retrieve parameter name for a given parameter index.
+            /// \param parameterName - index of parameter for which to retrieve the name.
+            /// \return parameter name
+            virtual const char* FindParameterName(AZ::u32 parameterIndex) = 0;
+
             /// Updates a anim graph property given a float value.
             /// \param parameterIndex - index of parameter to set
             /// \param value - value to set
@@ -177,6 +182,14 @@ namespace EMotionFX
             /// Retrieves a anim graph property as a quaternion value.
             /// \param parameterName - name of parameter to get
             virtual AZ::Quaternion GetNamedParameterRotation(const char* parameterName) = 0;
+
+            /// Making a request to sync the anim graph with another animg graph
+            /// \param masterEntityId - the entity id of another anim graph.
+            virtual void SyncAnimGraph(AZ::EntityId masterEntityId) = 0;
+
+            /// Making a request to desync from the anim graph to its master graph
+            /// \param masterEntityId - the entity id of another anim graph.
+            virtual void DesyncAnimGraph(AZ::EntityId masterEntityId) = 0;
         };
 
         using AnimGraphComponentRequestBus = AZ::EBus<AnimGraphComponentRequests>;
@@ -263,6 +276,14 @@ namespace EMotionFX
             /// \param beforeValue - value before the change
             /// \param afterValue - value after the change
             virtual void OnAnimGraphRotationParameterChanged(EMotionFX::AnimGraphInstance* /*animGraphInstance*/, AZ::u32 parameterIndex, const AZ::Quaternion& beforeValue, const AZ::Quaternion& afterValue) {};
+
+            /// Notifies listeners when an another anim graph trying to sync this graph
+            /// \param animGraphInstance - pointer to the servant anim graph instance
+            virtual void OnAnimGraphSynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) {};
+
+            /// Notifies listeners when an another anim graph trying to desync this graph
+            /// \param animGraphInstance - pointer to the servant anim graph instance
+            virtual void OnAnimGraphDesynced(EMotionFX::AnimGraphInstance* /*animGraphInstance(Servant)*/) {};
         };
 
         using AnimGraphComponentNotificationBus = AZ::EBus<AnimGraphComponentNotifications>;
@@ -285,7 +306,6 @@ namespace EMotionFX
             virtual const AZ::Data::AssetId& GetMotionSetAssetId() = 0;
         };
 
-        using EditorAnimGraphComponentRequestBus = AZ::EBus<EditorAnimGraphComponentRequests>;
-
+        using EditorAnimGraphComponentRequestBus = AZ::EBus<EditorAnimGraphComponentRequests>;        
     } // namespace Integration
 } // namespace EMotionFX

@@ -85,19 +85,19 @@ namespace MCommon
 
         /**
          * Render wireframe mesh.
-         * @param mesh A poiner to the mesh which will be rendered.
-         * @param globalTM The global transformation matrix of the node to which the given mesh belongs to.
+         * @param mesh A pointer to the mesh which will be rendered.
+         * @param worldTM The world space transformation matrix of the node to which the given mesh belongs to.
          * @param color The color for the wireframe mesh.
          * @param directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                       you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          * @param offsetScale The offset scaling factor. The wired mesh is offset slightly from the mesh, to prevent some z-fighting.
          */
-        void RenderWireframe(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM, const MCore::RGBAColor& color = MCore::RGBAColor(0.80784315f, 0.23921569f, 0.88627452f, 1.0f), bool directlyRender = false, float offsetScale = 1.0f);
+        void RenderWireframe(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, const MCore::RGBAColor& color = MCore::RGBAColor(0.80784315f, 0.23921569f, 0.88627452f, 1.0f), bool directlyRender = false, float offsetScale = 1.0f);
 
         /**
          * Render vertex and/or face normals of the mesh.
-         * @param mesh A poiner to the mesh which will be rendered.
-         * @param globalTM The global transformation matrix of the node to which the given mesh belongs to.
+         * @param mesh A pointer to the mesh which will be rendered.
+         * @param worldTM The world space transformation matrix of the node to which the given mesh belongs to.
          * @param vertexNormals Set to true in case you want the vertex normals to be rendered, false if not.
          * @param faceNormals Face normals will be rendered in case this flag is set to true, they won't be rendered if it is set to false.
          * @param vertexNormalsScale This parameter controls the length of the vertex normals. The default size of the vertex normals is one unit.
@@ -107,12 +107,12 @@ namespace MCommon
          * @param directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                       you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          */
-        void RenderNormals(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM, bool vertexNormals, bool faceNormals, float vertexNormalsScale = 1.0f, float faceNormalsScale = 2.0f, const MCore::RGBAColor& colorVertexNormals = MCore::RGBAColor(0.0f, 1.0f, 0.0f), const MCore::RGBAColor& colorFaceNormals = MCore::RGBAColor(0.5f, 0.5f, 1.0f), bool directlyRender = false);
+        void RenderNormals(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, bool vertexNormals, bool faceNormals, float vertexNormalsScale = 1.0f, float faceNormalsScale = 2.0f, const MCore::RGBAColor& colorVertexNormals = MCore::RGBAColor(0.0f, 1.0f, 0.0f), const MCore::RGBAColor& colorFaceNormals = MCore::RGBAColor(0.5f, 0.5f, 1.0f), bool directlyRender = false);
 
         /**
          * Render tangents and bitangents of the mesh.
-         * @param mesh A poiner to the mesh which will be rendered.
-         * @param globalTM The global transformation matrix of the node to which the given mesh belongs to.
+         * @param mesh A pointer to the mesh which will be rendered.
+         * @param worldTM The world space transformation matrix of the node to which the given mesh belongs to.
          * @param scale This parameter controls the length of the tangents and bitangentss. The default size of the tangents and bitangents is one unit.
          * @param colorTangents The color of the tangents.
          * @param mirroredBitangentColor The color of the mirrored bitangents, so the ones that have a w value of -1.
@@ -120,7 +120,7 @@ namespace MCommon
          * @param directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                       you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          */
-        void RenderTangents(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM, float scale = 1.0f, const MCore::RGBAColor& colorTangents = MCore::RGBAColor(1.0f, 0.0f, 0.0f), const MCore::RGBAColor& mirroredBitangentColor = MCore::RGBAColor(1.0f, 1.0f, 0.0f), const MCore::RGBAColor& colorBitangents = MCore::RGBAColor(1.0f, 1.0f, 1.0f), bool directlyRender = false);
+        void RenderTangents(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM, float scale = 1.0f, const MCore::RGBAColor& colorTangents = MCore::RGBAColor(1.0f, 0.0f, 0.0f), const MCore::RGBAColor& mirroredBitangentColor = MCore::RGBAColor(1.0f, 1.0f, 0.0f), const MCore::RGBAColor& colorBitangents = MCore::RGBAColor(1.0f, 1.0f, 1.0f), bool directlyRender = false);
 
         /**
          * Render the given axis aligned bounding box.
@@ -173,62 +173,62 @@ namespace MCommon
         void RenderAABBs(EMotionFX::ActorInstance* actorInstance, const AABBRenderSettings& renderSettings = AABBRenderSettings(), bool directlyRender = false);
 
         /**
-         * Render OBB for all enabled nodes inside the actor isntance.
-         * @param actorInstance A poiner to the actor instance which will be rendered.
-         * @param[in] visibleNodeIndices Pointer to array containing all node indices that should be rendered. NULL in case we want to render all nodes.
-         * @param[in] selectedNodeIndices Pointer to array containing all node indices that should be selected. NULL in case there are no selected nodes.
+         * Render OBB for all enabled nodes inside the actor instance.
+         * @param actorInstance A pointer to the actor instance which will be rendered.
+         * @param[in] visibleJointIndices List of visible joint indices. nullptr in case all joints should be rendered.
+         * @param[in] selectedJointIndices List of selected joint indices. nullptr in case selection should not be considered.
          * @param[in] color The color of the OBBs.
          * @param[in] selectedColor The color of the selected OBBs.
          * @param[in] directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                           you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          */
-        void RenderOBBs(EMotionFX::ActorInstance* actorInstance, MCore::Array<uint32>* visibleNodeIndices = NULL, MCore::Array<uint32>* selectedNodeIndices = NULL, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 0.0f, 1.0f), const MCore::RGBAColor& selectedColor = MCore::RGBAColor(1.0f, 0.647f, 0.0f), bool directlyRender = false);
+        void RenderOBBs(EMotionFX::ActorInstance* actorInstance, const AZStd::unordered_set<AZ::u32>* visibleJointIndices = nullptr, const AZStd::unordered_set<AZ::u32>* selectedJointIndices = nullptr, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 0.0f, 1.0f), const MCore::RGBAColor& selectedColor = MCore::RGBAColor(1.0f, 0.647f, 0.0f), bool directlyRender = false);
 
         /**
          * Render a simple line based skeleton for all enabled nodes of the actor instance.
-         * @param[in] actorInstance A poiner to the actor instance which will be rendered.
+         * @param[in] actorInstance A pointer to the actor instance which will be rendered.
+         * @param[in] visibleJointIndices List of visible joint indices. nullptr in case all joints should be rendered.
+         * @param[in] selectedJointIndices List of selected joint indices. nullptr in case selection should not be considered.
          * @param[in] color The color of the skeleton lines.
-         * @param[in] visibleNodeIndices Pointer to array containing all node indices that should be rendered. NULL in case we want to render all nodes.
-         * @param[in] selectedNodeIndices Pointer to array containing all node indices that should be selected. NULL in case there are no selected nodes.
          * @param[in] selectedColor The color of the selected bones.
          * @param[in] directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                           you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          */
-        void RenderSimpleSkeleton(EMotionFX::ActorInstance* actorInstance, MCore::Array<uint32>* visibleNodeIndices = NULL, MCore::Array<uint32>* selectedNodeIndices = NULL, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 0.0f, 1.0f), const MCore::RGBAColor& selectedColor = MCore::RGBAColor(1.0f, 0.647f, 0.0f), bool directlyRender = false);
+        void RenderSimpleSkeleton(EMotionFX::ActorInstance* actorInstance, const AZStd::unordered_set<AZ::u32>* visibleJointIndices = nullptr, const AZStd::unordered_set<AZ::u32>* selectedJointIndices = nullptr,
+            const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 0.0f, 1.0f), const MCore::RGBAColor& selectedColor = MCore::RGBAColor(1.0f, 0.647f, 0.0f),
+            float jointSphereRadius = 0.1f, bool directlyRender = false);
 
         /**
          * Render advanced skeleton using spheres and cylinders.
          * In case mesh rendering is not supported by the used render util the simple line based skeleton will be used as fallback function.
-         * @param[in] actorInstance A poiner to the actor instance which will be rendered.
+         * @param[in] actorInstance A pointer to the actor instance which will be rendered.
          * @param[in] boneList An array containing all node indices that are bones (used by the skin).
-         * @param[in] visibleNodeIndices Pointer to array containing all node indices that should be rendered. NULL in case we want to render all nodes.
-         * @param[in] selectedNodeIndices Pointer to array containing all node indices that should be selected. NULL in case there are no selected nodes.
+         * @param[in] visibleJointIndices List of visible joint indices. nullptr in case all joints should be rendered.
+         * @param[in] selectedJointIndices List of selected joint indices. nullptr in case selection should not be considered.
          * @param[in] color The desired skeleton color.
          * @param[in] selectedColor The color of the selected bones.
          */
-        void RenderSkeleton(EMotionFX::ActorInstance* actorInstance, const MCore::Array<uint32>& boneList, MCore::Array<uint32>* visibleNodeIndices = NULL, MCore::Array<uint32>* selectedNodeIndices = NULL, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 0.0f, 0.0f, 1.0f), const MCore::RGBAColor& selectedColor = MCore::RGBAColor(1.0f, 0.647f, 0.0f));
+        void RenderSkeleton(EMotionFX::ActorInstance* actorInstance, const MCore::Array<uint32>& boneList, const AZStd::unordered_set<AZ::u32>* visibleJointIndices = nullptr, const AZStd::unordered_set<AZ::u32>* selectedJointIndices = nullptr, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 0.0f, 0.0f, 1.0f), const MCore::RGBAColor& selectedColor = MCore::RGBAColor(1.0f, 0.647f, 0.0f));
 
         /**
          * Render node orientations.
-         * @param[in] actorInstance A poiner to the actor instance which will be rendered.
+         * @param[in] actorInstance A pointer to the actor instance which will be rendered.
          * @param[in] boneList An array containing all node indices that are bones (used by the skin).
-         * @param[in] visibleNodeIndices Pointer to array containing all node indices that should be rendered. NULL in case we want to render all nodes.
-         * @param[in] selectedNodeIndices Pointer to array containing all node indices that should be selected. NULL in case there are no selected nodes.
+         * @param[in] visibleJointIndices List of visible joint indices. nullptr in case all joints should be rendered.
+         * @param[in] selectedJointIndices List of selected joint indices. nullptr in case selection should not be considered.
          * @param[in] scale The scaling value in units. Axes of normal nodes will use the scaling value as unit length, skinned bones will use the scaling value as multiplier.
          * @param[in] scaleBonesOnLength Automatically scales the bone orientations based on the bone length. This means finger node orientations will be rendered smaller than foot bones as the bone length is a lot smaller as well.
          */
-        void RenderNodeOrientations(EMotionFX::ActorInstance* actorInstance, const MCore::Array<uint32>& boneList, MCore::Array<uint32>* visibleNodeIndices = NULL, MCore::Array<uint32>* selectedNodeIndices = NULL, float scale = 1.0f, bool scaleBonesOnLength = true);
+        void RenderNodeOrientations(EMotionFX::ActorInstance* actorInstance, const MCore::Array<uint32>& boneList, const AZStd::unordered_set<AZ::u32>* visibleJointIndices = nullptr, const AZStd::unordered_set<AZ::u32>* selectedJointIndices = nullptr, float scale = 1.0f, bool scaleBonesOnLength = true);
 
         /**
          * Render the bind pose of the given actor.
-         * @param[in] actorInstance A poiner to the actor instance whose bind pose will be rendered.
-         * @param[in] globalSpaceBindPoseMatrices An array containing the global space bind pose matrices for the given actor instance. These can be calculated using
-         *                                       Actor::CalcBindPoseGlobalMatrices().
+         * @param[in] actorInstance A pointer to the actor instance whose bind pose will be rendered.
          * @param[in] color The color of the skeleton lines.
          * @param[in] directlyRender Will call the RenderLines() function internally in case it is set to true. If false
          *                           you have to make sure to call RenderLines() manually at the end of your custom render frame function.
          */
-        void RenderBindPose(EMotionFX::ActorInstance* actorInstance, const MCore::Array<MCore::Matrix>& globalSpaceBindPoseMatrices, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 0.0f, 1.0f), bool directlyRender = false);
+        void RenderBindPose(EMotionFX::ActorInstance* actorInstance, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 0.0f, 1.0f), bool directlyRender = false);
 
         /**
          * Render the node names of the given actor instance.
@@ -238,10 +238,10 @@ namespace MCommon
          * @param[in] screenHeight The screen height in pixels.
          * @param[in] color The text color.
          * @param[in] color The text color for selected elements.
-         * @param[in] visibleNodeIndices An array containing all node indices that should be rendered.
-         * @param[in] selectedNodeIndices An array containing all node indices that are selected and should be highlighted.
+         * @param[in] visibleJointIndices List of visible joint indices. nullptr in case all joints should be rendered.
+         * @param[in] selectedJointIndices List of selected joint indices. nullptr in case selection should not be considered.
          */
-        void RenderNodeNames(EMotionFX::ActorInstance* actorInstance, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor, const MCore::Array<uint32>& visibleNodeIndices, const MCore::Array<uint32>& selectedNodeIndices);
+        void RenderNodeNames(EMotionFX::ActorInstance* actorInstance, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color, const MCore::RGBAColor& selectedColor, const AZStd::unordered_set<AZ::u32>& visibleJointIndices, const AZStd::unordered_set<AZ::u32>& selectedJointIndices);
 
         /**
          * Render a sphere.
@@ -254,9 +254,9 @@ namespace MCommon
         /**
          * Render a sphere.
          * @param color The desired sphere color.
-         * @param globalTM The global transformation matrix.
+         * @param worldTM The world space transformation matrix.
          */
-        MCORE_INLINE void RenderSphere(const MCore::RGBAColor& color, const MCore::Matrix& globalTM)                                                            { RenderUtilMesh(mUnitSphereMesh, color, globalTM); }
+        MCORE_INLINE void RenderSphere(const MCore::RGBAColor& color, const MCore::Matrix& worldTM)                                                            { RenderUtilMesh(mUnitSphereMesh, color, worldTM); }
 
         /**
          * Render a circle, consisting of lines.
@@ -270,9 +270,9 @@ namespace MCommon
         /**
          * Render a cube.
          * @param color The desired cube color.
-         * @param globalTM The global transformation matrix.
+         * @param worldTM The world space transformation matrix.
          */
-        MCORE_INLINE void RenderCube(const MCore::RGBAColor& color, const MCore::Matrix& globalTM)                                                          { RenderUtilMesh(mUnitCubeMesh, color, globalTM); }
+        MCORE_INLINE void RenderCube(const MCore::RGBAColor& color, const MCore::Matrix& worldTM)                                                          { RenderUtilMesh(mUnitCubeMesh, color, worldTM); }
 
         /**
          * Render a cylinder.
@@ -280,9 +280,9 @@ namespace MCommon
          * @param topRadius The radius of the top of the cylinder.
          * @param length The height of the cylinder.
          * @param color The desired cylinder color.
-         * @param globalTM The global transformation matrix.
+         * @param worldTM The world space transformation matrix.
          */
-        MCORE_INLINE void RenderCylinder(float baseRadius, float topRadius, float length, const MCore::RGBAColor& color, const MCore::Matrix& globalTM)     { FillCylinder(mCylinderMesh, baseRadius, topRadius, length); RenderUtilMesh(mCylinderMesh, color, globalTM); }
+        MCORE_INLINE void RenderCylinder(float baseRadius, float topRadius, float length, const MCore::RGBAColor& color, const MCore::Matrix& worldTM)     { FillCylinder(mCylinderMesh, baseRadius, topRadius, length); RenderUtilMesh(mCylinderMesh, color, worldTM); }
 
         /**
          * Render a cylinder.
@@ -325,9 +325,9 @@ namespace MCommon
          * @param height The height of the arrow head from the base to the head.
          * @param radius The radius of the base of the arrow head.
          * @param color The desired arrow head color.
-         * @param globalTM The global transformation matrix.
+         * @param worldTM The world space transformation matrix.
          */
-        MCORE_INLINE void RenderArrowHead(float height, float radius, const MCore::RGBAColor& color, const MCore::Matrix& globalTM)             { FillArrowHead(mArrowHeadMesh, height, radius); RenderUtilMesh(mArrowHeadMesh, color, globalTM); }
+        MCORE_INLINE void RenderArrowHead(float height, float radius, const MCore::RGBAColor& color, const MCore::Matrix& worldTM)             { FillArrowHead(mArrowHeadMesh, height, radius); RenderUtilMesh(mArrowHeadMesh, color, worldTM); }
 
         /**
          * Render an arrow head.
@@ -340,9 +340,9 @@ namespace MCommon
         void RenderArrowHead(float height, float radius, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color);
 
         /**
-         * Render a solid mesh based orientated axis. This can be used to visualize coordinate systems for example a node orientation in global space.
+         * Render a solid mesh based orientated axis. This can be used to visualize coordinate systems for example a node orientation in world space.
          * @param size The size value in units is used to control the scaling of the axis.
-         * @param position The center point of the axis in global space.
+         * @param position The center point of the axis in world space.
          * @param right The normalized right axis.
          * @param up The normalized up axis.
          * @param forward The normalized forward axis.
@@ -361,7 +361,7 @@ namespace MCommon
              */
             AxisRenderingSettings();
 
-            MCore::Matrix   mGlobalTM;          /**< The global transformation matrix to visualize. */
+            MCore::Matrix   mWorldTM;           /**< The world space transformation matrix to visualize. */
             AZ::Vector3     mCameraRight;       /**< The inverse of the camera's right vector used for billboarding the axis names. */
             AZ::Vector3     mCameraUp;          /**< The inverse of the camera's up vector used for billboarding the axis names. */
             float           mSize;              /**< The size value in units is used to control the scaling of the axis. */
@@ -375,17 +375,19 @@ namespace MCommon
         };
 
         /**
-         * Render a line based orientated axis. This function will visualize the given global space matrix.
+         * Render a line based orientated axis. This function will visualize the given world space matrix.
          * @param settings The axis rendering settings to be used.
          */
         void RenderLineAxis(const AxisRenderingSettings& settings);
 
+        void RenderArrow(float size, const AZ::Vector3& position, const AZ::Vector3& direction, const MCore::RGBAColor& color);
+
         /**
-         * Render a solid mesh based orientated axis. This function will visualize the given global space matrix.
+         * Render a solid mesh based orientated axis. This function will visualize the given world space matrix.
          * @param size The size value in units is used to control the scaling of the axis.
-         * @param globalTM The global transformation matrix to visualize.
+         * @param worldTM The world space transformation matrix to visualize.
          */
-        MCORE_INLINE void RenderAxis(float size, const MCore::Matrix& globalTM)                         { RenderAxis(size, globalTM.GetTranslation(), globalTM.GetRight(), globalTM.GetUp(), globalTM.GetForward()); }
+        MCORE_INLINE void RenderAxis(float size, const MCore::Matrix& worldTM)                         { RenderAxis(size, worldTM.GetTranslation(), worldTM.GetRight(), worldTM.GetUp(), worldTM.GetForward()); }
 
         //---------------------------------------------------------------------------------------------
 
@@ -539,9 +541,9 @@ namespace MCommon
          * overload this function. Don't forget to overload the IsMeshRenderingSupported() function as well returning true, else the fallback line rendering functions will be used.
          * @param mesh A pointer to the util mesh to be rendered.
          * @param color The desired color.
-         * @param globalTM The global transformation matrix.
+         * @param worldTM The world space transformation matrix.
          */
-        virtual void RenderUtilMesh(UtilMesh* mesh, const MCore::RGBAColor& color, const MCore::Matrix& globalTM)           { MCORE_UNUSED(mesh); MCORE_UNUSED(color); MCORE_UNUSED(globalTM); }
+        virtual void RenderUtilMesh(UtilMesh* mesh, const MCore::RGBAColor& color, const MCore::Matrix& worldTM)           { MCORE_UNUSED(mesh); MCORE_UNUSED(color); MCORE_UNUSED(worldTM); }
 
         /**
          * Get if mesh rendering is supported in the given render util implementation.
@@ -551,7 +553,7 @@ namespace MCommon
         virtual bool GetIsMeshRenderingSupported() const                                                                    { return false; }
 
         /**
-         * Rendering the normals or the tangents of a mesh need the global space transformed positions of the mesh.
+         * Rendering the normals or the tangents of a mesh need the world space transformed positions of the mesh.
          * To avoid recalculating them several times we do this at a central place. This function needs to be called before switching to a new mesh inside
          * the render loop as well as before an animation update, so before calling any of the render normals, face normals, tangents and bitangents functions.
          */
@@ -629,7 +631,7 @@ namespace MCommon
 
         struct TrajectoryPathParticle
         {
-            MCore::Matrix mGlobalTM;
+            MCore::Matrix mWorldTM;
         };
 
         struct TrajectoryTracePath
@@ -654,7 +656,7 @@ namespace MCommon
          * @param[in] scale The size or the arrow.
          */
         void RenderTrajectory(EMotionFX::ActorInstance* actorInstance, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale);
-        void RenderTrajectory(const MCore::Matrix& globalTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale);
+        void RenderTrajectory(const MCore::Matrix& worldTM, const MCore::RGBAColor& innerColor, const MCore::RGBAColor& borderColor, float scale);
 
         void RenderTrajectoryPath(TrajectoryTracePath* trajectoryPath, const MCore::RGBAColor& innerColor, float scale);
         static void ResetTrajectoryPath(TrajectoryTracePath* trajectoryPath);
@@ -662,19 +664,19 @@ namespace MCommon
         /**
          * Render text to screen. This will only work in case the Render2DLines() function has been implemented.
          */
-        MCORE_INLINE void RenderText(float x, float y, const char* text, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 1.0f), float fontSize = 11.0f, bool centered = false)   { mFont->Render(x, y + fontSize - 1, fontSize, centered, text, color); }
+        MCORE_INLINE void RenderText(float x, float y, const char* text, const MCore::RGBAColor& color = MCore::RGBAColor(1.0f, 1.0f, 1.0f), float fontSize = 11.0f, bool centered = false)   { mFont->Render(x * m_devicePixelRatio, (y * m_devicePixelRatio) + fontSize - 1, fontSize, centered, text, color); }
 
         /**
          * Render text to screen. This will only work in case the Render2DLines() function has been implemented.
          * @param[in] text The text to render.
          * @param[in] textSize The text size in pixels.
-         * @param[in] globalPos The global position of the node.
+         * @param[in] worldSpacePos The world space position of the node.
          * @param[in] camera A pointer to the current camera used to render the scene.
          * @param[in] screenWidth The screen width in pixels.
          * @param[in] screenHeight The screen height in pixels.
          * @param[in] color The text color.
          */
-        void RenderText(const char* text, uint32 textSize, const AZ::Vector3& globalPos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color);
+        void RenderText(const char* text, uint32 textSize, const AZ::Vector3& worldSpacePos, MCommon::Camera* camera, uint32 screenWidth, uint32 screenHeight, const MCore::RGBAColor& color);
 
         void SetDevicePixelRatio(float devicePixelRatio)                                                { m_devicePixelRatio = devicePixelRatio; }
 
@@ -686,9 +688,9 @@ namespace MCommon
 
         virtual void SetDepthMaskWrite(bool writeEnabled) = 0;
 
-        void RenderWireframeBox(const AZ::Vector3& dimensions, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender = false);
-        void RenderWireframeSphere(float radius, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender = false);
-        void RenderWireframeCapsule(float radius, float height, const MCore::Matrix& globalTM, const MCore::RGBAColor& color, bool directlyRender = false);
+        void RenderWireframeBox(const AZ::Vector3& dimensions, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
+        void RenderWireframeSphere(float radius, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
+        void RenderWireframeCapsule(float radius, float height, const MCore::Matrix& worldTM, const MCore::RGBAColor& color, bool directlyRender = false);
 
     protected:
         /**
@@ -755,13 +757,13 @@ namespace MCommon
         static UtilMesh* CreateCube(float size);
 
         /**
-         * Rendering the normals, the tangents or the wireframe of a mesh need the global space transformed positions of the mesh.
-         * To avoid recalculating them several times we do this at a central place. This function will pre-calculate the global space
+         * Rendering the normals, the tangents or the wireframe of a mesh need the world space transformed positions of the mesh.
+         * To avoid recalculating them several times we do this at a central place. This function will pre-calculate the world space
          * positions of the mesh which will be then used to render the normals, tangents and the wireframe.
-         * @param mesh A poiner to the mesh to pre-calculate the global space positions for.
-         * @param globalTM The global transformation matrix of the node to which the given mesh belongs to.
+         * @param mesh A pointer to the mesh to pre-calculate the world space positions for.
+         * @param worldTM The world space transformation matrix of the node to which the given mesh belongs to.
          */
-        void PrepareForMesh(EMotionFX::Mesh* mesh, const MCore::Matrix& globalTM);
+        void PrepareForMesh(EMotionFX::Mesh* mesh, const MCore::Matrix& worldTM);
 
         class MCOMMON_API FontChar
         {
@@ -814,8 +816,8 @@ namespace MCommon
             RenderUtil* mRenderUtil;
         };
 
-        EMotionFX::Mesh*                mCurrentMesh;           /**< A pointer to the mesh whose global space positions are in the pre-calculated positions buffer. NULL in case we haven't pre-calculated any positions yet. */
-        MCore::Array<AZ::Vector3>    mGlobalPositions;       /**< The buffer used to store global space positions for rendering normals, tangents and the wireframe. */
+        EMotionFX::Mesh*                mCurrentMesh;           /**< A pointer to the mesh whose world space positions are in the pre-calculated positions buffer. NULL in case we haven't pre-calculated any positions yet. */
+        MCore::Array<AZ::Vector3>       mWorldSpacePositions;   /**< The buffer used to store world space positions for rendering normals, tangents and the wireframe. */
 
         LineVertex*                     mVertexBuffer;          /**< Array of line vertices. */
         uint32                          mNumVertices;           /**< The current number of vertices in the array. */

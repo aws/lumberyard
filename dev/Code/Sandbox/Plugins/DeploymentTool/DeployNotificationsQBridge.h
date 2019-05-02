@@ -37,12 +37,14 @@ namespace DeployTool
 
         void RemoteLogConnectionStateChange(bool isConnected) override;
 
+        void DeployProcessStatusChange(const AZStd::string& status) override;
         void DeployProcessFinished(bool success) override;
 
 
     signals:
         void OnLog(LogStream stream, LogSeverity severity, const QString& message);
         void OnRemoteLogConnectionStateChange(bool isConnected);
+        void OnDeployProcessStatusChange(const QString& status);
         void OnDeployProcessFinished(bool success);
     };
 } // namespace DeployTool

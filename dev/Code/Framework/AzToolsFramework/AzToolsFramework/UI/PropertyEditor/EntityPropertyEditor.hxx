@@ -26,8 +26,10 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
+#include <AzToolsFramework/ToolsComponents/ComponentMimeData.h>
 #include <QtWidgets/QWidget>
 #include <QtGui/QIcon>
+#include <QComboBox>
 
 #pragma once
 
@@ -35,6 +37,7 @@ class QLabel;
 class QSpacerItem;
 class QMenu;
 class QMimeData;
+class QStandardItem;
 
 namespace Ui
 {
@@ -120,6 +123,9 @@ namespace AzToolsFramework
 
         void SetSystemEntityEditor(bool isSystemEntityEditor);
 
+    Q_SIGNALS:
+        void SelectedEntityNameChanged(const AZ::EntityId& entityId, const AZStd::string& name);
+
     private:
 
         struct SharedComponentInfo
@@ -183,28 +189,57 @@ namespace AzToolsFramework
         void SortComponentsByOrder(const AZ::EntityId& entityId, AZ::Entity::ComponentArrayType& componentsOnEntity);
         void SaveComponentOrder(const AZ::EntityId& entityId, const AZ::Entity::ComponentArrayType& componentsInOrder);
 
-        void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray);
+        void BuildSharedComponentArray(SharedComponentArray& sharedComponentArray, bool containsLayerEntity);
         void BuildSharedComponentUI(SharedComponentArray& sharedComponentArray);
         bool ComponentMatchesCurrentFilter(SharedComponentInfo& sharedComponentInfo) const;
         ComponentEditor* CreateComponentEditor();
         void UpdateEntityIcon();
         void UpdateEntityDisplay();
+        bool DoesComponentPassFilter(const AZ::Component* component) const;
         bool IsComponentRemovable(const AZ::Component* component) const;
         bool AreComponentsRemovable(const AZ::Entity::ComponentArrayType& components) const;
+        bool AreComponentsCopyable(const AZ::Entity::ComponentArrayType& components) const;
 
         void AddMenuOptionsForComponents(QMenu& menu, const QPoint& position);
         void AddMenuOptionsForFields(InstanceDataNode* fieldNode, InstanceDataNode* componentNode, const AZ::SerializeContext::ClassData* componentClassData, QMenu& menu);
-        void AddMenuOptionForSliceReset(QMenu& menu);
+        void AddMenuOptionsForRevert(InstanceDataNode* fieldNode, InstanceDataNode* componentNode, const AZ::SerializeContext::ClassData* componentClassData, QMenu& menu);
+
+        bool HasAnyVisibleElements(const InstanceDataNode& node);
 
         void ContextMenuActionPullFieldData(AZ::Component* parentComponent, InstanceDataNode* fieldNode);
         void ContextMenuActionSetDataFlag(InstanceDataNode* node, AZ::DataPatch::Flag flag, bool additive);
 
         /// Given an InstanceDataNode, calculate a DataPatch address relative to the entity.
         /// @return true if successful.
-        bool GetEntityDataPatchAddress(const InstanceDataNode* node, AZ::DataPatch::AddressType& dataPatchAddressOut, AZ::EntityId* entityIdOut=nullptr) const;
+        bool GetEntityDataPatchAddress(const InstanceDataNode* componentFieldNode, AZ::DataPatch::AddressType& dataPatchAddressOut, AZ::EntityId* entityIdOut = nullptr) const;
+
+        enum class AddressRootType
+        {
+            RootAtComponentsContainer,  // Address will be made rooted at the entity's components container (from "Components" container down).
+            RootAtEntity,               // Address will be made rooted at the entity itself (from "AZ::Entity" down).
+        };
+
+        // Input address is expected to be relative to a component, as each property editor corresponds to a component and its own data hierarchy.
+        // \param componentFieldNode instance data hierarchy node corresponding to a field under a component, as provided by the component's ReflectedPropertyEditor.
+        // \param rootType type of root the address should be adjusted to. See \ref AddressRootType.
+        // \param outAddress output parameter to be populated with the adjusted node address.
+        void CalculateAndAdjustNodeAddress(const InstanceDataNode& componentFieldNode, AddressRootType rootType, InstanceDataNode::Address& outAddress) const;
 
         // Custom function for comparing values of InstanceDataNodes
-        bool CompareInstanceDataNodeValues(const InstanceDataNode* sourceNode, const InstanceDataNode* targetNode);
+        bool InstanceNodeValueHasNoPushableChange(const InstanceDataNode* sourceNode, const InstanceDataNode* targetNode);
+
+        // Custom function for determining whether InstanceDataNodes are read-only
+        bool QueryInstanceDataNodeReadOnlyStatus(const InstanceDataNode* node);
+        bool QueryInstanceDataNodeReadOnlySetStatus(const InstanceDataNode* node);
+
+        // Custom function for determining whether InstanceDataNodes are hidden
+        bool QueryInstanceDataNodeHiddenStatus(const InstanceDataNode* node);
+        bool QueryInstanceDataNodeHiddenSetStatus(const InstanceDataNode* node);
+
+        bool QueryInstanceDataNodeSetStatus(const InstanceDataNode* node, AZ::DataPatch::Flag testFlag);
+        bool QueryInstanceDataNodeEffectStatus(const InstanceDataNode* node, AZ::DataPatch::Flag testFlag);
+
+        const char* GetAppropriateIndicator(const InstanceDataNode* node);
 
         void OnDisplayComponentEditorMenu(const QPoint& position);
         void OnRequestRequiredComponents(const QPoint& position, const QSize& size, const AZStd::vector<AZ::ComponentServiceType>& services);
@@ -220,6 +255,25 @@ namespace AzToolsFramework
             const QPoint& position,
             const QSize& size,
             const AZStd::vector<AZ::ComponentServiceType>& serviceFilter);
+
+        enum class SelectionEntityTypeInfo
+        {
+            None,
+            OnlyStandardEntities,
+            OnlyLayerEntities,
+            Mixed
+        };
+        /**
+         * Returns what kinds of entities are in the current selection. This is used because mixed selection
+         * and layer entities requires special logic in the property editor.
+         * \param selection The selected entities.
+         */
+        SelectionEntityTypeInfo GetSelectionEntityTypeInfo(const EntityIdList& selection) const;
+
+        /**
+         * Returns true if a selection matching the passed in selection informatation allows components to be added.
+         */
+        bool CanAddComponentsToSelection(const SelectionEntityTypeInfo& selectionEntityTypeInfo) const;
 
         QAction* m_actionToAddComponents;
         QAction* m_actionToDeleteComponents;
@@ -238,6 +292,9 @@ namespace AzToolsFramework
 
         void CreateActions();
         void UpdateActions();
+
+        bool CanPasteComponentsOnSelectedEntities() const;
+        bool CanPasteComponentsOnEntity(const ComponentTypeMimeData::ClassDataContainer& classDataForComponentsToPaste, const AZ::Entity* entity) const;
 
         AZ::Entity::ComponentArrayType GetCopyableComponents() const;
         void DeleteComponents(const AZ::Entity::ComponentArrayType& components);
@@ -368,7 +425,17 @@ namespace AzToolsFramework
 
         void UpdateInternalState();
 
-        void UpdateInitiallyActiveDisplay();
+        enum StatusType
+        {
+            StatusStartActive,
+            StatusStartInactive,
+            StatusEditorOnly,
+            StatusItems
+        };
+
+        QStringList m_itemNames{ "Start active","Start inactive","Editor only" };
+
+        void UpdateStatusComboBox();
 
         bool m_isBuildingProperties;
 
@@ -407,9 +474,12 @@ namespace AzToolsFramework
         AZStd::string m_filterString;
 
         // IDs of entities currently bound to this property editor.
-        AZStd::vector<AZ::EntityId> m_selectedEntityIds;
+        EntityIdList m_selectedEntityIds;
 
         ComponentFilter m_componentFilter;
+        // Tracks if a custom filter has been set. A comparison operator is not available for
+        // the filter, so it can't be checked if it's the default filter.
+        bool m_customFilterSet = false;
 
         // Pointer to entity that first entity is compared against for the purpose of rendering deltas vs. slice in the property grid.
         AZStd::unique_ptr<AZ::Entity> m_sliceCompareToEntity;
@@ -419,7 +489,11 @@ namespace AzToolsFramework
 
         QIcon m_emptyIcon;
         QIcon m_clearIcon;
+        QIcon m_checkmarkIcon;
+        QIcon m_rectangleIcon;
+        QIcon m_spacerIcon;
 
+        QStandardItem* m_comboItems[StatusItems];
         EntityIdList m_overrideSelectedEntityIds;
 
         void GetSelectedEntities(EntityIdList& selectedEntityIds);
@@ -439,7 +513,7 @@ namespace AzToolsFramework
         void OnEntityNameChanged();
         void ScrollToNewComponent();
         void QueueScrollToNewComponent();
-        void OnInitiallyActiveChanged(int);
+        void OnStatusChanged(int index);
         void BuildEntityIconMenu();
 
         void OnSearchTextChanged();
@@ -451,7 +525,21 @@ namespace AzToolsFramework
 
         void CloseInspectorWindow();
     };
-
 }
+
+class StatusComboBox : public QComboBox
+{
+    Q_OBJECT
+public:
+    StatusComboBox(QWidget* parent = nullptr);
+
+    void setHeaderOverride(QString overrideString);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+    void showPopup() override;
+
+    QString m_headerOverride = "";
+};
 
 #endif

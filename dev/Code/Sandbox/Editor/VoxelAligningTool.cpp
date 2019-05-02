@@ -112,7 +112,7 @@ void CVoxelAligningTool::ApplyPickedTM2CurObj(const QPoint& point, bool bPickOnl
     CSurfaceInfoPicker surfacePicker;
     if (surfacePicker.Pick(point, hitInfo, &excludeObjects, nPickFlag))
     {
-        m_curObj->SetPos(hitInfo.vHitPos);
+        m_curObj->SetPos(hitInfo.vHitPos, eObjectUpdateFlags_UserInput);
         ApplyRotation(hitInfo.vHitNormal);
     }
 }
@@ -124,7 +124,7 @@ void CVoxelAligningTool::ApplyRotation(Vec3& normal)
     zaxis.Normalize();
     Quat nq;
     nq.SetRotationV0V1(zaxis, normal);
-    m_curObj->SetRotation(nq * m_q);
+    m_curObj->SetRotation(nq * m_q, eObjectUpdateFlags_UserInput);
 }
 
 //////////////////////////////////////////////////////////////////////////

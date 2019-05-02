@@ -98,7 +98,7 @@ namespace AzToolsFramework
                     option.displayAlignment,
                     actualPalette,
                     isEnabled,
-                    QString::fromUtf8(entry->GetDisplayName().c_str()),
+                    entry->GetDisplayName(),
                     isSelected ? QPalette::HighlightedText : QPalette::Text);
             }
         }

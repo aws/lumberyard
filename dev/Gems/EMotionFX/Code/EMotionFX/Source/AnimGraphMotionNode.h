@@ -16,6 +16,7 @@
 #include "AnimGraphNode.h"
 #include "AnimGraphNodeData.h"
 #include "PlayBackInfo.h"
+#include <AzCore/Serialization/SerializeContext.h>
 
 namespace EMotionFX
 {
@@ -38,6 +39,8 @@ namespace EMotionFX
         enum
         {
             INPUTPORT_PLAYSPEED                 = 0,
+            INPUTPORT_INPLACE                   = 1,
+
             OUTPUTPORT_POSE                     = 0,
             OUTPUTPORT_MOTION                   = 1
         };
@@ -45,6 +48,8 @@ namespace EMotionFX
         enum
         {
             PORTID_INPUT_PLAYSPEED              = 0,
+            PORTID_INPUT_INPLACE                = 1,
+
             PORTID_OUTPUT_POSE                  = 0,
             PORTID_OUTPUT_MOTION                = 1
         };
@@ -71,7 +76,6 @@ namespace EMotionFX
 
         public:
             uint32              mMotionSetID;
-            uint32              mEventTrackIndex;
             uint32              mActiveMotionIndex;
             MotionInstance*     mMotionInstance;
             bool                mReload;
@@ -87,6 +91,7 @@ namespace EMotionFX
         bool GetCanActAsState() const override              { return true; }
         bool GetSupportsDisable() const override            { return true; }
         bool GetSupportsVisualization() const override      { return true; }
+        bool GetNeedsNetTimeSync() const override           { return true; }
         uint32 GetVisualColor() const override              { return MCore::RGBA(96, 61, 231); }
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
@@ -106,7 +111,7 @@ namespace EMotionFX
         void UpdatePlayBackInfo(AnimGraphInstance* animGraphInstance);
 
         float ExtractCustomPlaySpeed(AnimGraphInstance* animGraphInstance) const;
-        void PickNewActiveMotion(UniqueData* uniqueData);
+        void PickNewActiveMotion(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData);
 
         size_t GetNumMotions() const;
         const char* GetMotionId(size_t index) const;
@@ -131,22 +136,30 @@ namespace EMotionFX
         void SetIndexMode(EIndexMode eIndexMode);
         void SetNextMotionAfterLooop(bool nextMotionAfterLoop);
         void SetRewindOnZeroWeight(bool rewindOnZeroWeight);
+        int FindCumulativeProbabilityIndex(float randomValue) const;
+
+        bool GetIsInPlace(AnimGraphInstance* animGraphInstance) const;
 
         static void Reflect(AZ::ReflectContext* context);
+        static void InitializeDefaultMotionIdsRandomWeights(const AZStd::vector<AZStd::string>& motionIds, AZStd::vector<AZStd::pair<AZStd::string, float> >& motionIdsRandomWeights);
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
     private:
-        PlayBackInfo                    m_playInfo;
-        AZStd::vector<AZStd::string>    m_motionIds;
-        float                           m_playSpeed;
-        EIndexMode                      m_indexMode;
-        bool                            m_loop;
-        bool                            m_retarget;
-        bool                            m_reverse;
-        bool                            m_emitEvents;
-        bool                            m_mirrorMotion;
-        bool                            m_motionExtraction;
-        bool                            m_nextMotionAfterLoop;
-        bool                            m_rewindOnZeroWeight;
+        static const float                                  s_defaultWeight;
+
+        PlayBackInfo                                        m_playInfo;
+        AZStd::vector<AZStd::pair<AZStd::string, float> >    m_motionRandomSelectionCumulativeWeights;
+        float                                               m_playSpeed;
+        EIndexMode                                          m_indexMode;
+        bool                                                m_loop;
+        bool                                                m_retarget;
+        bool                                                m_reverse;
+        bool                                                m_emitEvents;
+        bool                                                m_mirrorMotion;
+        bool                                                m_motionExtraction;
+        bool                                                m_nextMotionAfterLoop;
+        bool                                                m_rewindOnZeroWeight;
+        bool                                                m_inPlace;
 
         MotionInstance* CreateMotionInstance(ActorInstance* actorInstance, AnimGraphInstance* animGraphInstance);
         void TopDownUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
@@ -159,5 +172,6 @@ namespace EMotionFX
 
         AZ::Crc32 GetRewindOnZeroWeightVisibility() const;
         AZ::Crc32 GetMultiMotionWidgetsVisibility() const;
+        void SelectAnyRandomMotionIndex(EMotionFX::AnimGraphInstance* animGraphInstance, EMotionFX::AnimGraphMotionNode::UniqueData* uniqueData);
     };
 } // namespace EMotionFX

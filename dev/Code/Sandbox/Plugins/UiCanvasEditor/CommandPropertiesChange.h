@@ -21,13 +21,15 @@ public:
 
     static void Push(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        SerializeHelpers::SerializedEntryList& preValueChanges);
+        SerializeHelpers::SerializedEntryList& preValueChanges,
+        const char* commandName);
 
 private:
 
     CommandPropertiesChange(UndoStack* stack,
         HierarchyWidget* hierarchy,
-        SerializeHelpers::SerializedEntryList& preValueChanges);
+        SerializeHelpers::SerializedEntryList& preValueChanges,
+        const char* commandName);
 
     void Recreate(bool isUndo);
 

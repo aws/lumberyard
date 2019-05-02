@@ -11,11 +11,17 @@
 */
 #pragma once
 
+#include "EditorPropertyTypes.h"
+
 #include <LyShine/Bus/UiVisualBus.h>
 #include <LyShine/Bus/UiRenderBus.h>
 #include <LyShine/Bus/UiImageBus.h>
+#include <LyShine/Bus/UiCanvasBus.h>
+#include <LyShine/Bus/UiTransformBus.h>
 #include <LyShine/Bus/UiAnimateEntityBus.h>
 #include <LyShine/Bus/UiLayoutCellDefaultBus.h>
+#include <LyShine/Bus/Sprite/UiSpriteBus.h>
+#include <LyShine/Bus/UiIndexableImageBus.h>
 #include <LyShine/UiComponentTypes.h>
 
 #include <AzCore/Component/Component.h>
@@ -24,9 +30,10 @@
 
 #include <LmbrCentral/Rendering/MaterialAsset.h>
 
+#include <IRenderer.h>
+
 class ITexture;
 class ISprite;
-struct SVF_P3F_C4B_T2F;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 class UiImageComponent
@@ -35,7 +42,11 @@ class UiImageComponent
     , public UiRenderBus::Handler
     , public UiImageBus::Handler
     , public UiAnimateEntityBus::Handler
+    , public UiTransformChangeNotificationBus::Handler
     , public UiLayoutCellDefaultBus::Handler
+    , public UiCanvasPixelAlignmentNotificationBus::Handler
+    , public UiSpriteSettingsChangeNotificationBus::Handler
+    , public UiIndexableImageBus::Handler
 {
 public: // member functions
 
@@ -52,25 +63,27 @@ public: // member functions
     // ~UiVisualInterface
 
     // UiRenderInterface
-    void Render() override;
+    void Render(LyShine::IRenderGraph* renderGraph) override;
     // ~UiRenderInterface
 
     // UiImageInterface
     AZ::Color GetColor() override;
     void SetColor(const AZ::Color& color) override;
+    float GetAlpha() override;
+    void SetAlpha(float alpha) override;
     ISprite* GetSprite() override;
     void SetSprite(ISprite* sprite) override;
     AZStd::string GetSpritePathname() override;
     void SetSpritePathname(AZStd::string spritePath) override;
+    bool SetSpritePathnameIfExists(AZStd::string spritePath) override;
     AZStd::string GetRenderTargetName() override;
     void SetRenderTargetName(AZStd::string renderTargetName) override;
+    bool GetIsRenderTargetSRGB() override;
+    void SetIsRenderTargetSRGB(bool isSRGB) override;
     SpriteType GetSpriteType() override;
     void SetSpriteType(SpriteType spriteType) override;
     ImageType GetImageType() override;
     void SetImageType(ImageType imageType) override;
-    void SetSpriteSheetCellIndex(AZ::u32 index) override;
-    const AZ::u32 GetSpriteSheetCellIndex() override;
-    const AZ::u32 GetSpriteSheetCellCount() override;
     FillType GetFillType() override;
     void SetFillType(FillType fillType) override;
     float GetFillAmount() override;
@@ -85,14 +98,31 @@ public: // member functions
     void SetFillClockwise(bool fillClockwise) override;
     bool GetFillCenter() override;
     void SetFillCenter(bool fillCenter) override;
-    AZStd::string GetSpriteSheetCellAlias(AZ::u32 index) override;
-    void SetSpriteSheetCellAlias(AZ::u32 index, const AZStd::string& alias) override;
-    AZ::u32 GetSpriteSheetCellIndexFromAlias(const AZStd::string& alias) override;
+    AZ_DEPRECATED(void SetSpriteSheetCellIndex(AZ::u32 index) override, "Deprecated. Use UiIndexableImageInterface::SetImageIndex instead.");
+    AZ_DEPRECATED(const AZ::u32 GetSpriteSheetCellIndex() override, "Deprecated. Use UiIndexableImageInterface::GetImageIndex instead.");
+    AZ_DEPRECATED(const AZ::u32 GetSpriteSheetCellCount() override, "Deprecated. Use UiIndexableImageInterface::GetImageIndexCount instead.");
+    AZ_DEPRECATED(AZStd::string GetSpriteSheetCellAlias(AZ::u32 index) override, "Deprecated. Use UiIndexableImageInterface::GetImageIndexAlias instead.");
+    AZ_DEPRECATED(void SetSpriteSheetCellAlias(AZ::u32 index, const AZStd::string& alias) override, "Deprecated. Use UiIndexableImageInterface::SetImageIndexAlias instead.");
+    AZ_DEPRECATED(AZ::u32 GetSpriteSheetCellIndexFromAlias(const AZStd::string& alias) override, "Deprecated. Use UiIndexableImageInterface::GetImageIndexFromAlias instead.");
     // ~UiImageInterface
+
+    // UiIndexableImageBus
+    void SetImageIndex(AZ::u32 index) override;
+    const AZ::u32 GetImageIndex() override;
+    const AZ::u32 GetImageIndexCount() override;
+    AZStd::string GetImageIndexAlias(AZ::u32 index) override;
+    void SetImageIndexAlias(AZ::u32 index, const AZStd::string& alias) override;
+    AZ::u32 GetImageIndexFromAlias(const AZStd::string& alias) override;
+    // ~UiIndexableImageBus
 
     // UiAnimateEntityInterface
     void PropertyValuesChanged() override;
     // ~UiAnimateEntityInterface
+
+    // UiTransformChangeNotification
+    void OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTransformInterface::Rect& oldRect, const UiTransformInterface::Rect& newRect) override;
+    void OnTransformToViewportChanged() override;
+    // ~UiTransformChangeNotification
 
     // UiLayoutCellDefaultInterface
     float GetMinWidth() override;
@@ -103,12 +133,21 @@ public: // member functions
     float GetExtraHeightRatio() override;
     // ~UiLayoutCellDefaultInterface
 
+    // UiCanvasPixelAlignmentNotification
+    void OnCanvasPixelAlignmentChange() override;
+    // ~UiCanvasPixelAlignmentNotification
+
+    // UiSpriteSettingsChangeNotification
+    void OnSpriteSettingsChanged() override;
+    // ~UiSpriteSettingsChangeNotification
+
 public:  // static member functions
 
     static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
         provided.push_back(AZ_CRC("UiVisualService", 0xa864fdf8));
         provided.push_back(AZ_CRC("UiImageService"));
+        provided.push_back(AZ_CRC("UiIndexableImageService"));
     }
 
     static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
@@ -123,11 +162,6 @@ public:  // static member functions
     }
 
     static void Reflect(AZ::ReflectContext* context);
-
-    using AZu32ComboBoxVec = AZStd::vector<AZStd::pair<AZ::u32, AZStd::string> >;
-
-    //! Returns a string enumeration list for the given min/max value ranges
-    static AZu32ComboBoxVec GetEnumSpriteIndexList(AZ::u32 indexMin, AZ::u32 indexMax, ISprite* sprite = nullptr, const char* errorMessage = "");
 
 protected: // member functions
 
@@ -148,30 +182,46 @@ protected: // member functions
 
 private: // member functions
 
-    void RenderStretchedSprite(ISprite* sprite, int cellIndex, float fade);
-    void RenderSlicedSprite(ISprite* sprite, int cellIndex, float fade);
-    void RenderFixedSprite(ISprite* sprite, int cellIndex, float fade);
-    void RenderTiledSprite(ISprite* sprite, float fade);
-    void RenderStretchedToFitOrFillSprite(ISprite* sprite, int cellIndex, float fade, bool toFit);
+    void RenderStretchedSprite(ISprite* sprite, int cellIndex, uint32 packedColor);
+    void RenderSlicedSprite(ISprite* sprite, int cellIndex, uint32 packedColor);
+    void RenderFixedSprite(ISprite* sprite, int cellIndex, uint32 packedColor);
+    void RenderTiledSprite(ISprite* sprite, uint32 packedColor);
+    void RenderStretchedToFitOrFillSprite(ISprite* sprite, int cellIndex, uint32 packedColor, bool toFit);
 
-    void RenderSingleQuad(ITexture* texture, const AZ::Vector2* positions, const AZ::Vector2* uvs, float fade);
+    void RenderSingleQuad(const AZ::Vector2* positions, const AZ::Vector2* uvs, uint32 packedColor);
 
-    void RenderFilledQuad(ITexture* texture, const AZ::Vector2* positions, const AZ::Vector2* uvs, float fade);
-    void RenderLinearFilledQuad(ITexture* texture, const AZ::Vector2* positions, const AZ::Vector2* uvs, float fade, AZ::Color color);
-    void RenderRadialFilledQuad(ITexture* texture, const AZ::Vector2* positions, const AZ::Vector2* uvs, float fade, AZ::Color color);
-    void RenderRadialCornerFilledQuad(ITexture* texture, const AZ::Vector2* positions, const AZ::Vector2* uvs, float fade, AZ::Color color);
-    void RenderRadialEdgeFilledQuad(ITexture* texture, const AZ::Vector2* positions, const AZ::Vector2* uvs, float fade, AZ::Color color);
-    void RenderSlicedLinearFilledSprite(ISprite* sprite, int cellIndex, ITexture* texture, uint32 packedColor, float topBorder, float leftBorder, float bottomBorder, float rightBorder);
-    void RenderSlicedRadialFilledSprite(ISprite* sprite, int cellIndex, ITexture* texture, uint32 packedColor, float topBorder, float leftBorder, float bottomBorder, float rightBorder);
-    void RenderSlicedRadialCornerOrEdgeFilledSprite(ISprite* sprite, int cellIndex, ITexture* texture, uint32 packedColor, float topBorder, float leftBorder, float bottomBorder, float rightBorder);
-    int ClipToLine(SVF_P3F_C4B_T2F* vertices, uint16* indices, SVF_P3F_C4B_T2F* newVertex, uint16* renderIndices, int& vertexOffset, int idxOffset, const Vec3& lineOrigin, const Vec3& lineEnd);
+    void RenderFilledQuad(const AZ::Vector2* positions, const AZ::Vector2* uvs, uint32 packedColor);
+    void RenderLinearFilledQuad(const AZ::Vector2* positions, const AZ::Vector2* uvs, uint32 packedColor);
+    void RenderRadialFilledQuad(const AZ::Vector2* positions, const AZ::Vector2* uvs, uint32 packedColor);
+    void RenderRadialCornerFilledQuad(const AZ::Vector2* positions, const AZ::Vector2* uvs, uint32 packedColor);
+    void RenderRadialEdgeFilledQuad(const AZ::Vector2* positions, const AZ::Vector2* uvs, uint32 packedColor);
 
-    void RenderTriangleList(ITexture* texture, SVF_P3F_C4B_T2F* vertices, uint16* indices, int numVertices, int numIndices);
-    void RenderTriangleStrip(ITexture* texture, SVF_P3F_C4B_T2F* vertices, uint16* indices, int numVertices, int numIndices);
-    void RenderSetStates(IRenderer* renderer, ITexture* texture);
+    void RenderSlicedStretchedSprite(ISprite* sprite, int cellIndex, uint32 packedColor, const AZ::Matrix4x4& transform,
+        const AZ::Vector2& textureSize, const UiTransformInterface::RectPoints& points,
+        float leftBorder, float rightBorder, float topBorder, float bottomBorder);
+    void RenderSlicedFixedSprite(ISprite* sprite, int cellIndex, uint32 packedColor, const AZ::Matrix4x4& transform,
+        const AZ::Vector2& textureSize, const UiTransformInterface::RectPoints& points,
+        float leftBorder, float rightBorder, float topBorder, float bottomBorder,
+        float rectWidth, float rectHeight, float centerUvWidth, float centerUvHeight);
+
+    template<uint32 numValues> void RenderSlicedFillModeNoneSprite(uint32 packedColor, const AZ::Matrix4x4& transform, float* xValues, float* yValues, float* sValues, float* tValues);
+    template<uint32 numValues> void RenderSlicedLinearFilledSprite(uint32 packedColor, const AZ::Matrix4x4& transform, float* xValues, float* yValues, float* sValues, float* tValues);
+    template<uint32 numValues> void RenderSlicedRadialFilledSprite(uint32 packedColor, const AZ::Matrix4x4& transform, float* xValues, float* yValues, float* sValues, float* tValues);
+    template<uint32 numValues> void RenderSlicedRadialCornerOrEdgeFilledSprite(uint32 packedColor, const AZ::Matrix4x4& transform, float* xValues, float* yValues, float* sValues, float* tValues);
+
+    void ClipValuesForSlicedLinearFill(uint32 numValues, float* xValues, float* yValues, float* sValues, float* tValues);
+    void ClipAndRenderForSlicedRadialFill(uint32 numVertsPerside, uint32 numVerts, const SVF_P2F_C4B_T2F_F4B* verts, uint32 totalIndices, const uint16* indices);
+    void ClipAndRenderForSlicedRadialCornerOrEdgeFill(uint32 numVertsPerside, uint32 numVerts, const SVF_P2F_C4B_T2F_F4B* verts, uint32 totalIndices, const uint16* indices);
+
+    int ClipToLine(const SVF_P2F_C4B_T2F_F4B* vertices, const uint16* indices, SVF_P2F_C4B_T2F_F4B* newVertex, uint16* renderIndices, int& vertexOffset, int idxOffset, const Vec2& lineOrigin, const Vec2& lineEnd);
+
+    void RenderTriangleList(const SVF_P2F_C4B_T2F_F4B* vertices, const uint16* indices, int numVertices, int numIndices);
+    void ClearCachedVertices();
+    void ClearCachedIndices();
+    void MarkRenderCacheDirty();
+    void MarkRenderGraphDirty();
 
     void SnapOffsetsToFixedImage();
-    int GetBlendModeStateFlags();
 
     bool IsPixelAligned();
 
@@ -191,6 +241,10 @@ private: // member functions
     AZ_DISABLE_COPY_MOVE(UiImageComponent);
 
     void OnEditorSpritePathnameChange();
+    void OnEditorSpriteTypeChange();
+    void OnEditorImageTypeChange();
+    void OnEditorRenderSettingChange();
+
     void OnSpritePathnameChange();
     void OnSpriteRenderTargetNameChange();
     void OnSpriteTypeChange();
@@ -209,7 +263,7 @@ private: // member functions
     void OnIndexChange();
 
     //! Returns a string representation of the indices used to index sprite-sheet types.
-    UiImageComponent::AZu32ComboBoxVec PopulateIndexStringList() const;
+    LyShine::AZu32ComboBoxVec PopulateIndexStringList() const;
 
 private: // static member functions
 
@@ -220,6 +274,7 @@ private: // data
 
     AzFramework::SimpleAssetReference<LmbrCentral::TextureAsset> m_spritePathname;
     AZStd::string m_renderTargetName;
+    bool m_isRenderTargetSRGB           = false;
     SpriteType m_spriteType             = SpriteType::SpriteAsset;
     AZ::Color m_color                   = AZ::Color(1.0f, 1.0f, 1.0f, 1.0f);
     float m_alpha                       = 1.0f;
@@ -242,6 +297,13 @@ private: // data
     FillEdgeOrigin m_fillEdgeOrigin     = FillEdgeOrigin::Left;
     bool m_fillClockwise                = true;
     bool m_fillCenter                   = true;
+
+    bool m_isSlicingStretched           = true;  //!< When true the central parts of a 9-slice are stretched, when false the have the same pixel to texel ratio as the corners.
+
     bool m_isColorOverridden;
     bool m_isAlphaOverridden;
+
+    // cached rendering data for performance optimization
+    IRenderer::DynUiPrimitive m_cachedPrimitive;
+    bool m_isRenderCacheDirty = true;
 };

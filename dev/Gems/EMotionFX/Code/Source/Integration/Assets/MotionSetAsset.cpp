@@ -75,17 +75,6 @@ namespace EMotionFX
         {
         }
 
-
-        MotionSetAsset::~MotionSetAsset()
-        {
-            for (auto& motionAsset : m_motionAssets)
-            {
-                motionAsset.Get()->Release();
-            }
-            m_motionAssets.clear();
-        }
-
-
         //////////////////////////////////////////////////////////////////////////
         void MotionSetAsset::OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset)
         {
@@ -132,7 +121,7 @@ namespace EMotionFX
 
             if (!assetData->m_emfxMotionSet)
             {
-                AZ_Error("EMotionFX", false, "Failed to initialize motion set asset %s", asset.ToString<AZStd::string>().c_str());
+                AZ_Error("EMotionFX", false, "Failed to initialize motion set asset %s", asset.GetHint().c_str());
                 return false;
             }
 
@@ -153,6 +142,10 @@ namespace EMotionFX
             }
             else
             {
+                if (GetEMotionFX().GetIsInEditorMode())
+                {
+                    AZ_Warning("EMotionFX", false, "Failed to retrieve asset source path with alias '@devassets@'. Cannot set absolute filename for '%s'", assetFilename.c_str());
+                }
                 assetData->m_emfxMotionSet->SetFilename(assetFilename.c_str());
             }
 
@@ -170,23 +163,21 @@ namespace EMotionFX
                 if (motionAssetId.IsValid())
                 {
                     AZ::Data::Asset<MotionAsset> motionAsset = AZ::Data::AssetManager::Instance().
-                            GetAsset<MotionAsset>(motionAssetId, true, nullptr, true);
+                        GetAsset<MotionAsset>(motionAssetId, true, nullptr, true);
 
                     if (motionAsset)
                     {
                         assetData->BusConnect(motionAssetId);
-                        // since the motion asset is added to the vector we need to increment the use count
-                        motionAsset.Get()->Acquire();
                         assetData->m_motionAssets.push_back(motionAsset);
                     }
                     else
                     {
-                        AZ_Warning("EMotionFX", false, "Motion \"%s\" in motion set could not be loaded.", motionFilename);
+                        AZ_Warning("EMotionFX", false, "Motion \"%s\" in motion set \"%s\" could not be loaded.", motionFilename, assetFilename.c_str());
                     }
                 }
                 else
                 {
-                    AZ_Warning("EMotionFX", false, "Motion \"%s\" in motion set could not be found in the asset catalog.", motionFilename);
+                    AZ_Warning("EMotionFX", false, "Motion \"%s\" in motion set \"%s\" could not be found in the asset catalog.", motionFilename, assetFilename.c_str());
                 }
             }
 

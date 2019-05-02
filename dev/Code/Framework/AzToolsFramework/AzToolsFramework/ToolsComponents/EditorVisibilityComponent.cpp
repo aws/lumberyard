@@ -13,6 +13,7 @@
 #include "EditorVisibilityComponent.h"
 
 #include <AzCore/Serialization/EditContext.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 namespace AzToolsFramework
 {
@@ -68,6 +69,7 @@ namespace AzToolsFramework
         void EditorVisibilityComponent::Activate()
         {
             EditorComponentBase::Activate();
+            EditorVisibilityNotificationBus::Event(GetEntityId(), &EditorVisibilityNotifications::OnEntityVisibilityFlagChanged, m_visibilityFlag);
         }
 
         void EditorVisibilityComponent::Deactivate()
@@ -80,7 +82,7 @@ namespace AzToolsFramework
             if (m_currentVisibility != visibility)
             {
                 m_currentVisibility = visibility;
-                EBUS_EVENT_ID(GetEntityId(), EditorVisibilityNotificationBus, OnEntityVisibilityChanged, m_currentVisibility);
+                EditorVisibilityNotificationBus::Event(m_entity->GetId(), &EditorVisibilityNotifications::OnEntityVisibilityChanged, m_currentVisibility);
             }
         }
 
@@ -94,7 +96,8 @@ namespace AzToolsFramework
             if (m_visibilityFlag != flag)
             {
                 m_visibilityFlag = flag;
-                EBUS_EVENT_ID(GetEntityId(), EditorVisibilityNotificationBus, OnEntityVisibilityFlagChanged, m_visibilityFlag);
+                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::AddDirtyEntity, m_entity->GetId());
+                EditorVisibilityNotificationBus::Event(m_entity->GetId(), &EditorVisibilityNotifications::OnEntityVisibilityFlagChanged, m_visibilityFlag);
             }
         }
 

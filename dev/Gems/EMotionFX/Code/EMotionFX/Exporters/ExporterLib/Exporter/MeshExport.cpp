@@ -86,6 +86,7 @@ namespace ExporterLib
 
         // write the mesh header
         EMotionFX::FileFormat::Actor_Mesh meshHeader;
+        memset(&meshHeader, 0, sizeof(EMotionFX::FileFormat::Actor_Mesh));
         meshHeader.mIsCollisionMesh = isCollisionMesh ? 1 : 0;
         meshHeader.mNodeIndex       = nodeIndex;
         meshHeader.mNumLayers       = mesh->GetNumVertexAttributeLayers();
@@ -137,6 +138,7 @@ namespace ExporterLib
             EMotionFX::VertexAttributeLayerAbstractData* abstractLayer = static_cast<EMotionFX::VertexAttributeLayerAbstractData*>(layer);
 
             EMotionFX::FileFormat::Actor_VertexAttributeLayer fileLayer;
+            memset(&fileLayer, 0, sizeof(EMotionFX::FileFormat::Actor_VertexAttributeLayer));
             fileLayer.mLayerTypeID          = layer->GetType();
             fileLayer.mAttribSizeInBytes    = abstractLayer->GetAttributeSizeInBytes();
             fileLayer.mEnableDeformations   = layer->GetKeepOriginals() ? 1 : 0;

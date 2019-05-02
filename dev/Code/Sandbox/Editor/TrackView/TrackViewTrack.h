@@ -75,7 +75,6 @@ class CTrackViewTrack
     friend class CTrackViewKeyHandle;
     friend class CTrackViewKeyConstHandle;
     friend class CTrackViewKeyBundle;
-    friend class CAbstractUndoTrackTransaction;
 
 public:
     CTrackViewTrack(IAnimTrack* pTrack, CTrackViewAnimNode* pTrackAnimNode, CTrackViewNode* pParentNode,
@@ -176,8 +175,6 @@ public:
 
     // Key selection
     virtual void SelectKeys(const bool bSelected) override;
-
-    void SortKeysByTime() override;
 
     // Paste from XML representation with time offset
     void PasteKeys(XmlNodeRef xmlNode, const float timeOffset);

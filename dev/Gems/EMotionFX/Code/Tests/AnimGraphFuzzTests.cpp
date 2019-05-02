@@ -10,7 +10,6 @@
 *
 */
 
-#include <iostream>
 #include <vector>
 #include <regex>
 #include <AzCore/Math/Random.h>

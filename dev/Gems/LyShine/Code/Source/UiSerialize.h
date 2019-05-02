@@ -52,10 +52,4 @@ namespace UiSerialize
         const char* colorElementName,
         const char* alphaElementName,
         const char* spriteElementName);
-
-    //! Helper function to change all owned UI elements to be referenced by EntityId
-    //! and to copy the owned UI element entities' DataElementNodes to a container
-    bool MoveEntityAndDescendantsToListAndReplaceWithEntityId(AZ::SerializeContext& context,
-        AZ::SerializeContext::DataElementNode& elementNode,
-        AZStd::vector<AZ::SerializeContext::DataElementNode>& entities);
 }

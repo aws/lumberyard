@@ -31,6 +31,7 @@ namespace EMStudio
 
         mButtonLoopForever          = nullptr;
         mButtonMirror               = nullptr;
+        mButtonInPlace              = nullptr;
 
         mPlaySpeedResetButton       = nullptr;
         mPlaySpeedSlider            = nullptr;
@@ -60,8 +61,8 @@ namespace EMStudio
         mButtonLoopForever->setText("Loop Forever");
         mButtonMirror->setText("Mirror");
 
-        connect(mButtonLoopForever, SIGNAL(clicked()), this, SLOT(UpdateMotions()));
-        connect(mButtonMirror, SIGNAL(clicked()), this, SLOT(UpdateMotions()));
+        connect(mButtonLoopForever, &QPushButton::clicked, this, &MotionPropertiesWindow::UpdateMotions);
+        connect(mButtonMirror, &QPushButton::clicked, this, &MotionPropertiesWindow::UpdateMotions);
 
         motionPropertiesLayout->addWidget(buttonGroup);
 
@@ -71,9 +72,16 @@ namespace EMStudio
         mButtonPlayBackward = playModeButtonGroup->GetButton(0, 1);
         mButtonPlayForward->setText("Forward");
         mButtonPlayBackward->setText("Backward");
-        connect(mButtonPlayForward, SIGNAL(clicked()), this, SLOT(UpdateMotions()));
-        connect(mButtonPlayBackward, SIGNAL(clicked()), this, SLOT(UpdateMotions()));
+        connect(mButtonPlayForward, &QPushButton::clicked, this, &MotionPropertiesWindow::UpdateMotions);
+        connect(mButtonPlayBackward, &QPushButton::clicked, this, &MotionPropertiesWindow::UpdateMotions);
         motionPropertiesLayout->addWidget(playModeButtonGroup);
+
+        MysticQt::ButtonGroup* miscButtonGroup = new MysticQt::ButtonGroup(this, 1, 2);
+        mButtonInPlace = miscButtonGroup->GetButton(0, 0);
+        miscButtonGroup->GetButton(0, 1)->setVisible(false);
+        mButtonInPlace->setText("In Place");
+        connect(mButtonInPlace, &QPushButton::clicked, this, &MotionPropertiesWindow::UpdateMotions);
+        motionPropertiesLayout->addWidget(miscButtonGroup);
 
         // sliders
         QGridLayout* slidersLayout = new QGridLayout();
@@ -94,9 +102,9 @@ namespace EMStudio
         mPlaySpeedResetButton->setMaximumHeight(18);
         slidersLayout->addWidget(mPlaySpeedResetButton, 2, 3);
 
-        connect(mPlaySpeedSlider, SIGNAL(valueChanged(int)), this, SLOT(PlaySpeedSliderChanged(int)));
-        connect(mPlaySpeedSlider, SIGNAL(sliderReleased()), this, SLOT(UpdateMotions()));
-        connect(mPlaySpeedResetButton, SIGNAL(clicked()), this, SLOT(ResetPlaySpeed()));
+        connect(mPlaySpeedSlider, &MysticQt::Slider::valueChanged, this, &MotionPropertiesWindow::PlaySpeedSliderChanged);
+        connect(mPlaySpeedSlider, &MysticQt::Slider::sliderReleased, this, &MotionPropertiesWindow::UpdateMotions);
+        connect(mPlaySpeedResetButton, &QPushButton::clicked, this, &MotionPropertiesWindow::ResetPlaySpeed);
 
         motionPropertiesLayout->addLayout(slidersLayout);
 
@@ -141,6 +149,11 @@ namespace EMStudio
             else
             {
                 commandParameters += "-numLoops 1 -freezeAtLastFrame true ";
+            }
+
+            if (playbackInfo->mInPlace != mButtonInPlace->isChecked())
+            {
+                commandParameters += AZStd::string::format("-inPlace %s", AZStd::to_string(mButtonInPlace->isChecked()).c_str());
             }
 
             if (playbackInfo->mMirrorMotion != mButtonMirror->isChecked())
@@ -190,6 +203,7 @@ namespace EMStudio
         const uint32 numSelectedMotions = selection.GetNumSelectedMotions();
         const bool isEnabled = (numSelectedMotions != 0);
 
+        mButtonInPlace->setEnabled(isEnabled);
         mButtonLoopForever->setEnabled(isEnabled);
         mPlaySpeedSlider->setEnabled(isEnabled);
         mPlaySpeedResetButton->setEnabled(isEnabled);
@@ -237,6 +251,8 @@ namespace EMStudio
             }
             mButtonLoopForever->setChecked(loopForever);
 
+            mButtonInPlace->setChecked(defaultPlayBackInfo->mInPlace);
+
             // set slider values
             SetPlaySpeed(defaultPlayBackInfo->mPlaySpeed);
         }
@@ -258,7 +274,6 @@ namespace EMStudio
 
         mPlaySpeedLabel->setText(AZStd::string::format("%.2f", playSpeed).c_str());
     }
-
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/MotionWindow/MotionPropertiesWindow.moc>

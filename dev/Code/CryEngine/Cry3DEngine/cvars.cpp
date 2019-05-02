@@ -810,6 +810,8 @@ void CVars::Init()
         "Use geometric mean of faces area to compute LOD");
     DefineConstIntCVar(e_LodsForceUse, 1, VF_NULL,
         "Force using LODs even if triangle count do not suit");
+    DefineConstFloatCVar(e_LodBoundingBoxDistanceMultiplier, VF_CHEAT,
+        "e_LodBoundingBoxDistanceMultiplier ");
 
     REGISTER_CVAR(e_SQTestDelay, 5.f, VF_NULL,
         "Time to stabilize the system before camera movements");
@@ -851,6 +853,8 @@ void CVars::Init()
         "LOD distance ratio for objects");
     REGISTER_CVAR(e_LodFaceAreaTargetSize, 0.005f, VF_NULL,
         "Threshold used for LOD computation.");
+    REGISTER_CVAR(e_FogVolumeShadingQuality, 0, VF_NULL,
+        "Fog Volume Shading Quality 0: standard, 1:high (better fog volume interaction)");
     DefineConstFloatCVar(e_LodCompMaxSize, VF_NULL,
         "Affects LOD selection for big objects, small number will switch more objects into lower LOD");
     REGISTER_CVAR(e_ViewDistRatio, 60.0f, VF_CVARGRP_IGNOREINREALVAL,
@@ -873,6 +877,8 @@ void CVars::Init()
         "Min LOD for objects");
     REGISTER_CVAR(e_CharLodMin, 0, VF_NULL,
         "Min LOD for character objects");
+    REGISTER_CVAR(e_LodForceUpdate, 0, VF_NULL,
+        "When active, recalculate object LOD when rendering instead of using LOD calculated during previous frame.");
     REGISTER_CVAR(e_LodMax, MAX_STATOBJ_LODS_NUM - 1, VF_CHEAT,
         "Max LOD for objects");
     DefineConstIntCVar(e_LodMinTtris, 300, VF_CHEAT,

@@ -564,6 +564,7 @@ void UiSliderComponent::Reflect(AZ::ReflectContext* context)
             auto editInfo = ec->Class<UiSliderComponent>("Slider", "An interactable component for modifying a floating point value with a slider.");
 
             editInfo->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                ->Attribute(AZ::Edit::Attributes::Category, "UI")
                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/UiSlider.png")
                 ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/UiSlider.png")
                 ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("UI", 0x27ff46b0))

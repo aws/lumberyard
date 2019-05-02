@@ -32,7 +32,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION AWSNATIVESDKINIT_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(AWSNativeSDKInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AWSNativeSDKInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AWSNativeSDKInit_cpp_provo.inl"
+    #endif
 #endif
 
 namespace AWSNativeSDKInit
@@ -83,7 +87,11 @@ namespace AWSNativeSDKInit
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION AWSNATIVESDKINIT_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(AWSNativeSDKInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AWSNativeSDKInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AWSNativeSDKInit_cpp_provo.inl"
+    #endif
 #endif
 
         Aws::InitAPI(m_awsSDKOptions);
@@ -97,7 +105,11 @@ namespace AWSNativeSDKInit
         Aws::ShutdownAPI(m_awsSDKOptions);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION AWSNATIVESDKINIT_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(AWSNativeSDKInit_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AWSNativeSDKInit_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AWSNativeSDKInit_cpp_provo.inl"
+    #endif
 #endif
 
 #endif // #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)

@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "PropertyEnumComboBoxCtrl.hxx"
 #include "PropertyQTConstants.h"
 #include "DHQComboBox.hxx"
@@ -58,7 +58,8 @@ namespace AzToolsFramework
                 break;
             }
         }
-        AZ_Warning("AzToolsFramework", indexWasFound == true, "No index in property enum for value %d", value);
+
+        AZ_Warning("AzToolsFramework", indexWasFound == true || (value == 0 && m_enumValues.size() > 0), "No index in property enum for value %d", value);
 
         m_pComboBox->blockSignals(false);
     }

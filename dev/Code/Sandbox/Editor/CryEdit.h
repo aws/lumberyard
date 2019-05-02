@@ -163,7 +163,6 @@ public:
 
     bool OpenSetupAssistant() const;
     QString GetRootEnginePath() const;
-
     // Overrides
     // ClassWizard generated virtual function overrides
 public:
@@ -179,6 +178,8 @@ public:
     // Implementation
     void OnCreateLevel();
     void OnOpenLevel();
+    void OnCreateSlice();
+    void OnOpenSlice();
     void OnAppAbout();
     void OnOnlineDocumentation();
     void OnDocumentationTutorials();
@@ -316,6 +317,7 @@ public:
     void OnLockSelection();
     void OnEditLevelData();
     void OnFileEditLogFile();
+    void OnFileResaveSlices();
     void OnFileEditEditorini();
     void OnSelectAxisTerrain();
     void OnSelectAxisSnapToAll();

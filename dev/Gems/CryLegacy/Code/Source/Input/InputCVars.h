@@ -30,7 +30,11 @@ public:
     int i_seatedTracking;
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(InputCVars_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/InputCVars_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/InputCVars_h_provo.inl"
+    #endif
 #endif
 
     float i_kinSkeletonMovedDistance;

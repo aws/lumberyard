@@ -67,6 +67,8 @@
 #include <AzCore/std/typetraits/add_reference.h>
 #include <AzCore/std/typetraits/add_volatile.h>
 #include <AzCore/std/typetraits/alignment_of.h>
+#include <AzCore/std/typetraits/conjunction.h>
+#include <AzCore/std/typetraits/disjunction.h>
 #include <AzCore/std/typetraits/has_nothrow_assign.h>
 #include <AzCore/std/typetraits/has_nothrow_constructor.h>
 #include <AzCore/std/typetraits/has_nothrow_copy.h>
@@ -110,6 +112,7 @@
 #include <AzCore/std/typetraits/is_union.h>
 #include <AzCore/std/typetraits/is_void.h>
 #include <AzCore/std/typetraits/is_volatile.h>
+#include <AzCore/std/typetraits/negation.h>
 #include <AzCore/std/typetraits/rank.h>
 //#include <AzCore/std/typetraits/extent.h>
 #include <AzCore/std/typetraits/remove_bounds.h>

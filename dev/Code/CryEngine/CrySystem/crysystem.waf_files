@@ -68,7 +68,8 @@
             "ServerThrottle.h",
             "SyncLock.h",
             "SystemScheduler.h",
-            "UnixConsole.h"
+            "UnixConsole.h",
+            "../CryCommon/ThermalInfo.h"
         ],
         "Header Files": [
             "SystemInit.h",

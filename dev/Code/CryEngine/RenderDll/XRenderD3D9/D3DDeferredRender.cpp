@@ -22,7 +22,11 @@
 #pragma warning(disable: 4244)
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(D3DDeferredRender_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/D3DDeferredRender_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/D3DDeferredRender_cpp_provo.inl"
+    #endif
 #endif
 
 
@@ -959,6 +963,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
         FX_SetVStream(0, pVB, nOffsV, pRenderMesh->GetStreamStride(VSF_GENERAL));
         FX_SetIStream(pIB, nOffsI, (sizeof(vtx_idx) == 2 ? Index16 : Index32));
 
+        const bool gmemLinearizeEnabled = FX_GetEnabledGmemPath(nullptr) && FX_GmemGetDepthStencilMode() == eGDSM_RenderTarget;
         {
             ECull nPrevCullMode = m_RP.m_eCull;
             int nPrevState = m_RP.m_CurState;
@@ -969,7 +974,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
             uint8_t u8StencilID = nStencilID;
             uint8_t u8InvStencilID = ~nStencilID;
 
-            if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            if (gmemLinearizeEnabled)
             {
                 // This pass affects the stencil on depth fail.
                 // Since in GMEM we do our own stencil operations ourselves as to avoid
@@ -993,7 +998,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
             pShader->FXSetTechnique(TechName0);
             pShader->FXBegin(&nPasses, FEF_DONTSETSTATES);
 
-            if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+            if (gmemLinearizeEnabled)
             {
                 pShader->FXBeginPass(CD3D9Renderer::DS_GMEM_STENCIL_CULL_NON_CONVEX);
             }
@@ -1006,7 +1011,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
             {
                 // Mark all pixels that might be inside volume first (z-fail on back-faces)
                 D3DSetCull(eCULL_Front);
-                if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+                if (gmemLinearizeEnabled)
                 {
                     static CCryNameR pParamName0("StencilRef");
                     Vec4 StencilRefParam(0.f);
@@ -1031,7 +1036,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
             // Flip bits for each face
             {
                 D3DSetCull(eCULL_None);
-                if (gcpRendD3D->FX_GetEnabledGmemPath(nullptr))
+                if (gmemLinearizeEnabled)
                 {
                     static CCryNameR pParamName0("StencilRef");
                     Vec4 StencilRefParam(0.f);
@@ -1053,7 +1058,7 @@ void CD3D9Renderer::FX_StencilCullNonConvex(int nStencilID, IRenderMesh* pWaterT
             pShader->FXEndPass();
 
             // If there's no stencil texture support we "resolve" the vis area directly to the texture.
-            if (!gcpRendD3D->FX_GetEnabledGmemPath(nullptr) && !RenderCapabilities::SupportsStencilTextures())
+            if (!gmemLinearizeEnabled && !RenderCapabilities::SupportsStencilTextures())
             {
                 pShader->FXBeginPass(CD3D9Renderer::DS_STENCIL_CULL_NON_CONVEX_RESOLVE);
 

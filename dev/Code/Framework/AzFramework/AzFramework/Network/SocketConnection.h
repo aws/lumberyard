@@ -38,7 +38,9 @@ namespace AzFramework
         virtual bool Connect(const char* address, AZ::u16 port) = 0;
 
         //! Disconnect from connection - Only works if actually connected
-        virtual bool Disconnect() = 0;
+        //! completeDisconnect - True if this function should wait for the connection to be fully
+        //!                      terminated before returning. False for async behavior.
+        virtual bool Disconnect(bool completeDisconnect = false) = 0;
 
         //! Listen for one connection on a port
         //!  This does not block and will set state to listening until connected

@@ -39,6 +39,7 @@ CBitmapToolTip::CBitmapToolTip(QWidget* parent)
     m_hToolWnd = nullptr;
     m_bShowHistogram = true;
     m_bShowFullsize = false;
+    m_eShowMode = ESHOW_RGB;
 
     connect(&m_timer, &QTimer::timeout, this, &CBitmapToolTip::OnTimer);
 
@@ -141,13 +142,15 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
     GetShowMode(eShowMode, bShowInOriginalSize);
     pShowModeDescription = GetShowModeDescription(eShowMode, bShowInOriginalSize);
 
-    if ((m_eShowMode == eShowMode) && (m_bShowFullsize == bShowInOriginalSize))
+    QString convertedFileName = Path::GamePathToFullPath(Path::ReplaceExtension(imageFilename, ".dds"));
+
+    // We need to check against both the image filename and the converted filename as it is possible that the
+    // converted file existed but failed to load previously and we reverted to loading the source asset.
+    bool alreadyLoadedImage = ((m_filename == convertedFileName) || (m_filename == imageFilename));
+    if (alreadyLoadedImage && (m_eShowMode == eShowMode) && (m_bShowFullsize == bShowInOriginalSize))
     {
         return true;
     }
-
-    // For max quality, let's try loading the source image if available:
-    QString convertedFileName = Path::GamePathToFullPath(Path::ReplaceExtension(imageFilename, ".dds"));
 
     CCryFile fileCheck;
     if (!fileCheck.Open(convertedFileName.toUtf8().data(), "rb"))
@@ -160,22 +163,17 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
         fileCheck.Close();
     }
 
-    if ((m_filename == convertedFileName))
-    {
-        return true;
-    }
-
     m_eShowMode = eShowMode;
     m_bShowFullsize = bShowInOriginalSize;
 
     CImageEx image;
     image.SetHistogramEqualization(CheckVirtualKey(Qt::Key_Shift));
     bool loadedRequestedAsset = true;
-    if (!CImageUtil::LoadImage(imageFilename, image))
+    if (!CImageUtil::LoadImage(convertedFileName, image))
     {
         //Failed to load the requested asset,  let's try loading the source asset if available.
         loadedRequestedAsset = false;
-        if (!CImageUtil::LoadImage(convertedFileName, image))
+        if (!CImageUtil::LoadImage(imageFilename, image))
         {
             m_staticBitmap->clear();
             return false;
@@ -184,7 +182,7 @@ bool CBitmapToolTip::LoadImage(const QString& imageFilename)
 
     QString imginfo;
 
-    m_filename = loadedRequestedAsset ? imageFilename : convertedFileName;
+    m_filename = loadedRequestedAsset ? convertedFileName : imageFilename;
     m_bHasAlpha = image.HasAlphaChannel();
     m_bIsLimitedHDR = image.IsLimitedHDR();
 

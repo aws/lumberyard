@@ -84,10 +84,6 @@ class CTrackViewAnimNode
     , public AZ::EntityBus::Handler
     , private AZ::TransformNotificationBus::Handler
 {
-    friend class CAbstractUndoAnimNodeTransaction;
-    friend class CAbstractUndoTrackTransaction;
-    friend class CUndoAnimNodeReparent;
-
 public:
     CTrackViewAnimNode(IAnimSequence* pSequence, IAnimNode* pAnimNode, CTrackViewNode* pParentNode);
     ~CTrackViewAnimNode();
@@ -118,7 +114,7 @@ public:
     virtual void RemoveTrack(CTrackViewTrack* pTrack);
 
     // Add selected entities from scene to group node
-    virtual CTrackViewAnimNodeBundle AddSelectedEntities(const DynArray<unsigned int>& defaultTrackCount);
+    virtual CTrackViewAnimNodeBundle AddSelectedEntities(const AZStd::vector<AnimParamType>& tracks);
 
     // Add current layer to group node
     virtual void AddCurrentLayer();
@@ -134,7 +130,7 @@ public:
     virtual void SetAsViewCamera();
 
     // Name setter/getter
-    virtual const char* GetName() const override { return m_pAnimNode->GetName(); }
+    virtual const char* GetName() const override { return m_animNode->GetName(); }
     virtual bool SetName(const char* pName) override;
     virtual bool CanBeRenamed() const override;
 
@@ -147,8 +143,8 @@ public:
     EntityGUID* GetEntityGuid() const;
     IEntity* GetEntity() const;
 
-    AZ::EntityId GetAzEntityId() const { return m_pAnimNode ? m_pAnimNode->GetAzEntityId() : AZ::EntityId(); }
-    bool IsBoundToAzEntity() const { return m_pAnimNode ? (!m_pAnimNode->GetEntity() && m_pAnimNode->GetAzEntityId().IsValid()): false; }
+    AZ::EntityId GetAzEntityId() const { return m_animNode ? m_animNode->GetAzEntityId() : AZ::EntityId(); }
+    bool IsBoundToAzEntity() const { return m_animNode ? (!m_animNode->GetEntity() && m_animNode->GetAzEntityId().IsValid()): false; }
 
     // Set/get source/target GUIDs
     void SetEntityGuidSource(const EntityGUID& guid);
@@ -196,12 +192,12 @@ public:
 
     // Rotation/Position & Scale
     void SetPos(const Vec3& position);
-    Vec3 GetPos() const { return m_pAnimNode->GetPos(); }
+    Vec3 GetPos() const { return m_animNode->GetPos(); }
     void SetScale(const Vec3& scale);
-    Vec3 GetScale() const { return m_pAnimNode->GetScale(); }
+    Vec3 GetScale() const { return m_animNode->GetScale(); }
     void SetRotation(const Quat& rotation);
-    Quat GetRotation() const { return m_pAnimNode->GetRotate(); }
-    Quat GetRotation(float time) const { return m_pAnimNode != nullptr ? m_pAnimNode->GetRotate(time) : Quat(0,0,0,0); }
+    Quat GetRotation() const { return m_animNode->GetRotate(); }
+    Quat GetRotation(float time) const { return m_animNode != nullptr ? m_animNode->GetRotate(time) : Quat(0,0,0,0); }
 
     // Param
     unsigned int GetParamCount() const;
@@ -216,15 +212,15 @@ public:
     template <class Type>
     bool SetParamValue(const float time, const CAnimParamType& param, const Type& value)
     {
-        assert(m_pAnimNode);
-        return m_pAnimNode->SetParamValue(time, param, value);
+        AZ_Assert(m_animNode, "Expected valid m_animNode");
+        return m_animNode->SetParamValue(time, param, value);
     }
 
     template <class Type>
     bool GetParamValue(const float time, const CAnimParamType& param, Type& value)
     {
-        assert(m_pAnimNode);
-        return m_pAnimNode->GetParamValue(time, param, value);
+        AZ_Assert(m_animNode, "Expected valid m_animNode");
+        return m_animNode->GetParamValue(time, param, value);
     }
 
     // Check if it's a group node
@@ -243,7 +239,7 @@ public:
     // Check if this node may be moved to new parent
     virtual bool IsValidReparentingTo(CTrackViewAnimNode* pNewParent);
 
-    int GetDefaultKeyTangentFlags() const { return m_pAnimNode ? m_pAnimNode->GetDefaultKeyTangentFlags() : SPLINE_KEY_TANGENT_UNIFIED; }
+    int GetDefaultKeyTangentFlags() const { return m_animNode ? m_animNode->GetDefaultKeyTangentFlags() : SPLINE_KEY_TANGENT_UNIFIED; }
     
     void SetComponent(AZ::ComponentId componentId, const AZ::Uuid& componentTypeId);
 
@@ -257,7 +253,7 @@ public:
     // Compares all of the node's track values at the given time with the associated property value and 
     //     sets a key at that time if they are different to match the latter
     // Returns the number of keys set
-    int SetKeysForChangedTrackValues(float time) { return m_pAnimNode->SetKeysForChangedTrackValues(time); }
+    int SetKeysForChangedTrackValues(float time) { return m_animNode->SetKeysForChangedTrackValues(time); }
 
     // returns true if this node is associated with an AnimNodeType::AzEntity node and contains a component with the given id
     bool ContainsComponentWithId(AZ::ComponentId componentId) const;
@@ -285,18 +281,18 @@ public:
 
     void AppendNonBehaviorAnimatableProperties(IAnimNode::AnimParamInfos& animatableParams) const
     {
-        m_pAnimNode->AppendNonBehaviorAnimatableProperties(animatableParams);
+        m_animNode->AppendNonBehaviorAnimatableProperties(animatableParams);
     }
     void AppendNonBehaviorAnimatableComponents(AZStd::vector<AZ::ComponentId>& animatableComponents) const
     {
-        m_pAnimNode->AppendNonBehaviorAnimatableComponents(animatableComponents);
+        m_animNode->AppendNonBehaviorAnimatableComponents(animatableComponents);
     }
     // Depth-first search for TrackViewAnimNode associated with the given animNode. Returns the first match found or nullptr if not found
     CTrackViewAnimNode* FindNodeByAnimNode(const IAnimNode* animNode);
 
     ICharacterInstance* GetCharacterInstance()
     {
-        return m_pAnimNode ? m_pAnimNode->GetCharacterInstance() : nullptr;
+        return m_animNode ? m_animNode->GetCharacterInstance() : nullptr;
     }
 
 protected:
@@ -304,8 +300,7 @@ protected:
     void OnNodeAnimated(IAnimNode* pNode) override;
     // ~IAnimNodeOwner
 
-    IAnimNode* GetAnimNode() { return m_pAnimNode.get(); }
-    AnimNodeType GetAnimNodeTypeFromObject(const CBaseObject* object) const;
+    IAnimNode* GetAnimNode() { return m_animNode.get(); }
 
 private:
     // Copy selected keys to XML representation for clipboard
@@ -349,8 +344,8 @@ private:
     // ~ITransformDelegate
 
     // IEntityObjectListener
-    virtual void OnNameChanged(const char* pName) override {}
-    virtual void OnSelectionChanged(const bool bSelected) override;
+    virtual void OnNameChanged(const char* name) override {}
+    virtual void OnSelectionChanged(const bool selected) override;
     virtual void OnDone() override;
     // ~IEntityObjectListener
 
@@ -361,8 +356,8 @@ private:
     static AZ::Transform GetEntityWorldTM(const AZ::EntityId entityId);
     static void SetParentsInChildren(CTrackViewAnimNode* currentNode);
 
-    IAnimSequence* m_pAnimSequence;
-    AZStd::intrusive_ptr<IAnimNode> m_pAnimNode;
+    IAnimSequence* m_animSequence;
+    AZStd::intrusive_ptr<IAnimNode> m_animNode;
     CEntityObject* m_pNodeEntity;
     AZStd::unique_ptr<IAnimNodeAnimator> m_pNodeAnimator;
     _smart_ptr<CGizmo> m_trackGizmo;

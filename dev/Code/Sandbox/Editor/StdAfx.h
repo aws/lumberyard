@@ -47,9 +47,6 @@
 // IXML interface. This also disambiguates the GUID/REFGUID situation in Guid.h
 #include <QUuid>
 
-#define RWI_NAME_TAG "RayWorldIntersection(Editor)"
-#define PWI_NAME_TAG "PrimitiveWorldIntersection(Editor)"
-
 #define _CRT_RAND_S
 
 #include <platform.h>

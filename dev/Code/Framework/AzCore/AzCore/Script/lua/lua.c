@@ -38,7 +38,11 @@ void script_randseed(unsigned int seed)
 
 // Handle CryTek defines
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(lua_c, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/lua_c_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/lua_c_provo.inl"
+    #endif
 #endif
 
 #if defined(__ANDROID__)

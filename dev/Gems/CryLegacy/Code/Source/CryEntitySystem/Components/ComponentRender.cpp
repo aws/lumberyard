@@ -908,7 +908,7 @@ void CComponentRender::Render(const SRendParams& inRenderParams, const SRenderin
     {
 #if defined(SUPPORT_COMPONENTRENDER_RENDER_JOB)
         // legacy job priority: "passInfo.IsGeneralPass() ? JobManager::eRegularPriority : JobManager::eLowPriority"
-        AZ::LegacyJobExecutor *pJobExecutor = passInfo.IsShadowPass() ? gEnv->pRenderer->GetGenerateShadowRendItemJobExecutor(passInfo.ThreadID()) : gEnv->pRenderer->GetGenerateRendItemJobExecutor(passInfo.ThreadID());
+        AZ::LegacyJobExecutor *pJobExecutor = passInfo.IsShadowPass() ? gEnv->pRenderer->GetGenerateShadowRendItemJobExecutor() : gEnv->pRenderer->GetGenerateRendItemJobExecutor();
         pJobExecutor->StartJob(
             [this, inRenderParams, passInfo]
             {

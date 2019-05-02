@@ -1,23 +1,22 @@
-<ObjectStream version="1">
+<ObjectStream version="3">
 	<Class name="AZ::Entity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
 		<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 			<Class name="AZ::u64" field="id" value="17440202885710926472" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 		</Class>
-		<Class name="AZStd::string" field="Name" value="17440202885710926472" type="{EF8FF807-DDEE-4EB0-B678-4CA3A2C490A4}"/>
-		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
-		<Class name="AZStd::vector" field="Components" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}">
-			<Class name="PrefabComponent" field="element" version="1" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
+		<Class name="AZStd::string" field="Name" value="17440202885710926472" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+		<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+			<Class name="SliceComponent" field="element" version="3" type="{AFD304E4-1773-47C8-855A-8B622398934F}">
 				<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
 					<Class name="AZ::u64" field="Id" value="11454636461819079906" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 				</Class>
-				<Class name="AZStd::vector" field="Entities" type="{2BADE35A-6F1B-4698-B2BC-3373D010020C}"/>
-				<Class name="AZStd::list" field="Prefabs" type="{B845AD64-B5A0-4CCD-A86B-3477A36779BE}">
-					<Class name="PrefabReference" field="element" version="2" type="{F181B80D-44F0-4093-BB0D-C638A9A734BE}">
-						<Class name="AZStd::unordered_set" field="Instances" type="{B04E902E-C6F7-4212-A166-1B52F7437D3C}">
-							<Class name="PrefabInstance" field="element" version="2" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
-								<Class name="Uuid" field="Id" value="{EEF01C94-3724-461B-A3E6-C776A40524E9}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
-								<Class name="AZStd::unordered_map" field="EntityIdMap" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}">
-									<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}">
+				<Class name="AZStd::vector" field="Entities" type="{56942E81-55BE-53E7-BAC4-0F567BCA3863}"/>
+				<Class name="AZStd::list" field="Prefabs" type="{DAD45EB6-5853-5645-B762-3A37F8775E12}">
+					<Class name="SliceReference" field="element" version="2" type="{F181B80D-44F0-4093-BB0D-C638A9A734BE}">
+						<Class name="AZStd::unordered_set" field="Instances" type="{989A5786-8D1B-525B-8DE3-6C70A775EA1C}">
+							<Class name="SliceInstance" field="element" version="3" type="{E6F11FB3-E9BF-43BA-BD78-2A19F51D0ED3}">
+								<Class name="AZ::Uuid" field="Id" value="{EEF01C94-3724-461B-A3E6-C776A40524E9}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+								<Class name="AZStd::unordered_map" field="EntityIdMap" type="{D33569A9-EFFC-566C-8CCC-74D6E086A1B0}">
+									<Class name="AZStd::pair" field="element" type="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 										<Class name="EntityId" field="value1" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 											<Class name="AZ::u64" field="id" value="17239255758366495368" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
@@ -25,7 +24,7 @@
 											<Class name="AZ::u64" field="id" value="17239270000478048904" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
 									</Class>
-									<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}">
+									<Class name="AZStd::pair" field="element" type="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
 										<Class name="EntityId" field="value1" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
 											<Class name="AZ::u64" field="id" value="17239252292327887496" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
@@ -33,44 +32,85 @@
 											<Class name="AZ::u64" field="id" value="17239270004773016200" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
 									</Class>
-								</Class>
-								<Class name="DataPatch" field="DataPatch" type="{3A8D5EC9-D70E-41CB-879C-DEF6A6D6ED03}">
-									<Class name="Uuid" field="m_targetClassId" value="{05038EF7-9EF7-40D8-A29B-503D85B85AF8}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
-									<Class name="AZStd::unordered_map" field="m_patch" type="{18456A80-63CC-40C5-BF16-6AF94F9A9ECC}">
-										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}">
-											<Class name="AddressType" field="value1" value="E564EC500000000088D28A559F203EEFFDF548EE00000000C06278EBD59B54849635FAF600000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-											<Class name="ByteStream" field="value2" value="000000000119A0CA880CAFE443CB926C59AC48496112010000" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}"/>
+									<Class name="AZStd::pair" field="element" type="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+										<Class name="EntityId" field="value1" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+											<Class name="AZ::u64" field="id" value="2021511079064" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
-										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}">
-											<Class name="AddressType" field="value1" value="E564EC500000000088D28A559F203EEFFDF548EE00000000BA45A00ED230677DBCCE732500000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-											<Class name="ByteStream" field="value2" value="000000000119A0CA880CAFE443CB926C59AC48496112000000" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}"/>
+										<Class name="EntityId" field="value2" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+											<Class name="AZ::u64" field="id" value="6801809679512" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
-										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}">
-											<Class name="AddressType" field="value1" value="E564EC500000000088D28A559F203EEFFDF548EE00000000B6B985E98CC9183DE948566600000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-											<Class name="ByteStream" field="value2" value="0000000001397894072A90504F0F901B34B1A0D29417103F8000003F8000003EFEFEFF3F8000000000" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}"/>
+									</Class>
+									<Class name="AZStd::pair" field="element" type="{30DDE93C-E899-5AB9-856D-FC456D054EDB}">
+										<Class name="EntityId" field="value1" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+											<Class name="AZ::u64" field="id" value="2017216111768" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
-										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}">
-											<Class name="AddressType" field="value1" value="E564EC500000000088D28A559F203EEFFDF548EE00000000BA45A00ED230677D506739BF00000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-											<Class name="ByteStream" field="value2" value="00000000011C43DA906B7DEF4CA89790854106D3F983000000050000" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}"/>
-										</Class>
-										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}">
-											<Class name="AddressType" field="value1" value="E564EC500000000088D28A55C6233EEFFDF548EE0000000055C5CE3C46E5952AC7A78B3B00000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-											<Class name="ByteStream" field="value2" value="000000000139EF8FF807DDEE4EB0B6784CA3A2C490A40C546F6F6C74697020546578740000" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}"/>
-										</Class>
-										<Class name="AZStd::pair" field="element" type="{9F3F5302-3390-407A-A6F7-2E011E3BB686}">
-											<Class name="AddressType" field="value1" value="E564EC500000000088D28A55C6233EEFFDF548EE000000001A95685107F56D69506739BF00000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
-											<Class name="ByteStream" field="value2" value="00000000011C43DA906B7DEF4CA89790854106D3F983000000060000" type="{6F949CC5-24A4-4229-AC8B-C5E6C70E145E}"/>
+										<Class name="EntityId" field="value2" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+											<Class name="AZ::u64" field="id" value="6806104646808" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
 										</Class>
 									</Class>
 								</Class>
+								<Class name="DataPatch" field="DataPatch" type="{3A8D5EC9-D70E-41CB-879C-DEF6A6D6ED03}">
+									<Class name="AZ::Uuid" field="m_targetClassId" value="{05038EF7-9EF7-40D8-A29B-503D85B85AF8}" type="{E152C105-A133-4D03-BBF8-3D4B2FBA3E2A}"/>
+									<Class name="AZStd::unordered_map" field="m_patch" type="{CF3B3C65-49C0-5199-B671-E75347EB25C2}">
+										<Class name="AZStd::pair" field="element" type="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+											<Class name="AddressType" field="value1" value="E564EC500000000088D28A55C6233EEFFDF548EE0000000055C5CE3C46E5952AC7A78B3B00000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+											<Class name="ByteStream" field="value2" value="00000000033903AAAB3F5C475A669EBCD5FA4DB353C90C546F6F6C74697020546578740000" type="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+											<Class name="AddressType" field="value1" value="E564EC500000000088D28A559F203EEFFDF548EE00000000BA45A00ED230677DBCCE732500000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+											<Class name="ByteStream" field="value2" value="000000000319A0CA880CAFE443CB926C59AC48496112000000" type="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+											<Class name="AddressType" field="value1" value="E564EC500000000088D28A559F203EEFFDF548EE00000000C06278EBD59B54849635FAF600000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+											<Class name="ByteStream" field="value2" value="000000000319A0CA880CAFE443CB926C59AC48496112010000" type="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+										</Class>
+										<Class name="AZStd::pair" field="element" type="{07DEDB71-0585-5BE6-83FF-1C9029B9E5DB}">
+											<Class name="AddressType" field="value1" value="E564EC500000000088D28A559F203EEFFDF548EE00000000B6B985E98CC9183DE948566600000000" type="{90752F2D-CBD3-4EE9-9CDD-447E797C8408}"/>
+											<Class name="ByteStream" field="value2" value="0000000003397894072A90504F0F901B34B1A0D29417103F8000003F8000003EFEFEFF3F8000000000" type="{ADFD596B-7177-5519-9752-BC418FE42963}"/>
+										</Class>
+									</Class>
+								</Class>
+								<Class name="DataFlagsPerEntity" field="DataFlags" version="1" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
+									<Class name="AZStd::unordered_map" field="EntityToDataFlags" type="{CAB9E1F5-761E-54B8-916E-E7FB597E5EDE}"/>
+								</Class>
 							</Class>
 						</Class>
-						<Class name="Asset" field="Asset" value="id={50405C8D-03F0-5959-8BF6-DB9A8FAA8AF3}:1,type={C62C7A87-9C09-4148-A985-12F2C99C0A45}" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
+						<Class name="Asset" field="Asset" value="id={50405C8D-03F0-5959-8BF6-DB9A8FAA8AF3}:1,type={C62C7A87-9C09-4148-A985-12F2C99C0A45},hint={ui/slices/library/tooltipdisplay.slice}" version="1" type="{77A19D40-8731-4D3C-9041-1B43047366A4}"/>
 					</Class>
 				</Class>
 				<Class name="bool" field="IsDynamic" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				<Class name="AZ::Entity" field="MetadataEntity" version="2" type="{75651658-8663-478D-9090-2432DFCAFA44}">
+					<Class name="EntityId" field="Id" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+						<Class name="AZ::u64" field="id" value="6737385170072" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+					</Class>
+					<Class name="AZStd::string" field="Name" value="ui/slices/lyshineexamples/tooltipdisplay.slice" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+					<Class name="AZStd::vector" field="Components" type="{0D23B755-6E8F-5C6C-B7C9-A352A55DC1DF}">
+						<Class name="SliceMetadataInfoComponent" field="element" version="1" type="{25EE4D75-8A17-4449-81F4-E561005BAABD}">
+							<Class name="AZ::Component" field="BaseClass1" type="{EDFCB2CF-F75D-43BE-B26B-F35821B29247}">
+								<Class name="AZ::u64" field="Id" value="13398708295338561765" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+							</Class>
+							<Class name="AZStd::unordered_set" field="AssociatedIds" type="{6C8F8E52-AB4A-5C1F-8E56-9AC390290B94}"/>
+							<Class name="EntityId" field="ParentId" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+								<Class name="AZ::u64" field="id" value="6737385170072" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+							</Class>
+							<Class name="AZStd::unordered_set" field="ChildrenIds" type="{6C8F8E52-AB4A-5C1F-8E56-9AC390290B94}">
+								<Class name="EntityId" field="element" version="1" type="{6383F1D3-BB27-4E6B-A49A-6409B2059EAA}">
+									<Class name="AZ::u64" field="id" value="6806104646808" type="{D6597933-47CD-4FC8-B911-63F3E2B0993A}"/>
+								</Class>
+							</Class>
+							<Class name="bool" field="PersistenceFlag" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						</Class>
+					</Class>
+					<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+					<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+				</Class>
+				<Class name="DataFlagsPerEntity" field="DataFlagsForNewEntities" version="1" type="{57FE7B9E-B2AF-4F6F-9F8D-87F671E91C99}">
+					<Class name="AZStd::unordered_map" field="EntityToDataFlags" type="{CAB9E1F5-761E-54B8-916E-E7FB597E5EDE}"/>
+				</Class>
 			</Class>
 		</Class>
+		<Class name="bool" field="IsDependencyReady" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+		<Class name="bool" field="IsRuntimeActive" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
 	</Class>
 </ObjectStream>
 

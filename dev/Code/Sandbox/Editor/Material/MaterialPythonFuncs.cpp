@@ -988,6 +988,8 @@ namespace
                 propertyName == "No Shadow" ||
                 propertyName == "Use Scattering" ||
                 propertyName == "Hide After Breaking" ||
+                propertyName == "Fog Volume Shading Quality High" ||
+                propertyName == "Blend Terrain Color" ||
                 propertyName == "Propagate Material Settings" ||
                 propertyName == "Propagate Opacity Settings" ||
                 propertyName == "Propagate Lighting Settings" ||
@@ -1268,6 +1270,16 @@ namespace
             {
                 value.type = SPyWrappedProperty::eType_Bool;
                 value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_HIDEONBREAK;
+            }
+            else if (propertyName == "Fog Volume Shading Quality High")
+            {
+                value.type = SPyWrappedProperty::eType_Bool;
+                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH;
+            }
+            else if (propertyName == "Blend Terrain Color")
+            {
+                value.type = SPyWrappedProperty::eType_Bool;
+                value.property.boolValue = pMaterial->GetFlags() & MTL_FLAG_BLEND_TERRAIN;
             }
             else if (propertyName == "Voxel Coverage")
             {
@@ -1912,9 +1924,13 @@ namespace
             {
                 SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, value.property.boolValue);
             }
-            else if (propertyName == "Hide After Breaking")
+            else if (propertyName == "Fog Volume Shading Quality High")
             {
-                SetMaterialFlag(pMaterial, MTL_FLAG_HIDEONBREAK, value.property.boolValue);
+                SetMaterialFlag(pMaterial, MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH, value.property.boolValue);
+            }
+            else if (propertyName == "Blend Terrain Color")
+            {
+                SetMaterialFlag(pMaterial, MTL_FLAG_BLEND_TERRAIN, value.property.boolValue);
             }
             else if (propertyName == "Voxel Coverage")
             {

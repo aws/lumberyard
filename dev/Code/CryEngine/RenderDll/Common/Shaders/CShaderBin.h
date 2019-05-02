@@ -45,6 +45,7 @@ struct SShaderBinHeader
 struct SShaderBinParamsHeader
 {
     uint64 nMask;
+    uint64 nstaticMask;
     uint32 nName;
     int32 nParams;
     int32 nSamplers;
@@ -61,6 +62,7 @@ struct SParamCacheInfo
 
     uint32 m_dwName;
     uint64 m_nMaskGenFX;
+    uint64 m_maskGenStatic;
     AffectedFuncsVec m_AffectedFuncs;
     AffectedParamsVec m_AffectedParams;
     AffectedParamsVec m_AffectedSamplers;
@@ -68,7 +70,9 @@ struct SParamCacheInfo
 
     SParamCacheInfo()
         : m_dwName(0)
-        , m_nMaskGenFX(0) {};
+        , m_nMaskGenFX(0)
+        , m_maskGenStatic(0)
+    {};
 
     int Size()
     {
@@ -268,10 +272,10 @@ class CShaderManBin
 
     SShaderBin* LoadBinShader(AZ::IO::HandleType binFileHandle, const char* szName, const char* szNameBin, bool bReadParams);
     SShaderBin* SaveBinShader(uint32 nSourceCRC32, const char* szName, bool bInclude, AZ::IO::HandleType srcFileHandle);
-    bool SaveBinShaderLocalInfo(SShaderBin* pBin, uint32 dwName, uint64 nMaskGenFX, TArray<int32>& Funcs, std::vector<SFXParam>& Params, std::vector<SFXSampler>& Samplers, std::vector<SFXTexture>& Textures);
-    SParamCacheInfo* GetParamInfo(SShaderBin* pBin, uint32 dwName, uint64 nMaskGenFX);
+    bool SaveBinShaderLocalInfo(SShaderBin* pBin, uint32 dwName, uint64 nMaskGenFX, uint64 maskGenStatic, TArray<int32>& Funcs, std::vector<SFXParam>& Params, std::vector<SFXSampler>& Samplers, std::vector<SFXTexture>& Textures);
+    SParamCacheInfo* GetParamInfo(SShaderBin* pBin, uint32 dwName, uint64 nMaskGenFX, uint64 maskGenStatic);
 
-    void AddGenMacroses(SShaderGen* shG, CParserBin& Parser, uint64 nMaskGen);
+    void AddGenMacroses(SShaderGen* shG, CParserBin& Parser, uint64 nMaskGen, bool ignoreShaderGenMask = false);
 
     bool ParseBinFX_Global_Annotations(CParserBin & Parser, SParserFrame & Frame, bool* bPublic, CCryNameR techStart[2]);
     bool ParseBinFX_Global(CParserBin & Parser, SParserFrame & Frame, bool* bPublic, CCryNameR techStart[2]);

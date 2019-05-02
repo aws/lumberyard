@@ -1112,6 +1112,29 @@ protected:
 
 #pragma pack(push, 16)
 
+struct SFogVolumeData
+{
+    AABB avgAABBox;
+    ColorF fogColor;
+    int m_volumeType;
+    Vec3 m_heightFallOffBasePoint;
+    float m_densityOffset;
+    Vec3 m_heightFallOffDirScaled;
+    float m_globalDensity;
+   
+    SFogVolumeData() : 
+        avgAABBox(AABB::RESET),
+        m_globalDensity(0.0f),
+        m_densityOffset(0.0f),
+        m_volumeType(0),
+        m_heightFallOffBasePoint(Vec3(0, 0, 0)),
+        m_heightFallOffDirScaled(Vec3(0, 0, 0)),
+        fogColor(ColorF(1.0f, 1.0f, 1.0f, 1.0f))
+    {
+    }
+
+};
+
 // Summary:
 //     Light volumes data
 
@@ -1700,7 +1723,7 @@ struct I3DEngine
 
     virtual void GetPrecacheRoundIds(int pRoundIds[MAX_STREAM_PREDICTION_ZONES]) = 0;
 
-    virtual void TraceFogVolumes(const Vec3& worldPos, ColorF& fogVolumeContrib, const SRenderingPassInfo& passInfo) = 0;
+    virtual void TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality) = 0;
 
     // Attempts to import a macro texture file at filepath, and fills out the provided configuration with data from the file. Returns true if successful.
     virtual bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const = 0;
@@ -1726,6 +1749,17 @@ struct I3DEngine
     // Return Value:
     //     A float which indicate the elevation level.
     virtual float GetTerrainZ(int x, int y) = 0;
+
+    // Summary:
+    //     Gets the terrain surfaceid.
+    // Notes:
+    //     Only values between 0 and WORLD_SIZE.
+    // Arguments:
+    //     x - X coordinate of the location
+    //     y - Y coordinate of the location
+    // Return Value:
+    //     An int which indicates the surface id
+    virtual int GetTerrainSurfaceId(int x, int y) = 0;
 
     // Summary:
     //     Gets the terrain hole flag for a specified location.
@@ -2510,6 +2544,9 @@ struct SRenderingPassInfo
         GEOM_CACHES = BIT(17),
         DISABLE_RENDER_CHUNK_MERGE = BIT(18),
         GPU_PARTICLE_COLLISION_CUBEMAP = BIT(19),
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        RENDER_SCENE_TO_TEXTURE = BIT(20),
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
         // below are precombined flags
         STATIC_OBJECTS = BRUSHES | VEGETATION,
@@ -2536,6 +2573,9 @@ struct SRenderingPassInfo
     EShadowMapType GetShadowMapType() const;
     bool IsDisableRenderChunkMerge() const;
     bool IsGPUParticleCubemapPass() const;
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    bool IsRenderSceneToTexturePass() const;
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     bool IsAuxWindow() const;
 
@@ -2661,6 +2701,14 @@ inline bool SRenderingPassInfo::IsGPUParticleCubemapPass() const
 {
     return (m_nRenderingFlags & GPU_PARTICLE_COLLISION_CUBEMAP) != 0;
 }
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+///////////////////////////////////////////////////////////////////////////////
+inline bool SRenderingPassInfo::IsRenderSceneToTexturePass() const
+{
+    return (m_nRenderingFlags & RENDER_SCENE_TO_TEXTURE) != 0;
+}
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
 ///////////////////////////////////////////////////////////////////////////////
 inline bool SRenderingPassInfo::IsCachedShadowPass() const

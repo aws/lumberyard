@@ -104,12 +104,14 @@ struct SToolViewSettings
 struct SDeepSelectionSettings
 {
     SDeepSelectionSettings()
-        : fRange(1.f){}
+        : fRange(1.f)
+        , bStickDuplicate(false) {}
 
     //! If there are other objects hit within this value, one of them needs
     //! to be selected by user.
     //! If this value is 0.f, then deep selection mode won't work.
     float fRange;
+    bool bStickDuplicate;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -337,6 +339,12 @@ struct SMetricsSettings
 };
 
 //////////////////////////////////////////////////////////////////////////
+struct SSliceSettings
+{
+    bool dynamicByDefault;
+};
+
+//////////////////////////////////////////////////////////////////////////
 struct SAssetBrowserSettings
 {
     // stores the default thumb size
@@ -413,7 +421,9 @@ struct SANDBOX_API SEditorSettings
     // Variables.
     //////////////////////////////////////////////////////////////////////////
     int undoLevels;
+    bool m_undoSliceOverrideSaveValue;
     bool bShowDashboardAtStartup;
+    bool m_showCircularDependencyError;
     bool bAutoloadLastLevelAtStartup;
     bool bMuteAudio;
     bool bEnableGameModeVR;
@@ -600,6 +610,8 @@ struct SANDBOX_API SEditorSettings
     const char* g_TemporaryLevelName;
 
     SMetricsSettings sMetricsSettings;
+
+    SSliceSettings sliceSettings;
 
     bool bEnableUI2;
 

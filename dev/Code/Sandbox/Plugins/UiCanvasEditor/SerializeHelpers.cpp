@@ -66,12 +66,12 @@ namespace SerializeHelpers
                 {
                     AZ::Entity* entity = entities[i];
 
-                    AZ::SliceComponent::SliceInstanceAddress sliceAddress(nullptr, nullptr);
+                    AZ::SliceComponent::SliceInstanceAddress sliceAddress;
                     EBUS_EVENT_ID_RESULT(sliceAddress, entity->GetId(), AzFramework::EntityIdContextQueryBus, GetOwningSlice);
 
-                    if (sliceAddress.first)
+                    if (sliceAddress.IsValid())
                     {
-                        const AZ::SliceComponent::EntityList& entitiesInSlice = sliceAddress.second->GetInstantiated()->m_entities;
+                        const AZ::SliceComponent::EntityList& entitiesInSlice = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
                         for (AZ::Entity* entityInSlice : entitiesInSlice)
                         {
                             if (allEntitiesBeingCopied.end() == allEntitiesBeingCopied.find(entityInSlice->GetId()))

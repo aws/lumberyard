@@ -479,7 +479,8 @@ def create_automoc_task(self):
         task = self.create_task('automoc', header_nodes)
 
         # this may mutate the link task, must run the link task after this task
-        self.link_task.set_run_after(task)
+        if hasattr(self, "link_task"):
+            self.link_task.set_run_after(task)
 
 @extension(*EXT_UI)
 def create_uic_task(self, node):
@@ -1387,20 +1388,6 @@ WINDOWS_RC_QT_DLLS = [
     "Qt5Quick",
     "Qt5Svg",
     "Qt5Widgets",
-]
-
-WINDOWS_LMBRSETUP_QT_DLLS = [
-    "Qt5Core",
-    "Qt5Gui",
-    "Qt5Network",
-    "Qt5Qml",
-    "Qt5Quick",
-    "Qt5Svg",
-    "Qt5Widgets",
-    "Qt5Concurrent",
-    "Qt5WinExtras",
-    "libEGL",
-    "libGLESv2"
 ]
 
 WINDOWS_MAIN_QT_DLLS = [

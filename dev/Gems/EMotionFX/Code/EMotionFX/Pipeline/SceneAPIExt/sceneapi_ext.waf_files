@@ -23,13 +23,19 @@
             "Behaviors/MotionRangeRuleBehavior.h",
             "Behaviors/MotionRangeRuleBehavior.cpp",
             "Behaviors/MorphTargetRuleBehavior.h",
-            "Behaviors/MorphTargetRuleBehavior.cpp"
+            "Behaviors/MorphTargetRuleBehavior.cpp",
+            "Behaviors/LodRuleBehavior.h",
+            "Behaviors/LodRuleBehavior.cpp"
         ],
         "Pipeline/SceneAPIExt/Rules":
         [
+            "Rules/ActorPhysicsSetupRule.h",
+            "Rules/ActorPhysicsSetupRule.cpp",
             "Rules/IActorScaleRule.h",
             "Rules/ActorScaleRule.h",
             "Rules/ActorScaleRule.cpp",
+            "Rules/ExternalToolRule.h",
+            "Rules/ExternalToolRule.inl",
             "Rules/IMeshRule.h",
             "Rules/MeshRule.h",
             "Rules/MeshRule.cpp",
@@ -50,7 +56,21 @@
             "Rules/MotionRangeRule.h",
             "Rules/MotionRangeRule.cpp",
             "Rules/MorphTargetRule.h",
-            "Rules/MorphTargetRule.cpp"
+            "Rules/MorphTargetRule.cpp",
+            "Rules/LodRule.h",
+            "Rules/LodRule.cpp",
+            "Rules/MotionAdditiveRule.h",
+            "Rules/MotionAdditiveRule.cpp"
+        ],
+        "Pipeline/SceneAPIExt/Data":
+        [
+            "Data/LodNodeSelectionList.h",
+            "Data/LodNodeSelectionList.cpp"
+        ],
+        "Pipeline/SceneAPIExt/Utilities":
+        [
+            "Utilities/LODSelector.h",
+            "Utilities/LODSelector.cpp"
         ]
     }
 }

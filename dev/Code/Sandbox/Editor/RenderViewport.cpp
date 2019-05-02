@@ -99,6 +99,7 @@ void StartFixedCursorMode(QObject *viewport);
 
 #define MAX_ORBIT_DISTANCE (2000.0f)
 #define RENDER_MESH_TEST_DISTANCE (0.2f)
+#define CURSOR_FONT_HEIGHT  8.0f
 
 struct CRenderViewport::SScopedCurrentContext
 {
@@ -469,6 +470,12 @@ void CRenderViewport::OnRButtonDown(Qt::KeyboardModifiers modifiers, const QPoin
         m_bInRotateMode = true;
     }
 
+    // mouse buttons are treated as keys as well
+    if (m_pressedKeyState == KeyPressedState::AllUp)
+    {
+        m_pressedKeyState = KeyPressedState::PressedThisFrame;
+    }
+
     m_mousePos = scaledPoint;
     m_prevMousePos = m_mousePos;
 
@@ -503,9 +510,6 @@ void CRenderViewport::OnRButtonUp(Qt::KeyboardModifiers modifiers, const QPoint&
     {
         ShowCursor();
     }
-
-    // Update viewports after done with rotating.
-    //GetIEditor()->UpdateViews(eUpdateObjects);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -530,6 +534,12 @@ void CRenderViewport::OnMButtonDown(Qt::KeyboardModifiers modifiers, const QPoin
             m_bInMoveMode = true;
         }
 
+        // mouse buttons are treated as keys as well
+        if (m_pressedKeyState == KeyPressedState::AllUp)
+        {
+            m_pressedKeyState = KeyPressedState::PressedThisFrame;
+        }
+
         m_mousePos = scaledPoint;
         m_prevMousePos = scaledPoint;
 
@@ -542,7 +552,7 @@ void CRenderViewport::OnMButtonDown(Qt::KeyboardModifiers modifiers, const QPoin
             Internal::MouseButtonsFromButton(MouseButton::Middle), BuildKeyboardModifiers(modifiers), BuildMousePick(scaledPoint))))
     {
         QtViewport::OnMButtonDown(modifiers, scaledPoint);
-}
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -562,15 +572,12 @@ void CRenderViewport::OnMButtonUp(Qt::KeyboardModifiers modifiers, const QPoint&
     ReleaseMouse();
     ShowCursor();
 
-    // Update viewports after done with moving viewport.
-    //GetIEditor()->UpdateViews(eUpdateObjects);
-
     if (m_manipulatorManager == nullptr 
         || !m_manipulatorManager->ConsumeViewportMouseRelease(BuildMouseInteraction(
             Internal::MouseButtonsFromButton(MouseButton::Middle), BuildKeyboardModifiers(modifiers), BuildMousePick(scaledPoint))))
     {
         QtViewport::OnMButtonUp(modifiers, scaledPoint);
-}
+    }
 }
 
 void CRenderViewport::OnMouseMove(Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons, const QPoint& point)
@@ -589,10 +596,10 @@ void CRenderViewport::OnMouseMove(Qt::KeyboardModifiers modifiers, Qt::MouseButt
     }
 }
 
-void CRenderViewport::InjectFakeMouseMove(int deltaX, int deltaY)
+void CRenderViewport::InjectFakeMouseMove(int deltaX, int deltaY, Qt::MouseButtons buttons)
 {
     // this is required, otherwise the user will see the context menu
-    OnMouseMove(Qt::NoModifier, Qt::RightButton, QCursor::pos() + QPoint(deltaX, deltaY));
+    OnMouseMove(Qt::NoModifier, buttons, QCursor::pos() + QPoint(deltaX, deltaY));
     // we simply move the prev mouse position, so the change will be picked up
     // by the next ProcessMouse call
     m_prevMousePos -= QPoint(deltaX, deltaY);
@@ -607,11 +614,6 @@ void CRenderViewport::ProcessMouse()
     }
 
     const auto point = WidgetToViewport(mapFromGlobal(QCursor::pos()));
-
-    if (!m_nPresedKeyState)
-    {
-        m_nPresedKeyState   =   1;
-    }
 
     if (point == m_prevMousePos)
     {
@@ -1657,6 +1659,12 @@ void CRenderViewport::RenderCursorString()
     // Display hit object name.
     float col[4] = { 1, 1, 1, 1 };
     m_renderer->Draw2dLabel(point.x() + 12, point.y() + 4, 1.2f, col, false, "%s", m_cursorStr.toUtf8().data());
+
+    if (!m_cursorSupplementaryStr.isEmpty())
+    {
+        float col[4] = { 1, 1, 0, 1 };
+        m_renderer->Draw2dLabel(point.x() + 12, point.y() + 4 + CURSOR_FONT_HEIGHT * 1.2f, 1.2f, col, false, "%s", m_cursorSupplementaryStr.toUtf8().data());
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1891,6 +1899,16 @@ float CRenderViewport::GridSize()
 {
     const CGrid* grid = GetViewManager()->GetGrid();
     return grid->scale * grid->size;
+}
+
+bool CRenderViewport::AngleSnappingEnabled()
+{
+    return GetViewManager()->GetGrid()->IsAngleSnapEnabled();
+}
+
+float CRenderViewport::AngleStep()
+{
+    return GetViewManager()->GetGrid()->GetAngleSnap();
 }
 
 AZ::Vector3 CRenderViewport::PickSurface(const AZ::Vector2& point)
@@ -2400,29 +2418,36 @@ void    CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
                 lookThroughEntityCorrection, m_viewEntityId, 
                 &LmbrCentral::EditorCameraCorrectionRequests::GetInverseTransformCorrection);
         }
-        if (!m_nPresedKeyState   || m_nPresedKeyState == 1)
+        if (m_pressedKeyState != KeyPressedState::PressedInPreviousFrame)
         {
-            CUndo   undo("Move Camera");
+            CUndo undo("Move Camera");
             if (bMoveOnly)
             {
-                cameraObject->SetWorldPos(camMatrix.GetTranslation());
+                // specify eObjectUpdateFlags_UserInput so that an undo command gets logged
+                cameraObject->SetWorldPos(camMatrix.GetTranslation(), eObjectUpdateFlags_UserInput);
             }
             else
             {
-                cameraObject->SetWorldTM(camMatrix * AZMatrix3x3ToLYMatrix3x3(lookThroughEntityCorrection));
+                // specify eObjectUpdateFlags_UserInput so that an undo command gets logged
+                cameraObject->SetWorldTM(camMatrix * AZMatrix3x3ToLYMatrix3x3(lookThroughEntityCorrection), eObjectUpdateFlags_UserInput);
             }
         }
         else
         {
             if (bMoveOnly)
             {
+                // Do not specify eObjectUpdateFlags_UserInput, so that an undo command does not get logged; we covered it already when m_pressedKeyState was PressedThisFrame
                 cameraObject->SetWorldPos(camMatrix.GetTranslation());
             }
             else
             {
+                // Do not specify eObjectUpdateFlags_UserInput, so that an undo command does not get logged; we covered it already when m_pressedKeyState was PressedThisFrame
                 cameraObject->SetWorldTM(camMatrix * AZMatrix3x3ToLYMatrix3x3(lookThroughEntityCorrection));
             }
         }
+
+        using namespace AzToolsFramework;
+        ComponentEntityObjectRequestBus::Event(cameraObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
     }
     else if (m_viewEntityId.IsValid())
     {
@@ -2432,9 +2457,9 @@ void    CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
             return;
         }
 
-        if (!m_nPresedKeyState || m_nPresedKeyState == 1)
+        if (m_pressedKeyState != KeyPressedState::PressedInPreviousFrame)
         {
-            CUndo   undo("Move Camera");
+            CUndo undo("Move Camera");
             if (bMoveOnly)
             {
                 AZ::TransformBus::Event(m_viewEntityId, &AZ::TransformInterface::SetWorldTranslation, LYVec3ToAZVec3(camMatrix.GetTranslation()));
@@ -2458,9 +2483,9 @@ void    CRenderViewport::SetViewTM(const Matrix34& viewTM, bool bMoveOnly)
         AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues);
     }
 
-    if (m_nPresedKeyState == 1)
+    if (m_pressedKeyState == KeyPressedState::PressedThisFrame)
     {
-        m_nPresedKeyState = 2;
+        m_pressedKeyState = KeyPressedState::PressedInPreviousFrame;
     }
     QtViewport::SetViewTM(camMatrix);
 
@@ -2691,70 +2716,63 @@ void CRenderViewport::ProcessKeys()
     {
         // move forward
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos + (speedScale * m_moveSpeed * ydir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_Down) || IsKeyDown(Qt::Key_S))
     {
         // move backward
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos - (speedScale * m_moveSpeed * ydir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_Left) || IsKeyDown(Qt::Key_A))
     {
         // move left
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos - (speedScale * m_moveSpeed * xdir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_Right) || IsKeyDown(Qt::Key_D))
     {
         // move right
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos + (speedScale * m_moveSpeed * xdir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_E))
     {
         // move Up
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos + (speedScale * m_moveSpeed * zdir);
-        m.SetTranslation(pos);
-        SetViewTM(m, true);
     }
 
     if (IsKeyDown(Qt::Key_Q))
     {
         // move down
         bIsPressedSome = true;
-        m_nPresedKeyState = 1;
         pos = pos - (speedScale * m_moveSpeed * zdir);
+    }
+
+    if (bIsPressedSome)
+    {
+        // Only change the keystate to pressed if it wasn't already marked in
+        // a previous frame. Otherwise, the undo/redo stack will be all off
+        // from what SetViewTM() does.
+        if (m_pressedKeyState == KeyPressedState::AllUp)
+        {
+            m_pressedKeyState = KeyPressedState::PressedThisFrame;
+        }
+
         m.SetTranslation(pos);
         SetViewTM(m, true);
     }
 
-    if (QGuiApplication::mouseButtons() & (Qt::RightButton | Qt::MiddleButton))
-    {
-        bIsPressedSome = true;
-    }
+    bool mouseModifierKeysDown = ((QGuiApplication::mouseButtons() & (Qt::RightButton | Qt::MiddleButton)) != 0);
 
-    if (!bIsPressedSome)
+    if (!bIsPressedSome && !mouseModifierKeysDown)
     {
-        m_nPresedKeyState = 0;
+        m_pressedKeyState = KeyPressedState::AllUp;
     }
 }
 
@@ -2889,7 +2907,12 @@ Vec3 CRenderViewport::ViewToWorld(const QPoint& vp, bool* collideWithTerrain, bo
     m_numSkipEnts = 0;
     for (int i = 0; i < sel->GetCount() && m_numSkipEnts < 32; i++)
     {
-        m_pSkipEnts[m_numSkipEnts++] = sel->GetObject(i)->GetCollisionEntity();
+        m_pSkipEnts[m_numSkipEnts] = sel->GetObject(i)->GetCollisionEntity();
+        if (m_pSkipEnts[m_numSkipEnts])
+        {
+            // Only increment the skip entities if a physical entity was found.
+            ++m_numSkipEnts;
+        }
     }
 
     int col = 0;
@@ -3030,7 +3053,12 @@ Vec3 CRenderViewport::ViewToWorldNormal(const QPoint& vp, bool onlyTerrain, bool
     m_numSkipEnts = 0;
     for (int i = 0; i < sel->GetCount(); i++)
     {
-        m_pSkipEnts[m_numSkipEnts++] = sel->GetObject(i)->GetCollisionEntity();
+        m_pSkipEnts[m_numSkipEnts] = sel->GetObject(i)->GetCollisionEntity();
+        if (m_pSkipEnts[m_numSkipEnts])
+        {
+            // Only increment the skip entities if a physical entity was found.
+            ++m_numSkipEnts;
+        }
         if (m_numSkipEnts > 1023)
         {
             break;
@@ -3302,7 +3330,48 @@ void CRenderViewport::CenterOnAABB(const AABB& aabb)
     m_orbitDistance = fabs(m_orbitDistance);
 
     SetViewTM(newTM);
+}
 
+void CRenderViewport::CenterOnSliceInstance()
+{
+    AzToolsFramework::EntityIdList selectedEntityList;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedEntityList, &AzToolsFramework::ToolsApplicationRequests::GetSelectedEntities);
+
+    AZ::SliceComponent::SliceInstanceAddress sliceAddress;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(sliceAddress,
+        &AzToolsFramework::ToolsApplicationRequestBus::Events::FindCommonSliceInstanceAddress, selectedEntityList);
+
+    if (!sliceAddress.IsValid())
+    {
+        return;
+    }
+
+    AZ::EntityId sliceRootEntityId;
+    AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(sliceRootEntityId,
+        &AzToolsFramework::ToolsApplicationRequestBus::Events::GetRootEntityIdOfSliceInstance, sliceAddress);
+
+    if (!sliceRootEntityId.IsValid())
+    {
+        return;
+    }
+
+    AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
+        &AzToolsFramework::ToolsApplicationRequestBus::Events::SetSelectedEntities, AzToolsFramework::EntityIdList{sliceRootEntityId});
+
+    const AZ::SliceComponent::InstantiatedContainer* instantiatedContainer = sliceAddress.GetInstance()->GetInstantiated();
+
+    AABB aabb(Vec3(std::numeric_limits<float>::max()), Vec3(-std::numeric_limits<float>::max()));
+    for (AZ::Entity* entity : instantiatedContainer->m_entities)
+    {
+        CEntityObject* entityObject = nullptr;
+        AzToolsFramework::ComponentEntityEditorRequestBus::EventResult(entityObject, entity->GetId(),
+            &AzToolsFramework::ComponentEntityEditorRequestBus::Events::GetSandboxObject);
+        AABB box;
+        entityObject->GetBoundBox(box);
+        aabb.Add(box.min);
+        aabb.Add(box.max);
+    }
+    CenterOnAABB(aabb);
 }
 
 //////////////////////////////////////////////////////////////////////////

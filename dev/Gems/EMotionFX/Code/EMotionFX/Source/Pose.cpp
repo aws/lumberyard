@@ -10,14 +10,15 @@
 *
 */
 
-// include required headers
-#include "Pose.h"
-#include "ActorInstance.h"
-#include "MotionInstance.h"
-#include "MorphSetupInstance.h"
-#include "TransformData.h"
-#include "MorphSetup.h"
-#include "Node.h"
+#include <EMotionFX/Source/ActorInstance.h>
+#include <EMotionFX/Source/MotionInstance.h>
+#include <EMotionFX/Source/MorphSetupInstance.h>
+#include <EMotionFX/Source/MorphSetup.h>
+#include <EMotionFX/Source/Node.h>
+#include <EMotionFX/Source/Pose.h>
+#include <EMotionFX/Source/PoseDataFactory.h>
+#include <EMotionFX/Source/TransformData.h>
+
 
 namespace EMotionFX
 {
@@ -27,16 +28,16 @@ namespace EMotionFX
         mActorInstance  = nullptr;
         mActor          = nullptr;
         mSkeleton       = nullptr;
-        mLocalTransforms.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_POSE);
-        mGlobalTransforms.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_POSE);
+        mLocalSpaceTransforms.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_POSE);
+        mModelSpaceTransforms.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_POSE);
         mFlags.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_POSE);
         mMorphWeights.SetMemoryCategory(EMFX_MEMCATEGORY_ANIMGRAPH_POSE);
 
         // reset morph weights
-        mMorphWeights.Reserve(32);
-        mLocalTransforms.Reserve(128);
-        mGlobalTransforms.Reserve(128);
-        mFlags.Reserve(128);
+        //mMorphWeights.Reserve(32);
+        //mLocalSpaceTransforms.Reserve(128);
+        //mModelSpaceTransforms.Reserve(128);
+        //mFlags.Reserve(128);
     }
 
 
@@ -64,10 +65,16 @@ namespace EMotionFX
 
         // resize the buffers
         const uint32 numTransforms = mActor->GetSkeleton()->GetNumNodes();
-        mLocalTransforms.ResizeFast(numTransforms);
-        mGlobalTransforms.ResizeFast(numTransforms);
+        mLocalSpaceTransforms.ResizeFast(numTransforms);
+        mModelSpaceTransforms.ResizeFast(numTransforms);
         mFlags.ResizeFast(numTransforms);
         mMorphWeights.ResizeFast(actorInstance->GetMorphSetupInstance()->GetNumMorphTargets());
+
+        for (const auto& poseDataItem : m_poseDatas)
+        {
+            PoseData* poseData = poseDataItem.second.get();
+            poseData->LinkToActorInstance(actorInstance);
+        }
 
         ClearFlags(initialFlags);
     }
@@ -82,8 +89,8 @@ namespace EMotionFX
 
         // resize the buffers
         const uint32 numTransforms = mActor->GetSkeleton()->GetNumNodes();
-        mLocalTransforms.ResizeFast(numTransforms);
-        mGlobalTransforms.ResizeFast(numTransforms);
+        mLocalSpaceTransforms.ResizeFast(numTransforms);
+        mModelSpaceTransforms.ResizeFast(numTransforms);
 
         const uint32 oldSize = mFlags.GetLength();
         mFlags.ResizeFast(numTransforms);
@@ -97,6 +104,12 @@ namespace EMotionFX
 
         MorphSetup* morphSetup = mActor->GetMorphSetup(0);
         mMorphWeights.ResizeFast((morphSetup) ? morphSetup->GetNumMorphTargets() : 0);
+
+        for (const auto& poseDataItem : m_poseDatas)
+        {
+            PoseData* poseData = poseDataItem.second.get();
+            poseData->LinkToActor(actor);
+        }
 
         if (clearAllFlags)
         {
@@ -142,8 +155,8 @@ namespace EMotionFX
     void Pose::SetNumTransforms(uint32 numTransforms)
     {
         // resize the buffers
-        mLocalTransforms.ResizeFast(numTransforms);
-        mGlobalTransforms.ResizeFast(numTransforms);
+        mLocalSpaceTransforms.ResizeFast(numTransforms);
+        mModelSpaceTransforms.ResizeFast(numTransforms);
 
         const uint32 oldSize = mFlags.GetLength();
         mFlags.ResizeFast(numTransforms);
@@ -153,18 +166,19 @@ namespace EMotionFX
         for (uint32 i = oldSize; i < numTransforms; ++i)
         {
             mFlags[i] = 0;
-            SetLocalTransform(i, identTransform);
+            SetLocalSpaceTransform(i, identTransform);
         }
     }
 
 
-    // clear the pose
     void Pose::Clear(bool clearMem)
     {
-        mLocalTransforms.Clear(clearMem);
-        mGlobalTransforms.Clear(clearMem);
+        mLocalSpaceTransforms.Clear(clearMem);
+        mModelSpaceTransforms.Clear(clearMem);
         mFlags.Clear(clearMem);
         mMorphWeights.Clear(clearMem);
+
+        ClearPoseDatas();
     }
 
 
@@ -232,7 +246,7 @@ namespace EMotionFX
     */
 
     // update the full local space pose
-    void Pose::ForceUpdateFullLocalPose()
+    void Pose::ForceUpdateFullLocalSpacePose()
     {
         Skeleton* skeleton = mActor->GetSkeleton();
         const uint32 numNodes = skeleton->GetNumNodes();
@@ -241,13 +255,13 @@ namespace EMotionFX
             const uint32 parentIndex = skeleton->GetNode(i)->GetParentIndex();
             if (parentIndex != MCORE_INVALIDINDEX32)
             {
-                GetGlobalTransform(parentIndex, &mLocalTransforms[i]);  // calculate the global parent index transform
-                mLocalTransforms[i].Inverse();
-                mLocalTransforms[i].PreMultiply(mGlobalTransforms[i]);
+                GetModelSpaceTransform(parentIndex, &mLocalSpaceTransforms[i]);
+                mLocalSpaceTransforms[i].Inverse();
+                mLocalSpaceTransforms[i].PreMultiply(mModelSpaceTransforms[i]);
             }
             else
             {
-                mLocalTransforms[i] = mGlobalTransforms[i];
+                mLocalSpaceTransforms[i] = mModelSpaceTransforms[i];
             }
 
             mFlags[i] |= FLAG_LOCALTRANSFORMREADY;
@@ -255,10 +269,10 @@ namespace EMotionFX
     }
 
 
-    // update the full global space pose
-    void Pose::ForceUpdateFullGlobalPose()
+    // update the full model space pose
+    void Pose::ForceUpdateFullModelSpacePose()
     {
-        // iterate from root towards child nodes recursively, updating all global matrices on the way
+        // iterate from root towards child nodes recursively, updating all model space transforms on the way
         Skeleton* skeleton = mActor->GetSkeleton();
         const uint32 numNodes = skeleton->GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
@@ -266,51 +280,105 @@ namespace EMotionFX
             const uint32 parentIndex = skeleton->GetNode(i)->GetParentIndex();
             if (parentIndex != MCORE_INVALIDINDEX32)
             {
-                mGlobalTransforms[parentIndex].PreMultiply(mLocalTransforms[i], &mGlobalTransforms[i]);
+                mModelSpaceTransforms[parentIndex].PreMultiply(mLocalSpaceTransforms[i], &mModelSpaceTransforms[i]);
             }
             else
             {
-                mGlobalTransforms[i] = mLocalTransforms[i];
+                mModelSpaceTransforms[i] = mLocalSpaceTransforms[i];
             }
 
-            mFlags[i] |= FLAG_GLOBALTRANSFORMREADY;
+            mFlags[i] |= FLAG_MODELTRANSFORMREADY;
         }
     }
 
 
-    // recursively update
     void Pose::UpdateGlobalTransform(uint32 nodeIndex) const
+    {
+        UpdateModelSpaceTransform(nodeIndex);
+    }
+
+
+    // recursively update
+    void Pose::UpdateModelSpaceTransform(uint32 nodeIndex) const
     {
         Skeleton* skeleton = mActor->GetSkeleton();
 
         const uint32 parentIndex = skeleton->GetNode(nodeIndex)->GetParentIndex();
         if (parentIndex != MCORE_INVALIDINDEX32)
         {
-            UpdateGlobalTransform(parentIndex);
+            UpdateModelSpaceTransform(parentIndex);
         }
 
-        // update the global transform if needed
-        if ((mFlags[nodeIndex] & FLAG_GLOBALTRANSFORMREADY) == false)
+        // update the model space transform if needed
+        if ((mFlags[nodeIndex] & FLAG_MODELTRANSFORMREADY) == false)
         {
-            //MCore::LogInfo("Calculating global transform for node '%s'", mActor->GetNode(nodeIndex)->GetName());
             Transform localTransform;
-            GetLocalTransform(nodeIndex, &localTransform);
+            GetLocalSpaceTransform(nodeIndex, &localTransform);
             if (parentIndex != MCORE_INVALIDINDEX32)
             {
-                mGlobalTransforms[parentIndex].PreMultiply(localTransform, &mGlobalTransforms[nodeIndex]);
+                mModelSpaceTransforms[parentIndex].PreMultiply(localTransform, &mModelSpaceTransforms[nodeIndex]);
             }
             else
             {
-                mGlobalTransforms[nodeIndex] = mLocalTransforms[nodeIndex];
+                mModelSpaceTransforms[nodeIndex] = mLocalSpaceTransforms[nodeIndex];
             }
 
-            mFlags[nodeIndex] |= FLAG_GLOBALTRANSFORMREADY;
+            mFlags[nodeIndex] |= FLAG_MODELTRANSFORMREADY;
         }
+    }
+
+    
+
+    void Pose::UpdateAllLocalTranforms()
+    {
+        UpdateAllLocalSpaceTranforms();
+    }
+
+
+    void Pose::UpdateAllGlobalTranforms()
+    {
+        UpdateAllModelSpaceTranforms();
+    }
+
+
+    void Pose::ForceUpdateFullLocalPose()
+    {
+        ForceUpdateFullLocalSpacePose();
+    }
+
+
+    void Pose::ForceUpdateFullGlobalPose()
+    {
+        ForceUpdateFullModelSpacePose();
+    }
+
+
+    void Pose::InvalidateAllLocalTransforms()
+    {
+        InvalidateAllLocalSpaceTransforms();
+    }
+
+
+    void Pose::InvalidateAllGlobalTransforms()
+    {
+        InvalidateAllModelSpaceTransforms();
+    }
+
+
+    void Pose::InvalidateAllLocalAndGlobalTransforms()
+    {
+        InvalidateAllLocalAndModelSpaceTransforms();
+    }
+
+
+    void Pose::UpdateLocalTransform(uint32 nodeIndex) const
+    {
+        UpdateLocalSpaceTransform(nodeIndex);
     }
 
 
     // update the local transform
-    void Pose::UpdateLocalTransform(uint32 nodeIndex) const
+    void Pose::UpdateLocalSpaceTransform(uint32 nodeIndex) const
     {
         const uint32 flags = mFlags[nodeIndex];
         if (flags & FLAG_LOCALTRANSFORMREADY)
@@ -318,7 +386,7 @@ namespace EMotionFX
             return;
         }
 
-        MCORE_ASSERT(flags & FLAG_GLOBALTRANSFORMREADY); // the global transform has to be updated already, otherwise we cannot possibly calculate the local space one
+        MCORE_ASSERT(flags & FLAG_MODELTRANSFORMREADY); // the model space transform has to be updated already, otherwise we cannot possibly calculate the local space one
         //if ((flags & FLAG_GLOBALTRANSFORMREADY) == false)
         //      DebugBreak();
 
@@ -326,112 +394,145 @@ namespace EMotionFX
         const uint32 parentIndex = skeleton->GetNode(nodeIndex)->GetParentIndex();
         if (parentIndex != MCORE_INVALIDINDEX32)
         {
-            GetGlobalTransform(parentIndex, &mLocalTransforms[nodeIndex]);  // calculate the global parent index transform
-            mLocalTransforms[nodeIndex].Inverse();
-            mLocalTransforms[nodeIndex].PreMultiply(mGlobalTransforms[nodeIndex]);
+            GetModelSpaceTransform(parentIndex, &mLocalSpaceTransforms[nodeIndex]);
+            mLocalSpaceTransforms[nodeIndex].Inverse();
+            mLocalSpaceTransforms[nodeIndex].PreMultiply(mModelSpaceTransforms[nodeIndex]);
         }
         else
         {
-            mLocalTransforms[nodeIndex] = mGlobalTransforms[nodeIndex];
+            mLocalSpaceTransforms[nodeIndex] = mModelSpaceTransforms[nodeIndex];
         }
 
         mFlags[nodeIndex] |= FLAG_LOCALTRANSFORMREADY;
-        //MCore::LogInfo("Calculated local transform for node '%s'", skeleton->GetNode(nodeIndex)->GetName());
+    }
+
+
+    const Transform& Pose::GetLocalTransform(uint32 nodeIndex) const
+    {
+        return GetLocalSpaceTransform(nodeIndex);
     }
 
 
     // get the local transform
-    const Transform& Pose::GetLocalTransform(uint32 nodeIndex) const
+    const Transform& Pose::GetLocalSpaceTransform(uint32 nodeIndex) const
     {
         if ((mFlags[nodeIndex] & FLAG_LOCALTRANSFORMREADY))
         {
-            return mLocalTransforms[nodeIndex];
+            return mLocalSpaceTransforms[nodeIndex];
         }
         else
         {
-            UpdateLocalTransform(nodeIndex);
-            return mLocalTransforms[nodeIndex];
+            UpdateLocalSpaceTransform(nodeIndex);
+            return mLocalSpaceTransforms[nodeIndex];
         }
     }
 
 
-    // get the global transform
     const Transform& Pose::GetGlobalTransform(uint32 nodeIndex) const
     {
-        // make sure the transform is up to date (checks parent nodes etc)
-        UpdateGlobalTransform(nodeIndex);
-        return mGlobalTransforms[nodeIndex];
+        return GetModelSpaceTransform(nodeIndex);
     }
 
 
-    // get the global transform including the actor instance transform
+    const Transform& Pose::GetModelSpaceTransform(uint32 nodeIndex) const
+    {
+        UpdateModelSpaceTransform(nodeIndex);
+        return mModelSpaceTransforms[nodeIndex];
+    }
+
+
     Transform Pose::GetGlobalTransformInclusive(uint32 nodeIndex) const
     {
-        // make sure the transform is up to date (checks parent nodes etc)
-        UpdateGlobalTransform(nodeIndex);
-        return mGlobalTransforms[nodeIndex].Multiplied(mActorInstance->GetGlobalTransform());
+        return GetWorldSpaceTransform(nodeIndex);
     }
 
 
-    // get the global transform including the actor instance transform
     void Pose::GetGlobalTransformInclusive(uint32 nodeIndex, Transform* outResult) const
     {
-        // make sure the transform is up to date (checks parent nodes etc)
-        UpdateGlobalTransform(nodeIndex);
-        *outResult = mGlobalTransforms[nodeIndex];
-        outResult->Multiply(mActorInstance->GetGlobalTransform());
+        GetWorldSpaceTransform(nodeIndex, outResult);
+    }
+
+
+    Transform Pose::GetWorldSpaceTransform(uint32 nodeIndex) const
+    {
+        UpdateModelSpaceTransform(nodeIndex);
+        return mModelSpaceTransforms[nodeIndex].Multiplied(mActorInstance->GetWorldSpaceTransform());
+    }
+
+
+    void Pose::GetWorldSpaceTransform(uint32 nodeIndex, Transform* outResult) const
+    {
+        UpdateModelSpaceTransform(nodeIndex);
+        *outResult = mModelSpaceTransforms[nodeIndex];
+        outResult->Multiply(mActorInstance->GetWorldSpaceTransform());
+    }
+
+
+    void Pose::GetLocalTransform(uint32 nodeIndex, Transform* outResult) const
+    {
+        GetLocalSpaceTransform(nodeIndex, outResult);
     }
 
 
     // calculate a local transform
-    void Pose::GetLocalTransform(uint32 nodeIndex, Transform* outResult) const
+    void Pose::GetLocalSpaceTransform(uint32 nodeIndex, Transform* outResult) const
     {
         if ((mFlags[nodeIndex] & FLAG_LOCALTRANSFORMREADY) == false)
         {
-            UpdateLocalTransform(nodeIndex);
+            UpdateLocalSpaceTransform(nodeIndex);
         }
 
-        *outResult = mLocalTransforms[nodeIndex];
+        *outResult = mLocalSpaceTransforms[nodeIndex];
     }
 
 
-    // calculate a global transform
     void Pose::GetGlobalTransform(uint32 nodeIndex, Transform* outResult) const
     {
-        // make sure the transform is up to date (checks parent nodes etc)
-        UpdateGlobalTransform(nodeIndex);
-        *outResult = mGlobalTransforms[nodeIndex];
+        GetModelSpaceTransform(nodeIndex, outResult);
+    }
+
+
+    void Pose::GetModelSpaceTransform(uint32 nodeIndex, Transform* outResult) const
+    {
+        UpdateModelSpaceTransform(nodeIndex);
+        *outResult = mModelSpaceTransforms[nodeIndex];
+    }
+
+
+    void Pose::SetLocalTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateGlobalTransforms)
+    {
+        SetLocalSpaceTransform(nodeIndex, newTransform, invalidateGlobalTransforms);
     }
 
 
     // set the local transform
-    void Pose::SetLocalTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateGlobalTransforms)
+    void Pose::SetLocalSpaceTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateGlobalTransforms)
     {
-        mLocalTransforms[nodeIndex] = newTransform;
+        mLocalSpaceTransforms[nodeIndex] = newTransform;
         mFlags[nodeIndex] |= FLAG_LOCALTRANSFORMREADY;
 
-        // mark all child node global transforms as dirty (recursively)
+        // mark all child node model space transforms as dirty (recursively)
         if (invalidateGlobalTransforms)
         {
-            if (mFlags[nodeIndex] & FLAG_GLOBALTRANSFORMREADY)
+            if (mFlags[nodeIndex] & FLAG_MODELTRANSFORMREADY)
             {
-                RecursiveInvalidateGlobalTransforms(mActor, nodeIndex);
+                RecursiveInvalidateModelSpaceTransforms(mActor, nodeIndex);
             }
         }
     }
 
 
     // mark all child nodes recursively as dirty
-    void Pose::RecursiveInvalidateGlobalTransforms(Actor* actor, uint32 nodeIndex)
+    void Pose::RecursiveInvalidateModelSpaceTransforms(Actor* actor, uint32 nodeIndex)
     {
-        // if this global transform ain't ready yet assume all child nodes are also not
-        if ((mFlags[nodeIndex] & FLAG_GLOBALTRANSFORMREADY) == false)
+        // if this model space transform ain't ready yet assume all child nodes are also not
+        if ((mFlags[nodeIndex] & FLAG_MODELTRANSFORMREADY) == false)
         {
             return;
         }
 
         // mark the global transform as invalid
-        mFlags[nodeIndex] &= ~FLAG_GLOBALTRANSFORMREADY;
+        mFlags[nodeIndex] &= ~FLAG_MODELTRANSFORMREADY;
 
         // recurse through all child nodes
         Skeleton* skeleton = actor->GetSkeleton();
@@ -439,53 +540,59 @@ namespace EMotionFX
         const uint32 numChildNodes = node->GetNumChildNodes();
         for (uint32 i = 0; i < numChildNodes; ++i)
         {
-            RecursiveInvalidateGlobalTransforms(actor, node->GetChildIndex(i));
+            RecursiveInvalidateModelSpaceTransforms(actor, node->GetChildIndex(i));
         }
     }
 
 
-    // set the global transform
     void Pose::SetGlobalTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateChildGlobalTransforms)
     {
-        mGlobalTransforms[nodeIndex] = newTransform;
+        SetModelSpaceTransform(nodeIndex, newTransform, invalidateChildGlobalTransforms);
+    }
+
+
+    void Pose::SetModelSpaceTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateChildGlobalTransforms)
+    {
+        mModelSpaceTransforms[nodeIndex] = newTransform;
 
         // invalidate the local transform
         mFlags[nodeIndex] &= ~FLAG_LOCALTRANSFORMREADY;
 
-        // recursively invalidate all global transforms of all child nodes
+        // recursively invalidate all model space transforms of all child nodes
         if (invalidateChildGlobalTransforms)
         {
-            RecursiveInvalidateGlobalTransforms(mActor, nodeIndex);
+            RecursiveInvalidateModelSpaceTransforms(mActor, nodeIndex);
         }
 
-        // mark this global transform as ready
-        mFlags[nodeIndex] |= FLAG_GLOBALTRANSFORMREADY;
+        // mark this model space transform as ready
+        mFlags[nodeIndex] |= FLAG_MODELTRANSFORMREADY;
+        UpdateLocalSpaceTransform(nodeIndex);
     }
 
 
-    // set the global transform that already has the current global transform of the actor instance included
     void Pose::SetGlobalTransformInclusive(uint32 nodeIndex, const Transform& newTransform, bool invalidateChildGlobalTransforms)
     {
-        Transform inverseActorInstanceTransform = mActorInstance->GetGlobalTransform().Inversed();
-        mGlobalTransforms[nodeIndex] = newTransform.Multiplied(inverseActorInstanceTransform);
-
-        // invalidate the local transform
-        mFlags[nodeIndex] &= ~FLAG_LOCALTRANSFORMREADY;
-
-        // recursively invalidate all global transforms of all child nodes
-        if (invalidateChildGlobalTransforms)
-        {
-            RecursiveInvalidateGlobalTransforms(mActor, nodeIndex);
-        }
-
-        // mark this global transform as ready
-        mFlags[nodeIndex] |= FLAG_GLOBALTRANSFORMREADY;
+        SetWorldSpaceTransform(nodeIndex, newTransform, invalidateChildGlobalTransforms);
     }
 
+
+    void Pose::SetWorldSpaceTransform(uint32 nodeIndex, const Transform& newTransform, bool invalidateChildGlobalTransforms)
+    {
+        mModelSpaceTransforms[nodeIndex] = newTransform.Multiplied(mActorInstance->GetWorldSpaceTransformInversed());
+        mFlags[nodeIndex] &= ~FLAG_LOCALTRANSFORMREADY;
+
+        if (invalidateChildGlobalTransforms)
+        {
+            RecursiveInvalidateModelSpaceTransforms(mActor, nodeIndex);
+        }
+
+        mFlags[nodeIndex] |= FLAG_MODELTRANSFORMREADY;
+        UpdateLocalSpaceTransform(nodeIndex);
+    }
 
 
     // invalidate all local transforms
-    void Pose::InvalidateAllLocalTransforms()
+    void Pose::InvalidateAllLocalSpaceTransforms()
     {
         const uint32 numFlags = mFlags.GetLength();
         for (uint32 i = 0; i < numFlags; ++i)
@@ -495,32 +602,29 @@ namespace EMotionFX
     }
 
 
-    // invalidate all global transforms
-    void Pose::InvalidateAllGlobalTransforms()
+    void Pose::InvalidateAllModelSpaceTransforms()
     {
         const uint32 numFlags = mFlags.GetLength();
         for (uint32 i = 0; i < numFlags; ++i)
         {
-            mFlags[i] &= ~FLAG_GLOBALTRANSFORMREADY;
+            mFlags[i] &= ~FLAG_MODELTRANSFORMREADY;
         }
     }
 
 
-    // invalidate all local and global transforms
-    void Pose::InvalidateAllLocalAndGlobalTransforms()
+    void Pose::InvalidateAllLocalAndModelSpaceTransforms()
     {
         const uint32 numFlags = mFlags.GetLength();
         for (uint32 i = 0; i < numFlags; ++i)
         {
-            mFlags[i] &= ~(FLAG_LOCALTRANSFORMREADY | FLAG_GLOBALTRANSFORMREADY);
+            mFlags[i] &= ~(FLAG_LOCALTRANSFORMREADY | FLAG_MODELTRANSFORMREADY);
         }
     }
 
 
-    // Get the trajectory transform.
     Transform Pose::CalcTrajectoryTransform() const
     {
-        MCORE_ASSERT( mActor );
+        MCORE_ASSERT(mActor);
         const uint32 motionExtractionNodeIndex = mActor->GetMotionExtractionNodeIndex();
         if (motionExtractionNodeIndex == MCORE_INVALIDINDEX32)
         {
@@ -529,30 +633,28 @@ namespace EMotionFX
             return result;
         }
 
-        return GetGlobalTransformInclusive(motionExtractionNodeIndex).ProjectedToGroundPlane();
+        return GetWorldSpaceTransform(motionExtractionNodeIndex).ProjectedToGroundPlane();
     }
 
 
-    // update all local transforms if needed
-    void Pose::UpdateAllLocalTranforms()
+    void Pose::UpdateAllLocalSpaceTranforms()
     {
         Skeleton* skeleton = mActor->GetSkeleton();
         const uint32 numNodes = skeleton->GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            UpdateLocalTransform(i);
+            UpdateLocalSpaceTransform(i);
         }
     }
 
 
-    // update all global transforms
-    void Pose::UpdateAllGlobalTranforms()
+    void Pose::UpdateAllModelSpaceTranforms()
     {
         Skeleton* skeleton = mActor->GetSkeleton();
         const uint32 numNodes = skeleton->GetNumNodes();
         for (uint32 i = 0; i < numNodes; ++i)
         {
-            UpdateGlobalTransform(i);
+            UpdateModelSpaceTransform(i);
         }
     }
 
@@ -564,11 +666,11 @@ namespace EMotionFX
     {
         // make sure the number of transforms are equal
         MCORE_ASSERT(destPose);
-        MCORE_ASSERT(outPose );
-        MCORE_ASSERT(mLocalTransforms.GetLength() == destPose->mLocalTransforms.GetLength());
-        MCORE_ASSERT(mLocalTransforms.GetLength() == outPose->mLocalTransforms.GetLength());
+        MCORE_ASSERT(outPose);
+        MCORE_ASSERT(mLocalSpaceTransforms.GetLength() == destPose->mLocalSpaceTransforms.GetLength());
+        MCORE_ASSERT(mLocalSpaceTransforms.GetLength() == outPose->mLocalSpaceTransforms.GetLength());
         MCORE_ASSERT(instance->GetIsMixing() == false);
-        MCORE_ASSERT(instance->GetNumMotionLinks() == mLocalTransforms.GetLength());
+        MCORE_ASSERT(instance->GetNumMotionLinks() == mLocalSpaceTransforms.GetLength());
 
         // get some motion instance properties which we use to decide the optimized blending routine
         const bool additive     = (instance->GetBlendMode() == BLENDMODE_ADDITIVE); // additively blend?
@@ -597,11 +699,11 @@ namespace EMotionFX
                         for (uint32 i = 0; i < numNodes; ++i)
                         {
                             nodeNr = actorInstance->GetEnabledNode(i);
-                            transform = GetLocalTransform(nodeNr);
-                            transform.Blend(destPose->GetLocalTransform(nodeNr), weight);
-                            outPose->SetLocalTransform(nodeNr, transform, false);
+                            transform = GetLocalSpaceTransform(nodeNr);
+                            transform.Blend(destPose->GetLocalSpaceTransform(nodeNr), weight);
+                            outPose->SetLocalSpaceTransform(nodeNr, transform, false);
                         }
-                        outPose->InvalidateAllGlobalTransforms();
+                        outPose->InvalidateAllModelSpaceTransforms();
                     }
                     else // if the weight is 0, so the source
                     {
@@ -631,11 +733,11 @@ namespace EMotionFX
                 for (uint32 i = 0; i < numNodes; ++i)
                 {
                     nodeNr = actorInstance->GetEnabledNode(i);
-                    const Transform& base = bindPose->GetLocalTransform(nodeNr);
-                    BlendTransformAdditiveUsingBindPose(base, GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), weight, &result);
-                    outPose->SetLocalTransform(nodeNr, result, false);
+                    const Transform& base = bindPose->GetLocalSpaceTransform(nodeNr);
+                    BlendTransformAdditiveUsingBindPose(base, GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), weight, &result);
+                    outPose->SetLocalSpaceTransform(nodeNr, result, false);
                 }
-                outPose->InvalidateAllGlobalTransforms();
+                outPose->InvalidateAllModelSpaceTransforms();
 
                 // blend the morph weights
                 const uint32 numMorphs = mMorphWeights.GetLength();
@@ -675,11 +777,11 @@ namespace EMotionFX
                     const float finalWeight = nodeBlendWeight * weight;
 
                     // blend the source into dest with the given weight and output it inside the output pose
-                    BlendTransformWithWeightCheck(GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), finalWeight, &result);
-                    outPose->SetLocalTransform(nodeNr, result, false);
+                    BlendTransformWithWeightCheck(GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), finalWeight, &result);
+                    outPose->SetLocalSpaceTransform(nodeNr, result, false);
                 }
 
-                outPose->InvalidateAllGlobalTransforms();
+                outPose->InvalidateAllModelSpaceTransforms();
 
                 // blend the morph weights
                 const uint32 numMorphs = mMorphWeights.GetLength();
@@ -719,10 +821,10 @@ namespace EMotionFX
                     const float finalWeight = nodeBlendWeight * weight;
 
                     // blend the source into dest with the given weight and output it inside the output pose
-                    BlendTransformAdditiveUsingBindPose(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), finalWeight, &result);
-                    outPose->SetLocalTransform(nodeNr, result, false);
+                    BlendTransformAdditiveUsingBindPose(bindPose->GetLocalSpaceTransform(nodeNr), GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), finalWeight, &result);
+                    outPose->SetLocalSpaceTransform(nodeNr, result, false);
                 }
-                outPose->InvalidateAllGlobalTransforms();
+                outPose->InvalidateAllModelSpaceTransforms();
 
                 // blend the morph weights
                 const uint32 numMorphs = mMorphWeights.GetLength();
@@ -742,11 +844,11 @@ namespace EMotionFX
     {
         // make sure the number of transforms are equal
         MCORE_ASSERT(destPose);
-        MCORE_ASSERT(outPose );
-        MCORE_ASSERT(mLocalTransforms.GetLength() == destPose->mLocalTransforms.GetLength());
-        MCORE_ASSERT(mLocalTransforms.GetLength() == outPose->mLocalTransforms.GetLength());
+        MCORE_ASSERT(outPose);
+        MCORE_ASSERT(mLocalSpaceTransforms.GetLength() == destPose->mLocalSpaceTransforms.GetLength());
+        MCORE_ASSERT(mLocalSpaceTransforms.GetLength() == outPose->mLocalSpaceTransforms.GetLength());
         MCORE_ASSERT(instance->GetIsMixing());
-        MCORE_ASSERT(instance->GetNumMotionLinks() == mLocalTransforms.GetLength());
+        MCORE_ASSERT(instance->GetNumMotionLinks() == mLocalSpaceTransforms.GetLength());
 
         // do we blend additively?
         const bool additive = (instance->GetBlendMode() == BLENDMODE_ADDITIVE);
@@ -780,11 +882,11 @@ namespace EMotionFX
                 const float finalWeight = instance->GetNodeWeight(nodeNr) * weight;
 
                 // blend the source into dest with the given weight and output it inside the output pose
-                BlendTransformWithWeightCheck(GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), finalWeight, &result);
-                outPose->SetLocalTransform(nodeNr, result, false);
+                BlendTransformWithWeightCheck(GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), finalWeight, &result);
+                outPose->SetLocalSpaceTransform(nodeNr, result, false);
             }
 
-            outPose->InvalidateAllGlobalTransforms();
+            outPose->InvalidateAllModelSpaceTransforms();
 
             // blend the morph weights
             const uint32 numMorphs = mMorphWeights.GetLength();
@@ -816,10 +918,10 @@ namespace EMotionFX
                 const float finalWeight = instance->GetNodeWeight(nodeNr) * weight;
 
                 // blend the source into dest with the given weight and output it inside the output pose
-                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), finalWeight, &result);
-                outPose->SetLocalTransform(nodeNr, result, false);
+                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalSpaceTransform(nodeNr), GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), finalWeight, &result);
+                outPose->SetLocalSpaceTransform(nodeNr, result, false);
             }
-            outPose->InvalidateAllGlobalTransforms();
+            outPose->InvalidateAllModelSpaceTransforms();
 
             // blend the morph weights
             const uint32 numMorphs = mMorphWeights.GetLength();
@@ -850,10 +952,39 @@ namespace EMotionFX
             return;
         }
 
-        mGlobalTransforms.MemCopyContentsFrom(sourcePose->mGlobalTransforms);
-        mLocalTransforms.MemCopyContentsFrom(sourcePose->mLocalTransforms);
+        mModelSpaceTransforms.MemCopyContentsFrom(sourcePose->mModelSpaceTransforms);
+        mLocalSpaceTransforms.MemCopyContentsFrom(sourcePose->mLocalSpaceTransforms);
         mFlags.MemCopyContentsFrom(sourcePose->mFlags);
         mMorphWeights.MemCopyContentsFrom(sourcePose->mMorphWeights);
+
+        // Deactivate pose datas from the current pose that are not in the source that we copy from.
+        // This is needed in order to prevent leftover pose datas and to avoid de-/allocations.
+        for (auto& poseDataItem : m_poseDatas)
+        {
+            const AZ::TypeId& typeId = poseDataItem.first;
+            if (!sourcePose->HasPoseData(typeId))
+            {
+                PoseData* poseData = poseDataItem.second.get();
+                poseData->SetIsUsed(false);
+            }
+        }
+
+        // Make sure the current pose has all the pose datas from the source pose, and copy them over.
+        const auto& sourcePoseDatas = sourcePose->GetPoseDatas();
+        for (const auto& sourcePoseDataItem : sourcePoseDatas)
+        {
+            const AZ::TypeId& sourceTypeId = sourcePoseDataItem.first;
+            const PoseData* sourcePoseData = sourcePoseDataItem.second.get();
+
+            PoseData* poseData = GetPoseDataByType(sourceTypeId);
+            if (!poseData)
+            {
+                poseData = PoseDataFactory::Create(this, sourceTypeId);
+                AddPoseData(poseData);
+            }
+
+            *poseData = *sourcePoseData;
+        }
     }
 
 
@@ -869,7 +1000,7 @@ namespace EMotionFX
             BlendMixed(destPose, weight, instance, this);
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
     }
 
 
@@ -885,7 +1016,7 @@ namespace EMotionFX
             BlendMixed(destPose, weight, instance, outPose);
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
     }
 
 
@@ -899,7 +1030,7 @@ namespace EMotionFX
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 nodeNr = mActorInstance->GetEnabledNode(i);
-                mLocalTransforms[nodeNr].Zero();
+                mLocalSpaceTransforms[nodeNr].Zero();
             }
 
             const uint32 numMorphs = mMorphWeights.GetLength();
@@ -914,7 +1045,7 @@ namespace EMotionFX
             const uint32 numNodes = mActor->GetSkeleton()->GetNumNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                mLocalTransforms[i].Zero();
+                mLocalSpaceTransforms[i].Zero();
             }
 
             const uint32 numMorphs = mMorphWeights.GetLength();
@@ -925,7 +1056,7 @@ namespace EMotionFX
             }
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
     }
 
 
@@ -939,8 +1070,8 @@ namespace EMotionFX
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 nodeNr = mActorInstance->GetEnabledNode(i);
-                UpdateLocalTransform(nodeNr);
-                mLocalTransforms[nodeNr].mRotation.Normalize();
+                UpdateLocalSpaceTransform(nodeNr);
+                mLocalSpaceTransforms[nodeNr].mRotation.Normalize();
             }
         }
         else
@@ -948,8 +1079,8 @@ namespace EMotionFX
             const uint32 numNodes = mActor->GetSkeleton()->GetNumNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                UpdateLocalTransform(i);
-                mLocalTransforms[i].mRotation.Normalize();
+                UpdateLocalSpaceTransform(i);
+                mLocalSpaceTransforms[i].mRotation.Normalize();
             }
         }
     }
@@ -966,8 +1097,8 @@ namespace EMotionFX
             {
                 nodeNr = mActorInstance->GetEnabledNode(i);
 
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                const Transform& otherTransform = other->GetLocalTransform(nodeNr);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                const Transform& otherTransform = other->GetLocalSpaceTransform(nodeNr);
                 transform.Add(otherTransform, weight);
             }
 
@@ -985,8 +1116,8 @@ namespace EMotionFX
             const uint32 numNodes = mActor->GetSkeleton()->GetNumNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
-                const Transform& otherTransform = other->GetLocalTransform(i);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                const Transform& otherTransform = other->GetLocalSpaceTransform(i);
                 transform.Add(otherTransform, weight);
             }
 
@@ -1000,7 +1131,7 @@ namespace EMotionFX
             }
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
     }
 
 
@@ -1014,8 +1145,8 @@ namespace EMotionFX
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 nodeNr = mActorInstance->GetEnabledNode(i);
-                Transform& curTransform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                curTransform.Blend(destPose->GetLocalTransform(nodeNr), weight);
+                Transform& curTransform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                curTransform.Blend(destPose->GetLocalSpaceTransform(nodeNr), weight);
             }
 
             // blend the morph weights
@@ -1026,14 +1157,20 @@ namespace EMotionFX
             {
                 mMorphWeights[i] = MCore::LinearInterpolate<float>(mMorphWeights[i], destPose->mMorphWeights[i], weight);
             }
+
+            for (const auto& poseDataItem : m_poseDatas)
+            {
+                PoseData* poseData = poseDataItem.second.get();
+                poseData->Blend(destPose, weight);
+            }
         }
         else
         {
             const uint32 numNodes = mActor->GetSkeleton()->GetNumNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform& curTransform = const_cast<Transform&>(GetLocalTransform(i));
-                curTransform.Blend(destPose->GetLocalTransform(i), weight);
+                Transform& curTransform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                curTransform.Blend(destPose->GetLocalSpaceTransform(i), weight);
             }
 
             // blend the morph weights
@@ -1044,32 +1181,38 @@ namespace EMotionFX
             {
                 mMorphWeights[i] = MCore::LinearInterpolate<float>(mMorphWeights[i], destPose->mMorphWeights[i], weight);
             }
+
+            for (const auto& poseDataItem : m_poseDatas)
+            {
+                PoseData* poseData = poseDataItem.second.get();
+                poseData->Blend(destPose, weight);
+            }
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
     }
 
 
     Pose& Pose::MakeRelativeTo(const Pose& other)
     {
-        AZ_Assert(mLocalTransforms.GetLength() == other.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        AZ_Assert(mLocalSpaceTransforms.GetLength() == other.mLocalSpaceTransforms.GetLength(), "Poses must be of the same size");
         if (mActorInstance)
         {
             const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 uint16 nodeNr = mActorInstance->GetEnabledNode(i);
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                transform = transform.CalcRelativeTo(other.GetLocalTransform(nodeNr));
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                transform = transform.CalcRelativeTo(other.GetLocalSpaceTransform(nodeNr));
             }
         }
         else
         {
-            const uint32 numNodes = mLocalTransforms.GetLength();
+            const uint32 numNodes = mLocalSpaceTransforms.GetLength();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
-                transform = transform.CalcRelativeTo(other.GetLocalTransform(i));
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                transform = transform.CalcRelativeTo(other.GetLocalSpaceTransform(i));
             }
         }
 
@@ -1080,92 +1223,114 @@ namespace EMotionFX
             mMorphWeights[i] -= other.mMorphWeights[i];
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
         return *this;
     }
 
 
     Pose& Pose::ApplyAdditive(const Pose& additivePose, float weight)
     {
-        AZ_Assert(mLocalTransforms.GetLength() == additivePose.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        AZ_Assert(mLocalSpaceTransforms.GetLength() == additivePose.mLocalSpaceTransforms.GetLength(), "Poses must be of the same size");
         if (mActorInstance)
         {
-            const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
-            for (uint32 i = 0; i < numNodes; ++i)
-            {
-                uint16 nodeNr = mActorInstance->GetEnabledNode(i);
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                const Transform& additiveTransform = additivePose.GetLocalTransform(nodeNr);
-                transform.mPosition += additiveTransform.mPosition * weight;
-                transform.mRotation = transform.mRotation.NLerp(transform.mRotation * additiveTransform.mRotation, weight);
-                EMFX_SCALECODE
-                (
-                    transform.mScale += additiveTransform.mScale * weight;
-                )
-                transform.mRotation.Normalize();
-            }
+            AZ_Assert(weight > -MCore::Math::epsilon && weight < (1 + MCore::Math::epsilon), "Expected weight to be between 0..1");
+        }
+        static const float weightCloseToOne = 1.0f - MCore::Math::epsilon;
+
+        if (weight < MCore::Math::epsilon)
+        {
+            return *this;
+        }
+        else if (weight > weightCloseToOne)
+        {
+
+            return ApplyAdditive(additivePose);
         }
         else
         {
-            const uint32 numNodes = mLocalTransforms.GetLength();
-            for (uint32 i = 0; i < numNodes; ++i)
+            AZ_Assert(mLocalSpaceTransforms.GetLength() == additivePose.mLocalSpaceTransforms.GetLength(), "Poses must be of the same size");
+            if (mActorInstance)
             {
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
-                const Transform& additiveTransform = additivePose.GetLocalTransform(i);
-                transform.mPosition += additiveTransform.mPosition * weight;
-                transform.mRotation = transform.mRotation.NLerp(transform.mRotation * additiveTransform.mRotation, weight);
-                EMFX_SCALECODE
-                (
-                    transform.mScale += additiveTransform.mScale * weight;
-                )
-                transform.mRotation.Normalize();
+                const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
+                for (uint32 i = 0; i < numNodes; ++i)
+                {
+                    uint16 nodeNr = mActorInstance->GetEnabledNode(i);
+                    Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                    const Transform& additiveTransform = additivePose.GetLocalSpaceTransform(nodeNr);
+                    transform.mPosition += additiveTransform.mPosition * weight;
+                    transform.mRotation = transform.mRotation.NLerp(additiveTransform.mRotation * transform.mRotation, weight);
+                    EMFX_SCALECODE
+                    (
+                        transform.mScale *= AZ::Vector3::CreateOne().Lerp(additiveTransform.mScale, weight);
+                    )
+                    transform.mRotation.Normalize();
+                }
             }
+            else
+            {
+                const uint32 numNodes = mLocalSpaceTransforms.GetLength();
+                for (uint32 i = 0; i < numNodes; ++i)
+                {
+                    Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                    const Transform& additiveTransform = additivePose.GetLocalSpaceTransform(i);
+                    transform.mPosition += additiveTransform.mPosition * weight;
+                    transform.mRotation = transform.mRotation.NLerp(additiveTransform.mRotation * transform.mRotation, weight);
+                    EMFX_SCALECODE
+                    (
+                        transform.mScale *= AZ::Vector3::CreateOne().Lerp(additiveTransform.mScale, weight);
+                    )
+                    transform.mRotation.Normalize();
+                }
+            }
+
+            const uint32 numMorphs = mMorphWeights.GetLength();
+            AZ_Assert(numMorphs == additivePose.GetNumMorphWeights(), "Number of morphs in the pose doesn't match the number of morphs inside the provided input pose.");
+            for (uint32 i = 0; i < numMorphs; ++i)
+            {
+                mMorphWeights[i] += additivePose.mMorphWeights[i] * weight;
+            }
+
+            InvalidateAllModelSpaceTransforms();
+            return *this;
         }
 
-        const uint32 numMorphs = mMorphWeights.GetLength();
-        AZ_Assert(numMorphs == additivePose.GetNumMorphWeights(), "Number of morphs in the pose doesn't match the number of morphs inside the provided input pose.");
-        for (uint32 i = 0; i < numMorphs; ++i)
-        {
-            mMorphWeights[i] += additivePose.mMorphWeights[i] * weight;
-        }
-
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
         return *this;
     }
 
 
     Pose& Pose::ApplyAdditive(const Pose& additivePose)
     {
-        AZ_Assert(mLocalTransforms.GetLength() == additivePose.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        AZ_Assert(mLocalSpaceTransforms.GetLength() == additivePose.mLocalSpaceTransforms.GetLength(), "Poses must be of the same size");
         if (mActorInstance)
         {
             const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 uint16 nodeNr = mActorInstance->GetEnabledNode(i);
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                const Transform& additiveTransform = additivePose.GetLocalTransform(nodeNr);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                const Transform& additiveTransform = additivePose.GetLocalSpaceTransform(nodeNr);
                 transform.mPosition += additiveTransform.mPosition;
                 transform.mRotation = transform.mRotation * additiveTransform.mRotation;
                 EMFX_SCALECODE
                 (
-                    transform.mScale += additiveTransform.mScale;
+                    transform.mScale *= additiveTransform.mScale;
                 )
                 transform.mRotation.Normalize();
             }
         }
         else
         {
-            const uint32 numNodes = mLocalTransforms.GetLength();
+            const uint32 numNodes = mLocalSpaceTransforms.GetLength();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
-                const Transform& additiveTransform = additivePose.GetLocalTransform(i);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                const Transform& additiveTransform = additivePose.GetLocalSpaceTransform(i);
                 transform.mPosition += additiveTransform.mPosition;
                 transform.mRotation = transform.mRotation * additiveTransform.mRotation;
                 EMFX_SCALECODE
                 (
-                    transform.mScale += additiveTransform.mScale;
+                    transform.mScale *= additiveTransform.mScale;
                 )
                 transform.mRotation.Normalize();
             }
@@ -1178,42 +1343,42 @@ namespace EMotionFX
             mMorphWeights[i] += additivePose.mMorphWeights[i];
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
         return *this;
     }
 
 
     Pose& Pose::MakeAdditive(const Pose& refPose)
     {
-        AZ_Assert(mLocalTransforms.GetLength() == refPose.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        AZ_Assert(mLocalSpaceTransforms.GetLength() == refPose.mLocalSpaceTransforms.GetLength(), "Poses must be of the same size");
         if (mActorInstance)
         {
             const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 uint16 nodeNr = mActorInstance->GetEnabledNode(i);
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                const Transform& refTransform = refPose.GetLocalTransform(nodeNr);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                const Transform& refTransform = refPose.GetLocalSpaceTransform(nodeNr);
                 transform.mPosition = transform.mPosition - refTransform.mPosition;
                 transform.mRotation = refTransform.mRotation.Conjugated() * transform.mRotation;
                 EMFX_SCALECODE
                 (
-                    transform.mScale = transform.mScale - refTransform.mScale;
+                    transform.mScale *= refTransform.mScale;
                 )
             }
         }
         else
         {
-            const uint32 numNodes = mLocalTransforms.GetLength();
+            const uint32 numNodes = mLocalSpaceTransforms.GetLength();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
-                const Transform& refTransform = refPose.GetLocalTransform(i);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                const Transform& refTransform = refPose.GetLocalSpaceTransform(i);
                 transform.mPosition = transform.mPosition - refTransform.mPosition;
                 transform.mRotation = refTransform.mRotation.Conjugated() * transform.mRotation;
                 EMFX_SCALECODE
                 (
-                    transform.mScale = transform.mScale - refTransform.mScale;
+                    transform.mScale *= refTransform.mScale;
                 )
             }
         }
@@ -1225,7 +1390,7 @@ namespace EMotionFX
             mMorphWeights[i] -= refPose.mMorphWeights[i];
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
         return *this;
     }
 
@@ -1244,8 +1409,8 @@ namespace EMotionFX
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 nodeNr = mActorInstance->GetEnabledNode(i);
-                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalTransform(nodeNr), GetLocalTransform(nodeNr), destPose->GetLocalTransform(nodeNr), weight, &result);
-                SetLocalTransform(nodeNr, result, false);
+                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalSpaceTransform(nodeNr), GetLocalSpaceTransform(nodeNr), destPose->GetLocalSpaceTransform(nodeNr), weight, &result);
+                SetLocalSpaceTransform(nodeNr, result, false);
             }
 
             // blend the morph weights
@@ -1266,8 +1431,8 @@ namespace EMotionFX
             const uint32 numNodes = mActor->GetSkeleton()->GetNumNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalTransform(i), GetLocalTransform(i), destPose->GetLocalTransform(i), weight, &result);
-                SetLocalTransform(i, result, false);
+                BlendTransformAdditiveUsingBindPose(bindPose->GetLocalSpaceTransform(i), GetLocalSpaceTransform(i), destPose->GetLocalSpaceTransform(i), weight, &result);
+                SetLocalSpaceTransform(i, result, false);
             }
 
             // blend the morph weights
@@ -1280,7 +1445,7 @@ namespace EMotionFX
             }
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
     }
 
 
@@ -1321,6 +1486,61 @@ namespace EMotionFX
         return *this;
     }
 
+    bool Pose::HasPoseData(const AZ::TypeId& typeId) const
+    {
+        return m_poseDatas.find(typeId) != m_poseDatas.end();
+    }
+
+    PoseData* Pose::GetPoseDataByType(const AZ::TypeId& typeId) const
+    {
+        const auto iterator = m_poseDatas.find(typeId);
+        if (iterator != m_poseDatas.end())
+        {
+            return iterator->second.get();
+        }
+
+        return nullptr;
+    }
+
+    void Pose::AddPoseData(PoseData* poseData)
+    {
+        m_poseDatas.emplace(poseData->RTTI_GetType(), poseData);
+    }
+
+    void Pose::ClearPoseDatas()
+    {
+        m_poseDatas.clear();
+    }
+
+    const AZStd::unordered_map<AZ::TypeId, AZStd::unique_ptr<PoseData> >& Pose::GetPoseDatas() const
+    {
+        return m_poseDatas;
+    }
+
+    PoseData* Pose::GetAndPreparePoseData(const AZ::TypeId& typeId, ActorInstance* linkToActorInstance)
+    {
+        PoseData* poseData = GetPoseDataByType(typeId);
+        if (!poseData)
+        {
+            poseData = PoseDataFactory::Create(this, typeId);
+            AddPoseData(poseData);
+
+            poseData->LinkToActorInstance(linkToActorInstance);
+            poseData->Reset();
+        }
+        else
+        {
+            poseData->LinkToActorInstance(linkToActorInstance);
+
+            if (!poseData->IsUsed())
+            {
+                poseData->Reset();
+            }
+        }
+
+        poseData->SetIsUsed(true);
+        return poseData;
+    }
 
     // compensate for motion extraction, basically making it in-place
     void Pose::CompensateForMotionExtractionDirect(EMotionExtractionFlags motionExtractionFlags)
@@ -1328,9 +1548,9 @@ namespace EMotionFX
         const uint32 motionExtractionNodeIndex = mActor->GetMotionExtractionNodeIndex();
         if (motionExtractionNodeIndex != MCORE_INVALIDINDEX32)
         {
-            Transform motionExtractionNodeTransform = GetLocalTransformDirect(motionExtractionNodeIndex);
+            Transform motionExtractionNodeTransform = GetLocalSpaceTransformDirect(motionExtractionNodeIndex);
             mActorInstance->MotionExtractionCompensate(motionExtractionNodeTransform, motionExtractionFlags);
-            SetLocalTransformDirect(motionExtractionNodeIndex, motionExtractionNodeTransform);
+            SetLocalSpaceTransformDirect(motionExtractionNodeIndex, motionExtractionNodeTransform);
         }
     }
 
@@ -1341,9 +1561,9 @@ namespace EMotionFX
         const uint32 motionExtractionNodeIndex = mActor->GetMotionExtractionNodeIndex();
         if (motionExtractionNodeIndex != MCORE_INVALIDINDEX32)
         {
-            Transform motionExtractionNodeTransform = GetLocalTransform(motionExtractionNodeIndex);
+            Transform motionExtractionNodeTransform = GetLocalSpaceTransform(motionExtractionNodeIndex);
             mActorInstance->MotionExtractionCompensate(motionExtractionNodeTransform, motionExtractionFlags);
-            SetLocalTransform(motionExtractionNodeIndex, motionExtractionNodeTransform);
+            SetLocalSpaceTransform(motionExtractionNodeIndex, motionExtractionNodeTransform);
         }
     }
 
@@ -1383,93 +1603,110 @@ namespace EMotionFX
 
     Pose& Pose::PreMultiply(const Pose& other)
     {
-        AZ_Assert(mLocalTransforms.GetLength() == other.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        AZ_Assert(mLocalSpaceTransforms.GetLength() == other.mLocalSpaceTransforms.GetLength(), "Poses must be of the same size");
         if (mActorInstance)
         {
             const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 uint16 nodeNr = mActorInstance->GetEnabledNode(i);
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                Transform otherTransform = other.GetLocalTransform(nodeNr);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                Transform otherTransform = other.GetLocalSpaceTransform(nodeNr);
                 transform = otherTransform * transform;
             }
         }
         else
         {
-            const uint32 numNodes = mLocalTransforms.GetLength();
+            const uint32 numNodes = mLocalSpaceTransforms.GetLength();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
-                Transform otherTransform = other.GetLocalTransform(i);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                Transform otherTransform = other.GetLocalSpaceTransform(i);
                 transform = otherTransform * transform;
             }
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
         return *this;
     }
-    
+
 
     Pose& Pose::Multiply(const Pose& other)
     {
-        AZ_Assert(mLocalTransforms.GetLength() == other.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        AZ_Assert(mLocalSpaceTransforms.GetLength() == other.mLocalSpaceTransforms.GetLength(), "Poses must be of the same size");
         if (mActorInstance)
         {
             const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 uint16 nodeNr = mActorInstance->GetEnabledNode(i);
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                transform.Multiply(other.GetLocalTransform(nodeNr));
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                transform.Multiply(other.GetLocalSpaceTransform(nodeNr));
             }
         }
         else
         {
-            const uint32 numNodes = mLocalTransforms.GetLength();
+            const uint32 numNodes = mLocalSpaceTransforms.GetLength();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
-                transform.Multiply(other.GetLocalTransform(i));
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                transform.Multiply(other.GetLocalSpaceTransform(i));
             }
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
         return *this;
     }
 
 
     Pose& Pose::MultiplyInverse(const Pose& other)
     {
-        AZ_Assert(mLocalTransforms.GetLength() == other.mLocalTransforms.GetLength(), "Poses must be of the same size");
+        AZ_Assert(mLocalSpaceTransforms.GetLength() == other.mLocalSpaceTransforms.GetLength(), "Poses must be of the same size");
         if (mActorInstance)
         {
             const uint32 numNodes = mActorInstance->GetNumEnabledNodes();
             for (uint32 i = 0; i < numNodes; ++i)
             {
                 uint16 nodeNr = mActorInstance->GetEnabledNode(i);
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(nodeNr));
-                Transform otherTransform = other.GetLocalTransform(nodeNr);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(nodeNr));
+                Transform otherTransform = other.GetLocalSpaceTransform(nodeNr);
                 otherTransform.Inverse();
                 transform.PreMultiply(otherTransform);
             }
         }
         else
         {
-            const uint32 numNodes = mLocalTransforms.GetLength();
+            const uint32 numNodes = mLocalSpaceTransforms.GetLength();
             for (uint32 i = 0; i < numNodes; ++i)
             {
-                Transform& transform = const_cast<Transform&>(GetLocalTransform(i));
-                Transform otherTransform = other.GetLocalTransform(i);
+                Transform& transform = const_cast<Transform&>(GetLocalSpaceTransform(i));
+                Transform otherTransform = other.GetLocalSpaceTransform(i);
                 otherTransform.Inverse();
                 transform.PreMultiply(otherTransform);
             }
         }
 
-        InvalidateAllGlobalTransforms();
+        InvalidateAllModelSpaceTransforms();
         return *this;
     }
 
 
+    Transform Pose::GetMeshNodeWorldSpaceTransform(AZ::u32 lodLevel, AZ::u32 nodeIndex) const
+    {
+        if (!mActorInstance)
+        {
+            Transform identityTransform;
+            identityTransform.Identity();
+            return identityTransform;
+        }
+
+        Actor* actor = mActorInstance->GetActor();
+        if (actor->CheckIfHasSkinningDeformer(lodLevel, nodeIndex))
+        {
+            return mActorInstance->GetWorldSpaceTransform();
+        }
+
+        return GetWorldSpaceTransform(nodeIndex);
+    }
 
 }   // namespace EMotionFX

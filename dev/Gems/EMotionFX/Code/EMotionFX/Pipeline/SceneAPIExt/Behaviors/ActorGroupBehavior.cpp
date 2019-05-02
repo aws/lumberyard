@@ -26,6 +26,7 @@
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IAnimationData.h>
 #include <SceneAPI/SceneCore/DataTypes/DataTypeUtilities.h>
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
+#include <SceneAPI/SceneCore/Events/GraphMetaInfoBus.h>
 #include <SceneAPI/SceneData/Rules/MaterialRule.h>
 #include <SceneAPI/SceneData/Rules/TangentsRule.h>
 
@@ -33,12 +34,15 @@
 #include <SceneAPIExt/Behaviors/ActorGroupBehavior.h>
 #include <SceneAPIExt/Behaviors/MeshRuleBehavior.h>
 #include <SceneAPIExt/Behaviors/SkinRuleBehavior.h>
+#include <SceneAPIExt/Behaviors/LODRuleBehavior.h>
+#include <SceneAPIExt/Rules/ActorPhysicsSetupRule.h>
 #include <SceneAPIExt/Rules/ActorScaleRule.h>
 #include <SceneAPIExt/Rules/MetaDataRule.h>
 #include <SceneAPIExt/Rules/MeshRule.h>
 #include <SceneAPIExt/Rules/SkinRule.h>
 #include <SceneAPIExt/Rules/CoordinateSystemRule.h>
 #include <SceneAPIExt/Rules/MorphTargetRule.h>
+#include <SceneAPIExt/Rules/LodRule.h>
 
 namespace EMotionFX
 {
@@ -51,10 +55,12 @@ namespace EMotionFX
             void ActorGroupBehavior::Reflect(AZ::ReflectContext* context)
             {
                 Group::ActorGroup::Reflect(context);
+                Rule::ActorPhysicsSetupRule::Reflect(context);
                 Rule::ActorScaleRule::Reflect(context);
                 Rule::MetaDataRule::Reflect(context);
                 Rule::CoordinateSystemRule::Reflect(context);
                 Rule::MorphTargetRule::Reflect(context);
+                Rule::LodRule::Reflect(context);
 
                 AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
                 if (serializeContext)
@@ -118,6 +124,10 @@ namespace EMotionFX
                     {
                         modifiers.push_back(Rule::CoordinateSystemRule::TYPEINFO_Uuid());
                     }
+                    if (existingRules.find(Rule::LodRule::TYPEINFO_Uuid()) == existingRules.end())
+                    {
+                        modifiers.push_back(Rule::LodRule::TYPEINFO_Uuid());
+                    }
                     if (existingRules.find(Rule::MorphTargetRule::TYPEINFO_Uuid()) == existingRules.end())
                     {
                         AZ::SceneAPI::SceneData::SceneNodeSelectionList selection;
@@ -145,21 +155,41 @@ namespace EMotionFX
                 Group::ActorGroup* group = azrtti_cast<Group::ActorGroup*>(&target);
                 group->SetName(AZ::SceneAPI::DataTypes::Utilities::CreateUniqueName<Group::IActorGroup>(scene.GetName(), scene.GetManifest()));
 
+                // LOD Rule need to be built first in the actor, so we know which mesh and bone belongs to LOD.
+                // After this call, LOD rule will be populated with all the LOD nodes (bones and meshes).
+                Behavior::LodRuleBehavior::BuildLODRuleForActor(scene, *group);
+
                 const AZ::SceneAPI::Containers::SceneGraph& graph = scene.GetGraph();
 
-                // Gather the nodes that should be selected by default
-                AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& nodeSelectionList = group->GetSceneNodeSelectionList();
-                AZ::SceneAPI::Utilities::SceneGraphSelector::UnselectAll(graph, nodeSelectionList);
+                // For LOD mesh that belongs to LOD rule, we don't add it.
+                AZ::SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainer();
+                AZStd::shared_ptr<Rule::LodRule> lodRule = rules.FindFirstByType<Rule::LodRule>();
+
+                // Gather all the mesh nodes that should be selected by default
+                AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& allMeshSelectionList = group->GetSceneNodeSelectionList();
+                AZ::SceneAPI::Utilities::SceneGraphSelector::UnselectAll(graph, allMeshSelectionList);
+
+                AZ::SceneAPI::DataTypes::ISceneNodeSelectionList& baseMeshSelectionList = group->GetBaseNodeSelectionList();
+                AZ::SceneAPI::Utilities::SceneGraphSelector::UnselectAll(graph, baseMeshSelectionList);
+
                 AZ::SceneAPI::Containers::SceneGraph::ContentStorageConstData graphContent = graph.GetContentStorage();
                 auto view = AZ::SceneAPI::Containers::Views::MakeFilterView(graphContent, AZ::SceneAPI::Containers::DerivedTypeFilter<AZ::SceneAPI::DataTypes::IMeshData>());
                 for (auto iter = view.begin(), iterEnd = view.end(); iter != iterEnd; ++iter)
                 {
                     AZ::SceneAPI::Containers::SceneGraph::NodeIndex nodeIndex = graph.ConvertToNodeIndex(iter.GetBaseIterator());
-                    nodeSelectionList.AddSelectedNode(graph.GetNodeName(nodeIndex).GetPath());
+                    const char* nodePath = graph.GetNodeName(nodeIndex).GetPath();
+                    if (!lodRule || !lodRule->ContainsNodeByPath(nodePath))
+                    {
+                        // We will only add the base mesh to the base mesh list.
+                        baseMeshSelectionList.AddSelectedNode(nodePath);
+                    }
+                    // We will add all the mesh to the all mesh selection list.
+                    allMeshSelectionList.AddSelectedNode(nodePath);
                 }
-                AZ::SceneAPI::Utilities::SceneGraphSelector::UpdateNodeSelection(graph, nodeSelectionList);
+                // Since the selection list contain both selected and unselected list, we need to call this function to make sure they matched up.
+                AZ::SceneAPI::Utilities::SceneGraphSelector::UpdateNodeSelection(graph, allMeshSelectionList);
+                AZ::SceneAPI::Utilities::SceneGraphSelector::UpdateNodeSelection(graph, baseMeshSelectionList);
 
-                AZ::SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainer();
                 if (!rules.ContainsRuleOfType<Rule::CoordinateSystemRule>())
                 {
                     rules.AddRule(AZStd::make_shared<Rule::CoordinateSystemRule>());
@@ -214,7 +244,8 @@ namespace EMotionFX
             AZ::SceneAPI::Events::ProcessingResult ActorGroupBehavior::UpdateActorGroups(AZ::SceneAPI::Containers::Scene& scene) const
             {
                 bool updated = false;
-                AZ::SceneAPI::Containers::SceneManifest& manifest = scene.GetManifest();
+                SceneContainers::SceneManifest& manifest = scene.GetManifest();
+                const SceneContainers::SceneGraph& sceneGraph = scene.GetGraph();
                 auto valueStorage = manifest.GetValueStorage();
                 auto view = AZ::SceneAPI::Containers::MakeDerivedFilterView<Group::ActorGroup>(valueStorage);
                 for (Group::ActorGroup& group : view)
@@ -231,7 +262,34 @@ namespace EMotionFX
                         group.OverrideId(AZ::SceneAPI::DataTypes::Utilities::CreateStableUuid(scene, Group::ActorGroup::TYPEINFO_Uuid(), group.GetName()));
                         updated = true;
                     }
-                    AZ::SceneAPI::Utilities::SceneGraphSelector::UpdateNodeSelection(scene.GetGraph(), group.GetSceneNodeSelectionList());
+                    SceneDataTypes::ISceneNodeSelectionList& baseNodeList = group.GetBaseNodeSelectionList();
+                    SceneDataTypes::ISceneNodeSelectionList& allNodeList = group.GetSceneNodeSelectionList();
+
+                    AZ::SceneAPI::Utilities::SceneGraphSelector::UpdateNodeSelection(sceneGraph, baseNodeList);
+                    AZ::SceneAPI::Utilities::SceneGraphSelector::UnselectAll(sceneGraph, allNodeList);
+                    // Populate the all node selection list based on the base node list and lod node list.
+                    const size_t baseMeshCount = baseNodeList.GetSelectedNodeCount();
+                    for (size_t i = 0; i < baseMeshCount; ++i)
+                    {
+                        allNodeList.AddSelectedNode(baseNodeList.GetSelectedNode(i));
+                    }
+
+                    const AZ::SceneAPI::Containers::RuleContainer& rules = group.GetRuleContainer();
+                    const AZStd::shared_ptr<Rule::LodRule> lodRule = rules.FindFirstByType<Rule::LodRule>();
+                    if (lodRule)
+                    {
+                        const size_t lodCount = lodRule->GetLodRuleCount();
+                        for (size_t lodIndex = 0; lodIndex < lodCount; ++lodIndex)
+                        {
+                            const SceneDataTypes::ISceneNodeSelectionList& lodMeshList = lodRule->GetSceneNodeSelectionList(lodIndex);
+                            const size_t lodMeshCount = lodMeshList.GetSelectedNodeCount();
+                            for (size_t meshIndex = 0; meshIndex < lodMeshCount; ++meshIndex)
+                            {
+                                allNodeList.AddSelectedNode(lodMeshList.GetSelectedNode(meshIndex));
+                            }
+                        }
+                    }
+                    AZ::SceneAPI::Utilities::SceneGraphSelector::UpdateNodeSelection(sceneGraph, allNodeList);
                 }
 
                 return updated ? AZ::SceneAPI::Events::ProcessingResult::Success : AZ::SceneAPI::Events::ProcessingResult::Ignored;

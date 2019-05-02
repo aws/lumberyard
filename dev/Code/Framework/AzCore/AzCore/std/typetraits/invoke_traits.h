@@ -14,6 +14,7 @@
 
 #include <AzCore/std/utils.h>
 
+#include <AzCore/std/typetraits/is_base_of.h>
 #include <AzCore/std/typetraits/is_member_function_pointer.h>
 #include <AzCore/std/typetraits/is_member_object_pointer.h>
 #include <AzCore/std/typetraits/void_t.h>
@@ -78,23 +79,6 @@ namespace AZStd
         template <class R, class ClassType>
         struct check_complete_type<R ClassType::*> : private check_complete_type<ClassType> {};
 
-        // VS 2013 does not deduce a member function pointer type to the <R ClassType::*> as above
-        // So explicit specializations are added for it.
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-        template <class R, class ClassType, class... Args>
-        struct check_complete_type<R(ClassType::*)(Args...)> : private check_complete_type<ClassType> {};
-
-        template <class R, class ClassType, class... Args>
-        struct check_complete_type<R(ClassType::*)(Args...) const> : private check_complete_type<ClassType> {};
-
-        template <class R, class ClassType, class... Args>
-        struct check_complete_type<R(ClassType::*)(Args...) volatile> : private check_complete_type<ClassType> {};
-
-        template <class R, class ClassType, class... Args>
-        struct check_complete_type<R(ClassType::*)(Args...) const volatile> : private check_complete_type<ClassType> {};
-#endif
-
-
         template<class T>
         struct member_pointer_class_type {};
 
@@ -103,31 +87,6 @@ namespace AZStd
         {
             using type = ClassType;
         };
-
-        // VS 2013 does not deduce a member function pointer type to the <R ClassType::*> as above
-        // So explicit specializations are added for it.
-#if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800
-        template<class R, class ClassType, class... Args>
-        struct member_pointer_class_type<R (ClassType::*)(Args...)>
-        {
-            using type = ClassType;
-        };
-        template<class R, class ClassType, class... Args>
-        struct member_pointer_class_type<R(ClassType::*)(Args...) const>
-        {
-            using type = ClassType;
-        };
-        template<class R, class ClassType, class... Args>
-        struct member_pointer_class_type<R(ClassType::*)(Args...) volatile>
-        {
-            using type = ClassType;
-        };
-        template<class R, class ClassType, class... Args>
-        struct member_pointer_class_type<R(ClassType::*)(Args...) const volatile>
-        {
-            using type = ClassType;
-        };
-#endif
 
         template<class T>
         using member_pointer_class_type_t = typename member_pointer_class_type<T>::type;
@@ -232,13 +191,11 @@ namespace AZStd
     template <class R, class Fn, class... ArgTypes>
     struct is_invocable_r : Internal::invocable_r<R, Fn, ArgTypes...>::type {};
 
-    // Uncomment when VS2013 support is dropped. VS2013 does not have support for Variable Templates
-    // Variable Templates are specified C++ n4687 draft: Section 17 Bullet 3
-    //template <class Fn, class... ArgTypes>
-    //constexpr bool is_invocable_v = is_invocable<_n, ArgTypes...>::value;
+    template <class Fn, class... ArgTypes>
+    constexpr bool is_invocable_v = is_invocable<Fn, ArgTypes...>::value;
 
-    //template <class R, class Fn, class ...ArgTypes>
-    //constexpr bool is_invocable_r_v = is_invocable_r<R, Fn, ArgTypes...>::value;
+    template <class R, class Fn, class ...ArgTypes>
+    constexpr bool is_invocable_r_v = is_invocable_r<R, Fn, ArgTypes...>::value;
 
     template<class Fn, class... ArgTypes>
     struct invoke_result

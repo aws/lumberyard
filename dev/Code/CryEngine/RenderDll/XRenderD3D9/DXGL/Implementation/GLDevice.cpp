@@ -61,13 +61,6 @@ namespace NCryOpenGL
 {
     extern const DXGI_FORMAT DXGI_FORMAT_INVALID = DXGI_FORMAT_FORCE_UINT;
 
-    // Size of uniform buffers to hold all the skinning data (768 bones * 4 floats
-    // per quaternion * 4 bytes per float * 2 for motion blur). If the device does
-    // not support this size then we set a shader constant (SMALL_UNIFORM_BUFFERS)
-    // to indicate this, which in FXConstantDefs.cfi changes the max number of
-    // bones to 512.
-    static const int BASE_UNIFORM_BUFFER_SIZE = 24 * 1024;
-
     CDevice::WindowSizeList CDevice::m_windowSizes;
 
 #if DXGL_DEBUG_OUTPUT_VERBOSITY
@@ -1999,7 +1992,6 @@ namespace NCryOpenGL
             DetectResourceUnitCapabilities(&kCapabilities.m_akResourceUnits[eRUT_Image], g_aeMaxImageUnits);
         }
 #endif
-        gRenDev->m_hasSmallUniformBuffers = (kCapabilities.m_iMaxUniformBlockSize <= BASE_UNIFORM_BUFFER_SIZE);
 
 #if DXGL_SUPPORT_VERTEX_ATTRIB_BINDING
         if (kFeatures.Get(eF_VertexAttribBinding))

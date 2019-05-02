@@ -11,6 +11,7 @@
 */
 #include "StdAfx.h"
 #include "ComponentEditorHeader.hxx"
+#include "PropertyRowWidget.hxx"
 
 #include <QDesktopServices>
 
@@ -29,7 +30,21 @@ namespace AzToolsFramework
 
     void ComponentEditorHeader::SetTitle(const QString& title)
     {
-        AzQtComponents::CardHeader::setTitle(title);
+        m_title = title;
+        RefreshTitle();
+    }
+
+    void ComponentEditorHeader::setTitleProperty(const char *name, const QVariant &value)
+    {
+        AzQtComponents::CardHeader::setTitleProperty(name, value);
+    }
+
+    void ComponentEditorHeader::RefreshTitle()
+    {
+        QString label = PropertyRowWidget::MakeFilterHighlightedName(m_title, m_currentFilterString);
+        AzQtComponents::CardHeader::setTitle(label);
+      
+        AzQtComponents::CardHeader::refreshTitle();
     }
 
     void ComponentEditorHeader::SetIcon(const QIcon& icon)
@@ -95,6 +110,11 @@ namespace AzToolsFramework
     void ComponentEditorHeader::ClearHelpURL()
     {
         AzQtComponents::CardHeader::clearHelpURL();
+    }
+
+    void ComponentEditorHeader::SetFilterString(const AZStd::string& str)
+    {
+        m_currentFilterString = str.c_str();
     }
 }
 

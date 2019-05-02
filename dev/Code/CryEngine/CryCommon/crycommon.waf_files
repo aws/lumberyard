@@ -198,7 +198,8 @@
             "VRCommon.h",
             "StereoRendererBus.h",
             "CharacterBoundsBus.h",
-            "ColorGradingBus.h"
+            "ColorGradingBus.h",
+            "RTTBus.h"	    
         ],
         "Interfaces_h/AI Interfaces":
         [
@@ -388,6 +389,7 @@
             "ProjectDefinesInclude.h",
             "Range.h",
             "RayCastQueue.h",
+            "RenderContextConfig.h",
             "ResourceCompilerHelper.h",
             "RingBuffer.h",
             "ScopeGuard.h",
@@ -672,7 +674,7 @@
             "LyShine/IDraw2d.h",
             "LyShine/ILyShine.h",
             "LyShine/ISprite.h",
-            "LyShine/IUiRenderer.h",
+            "LyShine/IRenderGraph.h",
             "LyShine/UiAssetTypes.h",
             "LyShine/UiComponentTypes.h",
             "LyShine/UiBase.h",
@@ -690,15 +692,17 @@
             "LyShine/Bus/UiButtonBus.h",
             "LyShine/Bus/UiCanvasBus.h",
             "LyShine/Bus/UiCanvasManagerBus.h",
+            "LyShine/Bus/UiCanvasUpdateNotificationBus.h",
             "LyShine/Bus/UiCheckboxBus.h",
             "LyShine/Bus/UiCursorBus.h",
             "LyShine/Bus/UiDraggableBus.h",
-            "LyShine/Bus/UiDropTargetBus.h",
             "LyShine/Bus/UiDropdownBus.h",
             "LyShine/Bus/UiDropdownOptionBus.h",
+            "LyShine/Bus/UiDropTargetBus.h",
             "LyShine/Bus/UiDynamicLayoutBus.h",
             "LyShine/Bus/UiDynamicScrollBoxBus.h",
             "LyShine/Bus/UiEditorBus.h",
+            "LyShine/Bus/UiEditorCanvasBus.h",
             "LyShine/Bus/UiEditorChangeNotificationBus.h",
             "LyShine/Bus/UiElementBus.h",
             "LyShine/Bus/UiEntityContextBus.h",
@@ -706,6 +710,8 @@
             "LyShine/Bus/UiFlipbookAnimationBus.h",
             "LyShine/Bus/UiGameEntityContextBus.h",
             "LyShine/Bus/UiImageBus.h",
+            "LyShine/Bus/UiImageSequenceBus.h",
+            "LyShine/Bus/UiIndexableImageBus.h",
             "LyShine/Bus/UiInitializationBus.h",
             "LyShine/Bus/UiInteractableActionsBus.h",
             "LyShine/Bus/UiInteractableBus.h",
@@ -720,6 +726,7 @@
             "LyShine/Bus/UiLayoutGridBus.h",
             "LyShine/Bus/UiLayoutManagerBus.h",
             "LyShine/Bus/UiLayoutRowBus.h",
+            "LyShine/Bus/UiMarkupButtonBus.h",
             "LyShine/Bus/UiMaskBus.h",
             "LyShine/Bus/UiNavigationBus.h",
             "LyShine/Bus/UiParticleEmitterBus.h",
@@ -745,6 +752,10 @@
             "LyShine/Bus/UiTransformBus.h",
             "LyShine/Bus/UiUpdateBus.h",
             "LyShine/Bus/UiVisualBus.h"
+        ],
+        "LyShine/Bus/Sprite":
+        [
+            "LyShine/Bus/Sprite/UiSpriteBus.h"
         ],
         "LyShine/Bus/World":
         [

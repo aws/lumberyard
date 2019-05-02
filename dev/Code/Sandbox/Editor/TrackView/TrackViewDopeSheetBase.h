@@ -206,7 +206,6 @@ private:
     bool CreateColorKey(CTrackViewTrack* pTrack, float keyTime);
     void EditSelectedColorKey(CTrackViewTrack* pTrack);
 
-    void RecordTrackUndoLegacy(CTrackViewTrack* pTrack);
     void AcceptUndo();
 
     // Returns the snapping mode modified active keys
@@ -239,6 +238,8 @@ private:
     void ComputeFrameSteps(const Range& VisRange);
     void DrawTimeLineInFrames(QPainter* dc, const QRect& rc, const QColor& lineCol, const QColor& textCol, double step);
     void DrawTimeLineInSeconds(QPainter* dc, const QRect& rc, const QColor& lineCol, const QColor& textCol, double step);
+
+    static bool CompareKeyHandleByTime(const CTrackViewKeyHandle &a, const CTrackViewKeyHandle &b);
 
     QBrush m_bkgrBrush;
     QBrush m_bkgrBrushEmpty;

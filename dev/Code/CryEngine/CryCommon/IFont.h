@@ -18,7 +18,6 @@
 #define CRYINCLUDE_CRYCOMMON_IFONT_H
 #pragma once
 
-
 #include <Cry_Math.h>
 #include <Cry_Color.h>
 #include <CryString.h>
@@ -35,6 +34,8 @@ struct IFFont;
 struct FontFamily;
 
 struct IRenderer;
+
+struct SVF_P2F_C4B_T2F_F4B;
 
 extern "C"
 #ifdef CRYFONT_EXPORTS
@@ -60,6 +61,16 @@ namespace IFFontConstants
 //////////////////////////////////////////////////////////////////////////////////////////////
 struct ICryFont
 {
+    static const int defaultGlyphSizeX = -1;    //!< Default glyph size indicates that glyphs in the font texture
+                                                //!< should be rendered at the maximum resolution supported by
+                                                //!< the font texture's glyph cell/slot configuration (configured
+                                                //!< via font XML).
+
+    static const int defaultGlyphSizeY = -1;    //!< Default glyph size indicates that glyphs in the font texture
+                                                //!< should be rendered at the maximum resolution supported by
+                                                //!< the font texture's glyph cell/slot configuration (configured
+                                                //!< via font XML).
+
     // <interfuscator:shuffle>
     virtual ~ICryFont(){}
     //
@@ -83,16 +94,18 @@ struct ICryFont
     //! All font styles within the given font family (bold, italic, etc.) will have the given 
     //! characters added to their font textures.
     //!
-    //! \param pFontFamily The font family to add the characters to.
-    //! \param pChars String of characters to add to font textures (UTF-8 supported).
-    virtual void AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars) = 0;
+    //! \param pFontFamily  The font family to add the characters to.
+    //! \param pChars       String of characters to add to font textures (UTF-8 supported).
+    //! \param glyphSizeX   Width (in pixels) of the characters to be rendered at in the font texture.
+    //! \param glyphSizeY   Height (in pixels) of the characters to be rendered at in the font texture.
+    virtual void AddCharsToFontTextures(FontFamilyPtr pFontFamily, const char* pChars, int glyphSizeX = defaultGlyphSizeX, int glyphSizeY = defaultGlyphSizeY) = 0;
 
     // Summary:
     //   Globally sets common font render properties based on the initialized renderer
     virtual void SetRendererProperties(IRenderer* pRenderer) = 0;
     // Summary:
     //   Puts the objects used in this module into the sizer interface
-    virtual void GetMemoryUsage (ICrySizer* pSizer) const = 0;
+    virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
     // Summary:
     //   All font names separated by ,
     // Example:
@@ -135,6 +148,7 @@ struct STextDrawContext
     unsigned int m_fxIdx;
 
     Vec2 m_size;
+    Vec2i m_requestSize;
     float m_widthScale;
 
     float m_clipX;
@@ -157,12 +171,14 @@ struct STextDrawContext
     bool m_overrideViewProjMatrices;
     bool m_kerningEnabled;
     bool m_processSpecialChars;
+    bool m_pixelAligned;                    //!< toggles whether rendering is pixel aligned
 
     float m_tracking;                       //!< extra space between characters in pixels (prior to any transform)
 
     STextDrawContext()
         : m_fxIdx(0)
         , m_size(16.0f, 16.0f)
+        , m_requestSize(static_cast<int32>(m_size.x), static_cast<int32>(m_size.y))
         , m_widthScale(1.0f)
         , m_clipX(0)
         , m_clipY(0)
@@ -179,6 +195,7 @@ struct STextDrawContext
         , m_overrideViewProjMatrices(true) // the old behavior that overrides the currently set view and projection matrices
         , m_kerningEnabled(true)
         , m_processSpecialChars(true)
+        , m_pixelAligned(true)
         , m_tracking(0.0f)
     {
     }
@@ -210,7 +227,7 @@ struct STextDrawContext
 struct IFFont
 {
     // <interfuscator:shuffle>
-    virtual ~IFFont(){}
+    virtual ~IFFont() {}
 
     // We don't derive from CBaseResource currently, that could be an enhancement
     virtual int32 AddRef() = 0;
@@ -265,9 +282,14 @@ struct IFFont
     virtual unsigned int GetEffectId(const char* pEffectName) const = 0;
     virtual unsigned int GetNumEffects() const = 0;
     virtual const char* GetEffectName(unsigned int effectId) const = 0;
+    virtual Vec2 GetMaxEffectOffset(unsigned int effectId) const = 0;
+    virtual bool DoesEffectHaveTransparency(unsigned int effectId) const = 0;
 
     //! \brief Adds the given UTF-8 string of chars to this font's font texture.
-    virtual void AddCharsToFontTexture(const char* pChars) = 0;
+    //! \param pChars String of UTF-8 chars to add to font texture
+    //! \param glyphSizeX   Width (in pixels) of the characters to be rendered at in the font texture.
+    //! \param glyphSizeY   Height (in pixels) of the characters to be rendered at in the font texture.
+    virtual void AddCharsToFontTexture(const char* pChars, int glyphSizeX = ICryFont::defaultGlyphSizeX, int glyphSizeY = ICryFont::defaultGlyphSizeY) = 0;
 
     //! \brief Returns XY kerning offsets (positive or negative) for two given glyphs.
     //!
@@ -277,8 +299,29 @@ struct IFFont
     //! cases.
     virtual Vec2 GetKerning(uint32_t leftGlyph, uint32_t rightGlyph, const STextDrawContext& ctx) const = 0;
 
+    //! \brief Returns the ascender of the font
+    virtual float GetAscender(const STextDrawContext& ctx) const = 0;
+
+    //! \brief Returns the y offset from the top to the baseline
+    virtual float GetBaseline(const STextDrawContext& ctx) const = 0;
+
     //! \brief Returns the scaling applied to glyphs before being rendered to the font texture from FreeType.
     virtual float GetSizeRatio() const = 0;
+
+    //! \brief Get the number of quads required to render the text string
+    //! This is an upper limit. Due to clipping the rendering of the text string might actually use less quads.
+    virtual uint32 GetNumQuadsForText(const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) = 0;
+
+    //! \brief Write the quads for the text into the given vertex and index buffers
+    //! The actual number of quads written to the buffer is returned
+    virtual uint32 WriteTextQuadsToBuffers(SVF_P2F_C4B_T2F_F4B* verts, uint16* indices, uint32 maxQuads,
+        float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) = 0;
+
+    //! \brief get the font texture for this font, will return -1 if there is no valid font texture
+    virtual int GetFontTextureId() = 0;
+
+    //! \brief get the font texture version for this font. Incremented each time the texture is changed
+    virtual uint32 GetFontTextureVersion() = 0;
 
     // </interfuscator:shuffle>
 };
@@ -312,7 +355,7 @@ struct FontFamily
 struct IFFont_RenderProxy
 {
     // <interfuscator:shuffle>
-    virtual ~IFFont_RenderProxy(){}
+    virtual ~IFFont_RenderProxy() {}
     virtual void RenderCallback(float x, float y, float z, const char* pStr, const bool asciiMultiLine, const STextDrawContext& ctx) = 0;
     // </interfuscator:shuffle>
 };
@@ -328,6 +371,8 @@ public:
     virtual ~FontNotifications() = default;
 
     virtual void OnFontsReloaded() = 0;
+
+    virtual void OnFontTextureUpdated(IFFont* /*font*/) {}
 };
 
 using FontNotificationBus = AZ::EBus<FontNotifications>;

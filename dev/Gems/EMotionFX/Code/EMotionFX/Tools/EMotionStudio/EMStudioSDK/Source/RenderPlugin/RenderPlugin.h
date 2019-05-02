@@ -28,6 +28,7 @@
 #include <EMotionFX/Rendering/OpenGL2/Source/glactor.h>
 #include <EMotionFX/CommandSystem/Source/SelectionList.h>
 #include <EMotionFX/CommandSystem/Source/ImporterCommands.h>
+#include <Source/Editor/Plugins/SkeletonOutliner/SkeletonOutlinerBus.h>
 #include <QWidget>
 #include <QSignalMapper>
 
@@ -38,6 +39,7 @@ namespace EMStudio
 
     class EMSTUDIO_API RenderPlugin
         : public DockWidgetPlugin
+        , private EMotionFX::SkeletonOutlinerNotificationBus::Handler
     {
         MCORE_MEMORYOBJECTCATEGORY(RenderPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE)
         Q_OBJECT
@@ -56,13 +58,9 @@ namespace EMStudio
             MCore::Array<uint32>                        mBoneList;
             RenderGL::GLActor*                          mRenderActor;
             MCore::Array<EMotionFX::ActorInstance*>     mActorInstances;
-            //MCore::AABB                               mMeshAABB;
-            //MCore::AABB                               mCollisionMeshAABB;
-            //MCore::AABB                               mNodeAABB;
             float                                       mNormalsScaleMultiplier;
             float                                       mCharacterHeight;
             float                                       mOffsetFromTrajectoryNode;
-            MCore::Array<MCore::Matrix>                 mBindPoseGlobalMatrices;
             bool                                        mMustCalcNormalScale;
 
             EMStudioRenderActor(EMotionFX::Actor* actor, RenderGL::GLActor* renderActor);
@@ -106,11 +104,14 @@ namespace EMStudio
         virtual void CreateRenderWidget(RenderViewWidget* renderViewWidget, RenderWidget** outRenderWidget, QWidget** outWidget) = 0;
         virtual bool CreateEMStudioActor(EMotionFX::Actor* actor) = 0;
 
+        // SkeletonOutlinerNotificationBus
+        void ZoomToJoints(EMotionFX::ActorInstance* actorInstance, const AZStd::vector<EMotionFX::Node*>& joints);
+
         EMStudioPlugin::EPluginType GetPluginType() const override              { return EMStudioPlugin::PLUGINTYPE_RENDERING; }
         uint32 GetProcessFramePriority() const override                         { return 100; }
 
         PluginOptions* GetOptions() override { return &mRenderOptions; }
-        
+
         // render actors
         EMStudioRenderActor* FindEMStudioActor(EMotionFX::ActorInstance* actorInstance, bool doubleCheckInstance = true);
         EMStudioRenderActor* FindEMStudioActor(EMotionFX::Actor* actor);

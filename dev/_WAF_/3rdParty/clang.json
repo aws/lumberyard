@@ -4,44 +4,8 @@
     "description": "Clang",
     "defines": [],
     "suppress_warning": "True",
-    "lib_required": "True",
+    "lib_required": "False",
     "platform": {
-        "win_x64_vs2013": {
-            "includes_debug": [
-                "llvm/include",
-                "vs2013/debug/include"
-            ],
-            "includes_release": [
-                "llvm/include",
-                "vs2013/release/include"
-            ],
-            "libpath_debug": [
-                "vs2013/debug/lib"
-            ],
-            "libpath_release": [
-                "vs2013/release/lib"
-            ],
-            "lib": [
-                "clangFrontend.lib",
-                "clangSerialization.lib",
-                "clangDriver.lib",
-                "clangTooling.lib",
-                "clangParse.lib",
-                "clangSema.lib",
-                "clangAnalysis.lib",
-                "clangRewriteFrontend.lib",
-                "clangRewrite.lib",
-                "clangEdit.lib",
-                "clangAST.lib",
-                "clangLex.lib",
-                "clangBasic.lib",
-                "LLVMMC.lib",
-                "LLVMSupport.lib",
-                "LLVMOption.lib",
-                "LLVMBitReader.lib",
-                "LLVMMCParser.lib"
-            ]
-        },
         "win_x64_vs2015": {
             "includes_debug": [
                 "llvm/include",
@@ -71,11 +35,17 @@
                 "clangAST.lib",
                 "clangLex.lib",
                 "clangBasic.lib",
+                "LLVMBinaryFormat.lib",
+                "LLVMDebugInfoDWARF.lib",
                 "LLVMMC.lib",
-                "LLVMSupport.lib",
                 "LLVMOption.lib",
                 "LLVMBitReader.lib",
-                "LLVMMCParser.lib"
+                "LLVMMCParser.lib",
+                "LLVMProfileData.lib",
+                "LLVMTarget.lib",
+                "LLVMCore.lib",
+                "LLVMSupport.lib",
+                "Version.lib"
             ]
         },
         "win_x64_vs2017": "@win_x64_vs2015",
@@ -108,11 +78,17 @@
                 "libclangAST.a",
                 "libclangLex.a",
                 "libclangBasic.a",
+                "libLLVMBinaryFormat.a",
+                "libLLVMDebugInfoDWARF.a",
                 "libLLVMMC.a",
-                "libLLVMSupport.a",
                 "libLLVMOption.a",
                 "libLLVMBitReader.a",
-                "libLLVMMCParser.a"
+                "libLLVMMCParser.a",
+                "libLLVMProfileData.a",
+                "libLLVMDemangle.a",
+                "libLLVMTarget.a",
+                "libLLVMCore.a",
+                "libLLVMSupport.a"
             ]
         },
         "linux_x64": {
@@ -144,11 +120,16 @@
                 "libclangAST.a",
                 "libclangLex.a",
                 "libclangBasic.a",
+                "libLLVMCore.a",
+                "libLLVMBinaryFormat.a",
+                "libLLVMDebugInfoDWARF.a",
                 "libLLVMMC.a",
-                "libLLVMSupport.a",
                 "libLLVMOption.a",
                 "libLLVMBitReader.a",
-                "libLLVMMCParser.a"
+                "libLLVMMCParser.a",
+                "libLLVMProfileData.a",
+                "libLLVMTarget.a",
+                "libLLVMSupport.a"
             ]
         }
     }

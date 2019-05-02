@@ -173,6 +173,8 @@ public:
     int ViewPaneVersion() const;
     void MatEditSend(int param);
 
+    void SetSelectedEntity(AZ::EntityId& id);
+
     LevelEditorMenuHandler* GetLevelEditorMenuHandler() { return m_levelEditorMenuHandler; }
 
 #ifdef Q_OS_WIN
@@ -180,6 +182,7 @@ public:
 #endif
     bool event(QEvent* event) override;
 
+    void OnGotoSliceRoot();
 Q_SIGNALS:
     void ToggleRefCoordSys();
     void UpdateRefCoordSys();
@@ -202,6 +205,7 @@ private:
     QWidget* CreateToolbarWidget(int id);
     void ShowCustomizeToolbarDialog();
     void OnGotoSelected();
+    
     void ToggleConsole();
     void ToggleRollupBar();
     void RegisterOpenWndCommands();
@@ -232,7 +236,6 @@ private:
     QWidget* CreateSelectObjectComboBox();
 
     QToolButton* CreateUndoRedoButton(int command);
-
 private Q_SLOTS:
     void ShowKeyboardCustomization();
     void ExportKeyboardShortcuts();
@@ -300,6 +303,7 @@ private:
     bool m_connectedToAssetProcessor = false;
     bool m_showAPDisconnectDialog = false;
     bool m_projectExternal = false;
+    bool m_selectedEntityHasRoot = false;
 
     friend class ToolbarManager;
     friend class WidgetAction;

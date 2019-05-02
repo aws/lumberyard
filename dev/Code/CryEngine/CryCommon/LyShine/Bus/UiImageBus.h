@@ -73,6 +73,12 @@ public: // member functions
     //! Sets the image color tint
     virtual void SetColor(const AZ::Color& color) = 0;
 
+    //! Gets the image color alpha
+    virtual float GetAlpha() = 0;
+
+    //! Sets the image color alpha
+    virtual void SetAlpha(float color) = 0;
+
     //! Gets the sprite for this element
     virtual ISprite* GetSprite() = 0;
 
@@ -85,11 +91,22 @@ public: // member functions
     //! Sets the source location of the image to be displayed by the element
     virtual void SetSpritePathname(AZStd::string spritePath) = 0;
 
+    //! Sets the source location of the image to be displayed by the element only
+    //! if the sprite asset exists. Otherwise, the current sprite remains unchanged.
+    //! Returns whether the sprite changed
+    virtual bool SetSpritePathnameIfExists(AZStd::string spritePath) = 0;
+
     //! Gets the name of the render target
     virtual AZStd::string GetRenderTargetName() = 0;
 
     //! Sets the name of the render target
     virtual void SetRenderTargetName(AZStd::string renderTargetName) = 0;
+
+    //! Gets whether the render target is in sRGB color space
+    virtual bool GetIsRenderTargetSRGB() = 0;
+
+    //! Sets whether the render target is in sRGB color space
+    virtual void SetIsRenderTargetSRGB(bool isSRGB) = 0;
 
     //! Gets the type of the sprite
     virtual SpriteType GetSpriteType() = 0;
@@ -103,15 +120,6 @@ public: // member functions
     //! Sets the type of the image
     virtual void SetImageType(ImageType imageType) = 0;
     
-    //! Sets the sprite sheet cell index
-    virtual void SetSpriteSheetCellIndex(AZ::u32 index) = 0;
-
-    //! Gets the sprite sheet cell index
-    virtual const AZ::u32 GetSpriteSheetCellIndex() = 0;
-
-    //! Gets the total amount of sprite sheet cells
-    virtual const AZ::u32 GetSpriteSheetCellCount() = 0;
-
     //! Gets the fill type for the image
     virtual FillType GetFillType() = 0;
 
@@ -154,13 +162,22 @@ public: // member functions
     //! Sets whether the center of a sliced image is filled
     virtual void SetFillCenter(bool fillCenter) = 0;
 
-    //! Given an index, return a sprite-sheet cell's alias name
+    //! Deprecated. Use UiIndexableImageInterface::SetImageIndex instead.
+    virtual void SetSpriteSheetCellIndex(AZ::u32 index) = 0;
+
+    //! Deprecated. Use UiIndexableImageInterface::GetImageIndex instead.
+    virtual const AZ::u32 GetSpriteSheetCellIndex() = 0;
+
+    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexCount instead.
+    virtual const AZ::u32 GetSpriteSheetCellCount() = 0;
+
+    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexAlias instead.
     virtual AZStd::string GetSpriteSheetCellAlias(AZ::u32 index) = 0;
 
-    //! Given an index, set a sprite-sheet cell's alias name
+    //! Deprecated. Use UiIndexableImageInterface::SetImageIndexAlias instead.
     virtual void SetSpriteSheetCellAlias(AZ::u32 index, const AZStd::string& alias) = 0;
 
-    //! Given a cell alias, return the cell index that corresponds to it
+    //! Deprecated. Use UiIndexableImageInterface::GetImageIndexFromAlias instead.
     virtual AZ::u32 GetSpriteSheetCellIndexFromAlias(const AZStd::string& alias) = 0;
 
 public: // static member data

@@ -1,3 +1,16 @@
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates, or 
+* a third party where indicated.
+*
+* For complete copyright and license terms please see the LICENSE at the root of this
+* distribution (the "License"). All use of this software is governed by the License,  
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
+*
+*/
+
+// Original file Copyright Crytek GMBH or its affiliates, used under license.
 
 // Description : Common texture manager declarations.
 
@@ -133,6 +146,9 @@ public:
             LoadDefaultTextures();
             CreateEngineTextures();
 
+            // References to legacy static textures
+            CreateStaticEngineTextureReferences();
+
             // Second time is for attaching the loaded textures to the semantics
             LoadMaterialTexturesSemantics();
         }
@@ -159,6 +175,7 @@ public:
     void LoadDefaultTextures();
     void LoadMaterialTexturesSemantics();
     void CreateEngineTextures() {};
+    void CreateStaticEngineTextureReferences();
 
     inline MaterialTextureSemantic& GetTextureSemantic(int texSlot)
     {
@@ -180,9 +197,14 @@ public:
 
     inline CTexture* GetEngineTexture( const char* sTextureName) const
     {
-        CCryNameTSCRC   hashEntry(sTextureName);
-        auto            iter = m_EngineTextures.find(hashEntry);
-        return (iter != m_EngineTextures.end() ? iter->second : nullptr);
+        CCryNameTSCRC hashEntry(sTextureName);
+        return GetEngineTexture(hashEntry);
+    }
+
+    inline CTexture* GetEngineTexture( const CCryNameTSCRC& crc) const
+    {
+        auto iter = m_EngineTextures.find(crc);
+        return iter != m_EngineTextures.end() ? iter->second : GetStaticEngineTexture(crc);
     }
 
     inline CTexture* GetMaterialTexture(const char* sTextureName) const
@@ -199,11 +221,18 @@ public:
     inline CTexture* GetBlackTextureCM() { return m_texBlackCM; }
 
 private:
+    inline CTexture* GetStaticEngineTexture(const CCryNameTSCRC& crc) const
+    {
+        auto iter = m_StaticEngineTextureReferences.find(crc);
+        return iter != m_StaticEngineTextureReferences.end() ? *iter->second : nullptr;
+    }
+
     MaterialTextureSemantic   m_TexSlotSemantics[EFTT_MAX];       // [Shaders System] - to do - replace with map
 
     // [Shaders System] CCryNameTSCRC should be replaced by 
     typedef std::map<CCryNameTSCRC, CTexture*>            OrderedTextureMap;
     typedef std::map<CCryNameTSCRC, CTexture*>            TextureMap;
+    typedef std::map<CCryNameTSCRC, CTexture**>           TextureRefMap;
 
     // Textures used as defaults for internal engine usage, place holders etc...
     TextureMap    m_DefaultTextures;    
@@ -218,6 +247,10 @@ private:
     // Runtime engine textures used by the various shaders and represents last
     // taken 'snapshot'
     TextureMap          m_EngineTextures;       
+
+    // pending the move to using CTextureManager for all engine textures,
+    // provides access to existing static engine textures 
+    TextureRefMap       m_StaticEngineTextureReferences;       
 
     // material 'snapshot' (most recent) textures to be used by the shader.
     OrderedTextureMap   m_MaterialTextures;

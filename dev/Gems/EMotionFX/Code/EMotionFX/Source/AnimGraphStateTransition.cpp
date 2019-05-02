@@ -19,6 +19,7 @@
 #include "AnimGraphExitNode.h"
 #include <EMotionFX/Source/AnimGraphNodeGroup.h>
 #include <EMotionFX/Source/AnimGraphStateMachine.h>
+#include <EMotionFX/Source/AnimGraphTriggerAction.h>
 #include "AnimGraphTransitionCondition.h"
 #include "AnimGraphManager.h"
 #include "AnimGraphRefCountedData.h"
@@ -188,6 +189,7 @@ namespace EMotionFX
         , mTargetNode(nullptr)
         , m_sourceNodeId(AnimGraphNodeId::InvalidId)
         , m_targetNodeId(AnimGraphNodeId::InvalidId)
+        , m_id(AnimGraphConnectionId::Create())
         , m_transitionTime(0.3f)
         , m_easeInSmoothness(0.0f)
         , m_easeOutSmoothness(1.0f)
@@ -206,7 +208,6 @@ namespace EMotionFX
         , m_canInterruptOtherTransitions(false)
         , m_allowSelfInterruption(false)
     {
-        mID = MCore::GetIDGenerator().GenerateID();
     }
 
 
@@ -240,6 +241,12 @@ namespace EMotionFX
         {
             mTargetNode = mAnimGraph->RecursiveFindNodeById(GetTargetNodeId());
         }
+    }
+
+
+    void AnimGraphStateTransition::RecursiveReinit()
+    {
+        Reinit();
 
         for (AnimGraphTransitionCondition* condition : mConditions)
         {
@@ -262,6 +269,11 @@ namespace EMotionFX
         for (AnimGraphTransitionCondition* condition : mConditions)
         {
             condition->InitAfterLoading(animGraph);
+        }
+
+        for (AnimGraphTriggerAction* action : m_actionSetup.GetActions())
+        {
+            action->InitAfterLoading(animGraph);
         }
 
         Reinit();
@@ -346,6 +358,15 @@ namespace EMotionFX
         uniqueData->mBlendProgress  = 0.0f;
 
         mTargetNode->SetSyncIndex(animGraphInstance, MCORE_INVALIDINDEX32);
+
+        // Trigger action
+        for (AnimGraphTriggerAction* action : m_actionSetup.GetActions())
+        {
+            if (action->GetTriggerMode() == AnimGraphTriggerAction::MODE_TRIGGERONENTER)
+            {
+                action->TriggerAction(animGraphInstance);
+            }
+        }
     }
 
 
@@ -375,6 +396,15 @@ namespace EMotionFX
         uniqueData->mBlendWeight    = 1.0f;
         uniqueData->mBlendProgress  = 1.0f;
         uniqueData->mIsDone         = true;
+
+        // Trigger action
+        for (AnimGraphTriggerAction* action : m_actionSetup.GetActions())
+        {
+            if (action->GetTriggerMode() == AnimGraphTriggerAction::MODE_TRIGGERONEXIT)
+            {
+                action->TriggerAction(animGraphInstance);
+            }
+        }
     }
 
 
@@ -435,33 +465,37 @@ namespace EMotionFX
             return false;
         }
 
-        // if one of the conditions is false, we evaluate to false
-    #ifdef EMFX_EMSTUDIOBUILD
-        bool isReady = true;
-    #endif
-        for (AnimGraphTransitionCondition* condition : mConditions)
+        if (!GetEMotionFX().GetIsInEditorMode())
         {
-            const bool testResult = condition->TestCondition(animGraphInstance);
+            // If we are not in editor mode, we can early out for the first failed condition
+            for (AnimGraphTransitionCondition* condition : mConditions)
+            {
+                const bool testResult = condition->TestCondition(animGraphInstance);
 
-            // return directly in case one condition is not ready yet
-            if (!testResult)
-        #ifndef EMFX_EMSTUDIOBUILD
-            {
-                return false;
+                // return directly in case one condition is not ready yet
+                if (!testResult)
+                {
+                    return false;
+                }
             }
-        #else
-            {
-                isReady = false;
-            }
-        #endif
+            return true;
         }
+        else
+        {
+            // If we are in editor mode, we need to execute all the conditions so the UI can reflect properly which ones
+            // passed and which ones didn't
+            bool isReady = true;
+            for (AnimGraphTransitionCondition* condition : mConditions)
+            {
+                const bool testResult = condition->TestCondition(animGraphInstance);
 
-        // all conditions where true
-    #ifndef EMFX_EMSTUDIOBUILD
-        return true;
-    #else
-        return isReady;
-    #endif
+                if (!testResult)
+                {
+                    isReady = false;
+                }
+            }
+            return isReady;
+        }
     }
 
 
@@ -673,12 +707,6 @@ namespace EMotionFX
         {
             condition->OnUpdateUniqueData(animGraphInstance);
         }
-    }
-
-
-    void AnimGraphStateTransition::SetID(uint32 id)
-    {
-        mID = id;
     }
 
 
@@ -958,7 +986,8 @@ namespace EMotionFX
         }
 
         serializeContext->Class<AnimGraphStateTransition, AnimGraphObject>()
-            ->Version(2)
+            ->Version(3)
+            ->Field("id", &AnimGraphStateTransition::m_id)
             ->Field("sourceNodeId", &AnimGraphStateTransition::m_sourceNodeId)
             ->Field("targetNodeId", &AnimGraphStateTransition::m_targetNodeId)
             ->Field("isWildcard", &AnimGraphStateTransition::mIsWildcardTransition)
@@ -979,6 +1008,7 @@ namespace EMotionFX
             ->Field("endOffsetX", &AnimGraphStateTransition::mEndOffsetX)
             ->Field("endOffsetY", &AnimGraphStateTransition::mEndOffsetY)
             ->Field("conditions", &AnimGraphStateTransition::mConditions)
+            ->Field("actionSetup", &AnimGraphStateTransition::m_actionSetup)
             ->Field("extractionMode", &AnimGraphStateTransition::m_extractionMode)
         ;
 

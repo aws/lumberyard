@@ -21,6 +21,10 @@
 #include "IMaterialEffects.h"
 #include "IGameFramework.h"
 
+#include <AzCore/Component/TickBus.h>
+#include <AzFramework/Physics/SystemBus.h>
+#include <AzFramework/Physics/WorldEventhandler.h>
+
 struct SGameStartParams;
 struct IGameObject;
 struct INetwork;
@@ -30,6 +34,11 @@ struct IScriptTable;
 class CScriptRMI;
 class CGameStats;
 class CGameContext;
+
+namespace Physics
+{
+    class World;
+}
 
 //////////////////////////////////////////////////////////////////////////
 struct SProcBrokenObjRec
@@ -255,6 +264,9 @@ struct SBrokenMeshSize
 class CActionGame
     : public IHitListener
     , public CMultiThreadRefCount
+    , private Physics::DefaultWorldBus::Handler
+    , private AZ::TickBus::Handler
+    , private Physics::WorldEventHandler 
 {
 public:
     CActionGame(CScriptRMI*);
@@ -391,6 +403,20 @@ private:
     bool IsStale();
 
     void AddProtectedPath(const char* root);
+
+    // TickBus
+    void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+    int GetTickOrder() override;
+
+    // DefaultWorldBus
+    AZStd::shared_ptr<Physics::World> GetDefaultWorld() override;
+
+    // WorldEventHandler
+    void OnTriggerEnter(const Physics::TriggerEvent& event) override;
+    void OnTriggerExit(const Physics::TriggerEvent& event) override;
+    void OnCollisionBegin(const Physics::CollisionEvent& event) override;
+    void OnCollisionPersist(const Physics::CollisionEvent& event) override;
+    void OnCollisionEnd(const Physics::CollisionEvent& event) override;
 
     enum EProceduralBreakType
     {
@@ -533,6 +559,8 @@ private:
 #ifndef _RELEASE
     float m_timeToPromoteToServer;
 #endif
+
+    AZStd::shared_ptr<Physics::World> m_physicalWorld;
 };
 
 #endif // CRYINCLUDE_CRYACTION_ACTIONGAME_H

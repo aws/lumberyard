@@ -14,27 +14,11 @@
 #include <AzCore/Component/ComponentBus.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-class UiUpdateInterface
-    : public AZ::ComponentBus
-{
-public: // member functions
+// This entire class is deprecated so that any existing customer components using the UiUpdateBus will get
+// compile errors. This file is left here for the time being to guide users to these comments on what to use in place of
+// UiUpdateBus.
+// Rather than using UiUpdateBus and connecting with the entityId of the entity that wants updating you should now use
+// UiCanvasUpdateNotificationBus and connect with the canvasEntityId. This makes the LyShine update more efficient.
 
-    virtual ~UiUpdateInterface() {}
-
-    //! Update the component. This is called when the game is running.
-    //! It is different from the TickBus in that the update order follows the element hierarchy.
-    virtual void Update(float deltaTime) = 0;
-
-    //! Update the component while in the editor.
-    //! This is called every frame when in the editor and the game is NOT running.
-    //! This may be eliminated when we have a preview mode in the editor which calls the
-    //! regular update.
-    virtual void UpdateInEditor() {}
-
-public: // static member data
-
-    //! Multiple components on a entity can implement the events
-    static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-};
-
-typedef AZ::EBus<UiUpdateInterface> UiUpdateBus;
+AZ_DEPRECATED(class UiUpdateInterface, "UiUpdateInterface deprecated use UiCanvasUpdateNotification");
+AZ_DEPRECATED(class UiUpdateBus, "UiUpdateBus deprecated, use UiCanvasUpdateNotificationBus instead");

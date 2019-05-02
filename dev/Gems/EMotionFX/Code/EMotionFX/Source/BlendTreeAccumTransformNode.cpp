@@ -96,7 +96,7 @@ namespace EMotionFX
         Reinit();
         return true;
     }
-    
+
 
     // get the palette name
     const char* BlendTreeAccumTransformNode::GetPaletteName() const
@@ -129,16 +129,15 @@ namespace EMotionFX
             RequestPoses(animGraphInstance);
             outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
             outputPose->InitFromBindPose(actorInstance);
-        #ifdef EMFX_EMSTUDIOBUILD
-            SetHasError(animGraphInstance, true);
-        #endif
+            if (GetEMotionFX().GetIsInEditorMode())
+            {
+                SetHasError(animGraphInstance, true);
+            }
             return;
         }
-        else
+        else if (GetEMotionFX().GetIsInEditorMode())
         {
-        #ifdef EMFX_EMSTUDIOBUILD
             SetHasError(animGraphInstance, false);
-        #endif
         }
 
 
@@ -160,7 +159,7 @@ namespace EMotionFX
 
         // get the local transform from our node
         Transform inputTransform;
-        outputPose->GetPose().GetLocalTransform(uniqueData->mNodeIndex, &inputTransform);
+        outputPose->GetPose().GetLocalSpaceTransform(uniqueData->mNodeIndex, &inputTransform);
 
         Transform outputTransform = inputTransform;
 
@@ -276,15 +275,13 @@ namespace EMotionFX
         )
 
         // update the transformation of the node
-        outputPose->GetPose().SetLocalTransform(uniqueData->mNodeIndex, outputTransform);
+        outputPose->GetPose().SetLocalSpaceTransform(uniqueData->mNodeIndex, outputTransform);
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
 

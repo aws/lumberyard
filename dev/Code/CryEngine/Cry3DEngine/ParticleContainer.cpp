@@ -771,6 +771,9 @@ void CParticleContainer::UpdateParticleStates(SParticleUpdateContext& context)
     }
     for (ParticleList<CParticle>::iterator pPart(m_Particles); pPart; )
     {
+        // Update the particle before the IsAlive check so it can be removed immediately if it is killed by the update
+        pPart->Update(context, context.fUpdateTime);
+
         if (!pPart->IsAlive(fLifetimeCheck))
         {
             if (m_pParams->bRemainWhileVisible)
@@ -784,10 +787,6 @@ void CParticleContainer::UpdateParticleStates(SParticleUpdateContext& context)
             {
                 ERASE_PARTICLE(pPart)
             }
-        }
-        else
-        {
-            pPart->Update(context, context.fUpdateTime);
         }
 
         if (!context.aParticleSort.empty() && !params.IsConnectedParticles())

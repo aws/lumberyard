@@ -105,7 +105,7 @@ public:
 public:
     virtual ~CRenderViewport();
 
-    Q_INVOKABLE void InjectFakeMouseMove(int deltaX, int deltaY);
+    Q_INVOKABLE void InjectFakeMouseMove(int deltaX, int deltaY, Qt::MouseButtons buttons);
 
 public:
     virtual void Update();
@@ -142,6 +142,7 @@ public:
     virtual bool IsBoundsVisible(const AABB& box) const;
     virtual void CenterOnSelection();
     virtual void CenterOnAABB(const AABB& aabb);
+    void CenterOnSliceInstance() override;
 
     void focusOutEvent(QFocusEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
@@ -178,6 +179,8 @@ public:
     AzToolsFramework::ViewportInteraction::CameraState GetCameraState() override;
     bool GridSnappingEnabled() override;
     float GridSize() override;
+    bool AngleSnappingEnabled() override;
+    float AngleStep() override;
     AZ::Vector3 PickSurface(const AZ::Vector2& point) override;
     float TerrainHeight(const AZ::Vector2& position) override;
 
@@ -508,7 +511,13 @@ protected:
     bool m_bUpdateViewport = false;
     bool m_bMoveCameraObject = true;
 
-    int m_nPresedKeyState = 0;
+    enum class KeyPressedState
+    {
+        AllUp,
+        PressedThisFrame,
+        PressedInPreviousFrame,
+    };
+    KeyPressedState m_pressedKeyState = KeyPressedState::AllUp;
 
     Matrix34 m_defaultViewTM;
     const QString m_defaultViewName;

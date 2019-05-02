@@ -260,10 +260,19 @@ void COctreeNode::RenderVegetations(TDoublyLinkedList<IRenderNode>* lstObjects, 
 
                 if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
                 {
-                    // if object is visible, write to output queue for main thread processing
+                    // If object is visible
                     if (!bCheckPerObjectOcclusion || pObj->m_pInstancingInfo || GetObjManager()->CheckOcclusion_TestAABB(objBox, fEntDistance))
                     {
-                        GetObjManager()->PushIntoCullOutputQueue(SCheckOcclusionOutput::CreateVegetationOutput(pObj, objBox, fEntDistance, pTerrainTexInfo, bCheckPerObjectOcclusion, rendItemSorter));
+                        if (pObj->CanExecuteRenderAsJob())
+                        {
+                            // If object can be executed as a job, call RenderObject directly from this job
+                            GetObjManager()->RenderVegetation(pObj, objBox, fEntDistance, pTerrainTexInfo, bCheckPerObjectOcclusion, passInfo, rendItemSorter);
+                        }
+                        else
+                        {
+                            // Otherwise, write to output queue for main thread processing
+                            GetObjManager()->PushIntoCullOutputQueue(SCheckOcclusionOutput::CreateVegetationOutput(pObj, objBox, fEntDistance, pTerrainTexInfo, bCheckPerObjectOcclusion, rendItemSorter));
+                        }
                     }
                 }
                 else
@@ -478,15 +487,17 @@ void COctreeNode::RenderCommonObjects(TDoublyLinkedList<IRenderNode>* lstObjects
 
                 if (pCVars->e_StatObjBufferRenderTasks == 1 && passInfo.IsGeneralPass())
                 {
-                    // if object is visible, write to output queue for main thread processing
+                    // If object is visible
                     if (rnType == eERType_DistanceCloud || GetObjManager()->CheckOcclusion_TestAABB(objBox, fEntDistance))
                     {
                         if (pObj->CanExecuteRenderAsJob())
                         {
+                            // If object can be executed as a job, call RenderObject directly from this job
                             GetObjManager()->RenderObject(pObj, objBox, fEntDistance, eERType_RenderComponent, passInfo, rendItemSorter);
                         }
                         else
                         {
+                            // Otherwise, write to output queue for main thread processing
                             GetObjManager()->PushIntoCullOutputQueue(SCheckOcclusionOutput::CreateCommonObjectOutput(pObj, objBox, fEntDistance, pTerrainTexInfo, rendItemSorter));
                         }
                     }
@@ -1158,9 +1169,14 @@ void CObjManager::RenderBrush(CBrush* pEnt,
         return;
     }
 
+    if (GetCVars()->e_LodForceUpdate)
+    {
+        pEnt->m_pRNTmpData->userData.nWantedLod = GetObjectLOD(pEnt, fEntDistance);
+    }
+
     //////////////////////////////////////////////////////////////////////////
     const CLodValue lodValue = pEnt->ComputeLod(pEnt->m_pRNTmpData->userData.nWantedLod, passInfo);
-    pEnt->Render(lodValue, passInfo, pTerrainTexInfo, gEnv->pRenderer->GetGenerateRendItemJobExecutor(passInfo.ThreadID()), rendItemSorter);
+    pEnt->Render(lodValue, passInfo, pTerrainTexInfo, gEnv->pRenderer->GetGenerateRendItemJobExecutor(), rendItemSorter);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1306,13 +1322,15 @@ int CObjManager::GetObjectLOD(const IRenderNode* pObj, float fDistance)
 {
     SFrameLodInfo frameLodInfo = Get3DEngine()->GetFrameLodInfo();
     int resultLod = MAX_STATOBJ_LODS_NUM - 1;
-
-    bool bLodFaceArea = GetCVars()->e_LodFaceArea != 0;
-    if (bLodFaceArea)
+    bool boundingBBoxBased = ((pObj->GetRndFlags() & ERF_LOD_BBOX_BASED) != 0);
+    // If it is bounding box based, it does not use face area data.
+    bool useLodFaceArea = (GetCVars()->e_LodFaceArea != 0)  && !boundingBBoxBased;
+  
+    if (useLodFaceArea)
     {
         float distances[SMeshLodInfo::s_nMaxLodCount];
-        bLodFaceArea = pObj->GetLodDistances(frameLodInfo, distances);
-        if (bLodFaceArea)
+        useLodFaceArea = pObj->GetLodDistances(frameLodInfo, distances);
+        if (useLodFaceArea)
         {
             for (uint i = 0; i < MAX_STATOBJ_LODS_NUM - 1; ++i)
             {
@@ -1325,7 +1343,7 @@ int CObjManager::GetObjectLOD(const IRenderNode* pObj, float fDistance)
         }
     }
 
-    if (!bLodFaceArea)
+    if (!useLodFaceArea)
     {
         const float fLodRatioNorm = pObj->GetLodRatioNormalized();
         const float fRadius = pObj->GetBBox().GetRadius();
@@ -1487,11 +1505,26 @@ bool CObjManager::IsBoxOccluded(const AABB& objBox,
     CVisAreaManager* pVisAreaManager = GetVisAreaManager();
     if (GetCVars()->e_OcclusionVolumes && pVisAreaManager && pVisAreaManager->IsOccludedByOcclVolumes(objBox, passInfo))
     {
-        pOcclTestVars->nLastOccludedMainFrameID = mainFrameID;
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        // do not set the lastOccludedMainFrameID because it is camera agnostic so the main pass might occlude
+        // objects that should only be occluded in the render scene to texture pass
+        if (!passInfo.IsRenderSceneToTexturePass())
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+        {
+            pOcclTestVars->nLastOccludedMainFrameID = mainFrameID;
+        }
         return true;
     }
 
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // don't use coverage buffer results if we are checking occlusion for a render to texture camera
+    // because the render to texture pass does not currently write to the coverage buffer and
+    // the frame IDs will not work correctly.
+    if (GetCVars()->e_CoverageBuffer && !passInfo.IsRenderSceneToTexturePass())
+#else
     if (GetCVars()->e_CoverageBuffer)
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     {
         return pOcclTestVars->nLastOccludedMainFrameID == mainFrameID - 1;
     }

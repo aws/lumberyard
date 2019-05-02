@@ -822,7 +822,8 @@ void CVegetationTool::Clear()
     {
         int numInstances = m_selectedObjects[i]->GetNumInstances();
 
-        QRect rc(0, 0, m_vegetationMap->GetSize(), m_vegetationMap->GetSize());
+        // use size + 1 to make sure we cover the edges properly
+        QRect rc(0, 0, m_vegetationMap->GetSize() + 1, m_vegetationMap->GetSize() + 1);
         m_vegetationMap->ClearBrush(rc, false, m_selectedObjects[i]);
 
         if (numInstances != m_selectedObjects[i]->GetNumInstances() && m_panel)

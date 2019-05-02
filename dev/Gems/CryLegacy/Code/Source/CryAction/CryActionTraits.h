@@ -14,7 +14,11 @@
 #include "ProjectDefines.h"
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-    #include AZ_RESTRICTED_FILE(CryActionTraits_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryActionTraits_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryActionTraits_h_provo.inl"
+    #endif
 #else
     #define AZ_LEGACY_CRYACTION_TRAIT_SCREENSHOT_EXTENSION "tif"
     #define AZ_LEGACY_CRYACTION_TRAIT_SET_COMPRESSOR_THREAD_PRIORITY 0

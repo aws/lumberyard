@@ -17,6 +17,8 @@
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
 
+#include <QCoreApplication>
+
 #include <native/unittests/UnitTestRunner.h> // for UnitTestUtils like CreateDummyFile / AssertAbsorber.
 #include <native/resourcecompiler/RCBuilder.h> // for defines like BUILDER_ID_RC
 
@@ -78,6 +80,12 @@ namespace AssetProcessor
             QString m_gameName;
             AssertAbsorber m_absorber;
             AZStd::string m_databaseLocation;
+            QCoreApplication coreApp;
+            int argc = 0;
+            DataMembers() : coreApp(argc, nullptr)
+            {
+                
+            }
         };
 
         DataMembers* m_data = nullptr;
@@ -270,7 +278,7 @@ namespace AssetProcessor
                 return false;
             }
 
-            SourceDatabaseEntry sourceEntry(scanFolderEntry.m_scanFolderID, sourceRelPath, assetId);
+            SourceDatabaseEntry sourceEntry(scanFolderEntry.m_scanFolderID, sourceRelPath, assetId, "fingerprint1");
             dbConn->SetSource(sourceEntry);
 
             JobDatabaseEntry jobEntry(sourceEntry.m_sourceID, "test", 1234, "pc", assetId, AzToolsFramework::AssetSystem::JobStatus::Completed, 12345);

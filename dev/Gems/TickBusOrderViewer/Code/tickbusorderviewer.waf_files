@@ -1,0 +1,18 @@
+{
+    "none": {
+        "Source": [
+            "Source/TickBusOrderViewer_precompiled.cpp",
+            "Source/TickBusOrderViewer_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/TickBusOrderViewer/TickBusOrderViewerBus.h"
+        ],
+        "Source": [
+            "Source/TickBusOrderViewerModule.cpp",
+            "Source/TickBusOrderViewerSystemComponent.cpp",
+            "Source/TickBusOrderViewerSystemComponent.h"
+        ]
+    }
+}

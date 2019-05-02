@@ -235,17 +235,11 @@ namespace AssetProcessor
     void RCJob::PopulateProcessJobRequest(AssetBuilderSDK::ProcessJobRequest& processJobRequest)
     {
         processJobRequest.m_jobDescription.m_critical = IsCritical();
-        processJobRequest.m_jobDescription.m_additionalFingerprintInfo = m_jobDetails.m_extraInformationForFingerprinting.toUtf8().data();
+        processJobRequest.m_jobDescription.m_additionalFingerprintInfo = m_jobDetails.m_extraInformationForFingerprinting;
         processJobRequest.m_jobDescription.m_jobKey = GetJobKey().toUtf8().data();
         processJobRequest.m_jobDescription.m_jobParameters = AZStd::move(m_jobDetails.m_jobParam);
         processJobRequest.m_jobDescription.SetPlatformIdentifier(GetPlatformInfo().m_identifier.c_str());
         processJobRequest.m_jobDescription.m_priority = GetPriority();
-        
-        for (AssetProcessor::SourceFileDependencyInternal& entry : m_jobDetails.m_sourceFileDependencyList)
-        {
-            processJobRequest.m_sourceFileDependencyList.push_back(entry.m_sourceFileDependency);
-        }
-
         processJobRequest.m_platformInfo = GetPlatformInfo();
         processJobRequest.m_builderGuid = GetBuilderGuid();
         processJobRequest.m_sourceFile = GetJobEntry().m_pathRelativeToWatchFolder.toUtf8().data();
@@ -278,6 +272,11 @@ namespace AssetProcessor
     int RCJob::GetPriority() const
     {
         return m_jobDetails.m_priority;
+    }
+
+    const AZStd::vector<AssetProcessor::JobDependencyInternal>& RCJob::GetJobDependencies()
+    {
+        return m_jobDetails.m_jobDependencyList;
     }
 
     void RCJob::Start()

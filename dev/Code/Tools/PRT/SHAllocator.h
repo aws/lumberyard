@@ -38,7 +38,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SHALLOCATOR_H_SECTION_1
-#include AZ_RESTRICTED_FILE(SHAllocator_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SHAllocator_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SHAllocator_h_provo.inl"
+    #endif
 #elif !defined(LINUX) && !defined(APPLE)
 #ifdef __cplusplus
 	#include <new.h> 
@@ -141,7 +145,11 @@ public:
 #define AZ_RESTRICTED_SECTION_IMPLEMENTED
 #elif defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SHALLOCATOR_H_SECTION_2
-#include AZ_RESTRICTED_FILE(SHAllocator_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SHAllocator_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SHAllocator_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

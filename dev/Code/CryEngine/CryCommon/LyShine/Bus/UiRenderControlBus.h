@@ -13,8 +13,17 @@
 
 #include <AzCore/Component/ComponentBus.h>
 
+namespace LyShine
+{
+    class IRenderGraph;
+}
+
+class UiElementInterface;
+class UiRenderInterface;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//! The UiRenderControlBus is used for controling render state changes.
+//! The UiRenderControlBus is used for controlling the rendering of elements that affect the rendering
+//! of their children.
 //! An example use is a mask component that needs to setup stencil write before rendering its
 //! components to increment the stencil buffer, switch to stencil test before rendering the child
 //! elements and then do a second pass to decrement the stencil buffer.
@@ -23,37 +32,24 @@
 class UiRenderControlInterface
     : public AZ::ComponentBus
 {
-public: // types
-
-    enum class Pass
-    {
-        First,
-        Second
-    };
-
 public: // member functions
 
     virtual ~UiRenderControlInterface() {}
 
-    //! This should setup the state required for rendering the components on this element
-    //! This will also ways get called once and can optionally get called a second time
-    //! after the child elements are rendered.
-    //! \param pass, will be set to First for the first pass, Second for second pass
-    virtual void SetupBeforeRenderingComponents(Pass pass) = 0;
-
-    //! This should make state changes required after the components on this element
-    //! have been rendered and (if pass == First) before the child elements are rendered
-    //! \param pass, will be set to First for the first pass, Second for second pass
-    virtual void SetupAfterRenderingComponents(Pass pass) = 0;
-
-    //! This should make state changes needed after the child elements have been rendered.
-    //! This method can also request a second pass render of the components on this element
-    //! in which case SetupBeforeRenderingComponents and SetupAfterRenderingComponents will
-    //! be called again but with pass set to Second.
-    //! NOTE: This method is conly called once, it is not called again after the second pass
-    //! since the child components are only ever rendered once.
-    //! \param isSecondComponentsPassRequired, out parameter used to request second pass
-    virtual void SetupAfterRenderingChildren(bool& isSecondComponentsPassRequired) = 0;
+    //! This renders this element plus its children. It allows the RenderControl element to control
+    //! the order in which the element's component and children are rendered and to change state
+    //! at any point while rendering them.
+    //! \param renderGraph, the render graph being added to
+    //! \param elementInterface, pointer to the element interface for this element (for performance)
+    //! \param renderInterface, pointer to the render interface for this element (for performance)
+    //! \param numChildren, the number of child elements of this element
+    //! \param isInGame, true if element being rendered in game (or preview), false if being render in edit mode
+    virtual void Render(
+        LyShine::IRenderGraph* renderGraph,
+        UiElementInterface* elementInterface,
+        UiRenderInterface* renderInterface,
+        int numChildren,
+        bool isInGame) = 0;
 
 public: // static member data
 

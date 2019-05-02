@@ -11,6 +11,7 @@
 */
 #pragma once
 #include "UnitTestRunner.h"
+#include <native/utilities/assetUtilEBusHelper.h>
 
 namespace AssetProcessor
 {
@@ -42,20 +43,27 @@ Q_SIGNALS:
         virtual void StartTest() override;
     };
 
-    class AssetProcessorManagerUnitTests_SourceFileDependencies
-        : public UnitTestRun
-    {
-        Q_OBJECT
-    public:
-        virtual void StartTest() override;
-    };
-
     class AssetProcessorManagerUnitTests_CheckOutputFolders
         : public UnitTestRun
     {
         Q_OBJECT
     public:
         virtual void StartTest() override;
+
+    };
+    class AssetProcessorManagerUnitTests_JobDependencies_Fingerprint
+        : public UnitTestRun
+        , public AssetProcessor::AssetBuilderInfoBus::Handler
+    {
+        Q_OBJECT
+    public:
+        virtual void StartTest() override;
+
+        // AssetProcessor::AssetBuilderInfoBus::Handler
+        void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList) override;
+        void GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList) override;
+
+        AssetBuilderSDK::AssetBuilderDesc m_assetBuilderDesc;
     };
 } // namespace assetprocessor
 

@@ -16,6 +16,7 @@
 #include "CommandSystemConfig.h"
 #include <MCore/Source/Command.h>
 #include "CommandManager.h"
+#include <EMotionFX/Source/AnimGraphInstance.h>
 
 
 namespace CommandSystem
@@ -47,12 +48,13 @@ public:
     // Activate the given anim graph.
     MCORE_DEFINECOMMAND_START(CommandActivateAnimGraph, "Activate a anim graph", true)
 public:
-    uint32              mActorInstanceID;
-    uint32              mOldAnimGraphUsed;
-    uint32              mOldMotionSetUsed;
-    float               mOldVisualizeScaleUsed;
-    bool                mOldWorkspaceDirtyFlag;
-    static const char*  s_activateAnimGraphCmdName;
+    uint32                          mActorInstanceID;
+    uint32                          mOldAnimGraphUsed;
+    uint32                          mOldMotionSetUsed;
+    float                           mOldVisualizeScaleUsed;
+    bool                            mOldWorkspaceDirtyFlag;
+    static const char*              s_activateAnimGraphCmdName;
+    EMotionFX::AnimGraphInstance*   m_oldAnimGraphInstance = nullptr;
     MCORE_DEFINECOMMAND_END
 
 

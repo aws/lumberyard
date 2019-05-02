@@ -14,15 +14,16 @@
 #include "EditorCommon.h"
 
 CommandCanvasPropertiesChange::CommandCanvasPropertiesChange(UndoStack* stack,
-    AZStd::string& undoXml, AZStd::string& redoXml, EditorWindow* editorWindow)
+    AZStd::string& undoXml, AZStd::string& redoXml, EditorWindow* editorWindow, const char* commandName)
     : QUndoCommand()
     , m_stack(stack)
     , m_isFirstExecution(true)
+    , m_selectionWasEmpty(true)
     , m_undoXml(undoXml)
     , m_redoXml(redoXml)
     , m_editorWindow(editorWindow)
 {
-    setText("properties change");
+    setText(commandName);
 }
 
 void CommandCanvasPropertiesChange::undo()
@@ -30,6 +31,9 @@ void CommandCanvasPropertiesChange::undo()
     UndoStackExecutionScope s(m_stack);
 
     Recreate(true);
+
+    // Some canvas properties (such as whether guides are locked) affect the menus
+    m_editorWindow->RefreshEditorMenu();
 }
 
 void CommandCanvasPropertiesChange::redo()
@@ -37,6 +41,9 @@ void CommandCanvasPropertiesChange::redo()
     UndoStackExecutionScope s(m_stack);
 
     Recreate(false);
+
+    // Some canvas properties (such as whether guides are locked) affect the menus
+    m_editorWindow->RefreshEditorMenu();
 }
 
 void CommandCanvasPropertiesChange::Recreate(bool isUndo)
@@ -44,6 +51,12 @@ void CommandCanvasPropertiesChange::Recreate(bool isUndo)
     if (m_isFirstExecution)
     {
         m_isFirstExecution = false;
+
+        HierarchyWidget* hierarchyWidget = m_editorWindow->GetHierarchy();
+        if (hierarchyWidget)
+        {
+            m_selectionWasEmpty = (hierarchyWidget->CurrentSelectedElement()) ? false : true;
+        }
 
         // Nothing else to do.
     }
@@ -78,10 +91,16 @@ void CommandCanvasPropertiesChange::Recreate(bool isUndo)
         HierarchyWidget* hierarchyWidget = m_editorWindow->GetHierarchy();
         if (hierarchyWidget)
         {
-            hierarchyWidget->SetUniqueSelectionHighlight((QTreeWidgetItem*)nullptr);
+            // check if the selection was empty when the command was executed,
+            // if so we set the selection back to empty so that the properties pane shows the
+            // canvas properties and the result of the undo can be seen
+            if (m_selectionWasEmpty)
+            {
+                hierarchyWidget->SetUniqueSelectionHighlight((QTreeWidgetItem*)nullptr);
+            }
         }
 
-        // Tell the properties pane that the canvas pointer changed
+        // Tell the properties pane that the entity pointer changed
         PropertiesWidget* propertiesWidget = m_editorWindow->GetProperties();
         if (propertiesWidget)
         {
@@ -91,7 +110,7 @@ void CommandCanvasPropertiesChange::Recreate(bool isUndo)
 }
 
 void CommandCanvasPropertiesChange::Push(UndoStack* stack, AZStd::string& undoXml,
-    AZStd::string& redoXml, EditorWindow* editorWindow)
+    AZStd::string& redoXml, EditorWindow* editorWindow, const char* commandName)
 {
     if (stack->GetIsExecuting())
     {
@@ -100,5 +119,5 @@ void CommandCanvasPropertiesChange::Push(UndoStack* stack, AZStd::string& undoXm
         return;
     }
 
-    stack->push(new CommandCanvasPropertiesChange(stack, undoXml, redoXml, editorWindow));
+    stack->push(new CommandCanvasPropertiesChange(stack, undoXml, redoXml, editorWindow, commandName));
 }

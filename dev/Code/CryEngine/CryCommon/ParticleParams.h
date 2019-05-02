@@ -1241,6 +1241,8 @@ struct ParticleParams
 
     TVarEParam<UFloat> fCount;                      // Number of particles alive at once
     TVarEParam<UFloat> fBeamCount;                  // Number of Beams alive at once
+
+    typedef TRangedType<float, 0, PARTICLE_PARAMS_MAX_MAINTAIN_DENSITY> UFloatMaintainDensity;
     struct SMaintainDensity
         : UFloatMaintainDensity
     {
@@ -1774,8 +1776,8 @@ struct ParticleParams
     TSmallBoolTrue bStreamable;                         // Texture/geometry allowed to be streamed
     TSmallBool bVolumeFog;                              // Use as a participating media of volumetric fog
     Unit4Float fVolumeThickness;                        // Thickness factor for particle size
-    TSmallBoolTrue DepthOfFieldBlur;                     //Particles won't be affected by depthOfField post effect if set to false
-
+    TSmallBoolTrue DepthOfFieldBlur;                    // Particles won't be affected by depthOfField post effect if set to false
+    TSmallBool FogVolumeShadingQualityHigh;             // Particle vertex shading quality: - 0: Standard - 1: fog volumes are handled more accurately
     uint8 nParticleSizeDiscard;
 
     // <Group=Configuration>

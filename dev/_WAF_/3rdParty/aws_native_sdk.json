@@ -974,10 +974,10 @@
         }, 
         "orbis_vs2015": {
             "libpath_debug": [
-                "lib/orbis/5.000/Debug"
+                "lib/orbis/6.000/Debug"
             ], 
             "libpath_release": [
-                "lib/orbis/5.000/Release"
+                "lib/orbis/6.000/Release"
             ], 
             "aws_cpp_sdk_all/lib": [
                 "lib${aws_cpp_sdk_all}.a"
@@ -1019,12 +1019,13 @@
                 "lib${aws_cpp_sdk_identity_metrics}.a"
             ]
         }, 
+        "orbis_vs2017": "@orbis_vs2015", 
         "durango_vs2015": {
             "libpath_debug": [
-                "lib/durango/171100/Debug"
+                "lib/durango/180702/Debug"
             ], 
             "libpath_release": [
-                "lib/durango/171100/Release"
+                "lib/durango/180702/Release"
             ], 
             "aws_cpp_sdk_all/lib": [
                 "${aws_cpp_sdk_all}.lib"
@@ -1066,10 +1067,10 @@
                 "${aws_cpp_sdk_identity_metrics}.lib"
             ], 
             "importlibpath_debug": [
-                "bin/durango/171100/Debug"
+                "bin/durango/180702/Debug"
             ], 
             "importlibpath_release": [
-                "bin/durango/171100/Release"
+                "bin/durango/180702/Release"
             ], 
             "aws_cpp_sdk_all/import": [
                 "${aws_cpp_sdk_all}.lib"
@@ -1111,10 +1112,10 @@
                 "${aws_cpp_sdk_identity_metrics}.lib"
             ], 
             "sharedlibpath_debug": [
-                "bin/durango/171100/Debug"
+                "bin/durango/180702/Debug"
             ], 
             "sharedlibpath_release": [
-                "bin/durango/171100/Release"
+                "bin/durango/180702/Release"
             ], 
             "aws_cpp_sdk_all/shared": [
                 "${aws_cpp_sdk_all}.dll"

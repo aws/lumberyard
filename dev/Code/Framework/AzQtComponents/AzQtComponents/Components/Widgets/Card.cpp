@@ -274,6 +274,13 @@ namespace AzQtComponents
         return m_secondaryContentWidget;
     }
 
+    void Card::hideFrame()
+    {
+        setProperty("hideFrame", true);
+        style()->unpolish(this);
+        style()->polish(this);
+    }
+
     Card::Config Card::loadConfig(QSettings& settings)
     {
         Config config = defaultConfig();
@@ -349,5 +356,4 @@ namespace AzQtComponents
             setUpdatesEnabled(true);
         }
     }
-
 } // namespace AzQtComponents

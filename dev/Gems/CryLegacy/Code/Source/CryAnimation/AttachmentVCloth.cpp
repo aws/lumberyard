@@ -938,7 +938,11 @@ void CAttachmentVCLOTH::DrawAttachment(SRendParams& RendParams, const SRendering
             CRY_ASSERT(pRenderMesh->GetVerticesCount() == geometry.GetVertexCount());
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(AttachmentVCloth_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/AttachmentVCloth_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/AttachmentVCloth_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

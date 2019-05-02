@@ -31,7 +31,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridSystemContext_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridSystemContext_cpp_provo.inl"
+    #endif
 #endif
 #include "Multiplayer/MultiplayerUtils.h"
 
@@ -186,7 +190,11 @@ namespace Multiplayer
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridSystemContext_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridSystemContext_cpp_provo.inl"
+    #endif
 #endif
         }
 
@@ -229,7 +237,11 @@ namespace Multiplayer
                     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridSystemContext_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridSystemContext_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -308,11 +320,11 @@ namespace Multiplayer
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/GridSystemContext_cpp_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_8
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, TOOLS_SUPPORT_PROVO)
+    #include "Provo/GridSystemContext_cpp_provo.inl"
 #endif
 #endif
                     ;
@@ -360,7 +372,11 @@ namespace Multiplayer
             {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridSystemContext_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridSystemContext_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -388,7 +404,11 @@ namespace Multiplayer
             }
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridSystemContext_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridSystemContext_cpp_provo.inl"
+    #endif
 #endif
             return !p.m_value.empty();
         }
@@ -418,7 +438,11 @@ namespace Multiplayer
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridSystemContext_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridSystemContext_cpp_provo.inl"
+    #endif
 #endif
         }
 
@@ -433,7 +457,11 @@ namespace Multiplayer
                 return aznew GridMateLANServiceWrapper();
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION GRIDSYSTEMCONTEXT_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(GridSystemContext_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/GridSystemContext_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/GridSystemContext_cpp_provo.inl"
+    #endif
 #endif
             default:
                 AZ_Assert(false, "Unsupported GridMate::ServiceType of %d", gridServiceType);

@@ -21,6 +21,7 @@
 #include <GridMate/NetworkGridMateSessionEvents.h>
 #include <GridMate/Session/Session.h>
 #include <GridMate/Online/UserServiceTypes.h>
+#include <AzFramework/Network/NetBindingHandlerBus.h>
 
 // Template specialization to not destroy a GridSession; work around for VS2013 where std::is_destructable<> does not detect a hidden destructor
 namespace AZ
@@ -203,15 +204,18 @@ namespace Multiplayer
                 ->Enum<GridMate::ST_LAN>("ST_LAN")
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
-#include AZ_RESTRICTED_FILE(MultiplayerEventsComponent_cpp, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/MultiplayerEventsComponent_cpp_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
-#include AZ_RESTRICTED_FILE(MultiplayerEventsComponent_cpp, TOOLS_SUPPORT_PROVO)
+    #include "Provo/MultiplayerEventsComponent_cpp_provo.inl"
 #endif
 #endif
                 ->Enum<GridMate::ST_STEAM>("ST_STEAM")
                 ;
 
+            behaviorContext->Class<AzFramework::NetQuery>("NetQuery")
+                ->Method("IsEntityAuthoritative", &AzFramework::NetQuery::IsEntityAuthoritative)
+                ;
         }
     }
 }

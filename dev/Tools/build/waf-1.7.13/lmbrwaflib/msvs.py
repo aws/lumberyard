@@ -80,7 +80,7 @@ from waflib.Build import BuildContext
 from waflib import Utils, TaskGen, Logs, Task, Context, Node, Options
 from waflib.Configure import conf
 from cry_utils import append_to_unique_list, split_comma_delimited_string
-from branch_spec import WAF_PLATFORM_TO_VS_PLATFORM_PREFIX_AND_TOOL_SET_DICT,VS_PLATFORM_TO_WAF_PLATFORM_PREFIX_AND_TOOL_SET_DICT
+from branch_spec import WAF_PLATFORM_TO_VS_PLATFORM_PREFIX_AND_TOOL_SET_DICT,VS_PLATFORM_TO_WAF_PLATFORM_PREFIX_AND_TOOL_SET_DICT, get_supported_configurations
 
 
 import mscv_helper, cry_utils
@@ -883,23 +883,6 @@ class vsnode_project(vsnode):
 
         return '$(SolutionDir)..\\' + relative_path + '\\'
 
-    def get_layout_folder(self, platform, mode, projectname):
-        the_mode = None
-        if 'release' in mode:
-            the_mode = 'release'
-        elif 'debug' in mode:
-            the_mode = 'debug'
-        elif 'profile' in mode:
-            the_mode = 'profile'
-        elif 'performance' in mode:
-            the_mode = 'performance'
-        else:
-            Logs.error('Layout Folder Unknown mode = {}'.format(mode))
-
-        if self.ctx.get_bootstrap_vfs() == '1' and the_mode != 'release':
-            return '$(SolutionDir)..\\layouts\\{}\\{}\\vfs'.format(projectname, the_mode)
-        return '$(SolutionDir)..\\layouts\\{}\\{}\\full'.format(projectname, the_mode)
-
     def get_rebuild_command(self, props):
 
         params = self.get_build_params(props)
@@ -1590,7 +1573,7 @@ class msvs_generator(BuildContext):
             self.platforms = valid_platforms
 
         if not getattr(self, 'configurations', None):
-            build_configurations = self.get_supported_configurations()
+            build_configurations = get_supported_configurations()
             self.configurations = []
             for spec in self.loaded_specs():
                 # Only care about valid specs
@@ -1899,14 +1882,25 @@ class msvs_generator(BuildContext):
             filter_name = self.get_project_vs_filter(p.name)
 
             proj = p
-            filter_list = filter_name.split('/')
+            # folder list contains folder-only names of the relative project path
+            folder_list = filter_name.split('/')
+            # filter list contains collection of all relative paths leading to project path
+            filter_list = []
+            filter = ''
+            for folder in folder_list:
+                if filter:
+                    filter += '/'
+                filter += folder
+                filter_list.append(filter)
             filter_list.reverse()
-            for f in filter_list:
-                if f in seen:
-                    proj.parent = seen[f]
+            for filter in filter_list:
+                if filter in seen:
+                    proj.parent = seen[filter]
                     break
                 else:
-                    n = proj.parent = seen[f] = self.vsnode_vsdir(self, make_uuid(f), f)
+                    # get immediate parent folder
+                    folder = filter.split('/')[-1]
+                    n = proj.parent = seen[filter] = self.vsnode_vsdir(self, make_uuid(filter), folder)
                     self.all_projects.append(n)
                     proj = n
 

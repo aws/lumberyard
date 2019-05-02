@@ -10,16 +10,18 @@
 *
 */
 
-#ifndef __EMSTUDIO_NODECONNECTION_H
-#define __EMSTUDIO_NODECONNECTION_H
+#pragma once
 
 // include required headers
-#include <MCore/Source/StandardHeaders.h>
-#include <MCore/Source/Array.h>
-#include <MCore/Source/Color.h>
-#include "../StandardPluginsConfig.h"
+#include <EMotionStudio/Plugins/StandardPlugins/Source/StandardPluginsConfig.h>
+
+#include <QModelIndex>
 #include <QPainter>
 
+namespace EMotionFX
+{
+    class AnimGraphInstance;
+}
 
 namespace EMStudio
 {
@@ -38,8 +40,10 @@ namespace EMStudio
             TYPE_ID = 0x00000001
         };
 
-        NodeConnection(GraphNode* targetNode, uint32 portNr, GraphNode* sourceNode, uint32 sourceOutputPortNr);
+        NodeConnection(const QModelIndex& modelIndex, GraphNode* targetNode, uint32 portNr, GraphNode* sourceNode, uint32 sourceOutputPortNr);
         virtual ~NodeConnection();
+
+        const QModelIndex& GetModelIndex() const { return m_modelIndex; }
 
         virtual void Render(QPainter& painter, QPen* pen, QBrush* brush, int32 stepSize, const QRect& visibleRect, float opacity, bool alwaysColor);
         virtual bool Intersects(const QRect& rect);
@@ -59,7 +63,6 @@ namespace EMStudio
 
         MCORE_INLINE void SetIsSelected(bool selected)              { mIsSelected = selected; }
         MCORE_INLINE bool GetIsSelected() const                     { return mIsSelected; }
-        MCORE_INLINE void ToggleSelected()                          { mIsSelected ^= true; }
         MCORE_INLINE bool GetIsVisible()                            { return mIsVisible; }
 
         MCORE_INLINE uint32 GetInputPortNr() const                  { return mPortNr; }
@@ -89,10 +92,8 @@ namespace EMStudio
 
         MCORE_INLINE void SetIsTailHighlighted(bool flag)                       { mIsTailHighlighted = flag; }
         MCORE_INLINE void SetIsHeadHighlighted(bool flag)                       { mIsHeadHighlighted = flag; }
-        MCORE_INLINE void SetIsTransitioning(bool flag)                         { mIsTransitioning = flag; }
         MCORE_INLINE bool GetIsTailHighlighted() const                          { return mIsTailHighlighted; }
         MCORE_INLINE bool GetIsHeadHighlighted() const                          { return mIsHeadHighlighted; }
-        MCORE_INLINE bool GetIsTransitioning() const                            { return mIsTransitioning; }
         virtual bool CheckIfIsCloseToHead(const QPoint& point) const            { MCORE_UNUSED(point); return false; }
         virtual bool CheckIfIsCloseToTail(const QPoint& point) const            { MCORE_UNUSED(point); return false; }
         virtual void CalcStartAndEndPoints(QPoint& start, QPoint& end) const    { MCORE_UNUSED(start); MCORE_UNUSED(end); }
@@ -101,8 +102,6 @@ namespace EMStudio
 
         MCORE_INLINE void SetColor(const QColor& color)             { mColor = color; }
         MCORE_INLINE const QColor& GetColor() const                 { return mColor; }
-        void SetID(uint32 id)                                       { mID = id; }
-        MCORE_INLINE uint32 GetID() const                           { return mID; }
 
         void SetSourceNode(GraphNode* node)                         { mSourceNode = node; }
         void SetTargetNode(GraphNode* node)                         { mTargetNode = node; }
@@ -111,6 +110,7 @@ namespace EMStudio
 
 
     protected:
+        QPersistentModelIndex m_modelIndex;
         QRect               mRect;
         QRect               mFinalRect;
         QColor              mColor;
@@ -119,7 +119,6 @@ namespace EMStudio
         QPainterPath        mPainterPath;
         uint32              mPortNr;            // input port where this is connected to
         uint32              mSourcePortNr;      // source output port number
-        uint32              mID;
         bool                mIsSelected;        // is this connection selected?
         bool                mIsVisible;         // is this connection visible?
         bool                mIsProcessed;       // is this connection processed?
@@ -129,9 +128,6 @@ namespace EMStudio
         bool                mIsHeadHighlighted;
         bool                mIsTailHighlighted;
         bool                mIsConnectedHighlighted;
-        bool                mIsTransitioning;
         bool                mIsSynced;
     };
 }   // namespace EMStudio
-
-#endif

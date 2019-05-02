@@ -28,49 +28,48 @@ namespace AzToolsFramework
 
     ManipulatorManager::~ManipulatorManager()
     {
-        AZStd::vector<BaseManipulator*> manipulatorsToRemove(m_manipulatorIdToPtrMap.size());
-
         for (auto& pair : m_manipulatorIdToPtrMap)
         {
-            manipulatorsToRemove.push_back(pair.second);
+            pair.second->Invalidate();
         }
 
-        for (BaseManipulator* manipulator : manipulatorsToRemove)
-        {
-            UnregisterManipulator(*manipulator);
-        }
+        m_manipulatorIdToPtrMap.clear();
 
         ManipulatorManagerRequestBus::Handler::BusDisconnect();
         EditorEntityInfoNotificationBus::Handler::BusDisconnect();
     }
 
-    void ManipulatorManager::RegisterManipulator(BaseManipulator& manipulator)
+    void ManipulatorManager::RegisterManipulator(AZStd::shared_ptr<BaseManipulator> manipulator)
     {
-        if (manipulator.Registered())
+        if (!manipulator)
         {
-            AZ_Assert(manipulator.GetManipulatorManagerId() == m_manipulatorManagerId,
+            AZ_Error("Manipulators", false, "Attempting to register a null Manipulator");
+            return;
+        }
+
+        if (manipulator->Registered())
+        {
+            AZ_Assert(manipulator->GetManipulatorManagerId() == m_manipulatorManagerId,
                 "This manipulator was registered with a different manipulator manager!");
             return;
         }
 
         const ManipulatorId manipulatorId = m_nextManipulatorIdToGenerate++;
-        m_manipulatorIdToPtrMap[manipulatorId] = &manipulator;
-        manipulator.m_manipulatorId = manipulatorId;
-        manipulator.m_manipulatorManagerId = m_manipulatorManagerId;
+        manipulator->m_manipulatorId = manipulatorId;
+        manipulator->m_manipulatorManagerId = m_manipulatorManagerId;
+        m_manipulatorIdToPtrMap[manipulatorId] = AZStd::move(manipulator);
     }
 
-    void ManipulatorManager::UnregisterManipulator(BaseManipulator& manipulator)
+    void ManipulatorManager::UnregisterManipulator(BaseManipulator* manipulator)
     {
-        m_manipulatorIdToPtrMap.erase(manipulator.GetManipulatorId());
-        manipulator.Invalidate();
-    }
-
-    void ManipulatorManager::SetActiveManipulator(BaseManipulator* manipulator)
-    {
-        if (m_activeManipulator != manipulator)
+        if (!manipulator)
         {
-            m_activeManipulator = manipulator;
+            AZ_Error("Manipulators", false, "Attempting to unregister a null Manipulator");
+            return;
         }
+
+        m_manipulatorIdToPtrMap.erase(manipulator->GetManipulatorId());
+        manipulator->Invalidate();
     }
 
     Picking::RegisteredBoundId ManipulatorManager::UpdateBound(ManipulatorId manipulatorId,
@@ -143,7 +142,7 @@ namespace AzToolsFramework
         if (m_keyboardModifiers != keyboardModifiers)
         {
             float rayIntersectionDistance = 0.0f;
-            BaseManipulator* manipulator = PerformRaycast(
+            AZStd::shared_ptr<BaseManipulator> manipulator = PerformRaycast(
                 mousePick.m_rayOrigin, mousePick.m_rayDirection, rayIntersectionDistance);
             const ManipulatorId manipulatorId = manipulator ? manipulator->GetManipulatorId() : InvalidManipulatorId;
 
@@ -177,7 +176,7 @@ namespace AzToolsFramework
         CheckModifierKeysChanged(mouseInteraction.m_keyboardModifiers, mouseInteraction.m_mousePick);
     }
 
-    BaseManipulator* ManipulatorManager::PerformRaycast(
+    AZStd::shared_ptr<BaseManipulator> ManipulatorManager::PerformRaycast(
         const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, float& rayIntersectionDistance)
     {
         Picking::RaySelectInfo raySelection;
@@ -186,14 +185,14 @@ namespace AzToolsFramework
 
         m_boundManager.RaySelect(raySelection);
 
-        for (auto hitItr = raySelection.m_boundIDsHit.begin(); hitItr != raySelection.m_boundIDsHit.end(); ++hitItr)
+        for (const auto& hitItr : raySelection.m_boundIdsHit)
         {
-            const auto found = m_boundIdToManipulatorIdMap.find(hitItr->first);
+            const auto found = m_boundIdToManipulatorIdMap.find(hitItr.first);
             if (found != m_boundIdToManipulatorIdMap.end())
             {
                 const auto manipulatorFound = m_manipulatorIdToPtrMap.find(found->second);
                 AZ_Assert(manipulatorFound != m_manipulatorIdToPtrMap.end(), "Manipulator bound and id lists are out of sync");
-                rayIntersectionDistance = hitItr->second;
+                rayIntersectionDistance = hitItr.second;
                 return manipulatorFound != m_manipulatorIdToPtrMap.end() ? manipulatorFound->second : nullptr;
             }
         }
@@ -204,7 +203,7 @@ namespace AzToolsFramework
     bool ManipulatorManager::ConsumeViewportMousePress(const ViewportInteraction::MouseInteraction& interaction)
     {
         float rayIntersectionDistance = 0.0f;
-        if (BaseManipulator* manipulator = PerformRaycast(
+        if (AZStd::shared_ptr<BaseManipulator> manipulator = PerformRaycast(
             interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection, rayIntersectionDistance))
         {
             if (interaction.m_mouseButtons.Left())
@@ -262,7 +261,8 @@ namespace AzToolsFramework
         }
 
         float rayIntersectionDistance = 0.0f;
-        const BaseManipulator* manipulator = PerformRaycast(interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection, rayIntersectionDistance);
+        const AZStd::shared_ptr<BaseManipulator> manipulator = PerformRaycast(
+            interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection, rayIntersectionDistance);
         const ManipulatorId manipulatorId = manipulator ? manipulator->GetManipulatorId() : InvalidManipulatorId;
 
         for (auto& pair : m_manipulatorIdToPtrMap)
@@ -282,7 +282,8 @@ namespace AzToolsFramework
         }
 
         float rayIntersectionDistance = 0.0f;
-        const BaseManipulator* manipulator = PerformRaycast(interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection, rayIntersectionDistance);
+        const AZStd::shared_ptr<BaseManipulator> manipulator = PerformRaycast(
+            interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection, rayIntersectionDistance);
         const ManipulatorId manipulatorId = manipulator ? manipulator->GetManipulatorId() : InvalidManipulatorId;
 
         // when scrolling the mouse wheel, the view may change so the mouse falls over a manipulator

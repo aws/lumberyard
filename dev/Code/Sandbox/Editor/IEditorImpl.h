@@ -325,6 +325,7 @@ public:
     void RecordUndo(IUndoObject* obj);
     bool FlushUndo(bool isShowMessage = false);
     bool ClearLastUndoSteps(int steps);
+    bool ClearRedoStack();
     //! Retrieve current animation context.
     CAnimationContext* GetAnimation();
     CTrackViewSequenceManager* GetSequenceManager() override;

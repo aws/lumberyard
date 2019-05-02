@@ -129,7 +129,7 @@ namespace Visibility
     void EditorPortalConfiguration::OnVerticesChange()
     {
         m_component->UpdateObject();
-        m_component->m_vertexSelection.Refresh();
+        m_component->m_vertexSelection.RefreshLocal();
     }
 
     EditorPortalComponent::EditorPortalComponent()
@@ -238,6 +238,8 @@ namespace Visibility
 
     void EditorPortalComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
+        m_vertexSelection.RefreshSpace(world);
+
         //Cache the transform so that we don't have to retrieve it every time UpdateObject is called
         m_AZCachedWorldTransform = world;
         m_cryCachedWorldTransform = AZTransformToLYTransform(m_AZCachedWorldTransform);
@@ -455,17 +457,14 @@ namespace Visibility
     // Manipulator handling
     void EditorPortalComponent::CreateManipulators()
     {
-        AZStd::unique_ptr<AzToolsFramework::NullHoverSelection> nullHoverSelection =
-            AZStd::make_unique<AzToolsFramework::NullHoverSelection>();
-        m_vertexSelection.m_hoverSelection = AZStd::move(nullHoverSelection);
+        m_vertexSelection.m_hoverSelection = AZStd::make_unique<AzToolsFramework::NullHoverSelection>();
 
         // create interface wrapping internal AZStd::array for use by vertex selection
         m_vertexSelection.m_vertices =
             AZStd::make_unique<AzToolsFramework::FixedVerticesArray<AZ::Vector3, 4>>(m_config.m_vertices);
 
-        const AzToolsFramework::ManipulatorManagerId managerId = AzToolsFramework::ManipulatorManagerId(1);
-        m_vertexSelection.Create(GetEntityId(), managerId,
-            AzToolsFramework::TranslationManipulator::Dimensions::Three,
+        m_vertexSelection.Create(GetEntityId(), AzToolsFramework::ManipulatorManagerId(1),
+            AzToolsFramework::TranslationManipulators::Dimensions::Three,
             AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
     }
 

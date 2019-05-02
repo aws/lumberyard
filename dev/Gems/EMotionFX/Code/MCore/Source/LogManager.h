@@ -147,13 +147,6 @@ namespace MCore
     //----------------------------------------------------------------------------
 
     /**
-     * Generalized logging functions.
-     * Use these functions if you are in global space or if you do not
-     * want to declare your classes you can use the LOG function.
-     */
-    //void MCORE_API LOG(const char* what, ...);
-
-    /**
      * Logging macros that use the MCORE_HERE macro from SourceDeclaration.h.
      * Make sure that you are inside a class and that you have declared
      * the class via MCORE_DECLARE_CLASS, in addition you have to ensure that you

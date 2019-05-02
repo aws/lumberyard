@@ -102,7 +102,11 @@ void FencedVB<VertexType>::UnlockVB()
     {
         gRenDev->m_DevMan.UnlockDirectAccessBuffer((D3DBuffer*)m_pVB, CDeviceManager::BIND_VERTEX_BUFFER);
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(FencedVB_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/FencedVB_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/FencedVB_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

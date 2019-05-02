@@ -14,8 +14,6 @@
 
 // include required headers
 #include "StandardHeaders.h"
-#include "Array.h"
-#include "MCoreSystem.h"
 
 // some c++11 concurrency features
 #include <AzCore/std/functional.h>
@@ -27,9 +25,6 @@
 
 namespace MCore
 {
-    // forward declarations
-    class JobList;
-
 
     class MCORE_API Mutex
     {
@@ -174,14 +169,4 @@ namespace MCore
         bool                mConditionValue;
     };
 
-
-    // the main job list execute function, call this one to execute work
-    MCORE_API void ExecuteJobList(JobList* jobList, bool addSyncPointAfterList = true, bool waitForJobListToFinish = true); // the main function you should call
-
-    // implementations (do not call these directly, use ExecuteJobList instead)
-    MCORE_API void JobListExecuteSerial(JobList* jobList, bool addSyncPointAfterList, bool waitForJobListToFinish);         // serial execution (no multi-threading)
-    MCORE_API void JobListExecuteMCoreJobSystem(JobList* jobList, bool addSyncPointAfterList, bool waitForJobListToFinish); // parallel execution using the MCore job system
-#ifdef MCORE_OPENMP_ENABLED
-    MCORE_API void JobListExecuteOpenMP(JobList* jobList, bool addSyncPointAfterList, bool waitForJobListToFinish);         // parallel execution using OpenMP
-#endif
 }   // namespace MCore

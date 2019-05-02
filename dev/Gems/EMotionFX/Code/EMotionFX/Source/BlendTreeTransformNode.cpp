@@ -51,7 +51,7 @@ namespace EMotionFX
         InitOutputPorts(1);
         SetupOutputPortAsPose("Output Pose", OUTPUTPORT_RESULT, PORTID_OUTPUT_POSE);
     }
-    
+
 
     BlendTreeTransformNode::~BlendTreeTransformNode()
     {
@@ -119,16 +119,15 @@ namespace EMotionFX
             RequestPoses(animGraphInstance);
             outputPose = GetOutputPose(animGraphInstance, OUTPUTPORT_RESULT)->GetValue();
             outputPose->InitFromBindPose(actorInstance);
-        #ifdef EMFX_EMSTUDIOBUILD
-            SetHasError(animGraphInstance, true);
-        #endif
+            if (GetEMotionFX().GetIsInEditorMode())
+            {
+                SetHasError(animGraphInstance, true);
+            }
             return;
         }
-        else
+        else if (GetEMotionFX().GetIsInEditorMode())
         {
-        #ifdef EMFX_EMSTUDIOBUILD
             SetHasError(animGraphInstance, false);
-        #endif
         }
 
         // make sure we have at least an input pose, otherwise output the bind pose
@@ -148,7 +147,7 @@ namespace EMotionFX
         }
 
         // get the local transform from our node
-        Transform inputTransform = outputPose->GetPose().GetLocalTransform(uniqueData->mNodeIndex);
+        Transform inputTransform = outputPose->GetPose().GetLocalSpaceTransform(uniqueData->mNodeIndex);
         Transform outputTransform = inputTransform;
 
         // process the rotation
@@ -182,18 +181,16 @@ namespace EMotionFX
         )
 
         // update the transformation of the node
-        outputPose->GetPose().SetLocalTransform(uniqueData->mNodeIndex, outputTransform);
+        outputPose->GetPose().SetLocalSpaceTransform(uniqueData->mNodeIndex, outputTransform);
 
         // visualize it
-    #ifdef EMFX_EMSTUDIOBUILD
-        if (GetCanVisualize(animGraphInstance))
+        if (GetEMotionFX().GetIsInEditorMode() && GetCanVisualize(animGraphInstance))
         {
             animGraphInstance->GetActorInstance()->DrawSkeleton(outputPose->GetPose(), mVisualizeColor);
         }
-    #endif
     }
 
-    
+
     // update the unique data
     void BlendTreeTransformNode::UpdateUniqueData(AnimGraphInstance* animGraphInstance, UniqueData* uniqueData)
     {
@@ -293,7 +290,7 @@ namespace EMotionFX
             ->Field("maxRotation", &BlendTreeTransformNode::m_maxRotation)
             ->Field("minScale", &BlendTreeTransformNode::m_minScale)
             ->Field("maxScale", &BlendTreeTransformNode::m_maxScale)
-            ;
+        ;
 
 
         AZ::EditContext* editContext = serializeContext->GetEditContext();
@@ -305,29 +302,29 @@ namespace EMotionFX
         const AZ::VectorFloat maxVecFloat = AZ::VectorFloat(std::numeric_limits<float>::max());
         editContext->Class<BlendTreeTransformNode>("Transform Node", "Transform node attributes")
             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
-                ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+            ->Attribute(AZ::Edit::Attributes::AutoExpand, "")
+            ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
             ->DataElement(AZ_CRC("ActorNode", 0x35d9eb50), &BlendTreeTransformNode::m_targetNodeName, "Node", "The node to apply the transform to.")
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTransformNode::Reinit)
-                ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlendTreeTransformNode::Reinit)
+            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_minTranslation, "Min Translation", "The minimum translation value, used when the input translation amount equals zero.")
-                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
-                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
+            ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+            ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3(maxVecFloat,  maxVecFloat,  maxVecFloat))
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_maxTranslation, "Max Translation", "The maximum translation value, used when the input translation amount equals one.")
-                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
-                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
+            ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+            ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3(maxVecFloat,  maxVecFloat,  maxVecFloat))
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_minRotation, "Min Rotation", "The minimum rotation value, in degrees, used when the input rotation amount equals zero.")
-                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-360.0f, -360.0f, -360.0f))
-                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( 360.0f,  360.0f,  360.0f))
+            ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-360.0f, -360.0f, -360.0f))
+            ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3(360.0f,  360.0f,  360.0f))
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_maxRotation, "Max Rotation", "The maximum rotation value, in degrees, used when the input rotation amount equals one.")
-                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-360.0f, -360.0f, -360.0f))
-                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( 360.0f,  360.0f,  360.0f))
+            ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-360.0f, -360.0f, -360.0f))
+            ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3(360.0f,  360.0f,  360.0f))
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_minScale, "Min Scale", "The minimum scale value, used when the input scale amount equals zero.")
-                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
-                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
+            ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+            ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3(maxVecFloat,  maxVecFloat,  maxVecFloat))
             ->DataElement(AZ::Edit::UIHandlers::Default, &BlendTreeTransformNode::m_maxScale, "Max Scale", "The maximum scale value, used when the input scale amount equals one.")
-                ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
-                ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3( maxVecFloat,  maxVecFloat,  maxVecFloat))
-            ;
+            ->Attribute(AZ::Edit::Attributes::Min, AZ::Vector3(-maxVecFloat, -maxVecFloat, -maxVecFloat))
+            ->Attribute(AZ::Edit::Attributes::Max, AZ::Vector3(maxVecFloat,  maxVecFloat,  maxVecFloat))
+        ;
     }
 } // namespace EMotionFX

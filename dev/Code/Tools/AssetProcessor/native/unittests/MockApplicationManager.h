@@ -62,6 +62,7 @@ namespace AssetProcessor
         void UnRegisterAllBuilders();
 
         void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList) override;
+        void GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList) override;
 
         void ResetMatchingBuildersInfoFunctionCalls();
         int GetMatchingBuildersInfoFunctionCalls();
@@ -96,6 +97,7 @@ namespace AssetProcessor
 
         //! AssetProcessor::AssetBuilderInfoBus Interface
         void GetMatchingBuildersInfo(const AZStd::string& assetPath, AssetProcessor::BuilderInfoList& builderInfoList) override;
+        void GetAllBuildersInfo(AssetProcessor::BuilderInfoList& builderInfoList) override;
         ////////////////////////////////////////////////
 
         AssetBuilderSDK::AssetBuilderDesc m_assetBuilderDesc;

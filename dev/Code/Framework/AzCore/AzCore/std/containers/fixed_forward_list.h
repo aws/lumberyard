@@ -13,6 +13,7 @@
 #define AZSTD_FIXED_SLIST_H 1
 
 #include <AzCore/std/containers/forward_list.h>
+#include <AzCore/std/allocator_static.h>
 
 namespace AZStd
 {

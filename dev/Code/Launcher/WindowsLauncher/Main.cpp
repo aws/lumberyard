@@ -396,13 +396,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
             return 1;
         }
     
-        //[DFLY][lehmille@] - Prevent allocator from growing in small chunks
+        // Prevent allocator from growing in small chunks
         // Pre-create our system allocator and configure it to ask for larger chunks from the OS
         // Creating this here to be consistent with other platforms
         AZ::SystemAllocator::Descriptor sysHeapDesc;
         sysHeapDesc.m_heap.m_systemChunkSize = 64 * 1024 * 1024;
         AZ::AllocatorInstance<AZ::SystemAllocator>::Create(sysHeapDesc);
-        //[DFLY][lehmille@] - end
 
         AzGameFramework::GameApplication::StartupParameters gameAppParams;
 #ifdef AZ_MONOLITHIC_BUILD

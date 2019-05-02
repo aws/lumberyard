@@ -103,14 +103,14 @@ void AssetScannerWorker::ScanForSourceFiles(ScanFolderInfo scanFolderInfo)
 
         QString absPath = entry.absoluteFilePath();
 
+        // Filtering out excluded files
+        if (m_platformConfiguration->IsFileExcluded(absPath))
+        {
+            continue;
+        }
+
         if (entry.isDir())
         {
-            // Filtering out excluded files
-            if (m_platformConfiguration->IsFileExcluded(absPath))
-            {
-                continue;
-            }
-
             //Entry is a directory
             m_folderList.insert(absPath);
             ScanFolderInfo tempScanFolderInfo(absPath, "", "", "", false, true);
@@ -146,24 +146,9 @@ void AssetScannerWorker::ScanForSourceFiles(ScanFolderInfo scanFolderInfo)
 void AssetScannerWorker::EmitFiles()
 {
     //Loop over all source asset files and send them up the chain:
-    for (const QString& fileEntry : m_fileList)
-    {
-        if (!m_doScan)
-        {
-            break;
-        }
-        Q_EMIT FileOfInterestFound(fileEntry);
-    }
+    Q_EMIT FilesFound(m_fileList);
     m_fileList.clear();
-    //Loop over all folders and send them up the chain:
-    for (const QString& folderEntry : m_folderList)
-    {
-        if (!m_doScan)
-        {
-            break;
-        }
-        Q_EMIT FolderOfInterestFound(folderEntry);
-    }
+    Q_EMIT FoldersFound(m_folderList);
     m_folderList.clear();
 }
 

@@ -3196,7 +3196,11 @@ void CPhysicalWorld::ThreadProc(int ithread, SPhysTask* pTask)
     }
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PHYSICALWORLD_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(physicalworld_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/physicalworld_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/physicalworld_cpp_provo.inl"
+    #endif
 #endif
     while (true)
     {
@@ -3268,7 +3272,11 @@ void CPhysicalWorld::TimeStep(float time_interval, int flags)
         {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION PHYSICALWORLD_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(physicalworld_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/physicalworld_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/physicalworld_cpp_provo.inl"
+    #endif
 #endif
             GetISystem()->GetIThreadTaskManager()->RegisterTask(m_threads[i] = new SPhysTask(this, i + FIRST_WORKER_THREAD), ttp);
         }
@@ -3954,7 +3962,7 @@ void CPhysicalWorld::FlushOldThunks()
     for (; pthunks; pthunks = pthunksNext)
     {
         pthunksNext = *(pe_gridthunk**)pthunks;
-        delete[] pthunks;
+        FreeThunks(pthunks);
     }
     m_oldThunks = 0;
 

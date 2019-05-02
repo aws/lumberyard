@@ -196,7 +196,11 @@ IPlatformOS::EFileOperationCode CCryPakFile::CloseImpl()
 void UpdateFileStats(const char* fileName)
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(SaveReaderWriter_CryPak_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SaveReaderWriter_CryPak_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SaveReaderWriter_CryPak_cpp_provo.inl"
+    #endif
 #endif
 }
 

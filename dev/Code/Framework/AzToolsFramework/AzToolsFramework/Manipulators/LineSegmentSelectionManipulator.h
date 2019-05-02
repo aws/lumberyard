@@ -44,8 +44,8 @@ namespace AzToolsFramework
 
         using MouseActionCallback = AZStd::function<void(const Action&)>;
 
-        void InstallLeftMouseDownCallback(MouseActionCallback onMouseDownCallback);
-        void InstallLeftMouseUpCallback(MouseActionCallback onMouseUpCallback);
+        void InstallLeftMouseDownCallback(const MouseActionCallback& onMouseDownCallback);
+        void InstallLeftMouseUpCallback(const MouseActionCallback& onMouseUpCallback);
 
         void Draw(
             const ManipulatorManagerState& managerState,

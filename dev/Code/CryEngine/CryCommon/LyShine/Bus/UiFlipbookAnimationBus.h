@@ -37,6 +37,14 @@ public: // Types
                     //!< continuing in reverse until the start frame is reached.
     };
 
+    //! Units of speed for framerate
+    enum class FramerateUnits
+    {
+        FPS,                //!< Framerate of animation
+
+        SecondsPerFrame,    //!< Number of seconds to wait before playing next frame
+    };
+
 public:
     virtual ~UiFlipbookAnimationInterface() {}
 
@@ -89,11 +97,43 @@ public:
     //! Sets the LoopType of the flipbook animation.
     virtual void SetLoopType(LoopType loopType) = 0;
     
-    //! Gets the amount of time to wait (in seconds) before going to the next frame.
-    virtual float GetFrameDelay() = 0;
+    //! Gets the speed used to determine when to transition to the next frame.
+    //!
+    //! Framerate is defined relative to unit of time, specified by FramerateUnits.
+    //!
+    //! See GetFramerateUnit, SetFramerateUnit.
+    virtual float GetFramerate() = 0;
 
-    //! Sets the amount of time to wait before going to the next frame, in seconds.
-    virtual void SetFrameDelay(float frameDelay) = 0;
+    //! Sets the speed used to determine when to transition to the next frame.
+    //!
+    //! Framerate is defined relative to unit of time, specified by FramerateUnits.
+    //!
+    //! See GetFramerateUnit, SetFramerateUnit.
+    virtual void SetFramerate(float framerate) = 0;
+
+    //! Gets the framerate unit.
+    virtual FramerateUnits GetFramerateUnit() = 0;
+
+    //! Sets the framerate unit.
+    virtual void SetFramerateUnit(FramerateUnits framerateUnit) = 0;
+
+    //! Gets the delay (in seconds) before playing the flipbook (applied only once during playback).
+    virtual float GetStartDelay() = 0;
+
+    //! Sets the delay (in seconds) before playing the flipbook (applied only once during playback).
+    virtual void SetStartDelay(float startDelay) = 0;
+    
+    //! Gets the delay (in seconds) before playing the loop sequence.
+    virtual float GetLoopDelay() = 0;
+
+    //! Sets the delay (in seconds) before playing the loop sequence.
+    virtual void SetLoopDelay(float loopDelay) = 0;
+
+    //! Gets the delay (in seconds) before playing the reverse loop sequence (PingPong loop types only).
+    virtual float GetReverseDelay() = 0;
+
+    //! Sets the delay (in seconds) before playing the reverse loop sequence (PingPong loop types only).
+    virtual void SetReverseDelay(float reverseDelay) = 0;
 
     //! Returns true if the animation will begin playing when the component activates, false otherwise.
     virtual bool GetIsAutoPlay() = 0;
@@ -102,6 +142,12 @@ public:
     //!
     //! This flag is ignored after the component has activated.
     virtual void SetIsAutoPlay(bool isAutoPlay) = 0;
+
+    //! Deprecated. Use GetFramerate instead.
+    virtual float GetFrameDelay() = 0;
+
+    //! Deprecated. Use SetFramerate instead.
+    virtual void SetFrameDelay(float frameDelay) = 0;
 };
 
 using UiFlipbookAnimationBus = AZ::EBus<UiFlipbookAnimationInterface>;

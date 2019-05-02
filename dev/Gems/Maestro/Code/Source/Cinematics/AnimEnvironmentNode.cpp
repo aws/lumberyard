@@ -17,12 +17,11 @@
 #include "Maestro_precompiled.h"
 #include <AzCore/Serialization/SerializeContext.h>
 #include "AnimEnvironmentNode.h"
-#include "AnimLightNode.h"
 #include "AnimSplineTrack.h"
 #include <ITimeOfDay.h>
-#include "Maestro/Types/AnimNodeType.h"
-#include "Maestro/Types/AnimValueType.h"
-#include "Maestro/Types/AnimParamType.h"
+#include <Maestro/Types/AnimNodeType.h>
+#include <Maestro/Types/AnimValueType.h>
+#include <Maestro/Types/AnimParamType.h>
 
 namespace AnimEnvironmentNode
 {

@@ -179,6 +179,13 @@ namespace AzFramework
         AZ::TypeId GetComponentType(BehaviorComponentId componentId) const;
 
         /**
+         * Get the name of a specific component on the entity.
+         * @param componentId the ID of the component to query.
+         * @return The name of the component.
+         */
+        AZStd::string GetComponentName(BehaviorComponentId componentId) const;
+
+        /**
          * Set the component's configuration.
          * You cannot configure a component while the entity is activated.
          * @param componentId The ID of the component to configure.

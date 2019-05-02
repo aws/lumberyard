@@ -864,15 +864,30 @@ void MainWindow::InitActions()
     }
 
     // File actions
-    am->AddAction(ID_FILE_NEW, tr("New")).SetShortcut(tr("Ctrl+N")).Connect(&QAction::triggered, [cryEdit]()
+    am->AddAction(ID_FILE_NEW, tr("New Level")).SetShortcut(tr("Ctrl+N")).Connect(&QAction::triggered, [cryEdit]()
     {
         cryEdit->OnCreateLevel();
     })
         .SetMetricsIdentifier("MainEditor", "NewLevel");
-    am->AddAction(ID_FILE_OPEN_LEVEL, tr("Open...")).SetShortcut(tr("Ctrl+O"))
+    am->AddAction(ID_FILE_OPEN_LEVEL, tr("Open Level...")).SetShortcut(tr("Ctrl+O"))
         .SetMetricsIdentifier("MainEditor", "OpenLevel")
         .SetStatusTip(tr("Open an existing level"))
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateFileOpen);
+#ifdef ENABLE_SLICE_EDITOR
+    am->AddAction(ID_FILE_NEW_SLICE, tr("New Slice"))
+        .SetMetricsIdentifier("MainEditor", "NewSlice")
+        .SetStatusTip(tr("Create a new slice"));
+    am->AddAction(ID_FILE_OPEN_SLICE, tr("Open Slice..."))
+        .SetMetricsIdentifier("MainEditor", "OpenSlice")
+        .SetStatusTip(tr("Open an existing slice"));
+#endif
+    am->AddAction(ID_FILE_SAVE_SELECTED_SLICE, tr("Save selected slice")).SetShortcut(tr("Alt+S"))
+        .SetMetricsIdentifier("MainEditor", "SaveSliceToFirstLevelRoot")
+        .SetStatusTip(tr("Save the selected slice to the first level root"));
+    am->AddAction(ID_FILE_SAVE_SLICE_TO_ROOT, tr("Save Slice to root")).SetShortcut(tr("Ctrl+Alt+S"))
+        .SetMetricsIdentifier("MainEditor", "SaveSliceToTopLevelRoot")
+        .SetStatusTip(tr("Save the selected slice to the top level root"));
+
     am->AddAction(ID_FILE_SAVE_LEVEL, tr("&Save")).SetShortcut(tr("Ctrl+S"))
         .SetStatusTip(tr("Save the current level"))
         .SetMetricsIdentifier("MainEditor", "SaveLevel")
@@ -925,6 +940,8 @@ void MainWindow::InitActions()
         .SetMetricsIdentifier("MainEditor", "ExportOcclusionMesh");
     am->AddAction(ID_FILE_EDITLOGFILE, tr("Show Log File"))
         .SetMetricsIdentifier("MainEditor", "ShowLogFile");
+    am->AddAction(ID_FILE_RESAVESLICES, tr("Resave All Slices"))
+        .SetMetricsIdentifier("MainEditor", "ResaveSlices");
     am->AddAction(ID_GAME_PC_ENABLEVERYHIGHSPEC, tr("Very High")).SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "SetSpecPCVeryHigh")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
@@ -975,10 +992,10 @@ void MainWindow::InitActions()
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateGameSpec);
 #if defined(AZ_TOOLS_EXPAND_FOR_RESTRICTED_PLATFORMS)
 #if defined(TOOLS_SUPPORT_XENIA)
-#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_XENIA)
+    #include "Xenia/MainWindow_cpp_xenia.inl"
 #endif
 #if defined(TOOLS_SUPPORT_PROVO)
-#include AZ_RESTRICTED_FILE(MainWindow_cpp, TOOLS_SUPPORT_PROVO)
+    #include "Provo/MainWindow_cpp_provo.inl"
 #endif
 #endif
     am->AddAction(ID_GAME_APPLETV_ENABLESPEC, tr("Apple TV")).SetCheckable(true)
@@ -1135,7 +1152,7 @@ void MainWindow::InitActions()
         .SetStatusTip(tr("Delete selected objects."))
         ->setShortcutContext(Qt::WidgetWithChildrenShortcut);
     am->AddAction(ID_EDIT_CLONE, tr("Duplicate")).SetShortcut(tr("Ctrl+D"))
-        .SetMetricsIdentifier("MainEditor", "DeleteSelectedObjects")
+        .SetMetricsIdentifier("MainEditor", "DuplicateSelectedObjects")
         .SetStatusTip(tr("Duplicate selected objects."));
 
     // Modify actions
@@ -1252,6 +1269,7 @@ void MainWindow::InitActions()
     am->AddAction(ID_SELECT_AXIS_SNAPTOALL, tr("Follow terrain and snap to objects"))
         .SetIcon(EditorProxyStyle::icon("Follow_terrain"))
         .SetApplyHoverEffect()
+        .SetShortcut(tr("Ctrl+6"))
         .SetCheckable(true)
         .SetMetricsIdentifier("MainEditor", "ToggleSnapToObjectsAndTerrain")
         .RegisterUpdateCallback(cryEdit, &CCryEditApp::OnUpdateSelectAxisSnapToAll);
@@ -1784,7 +1802,7 @@ void MainWindow::InitActions()
         .SetApplyHoverEffect();
     }
     am->AddAction(ID_OPEN_TRACKVIEW, tr("TrackView"))
-        .SetToolTip(tr("Open TrackView"))
+        .SetToolTip(tr("Open Track View"))
         .SetIcon(EditorProxyStyle::icon("Trackview"))
         .SetApplyHoverEffect();
     am->AddAction(ID_OPEN_AUDIO_CONTROLS_BROWSER, tr("Audio Controls Editor"))
@@ -1796,7 +1814,7 @@ void MainWindow::InitActions()
         .SetIcon(EditorProxyStyle::icon("Terrain"))
         .SetApplyHoverEffect();
     am->AddAction(ID_OPEN_TERRAINTEXTURE_EDITOR, tr("Terrain Texture Layers Editor"))
-        .SetToolTip(tr("Open Terrain Texture Layers Editor"))
+        .SetToolTip(tr("Open Terrain Texture Layers"))
         .SetIcon(EditorProxyStyle::icon("Terrain_Texture"))
         .SetApplyHoverEffect();
     am->AddAction(ID_PARTICLE_EDITOR, tr("Particle Editor"))
@@ -1804,7 +1822,7 @@ void MainWindow::InitActions()
         .SetIcon(EditorProxyStyle::icon("particle"))
         .SetApplyHoverEffect();
     am->AddAction(ID_TERRAIN_TIMEOFDAYBUTTON, tr("Time of Day Editor"))
-        .SetToolTip(tr("Open Time of Day Editor"))
+        .SetToolTip(tr("Open Time of Day"))
         .SetIcon(EditorProxyStyle::icon("Time_of_Day"))
         .SetApplyHoverEffect();
     if (m_enableLegacyCryEntities)
@@ -2872,6 +2890,11 @@ void MainWindow::MatEditSend(int param)
     }
 }
 
+void MainWindow::SetSelectedEntity(AZ::EntityId& id)
+{
+    m_levelEditorMenuHandler->SetupSliceSelectMenu(id);
+}
+
 #ifdef Q_OS_WIN
 bool MainWindow::nativeEventFilter(const QByteArray &eventType, void *message, long *)
 {
@@ -2970,7 +2993,20 @@ void MainWindow::ConnectivityStateChanged(const AzToolsFramework::SourceControlS
 
 void MainWindow::OnGotoSelected()
 {
-    EBUS_EVENT(AzToolsFramework::EditorRequests::Bus, GoToSelectedOrHighlightedEntitiesInViewports);
+    AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequestBus::Events::GoToSelectedEntitiesInViewports);
+}
+
+void MainWindow::OnGotoSliceRoot()
+{
+    int numViews = GetIEditor()->GetViewManager()->GetViewCount();
+    for (int i = 0; i < numViews; ++i)
+    {
+        CViewport* viewport = GetIEditor()->GetViewManager()->GetView(i);
+        if (viewport)
+        {
+            viewport->CenterOnSliceInstance();
+        }
+    }
 }
 
 void MainWindow::ShowCustomizeToolbarDialog()

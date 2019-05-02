@@ -300,8 +300,6 @@ namespace AssetProcessor
     {
         if (m_builder)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Builder pulled from pool: %s\n", m_builder->UuidString().c_str());
-
             m_builder->m_busy = true;
         }
     }
@@ -321,7 +319,6 @@ namespace AssetProcessor
     {
         if (m_builder)
         {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Builder returned to pool: %s\n", m_builder->UuidString().c_str());
             AZ_Warning("BuilderRef", m_builder->m_busy, "Builder reference is valid but is already set to not busy");
 
             m_builder->m_busy = false;
@@ -464,7 +461,6 @@ namespace AssetProcessor
 
                     if (builder->IsValid())
                     {
-                        AZ_TracePrintf(AssetProcessor::DebugChannel, "Using already-started builder\n");
                         return BuilderRef(builder);
                     }
                     else

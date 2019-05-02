@@ -52,16 +52,39 @@ namespace AzFramework
         friend class TransformReplicaChunk;
 
     public:
-        AZ_COMPONENT(TransformComponent, AZ::TransformComponentTypeId, NetBindable);
+        AZ_COMPONENT(TransformComponent, AZ::TransformComponentTypeId, NetBindable, AZ::TransformInterface);
 
         friend class AzToolsFramework::Components::TransformComponent;
-        friend class AzFramework::GameEntityContextComponent;
 
         using ParentActivationTransformMode = AZ::TransformConfig::ParentActivationTransformMode;
 
         TransformComponent();
         TransformComponent(const TransformComponent& copy);
         virtual ~TransformComponent();
+
+        //////////////////////////////////////////////////////////////////////////
+        // TransformBus events (publicly accessible)
+        /// Returns true if the tm was set to the local transform
+        const AZ::Transform& GetLocalTM() override { return m_localTM; }
+        /// Returns true if the tm was set to the world transform
+        const AZ::Transform& GetWorldTM() override { return m_worldTM; }
+        /// Returns both local and world transforms.
+        void GetLocalAndWorld(AZ::Transform& localTM, AZ::Transform& worldTM) override { localTM = m_localTM; worldTM = m_worldTM; }
+        /// Returns parent EntityID or
+        AZ::EntityId  GetParentId() override { return m_parentId; }
+        /// Returns parent interface if available
+        AZ::TransformInterface* GetParent() override { return m_parentTM; }
+        /// Sets the local transform and notifies all interested parties
+        void SetLocalTM(const AZ::Transform& tm) override;
+        /// Sets the world transform and notifies all interested parties
+        void SetWorldTM(const AZ::Transform& tm) override;
+        /// Set parent entity and notifies all interested parties. The object localTM will be moved into
+        /// parent space so we will prerse the same worldTM.
+        void SetParent(AZ::EntityId id) override;
+        /// Set the parent entity and notifies all interested parties. The will use worldTM as an
+        /// a localTM and move the transform relative to the parent.
+        void SetParentRelative(AZ::EntityId id) override;
+        //////////////////////////////////////////////////////////////////////////
 
     protected:
         //////////////////////////////////////////////////////////////////////////
@@ -70,25 +93,6 @@ namespace AzFramework
         void Deactivate() override;
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // TransformBus
-
-        //////////////////////////////////////////////////////////////////////////
-        // Transform modifiers
-
-        /// Returns true if the tm was set to the local transform
-        const AZ::Transform& GetLocalTM() override { return m_localTM; }
-        /// Sets the local transform and notifies all interested parties
-        void SetLocalTM(const AZ::Transform& tm) override;
-        /// Returns true if the tm was set to the world transform
-        const AZ::Transform& GetWorldTM() override { return m_worldTM; }
-        /// Sets the world transform and notifies all interested parties
-        void SetWorldTM(const AZ::Transform& tm) override;
-        /// Returns both local and world transforms.
-        void GetLocalAndWorld(AZ::Transform& localTM, AZ::Transform& worldTM) override { localTM = m_localTM; worldTM = m_worldTM; }
-
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
@@ -178,22 +182,6 @@ namespace AzFramework
         AZ::Vector3 GetWorldScale() override;
         //////////////////////////////////////////////////////////////////////////
 
-        /// Returns parent EntityID or
-        AZ::EntityId  GetParentId() override { return m_parentId; }
-        /// Returns parent interface if available
-        AZ::TransformInterface* GetParent() override { return m_parentTM; }
-        /**
-        * Set parent entity and notifies all interested parties. The object localTM will be moved into
-        * parent space so we will prerse the same worldTM.
-        */
-        void SetParent(AZ::EntityId id) override;
-        /**
-        * Set the parent entity and notifies all interested parties. The will use worldTM as an
-        * a localTM and move the transform relative to the parent.
-        */
-        void SetParentRelative(AZ::EntityId id) override;
-
-
         AZStd::vector<AZ::EntityId> GetChildren() override;
         AZStd::vector<AZ::EntityId> GetAllDescendants() override;
         AZStd::vector<AZ::EntityId> GetEntityAndAllDescendants() override;
@@ -273,6 +261,7 @@ namespace AzFramework
         AZ::Transform                           m_worldTM;                  ///< World transform including parent transform (same as localTM if no parent)
         AZ::EntityId                            m_parentId;                 ///< If valid, this transform is parented to m_parentId.
         AZ::TransformInterface*                 m_parentTM;                 ///< Cached - pointer to parent transform, to avoid extra calls. Valid only when if it's present
+        bool                                    m_parentActive;             ///< Keeps track of the state of the parent entity
         AZ::TransformNotificationBus::BusPtr    m_notificationBus;          ///< Cached bus pointer to the notification bus.
         bool                                    m_onNewParentKeepWorldTM;   ///< If set, recompute localTM instead of worldTM when parent becomes active.
         ParentActivationTransformMode           m_parentActivationTransformMode;

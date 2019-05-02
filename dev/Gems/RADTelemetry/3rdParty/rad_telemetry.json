@@ -5,77 +5,78 @@
     "non_release_only": "True",
     "lib_required": "True",
     "includes": ["Code/Include", "External/Include"],
-    "platform": {
-        "win_x64_vs2013": {
-            "sharedlibpath": [
-                "External/Dll"
-            ],
-            "importlibpath": [
-                "External/Lib"
-            ],
-            "import": [
-                "rad_tm_win64.lib"
-            ],
-            "shared": [
-                "rad_tm_win64.dll"
-            ]
-        },
-        "win_x64_vs2015": "@win_x64_vs2013",
-		"win_x64_vs2017": "@win_x64_vs2013",
-        "durango_vs2015": {
-            "libpath": [
-                "External/Lib"
-            ],
-            "lib_debug": [
-                "rad_tm_xbone_2015_d.lib"
-            ],
-            "lib_release": [
-                "rad_tm_xbone_2015.lib"
-            ],
-            "linkflags" : [
-                "/ignore:4099"
-            ]
-        },
-		"durango_vs2017": "@durango_vs2015",
-		"orbis_vs2015": {
-            "libpath": [
-                "External/Lib"
-            ],
-            "lib": [
-                "librad_tm_ps4.a"
-            ]
-        },
-        "android_armv7_clang": {
-            "libpath": [
-                "External/Lib"
-            ],
-            "lib": [
-                "librad_tm_android_arm.a"
-            ]
-        },
-        "android_armv8_clang": {
-            "libpath": [
-                "External/Lib"
-            ],
-            "lib": [
-                "librad_tm_android_arm64.a"
-            ]
-        },
-        "ios": {
-            "libpath": [
-            "External/Lib"
-            ],
-            "lib": [
-                "librad_tm_ios.a"
-            ]
-        },
-        "darwin_x64": {
-            "libpath": [
-            "External/Lib"
-            ],
-            "lib": [
-                "librad_tm_mac_x64_link.a"
-            ]
-        }
+  "platform": {
+    "win_x64_vs2013": {
+      "sharedlibpath": [
+        "External/Dll"
+      ],
+      "importlibpath": [
+        "External/Lib"
+      ],
+      "import": [
+        "rad_tm_win64.lib"
+      ],
+      "shared": [
+        "rad_tm_win64.dll"
+      ]
+    },
+    "win_x64_vs2015": "@win_x64_vs2013",
+    "win_x64_vs2017": "@win_x64_vs2013",
+    "durango_vs2015": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib_debug": [
+        "rad_tm_xbone_2015_d.lib"
+      ],
+      "lib_release": [
+        "rad_tm_xbone_2015.lib"
+      ],
+      "linkflags": [
+        "/ignore:4099"
+      ]
+    },
+    "durango_vs2017": "@durango_vs2015",
+    "orbis_vs2015": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib": [
+        "librad_tm_ps4.a"
+      ]
+    },
+    "orbis_vs2017": "@orbis_vs2015",
+    "android_armv7_clang": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib": [
+        "librad_tm_android_arm.a"
+      ]
+    },
+    "android_armv8_clang": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib": [
+        "librad_tm_android_arm64.a"
+      ]
+    },
+    "ios": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib": [
+        "librad_tm_ios.a"
+      ]
+    },
+    "darwin_x64": {
+      "libpath": [
+        "External/Lib"
+      ],
+      "lib": [
+        "librad_tm_mac_x64_link.a"
+      ]
     }
+  }
 }

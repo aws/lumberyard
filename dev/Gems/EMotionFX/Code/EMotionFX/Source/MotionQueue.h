@@ -16,6 +16,7 @@
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
 #include "PlayBackInfo.h"
+#include <MCore/Source/Array.h>
 
 
 namespace EMotionFX

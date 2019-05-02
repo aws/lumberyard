@@ -15,4 +15,5 @@ def build(bld):
     bld.AndroidAPK(
         project_name        = '${ANDROID_PROJECT_NAME}',
         android_java_libs   = bld.Path('Code/Launcher/AndroidLauncher/ProjectBuilder/android_libraries.json'),
+        use                 = ['support-compat']
     )

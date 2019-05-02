@@ -2076,6 +2076,10 @@ bool CAttributeView::HandleUserChangedEnum(IVariable* var, const QString& newVar
 
 
         m_currentItem->Update();
+
+        // Call this refresh to update the m_lod pointers in LODLevelWidget
+        EBUS_EVENT(EditorUIPlugin::LibraryItemUIRequests::Bus, RefreshItemUI);
+
         emit SignalRefreshAttributes();
         OnAttributeItemUndoPoint();
         return true;

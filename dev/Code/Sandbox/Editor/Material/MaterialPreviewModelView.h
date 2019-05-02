@@ -17,9 +17,19 @@ class MaterialPreviewModelView
     : public CPreviewModelView
 {
 public:
-    MaterialPreviewModelView(QWidget* parent);
+    // set enableIdleUpdate to false if you don't want the view to update itself during
+    // application idle notification (and resize events). That makes sense when this view
+    // is only used to render into memory bitmaps. Note that the view has to been visible
+    // for that, but can be somewhere of-screen.
+    MaterialPreviewModelView(QWidget* parent, bool enableIdleUpdate = true);
     virtual ~MaterialPreviewModelView();
     void SetCameraLookAt(float fRadiusScale, const Vec3& fromDir);
     void SetMaterial(_smart_ptr<IMaterial> material);
     void OnEditorNotifyEvent(EEditorNotifyEvent event) override;
+
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
+private:
+    bool m_enableIdleUpdate;
 };

@@ -11,49 +11,79 @@
 */
 #pragma once
 
-#include <LyShine/IUiRenderer.h>
 #include <IRenderer.h>
-#include <AzCore/std/containers/stack.h>
+
+#ifndef _RELEASE
+#include <AzCore/std/containers/unordered_set.h>
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //! Implementation of IUiRenderInterface
 //
 class UiRenderer
-    : public IUiRenderer
 {
 public: // member functions
 
     //! Constructor, constructed by the LyShine class
     UiRenderer();
+    ~UiRenderer();
 
-    // IUiRenderer
+    //! Start the rendering of the frame for LyShine
+    void BeginUiFrameRender();
 
-    ~UiRenderer() override;
-    void BeginCanvasRender(AZ::Vector2 viewportSize) override;
-    void EndCanvasRender() override;
-    int GetBaseState() override;
-    void SetBaseState(int state) override;
-    uint32 GetStencilRef() override;
-    void SetStencilRef(uint32) override;
-    void IncrementStencilRef() override;
-    void DecrementStencilRef() override;
-    bool IsRenderingToMask() override;
-    void SetIsRenderingToMask(bool isRenderingToMask) override;
+    //! End the rendering of the frame for LyShine
+    void EndUiFrameRender();
 
-    void PushAlphaFade(float alphaFadeValue) final;
-    void PopAlphaFade() final;
-    float GetAlphaFade() const final;
+    //! Start the rendering of a UI canvas
+    void BeginCanvasRender();
 
-    // ~IUiRenderer
+    //! End the rendering of a UI canvas
+    void EndCanvasRender();
+
+    //! Get the current base state
+    int GetBaseState();
+
+    //! Set the base state
+    void SetBaseState(int state);
+
+    //! Get the current stencil test reference value
+    uint32 GetStencilRef();
+
+    //! Set the stencil test reference value
+    void SetStencilRef(uint32);
+
+    //! Increment the current stencil reference value
+    void IncrementStencilRef();
+
+    //! Decrement the current stencil reference value
+    void DecrementStencilRef();
+
+    //! Set the current texture
+    void SetTexture(ITexture* texture, int texUnit, bool clamp);
+
+#ifndef _RELEASE
+    //! Setup to record debug texture data before rendering
+    void DebugSetRecordingOptionForTextureData(int recordingOption);
+
+    //! Display debug texture data after rendering
+    void DebugDisplayTextureData(int recordingOption);
+#endif
 
 private:
 
     AZ_DISABLE_COPY_MOVE(UiRenderer);
 
+    //! Bind the global white texture for all the texture units we use
+    void BindNullTexture();
+    
 protected: // attributes
 
     int                 m_baseState;
     uint32              m_stencilRef;
-    bool                m_isRenderingToMask;
-    AZStd::stack<float> m_alphaFadeStack;
+    IRenderer*          m_renderer = nullptr;
+
+#ifndef _RELEASE
+    int                 m_debugTextureDataRecordLevel = 0;
+    AZStd::unordered_set<ITexture*> m_texturesUsedInFrame;
+#endif
 };

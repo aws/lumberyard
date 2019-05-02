@@ -93,14 +93,15 @@ namespace LUAEditor
 
         m_textEdit->ForEachVisibleBlock([&](const QTextBlock& block, const QRectF& blockRect)
             {
-                AZStd::string lineNum;
-                AZStd::to_string(lineNum, block.blockNumber() + 1);
+                int lineNum = block.blockNumber() + 1; // offset by one because line number starts from 1
+                AZStd::string lineNumStr;
+                AZStd::to_string(lineNumStr, lineNum);
                 QRectF drawRect = blockRect;
                 drawRect.setLeft(c_borderSize);
                 drawRect.setRight(c_borderSize + m_numDigits * avgCharWidth);
 
                 p.setPen(colors->GetTextColor());
-                p.drawText(drawRect.toRect(), Qt::AlignRight | Qt::AlignBottom, lineNum.c_str());
+                p.drawText(drawRect.toRect(), Qt::AlignRight | Qt::AlignBottom, lineNumStr.c_str());
 
                 {
                     auto centerY = (drawRect.top() + metrics.leading() + drawRect.bottom()) / 2;
@@ -112,7 +113,7 @@ namespace LUAEditor
                 }
 
                 //breakpoint red dot
-                if (m_breakpoints.find(block.blockNumber()) != m_breakpoints.end())
+                if (m_breakpoints.find(lineNum) != m_breakpoints.end())
                 {
                     p.setPen(QColor::fromRgb(255, 0, 0));
                     p.setBrush(QBrush(QColor::fromRgb(255, 0, 0)));
@@ -120,7 +121,7 @@ namespace LUAEditor
                 }
 
                 //yellow triangle for currently executing line
-                if (m_currentExecLine == block.blockNumber())
+                if (m_currentExecLine == lineNum)
                 {
                     const QPointF marker[] = {
                         {drawRect.right(), drawRect.center().y()},
@@ -203,7 +204,7 @@ namespace LUAEditor
                 {
                     if (mousePos.y() >= blockRect.top() && mousePos.y() <= blockRect.bottom())
                     {
-                        OnToggleBreakpoint(block.blockNumber());
+                        OnToggleBreakpoint(block.blockNumber() + 1); // offset by one because line number starts from 1
                     }
                 });
 

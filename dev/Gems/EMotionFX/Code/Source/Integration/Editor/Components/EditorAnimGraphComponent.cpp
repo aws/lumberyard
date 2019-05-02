@@ -63,11 +63,11 @@ namespace EMotionFX
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                             ->Attribute(AZ::Edit::Attributes::Category, "Animation")
                             ->Attribute(AZ::Edit::Attributes::Icon, ":/EMotionFX/AnimGraphComponent.png")
-                        ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, azrtti_typeid<AnimGraphAsset>())
+                            ->Attribute(AZ::Edit::Attributes::PrimaryAssetType, azrtti_typeid<AnimGraphAsset>())
                             ->Attribute(AZ::Edit::Attributes::ViewportIcon, ":/EMotionFX/AnimGraphComponent.png")
                             ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-animgraph.html")
+                            ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-animgraph.html")
                         ->DataElement(AZ::Edit::UIHandlers::Default, &EditorAnimGraphComponent::m_motionSetAsset,
                             "Motion set asset", "EMotion FX motion set asset to be loaded for this actor.")
                             ->Attribute("EditButton", "Gems/EMotionFX/Assets/Editor/Images/Icons/EMFX_icon_32x32")
@@ -177,7 +177,7 @@ namespace EMotionFX
         }
 
         //////////////////////////////////////////////////////////////////////////       
-        void EditorAnimGraphComponent::OnAnimGraphAssetSelected()
+        AZ::u32 EditorAnimGraphComponent::OnAnimGraphAssetSelected()
         {
             AZ::Data::AssetBus::MultiHandler::BusDisconnect();
 
@@ -190,9 +190,11 @@ namespace EMotionFX
                 AZ::Data::AssetBus::MultiHandler::BusConnect(m_animGraphAsset.GetId());
                 m_animGraphAsset.QueueLoad();
             }
+
+            return AZ::Edit::PropertyRefreshLevels::EntireTree;
         }
 
-        void EditorAnimGraphComponent::OnMotionSetAssetSelected()
+        AZ::u32 EditorAnimGraphComponent::OnMotionSetAssetSelected()
         {
             AZ::Data::AssetBus::MultiHandler::BusDisconnect();
             
@@ -205,6 +207,8 @@ namespace EMotionFX
                 AZ::Data::AssetBus::MultiHandler::BusConnect(m_motionSetAsset.GetId());
                 m_motionSetAsset.QueueLoad();
             }
+
+            return AZ::Edit::PropertyRefreshLevels::EntireTree;
         }
 
         //////////////////////////////////////////////////////////////////////////

@@ -207,7 +207,7 @@ namespace EMotionFX
         )
 
         const uint32 numSubMotions = skeletalMotion->GetNumSubMotions();
-        mSubMotions.Resize(numSubMotions);
+        mSubMotions.resize(numSubMotions);
         mSubMotionMap.Resize(numSubMotions);
         for (uint32 i = 0; i < numSubMotions; ++i)
         {
@@ -264,7 +264,7 @@ namespace EMotionFX
         uint16 morphIndex = 0;
 
         const uint32 numMorphSubMotions = skeletalMotion->GetNumMorphSubMotions();
-        mMorphSubMotions.Resize(numMorphSubMotions);
+        mMorphSubMotions.resize(numMorphSubMotions);
         mMorphSubMotionMap.Resize(numMorphSubMotions);
         for (uint32 i = 0; i < numMorphSubMotions; ++i)
         {
@@ -930,11 +930,6 @@ namespace EMotionFX
         TransformData*  transformData   = actorInstance->GetTransformData();
         const Pose*     bindPose        = transformData->GetBindPose();
 
-        //EMFX_SCALECODE
-        //(
-        //      Transform*  orgTransforms   = transformData->GetBindPoseLocalTransforms();
-        //  )
-
         // make sure the pose has the same number of transforms
         MCORE_ASSERT(outPose->GetNumTransforms() == actor->GetNumNodes());
 
@@ -955,6 +950,9 @@ namespace EMotionFX
         uint32 secondSampleIndex;
         decompressedChunk->CalcInterpolationValues(timeValue, &firstSampleIndex, &secondSampleIndex, &interpolateT);
 
+        const Skeleton* skeleton = actor->GetSkeleton();
+        const bool inPlace = instance->GetIsInPlace();
+
         //
         Transform sampledTransform;
 
@@ -965,23 +963,26 @@ namespace EMotionFX
         {
             const uint32    nodeNumber   = actorInstance->GetEnabledNode(i);
             MotionLink*     link         = instance->GetMotionLink(nodeNumber);
-            //Node*         node         = actor->GetNode(nodeNumber);
-            //Transform*        outTransform = &outPose->GetLocalTransformDirect(nodeNumber);
-            //      const Actor::NodeMirrorInfo& mirrorInfo = actor->GetNodeMirrorInfo(nodeNumber);
 
             // if there is no submotion linked to this node
             if (link->GetIsActive() == false)
             {
-                outTransform = inPose->GetLocalTransform(nodeNumber);
-                outPose->SetLocalTransform(nodeNumber, outTransform);
+                outTransform = inPose->GetLocalSpaceTransform(nodeNumber);
+                outPose->SetLocalSpaceTransform(nodeNumber, outTransform);
                 continue;
             }
 
             // get the current time and the submotion
             const uint32 subMotionIndex = link->GetSubMotionIndex();
-            SkeletalSubMotion* subMotion = mSubMotions[ subMotionIndex ];
-
-            decompressedChunk->GetTransformAtTime(subMotionIndex, interpolateT, firstSampleIndex, secondSampleIndex, &outTransform);
+            SkeletalSubMotion* subMotion = mSubMotions[subMotionIndex];
+            if (!(inPlace && skeleton->GetNode(nodeNumber)->GetIsRootNode()))
+            {
+                decompressedChunk->GetTransformAtTime(subMotionIndex, interpolateT, firstSampleIndex, secondSampleIndex, &outTransform);
+            }
+            else
+            {
+                outTransform = actorInstance->GetTransformData()->GetBindPose()->GetLocalSpaceTransform(nodeNumber);
+            }
 
             // perform basic retargeting
             if (instance->GetRetargetingEnabled())
@@ -989,7 +990,7 @@ namespace EMotionFX
                 BasicRetarget(instance, subMotion, nodeNumber, outTransform);
             }
 
-            outPose->SetLocalTransform(nodeNumber, outTransform);
+            outPose->SetLocalSpaceTransform(nodeNumber, outTransform);
         } // for all transforms
 
         // mirror
@@ -1031,11 +1032,6 @@ namespace EMotionFX
         TransformData*  transformData   = actorInstance->GetTransformData();
         const Pose*     bindPose        = transformData->GetBindPose();
 
-        //EMFX_SCALECODE
-        //(
-        //      Transform*  orgTransforms   = transformData->GetBindPoseLocalTransforms();
-        //  )
-
         // get the node index/number
         const uint32 nodeIndex      = node->GetNodeIndex();
         const uint32 threadIndex    = actorInstance->GetThreadIndex();
@@ -1047,15 +1043,22 @@ namespace EMotionFX
         const MotionLink* motionLink = instance->GetMotionLink(nodeIndex);
         if (motionLink->GetIsActive() == false)
         {
-            *outTransform = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex);
+            *outTransform = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex);
             return;
         }
 
         // get the current time and the submotion
+        const Skeleton* skeleton = actor->GetSkeleton();
+        const bool inPlace = instance->GetIsInPlace();
         SkeletalSubMotion* subMotion = mSubMotions[ motionLink->GetSubMotionIndex() ];
-
-        // get the transformation for the given node
-        decompressedChunk->GetTransformAtTime(motionLink->GetSubMotionIndex(), timeValue, outTransform);
+        if (!(inPlace && skeleton->GetNode(nodeIndex)->GetIsRootNode()))
+        {
+            decompressedChunk->GetTransformAtTime(motionLink->GetSubMotionIndex(), timeValue, outTransform);
+        }
+        else
+        {
+            *outTransform = actorInstance->GetTransformData()->GetBindPose()->GetLocalSpaceTransform(nodeIndex);
+        }
 
         // if we want to use retargeting
         if (enableRetargeting)
@@ -1067,11 +1070,11 @@ namespace EMotionFX
         if (instance->GetMirrorMotion() && actor->GetHasMirrorInfo())
         {
             const Actor::NodeMirrorInfo& mirrorInfo = actor->GetNodeMirrorInfo(nodeIndex);
-            Transform mirrored = bindPose->GetLocalTransform(nodeIndex);
+            Transform mirrored = bindPose->GetLocalSpaceTransform(nodeIndex);
             AZ::Vector3 mirrorAxis(0.0f, 0.0f, 0.0f);
             mirrorAxis.SetElement(mirrorInfo.mAxis, 1.0f);
             const uint32 motionSource = actor->GetNodeMirrorInfo(nodeIndex).mSourceNode;
-            mirrored.ApplyDeltaMirrored(bindPose->GetLocalTransform(motionSource), *outTransform, mirrorAxis, mirrorInfo.mFlags);
+            mirrored.ApplyDeltaMirrored(bindPose->GetLocalSpaceTransform(motionSource), *outTransform, mirrorAxis, mirrorInfo.mFlags);
             *outTransform = mirrored;
         }
     }
@@ -1204,7 +1207,7 @@ namespace EMotionFX
     {
         if (numItems == MCORE_INVALIDINDEX32)
         {
-            mSubMotionMap.Resize(mSubMotions.GetLength());
+            mSubMotionMap.Resize(static_cast<uint32>(mSubMotions.size()));
         }
         else
         {
@@ -1216,7 +1219,7 @@ namespace EMotionFX
     {
         if (numItems == MCORE_INVALIDINDEX32)
         {
-            mMorphSubMotionMap.Resize(mMorphSubMotions.GetLength());
+            mMorphSubMotionMap.Resize(static_cast<uint32>(mMorphSubMotions.size()));
         }
         else
         {
@@ -1255,10 +1258,8 @@ namespace EMotionFX
         mScale *= scaleFactor;
 
         // modify all submotions
-        const uint32 numSubMotions = mSubMotions.GetLength();
-        for (uint32 i = 0; i < numSubMotions; ++i)
+        for (SkeletalSubMotion* subMotion : mSubMotions)
         {
-            SkeletalSubMotion* subMotion = mSubMotions[i];
             subMotion->SetBindPosePos(subMotion->GetBindPosePos() * scaleFactor);
             subMotion->SetPosePos(subMotion->GetPosePos() * scaleFactor);
         }

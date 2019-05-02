@@ -21,9 +21,10 @@ namespace AssetProcessor
         , m_assetScannerWorker(config)
         , m_status(AssetScanningStatus::Unknown)
     {
-        m_assetScannerWorker.moveToThread(&m_assetWorkerScannerThread);
-        QObject::connect(&m_assetScannerWorker, SIGNAL(FileOfInterestFound(QString)), this, SIGNAL(FileOfInterestFound(QString)));
-        QObject::connect(&m_assetScannerWorker, SIGNAL(FolderOfInterestFound(QString)), this, SIGNAL(FolderOfInterestFound(QString)));
+        m_assetScannerWorker.moveToThread( &m_assetWorkerScannerThread );
+
+        QObject::connect( &m_assetScannerWorker, &AssetScannerWorker::FilesFound, this, &AssetScanner::FilesFound );
+        QObject::connect( &m_assetScannerWorker, &AssetScannerWorker::FoldersFound, this, &AssetScanner::FoldersFound );
 
         QObject::connect(&m_assetScannerWorker, &AssetScannerWorker::ScanningStateChanged, this,
             [this](AssetProcessor::AssetScanningStatus status)
@@ -47,8 +48,13 @@ namespace AssetProcessor
 
     void AssetScanner::StartScan()
     {
-        m_assetWorkerScannerThread.setObjectName("AssetScannerWorker");
-        m_assetWorkerScannerThread.start();
+        if (!m_workerCreated)
+        {
+            m_workerCreated = true;
+            m_assetWorkerScannerThread.setObjectName("AssetScannerWorker");
+            m_assetWorkerScannerThread.start();
+        }
+
         QMetaObject::invokeMethod(&m_assetScannerWorker, "StartScan", Qt::QueuedConnection);
     }
 

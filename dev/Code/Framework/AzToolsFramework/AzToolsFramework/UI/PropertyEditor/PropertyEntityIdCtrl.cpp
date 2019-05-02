@@ -22,6 +22,7 @@
 #include <AzToolsFramework/Entity/EditorEntityContextPickingBus.h>
 #include <AzToolsFramework/Entity/EditorEntityHelpers.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QHBoxLayout>
@@ -51,6 +52,7 @@ namespace AzToolsFramework
         m_entityIdLabel->setFixedHeight(PropertyQTConstant_DefaultHeight);
         m_entityIdLabel->setFrameShape(QFrame::Panel);
         m_entityIdLabel->setFrameShadow(QFrame::Sunken);
+        m_entityIdLabel->setTextInteractionFlags(Qt::NoTextInteraction);
         m_entityIdLabel->setFocusPolicy(Qt::StrongFocus);
 
         m_pickButton = aznew QPushButton(this);
@@ -117,15 +119,30 @@ namespace AzToolsFramework
 
     void PropertyEntityIdCtrl::InitObjectPickMode()
     {
+        AzFramework::EntityContextId pickModeEntityContextId = GetPickModeEntityContextId();
         EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
         if (!EditorPickModeRequests::Bus::Handler::BusIsConnected())
         {
-            emit OnPickStart();
+  	        emit OnPickStart();
             m_pickButton->setChecked(true);
-            EditorPickModeRequests::Bus::Handler::BusConnect();
+            EditorPickModeRequests::Bus::Handler::BusConnect(pickModeEntityContextId);
             AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
         }
-        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StartObjectPickMode);
+
+        if (!pickModeEntityContextId.IsNull())
+        {
+            EBUS_EVENT_ID(pickModeEntityContextId, AzToolsFramework::EditorPickModeRequests::Bus, StartObjectPickMode);
+        }
+        else
+        {
+            // Broadcast if the entity context is unknown
+            EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StartObjectPickMode);
+        }
+    }
+
+    AzFramework::EntityContextId PropertyEntityIdCtrl::GetPickModeEntityContextId()
+    {
+        return m_acceptedEntityContextId;
     }
 
     void PropertyEntityIdCtrl::CancelObjectPickMode()
@@ -172,7 +189,7 @@ namespace AzToolsFramework
     {
         if (event != nullptr &&
             IsCorrectMimeData(event->mimeData()) &&
-            EntityIdFromMimeData(*event->mimeData()).IsValid())
+            EntityIdsFromMimeData(*event->mimeData()))
         {
             m_entityIdLabel->setProperty("DropHighlight", true);
             m_entityIdLabel->style()->unpolish(m_entityIdLabel);
@@ -197,21 +214,41 @@ namespace AzToolsFramework
             return;
         }
 
-        AZ::EntityId droppedEntityId = EntityIdFromMimeData(*event->mimeData());
-        if (!droppedEntityId.IsValid())
+        AzToolsFramework::EditorEntityIdContainer entityIdListContainer;
+
+        if (EntityIdsFromMimeData(*event->mimeData(), &entityIdListContainer))
         {
-            return;
+            SetCurrentEntityId(entityIdListContainer.m_entityIds[0], true, "");
+
+            if (entityIdListContainer.m_entityIds.size() > 1)
+            {
+                // Pop the first element off the list (handled above) and then request new elements for the rest of the list
+                entityIdListContainer.m_entityIds.erase(entityIdListContainer.m_entityIds.begin());
+
+                // Need to pass this up to my parent if it is a container to properly handle this request
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::Bus::Events::AddElementsToParentContainer, const_cast<PropertyEntityIdCtrl*>(this), entityIdListContainer.m_entityIds.size(),
+                    [&entityIdListContainer](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
+                {
+                    (void)noDefaultData;
+                    if (classElement->m_typeId == azrtti_typeid<AZ::EntityId>())
+                    {
+                        *reinterpret_cast<AZ::EntityId*>(dataPtr) = entityIdListContainer.m_entityIds[0];
+                        entityIdListContainer.m_entityIds.erase(entityIdListContainer.m_entityIds.begin());
+                        return true;
+                    }
+                    return false;
+                }
+                );
+            }
+
+            event->acceptProposedAction();
         }
-
-        SetCurrentEntityId(droppedEntityId, true, "");
-
-        event->acceptProposedAction();
     }
 
-    bool PropertyEntityIdCtrl::IsCorrectMimeData(const QMimeData* data_) const
+    bool PropertyEntityIdCtrl::IsCorrectMimeData(const QMimeData* mimeData) const
     {
-        if (data_ == nullptr ||
-            !data_->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
+        if (mimeData == nullptr ||
+            !mimeData->hasFormat(AzToolsFramework::EditorEntityIdContainer::GetMimeType()))
         {
             return false;
         }
@@ -219,45 +256,45 @@ namespace AzToolsFramework
         return true;
     }
 
-    AZ::EntityId PropertyEntityIdCtrl::EntityIdFromMimeData(const QMimeData& data_) const
+    bool PropertyEntityIdCtrl::EntityIdsFromMimeData(const QMimeData& mimeData, AzToolsFramework::EditorEntityIdContainer* entityIdListContainer) const
     {
-        AZ::EntityId entityIdResult;
-
-        if (!IsCorrectMimeData(&data_))
+        if (!IsCorrectMimeData(&mimeData))
         {
-            return entityIdResult;
+            return false;
         }
 
-        QByteArray arrayData = data_.data(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
+        QByteArray arrayData = mimeData.data(AzToolsFramework::EditorEntityIdContainer::GetMimeType());
 
-        AzToolsFramework::EditorEntityIdContainer entityIdListContainer;
-        if (!entityIdListContainer.FromBuffer(arrayData.constData(), arrayData.size()))
+        AzToolsFramework::EditorEntityIdContainer tempContainer;
+
+        if (!entityIdListContainer)
         {
-            return entityIdResult;
+            entityIdListContainer = &tempContainer;
         }
-        // The behavior of dragging an entity onto this control is much less confusing,
-        // and much more predictable, if only one entity can be dropped.
-        if (entityIdListContainer.m_entityIds.empty() ||
-            entityIdListContainer.m_entityIds.size() > 1)
+
+        if (!entityIdListContainer->FromBuffer(arrayData.constData(), arrayData.size()))
         {
-            return entityIdResult;
+            return false;
+        }
+
+        if (entityIdListContainer->m_entityIds.empty())
+        {
+            return false;
         }
 
         if (!m_acceptedEntityContextId.IsNull())
         {
             // Check that the entity's owning context matches the one that this control accepts
             AzFramework::EntityContextId contextId = AzFramework::EntityContextId::CreateNull();
-            EBUS_EVENT_ID_RESULT(contextId, entityIdListContainer.m_entityIds[0], AzFramework::EntityIdContextQueryBus, GetOwningContextId);
+            AzFramework::EntityIdContextQueryBus::EventResult(contextId, entityIdListContainer->m_entityIds[0], &AzFramework::EntityIdContextQueryBus::Events::GetOwningContextId);
 
             if (contextId != m_acceptedEntityContextId)
             {
-                return entityIdResult;
+                return false;
             }
         }
 
-        entityIdResult = entityIdListContainer.m_entityIds[0];
-
-        return entityIdResult;
+        return true;
     }
 
     AZ::EntityId PropertyEntityIdCtrl::GetEntityId() const

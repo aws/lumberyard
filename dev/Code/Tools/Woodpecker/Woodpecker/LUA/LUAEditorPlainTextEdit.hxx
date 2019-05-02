@@ -29,7 +29,9 @@ namespace LUAEditor
 
         LUAEditorPlainTextEdit(QWidget *pParent = nullptr);
         virtual ~LUAEditorPlainTextEdit();
-        
+
+        void SetTabSize(int tabSize) { m_tabSize = tabSize; }
+        void SetUseSpaces(bool useSpaces) { m_useSpaces = useSpaces; }
         void UpdateFont(QFont font, int tabSize);
         void SetGetLuaName(AZStd::function<QString(const QTextCursor&)> lambda) { m_getLUAName = lambda; }
 
@@ -45,6 +47,8 @@ namespace LUAEditor
         class Completer* m_completer;
         class CompletionModel* m_completionModel;
         AZStd::function<QString(const QTextCursor&)> m_getLUAName;
+        int m_tabSize = 4;
+        bool m_useSpaces = false;
 
         bool HandleIndentKeyPress(QKeyEvent* event);
         bool HandleHomeKeyPress(QKeyEvent* event);

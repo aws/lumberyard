@@ -55,6 +55,11 @@ namespace RoadsAndRivers
         }
     }
 
+    // Arbitrary maximum width that we allow.  This could be increased over time if it's verified
+    // that the renderer can handle the extra geometry.  Right now, the RoadRenderNode code has hard
+    // limits of 32K vertices that can easily be overflowed if the width gets too large.
+    const float SplineGeometryWidthModifier::s_maxWidth = 50.0f;
+
     static const AZ::Vector2 SegmentLengthRange { 0.5f, 10.0f };
 
     void SplineGeometryWidthModifier::SetWidthAtIndex(AZ::u32 index, float width)
@@ -124,6 +129,11 @@ namespace RoadsAndRivers
     {
         AZ::ConstSplinePtr spline = nullptr;
         LmbrCentral::SplineComponentRequestBus::EventResult(spline, m_entityId, &LmbrCentral::SplineComponentRequests::GetSpline);
+
+        if (!spline)
+        {
+            return;
+        }
 
         auto addChunkAtSplineDist = [spline, this](float t)
         {
@@ -324,6 +334,18 @@ namespace RoadsAndRivers
         return false;
     }
 
+    SplineGeometry& SplineGeometry::operator=(const SplineGeometry& rhs)
+    {
+        m_widthModifiers = rhs.m_widthModifiers;
+        m_segmentLength = rhs.m_segmentLength;
+        m_tileLength = rhs.m_tileLength;
+        m_sortPriority = rhs.m_sortPriority;
+        m_viewDistanceMultiplier = rhs.m_viewDistanceMultiplier;
+        m_minSpec = rhs.m_minSpec;
+
+        return *this;
+    }
+
     void SplineGeometry::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -399,6 +421,7 @@ namespace RoadsAndRivers
         }
     }
 
+
     void SplineGeometryWidthModifier::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -413,13 +436,29 @@ namespace RoadsAndRivers
             {
                 editContext->Class<SplineGeometryWidthModifier>("Width", "")
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &SplineGeometryWidthModifier::m_globalWidth, "Global width", "")
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
-                    ->Attribute(AZ::Edit::Attributes::Max, 50.0f)
-                    ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &SplineGeometryWidthModifier::m_variableWidth, "Per-Vertex Width Modifiers", "")
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
+                        ->Attribute(AZ::Edit::Attributes::Max, s_maxWidth)
+                        ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &SplineGeometryWidthModifier::m_variableWidth, "Per-Vertex Width Modifiers", "")
                     ;
             }
         }
+    }
+
+    SplineGeometryWidthModifier::SplineGeometryWidthModifier()
+    {
+        // To get sliders on our per-vertex attributes, we'll need to use a dynamic edit data provider
+        // to override the editContext attributes in this specific instance of a SplineAttribute<float>.  
+        AZ::Edit::ElementData variableWidthEditData;
+        variableWidthEditData.m_elementId = AZ::Edit::UIHandlers::Slider;
+        variableWidthEditData.m_attributes.push_back(AZ::AttributePair(AZ::Edit::Attributes::Min, aznew AZ::Edit::AttributeData<float>(-s_maxWidth)));
+        variableWidthEditData.m_attributes.push_back(AZ::AttributePair(AZ::Edit::Attributes::Max, aznew AZ::Edit::AttributeData<float>(s_maxWidth)));
+        variableWidthEditData.m_attributes.push_back(AZ::AttributePair(AZ::Edit::Attributes::Step, aznew AZ::Edit::AttributeData<float>(0.1f)));
+        // We don't need to fill out name or description because these don't get displayed for arrays of values
+        variableWidthEditData.m_name = "";
+        variableWidthEditData.m_description = "";
+
+        m_variableWidth.SetElementEditData(variableWidthEditData);
     }
 
     void SplineGeometryWidthModifier::Activate(AZ::EntityId entityId)

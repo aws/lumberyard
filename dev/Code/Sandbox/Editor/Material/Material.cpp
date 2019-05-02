@@ -1020,7 +1020,7 @@ void CMaterial::Serialize(SerializeContext& ctx)
         if (!IsMultiSubMaterial())
         {
             // store shader gen bit mask string
-            m_pszShaderGenMask = GetIEditor()->GetRenderer()->EF_GetStringFromShaderGlobalMaskGen(m_shaderName.toUtf8().data(), m_nShaderGenMask);
+            m_pszShaderGenMask = GetIEditor()->GetRenderer()->EF_GetStringFromShaderGlobalMaskGen(m_shaderName.toUtf8().data(), m_nShaderGenMask).c_str();
 
             node->setAttr("Shader", m_shaderName.toUtf8().data());
             node->setAttr("GenMask", m_nShaderGenMask);

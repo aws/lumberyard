@@ -158,7 +158,11 @@ void SRemoteServer::Run()
     SetName(kServerThreadName);
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION REMOTECONSOLECORE_CPP_SECTION_1
-    #include AZ_RESTRICTED_FILE(RemoteConsoleCore_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteConsoleCore_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteConsoleCore_cpp_provo.inl"
+    #endif
 #endif
 
     AZSOCKET sClient;
@@ -352,7 +356,11 @@ void SRemoteClient::Run()
     SetName(kClientThreadName);
 #if defined(AZ_RESTRICTED_PLATFORM)
     #define AZ_RESTRICTED_SECTION REMOTECONSOLECORE_CPP_SECTION_2
-    #include AZ_RESTRICTED_FILE(RemoteConsoleCore_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RemoteConsoleCore_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RemoteConsoleCore_cpp_provo.inl"
+    #endif
 #endif
 
     char szBuff[kDefaultBufferSize];

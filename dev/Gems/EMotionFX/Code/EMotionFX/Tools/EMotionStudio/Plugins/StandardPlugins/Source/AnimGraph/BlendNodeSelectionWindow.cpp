@@ -10,33 +10,23 @@
 *
 */
 
-// include the required headers
-#include "BlendNodeSelectionWindow.h"
-#include "../../../../EMStudioSDK/Source/EMStudioManager.h"
-#include <MCore/Source/LogManager.h>
-#include <EMotionFX/Source/Mesh.h>
-#include <QLabel>
-#include <QSizePolicy>
-#include <QTreeWidget>
-#include <QPixmap>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphHierarchyWidget.h>
+#include <EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendNodeSelectionWindow.h>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <QIcon>
-#include <QLineEdit>
-#include <QGraphicsDropShadowEffect>
 
 
 namespace EMStudio
 {
     // constructor
-    BlendNodeSelectionWindow::BlendNodeSelectionWindow(QWidget* parent, bool useSingleSelection, CommandSystem::SelectionList* selectionList, const AZ::TypeId& visibilityFilterNode, bool showStatesOnly)
+    BlendNodeSelectionWindow::BlendNodeSelectionWindow(QWidget* parent)
         : QDialog(parent)
     {
         setWindowTitle("Blend Node Selection Window");
 
         QVBoxLayout* layout = new QVBoxLayout();
 
-        mHierarchyWidget = new AnimGraphHierarchyWidget(this, useSingleSelection, selectionList, visibilityFilterNode, showStatesOnly);
+        mHierarchyWidget = new AnimGraphHierarchyWidget(this);
 
         // create the ok and cancel buttons
         QHBoxLayout* buttonLayout = new QHBoxLayout();
@@ -49,18 +39,14 @@ namespace EMStudio
         layout->addLayout(buttonLayout);
         setLayout(layout);
 
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(mCancelButton, SIGNAL(clicked()), this, SLOT(reject()));
-        connect(this, SIGNAL(accepted()), this, SLOT(OnAccept()));
-        //connect(this, SIGNAL(rejected()), this, SLOT(OnPressedCancel()));
-        connect(mHierarchyWidget, SIGNAL(OnSelectionDone(MCore::Array<AnimGraphSelectionItem>)), this, SLOT(OnNodeSelected(MCore::Array<AnimGraphSelectionItem>)));
+        setMinimumSize(QSize(400, 400));
 
-        // connect the window activation signal to refresh if reactivated
-        //connect( this, SIGNAL(visibilityChanged(bool)), this, SLOT(OnVisibilityChanged(bool)) );
+        mOKButton->setEnabled(false);
 
-        // set the selection mode
-        mHierarchyWidget->SetSelectionMode(useSingleSelection);
-        mUseSingleSelection = useSingleSelection;
+        connect(mOKButton, &QPushButton::clicked, this, &BlendNodeSelectionWindow::accept);
+        connect(mCancelButton, &QPushButton::clicked, this, &BlendNodeSelectionWindow::reject);
+        connect(mHierarchyWidget, &AnimGraphHierarchyWidget::OnSelectionDone, this, &BlendNodeSelectionWindow::OnNodeSelected);
+        connect(mHierarchyWidget, &AnimGraphHierarchyWidget::OnSelectionChanged, this, &BlendNodeSelectionWindow::OnSelectionChanged);
     }
 
 
@@ -70,9 +56,8 @@ namespace EMStudio
     }
 
 
-    void BlendNodeSelectionWindow::OnNodeSelected(MCore::Array<AnimGraphSelectionItem> selection)
+    void BlendNodeSelectionWindow::OnNodeSelected()
     {
-        MCORE_UNUSED(selection);
         if (mUseSingleSelection)
         {
             accept();
@@ -80,13 +65,14 @@ namespace EMStudio
     }
 
 
-    void BlendNodeSelectionWindow::OnAccept()
+    void BlendNodeSelectionWindow::OnSelectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
     {
-        if (mUseSingleSelection == false)
-        {
-            mHierarchyWidget->FireSelectionDoneSignal();
-        }
+        AZ_UNUSED(selected);
+        AZ_UNUSED(deselected);
+
+        mOKButton->setEnabled(mHierarchyWidget->HasSelectedItems());
     }
+
 } // namespace EMStudio
 
 #include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/BlendNodeSelectionWindow.moc>

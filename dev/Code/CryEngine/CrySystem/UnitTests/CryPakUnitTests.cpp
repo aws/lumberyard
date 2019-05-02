@@ -14,11 +14,13 @@
 #include <AzTest/AzTest.h>
 #include <CryPak.h>
 
+#include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/IO/SystemFile.h> // for max path decl
 #include <AzCore/std/parallel/thread.h>
 #include <AzCore/std/parallel/semaphore.h>
 #include <CryPakFileIO.h>
 #include <AzCore/std/functional.h> // for function<> in the find files callback.
+#include <AzFramework/IO/LocalFileIO.h>
 
 namespace CryPakUnitTests
 {
@@ -1331,4 +1333,113 @@ namespace CryPakUnitTests
     }
     */
 
+    class CryPakUnitTestsWithAllocators
+        : public ::testing::Test
+    {
+    protected:
+
+        void SetUp() override
+        {
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+            AZ::AllocatorInstance<CryStringAllocator>::Create();
+            m_localFileIO = aznew AZ::IO::LocalFileIO();
+            AZ::IO::FileIOBase::SetDirectInstance(m_localFileIO);
+            m_localFileIO->SetAlias(m_firstAlias.c_str(), m_firstAliasReplaced.c_str());
+            m_localFileIO->SetAlias(m_secondAlias.c_str(), m_secondAliasReplaced.c_str());
+        }
+
+        void TearDown() override
+        {
+            AZ::IO::FileIOBase::SetDirectInstance(nullptr);
+            delete m_localFileIO;
+            m_localFileIO = nullptr;
+            AZ::AllocatorInstance<CryStringAllocator>::Destroy();
+            AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+        }
+
+        AZ::IO::FileIOBase* m_localFileIO = nullptr;
+        AZStd::string m_firstAlias = "@devassets@";
+        AZStd::string m_firstAliasReplaced = "@devassetsreplaced@";
+        AZStd::string m_secondAlias = "@assets@";
+        AZStd::string m_secondAliasReplaced = "@assetsreplaced@";
+    };
+
+    // ConvertAbsolutePathToAliasedPath tests are built to verify existing behavior doesn't change.
+    // Tt's a legacy function and the actual intended behavior is unknown, so these are black box unit tests.
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NullString_ReturnsSuccess)
+    {
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(nullptr);
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        // ConvertAbsolutePathToAliasedPath returns string(sourcePath) if sourcePath is nullptr.
+        string fromNull(nullptr);
+        EXPECT_EQ(conversionResult.GetValue().compare(fromNull),0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NoAliasInSource_ReturnsSource)
+    {
+        AZStd::string sourceString("NoAlias");
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(sourceString.c_str());
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        // ConvertAbsolutePathToAliasedPath returns sourceString if there is no alias in the source.
+        EXPECT_EQ(conversionResult.GetValue().compare(sourceString.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NullAliasToLookFor_ReturnsSource)
+    {
+        AZStd::string sourceString("NoAlias");
+        AZ::Outcome<string, AZStd::string> conversionResult = 
+            CryPakInternal::ConvertAbsolutePathToAliasedPath(sourceString.c_str(), nullptr);
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_EQ(conversionResult.GetValue().compare(sourceString.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NullAliasToReplaceWith_ReturnsSource)
+    {
+        AZStd::string sourceString("NoAlias");
+        AZ::Outcome<string, AZStd::string> conversionResult =
+            CryPakInternal::ConvertAbsolutePathToAliasedPath(sourceString.c_str(), "@SomeAlias", nullptr);
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_EQ(conversionResult.GetValue().compare(sourceString.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_NullAliases_ReturnsSource)
+    {
+        AZStd::string sourceString("NoAlias");
+        AZ::Outcome<string, AZStd::string> conversionResult = 
+            CryPakInternal::ConvertAbsolutePathToAliasedPath(sourceString.c_str(), nullptr, nullptr);
+        EXPECT_TRUE(conversionResult.IsSuccess());
+        EXPECT_EQ(conversionResult.GetValue().compare(sourceString.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_AliasInSource_ReturnsReplacedAlias)
+    {
+        // ConvertAbsolutePathToAliasedPath only replaces data if GetDirectInstance is valid.
+        EXPECT_TRUE(AZ::IO::FileIOBase::GetDirectInstance() != nullptr);
+
+        AZStd::string sourceStringNoFormat("%sSomeStringWithAlias");
+
+        AZStd::string resolvedFirstAlias = AZ::IO::FileIOBase::GetDirectInstance()->GetAlias(m_firstAlias.c_str());
+        AZStd::string sourceString(AZStd::string::format(sourceStringNoFormat.c_str(), resolvedFirstAlias.c_str()));
+
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(
+            sourceString.c_str(),
+            m_firstAlias.c_str(),
+            m_secondAlias.c_str());
+        EXPECT_TRUE(conversionResult.IsSuccess());
+
+        // This expected result is based on the current behavior of this system. It may not seem correct,
+        // but the purpose of this unit test is to help understand the black box behavior of ConvertAbsolutePathToAliasedPath.
+        AZStd::string expectedResult("@assets@\\omeStringWithAlias");
+        EXPECT_EQ(conversionResult.GetValue().compare(expectedResult.c_str()), 0);
+    }
+
+    TEST_F(CryPakUnitTestsWithAllocators, ConvertAbsolutePathToAliasedPath_SourceLongerThanMaxPath_ReturnsFailure)
+    {
+        const int longPathArraySize = AZ_MAX_PATH_LEN + 2;
+        char longPath[longPathArraySize];
+        memset(longPath, 'a', sizeof(char)*longPathArraySize);
+        longPath[longPathArraySize-1] = '\0';
+        AZ::Outcome<string, AZStd::string> conversionResult = CryPakInternal::ConvertAbsolutePathToAliasedPath(longPath);
+        EXPECT_FALSE(conversionResult.IsSuccess());
+    }
 }

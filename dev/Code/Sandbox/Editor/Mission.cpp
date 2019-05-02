@@ -299,7 +299,7 @@ void CMission::Export(XmlNodeRef& root, XmlNodeRef& objectsNode)
     //////////////////////////////////////////////////////////////////////////
     // Serialize objects.
     //////////////////////////////////////////////////////////////////////////
-    QString path = QDir::toNativeSeparators(QFileInfo(m_doc->GetPathName()).absolutePath());
+    QString path = QDir::toNativeSeparators(QFileInfo(m_doc->GetLevelPathName()).absolutePath());
     if (!path.endsWith(QDir::separator()))
         path += QDir::separator();
 
@@ -319,22 +319,6 @@ void CMission::Export(XmlNodeRef& root, XmlNodeRef& objectsNode)
     objectManager.Serialize( loadRoot,true,SERIALIZE_ALL );
     objectManager.Export( path,objects,false );
     */
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CMission::ExportLegacyAnimations(XmlNodeRef& root)
-{
-    XmlNodeRef mission = XmlHelpers::CreateXmlNode("Mission");
-    mission->setAttr("Name", m_name.toUtf8().data());
-
-    XmlNodeRef movieDataNode = XmlHelpers::CreateXmlNode("MovieData");
-    GetIEditor()->GetMovieSystem()->Serialize(movieDataNode, false);
-
-    for (int i = 0; i < movieDataNode->getChildCount(); i++)
-    {
-        mission->addChild(movieDataNode->getChild(i));
-    }
-    root->addChild(mission);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -386,12 +370,6 @@ void CMission::SyncContent(bool bRetrieve, bool bIgnoreObjects, bool bSkipLoadin
         {
             pVegetationMap->OnHeightMapChanged();
         }
-
-        if (m_Animations)
-        {
-            GetIEditor()->GetMovieSystem()->Serialize(m_Animations, true);
-        }
-        GetIEditor()->Notify(eNotify_OnReloadTrackView);
 
         if (!bSkipLoadingAI)
         {

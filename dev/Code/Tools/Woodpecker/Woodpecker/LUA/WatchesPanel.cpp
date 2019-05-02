@@ -153,6 +153,13 @@ void DHWatchesWidget::BreakpointHit(const LUAEditor::Breakpoint& bp)
     {
         CaptureVariables();
     }
+    else // m_OperatingMode == WATCHES_MODE_LOCALS
+    {
+        if (isVisible())
+        {
+            EBUS_EVENT(LUAEditor::LUAEditorDebuggerMessages::Bus, EnumLocals);
+        }
+    }
 }
 
 void DHWatchesWidget::WatchesUpdate(const AZ::ScriptContextDebug::DebugValue& topmostDebugReference)

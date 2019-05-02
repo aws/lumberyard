@@ -50,6 +50,7 @@
 #include <IAISystem.h>
 #include "IPlatformOS.h"
 #include <CryProfileMarker.h>
+#include <ThermalInfo.h>
 
 
 
@@ -1445,8 +1446,13 @@ void C3DEngine::UpdatePreRender(const SRenderingPassInfo& passInfo)
     // (bethelz) This has to happen before particle updates.
     m_PhysicsAreaUpdates.Update();
 
-    // Update particle system as late as possible, only renderer is dependent on it.
-    m_pPartManager->Update();
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (!passInfo.IsRenderSceneToTexturePass())
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    {
+        // Update particle system as late as possible, only renderer is dependent on it.
+        m_pPartManager->Update();
+    }
 
     if (passInfo.RenderClouds())
     {
@@ -1832,7 +1838,11 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
         m_pObjManager->RenderBufferedRenderMeshes(passInfo);
     }
 
-    GetRenderer()->EF_InvokeShadowMapRenderJobs(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags);
+    // don't start shadow jobs if we aren't generating shadows
+    if ((nRenderFlags & SHDF_NO_SHADOWGEN) == 0)
+    {
+        GetRenderer()->EF_InvokeShadowMapRenderJobs(IsShadersSyncLoad() ? (nRenderFlags | SHDF_NOASYNC | SHDF_STREAM_SYNC) : nRenderFlags);
+    }
 
     if (m_pTerrain != nullptr)
     {
@@ -1890,7 +1900,7 @@ void C3DEngine::RenderScene(const int nRenderFlags, const SRenderingPassInfo& pa
     gEnv->pRenderer->EF_Query(EFQ_RenderMultithreaded, bIsMultiThreadedRenderer);
     if (bIsMultiThreadedRenderer)
     {
-        gEnv->pRenderer->EndSpawningGeneratingRendItemJobs(passInfo.ThreadID());
+        gEnv->pRenderer->EndSpawningGeneratingRendItemJobs();
     }
 
     m_bIsInRenderScene = false;
@@ -3213,6 +3223,38 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 #undef TICKS_TO_MS
 #undef CONVY
 #undef CONVX
+
+    //////////////////////////////////////////////////////////////////////////
+    // Display Thermal information of the device (if supported)
+    //////////////////////////////////////////////////////////////////////////
+
+    if (ThermalInfoRequestsBus::GetTotalNumOfEventHandlers())
+    {
+        const int thermalSensorCount = static_cast<int>(ThermalSensorType::Count);
+        const char* sensorStrings[thermalSensorCount] = { "CPU", "GPU", "Battery" };
+        for (int i = 0; i < thermalSensorCount; ++i)
+        {
+            float temperature = 0.f;
+            ThermalSensorType sensor = static_cast<ThermalSensorType>(i);
+            EBUS_EVENT_RESULT(temperature, ThermalInfoRequestsBus, GetSensorTemp, sensor);
+            AZStd::string tempText;
+            ColorF tempColor;
+            if (temperature > 0.f)
+            {
+                float overheatingTemp = 0.f;
+                EBUS_EVENT_RESULT(overheatingTemp, ThermalInfoRequestsBus, GetSensorOverheatingTemp, sensor);
+                tempText = AZStd::string::format(" %.1f C", temperature);
+                tempColor = temperature >= overheatingTemp ? Col_Red : Col_White;
+            }
+            else
+            {
+                tempText = "N/A";
+                tempColor = Col_White;
+            }
+            DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, DISPLAY_INFO_SCALE, tempColor, "%s Temp %s", sensorStrings[i], tempText.c_str());
+        }       
+    }
+
     //////////////////////////////////////////////////////////////////////////
     // Display Current fps
     //////////////////////////////////////////////////////////////////////////
@@ -3661,6 +3703,15 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
 void C3DEngine::SetupDistanceFog()
 {
     FUNCTION_PROFILER_3DENGINE;
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // render to texture does not support volumetric fog 
+    if (GetRenderer()->IsRenderToTextureActive() && (GetCVars()->e_VolumetricFog != 0))
+    {
+        GetRenderer()->EnableFog(false);
+        return;
+    }
+#endif // AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
     GetRenderer()->SetFogColor(ColorF(m_vFogColor.x, m_vFogColor.y, m_vFogColor.z, 1.0f));
     GetRenderer()->EnableFog(GetCVars()->e_Fog > 0);

@@ -15,13 +15,13 @@
 // include MCore related files
 #include "EMotionFXConfig.h"
 #include "BaseObject.h"
+#include "Pose.h"
 
 
 namespace EMotionFX
 {
     // forward declarations
     class ActorInstance;
-
 
     /**
      * The attachment base class.
@@ -49,18 +49,25 @@ namespace EMotionFX
         virtual const char* GetTypeString() const = 0;
 
         /**
-         * Check if this attachment is being influenced by multiple nodes or not.
-         * This is the case for attachments such as clothing items which get influenced by multiple nodes/bones inside the actor instance they are attached to.
-         * @result Returns true if it is influenced by multiple nodes, otherwise false is returned.
+         * Check if this attachment is being influenced by multiple joints or not.
+         * This is the case for attachments such as clothing items which get influenced by multiple joints inside the actor instance they are attached to.
+         * @result Returns true if it is influenced by multiple joints, otherwise false is returned.
          */
-        virtual bool GetIsInfluencedByMultipleNodes() const = 0;
+        virtual bool GetIsInfluencedByMultipleJoints() const = 0;
 
         /**
          * Update the attachment.
          * This can internally update node matrices for example, or other things.
          * This depends on the attachment type.
          */
-        virtual void Update() = 0;
+        virtual void Update() {}
+
+        /**
+         * Update the joint transforms of the attachment.
+         * This can be implemented for say skin attachments, which copy over joint transforms from the actor instance they are attached to.
+         * @param outPose The pose that will be modified.
+         */
+        virtual void UpdateJointTransforms(Pose& outPose) {}
 
         /**
          * Get the actor instance object of the attachment.
@@ -76,24 +83,9 @@ namespace EMotionFX
          */
         ActorInstance* GetAttachToActorInstance() const;
 
-        /**
-         * Enable or disable fast update mode.
-         * Fast updates mean that certain calculations will be skipped when updating the attachment.
-         * @param allowFastUpdates Set to false to disable, and true to enable fast updates of deformable attachments.
-         */
-        void SetAllowFastUpdates(bool allowFastUpdates);
-
-        /**
-         * Check if this actor instance allows fast updates or not.
-         * Fast updates mean that certain calculations will be skipped when updating the attachment.
-         * @result Returns true when fast update mode is enabled, otherwise false is returned.
-         */
-        bool GetAllowFastUpdates() const;
-
     protected:
-        ActorInstance*  mAttachment;        /**< The actor instance that represents the attachment. */
-        ActorInstance*  mActorInstance;     /**< The actor instance where this attachment is added to. */
-        bool            mFastUpdateMode;    /**< Enable to allow fast update mode [default=false]. */
+        ActorInstance*  m_attachment;        /**< The actor instance that represents the attachment. */
+        ActorInstance*  m_actorInstance;     /**< The actor instance where this attachment is added to. */
 
         /**
          * The constructor.

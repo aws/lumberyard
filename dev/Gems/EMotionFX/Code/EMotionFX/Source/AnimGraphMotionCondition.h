@@ -15,6 +15,7 @@
 #include <EMotionFX/Source/EMotionFXConfig.h>
 #include <EMotionFX/Source/EventHandler.h>
 #include <EMotionFX/Source/AnimGraphTransitionCondition.h>
+#include <EMotionFX/Source/Event.h>
 
 
 namespace EMotionFX
@@ -60,12 +61,10 @@ namespace EMotionFX
             AZ_CLASS_ALLOCATOR_DECL
 
             UniqueData(AnimGraphObject* object, AnimGraphInstance* animGraphInstance, MotionInstance* motionInstance);
-            ~UniqueData();
+            ~UniqueData() = default;
 
         public:
             MotionInstance*                             mMotionInstance;
-            AnimGraphMotionCondition::EventHandler*     mEventHandler;
-            bool                                        mTriggered;
         };
 
         AnimGraphMotionCondition();
@@ -78,8 +77,6 @@ namespace EMotionFX
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         void OnRemoveNode(AnimGraph* animGraph, AnimGraphNode* nodeToRemove) override;
 
-        void Reset(AnimGraphInstance* animGraphInstance) override;
-
         void GetSummary(AZStd::string* outResult) const override;
         void GetTooltip(AZStd::string* outResult) const override;
         const char* GetPaletteName() const override;
@@ -90,11 +87,8 @@ namespace EMotionFX
         TestFunction GetTestFunction() const;
         const char* GetTestFunctionString() const;
 
-        void SetEventType(const AZStd::string& eventType);
-        const AZStd::string& GetEventType() const;
-
-        void SetEventParameter(const AZStd::string& eventParameter);
-        const AZStd::string& GetEventParameter() const;
+        void SetEventDatas(EventDataSet&& eventData);
+        const EventDataSet& GetEventDatas() const;
 
         void SetMotionNodeId(AnimGraphNodeId motionNodeId);
         AnimGraphNodeId GetMotionNodeId() const;
@@ -111,27 +105,6 @@ namespace EMotionFX
         static void Reflect(AZ::ReflectContext* context);
 
     private:
-        // the motion instance event handler
-        class EventHandler
-            : public MotionInstanceEventHandler
-        {
-        public:
-            AZ_CLASS_ALLOCATOR_DECL
-
-            static EventHandler* Create(AnimGraphMotionCondition* condition, UniqueData* uniqueData);
-
-            void OnEvent(const EventInfo& eventInfo) override;
-            void OnHasLooped() override;
-            void OnIsFrozenAtLastFrame() override;
-            void OnDeleteMotionInstance() override;
-
-        private:
-            AnimGraphMotionCondition*  mCondition;
-            UniqueData*                mUniqueData;
-
-            EventHandler(AnimGraphMotionCondition* condition, UniqueData* uniqueData);
-            ~EventHandler();
-        };
 
         AZ::Crc32 GetNumLoopsVisibility() const;
         AZ::Crc32 GetPlayTimeVisibility() const;
@@ -145,8 +118,7 @@ namespace EMotionFX
         static const char* s_functionIsMotionAssigned;
         static const char* s_functionIsMotionNotAssigned;
 
-        AZStd::string           m_eventType;
-        AZStd::string           m_eventParameter;
+        EventDataSet            m_eventDatas;
         AZ::u64                 m_motionNodeId;
         AnimGraphMotionNode*    m_motionNode;
         AZ::u32                 m_numLoops;

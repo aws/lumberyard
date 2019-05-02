@@ -46,6 +46,7 @@ namespace AzQtComponents
     void StyledLineEdit::focusInEvent(QFocusEvent* event)
     {
         adaptColorText();
+        emit(onFocus()); // Required for focus dependent custom widgets, e.g. ConfigStringLineEditCtrl.
         QLineEdit::focusInEvent(event);
     }
 

@@ -1239,20 +1239,25 @@ void C3DEngine::UpdateRenderingCamera(const char* szCallerName, const SRendering
         }
     }
 
-    /////////////////////////////////////////////////////////////////////////////
-    // Update Foliage
-    float dt = GetTimer()->GetFrameTime();
-    CStatObjFoliage* pFoliage, * pFoliageNext;
-    for (pFoliage = m_pFirstFoliage; &pFoliage->m_next != &m_pFirstFoliage; pFoliage = pFoliageNext)
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    if (!passInfo.IsRenderSceneToTexturePass())
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
     {
-        pFoliageNext = pFoliage->m_next;
-        pFoliage->Update(dt, GetRenderingCamera());
-    }
-    for (int i = m_arrEntsInFoliage.size() - 1; i >= 0; i--)
-    {
-        if ((m_arrEntsInFoliage[i].timeIdle += dt) > 0.3f)
+        /////////////////////////////////////////////////////////////////////////////
+        // Update Foliage
+        float dt = GetTimer()->GetFrameTime();
+        CStatObjFoliage* pFoliage, *pFoliageNext;
+        for (pFoliage = m_pFirstFoliage; &pFoliage->m_next != &m_pFirstFoliage; pFoliage = pFoliageNext)
         {
-            RemoveEntInFoliage(i);
+            pFoliageNext = pFoliage->m_next;
+            pFoliage->Update(dt, GetRenderingCamera());
+        }
+        for (int i = m_arrEntsInFoliage.size() - 1; i >= 0; i--)
+        {
+            if ((m_arrEntsInFoliage[i].timeIdle += dt) > 0.3f)
+            {
+                RemoveEntInFoliage(i);
+            }
         }
     }
 
@@ -1702,6 +1707,15 @@ float C3DEngine::GetTerrainZ(int x, int y)
         return TERRAIN_BOTTOM_LEVEL;
     }
     return m_pTerrain ? m_pTerrain->GetZ(x, y) : 0;
+}
+
+int C3DEngine::GetTerrainSurfaceId(int x, int y)
+{
+    if (x < 0 || y < 0 || x >= CTerrain::GetTerrainSize() || y >= CTerrain::GetTerrainSize())
+    {
+        return TERRAIN_BOTTOM_LEVEL;
+    }
+    return m_pTerrain ? m_pTerrain->GetSurfaceWeight(x, y).PrimaryId() : 0;
 }
 
 bool C3DEngine::GetTerrainHole(int x, int y)
@@ -3360,14 +3374,19 @@ void C3DEngine::SetupBending(CRenderObject*& pObj, const IRenderNode* pNode, con
     }
 
     // Get/Update PhysAreaChanged Proxy
-    const uint32 nProxyId = pNode->m_pRNTmpData->nPhysAreaChangedProxyId;
-    if (nProxyId != ~0)
     {
-        m_PhysicsAreaUpdates.UpdateProxy(pNode, nProxyId);
-    }
-    else
-    {
-        pNode->m_pRNTmpData->nPhysAreaChangedProxyId = m_PhysicsAreaUpdates.CreateProxy(pNode, Area_Air);
+        // Lock to avoid a situation where two threads simultaneously find that nProxId is ~0,
+        // which would result in two physics proxies for the same render node which eventually leads to a crash
+        AUTO_LOCK(m_PhysicsAreaUpdates.m_Mutex);
+        const uint32 nProxyId = pNode->m_pRNTmpData->nPhysAreaChangedProxyId;
+        if (nProxyId != ~0)
+        {
+            m_PhysicsAreaUpdates.UpdateProxy(pNode, nProxyId);
+        }
+        else
+        {
+            pNode->m_pRNTmpData->nPhysAreaChangedProxyId = m_PhysicsAreaUpdates.CreateProxy(pNode, Area_Air);
+        }
     }
 
     CRNTmpData::SRNUserData& userData = pNode->m_pRNTmpData->userData;
@@ -4392,11 +4411,9 @@ bool C3DEngine::RenderMeshRayIntersection(IRenderMesh* pRenderMesh, SRayHitInfo&
 
 static SBending sBendRemoved;
 
-extern CryCriticalSection g_cCheckCreateRNTmpData;
-
 void C3DEngine::FreeRNTmpData(CRNTmpData** ppInfo)
 {
-    AUTO_LOCK(g_cCheckCreateRNTmpData);
+    AUTO_LOCK(m_checkCreateRNTmpData);
 
     CRNTmpData* pTmpRNTData = (*ppInfo);
 
@@ -4425,8 +4442,6 @@ void C3DEngine::FreeRNTmpData(CRNTmpData** ppInfo)
         m_elementFrameInfo[pTmpRNTData->nFrameInfoId].Reset();
         pTmpRNTData->nFrameInfoId = ~0;
     }
-
-    //  tmpRNTData->ReleaseUserData(GetRenderer());
 
     {
 #ifdef SUPP_HWOBJ_OCCL
@@ -4512,6 +4527,7 @@ void C3DEngine::UpdateRNTmpDataPool(bool bFreeAll)
                 if (pBackIter->bIsValid)
                 {
                     FreeRNTmpData(pBackIter->ppRNTmpData);
+                    pBackIter->bIsValid = false;
                 }
 
                 --pBackIter;
@@ -4569,7 +4585,7 @@ void C3DEngine::FreeRNTmpDataPool()
     // move all into m_LTPRootFree
     UpdateRNTmpDataPool(true);
 
-    AUTO_LOCK(g_cCheckCreateRNTmpData);
+    AUTO_LOCK(m_checkCreateRNTmpData);
     if (gEnv->mMainThreadId != CryGetCurrentThreadId())
     {
         CryFatalError("CRNTmpData should only be allocated and free'd on main thread.");
@@ -5409,7 +5425,12 @@ void C3DEngine::PhysicsAreaUpdates::GarbageCollect()
             // Replace invalid front element with back element
             // Note: No need to swap because we cut the data from the array at the end anyway
             memcpy(pFrontIter, pBackIter, sizeof(SPhysAreaNodeProxy));
-            pFrontIter->pRenderNode->m_pRNTmpData->nPhysAreaChangedProxyId = (uint32)(pFrontIter - pHead);
+            AZ_Assert(pFrontIter->pRenderNode && pFrontIter->pRenderNode->m_pRNTmpData, "The front iterator should have a valid m_pRNTmpData after the data from the valid back iterator has been copied to it.");
+            if (pFrontIter->pRenderNode && pFrontIter->pRenderNode->m_pRNTmpData)
+            {
+                pFrontIter->pRenderNode->m_pRNTmpData->nPhysAreaChangedProxyId = (uint32)(pFrontIter - pHead);
+            }
+			
             pBackIter->bIsValid = false;
 
             --pBackIter;

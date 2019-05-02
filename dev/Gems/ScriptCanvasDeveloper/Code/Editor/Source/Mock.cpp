@@ -12,6 +12,7 @@
 
 #include "precompiled.h"
 
+#include <AzCore/std/containers/set.h>
 #include <Editor/Nodes/NodeUtils.h>
 #include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>

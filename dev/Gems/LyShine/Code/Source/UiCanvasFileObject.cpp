@@ -15,6 +15,7 @@
 #include <AzCore/Serialization/Utils.h>
 #include <LyShine/UiSerializeHelpers.h>
 #include "UiCanvasComponent.h"
+#include "UiElementComponent.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,7 +487,7 @@ bool UiCanvasFileObject::VersionConverter(AZ::SerializeContext& context, AZ::Ser
 
         // recursively process the root element and all of its child elements, copying their child entities to the
         // entities container and replacing them with EntityIds
-        if (!UiSerialize::MoveEntityAndDescendantsToListAndReplaceWithEntityId(context, *rootElementNode, copiedEntities))
+        if (!UiElementComponent::MoveEntityAndDescendantsToListAndReplaceWithEntityId(context, *rootElementNode, -1, copiedEntities))
         {
             return false;
         }

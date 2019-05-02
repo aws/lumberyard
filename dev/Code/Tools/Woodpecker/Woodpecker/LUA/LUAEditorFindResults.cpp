@@ -111,6 +111,29 @@ namespace LUAEditor
         m_gui->m_resultsList->setFont(settings->GetFont());
         m_gui->m_foldingWidget->SetFont(settings->GetFont());
 
+        QString styleSheet = QString(R"(
+            QPlainTextEdit[readOnly="true"]:focus
+            {
+                background-color: %1;
+                selection-color: %3;
+                selection-background-color: %4;
+            }
+
+            QPlainTextEdit[readOnly="true"]:!focus
+            {
+                background-color: %2;
+                selection-color: %3;
+                selection-background-color: %4;
+            }
+        )");
+        styleSheet = styleSheet.arg(settings->GetTextReadOnlyFocusedBackgroundColor().name())
+                               .arg(settings->GetTextReadOnlyUnfocusedBackgroundColor().name())
+                               .arg(settings->GetTextSelectedColor().name())
+                               .arg(settings->GetTextSelectedBackgroundColor().name());
+
+        m_gui->m_resultsList->setStyleSheet(styleSheet);
+        m_resultLineHighlightColor = settings->GetFindResultsLineHighlightColor();
+
         m_highlighter = aznew FindResultsHighlighter(m_gui->m_resultsList->document());
     }
 
@@ -128,6 +151,17 @@ namespace LUAEditor
             if (userData)
             {
                 auto blockInfo = static_cast<FindResultsBlockInfo*>(userData);
+
+                // highlight the line
+                QTextEdit::ExtraSelection selection;
+                selection.format.setBackground(m_resultLineHighlightColor);
+                selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+                selection.cursor = m_gui->m_resultsList->textCursor();
+                selection.cursor.clearSelection();
+                QList<QTextEdit::ExtraSelection> extraSelections;
+                extraSelections.append(selection);
+                m_gui->m_resultsList->setExtraSelections(extraSelections);
+
                 emit ResultSelected(*blockInfo);
                 event->accept();
             }

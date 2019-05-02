@@ -92,7 +92,11 @@ void CMemoryAddressRange::UnmapPage(size_t pageIdx)
 }
 
 #elif defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(MemoryAddressRange_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MemoryAddressRange_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MemoryAddressRange_cpp_provo.inl"
+    #endif
 #elif defined(APPLE) || defined(LINUX)
 
 void* CMemoryAddressRange::ReserveSpace(size_t capacity)

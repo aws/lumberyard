@@ -45,6 +45,17 @@ CTexture* SPostEffectsUtils::m_UpscaleTarget = nullptr;
 
 bool SPostEffectsUtils::Create()
 {
+    assert(gRenDev);
+
+#if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+    // disregard size changes or texture creation for render scene to texture passes 
+    // or we will introduce texture create/delete thrashing
+    if (gRenDev->m_RP.m_TI[gRenDev->m_RP.m_nProcessThreadID].m_PersFlags & RBPF_RENDER_SCENE_TO_TEXTURE)
+    {
+        return false;
+    }
+#endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
+
     const SViewport& MainVp = gRenDev->m_MainViewport;
     const bool bCreatePostAA = CRenderer::CV_r_AntialiasingMode && !CTexture::IsTextureExist(CTexture::s_ptexPrevBackBuffer[0][0]);
     //@NOTE: CV_r_watercaustics will be removed when the infinite ocean component feature toggle is removed.

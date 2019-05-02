@@ -12,27 +12,20 @@
 
 #pragma once
 
-// include MCore related files
 #include "EMotionFXConfig.h"
-#include <MCore/Source/Vector.h>
-#include <MCore/Source/Quaternion.h>
-#include <MCore/Source/Matrix4.h>
 #include "Attachment.h"
-#include "Transform.h"
+#include <AzCore/std/containers/vector.h>
 
 
 namespace EMotionFX
 {
-    // forward declarations
     class ActorInstance;
-    class Node;
-
 
     /**
      * The skin attachment class.
-     * This represents an attachment that is influenced by multiple nodes, skinned to the main skeleton of the actor it gets attached to.
+     * This represents an attachment that is influenced by multiple joints, skinned to the main skeleton of the actor it gets attached to.
      * An example could be if you want to put on some pair of pants on the character. This can be used to customize your characters.
-     * So this attachment will basically copy the tranformations of the main character to the bones/nodes inside the actor instance that represents this attachment.
+     * So this attachment will basically copy the tranformations of the main character to the joints inside the actor instance that represents this attachment.
      */
     class EMFX_API AttachmentSkin
         : public Attachment
@@ -45,18 +38,16 @@ namespace EMotionFX
         };
 
         /**
-         * The node map entry, which contains a link to a node inside the actor instance you attach to.
+         * The joint map entry, which contains a link to a joint inside the actor instance you attach to.
          */
-        struct EMFX_API NodeMapping
+        struct EMFX_API JointMapping
         {
-            MCore::Matrix   mLocalMatrix;       /**< The local space matrix to set the target node to. */
-            MCore::Matrix   mGlobalMatrix;      /**< The global space matrix to set the target node to. */
-            Transform       mLocalTransform;    /**< The local transform to set the target node to. */
-            Node*           mSourceNode;        /**< The source node in the actor where this is attached to. */
+            AZ::u32 m_sourceJoint;   /**< The source joint in the actor where this is attached to. */
+            AZ::u32 m_targetJoint;   /**< The target joint in the attachment actor instance. */
         };
 
         /**
-         * Create the attachment that is influenced by multiple nodes.
+         * Create the attachment that is influenced by multiple joints.
          * @param attachToActorInstance The actor instance to attach to, for example your main character.
          * @param attachment The actor instance that you want to attach to this actor instance, for example an actor instance that represents some new pants.
          */
@@ -77,45 +68,45 @@ namespace EMotionFX
         const char* GetTypeString() const override                      { return "AttachmentSkin"; }
 
         /**
-         * Check if this attachment is being influenced by multiple nodes or not.
-         * This is the case for attachments such as clothing items which get influenced by multiple nodes/bones inside the actor instance they are attached to.
-         * @result Returns true if it is influenced by multiple nodes, otherwise false is returned.
+         * Check if this attachment is being influenced by multiple joints or not.
+         * This is the case for attachments such as clothing items which get influenced by multiple joints inside the actor instance they are attached to.
+         * @result Returns true if it is influenced by multiple joints, otherwise false is returned.
          */
-        bool GetIsInfluencedByMultipleNodes() const override final      { return true; }
+        bool GetIsInfluencedByMultipleJoints() const override final     { return true; }
 
         /**
-         * Update the attachment.
-         * This will internally update all matrices of the nodes inside the attachment that are being influenced by the actor instance it is attached to.
+         * Update the joint transforms of the attachment.
+         * This can be implemented for say skin attachments, which copy over joint transforms from the actor instance they are attached to.
+         * @param outPose The pose that will be modified.
          */
-        void Update() override;
+        virtual void UpdateJointTransforms(Pose& outPose) override;
 
         /**
-         * Update all transformations of the actor instance that represents the attachment.
-         * This is automatically called by EMotion FX internally.
+         * Update the attachment. This can update the parent world space transform stored inside the actor instance.
          */
-        virtual void UpdateNodeTransforms();
+        virtual void Update() override;
 
         /**
-         * Get the mapping for a given node.
-         * @param nodeIndex The node index inside the actor instance that represents the attachment.
-         * @result A reference to the mapping information for this node.
+         * Get the mapping for a given joint.
+         * @param nodeIndex The joint index inside the actor instance that represents the attachment.
+         * @result A reference to the mapping information for this joint.
          */
-        MCORE_INLINE NodeMapping& GetNodeMapping(uint32 nodeIndex)                      { return mNodeMap[nodeIndex]; }
+        MCORE_INLINE JointMapping& GetJointMapping(uint32 nodeIndex)                      { return m_jointMap[nodeIndex]; }
 
         /**
-         * Get the mapping for a given node.
-         * @param nodeIndex The node index inside the actor instance that represents the attachment.
-         * @result A reference to the mapping information for this node.
+         * Get the mapping for a given joint.
+         * @param nodeIndex The joint index inside the actor instance that represents the attachment.
+         * @result A reference to the mapping information for this joint.
          */
-        MCORE_INLINE const NodeMapping& GetNodeMapping(uint32 nodeIndex) const          { return mNodeMap[nodeIndex]; }
+        MCORE_INLINE const JointMapping& GetJointMapping(uint32 nodeIndex) const          { return m_jointMap[nodeIndex]; }
 
     protected:
-        MCore::Array<NodeMapping>   mNodeMap;           /**< Specifies which nodes. */
+        AZStd::vector<JointMapping> m_jointMap;   /**< Specifies which joints we need to copy transforms from and to. */
 
         /**
          * The constructor for a skin attachment.
          * @param attachToActorInstance The actor instance to attach to (for example a cowboy).
-         * @param attachment The actor instance that you want to attach to this node (for example a gun).
+         * @param attachment The actor instance that you want to attach to this joint (for example a gun).
          */
         AttachmentSkin(ActorInstance* attachToActorInstance, ActorInstance* attachment);
 
@@ -126,9 +117,9 @@ namespace EMotionFX
         virtual ~AttachmentSkin();
 
         /**
-         * Initialize the node map, which links the nodes inside the attachment with the actor where we attach to.
+         * Initialize the joint map, which links the joints inside the attachment with the actor where we attach to.
          * It is used to copy over the transformations from the main parent actor, to the actor instance representing the attachment object.
          */
-        void InitNodeMap();
+        void InitJointMap();
     };
 }   // namespace EMotionFX

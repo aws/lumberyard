@@ -45,6 +45,7 @@
                 "libtiff.a"
             ]
         },
+        "orbis_vs2017": "@orbis_vs2015",
         "darwin_x64": {
             "libpath": [
                 "libtiff/macosx_clang"

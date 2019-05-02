@@ -176,7 +176,7 @@ namespace LmbrCentral
     SpawnerComponent::SpawnerComponent()
     {
         // Slice asset should load purely on-demand.
-        m_sliceAsset.SetFlags(static_cast<AZ::u8>(AZ::Data::AssetFlags::OBJECTSTREAM_NO_LOAD));
+        m_sliceAsset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
     }
 
     //=========================================================================
@@ -432,7 +432,7 @@ namespace LmbrCentral
         // Stop listening for this ticket (since it's done). We can have have multiple tickets in flight.
         AzFramework::SliceInstantiationResultBus::MultiHandler::BusDisconnect(ticket);
 
-        const AZ::SliceComponent::EntityList& entities = sliceAddress.second->GetInstantiated()->m_entities;
+        const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
 
         AZStd::vector<AZ::EntityId> entityIds;
         entityIds.reserve(entities.size());

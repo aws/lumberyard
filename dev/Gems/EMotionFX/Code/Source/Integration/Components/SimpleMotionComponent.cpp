@@ -42,30 +42,26 @@ namespace EMotionFX
                     ->Field("PlaySpeed", &Configuration::m_playspeed)
                     ->Field("BlendIn", &Configuration::m_blendInTime)
                     ->Field("BlendOut", &Configuration::m_blendOutTime)
+                    ->Field("PlayOnActivation", &Configuration::m_playOnActivation)
                     ;
 
                 AZ::EditContext* editContext = serializeContext->GetEditContext();
                 if (editContext)
                 {
-                    editContext->Class<Configuration>(
-                        "Configuration", "Settings for this Simple Motion")
+                    editContext->Class<Configuration>( "Configuration", "Settings for this Simple Motion")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_motionAsset,
-                            "Motion", "EMotion FX motion to be loaded for this actor")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_loop,
-                            "Loop motion", "Toggles looping of the animation")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_retarget,
-                            "Retarget motion", "Toggles retargeting of the animation")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_reverse,
-                            "Reverse motion", "Toggles reversing of the animation")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_mirror,
-                            "Mirror motion", "Toggles mirroring of the animation")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_playspeed,
-                            "Play speed", "Determines the rate at which the motion is played")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_blendInTime,
-                            "Blend In Time", "Determines the blend in time in seconds")
-                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_blendOutTime,
-                            "Blend Out Time", "Determines the blend out time in seconds")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_motionAsset, "Motion", "EMotion FX motion to be loaded for this actor")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_loop, "Loop motion", "Toggles looping of the animation")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_retarget, "Retarget motion", "Toggles retargeting of the animation")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_reverse, "Reverse motion", "Toggles reversing of the animation")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_mirror, "Mirror motion", "Toggles mirroring of the animation")
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_playspeed, "Play speed", "Determines the rate at which the motion is played")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_blendInTime, "Blend In Time", "Determines the blend in time in seconds")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_blendOutTime, "Blend Out Time", "Determines the blend out time in seconds")
+                            ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &Configuration::m_playOnActivation, "Play on active", "Playing animation immediately after activition.")
                         ;
                 }
             }
@@ -117,6 +113,7 @@ namespace EMotionFX
                     ->Event("GetBlendOutTime", &SimpleMotionComponentRequestBus::Events::GetBlendOutTime)
                         ->Attribute("Hidden", AZ::Edit::Attributes::PropertyHidden)
                     ->VirtualProperty("BlendOutTime", "GetBlendOutTime", "BlendOutTime")
+                    ->Event("PlayMotion", &SimpleMotionComponentRequestBus::Events::PlayMotion)
                     ;
 
                 behaviorContext->Class<SimpleMotionComponent>()->RequestBus("SimpleMotionComponentRequestBus");
@@ -131,6 +128,7 @@ namespace EMotionFX
             , m_playspeed(1.f)
             , m_blendInTime(0.0f)
             , m_blendOutTime(0.0f)
+            , m_playOnActivation(true)
         {
         }
 
@@ -193,7 +191,10 @@ namespace EMotionFX
             if (asset.GetId() == cfg.m_motionAsset.GetId())
             {
                 cfg.m_motionAsset = asset;
-                UpdateAndPlayMotionInstance();
+                if (m_configuration.m_playOnActivation)
+                {
+                    PlayMotion();
+                }
             }
         }
 
@@ -205,7 +206,10 @@ namespace EMotionFX
         void SimpleMotionComponent::OnActorInstanceCreated(EMotionFX::ActorInstance* actorInstance)
         {
             m_actorInstance = actorInstance;
-            UpdateAndPlayMotionInstance();
+            if (m_configuration.m_playOnActivation)
+            {
+                PlayMotion();
+            }
         }
 
         void SimpleMotionComponent::OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance)
@@ -218,13 +222,9 @@ namespace EMotionFX
             m_actorInstance = nullptr;
         }
 
-        void SimpleMotionComponent::UpdateAndPlayMotionInstance()
+        void SimpleMotionComponent::PlayMotion()
         {
-            // No animation scrubbing in game mode (as opposed to Editor), so delete 
-            // motions that have zero blend weights.
-            bool deleteOnZeroWeight = true;
-
-            m_motionInstance = PlayMotion(m_actorInstance, m_configuration, deleteOnZeroWeight);
+            m_motionInstance = PlayMotionInternal(m_actorInstance, m_configuration, true);
         }
 
         void SimpleMotionComponent::RemoveMotionInstanceFromActor(EMotionFX::MotionInstance* motionInstance)
@@ -414,7 +414,7 @@ namespace EMotionFX
             return m_configuration.m_blendOutTime;
         }
 
-        EMotionFX::MotionInstance* SimpleMotionComponent::PlayMotion(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight)
+        EMotionFX::MotionInstance* SimpleMotionComponent::PlayMotionInternal(const EMotionFX::ActorInstance* actorInstance, const SimpleMotionComponent::Configuration& cfg, bool deleteOnZeroWeight)
         {
             if (!actorInstance || !cfg.m_motionAsset.IsReady())
             {

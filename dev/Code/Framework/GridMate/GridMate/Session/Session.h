@@ -25,7 +25,11 @@
 #include <GridMate/Serialize/UtilityMarshal.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Session_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Session_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Session_h_provo.inl"
+    #endif
 #endif
 
 namespace GridMate

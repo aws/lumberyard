@@ -14,17 +14,20 @@ public:
         switch ([event type])
         {
         case NSEventTypeRightMouseDragged:
-            sendFakeMouseMoveEvent([event deltaX], [event deltaY]);
+            sendFakeMouseMoveEvent([event deltaX], [event deltaY], Qt::RightButton);
+            return true;
+        case NSEventTypeOtherMouseDragged:
+            sendFakeMouseMoveEvent([event deltaX], [event deltaY], Qt::MiddleButton);
             return true;
         default:
             return false;
         }
     }
 
-    void sendFakeMouseMoveEvent(int deltaX, int deltaY)
+    void sendFakeMouseMoveEvent(int deltaX, int deltaY, Qt::MouseButtons buttons)
     {
         assert(m_target);
-        QMetaObject::invokeMethod(m_target, "InjectFakeMouseMove", Q_ARG(int, deltaX), Q_ARG(int, deltaY));
+        QMetaObject::invokeMethod(m_target, "InjectFakeMouseMove", Q_ARG(int, deltaX), Q_ARG(int, deltaY), Q_ARG(Qt::MouseButtons, buttons));
     }
 
     QObject *m_target = nullptr;

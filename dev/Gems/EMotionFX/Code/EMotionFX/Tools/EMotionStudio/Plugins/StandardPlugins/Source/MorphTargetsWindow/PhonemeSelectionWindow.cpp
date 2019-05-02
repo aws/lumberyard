@@ -304,17 +304,17 @@ namespace EMStudio
         UpdateInterface();
 
         // connect signals to the slots
-        connect(mPossiblePhonemeSetsTable, SIGNAL(itemSelectionChanged()), this, SLOT(PhonemeSelectionChanged()));
-        connect(mSelectedPhonemeSetsTable, SIGNAL(itemSelectionChanged()), this, SLOT(PhonemeSelectionChanged()));
-        connect(mPossiblePhonemeSetsTable, SIGNAL(dataDropped()),          this, SLOT(RemoveSelectedPhonemeSets()));
-        connect(mRemovePhonemesButton,     SIGNAL(clicked()),              this, SLOT(RemoveSelectedPhonemeSets()));
-        connect(mRemovePhonemesButtonArrow, SIGNAL(clicked()),              this, SLOT(RemoveSelectedPhonemeSets()));
-        connect(mAddPhonemesButton,        SIGNAL(clicked()),              this, SLOT(AddSelectedPhonemeSets()));
-        connect(mAddPhonemesButtonArrow,   SIGNAL(clicked()),              this, SLOT(AddSelectedPhonemeSets()));
-        connect(mSelectedPhonemeSetsTable, SIGNAL(dataDropped()),          this, SLOT(AddSelectedPhonemeSets()));
-        connect(mClearPhonemesButton,      SIGNAL(clicked()),              this, SLOT(ClearSelectedPhonemeSets()));
-        connect(mPossiblePhonemeSetsTable, SIGNAL(itemDoubleClicked(QTableWidgetItem*)),   this, SLOT(AddSelectedPhonemeSets()));
-        connect(mSelectedPhonemeSetsTable, SIGNAL(itemDoubleClicked(QTableWidgetItem*)),   this, SLOT(RemoveSelectedPhonemeSets()));
+        connect(mPossiblePhonemeSetsTable, &DragTableWidget::itemSelectionChanged, this, &PhonemeSelectionWindow::PhonemeSelectionChanged);
+        connect(mSelectedPhonemeSetsTable, &DragTableWidget::itemSelectionChanged, this, &PhonemeSelectionWindow::PhonemeSelectionChanged);
+        connect(mPossiblePhonemeSetsTable, &DragTableWidget::dataDropped,          this, &PhonemeSelectionWindow::RemoveSelectedPhonemeSets);
+        connect(mRemovePhonemesButton,     &QPushButton::clicked,              this, &PhonemeSelectionWindow::RemoveSelectedPhonemeSets);
+        connect(mRemovePhonemesButtonArrow, &QPushButton::clicked,              this, &PhonemeSelectionWindow::RemoveSelectedPhonemeSets);
+        connect(mAddPhonemesButton,        &QPushButton::clicked,              this, &PhonemeSelectionWindow::AddSelectedPhonemeSets);
+        connect(mAddPhonemesButtonArrow,   &QPushButton::clicked,              this, &PhonemeSelectionWindow::AddSelectedPhonemeSets);
+        connect(mSelectedPhonemeSetsTable, &DragTableWidget::dataDropped,          this, &PhonemeSelectionWindow::AddSelectedPhonemeSets);
+        connect(mClearPhonemesButton,      &QPushButton::clicked,              this, &PhonemeSelectionWindow::ClearSelectedPhonemeSets);
+        connect(mPossiblePhonemeSetsTable, &DragTableWidget::itemDoubleClicked,   this, &PhonemeSelectionWindow::AddSelectedPhonemeSets);
+        connect(mSelectedPhonemeSetsTable, &DragTableWidget::itemDoubleClicked,   this, &PhonemeSelectionWindow::RemoveSelectedPhonemeSets);
     }
 
 

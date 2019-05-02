@@ -87,13 +87,9 @@ public:
     void SetUser(IMovieUser* pUser) { m_pUser = pUser; }
     IMovieUser* GetUser() { return m_pUser; }
 
-    bool Load(const char* pszFile, const char* pszMission);
-
     ISystem* GetSystem() { return m_pSystem; }
 
     IAnimSequence* CreateSequence(const char* sequence, bool bLoad = false, uint32 id = 0, SequenceType = kSequenceTypeDefault, AZ::EntityId entityId = AZ::EntityId());
-    IAnimSequence* LoadSequence(const char* pszFilePath);
-    IAnimSequence* LoadSequence(XmlNodeRef& xmlNode, bool bLoadEmpty = true);
 
     void AddSequence(IAnimSequence* pSequence);
     void RemoveSequence(IAnimSequence* pSequence);
@@ -166,8 +162,6 @@ public:
     IMovieCallback* GetCallback() { return m_pCallback; }
     void Callback(IMovieCallback::ECallbackReason Reason, IAnimNode* pNode);
 
-    void Serialize(XmlNodeRef& xmlNode, bool bLoading, bool bRemoveOldNodes = false, bool bLoadEmpty = true);
-
     const SCameraParams& GetCameraParams() const { return m_ActiveCameraParams; }
     void SetCameraParams(const SCameraParams& Params);
 
@@ -194,11 +188,6 @@ public:
 
     virtual void EnableBatchRenderMode(bool bOn) { m_bBatchRenderMode = bOn; }
     virtual bool IsInBatchRenderMode() const { return m_bBatchRenderMode; }
-
-    int GetEntityNodeParamCount() const;
-    CAnimParamType GetEntityNodeParamType(int index) const;
-    const char* GetEntityNodeParamName(int index) const;
-    IAnimNode::ESupportedParamFlags GetEntityNodeParamFlags(int index) const;
 
     ILightAnimWrapper* CreateLightAnimWrapper(const char* name) const;
 

@@ -454,7 +454,11 @@ namespace Multiplayer
             REGISTER_STRING("gm_ipversion", "IPv4", 0, "IP protocol version. (Can be 'IPv4' or 'IPv6')");
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(MultiplayerCVars_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerCVars_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerCVars_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -467,7 +471,11 @@ namespace Multiplayer
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(MultiplayerCVars_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerCVars_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerCVars_cpp_provo.inl"
+    #endif
 #endif
 
 #if !defined(BUILD_GAMELIFT_SERVER) && defined(BUILD_GAMELIFT_CLIENT)
@@ -520,7 +528,11 @@ namespace Multiplayer
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION MULTIPLAYERCVARS_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(MultiplayerCVars_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/MultiplayerCVars_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/MultiplayerCVars_cpp_provo.inl"
+    #endif
 #endif
 
 

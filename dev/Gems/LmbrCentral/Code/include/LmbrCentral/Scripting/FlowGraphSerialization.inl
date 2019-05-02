@@ -517,10 +517,7 @@ namespace LmbrCentral
         xmlDoc.append_node(fgNode);
 
         AZStd::string textData;
-        AZ::IO::ByteContainerStream<decltype(textData)> stream(&textData);
-        AZ::IO::RapidXMLStreamWriter writer(&stream);
-        AZ::rapidxml::print(writer, xmlDoc);
-
+        AZ::rapidxml::print(AZStd::back_inserter(textData), xmlDoc);
         return textData;
     }
 } // namespace LmbrCentral

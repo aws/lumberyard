@@ -37,7 +37,11 @@
             "SystemFile.cpp",
             "TickBusTest.cpp",
             "TestTypes.h",
+            "UUIDTests.cpp",
             "XML.cpp"
+        ],
+        "AzCore/Math": [
+            "Math/QuaternionTests.cpp"
         ],
         "AZStd": [
             "AZStd/Algorithms.cpp",
@@ -56,8 +60,11 @@
             "AZStd/ListsIntrusive.cpp",
             "AZStd/LockFreeQueues.cpp",
             "AZStd/LockFreeStacks.cpp",
+            "AZStd/LockTests.cpp",
             "AZStd/Ordered.cpp",
+            "AZStd/Optional.cpp",
             "AZStd/Parallel.cpp",
+            "AZStd/ScopedLockTests.cpp",
             "AZStd/SetsIntrusive.cpp",
             "AZStd/SmartPtr.cpp",
             "AZStd/String.cpp",

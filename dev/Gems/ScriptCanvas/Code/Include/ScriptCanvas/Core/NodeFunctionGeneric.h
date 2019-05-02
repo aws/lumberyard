@@ -165,6 +165,13 @@ namespace ScriptCanvas
 
                 // NodeFunctionGeneric class has been deprecated in terms of the this class
                 serializeContext->ClassDeprecate("NodeFunctionGeneric", azrtti_typeid<NodeFunctionGeneric<t_Func, t_Traits, function, t_DefaultFunc, defaultsFunction>>(), &ConvertOldNodeGeneric);
+                // Need to calculate the Typeid for the old NodeFunctionGeneric class as if it contains no templated types which are pointers
+                AZ::Uuid genericTypeIdPointerRemoved = AZ::Uuid{ "{19E4AABE-1730-402C-A020-FC1006BC7F7B}" } + AZ::Internal::AggregateTypes<t_Func, t_Traits, t_DefaultFunc>::template Uuid<AZ::PointerRemovedTypeIdTag>();
+                serializeContext->ClassDeprecate("NodeFunctionGenericTemplate", genericTypeIdPointerRemoved, &ConvertOldNodeGeneric);
+                // NodeFunctionGenericMultiReturn class used to use the same typeid for pointer and not-pointer types for the function parameters
+                // i.e, void Func(AZ::Entity*) and void Func2(AZ::Entity&) are the same typeid
+                AZ::Uuid genericMultiReturnV1TypeId = AZ::Uuid{ "{DC5B1799-6C5B-4190-8D90-EF0C2D1BCE4E}" } + AZ::Internal::AggregateTypes<t_Func, t_Traits>::template Uuid<AZ::PointerRemovedTypeIdTag>();
+                serializeContext->ClassDeprecate("NodeFunctionGenericMultiReturnV1", genericMultiReturnV1TypeId, &ConvertOldNodeGeneric);
             }
         }
 

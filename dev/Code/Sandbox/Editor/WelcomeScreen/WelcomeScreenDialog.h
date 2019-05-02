@@ -66,6 +66,8 @@ private:
     void OnShowContextMenu(const QPoint& point);
     void OnNewLevelBtnClicked(bool checked);
     void OnOpenLevelBtnClicked(bool checked);
+    void OnNewSliceBtnClicked(bool checked);
+    void OnOpenSliceBtnClicked(bool checked);
     void OnRecentLevelListItemClicked(const QModelIndex& index);
     void OnGettingStartedBtnClicked(bool checked);
     void OnTutorialsBtnClicked(bool checked);

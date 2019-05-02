@@ -20,7 +20,9 @@
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
+#include <LmbrCentral/Physics/CryPhysicsComponentRequestBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 
 #include "MeshComponent.h"
 
@@ -36,6 +38,8 @@ namespace LmbrCentral
     class EditorMeshComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , public AZ::Data::AssetBus::Handler
+        , private RenderBoundsRequestBus::Handler
+        , private CryPhysicsComponentRequestBus::Handler
         , private MeshComponentRequestBus::Handler
         , private MaterialOwnerRequestBus::Handler
         , private MeshComponentNotificationBus::Handler
@@ -59,9 +63,22 @@ namespace LmbrCentral
         void Activate() override;
         void Deactivate() override;
 
-        // MeshComponentRequestBus
+        // CryPhysicsComponentRequests
+        IPhysicalEntity* GetPhysicalEntity() override;
+        void GetPhysicsParameters(pe_params& outParameters) override;
+        void SetPhysicsParameters(const pe_params& parameters) override;
+        void GetPhysicsStatus(pe_status& outStatus) override;
+        void ApplyPhysicsAction(const pe_action& action, bool threadSafe) override;
+
+        //////////////////////////////////////////////////////////////////////////
+        // RenderBoundsRequestBus interface implementation
+        //////////////////////////////////////////////////////////////////////////
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // MeshComponentRequestBus interface implementation
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_mesh.GetMeshAsset(); }
         void SetVisibility(bool visible) override;

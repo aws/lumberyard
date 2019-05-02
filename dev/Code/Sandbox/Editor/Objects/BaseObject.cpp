@@ -52,6 +52,8 @@
 #include "AzCore/Math/MathUtils.h"
 #include <Controls/ReflectedPropertyControl/ReflectedPropertiesPanel.h>
 
+#include <AzToolsFramework/API/ComponentEntityObjectBus.h>
+
 #include <QMenu>
 #include <QAction>
 
@@ -290,6 +292,9 @@ void CUndoBaseObject::Undo(bool bUndo)
     }
 
     GetIEditor()->ResumeUndo();
+
+    using namespace AzToolsFramework;
+    ComponentEntityObjectRequestBus::Event(pObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -318,6 +323,9 @@ void CUndoBaseObject::Redo()
     pObject->UpdatePrefab();
 
     GetIEditor()->ResumeUndo();
+
+    using namespace AzToolsFramework;
+    ComponentEntityObjectRequestBus::Event(pObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -387,6 +395,9 @@ void CUndoBaseObjectMinimal::Undo(bool bUndo)
     {
         pObject->UpdateGroup();
     }
+
+    using namespace AzToolsFramework;
+    ComponentEntityObjectRequestBus::Event(pObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -411,6 +422,9 @@ void CUndoBaseObjectMinimal::Redo()
         CObjectPanel::SParams uip(pObject);
         s_objectPanel->SetParams(pObject, uip);
     }
+
+    using namespace AzToolsFramework;
+    ComponentEntityObjectRequestBus::Event(pObject, &ComponentEntityObjectRequestBus::Events::UpdatePreemptiveUndoCache);
 }
 
 //////////////////////////////////////////////////////////////////////////

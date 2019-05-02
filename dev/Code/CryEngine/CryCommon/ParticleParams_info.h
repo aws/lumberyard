@@ -338,6 +338,7 @@ VAR_INFO_ATTRS(bVolumeFog, "Use as a participating media of volumetric fog")
 VAR_INFO_ATTRS(fVolumeThickness, "Thickness of participating media, scale for particle size")
 VAR_INFO_ATTRS(nParticleSizeDiscard, "Minimum size in pixels of particle, particles smaller or equal too this value will be discarted")
 VAR_INFO_ATTRS(DepthOfFieldBlur, "Particles will be blurred against depth of field fullscreen effect. (Excluding geometry and decal types)")
+VAR_INFO_ATTRS(FogVolumeShadingQualityHigh, "Particle fog volume shading quality high, fog volumes are handled more accurately.")
 
 ATTRS_INFO("<Group=Configuration>")
 VAR_INFO_ATTRS(eConfigMin, "Minimum config spec this effect runs in")

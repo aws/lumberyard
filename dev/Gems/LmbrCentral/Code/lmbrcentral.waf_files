@@ -64,6 +64,7 @@
             "include/LmbrCentral/Rendering/FogVolumeComponentBus.h",
             "include/LmbrCentral/Rendering/HighQualityShadowComponentBus.h",
             "include/LmbrCentral/Rendering/GeomCacheComponentBus.h",
+            "include/LmbrCentral/Rendering/RenderBoundsBus.h",
             "include/LmbrCentral/Rendering/GiRegistrationBus.h"
         ],
         "Include/Scripting": [

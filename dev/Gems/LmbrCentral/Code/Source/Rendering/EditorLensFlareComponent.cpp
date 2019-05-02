@@ -118,7 +118,7 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::Min, 0.f)->
 
                     DataElement(0, &LensFlareConfiguration::m_attachToSun, "Attach to sun", "Attach this flare to the sun")->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
+                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::AttachToSunChanged)->
 
                     DataElement(0, &LensFlareConfiguration::m_useVisAreas, "Use VisAreas", "Lens Flares is affected by VisAreas")->
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
@@ -130,7 +130,9 @@ namespace LmbrCentral
                         Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
 
                     DataElement(0, &LensFlareConfiguration::m_viewDistMultiplier, "View distance multiplier", "Adjusts max view distance. If 1.0 then default is used. 1.1 would be 10% further than default.")->
-                        Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
+                    Attribute(AZ::Edit::Attributes::ChangeNotify, &LensFlareConfiguration::PropertyChanged)->
+                        // Will be visible if attach to sun is false.
+                        Attribute(AZ::Edit::Attributes::Visibility, &LensFlareConfiguration::ShouldViewDistanceMultiplier)->
                         Attribute(AZ::Edit::Attributes::Suffix, "x")->
                         Attribute(AZ::Edit::Attributes::Min, 0.f)->
 
@@ -222,6 +224,25 @@ namespace LmbrCentral
         return AZ_CRC("RefreshEntireTree", 0xefbc823c);
     }
 
+    AZ::u32 EditorLensFlareConfiguration::AttachToSunChanged()
+    {
+        // if attached to the sun , then use VIEW_DISTANCE_MULTIPLIER_MAX value
+        // else use the value set by user.
+        if (m_attachToSun)
+        {
+            m_viewDistMultiplierUser = m_viewDistMultiplier; 
+            m_viewDistMultiplier = static_cast<float>(IRenderNode::VIEW_DISTANCE_MULTIPLIER_MAX);
+        }
+        else
+        {
+            // We restore the cache user set value when it is not attached to the sun.
+            m_viewDistMultiplier = m_viewDistMultiplierUser;
+        }
+
+        PropertyChanged();
+
+        return AZ_CRC("RefreshEntireTree", 0xefbc823c);
+    }
     void EditorLensFlareConfiguration::AnimationSettingsChanged()
     {
         PropertyChanged();
@@ -260,6 +281,10 @@ namespace LmbrCentral
 
         //Check to see if we need to start connected to the LightSettingsNotificationBus
         m_configuration.SyncAnimationChanged();
+        // We call this one in order to cache the user set value.
+        m_configuration.m_viewDistMultiplierUser = m_configuration.m_viewDistMultiplier;
+
+        m_configuration.AttachToSunChanged();
 
         EditorLensFlareComponentRequestBus::Handler::BusConnect(entityId);
         RenderNodeRequestBus::Handler::BusConnect(entityId);

@@ -44,8 +44,8 @@ namespace StarterGameGem
 
         AZStd::string m_leftFootEventName = "LeftFoot"; // EMFX default
         AZStd::string m_rightFootEventName = "RightFoot"; // EMFX default
-        AZStd::string m_leftFootBoneName;
-        AZStd::string m_rightFootBoneName;
+        AZStd::string m_leftFootBoneName = "Jack:Bip01__L_Heel"; // Jack default
+        AZStd::string m_rightFootBoneName = "Jack:Bip01__R_Heel"; // Jack Default
         AZStd::string m_defaultFXLib = "footstep"; // default FXLib
     };
 }

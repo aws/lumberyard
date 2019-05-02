@@ -42,9 +42,15 @@ namespace EMotionFX
         QHBoxLayout* mainLayout = new QHBoxLayout();
         QLabel* iconLabel = new QLabel(this);
         iconLabel->setPixmap(QPixmap(":/EMotionFX/AnimGraph.png").scaled(QSize(32, 32), Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
-        mainLayout->addWidget(iconLabel, 0, Qt::AlignLeft | Qt::AlignTop);
+        mainLayout->addWidget(iconLabel, 0, Qt::Alignment(Qt::AlignLeft | Qt::AlignTop));
         
         QVBoxLayout* vLayout = new QVBoxLayout();
+        QHBoxLayout* filenameLayout = new QHBoxLayout();
+        filenameLayout->setMargin(2);
+        vLayout->addLayout(filenameLayout);
+        m_filenameLabel = new QLabel();
+        m_filenameLabel->setStyleSheet("font-weight: bold;");
+        filenameLayout->addWidget(m_filenameLabel, 0, Qt::AlignTop);
 
         if (animGraph)
         {
@@ -56,13 +62,7 @@ namespace EMotionFX
                 fullFilename = "<Unsaved Animgraph>";
             }
 
-            QHBoxLayout* filenameLayout = new QHBoxLayout();
-            filenameLayout->setMargin(2);
-            vLayout->addLayout(filenameLayout);
-
-            QLabel* filenameLabel = new QLabel(fullFilename.c_str());
-            filenameLabel->setStyleSheet("font-weight: bold;");
-            filenameLayout->addWidget(filenameLabel, 0, Qt::AlignTop);
+            m_filenameLabel->setText(fullFilename.c_str());
         }
 
         m_propertyEditor = aznew AzToolsFramework::ReflectedPropertyEditor(this);
@@ -105,13 +105,24 @@ namespace EMotionFX
         UpdateMotionSetComboBox();
 
         EMotionFX::AnimGraphEditorRequestBus::Handler::BusConnect();
-        EMotionFX::AnimGraphEditorNotificationBus::Handler::BusConnect();
+
+        m_commandCallbacks.emplace_back(new UpdateMotionSetComboBoxCallback(false));
+        CommandSystem::GetCommandManager()->RegisterCommandCallback("ActivateAnimGraph", m_commandCallbacks.back());
+        m_commandCallbacks.emplace_back(new UpdateMotionSetComboBoxCallback(false));
+        CommandSystem::GetCommandManager()->RegisterCommandCallback("RemoveAnimGraph", m_commandCallbacks.back());
+        m_commandCallbacks.emplace_back(new UpdateMotionSetComboBoxCallback(false));
+        CommandSystem::GetCommandManager()->RegisterCommandCallback("RemoveActorInstance", m_commandCallbacks.back());
     }
 
 
     AnimGraphEditor::~AnimGraphEditor()
     {
-        EMotionFX::AnimGraphEditorNotificationBus::Handler::BusDisconnect();
+        for (MCore::Command::Callback* callback : m_commandCallbacks)
+        {
+            CommandSystem::GetCommandManager()->RemoveCommandCallback(callback, true);
+        }
+        m_commandCallbacks.clear();
+
         EMotionFX::AnimGraphEditorRequestBus::Handler::BusDisconnect();
     }
 
@@ -127,29 +138,6 @@ namespace EMotionFX
         return nullptr;
     }
 
-    
-    void AnimGraphEditor::SetAnimGraph(AnimGraph* animGraph)
-    {
-        if (animGraph == m_animGraph)
-        {
-            return;
-        }
-
-        if (m_animGraph)
-        {
-            m_propertyEditor->ClearInstances();
-        }
-
-        m_animGraph = animGraph;
-
-        if (m_animGraph)
-        {
-            const AZ::TypeId& typeId = azrtti_typeid(m_animGraph);
-            m_propertyEditor->AddInstance(m_animGraph, typeId);
-            m_propertyEditor->ExpandAll();
-            m_propertyEditor->InvalidateAll();
-        }
-    }
 
     void AnimGraphEditor::UpdateMotionSetComboBox()
     {
@@ -364,6 +352,35 @@ namespace EMotionFX
     }
 
 
+    void AnimGraphEditor::SetAnimGraph(AnimGraph* animGraph)
+    {
+        if (animGraph != m_animGraph)
+        {
+            m_propertyEditor->ClearInstances();
+
+            if (animGraph)
+            {
+                AZStd::string fullFilename;
+                AzFramework::StringFunc::Path::GetFullFileName(animGraph->GetFileName(), fullFilename);
+
+                if (fullFilename.empty())
+                {
+                    fullFilename = "<Unsaved Animgraph>";
+                }
+
+                m_filenameLabel->setText(fullFilename.c_str());
+
+                const AZ::TypeId& typeId = azrtti_typeid(animGraph);
+                m_propertyEditor->AddInstance(animGraph, typeId);
+                m_propertyEditor->show();
+                m_propertyEditor->ExpandAll();
+                m_propertyEditor->InvalidateAll();
+            }
+
+            m_animGraph = animGraph;
+        }
+    }
+
     AZ::Outcome<uint32> AnimGraphEditor::GetMotionSetIndex(int comboBoxIndex) const
     {
         // 0 means no motion set selected.
@@ -393,6 +410,18 @@ namespace EMotionFX
 
         return AZ::Failure();
     }
-} // namespace EMotionFX
 
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/AnimGraphEditor.moc>
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    bool AnimGraphEditor::UpdateMotionSetComboBoxCallback::Execute(MCore::Command* command, const MCore::CommandLine& commandLine)
+    {
+        EMotionFX::AnimGraphEditorRequestBus::Broadcast(&EMotionFX::AnimGraphEditorRequests::UpdateMotionSetComboBox);
+        return true;
+    }
+
+    bool AnimGraphEditor::UpdateMotionSetComboBoxCallback::Undo(MCore::Command* command, const MCore::CommandLine& commandLine)
+    {
+        EMotionFX::AnimGraphEditorRequestBus::Broadcast(&EMotionFX::AnimGraphEditorRequests::UpdateMotionSetComboBox);
+        return true;
+    }
+} // namespace EMotionFX

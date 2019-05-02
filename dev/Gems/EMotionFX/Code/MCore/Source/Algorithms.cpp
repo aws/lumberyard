@@ -20,7 +20,7 @@
 
 namespace MCore
 {
-    // project a 3D point in global space to 2D screen coordinates
+    // project a 3D point in world space to 2D screen coordinates
     AZ::Vector3 Project(const AZ::Vector3& point, const Matrix& viewProjMatrix, uint32 screenWidth, uint32 screenHeight)
     {
         // 1. expand homogenous coordinate
@@ -45,7 +45,7 @@ namespace MCore
 
 
     // unproject into eye space, remember this means the resulting vector will be in camera space already
-    // drawing lines that take global space coordinates with those returned coordinates will apply a camera tranform twice
+    // drawing lines that take world space coordinates with those returned coordinates will apply a camera tranform twice
     AZ::Vector3 UnprojectToEyeSpace(float screenX, float screenY, const MCore::Matrix& invProjMat, float windowWidth, float windowHeight, float depth)
     {
         // convert to normalized device coordinates in range of -1 to +1
@@ -61,7 +61,7 @@ namespace MCore
     }
 
 
-    // unproject screen coordinates to a 3D point in global space
+    // unproject screen coordinates to a 3D point in world space
     AZ::Vector3 Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& invProjMat, const MCore::Matrix& invViewMat)
     {
         // convert to normalized device coordinates in range of -1 to +1
@@ -72,7 +72,7 @@ namespace MCore
         AZ::Vector4 vec(x, y, 1.0f, 0.0f);
         vec *= invProjMat;
 
-        // return the result at the given desired depth and transform from eyespace into global space
+        // return the result at the given desired depth and transform from eyespace into world space
         return (AZ::Vector3(vec.GetX(), vec.GetY(), vec.GetZ()).GetNormalized() * depth) * invViewMat;
     }
 

@@ -27,19 +27,29 @@ PropertiesWrapper::PropertiesWrapper(HierarchyWidget* hierarchy,
     QVBoxLayout* innerLayout = new QVBoxLayout();
     {
         innerLayout->setContentsMargins(4, 4, 4, 4);
-        innerLayout->setSpacing(2);
+        innerLayout->setSpacing(4);
 
-        QLabel* elementName = new QLabel(this);
-        elementName->setObjectName(QStringLiteral("m_elementName"));
-        elementName->setText("No Canvas Loaded");
+        QHBoxLayout* innerHLayout = new QHBoxLayout();
+        {
+            QLabel* elementNameLabel = new QLabel(this);
+            elementNameLabel->setText("Name");
+            innerHLayout->addWidget(elementNameLabel);
+            QLineEdit* elementNameLineEdit = new QLineEdit(this);
+            elementNameLineEdit->setObjectName(QStringLiteral("m_elementName"));
+            elementNameLineEdit->setText("No Canvas Loaded");
+            innerHLayout->addWidget(elementNameLineEdit);
+            m_properties->SetSelectedEntityDisplayNameWidget(elementNameLineEdit);
+        }
+        innerLayout->addLayout(innerHLayout);
 
-        innerLayout->addWidget(elementName);
-
-        m_properties->SetSelectedEntityDisplayNameWidget(elementName);
-
-        innerLayout->addWidget(m_componentButton);
+        m_editorOnlyCheckbox = new QCheckBox("Editor Only");
+        m_editorOnlyCheckbox->setVisible(false);
+        innerLayout->addWidget(m_editorOnlyCheckbox, 0, Qt::AlignCenter);
+        m_properties->SetEditorOnlyCheckbox(m_editorOnlyCheckbox);
     }
     outerLayout->addLayout(innerLayout);
+
+    outerLayout->addWidget(m_componentButton);
 
     outerLayout->addWidget(m_properties);
 

@@ -76,9 +76,18 @@ namespace LmbrCentral
         // EditorTagComponentRequestBus::Handler
         bool HasTag(const char* tag) override;
         void AddTag(const char* tag) override;
-        void RemoveTag(const  char* tag) override;
+        void RemoveTag(const char* tag) override;
         const EditorTags& GetTags() override { return m_tags; }
         //////////////////////////////////////////////////////////////////////////
+
+        void ActivateTag(const char* tagName);
+        void DeactivateTag(const char* tagName);
+        void ActivateTags();
+        void DeactivateTags();
+
+        void OnTagChanged();
+
+        EditorTags m_activeTags;
 
         // Reflected Data
         EditorTags m_tags;

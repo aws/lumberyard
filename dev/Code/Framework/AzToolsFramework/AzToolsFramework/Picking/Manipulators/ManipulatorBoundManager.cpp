@@ -45,26 +45,26 @@ namespace AzToolsFramework
             // create a sorted list of manipulators - sorted based on proximity to ray
             AZStd::vector<BoundIdHitDistance> rayHits;
             rayHits.reserve(m_bounds.size());
-            for (AZStd::shared_ptr<BoundShapeInterface> bound : m_bounds)
+            for (const AZStd::shared_ptr<BoundShapeInterface>& bound : m_bounds)
             {
                 if (bound->IsValid())
                 {
                     float t = 0.0f;
                     if (bound->IntersectRay(rayInfo.m_origin, rayInfo.m_direction, t))
                     {
-                        auto hitItr = AZStd::lower_bound(rayHits.begin(), rayHits.end(), BoundIdHitDistance(0, t),
+                        const auto hitItr = AZStd::lower_bound(rayHits.begin(), rayHits.end(), BoundIdHitDistance(0, t),
                             [](const BoundIdHitDistance& lhs, const BoundIdHitDistance& rhs)
                         {
                             return lhs.second < rhs.second;
                         });
 
-                        rayHits.insert(hitItr, AZStd::make_pair(bound->GetBoundID(), t));
+                        rayHits.insert(hitItr, AZStd::make_pair(bound->GetBoundId(), t));
                     }
                 }
             }
 
-            rayInfo.m_boundIDsHit.reserve(rayHits.size());
-            AZStd::copy(rayHits.begin(), rayHits.end(), AZStd::back_inserter(rayInfo.m_boundIDsHit));
+            rayInfo.m_boundIdsHit.reserve(rayHits.size());
+            AZStd::copy(rayHits.begin(), rayHits.end(), AZStd::back_inserter(rayInfo.m_boundIdsHit));
         }
     } // namespace Picking
 } // namespace AzToolsFramework

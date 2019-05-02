@@ -49,6 +49,7 @@ namespace AzToolsFramework
 
             void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
             void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
+            void OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
             bool IsDirty() const { return m_dirty; }
             bool TrySave(const AZStd::function<void()>& savedCallback);

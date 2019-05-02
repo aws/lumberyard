@@ -17,7 +17,11 @@
 
 // Traits
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(IShader_info_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/IShader_info_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/IShader_info_h_provo.inl"
+    #endif
 #elif !defined(LINUX) && !defined(APPLE)
 #define ISHADER_INFO_H_TRAIT_DEFINE_ETEX_INFO 1
 #endif

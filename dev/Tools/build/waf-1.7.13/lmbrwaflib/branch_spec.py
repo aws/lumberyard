@@ -65,7 +65,6 @@ PLATFORM_SHORTCUT_ALIASES = {
         'darwin_x64',
     ],
     'android': [
-        'android_armv7_gcc',
         'android_armv7_clang',
         'android_armv8_clang',
     ],
@@ -80,7 +79,6 @@ PLATFORM_SHORTCUT_ALIASES = {
         'win_x64_vs2017',
         'win_x64_vs2015',
         'win_x64_vs2013',
-        'android_armv7_gcc',
         'android_armv7_clang',
         'android_armv8_clang',
     ],
@@ -98,10 +96,7 @@ PLATFORM_SHORTCUT_ALIASES = {
         'appletv',
         'android_armv7_clang',
         'android_armv8_clang',
-    ],
-    'gcc': [
-        'android_armv7_gcc'
-    ],
+    ]
 }
 
 
@@ -318,8 +313,20 @@ def check_cpp_platform_tools(toolsetVer, platform_tool_name, vs2017vswhereOption
             vswhere_exe = find_vswhere()
             if vswhere_exe == '':
                 return False
+
             installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+            if not installation_path:
+                try:
+                    version_arg_index = vs2017vswhereOptions.index('-version')
+                    Logs.warn('[WARN] VSWhere could not find an installed version of Visual Studio matching the version requirements provided (-version {}). Attempting to fall back on any available installed version.'.format(vs_where_args[version_arg_index + 1]))
+                    Logs.warn('[WARN] Lumberyard defaults the version range to the maximum version tested against before each release. You can modify the version range in the WAF user_settings\' option win_vs2017_vswhere_args under [Windows Options].')
+                    del vs2017vswhereOptions[version_arg_index : version_arg_index + 2]
+                    installation_path = subprocess.check_output([vswhere_exe, '-property', 'installationPath'] + vs2017vswhereOptions)
+                except ValueError:
+                    pass
+
             installation_path = installation_path[:len(installation_path)-2]
+            Logs.info('[INFO] Using Visual Studio version installed at: {}'.format(installation_path))
             build_root = os.path.join(installation_path, 'MSBuild', toolsetVer+'.0')
             props_file = os.path.join(build_root, 'Microsoft.common.props')
             return os.path.exists(props_file)
@@ -358,8 +365,7 @@ def check_msvs_compatibility(self, waf_platform, version):
 
 
 #############################################################################
-@conf
-def get_supported_configurations(self, platform=None):
+def get_supported_configurations(platform=None):
     return PLATFORM_CONFIGURATION_FILTER.get(platform, CONFIGURATIONS)
 
 
@@ -619,16 +625,16 @@ def loaded_specs(ctx):
 spec_entry_cache = {}
 
 def _spec_entry(ctx, entry, spec_name=None, platform=None, configuration=None):
-    """ Util function to load a specifc spec entry (always returns a list) """
+    """ Util function to load a specific spec entry (always returns a list) """
+
+    if not spec_name: # Fall back to command line specified spec if none was given
+        spec_name = ctx.options.project_spec
 
     cache_key = '{}_{}_{}_{}'.format(entry, spec_name, platform, configuration)
     if cache_key in spec_entry_cache:
         return spec_entry_cache[cache_key]
 
     _load_specs(ctx)
-
-    if not spec_name: # Fall back to command line specified spec if none was given
-        spec_name = ctx.options.project_spec
 
     spec = ctx.loaded_specs_dict.get(spec_name, None)
     if not spec:
@@ -643,12 +649,8 @@ def _spec_entry(ctx, entry, spec_name=None, platform=None, configuration=None):
     # from mutating the list with a bunch of duplicate entries
     res = _to_list( spec.get(entry, []) )[:]
 
-    # The options context is missing an env attribute, hence don't try to find platform settings in this case
-    if hasattr(ctx, 'env'):
-        if not platform:
-            platform = ctx.env['PLATFORM']
-        if not configuration:
-            configuration = ctx.env['CONFIGURATION']
+    # include the platform/config specific modules, if supplied
+    if platform and configuration:
         res += ctx.GetPlatformSpecificSettings(spec, entry, platform, configuration)
 
     spec_entry_cache[cache_key] = res
@@ -660,11 +662,14 @@ spec_modules_cache = {}
 def spec_modules(ctx, spec_name = None, platform=None, configuration=None):
     """ Get all a list of all modules needed for this spec """
 
+    if not spec_name: # Fall back to command line specified spec if none was given
+        spec_name = ctx.options.project_spec
+
     cache_key = '{}_{}_{}'.format(spec_name, platform, configuration)
     if cache_key in spec_modules_cache:
         return spec_modules_cache[cache_key]
 
-    module_list = _spec_entry(ctx, 'modules', spec_name)
+    module_list = _spec_entry(ctx, 'modules', spec_name, platform, configuration)
     if platform is not None:
         platform_filtered_module_list = [module for module in module_list if platform in ctx.get_module_platforms(module)]
         module_list = platform_filtered_module_list
@@ -686,8 +691,14 @@ def is_target_enabled(ctx, target):
     """
     Check if the target is enabled for the build based on whether a spec file was specified
     """
+    project_spec = ctx.options.project_spec
+
+    # prevent sending an empty list form being passed down in the unlikely chance the keys don't exist
+    platform = ctx.env['PLATFORM'] or None
+    config = ctx.env['CONFIGURATION'] or None
+
     if is_project_spec_specified(ctx):
-        return (target in ctx.spec_modules(ctx.options.project_spec)) or (target in ctx.get_all_module_uses(ctx.options.project_spec))
+        return (target in ctx.spec_modules(project_spec, platform, config)) or (target in ctx.get_all_module_uses(project_spec, platform, config))
     else:
         # No spec means all projects are enabled
         return True
@@ -974,7 +985,6 @@ PLATFORM_TO_CAPABILITY_MAP = {
     'win_x64_vs2017':       VC141_CAPABILITY,
     'win_x64_vs2015':       VC140_CAPABILITY,
     'win_x64_vs2013':       VC120_CAPABILITY,
-    'android_armv7_gcc':    ANDROID_CAPABILITY,
     'android_armv7_clang':  ANDROID_CAPABILITY,
     'android_armv8_clang':  ANDROID_CAPABILITY,
     'ios':                  IOS_CAPABILITY,
@@ -1024,6 +1034,13 @@ def get_available_platforms(conf):
             # Perform extra validation of platforms that can be disabled through options
             if platform.startswith('android') and not android_enabled:
                 continue
+
+            if platform.endswith('clang') and platform.startswith('win'):
+                if not conf.is_option_true('win_enable_clang_for_windows'):
+                    continue
+                elif not conf.find_program('clang', mandatory=False, silent_output=True):
+                    Logs.warn('[INFO] Removing target platform {}. Could not find Clang for Windows executable.'.format(platform))
+                    continue
 
             if not is_configure_context and validated_platforms_json:
                 if platform not in validated_platforms_json:

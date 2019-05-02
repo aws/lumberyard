@@ -37,9 +37,7 @@ namespace AZ
         protected:
             virtual void Process()
             {
-                JobContext* context = m_context;
                 m_notifyFlag->store(true, AZStd::memory_order_release);
-                context->GetJobManager().NotifySuspendedJobReady(nullptr);
             }
 
             AZStd::atomic<bool>* m_notifyFlag;

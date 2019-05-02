@@ -189,6 +189,7 @@ namespace AssetProcessor
         bool IsCritical() const;
         bool IsAutoFail() const;
         int GetPriority() const;
+        const AZStd::vector<JobDependencyInternal>& GetJobDependencies();
 
     protected:
         //! DoWork ensure that the job is ready for being processing and than makes the actual builder call   

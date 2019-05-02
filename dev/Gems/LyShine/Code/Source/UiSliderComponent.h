@@ -15,7 +15,6 @@
 #include <LyShine/Bus/UiSliderBus.h>
 #include <LyShine/Bus/UiInitializationBus.h>
 #include <LyShine/Bus/UiInteractableBus.h>
-#include <LyShine/Bus/UiUpdateBus.h>
 #include <LyShine/UiComponentTypes.h>
 
 #include <AzCore/Serialization/SerializeContext.h>

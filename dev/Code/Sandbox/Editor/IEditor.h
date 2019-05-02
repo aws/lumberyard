@@ -256,7 +256,11 @@ enum EEditorNotifyEvent
     eNotify_OnSwitchAWSDeployment,     // The AWS deployment was switched
     eNotify_OnFirstAWSUse,             // This should only be emitted once
 
-    eNotify_OnRefCoordSysChange
+    eNotify_OnRefCoordSysChange,
+
+    // Entity selection events.
+    eNotify_OnEntitiesSelected,
+    eNotify_OnEntitiesDeselected
 };
 
 // UI event handler
@@ -485,9 +489,6 @@ struct ITrackViewSequenceManager
     //! Only intended for use with scripting or other cases where a user provides a name.
     virtual CTrackViewSequence* GetSequenceByName(QString name) const = 0;
 
-    //! Get the legacy sequence with the given name. There can only be one legacy sequence with a given name.
-    virtual CTrackViewSequence* GetLegacySequenceByName(QString name) const = 0;
-
     //! Get the sequence with the given EntityId. For legacy support, legacy sequences can be found by giving
     //! the sequence ID in the lower 32 bits of the EntityId.
     virtual CTrackViewSequence* GetSequenceByEntityId(const AZ::EntityId& entityId) const = 0;
@@ -495,8 +496,6 @@ struct ITrackViewSequenceManager
     virtual void OnCreateSequenceComponent(AZStd::intrusive_ptr<IAnimSequence>& sequence) = 0;
 
     virtual void OnSequenceActivated(const AZ::EntityId& entityId) = 0;
-
-    virtual void OnLegacySequencePostLoad(CTrackViewSequence* sequence, bool undo) = 0;
 };
 
 //! Interface to expose TrackViewSequence functionality to SequenceComponent
@@ -847,6 +846,8 @@ struct IEditor
     virtual bool FlushUndo(bool isShowMessage = false) = 0;
     //! Clear the last N number of steps in the undo stack
     virtual bool ClearLastUndoSteps(int steps) = 0;
+    //! Clear all current Redo steps in the undo stack
+    virtual bool ClearRedoStack() = 0;
     //! Retrieve current animation context.
     virtual CAnimationContext* GetAnimation() = 0;
     //! Retrieve sequence manager

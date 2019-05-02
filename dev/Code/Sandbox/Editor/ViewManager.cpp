@@ -283,6 +283,20 @@ void CViewManager::OnEditorNotifyEvent(EEditorNotifyEvent event)
     case eNotify_OnUpdateViewports:
         UpdateViews();
         break;
+    case eNotify_OnRefCoordSysChange:
+        if (m_manipulatorManager)
+        {
+            RefCoordSys refCoordsSys = GetIEditor()->GetReferenceCoordSys();
+            if (refCoordsSys == RefCoordSys::COORDS_WORLD)
+            {
+                m_manipulatorManager->SetManipulatorSpace(AzToolsFramework::ManipulatorSpace::World);
+            }
+            else
+            {
+                m_manipulatorManager->SetManipulatorSpace(AzToolsFramework::ManipulatorSpace::Local);
+            }
+        }
+        break;
     }
 }
 

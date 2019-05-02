@@ -236,9 +236,9 @@ namespace RoadsAndRivers
         return nullptr;
     }
 
-    void River::SetMaterialHandle(LmbrCentral::MaterialHandle handle)
+    void River::SetMaterialHandle(const LmbrCentral::MaterialHandle& materialHandle)
     {
-        SetMaterial(handle.m_material);
+        SetMaterial(materialHandle.m_material);
     }
 
     LmbrCentral::MaterialHandle River::GetMaterialHandle()

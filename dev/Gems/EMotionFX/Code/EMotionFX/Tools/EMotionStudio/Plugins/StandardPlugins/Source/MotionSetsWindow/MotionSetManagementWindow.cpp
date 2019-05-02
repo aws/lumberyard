@@ -105,7 +105,7 @@ namespace EMStudio
 
         // add the button to close the window
         QPushButton* okButton = new QPushButton("OK");
-        connect(okButton, SIGNAL(clicked()), this, SLOT(accept()));
+        connect(okButton, &QPushButton::clicked, this, &MotionSetManagementRemoveMotionsFailedWindow::accept);
         QHBoxLayout* buttonLayout = new QHBoxLayout();
         buttonLayout->setAlignment(Qt::AlignRight);
         buttonLayout->addWidget(okButton);
@@ -133,7 +133,7 @@ namespace EMStudio
 
         // add the line edit
         mLineEdit = new QLineEdit();
-        connect(mLineEdit, SIGNAL(textEdited(const QString&)), this, SLOT(TextEdited(const QString&)));
+        connect(mLineEdit, &QLineEdit::textEdited, this, &MotionSetManagementRenameWindow::TextEdited);
         layout->addWidget(mLineEdit);
 
         // set the current name and select all
@@ -158,8 +158,8 @@ namespace EMStudio
         mOKButton->setDefault(true);
 
         // connect the buttons
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(Accepted()));
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(mOKButton, &QPushButton::clicked, this, &MotionSetManagementRenameWindow::Accepted);
+        connect(cancelButton, &QPushButton::clicked, this, &MotionSetManagementRenameWindow::reject);
 
         // set the new layout
         layout->addLayout(buttonLayout);
@@ -309,12 +309,12 @@ namespace EMStudio
         
         buttonLayout->addWidget(m_searchWidget);
 
-        connect(mClearSetsButton, SIGNAL(clicked()), this, SLOT(OnClearMotionSets()));
-        connect(mRemoveSetsButton, SIGNAL(clicked()), this, SLOT(OnRemoveSelectedMotionSets()));
-        connect(mAddSetButton, SIGNAL(clicked()), this, SLOT(OnCreateMotionSet()));
-        connect(mOpenSetButton, SIGNAL(clicked()), this, SLOT(OnOpen()));
-        connect(mSaveSetButton, SIGNAL(clicked()), this, SLOT(OnSave()));
-        connect(mSaveAsSetButton, SIGNAL(clicked()), this, SLOT(OnSaveAs()));
+        connect(mClearSetsButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnClearMotionSets);
+        connect(mRemoveSetsButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnRemoveSelectedMotionSets);
+        connect(mAddSetButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnCreateMotionSet);
+        connect(mOpenSetButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnOpen);
+        connect(mSaveSetButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnSave);
+        connect(mSaveAsSetButton, &QPushButton::clicked, this, &MotionSetManagementWindow::OnSaveAs);
 
         layout->addWidget(mMotionSetsTree);
 
@@ -499,7 +499,7 @@ namespace EMStudio
         // add motion set is always enabled
         QAction* addAction = menu.addAction("Add Motion Set");
         addAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-        connect(addAction, SIGNAL(triggered()), this, SLOT(OnCreateMotionSet()));
+        connect(addAction, &QAction::triggered, this, &MotionSetManagementWindow::OnCreateMotionSet);
 
         // get the selected items
         const QList<QTreeWidgetItem*> selectedItems = mMotionSetsTree->selectedItems();
@@ -510,14 +510,14 @@ namespace EMStudio
         {
             QAction* removeAction = menu.addAction("Remove Selected Motion Sets");
             removeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
-            connect(removeAction, SIGNAL(triggered()), this, SLOT(OnRemoveSelectedMotionSets()));
+            connect(removeAction, &QAction::triggered, this, &MotionSetManagementWindow::OnRemoveSelectedMotionSets);
         }
 
         // add rename if only one item selected
         if (numSelectedItems == 1)
         {
             QAction* renameAction = menu.addAction("Rename Selected Motion Set");
-            connect(renameAction, SIGNAL(triggered()), this, SLOT(OnRenameSelectedMotionSet()));
+            connect(renameAction, &QAction::triggered, this, &MotionSetManagementWindow::OnRenameSelectedMotionSet);
         }
 
         // add the save menu if at least one item selected
@@ -528,7 +528,7 @@ namespace EMStudio
             // add the save menu
             QAction* saveAction = menu.addAction("Save Selected Root Motion Set");
             saveAction->setIcon(MysticQt::GetMysticQt()->FindIcon("/Images/Menu/FileSave.png"));
-            connect(saveAction, SIGNAL(triggered()), this, SLOT(OnSave()));
+            connect(saveAction, &QAction::triggered, this, &MotionSetManagementWindow::OnSave);
         }
 
         // show the menu at the given position

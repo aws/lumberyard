@@ -98,6 +98,7 @@ CSequenceBatchRenderDialog::CSequenceBatchRenderDialog(float fps, QWidget* pPare
     , m_ui(new Ui::SequenceBatchRenderDialog)
     , m_renderListModel(new QStringListModel(this))
     , CV_TrackViewRenderOutputCapturing(0)
+    , m_prefixValidator(new CPrefixValidator(this))
 {
     m_ui->setupUi(this);
     setFixedSize(size());
@@ -228,6 +229,7 @@ void CSequenceBatchRenderDialog::OnInitDialog()
     m_ui->m_buffersToCaptureCombo->setCurrentIndex(0);
 
     m_ui->BATCH_RENDER_FILE_PREFIX->setText("Frame");
+    m_ui->BATCH_RENDER_FILE_PREFIX->setValidator(m_prefixValidator.data());
 
     m_ui->m_progressStatusMsg->setText("Not running");
 

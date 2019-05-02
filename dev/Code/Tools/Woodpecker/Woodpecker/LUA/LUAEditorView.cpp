@@ -137,6 +137,11 @@ namespace LUAEditor
 
         m_Highlighter = aznew LUASyntaxHighlighter(m_gui->m_luaTextEdit->document());
 
+        QTextDocument* doc = m_gui->m_luaTextEdit->document();
+        QTextOption option = doc->defaultTextOption();
+        option.setFlags(option.flags() | QTextOption::ShowTabsAndSpaces);
+        doc->setDefaultTextOption(option);
+
         UpdateFont();
 
         connect(m_gui->m_luaTextEdit, SIGNAL(modificationChanged(bool)), this, SLOT(modificationChanged(bool)));
@@ -614,7 +619,7 @@ namespace LUAEditor
 
     void LUAViewWidget::BreakpointResume()
     {
-        // no op
+        m_gui->m_breakpoints->update();
     }
 
     void LUAViewWidget::BreakpointToggle(int line)
@@ -741,13 +746,16 @@ namespace LUAEditor
 
     int LUAViewWidget::CalcDocPosition(int line, int column)
     {
+        // Offset line number by one, because line number starts from 1, not 0.
+        line = line - 1;
         if (line < 0)
         {
             line = column = 0;
         }
-        if (line > m_gui->m_luaTextEdit->document()->blockCount() - 1)
+        int blockCount = m_gui->m_luaTextEdit->document()->blockCount();
+        if (line > blockCount - 1)
         {
-            line = m_gui->m_luaTextEdit->document()->blockCount();
+            line = blockCount - 1;
             column = INT_MAX;
         }
 
@@ -772,7 +780,7 @@ namespace LUAEditor
         }
         else
         {
-            line = cursor.blockNumber();
+            line = cursor.blockNumber() + 1; // offset by one because line number start from 1
             column = cursor.positionInBlock();
         }
     }
@@ -1214,6 +1222,9 @@ namespace LUAEditor
         auto syntaxSettings = AZ::UserSettings::CreateFind<SyntaxStyleSettings>(AZ_CRC("LUA Editor Text Settings", 0xb6e15565), AZ::UserSettings::CT_GLOBAL);
         auto font = syntaxSettings->GetFont();
         font.setPointSize(static_cast<int>(font.pointSize() * (m_zoomPercent / 100.0f)));
+
+        m_gui->m_luaTextEdit->SetTabSize(syntaxSettings->GetTabSize());
+        m_gui->m_luaTextEdit->SetUseSpaces(syntaxSettings->UseSpacesInsteadOfTabs());
 
         m_gui->m_luaTextEdit->UpdateFont(font, syntaxSettings->GetTabSize());
         m_gui->m_breakpoints->SetFont(font);

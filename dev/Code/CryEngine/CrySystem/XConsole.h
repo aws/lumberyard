@@ -345,7 +345,6 @@ private: // ----------------------------------------------------------
 
     bool                                                        m_bStaticBackground;
     int                                                         m_nLoadingBackTexID;
-    int                                                         m_nWhiteTexID;
     int                                                         m_nProgress;
     int                                                         m_nProgressRange;
 

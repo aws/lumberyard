@@ -24,6 +24,7 @@ public:
     virtual void StartTest() override;
 
     RCcontrollerUnitTests();
+    void Reset();
 
 Q_SIGNALS:
     void RcControllerPrepared();
@@ -34,6 +35,7 @@ public Q_SLOTS:
 
 private:
     AssetProcessor::RCController m_rcController;
+    AssetBuilderSDK::AssetBuilderDesc m_assetBuilderDesc;
 };
 
 #endif // RCCONTROLLERUNITTESTS_H

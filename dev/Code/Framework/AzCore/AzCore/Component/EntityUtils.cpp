@@ -88,13 +88,18 @@ namespace AZ
                     return true;
                 };
 
-            context->EnumerateInstanceConst(
-                classPtr,
-                classUuid,
+            SerializeContext::EnumerateInstanceCallContext callContext(
                 beginCB,
                 endCB,
+                context,
                 SerializeContext::ENUM_ACCESS_FOR_READ,
-                nullptr,
+                nullptr
+            );
+
+            context->EnumerateInstanceConst(
+                &callContext,
+                classPtr,
+                classUuid,
                 nullptr,
                 nullptr
                 );
@@ -212,6 +217,40 @@ namespace AZ
             }
 
             return foundBaseClass;
+        }
+
+        bool RemoveDuplicateServicesOfAndAfterIterator(
+            const ComponentDescriptor::DependencyArrayType::iterator& iterator,
+            ComponentDescriptor::DependencyArrayType& providedServiceArray,
+            const Entity* entity)
+        {
+            // Build types that strip out AZ_Warnings will complain that entity is unused without this.
+            (void)entity;
+            if (iterator == providedServiceArray.end())
+            {
+                return false;
+            }
+
+            bool duplicateFound = false;
+
+            for (ComponentDescriptor::DependencyArrayType::iterator duplicateCheckIter = AZStd::next(iterator);
+                duplicateCheckIter != providedServiceArray.end();)
+            {
+                if (*iterator == *duplicateCheckIter)
+                {
+                    AZ_Warning("Entity", false, "Duplicate service %d found on entity %s [%s]",
+                        *duplicateCheckIter,
+                        entity ? entity->GetName().c_str() : "Entity not provided",
+                        entity ? entity->GetId().ToString().c_str() : "");
+                    duplicateCheckIter = providedServiceArray.erase(duplicateCheckIter);
+                    duplicateFound = true;
+                }
+                else
+                {
+                    ++duplicateCheckIter;
+                }
+            }
+            return duplicateFound;
         }
     } // namespace EntityUtils
 }   // namespace AZ

@@ -39,7 +39,7 @@ namespace AzFramework
             AssetNotificationMessage message;
             // note that we forbid asset loading and we set STRICT mode.  These messages are all the kind of message that is supposed to be transmitted between the
             // same version of software, and are created at runtime, not loaded from disk, so they should not contain errors - if they do, it requires investigation.
-            if (!AZ::Utils::LoadObjectFromBufferInPlace(buffer, bufferSize, message, nullptr, AZ::ObjectStream::FilterDescriptor(AZ::ObjectStream::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_STRICT)))
+            if (!AZ::Utils::LoadObjectFromBufferInPlace(buffer, bufferSize, message, nullptr, AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading, AZ::ObjectStream::FILTERFLAG_STRICT)))
             {
                 AZ_WarningOnce("AssetSystem", false, "AssetNotificationMessage received but unable to deserialize it.  Is AssetProcessor.exe up to date?");
                 return;
@@ -136,7 +136,7 @@ namespace AzFramework
             AssetSystemRequestBus::Handler::BusDisconnect();
             
             m_socketConn->RemoveMessageHandler(AZ_CRC("AssetProcessorManager::AssetNotification", 0xd6191df5), m_cbHandle);
-            m_socketConn->Disconnect();
+            m_socketConn->Disconnect(true);
             
             DisableSocketConnection();
 
@@ -161,6 +161,7 @@ namespace AzFramework
             GetRelativeProductPathFromFullSourceOrProductPathRequest::Reflect(context);
             GetFullSourcePathFromRelativeProductPathRequest::Reflect(context);
             SourceAssetInfoRequest::Reflect(context);
+            AssetInfoRequest::Reflect(context);
             RegisterSourceAssetRequest::Reflect(context);
             UnregisterSourceAssetRequest::Reflect(context);
             ShowAssetProcessorRequest::Reflect(context);
@@ -187,6 +188,7 @@ namespace AzFramework
             GetRelativeProductPathFromFullSourceOrProductPathResponse::Reflect(context);
             GetFullSourcePathFromRelativeProductPathResponse::Reflect(context);
             SourceAssetInfoResponse::Reflect(context);
+            AssetInfoResponse::Reflect(context);
             FileOpenResponse::Reflect(context);
             FileReadResponse::Reflect(context);
             FileWriteResponse::Reflect(context);
@@ -311,11 +313,16 @@ namespace AzFramework
                 return false;
             }
 
+            bool result = true;
+
             if (apConnection->IsConnected())
             {
-                return apConnection->Disconnect();
+                result = apConnection->Disconnect(true);
             }
-            return true;
+
+            AzFramework::AssetSystemBus::ClearQueuedEvents();
+
+            return result;
         }
 
         bool AssetSystemComponent::SaveCatalog()
@@ -338,12 +345,21 @@ namespace AzFramework
 
         AssetStatus AssetSystemComponent::CompileAssetSync(const AZStd::string& assetPath)
         {
-            return SendAssetStatusRequest(assetPath, false);
+            return SendAssetStatusRequest(assetPath, false, false);
         }
-
         AssetStatus AssetSystemComponent::GetAssetStatus(const AZStd::string& assetPath)
         {
-            return SendAssetStatusRequest(assetPath, true);
+            return SendAssetStatusRequest(assetPath, true, false);
+        }
+
+        AssetStatus AssetSystemComponent::CompileAssetSync_FlushIO(const AZStd::string& assetPath)
+        {
+            return SendAssetStatusRequest(assetPath, false, true);
+        }
+
+        AssetStatus AssetSystemComponent::GetAssetStatus_FlushIO(const AZStd::string& assetPath)
+        {
+            return SendAssetStatusRequest(assetPath, true, true);
         }
 
         void AssetSystemComponent::OnSystemTick()
@@ -353,13 +369,13 @@ namespace AzFramework
             LegacyAssetEventBus::ExecuteQueuedEvents();
         }
 
-        AssetStatus AssetSystemComponent::SendAssetStatusRequest(const AZStd::string& assetPath, bool statusOnly)
+        AssetStatus AssetSystemComponent::SendAssetStatusRequest(const AZStd::string& assetPath, bool statusOnly, bool requireFencing)
         {
             AssetStatus eStatus = AssetStatus_Unknown;
 
             if (m_socketConn && m_socketConn->IsConnected())
             {
-                RequestAssetStatus request(assetPath.c_str(), statusOnly);
+                RequestAssetStatus request(assetPath.c_str(), statusOnly, requireFencing);
                 ResponseAssetStatus response;
                 SendRequest(request, response);
 

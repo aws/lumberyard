@@ -89,6 +89,7 @@ CLayoutConfigDialog::~CLayoutConfigDialog()
 
 void CLayoutConfigDialog::SetLayout(EViewLayout layout)
 {
+    m_layout = layout;
     ui->m_layouts->setCurrentIndex(m_model->index(static_cast<int>(layout), 0));
 }
 
@@ -98,13 +99,16 @@ void CLayoutConfigDialog::SetLayout(EViewLayout layout)
 void CLayoutConfigDialog::OnOK()
 {
     auto index = ui->m_layouts->currentIndex();
+    auto oldLayout = m_layout;
 
     if (index.isValid())
     {
         m_layout = static_cast<EViewLayout>(index.row());
     }
 
-    accept();
+    // If the layout has not been changed, the calling code
+    // is not supposed to do anything. So let's simply reject in that case.
+    done(m_layout == oldLayout ? QDialog::Rejected : QDialog::Accepted);
 }
 
 #include <LayoutConfigDialog.moc>

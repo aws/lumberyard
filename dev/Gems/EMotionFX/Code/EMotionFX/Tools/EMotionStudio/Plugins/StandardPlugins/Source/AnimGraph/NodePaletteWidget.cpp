@@ -72,21 +72,8 @@ namespace EMStudio
 
 
     NodePaletteWidget::EventHandler::EventHandler(NodePaletteWidget* widget)
-    {
-        mWidget = widget;
-    }
-
-
-    NodePaletteWidget::EventHandler::~EventHandler()
-    {
-    }
-
-
-    NodePaletteWidget::EventHandler* NodePaletteWidget::EventHandler::Create(NodePaletteWidget* widget)
-    {
-        return aznew NodePaletteWidget::EventHandler(widget);
-    }
-
+        : mWidget(widget)
+    {}
 
     void NodePaletteWidget::EventHandler::OnCreatedNode(EMotionFX::AnimGraph* animGraph, EMotionFX::AnimGraphNode* node)
     {
@@ -115,6 +102,15 @@ namespace EMStudio
         mTabBar = nullptr;
         mList   = nullptr;
 
+        m_categories.reserve(7);
+        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_SOURCES, "Sources");
+        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_BLENDING, "Blending");
+        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS, "Controllers");
+        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_PHYSICS, "Physics");
+        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_LOGIC, "Logic");
+        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_MATH, "Math");
+        m_categories.emplace_back(EMotionFX::AnimGraphNode::CATEGORY_MISC, "Misc");
+
         // create the default layout
         mLayout = new QVBoxLayout();
         mLayout->setMargin(0);
@@ -133,14 +129,12 @@ namespace EMStudio
 
         // create the tabbar
         mTabBar = new QTabBar();
-        mTabBar->addTab("Sources");
-        mTabBar->addTab("Blending");
-        mTabBar->addTab("Controllers");
-        mTabBar->addTab("Logic");
-        mTabBar->addTab("Math");
-        mTabBar->addTab("Misc");
+        for (const auto& categoryPair : m_categories)
+        {
+            mTabBar->addTab(categoryPair.second);
+        }
         mTabBar->setVisible(false);
-        connect(mTabBar, SIGNAL(currentChanged(int)), this, SLOT(OnChangeCategoryTab(int)));
+        connect(mTabBar, &QTabBar::currentChanged, this, &NodePaletteWidget::OnChangeCategoryTab);
 
         // add the tabbar in the layout
         mLayout->addWidget(mTabBar);
@@ -168,15 +162,18 @@ namespace EMStudio
         setLayout(mLayout);
 
         // register the event handler
-        mEventHandler = EventHandler::Create(this);
+        mEventHandler = aznew NodePaletteWidget::EventHandler(this);
         EMotionFX::GetEventManager().AddEventHandler(mEventHandler);
+
+        connect(&mPlugin->GetAnimGraphModel(), &AnimGraphModel::FocusChanged, this, &NodePaletteWidget::OnFocusChanged);
     }
 
 
     // destructor
     NodePaletteWidget::~NodePaletteWidget()
     {
-        EMotionFX::GetEventManager().RemoveEventHandler(mEventHandler, true);
+        EMotionFX::GetEventManager().RemoveEventHandler(mEventHandler);
+        delete mEventHandler;
     }
 
 
@@ -216,7 +213,7 @@ namespace EMStudio
     }
 
 
-    AZStd::string NodePaletteWidget::GetNodeIconFileName(EMotionFX::AnimGraphNode* node)
+    AZStd::string NodePaletteWidget::GetNodeIconFileName(const EMotionFX::AnimGraphNode* node)
     {
         AZStd::string filename      = AZStd::string::format("/Images/AnimGraphPlugin/%s.png", node->RTTI_GetTypeName());
         AZStd::string fullFilename  = AZStd::string::format("%s/Images/AnimGraphPlugin/%s.png", MysticQt::GetDataDir().c_str(), node->RTTI_GetTypeName());
@@ -235,54 +232,40 @@ namespace EMStudio
     {
         mList->clear();
 
-        const AZStd::unordered_set<AZ::TypeId>& nodeObjectTypes = EMotionFX::AnimGraphObjectFactory::GetUITypes();
-        for (const AZ::TypeId& nodeObjectType : nodeObjectTypes)
+        const AZStd::vector<EMotionFX::AnimGraphObject*>& objectPrototypes = mPlugin->GetAnimGraphObjectFactory()->GetUiObjectPrototypes();
+        for (const EMotionFX::AnimGraphObject* objectPrototype : objectPrototypes)
         {
-            EMotionFX::AnimGraphObject* curObject = EMotionFX::AnimGraphObjectFactory::Create(nodeObjectType);
-
-            if (mPlugin->CheckIfCanCreateObject(object, curObject, category))           
+            if (mPlugin->CheckIfCanCreateObject(object, objectPrototype, category))
             {
-                EMotionFX::AnimGraphNode* curNode = static_cast<EMotionFX::AnimGraphNode*>(curObject);
+                const EMotionFX::AnimGraphNode* curNode = static_cast<const EMotionFX::AnimGraphNode*>(objectPrototype);
                 QListWidgetItem* item = new QListWidgetItem(MysticQt::GetMysticQt()->FindIcon(GetNodeIconFileName(curNode).c_str()), curNode->GetPaletteName(), mList, NodePaletteList::NODETYPE_BLENDNODE);
                 item->setToolTip(curNode->RTTI_GetTypeName());
                 item->setData(Qt::UserRole, azrtti_typeid(curNode).ToString<AZStd::string>().c_str());
-            }
-
-            if (curObject)
-            {
-                delete curObject;
             }
         }
     }
 
 
-    // a tab changed
     void NodePaletteWidget::OnChangeCategoryTab(int index)
     {
-        switch (index)
-        {
-            case 0:
-                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_SOURCES);
-                return;
-            case 1:
-                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_BLENDING);
-                return;
-            case 2:
-                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_CONTROLLERS);
-                return;
-            case 3:
-                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_LOGIC);
-                return;
-            case 4:
-                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_MATH);
-                return;
-            case 5:
-                RegisterItems(mNode, EMotionFX::AnimGraphNode::CATEGORY_MISC);
-                return;
-            default:
-                AZ_Assert(false, "Unsupported category tab.")
-        };
+        AZ_Assert(index >= 0 && index < m_categories.size(), "Unsupported category tab.");
+        RegisterItems(mNode, static_cast<EMotionFX::AnimGraphNode::ECategory>(index));
     }
-} // namespace EMStudio
 
-#include <EMotionFX/Tools/EMotionStudio/Plugins/StandardPlugins/Source/AnimGraph/NodePaletteWidget.moc>
+    void NodePaletteWidget::OnFocusChanged(const QModelIndex& newFocusIndex, const QModelIndex& newFocusParent, const QModelIndex& oldFocusIndex, const QModelIndex& oldFocusParent)
+    {
+        if (newFocusParent != oldFocusParent)
+        {
+            if (newFocusParent.isValid())
+            {
+                EMotionFX::AnimGraphNode* node = newFocusParent.data(AnimGraphModel::ROLE_NODE_POINTER).value<EMotionFX::AnimGraphNode*>();
+                Init(node->GetAnimGraph(), node);
+            }
+            else
+            {
+                Init(nullptr, nullptr);
+            }
+        }
+    }
+
+} // namespace EMStudio

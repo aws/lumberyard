@@ -20,8 +20,15 @@ from cgf_utils import custom_resource_response
 
 # Get a specific heatmap
 @service.api
-def get(request, heatmapid):
+def get(request, id):
     db = DynamoDb()
+    result = db.get_key("heatmaps")
+    if result and len(result['Items']) > 0:
+        for item in result['Items']:
+            for heatmap in item['value']:
+                if heatmap['id'] == id:
+                    return heatmap
+    return None
 
 # List existing heatmaps
 @service.api

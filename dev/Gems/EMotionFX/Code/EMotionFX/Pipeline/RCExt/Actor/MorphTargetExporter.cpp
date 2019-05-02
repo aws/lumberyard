@@ -128,12 +128,16 @@ namespace EMotionFX
                             AZ::SceneAPI::Containers::SceneGraph::NodeIndex morphMeshParentIndex = graph.GetNodeParent(nodeIndex);
                             morphParentNodeName = context.m_scene.GetGraph().GetNodeName(morphMeshParentIndex).GetName();
                             EMotionFX::Node* emfxNode = morphTargetActor->GetSkeleton()->FindNodeByName(morphParentNodeName.c_str());
+                            if (emfxNode)
+                            {
+                                globalTransform = SceneUtil::BuildWorldTransform(graph, nodeIndex);
 
-                            globalTransform = SceneUtil::BuildWorldTransform(graph, nodeIndex);
-                            // Inverse transpose for normal
-                            AZ::Transform globalTransformN = globalTransform.GetInverseFull().GetTranspose();
+                                // Inverse transpose for normal
+                                AZ::Transform globalTransformN = globalTransform.GetInverseFull().GetTranspose();
+                                globalTransformN.SetTranslation(AZ::Vector3::CreateZero());
 
-                            BuildMorphTargetMesh(morphTargetActor, emfxNode, morphTargetData, globalTransform, globalTransformN, context.m_coordinateSystemConverter, context.m_useMeshOptimization);
+                                BuildMorphTargetMesh(morphTargetActor, emfxNode, morphTargetData, globalTransform, globalTransformN, context.m_coordinateSystemConverter, context.m_useMeshOptimization);
+                            }
                         }
                     }
                 }
@@ -164,7 +168,6 @@ namespace EMotionFX
 
             // Get the number of orgVerts (control point)
             const AZ::u32 controlPointCount = morphTargetData->GetUsedControlPointCount();
-            //const AZ::u32 numVertices = morphTargetData->GetVertexCount();
             EMotionFX::MeshBuilder* meshBuilder = EMotionFX::MeshBuilder::Create(emfxNode->GetNodeIndex(), controlPointCount, false, false /* Disable vertex duplication optimization for morphed meshes. */);
 
             // Original vertex numbers
@@ -210,23 +213,17 @@ namespace EMotionFX
                     pos = morphTargetData->GetPosition(vertexIndex);
                     pos = globalTransform * pos;
                     pos = coordinateSystemConverter.ConvertVector3(pos);
+                    posLayer->SetCurrentVertexValue(&pos);
+
                     normal = morphTargetData->GetNormal(vertexIndex);
                     normal = globalTransformN * normal;
                     normal = coordinateSystemConverter.ConvertVector3(normal);
-
-                    posLayer->SetCurrentVertexValue(&pos);
                     normal.NormalizeSafeExact();
                     normalsLayer->SetCurrentVertexValue(&normal);
 
                     meshBuilder->AddPolygonVertex(orgVertexNumber);
                 }
                 meshBuilder->EndPolygon();
-            }
-
-            // Cache optimize the index buffer list
-            if (optimizeTriangleList)
-            {
-                meshBuilder->OptimizeTriangleList();
             }
 
             // Link the mesh to the node
@@ -236,6 +233,5 @@ namespace EMotionFX
             meshBuilder->Destroy();
         }
     } // namespace Pipeline
-
 } // namespace EMotionFX
 

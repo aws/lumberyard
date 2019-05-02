@@ -174,7 +174,7 @@ namespace CommandSystem
                 continue;
             }
 
-            animGraph->Reinit();
+            animGraph->RecursiveReinit();
         }
 
         // Update unique datas for all anim graph instances using the given motion set.
@@ -276,7 +276,7 @@ namespace CommandSystem
                 continue;
             }
 
-            animGraph->Reinit();
+            animGraph->RecursiveReinit();
         }
 
         // Update unique datas for all anim graph instances using the given motion set.
@@ -484,7 +484,7 @@ namespace CommandSystem
                 continue;
             }
 
-            animGraph->Reinit();
+            animGraph->RecursiveReinit();
         }
 
         // Update unique datas for all anim graph instances using the given motion set.
@@ -607,7 +607,7 @@ namespace CommandSystem
                 continue;
             }
 
-            animGraph->Reinit();
+            animGraph->RecursiveReinit();
         }
 
         // Update unique datas for all anim graph instances using the given motion set.
@@ -805,7 +805,7 @@ namespace CommandSystem
                 continue;
             }
 
-            animGraph->Reinit();
+            animGraph->RecursiveReinit();
         }
 
         // Update unique datas for all anim graph instances using the given motion set.
@@ -1080,7 +1080,7 @@ namespace CommandSystem
                 continue;
             }
 
-            if (motionSet->GetIsOwnedByRuntime())
+            if (motionSet->GetIsOwnedByRuntime() || motionSet->GetIsOwnedByAsset())
             {
                 continue;
             }

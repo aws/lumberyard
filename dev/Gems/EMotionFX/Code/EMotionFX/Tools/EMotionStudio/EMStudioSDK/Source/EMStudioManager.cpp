@@ -30,7 +30,10 @@
 #include <MCore/Source/CommandManager.h>
 #include <MCore/Source/FileSystem.h>
 #include <EMotionFX/Source/AnimGraphManager.h>
+#include <EMotionFX/Source/EMotionFXManager.h>
 #include <EMotionFX/Source/MotionManager.h>
+
+#include <Source/Editor/SkeletonModel.h>
 
 // include Qt related things
 #include <QApplication>
@@ -63,6 +66,9 @@ namespace EMStudio
     // constructor
     EMStudioManager::EMStudioManager(QApplication* app, int& argc, char* argv[])
     {
+        // Flag that we have an editor around
+        EMotionFX::GetEMotionFX().SetIsInEditorMode(true);
+
         mHTMLLinkString.reserve(32768);
         mEventProcessingCallback = nullptr;
         mAutoLoadLastWorkspace = false;
@@ -105,9 +111,10 @@ namespace EMStudio
         mEventPresetManager         = new MotionEventPresetManager();
         mPluginManager              = new PluginManager();
         mLayoutManager              = new LayoutManager();
-        mOutlinerManager            = new OutlinerManager();
         mNotificationWindowManager  = new NotificationWindowManager();
         mCompileDate = AZStd::string::format("%s", MCORE_DATE);
+
+        EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusConnect();
 
         // log some information
         LogInfo();
@@ -117,6 +124,8 @@ namespace EMStudio
     // destructor
     EMStudioManager::~EMStudioManager()
     {
+        EMotionFX::SkeletonOutlinerNotificationBus::Handler::BusDisconnect();
+
         if (mEventProcessingCallback)
         {
             EMStudio::GetCommandManager()->RemoveCallback(mEventProcessingCallback, false);
@@ -130,7 +139,6 @@ namespace EMStudio
         delete mPluginManager;
         delete mLayoutManager;
         delete mNotificationWindowManager;
-        delete mOutlinerManager;
         delete mMainWindow;
         delete mCommandManager;
 
@@ -142,8 +150,6 @@ namespace EMStudio
         if (mMainWindow.isNull())
         {
             mMainWindow = new MainWindow();
-            mEventPresetManager->LoadFromSettings();
-            mEventPresetManager->Load();
             mMainWindow->Init();
         }
         return mMainWindow;
@@ -318,36 +324,52 @@ namespace EMStudio
     }
 
 
-    MCore::Array<uint32>& EMStudioManager::GetVisibleNodeIndices()
+    void EMStudioManager::SetVisibleJointIndices(const MCore::Array<uint32>& visibleJointIndices)
     {
-        return mVisibleNodeIndices;
-        /*if (mNodeFilterString.GetIsEmpty())
-            return nullptr;
+        m_visibleJointIndices.clear();
 
-        return mNodeFilterString.AsChar();*/
+        const AZ::u32 jointCount = visibleJointIndices.GetLength();
+        for (AZ::u32 i = 0; i < jointCount; ++i)
+        {
+            m_visibleJointIndices.emplace(visibleJointIndices[i]);
+        }
     }
 
 
-    void EMStudioManager::SetVisibleNodeIndices(const MCore::Array<uint32>& visibleNodeIndices)
+    void EMStudioManager::SetSelectedJointIndices(const MCore::Array<uint32>& selectedJointIndices)
     {
-        mVisibleNodeIndices = visibleNodeIndices;
-        /*if (filterString == nullptr)
-            mNodeFilterString.Clear(false);
-        else
-            mNodeFilterString = filterString;*/
+        m_selectedJointIndices.clear();
 
-        /*  mFilteredNodes.Clear(false);
+        const AZ::u32 jointCount = selectedJointIndices.GetLength();
+        for (AZ::u32 i = 0; i < jointCount; ++i)
+        {
+            m_selectedJointIndices.emplace(selectedJointIndices[i]);
+        }
+    }
 
-            Actor* actor = actorInstance->GetActor();
-            const uint32 numNodes = actor->GetNumNodes();
-            for (uint32 i=0; i<numNodes; ++i)
-            {
-                Node*   node        = actor->GetNode(i);
-                String  nodeName    = node->GetNameString().Lowered();
 
-                if (mNodeFilterString.GetIsEmpty() || nodeName.Contains(mNodeFilterString.AsChar()))
-                    mFilteredNodes.Add(node);
-            }*/
+    void EMStudioManager::JointSelectionChanged()
+    {
+        AZ::Outcome<const QModelIndexList&> selectedRowIndicesOutcome;
+        EMotionFX::SkeletonOutlinerRequestBus::BroadcastResult(selectedRowIndicesOutcome, &EMotionFX::SkeletonOutlinerRequests::GetSelectedRowIndices);
+        if (!selectedRowIndicesOutcome.IsSuccess())
+        {
+            return;
+        }
+
+        m_selectedJointIndices.clear();
+
+        const QModelIndexList& selectedRowIndices = selectedRowIndicesOutcome.GetValue();
+        if (selectedRowIndices.empty())
+        {
+            return;
+        }
+
+        for (const QModelIndex& selectedIndex : selectedRowIndices)
+        {
+            EMotionFX::Node* joint = selectedIndex.data(EMotionFX::SkeletonModel::ROLE_POINTER).value<EMotionFX::Node*>();
+            m_selectedJointIndices.emplace(joint->GetNodeIndex());
+        }
     }
 
 
@@ -514,5 +536,3 @@ namespace EMStudio
         gEMStudioMgr = nullptr;
     }
 } // namespace EMStudio
-
-#include <EMotionFX/Tools/EMotionStudio/EMStudioSDK/Source/EMStudioManager.moc>

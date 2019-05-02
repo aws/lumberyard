@@ -18,7 +18,11 @@
 #include <IPlatformOS.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(XmlLoadGame_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/XmlLoadGame_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/XmlLoadGame_cpp_provo.inl"
+    #endif
 #endif
 
 

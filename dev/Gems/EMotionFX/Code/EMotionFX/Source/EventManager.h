@@ -26,11 +26,18 @@
 #include "AnimGraphStateTransition.h"
 #include "EventInfo.h"
 
+#include <AzCore/std/utils.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/smart_ptr/shared_ptr.h>
+#include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/smart_ptr/weak_ptr.h>
+
 
 namespace EMotionFX
 {
     // forward declarations
     class EventHandler;
+    class EventData;
 
     /**
      * Intersection information, used by the event system, to return the results of an intersection test.
@@ -96,134 +103,40 @@ namespace EMotionFX
         void AddEventHandler(EventHandler* eventHandler);
 
         /**
-         * Find the index for the given event handler.
-         * @param[in] eventHandler A pointer to the event handler to search.
-         * @return The index of the event handler inside the event manager. MCORE_INVALIDINDEX32 in case the event handler has not been found.
-         */
-        uint32 FindEventHandlerIndex(EventHandler* eventHandler) const;
-
-        /**
          * Remove the given event handler.
          * @param eventHandler A pointer to the event handler to remove.
-         * @param delFromMem When set to true, the event handler will be deleted from memory automatically when removing it.
          */
-        bool RemoveEventHandler(EventHandler* eventHandler, bool delFromMem = true);
+        void RemoveEventHandler(EventHandler* eventHandler);
 
-        /**
-         * Remove the event handler at the given index.
-         * @param index The index of the event handler to remove.
-         * @param delFromMem When set to true, the event handler will be deleted from memory automatically when removing it.
-         */
-        void RemoveEventHandler(uint32 index, bool delFromMem = true);
+        //---------------------------------------------------------------------
+        template<typename T, typename ... Args>
+        AZStd::shared_ptr<const T> FindOrCreateEventData(Args&& ... args)
+        {
+            AZStd::shared_ptr<const T> instance = AZStd::make_shared<const T>(args ...);
+            return FindEventData(instance);
+        }
 
-        /**
-         * Get the event handler at the given index.
-         * @result A pointer to the event handler at the given index.
-         */
-        MCORE_INLINE EventHandler* GetEventHandler(uint32 index) const      { return mEventHandlers[index]; }
+        template<typename T>
+        AZStd::shared_ptr<const T> FindEventData(const AZStd::shared_ptr<const T>& data)
+        {
+            AZStd::lock_guard<AZStd::mutex> lock(m_eventDataLock);
+            for (const AZStd::weak_ptr<const EMotionFX::EventData> entry : m_allEventData)
+            {
+                if (entry.expired())
+                {
+                    continue;
+                }
 
-        /**
-         * Get the number of registered event handlers, which you can use to loop over the event handlers using the GetEventHandler method.
-         * @result The number of event handlers.
-         */
-        MCORE_INLINE uint32 GetNumEventHandlers() const                     { return mEventHandlers.GetLength(); }
+                const AZStd::shared_ptr<const T> typedEntry = AZStd::rtti_pointer_cast<const T>(entry.lock());
+                if (typedEntry && (*data.get() == *typedEntry.get()))
+                {
+                    return typedEntry;
+                }
+            }
 
-        /**
-         * Register a specific even type.
-         * This links a specific event type string with a specified integer ID value.
-         * This integer ID value can then be used for much faster checks to see what event is being triggered.
-         * When the event ID is set to MCORE_INVALIDINDEX32 this will automatically assign a free ID to the to be
-         * registered event.
-         * If you register an event type that has already been registered before, nothing will happen and the ID
-         * of the given event will be returned (and not the one specified as second parameter).
-         * It is not possible to register the same event type again, but with another ID. If you do this, in release mode
-         * a value of MCORE_INVALIDINDEX32 will be returned, and in debug mode an assert will happen.
-         * @param eventType The string identifying the event type. This is not case sensitive.
-         * @param uniqueEventID The event ID to link with this, or MCORE_INVALIDINDEX32 to automatically assign a new ID.
-         * @result The ID that has been assigned to the event type. This is different from the parameter value that you
-         *         specify to "uniqueEventID" in case it is set to MCORE_INVALIDINDEX32. A value of MCORE_INVALIDINDEX32
-         *         will be returned when something went wrong.
-         */
-        uint32 RegisterEventType(const char* eventType, uint32 uniqueEventID = MCORE_INVALIDINDEX32);
-
-        /**
-         * Unregister the event of a given type.
-         * @param eventID The event ID to unregister.
-         */
-        void UnregisterEventType(uint32 eventID);
-
-        /**
-         * Unregister a specific event type, based on its event string.
-         * @param eventType The string containing the event type. This is not case sensitive.
-         */
-        void UnregisterEventType(const char* eventType);
-
-        /**
-         * Find the ID for a given event, based on a string.
-         * @param eventType The string containing the event type. This is not case sensitive.
-         * @result The event ID linked with this string or MCORE_INVALIDINDEX32 when it has not been found.
-         */
-        uint32 FindEventID(const char* eventType) const;
-
-        /**
-         * Check if there are any events registered with the given ID.
-         * @param eventID The ID to check for.
-         * @result Returns true when there is an event registered using the specified ID. Otherwise false is returned.
-         */
-        bool CheckIfHasEventType(uint32 eventID) const;
-
-        /**
-         * Check if there are any events registered with the given even type.
-         * @param eventType The event type string to check for.
-         * @result Returns true when there is an event registered using the specified event type string. Otherwise false is returned.
-         */
-        bool CheckIfHasEventType(const char* eventType) const;
-
-        /**
-         * Get the number of registered event types.
-         * @result The number of registered event types.
-         */
-        uint32 GetNumRegisteredEventTypes() const;
-
-        /**
-         * Get the event ID of a given event number.
-         * @param eventIndex The event number, which must be in range of [0..GetNumRegisteredEventTypes()-1].
-         * @result The ID of the event number.
-         */
-        uint32 GetEventTypeID(uint32 eventIndex) const;
-
-        /**
-         * Get the event type string of a given event number.
-         * @param eventIndex The event number, which must be in range of [0..GetNumRegisteredEventTypes()-1].
-         * @result The string of the event type.
-         */
-        const char* GetEventTypeString(uint32 eventIndex) const;
-
-        /**
-         * Get the event type string of a given event number.
-         * @param eventIndex The event number, which must be in range of [0..GetNumRegisteredEventTypes()-1].
-         * @result The string of the event type.
-         */
-        const AZStd::string& GetEventTypeStringAsString(uint32 eventIndex) const;
-
-        /**
-         * Find the event type number for an event with the given type ID.
-         * @param eventTypeID The event type ID to search for.
-         * @result The event type number, which is in range of [0..GetNumRegisteredEventTypes()-1], or MCORE_INVALIDINDEX32 when not found.
-         */
-        uint32 FindEventTypeIndex(uint32 eventTypeID) const;
-
-        /**
-         * Find the event type number for an event with the given type string.
-         * @param eventType The event type string to search for.
-         * @result The event type number, which is in range of [0..GetNumRegisteredEventTypes()-1], or MCORE_INVALIDINDEX32 when not found.
-         */
-        uint32 FindEventTypeIndex(const char* eventType) const;
-
-        /**
-         * Log all registered event types using the MCore::LOG function.
-         */
-        void LogRegisteredEventTypes();
+            m_allEventData.emplace_back(data);
+            return data;
+        }
 
         //---------------------------------------------------------------------
 
@@ -394,8 +307,8 @@ namespace EMotionFX
         /**
          * Perform a ray intersection test and return the intersection info.
          * The first event handler registered that sets the IntersectionInfo::mIsValid to true will be outputting to the outIntersectInfo parameter.
-         * @param start The start point, in global space.
-         * @param end The end point, in global space.
+         * @param start The start point, in world space.
+         * @param end The end point, in world space.
          * @param outIntersectInfo The resulting intersection info.
          * @result Returns true when an intersection occurred and false when no intersection occurred.
          */
@@ -407,9 +320,10 @@ namespace EMotionFX
         void OnStateEnd(AnimGraphInstance* animGraphInstance, AnimGraphNode* state);
         void OnStartTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition);
         void OnEndTransition(AnimGraphInstance* animGraphInstance, AnimGraphStateTransition* transition);
-        void Sync(AnimGraphInstance* animGraphInstance, AnimGraphNode* animGraphNode);
         void OnSetVisualManipulatorOffset(AnimGraphInstance* animGraphInstance, uint32 paramIndex, const AZ::Vector3& offset);
-        void OnParameterNodeMaskChanged(BlendTreeParameterNode* parameterNode, const AZStd::vector<AZStd::string>& newParameterMask);
+
+        void OnInputPortsChanged(AnimGraphNode* node, const AZStd::vector<AZStd::string>& newInputPorts, const AZStd::string& memberName, const AZStd::vector<AZStd::string>& memberValue);
+        void OnOutputPortsChanged(AnimGraphNode* node, const AZStd::vector<AZStd::string>& newOutputPorts, const AZStd::string& memberName, const AZStd::vector<AZStd::string>& memberValue);
 
         void OnRenamedNode(AnimGraph* animGraph, AnimGraphNode* node, const AZStd::string& oldName);
         void OnCreatedNode(AnimGraph* animGraph, AnimGraphNode* node);
@@ -452,9 +366,13 @@ namespace EMotionFX
             uint32          mEventID;                               /**< The unique ID for this event. */
         };
 
-        MCore::Array<EventHandler*>         mEventHandlers;         /**< The event handler to use to process events. */
-        MCore::Array<RegisteredEventType>   mRegisteredEventTypes;  /**< A collection of registered events. */
+        using EventHandlerVector = AZStd::vector<EventHandler*>;
+        AZStd::vector<EventHandlerVector> m_eventHandlersByEventType; /**< The event handler to use to process events organized by EventTypes. */
+
         MCore::MutexRecursive               mLock;
+        AZStd::mutex m_eventDataLock;
+
+        AZStd::vector<AZStd::weak_ptr<const EMotionFX::EventData> > m_allEventData;
 
         /**
          * The constructor, which will initialize the manager to use the default dummy event handler.

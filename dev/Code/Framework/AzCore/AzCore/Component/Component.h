@@ -24,6 +24,7 @@
 
 #include <AzCore/Memory/Memory.h>
 #include <AzCore/Memory/SystemAllocator.h> // Used as the allocator for most components.
+#include <AzCore/Outcome/Outcome.h>
 
 namespace AZ
 {
@@ -34,6 +35,7 @@ namespace AZ
     using ImmutableEntityVector = AZStd::vector<AZ::Entity const *>;
 
     using ComponentTypeList = AZStd::vector<Uuid>; ///< List of Component class type IDs.
+    using ComponentValidationResult = AZ::Outcome<void, AZStd::string>;
 
     /**
      * Base class for all components. 
@@ -112,6 +114,12 @@ namespace AZ
         void SetId(const ComponentId& id)   { m_id = id; }
 
         /**
+        * Override to conduct per-component or per-slice validation logic during slice asset processing.
+        * @param sliceEntities All entities that belong to the slice that the entity with this component is on.
+        */
+        virtual ComponentValidationResult ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/) const { return AZ::Success(); }
+
+        /**
          * Set the component's configuration.
          * A component cannot be configured while it is activated.
          * A component must implement the ReadInConfig() function for this to have an effect.
@@ -129,12 +137,6 @@ namespace AZ
          * For example, use a TransformConfig with a TransformComponent.
          */
         bool GetConfiguration(AZ::ComponentConfig& outConfig) const;
-
-        /**
-        * Override to conduct per-component or per-slice validation logic during slice asset processing.
-        * @param sliceEntities All entities that belong to the slice that the entity with this component is on.
-        */
-        virtual bool ValidateComponentRequirements(const ImmutableEntityVector& /*sliceEntities*/) const { return true; }
 
     protected:
         /**

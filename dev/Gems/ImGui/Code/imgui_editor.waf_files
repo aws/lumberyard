@@ -1,0 +1,15 @@
+{
+    "auto": {
+        "Editor": [
+            "Editor/ImGuiEditorWindowBus.h",
+            "Editor/ImGuiEditorWindowModule.cpp",
+            "Editor/ImGuiEditorWindowSystemComponent.cpp",
+            "Editor/ImGuiEditorWindowSystemComponent.h",
+            "Editor/ImGuiMainWindow.h",
+            "Editor/ImGuiMainWindow.cpp",
+            "Editor/ImGuiMainWindow.ui",
+            "Editor/ImGuiViewport.h",
+            "Editor/ImGuiViewport.cpp"
+        ]
+    }
+}

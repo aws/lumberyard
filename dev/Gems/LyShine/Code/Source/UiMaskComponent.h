@@ -14,7 +14,9 @@
 #include <LyShine/Bus/UiRenderControlBus.h>
 #include <LyShine/Bus/UiMaskBus.h>
 #include <LyShine/Bus/UiInteractionMaskBus.h>
+#include <LyShine/Bus/UiTransformBus.h>
 #include <LyShine/UiComponentTypes.h>
+#include <LyShine/IRenderGraph.h>
 
 #include <AzCore/Component/Component.h>
 
@@ -24,6 +26,7 @@ class UiMaskComponent
     , public UiRenderControlBus::Handler
     , public UiMaskBus::Handler
     , public UiInteractionMaskBus::Handler
+    , public UiTransformChangeNotificationBus::Handler
 {
 public: // member functions
 
@@ -33,9 +36,8 @@ public: // member functions
     ~UiMaskComponent() override;
 
     // UiRenderControlInterface
-    void SetupBeforeRenderingComponents(Pass pass) override;
-    void SetupAfterRenderingComponents(Pass pass) override;
-    void SetupAfterRenderingChildren(bool& isSecondComponentsPassRequired) override;
+    void Render(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+        UiRenderInterface* renderInterface, int numChildren, bool isInGame) override;
     // ~UiRenderControlInterface
 
     // UiMaskInterface
@@ -49,11 +51,18 @@ public: // member functions
     void SetDrawInFront(bool drawMaskVisualInFrontOfChildren) override;
     bool GetUseAlphaTest() override;
     void SetUseAlphaTest(bool useAlphaTest) override;
+    bool GetUseRenderToTexture() override;
+    void SetUseRenderToTexture(bool useRenderToTexture) override;
     // ~UiMaskInterface
 
     // UiInteractionMaskInterface
     bool IsPointMasked(AZ::Vector2 point) override;
     // ~UiInteractionMaskInterface
+
+    // UiTransformChangeNotification
+    void OnCanvasSpaceRectChanged(AZ::EntityId entityId, const UiTransformInterface::Rect& oldRect, const UiTransformInterface::Rect& newRect) override;
+    void OnTransformToViewportChanged() override;
+    // ~UiTransformChangeNotification
 
 public:  // static member functions
 
@@ -92,7 +101,64 @@ private: // member functions
     using EntityComboBoxVec = AZStd::vector< AZStd::pair< AZ::EntityId, AZStd::string > >;
     EntityComboBoxVec PopulateChildEntityList();
 
+    //! Mark the render graph as dirty, this should be done when any change is made affects the structure of the graph
+    void MarkRenderGraphDirty();
+
+    //! Called when a property changed in property pane that invalidates render settings
+    void OnEditorRenderSettingChange();
+
+    //! Called when something changed that invalidates render target
+    void OnRenderTargetChange();
+
+    //! When m_useRenderToTexture is true this is used to create the render targets and depth surface or resize them if they exist
+    void CreateOrResizeRenderTarget(const AZ::Vector2& pixelAlignedTopLeft, const AZ::Vector2& pixelAlignedBottomRight);
+
+    //! Destroy the render targets and depth surface that are used when m_useRenderToTexture is true
+    void DestroyRenderTarget();
+
+    //! Update cached primitive vertices
+    void UpdateCachedPrimitive(const AZ::Vector2& pixelAlignedTopLeft, const AZ::Vector2& pixelAlignedBottomRight);
+
+    // compute pixel aligned bounds of element in viewport space
+    void ComputePixelAlignedBounds(AZ::Vector2& pixelAlignedTopLeft, AZ::Vector2& pixelAlignedBottomRight);
+
+    //! Some properties are only visible when this is a stencil mask as opposed to a gradient mask
+    bool IsStencilMask();
+
+    // render the element and its children using stencil mask
+    void RenderUsingStencilMask(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+        UiRenderInterface* renderInterface, UiElementInterface* childMaskElementInterface, int numChildren, bool isInGame);
+
+    // render the element and its children using render-to-texture and an alpha gradient mask
+    void RenderUsingGradientMask(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+        UiRenderInterface* renderInterface, UiElementInterface* childMaskElementInterface, int numChildren, bool isInGame);
+
+    // render a disabled mask (in case where we don't have both draw behind and draw in front enabled)
+    void RenderDisabledMask(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+        UiRenderInterface* renderInterface, UiElementInterface* childMaskElementInterface, int numChildren, bool isInGame);
+
+    // render a disabled mask (in case where we do have both draw behind and draw in front enabled
+    void RenderDisabledMaskWithDoubleRender(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+        UiRenderInterface* renderInterface, UiElementInterface* childMaskElementInterface, int numChildren, bool isInGame);
+
+    // render this element's component and the child mask element
+    void RenderMaskPrimitives(LyShine::IRenderGraph* renderGraph,
+        UiRenderInterface* renderInterface, UiElementInterface* childMaskElementInterface, bool isInGame);
+
+    // render this element's child elements (excluding the child mask element)
+    void RenderContentPrimitives(LyShine::IRenderGraph* renderGraph, UiElementInterface* elementInterface,
+        UiElementInterface* childMaskElementInterface, int numChildren, bool isInGame);
+
+    // validate that nested mask configurations are valid during rendering and output a warning if not
+    bool ValidateMaskConfiguration(const LyShine::IRenderGraph* renderGraph);
+
+    // Get the element interface child mask element after checking that the configuration of it is valid
+    // output a warning if not (used during render).
+    UiElementInterface* GetValidatedChildMaskElement();
+
 private: // data
+
+    // Serialized members
 
     //! flag allows for easy debugging, also can be used to turn mask on/off from C++
     //! or in an animation.
@@ -112,9 +178,42 @@ private: // data
     //! An optional child element that defines additional mask visuals
     AZ::EntityId m_childMaskElement;
 
-    //! Saved prior base state from before rendering (non-persistent variable, only used during rendering)
-    int m_priorBaseState;
+    bool m_useRenderToTexture = false;  //!< If true, render this element and children to a separate render target and fade that
 
-    //! Saved render enabled state of the child mask element
-    bool m_priorChildMaskElementIsRenderEnabled = true;
+    // Non-serialized members
+
+    //! This is generated from the entity ID and cached
+    AZStd::string m_renderTargetName;
+
+    //! This is generated from the entity ID and cached
+    AZStd::string m_maskRenderTargetName;
+
+    //! When rendering to a texture this is the texture ID of the render target
+    int m_contentRenderTargetHandle = -1;
+
+    //! When rendering to a texture this is our depth surface, we use the same one for rendering the mask elements
+    //! and the content elements - it is cleared in between.
+    SDepthTexture* m_renderTargetDepthSurface = nullptr;
+    
+    //! When rendering to a texture this is the texture ID of the render target
+    int m_maskRenderTargetHandle = -1;
+
+    //! The positions used for the render to texture viewport and to render the render target to the screen
+    AZ::Vector2 m_viewportTopLeft = AZ::Vector2::CreateZero();
+    AZ::Vector2 m_viewportSize = AZ::Vector2::CreateZero();
+
+    // currently allocated size of render target
+    int m_renderTargetWidth = 0;
+    int m_renderTargetHeight = 0;
+
+    //! cached rendering data for performance optimization of rendering the render target to screen
+    IRenderer::DynUiPrimitive m_cachedPrimitive;
+
+#ifndef _RELEASE
+    //! This variable is only used to prevent spamming a warning message each frame (for nested stencil masks)
+    bool m_reportedNestedStencilWarning = false;
+
+    //! This variable is only used to prevent spamming a warning message each frame (for invalid child mask elements)
+    bool m_reportedInvalidChildMaskElementWarning = false;
+#endif
 };

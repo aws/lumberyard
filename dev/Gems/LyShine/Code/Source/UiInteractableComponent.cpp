@@ -388,6 +388,35 @@ void UiInteractableComponent::Update(float /* deltaTime */)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableComponent::OnUiElementFixup(AZ::EntityId canvasEntityId, AZ::EntityId /*parentEntityId*/)
+{
+    bool isElementEnabled = false;
+    EBUS_EVENT_ID_RESULT(isElementEnabled, GetEntityId(), UiElementBus, GetAreElementAndAncestorsEnabled);
+    if (isElementEnabled)
+    {
+        UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void UiInteractableComponent::OnUiElementAndAncestorsEnabledChanged(bool areElementAndAncestorsEnabled)
+{
+    if (areElementAndAncestorsEnabled)
+    {
+        AZ::EntityId canvasEntityId;
+        EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+        if (canvasEntityId.IsValid())
+        {
+            UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+        }
+    }
+    else
+    {
+        UiCanvasUpdateNotificationBus::Handler::BusDisconnect();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC STATIC MEMBER FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -539,9 +568,27 @@ void UiInteractableComponent::Activate()
     m_stateActionManager.Activate();
     m_navigationSettings.Activate(m_entity->GetId(), GetNavigableInteractables);
 
-    UiInteractableBus::Handler::BusConnect(m_entity->GetId());
-    UiUpdateBus::Handler::BusConnect(m_entity->GetId());
-    UiInteractableActionsBus::Handler::BusConnect(m_entity->GetId());
+    UiInteractableBus::Handler::BusConnect(GetEntityId());
+    UiInteractableActionsBus::Handler::BusConnect(GetEntityId());
+    UiElementNotificationBus::Handler::BusConnect(GetEntityId());
+
+    // The first time the component is activated the owning canvas will not be known. However if
+    // the element is fixed up and then we deactivate and reactivate, OnUiElementFixup will
+    // not get called again. So we need to connect to the UiCanvasUpdateNotificationBus here.
+    // This assumes than on an element activate it will activate the UiElementComponent before
+    // this component. We can rely on this because all UI components depend on UiElementService
+    // as a required service.
+    AZ::EntityId canvasEntityId;
+    EBUS_EVENT_ID_RESULT(canvasEntityId, GetEntityId(), UiElementBus, GetCanvasEntityId);
+    if (canvasEntityId.IsValid())
+    {
+        bool isElementEnabled = false;
+        EBUS_EVENT_ID_RESULT(isElementEnabled, GetEntityId(), UiElementBus, GetAreElementAndAncestorsEnabled);
+        if (isElementEnabled)
+        {
+            UiCanvasUpdateNotificationBus::Handler::BusConnect(canvasEntityId);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +598,8 @@ void UiInteractableComponent::Deactivate()
     m_navigationSettings.Deactivate();
 
     UiInteractableBus::Handler::BusDisconnect();
-    UiUpdateBus::Handler::BusDisconnect();
+    UiCanvasUpdateNotificationBus::Handler::BusDisconnect();
+    UiElementNotificationBus::Handler::BusDisconnect();
     UiInteractableActionsBus::Handler::BusDisconnect();
 }
 

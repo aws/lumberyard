@@ -44,7 +44,7 @@ namespace AZ
         /**
         * This event gets posted at the beginning of CD3D9Renderer's FreeResources method, before the resources have been freed.
         */
-        virtual void OnRendererFreeResources() {};
+        virtual void OnRendererFreeResources(int flags) {};
     };
 
     using RenderNotificationsBus = AZ::EBus<RenderNotifications>;

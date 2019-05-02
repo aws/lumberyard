@@ -16,17 +16,24 @@
 #include <AzCore/Serialization/DataOverlay.h>
 #include <AzCore/Serialization/DynamicSerializableField.h>
 #include <AzCore/Serialization/Utils.h>
+#include <AzCore/Asset/AssetSerializer.h>
+
 /// include AZStd any serializer support
 #include <AzCore/Serialization/AZStdAnyDataContainer.inl>
 
 #include <AzCore/std/functional.h>
 #include <AzCore/std/bind/bind.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/containers/stack.h>
 
 #include <AzCore/Math/MathReflection.h>
 #include <AzCore/Math/MathUtils.h>
 
 #include <AzCore/Debug/Profiler.h>
+
+#if defined(AZ_ENABLE_TRACING) && !defined(AZ_DISABLE_SERIALIZER_DEBUG)
+#   define AZ_ENABLE_SERIALIZER_DEBUG
+#endif
 
 namespace AZ
 {
@@ -466,6 +473,16 @@ namespace AZ
     SerializeContext::~SerializeContext()
     {
         DestroyEditContext();
+        decltype(m_perModuleSet) moduleSet = AZStd::move(m_perModuleSet);
+        for(PerModuleGenericClassInfo* module : moduleSet)
+        {
+            module->UnregisterSerializeContext(this);
+        }
+    }
+
+    void SerializeContext::CleanupModuleGenericClassInfo()
+    {
+        GetCurrentSerializeContextModule().UnregisterSerializeContext(this);
     }
 
     //=========================================================================
@@ -618,7 +635,18 @@ namespace AZ
     //=========================================================================
     GenericClassInfo* SerializeContext::FindGenericClassInfo(const Uuid& classId) const
     {
-        auto genericClassIt = m_uuidGenericMap.find(classId);
+        Uuid resolvedUuid = classId;
+        // If the classId is not in the registered typeid to GenericClassInfo Map attempt to look it up in the legacy specialization
+        // typeid map
+        if (m_uuidGenericMap.count(resolvedUuid) == 0)
+        {
+            auto foundIt = m_legacySpecializeTypeIdToTypeIdMap.find(classId);
+            if (foundIt != m_legacySpecializeTypeIdToTypeIdMap.end())
+            {
+                resolvedUuid = foundIt->second;
+            }
+        }
+        auto genericClassIt = m_uuidGenericMap.find(resolvedUuid);
         if (genericClassIt != m_uuidGenericMap.end())
         {
             return genericClassIt->second;
@@ -629,20 +657,32 @@ namespace AZ
 
     void SerializeContext::RegisterGenericClassInfo(const Uuid& classId, GenericClassInfo* genericClassInfo, const CreateAnyFunc& createAnyFunc)
     {
-        if (genericClassInfo)
+        if (!genericClassInfo)
         {
-            if (IsRemovingReflection())
+            return;
+        }
+
+        if (IsRemovingReflection())
+        {
+            RemoveGenericClassInfo(genericClassInfo);
+        }
+        else
+        {
+            // Make sure that the ModuleCleanup structure has the serializeContext set on it.
+            GetCurrentSerializeContextModule().RegisterSerializeContext(this);
+            // Find the module GenericClassInfo in the SerializeContext GenericClassInfo multimap and add if it is not part of the SerializeContext multimap
+            auto scGenericClassInfoRange = m_uuidGenericMap.equal_range(classId);
+            auto scGenericInfoFoundIt = AZStd::find_if(scGenericClassInfoRange.first, scGenericClassInfoRange.second, [genericClassInfo](const AZStd::pair<AZ::Uuid, GenericClassInfo*>& genericPair)
             {
-                RemoveClassData(genericClassInfo->GetClassData());
-                m_uuidGenericMap.erase(classId);
-                m_uuidAnyCreationMap.erase(classId);
-                m_classNameToUuid.erase(Crc32(genericClassInfo->GetClassData()->m_name));
-            }
-            else
+                return genericClassInfo == genericPair.second;
+            });
+
+            if (scGenericInfoFoundIt == scGenericClassInfoRange.second)
             {
                 m_uuidGenericMap.emplace(classId, genericClassInfo);
                 m_uuidAnyCreationMap.emplace(classId, createAnyFunc);
                 m_classNameToUuid.emplace(genericClassInfo->GetClassData()->m_name, classId);
+                m_legacySpecializeTypeIdToTypeIdMap.emplace(genericClassInfo->GetLegacySpecializedTypeId(), classId);
             }
         }
     }
@@ -794,12 +834,12 @@ namespace AZ
         m_version = rhs.m_version;
         m_dataType = rhs.m_dataType;
 
-        AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
         m_buffer = rhs.m_buffer;
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
         m_byteStream.Seek(rhs.m_byteStream.GetCurPos(), IO::GenericStream::ST_SEEK_BEGIN);
         if (rhs.m_stream == &rhs.m_byteStream)
         {
+            AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
             m_stream = &m_byteStream;
         }
         else
@@ -821,13 +861,13 @@ namespace AZ
         m_dataSize = rhs.m_dataSize;
         m_dataType = rhs.m_dataType;
 
-        AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
         m_buffer = rhs.m_buffer;
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
         m_byteStream.Seek(rhs.m_byteStream.GetCurPos(), IO::GenericStream::ST_SEEK_BEGIN);
 
         if (rhs.m_stream == &rhs.m_byteStream)
         {
+            AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
             m_stream = &m_byteStream;
         }
         else
@@ -853,6 +893,7 @@ namespace AZ
         m_dataType = rhs.m_dataType;
         if (rhs.m_stream == &rhs.m_byteStream)
         {
+            AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
             m_stream = &m_byteStream;
         }
         else
@@ -860,7 +901,6 @@ namespace AZ
             m_stream = rhs.m_stream;
         }
 
-        AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
         m_buffer = AZStd::move(rhs.m_buffer);
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
         m_byteStream.Seek(rhs.m_byteStream.GetCurPos(), IO::GenericStream::ST_SEEK_BEGIN);
@@ -894,6 +934,7 @@ namespace AZ
         m_dataType = rhs.m_dataType;
         if (rhs.m_stream == &rhs.m_byteStream)
         {
+            AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
             m_stream = &m_byteStream;
         }
         else
@@ -901,7 +942,6 @@ namespace AZ
             m_stream = rhs.m_stream;
         }
 
-        AZ_Assert(rhs.m_dataSize == rhs.m_buffer.size(), "Temp buffer must contain only the data for current element!");
 
         m_buffer = AZStd::move(rhs.m_buffer);
         m_byteStream = IO::ByteContainerStream<AZStd::vector<char> >(&m_buffer);
@@ -1158,7 +1198,7 @@ namespace AZ
 
         AZStd::vector<DataElementNode*> nodeStack;
         DataElementNode* topNode = this;
-        bool success;
+        bool success = false;
 
         auto beginCB = [&sc, &nodeStack, topNode, &success, errorHandler](void* ptr, const SerializeContext::ClassData* elementClassData, const SerializeContext::ClassElement* elementData) -> bool
             {
@@ -1252,15 +1292,19 @@ namespace AZ
                 return true;
             };
 
-        sc.EnumerateInstanceConst(
-            objectPtr,
-            classId,
+        EnumerateInstanceCallContext callContext(
             beginCB,
             endCB,
+            &sc,
             SerializeContext::ENUM_ACCESS_FOR_READ,
+            errorHandler);
+
+        sc.EnumerateInstanceConst(
+            &callContext,
+            objectPtr,
+            classId,
             classData,
-            nullptr,
-            errorHandler
+            nullptr
             );
 
         return success;
@@ -1438,6 +1482,7 @@ namespace AZ
             DataElement& rawElement = m_element;
             if (m_classData->m_serializer && rawElement.m_dataSize != 0)
             {
+                rawElement.m_byteStream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
                 if (rawElement.m_dataType == DataElement::DT_TEXT)
                 {
                     // convert to binary so we can load the data
@@ -1664,32 +1709,23 @@ namespace AZ
     // EnumerateInstanceConst
     // [10/31/2012]
     //=========================================================================
-    bool SerializeContext::EnumerateInstanceConst(const void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler) const
+    bool SerializeContext::EnumerateInstanceConst(SerializeContext::EnumerateInstanceCallContext* callContext, const void* ptr, const Uuid& classId, const ClassData* classData, const ClassElement* classElement) const
     {
-        AZ_Assert((accessFlags & ENUM_ACCESS_FOR_WRITE) == 0, "You are asking the serializer to lock the data for write but you only have a const pointer!");
-        return EnumerateInstance(const_cast<void*>(ptr), classId, beginElemCB, endElemCB, accessFlags, classData, classElement, errorHandler);
+        AZ_Assert((callContext->m_accessFlags & ENUM_ACCESS_FOR_WRITE) == 0, "You are asking the serializer to lock the data for write but you only have a const pointer!");
+        return EnumerateInstance(callContext, const_cast<void*>(ptr), classId, classData, classElement);
     }
 
     //=========================================================================
     // EnumerateInstance
     // [10/31/2012]
     //=========================================================================
-    bool SerializeContext::EnumerateInstance(void* ptr, const Uuid& _classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler) const
+    bool SerializeContext::EnumerateInstance(SerializeContext::EnumerateInstanceCallContext* callContext, void* ptr, const Uuid& classId, const ClassData* classData, const ClassElement* classElement) const
     {
         // if useClassData is provided, just use it, otherwise try to find it using the classId provided.
         void* objectPtr = ptr;
-        AZ::Uuid classId = _classId;
-        const SerializeContext::ClassData* dataClassInfo = classData ? classData : FindClassData(classId, nullptr, 0);
-
-    #if defined(AZ_ENABLE_TRACING)
-        AZStd::unique_ptr<ErrorHandler> standardErrorHandler;
-        if (!errorHandler)
-        {
-            standardErrorHandler.reset(aznew ErrorHandler());
-            errorHandler = standardErrorHandler.get();
-        }
-    #endif // AZ_ENABLE_TRACING
-
+        const AZ::Uuid* classIdPtr = &classId;
+        const SerializeContext::ClassData* dataClassInfo = classData;
+        
         if (classElement)
         {
             // if we are a pointer, then we may be pointing to a derived type.
@@ -1704,11 +1740,11 @@ namespace AZ
                 }
                 if (classElement->m_azRtti)
                 {
-                    AZ::Uuid actualClassId = classElement->m_azRtti->GetActualUuid(objectPtr);
-                    if (actualClassId != classId)
+                    const AZ::Uuid& actualClassId = classElement->m_azRtti->GetActualUuid(objectPtr);
+                    if (actualClassId != *classIdPtr)
                     {
                         // we are pointing to derived type, adjust class data, uuid and pointer.
-                        classId = actualClassId;
+                        classIdPtr = &actualClassId;
                         dataClassInfo = FindClassData(actualClassId);
                         if (dataClassInfo)
                         {
@@ -1719,37 +1755,43 @@ namespace AZ
             }
         }
 
-    #if defined(AZ_ENABLE_TRACING)
+        if (!dataClassInfo)
+        {
+            dataClassInfo = FindClassData(*classIdPtr);
+        }
+
+    #if defined(AZ_ENABLE_SERIALIZER_DEBUG)
         {
             DbgStackEntry de;
             de.m_dataPtr = objectPtr;
-            de.m_uuidPtr = &classId;
+            de.m_uuidPtr = classIdPtr;
             de.m_elementName = classElement ? classElement->m_name : NULL;
             de.m_classData = dataClassInfo;
             de.m_classElement = classElement;
-            errorHandler->Push(de);
+            callContext->m_errorHandler->Push(de);
         }
-    #endif // AZ_ENABLE_TRACING
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
 
         if (dataClassInfo == NULL)
         {
+    #if defined (AZ_ENABLE_SERIALIZER_DEBUG)
             // if we are a non-reflected base class, assume that the base class simply didn't need any reflection
             if (!(classElement && classElement->m_flags & SerializeContext::ClassElement::FLG_BASE_CLASS))
             {
                 // output an error
-                AZStd::string error = AZStd::string::format("Element with class ID '%s' is not registered with the serializer!", classId.ToString<AZStd::string>().c_str());
-                errorHandler->ReportError(error.c_str());
+                AZStd::string error = AZStd::string::format("Element with class ID '%s' is not registered with the serializer!", classIdPtr->ToString<AZStd::string>().c_str());
+                callContext->m_errorHandler->ReportError(error.c_str());
             }
-    #if defined (AZ_ENABLE_TRACING)
-            errorHandler->Pop();
-    #endif // AZ_ENABLE_TRACING
+
+            callContext->m_errorHandler->Pop();
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
 
             return true;    // we errored, but return true to continue enumeration of our siblings and other unrelated hierarchies
         }
 
         if (dataClassInfo->m_eventHandler)
         {
-            if ((accessFlags & ENUM_ACCESS_FOR_WRITE) == ENUM_ACCESS_FOR_WRITE)
+            if ((callContext->m_accessFlags & ENUM_ACCESS_FOR_WRITE) == ENUM_ACCESS_FOR_WRITE)
             {
                 dataClassInfo->m_eventHandler->OnWriteBegin(objectPtr);
             }
@@ -1765,20 +1807,11 @@ namespace AZ
         // returns false, stop enumeration of this branch
         // pass the original ptr to the user instead of objectPtr because
         // he may want to replace the actual object.
-        if (!beginElemCB || beginElemCB(ptr, dataClassInfo, classElement))
+        if (!callContext->m_beginElemCB || callContext->m_beginElemCB(ptr, dataClassInfo, classElement))
         {
             if (dataClassInfo->m_container)
             {
-                dataClassInfo->m_container->EnumElements(objectPtr, AZStd::bind(&SerializeContext::EnumerateInstance, this
-                        , AZStd::placeholders::_1
-                        , AZStd::placeholders::_2
-                        , beginElemCB
-                        , endElemCB
-                        , accessFlags
-                        , AZStd::placeholders::_3
-                        , AZStd::placeholders::_4
-                        , errorHandler
-                        ));
+                dataClassInfo->m_container->EnumElements(objectPtr, callContext->m_elementCallback);
             }
             else
             {
@@ -1790,7 +1823,7 @@ namespace AZ
                     {
                         const SerializeContext::ClassData* elemClassInfo = ed.m_genericClassInfo ? ed.m_genericClassInfo->GetClassData() : FindClassData(ed.m_typeId, dataClassInfo, ed.m_nameCrc);
 
-                        keepEnumeratingSiblings = EnumerateInstance(dataAddress, ed.m_typeId, beginElemCB, endElemCB, accessFlags, elemClassInfo, &ed, errorHandler);
+                        keepEnumeratingSiblings = EnumerateInstance(callContext, dataAddress, ed.m_typeId, elemClassInfo, &ed);
                         if (!keepEnumeratingSiblings)
                         {
                             break;
@@ -1816,7 +1849,7 @@ namespace AZ
                             dynamicElementData.m_genericClassInfo = FindGenericClassInfo(dynamicFieldDesc->m_typeId);
                             dynamicElementData.m_editData = nullptr; // we cannot have element edit data for dynamic fields.
                             dynamicElementData.m_flags = ClassElement::FLG_DYNAMIC_FIELD | ClassElement::FLG_POINTER;
-                            EnumerateInstance(&dynamicFieldDesc->m_data, dynamicTypeMetadata->m_typeId, beginElemCB, endElemCB, accessFlags, dynamicTypeMetadata, &dynamicElementData, errorHandler);
+                            EnumerateInstance(callContext, &dynamicFieldDesc->m_data, dynamicTypeMetadata->m_typeId, dynamicTypeMetadata, &dynamicElementData);
                         }
                         else
                         {
@@ -1829,16 +1862,16 @@ namespace AZ
         }
 
         // call endElemCB
-        if (endElemCB)
+        if (callContext->m_endElemCB)
         {
-            keepEnumeratingSiblings = endElemCB();
+            keepEnumeratingSiblings = callContext->m_endElemCB();
         }
 
         if (dataClassInfo->m_eventHandler)
         {
-            if ((accessFlags & ENUM_ACCESS_HOLD) == 0)
+            if ((callContext->m_accessFlags & ENUM_ACCESS_HOLD) == 0)
             {
-                if ((accessFlags & ENUM_ACCESS_FOR_WRITE) == ENUM_ACCESS_FOR_WRITE)
+                if ((callContext->m_accessFlags & ENUM_ACCESS_FOR_WRITE) == ENUM_ACCESS_FOR_WRITE)
                 {
                     dataClassInfo->m_eventHandler->OnWriteEnd(objectPtr);
                 }
@@ -1849,17 +1882,55 @@ namespace AZ
             }
         }
 
-    #if defined(AZ_ENABLE_TRACING)
-        errorHandler->Pop();
-    #endif // AZ_ENABLE_TRACING
+    #if defined(AZ_ENABLE_SERIALIZER_DEBUG)
+        callContext->m_errorHandler->Pop();
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
 
         return keepEnumeratingSiblings;
     }
 
     //=========================================================================
-    // CloneObject
-    // [03/21/2014]
+    // EnumerateInstanceConst (deprecated overload)
     //=========================================================================
+    bool SerializeContext::EnumerateInstanceConst(const void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler /*= nullptr*/) const
+    {
+        EnumerateInstanceCallContext callContext(
+            beginElemCB,
+            endElemCB,
+            this,
+            accessFlags,
+            errorHandler);
+
+        return EnumerateInstanceConst(
+            &callContext,
+            ptr,
+            classId,
+            classData,
+            classElement
+        );
+    }
+
+    //=========================================================================
+    // EnumerateInstance (deprecated overload)
+    //=========================================================================
+    bool SerializeContext::EnumerateInstance(void* ptr, const Uuid& classId, const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, unsigned int accessFlags, const ClassData* classData, const ClassElement* classElement, ErrorHandler* errorHandler /*= nullptr*/) const
+    {
+        EnumerateInstanceCallContext callContext(
+            beginElemCB,
+            endElemCB,
+            this,
+            accessFlags,
+            errorHandler);
+
+        return EnumerateInstance(
+            &callContext,
+            ptr,
+            classId,
+            classData,
+            classElement
+        );
+    }
+
     struct ObjectCloneData
     {
         ObjectCloneData()
@@ -1879,9 +1950,12 @@ namespace AZ
         ObjectParentStack   m_parentStack;
     };
 
+    //=========================================================================
+    // CloneObject
+    //=========================================================================
     void* SerializeContext::CloneObject(const void* ptr, const Uuid& classId)
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzCore);
+        AZStd::vector<char> scratchBuffer;
 
         ObjectCloneData cloneData;
         ErrorHandler m_errorLogger;
@@ -1893,20 +1967,31 @@ namespace AZ
             return nullptr;
         }
 
-        EnumerateInstance(const_cast<void*>(ptr)
+        EnumerateInstanceCallContext callContext(
+            AZStd::bind(&SerializeContext::BeginCloneElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger, &scratchBuffer),
+            AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData),
+            this,
+            SerializeContext::ENUM_ACCESS_FOR_READ,
+            &m_errorLogger);
+
+        EnumerateInstance(
+            &callContext
+            , const_cast<void*>(ptr)
             , classId
-            , AZStd::bind(&SerializeContext::BeginCloneElement, this, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger)
-            , AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData)
-            , SerializeContext::ENUM_ACCESS_FOR_READ
             , nullptr
             , nullptr
-            , &m_errorLogger
             );
+
         return cloneData.m_ptr;
     }
 
+    //=========================================================================
+    // CloneObjectInplace
+    //=========================================================================
     void SerializeContext::CloneObjectInplace(void* dest, const void* ptr, const Uuid& classId)
     {
+        AZStd::vector<char> scratchBuffer;
+
         ObjectCloneData cloneData;
         cloneData.m_ptr = dest;
         ErrorHandler m_errorLogger;
@@ -1915,20 +2000,27 @@ namespace AZ
 
         if (ptr)
         {
-            EnumerateInstanceConst(ptr
+            EnumerateInstanceCallContext callContext(
+            AZStd::bind(&SerializeContext::BeginCloneElementInplace, this, dest, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger, &scratchBuffer),
+                AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData),
+                this,
+                SerializeContext::ENUM_ACCESS_FOR_READ,
+                &m_errorLogger);
+
+            EnumerateInstance(
+                &callContext
+                , const_cast<void*>(ptr)
                 , classId
-                , AZStd::bind(&SerializeContext::BeginCloneElementInplace, this, dest, AZStd::placeholders::_1, AZStd::placeholders::_2, AZStd::placeholders::_3, &cloneData, &m_errorLogger)
-                , AZStd::bind(&SerializeContext::EndCloneElement, this, &cloneData)
-                , SerializeContext::ENUM_ACCESS_FOR_READ
                 , nullptr
                 , nullptr
-                , &m_errorLogger
             );
         }
     }
 
-
-    bool SerializeContext::BeginCloneElement(void* ptr, const ClassData* classData, const ClassElement* elementData, void* data, ErrorHandler* errorHandler)
+    //=========================================================================
+    // BeginCloneElement (internal element clone callbacks)
+    //=========================================================================
+    bool SerializeContext::BeginCloneElement(void* ptr, const ClassData* classData, const ClassElement* elementData, void* data, ErrorHandler* errorHandler, AZStd::vector<char>* scratchBuffer)
     {
         ObjectCloneData* cloneData = reinterpret_cast<ObjectCloneData*>(data);
 
@@ -1939,10 +2031,13 @@ namespace AZ
             cloneData->m_ptr = classData->m_factory->Create(classData->m_name);
         }
 
-        return BeginCloneElementInplace(cloneData->m_ptr, ptr, classData, elementData, data, errorHandler);
+        return BeginCloneElementInplace(cloneData->m_ptr, ptr, classData, elementData, data, errorHandler, scratchBuffer);
     }
 
-    bool SerializeContext::BeginCloneElementInplace(void* rootDestPtr, void* ptr, const ClassData* classData, const ClassElement* elementData, void* data, ErrorHandler* errorHandler)
+    //=========================================================================
+    // BeginCloneElementInplace (internal element clone callbacks)
+    //=========================================================================
+    bool SerializeContext::BeginCloneElementInplace(void* rootDestPtr, void* ptr, const ClassData* classData, const ClassElement* elementData, void* data, ErrorHandler* errorHandler, AZStd::vector<char>* scratchBuffer)
     {
         ObjectCloneData* cloneData = reinterpret_cast<ObjectCloneData*>(data);
 
@@ -2013,12 +2108,29 @@ namespace AZ
 
         if (classData->m_serializer)
         {
-            AZStd::vector<char> buffer;
-            IO::ByteContainerStream<AZStd::vector<char> > stream(&buffer);
+            if (classData->m_typeId == GetAssetClassId())
+            {
+                // Optimized clone path for asset references.
+                static_cast<AssetSerializer*>(classData->m_serializer)->Clone(srcPtr, destPtr);
+            }
+            else
+            {
+                scratchBuffer->clear();
+                IO::ByteContainerStream<AZStd::vector<char>> stream(scratchBuffer);
 
-            classData->m_serializer->Save(srcPtr, stream);
-            stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
-            classData->m_serializer->Load(destPtr, stream, classData->m_version);
+                classData->m_serializer->Save(srcPtr, stream);
+                stream.Seek(0, IO::GenericStream::ST_SEEK_BEGIN);
+
+                classData->m_serializer->Load(destPtr, stream, classData->m_version);
+            }
+        }
+
+        // If it is a container, clear it before loading the child
+        // nodes, otherwise we end up with more elements than the ones
+        // we should have
+        if (classData->m_container)
+        {
+            classData->m_container->ClearElements(destPtr, this);
         }
 
         // push this node in the stack
@@ -2031,6 +2143,9 @@ namespace AZ
         return true;
     }
 
+    //=========================================================================
+    // EndCloneElement (internal element clone callbacks)
+    //=========================================================================
     bool SerializeContext::EndCloneElement(void* data)
     {
         ObjectCloneData* cloneData = reinterpret_cast<ObjectCloneData*>(data);
@@ -2041,6 +2156,11 @@ namespace AZ
         if (classData->m_eventHandler)
         {
             classData->m_eventHandler->OnWriteEnd(dataPtr);
+        }
+        
+        if (classData->m_serializer)
+        {
+            classData->m_serializer->PostClone(dataPtr);
         }
 
         cloneData->m_parentStack.pop_back();
@@ -2203,11 +2323,10 @@ namespace AZ
 
         for (ClassElement& classElement : m_elements)
         {
-            for (auto& attributePair : classElement.m_attributes)
+            if (classElement.m_attributeOwnership == ClassElement::AttributeOwnership::Parent)
             {
-                delete attributePair.second;
+                classElement.ClearAttributes();
             }
-            classElement.m_attributes.clear();
         }
     }
 
@@ -2239,6 +2358,18 @@ namespace AZ
             }
         }
         return persistentIdFunction;
+    }
+
+    Attribute* SerializeContext::ClassData::FindAttribute(AttributeId attributeId) const
+    {
+        for (const AttributePair& attributePair : m_attributes)
+        {
+            if (attributePair.first == attributeId)
+            {
+                return attributePair.second;
+            }
+        }
+        return nullptr;
     }
 
     //=========================================================================
@@ -2323,7 +2454,7 @@ namespace AZ
     }
 
     //=========================================================================
-    // ReportError
+    // RemoveClassData
     //=========================================================================
     void SerializeContext::RemoveClassData(ClassData* classData)
     {
@@ -2335,6 +2466,37 @@ namespace AZ
         classData->ClearAttributes();
     }
 
+    void SerializeContext::RemoveGenericClassInfo(GenericClassInfo* genericClassInfo)
+    {
+        const Uuid& classId = genericClassInfo->GetSpecializedTypeId();
+        RemoveClassData(genericClassInfo->GetClassData());
+        // Find the module GenericClassInfo in the SerializeContext GenericClassInfo multimap and remove it from there
+        auto scGenericClassInfoRange = m_uuidGenericMap.equal_range(classId);
+        auto scGenericInfoFoundIt = AZStd::find_if(scGenericClassInfoRange.first, scGenericClassInfoRange.second, [genericClassInfo](const AZStd::pair<AZ::Uuid, GenericClassInfo*>& genericPair)
+        {
+            return genericClassInfo == genericPair.second;
+        });
+
+        if (scGenericInfoFoundIt != scGenericClassInfoRange.second)
+        {
+            m_uuidGenericMap.erase(scGenericInfoFoundIt);
+            if (m_uuidGenericMap.count(classId) == 0)
+            {
+                m_uuidAnyCreationMap.erase(classId);
+                m_classNameToUuid.erase(Crc32(genericClassInfo->GetClassData()->m_name));
+                auto legacyTypeIdRangeIt = m_legacySpecializeTypeIdToTypeIdMap.equal_range(genericClassInfo->GetLegacySpecializedTypeId());
+                for (auto legacySpecializedTypeIdIt = legacyTypeIdRangeIt.first; legacySpecializedTypeIdIt != legacyTypeIdRangeIt.second; ++legacySpecializedTypeIdIt)
+                {
+                    if (classId == legacySpecializedTypeIdIt->second)
+                    {
+                        m_legacySpecializeTypeIdToTypeIdMap.erase(classId);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     //=========================================================================
     // GetStackDescription
     //=========================================================================
@@ -2342,7 +2504,7 @@ namespace AZ
     {
         AZStd::string stackDescription;
 
-    #ifdef AZ_ENABLE_TRACING
+    #ifdef AZ_ENABLE_SERIALIZER_DEBUG
         if (!m_stack.empty())
         {
             stackDescription += "\n=== Serialize stack ===\n";
@@ -2352,7 +2514,7 @@ namespace AZ
             }
             stackDescription += "\n";
         }
-    #endif // AZ_ENABLE_TRACING
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
 
         return stackDescription;
     }
@@ -2385,9 +2547,9 @@ namespace AZ
     void SerializeContext::ErrorHandler::Push(const DbgStackEntry& de)
     {
         (void)de;
-    #ifdef AZ_ENABLE_TRACING
+    #ifdef AZ_ENABLE_SERIALIZER_DEBUG
         m_stack.push_back((de));
-    #endif // AZ_ENABLE_TRACING
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
     }
 
     //=========================================================================
@@ -2396,9 +2558,9 @@ namespace AZ
     //=========================================================================
     void SerializeContext::ErrorHandler::Pop()
     {
-    #ifdef AZ_ENABLE_TRACING
+    #ifdef AZ_ENABLE_SERIALIZER_DEBUG
         m_stack.pop_back();
-    #endif // AZ_ENABLE_TRACING
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
     }
 
     //=========================================================================
@@ -2407,11 +2569,324 @@ namespace AZ
     //=========================================================================
     void SerializeContext::ErrorHandler::Reset()
     {
-    #ifdef AZ_ENABLE_TRACING
+    #ifdef AZ_ENABLE_SERIALIZER_DEBUG
         m_stack.clear();
-    #endif
+    #endif // AZ_ENABLE_SERIALIZER_DEBUG
         m_nErrors = 0;
-    } // AZ_ENABLE_TRACING
-}   // namespace AZ
+    }
+
+    //=========================================================================
+    // EnumerateInstanceCallContext
+    //=========================================================================
+
+    SerializeContext::EnumerateInstanceCallContext::EnumerateInstanceCallContext(
+        const SerializeContext::BeginElemEnumCB& beginElemCB,
+        const SerializeContext::EndElemEnumCB& endElemCB,
+        const SerializeContext* context,
+        unsigned int accessFlags,
+        SerializeContext::ErrorHandler* errorHandler)
+        : m_beginElemCB(beginElemCB)
+        , m_endElemCB(endElemCB)
+        , m_accessFlags(accessFlags)
+        , m_context(context)
+    {
+        m_errorHandler = errorHandler ? errorHandler : &m_defaultErrorHandler;
+
+        m_elementCallback = AZStd::bind(&SerializeContext::EnumerateInstance
+            , m_context
+            , this
+            , AZStd::placeholders::_1
+            , AZStd::placeholders::_2
+            , AZStd::placeholders::_3
+            , AZStd::placeholders::_4
+        );
+    }
+
+    //=========================================================================
+    // ~ClassElement
+    //=========================================================================
+    SerializeContext::ClassElement::~ClassElement()
+    {
+        if (m_attributeOwnership == AttributeOwnership::Self)
+        {
+            ClearAttributes();
+        }
+    }
+
+    //=========================================================================
+    // ClassElement::operator=
+    //=========================================================================
+    SerializeContext::ClassElement& SerializeContext::ClassElement::operator=(const SerializeContext::ClassElement& other)
+    {
+        m_name = other.m_name;
+        m_nameCrc = other.m_nameCrc;
+        m_typeId = other.m_typeId;
+        m_dataSize = other.m_dataSize;
+        m_offset = other.m_offset;
+
+        m_azRtti = other.m_azRtti;
+        m_genericClassInfo = other.m_genericClassInfo;
+        m_editData = other.m_editData;
+        m_attributes = other.m_attributes;
+        // If we're a copy, we don't assume attribute ownership
+        m_attributeOwnership = AttributeOwnership::None;
+        m_flags = other.m_flags;
+
+        return *this;
+    }
+
+    //=========================================================================
+    // ClearAttributes
+    //=========================================================================
+    void SerializeContext::ClassElement::ClearAttributes()
+    {
+        for (auto& attributePair : m_attributes)
+        {
+            delete attributePair.second;
+        }
+        m_attributes.clear();
+    }
+
+    //=========================================================================
+    // FindAttribute
+    //=========================================================================
+
+    Attribute* SerializeContext::ClassElement::FindAttribute(AttributeId attributeId) const
+    {
+        for (const AttributePair& attributePair : m_attributes)
+        {
+            if (attributePair.first == attributeId)
+            {
+                return attributePair.second;
+            }
+        }
+        return nullptr;
+    }
+
+    void SerializeContext::IDataContainer::ElementsUpdated(void* instance)
+    {
+        (void)instance;
+    }
+
+    void Internal::AZStdArrayEvents::OnWriteBegin(void* classPtr)
+    {
+        (void)classPtr;
+        if (m_indices)
+        {
+            if ((reinterpret_cast<uintptr_t>(m_indices) & 1) == 1)
+            {
+                // Pointer is already in use to store an index so convert it to a stack
+                size_t previousIndex = reinterpret_cast<uintptr_t>(m_indices) >> 1;
+                Stack* stack = new Stack();
+                AZ_Assert((reinterpret_cast<uintptr_t>(stack) & 1) == 0, "Expected memory allocation to be at least 2 byte aligned.");
+                stack->push(previousIndex);
+                stack->push(0);
+                m_indices = stack;
+            }
+            else
+            {
+                Stack* stack = reinterpret_cast<Stack*>(m_indices);
+                stack->push(0);
+            }
+        }
+        else
+        {
+            // Use the pointer to just store the one counter instead of allocating memory. Using 1 bit to identify this as a regular
+            // index and not a pointer.
+            m_indices = reinterpret_cast<void*>(1);
+        }
+    }
+
+    void Internal::AZStdArrayEvents::OnWriteEnd(void* classPtr)
+    {
+        (void)classPtr;
+        if (m_indices)
+        {
+            if ((reinterpret_cast<uintptr_t>(m_indices) & 1) == 1)
+            {
+                // There was only one entry so no stack. Clear out the final bit that indicated this was an index and not a pointer.
+                m_indices = nullptr;
+            }
+            else
+            {
+                Stack* stack = reinterpret_cast<Stack*>(m_indices);
+                stack->pop();
+                if (stack->empty())
+                {
+                    delete stack;
+                    m_indices = nullptr;
+                }
+            }
+        }
+        else
+        {
+            AZ_Warning("Serialization", false, "AZStdArrayEvents::OnWriteEnd called too often.");
+        }
+
+    }
+
+    size_t Internal::AZStdArrayEvents::GetIndex() const
+    {
+        if (m_indices)
+        {
+            if ((reinterpret_cast<uintptr_t>(m_indices) & 1) == 1)
+            {
+                // The first bit is used to indicate this is a regular index instead of a pointer so shift down one to get the actual index.
+                return reinterpret_cast<uintptr_t>(m_indices) >> 1;
+            }
+            else
+            {
+                const Stack* stack = reinterpret_cast<const Stack*>(m_indices);
+                return stack->top();
+            }
+        }
+        else
+        {
+            AZ_Warning("Serialization", false, "AZStdArrayEvents is not in a valid state to return an index.");
+            return 0;
+        }
+    }
+
+    void Internal::AZStdArrayEvents::Increment()
+    {
+        if (m_indices)
+        {
+            if ((reinterpret_cast<uintptr_t>(m_indices) & 1) == 1)
+            {
+                // Increment by 2 because the first bit is used to indicate whether or not a stack is used so the real
+                //      value starts one bit later.
+                size_t index = reinterpret_cast<uintptr_t>(m_indices) + (1 << 1);
+                m_indices = reinterpret_cast<void*>(index);
+            }
+            else
+            {
+                Stack* stack = reinterpret_cast<Stack*>(m_indices);
+                stack->top()++;
+            }
+        }
+        else
+        {
+            AZ_Warning("Serialization", false, "AZStdArrayEvents is not in a valid state to increment.");
+        }
+    }
+
+    bool Internal::AZStdArrayEvents::IsEmpty() const
+    {
+        return m_indices == nullptr;
+    }
+
+    // Create the member OSAllocator and construct the unordered_map with that allocator
+    SerializeContext::PerModuleGenericClassInfo::PerModuleGenericClassInfo()
+        : m_moduleLocalGenericClassInfos(AZ::AZStdIAllocator(&m_moduleOSAllocator))
+        , m_serializeContextSet(AZ::AZStdIAllocator(&m_moduleOSAllocator))
+    {
+    }
+
+    SerializeContext::PerModuleGenericClassInfo::~PerModuleGenericClassInfo()
+    {
+        Cleanup();
+
+        // Reconstructs the module generic info map with the OSAllocator so that it the previous allocated memory is cleared
+        // Afterwards destroy the OSAllocator
+        {
+            m_moduleLocalGenericClassInfos = GenericInfoModuleMap(AZ::AZStdIAllocator(&m_moduleOSAllocator));
+            m_serializeContextSet = SerializeContextSet(AZ::AZStdIAllocator(&m_moduleOSAllocator));
+        }
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::Cleanup()
+    {
+        decltype(m_moduleLocalGenericClassInfos) genericClassInfoContainer = AZStd::move(m_moduleLocalGenericClassInfos);
+        decltype(m_serializeContextSet) serializeContextSet = AZStd::move(m_serializeContextSet);
+        // Un-reflect GenericClassInfo from each serialize context registered with the module
+        // The SerailizeContext uses the SystemAllocator so it is required to be ready in order to remove the data
+        if (AZ::AllocatorInstance<AZ::SystemAllocator>::IsReady())
+        {
+            for (AZ::SerializeContext* serializeContext : serializeContextSet)
+            {
+                for (const AZStd::pair<AZ::Uuid, AZ::GenericClassInfo*>& moduleGenericClassInfoPair : genericClassInfoContainer)
+                {
+                    serializeContext->RemoveGenericClassInfo(moduleGenericClassInfoPair.second);
+                }
+
+                serializeContext->m_perModuleSet.erase(this);
+            }
+        }
+
+        // Cleanup the memory for the GenericClassInfo objects.
+        // This isn't explicitly needed as the OSAllocator owned by this class will take the memory with it.
+        for (const AZStd::pair<AZ::Uuid, AZ::GenericClassInfo*>& moduleGenericClassInfoPair : genericClassInfoContainer)
+        {
+            GenericClassInfo* genericClassInfo = moduleGenericClassInfoPair.second;
+            // Explicitly invoke the destructor and clear the memory from the module OSAllocator
+            genericClassInfo->~GenericClassInfo();
+            m_moduleOSAllocator.DeAllocate(genericClassInfo);
+        }
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::RegisterSerializeContext(AZ::SerializeContext* serializeContext)
+    {
+        m_serializeContextSet.emplace(serializeContext);
+        serializeContext->m_perModuleSet.emplace(this);
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::UnregisterSerializeContext(AZ::SerializeContext* serializeContext)
+    {
+        m_serializeContextSet.erase(serializeContext);
+        serializeContext->m_perModuleSet.erase(this);
+        for (const AZStd::pair<AZ::Uuid, AZ::GenericClassInfo*>& moduleGenericClassInfoPair : m_moduleLocalGenericClassInfos)
+        {
+            serializeContext->RemoveGenericClassInfo(moduleGenericClassInfoPair.second);
+        }
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::AddGenericClassInfo(AZ::GenericClassInfo* genericClassInfo)
+    {
+        if (!genericClassInfo)
+        {
+            AZ_Error("SerializeContext", false, "The supplied generic class info object is nullptr. It cannot be added to the SerializeContext module structure");
+            return;
+        }
+
+        m_moduleLocalGenericClassInfos.emplace(genericClassInfo->GetSpecializedTypeId(), genericClassInfo);
+    }
+
+    void SerializeContext::PerModuleGenericClassInfo::RemoveGenericClassInfo(const AZ::TypeId& genericTypeId)
+    {
+        if (genericTypeId.IsNull())
+        {
+            AZ_Error("SerializeContext", false, "The supplied generic typeidis invalid. It is not stored the SerializeContext module structure ");
+            return;
+        }
+
+        auto genericClassInfoFoundIt = m_moduleLocalGenericClassInfos.find(genericTypeId);
+        if (genericClassInfoFoundIt != m_moduleLocalGenericClassInfos.end())
+        {
+            m_moduleLocalGenericClassInfos.erase(genericClassInfoFoundIt);
+        }
+    }
+
+    AZ::GenericClassInfo* SerializeContext::PerModuleGenericClassInfo::FindGenericClassInfo(const AZ::TypeId& genericTypeId) const
+    {
+        auto genericClassInfoFoundIt = m_moduleLocalGenericClassInfos.find(genericTypeId);
+        return genericClassInfoFoundIt != m_moduleLocalGenericClassInfos.end() ? genericClassInfoFoundIt->second : nullptr;
+    }
+
+    AZ::IAllocatorAllocate& SerializeContext::PerModuleGenericClassInfo::GetAllocator()
+    {
+        return m_moduleOSAllocator;
+    }
+
+    // Take advantage of static variables being unique per dll module to clean up module specific registered classes when the module unloads 
+    SerializeContext::PerModuleGenericClassInfo& GetCurrentSerializeContextModule()
+    {
+        static SerializeContext::PerModuleGenericClassInfo s_ModuleCleanupInstance;
+        return s_ModuleCleanupInstance;
+    }
+
+
+
+
+} // namespace AZ
 
 #endif // #ifndef AZ_UNITY_BUILD

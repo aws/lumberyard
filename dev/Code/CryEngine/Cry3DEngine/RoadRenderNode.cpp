@@ -31,6 +31,7 @@ PodArray<vtx_idx> CRoadRenderNode::m_lstIndicesMerged;
 PodArray<SPipTangents> CRoadRenderNode::m_lstTangMerged;
 PodArray<Vec3> CRoadRenderNode::m_lstVerts;
 PodArray<vtx_idx> CRoadRenderNode::m_lstIndices;
+PodArray<vtx_idx> CRoadRenderNode::m_lstClippedIndices;
 PodArray<SPipTangents> CRoadRenderNode::m_lstTang;
 PodArray<SVF_P3F_C4B_T2S> CRoadRenderNode::m_lstVertices;
 CPolygonClipContext CRoadRenderNode::s_tmpClipContext;
@@ -84,25 +85,28 @@ void CRoadRenderNode::SetVertices(const Vec3* pVertsAll, int nVertsNumAll,
         m_arrVerts.AddList((Vec3*)pVertsAll, nVertsNumAll);
 
         // work around for cracks between road segments
-        if (m_arrVerts.Count() >= 4)
+        if (m_addOverlapBetweenSectors)
         {
-            if (fTexCoordBegin != fTexCoordBeginGlobal)
+            if (m_arrVerts.Count() >= 4)
             {
-                Vec3 m0 = (m_arrVerts[0] + m_arrVerts[1]) * .5f;
-                Vec3 m1 = (m_arrVerts[2] + m_arrVerts[3]) * .5f;
-                Vec3 vDir = (m0 - m1).GetNormalized() * 0.01f;
-                m_arrVerts[0] += vDir;
-                m_arrVerts[1] += vDir;
-            }
+                if (fTexCoordBegin != fTexCoordBeginGlobal)
+                {
+                    Vec3 m0 = (m_arrVerts[0] + m_arrVerts[1]) * .5f;
+                    Vec3 m1 = (m_arrVerts[2] + m_arrVerts[3]) * .5f;
+                    Vec3 vDir = (m0 - m1).GetNormalized() * 0.01f;
+                    m_arrVerts[0] += vDir;
+                    m_arrVerts[1] += vDir;
+                }
 
-            if (fTexCoordEnd != fTexCoordEndGlobal)
-            {
-                int n = m_arrVerts.Count();
-                Vec3 m0 = (m_arrVerts[n - 1] + m_arrVerts[n - 2]) * .5f;
-                Vec3 m1 = (m_arrVerts[n - 3] + m_arrVerts[n - 4]) * .5f;
-                Vec3 vDir = (m0 - m1).GetNormalized() * 0.01f;
-                m_arrVerts[n - 1] += vDir;
-                m_arrVerts[n - 2] += vDir;
+                if (fTexCoordEnd != fTexCoordEndGlobal)
+                {
+                    int n = m_arrVerts.Count();
+                    Vec3 m0 = (m_arrVerts[n - 1] + m_arrVerts[n - 2]) * .5f;
+                    Vec3 m1 = (m_arrVerts[n - 3] + m_arrVerts[n - 4]) * .5f;
+                    Vec3 vDir = (m0 - m1).GetNormalized() * 0.01f;
+                    m_arrVerts[n - 1] += vDir;
+                    m_arrVerts[n - 2] += vDir;
+                }
             }
         }
     }
@@ -221,6 +225,20 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
                 WSBBox.Add(vTmp);
             }
 
+            // Ignore any trapezoids that are outside the terrain boundary.  Roads rely on terrain height to work.
+            float terrainSize = (float)CTerrain::GetTerrainSize();
+            if ((WSBBox.min.x > terrainSize) || (WSBBox.min.y > terrainSize) ||
+                (WSBBox.max.x < 0.0f) || (WSBBox.max.y < 0.0f))
+            {
+                continue;
+            }
+
+            // The trapezoid overlaps the terrain, so clamp the remaining bounding box to the terrain size.
+            WSBBox.min.x = AZStd::max(WSBBox.min.x, 0.0f);
+            WSBBox.min.y = AZStd::max(WSBBox.min.y, 0.0f);
+            WSBBox.max.x = AZStd::min(WSBBox.max.x, terrainSize);
+            WSBBox.max.y = AZStd::min(WSBBox.max.y, terrainSize);
+
             // make vert array
             int nUnitSize = GetTerrain()->GetHeightMapUnitSize();
             int x1 = int(WSBBox.min.x) / nUnitSize * nUnitSize;
@@ -231,6 +249,10 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
             // make arrays of verts and indices used in trapezoid area
             m_lstVerts.Clear();
             m_lstIndices.Clear();
+            m_lstClippedIndices.Clear();
+
+            // Reserve room for the vertices that we're about to add.
+            m_lstVerts.PreAllocate(((x2 - x1 + nUnitSize) / nUnitSize) * ((y2 - y1 + nUnitSize) / nUnitSize));
 
             for (int x = x1; x <= x2; x += nUnitSize)
             {
@@ -243,6 +265,9 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
             // make indices
             int dx = (x2 - x1) / nUnitSize;
             int dy = (y2 - y1) / nUnitSize;
+
+            // Reserve room for the indices we're about to add.
+            m_lstIndices.PreAllocate(dx * dy * 6);
 
             for (int x = 0; x < dx; x++)
             {
@@ -286,18 +311,17 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
                 }
             }
 
-            // clip triangles
-            int nOrigCount = m_lstIndices.Count();
-            for (int i = 0; i < nOrigCount; i += 3)
+            // Reserve room for the clipped indices we're about to add.
+            m_lstClippedIndices.PreAllocate(m_lstIndices.Count());
+
+            // clip triangles, saving off the indices of the new clipped triangles in a separate array for speed, at the cost of memory.
+            int indexCount = m_lstIndices.Count();
+            for (int i = 0; i < indexCount; i += 3)
             {
-                if (ClipTriangle(m_lstVerts, m_lstIndices, i, arrPlanes))
-                {
-                    i -= 3;
-                    nOrigCount -= 3;
-                }
+                ClipTriangle(m_lstVerts, m_lstIndices, m_lstClippedIndices, i, arrPlanes);
             }
 
-            if (m_lstIndices.Count() < 3 || m_lstVerts.Count() < 3)
+            if (m_lstClippedIndices.Count() < 3 || m_lstVerts.Count() < 3)
             {
                 continue;
             }
@@ -308,9 +332,9 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
                 (n -= axis * (n * axis)).normalize();
                 gp.q = Quat(Matrix33::CreateFromVectors(axis, n ^ axis, n));
                 Vec3 BBox[] = { Vec3(VMAX), Vec3(VMIN) };
-                for (int j = 0; j < m_lstIndices.Count(); j++)
+                for (int j = 0; j < m_lstClippedIndices.Count(); j++)
                 {
-                    Vec3 ptloc = m_lstVerts[m_lstIndices[j]] * gp.q;
+                    Vec3 ptloc = m_lstVerts[m_lstClippedIndices[j]] * gp.q;
                     BBox[0] = min(BBox[0], ptloc);
                     BBox[1] = max(BBox[1], ptloc);
                 }
@@ -332,6 +356,7 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
 
             // make real vertex data
             m_lstVertices.Clear();
+            m_lstVertices.PreAllocate(m_lstVerts.Count());
             for (int i = 0; i < m_lstVerts.Count(); i++)
             {
                 SVF_P3F_C4B_T2S tmp;
@@ -385,9 +410,9 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
             }
 
             // shift indices
-            for (int i = 0; i < m_lstIndices.Count(); i++)
+            for (int i = 0; i < m_lstClippedIndices.Count(); i++)
             {
-                m_lstIndices[i] += m_lstVerticesMerged.Count();
+                m_lstClippedIndices[i] += m_lstVerticesMerged.Count();
             }
 
             if (m_lstVerticesMerged.Count() + m_lstVertices.Count() > nMaxVerticesToMerge)
@@ -397,7 +422,7 @@ void CRoadRenderNode::Compile() PREFAST_SUPPRESS_WARNING(6262) //function uses >
                 return;
             }
 
-            m_lstIndicesMerged.AddList(m_lstIndices);
+            m_lstIndicesMerged.AddList(m_lstClippedIndices);
             m_lstVerticesMerged.AddList(m_lstVertices);
             m_lstTangMerged.AddList(m_lstTang);
         }
@@ -511,7 +536,7 @@ void CRoadRenderNode::Render(const SRendParams& _RendParams, const SRenderingPas
     }
 }
 
-bool CRoadRenderNode::ClipTriangle(PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& lstInds, int nStartIdxId, Plane* pPlanes)
+void CRoadRenderNode::ClipTriangle(PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& lstInds, PodArray<vtx_idx>& lstClippedInds, int nStartIdxId, Plane* pPlanes)
 {
     const PodArray<Vec3>& clipped = s_tmpClipContext.Clip(
             lstVerts[lstInds[nStartIdxId + 0]],
@@ -521,8 +546,7 @@ bool CRoadRenderNode::ClipTriangle(PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& 
 
     if (clipped.Count() < 3)
     {
-        lstInds.Delete(nStartIdxId, 3);
-        return true; // entire triangle is clipped away
+        return; // entire triangle is clipped away
     }
 
     if (clipped.Count() == 3)
@@ -533,7 +557,11 @@ bool CRoadRenderNode::ClipTriangle(PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& 
             {
                 if (clipped[2].IsEquivalent(lstVerts[lstInds[nStartIdxId + 2]]))
                 {
-                    return false; // entire triangle is in
+                    // The original triangle remains as-is, so add it to the clipped index list.
+                    lstClippedInds.Add(nStartIdxId + 0);
+                    lstClippedInds.Add(nStartIdxId + 1);
+                    lstClippedInds.Add(nStartIdxId + 2);
+                    return;
                 }
             }
         }
@@ -542,20 +570,15 @@ bool CRoadRenderNode::ClipTriangle(PodArray<Vec3>& lstVerts, PodArray<vtx_idx>& 
     int nStartId = lstVerts.Count();
     lstVerts.AddList(clipped);
 
-    // put first new triangle into position of original one
-    lstInds[nStartIdxId + 0] = nStartId + 0;
-    lstInds[nStartIdxId + 1] = nStartId + 1;
-    lstInds[nStartIdxId + 2] = nStartId + 2;
-
-    // put others in the end
-    for (int i = 1; i < clipped.Count() - 2; i++)
+    // Add all the new triangle indices to our clipped index list
+    for (int i = 0; i < clipped.Count() - 2; i++)
     {
-        lstInds.Add(nStartId + 0);
-        lstInds.Add(nStartId + i + 1);
-        lstInds.Add(nStartId + i + 2);
+        lstClippedInds.Add(nStartId + 0);
+        lstClippedInds.Add(nStartId + i + 1);
+        lstClippedInds.Add(nStartId + i + 2);
     }
 
-    return false;
+    return;
 }
 
 void CRoadRenderNode::SetMaterial(_smart_ptr<IMaterial> pMat)

@@ -81,7 +81,11 @@ QCursor CMFCUtils::LoadCursor(UINT nIDResource, int hotX, int hotY)
     case IDC_POINTER_OBJHIT:
         path = QStringLiteral("pointerHit.cur");
         break;
+    case IDC_POINTER_OBJECT_ROTATE:
+        path = QStringLiteral("object_rotate.cur");
+        break;
     default:
+        AZ_Assert(0, "Calling LoadCursor with an unknown cursor type");
         return QCursor();
     }
     path = QStringLiteral(":/cursors/res/") + path;

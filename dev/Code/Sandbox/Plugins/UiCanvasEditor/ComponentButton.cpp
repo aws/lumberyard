@@ -26,8 +26,7 @@ ComponentButton::ComponentButton(HierarchyWidget* hierarchy,
         {
             HierarchyMenu contextMenu(hierarchy,
                 HierarchyMenu::Show::kAddComponents,
-                true,
-                nullptr);
+                true);
 
             contextMenu.exec(QCursor::pos());
         });

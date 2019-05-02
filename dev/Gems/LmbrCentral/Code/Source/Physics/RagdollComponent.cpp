@@ -61,66 +61,66 @@ namespace LmbrCentral
             {
                 editContext->Class<RagdollComponent>("Ragdoll", "X The Ragdoll component uses physics to drive characters and is ideal for simulating environmental effects upon unconscious characters")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Ragdoll.png")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Ragdoll.png")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
-                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-physics-ragdoll.html")
+                    ->Attribute(AZ::Edit::Attributes::Category, "Physics (Legacy)")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/Ragdoll.png")
+                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/Ragdoll.png")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
+                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "https://docs.aws.amazon.com/lumberyard/latest/userguide/component-physics-ragdoll.html")
 #ifndef ENABLE_LEGACY_ANIMATION
-                        ->Attribute(AZ::Edit::Attributes::AddableByUser, false)
+                    ->Attribute(AZ::Edit::Attributes::AddableByUser, false)
 #endif
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_isActiveInitially, "Enabled initially", "When true the model will start off as a ragdoll")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_tryToUsePhysicsComponentMass, "Use physics component mass", "When true tries to use mass set by a physics component first.  Defaults to 'Mass' if unchecked or no component is found")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_mass, "Mass", "Simulated mass for the ragdoll. Used as defined by 'Use physics component mass'")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, " kg")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.001f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " kg")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_collidesWithCharacters, "Collides with characters", "When set to true the ragdoll will continue to collide with characters")
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Damping")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &RagdollComponent::m_damping, "Damping", "Physical force applied against the energy in the system to drive the entity to rest")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 5.f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, " kg/s")
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &RagdollComponent::m_dampingDuringFreefall, "Damping during free fall", "Damping applied while in the air")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 5.f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, " kg/s")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Max, 5.f)
+                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " kg/s")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &RagdollComponent::m_dampingDuringFreefall, "Damping during free fall", "Damping applied while in the air")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Max, 5.f)
+                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " kg/s")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_timeUntilAtRest, "Time until at rest", "When this amount of time passes without forces applied, physics will sleep for this character")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, " s")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " s")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_groundedTimeUntilAtRest, "Grounded time until at rest", "The time on the ground that must pass before physics will sleep this character")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_groundedRequiredPointsOfContact, "Grounded required points of contact", "The required number of contacts before a character will be considered grounded")
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &RagdollComponent::m_groundedDamping, "Grounded damping", "Damping applied while grounded")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 5.f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, " kg/s")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Max, 5.f)
+                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " kg/s")
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Buoyancy")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_fluidDensity, "Fluid density", "The density of the ragdoll for fluid displacement")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.f)
-                        ->DataElement(AZ::Edit::UIHandlers::Slider, &RagdollComponent::m_fluidDamping, "Fluid damping", "The amount of damping applied while in fluid")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 5.f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, " kg/s")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &RagdollComponent::m_fluidDamping, "Fluid damping", "The amount of damping applied while in fluid")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Max, 5.f)
+                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " kg/s")
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &RagdollComponent::m_fluidResistance, "Fluid resistance", "The amount of resistance applied while in fluid")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 1.f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Max, 1.f)
+                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Advanced")
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, false)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_maxPhysicsTimeStep, "Max time step", "Max size for the physics simulation time step for this character")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.f)
-                        ->Attribute(AZ::Edit::Attributes::Suffix, " s")
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.f)
+                    ->Attribute(AZ::Edit::Attributes::Suffix, " s")
                     ->DataElement(AZ::Edit::UIHandlers::Slider, &RagdollComponent::m_stiffnessScale, "Stiffness scale", "The amount of stiffness to scale the joints by")
-                        ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
-                        ->Attribute(AZ::Edit::Attributes::Max, 1.f)
-                        ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.01f)
+                    ->Attribute(AZ::Edit::Attributes::Max, 1.f)
+                    ->Attribute(AZ::Edit::Attributes::Step, 0.01f)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_skeletalLevelOfDetail, "Skeletal level of detail", "Which level of detail is appropriate for the character's ragdoll")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &RagdollComponent::m_retainJointVelocity, "Retain joint velocity", "If true the joint velocities will be conserved at the instant of ragdolling");
             }
@@ -216,7 +216,7 @@ namespace LmbrCentral
             m_physicalEntity->Action(&action);
         }
     }
-    
+
     void RagdollComponent::AddImpulseAtPoint(const AZ::Vector3& impulse, const AZ::Vector3& worldSpacePoint)
     {
         if (m_physicalEntity)
@@ -252,7 +252,7 @@ namespace LmbrCentral
 
     void RagdollComponent::EnterRagdoll()
     {
-        // ragdoll requested, when OnCharacterInstanceCreated is called 
+        // ragdoll requested, when OnCharacterInstanceCreated is called
         // (which can happen on connecting to the bus if it is ready) ragdoll will happen
         MeshComponentNotificationBus::Handler::BusConnect(GetEntityId());
     }
@@ -269,7 +269,7 @@ namespace LmbrCentral
         {
             character->GetISkeletonPose()->DestroyCharacterPhysics();
         }
-        
+
         if (m_physicalEntity)
         {
             gEnv->pPhysicalWorld->DestroyPhysicalEntity(m_physicalEntity);
@@ -283,6 +283,48 @@ namespace LmbrCentral
             EBUS_EVENT(ProximityTriggerSystemRequestBus, RemoveEntity, m_proximityTriggerProxy, false);
             m_proximityTriggerProxy = nullptr;
         }
+    }
+
+    void RagdollComponent::EnableSimulation(const Physics::RagdollState& initialState)
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
+    void RagdollComponent::DisableSimulation()
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
+    AZStd::shared_ptr<Physics::Ragdoll> RagdollComponent::GetRagdoll()
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+        return nullptr;
+    }
+
+    void RagdollComponent::GetState(Physics::RagdollState& ragdollState) const
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
+    void RagdollComponent::SetState(const Physics::RagdollState& ragdollState)
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
+    void RagdollComponent::GetNodeState(size_t nodeIndex, Physics::RagdollNodeState& nodeState) const
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
+    void RagdollComponent::SetNodeState(size_t nodeIndex, const Physics::RagdollNodeState& nodeState)
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+    }
+
+    AZStd::shared_ptr<Physics::RagdollNode> RagdollComponent::GetNode(size_t nodeIndex) const
+    {
+        AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
+        return nullptr;
     }
 
     void RagdollComponent::CreateRagdollInternal()
@@ -490,7 +532,7 @@ namespace LmbrCentral
         float deltaTime = 0.001f;
         AZ::TickRequestBus::BroadcastResult(deltaTime, &AZ::TickRequestBus::Events::GetTickDeltaTime);
         // There is a slim chance that the physical entity is ready to receive this request at this moment, but it can happen.
-        AzFramework::PhysicsComponentRequestBus::Event(GetEntityId(), &AzFramework::PhysicsComponentRequestBus::Events::SetVelocity, initialVelocity + deltaTime*LYVec3ToAZVec3(gravity));
+        AzFramework::PhysicsComponentRequestBus::Event(GetEntityId(), &AzFramework::PhysicsComponentRequestBus::Events::SetVelocity, initialVelocity + deltaTime * LYVec3ToAZVec3(gravity));
     }
 
 } // namespace LmbrCentral

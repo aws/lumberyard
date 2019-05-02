@@ -80,7 +80,8 @@ def get_identity_pool_id():
             })
         )
         resource_info = json.loads(response['Payload'].read())
-        get_identity_pool_id.identity_pool_id = resource_info['PhysicalId']
+        physical_id = json.loads(resource_info.get('PhysicalId', '{}'))
+        get_identity_pool_id.identity_pool_id = physical_id.get('id', '')
 
     return get_identity_pool_id.identity_pool_id
 

@@ -1961,6 +1961,9 @@ void AbstractSplineWidget::StopTracking()
         GetIEditor()->CancelUndo();
     }
 
+    // Undo has been accepted or cancelled, so clear the m_pCurrentUndo pointer.
+    m_pCurrentUndo = nullptr;
+
     m_editMode = NothingMode;
     releaseMouseImpl();
     update();

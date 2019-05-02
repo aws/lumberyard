@@ -126,6 +126,27 @@ namespace CustomAssetExample
             response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
             return;
         }
+        // This example shows how you would be able to declare job dependencies on source files inside a builder and
+        // forward that info to the asset processor.
+        // Basically here we are creating a job dependency such that the job with source file ./test.examplejob and 
+        // jobKey "Compile Example" depends on the fingerprint of the job with source file ./test.examplesource and jobkey "Compile Example". 
+
+        else if (AzFramework::StringFunc::Equal(ext.c_str(), "examplejob"))
+        {
+            for (const AssetBuilderSDK::PlatformInfo& platformInfo : request.m_enabledPlatforms)
+            {
+                AssetBuilderSDK::JobDescriptor descriptor;
+                descriptor.m_jobKey = "Compile Example";
+                descriptor.SetPlatformIdentifier(platformInfo.m_identifier.c_str());
+                AssetBuilderSDK::SourceFileDependency sourceFile;
+                sourceFile.m_sourceFileDependencyPath = "test.examplesource";
+                AssetBuilderSDK::JobDependency jobDependency("Compile Example", platformInfo.m_identifier.c_str(), AssetBuilderSDK::JobDependencyType::Fingerprint, sourceFile);
+                descriptor.m_jobDependencyList.push_back(jobDependency);
+                response.m_createJobOutputs.push_back(descriptor);
+            }
+            response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
+            return;
+        }
 
         AZ_Assert(false, "Unhandled extension type in CustomExampleAssetBuilderWorker.");
         response.m_result = AssetBuilderSDK::CreateJobsResultCode::Failed;
@@ -163,6 +184,10 @@ namespace CustomAssetExample
         else if (AzFramework::StringFunc::Equal(ext.c_str(), "examplesource"))
         {
             AzFramework::StringFunc::Path::ReplaceExtension(fileName, "examplesourceprocessed");
+        }
+        else if (AzFramework::StringFunc::Equal(ext.c_str(), "examplejob"))
+        {
+            AzFramework::StringFunc::Path::ReplaceExtension(fileName, "examplejobprocessed");
         }
 
         // All your work should happen inside the tempDirPath.

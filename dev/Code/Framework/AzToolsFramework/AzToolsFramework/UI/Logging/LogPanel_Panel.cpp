@@ -114,6 +114,13 @@ namespace AzToolsFramework
             layoutWidget->layout()->addWidget(pContextButton);
 
             layout()->addWidget(layoutWidget);
+
+            // ensure button size matches tab bar size
+            QWidget temp;
+            m_impl->pTabWidget->addTab(&temp, "");
+            layoutWidget->setFixedHeight(m_impl->pTabWidget->tabBar()->sizeHint().height());
+            m_impl->pTabWidget->removeTab(0);
+
             layout()->setContentsMargins(0, 0, 0, 0);
 
             connect(m_impl->pTabWidget, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
@@ -127,6 +134,16 @@ namespace AzToolsFramework
         void BaseLogPanel::SetStorageID(AZ::u32 id)
         {
             m_impl->storageID = id;
+        }
+
+        int BaseLogPanel::GetTabWidgetCount()
+        {
+            return m_impl->pTabWidget->count();
+        }
+
+        QWidget* BaseLogPanel::GetTabWidgetAtIndex(int index)
+        {
+            return m_impl->pTabWidget->widget(index);
         }
 
         void BaseLogPanel::Reflect(AZ::ReflectContext* reflection)
@@ -373,6 +390,11 @@ namespace AzToolsFramework
             }
 
             return 0;
+        }
+
+        const Logging::LogLine& RingBufferLogDataModel::GetLineFromIndex(const QModelIndex& index)
+        {
+            return m_lines[index.row()];
         }
 
         void RingBufferLogDataModel::CommitAdd()
@@ -654,7 +676,14 @@ namespace AzToolsFramework
             for (int pos = 0; pos < (int)m_children.size() - 1; ++pos)
             {
                 QLayoutItem* pItem = m_children[pos];
-                pItem->setGeometry(effectiveRect);
+                if (pItem->widget())
+                {
+                    pItem->widget()->setGeometry(effectiveRect);
+                }
+                else
+                {
+                    pItem->setGeometry(effectiveRect);
+                }
             }
 
             if (m_children.size())

@@ -113,7 +113,7 @@ namespace EMotionFX
                 Node* neutralNode = neutralSkeleton->FindNodeByID(targetNode->GetID());
 
                 // skip this node if it doesn't exist in the actor we apply this to
-                if (neutralNode == nullptr)
+                if (!neutralNode)
                 {
                     continue;
                 }
@@ -123,7 +123,7 @@ namespace EMotionFX
                 Mesh* targetMesh  = targetPose->GetMesh(0, targetNode->GetNodeIndex());
 
                 // if one of the nodes has no mesh, we can skip this node
-                if (neutralMesh == nullptr || targetMesh == nullptr)
+                if (!neutralMesh || !targetMesh)
                 {
                     continue;
                 }
@@ -134,13 +134,13 @@ namespace EMotionFX
 
                 if (neutralMesh->GetNumOrgVertices() != targetMesh->GetNumOrgVertices())
                 {
-                    //AZ_Assert(false, "The number of source original vertices (%d) and target original vertices (%d) are different, cannot build a morph target for this mesh (name = '%s').", neutralMesh->GetNumOrgVertices(), targetMesh->GetNumOrgVertices(), targetNode->GetName());
+                    AZ_Warning("EMotionFX", false, "The number of source original vertices (%d) and target original vertices (%d) are different, cannot build a morph target for this mesh (name = '%s'). Skipping morph target.", neutralMesh->GetNumOrgVertices(), targetMesh->GetNumOrgVertices(), targetNode->GetName());
                     continue;
                 }
 
                 if (numNeutralVerts != numTargetVerts)
-                {               
-                    //AZ_Assert(false, "The number of source vertices (%d) and target vertices (%d) are different, cannot build a morph target for this mesh (name = '%s').", numNeutralVerts, numTargetVerts, targetNode->GetName());
+                {
+                    AZ_Warning("EMotionFX", false, "The number of source vertices (%d) and target vertices (%d) are different, cannot build a morph target for this mesh (name = '%s'). Skipping morph target.", numNeutralVerts, numTargetVerts, targetNode->GetName());
                     continue;
                 }
 
@@ -150,11 +150,27 @@ namespace EMotionFX
                 const AZ::PackedVector3f*   neutralNormals   = static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
                 const AZ::u32*              neutralOrgVerts  = static_cast<const AZ::u32*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
                 const AZ::Vector4*          neutralTangents  = static_cast<const AZ::Vector4*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
-                const AZ::PackedVector3f*   neutralBitangents= static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
+                const AZ::PackedVector3f*   neutralBitangents = static_cast<const AZ::PackedVector3f*>(neutralMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
+                const AZ::u32*              targetOrgVerts   = static_cast<const AZ::u32*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_ORGVTXNUMBERS));
                 const AZ::PackedVector3f*   targetPositions  = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_POSITIONS));
                 const AZ::PackedVector3f*   targetNormals    = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_NORMALS));
                 const AZ::Vector4*          targetTangents   = static_cast<const AZ::Vector4*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_TANGENTS));
                 const AZ::PackedVector3f*   targetBitangents = static_cast<const AZ::PackedVector3f*>(targetMesh->FindOriginalVertexData(Mesh::ATTRIB_BITANGENTS));
+
+                // Do some simplified check to see if the mesh topology is different.
+                bool differentTopology = false;
+                for (uint32 v = 0; v < numNeutralVerts; ++v)
+                {
+                    if (neutralOrgVerts[v] != targetOrgVerts[v])
+                    {
+                        differentTopology = true;
+                    }
+                }
+                if (differentTopology)
+                {
+                    AZ_Warning("EMotionFX", false, "The morph target's mesh ('%s') is not the same topology as the base mesh ('%s'). Is the triangulation different perhaps? Skipping morph target.", targetNode->GetName(), neutralNode->GetName());
+                    continue;
+                }
 
                 //--------------------------------------------------
 
@@ -220,8 +236,8 @@ namespace EMotionFX
                 }
 
                 // check if we have tangents
-                const bool hasTangents = ((neutralTangents) && (targetTangents));
-                const bool hasBitangents = ((neutralBitangents) && (targetBitangents));
+                const bool hasTangents = (neutralTangents && targetTangents);
+                const bool hasBitangents = (neutralBitangents && targetBitangents);
 
                 // create the deformation data
                 DeformData* deformData = DeformData::Create(neutralNode->GetNodeIndex(), numDifferent);
@@ -246,7 +262,7 @@ namespace EMotionFX
                         // if the number of duplicates is equal
                         if (neutralVerts[orgVertex].GetLength() == morphVerts[orgVertex].GetLength())
                         {
-                            duplicateIndex  = neutralVerts[orgVertex].Find(v);
+                            duplicateIndex = neutralVerts[orgVertex].Find(v);
                         }
 
                         // get the target vertex index
@@ -364,8 +380,8 @@ namespace EMotionFX
                 //if (boneList.Contains( nodeA ))
                 //continue;
 
-                const Transform& neutralTransform   = neutralBindPose.GetLocalTransform(neutralNodeIndex);
-                const Transform& targetTransform    = targetBindPose.GetLocalTransform(targetNodeIndex);
+                const Transform& neutralTransform   = neutralBindPose.GetLocalSpaceTransform(neutralNodeIndex);
+                const Transform& targetTransform    = targetBindPose.GetLocalSpaceTransform(targetNodeIndex);
 
                 AZ::Vector3         neutralPos      = neutralTransform.mPosition;
                 AZ::Vector3         targetPos       = targetTransform.mPosition;
@@ -452,21 +468,13 @@ namespace EMotionFX
                 continue;
             }
 
-            // calc new position (delta based targetTransform)
             position += mTransforms[i].mPosition * newWeight;
-
-            // calc the new scale
             scale += mTransforms[i].mScale * newWeight;
 
             // rotate additively
-            MCore::Quaternion orgRot = actorInstance->GetTransformData()->GetBindPose()->GetLocalTransform(nodeIndex).mRotation;
-            MCore::Quaternion a = orgRot;
-            MCore::Quaternion b = mTransforms[i].mRotation;
-            MCore::Quaternion rot = a.Lerp(b, normalizedWeight);
-            rot.Normalize();
-
-            MCore::Quaternion invRot = orgRot.Inversed(); // inversed neutral rotation
-            rotation = rotation * (invRot * rot);
+            const MCore::Quaternion& orgRot = actorInstance->GetTransformData()->GetBindPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
+            const MCore::Quaternion rot = orgRot.NLerp(mTransforms[i].mRotation, normalizedWeight);
+            rotation = rotation * (orgRot.Inversed() * rot);
             rotation.Normalize();
 
             // all remaining nodes in the transform won't modify this current node
@@ -523,23 +531,20 @@ namespace EMotionFX
             const uint32 nodeIndex = mTransforms[i].mNodeIndex;
 
             // init the transform data
-            newTransform = transformData->GetCurrentPose()->GetLocalTransform(nodeIndex);
+            newTransform = transformData->GetCurrentPose()->GetLocalSpaceTransform(nodeIndex);
 
             // calc new position and scale (delta based targetTransform)
             newTransform.mPosition += mTransforms[i].mPosition * newWeight;
 
             EMFX_SCALECODE
             (
-                newTransform.mScale    += mTransforms[i].mScale * newWeight;
-                //          newTransform.mScaleRotation.Identity();
+                newTransform.mScale += mTransforms[i].mScale * newWeight;
+                // newTransform.mScaleRotation.Identity();
             )
 
             // rotate additively
-            MCore::Quaternion orgRot = transformData->GetBindPose()->GetLocalTransform(nodeIndex).mRotation;
-            MCore::Quaternion a = orgRot;
-            MCore::Quaternion b = mTransforms[i].mRotation;
-            MCore::Quaternion rot = a.Lerp(b, normalizedWeight);
-            rot.Normalize();
+            const MCore::Quaternion& orgRot = transformData->GetBindPose()->GetLocalSpaceTransform(nodeIndex).mRotation;
+            const MCore::Quaternion rot = orgRot.NLerp(mTransforms[i].mRotation, normalizedWeight);
             newTransform.mRotation = newTransform.mRotation * (orgRot.Inversed() * rot);
             newTransform.mRotation.Normalize();
             /*
@@ -553,7 +558,7 @@ namespace EMotionFX
                     newTransform.mScaleRotation.Normalize();
             */
             // set the new transformation
-            transformData->GetCurrentPose()->SetLocalTransform(nodeIndex, newTransform);
+            transformData->GetCurrentPose()->SetLocalSpaceTransform(nodeIndex, newTransform);
         }
     }
 

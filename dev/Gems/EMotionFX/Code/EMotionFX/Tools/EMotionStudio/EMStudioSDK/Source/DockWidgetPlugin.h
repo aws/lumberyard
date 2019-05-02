@@ -10,26 +10,21 @@
 *
 */
 
-#ifndef __EMSTUDIO_DOCKWIDGETPLUGIN_H
-#define __EMSTUDIO_DOCKWIDGETPLUGIN_H
+#pragma once
 
-// include MCore
 #include <MCore/Source/StandardHeaders.h>
 #include "EMStudioConfig.h"
 #include "EMStudioPlugin.h"
 #include <MysticQt/Source/DockWidget.h>
 #include <QPointer>
 
+
 namespace EMStudio
 {
-    /**
-     *
-     *
-     */
     class EMSTUDIO_API DockWidgetPlugin
         : public EMStudioPlugin
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
         MCORE_MEMORYOBJECTCATEGORY(DockWidgetPlugin, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_EMSTUDIOSDK)
 
     public:
@@ -58,8 +53,8 @@ namespace EMStudio
         MysticQt::DockWidget* GetDockWidget();
 
     protected:
-        QPointer<MysticQt::DockWidget>   mDock;
+        QWidget* CreateErrorContentWidget(const char* errorMessage) const;
+
+        QPointer<MysticQt::DockWidget> mDock;
     };
 }   // namespace EMStudio
-
-#endif

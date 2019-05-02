@@ -33,7 +33,7 @@
     <number>2</number>
    </property>
    <item row="1" column="1">
-    <widget class="QDoubleSpinBox" name="TIME">
+    <widget class="CTrackViewDoubleSpinBox" name="TIME">
      <property name="sizePolicy">
       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
        <horstretch>0</horstretch>
@@ -85,6 +85,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CTrackViewDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header location="global">TrackView/TrackViewDoubleSpinBox.h</header>
+  </customwidget>
+ </customwidgets> 
  <resources/>
  <connections/>
 </ui>

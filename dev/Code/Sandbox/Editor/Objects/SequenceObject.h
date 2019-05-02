@@ -48,7 +48,7 @@ public:
     };
 
     //////////////////////////////////////////////////////////////////////////
-    // Ovverides from CBaseObject.
+    // Overrides from CBaseObject.
     //////////////////////////////////////////////////////////////////////////
     bool Init(IEditor* ie, CBaseObject* prev, const QString& file);
     void Display(DisplayContext& dc);
@@ -57,8 +57,6 @@ public:
     void GetLocalBounds(AABB& box);
     bool CreateGameObject();
     void Done();
-    void Serialize(CObjectArchive& ar);
-    virtual void PostLoad(CObjectArchive& ar);
 
     bool HasValidZoomScrollSettings() const
     { return m_bValidSettings; }
@@ -73,7 +71,7 @@ public:
         settings = m_zoomScrollSettings;
     }
 
-    IAnimSequence* GetSequence() {return m_pSequence.get(); }
+    IAnimSequence* GetSequence() {return m_sequence.get(); }
 
     //////////////////////////////////////////////////////////////////////////
     // Overrides from IAnimLegacySequenceObject
@@ -100,7 +98,7 @@ protected:
     // Local callbacks.
 
 private:
-    AZStd::intrusive_ptr<struct IAnimSequence> m_pSequence;
+    AZStd::intrusive_ptr<struct IAnimSequence> m_sequence;
 
     // Zoom/scroll settings for this sequence in TrackView dialog
     CZoomScrollSettings m_zoomScrollSettings;

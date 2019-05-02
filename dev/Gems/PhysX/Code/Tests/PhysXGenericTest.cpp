@@ -14,46 +14,60 @@
 
 #ifdef AZ_TESTS_ENABLED
 
-#include <LmbrCentral/Shape/SphereShapeComponentBus.h>
 #include <AzCore/Debug/TraceMessageBus.h>
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Application/Application.h>
-#include <AzFramework/Physics/SystemComponent.h>
 #include <AzFramework/Components/TransformComponent.h>
 #include <AzCore/UnitTest/UnitTest.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Jobs/JobManagerComponent.h>
 #include <Physics/PhysicsTests.h>
-#include <Physics/PhysicsTests.inl>
 #include <Tests/TestTypes.h>
-#include <PhysXRigidBodyComponent.h>
+#include <RigidBodyComponent.h>
+#include <Material.h>
+#include <Physics/PhysicsGenericInterfaceTests.inl>
+#include <Physics/PhysicsComponentBusTests.inl>
+#include <SphereColliderComponent.h>
+#include <BoxColliderComponent.h>
+#include <CapsuleColliderComponent.h>
+#include <AzFramework/Physics/CollisionBus.h>
+#include <AzFramework/IO/LocalFileIO.h>
+
+static const char* PVD_HOST = "127.0.0.1";
 
 namespace Physics
 {
     class PhysXTestEnvironment
         : public PhysicsTestEnvironment
-        , public AZ::Debug::TraceMessageBus::Handler
     {
     protected:
         void SetupEnvironment() override;
         void TeardownEnvironment() override;
 
-        bool SuppressExpectedErrors(const char* window, const char* message);
-
-        // AZ::Debug::TraceMessageBus
-        bool OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message);
-        bool OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message);
+        // Flag to enable pvd in tests
+        static const bool s_enablePvd = true;
 
         AZ::ComponentApplication* m_application;
         AZ::Entity* m_systemEntity;
         AZStd::unique_ptr<AZ::ComponentDescriptor> m_transformComponentDescriptor;
         AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
+        AZStd::unique_ptr<AZ::IO::LocalFileIO> m_fileIo;
+        physx::PxPvdTransport* m_pvdTransport = nullptr;
+        physx::PxPvd* m_pvd = nullptr;
     };
 
     void PhysXTestEnvironment::SetupEnvironment()
     {
         PhysicsTestEnvironment::SetupEnvironment();
+
+        m_fileIo = AZStd::make_unique<AZ::IO::LocalFileIO>();
+
+        AZ::IO::FileIOBase::SetInstance(m_fileIo.get());
+
+        char testDir[AZ_MAX_PATH_LEN];
+        m_fileIo->ConvertToAbsolutePath("../Gems/PhysX/Code/Tests", testDir, AZ_MAX_PATH_LEN);
+        m_fileIo->SetAlias("@test@", testDir);
 
         // Create application and descriptor
         m_application = aznew AZ::ComponentApplication;
@@ -84,64 +98,140 @@ namespace Physics
         m_transformComponentDescriptor = AZStd::unique_ptr<AZ::ComponentDescriptor>(AzFramework::TransformComponent::CreateDescriptor());
         m_transformComponentDescriptor->Reflect(&(*m_serializeContext));
 
-        AZ::Debug::TraceMessageBus::Handler::BusConnect();
+        if (s_enablePvd)
+        {
+            // set up visual debugger
+            m_pvdTransport = physx::PxDefaultPvdSocketTransportCreate(PVD_HOST, 5425, 10);
+            m_pvd = PxCreatePvd(PxGetFoundation());
+            m_pvd->connect(*m_pvdTransport, physx::PxPvdInstrumentationFlag::eALL);
+        }
     }
 
     void PhysXTestEnvironment::TeardownEnvironment()
     {
-        AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
+        if (m_pvd)
+        {
+            m_pvd->disconnect();
+            m_pvd->release();
+        }
+
+        if (m_pvdTransport)
+        {
+            m_pvdTransport->release();
+        }
         m_transformComponentDescriptor.reset();
         m_serializeContext.reset();
+        m_fileIo.reset();
         delete m_application;
         PhysicsTestEnvironment::TeardownEnvironment();
     }
 
-    bool PhysXTestEnvironment::SuppressExpectedErrors(const char* window, const char* message)
+    void GenericPhysicsInterfaceTest::SetUp()
     {
-        // suppress patterns we expect to see as a result of testing code branches which generate warnings / errors.
-        const char* expectedPatterns[] = { "Tried to get terrain height before terrain was populated" };
+        Physics::SystemRequestBus::BroadcastResult(m_defaultWorld, 
+            &Physics::SystemRequests::CreateWorld, AZ_CRC("UnitTestWorld", 0x39d5e465));
 
-        for (auto pattern : expectedPatterns)
-        {
-            if (AZStd::string(message).find(pattern) != -1)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        Physics::DefaultWorldBus::Handler::BusConnect();
     }
 
-    bool PhysXTestEnvironment::OnPreError(const char* window, const char* fileName, int line, const char* func, const char* message)
+    void GenericPhysicsInterfaceTest::TearDown()
     {
-        return SuppressExpectedErrors(window, message);
+        PhysX::MaterialManagerRequestsBus::Broadcast(&PhysX::MaterialManagerRequestsBus::Events::ReleaseAllMaterials);
+        Physics::DefaultWorldBus::Handler::BusDisconnect();
+        m_defaultWorld = nullptr;
     }
 
-    bool PhysXTestEnvironment::OnPreWarning(const char* window, const char* fileName, int line, const char* func, const char* message)
+    AZStd::shared_ptr<World> GenericPhysicsInterfaceTest::GetDefaultWorld()
     {
-        return SuppressExpectedErrors(window, message);
+        return m_defaultWorld;
     }
 
-    AZ::Entity* GenericPhysicsInterfaceTest::AddSphereEntity(const AZ::Vector3& position, float radius, Physics::MotionType motionType)
+    AZ::Entity* GenericPhysicsInterfaceTest::AddSphereEntity(const AZ::Vector3& position, const float radius, const CollisionLayer& layer)
     {
         auto entity = aznew AZ::Entity("TestSphereEntity");
         entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
-        entity->CreateComponent(AZ::Uuid::CreateString("{E24CBFF0-2531-4F8D-A8AB-47AF4D54BCD2}")); // SphereShapeComponent
         entity->Init();
 
         entity->Activate();
 
         AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
 
-        LmbrCentral::SphereShapeComponentRequestsBus::Event(entity->GetId(),
-            &LmbrCentral::SphereShapeComponentRequests::SetRadius, radius);
+        entity->Deactivate();
+
+        Physics::ColliderConfiguration colliderConfig;
+        colliderConfig.m_collisionLayer = layer;
+        Physics::SphereShapeConfiguration shapeConfig(radius);
+        entity->CreateComponent<PhysX::SphereColliderComponent>(colliderConfig, shapeConfig);
+        RigidBodyConfiguration rigidBodyConfig;
+        entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
+
+        entity->Activate();
+        return entity;
+    }
+
+    AZ::Entity* GenericPhysicsInterfaceTest::AddBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions, const CollisionLayer& layer)
+    {
+        auto entity = aznew AZ::Entity("TestBoxEntity");
+        entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
+        entity->Init();
+
+        entity->Activate();
+
+        AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
 
         entity->Deactivate();
 
-        entity->CreateComponent(AZ::Uuid::CreateString("{C53C7C88-7131-4EEB-A602-A7DF5B47898E}")); // PhysXColliderComponent
-        PhysX::PhysXRigidBodyConfiguration rigidBodyConfig;
-        rigidBodyConfig.m_motionType = motionType;
-        entity->CreateComponent<PhysX::PhysXRigidBodyComponent>(rigidBodyConfig);
+        Physics::ColliderConfiguration colliderConfig;
+        colliderConfig.m_collisionLayer = layer;
+        Physics::BoxShapeConfiguration shapeConfig(dimensions);
+        entity->CreateComponent<PhysX::BoxColliderComponent>(colliderConfig, shapeConfig);
+        RigidBodyConfiguration rigidBodyConfig;
+        entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
+
+        entity->Activate();
+        return entity;
+    }
+
+    AZ::Entity* GenericPhysicsInterfaceTest::AddStaticBoxEntity(const AZ::Vector3& position, const AZ::Vector3& dimensions, const CollisionLayer& layer)
+    {
+        auto entity = aznew AZ::Entity("TestStaticBoxEntity");
+        entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
+        entity->Init();
+
+        entity->Activate();
+
+        AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
+
+        entity->Deactivate();
+
+        Physics::ColliderConfiguration colliderConfig; 
+        colliderConfig.m_collisionLayer = layer;
+        Physics::BoxShapeConfiguration shapeConfig(dimensions);
+        entity->CreateComponent<PhysX::BoxColliderComponent>(colliderConfig, shapeConfig);
+
+        entity->Activate();
+        return entity;
+    }
+
+    AZ::Entity* GenericPhysicsInterfaceTest::AddCapsuleEntity(const AZ::Vector3& position, const float height,
+        const float radius, const CollisionLayer& layer)
+    {
+        auto entity = aznew AZ::Entity("TestCapsuleEntity");
+        entity->CreateComponent(AZ::Uuid::CreateString("{22B10178-39B6-4C12-BB37-77DB45FDD3B6}")); // TransformComponent
+        entity->Init();
+
+        entity->Activate();
+
+        AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetWorldTranslation, position);
+
+        entity->Deactivate();
+
+        Physics::ColliderConfiguration colliderConfig;
+        colliderConfig.m_collisionLayer = layer;
+        Physics::CapsuleShapeConfiguration shapeConfig(height, radius);
+        entity->CreateComponent<PhysX::CapsuleColliderComponent>(colliderConfig, shapeConfig);
+        RigidBodyConfiguration rigidBodyConfig;
+        entity->CreateComponent<PhysX::RigidBodyComponent>(rigidBodyConfig);
 
         entity->Activate();
         return entity;

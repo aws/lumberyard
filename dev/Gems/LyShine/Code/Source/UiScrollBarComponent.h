@@ -157,6 +157,8 @@ private: // member functions
     float GetPosAlongAxis(AZ::Vector2 point);
     bool MoveHandle(LocRelativeToHandle pointLoc);
 
+    void ResetDragInfo();
+
 private: // data
 
     float m_value;
@@ -174,6 +176,8 @@ private: // data
     bool m_pressedOnHandle;
     float m_lastMoveTime;
     float m_moveDelayTime;
+
+    AZ::Vector2 m_lastDragPoint; // the point of the last drag
 
     ValueChangeCallback m_onValueChanged;
     ValueChangeCallback m_onValueChanging;

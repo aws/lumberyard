@@ -25,6 +25,7 @@ namespace GridMate
         , m_lastUpdateTime(0)
         , m_isDefaultValue(true)
         , m_revision(0)  //null stamp
+        , m_override(nullptr)
     {
         ReplicaChunkInitContext* initContext = ReplicaChunkDescriptorTable::Get().GetCurrentReplicaChunkInitContext();
         AZ_Assert(initContext, "Replica's context was NOT pushed on the stack! Call Replica::Descriptor::Push() before construction!");

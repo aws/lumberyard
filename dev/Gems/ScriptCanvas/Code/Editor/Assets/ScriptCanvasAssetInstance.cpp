@@ -85,7 +85,7 @@ namespace ScriptCanvasEditor
         }, serializeContext);
 
         // compute the delta (what we changed from the base slice)
-        m_dataPatch.Create(&baseData, &m_scriptCanvasData, GetDataFlagsForPatching(), serializeContext);
+        m_dataPatch.Create(&baseData, &m_scriptCanvasData, AZ::DataPatch::FlagsMap(), GetDataFlagsForPatching(), serializeContext);
 
         // remap entity ids back to the "instance onces"
         AZ::IdUtils::Remapper<AZ::EntityId>::ReplaceIdsAndIdRefs(&m_scriptCanvasData, [this](AZ::EntityId sourceId, bool isEntityId, const AZ::IdUtils::Remapper<AZ::EntityId>::IdGenerator&) -> AZ::EntityId {

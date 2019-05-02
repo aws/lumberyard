@@ -14,7 +14,6 @@
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Outcome/Outcome.h>
-#include <AzCore/Slice/SliceMetadataInfoComponent.h>
 
 #include <AzToolsFramework/API/EntityCompositionNotificationBus.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>

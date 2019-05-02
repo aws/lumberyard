@@ -21,9 +21,11 @@
 #include "SkinningInfoVertexAttributeLayer.h"
 #include <EMotionFX/Source/Allocators.h>
 #include <MCore/Source/MultiThreadManager.h>
-#include <MCore/Source/Job.h>
-#include <MCore/Source/JobList.h>
-#include <MCore/Source/JobManager.h>
+
+#include <AzCore/Jobs/JobFunction.h>
+#include <AzCore/Jobs/JobCompletion.h>
+#include <AzCore/Jobs/JobContext.h>
+
 
 namespace EMotionFX
 {
@@ -629,20 +631,22 @@ namespace EMotionFX
     {
         const uint32 numSubMeshes = mSubMeshes.GetLength();
 
-        MCore::JobList* jobList = MCore::JobList::Create();
-        MCore::GetJobManager().GetJobPool().Lock();
+        AZ::JobCompletion jobCompletion;           
+
         for (uint32 i = 0; i < numSubMeshes; ++i)
         {
-            MCore::Job* newJob = MCore::Job::CreateWithoutLock( [this, i](const MCore::Job* job)
-                    {
-                        MCORE_UNUSED(job);
-                        mSubMeshes[i]->GenerateVertexOrder();
-                    });
+            AZ::JobContext* jobContext = nullptr;
+            AZ::Job* job = AZ::CreateJobFunction([this, i]()
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Animation, "MeshBuilder::GenerateSubMeshVertexOrders::SubMeshJob");
+                mSubMeshes[i]->GenerateVertexOrder();
+            }, true, jobContext);
 
-            jobList->AddJob(newJob);
+            job->SetDependent(&jobCompletion);               
+            job->Start();
         }
-        MCore::GetJobManager().GetJobPool().Unlock();
-        MCore::ExecuteJobList(jobList);
+
+        jobCompletion.StartAndWaitForCompletion();
     }
 
 

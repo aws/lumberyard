@@ -135,14 +135,21 @@ namespace CommandSystem
 
             EMotionFX::ValueParameterVector valueParametersAfterChange = animGraph->RecursivelyGetValueParameters();
 
-            // Relink the affected connections that are connected to parameter nodes.
-            RewireConnectionsForParameterNodesAfterParameterIndexChange(animGraph, valueParametersBeforeChange, valueParametersAfterChange);
+            AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+            animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+            EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
+
+            for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
+            {
+                EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+                affectedObjectByParameterChanges->ParameterOrderChanged(valueParametersBeforeChange, valueParametersAfterChange);
+            }
 
             // Update the parameter values for all instances as their type might have changed.
-            const size_t numInstances = EMotionFX::GetAnimGraphManager().GetNumAnimGraphInstances();
+            const size_t numInstances = animGraph->GetNumAnimGraphInstances();
             for (size_t i = 0; i < numInstances; ++i)
             {
-                EMotionFX::AnimGraphInstance* animGraphInstance = EMotionFX::GetAnimGraphManager().GetAnimGraphInstance(i);
+                EMotionFX::AnimGraphInstance* animGraphInstance = animGraph->GetAnimGraphInstance(i);
                 animGraphInstance->ReInitParameterValues();
             }
         }
@@ -151,9 +158,7 @@ namespace CommandSystem
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->Reinit();
         animGraph->UpdateUniqueData();
-
         return true;
     }
 
@@ -330,9 +335,7 @@ namespace CommandSystem
         mOldName        = groupParameter->GetName();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->Reinit();
         animGraph->UpdateUniqueData();
-
         return true;
     }
 
@@ -445,6 +448,8 @@ namespace CommandSystem
         const size_t childParameterCount = childParameters.size();
         childParents.resize(childParameterCount);
 
+        EMotionFX::ValueParameterVector valueParametersBeforeChange = animGraph->RecursivelyGetValueParameters();
+
         // childParameters is sorted from root to leaf, first we iterate from leaf to root getting the parents
         // and taking the parameters out of them
         for (int i = static_cast<int>(childParameterCount) - 1; i >= 0; --i)
@@ -475,11 +480,25 @@ namespace CommandSystem
         // remove the group parameter
         animGraph->RemoveParameter(const_cast<EMotionFX::Parameter*>(parameter));
 
+        EMotionFX::ValueParameterVector valueParametersAfterChange = animGraph->RecursivelyGetValueParameters();
+
+        if (valueParametersBeforeChange != valueParametersAfterChange)
+        {
+            AZStd::vector<EMotionFX::AnimGraphObject*> affectedObjects;
+            animGraph->RecursiveCollectObjectsOfType(azrtti_typeid<EMotionFX::ObjectAffectedByParameterChanges>(), affectedObjects);
+            EMotionFX::GetAnimGraphManager().RecursiveCollectObjectsAffectedBy(animGraph, affectedObjects);
+
+            for (EMotionFX::AnimGraphObject* affectedObject : affectedObjects)
+            {
+                EMotionFX::ObjectAffectedByParameterChanges* affectedObjectByParameterChanges = azdynamic_cast<EMotionFX::ObjectAffectedByParameterChanges*>(affectedObject);
+                affectedObjectByParameterChanges->ParameterOrderChanged(valueParametersBeforeChange, valueParametersAfterChange);
+            }
+        }
+
         // save the current dirty flag and tell the anim graph that something got changed
         mOldDirtyFlag = animGraph->GetDirtyFlag();
         animGraph->SetDirtyFlag(true);
 
-        animGraph->Reinit();
         animGraph->UpdateUniqueData();
 
         return true;

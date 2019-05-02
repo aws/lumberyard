@@ -54,7 +54,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMCFG_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(SystemCFG_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemCFG_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemCFG_cpp_provo.inl"
+    #endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////
@@ -194,7 +198,11 @@ void CSystem::LogVersion()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMCFG_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(SystemCFG_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemCFG_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemCFG_cpp_provo.inl"
+    #endif
 #elif defined(ANDROID)
     CryLogAlways("Running 32 bit Android version API VER:%d", __ANDROID_API__);
 #elif defined(IOS)
@@ -228,7 +236,11 @@ void CSystem::LogVersion()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION SYSTEMCFG_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(SystemCFG_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/SystemCFG_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/SystemCFG_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

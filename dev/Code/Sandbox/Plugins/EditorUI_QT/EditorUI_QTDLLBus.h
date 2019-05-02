@@ -277,6 +277,12 @@ namespace EditorUIPlugin
         * select an item.
         */
         virtual void UpdateItemUI(const AZStd::string& itemId, bool selected, int lodIdx) = 0;
+        
+        /*!
+        * Explicitly refresh UI of an item.
+        */
+        virtual void RefreshItemUI() = 0;
+        
     };
 
 

@@ -17,6 +17,7 @@
 #include "BaseObject.h"
 #include "MemoryCategories.h"
 #include <MCore/Source/MultiThreadManager.h>
+#include <MCore/Source/Array.h>
 
 
 namespace EMotionFX

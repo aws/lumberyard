@@ -33,11 +33,10 @@ namespace EMStudio
         MCORE_MEMORYOBJECTCATEGORY(AnimGraphVisualNode, EMFX_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS_ANIMGRAPH);
 
     public:
-        AnimGraphVisualNode(AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node, bool syncWithEMFX);
+        AnimGraphVisualNode(const QModelIndex& modelIndex, AnimGraphPlugin* plugin, EMotionFX::AnimGraphNode* node);
         virtual ~AnimGraphVisualNode();
 
-        void Sync() override { SyncWithEMFX(); }
-        virtual void SyncWithEMFX() {}
+        void Sync() override;
 
         MCORE_INLINE void SetEMFXNode(EMotionFX::AnimGraphNode* emfxNode)  { mEMFXNode = emfxNode; }
         MCORE_INLINE EMotionFX::AnimGraphNode* GetEMFXNode()               { return mEMFXNode; }

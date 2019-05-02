@@ -124,6 +124,8 @@ private:
 
     //LibraryItemUIRequests::Bus
     void UpdateItemUI(const AZStd::string& itemId, bool selected, int lodIdx) override;
+    void RefreshItemUI() override;
+ 
     //end LibraryItemUIRequests::Bus
 
     //LibraryChangeEvents::Bus

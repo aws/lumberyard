@@ -33,7 +33,7 @@
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include "UniqueManualEvent.h"
 #include <AzFramework/StringFunc/StringFunc.h>
-#include <LmbrCentral/Rendering/MeshComponentBus.h>
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 #include <CharacterBoundsBus.h>
 
 float g_YLine = 0.0f;
@@ -5455,7 +5455,7 @@ void CharacterManager::ReloadSkeletonCHRPARAMS(const AZStd::string& assetPath, C
     for (CCharInstance* pCharInstance : skeletonReferences->m_RefByInstances)
     {
         pCharInstance->UpdateAABB();
-        EBUS_EVENT_ID(pCharInstance->GetOwnerId(), LmbrCentral::MeshComponentNotificationBus, OnBoundsReset);
+        EBUS_EVENT_ID(pCharInstance->GetOwnerId(), LmbrCentral::RenderBoundsNotificationBus, OnRenderBoundsReset);
         EBUS_EVENT_ID(pCharInstance, AZ::CharacterBoundsNotificationBus, OnCharacterBoundsReset);
     }
 }

@@ -23,6 +23,10 @@
         ]
     },
     "auto": {
+        "Root": [
+            "AzToolsFrameworkModule.h",
+            "AzToolsFrameworkModule.cpp"
+        ],
         "API": [
             "API/ToolsApplicationAPI.h",
             "API/EditorAssetSystemAPI.h",
@@ -58,6 +62,7 @@
         ],
         "AssetBrowser": [
             "AssetBrowser/AssetBrowserBus.h",
+            "AssetBrowser/AssetBrowserBus.inl",
             "AssetBrowser/AssetBrowserComponent.cpp",
             "AssetBrowser/AssetBrowserComponent.h",
             "AssetBrowser/AssetBrowserEntry.h",
@@ -178,6 +183,8 @@
             "Entity/EditorEntityContextPickingBus.h",
             "Entity/EditorEntityActionComponent.cpp",
             "Entity/EditorEntityActionComponent.h",
+            "Entity/EditorEntityFixupComponent.cpp",
+            "Entity/EditorEntityFixupComponent.h",
             "Entity/EditorEntityHelpers.cpp",
             "Entity/EditorEntityHelpers.h",
             "Entity/EditorEntityInfoBus.h",
@@ -186,9 +193,11 @@
             "Entity/EditorEntityModelBus.h",
             "Entity/EditorEntityModelComponent.cpp",
             "Entity/EditorEntityModelComponent.h",
+            "Entity/EditorEntityRuntimeActivationBus.h",
             "Entity/EditorEntitySortBus.h",
             "Entity/EditorEntitySortComponent.cpp",
-            "Entity/EditorEntitySortComponent.h"
+            "Entity/EditorEntitySortComponent.h",
+            "Entity/EditorEntityTransformBus.h"
         ],
         "Manipulators": [
             "Manipulators/AngularManipulator.cpp",
@@ -210,18 +219,22 @@
             "Manipulators/ManipulatorView.h",
             "Manipulators/ManipulatorSnapping.cpp",
             "Manipulators/ManipulatorSnapping.h",
-            "Manipulators/SurfaceManipulator.cpp",
-            "Manipulators/SurfaceManipulator.h",
             "Manipulators/PlanarManipulator.cpp",
             "Manipulators/PlanarManipulator.h",
+            "Manipulators/RotationManipulators.cpp",
+            "Manipulators/RotationManipulators.h",
+            "Manipulators/ScaleManipulators.cpp",
+            "Manipulators/ScaleManipulators.h",
             "Manipulators/SelectionManipulator.cpp",
             "Manipulators/SelectionManipulator.h",
             "Manipulators/SplineSelectionManipulator.h",
             "Manipulators/SplineSelectionManipulator.cpp",
-            "Manipulators/TransformManipulator.cpp",
-            "Manipulators/TransformManipulator.h",
-            "Manipulators/TranslationManipulator.cpp",
-            "Manipulators/TranslationManipulator.h"
+            "Manipulators/SurfaceManipulator.cpp",
+            "Manipulators/SurfaceManipulator.h",
+            "Manipulators/TranslationManipulators.cpp",
+            "Manipulators/TranslationManipulators.h",
+            "Manipulators/BoxManipulators.cpp",
+            "Manipulators/BoxManipulators.h"
         ],
         "Metrics": [
             "Metrics/LyEditorMetricsBus.h"
@@ -250,6 +263,8 @@
             "Slice/SliceDataFlagsCommand.cpp",
             "Slice/SliceUtilities.h",
             "Slice/SliceUtilities.cpp",
+            "Slice/SliceCompilation.h",
+            "Slice/SliceCompilation.cpp",
             "Slice/SliceTransaction.cpp",
             "Slice/SliceTransaction.h",
             "Slice/SliceDependencyBrowserComponent.h",
@@ -292,11 +307,19 @@
             "ToolsComponents/EditorDisabledCompositionComponent.h",
             "ToolsComponents/EditorDisabledCompositionComponent.cpp",
             "ToolsComponents/EditorDisabledCompositionBus.h",
+            "ToolsComponents/EditorOnlyEntityComponent.h",
+            "ToolsComponents/EditorOnlyEntityComponent.cpp",
+            "ToolsComponents/EditorOnlyEntityComponentBus.h",
             "ToolsComponents/EditorEntityIdContainer.cpp",
             "ToolsComponents/EditorEntityIdContainer.h",
             "ToolsComponents/EditorEntityIconComponent.h",
             "ToolsComponents/EditorEntityIconComponent.cpp",
             "ToolsComponents/EditorEntityIconComponentBus.h",
+            "ToolsComponents/EditorLayerComponent.h",
+            "ToolsComponents/EditorLayerComponent.cpp",
+            "ToolsComponents/EditorLayerComponentBus.h",
+            "ToolsComponents/LayerResult.cpp",
+            "ToolsComponents/LayerResult.h",
             "ToolsComponents/EditorLockComponent.cpp",
             "ToolsComponents/EditorLockComponent.h",
             "ToolsComponents/EditorLockComponentBus.h",
@@ -329,6 +352,10 @@
         "ToolsMessaging": [
             "ToolsMessaging/EntityHighlightBus.h"
         ],
+        "UI/Layer": [
+            "UI/Layer/AddToLayerMenu.cpp",
+            "UI/Layer/AddToLayerMenu.h"
+        ],
         "UI/Logging": [
             "UI/Logging/LoggingCommon.h",
             "UI/Logging/LogEntry.h",
@@ -354,6 +381,10 @@
             "UI/ComponentPalette/ComponentPaletteModelFilter.cpp",
             "UI/ComponentPalette/ComponentPaletteUtil.hxx",
             "UI/ComponentPalette/ComponentPaletteUtil.cpp"
+        ],
+        "UI/NameConflictWarning": [
+            "UI/Layer/NameConflictWarning.hxx",
+            "UI/Layer/NameConflictWarning.cpp"
         ],
         "UI/PropertyEditor": [
             "UI/PropertyEditor/EntityPropertyEditor.ui",
@@ -429,6 +460,12 @@
         "UI/Slice": [
             "UI/Slice/SlicePushWidget.cpp",
             "UI/Slice/SlicePushWidget.hxx",
+            "UI/Slice/SliceOverridesNotificationWindow.cpp",
+            "UI/Slice/SliceOverridesNotificationWindow.hxx",
+            "UI/Slice/SliceOverridesNotificationWindowManager.cpp",
+            "UI/Slice/SliceOverridesNotificationWindowManager.hxx",
+            "UI/Slice/NotificationWindow.ui",
+            "UI/Slice/Constants.h",
             "UI/Slice/SliceRelationshipWidget.cpp",
             "UI/Slice/SliceRelationshipWidget.hxx"
         ],
@@ -469,6 +506,8 @@
             "Commands/EntityTransformCommand.h",
             "Commands/PreemptiveUndoCache.cpp",
             "Commands/PreemptiveUndoCache.h",
+            "Commands/SliceDetachEntityCommand.cpp",
+            "Commands/SliceDetachEntityCommand.h",
             "Commands/LegacyCommand.h"
         ],
         "Viewport": [

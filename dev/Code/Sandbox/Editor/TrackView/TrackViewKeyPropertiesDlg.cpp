@@ -16,7 +16,6 @@
 #include "TrackViewDialog.h"
 #include "TrackViewSequence.h"
 #include "TrackViewTrack.h"
-#include "TrackViewUndo.h"
 #include "Controls/ReflectedPropertyControl/ReflectedPropertyCtrl.h"
 #include <Maestro/Types/SequenceType.h>
 #include <Maestro/Types/AnimValueType.h>
@@ -33,51 +32,8 @@ void CTrackViewKeyUIControls::OnInternalVariableChange(IVariable* var)
     AZ_Assert(sequence, "Expected valid sequence.");
     if (sequence)
     {
-        if (sequence->GetSequenceType() == SequenceType::Legacy)
-        {
-            OnInternalVariableChangeLegacy(var);
-        }
-        else
-        {
-            CTrackViewKeyBundle keys = sequence->GetSelectedKeys();
-            OnUIChange(var, keys);
-        }
-    }
-}
-
-//////////////////////////////////////////////////////////////////////////
-void CTrackViewKeyUIControls::OnInternalVariableChangeLegacy(IVariable* pVar)
-{
-    CTrackViewSequence* pSequence = GetIEditor()->GetAnimation()->GetSequence();
-
-    CTrackViewSequenceNotificationContext context(pSequence);
-    CTrackViewKeyBundle keys = pSequence->GetSelectedKeys();
-
-    bool bAlreadyRecording = CUndo::IsRecording();
-    if (!bAlreadyRecording)
-    {
-        // Try to start undo. This can't be done if restoring undo
-        GetIEditor()->BeginUndo();
-
-        if (CUndo::IsRecording())
-        {
-            GetIEditor()->GetAnimation()->GetSequence()->StoreUndoForTracksWithSelectedKeys();
-        }
-        else
-        {
-            bAlreadyRecording = true;
-        }
-    }
-    else
-    {
-        GetIEditor()->GetAnimation()->GetSequence()->StoreUndoForTracksWithSelectedKeys();
-    }
-
-    OnUIChange(pVar, keys);
-
-    if (!bAlreadyRecording)
-    {
-        GetIEditor()->AcceptUndo("Change Keys");
+        CTrackViewKeyBundle keys = sequence->GetSelectedKeys();
+        OnUIChange(var, keys);
     }
 }
 
@@ -321,7 +277,16 @@ CTrackViewTrackPropsDlg::CTrackViewTrackPropsDlg(QWidget* parent /* = 0 */)
     , ui(new Ui::CTrackViewTrackPropsDlg)
 {
     ui->setupUi(this);
+
+    // Use editingFinished and a custom signal stepByFinished (and not valueChanged)
+    // so the time will be updated when the user finishes editing the time field (hits enter)
+    // or if the arrow keys (or mouse click on the arrow buttons) in the spinner box are
+    // pressed. Don't just use valueChanged because we don't want intermediate values
+    // like 1 as the user is typing 10 to register as updates to the key values. Keys
+    // are identified by time, so the keys jumping around like that can stomp existing keys
+    // that happen to live at the intermediate values.
     connect(ui->TIME, SIGNAL(editingFinished()), this, SLOT(OnUpdateTime()));
+    connect(ui->TIME, SIGNAL(stepByFinished()), this, SLOT(OnUpdateTime()));
 }
 
 CTrackViewTrackPropsDlg::~CTrackViewTrackPropsDlg()
@@ -390,13 +355,7 @@ void CTrackViewTrackPropsDlg::OnUpdateTime()
             bool isDuringUndo = false;
             AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(isDuringUndo, &AzToolsFramework::ToolsApplicationRequests::Bus::Events::IsDuringUndoRedo);
 
-            if (sequence->GetSequenceType() == SequenceType::Legacy)
-            {
-                CUndo undo("Change key time");
-                CUndo::Record(new CUndoTrackObject(m_keyHandle.GetTrack()));
-                m_keyHandle.SetTime(time);
-            }
-            else if (isDuringUndo)
+            if (isDuringUndo)
             {
                 m_keyHandle.SetTime(time);
             }

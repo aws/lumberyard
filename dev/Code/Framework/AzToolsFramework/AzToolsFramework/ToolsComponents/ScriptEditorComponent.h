@@ -50,7 +50,6 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
             // Editor Component
             void BuildGameEntity(AZ::Entity* gameEntity) override;
-            void FinishedBuildingGameEntity(AZ::Entity* gameEntity) override;
             void SetPrimaryAsset(const AZ::Data::AssetId& /*assetId*/) override;
             //////////////////////////////////////////////////////////////////////////
 

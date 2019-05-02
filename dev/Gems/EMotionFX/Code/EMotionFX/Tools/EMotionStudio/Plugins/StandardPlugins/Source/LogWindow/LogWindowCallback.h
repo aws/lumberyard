@@ -55,12 +55,18 @@ namespace EMStudio
         void keyPressEvent(QKeyEvent* event) override;
         void resizeEvent(QResizeEvent* event) override;
         void contextMenuEvent(QContextMenuEvent* event) override;
+        void paintEvent(QPaintEvent* event) override;
 
     private slots:
         void Copy();
         void SelectAll();
         void UnselectAll();
         void Clear();
+
+        void LogImpl(const QString text, MCore::LogCallback::ELogLevel logLevel);
+
+    signals:
+        void DoLog(const QString text, MCore::LogCallback::ELogLevel logLevel);
 
     private:
         void SetColumnWidthToTakeWholeSpace();
@@ -69,7 +75,10 @@ namespace EMStudio
         QString mFind;
         uint32 mFilter;
         int mMaxSecondColumnWidth;
+        bool m_scrollToBottom;
     };
 } // namespace EMStudio
+
+Q_DECLARE_METATYPE(MCore::LogCallback::ELogLevel)
 
 #endif

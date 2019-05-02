@@ -190,8 +190,6 @@ private:
     ICryPak* m_pIPak;
 };
 
-#define IfPak(PakFunc, stdfunc, args) (m_pIPak ? m_pIPak->PakFunc args : stdfunc args)
-
 // Summary:
 // CCryFile implementation.
 inline CCryFile::CCryFile()
@@ -257,7 +255,7 @@ inline bool CCryFile::Open(const char* filename, const char* mode, int nOpenFlag
     }
     else
     {
-        gEnv->pFileIO->Open(tempfilename, AZ::IO::GetOpenModeFromStringMode(mode), m_fileHandle);
+        AZ::IO::FileIOBase::GetInstance()->Open(tempfilename, AZ::IO::GetOpenModeFromStringMode(mode), m_fileHandle);
     }
 
     return m_fileHandle != AZ::IO::InvalidHandle;
@@ -268,7 +266,14 @@ inline void CCryFile::Close()
 {
     if (m_fileHandle != AZ::IO::InvalidHandle)
     {
-        IfPak(FClose, gEnv->pFileIO->Close, (m_fileHandle));
+        if (m_pIPak)
+        {
+            m_pIPak->FClose(m_fileHandle);
+        }
+        else
+        {
+            AZ::IO::FileIOBase::GetInstance()->Close(m_fileHandle);
+        }
         m_fileHandle = AZ::IO::InvalidHandle;
         m_filename[0] = 0;
     }
@@ -283,10 +288,11 @@ inline size_t CCryFile::Write(const void* lpBuf, size_t nSize)
         return m_pIPak->FWrite(lpBuf, 1, nSize, m_fileHandle);
     }
 
-    if (gEnv->pFileIO->Write(m_fileHandle, lpBuf, nSize))
+    if (AZ::IO::FileIOBase::GetInstance()->Write(m_fileHandle, lpBuf, nSize))
     {
         return nSize;
     }
+
     return 0;
 }
 
@@ -300,7 +306,8 @@ inline size_t CCryFile::ReadRaw(void* lpBuf, size_t nSize)
     }
 
     AZ::u64 bytesRead = 0;
-    gEnv->pFileIO->Read(m_fileHandle, lpBuf, nSize, false, &bytesRead);
+    AZ::IO::FileIOBase::GetInstance()->Read(m_fileHandle, lpBuf, nSize, false, &bytesRead);
+
     return static_cast<size_t>(bytesRead);
 }
 
@@ -314,7 +321,7 @@ inline size_t CCryFile::GetLength()
     }
     //long curr = ftell(m_file);
     AZ::u64 size = 0;
-    gEnv->pFileIO->Size(m_fileHandle, size);
+    AZ::IO::FileIOBase::GetInstance()->Size(m_fileHandle, size);
     return static_cast<size_t>(size);
 }
 
@@ -332,7 +339,7 @@ inline size_t CCryFile::Seek(size_t seek, int mode)
         return m_pIPak->FSeek(m_fileHandle, long(seek), mode);
     }
 
-    if (gEnv->pFileIO->Seek(m_fileHandle, seek, AZ::IO::GetSeekTypeFromFSeekMode(mode)))
+    if (AZ::IO::FileIOBase::GetInstance()->Seek(m_fileHandle, seek, AZ::IO::GetSeekTypeFromFSeekMode(mode)))
     {
         return 0;
     }
@@ -363,8 +370,10 @@ inline size_t CCryFile::GetPosition()
     {
         return m_pIPak->FTell(m_fileHandle);
     }
+
     AZ::u64 tellOffset = 0;
-    gEnv->pFileIO->Tell(m_fileHandle, tellOffset);
+    AZ::IO::FileIOBase::GetInstance()->Tell(m_fileHandle, tellOffset);
+
     return static_cast<size_t>(tellOffset);
 }
 
@@ -376,14 +385,21 @@ inline bool CCryFile::IsEof()
     {
         return m_pIPak->FEof(m_fileHandle) != 0;
     }
-    return gEnv->pFileIO->Eof(m_fileHandle);
+    
+    return AZ::IO::FileIOBase::GetInstance()->Eof(m_fileHandle);
 }
 
 //////////////////////////////////////////////////////////////////////////
 inline void CCryFile::Flush()
 {
     assert(m_fileHandle != AZ::IO::InvalidHandle);
-    IfPak(FFlush, gEnv->pFileIO->Flush, (m_fileHandle));
+
+    if (m_pIPak)
+    {
+        m_pIPak->FFlush(m_fileHandle);
+    }
+    
+    AZ::IO::FileIOBase::GetInstance()->Flush(m_fileHandle);
 }
 
 //////////////////////////////////////////////////////////////////////////

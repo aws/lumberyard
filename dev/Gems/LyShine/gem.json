@@ -6,6 +6,13 @@
                 "~>0.1"
             ],
             "_comment": "LmbrCentral"
+        },
+        {
+            "Uuid": "5a149b6b3c964064bd4970f0e92f72e2",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "Texture Atlas"
         }
     ],
     "GemFormatVersion": 3,

@@ -35,7 +35,6 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
-        void FinishedBuildingGameEntity(AZ::Entity* gameEntity) override;
         //////////////////////////////////////////////////////////////////////////
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)

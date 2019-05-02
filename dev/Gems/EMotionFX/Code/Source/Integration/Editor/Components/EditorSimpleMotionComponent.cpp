@@ -138,7 +138,7 @@ namespace EMotionFX
             if (asset == m_configuration.m_motionAsset)
             {
                 m_configuration.m_motionAsset = asset;
-                UpdateAndPlayMotionInstance();
+                PlayMotion();
             }
         }
 
@@ -150,7 +150,7 @@ namespace EMotionFX
         void EditorSimpleMotionComponent::OnActorInstanceCreated(EMotionFX::ActorInstance* actorInstance)
         {
             m_actorInstance = actorInstance;
-            UpdateAndPlayMotionInstance();
+            PlayMotion();
         }
 
         void EditorSimpleMotionComponent::OnActorInstanceDestroyed(EMotionFX::ActorInstance* actorInstance)
@@ -163,7 +163,7 @@ namespace EMotionFX
             m_actorInstance = nullptr;
         }
 
-        void EditorSimpleMotionComponent::UpdateAndPlayMotionInstance()
+        void EditorSimpleMotionComponent::PlayMotion()
         {
             if (m_previewInEditor)
             {
@@ -171,7 +171,7 @@ namespace EMotionFX
                 // motion instances if it's blend weight is zero.
                 bool deleteOnZeroWeight = false;
 
-                m_motionInstance = SimpleMotionComponent::PlayMotion(m_actorInstance, m_configuration, deleteOnZeroWeight);
+                m_motionInstance = SimpleMotionComponent::PlayMotionInternal(m_actorInstance, m_configuration, deleteOnZeroWeight);
             }
         }
 

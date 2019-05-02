@@ -49,6 +49,16 @@ namespace AzToolsFramework
             }
         }
 
+        void ThumbnailerComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+        {
+            incompatible.push_back(AZ_CRC("ThumbnailerService", 0x65422b97));
+        }
+
+        void ThumbnailerComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            provided.push_back(AZ_CRC("ThumbnailerService", 0x65422b97));
+        }
+
         void ThumbnailerComponent::RegisterContext(const char* contextName, int thumbnailSize)
         {
             AZ_Assert(m_thumbnails.find(contextName) == m_thumbnails.end(), "Context %s already registered", contextName);
@@ -69,10 +79,6 @@ namespace AzToolsFramework
             return it->second->GetThumbnail(key);
         }
 
-        void ThumbnailerComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-        {
-            provided.push_back(AZ_CRC("ThumbnailerService", 0x65422b97));
-        }
     } // namespace Thumbnailer
 } // namespace AzToolsFramework
 #include <Thumbnails/ThumbnailerComponent.moc>

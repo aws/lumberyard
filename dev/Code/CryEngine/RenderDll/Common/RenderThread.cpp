@@ -71,7 +71,11 @@ void CRenderThread::Run()
     gEnv->pSystem->GetIThreadTaskManager()->MarkThisThreadForDebugging(RENDER_THREAD_NAME, true);
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_CPP_SECTION_1
-#include AZ_RESTRICTED_FILE(RenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_cpp_provo.inl"
+    #endif
 #endif
     threadID renderThreadId = ::GetCurrentThreadId();
     gRenDev->m_pRT->m_nRenderThread = renderThreadId;
@@ -99,7 +103,11 @@ void CRenderThreadLoading::Run()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_CPP_SECTION_2
-#include AZ_RESTRICTED_FILE(RenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_cpp_provo.inl"
+    #endif
 #endif
 
     // We aren't interested in file access from the render loading thread, and this
@@ -153,7 +161,11 @@ SRenderThread::SRenderThread()
     m_bQuitLoading = false;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_CPP_SECTION_3
-#include AZ_RESTRICTED_FILE(RenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_cpp_provo.inl"
+    #endif
 #endif
 #if defined(USE_HANDLE_FOR_FINAL_FLUSH_SYNC)
     m_FlushFinishedCondition = CreateEvent(NULL, FALSE, FALSE, "FlushFinishedCondition");
@@ -275,7 +287,11 @@ void SRenderThread::RC_ResetDevice()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_CPP_SECTION_4
-#include AZ_RESTRICTED_FILE(RenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_cpp_provo.inl"
+    #endif
 #endif
 
 void SRenderThread::RC_PreloadTextures()
@@ -1107,6 +1123,67 @@ void SRenderThread::RC_DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, int nVert
     AddDWORD(p, nVerts);
     AddDWORD(p, nInds);
     AddDWORD(p, (int)nPrimType);
+    EndCommand(p);
+}
+
+void SRenderThread::RC_DrawDynUiPrimitiveList(IRenderer::DynUiPrimitiveList& primitives, int totalNumVertices, int totalNumIndices)
+{
+    AZ_TRACE_METHOD();
+
+    if (IsRenderThread())
+    {
+        // When this is called on the render thread we do not currently combine the draw calls since we would
+        // have to allocate a new buffer to do so using RT_DrawDynVBUI.
+        // We could avoid the allocate by having a RT_DrawDynUiPrimitiveList which was only used
+        // when RC_DrawDynUiPrimitiveList is called on the render thread. It would have to do some
+        // fancy stuff with TempDynVB. Currently we are optimizing the case where there is a separate
+        // render thread so this is not a priority.
+        for (const IRenderer::DynUiPrimitive& primitive : primitives)
+        {
+            gRenDev->RT_DrawDynVBUI(primitive.m_vertices, primitive.m_indices, primitive.m_numVertices, primitive.m_numIndices, prtTriangleList);
+        }
+        return;
+    }
+
+    size_t vertsSizeInBytes = Align4(sizeof(SVF_P2F_C4B_T2F_F4B) * totalNumVertices);
+    size_t indsSizeInBytes = Align4(sizeof(uint16) * totalNumIndices);
+
+    LOADINGLOCK_COMMANDQUEUE
+    const size_t fixedCommandSize = 5 * sizeof(uint32);  // accounts for the 5 calls to AddDWORD below
+    byte* p = AddCommand(eRC_DrawDynVBUI, fixedCommandSize + vertsSizeInBytes + indsSizeInBytes);
+
+    // we can't use AddPtr for each primitive since that adds a length then memcpy's the pointer
+    // we want all the vertices added to the queue as one length plus one data chunk.
+    // Same for indices.
+
+    // We know SVF_P2F_C4B_T2F_F4B is a multiple of 4 bytes so no padding needed
+    AddDWORD(p, vertsSizeInBytes);
+    for (const IRenderer::DynUiPrimitive& primitive : primitives)
+    {
+        memcpy(p, primitive.m_vertices, sizeof(SVF_P2F_C4B_T2F_F4B) * primitive.m_numVertices);
+        p += sizeof(SVF_P2F_C4B_T2F_F4B) * primitive.m_numVertices;
+    }
+
+    AddDWORD(p, indsSizeInBytes);
+    // when copying the indicies we have to adjust them to be the correct index in the combined vertex buffer
+    uint16 vbOffset = 0;
+    for (const IRenderer::DynUiPrimitive& primitive : primitives)
+    {
+        uint16* pIndex = reinterpret_cast<uint16*>(p);
+        for (int i = 0; i < primitive.m_numIndices; ++i)
+        {
+            pIndex[i] = primitive.m_indices[i] + vbOffset;
+        }
+        p += sizeof(uint16) * primitive.m_numIndices;
+        vbOffset += primitive.m_numVertices;
+    }
+    // uint16 is not a multiple of 4 bytes so if there is an odd number of indices we need to pad
+    unsigned pad = indsSizeInBytes - sizeof(uint16) * totalNumIndices;
+    p += pad;
+
+    AddDWORD(p, totalNumVertices);
+    AddDWORD(p, totalNumIndices);
+    AddDWORD(p, (int)prtTriangleList);
     EndCommand(p);
 }
 
@@ -2214,7 +2291,11 @@ void SRenderThread::ProcessCommands()
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_CPP_SECTION_5
-#include AZ_RESTRICTED_FILE(RenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_cpp_provo.inl"
+    #endif
 #endif
     int n = 0;
     m_bSuccessful = true;
@@ -2250,7 +2331,11 @@ void SRenderThread::ProcessCommands()
             break;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_CPP_SECTION_6
-#include AZ_RESTRICTED_FILE(RenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_cpp_provo.inl"
+    #endif
 #endif
         case eRC_ReleasePostEffects:
             if (gRenDev->m_pPostProcessMgr)
@@ -2698,6 +2783,24 @@ void SRenderThread::ProcessCommands()
             }
             END_PROFILE_PLUS_RT(gRenDev->m_fRTTimeMiscRender);
         }
+        break;
+        case eRC_DrawDynVBUI:
+            {
+                pP = &m_Commands[threadId][0];
+                uint32 nSize = *(uint32*)&pP[n];
+                SVF_P2F_C4B_T2F_F4B* pBuf = (SVF_P2F_C4B_T2F_F4B*)&pP[n + 4];
+                n += nSize + 4;
+                nSize = *(uint32*)&pP[n];
+                uint16* pInds = (nSize > 0) ? (uint16*)&pP[n + 4] : nullptr;
+                n += nSize + 4;
+                int nVerts = ReadCommand<int>(n);
+                int nInds = ReadCommand<int>(n);
+                const PublicRenderPrimitiveType nPrimType = (PublicRenderPrimitiveType)ReadCommand<int>(n);
+                if (m_eVideoThreadMode == eVTM_Disabled)
+                {
+                    gRenDev->RT_DrawDynVBUI(pBuf, pInds, nVerts, nInds, nPrimType);
+                }
+            }
         break;
 
         case eRC_Draw2dImageStretchMode:
@@ -3259,7 +3362,11 @@ void SRenderThread::Process()
                 {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_CPP_SECTION_7
-#include AZ_RESTRICTED_FILE(RenderThread_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_cpp_provo.inl"
+    #endif
 #endif
 
                     frameId += 1;

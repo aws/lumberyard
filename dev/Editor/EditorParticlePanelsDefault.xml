@@ -239,6 +239,7 @@
   <item name="Particle Size Discard" visibility="Emitter.Emitter_Type:gpu;Emitter.Emitter_Shape:all" as="Advanced.Particle_Size_Discard"/>
   <item name="Depth of Field Blur" visibility="Emitter.Emitter_Type:all;Emitter.Emitter_Shape:all" as="Advanced.Depth_Of_Field_Blur"/>
   <item name="Spherical Volume" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Advanced.Spherical_Approximation"/>
+  <item name="Fog Volume Shading Quality High" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" advanced="yes" as="Advanced.Fog_Volume_Shading_Quality_High"/>
  </panel>
  <panel name="Configuration">
   <item name="Config Min" visibility="Emitter.Emitter_Type:cpu;Emitter.Emitter_Shape:all" as="Configuration.Config_Min"/>

@@ -56,14 +56,14 @@ def build(bld):
     gem_restricted_libs = {}
 
     restricted_scripts = {}
-    for p in bld.env['RESTRICTED_PLATFORMS']:
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
         script_dir, script_base = os.path.split(bld.cur_script.abspath())
-        restricted_script_filename = os.path.join(script_dir, p, '{0}_{1}'.format(script_base, p))
+        restricted_script_filename = os.path.join(script_dir, p0, '{0}_{1}'.format(script_base, p1))
         if os.path.exists(restricted_script_filename):
             script = run_path(restricted_script_filename)
-            restricted_scripts[p] = script
+            restricted_scripts[p3] = script
             if 'init_libs' in script:
-                script['init_libs'](p, static_lib_restricted_libs, gem_restricted_libs)
+                script['init_libs'](p3, static_lib_restricted_libs, gem_restricted_libs)
 
     if is_project_gen:
         static_lib_file_list += ['static_library.waf_files']

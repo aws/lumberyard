@@ -12,16 +12,20 @@
 #include "stdafx.h"
 
 #include "EditorCommon.h"
+#include "AlignToolbarSection.h"
 
 ModeToolbar::ModeToolbar(EditorWindow* parent)
     : QToolBar("Mode Toolbar", parent)
     , m_group(nullptr)
     , m_previousAction(nullptr)
+    , m_alignToolbarSection(new AlignToolbarSection)
 {
     setObjectName("ModeToolbar");    // needed to save state
     setFloatable(false);
 
     AddModes(parent);
+
+    m_alignToolbarSection->AddButtons(this);
 
     parent->addToolBar(this);
 }
@@ -43,18 +47,6 @@ void ModeToolbar::SetCheckedItem(int index)
     }
 }
 
-void ModeToolbar::AddPixmapToIcon(QIcon& icon, QIcon::Mode iconMode, QColor color)
-{
-    for (QSize size : icon.availableSizes())
-    {
-        QImage img = icon.pixmap(size).toImage().convertToFormat(QImage::Format_ARGB32_Premultiplied);
-        QPainter painter(&img);
-        painter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
-        painter.fillRect(0, 0, img.width(), img.height(), color);
-        icon.addPixmap(QPixmap::fromImage(img), iconMode);
-    }
-}
-
 void ModeToolbar::AddModes(EditorWindow* parent)
 {
     m_group = new QActionGroup(this);
@@ -64,17 +56,24 @@ void ModeToolbar::AddModes(EditorWindow* parent)
     {
         int key = (Qt::Key_1 + i++);
 
-        QString iconUrl = QString(":/Icons/%1Icon.png").arg(ViewportHelpers::InteractionModeToString((int)m));
 
-        QIcon icon(iconUrl);
-        AddPixmapToIcon(icon, QIcon::Mode::Active, Qt::white);
-        AddPixmapToIcon(icon, QIcon::Mode::Disabled, Qt::gray);
+        int mode = static_cast<int>(m);
+
+        QString nodeName = ViewportHelpers::InteractionModeToString(mode);
+
+        QString iconImageDefault = QString(":/Icons/Mode%1Default.png").arg(nodeName);
+        QString iconImageHover = QString(":/Icons/Mode%1Hover.png").arg(nodeName);
+        QString iconImageDisabled = QString(":/Icons/Mode%1Disabled.png").arg(nodeName);
+
+        QIcon icon(iconImageDefault);
+        icon.addPixmap(QPixmap(iconImageHover), QIcon::Active);
+        icon.addPixmap(QPixmap(iconImageDisabled), QIcon::Disabled);
 
         QAction* action = new QAction(icon,
-                (QString("%1 (%2)").arg(ViewportHelpers::InteractionModeToString((int)m), QString((char)key))),
+                (QString("%1 (%2)").arg(ViewportHelpers::InteractionModeToString(mode), QString(static_cast<char>(key)))),
                 this);
 
-        action->setData((int)m);
+        action->setData(mode);
         action->setShortcut(QKeySequence(key));
         action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
         action->setCheckable(true);   // Give it the behavior of a toggle button.

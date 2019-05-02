@@ -21,6 +21,10 @@
 #include <AzCore/Script/ScriptAsset.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserModel.h>
+#include <AzToolsFramework/AssetBrowser/AssetBrowserFilterModel.h>
+#include <AzToolsFramework/AssetBrowser/Views/AssetBrowserTreeView.h>
 #include <AzToolsFramework/UI/UICore/ProgressShield.hxx>
 #include <AzToolsFramework/UI/UICore/SaveChangesDialog.hxx>
 #include <AzToolsFramework/UI/LegacyFramework/Core/EditorFrameworkAPI.h>
@@ -38,8 +42,12 @@
 #include "LUABreakpointTrackerMessages.h"
 #include "LUAEditorSettingsDialog.hxx"
 
+#include <Woodpecker/AssetDatabaseLocationListener.h>
 #include <Woodpecker/LUA/ui_LUAEditorMainWindow.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
+
+#include <QTimer>
 
 namespace
 {
@@ -162,6 +170,8 @@ namespace LUAEditor
         m_gui->menuView->addAction(m_gui->localsDockWidget->toggleViewAction());
         m_gui->menuView->addAction(m_gui->findResultsDockWidget->toggleViewAction());
         m_gui->menuView->addAction(m_gui->classReferenceDockWidget->toggleViewAction());
+        m_gui->menuView->addAction(m_gui->m_dockLog->toggleViewAction());
+        m_gui->menuView->addAction(m_gui->luaFilesDockWidget->toggleViewAction());
 
         LUAEditorMainWindowMessages::Handler::BusConnect();
 
@@ -177,11 +187,21 @@ namespace LUAEditor
         m_ClassReferenceFilter = aznew ClassReferenceFilterModel(this);
         m_ClassReferenceFilter->setSourceModel(dataModel);
         m_gui->classReferenceTreeView->setModel(m_ClassReferenceFilter);
-        connect(m_gui->luaClassFilterEdit, SIGNAL(textEdited(const QString&)), this, SLOT(luaClassFilterTextChanged(const QString&)));
+
+        connect(m_gui->m_searchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, &LUAEditorMainWindow::luaClassFilterTextChanged);
 
         connect(m_gui->actionAssetBrowser, SIGNAL(triggered(bool)), this, SLOT(assetBrowserPressed()));
 
         connect(m_gui->actionAutocomplete, SIGNAL(triggered(bool)), this, SLOT(OnAutocompleteChanged(bool)));
+
+        auto newState = AZ::UserSettings::CreateFind<LUAEditorMainWindowSavedState>(AZ_CRC("LUA EDITOR MAIN WINDOW STATE", 0xa181bc4a), AZ::UserSettings::CT_LOCAL);
+        m_gui->actionAutoReloadUnmodifiedFiles->setChecked(newState->m_bAutoReloadUnmodifiedFiles);
+
+        connect(m_gui->actionAutoReloadUnmodifiedFiles, &QAction::triggered, this, [this](bool newValue)
+        {
+            auto newState = AZ::UserSettings::CreateFind<LUAEditorMainWindowSavedState>(AZ_CRC("LUA EDITOR MAIN WINDOW STATE", 0xa181bc4a), AZ::UserSettings::CT_LOCAL);
+            newState->m_bAutoReloadUnmodifiedFiles = newValue;
+        });
 
         connect(this, &LUAEditorMainWindow::OnReferenceDataChanged, this, [this]() { luaClassFilterTextChanged(m_ClassReferenceFilter->GetFilter()); });
 
@@ -229,6 +249,8 @@ namespace LUAEditor
         EBUS_EVENT(LegacyFramework::CustomMenusMessages::Bus, RegisterMenu, LegacyFramework::CustomMenusCommon::LUAEditor::Debug, m_gui->menuDebug);
         EBUS_EVENT(LegacyFramework::CustomMenusMessages::Bus, RegisterMenu, LegacyFramework::CustomMenusCommon::LUAEditor::SourceControl, m_gui->menuSource_Control);
         EBUS_EVENT(LegacyFramework::CustomMenusMessages::Bus, RegisterMenu, LegacyFramework::CustomMenusCommon::LUAEditor::Options, m_gui->menu_Options);
+
+        connect(m_gui->m_logPanel, &AzToolsFramework::LogPanel::TracePrintFLogPanel::LogLineSelected, this, &LUAEditorMainWindow::LogLineSelectionChanged);
     }
 
     LUAEditorMainWindow::~LUAEditorMainWindow(void)
@@ -240,7 +262,106 @@ namespace LUAEditor
         LUAEditorMainWindowMessages::Handler::BusDisconnect();
         LUABreakpointTrackerMessages::Handler::BusDisconnect();
 
+        m_gui->m_assetBrowserTreeView->SaveState();
+
         azdestroy(m_gui);
+
+        delete m_assetDatabaseListener;
+        m_assetDatabaseListener = nullptr;
+    }
+
+    void LUAEditorMainWindow::SetupLuaFilesPanel()
+    {
+        if (m_assetDatabaseListener != nullptr)
+        {
+            // We have already setup the panel, so nothing to do
+            return;
+        }
+
+        AZStd::string cacheRoot;
+        bool cacheRootFound = false;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(cacheRootFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetAbsoluteAssetDatabaseLocation, cacheRoot);
+        if (!cacheRootFound)
+        {
+            return;
+        }
+
+        m_assetDatabaseListener = new AssetDatabaseLocationListener();
+        m_assetDatabaseListener->Init(cacheRoot.c_str());
+        AZ::Data::AssetCatalogRequestBus::Broadcast(&AZ::Data::AssetCatalogRequests::StartMonitoringAssets);
+
+        // Get the asset browser model
+        AzToolsFramework::AssetBrowser::AssetBrowserModel* assetBrowserModel = nullptr;
+        AzToolsFramework::AssetBrowser::AssetBrowserComponentRequestBus::BroadcastResult(assetBrowserModel, &AzToolsFramework::AssetBrowser::AssetBrowserComponentRequests::GetAssetBrowserModel);
+        AZ_Assert(assetBrowserModel, "Failed to get filebrowser model");
+
+        // Hook up the data set to the tree view
+        m_filterModel = aznew AzToolsFramework::AssetBrowser::AssetBrowserFilterModel(this);
+        m_filterModel->setSourceModel(assetBrowserModel);
+
+        // Delay the setting of the filter until everything can be initialized
+        QTimer::singleShot(1000, [this]()
+        {
+            m_filterModel->SetFilter(CreateFilter());
+        });
+
+        m_gui->m_assetBrowserTreeView->setModel(m_filterModel);
+
+        m_gui->m_assetBrowserTreeView->SetThumbnailContext("AssetBrowser");
+        m_gui->m_assetBrowserTreeView->SetShowSourceControlIcons(true);
+
+        m_gui->m_assetBrowserTreeView->setSelectionMode(QAbstractItemView::SelectionMode::SingleSelection);
+
+        // Maintains the tree expansion state between runs
+        m_gui->m_assetBrowserTreeView->LoadState("LuaIDETreeView");
+
+        connect(m_gui->m_assetBrowserTreeView, &QTreeView::doubleClicked, this, [this](const QModelIndex&)
+        {
+            auto selectedAssets = m_gui->m_assetBrowserTreeView->GetSelectedAssets();
+            if (selectedAssets.size() == 1)
+            {
+                auto selectedAsset = selectedAssets.front();
+                const AZStd::string filePath = selectedAsset->GetFullPath();
+                EBUS_EVENT(Context_DocumentManagement::Bus, OnLoadDocument, filePath, true);
+            }
+        });
+    }
+
+    QSharedPointer<AzToolsFramework::AssetBrowser::CompositeFilter> LUAEditorMainWindow::CreateFilter()
+    {
+        using namespace AzToolsFramework::AssetBrowser;
+
+        // Only look at Script Assets (.lua files)
+        // Propagate this down to cover all the parents of a script asset
+        AssetTypeFilter* assetFilter = new AssetTypeFilter();
+        assetFilter->SetAssetType(AZ::AzTypeInfo<AZ::ScriptAsset>::Uuid());
+        assetFilter->SetFilterPropagation(AssetTypeFilter::PropagateDirection::Down);
+
+        // We only care about sources (not products)
+        // Do not propagate this at all
+        EntryTypeFilter* entryTypeFilter = new EntryTypeFilter();
+        entryTypeFilter->SetEntryType(AssetBrowserEntry::AssetEntryType::Source);
+        entryTypeFilter->SetFilterPropagation(AssetTypeFilter::PropagateDirection::None);
+
+        // Add in a string filter that comes from user input
+        // Propagate this up so that if we match a folder, it will show everything under that folder
+        StringFilter* stringFilter = new StringFilter();
+        stringFilter->SetFilterPropagation(AssetTypeFilter::PropagateDirection::Up);
+
+        connect(m_gui->m_assetBrowserSearchWidget, &AzQtComponents::FilteredSearchWidget::TextFilterChanged, this, [stringFilter](const QString& newString)
+        {
+            stringFilter->SetFilterString(newString);
+        });
+
+        // Construct the final filter where they are all and'd together
+        // Propagate the final filter down so that any matches will show the hierarchy of folders down to the appropriate matching leaf node
+        QSharedPointer<CompositeFilter> finalFilter(new CompositeFilter(CompositeFilter::LogicOperatorType::AND));
+        finalFilter->AddFilter(FilterConstType(stringFilter));
+        finalFilter->AddFilter(FilterConstType(assetFilter));
+        finalFilter->AddFilter(FilterConstType(entryTypeFilter));
+        finalFilter->SetFilterPropagation(AssetTypeFilter::PropagateDirection::Down);
+
+        return finalFilter;
     }
 
     void LUAEditorMainWindow::OnSettings()
@@ -2144,6 +2265,28 @@ namespace LUAEditor
         return m_gui->findTabWidget;
     }
 
+    void LUAEditorMainWindow::AddMessageToLog(AzToolsFramework::Logging::LogLine::LogType type, const char* window, const char* message, void* userData)
+    {
+        m_gui->m_logPanel->InsertLogLine(type, window, message, userData);
+    }
+
+    void LUAEditorMainWindow::LogLineSelectionChanged(const AzToolsFramework::Logging::LogLine& logLine)
+    {
+        CompilationErrorData* errorData = static_cast<CompilationErrorData*>(logLine.GetUserData());
+        if (errorData)
+        {
+            // Use the data, if it exists from the logLine to make sure the right tab/line is highlighted in the editor
+            if (OnRequestFocusView(errorData->m_filename))
+            {
+                LUAViewWidget* pLUAViewWidget = GetCurrentView();
+                if (pLUAViewWidget)
+                {
+                    pLUAViewWidget->SetCursorPosition(errorData->m_lineNumber, 0);
+                }
+            }
+        }
+    }
+
     void LUAEditorMainWindowSavedState::Reflect(AZ::ReflectContext* reflection)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
@@ -2152,7 +2295,8 @@ namespace LUAEditor
             serializeContext->Class<LUAEditorMainWindowSavedState, AzToolsFramework::MainWindowSavedState   >()
                 ->Version(5)
                 ->Field("m_openAssetIds", &LUAEditorMainWindowSavedState::m_openAssetIds)
-                ->Field("m_bAutocompleteEnabled", &LUAEditorMainWindowSavedState::m_bAutocompleteEnabled);
+                ->Field("m_bAutocompleteEnabled", &LUAEditorMainWindowSavedState::m_bAutocompleteEnabled)
+                ->Field("m_bAutoReloadUnmodifiedFiles", &LUAEditorMainWindowSavedState::m_bAutoReloadUnmodifiedFiles);
         }
 
         LUAEditorFindDialog::Reflect(reflection);

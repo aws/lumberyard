@@ -26,6 +26,8 @@
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
 #include <AssetBuilderComponent.h>
 #include <AssetBuilderInfo.h>
+#include <AzFramework/API/BootstrapReaderBus.h>
+#include <AZCore/Memory/AllocatorManager.h>
 
 // Command-line parameter options:
 static const char* const s_paramHelp = "help"; // Print help information.
@@ -149,7 +151,12 @@ bool AssetBuilderComponent::Run()
     }
 
     bool isDebugTask = (task == s_taskDebug || task == s_taskDebugCreate || task == s_taskDebugProcess);
-    if (!GetParameter(s_paramGameName, m_gameName, !isDebugTask) || !GetParameter(s_paramGameCache, m_gameCache, !isDebugTask))
+    if (!GetParameter(s_paramGameName, m_gameName, !isDebugTask))
+    {
+        AzFramework::BootstrapReaderRequestBus::Broadcast(&AzFramework::BootstrapReaderRequestBus::Events::SearchConfigurationForKey, "sys_game_folder", false, m_gameName);
+    }
+
+    if(!GetParameter(s_paramGameCache, m_gameCache, !isDebugTask))
     {
         if (!isDebugTask)
         {
@@ -316,6 +323,25 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
     }
     AzFramework::StringFunc::Path::Normalize(debugFile);
 
+    if (!GetParameter(s_paramGameCache, m_gameCache, false))
+    {
+        if (m_gameCache.empty())
+        {
+            // Setup the cache path
+            AZStd::string assetRoot;
+            AzFramework::ApplicationRequests::Bus::BroadcastResult(assetRoot, &AzFramework::ApplicationRequests::GetAssetRoot);
+            if (!assetRoot.empty())
+            {
+                AZStd::string tempString = AZStd::string::format("Cache/%s", m_gameName.c_str());
+                AzFramework::StringFunc::Path::Join(assetRoot.c_str(), tempString.c_str(), m_gameCache);
+            }
+            else
+            {
+                m_gameCache = ".";
+            }
+        }
+    }
+
     bool result = false;
     AZ::Data::AssetInfo info;
     AZStd::string watchFolder;
@@ -435,9 +461,12 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
                 return false;
             }
 
+            AssetBuilderSDK::PlatformInfo enabledDebugPlatformInfo = { "debug platform",{ "tools", "debug" } };
+
             AssetBuilderSDK::ProcessJobRequest processRequest;
             processRequest.m_watchFolder = watchFolder;
             processRequest.m_sourceFile = info.m_relativePath;
+            processRequest.m_platformInfo = enabledDebugPlatformInfo;
             processRequest.m_sourceFileUUID = info.m_assetId.m_guid;
             AzFramework::StringFunc::Path::Join(processRequest.m_watchFolder.c_str(), processRequest.m_sourceFile.c_str(), processRequest.m_fullPath);
             processRequest.m_tempDirPath = processJobTempDirPath;
@@ -464,10 +493,8 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
 
                 processRequest.m_jobDescription = jobDescriptions[i];
 
-                AZ_TraceContext("Platform", processRequest.m_jobDescription.GetPlatformIdentifier());
                 AssetBuilderSDK::ProcessJobResponse processResponse;
-                builder->m_processJobFunction(processRequest, processResponse);
-                UpdateResultCode(processRequest, processResponse);
+                ProcessJob(builder->m_processJobFunction, processRequest, processResponse);
 
                 AZStd::string responseFile;
                 AzFramework::StringFunc::Path::Join(processJobTempDirPath.c_str(),
@@ -482,6 +509,49 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
     }
 
     return true;
+}
+
+void AssetBuilderComponent::ProcessJob(const AssetBuilderSDK::ProcessJobFunction& job, const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& outResponse)
+{
+    AZ_TraceContext("Source", request.m_fullPath);
+    AZ_TraceContext("Platform", request.m_jobDescription.GetPlatformIdentifier());
+
+    namespace Path = AzFramework::StringFunc::Path;
+
+    // Setup the alias' as appropriate to the job in question.
+    auto ioBase = AZ::IO::FileIOBase::GetInstance();
+    AZ_Assert(ioBase != nullptr, "AZ::IO::FileIOBase must be ready for use.");
+
+    // Save out the prior paths.
+    const char* priorAlias = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
+    AZStd::string priorAssets = priorAlias ? priorAlias : AZStd::string();
+
+    priorAlias = AZ::IO::FileIOBase::GetInstance()->GetAlias("@root@");
+    AZStd::string priorRoot = priorAlias ? priorAlias : AZStd::string();
+
+    // The game name needs to be lower case within the cache area itself.
+    AZStd::string gameName = m_gameName;
+    AZStd::to_lower(gameName.begin(), gameName.end());
+
+    // The root path is the cache plus the platform name.
+    AZStd::string newRoot;
+    Path::Join(m_gameCache.c_str(), request.m_platformInfo.m_identifier.c_str(), newRoot);
+
+    // The asset path is root and the lower case game name.
+    AZStd::string newAssets;
+    Path::Join(newRoot.c_str(), gameName.c_str(), newAssets);
+
+    // Now set the paths and run the job.
+    ioBase->SetAlias("@assets@", newAssets.c_str());
+    ioBase->SetAlias("@root@", newRoot.c_str());
+
+    job(request, outResponse);
+
+    // Clean up the paths.
+    ioBase->SetAlias("@assets@", priorAssets.c_str());
+    ioBase->SetAlias("@root@", priorRoot.c_str());
+
+    UpdateResultCode(request, outResponse);
 }
 
 bool AssetBuilderComponent::RunOneShotTask(const AZStd::string& task)
@@ -524,8 +594,7 @@ bool AssetBuilderComponent::RunOneShotTask(const AZStd::string& task)
         {
             AZ_TraceContext("Source", request.m_fullPath);
             AZ_TraceContext("Platform", request.m_platformInfo.m_identifier);
-            m_assetBuilderDescMap.at(request.m_builderGuid)->m_processJobFunction(request, response);
-            UpdateResultCode(request, response);
+            ProcessJob(m_assetBuilderDescMap.at(request.m_builderGuid)->m_processJobFunction, request, response);
         };
 
         return HandleTask<AssetBuilderSDK::ProcessJobRequest, AssetBuilderSDK::ProcessJobResponse>(inputFilePath, outputFilePath, func);
@@ -643,8 +712,6 @@ void AssetBuilderComponent::JobThread()
         {
             using namespace AssetBuilderSDK;
 
-            AZ_TracePrintf("AssetBuilder", "Running createJob task\n");
-
             auto* netRequest = azrtti_cast<CreateJobsNetRequest*>(job->m_netRequest.get());
             auto* netResponse = azrtti_cast<CreateJobsNetResponse*>(job->m_netResponse.get());
             AZ_Assert(netRequest && netResponse, "Request or response is null");
@@ -666,8 +733,7 @@ void AssetBuilderComponent::JobThread()
 
             AZ_TraceContext("Source", netRequest->m_request.m_fullPath);
             AZ_TraceContext("Platforms", netRequest->m_request.m_platformInfo.m_identifier);
-            m_assetBuilderDescMap.at(netRequest->m_request.m_builderGuid)->m_processJobFunction(netRequest->m_request, netResponse->m_response);
-            UpdateResultCode(netRequest->m_request, netResponse->m_response);
+            ProcessJob(m_assetBuilderDescMap.at(netRequest->m_request.m_builderGuid)->m_processJobFunction, netRequest->m_request, netResponse->m_response);
             break;
         }
         default:
@@ -675,11 +741,13 @@ void AssetBuilderComponent::JobThread()
             continue;
         }
 
-        AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick);
-
         //Flush our output so the AP can properly associate all output with the current job
         std::fflush(stdout);
         std::fflush(stderr);
+
+        AZ::SystemTickBus::Broadcast(&AZ::SystemTickBus::Events::OnSystemTick);
+        AZ::TickBus::Broadcast(&AZ::TickEvents::OnTick, 0.00f, AZ::ScriptTimePoint(AZStd::chrono::system_clock::now()));
+        AZ::AllocatorManager::Instance().GarbageCollect();
 
         AzFramework::AssetSystem::SendResponse(*(job->m_netResponse), job->m_requestSerial);
     }
@@ -730,14 +798,7 @@ bool AssetBuilderComponent::HandleRegisterBuilder(const AZStd::string& inputFile
 
     for (const auto& pair : m_assetBuilderDescMap)
     {
-        AssetBuilderSDK::AssetBuilderRegistrationDesc desc;
-
-        desc.m_name = pair.second->m_name;
-        desc.m_busId = pair.second->m_busId;
-        desc.m_patterns = pair.second->m_patterns;
-        desc.m_version = pair.second->m_version;
-
-        response.m_assetBuilderDescList.push_back(desc);
+        response.m_assetBuilderDescList.push_back(*pair.second);
     }
 
     return AZ::Utils::SaveObjectToFile(outputFilePath, AZ::DataStream::ST_XML, &response);

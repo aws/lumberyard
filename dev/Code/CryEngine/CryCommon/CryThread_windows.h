@@ -283,7 +283,11 @@ private:
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYTHREAD_WINDOWS_H_SECTION_1
-#include AZ_RESTRICTED_FILE(CryThread_windows_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_windows_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_windows_h_provo.inl"
+    #endif
 #endif
         CrySimpleThread<Runnable>* const self = (CrySimpleThread<Runnable>*)thisPtr;
         self->m_bIsStarted = true;
@@ -305,7 +309,11 @@ private:
     {
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYTHREAD_WINDOWS_H_SECTION_2
-#include AZ_RESTRICTED_FILE(CryThread_windows_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThread_windows_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThread_windows_h_provo.inl"
+    #endif
 #endif
         CrySimpleThread<Runnable>* const self = (CrySimpleThread<Runnable>*)thisPtr;
         self->m_bIsStarted = true;

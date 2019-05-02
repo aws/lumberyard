@@ -432,9 +432,9 @@ namespace MysticQt
         mLineEdit->setValidator(new QRegExpValidator(QRegExp("-?[0-9]?[0-9]{,}"), this));
         mLineEdit->setObjectName("SpinBoxLineEdit");
 
-        connect(mLineEdit, SIGNAL(editingFinished()), this, SLOT(OnEditingFinished()));
-        connect(mLineEdit, SIGNAL(returnPressed()), this, SLOT(OnEditingFinished()));
-        connect(mLineEdit, SIGNAL(textEdited(const QString&)), this, SLOT(OnTextEdited(const QString&)));
+        connect(mLineEdit, &QLineEdit::editingFinished, this, &MysticQt::IntSpinBox::OnEditingFinished);
+        connect(mLineEdit, &QLineEdit::returnPressed, this, &MysticQt::IntSpinBox::OnEditingFinished);
+        connect(mLineEdit, &QLineEdit::textEdited, this, &MysticQt::IntSpinBox::OnTextEdited);
 
         // create the up and down spin buttons
         mUpButton   = new IntSpinboxButton(this, this, false);

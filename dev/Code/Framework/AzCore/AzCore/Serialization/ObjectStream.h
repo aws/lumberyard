@@ -173,11 +173,6 @@ namespace AZ
         template<typename T>
         bool WriteClass(const T* obj, const char* elemName = nullptr);
 
-        /// Default asset filter obeys the Asset<> holder's load flags.
-        static bool AssetFilterDefault(const Data::Asset<Data::AssetData>& asset);
-
-        /// SlicesOnly filter ignores all asset references except for slices.
-        static bool AssetFilterSlicesOnly(const Data::Asset<Data::AssetData>& asset);
 
         /// Filter ignores all asset references except for the specified classes.
         template<typename T>
@@ -185,10 +180,6 @@ namespace AZ
 
         template<typename T0, typename T1, typename... Args>
         static bool AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset);
-
-        /// NoAssetLoading filter ignores all asset references.
-        static bool AssetFilterNoAssetLoading(const Data::Asset<Data::AssetData>& asset);
-
     protected:
         ObjectStream(SerializeContext* sc)
             : m_sc(sc)   { AZ_Assert(m_sc, "Creating an object stream with sc = NULL is pointless!"); }
@@ -201,7 +192,7 @@ namespace AZ
     bool ObjectStream::WriteClass(const T* obj, const char* elemName)
     {
         (void)elemName;
-        AZ_Assert(!AZStd::is_pointer<T>::value, "Cannot serialize pointer-to-pointer as root element! This makes no sense!");
+        static_assert(!AZStd::is_pointer<T>::value, "Cannot serialize pointer-to-pointer as root element! This makes no sense!");
         // Call SaveClass with the potential pointer to derived class fully resolved.
         const void* classPtr = SerializeTypeInfo<T>::RttiCast(obj, SerializeTypeInfo<T>::GetRttiTypeId(obj));
         const Uuid& classId = SerializeTypeInfo<T>::GetUuid(obj);
@@ -234,7 +225,7 @@ namespace AZ
         const bool isValidAsset = asset.GetType() == AzTypeInfo<T>::Uuid();
         if (isValidAsset)
         {
-            return AssetFilterDefault(asset);
+            return asset.GetAutoLoadBehavior() != AZ::Data::AssetLoadBehavior::NoLoad;
         }
 
         return false;

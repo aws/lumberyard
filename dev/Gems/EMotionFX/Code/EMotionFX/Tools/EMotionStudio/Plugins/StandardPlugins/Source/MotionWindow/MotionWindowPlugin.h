@@ -33,7 +33,6 @@ namespace EMStudio
     class MotionExtractionWindow;
     class MotionRetargetingWindow;
     class SaveDirtyMotionFilesCallback;
-    class OutlinerCategoryCallback;
 
     class MotionWindowPlugin
         : public EMStudio::DockWidgetPlugin
@@ -79,8 +78,8 @@ namespace EMStudio
         };
 
         MotionTableEntry* FindMotionEntryByID(uint32 motionID);
-        MCORE_INLINE size_t GetNumMotionEntries()                                                         { return mMotionEntries.size(); }
-        MCORE_INLINE MotionTableEntry* GetMotionEntry(size_t index)                                      { return mMotionEntries[index]; }
+        MCORE_INLINE size_t GetNumMotionEntries()                                                   { return mMotionEntries.size(); }
+        MCORE_INLINE MotionTableEntry* GetMotionEntry(size_t index)                                 { return mMotionEntries[index]; }
         bool AddMotion(uint32 motionID);
         bool RemoveMotionByIndex(size_t index);
         bool RemoveMotionById(uint32 motionID);
@@ -120,22 +119,11 @@ namespace EMStudio
         MCORE_DEFINECOMMANDCALLBACK(CommandWaveletCompressMotionCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandKeyframeCompressMotionCallback);
         MCORE_DEFINECOMMANDCALLBACK(CommandScaleMotionDataCallback);
+        MCORE_DEFINECOMMANDCALLBACK(CommandSelectCallback);
 
-        CommandImportMotionCallback*                    mImportMotionCallback;
-        CommandRemoveMotionPostCallback*                mRemoveMotionPostCallback;
-        CommandSaveMotionAssetInfoCallback*             mSaveMotionAssetInfoCallback;
-        CommandAdjustDefaultPlayBackInfoCallback*       mAdjustDefaultPlayBackInfoCallback;
-        CommandAdjustMotionCallback*                    mAdjustMotionCallback;
-        CommandLoadMotionSetCallback*                   mLoadMotionSetCallback;
-        CommandWaveletCompressMotionCallback*           mWaveletCompressMotionCallback;
-        CommandKeyframeCompressMotionCallback*          mKeyframeCompressMotionCallback;
-        CommandScaleMotionDataCallback*                 mScaleMotionDataCallback;
+        AZStd::vector<MCore::Command::Callback*> m_callbacks;
 
         AZStd::vector<MotionTableEntry*>                mMotionEntries;
-
-        // motion bind pose rendering helper variables
-        MCore::Array<MCore::Matrix>                     mLocalMatrices;
-        MCore::Array<MCore::Matrix>                     mGlobalMatrices;
 
         MysticQt::DialogStack*                          mDialogStack;
         MotionListWindow*                               mMotionListWindow;
@@ -144,8 +132,6 @@ namespace EMStudio
         MotionRetargetingWindow*                        mMotionRetargetingWindow;
 
         SaveDirtyMotionFilesCallback*                   mDirtyFilesCallback;
-        OutlinerCategoryCallback*                       mOutlinerCategoryCallback;
-        EMotionFX::EventHandler*                        mEventHandler;
 
         static AZStd::vector<EMotionFX::MotionInstance*> mInternalMotionInstanceSelection;
     };

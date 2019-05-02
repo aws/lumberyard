@@ -26,9 +26,35 @@
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QPushButton>
+#include <QValidator>
+
 
 namespace EMStudio
 {
+    class LayoutFilenameValidator : public QValidator
+    {
+    public:
+        LayoutFilenameValidator(QObject* parent)
+            : QValidator(parent)
+        {
+        }
+
+        QValidator::State validate(QString& input, int& pos) const override
+        {
+            for (const QChar c : m_illegalCharacters)
+            {
+                if (input.contains(c))
+                {
+                    return QValidator::Invalid;
+                }
+            }
+
+            return QValidator::Acceptable;
+        }
+
+        QString m_illegalCharacters = "<>:\"/\\|?*";
+    };
+
     LayoutManagerSaveAsWindow::LayoutManagerSaveAsWindow(const char* defaultName, QWidget* parent)
         : QDialog(parent)
     {
@@ -39,7 +65,8 @@ namespace EMStudio
         layout->addWidget(new QLabel("Please enter the layout name:"));
 
         mLineEdit = new QLineEdit(defaultName);
-        connect(mLineEdit, SIGNAL(textChanged(QString)), this, SLOT(NameEditChanged(QString)));
+        mLineEdit->setValidator(new LayoutFilenameValidator(this));
+        connect(mLineEdit, &QLineEdit::textChanged, this, &LayoutManagerSaveAsWindow::NameEditChanged);
         mLineEdit->selectAll();
 
         QHBoxLayout* buttonLayout   = new QHBoxLayout();
@@ -58,8 +85,8 @@ namespace EMStudio
         layout->addLayout(buttonLayout);
         setLayout(layout);
 
-        connect(mOKButton, SIGNAL(clicked()), this, SLOT(accept()));
-        connect(cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+        connect(mOKButton, &QPushButton::clicked, this, &LayoutManagerSaveAsWindow::accept);
+        connect(cancelButton, &QPushButton::clicked, this, &LayoutManagerSaveAsWindow::reject);
     }
 
 

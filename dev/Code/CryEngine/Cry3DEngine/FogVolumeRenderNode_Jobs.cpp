@@ -25,10 +25,84 @@ inline static float expf_s(float arg)
     return expf(clamp_tpl(arg, -80.0f, 80.0f));
 }
 
+AABB UnprojectAABB2D(const AABB& aabb, const CCamera& camera)
+{
+    Vec3 results[4];
+    camera.Unproject(Vec3(aabb.min.x, aabb.min.y, 1), results[0]);
+    camera.Unproject(Vec3(aabb.max.x, aabb.min.y, 1), results[1]);
+    camera.Unproject(Vec3(aabb.max.x, aabb.max.y, 1), results[2]);
+    camera.Unproject(Vec3(aabb.min.x, aabb.max.y, 1), results[3]);
+
+    AABB newAABB(AABB::RESET);
+    newAABB.Add(results[0]);
+    newAABB.Add(results[1]);
+    newAABB.Add(results[2]);
+    newAABB.Add(results[3]);
+    return newAABB;
+}
+
+AABB GetProjectedQuadFromAABB(const AABB& aabb, const CCamera& camera)
+{
+    // Get all 8 points of the AABB
+    
+    Vec3 aabbPoints[] = 
+    {
+         Vec3(aabb.max.x, aabb.max.y, aabb.max.z),
+         Vec3(aabb.max.x, aabb.min.y, aabb.max.z),
+         Vec3(aabb.min.x, aabb.min.y, aabb.max.z),
+         Vec3(aabb.min.x, aabb.max.y, aabb.max.z),
+         Vec3(aabb.max.x, aabb.max.y, aabb.min.z),
+         Vec3(aabb.max.x, aabb.min.y, aabb.min.z),
+         Vec3(aabb.min.x, aabb.min.y, aabb.min.z),
+         Vec3(aabb.min.x, aabb.max.y, aabb.min.z),
+    };
+    const int numAABBPoints = AZ_ARRAY_SIZE(aabbPoints);
+    
+    AZ_Assert(numAABBPoints==8,"you should have 8 points in the aabb");
+
+    // Project each AABB point and construct another AABB.
+    AABB quadResult(AABB::RESET);
+    for (int i = 0; i < numAABBPoints; ++i)
+    {
+        Vec3 projectedPoint;
+        camera.Project(aabbPoints[i], projectedPoint);
+        quadResult.Add(projectedPoint);
+    }
+    return quadResult;
+}
+
+
+// To know if aabb are aligned with camera, we test if projected quads overlap.
+bool CFogVolumeRenderNode::OverlapProjectedAABB(const AABB& aabb0, const AABB& aabb1, const CCamera& camera)
+{
+    // quads are AABB2D.
+    AABB quad0 = GetProjectedQuadFromAABB(aabb0, camera);
+    AABB quad1 = GetProjectedQuadFromAABB(aabb1, camera);
+    bool bOverlap = Overlap::AABB_AABB2D(quad0, quad1);
+    return bOverlap;
+}
+
+void AverageFogVolume(SFogVolumeData& fogVolData, const CFogVolumeRenderNode* pFogVol)
+{
+    AABB& avgAABBoxOut = fogVolData.avgAABBox;
+    avgAABBoxOut.Add(pFogVol->GetBBox());
+
+    // ratio is used to approximate fog volumes contribution depending of the importance of their size.
+    float ratio = pFogVol->GetBBox().GetRadius() / avgAABBoxOut.GetRadius();
+    fogVolData.m_heightFallOffBasePoint = Lerp(fogVolData.m_heightFallOffBasePoint,pFogVol->GetHeightFallOffBasePoint(), ratio);
+    fogVolData.m_heightFallOffDirScaled = Lerp(fogVolData.m_heightFallOffDirScaled,pFogVol->GetHeightFallOffDirScaled(), ratio);
+    fogVolData.m_densityOffset = Lerp(fogVolData.m_densityOffset, pFogVol->GetDensityoffset(), ratio);
+    fogVolData.m_globalDensity = Lerp(fogVolData.m_globalDensity, pFogVol->GetGlobalDensity(), ratio);
+    fogVolData.m_volumeType |= pFogVol->GetVolumeType();
+}
 
 ///////////////////////////////////////////////////////////////////////////////
+// TraceFogVolumes :
+// if object intersects/is aligned with fog volumes then register these fog volumes, 
+// check if object is in front of the fog volume and compute average color.
+// if highVertexShadingQuality average fog volume box.
 ///////////////////////////////////////////////////////////////////////////////
-void CFogVolumeRenderNode::TraceFogVolumes(const Vec3& worldPos, ColorF& fogColor, const SRenderingPassInfo& passInfo)
+void CFogVolumeRenderNode::TraceFogVolumes(const Vec3& objPosition, const AABB& objAABB, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality)
 {
     FUNCTION_PROFILER_3DENGINE;
     PrefetchLine(&s_tracableFogVolumeArea, 0);
@@ -36,50 +110,90 @@ void CFogVolumeRenderNode::TraceFogVolumes(const Vec3& worldPos, ColorF& fogColo
     // init default result
     ColorF localFogColor = ColorF(0.0f, 0.0f, 0.0f, 0.0f);
 
-
+    // We will "accumulate" fog volumes contribution the same way that fog color.
+   
     // trace is needed when volumetric fog is off.
     if (GetCVars()->e_Fog && GetCVars()->e_FogVolumes && (GetCVars()->e_VolumetricFog == 0))
     {
+        const Vec3 worldPos = objPosition;
+
         // init view ray
         Vec3 camPos(s_tracableFogVolumeArea.GetCenter());
-        Lineseg lineseg(camPos, worldPos);
+        Lineseg lineseg(camPos, objPosition);
 
 #ifdef _DEBUG
         const SCachedFogVolume* prev(0);
 #endif
-
+        
         // loop over all traceable fog volumes
         CachedFogVolumes::const_iterator itEnd(s_cachedFogVolumes.end());
         for (CachedFogVolumes::const_iterator it(s_cachedFogVolumes.begin()); it != itEnd; ++it)
         {
             // get current fog volume
             const CFogVolumeRenderNode* pFogVol((*it).m_pFogVol);
-
+           
+            bool isAligned = false;
+            bool isFrontOfBoxCenter = false;
             // only trace visible fog volumes
             if (!(pFogVol->GetRndFlags() & ERF_HIDDEN))
             {
+                bool projectedAABBIntersect = false;
+                bool isInside = Overlap::Point_AABB(objPosition, pFogVol->m_WSBBox);
+
+                if (fogVolumeShadingQuality)
+                {
+                    projectedAABBIntersect = OverlapProjectedAABB(pFogVol->m_WSBBox, objAABB, passInfo.GetCamera());
+                    isInside = isInside || Overlap::AABB_AABB(objAABB, pFogVol->m_WSBBox);
+                }
+           
                 // check if view ray intersects with bounding box of current fog volume
-                if (Overlap::Lineseg_AABB(lineseg, pFogVol->m_WSBBox))
+                isAligned = Overlap::Lineseg_AABB(lineseg, pFogVol->m_WSBBox);
+                if (projectedAABBIntersect || isAligned)
                 {
                     // compute contribution of current fog volume
-                    ColorF color;
-                    if (0 == pFogVol->m_volumeType)
+                    ColorF color(0,0,0);
+                 
+                    // Get distance camera to fog volume.
+                    const CCamera& cam(passInfo.GetCamera());
+                    Vec3 cameraToObject(objPosition - cam.GetPosition());
+                    Vec3 cameraToFogVolume(pFogVol->m_WSBBox.GetCenter() - cam.GetPosition());
+                    isFrontOfBoxCenter = (cameraToFogVolume.GetLengthSquared() > cameraToObject.GetLengthSquared());
+                    // if particle is in front of the box center and not inside the box, then do not accumulate fog color.
+                    if (isFrontOfBoxCenter && !isInside)
                     {
-                        pFogVol->GetVolumetricFogColorEllipsoid(worldPos, passInfo, color);
+                        continue;
+                    }
+
+                    if (fogVolumeShadingQuality)
+                    {
+                        // Accumulate this fogVolData
+                        AverageFogVolume(fogVolData, pFogVol);
+                        color = pFogVol->GetFogColor();
                     }
                     else
                     {
-                        pFogVol->GetVolumetricFogColorBox(worldPos, passInfo, color);
+                        if (0 == pFogVol->m_volumeType)
+                        {
+                            pFogVol->GetVolumetricFogColorEllipsoid(worldPos, passInfo, color);
+                        }
+                        else
+                        {
+                            pFogVol->GetVolumetricFogColorBox(worldPos, passInfo, color);
+                        }
+
+                        color.a = 1.0f - color.a;       // 0 = transparent, 1 = opaque
                     }
-
-                    color.a = 1.0f - color.a;       // 0 = transparent, 1 = opaque
-
+                    
+                    
+                 
                     // blend fog colors
                     localFogColor.r = Lerp(localFogColor.r, color.r, color.a);
                     localFogColor.g = Lerp(localFogColor.g, color.g, color.a);
                     localFogColor.b = Lerp(localFogColor.b, color.b, color.a);
                     localFogColor.a = Lerp(localFogColor.a, 1.0f, color.a);
+            
                 }
+        
             }
 
 #ifdef _DEBUG
@@ -100,8 +214,7 @@ void CFogVolumeRenderNode::TraceFogVolumes(const Vec3& worldPos, ColorF& fogColo
     }
 
     localFogColor.a = 1.0f - localFogColor.a;
-
-    fogColor = localFogColor;
+    fogVolData.fogColor = localFogColor;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

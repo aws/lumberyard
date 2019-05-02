@@ -467,37 +467,6 @@ namespace EMStudio
         //event->accept();
     }
 
-    // the context menu event
-    void TrackDataHeaderWidget::contextMenuEvent(QContextMenuEvent* event)
-    {
-        mPlugin->SetRedrawFlag();
-        if (mAllowContextMenu == false)
-        {
-            return;
-        }
-
-        if (EMotionFX::GetRecorder().GetRecordTime() > MCore::Math::epsilon)
-        {
-            DoRecorderContextMenuEvent(event);
-            return;
-        }
-
-        if (mPlugin->mMotion == nullptr)
-        {
-            return;
-        }
-        
-        // create the context menu
-        QMenu menu(this);
-
-        QAction* action = menu.addAction("Add Event Track");
-        action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-        connect(action, SIGNAL(triggered()), this, SLOT(OnAddTrack()));
-
-        // show the menu at the given position
-        menu.exec(event->globalPos());
-    }
-
 
     // propagate key events to the plugin and let it handle by a shared function
     void TrackDataHeaderWidget::keyPressEvent(QKeyEvent* event)
@@ -888,11 +857,11 @@ namespace EMStudio
         //---------------------
         QAction* action = menu.addAction("Zoom To Fit All");
         //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
-        connect(action, SIGNAL(triggered()), mPlugin, SLOT(OnZoomAll()));
+        connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnZoomAll);
 
         action = menu.addAction("Reset Timeline");
         //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
-        connect(action, SIGNAL(triggered()), mPlugin, SLOT(OnResetTimeline()));
+        connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnResetTimeline);
 
         //action = menu.addAction( "Center on current time" );
         //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );

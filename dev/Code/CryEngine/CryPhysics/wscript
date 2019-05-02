@@ -39,7 +39,7 @@ def build(bld):
 
         appletv_cxxflags    = ['-Wno-shift-negative-value', '-Wno-shadow'],
 
-        android_armv7_clang_cxxflags  = ['-Wno-shift-negative-value', '-Wno-shadow'],
+        android_cxxflags    = ['-Wno-shift-negative-value', '-Wno-shadow', '-Wno-ignored-pragma-optimize'],
 
         # Testing
         test_all_file_list  = ['cryphysics_test.waf_files'],

@@ -261,42 +261,36 @@ namespace RenderGL
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         glDepthMask(GL_TRUE);
 
-        EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
+        const EMotionFX::TransformData* transformData = actorInstance->GetTransformData();
+        const EMotionFX::Pose* pose = transformData->GetCurrentPose();
 
-        // global transforms
         if (mAttributes[SKINNING])
         {
-            MCore::Matrix* globalMatrices       = transformData->GetGlobalInclusiveMatrices();
-            MCore::Matrix* invBindPoseMatrices  = actorInstance->GetActor()->GetInverseBindPoseGlobalMatrices().GetPtr();
-
-            MCore::Matrix invNodeTM = globalMatrices[primitive->mNodeIndex];
-            invNodeTM.Inverse();
+            const MCore::Matrix* skinningMatrices = transformData->GetSkinningMatrices();
 
             // multiple each transform by its inverse bind pose
             const uint32 numBones = primitive->mBoneNodeIndices.GetLength();
             for (uint32 i = 0; i < numBones; ++i)
             {
                 const uint32 nodeNr = primitive->mBoneNodeIndices[i];
-                mBoneMatrices[i] = invBindPoseMatrices[nodeNr];
-                mBoneMatrices[i].MultMatrix4x3(globalMatrices[nodeNr]);
-                mBoneMatrices[i].MultMatrix4x3(invNodeTM);
+                mBoneMatrices[i] = skinningMatrices[nodeNr];
             }
 
             mActiveShader->SetUniform("matBones", mBoneMatrices, numBones);
         }
 
-        MCommon::Camera*    camera          = GetGraphicsManager()->GetCamera();
-        MCore::Matrix       global          = transformData->GetGlobalInclusiveMatrix(primitive->mNodeIndex);
-        MCore::Matrix       globalView      = transformData->GetGlobalInclusiveMatrix(primitive->mNodeIndex) * camera->GetViewMatrix();
-        MCore::Matrix       globalViewProj  = global * camera->GetViewProjMatrix();
-        MCore::Matrix       globalIT        = global;
-        globalIT.Inverse();
-        globalIT.Transpose();
+        MCommon::Camera*    camera         = GetGraphicsManager()->GetCamera();
+        MCore::Matrix       world          = actorInstance->GetWorldSpaceTransform().ToMatrix();;
+        MCore::Matrix       worldView      = world * camera->GetViewMatrix();
+        MCore::Matrix       worldViewProj  = world * camera->GetViewProjMatrix();
+        MCore::Matrix       worldIT        = world;
+        worldIT.Inverse();
+        worldIT.Transpose();
 
-        mActiveShader->SetUniform("matWorld", global);
-        mActiveShader->SetUniform("matWorldIT", globalIT);
-        mActiveShader->SetUniform("matWorldView", globalView);
-        mActiveShader->SetUniform("matWorldViewProj", globalViewProj);
+        mActiveShader->SetUniform("matWorld", world);
+        mActiveShader->SetUniform("matWorldIT", worldIT);
+        mActiveShader->SetUniform("matWorldView", worldView);
+        mActiveShader->SetUniform("matWorldViewProj", worldViewProj);
 
         // render the primitive
         glDrawElements(GL_TRIANGLES, primitive->mNumTriangles * 3, GL_UNSIGNED_INT, (GLvoid*)(primitive->mIndexOffset * sizeof(uint32)));

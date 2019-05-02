@@ -12,6 +12,10 @@ REM
 
 SETLOCAL
 
+IF [%3] == [] (
+    GOTO USAGE
+)
+
 REM search for the engine root from the engine.json if possible
 IF NOT EXIST engine.json GOTO noSetupConfig
 
@@ -57,13 +61,32 @@ GOTO :EOF
 
 :PYTHON_EXISTS
 
-SET SHADERFLAVOR=%~1%
-SET GAMENAME=%2
+REM Attempt to determine the best BinFolder for rc.exe and AssetProcessorBatch.exe
+CALL "%BASE_PATH%\DetermineRCandAP.bat" SILENT
+
+REM If a bin folder was registered, validate the presence of the binfolder/rc/rc.exe
+IF NOT ERRORLEVEL 0 (
+    ECHO Unable to determine the locations of AssetProcessor and rc.exe.  Make sure that they are available or rebuild from source
+    GOTO FAILED
+)
+
+set BINFOLDERPATH=%~dp0%BINFOLDER%
+ECHO Detected binary folder at %BINFOLDERPATH%
+
+SET GAMENAME=%1
+SET SHADERFLAVOR=%2
 SET PLATFORM=%3
-if [%PLATFORM%] == [] SET PLATFORM=pc
+SET SOURCESHADERLIST=%4
+
+SET ARGS=%GAMENAME% %PLATFORM% %SHADERFLAVOR% "%BINFOLDER%" -e "%BASE_PATH%"
+IF NOT [%SOURCESHADERLIST%] == [] SET ARGS=%ARGS% -s %SOURCESHADERLIST%
+
+call "%PYTHON%" "%TOOLS_DIR%\PakShaders\gen_shaders.py" %ARGS%
+
+IF ERRORLEVEL 1 GOTO FAILED
 
 SET SOURCE="Cache\%GAMENAME%\%PLATFORM%\user\cache\shaders\cache"
-SET OUTPUT="Build\%PLATFORM%\%GAMENAME%"
+SET OUTPUT="build\%PLATFORM%\%GAMENAME%"
 
 call "%PYTHON%" "%TOOLS_DIR%\PakShaders\pak_shaders.py" %OUTPUT% -r %SOURCE% -s %SHADERFLAVOR%
 
@@ -74,4 +97,8 @@ EXIT /b 0
 :FAILED
 popd
 EXIT /b 1
+
+:USAGE
+ECHO expected usage: "lmbr_pak_shaders.bat <GameName> D3D11|GLES3|METAL pc|es3|ios|osx_gl [source shader list file]"
+EXIT /B 1
 

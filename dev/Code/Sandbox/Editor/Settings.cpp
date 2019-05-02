@@ -109,7 +109,9 @@ SEditorSettings::SEditorSettings()
     bSettingsManagerMode = false;
 
     undoLevels = 50;
+    m_undoSliceOverrideSaveValue = false;
     bShowDashboardAtStartup = true;
+    m_showCircularDependencyError = true;
     bAutoloadLastLevelAtStartup = false;
     bMuteAudio = false;
     bEnableGameModeVR = false;
@@ -125,7 +127,7 @@ SEditorSettings::SEditorSettings()
 
     bAutoSaveTagPoints = false;
 
-    bNavigationContinuousUpdate = true;
+    bNavigationContinuousUpdate = false;
     bNavigationShowAreas = true;
     bNavigationDebugDisplay = false;
     bVisualizeNavigationAccessibility = false;
@@ -272,6 +274,8 @@ SEditorSettings::SEditorSettings()
     g_TemporaryLevelName = nullptr;
 
     sMetricsSettings.bEnableMetricsTracking = true;
+
+    sliceSettings.dynamicByDefault = false;
 
     bEnableUI2 = false;
 
@@ -502,7 +506,9 @@ void SEditorSettings::Save()
 
     // Save settings to registry.
     SaveValue("Settings", "UndoLevels", undoLevels);
+    SaveValue("Settings", "UndoSliceOverrideSaveValue", m_undoSliceOverrideSaveValue);
     SaveValue("Settings", "ShowDashboardAtStartup", bShowDashboardAtStartup);
+    SaveValue("Settings", "ShowCircularDependencyError", m_showCircularDependencyError);
     SaveValue("Settings", "AutoloadLastLevelAtStartup", bAutoloadLastLevelAtStartup);
     SaveValue("Settings", "MuteAudio", bMuteAudio);
     SaveValue("Settings", "AutoBackup", autoBackupEnabled);
@@ -700,6 +706,7 @@ void SEditorSettings::Save()
     // Deep Selection Settings
     //////////////////////////////////////////////////////////////////////////
     SaveValue("Settings", "DeepSelectionNearness", deepSelectionSettings.fRange);
+    SaveValue("Settings", "StickDuplicate", deepSelectionSettings.bStickDuplicate);
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -743,6 +750,10 @@ void SEditorSettings::Save()
     //////////////////////////////////////////////////////////////////////////
     SaveValue("Settings\\Metrics", "EnableMetricsTracking",    sMetricsSettings.bEnableMetricsTracking);
 
+    //////////////////////////////////////////////////////////////////////////
+    // Slice settings
+    //////////////////////////////////////////////////////////////////////////
+    SaveValue("Settings\\Slices", "DynamicByDefault", sliceSettings.dynamicByDefault);
 
     //////////////////////////////////////////////////////////////////////////
     // UI 2.0 Settings
@@ -783,7 +794,9 @@ void SEditorSettings::Load()
     QString     strPlaceholderString;
     // Load settings from registry.
     LoadValue("Settings", "UndoLevels", undoLevels);
+    LoadValue("Settings", "UndoSliceOverrideSaveValue", m_undoSliceOverrideSaveValue);  
     LoadValue("Settings", "ShowDashboardAtStartup", bShowDashboardAtStartup);
+    LoadValue("Settings", "ShowCircularDependencyError", m_showCircularDependencyError);
     LoadValue("Settings", "AutoloadLastLevelAtStartup", bAutoloadLastLevelAtStartup);
     LoadValue("Settings", "MuteAudio", bMuteAudio);
     LoadValue("Settings", "AutoBackup", autoBackupEnabled);
@@ -995,6 +1008,7 @@ void SEditorSettings::Load()
     // Deep Selection Settings
     //////////////////////////////////////////////////////////////////////////
     LoadValue("Settings", "DeepSelectionNearness", deepSelectionSettings.fRange);
+    LoadValue("Settings", "StickDuplicate", deepSelectionSettings.bStickDuplicate);
 
     //////////////////////////////////////////////////////////////////////////
     // Object Highlight Colors
@@ -1053,6 +1067,11 @@ void SEditorSettings::Load()
     // Metrics settings
     //////////////////////////////////////////////////////////////////////////
     LoadValue("Settings\\Metrics", "EnableMetricsTracking",    sMetricsSettings.bEnableMetricsTracking);
+
+    //////////////////////////////////////////////////////////////////////////
+    // Slice settings
+    //////////////////////////////////////////////////////////////////////////
+    LoadValue("Settings\\Slices", "DynamicByDefault", sliceSettings.dynamicByDefault);
 
     //////////////////////////////////////////////////////////////////////////
     // UI 2.0 Settings

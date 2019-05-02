@@ -31,6 +31,7 @@
 #include "UiFaderComponent.h"
 #include "UiFlipbookAnimationComponent.h"
 #include "UiLayoutFitterComponent.h"
+#include "UiMarkupButtonComponent.h"
 #include "UiMaskComponent.h"
 #include "UiLayoutColumnComponent.h"
 #include "UiLayoutRowComponent.h"
@@ -115,6 +116,19 @@ namespace AZ
     AZ_TYPE_INFO_SPECIALIZE(LyShineLua, "{2570D3B3-2D18-4DB1-A0DE-E017A2F491D1}");
 }
 
+// This is the memory allocation for the static data member used for the debug console variables
+#ifndef _RELEASE
+AllocateConstIntCVar(CLyShine, CV_ui_DisplayTextureData);
+AllocateConstIntCVar(CLyShine, CV_ui_DisplayCanvasData);
+AllocateConstIntCVar(CLyShine, CV_ui_DisplayDrawCallData);
+AllocateConstIntCVar(CLyShine, CV_ui_DisplayElemBounds);
+AllocateConstIntCVar(CLyShine, CV_ui_DisplayElemBoundsCanvasIndex);
+#endif
+
+#if defined(LYSHINE_INTERNAL_UNIT_TEST)
+AllocateConstIntCVar(CLyShine, CV_ui_RunUnitTestsOnStartup);
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 CLyShine::CLyShine(ISystem* system)
     : AzFramework::InputChannelEventListener(AzFramework::InputChannelEventListener::GetPriorityUI())
@@ -179,6 +193,7 @@ CLyShine::CLyShine(ISystem* system)
         azrtti_typeid<UiScrollBoxComponent>(),
         azrtti_typeid<UiFaderComponent>(),
         azrtti_typeid<UiFlipbookAnimationComponent>(),
+        azrtti_typeid<UiMarkupButtonComponent>(),
         azrtti_typeid<UiMaskComponent>(),
         azrtti_typeid<UiLayoutColumnComponent>(),
         azrtti_typeid<UiLayoutRowComponent>(),
@@ -194,14 +209,36 @@ CLyShine::CLyShine(ISystem* system)
 
 
 
+#ifndef _RELEASE
+    // Define a debug console variable that controls display of some debug info on UI texture usage
+    DefineConstIntCVar3("ui_DisplayTextureData", CV_ui_DisplayTextureData, 0, VF_CHEAT,
+        "0=off, 1=display info for all textures used in the frame");
+
+    // Define a debug console variable that controls display of some debug info for all canvases
+    DefineConstIntCVar3("ui_DisplayCanvasData", CV_ui_DisplayCanvasData, 0, VF_CHEAT,
+        "0=off, 1=display info for all loaded UI canvases, 2=display info for all enabled UI canvases");
+
+    // Define a debug console variable that controls display of some debug info on UI draw calls
+    DefineConstIntCVar3("ui_DisplayDrawCallData", CV_ui_DisplayDrawCallData, 0, VF_CHEAT,
+        "0=off, 1=display draw call info for all loaded and enabled UI canvases");
+    
+    // Define a debug console variable that controls display of all element bounds when in game
+    DefineConstIntCVar3("ui_DisplayElemBounds", CV_ui_DisplayElemBounds, 0, VF_CHEAT,
+        "0=off, 1=display the UI element bounding boxes");
+
+    // Define a debug console variable that filters the display of all element bounds when in game by canvas index
+    DefineConstIntCVar3("ui_DisplayElemBoundsCanvasIndex", CV_ui_DisplayElemBoundsCanvasIndex, -1, VF_CHEAT,
+        "-1=no filter, 0-N=only for elements from this canvas index (see 'ui_displayCanvasData 2' for index)");
+
+    // Define a console command that outputs a report to a file about the draw calls for all enabled canvases
+    REGISTER_COMMAND("ui_ReportDrawCalls", &DebugReportDrawCalls, VF_NULL, "");
+#endif
+
 #if defined(LYSHINE_INTERNAL_UNIT_TEST)
+    DefineConstIntCVar3("ui_RunUnitTestsOnStartup", CV_ui_RunUnitTestsOnStartup, 0, VF_CHEAT,
+        "0=off, 1=run LyShine unit tests on startup");
 
-    AZ_Assert(!gEnv->IsEditor(), "Please run LyShine unit-tests from a stand-alone launcher");
-
-    TextMarkup::UnitTest();
-    UiTextComponent::UnitTest(this);
-    UiTextComponent::UnitTestLocalization(this);
-
+    REGISTER_COMMAND("ui_RunUnitTests", &RunUnitTests, VF_NULL, "");
 #endif
 }
 
@@ -242,7 +279,7 @@ IDraw2d* CLyShine::GetDraw2d()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-IUiRenderer* CLyShine::GetUiRenderer()
+UiRenderer* CLyShine::GetUiRenderer()
 {
     return m_uiRenderer.get();
 }
@@ -314,8 +351,20 @@ ISprite* CLyShine::CreateSprite(const string& renderTargetName)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+bool CLyShine::DoesSpriteTextureAssetExist(const AZStd::string& pathname)
+{
+    return CSprite::DoesSpriteTextureAssetExist(pathname);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void CLyShine::PostInit()
 {
+#if defined(LYSHINE_INTERNAL_UNIT_TEST)
+    if (CV_ui_RunUnitTestsOnStartup)
+    {
+        RunUnitTests(nullptr);
+    }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -328,16 +377,29 @@ void CLyShine::SetViewportSize(AZ::Vector2 viewportSize)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CLyShine::Update(float deltaTimeInSeconds)
 {
-    // Update all the canvases loaded in game
-    m_uiCanvasManager->UpdateLoadedCanvases(deltaTimeInSeconds);
+    FRAME_PROFILER(__FUNCTION__, gEnv->pSystem, PROFILE_UI);
 
-    // Execute events that have been queued during the canvas update
-    ExecuteQueuedEvents();
+    // Guard against nested updates. This can occur if a canvas update below triggers the load screen component's
+    // UpdateAndRender (ex. when a texture is loaded)
+    if (!m_updatingLoadedCanvases)
+    {
+        m_updatingLoadedCanvases = true;
+
+        // Update all the canvases loaded in game
+        m_uiCanvasManager->UpdateLoadedCanvases(deltaTimeInSeconds);
+
+        // Execute events that have been queued during the canvas update
+        ExecuteQueuedEvents();
+
+        m_updatingLoadedCanvases = false;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CLyShine::Render()
 {
+    FRAME_PROFILER(__FUNCTION__, gEnv->pSystem, PROFILE_UI);
+
     if (!gEnv || !gEnv->pRenderer || gEnv->pRenderer->GetRenderType() == ERenderType::eRT_Null)
     {
         // if the renderer is not initialized or it is the null renderer (e.g. running as a server)
@@ -345,9 +407,29 @@ void CLyShine::Render()
         return;
     }
 
-    // we are rendering at the end of the frame, after tone mapping, so we should be writing sRGB values
-    gEnv->pRenderer->SetSrgbWrite(true);
+    if (m_updatingLoadedCanvases)
+    {
+        // Don't render if an update is in progress. This can occur if an update triggers the
+        // load screen component's UpdateAndRender (ex. when a texture is loaded)
+        return;
+    }
 
+    // Fix for bug where this function could get called before CRenderer::InitSystemResources has been called.
+    // To check if it has been called we see if the default textures have been setup
+    int whiteTextureId = gEnv->pRenderer->GetWhiteTextureId();
+    if (whiteTextureId == -1 || gEnv->pRenderer->EF_GetTextureByID(whiteTextureId) == nullptr)
+    {
+        // system resources are not yet initialized, this makes it impossible to render the UI and could
+        // cause a crash if we attempt to.
+        return;
+    }
+
+#ifndef _RELEASE
+    GetUiRenderer()->DebugSetRecordingOptionForTextureData(CV_ui_DisplayTextureData);
+#endif
+   
+    GetUiRenderer()->BeginUiFrameRender();
+        
     // Render all the canvases loaded in game
     m_uiCanvasManager->RenderLoadedCanvases();
 
@@ -361,6 +443,28 @@ void CLyShine::Render()
     {
         RenderUiCursor();
     }
+
+    GetUiRenderer()->EndUiFrameRender();
+
+#ifndef _RELEASE
+    if (CV_ui_DisplayElemBounds)
+    {
+        m_uiCanvasManager->DebugDisplayElemBounds(CV_ui_DisplayElemBoundsCanvasIndex);
+    }
+
+    if (CV_ui_DisplayTextureData)
+    {
+        GetUiRenderer()->DebugDisplayTextureData(CV_ui_DisplayTextureData);
+    }
+    else if (CV_ui_DisplayCanvasData)
+    {
+        m_uiCanvasManager->DebugDisplayCanvasData(CV_ui_DisplayCanvasData);
+    }
+    else if (CV_ui_DisplayDrawCallData)
+    {
+        m_uiCanvasManager->DebugDisplayDrawCallData();
+    }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -407,6 +511,12 @@ void CLyShine::OnLevelUnload()
     // Delete all the canvases in m_canvases map that a not loaded in the editor and are not
     // marked to be kept between levels.
     m_uiCanvasManager->DestroyLoadedCanvases(true);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CLyShine::OnLoadScreenUnloaded()
+{
+    m_uiCanvasManager->OnLoadScreenUnloaded();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -541,3 +651,53 @@ void CLyShine::RenderUiCursor()
     m_draw2d->DrawImage(m_uiCursorTexture->GetTextureID(), position, dimensions);
     m_draw2d->EndDraw2d();
 }
+
+#ifndef _RELEASE
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CLyShine::DebugReportDrawCalls(IConsoleCmdArgs* cmdArgs)
+{
+    if (gEnv->pLyShine)
+    {
+        // We want to use an internal-only non-static function so downcast to CLyShine
+        CLyShine* pLyShine = static_cast<CLyShine*>(gEnv->pLyShine);
+
+        // There is an optional parameter which is a name to include in the output filename
+        AZStd::string name;
+        if (cmdArgs->GetArgCount() > 1)
+        {
+            name = cmdArgs->GetArg(1);
+        }
+
+        // Use the canvas manager to access all the loaded canvases
+        pLyShine->m_uiCanvasManager->DebugReportDrawCalls(name);
+    }
+}
+#endif
+
+#if defined(LYSHINE_INTERNAL_UNIT_TEST)
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void CLyShine::RunUnitTests(IConsoleCmdArgs* cmdArgs)
+{
+    // Tests are only valid from the launcher or from game mode (within the editor)
+    const bool inEditorEnvironment = gEnv && gEnv->IsEditor() && gEnv->IsEditing();
+    if (inEditorEnvironment)
+    {
+        AZ_Warning("LyShine", false,
+            "Unit-tests: skipping! Editor environment detected. Run tests "
+            "within editor via game mode (using ui_RunUnitTests) or use "
+            "the standalone launcher instead.");
+        
+        return;
+    }
+
+    CLyShine* lyShine = static_cast<CLyShine*>(gEnv->pLyShine);
+    AZ_Assert(lyShine, "Attempting to run unit-tests prior to LyShine initialization!");
+
+    TextMarkup::UnitTest(cmdArgs);
+    UiTextComponent::UnitTest(lyShine, cmdArgs);
+    UiTextComponent::UnitTestLocalization(lyShine, cmdArgs);
+    UiTransform2dComponent::UnitTest(lyShine, cmdArgs);
+    UiMarkupButtonComponent::UnitTest(lyShine, cmdArgs);
+}
+#endif
+

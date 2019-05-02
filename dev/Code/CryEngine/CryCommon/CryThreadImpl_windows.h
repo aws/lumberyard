@@ -415,7 +415,11 @@ CrySimpleThreadSelf::~CrySimpleThreadSelf()
 void CrySimpleThreadSelf::StartThread(unsigned (__stdcall * func)(void*), void* argList)
 {
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(CryThreadImpl_windows_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryThreadImpl_windows_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryThreadImpl_windows_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED

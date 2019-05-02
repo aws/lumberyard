@@ -51,6 +51,11 @@ namespace DeployTool
         emit OnRemoteLogConnectionStateChange(isConnected);
     }
 
+    void NotificationsQBridge::DeployProcessStatusChange(const AZStd::string& status)
+    {
+        emit OnDeployProcessStatusChange(QString(status.c_str()));
+    }
+
     void NotificationsQBridge::DeployProcessFinished(bool success)
     {
         emit OnDeployProcessFinished(success);

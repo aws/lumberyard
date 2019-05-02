@@ -236,6 +236,8 @@ namespace AZ
         /// Perform any additional initialization needed before loading modules
         virtual void PreModuleLoad() {};
 
+        virtual void CreateStaticModules(AZStd::vector<AZ::Module*>& outModules);
+
         /// Common logic shared between the multiple Create(...) functions.
         void        CreateCommon();
 

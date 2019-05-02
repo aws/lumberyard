@@ -18,31 +18,30 @@
 
 namespace AzToolsFramework
 {
-    SelectionManipulator::SelectionManipulator(AZ::EntityId entityId)
+    SelectionManipulator::SelectionManipulator(AZ::EntityId entityId, const AZ::Transform& worldFromLocal)
         : BaseManipulator(entityId)
+        , m_worldFromLocal(worldFromLocal)
     {
         AttachLeftMouseDownImpl();
         AttachRightMouseDownImpl();
     }
 
-    SelectionManipulator::~SelectionManipulator() {}
-
-    void SelectionManipulator::InstallLeftMouseDownCallback(MouseActionCallback onMouseDownCallback)
+    void SelectionManipulator::InstallLeftMouseDownCallback(const MouseActionCallback& onMouseDownCallback)
     {
         m_onLeftMouseDownCallback = onMouseDownCallback;
     }
 
-    void SelectionManipulator::InstallLeftMouseUpCallback(MouseActionCallback onMouseUpCallback)
+    void SelectionManipulator::InstallLeftMouseUpCallback(const MouseActionCallback& onMouseUpCallback)
     {
         m_onLeftMouseUpCallback = onMouseUpCallback;
     }
 
-    void SelectionManipulator::InstallRightMouseDownCallback(MouseActionCallback onMouseDownCallback)
+    void SelectionManipulator::InstallRightMouseDownCallback(const MouseActionCallback& onMouseDownCallback)
     {
         m_onRightMouseDownCallback = onMouseDownCallback;
     }
 
-    void SelectionManipulator::InstallRightMouseUpCallback(MouseActionCallback onMouseUpCallback)
+    void SelectionManipulator::InstallRightMouseUpCallback(const MouseActionCallback& onMouseUpCallback)
     {
         m_onRightMouseUpCallback = onMouseUpCallback;
     }
@@ -89,7 +88,10 @@ namespace AzToolsFramework
     {
         m_manipulatorView->Draw(
             GetManipulatorManagerId(), managerState,
-            GetManipulatorId(), { WorldFromLocalWithUniformScale(GetEntityId()), m_position, MouseOver() },
+            GetManipulatorId(), {
+                TransformUniformScale(m_worldFromLocal),
+                m_position, MouseOver()
+            },
             display, cameraState, mouseInteraction, GetManipulatorSpace(GetManipulatorManagerId()));
     }
 

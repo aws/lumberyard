@@ -49,6 +49,7 @@ namespace AssetProcessor
         , private AssetRegistryRequestBus::Handler
         , private AzToolsFramework::AssetSystemRequestBus::Handler
         , private AzToolsFramework::ToolsAssetSystemBus::Handler
+        , private AZ::Data::AssetCatalogRequestBus::Handler
     {
         using NetworkRequestID = AssetProcessor::NetworkRequestID;
         using BaseAssetProcessorMessage = AzFramework::AssetSystem::BaseAssetProcessorMessage;
@@ -93,6 +94,16 @@ namespace AssetProcessor
         bool GetSourceInfoBySourcePath(const char* sourcePath, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
         bool GetSourceInfoBySourceUUID(const AZ::Uuid& sourceUuid, AZ::Data::AssetInfo& assetInfo, AZStd::string& watchFolder) override;
         bool GetScanFolders(AZStd::vector<AZStd::string>& scanFolders) override;
+        bool GetAssetSafeFolders(AZStd::vector<AZStd::string>& assetSafeFolders) override;
+        bool IsAssetPlatformEnabled(const char* platform) override;
+        int GetPendingAssetsForPlatform(const char* platform) override;
+        ////////////////////////////////////////////////////////////////////////////////
+
+        ///////////////////////////////////////////////////////////////////////////
+        // AssetCatalogRequestBus overrides
+        AZStd::string GetAssetPathById(const AZ::Data::AssetId& id) override;
+        AZ::Data::AssetId GetAssetIdByPath(const char* path, const AZ::Data::AssetType& typeToRegister, bool autoRegisterIfNotFound) override;
+        AZ::Data::AssetInfo GetAssetInfoById(const AZ::Data::AssetId& id) override;
         ////////////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

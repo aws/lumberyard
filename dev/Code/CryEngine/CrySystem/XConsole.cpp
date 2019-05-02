@@ -359,7 +359,6 @@ CXConsole::CXConsole()
     m_nProgress = 0;
     m_nProgressRange = 0;
     m_nLoadingBackTexID = 0;
-    m_nWhiteTexID = 0;
 
     m_deferredExecution = false;
     m_waitFrames = 0;
@@ -406,11 +405,6 @@ void CXConsole::FreeRenderResources()
         {
             m_pRenderer->RemoveTexture(m_nLoadingBackTexID);
             m_nLoadingBackTexID = -1;
-        }
-        if (m_nWhiteTexID)
-        {
-            m_pRenderer->RemoveTexture(m_nWhiteTexID);
-            m_nWhiteTexID = -1;
         }
         if (m_pImage)
         {
@@ -543,23 +537,11 @@ void CXConsole::Init(ISystem* pSystem)
 
     // ----------------------------------------------------------
 
-    m_nWhiteTexID = -1;
-    if ((m_pRenderer) && (!gEnv->IsInToolMode()))
-    {
-        ITexture* pTex = 0;
-
-        // This texture is already loaded by the renderer. It's ref counted so there is no wasted space.
-        pTex = pSystem->GetIRenderer()->EF_LoadTexture("EngineAssets/Textures/White.dds", FT_DONT_STREAM | FT_DONT_RELEASE);
-        if (pTex)
-        {
-            m_nWhiteTexID = pTex->GetTextureID();
-        }
-    }
-    else
+    if (!m_pRenderer || gEnv->IsInToolMode())
     {
         m_nLoadingBackTexID = -1;
-        m_nWhiteTexID = -1;
     }
+
     if (gEnv->IsDedicated())
     {
         m_bConsoleActive = true;
@@ -1366,23 +1348,29 @@ bool CXConsole::OnInputChannelEventFiltered(const AzFramework::InputChannel& inp
     }
     if (channelId == AzFramework::InputDeviceKeyboard::Key::Escape)
     {
+        // hide console if it's active
+        if (GetStatus())
+        {
+            ShowConsole(false);
+            m_bIsConsoleKeyPressed = true;
+            return true;
+        }
+
         //switch process or page or other things
         if (m_pSystem)
         {
-            ShowConsole(false);
-
             ISystemUserCallback* pCallback = ((CSystem*)m_pSystem)->GetUserCallback();
             if (pCallback)
             {
                 pCallback->OnProcessSwitch();
+                m_bIsConsoleKeyPressed = true;
+                // Mark this input as handled. Pressing escape here is used in the editor to exit game mode, and return to edit mode.
+                // If AI/Physics mode was enabled before entering game mode, when returning to edit mode it will be enabled again.
+                // When it is enabled, it will reset input. If this returns false, then other handlers on the ebus would continue to process
+                // input events after the input had been reset. By returning true, the input is marked as handled.
+                return true;
             }
         }
-        m_bIsConsoleKeyPressed = true;
-        // Mark this input as handled. Pressing escape here is used in the editor to exit game mode, and return to edit mode.
-        // If AI/Physics mode was enabled before entering game mode, when returning to edit mode it will be enabled again.
-        // When it is enabled, it will reset input. If this returns false, then other handlers on the ebus would continue to process
-        // input events after the input had been reset. By returning true, the input is marked as handled.
-        return true;
     }
 
     return ProcessInput(inputChannel);
@@ -1663,10 +1651,12 @@ void CXConsole::Draw()
 
         if (!m_nProgressRange)
         {
+            int whiteTexId = gEnv->pRenderer ? gEnv->pRenderer->GetWhiteTextureId() : -1;
+
             if (m_bStaticBackground)
             {
                 m_pRenderer->SetState(GS_NODEPTHTEST);
-                m_pRenderer->Draw2dImage(0, 0, 800, 600, m_pImage ? m_pImage->GetTextureID() : m_nWhiteTexID, 0.0f, 1.0f, 1.0f, 0.0f);
+                m_pRenderer->Draw2dImage(0, 0, 800, 600, m_pImage ? m_pImage->GetTextureID() : whiteTexId, 0.0f, 1.0f, 1.0f, 0.0f);
             }
             else
             {
@@ -1679,8 +1669,8 @@ void CXConsole::Draw()
                 float fSizeY = m_nTempScrollMax * m_pRenderer->GetHeight() / fReferenceSize;
 
                 m_pRenderer->SetState(GS_NODEPTHTEST | GS_BLSRC_SRCALPHA | GS_BLDST_ONEMINUSSRCALPHA);
-                m_pRenderer->DrawImage(0, 0, fSizeX, fSizeY, m_nWhiteTexID, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.7f);
-                m_pRenderer->DrawImage(0, fSizeY, fSizeX, 2.0f * m_pRenderer->GetHeight() / fReferenceSize, m_nWhiteTexID, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f, 1.0f);
+                m_pRenderer->DrawImage(0, 0, fSizeX, fSizeY, whiteTexId, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.7f);
+                m_pRenderer->DrawImage(0, fSizeY, fSizeX, 2.0f * m_pRenderer->GetHeight() / fReferenceSize, whiteTexId, 0, 0, 0, 0, 0.0f, 0.0f, 0.0f, 1.0f);
 
                 m_pRenderer->Unset2DMode(backupSceneMatrices);
             }

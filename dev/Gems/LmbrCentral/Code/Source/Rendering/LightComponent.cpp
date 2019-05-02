@@ -157,7 +157,7 @@ namespace LmbrCentral
         if (serializeContext)
         {
             serializeContext->Class<LightConfiguration>()
-                ->Version(7, &VersionConverter)
+                ->Version(8, &VersionConverter)
                 ->Field("LightType", &LightConfiguration::m_lightType)
                 ->Field("Visible", &LightConfiguration::m_visible)
                 ->Field("OnInitially", &LightConfiguration::m_onInitially)
@@ -356,6 +356,37 @@ namespace LmbrCentral
             }
 
             if (!useVisAreasNode.SetData<bool>(context, !ignoreVisAreas))
+            {
+                return false;
+            }
+        }
+
+        if (classElement.GetVersion() <= 7)
+        {
+            AZ::SerializeContext::DataElementNode* cubemapTexture = classElement.FindSubElement(AZ_CRC("CubemapTexture", 0xbf6d8df4));
+
+            if (!cubemapTexture)
+            {
+                return false;
+            }
+
+            AZStd::string cubemapPath;
+
+            if (!cubemapTexture->GetData<AZStd::string>(cubemapPath))
+            {
+                return false;
+            }
+
+            AzFramework::SimpleAssetReference<TextureAsset> cubemapSimpleAsset;
+
+            cubemapSimpleAsset.SetAssetPath(cubemapPath.c_str());
+
+            if (!classElement.RemoveElementByName(AZ_CRC("CubemapTexture", 0xbf6d8df4)))
+            {
+                return false;
+            }
+
+            if (!classElement.AddElementWithData<AzFramework::SimpleAssetReference<TextureAsset>>(context, "CubemapTexture", cubemapSimpleAsset))
             {
                 return false;
             }

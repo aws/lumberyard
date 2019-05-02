@@ -114,7 +114,7 @@ namespace EMStudio
         mFilterButtonGroup->GetButton(0, 4)->setChecked(false);
         mFilterButtonGroup->GetButton(0, 5)->setChecked(false);
     #endif
-        connect(mFilterButtonGroup, SIGNAL(ButtonPressed()), this, SLOT(OnFilterButtonPressed()));
+        connect(mFilterButtonGroup, &MysticQt::ButtonGroup::ButtonPressed, this, &LogWindowPlugin::OnFilterButtonPressed);
 
         // create the spacer widget
         QWidget* spacerWidget = new QWidget();

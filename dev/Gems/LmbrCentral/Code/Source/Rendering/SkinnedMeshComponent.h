@@ -22,6 +22,7 @@
 
 #include <IEntityRenderState.h>
 
+#include <LmbrCentral/Rendering/RenderBoundsBus.h>
 #include <LmbrCentral/Rendering/MeshComponentBus.h>
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
@@ -262,6 +263,7 @@ namespace LmbrCentral
     class SkinnedMeshComponent
         : public AZ::Component
         , private MeshComponentRequestBus::Handler
+        , private RenderBoundsRequestBus::Handler
         , private MaterialOwnerRequestBus::Handler
         , private RenderNodeRequestBus::Handler
         , private SkinnedMeshComponentRequestBus::Handler
@@ -281,9 +283,13 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // MeshComponentRequestBus interface implementation
+        // RenderBoundsRequestBus interface implementation
         AZ::Aabb GetWorldBounds() override;
         AZ::Aabb GetLocalBounds() override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // MeshComponentRequestBus interface implementation
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         AZ::Data::Asset<AZ::Data::AssetData> GetMeshAsset() override { return m_skinnedMeshRenderNode.GetMeshAsset(); }
         void SetVisibility(bool newVisibility) override;

@@ -12,6 +12,11 @@
 #
 #
 
+if [ -z "$3" ]; then
+    echo "Missing one or more required params. Usage:\nlmbr_pak_shaders.sh gameProjectName GLES3|METAL es3|ios|osx_gl [source shader list path]"
+    exit 1
+fi
+
 # Extract an optional external engine path if present, otherwise use the cwd as the engine dir
 EXTERNAL_ENGINE_PATH=`cat engine.json | grep "ExternalEnginePath" | awk -F":" '{ print $2 }' | sed "s/,//g" | sed "s/\"//g" | xargs echo -n`
 if [ -z $EXTERNAL_ENGINE_PATH ]; then
@@ -23,14 +28,36 @@ else
     exit 1
 fi
 
-
-shader_type="$1"
-game="$2"
-platform="$3"
-if [ -z "$platform" ]; then
-    platform=pc
+BIN_FOLDER=`cat _WAF_/user_settings.options | grep "out_folder_mac64" | awk -F"=" '{ print $2 }' | sed "s/^[ \t]*//g" | sed "s/\"//g" | xargs echo -n`
+if [ -z "$BIN_FOLDER" ]; then
+    echo Unable to find Mac64 bin output folder in _WAF/user_settings.options. Defaulting to BinMac64.
+    BIN_FOLDER="BinMac64"
 fi
+
+game="$1"
+shader_type="$2"
+platform="$3"
+source_shader_list="$4"
+
+gen_args="$game $platform $shader_type $BIN_FOLDER -e $ENGINE_DIR"
+if [ ! -z $source_shader_list ]; then
+    gen_args=$gen_args -s $source_shader_list
+fi
+
+env python "$ENGINE_DIR/Tools/PakShaders/gen_shaders.py" $gen_args
+
+if [ $? -ne 0 ]; then
+    echo Failed to generate shaders.
+    exit 1
+fi
+
 source="Cache/$game/$platform/user/cache/shaders/cache"
 output="Build/$platform/$game"
 
-env python $ENGINE_DIR/Tools/PakShaders/pak_shaders.py $output -r $source -s $shader_type
+env python "$ENGINE_DIR/Tools/PakShaders/pak_shaders.py" $output -r $source -s $shader_type
+
+if [ $? -ne 0 ]; then
+    echo Failed to pack shaders.
+    exit 1
+fi
+

@@ -16,6 +16,7 @@
 #include <AzToolsFramework/ToolsComponents/ToolsAssetCatalogComponent.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
+#include <AzFramework/Network/AssetProcessorConnection.h>
 
 namespace AssetProcessor
 {
@@ -92,19 +93,57 @@ namespace AssetProcessor
         }
     }
 
-    AZ::Data::AssetInfo ToolsAssetCatalogComponent::GetAssetInfoById(const AZ::Data::AssetId& id)
+    AZStd::string ToolsAssetCatalogComponent::GetAssetPathById(const AZ::Data::AssetId& id)
     {
-        AZ::Data::AssetInfo assetInfo;
-        AZStd::string rootFilePath;
-        bool result = false;
+        return GetAssetInfoById(id).m_relativePath;
+    }
 
-        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(result, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetAssetInfoById, id, AZ::Data::AssetType::CreateNull(), assetInfo, rootFilePath);
+    AZ::Data::AssetId ToolsAssetCatalogComponent::GetAssetIdByPath(
+        const char* path,
+        const AZ::Data::AssetType& typeToRegister,
+        bool autoRegisterIfNotFound)
+    {
+        AZ_UNUSED(autoRegisterIfNotFound);
+        AZ_Assert(autoRegisterIfNotFound == false, "Auto registration is invalid during asset processing.");
+        AZ_UNUSED(typeToRegister);
+        AZ_Assert(typeToRegister == AZ::Data::s_invalidAssetType, "Can not register types during asset processing.");
 
-        if (result)
+        AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+        if (!engineConnection || !engineConnection->IsConnected())
         {
-            return assetInfo;
+            return {};
         }
 
-        return {};
+        AzFramework::AssetSystem::AssetInfoRequest request(path);
+        AzFramework::AssetSystem::AssetInfoResponse response;
+
+        if (!SendRequest(request, response))
+        {
+            AZ_Error("Editor", false, "Failed to send GetAssetIdByPath request for %s", path);
+            return {};
+        }
+
+        return response.m_assetInfo.m_assetId;
+    }
+
+    AZ::Data::AssetInfo ToolsAssetCatalogComponent::GetAssetInfoById(const AZ::Data::AssetId& id)
+    {
+        AzFramework::SocketConnection* engineConnection = AzFramework::SocketConnection::GetInstance();
+        if (!engineConnection || !engineConnection->IsConnected())
+        {
+            return {};
+        }
+
+        AzFramework::AssetSystem::AssetInfoRequest request(id);
+        AzFramework::AssetSystem::AssetInfoResponse response;
+
+        if (!SendRequest(request, response))
+        {
+            AZ_Error("Editor", false, "Failed to send GetAssetInfoById request for %s", id.ToString<AZStd::string>().c_str());
+            return {};
+        }
+
+        return response.m_assetInfo;
+
     }
 }

@@ -17,7 +17,6 @@
 class IDraw2d;
 class ISprite;
 struct IUiAnimationSystem;
-class IUiRenderer;
 class UiEntityContext;
 
 // The following ifdef block is the standard way of creating macros which make exporting
@@ -44,9 +43,6 @@ public:
 
     //! Gets the IDraw2d interface
     virtual IDraw2d* GetDraw2d() = 0;
-
-    //! Gets the IUiRenderer interface
-    virtual IUiRenderer* GetUiRenderer() = 0;
 
     //! Create an empty UI Canvas (in game)
     //
@@ -87,6 +83,9 @@ public:
     //! Create a sprite that references the specified render target
     virtual ISprite* CreateSprite(const string& renderTargetName) = 0;
 
+    //! Check if a sprite's texture asset exists. The .sprite sidecar file is optional and is not checked
+    virtual bool DoesSpriteTextureAssetExist(const AZStd::string& pathname) = 0;
+
     //! Perform post-initialization (script system will be available)
     virtual void PostInit() = 0;
 
@@ -108,6 +107,14 @@ public:
 
     //! Unload canvases that should be unloaded when a level is unloaded
     virtual void OnLevelUnload() = 0;
+
+    //! Called when a load screen is finished displaying (when a level load is complete).
+    //! Used to mark all render graphs dirty in case the loaded canvases were already rendered before their textures
+    //! were done loading. This happens when a load screen is being rendered during a level load. When other canvases
+    //! associated with the level are loaded, they also get rendered by the UiLoadScreenComponent, but their texture
+    //! loading is delayed until further down the level load process. Once a canvas is rendered, its render graph's
+    //! dirty flag is cleared, so the render graph needs to be marked dirty again after the textures are loaded
+    virtual void OnLoadScreenUnloaded() = 0;
 };
 
 #ifdef __cplusplus

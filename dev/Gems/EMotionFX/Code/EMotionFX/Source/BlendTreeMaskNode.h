@@ -97,8 +97,6 @@ namespace EMotionFX
         void Update(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
         void PostUpdate(AnimGraphInstance* animGraphInstance, float timePassedInSeconds) override;
 
-        void UpdateUniqueMask(Actor* actor, const AZStd::vector<AZStd::string>& nodeMask, AZStd::vector<AZ::u32>& outNodeIndices) const;
-
         AZStd::vector<AZStd::string>        m_mask0;
         AZStd::vector<AZStd::string>        m_mask1;
         AZStd::vector<AZStd::string>        m_mask2;

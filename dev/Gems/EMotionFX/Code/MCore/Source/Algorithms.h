@@ -29,8 +29,8 @@ namespace MCore
 
 
     /**
-     * Project a 3D point in global space to 2D screen coordinates.
-     * @param point The point in global space we want to map to the screen.
+     * Project a 3D point in world space to 2D screen coordinates.
+     * @param point The point in world space we want to map to the screen.
      * @param viewProjMatrix A precalculated version of viewMatrix * projectionMatrix used by the camera.
      * @param screenWidth The width of the screen in pixels.
      * @param screenHeight The height of the screen in pixels.
@@ -44,7 +44,7 @@ namespace MCore
     AZ::Vector3 MCORE_API Project(const AZ::Vector3& point, const Matrix& viewProjMatrix, uint32 screenWidth, uint32 screenHeight);
 
     /**
-     * Unproject screen coordinates to a 3D point in global space.
+     * Unproject screen coordinates to a 3D point in world space.
      * @param screenX The mouse position x value or another horizontal screen coordinate in range [0, screenWidth].
      * @param screenY The mouse position y value or another vertical screen coordinate in range [0, screenHeight].
      * @param screenWidth The width of the screen in pixels.
@@ -52,7 +52,7 @@ namespace MCore
      * @param depth .
      * @param viewMatrix The view matrix of the camera.
      * @param projectionMatrix The projection matrix of the camera.
-     * @return The unprojected point in global space.
+     * @return The unprojected point in world space.
      */
     AZ::Vector3 MCORE_API UnprojectToEyeSpace(float screenX, float screenY, const MCore::Matrix& invProjMat, float windowWidth, float windowHeight, float depth);
     AZ::Vector3 MCORE_API Unproject(float screenX, float screenY, float screenWidth, float screenHeight, float depth, const MCore::Matrix& invProjMat, const MCore::Matrix& invViewMat);

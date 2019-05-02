@@ -43,6 +43,7 @@ namespace LUAEditor
         QColor GetTextReadOnlyUnfocusedBackgroundColor() const { return ToQColor(m_textReadOnlyUnfocusedBackgroundColor); }
         QColor GetTextSelectedColor() const { return ToQColor(m_textSelectedColor); }
         QColor GetTextSelectedBackgroundColor() const { return ToQColor(m_textSelectedBackgroundColor); }
+        QColor GetTextWhitespaceColor() const { return ToQColor(m_textWhitespaceColor); }
         QColor GetBreakpointFocusedBackgroundColor() const { return ToQColor(m_breakpointFocusedBackgroundColor); }
         QColor GetBreakpointUnfocusedBackgroundColor() const { return ToQColor(m_breakpointUnfocusedBackgroundColor); }
         QColor GetFoldingFocusedBackgroundColor() const { return ToQColor(m_foldingFocusedBackgroundColor); }
@@ -62,8 +63,10 @@ namespace LUAEditor
         QColor GetFindResultsHeaderColor() const { return ToQColor(m_findResultsHeaderColor); }
         QColor GetFindResultsFileColor() const { return ToQColor(m_findResultsFileColor); }
         QColor GetFindResultsMatchColor() const { return ToQColor(m_findResultsMatchColor); }
+        QColor GetFindResultsLineHighlightColor() const { return ToQColor(m_findResultsLineHighlightColor); }
         QFont GetFont() const;
         int GetTabSize() const { return m_tabSize; }
+        bool UseSpacesInsteadOfTabs() const { return m_useSpacesInsteadOfTabs; }
 
         static void Reflect(AZ::ReflectContext* reflection);
 
@@ -88,6 +91,9 @@ namespace LUAEditor
         };
         AZ::Vector3 m_textSelectedBackgroundColor {
             220.0f / 255.0f, 220.0f / 255.0f, 220.0f / 255.0f
+        };
+        AZ::Vector3 m_textWhitespaceColor{
+            100.0f / 255.0f, 100.0f / 255.0f, 100.0f / 255.0f
         };
         AZ::Vector3 m_breakpointFocusedBackgroundColor {
             80.0f / 255.0f, 80.0f / 255.0f, 80.0f / 255.0f
@@ -146,6 +152,9 @@ namespace LUAEditor
         AZ::Vector3 m_findResultsMatchColor {
             0.0f / 255.0f, 255.0f / 255.0f, 255.0f / 255.0f
         };
+        AZ::Vector3 m_findResultsLineHighlightColor {
+            160.0f / 255.0f, 160.0f / 255.0f, 164.0f / 255.0f
+        };
         AZStd::string m_font {
             "OpenSans"
         };
@@ -156,6 +165,8 @@ namespace LUAEditor
         int m_tabSize {
             4
         };
+
+        bool m_useSpacesInsteadOfTabs = false;
 
         void OnColorChange();
         void OnFontChange();

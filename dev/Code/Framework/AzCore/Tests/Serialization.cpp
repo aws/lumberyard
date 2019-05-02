@@ -13,6 +13,7 @@
 #include "TestTypes.h"
 #include "FileIOBaseTestTypes.h"
 
+#include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
@@ -29,6 +30,7 @@
 #include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/forward_list.h>
+#include <AzCore/std/containers/set.h>
 #include <AzCore/std/containers/unordered_set.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/bitset.h>
@@ -38,6 +40,8 @@
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzCore/std/optional.h>
+#include <AzCore/std/tuple.h>
 
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/Component/ComponentBus.h>
@@ -63,7 +67,11 @@
 #include <AzCore/std/string/conversions.h>
 
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Serialization_cpp, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Serialization_cpp_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Serialization_cpp_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -610,6 +618,13 @@ namespace SerializeTestClasses {
         AZ_CLASS_ALLOCATOR(Generics, AZ::SystemAllocator, 0);
         AZ_TYPE_INFO(Generics, "{ACA50B82-D04B-4ACF-9FF6-F780040C9EB9}")
 
+        enum class GenericEnum
+        {
+            Value1 = 0x01,
+            Value2 = 0x02,
+            Value3 = 0x04,
+        };
+
         static void Reflect(AZ::SerializeContext& sc)
         {
             sc.Class<Generics>()->
@@ -617,6 +632,7 @@ namespace SerializeTestClasses {
                 Field("textData", &Generics::m_textData)->
                 Field("vectorInt", &Generics::m_vectorInt)->
                 Field("vectorIntVector", &Generics::m_vectorIntVector)->
+                Field("vectorEnum", &Generics::m_vectorEnum)->
                 Field("fixedVectorInt", &Generics::m_fixedVectorInt)->
                 Field("listInt", &Generics::m_listInt)->
                 Field("forwardListInt", &Generics::m_forwardListInt)->
@@ -662,6 +678,10 @@ namespace SerializeTestClasses {
             m_vectorInt.push_back(2);
             m_vectorIntVector.push_back();
             m_vectorIntVector.back().push_back(5);
+            m_vectorEnum.push_back(GenericEnum::Value3);
+            m_vectorEnum.push_back(GenericEnum::Value1);
+            m_vectorEnum.push_back(GenericEnum::Value3);
+            m_vectorEnum.push_back(GenericEnum::Value2);
             m_fixedVectorInt.push_back(1000);
             m_fixedVectorInt.push_back(2000);
             m_fixedVectorInt.push_back(3000);
@@ -700,6 +720,7 @@ namespace SerializeTestClasses {
             m_textData.set_capacity(0);
             m_vectorInt.set_capacity(0);
             m_vectorIntVector.set_capacity(0);
+            m_vectorEnum.set_capacity(0);
             m_listInt.clear();
             m_forwardListInt.clear();
             m_setInt.clear();
@@ -721,6 +742,7 @@ namespace SerializeTestClasses {
         AZStd::string                               m_textData;
         AZStd::vector<int>                          m_vectorInt;
         AZStd::vector<AZStd::vector<int> >          m_vectorIntVector;
+        AZStd::vector<GenericEnum>                  m_vectorEnum;
         AZStd::fixed_vector<int, 5>                 m_fixedVectorInt;
         AZStd::list<int>                            m_listInt;
         AZStd::forward_list<int>                    m_forwardListInt;
@@ -737,7 +759,15 @@ namespace SerializeTestClasses {
         AZStd::intrusive_ptr<SmartPtrClass>         m_intrusivePtr;
         AZStd::unique_ptr<SmartPtrClass>            m_uniquePtr;
     };
+} //SerializeTestClasses
 
+namespace AZ
+{
+    AZ_TYPE_INFO_SPECIALIZE(SerializeTestClasses::Generics::GenericEnum, "{1D382230-EF25-4583-812B-7576334AB1A9}");
+}
+
+namespace SerializeTestClasses
+{
     struct GenericsNew
     {
         AZ_CLASS_ALLOCATOR(GenericsNew, AZ::SystemAllocator, 0);
@@ -827,20 +857,21 @@ namespace SerializeTestClasses {
                         classElement.RemoveElement(i);
                     }
                     else if (elementNode.GetName() == AZ_CRC("emptyInitTextData", 0x17b55a4f)
-                             || elementNode.GetName() == AZ_CRC("listInt", 0x4fbe090a)
-                             || elementNode.GetName() == AZ_CRC("setInt", 0x62eb1299)
-                             || elementNode.GetName() == AZ_CRC("usetInt")
-                             || elementNode.GetName() == AZ_CRC("umultisetInt")
-                             || elementNode.GetName() == AZ_CRC("mapIntFloat", 0xb558ac3f)
-                             || elementNode.GetName() == AZ_CRC("umapIntFloat")
-                             || elementNode.GetName() == AZ_CRC("umultimapIntFloat")
-                             || elementNode.GetName() == AZ_CRC("byteStream", 0xda272a22)
-                             || elementNode.GetName() == AZ_CRC("bitSet", 0x9dd4d1cb)
-                             || elementNode.GetName() == AZ_CRC("sharedPtr", 0x033de7f0)
-                             || elementNode.GetName() == AZ_CRC("intrusivePtr", 0x20733e45)
-                             || elementNode.GetName() == AZ_CRC("uniquePtr", 0xdb6f5bd3)
-                             || elementNode.GetName() == AZ_CRC("forwardListInt", 0xf54c1600)
-                             || elementNode.GetName() == AZ_CRC("fixedVectorInt", 0xf7108293))
+                            || elementNode.GetName() == AZ_CRC("listInt", 0x4fbe090a)
+                            || elementNode.GetName() == AZ_CRC("setInt", 0x62eb1299)
+                            || elementNode.GetName() == AZ_CRC("usetInt")
+                            || elementNode.GetName() == AZ_CRC("umultisetInt")
+                            || elementNode.GetName() == AZ_CRC("mapIntFloat", 0xb558ac3f)
+                            || elementNode.GetName() == AZ_CRC("umapIntFloat")
+                            || elementNode.GetName() == AZ_CRC("umultimapIntFloat")
+                            || elementNode.GetName() == AZ_CRC("byteStream", 0xda272a22)
+                            || elementNode.GetName() == AZ_CRC("bitSet", 0x9dd4d1cb)
+                            || elementNode.GetName() == AZ_CRC("sharedPtr", 0x033de7f0)
+                            || elementNode.GetName() == AZ_CRC("intrusivePtr", 0x20733e45)
+                            || elementNode.GetName() == AZ_CRC("uniquePtr", 0xdb6f5bd3)
+                            || elementNode.GetName() == AZ_CRC("forwardListInt", 0xf54c1600)
+                            || elementNode.GetName() == AZ_CRC("fixedVectorInt", 0xf7108293)
+                            || elementNode.GetName() == AZ_CRC("vectorEnum"))
                     {
                         classElement.RemoveElement(i);
                     }
@@ -1033,26 +1064,23 @@ namespace AZ {
 
             void Reflect(SerializeContext*) {}
 
-            static GenericClassGenericInfo* Instance()
-            {
-                static GenericClassGenericInfo s_instance;
-                return &s_instance;
-            }
-
             NullFactory m_factory;
             SerializeContext::ClassData m_classData;
         };
 
-        static GenericClassInfo* GetGenericInfo()
+        using ClassInfoType = GenericClassGenericInfo;
+
+        static ClassInfoType* GetGenericInfo()
         {
-            return GenericClassGenericInfo::Instance();
+            return static_cast<ClassInfoType*>(GetCurrentSerializeContextModule().CreateGenericClassInfo<GenericClass>());
         }
 
         static const Uuid& GetClassTypeId()
         {
-            return GenericClassGenericInfo::Instance()->m_classData.m_typeId;
+            return GetGenericInfo()->GetClassData()->m_typeId;
         }
     };
+
     struct GenericChild
         : public GenericClass
     {
@@ -1100,24 +1128,20 @@ namespace AZ {
 
             void Reflect(SerializeContext*);
 
-            static GenericClassGenericInfo* Instance()
-            {
-                static GenericClassGenericInfo s_instance;
-                return &s_instance;
-            }
-
             NullFactory m_factory;
             SerializeContext::ClassData m_classData;
         };
 
-        static GenericClassInfo* GetGenericInfo()
+        using ClassInfoType = GenericClassGenericInfo;
+
+        static ClassInfoType* GetGenericInfo()
         {
-            return GenericClassGenericInfo::Instance();
+            return static_cast<ClassInfoType*>(GetCurrentSerializeContextModule().CreateGenericClassInfo<GenericChild>());
         }
 
         static const Uuid& GetClassTypeId()
         {
-            return GenericClassGenericInfo::Instance()->m_classData.m_typeId;
+            return GetGenericInfo()->GetClassData()->m_typeId;
         }
     };
 }
@@ -2103,6 +2127,88 @@ namespace UnitTest
             AZStd::unordered_map<int, float*> m_mapOfFloatPointers;
             AZStd::shared_ptr<AZ::Entity> m_sharedEntityPointer;
         };
+
+        void ReflectVectorOfInts(AZ::SerializeContext* serializeContext)
+        {
+            AZ::GenericClassInfo* genericClassInfo = AZ::SerializeGenericTypeInfo<AZStd::vector<int>>::GetGenericInfo();
+            if (genericClassInfo)
+            {
+                genericClassInfo->Reflect(serializeContext);
+            }
+            genericClassInfo = AZ::SerializeGenericTypeInfo<AZStd::vector<int*>>::GetGenericInfo();
+            if (genericClassInfo)
+            {
+                genericClassInfo->Reflect(serializeContext);
+            }
+        }
+    }
+
+    TEST_F(Serialization, ContainerTypeContainedTypeDiffersByPointer)
+    {
+        ContainersTest::ReflectVectorOfInts(m_serializeContext.get());
+        AZStd::vector<int> vectorOfInts;
+        AZStd::vector<int*> vectorOfIntPointers;
+
+        vectorOfInts.push_back(5);
+        vectorOfIntPointers.push_back(azcreate(int, (5), AZ::SystemAllocator, "Container Int Pointer"));
+
+        // Write Vector of Int to object stream
+        AZStd::vector<char> vectorIntBuffer;
+        IO::ByteContainerStream<AZStd::vector<char> > vectorIntStream(&vectorIntBuffer);
+        {
+            ObjectStream* objStream = ObjectStream::Create(&vectorIntStream, *m_serializeContext, ObjectStream::ST_XML);
+            objStream->WriteClass(&vectorOfInts);
+            objStream->Finalize();
+        }
+
+        AZStd::vector<char> vectorIntPointerBuffer;
+        IO::ByteContainerStream<AZStd::vector<char> > vectorIntPointerStream(&vectorIntPointerBuffer);
+        {
+            /*
+             * The vectorIntPointerBuffer.data() function call should be examined in the debugger after this block
+             * This will write out an the address of the integer 5 stored in the vectorOfIntPointers instead of 5 to the xml data
+             */
+            ObjectStream* objStream = ObjectStream::Create(&vectorIntPointerStream, *m_serializeContext, ObjectStream::ST_XML);
+            objStream->WriteClass(&vectorOfIntPointers);
+            objStream->Finalize();
+        }
+
+        vectorIntStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+        vectorIntPointerStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+        AZStd::vector<int> loadIntVector;
+        AZStd::vector<int*> loadIntPtrVector;
+        bool loadResult = AZ::Utils::LoadObjectFromStreamInPlace(vectorIntStream, loadIntVector, m_serializeContext.get());
+        EXPECT_TRUE(loadResult);
+        loadResult = AZ::Utils::LoadObjectFromStreamInPlace(vectorIntPointerStream, loadIntPtrVector, m_serializeContext.get());
+        EXPECT_TRUE(loadResult);
+
+        /*
+        * As the vector to int pointer class was reflected second, it would not get placed into the SerializeContext GenericClassInfoMap
+        * Therefore the write of the AZStd::vector<int*> to vectorIntPointerStream will output bad data as it reinterpret_cast
+        * the supplied AZStd::vector<int*> to an AZStd::vector<int>
+        */
+        ASSERT_EQ(1, loadIntVector.size());
+        EXPECT_EQ(vectorOfInts[0], loadIntVector[0]);
+        ASSERT_EQ(1, loadIntPtrVector.size());
+        ASSERT_NE(nullptr, loadIntPtrVector[0]);
+        EXPECT_NE(vectorOfIntPointers[0], loadIntPtrVector[0]);
+        EXPECT_EQ(*vectorOfIntPointers[0], *loadIntPtrVector[0]);
+
+        for (int* intPtr : vectorOfIntPointers)
+        {
+            azdestroy(intPtr);
+        }
+
+        for (int* intPtr : loadIntPtrVector)
+        {
+            // NOTE: This will crash if loadIntPtrVector uses the incorrect GenericClassInfo to serialize its data
+            azdestroy(intPtr);
+        }
+
+        m_serializeContext->EnableRemoveReflection();
+        ContainersTest::ReflectVectorOfInts(m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
     }
 
     /*
@@ -2557,6 +2663,11 @@ namespace UnitTest
                     {
                         EXPECT_EQ( m_generics.m_vectorIntVector[i][j], obj->m_vectorIntVector[i][j] );
                     }
+                }
+                EXPECT_EQ(m_generics.m_vectorEnum.size(), obj->m_vectorEnum.size());
+                for (size_t i = 0; i < obj->m_vectorEnum.size(); ++i)
+                {
+                    EXPECT_EQ(m_generics.m_vectorEnum[i], obj->m_vectorEnum[i]);
                 }
                 EXPECT_EQ( m_generics.m_fixedVectorInt.size(), obj->m_fixedVectorInt.size() );
                 for (size_t i = 0; i < obj->m_fixedVectorInt.size(); ++i)
@@ -3782,6 +3893,8 @@ namespace UnitTest
                 , m_data(data)
             {}
 
+            virtual ~RefCounted() = default;
+
             static void Reflect(SerializeContext& serializeContext)
             {
                 serializeContext.Class<RefCounted>()
@@ -3801,6 +3914,7 @@ namespace UnitTest
             }
             int m_refCount;
             //////////////////////////////////////////////////////////////////////////
+
             int m_data;
         };
 
@@ -3811,7 +3925,9 @@ namespace UnitTest
             {
             }
 
-            AZ_TYPE_INFO(Clonable, "{3E463CC3-CC78-4F21-9BE8-0B0AA10E8E26}");
+            virtual ~Clonable() = default;
+
+            AZ_RTTI(Clonable, "{3E463CC3-CC78-4F21-9BE8-0B0AA10E8E26}");
             AZ_CLASS_ALLOCATOR(Clonable, AZ::SystemAllocator, 0);
 
             static void Reflect(SerializeContext& serializeContext)
@@ -3829,6 +3945,61 @@ namespace UnitTest
             AZStd::unordered_map<int, int> m_map;
             AZStd::vector<DynamicSerializableField> m_fieldValues;
             AZStd::array<AZStd::intrusive_ptr<RefCounted>, 10> m_smartArray;
+        };
+
+        struct ClonableMutlipleInheritanceOrderingA
+            : public AZ::TickBus::Handler
+            , public RefCounted
+            , public Clonable
+        {
+            AZ_RTTI(ClonableMutlipleInheritanceOrderingA, "{4A1FA4E5-48FB-413D-876F-E6633240773A}", Clonable);
+            AZ_CLASS_ALLOCATOR(ClonableMutlipleInheritanceOrderingA, AZ::SystemAllocator, 0);
+
+            ClonableMutlipleInheritanceOrderingA() = default;
+            ~ClonableMutlipleInheritanceOrderingA() override = default;
+
+            MOCK_METHOD2(OnTick, void (float, AZ::ScriptTimePoint));
+            virtual void MyNewVirtualFunction() {}
+
+            static void Reflect(SerializeContext& serializeContext)
+            {
+                serializeContext.Class<ClonableMutlipleInheritanceOrderingA, Clonable>()
+                    ->Field("myInt0", &ClonableMutlipleInheritanceOrderingA::m_myInt0)
+                    ;
+            }
+
+            int m_myInt0 = 0;
+        };
+
+        struct ClonableMutlipleInheritanceOrderingB
+            : public Clonable
+            , public RefCounted
+            , public AZ::TickBus::Handler
+        {
+            AZ_RTTI(ClonableMutlipleInheritanceOrderingB, "{169D8A4F-6C8A-4F50-8B7B-3EE81A9948BB}", Clonable);
+            AZ_CLASS_ALLOCATOR(ClonableMutlipleInheritanceOrderingB, AZ::SystemAllocator, 0);
+
+            ClonableMutlipleInheritanceOrderingB() = default;
+            ~ClonableMutlipleInheritanceOrderingB() override = default;
+            
+            MOCK_METHOD2(OnTick, void (float, AZ::ScriptTimePoint));
+            MOCK_METHOD0(SomeVirtualFunction, void ());
+
+            virtual char MyCharSumFunction() { return m_myChar0 + m_myChar1 + m_myChar2; }
+            virtual void MyCharResetFunction() { m_myChar0 = m_myChar1 = m_myChar2 = 0; }
+
+            static void Reflect(SerializeContext& serializeContext)
+            {
+                serializeContext.Class<ClonableMutlipleInheritanceOrderingB, Clonable>()
+                    ->Field("myChar0", &ClonableMutlipleInheritanceOrderingB::m_myChar0)
+                    ->Field("myChar1", &ClonableMutlipleInheritanceOrderingB::m_myChar1)
+                    ->Field("myChar2", &ClonableMutlipleInheritanceOrderingB::m_myChar2)
+                    ;
+            }
+
+            char m_myChar0 = 0;
+            char m_myChar1 = 1;
+            char m_myChar2 = 2;
         };
 
         struct ClonableAssociativePointerContainer
@@ -3991,6 +4162,292 @@ namespace UnitTest
         delete cloneObj;
     }
 
+    struct TestCloneAssetData
+        : public AZ::Data::AssetData
+    {
+        AZ_CLASS_ALLOCATOR(TestCloneAssetData, AZ::SystemAllocator, 0);
+        AZ_RTTI(TestCloneAssetData, "{0BAECA70-262F-4BDC-9D42-B7F7A10077DA}", AZ::Data::AssetData);
+
+        TestCloneAssetData() = default;
+        TestCloneAssetData(const AZ::Data::AssetId& assetId, AZ::Data::AssetData::AssetStatus status, uint32_t valueInt = 0)
+            : AZ::Data::AssetData(assetId, status)
+            , m_valueInt(valueInt)
+        {}
+
+        uint32_t m_valueInt{};
+    };
+
+    class TestCloneAssetHandler
+        : public AZ::Data::AssetHandler
+        , public AZ::Data::AssetCatalog
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(TestCloneAssetHandler, AZ::SystemAllocator, 0);
+
+        //////////////////////////////////////////////////////////////////////////
+        // AssetHandler
+        AZ::Data::AssetPtr CreateAsset(const AZ::Data::AssetId& id, const AZ::Data::AssetType& type) override
+        {
+            EXPECT_EQ(AzTypeInfo<TestCloneAssetData>::Uuid(), type);
+            return aznew TestCloneAssetData(id, AZ::Data::AssetData::AssetStatus::NotLoaded);
+        }
+        bool LoadAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream, const AZ::Data::AssetFilterCB& assetLoadFilterCB) override
+        {
+            (void)assetLoadFilterCB;
+            EXPECT_EQ(AzTypeInfo<TestCloneAssetData>::Uuid(), asset.GetType());
+            const size_t assetDataSize = static_cast<size_t>(stream->GetLength());
+            EXPECT_EQ(sizeof(TestCloneAssetData::m_valueInt), assetDataSize);
+            TestCloneAssetData* cloneAssetData = asset.GetAs<TestCloneAssetData>();
+            stream->Read(assetDataSize, &cloneAssetData->m_valueInt);
+
+            return true;
+        }
+        bool SaveAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, IO::GenericStream* stream) override
+        {
+            EXPECT_EQ(AzTypeInfo<TestCloneAssetData>::Uuid(), asset.GetType());
+            TestCloneAssetData* cloneAssetData = asset.GetAs<TestCloneAssetData>();
+
+            EXPECT_NE(nullptr, cloneAssetData);
+            return Save(*cloneAssetData, stream);
+        }
+
+        bool Save(const TestCloneAssetData& testCloneAssetData, IO::GenericStream* stream) const
+        {
+            stream->Write(sizeof(TestCloneAssetData::m_valueInt), &testCloneAssetData.m_valueInt);
+            return true;
+        }
+        void DestroyAsset(AZ::Data::AssetPtr ptr) override
+        {
+            EXPECT_EQ(AzTypeInfo<TestCloneAssetData>::Uuid(), ptr->GetType());
+            delete ptr;
+        }
+
+        void GetHandledAssetTypes(AZStd::vector<AZ::Data::AssetType>& assetTypes) override
+        {
+            assetTypes.push_back(AzTypeInfo<TestCloneAssetData>::Uuid());
+        }
+
+        //////////////////////////////////////////////////////////////////////////
+        // AssetCatalog
+        // Redirects stream info request for assets to always return stream info needed to load a TestCloneAssetData
+        AZ::Data::AssetStreamInfo GetStreamInfoForLoad(const AZ::Data::AssetId&, const AZ::Data::AssetType& type) override
+        {
+            EXPECT_EQ(AzTypeInfo<TestCloneAssetData>::Uuid(), type);
+            AZ::Data::AssetStreamInfo info;
+            info.m_dataOffset = 0;
+            info.m_isCustomStreamType = false;
+            info.m_streamFlags = AZ::IO::OpenMode::ModeRead;
+            info.m_streamName = GetAssetFilename();
+
+            AZStd::string fullName = AZStd::string::format("%s%s", GetAssetFolderPath(), info.m_streamName.data());
+            info.m_dataLen = static_cast<size_t>(IO::SystemFile::Length(fullName.c_str()));
+            return info;
+        }
+
+        AZ::Data::AssetStreamInfo GetStreamInfoForSave(const AZ::Data::AssetId&, const AZ::Data::AssetType& type) override
+        {
+            EXPECT_EQ(AzTypeInfo<TestCloneAssetData>::Uuid(), type);
+            AZ::Data::AssetStreamInfo info;
+            info.m_dataOffset = 0;
+            info.m_isCustomStreamType = false;
+            info.m_streamFlags = AZ::IO::OpenMode::ModeWrite;
+            info.m_streamName = GetAssetFilename();
+
+            AZStd::string fullName = AZStd::string::format("%s%s", GetAssetFolderPath(), info.m_streamName.data());
+            info.m_dataLen = static_cast<size_t>(AZ::IO::SystemFile::Length(fullName.c_str()));
+            return info;
+        }
+
+        static const char* GetAssetFilename()
+        {
+            return "TestCloneAsset.bin";
+        }
+
+        static const char* GetAssetFolderPath()
+        {
+            return "";
+        }
+    };
+
+    struct TestCloneWrapperObject
+    {
+        AZ_TYPE_INFO(TestCloneWrapperObject, "{4BAE1D45-EFFD-4157-9F80-E20239265304}");
+        AZ_CLASS_ALLOCATOR(TestCloneWrapperObject, AZ::SystemAllocator, 0);
+
+        static void Reflect(AZ::ReflectContext* reflectContext)
+        {
+            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext))
+            {
+                serializeContext->Class<TestCloneWrapperObject>()
+                    ->Field("TestCloneAsset", &TestCloneWrapperObject::m_cloneAsset);
+            }
+        }
+
+        AZ::Data::Asset<TestCloneAssetData> m_cloneAsset;
+    };
+
+    class SerializeAssetFixture
+        : public AllocatorsFixture
+    {
+    public:
+
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            AllocatorInstance<PoolAllocator>::Create();
+            AllocatorInstance<ThreadPoolAllocator>::Create();
+
+            m_prevFileIO = IO::FileIOBase::GetInstance();
+            IO::FileIOBase::SetInstance(&m_fileIO);
+            IO::Streamer::Descriptor streamerDesc;
+            AZStd::string testFolder = GetTestFolderPath();
+            if (testFolder.length() > 0)
+            {
+                streamerDesc.m_fileMountPoint = testFolder.c_str();
+            }
+            IO::Streamer::Create(streamerDesc);
+
+            m_serializeContext.reset(aznew AZ::SerializeContext());
+            TestCloneWrapperObject::Reflect(m_serializeContext.get());
+
+            // create the database
+            AZ::Data::AssetManager::Descriptor desc;
+            AZ::Data::AssetManager::Create(desc);
+
+            // create and register an asset handler
+            AZ::Data::AssetManager::Instance().RegisterHandler(&m_testAssetHandlerAndCatalog, AzTypeInfo<TestCloneAssetData>::Uuid());
+            AZ::Data::AssetManager::Instance().RegisterCatalog(&m_testAssetHandlerAndCatalog, AzTypeInfo<TestCloneAssetData>::Uuid());
+            CreateTestCloneAsset();
+        }
+
+        void TearDown() override
+        {
+            m_serializeContext->EnableRemoveReflection();
+            TestCloneWrapperObject::Reflect(m_serializeContext.get());
+            m_serializeContext->DisableRemoveReflection();
+            m_serializeContext.reset();
+            // destroy the database
+            AZ::Data::AssetManager::Instance().UnregisterHandler(&m_testAssetHandlerAndCatalog);
+            AZ::Data::AssetManager::Instance().UnregisterCatalog(&m_testAssetHandlerAndCatalog);
+            AZ::Data::AssetManager::Destroy();
+
+            if (IO::Streamer::IsReady())
+            {
+                IO::Streamer::Destroy();
+            }
+
+            DestroyTestCloneAsset();
+            IO::FileIOBase::SetInstance(m_prevFileIO);
+            AllocatorInstance<ThreadPoolAllocator>::Destroy();
+            AllocatorInstance<PoolAllocator>::Destroy();
+
+            AllocatorsFixture::TearDown();
+        }
+
+
+        void CreateTestCloneAsset()
+        {
+            AZStd::string assetFullPath = AZStd::string::format("%s%s", TestCloneAssetHandler::GetAssetFolderPath(), TestCloneAssetHandler::GetAssetFilename());
+            AZ::IO::FileIOStream cloneTestFileStream(assetFullPath.c_str(), AZ::IO::OpenMode::ModeWrite);
+            TestCloneAssetData testCloneAssetData;
+            testCloneAssetData.m_valueInt = 5;
+            m_testAssetHandlerAndCatalog.Save(testCloneAssetData, &cloneTestFileStream);
+        }
+
+        void DestroyTestCloneAsset()
+        {
+            AZStd::string assetFullPath = AZStd::string::format("%s%s", TestCloneAssetHandler::GetAssetFolderPath(), TestCloneAssetHandler::GetAssetFilename());
+            m_fileIO.Remove(assetFullPath.c_str());
+        }
+
+    protected:
+        AZ::IO::FileIOBase* m_prevFileIO{};
+        TestFileIOBase m_fileIO;
+        TestCloneAssetHandler m_testAssetHandlerAndCatalog;
+        AZStd::unique_ptr<AZ::SerializeContext> m_serializeContext;
+    };
+
+    TEST_F(SerializeAssetFixture, CloneObjectWithAssetReferenceTest)
+    {
+        static const AZ::Data::AssetId cloneObjectAssetId(AZ::Uuid("{AF338D46-C607-4F2B-8F0B-8828F88EA5F2}"));
+
+        {
+            // Create a TestCloneAssetData asset and keep a reference to in the local testCloneAsset variable so that the AssetManager manages the asset
+            AZ::Data::Asset<TestCloneAssetData> testCloneAsset = AZ::Data::AssetManager::Instance().CreateAsset(cloneObjectAssetId, AZ::AzTypeInfo<TestCloneAssetData>::Uuid());
+            testCloneAsset.Get()->m_valueInt = 15;
+
+            /* Create a testCloneWrapper object that has its Asset<T> object set to an AssetId, but not to a loaded asset.
+             The PreLoad flag is set on the Asset<T> to validate if the SerializeContext::CloneObject function is attempting to load the asset.
+             If the SerializeContext::CloneObject is not attempting to load the asset, then the cloned TestCloneWrapperObject m_cloneAsset member
+             should have its asset id set to cloneObjectAssetId without the asset being loaded
+             */
+            TestCloneWrapperObject testObj;
+            testObj.m_cloneAsset = AZ::Data::Asset<TestCloneAssetData>(cloneObjectAssetId, AZ::AzTypeInfo<TestCloneAssetData>::Uuid());
+            testObj.m_cloneAsset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::PreLoad);
+
+            // the testCloneAsset should have one reference.
+            EXPECT_EQ(1, testCloneAsset.Get()->GetUseCount());
+
+            TestCloneWrapperObject clonedTestObj;
+            m_serializeContext->CloneObjectInplace(clonedTestObj, &testObj);
+            // the testCloneAsset should still be the only reference after the clone
+            EXPECT_EQ(1, testCloneAsset.Get()->GetUseCount());
+            // The cloned test object should not have AssetData associated with it,
+            // but should have the cloneObjectAssetId asset id set on it
+            EXPECT_EQ(cloneObjectAssetId, clonedTestObj.m_cloneAsset.GetId());
+            ASSERT_EQ(nullptr, clonedTestObj.m_cloneAsset.Get());
+        }
+
+        AZ::Data::AssetManager::Instance().DispatchEvents();
+    }
+
+    TEST_F(Serialization, CloneMultipleInheritance_RTTIBaseClassDiffererentOrder_KeepsCorrectOffsets)
+    {
+        using namespace Clone;
+
+        EXPECT_NE(sizeof(ClonableMutlipleInheritanceOrderingA), sizeof(ClonableMutlipleInheritanceOrderingB));
+
+        Clonable::Reflect(*m_serializeContext.get());
+        ClonableMutlipleInheritanceOrderingA::Reflect(*m_serializeContext.get());
+        ClonableMutlipleInheritanceOrderingB::Reflect(*m_serializeContext.get());
+
+        AZStd::unique_ptr<Clonable> objA(aznew ClonableMutlipleInheritanceOrderingA);
+        AZStd::unique_ptr<Clonable> objB(aznew ClonableMutlipleInheritanceOrderingB);
+
+        // sanity check that the pointer offset for the classes being used is different
+        const void* aAsBasePtr = AZ::SerializeTypeInfo<Clonable>::RttiCast(objA.get(), AZ::SerializeTypeInfo<Clonable>::GetRttiTypeId(objA.get()));
+        const void* bAsBasePtr = AZ::SerializeTypeInfo<Clonable>::RttiCast(objB.get(), AZ::SerializeTypeInfo<Clonable>::GetRttiTypeId(objB.get()));
+
+        AZStd::ptrdiff_t aOffset = (char*)objA.get() - (char*)aAsBasePtr;
+        AZStd::ptrdiff_t bOffset = (char*)objB.get() - (char*)bAsBasePtr;
+        EXPECT_NE(aOffset, 0);
+        EXPECT_EQ(bOffset, 0);
+
+        // Now clone the original objects, and store in the RTTI base type
+        AZStd::unique_ptr<Clonable> cloneObjA(m_serializeContext->CloneObject(objA.get()));
+        AZStd::unique_ptr<Clonable> cloneObjB(m_serializeContext->CloneObject(objB.get()));
+
+        // Check our pointer offsets are still different in the cloned objects
+        const void* aCloneAsBasePtr = AZ::SerializeTypeInfo<Clonable>::RttiCast(cloneObjA.get(), AZ::SerializeTypeInfo<Clonable>::GetRttiTypeId(cloneObjA.get()));
+        const void* bCloneAsBasePtr = AZ::SerializeTypeInfo<Clonable>::RttiCast(cloneObjB.get(), AZ::SerializeTypeInfo<Clonable>::GetRttiTypeId(cloneObjB.get()));
+
+        AZStd::ptrdiff_t aCloneOffset = (char*)cloneObjA.get() - (char*)aCloneAsBasePtr;
+        AZStd::ptrdiff_t bCloneOffset = (char*)cloneObjB.get() - (char*)bCloneAsBasePtr;
+        EXPECT_NE(aCloneOffset, 0);
+        EXPECT_EQ(bCloneOffset, 0);
+
+        // Check that offsets are equivalent between the clones and the original objects
+        EXPECT_EQ(aCloneOffset, aOffset);
+        EXPECT_EQ(bCloneOffset, bOffset);
+
+        m_serializeContext->EnableRemoveReflection();
+        ClonableMutlipleInheritanceOrderingB::Reflect(*m_serializeContext.get());
+        ClonableMutlipleInheritanceOrderingA::Reflect(*m_serializeContext.get());
+        Clonable::Reflect(*m_serializeContext.get());
+        m_serializeContext->DisableRemoveReflection();
+    }
+
     /*
     * Error Testing
     */
@@ -4065,6 +4522,61 @@ namespace UnitTest
             AZStd::vector<UnregisteredRttiClass*>   m_vectorUnregisteredRttiBase;
             AZStd::vector<GenericClass*>            m_vectorGenericChildPtr;
         };
+    }
+
+    // Tests that reflection of classes with no base types and those with base types will reflect and unreflect
+    // as expected using the templated function, Class()
+    TEST_F(Serialization, ClassReflectAndUnreflect)
+    {
+        using namespace SerializeTestClasses;
+
+        m_serializeContext->Class<MyClassMix>();
+        m_serializeContext->Class<BaseRtti>();
+
+        {
+            AZStd::vector<AZ::Uuid> foundUuids = m_serializeContext->FindClassId(AZ::Crc32(AzTypeInfo<BaseRtti>::Name()));
+            ASSERT_FALSE(foundUuids.empty());
+            EXPECT_EQ(foundUuids.size(), 1);
+            EXPECT_EQ(foundUuids[0], AZ::Uuid::CreateString("{2581047D-26EC-4969-8354-BA0A4510C51A}"));
+            EXPECT_NE(m_serializeContext->FindClassData(azrtti_typeid<BaseRtti>()), nullptr);
+            AZStd::any testAnyCreate = m_serializeContext->CreateAny(azrtti_typeid<BaseRtti>());
+            EXPECT_FALSE(testAnyCreate.empty());
+            EXPECT_TRUE(testAnyCreate.is<BaseRtti>());
+        }
+
+        {
+            AZStd::vector<AZ::Uuid> foundUuids = m_serializeContext->FindClassId(AZ::Crc32(AzTypeInfo<MyClassMix>::Name()));
+            ASSERT_FALSE(foundUuids.empty());
+            EXPECT_EQ(foundUuids.size(), 1);
+            EXPECT_EQ(foundUuids[0], AZ::Uuid::CreateString("{A15003C6-797A-41BB-9D21-716DF0678D02}"));
+            EXPECT_NE(m_serializeContext->FindClassData(azrtti_typeid<MyClassMix>()), nullptr);
+            AZStd::any testAnyCreate = m_serializeContext->CreateAny(azrtti_typeid<MyClassMix>());
+            EXPECT_FALSE(testAnyCreate.empty());
+            EXPECT_TRUE(testAnyCreate.is<MyClassMix>());
+        }
+
+        m_serializeContext->EnableRemoveReflection();
+        m_serializeContext->Class<MyClassMix>();
+        m_serializeContext->Class<BaseRtti>();
+        m_serializeContext->DisableRemoveReflection();
+
+        {
+            AZStd::vector<AZ::Uuid> foundUuids = m_serializeContext->FindClassId(AZ::Crc32(AzTypeInfo<BaseRtti>::Name()));
+            EXPECT_TRUE(foundUuids.empty());
+            EXPECT_EQ(m_serializeContext->FindClassData(azrtti_typeid<BaseRtti>()), nullptr);
+            AZStd::any testAnyCreate = m_serializeContext->CreateAny(azrtti_typeid<BaseRtti>());
+            EXPECT_TRUE(testAnyCreate.empty());
+            EXPECT_FALSE(testAnyCreate.is<BaseRtti>());
+        }
+
+        {
+            AZStd::vector<AZ::Uuid> foundUuids = m_serializeContext->FindClassId(AZ::Crc32(AzTypeInfo<MyClassMix>::Name()));
+            EXPECT_TRUE(foundUuids.empty());
+            EXPECT_EQ(m_serializeContext->FindClassData(azrtti_typeid<MyClassMix>()), nullptr);
+            AZStd::any testAnyCreate = m_serializeContext->CreateAny(azrtti_typeid<MyClassMix>());
+            EXPECT_TRUE(testAnyCreate.empty());
+            EXPECT_FALSE(testAnyCreate.is<MyClassMix>());
+        }
     }
 
     TEST_F(Serialization, ErrorTest)
@@ -5177,7 +5689,7 @@ namespace UnitTest
         }
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
         ObjectToPatch* targetGenerated = patch.Apply(&sourceObj, m_serializeContext.get());
 
         // Compare the generated and original target object
@@ -5219,48 +5731,17 @@ namespace UnitTest
         obj2.m_data = 3.33f;
 
         DataPatch patch1;
-        patch1.Create(static_cast<CommonPatch*>(&obj1), static_cast<CommonPatch*>(&obj2), DataPatch::FlagsMap(), m_serializeContext.get()); // cast to base classes
+        patch1.Create(static_cast<CommonPatch*>(&obj1), static_cast<CommonPatch*>(&obj2), DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get()); // cast to base classes
         DifferentObjectToPatch* obj2Generated = patch1.Apply<DifferentObjectToPatch>(&obj1, m_serializeContext.get());
         EXPECT_EQ( obj2.m_data, obj2Generated->m_data );
 
         // \note do we need to add support for base class patching and recover for root elements with proper casting
 
-        // Combining patches
-        targetObj.m_intValue = 301;
-        targetObj.m_objectArray[0].m_data = 401;
-        targetObj.m_objectArray[1].m_data = 402;
-        targetObj.m_objectArray.pop_back(); // remove an element
-        targetObj.m_objectMap.find(5)->second->m_data = 505;
-        targetObj.m_objectMap.insert(AZStd::make_pair(6, aznew ContainedObjectNoPersistentId(406)));
-
-        DataPatch patch2;
-        patch2.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
-        patch.Apply(patch2);
-        ObjectToPatch* targetGenerated2 = patch.Apply(&sourceObj, m_serializeContext.get());
-
-        // Compare the generated and original target object
-        EXPECT_EQ( targetGenerated2->m_intValue, targetObj.m_intValue );
-        EXPECT_EQ( targetGenerated2->m_objectArray.size(), targetObj.m_objectArray.size() + 1 );
-        EXPECT_EQ( targetGenerated2->m_objectArray[0].m_data, targetObj.m_objectArray[0].m_data );
-        EXPECT_EQ( targetGenerated2->m_objectArray[0].m_persistentId, targetObj.m_objectArray[0].m_persistentId );
-        EXPECT_EQ( targetGenerated2->m_objectArray[1].m_data, targetObj.m_objectArray[1].m_data );
-        EXPECT_EQ( targetGenerated2->m_objectArray[1].m_persistentId, targetObj.m_objectArray[1].m_persistentId );
-        EXPECT_EQ( 50, targetGenerated2->m_dynamicField.Get<ContainedObjectNoPersistentId>()->m_data );
-        EXPECT_EQ( 304, targetGenerated2->m_objectArray[2].m_data );  // merged from the based patch
-        EXPECT_EQ( 4, targetGenerated2->m_objectArray[2].m_persistentId );
-        // test generic containers without persistent ID (by index)
-        EXPECT_EQ( targetGenerated2->m_objectMap.size(), targetObj.m_objectMap.size() );
-        EXPECT_EQ( targetGenerated2->m_objectMap[1]->m_data, targetObj.m_objectMap[1]->m_data );
-        EXPECT_EQ( targetGenerated2->m_objectMap[5]->m_data, targetObj.m_objectMap[5]->m_data );
-        EXPECT_EQ( targetGenerated2->m_objectMap[6]->m_data, targetObj.m_objectMap[6]->m_data );
-
         targetGenerated->m_dynamicField.DestroyData(m_serializeContext.get());
-        targetGenerated2->m_dynamicField.DestroyData(m_serializeContext.get());
         targetObj.m_dynamicField.DestroyData(m_serializeContext.get());
         sourceObj.m_dynamicField.DestroyData(m_serializeContext.get());
 
         delete targetGenerated;
-        delete targetGenerated2;
         delete obj2Generated;
 
         // test generics
@@ -5271,7 +5752,7 @@ namespace UnitTest
         targetGeneric.m_string = "Ola";
 
         DataPatch genericPatch;
-        genericPatch.Create(&sourceGeneric, &targetGeneric, DataPatch::FlagsMap(), m_serializeContext.get());
+        genericPatch.Create(&sourceGeneric, &targetGeneric, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
 
         ObjectsWithGenerics* targerGenericGenerated = genericPatch.Apply(&sourceGeneric, m_serializeContext.get());
         EXPECT_EQ( targetGeneric.m_string, targerGenericGenerated->m_string );
@@ -6253,6 +6734,85 @@ namespace UnitTest
         EXPECT_EQ(anyMixRef->m_dataMix, readAnyMixRef.m_dataMix);
     }
 
+    class SerializableOptionalFixture
+        : public AllocatorsFixture
+    {
+    public:
+        struct OptionalMemberClass
+        {
+            AZ_TYPE_INFO(OptionalMemberClass, "{6BC95A2D-FE6B-4FD8-9586-771F47C44C0B}");
+            AZ_CLASS_ALLOCATOR(OptionalMemberClass, AZ::SystemAllocator, 0);
+            static void Reflect(ReflectContext* context)
+            {
+                if (auto* serializeContext = azrtti_cast<SerializeContext*>(context))
+                {
+                    serializeContext->Class<OptionalMemberClass>()
+                        ->Field("Optional", &OptionalMemberClass::m_optional)
+                        ;
+                }
+            }
+            AZStd::optional<int> m_optional;
+        };
+
+        // We must expose the class for serialization first.
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+
+            m_serializeContext = AZStd::make_unique<SerializeContext>();
+            OptionalMemberClass::Reflect(m_serializeContext.get());
+        }
+
+        void TearDown() override
+        {
+
+            m_serializeContext->EnableRemoveReflection();
+            OptionalMemberClass::Reflect(m_serializeContext.get());
+            m_serializeContext.reset();
+
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
+
+            AllocatorsFixture::TearDown();
+        }
+    protected:
+        AZStd::unique_ptr<SerializeContext> m_serializeContext;
+    };
+
+    TEST_F(SerializableOptionalFixture, TestHasValueOptionalSerialization)
+    {
+        AZStd::optional<int> theOpt {42};
+
+        AZStd::vector<char> byteBuffer;
+        IO::ByteContainerStream<AZStd::vector<char> > byteStream(&byteBuffer);
+        AZ::Utils::SaveObjectToStream(byteStream, ObjectStream::ST_XML, &theOpt, m_serializeContext.get());
+
+        byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+        AZStd::optional<int> deserializedOptional;
+        AZ::Utils::LoadObjectFromStreamInPlace(byteStream, deserializedOptional, m_serializeContext.get());
+        EXPECT_TRUE(deserializedOptional.has_value());
+        EXPECT_EQ(deserializedOptional.value(), 42);
+    }
+
+    TEST_F(SerializableOptionalFixture, TestNulloptOptionalSerialization)
+    {
+        AZStd::optional<int> theOpt;
+
+        AZStd::vector<char> byteBuffer;
+        IO::ByteContainerStream<AZStd::vector<char> > byteStream(&byteBuffer);
+        AZ::Utils::SaveObjectToStream(byteStream, ObjectStream::ST_XML, &theOpt, m_serializeContext.get());
+
+        byteStream.Seek(0, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+        AZStd::optional<int> deserializedOptional;
+        AZ::Utils::LoadObjectFromStreamInPlace(byteStream, deserializedOptional, m_serializeContext.get());
+        EXPECT_FALSE(deserializedOptional.has_value());
+    }
+
     TEST_F(PatchingTest, CompareIdentical_DataPatchIsEmpty)
     {
         using namespace Patching;
@@ -6261,7 +6821,7 @@ namespace UnitTest
 
         // Patch without overrides should be empty
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
         EXPECT_FALSE(patch.IsData());
     }
 
@@ -6274,11 +6834,13 @@ namespace UnitTest
         DataPatch::AddressType forceOverrideAddress;
         forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
 
-        DataPatch::FlagsMap flagsMap;
-        flagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverride);
+        DataPatch::FlagsMap sourceFlagsMap;
+
+        DataPatch::FlagsMap targetFlagsMap;
+        targetFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverrideSet);
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, flagsMap, m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, sourceFlagsMap, targetFlagsMap, m_serializeContext.get());
         EXPECT_TRUE(patch.IsData());
     }
 
@@ -6291,16 +6853,95 @@ namespace UnitTest
         DataPatch::AddressType forceOverrideAddress;
         forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
 
-        DataPatch::FlagsMap flagsMap;
-        flagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverride);
+        DataPatch::FlagsMap sourceFlagsMap;
+
+        DataPatch::FlagsMap targetFlagsMap;
+        targetFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverrideSet);
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, flagsMap, m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, sourceFlagsMap, targetFlagsMap, m_serializeContext.get());
 
         // change source after patch is created
         sourceObj.m_intValue = 5;
 
         AZStd::unique_ptr<ObjectToPatch> targetObj2(patch.Apply(&sourceObj, m_serializeContext.get()));
+        EXPECT_EQ(targetObj.m_intValue, targetObj2->m_intValue);
+    }
+
+    TEST_F(PatchingTest, ForceOverrideAndPreventOverrideBothSet_DataPatchIsEmpty)
+    {
+        using namespace Patching;
+        ObjectToPatch sourceObj;
+        ObjectToPatch targetObj;
+        targetObj.m_intValue = 43;
+
+        DataPatch::AddressType forceOverrideAddress;
+        forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
+
+        DataPatch::FlagsMap sourceFlagsMap;
+        sourceFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::PreventOverrideSet);
+
+        DataPatch::FlagsMap targetFlagsMap;
+        targetFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::ForceOverrideSet);
+
+        DataPatch patch;
+        patch.Create(&sourceObj, &targetObj, sourceFlagsMap, targetFlagsMap, m_serializeContext.get());
+        EXPECT_FALSE(patch.IsData());
+    }
+
+    TEST_F(PatchingTest, PreventOverrideOnSource_BlocksValueFromPatch)
+    {
+        using namespace Patching;
+
+        // targetObj is different from sourceObj
+        ObjectToPatch sourceObj;
+
+        ObjectToPatch targetObj;
+        targetObj.m_intValue = 5;
+
+        // create patch from sourceObj -> targetObj
+        DataPatch patch;
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
+
+        // create flags that prevent m_intValue from being patched
+        DataPatch::AddressType forceOverrideAddress;
+        forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
+
+        DataPatch::FlagsMap sourceFlagsMap;
+        sourceFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::PreventOverrideSet);
+
+        DataPatch::FlagsMap targetFlagsMap;
+
+        // m_intValue should be the same as it was in sourceObj
+        AZStd::unique_ptr<ObjectToPatch> targetObj2(patch.Apply(&sourceObj, m_serializeContext.get(), ObjectStream::FilterDescriptor(), sourceFlagsMap, targetFlagsMap));
+        EXPECT_EQ(sourceObj.m_intValue, targetObj2->m_intValue);
+    }
+
+    TEST_F(PatchingTest, PreventOverrideOnTarget_DoesntAffectPatching)
+    {
+        using namespace Patching;
+
+        // targetObj is different from sourceObj
+        ObjectToPatch sourceObj;
+
+        ObjectToPatch targetObj;
+        targetObj.m_intValue = 5;
+
+        // create patch from sourceObj -> targetObj
+        DataPatch patch;
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
+
+        // create flags that prevent m_intValue from being patched, but put them on the target instead of source
+        DataPatch::AddressType forceOverrideAddress;
+        forceOverrideAddress.emplace_back(AZ_CRC("m_intValue"));
+
+        DataPatch::FlagsMap sourceFlagsMap;
+
+        DataPatch::FlagsMap targetFlagsMap;
+        targetFlagsMap.emplace(forceOverrideAddress, DataPatch::Flag::PreventOverrideSet);
+
+        // m_intValue should have been patched
+        AZStd::unique_ptr<ObjectToPatch> targetObj2(patch.Apply(&sourceObj, m_serializeContext.get(), ObjectStream::FilterDescriptor(), sourceFlagsMap, targetFlagsMap));
         EXPECT_EQ(targetObj.m_intValue, targetObj2->m_intValue);
     }
 
@@ -6315,7 +6956,7 @@ namespace UnitTest
         targetObj.m_pointerInt = new AZ::s32(-1);
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
 
         ObjectWithPointer* patchedTargetObj = patch.Apply(&sourceObj, m_serializeContext.get());
         EXPECT_EQ(targetObj.m_int, patchedTargetObj->m_int);
@@ -6338,7 +6979,7 @@ namespace UnitTest
         targetObj.m_int = 23054;
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
 
         ObjectWithPointer* patchedTargetObj = patch.Apply(&sourceObj, m_serializeContext.get());
         EXPECT_EQ(targetObj.m_int, patchedTargetObj->m_int);
@@ -6360,7 +7001,7 @@ namespace UnitTest
         targetObj.m_pointerFloat = new float(3.14);
 
         DataPatch patch;
-        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), m_serializeContext.get());
+        patch.Create(&sourceObj, &targetObj, DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
 
         ObjectWithMultiPointers* patchedTargetObj = patch.Apply(&sourceObj, m_serializeContext.get());
         EXPECT_EQ(targetObj.m_int, patchedTargetObj->m_int);
@@ -6633,7 +7274,7 @@ namespace UnitTest
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
 
             m_serializeContext = AZStd::make_unique<SerializeContext>();
-            auto genericInfo = SerializeGenericTypeInfo<AZStd::vector<AZ::u32>>::GetGenericInfo();
+            AZ::GenericClassInfo* genericInfo = SerializeGenericTypeInfo<AZStd::vector<AZ::u32>>::GetGenericInfo();
             if (genericInfo)
             {
                 genericInfo->Reflect(m_serializeContext.get());
@@ -6655,7 +7296,7 @@ namespace UnitTest
         void TearDown() override
         {
             m_serializeContext->EnableRemoveReflection();
-            auto genericInfo = SerializeGenericTypeInfo<AZStd::vector<AZ::u32>>::GetGenericInfo();
+            AZ::GenericClassInfo* genericInfo = SerializeGenericTypeInfo<AZStd::vector<AZ::u32>>::GetGenericInfo();
             if (genericInfo)
             {
                 genericInfo->Reflect(m_serializeContext.get());
@@ -6843,7 +7484,7 @@ namespace UnitTest
 
             m_serializeContext = AZStd::make_unique<SerializeContext>();
             AZ::Entity::Reflect(m_serializeContext.get());
-            auto genericClassInfo = SerializeGenericTypeInfo<FloatStringIntTuple>::GetGenericInfo();
+            GenericClassInfo* genericClassInfo = SerializeGenericTypeInfo<FloatStringIntTuple>::GetGenericInfo();
             if (genericClassInfo)
             {
                 genericClassInfo->Reflect(m_serializeContext.get());
@@ -6884,7 +7525,7 @@ namespace UnitTest
         {
             m_serializeContext->EnableRemoveReflection();
             AZ::Entity::Reflect(m_serializeContext.get());
-            auto genericClassInfo = SerializeGenericTypeInfo<FloatStringIntTuple>::GetGenericInfo();
+            GenericClassInfo* genericClassInfo = SerializeGenericTypeInfo<FloatStringIntTuple>::GetGenericInfo();
             if (genericClassInfo)
             {
                 genericClassInfo->Reflect(m_serializeContext.get());
@@ -7079,7 +7720,7 @@ namespace UnitTest
             AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
 
             m_serializeContext = AZStd::make_unique<SerializeContext>();
-            auto genericClassInfo = SerializeGenericTypeInfo<ZeroArray>::GetGenericInfo();
+            GenericClassInfo* genericClassInfo = SerializeGenericTypeInfo<ZeroArray>::GetGenericInfo();
             if (genericClassInfo)
             {
                 genericClassInfo->Reflect(m_serializeContext.get());
@@ -7104,7 +7745,7 @@ namespace UnitTest
         void TearDown() override
         {
             m_serializeContext->EnableRemoveReflection();
-            auto genericClassInfo = SerializeGenericTypeInfo<ZeroArray>::GetGenericInfo();
+            GenericClassInfo* genericClassInfo = SerializeGenericTypeInfo<ZeroArray>::GetGenericInfo();
             if (genericClassInfo)
             {
                 genericClassInfo->Reflect(m_serializeContext.get());
@@ -7272,7 +7913,7 @@ namespace UnitTest
         EXPECT_TRUE(AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadedArray, m_serializeContext.get()));
     }
 
-    TEST_F(SerializableAZStdArrayTest, ZeroNEstedSerialization)
+    TEST_F(SerializableAZStdArrayTest, ZeroNestedSerialization)
     {
         ZeroNestedArray zerroArray;
 
@@ -7340,6 +7981,157 @@ namespace UnitTest
         AZ::Utils::LoadObjectFromStreamInPlace(byteStream, test, m_serializeContext.get());
         EXPECT_EQ(2, test.m_vec.size());
     }
+
+    class SerializeVectorWithInitialElementsTest
+        : public AllocatorsFixture
+    {
+    public:
+        // We must expose the class for serialization first.
+        void SetUp() override
+        {
+            AllocatorsFixture::SetUp();
+
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Create();
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Create();
+
+            m_serializeContext = AZStd::make_unique<SerializeContext>();
+            VectorWrapper::Reflect(m_serializeContext.get());
+        }
+
+        void TearDown() override
+        {
+            m_serializeContext.reset();
+
+            AZ::AllocatorInstance<AZ::ThreadPoolAllocator>::Destroy();
+            AZ::AllocatorInstance<AZ::PoolAllocator>::Destroy();
+
+            AllocatorsFixture::TearDown();
+        }
+
+        struct VectorWrapper
+        {
+            AZ_TYPE_INFO(VectorWrapper, "{91F69715-30C3-4F1A-90A0-5F5F7517F375}");
+            AZ_CLASS_ALLOCATOR(VectorWrapper, AZ::SystemAllocator, 0);
+            VectorWrapper()
+                : m_fixedVectorInts(2, 412)
+                , m_vectorInts(2, 42)
+            {}
+
+            static void Reflect(AZ::ReflectContext* context)
+            {
+                if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+                {
+                    serializeContext->Class<VectorWrapper>()
+                        ->Field("fixedVectorInts", &VectorWrapper::m_fixedVectorInts)
+                        ->Field("VectorInts", &VectorWrapper::m_vectorInts);
+                }
+            }
+            AZStd::fixed_vector<int, 2> m_fixedVectorInts;
+            AZStd::vector<int> m_vectorInts;
+        };
+
+    protected:
+        AZStd::unique_ptr<SerializeContext> m_serializeContext;
+    };
+
+    TEST_F(SerializeVectorWithInitialElementsTest, CloneObjectTest)
+    {
+        VectorWrapper vectorWrapper;
+        ASSERT_EQ(2, vectorWrapper.m_fixedVectorInts.size());
+        ASSERT_EQ(2, vectorWrapper.m_vectorInts.size());
+        vectorWrapper.m_fixedVectorInts[1] = 256;
+        vectorWrapper.m_vectorInts[0] = 5;
+        vectorWrapper.m_vectorInts[1] = 10;
+
+        VectorWrapper* clonedWrapper = m_serializeContext->CloneObject(&vectorWrapper);
+        ASSERT_NE(nullptr, clonedWrapper);
+
+        EXPECT_EQ(vectorWrapper.m_vectorInts.size(), clonedWrapper->m_vectorInts.size());
+        EXPECT_EQ(5, clonedWrapper->m_vectorInts[0]);
+        EXPECT_EQ(10, clonedWrapper->m_vectorInts[1]);
+
+        EXPECT_EQ(vectorWrapper.m_fixedVectorInts.size(), clonedWrapper->m_fixedVectorInts.size());
+        EXPECT_EQ(256, clonedWrapper->m_fixedVectorInts[1]);
+
+        delete clonedWrapper;
+    }
+
+    TEST_F(SerializeVectorWithInitialElementsTest, CloneObjectInplaceTest)
+    {
+        VectorWrapper vectorWrapper;
+        ASSERT_EQ(2, vectorWrapper.m_fixedVectorInts.size());
+        ASSERT_EQ(2, vectorWrapper.m_vectorInts.size());
+        vectorWrapper.m_fixedVectorInts[1] = 256;
+        vectorWrapper.m_vectorInts[0] = 5;
+        vectorWrapper.m_vectorInts[1] = 10;
+
+        VectorWrapper clonedWrapper;
+        m_serializeContext->CloneObjectInplace(clonedWrapper, &vectorWrapper);
+        EXPECT_EQ(vectorWrapper.m_vectorInts.size(), clonedWrapper.m_vectorInts.size());
+        EXPECT_EQ(5, clonedWrapper.m_vectorInts[0]);
+        EXPECT_EQ(10, clonedWrapper.m_vectorInts[1]);
+
+        EXPECT_EQ(vectorWrapper.m_fixedVectorInts.size(), clonedWrapper.m_fixedVectorInts.size());
+        EXPECT_EQ(256, clonedWrapper.m_fixedVectorInts[1]);
+    }
+
+    TEST_F(SerializeVectorWithInitialElementsTest, ObjectStreamTest)
+    {
+        VectorWrapper vectorWrapper;
+        ASSERT_EQ(2, vectorWrapper.m_fixedVectorInts.size());
+        ASSERT_EQ(2, vectorWrapper.m_vectorInts.size());
+        vectorWrapper.m_fixedVectorInts[1] = 256;
+        vectorWrapper.m_vectorInts[0] = 5;
+        vectorWrapper.m_vectorInts[1] = 10;
+
+        AZStd::vector<char> byteBuffer;
+        IO::ByteContainerStream<AZStd::vector<char> > byteStream(&byteBuffer);
+        ObjectStream* byteObjStream = ObjectStream::Create(&byteStream, *m_serializeContext, ObjectStream::ST_XML);
+        byteObjStream->WriteClass(&vectorWrapper);
+        byteObjStream->Finalize();
+
+        byteStream.Seek(0U, AZ::IO::GenericStream::ST_SEEK_BEGIN);
+
+        VectorWrapper loadedWrapper;
+        bool loadSuccess = AZ::Utils::LoadObjectFromStreamInPlace(byteStream, loadedWrapper, m_serializeContext.get());
+        EXPECT_TRUE(loadSuccess);
+
+        EXPECT_EQ(vectorWrapper.m_vectorInts.size(), loadedWrapper.m_vectorInts.size());
+        EXPECT_EQ(5, loadedWrapper.m_vectorInts[0]);
+        EXPECT_EQ(10, loadedWrapper.m_vectorInts[1]);
+
+        EXPECT_EQ(vectorWrapper.m_fixedVectorInts.size(), loadedWrapper.m_fixedVectorInts.size());
+        EXPECT_EQ(256, loadedWrapper.m_fixedVectorInts[1]);
+    }
+
+    TEST_F(SerializeVectorWithInitialElementsTest, DataPatchTest)
+    {
+        VectorWrapper modifiedWrapper;
+        ASSERT_EQ(2, modifiedWrapper.m_fixedVectorInts.size());
+        ASSERT_EQ(2, modifiedWrapper.m_vectorInts.size());
+        modifiedWrapper.m_fixedVectorInts[1] = 256;
+        modifiedWrapper.m_vectorInts[0] = 5;
+        modifiedWrapper.m_vectorInts[1] = 10;
+        modifiedWrapper.m_vectorInts.push_back(15);
+        
+        VectorWrapper initialWrapper;
+        
+        DataPatch patch;
+        patch.Create(&initialWrapper, azrtti_typeid<VectorWrapper>(), &modifiedWrapper, azrtti_typeid<VectorWrapper>(), DataPatch::FlagsMap(), DataPatch::FlagsMap(), m_serializeContext.get());
+        VectorWrapper* patchedWrapper = patch.Apply(&initialWrapper, m_serializeContext.get());
+
+        ASSERT_NE(nullptr, patchedWrapper);
+        EXPECT_EQ(modifiedWrapper.m_vectorInts.size(), patchedWrapper->m_vectorInts.size());
+        EXPECT_EQ(5, patchedWrapper->m_vectorInts[0]);
+        EXPECT_EQ(10, patchedWrapper->m_vectorInts[1]);
+        EXPECT_EQ(15, patchedWrapper->m_vectorInts[2]);
+
+        EXPECT_EQ(modifiedWrapper.m_fixedVectorInts.size(), patchedWrapper->m_fixedVectorInts.size());
+        EXPECT_EQ(256, patchedWrapper->m_fixedVectorInts[1]);
+
+        delete patchedWrapper;
+    }
+    
 
     struct TestLeafNode
     {

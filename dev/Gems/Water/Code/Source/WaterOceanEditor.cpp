@@ -90,7 +90,18 @@ namespace Water
       */      
     void WaterOceanEditor::BuildGameEntity(AZ::Entity* gameEntity)
     {
+        const bool isActive = GetEntity() ? (GetEntity()->GetState() == AZ::Entity::ES_ACTIVE) : false;
+        if (isActive)
+        {
+            m_data.Deactivate();
+        }
+
         gameEntity->CreateComponent<Water::WaterOceanComponent>(m_data);
+
+        if (isActive)
+        {
+            m_data.Activate();
+        }
     }
 
     // called when Editor activates the component when loading a level OR when coming back from game mode

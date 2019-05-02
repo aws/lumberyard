@@ -54,8 +54,7 @@ namespace AzToolsFramework
         class SqlQuery
         {
         public:
-            SqlQuery(const char* tableName, const char* statementName, const char* statement, const char* logName, SqlParam<T>&&... parameters)
-                : m_tableName(tableName),
+            SqlQuery(const char* statementName, const char* statement, const char* logName, SqlParam<T>&&... parameters) :
                 m_statementName(statementName),
                 m_statement(statement),
                 m_logName(logName),
@@ -139,7 +138,6 @@ namespace AzToolsFramework
             }
 
         public:
-            const char* m_tableName;
             const char* m_statementName;
             const char* m_statement;
             const char* m_logName;
@@ -153,9 +151,9 @@ namespace AzToolsFramework
         }
 
         template<typename... T>
-        SqlQuery<T...> MakeSqlQuery(const char* tableName, const char* statementName, const char* statement, const char* logName, SqlParam<T>&&... parameters)
+        SqlQuery<T...> MakeSqlQuery(const char* statementName, const char* statement, const char* logName, SqlParam<T>&&... parameters)
         {
-            return SqlQuery<T...>(tableName, statementName, statement, logName, AZStd::forward<SqlParam<T>>(parameters)...);
+            return SqlQuery<T...>(statementName, statement, logName, AZStd::forward<SqlParam<T>>(parameters)...);
         }
     } // namespace SQLite
 } // namespace AZFramework

@@ -35,6 +35,7 @@ namespace AzToolsFramework
         virtual EntityOrderArray GetChildEntityOrderArray() = 0;
         virtual bool SetChildEntityOrderArray(const EntityOrderArray& entityOrderArray) = 0;
         virtual bool AddChildEntity(const AZ::EntityId& entityId, bool addToBack) = 0;
+        virtual bool AddChildEntityAtPosition(const AZ::EntityId& entityId, const AZ::EntityId& beforeEntity) = 0;
         virtual bool RemoveChildEntity(const AZ::EntityId& entityId) = 0;
         virtual AZ::u64 GetChildEntityIndex(const AZ::EntityId& entityId) = 0;
     };

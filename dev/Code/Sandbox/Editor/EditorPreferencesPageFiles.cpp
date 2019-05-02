@@ -11,12 +11,14 @@
 */
 #include "StdAfx.h"
 #include "EditorPreferencesPageFiles.h"
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 
 
 void CEditorPreferencesPage_Files::Reflect(AZ::SerializeContext& serialize)
 {
     serialize.Class<Files>()
         ->Version(1)
+        ->Field("AutoNumberSlices", &Files::m_autoNumberSlices)
         ->Field("BackupOnSave", &Files::m_backupOnSave)
         ->Field("BackupOnSaveMaxCount", &Files::m_backupOnSaveMaxCount)
         ->Field("TempDirectory", &Files::m_standardTempDirectory)
@@ -48,6 +50,7 @@ void CEditorPreferencesPage_Files::Reflect(AZ::SerializeContext& serialize)
     if (editContext)
     {
         editContext->Class<Files>("Files", "File Preferences")
+            ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Files::m_autoNumberSlices, "Append numeric value to slices", "Should the name of the slice file be automatically numbered. e.g SliceName_001.slice vs. SliceName.slice")
             ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Files::m_backupOnSave, "Backup on Save", "Backup on Save")
             ->DataElement(AZ::Edit::UIHandlers::SpinBox, &Files::m_backupOnSaveMaxCount, "Maximum Save Backups", "Maximum Save Backups")
             ->Attribute(AZ::Edit::Attributes::Min, 1)
@@ -89,6 +92,10 @@ CEditorPreferencesPage_Files::CEditorPreferencesPage_Files()
 
 void CEditorPreferencesPage_Files::OnApply()
 {
+    using namespace AzToolsFramework::SliceUtilities;
+    auto sliceSettings = AZ::UserSettings::CreateFind<SliceUserSettings>(AZ_CRC("SliceUserSettings", 0x055b32eb), AZ::UserSettings::CT_LOCAL);
+    sliceSettings->m_autoNumber = m_files.m_autoNumberSlices;
+
     gSettings.bBackupOnSave = m_files.m_backupOnSave;
     gSettings.backupOnSaveMaxCount = m_files.m_backupOnSaveMaxCount;
     gSettings.bAutoSaveTagPoints = m_files.m_autoSaveTagPoints;
@@ -108,6 +115,10 @@ void CEditorPreferencesPage_Files::OnApply()
 
 void CEditorPreferencesPage_Files::InitializeSettings()
 {
+    using namespace AzToolsFramework::SliceUtilities;
+    auto sliceSettings = AZ::UserSettings::CreateFind<SliceUserSettings>(AZ_CRC("SliceUserSettings", 0x055b32eb), AZ::UserSettings::CT_LOCAL);
+
+    m_files.m_autoNumberSlices = sliceSettings->m_autoNumber;
     m_files.m_backupOnSave = gSettings.bBackupOnSave;
     m_files.m_backupOnSaveMaxCount = gSettings.backupOnSaveMaxCount;
     m_files.m_autoSaveTagPoints = gSettings.bAutoSaveTagPoints;

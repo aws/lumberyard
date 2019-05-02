@@ -278,7 +278,7 @@ namespace EMStudio
                 {
                     MCore::AttributeVector2* vecAttribute = static_cast<MCore::AttributeVector2*>(attribute);
                     AZ::Vector2 vec = vecAttribute->GetValue();
-                    m_tempStringA = AZStd::string::format("(%.2f, %.2f)", vec.GetX(), vec.GetY());
+                    m_tempStringA = AZStd::string::format("(%.2f, %.2f)", static_cast<float>(vec.GetX()), static_cast<float>(vec.GetY()));
                     break;
                 }
 
@@ -287,7 +287,7 @@ namespace EMStudio
                 {
                     MCore::AttributeVector3* vecAttribute = static_cast<MCore::AttributeVector3*>(attribute);
                     AZ::PackedVector3f vec = vecAttribute->GetValue();
-                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", vec.GetX(), vec.GetY(), vec.GetZ());
+                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", static_cast<float>(vec.GetX()), static_cast<float>(vec.GetY()), static_cast<float>(vec.GetZ()));
                     break;
                 }
 
@@ -296,7 +296,7 @@ namespace EMStudio
                 {
                     MCore::AttributeVector4* vecAttribute = static_cast<MCore::AttributeVector4*>(attribute);
                     AZ::Vector4 vec = vecAttribute->GetValue();
-                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f, %.2f)", vec.GetX(), vec.GetY(), vec.GetZ(), vec.GetW());
+                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f, %.2f)", static_cast<float>(vec.GetX()), static_cast<float>(vec.GetY()), static_cast<float>(vec.GetZ()), static_cast<float>(vec.GetW()));
                     break;
                 }
 
@@ -309,10 +309,11 @@ namespace EMStudio
                 }
 
                 // rotation attributes
-                case EMotionFX::AttributeRotation::TYPE_ID:
+                case MCore::AttributeQuaternion::TYPE_ID:
                 {
-                    EMotionFX::AttributeRotation* rotAttribute = static_cast<EMotionFX::AttributeRotation*>(attribute);
-                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", rotAttribute->GetRotationAngles().GetX(), rotAttribute->GetRotationAngles().GetY(), rotAttribute->GetRotationAngles().GetZ());
+                    MCore::AttributeQuaternion* quatAttribute = static_cast<MCore::AttributeQuaternion*>(attribute);
+                    const AZ::Vector3 eulerAngles = quatAttribute->GetValue().ToEuler();
+                    m_tempStringA = AZStd::string::format("(%.2f, %.2f, %.2f)", static_cast<float>(eulerAngles.GetX()), static_cast<float>(eulerAngles.GetY()), static_cast<float>(eulerAngles.GetZ()));
                     break;
                 }
 

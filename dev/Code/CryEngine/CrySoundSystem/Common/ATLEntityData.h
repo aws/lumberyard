@@ -155,4 +155,16 @@ namespace Audio
         size_t nSecondaryPoolUsedSize;  // bytes allocated inside the Secondary Memory Pool used by an AudioSystemImplementation
         size_t nSecondaryPoolAllocations; // number of allocations performed in the Secondary Memory Pool used by an AudioSystemImplementation
     };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    struct AudioImplMemoryPoolInfo
+    {
+        char m_poolName[64];            // friendly name of the pool
+        AZ::s32 m_poolId = -1;          // -1 is invalid/default
+        AZ::u32 m_memoryReserved = 0;   // size of the pool in bytes
+        AZ::u32 m_memoryUsed = 0;       // amount of the pool used in bytes
+        AZ::u32 m_peakUsed = 0;         // peak used size in bytes
+        AZ::u32 m_numAllocs = 0;        // number of alloc calls
+        AZ::u32 m_numFrees = 0;         // number of free calls
+    };
 } // namespace Audio

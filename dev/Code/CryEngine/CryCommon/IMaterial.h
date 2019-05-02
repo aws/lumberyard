@@ -81,7 +81,7 @@ enum EMaterialFlags
     MTL_FLAG_NOTINSTANCED               = 0x1000,   // Do not instantiate this material.
     MTL_FLAG_COLLISION_PROXY            = 0x2000,   // This material is the collision proxy.
     MTL_FLAG_SCATTER                    = 0x4000,   // Use scattering for this material
-    MTL_FLAG_REQUIRE_FORWARD_RENDERING  = 0x8000,   // This material has to be rendered in foward rendering passes (alpha/additive blended)
+    MTL_FLAG_REQUIRE_FORWARD_RENDERING  = 0x8000,   // This material has to be rendered in forward rendering passes (alpha/additive blended)
     MTL_FLAG_NON_REMOVABLE              = 0x10000,  // Material with this flag once created are never removed from material manager (Used for decal materials, this flag should not be saved).
     MTL_FLAG_HIDEONBREAK                = 0x20000,  // Non-physicalized subsets with such materials will be removed after the object breaks
     MTL_FLAG_UIMATERIAL                 = 0x40000,  // Used for UI in Editor. Don't need show it DB.
@@ -92,11 +92,12 @@ enum EMaterialFlags
     MTL_FLAG_DELETE_PENDING             = 0x800000, // Internal use only
     MTL_FLAG_BLEND_TERRAIN              = 0x1000000,
     MTL_FLAG_IS_TERRAIN                 = 0x2000000,// indication to the loader - Terrain type
-    MTL_FLAG_IS_SKY                     = 0x4000000 // indication to the loader - Sky type
+    MTL_FLAG_IS_SKY                     = 0x4000000,// indication to the loader - Sky type
+    MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH= 0x8000000 // high vertex shading quality behaves more accurately with fog volumes.
 };
 
 #define MTL_FLAGS_SAVE_MASK (MTL_FLAG_WIRE | MTL_FLAG_2SIDED | MTL_FLAG_ADDITIVE |  MTL_FLAG_LIGHTING | \
-                             MTL_FLAG_NOSHADOW | MTL_FLAG_MULTI_SUBMTL | MTL_FLAG_SCATTER | MTL_FLAG_REQUIRE_FORWARD_RENDERING | MTL_FLAG_HIDEONBREAK | MTL_FLAG_UIMATERIAL | MTL_64BIT_SHADERGENMASK | MTL_FLAG_REQUIRE_NEAREST_CUBEMAP | MTL_FLAG_CONSOLE_MAT | MTL_FLAG_BLEND_TERRAIN)
+                             MTL_FLAG_NOSHADOW | MTL_FLAG_MULTI_SUBMTL | MTL_FLAG_SCATTER | MTL_FLAG_REQUIRE_FORWARD_RENDERING | MTL_FLAG_FOG_VOLUME_SHADING_QUALITY_HIGH | MTL_FLAG_HIDEONBREAK | MTL_FLAG_UIMATERIAL | MTL_64BIT_SHADERGENMASK | MTL_FLAG_REQUIRE_NEAREST_CUBEMAP | MTL_FLAG_CONSOLE_MAT | MTL_FLAG_BLEND_TERRAIN)
 
 // Post effects flags
 enum EPostEffectFlags

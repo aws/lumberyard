@@ -37,5 +37,9 @@ namespace AZ
 
 //Platform specific Utils go in an .h.inl file here
 #if defined(AZ_RESTRICTED_PLATFORM)
-#include AZ_RESTRICTED_FILE(Utils_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/Utils_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/Utils_h_provo.inl"
+    #endif
 #endif

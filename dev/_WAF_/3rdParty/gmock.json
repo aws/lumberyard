@@ -61,20 +61,6 @@
                 "libgmock_main.a"
             ]
         },
-        "android_armv7_gcc": {
-            "libpath_debug": [
-                "lib/android/armv7_gcc/Debug"
-            ],
-            "libpath_release": [
-                "lib/android/armv7_gcc/Release"
-            ],
-            "gmock/lib": [
-                "libgmock.a"
-            ],
-            "gmock_main/lib": [
-                "libgmock_main.a"
-            ]
-        },
         "android_armv7_clang": {
             "libpath_debug": [
                 "lib/android/armv7_clang/Debug"
@@ -115,6 +101,7 @@
                 "libgmock.a"
             ]
         },
+        "orbis_vs2017": "@orbis_vs2015",
         "linux_x64": {
             "libpath_debug": [
                 "lib/linux/debug"

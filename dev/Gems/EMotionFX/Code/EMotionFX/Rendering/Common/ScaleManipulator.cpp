@@ -51,8 +51,8 @@ namespace MCommon
         mBaseRadius     = mSize / 15.0f;
 
         // positions for the plane selectors
-        mFirstPlaneSelectorPos  = mScaledSize * 0.3f;
-        mSecPlaneSelectorPos    = mScaledSize * 0.6f;
+        mFirstPlaneSelectorPos  = mScaledSize * 0.3;
+        mSecPlaneSelectorPos    = mScaledSize * 0.6;
 
         // set the bounding volumes of the axes selection
         mXAxisAABB.SetMax(mPosition + mSignX * AZ::Vector3(mScaledSize.GetX() + mArrowLength, mBaseRadius, mBaseRadius));
@@ -64,11 +64,11 @@ namespace MCommon
 
         // set bounding volumes for the plane selectors
         mXYPlaneAABB.SetMax(mPosition + AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, mSecPlaneSelectorPos.GetY() * mSignY, mBaseRadius * mSignZ));
-        mXYPlaneAABB.SetMin(mPosition + 0.3f * AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, mSecPlaneSelectorPos.GetY() * mSignY, 0) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
+        mXYPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, mSecPlaneSelectorPos.GetY() * mSignY, 0) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
         mXZPlaneAABB.SetMax(mPosition + AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, mBaseRadius * mSignY, mSecPlaneSelectorPos.GetZ() * mSignZ));
-        mXZPlaneAABB.SetMin(mPosition + 0.3f * AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, 0, mSecPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
+        mXZPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(mSecPlaneSelectorPos.GetX() * mSignX, 0, mSecPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
         mYZPlaneAABB.SetMax(mPosition + AZ::Vector3(mBaseRadius * mSignX, mSecPlaneSelectorPos.GetY() * mSignY, mSecPlaneSelectorPos.GetZ() * mSignZ));
-        mYZPlaneAABB.SetMin(mPosition + 0.3f * AZ::Vector3(0, mSecPlaneSelectorPos.GetY() * mSignY, mSecPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
+        mYZPlaneAABB.SetMin(mPosition + 0.3 * AZ::Vector3(0, mSecPlaneSelectorPos.GetY() * mSignY, mSecPlaneSelectorPos.GetZ() * mSignZ) - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));
 
         // set bounding volume for the box selector
         mXYZBoxAABB.SetMin(mPosition - AZ::Vector3(mBaseRadius * mSignX, mBaseRadius * mSignY, mBaseRadius * mSignZ));

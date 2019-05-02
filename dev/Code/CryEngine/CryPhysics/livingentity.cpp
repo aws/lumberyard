@@ -2313,7 +2313,8 @@ retry_without_ground_sync:
                                                 {
                                                     ai.impulse.normalize() *= fabs_tpl(vrel) * m_mass * 0.5f;
                                                 }
-                                                if ((uFlags & (pef_pushable_by_players | geom_no_coll_response)) == pef_pushable_by_players)
+                                                // don't push rigid bodies that have no collision response 
+                                                if (!(pPrecompParts[j1].partflags & geom_no_coll_response))
                                                 {
                                                     vel += ai.impulse * fMassInv;
                                                 }
@@ -3329,8 +3330,6 @@ void CLivingEntity::Step_HandleWasFlying(Vec3& vel, int& bFlying, const Vec3& ax
         }
     }
 }
-
-#pragma optimize("", off)
 
 Vec3 CLivingEntity::GetGravity() const
 {

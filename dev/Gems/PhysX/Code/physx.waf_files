@@ -6,8 +6,67 @@
         ]
     },
     "auto": {
+        "Include": [
+            "Include/PhysX/SystemComponentBus.h",
+            "Include/PhysX/ColliderComponentBus.h",
+            "Include/PhysX/NativeTypeIdentifiers.h",
+            "Include/PhysX/MeshColliderComponentBus.h",
+            "Include/PhysX/ConfigurationBus.h",
+            "Include/PhysX/MeshAsset.h",
+            "Include/PhysX/HeightFieldAsset.h",
+            "Include/PhysX/UserDataTypes.h",
+            "Include/PhysX/UserDataTypes.inl",
+            "Include/PhysX/Utils.h",
+            "Include/PhysX/Utils.inl",
+            "Include/PhysX/MathConversion.h",
+            "Include/PhysX/ComponentTypeIds.h"
+        ],
+        "Source/Components": [
+            "Source/SystemComponent.cpp",
+            "Source/SystemComponent.h",
+            "Source/TerrainComponent.cpp",
+            "Source/TerrainComponent.h",
+            "Source/RigidBodyComponent.cpp",
+            "Source/RigidBodyComponent.h",
+            "Source/BaseColliderComponent.cpp",
+            "Source/BaseColliderComponent.h",
+            "Source/MeshColliderComponent.cpp",
+            "Source/MeshColliderComponent.h",
+            "Source/BoxColliderComponent.h",
+            "Source/BoxColliderComponent.cpp",
+            "Source/SphereColliderComponent.h",
+            "Source/SphereColliderComponent.cpp",
+            "Source/CapsuleColliderComponent.h",
+            "Source/CapsuleColliderComponent.cpp"
+        ],
+        "Source/Pipeline": [
+            "Source/Pipeline/MeshAssetHandler.cpp",
+            "Source/Pipeline/MeshAssetHandler.h",
+            "Source/Pipeline/HeightFieldAssetHandler.cpp",
+            "Source/Pipeline/HeightFieldAssetHandler.h"
+        ],
         "Source": [
-            "Source/PhysXModule.cpp"
+            "Source/Module.cpp",
+            "Source/Utils.h",
+            "Source/Utils.cpp",
+            "Source/World.cpp",
+            "Source/World.h",
+            "Source/RigidBody.cpp",
+            "Source/RigidBody.h",
+            "Source/RigidBodyStatic.cpp",
+            "Source/RigidBodyStatic.h",
+            "Source/AzPhysXCpuDispatcher.cpp",
+            "Source/AzPhysXCpuDispatcher.h",
+            "Source/AzPhysXJob.cpp",
+            "Source/AzPhysXJob.h",
+            "Source/Collision.cpp",
+            "Source/Collision.h",
+            "Source/Shape.h",
+            "Source/Shape.cpp",
+            "Source/Material.cpp",
+            "Source/Material.h",
+            "Source/Joint.cpp",
+            "Source/Joint.h"
         ]
     }
 }

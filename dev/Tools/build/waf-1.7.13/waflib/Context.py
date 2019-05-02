@@ -340,7 +340,7 @@ class Context(ctx):
 		tmp = []
 		if isinstance(cmd, list):
 			for x in cmd:
-				if isinstance(x,waflib.Node.Nod3):
+				if isinstance(x,waflib.Node.Node):
 					tmp.append(x.abspath())
 				else:
 					tmp.append(x)

@@ -56,7 +56,6 @@ private:
         bool m_freezeReadOnly;
         bool m_frozenSelectable;
         SEditorSettings::ConsoleColorTheme m_consoleBackgroundColorTheme;
-        bool m_showDashboard;
         bool m_autoLoadLastLevel;
         bool m_bShowTimeInConsole;
         int m_toolbarIconSize;
@@ -73,11 +72,20 @@ private:
         bool m_enableLegacyUIInitialValue;
     };
 
+    struct Messaging
+    {
+        AZ_TYPE_INFO(Messaging, "{A6AD87CB-E905-409B-A2BF-C43CDCE63B0C}")
+        
+        bool m_showDashboard;
+        bool m_showCircularDependencyError;
+    };
+
     struct Undo
     {
         AZ_TYPE_INFO(Undo, "{A3AC0728-F132-4BF2-B122-8A631B636E81}")
 
         int m_undoLevels;
+        bool m_undoSliceOverrideSaveValue;
     };
 
     struct DeepSelection
@@ -85,6 +93,7 @@ private:
         AZ_TYPE_INFO(DeepSelection, "{225616BF-66DE-41EC-9FDD-F5A104112547}")
 
         float m_deepSelectionRange;
+        bool m_stickDuplicate;
     };
 
     struct VertexSnapping
@@ -102,11 +111,20 @@ private:
         bool m_enableMetricsTracking;
     };
 
+    struct SliceSettings
+    {
+        AZ_TYPE_INFO(MetricsSettings, "{8505CCC1-874C-4389-B51A-B9E5FF70CFDA}")
+
+        bool m_slicesDynamicByDefault;
+    };
+
     GeneralSettings m_generalSettings;
+    Messaging m_messaging;
     Undo m_undo;
     DeepSelection m_deepSelection;
     VertexSnapping m_vertexSnapping;
     MetricsSettings m_metricsSettings;
+    SliceSettings m_sliceSettings;
 };
 
 static const char* EditorPreferencesGeneralRestoreViewportCameraSettingName = "Restore Viewport Camera on Game Mode Exit";

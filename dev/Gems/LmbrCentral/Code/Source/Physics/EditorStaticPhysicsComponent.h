@@ -38,6 +38,12 @@ namespace LmbrCentral
     public:
         AZ_EDITOR_COMPONENT(EditorStaticPhysicsComponent, AzFramework::EditorStaticPhysicsComponentTypeId, EditorPhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
+        
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+        {
+            EditorPhysicsComponent::GetProvidedServices(provided);
+            provided.push_back(AZ_CRC("StaticPhysicsService", 0x20ca6e80));
+        }
 
         EditorStaticPhysicsComponent() = default;
         ~EditorStaticPhysicsComponent() override = default;

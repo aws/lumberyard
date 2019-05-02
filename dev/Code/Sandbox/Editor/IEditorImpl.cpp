@@ -600,6 +600,7 @@ void CEditorImpl::SetGameEngine(CGameEngine* ge)
 
     m_templateRegistry.LoadTemplates("Editor");
     m_pObjectManager->LoadClassTemplates("Editor");
+    m_pObjectManager->RegisterCVars();
 
     m_pMaterialManager->Set3DEngine();
     m_pAnimationContext->Init();
@@ -2070,6 +2071,17 @@ bool CEditorImpl::ClearLastUndoSteps(int steps)
     }
 
     m_pUndoManager->ClearUndoStack(steps);
+    return true;
+}
+
+bool CEditorImpl::ClearRedoStack()
+{
+    if (!m_pUndoManager || !m_pUndoManager->IsHaveRedo())
+    {
+        return false;
+    }
+
+    m_pUndoManager->ClearRedoStack();
     return true;
 }
 

@@ -74,6 +74,7 @@ def load_darwin_common_settings(conf):
     v['CFLAGS'] += [ '-isysroot' + sdk_path, ]
     v['CXXFLAGS'] += [ '-isysroot' + sdk_path, ]
     v['LINKFLAGS'] += [ '-isysroot' + sdk_path, ]
+    v['ISYSROOT'] = sdk_path
 
     # Since we only support a single darwin target (clang-64bit), we specify all tools directly here    
     v['AR'] = 'ar'
@@ -297,6 +298,15 @@ def register_darwin_external_ly_identity(self, configuration):
     ly_identity_base_path = self.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity')
     include_path = os.path.join(ly_identity_base_path, 'include')
     stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, configuration)
+    shlib_path = os.path.join(ly_identity_base_path, 'bin', platform, configuration)
+
+    self.register_3rd_party_uselib('LyIdentity_shared',
+                                   target_platform,
+                                   includes=[include_path],
+                                   defines=['LINK_LY_IDENTITY_DYNAMICALLY'],
+                                   importlib=['libLyIdentity_shared.dylib'],
+                                   sharedlibpath=[shlib_path],
+                                   sharedlib=['libLyIdentity_shared.dylib'])
 
     self.register_3rd_party_uselib('LyIdentity_static',
                                    target_platform,
@@ -320,12 +330,29 @@ def register_darwin_external_ly_metrics(self, configuration):
     ly_identity_base_path = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics')
     include_path = os.path.join(ly_identity_base_path, 'include')
     stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, configuration)
+    shlib_path = os.path.join(ly_identity_base_path, 'bin', platform, configuration)
+
+    self.register_3rd_party_uselib('LyMetricsShared_shared',
+                                target_platform,
+                                includes=[include_path],
+                                defines=['LINK_LY_METRICS_DYNAMICALLY'],
+                                importlib=['libLyMetricsShared_shared.dylib'],
+                                sharedlibpath=[shlib_path],
+                                sharedlib=['libLyMetricsShared_shared.dylib'])
 
     self.register_3rd_party_uselib('LyMetricsShared_static',
                                    target_platform,
                                    includes=[include_path],
                                    libpath=[stlib_path],
                                    lib=['libLyMetricsShared_static.a'])
+
+    self.register_3rd_party_uselib('LyMetricsProducer_shared',
+                                   target_platform,
+                                   includes=[include_path],
+                                   defines=['LINK_LY_METRICS_PRODUCER_DYNAMICALLY'],
+                                   importlib=['libLyMetricsProducer_shared.dylib'],
+                                   sharedlibpath=[shlib_path],
+                                   sharedlib=['libLyMetricsProducer_shared.dylib'])
 
     self.register_3rd_party_uselib('LyMetricsProducer_static',
                                    target_platform,

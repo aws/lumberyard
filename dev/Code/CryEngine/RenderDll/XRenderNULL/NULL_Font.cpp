@@ -41,11 +41,15 @@ void CNULLRenderer::FontSetTexture(int nTexId, int nFilterMode)
 {
 }
 
-int CNULLRenderer::FontCreateTexture(int Width, int Height, byte* pData, ETEX_Format eTF, bool genMips)
+int CNULLRenderer::FontCreateTexture(int Width, int Height, byte* pData, ETEX_Format eTF, bool genMips, const char* textureName)
 {
     return CTextureManager::Instance()->GetNoTexture()->GetTextureID();
 }
 
 void CNULLRenderer::DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, int nVerts, int nInds, const PublicRenderPrimitiveType nPrimType)
+{
+}
+
+void CNULLRenderer::DrawDynUiPrimitiveList(DynUiPrimitiveList& primitives, int totalNumVertices, int totalNumIndices)
 {
 }

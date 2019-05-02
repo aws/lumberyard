@@ -322,8 +322,6 @@ def get_output_folder_name(self, platform, configuration):
         path = self.options.out_folder_ios
     elif platform == 'appletv':
         path = self.options.out_folder_appletv
-    elif platform == 'android_armv7_gcc':
-        path = self.options.out_folder_android_armv7_gcc
     elif platform == 'android_armv7_clang':
         path = self.options.out_folder_android_armv7_clang
     elif platform == 'android_armv8_clang':
@@ -366,7 +364,7 @@ def get_binfolder_defines(self):
 
 ###############################################################################
 
-lmbr_override_target_map = {'SetupAssistant', 'SetupAssistantBatch', 'ProjectConfigurator', 'lmbr', 'Lyzard'}
+lmbr_override_target_map = {'SetupAssistant', 'SetupAssistantBatch'}
 
 @conf
 def get_output_folders(self, platform, configuration, ctx=None, target=None):
@@ -418,6 +416,9 @@ def get_standard_host_output_folders(self):
     host_targets = self.get_platform_alias(host)
     if host_targets:
         for target in host_targets:
+            if target not in self.get_supported_platforms():
+                continue
+
             output_folder = get_output_folder_name(self, target, 'profile')
             node = launch_node.make_node(output_folder)
             output_nodes.append(node)

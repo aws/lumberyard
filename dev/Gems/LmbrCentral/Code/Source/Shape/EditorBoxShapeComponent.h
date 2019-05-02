@@ -18,6 +18,7 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Manipulators/LinearManipulator.h>
+#include <AzToolsFramework/Manipulators/BoxManipulators.h>
 
 namespace LmbrCentral
 {
@@ -25,6 +26,7 @@ namespace LmbrCentral
         : public EditorBaseShapeComponent
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
+        , private AzToolsFramework::BoxManipulatorHandler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorBoxShapeComponent, EditorBoxShapeComponentTypeId, EditorBaseShapeComponent);
@@ -46,9 +48,6 @@ namespace LmbrCentral
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
-        // AZ::TransformNotificationBus::Handler
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-
     private:
         AZ_DISABLE_COPY_MOVE(EditorBoxShapeComponent)
         
@@ -59,17 +58,21 @@ namespace LmbrCentral
         // AzFramework::EntityDebugDisplayEventBus
         void DisplayEntity(bool& handled) override;
 
-        // Manipulators
-        void CreateManipulators();
-        void DestroyManipulators();
-        void UpdateManipulators();
+        // BoxManipulatorHandler
+        AZ::Vector3 GetDimensions() override;
+        void SetDimensions(const AZ::Vector3& dimensions) override;
+        AZ::Transform GetCurrentTransform() override;
 
         void OnMouseMoveManipulator(
-            const AzToolsFramework::LinearManipulator::Action& action, const AZ::Vector3& axis);
+            const AzToolsFramework::LinearManipulator::Action& action);
+
+        // AZ::TransformNotificationBus::Handler
+        void OnTransformChanged(
+            const AZ::Transform& /*local*/, const AZ::Transform& /*world*/);
 
         void ConfigurationChanged();
 
         BoxShape m_boxShape; ///< Stores underlying box representation for this component.
-        AZStd::array<AZStd::unique_ptr<AzToolsFramework::LinearManipulator>, 6> m_linearManipulators; ///< Manipulators for editing box size.
+        AzToolsFramework::BoxManipulator m_boxManipulator; ///< Manipulator for editing box size.
     };
 } // namespace LmbrCentral

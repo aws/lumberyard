@@ -1,0 +1,21 @@
+{
+    "none": {
+        "Source": [
+            "Source/StdAfx.cpp",
+            "Source/StdAfx.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/RenderToTexture/RenderToTextureBus.h"
+        ],
+        "Source": [
+            "Source/RenderToTextureModule.cpp",
+            "Source/RenderToTextureModule.h",
+            "Source/RenderToTextureComponent.cpp",
+            "Source/RenderToTextureComponent.h",
+            "Source/RenderToTextureBase.cpp",
+            "Source/RenderToTextureBase.h"
+        ]
+    }
+}

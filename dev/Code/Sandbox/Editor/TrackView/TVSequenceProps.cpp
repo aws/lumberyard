@@ -17,7 +17,6 @@
 #include "StdAfx.h"
 #include "TVSequenceProps.h"
 #include "IMovieSystem.h"
-#include "TrackViewUndo.h"
 #include "TrackViewSequence.h"
 #include "AnimationContext.h"
 
@@ -226,7 +225,12 @@ void CTVSequenceProps::UpdateSequenceProps(const QString& name)
         seqFlags &= (~IAnimSequence::eSeqFlags_EarlyMovieUpdate);
     }
 
-    m_pSequence->SetFlags((IAnimSequence::EAnimSequenceFlags)seqFlags);
+    if (static_cast<IAnimSequence::EAnimSequenceFlags>(seqFlags) != m_pSequence->GetFlags())
+    {
+        AzToolsFramework::ScopedUndoBatch undoBatch("Change TrackView Sequence Flags");
+        m_pSequence->SetFlags(static_cast<IAnimSequence::EAnimSequenceFlags>(seqFlags));
+        undoBatch.MarkEntityDirty(m_pSequence->GetSequenceComponentEntityId());
+    }
 }
 
 void CTVSequenceProps::OnOK()
@@ -245,18 +249,9 @@ void CTVSequenceProps::OnOK()
 
     if (m_pSequence != nullptr)
     {
-        if (m_pSequence->GetSequenceType() == SequenceType::Legacy)
-        {
-            CUndo undo("Change TrackView Sequence Settings");
-            CUndo::Record(new CUndoSequenceSettings(m_pSequence));
-            UpdateSequenceProps(name);
-        }
-        else
-        {
-            AzToolsFramework::ScopedUndoBatch undoBatch("Change TrackView Sequence Settings");
-            UpdateSequenceProps(name);
-            undoBatch.MarkEntityDirty(m_pSequence->GetSequenceComponentEntityId());
-        }
+        AzToolsFramework::ScopedUndoBatch undoBatch("Change TrackView Sequence Settings");
+        UpdateSequenceProps(name);
+        undoBatch.MarkEntityDirty(m_pSequence->GetSequenceComponentEntityId());
     }
 
     accept();

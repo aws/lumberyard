@@ -34,6 +34,7 @@
 #include <AzToolsFramework/UI/LegacyFramework/Core/EditorFrameworkAPI.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzFramework/Asset/AssetSystemBus.h>
+#include <AzCore/Script/ScriptTimePoint.h>
 
 #pragma once
 
@@ -94,6 +95,8 @@ namespace LUAEditor
         virtual void Activate();
         virtual void Deactivate();
         //////////////////////////////////////////////////////////////////////////
+
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
 
         //////////////////////////////////////////////////////////////////////////
         // EditorFramework::CoreMessageBus::Handler
@@ -258,6 +261,10 @@ namespace LUAEditor
         virtual void AssetOpenRequested(const AZStd::string& assetId, bool errorOnNotFound);
         void OpenAssetByPhysicalPath(const char* physicalPath);
 
+        void ProcessFailedAssetMessages();
+        AZStd::mutex m_failedAssetMessagesMutex; // protects m_failedAssets from draining and adding entries into it from different threads at the same time
+        AZStd::queue<AZStd::string> m_failedAssets;
+
         // the asset manager will invoke this when the user indicates they want to make a new asset of a given type.
         //virtual void AssetNewRequested(const AzToolsFramework::RegisteredAssetType& descriptor);
         //////////////////////////////////////////////////////////////////////////
@@ -293,6 +300,8 @@ namespace LUAEditor
         void SaveLayout();
 
     private:
+
+        AZStd::vector<CompilationErrorData> m_errorData;
 
         // utility
         void ProvisionalShowAndFocus(bool forceShow = false, bool forcedHide = false);

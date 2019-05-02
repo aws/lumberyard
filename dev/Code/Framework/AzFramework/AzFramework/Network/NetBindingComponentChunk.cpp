@@ -116,7 +116,7 @@ namespace AzFramework
                         EBUS_EVENT_RESULT(spawnInfo.m_owningContextId, NetBindingSystemBus, GetCurrentContextSequence);
 
                         EBUS_EVENT_ID_RESULT(sliceInfo, m_bindingComponent->GetEntityId(), EntityIdContextQueryBus, GetOwningSlice);
-                        bool isDynamicSliceEntity = sliceInfo.first && sliceInfo.second;
+                        bool isDynamicSliceEntity = sliceInfo.IsValid();
 
                         isProceduralEntity = !m_bindingComponent->IsLevelSliceEntity() && !isDynamicSliceEntity;
                     }
@@ -135,14 +135,14 @@ namespace AzFramework
                     else
                     {
                         // write slice info
-                        if (sliceInfo.first)
+                        if (sliceInfo.IsValid())
                         {
-                            AZ::Data::AssetId sliceAssetId = sliceInfo.first->GetSliceAsset().GetId();
+                            AZ::Data::AssetId sliceAssetId = sliceInfo.GetReference()->GetSliceAsset().GetId();
                             spawnInfo.m_sliceAssetId = AZStd::make_pair(sliceAssetId.m_guid, sliceAssetId.m_subId);
                         }
-                        if (sliceInfo.second)
+                        if (sliceInfo.GetInstance())
                         {
-                            spawnInfo.m_sliceInstanceId = sliceInfo.second->GetId();
+                            spawnInfo.m_sliceInstanceId = sliceInfo.GetInstance()->GetId();
                         }
 
                         AZ::EntityId staticEntityId;

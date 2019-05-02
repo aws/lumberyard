@@ -464,6 +464,8 @@ enum EFRAMEWORKLISTENERPRIORITY
 struct IGameFrameworkListener
 {
     virtual ~IGameFrameworkListener() {}
+    //! Called before frame is created.
+    virtual void OnPreUpdate() { }
     //! Called after Render, before PostUpdate.
     virtual void OnPostUpdate(float fDeltaTime) { }
     //! Called before the game is saved.
@@ -580,7 +582,7 @@ struct IGameFramework
 
     // Description:
     //    Marks the game started.
-    virtual void MarkGameStarted() = 0;
+    virtual void MarkGameStarted(bool started) = 0;
 
     // Description:
     //      Check if the game is allowed to start the actual gameplay

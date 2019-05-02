@@ -194,8 +194,8 @@ inline void* CryRealloc(void* memblock, size_t size, size_t& allocated, size_t& 
 
 inline size_t CryFree(void* p, size_t /*alignment*/)
 {
-    size_t size = CrySystemCrtSize(p);
-    CryModuleFree(p);
+    size_t size = AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().AllocationSize(p);
+    AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(p, size);
     return size;
 }
 

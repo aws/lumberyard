@@ -15,6 +15,17 @@
 
 namespace LegacyTerrain
 {
+    class CryTerrainRequests
+        : public AZ::EBusTraits
+    {
+    public:
+        /**
+         * Requests a refresh of the terrain. It will be broadcast via the LegacyTerrainNotificationBus
+         */
+        virtual void RequestTerrainUpdate() = 0;
+    };
+    using CryTerrainRequestBus = AZ::EBus<CryTerrainRequests>;
+
     /**
      * Requests for legacy terrain.
      */

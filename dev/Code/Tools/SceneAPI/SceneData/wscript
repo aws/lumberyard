@@ -49,7 +49,7 @@ def build(bld):
         test_all_file_list          = 'SceneData_testing.waf_files',
     )
 
-    for p in bld.env['RESTRICTED_PLATFORMS']:
-        kw['file_list'].append('Rules/{0}/SceneData_tools_{0}.waf_files'.format(p))
+    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
+        kw['file_list'].append('Rules/{0}/SceneData_tools_{1}.waf_files'.format(p0, p1))
 
     bld.CryEngineModule(**kw)

@@ -36,7 +36,8 @@ int32 m_cSizeVF[eVF_Max] =
     0, //sizeof(SVF_P2F_T4F_T4F_C4F)
 
     sizeof(SVF_P2S_N4B_C4B_T1F),
-    sizeof(SVF_P3F_C4B_T2S)
+    sizeof(SVF_P3F_C4B_T2S),
+    sizeof(SVF_P2F_C4B_T2F_F4B)
 };
 
 // Legacy table copied from RenderMesh.cpp
@@ -122,7 +123,12 @@ SBufInfoTable m_cBufInfoTable[eVF_Max] =
         OOFS(SVF_P3F_C4B_T2S, st),
         OOFS(SVF_P3F_C4B_T2S, color.dcolor),
         -1
-    }
+    },
+    {     // SVF_P2F_C4B_T2F_F4B
+        OOFS(SVF_P2F_C4B_T2F_F4B, st),
+        OOFS(SVF_P2F_C4B_T2F_F4B, color.dcolor),
+        -1
+    },
 };
 #undef OOFS
 
@@ -402,7 +408,7 @@ TEST_P(VertexFormatTest, D3DVertexDeclarations_MatchesLegacy)
     // eVF_P2F_T4F_T4F_C4F doesn't actually exist in the engine anymore
     // ignore these cases
     // Also ignore eVF_P2S_N4B_C4B_T1F: the T1F attribute has a POSITION semantic name in the legacy declaration, even though both the engine and shader treat it as a TEXCOORD (despite the fact that it is eventually used for a position)
-    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F)
+    if (eVF != eVF_W4B_I4S && eVF != eVF_C4B_C4B && eVF != eVF_P3F_P3F_I4B && eVF != eVF_P2F_T4F_T4F_C4F && eVF != eVF_P2S_N4B_C4B_T1F && eVF != eVF_P2F_C4B_T2F_F4B)
     {
         AZStd::vector<D3D11_INPUT_ELEMENT_DESC> actual = GetD3D11Declaration(AZ::Vertex::Format(eVF));
         matchesLegacy = DeclarationsAreEqual(actual, expected);

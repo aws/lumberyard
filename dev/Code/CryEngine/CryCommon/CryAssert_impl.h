@@ -24,7 +24,11 @@
 #if defined(USE_CRY_ASSERT)
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYASSERT_IMPL_H_SECTION_1
-#include AZ_RESTRICTED_FILE(CryAssert_impl_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAssert_impl_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAssert_impl_h_provo.inl"
+    #endif
 #endif
 
 #if defined(APPLE)
@@ -45,7 +49,11 @@
 
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION CRYASSERT_IMPL_H_SECTION_2
-#include AZ_RESTRICTED_FILE(CryAssert_impl_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/CryAssert_impl_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/CryAssert_impl_h_provo.inl"
+    #endif
 #elif defined(WIN32)
 
 //-----------------------------------------------------------------------------------------------------

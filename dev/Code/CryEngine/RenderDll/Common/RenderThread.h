@@ -38,7 +38,11 @@
 #define RENDER_THREAD_NAME "RenderThread"
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_H_SECTION_1
-#include AZ_RESTRICTED_FILE(RenderThread_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_h_provo.inl"
+    #endif
 #endif
 #if defined(AZ_RESTRICTED_SECTION_IMPLEMENTED)
 #undef AZ_RESTRICTED_SECTION_IMPLEMENTED
@@ -136,6 +140,7 @@ enum ERenderCommand
     eRC_SetStencilState,
     eRC_SelectGPU,
     eRC_DrawDynVB,
+    eRC_DrawDynVBUI,
     eRC_Draw2dImage,
     eRC_Draw2dImageStretchMode,
     eRC_Push2dImage,
@@ -262,7 +267,11 @@ struct SRenderThread
     threadID m_nMainThread;
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_H_SECTION_2
-#include AZ_RESTRICTED_FILE(RenderThread_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_h_provo.inl"
+    #endif
 #endif
     HRESULT m_hResult;
     //  Confetti BEGIN: Igor Lobanchikov
@@ -595,7 +604,11 @@ struct SRenderThread
     void    RC_ResetDevice();
 #if defined(AZ_RESTRICTED_PLATFORM)
 #define AZ_RESTRICTED_SECTION RENDERTHREAD_H_SECTION_3
-#include AZ_RESTRICTED_FILE(RenderThread_h, AZ_RESTRICTED_PLATFORM)
+    #if defined(AZ_PLATFORM_XENIA)
+        #include "Xenia/RenderThread_h_xenia.inl"
+    #elif defined(AZ_PLATFORM_PROVO)
+        #include "Provo/RenderThread_h_provo.inl"
+    #endif
 #endif
     void    RC_PreloadTextures();
     void    RC_ReadFrameBuffer(unsigned char* pRGB, int nImageX, int nSizeX, int nSizeY, ERB_Type eRBType, bool bRGBA, int nScaledX, int nScaledY);
@@ -621,6 +634,7 @@ struct SRenderThread
     void    RC_ReleaseVB(buffer_handle_t nID);
     void    RC_ReleaseIB(buffer_handle_t nID);
     void    RC_DrawDynVB(SVF_P3F_C4B_T2F* pBuf, uint16* pInds, int nVerts, int nInds, const PublicRenderPrimitiveType nPrimType);
+    void    RC_DrawDynUiPrimitiveList(IRenderer::DynUiPrimitiveList& primitives, int totalNumVertices, int totalNumIndices);
     void    RC_Draw2dImage(float xpos, float ypos, float w, float h, CTexture* pTexture, float s0, float t0, float s1, float t1, float angle, float r, float g, float b, float a, float z);
     void    RC_Draw2dImageStretchMode(bool bStretch);
     void    RC_Push2dImage(float xpos, float ypos, float w, float h, CTexture* pTexture, float s0, float t0, float s1, float t1, float angle, float r, float g, float b, float a, float z, float stereoDepth);

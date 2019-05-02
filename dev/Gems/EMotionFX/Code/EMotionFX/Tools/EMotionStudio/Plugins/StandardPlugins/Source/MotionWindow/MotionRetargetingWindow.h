@@ -37,57 +37,25 @@ namespace EMStudio
         : public QWidget
     {
         Q_OBJECT
-                 MCORE_MEMORYOBJECTCATEGORY(MotionRetargetingWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
+        MCORE_MEMORYOBJECTCATEGORY(MotionRetargetingWindow, MCore::MCORE_DEFAULT_ALIGNMENT, MEMCATEGORY_STANDARDPLUGINS);
 
     public:
         MotionRetargetingWindow(QWidget* parent, MotionWindowPlugin* motionWindowPlugin);
         ~MotionRetargetingWindow();
 
         void Init();
-        //void UpdateSelection();
-
-        //float GetRetargetRootOffset() const;
-        //void SetRetargetRootOffset(float value);
-
-        MCORE_INLINE bool GetRenderMotionBindPose() const                       { return mRenderMotionBindPose->isChecked(); }
 
     public slots:
         void UpdateInterface();
         void UpdateMotions();
-        //void OnNodeSelected(MCore::Array<SelectionItem> selection);
-        //void OnCancelNodeSelection();
-
-        //void RetargetRootOffsetSliderChanged(int value);
-        //void ResetRetargetRootOffset()                                    { SetRetargetRootOffset(0.0f); }
-        //void OffsetMinValueChanged(double value)                      { UpdateInterface(); }
-        //void OffsetMaxValueChanged(double value)                      { UpdateInterface(); }
-        //void OnSelectNode();
 
     private:
-        //MCORE_DEFINECOMMANDCALLBACK(CommandSelectCallback);
-        //MCORE_DEFINECOMMANDCALLBACK(CommandUnselectCallback);
-        //MCORE_DEFINECOMMANDCALLBACK(CommandClearSelectionCallback);
-
-        //CommandSelectCallback*            mSelectCallback;
-        //CommandUnselectCallback*          mUnselectCallback;
-        //CommandClearSelectionCallback*    mClearSelectionCallback;
-
-        //void SetRetargetingNodeLabel(EMotionFX::ActorInstance* actorInstance, EMotionFX::Motion* motion);
-
         MotionWindowPlugin*                 mMotionWindowPlugin;
         QCheckBox*                          mMotionRetargetingButton;
-        QCheckBox*                          mRenderMotionBindPose;
-        //MysticQt::LinkWidget*             mRetargetingNode;
-        //MysticQt::Slider*                 mRetargetRootOffsetSlider;
-        //QLabel*                           mRetargetRootOffsetLabel;
-        //QLineEdit*                        mOffsetValueEdit;
-        //MysticQt::DoubleSpinBox*          mOffsetMinSpinBox;
-        //MysticQt::DoubleSpinBox*          mOffsetMaxSpinBox;
-        //NodeSelectionWindow*              mNodeSelectionWindow;
+        //QCheckBox*                          mRenderMotionBindPose;
         EMotionFX::ActorInstance*           mSelectedActorInstance;
         EMotionFX::Actor*                   mActor;
         CommandSystem::SelectionList        mSelectionList;
-        //AZStd::string                     mNodeBeforeSelectionWindow;
     };
 } // namespace EMStudio
 

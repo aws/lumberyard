@@ -52,18 +52,23 @@ namespace EMStudio
     TrackDataWidget::TrackDataWidget(TimeViewPlugin* plugin, QWidget* parent)
         : QOpenGLWidget(parent)
         , QOpenGLFunctions()
+        , mBrushBackground(QColor(40, 45, 50), Qt::SolidPattern)
+        , mBrushBackgroundClipped(QColor(40, 40, 40), Qt::SolidPattern)
+        , mBrushBackgroundOutOfRange(QColor(35, 35, 35), Qt::SolidPattern)
         , mPlugin(plugin)
+        , mMouseLeftClicked(false)
+        , mMouseMidClicked(false)
+        , mMouseRightClicked(false)
+        , mDragging(false)
+        , mResizing(false)
+        , mRectZooming(false)
+        , mIsScrolling(false)
         , mLastLeftClickedX(0)
-        , mLastMouseX(0)
         , mLastMouseMoveX(0)
+        , mLastMouseX(0)
         , mLastMouseY(0)
         , mNodeHistoryItemHeight(20)
-        , mRectZooming(false)
-        , mMouseLeftClicked(false)
-        , mMouseRightClicked(false)
-        , mMouseMidClicked(false)
-        , mDragging(false)
-        , mIsScrolling(false)
+        , mEventHistoryTotalHeight(0)
         , mAllowContextMenu(true)
         , mDraggingElement(nullptr)
         , mDragElementTrack(nullptr)
@@ -71,13 +76,9 @@ namespace EMStudio
         , mGraphStartHeight(0)
         , mEventsStartHeight(0)
         , mNodeRectsStartHeight(0)
-        , mEventHistoryTotalHeight(0)
         , mSelectStart(0, 0)
         , mSelectEnd(0, 0)
         , mRectSelecting(false)
-        , mBrushBackground(QColor(40, 45, 50), Qt::SolidPattern)
-        , mBrushBackgroundClipped(QColor(40, 40, 40), Qt::SolidPattern)
-        , mBrushBackgroundOutOfRange(QColor(35, 35, 35), Qt::SolidPattern)
     {
         setObjectName("TrackDataWidget");
 
@@ -924,7 +925,7 @@ namespace EMStudio
                 {
                     // get the copy element and make sure we're in the right track
                     const CopyElement& copyElement = mCopyElements[c];
-                    if (copyElement.mTrackName != track->GetName())
+                    if (copyElement.m_trackName != track->GetName())
                     {
                         continue;
                     }
@@ -933,8 +934,8 @@ namespace EMStudio
                     for (uint32 e = 0; e < numElements; ++e)
                     {
                         TimeTrackElement* element = track->GetElement(e);
-                        if (MCore::Compare<float>::CheckIfIsClose(element->GetStartTime(), copyElement.mStartTime, MCore::Math::epsilon) &&
-                            MCore::Compare<float>::CheckIfIsClose(element->GetEndTime(), copyElement.mEndTime, MCore::Math::epsilon))
+                        if (MCore::Compare<float>::CheckIfIsClose(element->GetStartTime(), copyElement.m_startTime, MCore::Math::epsilon) &&
+                            MCore::Compare<float>::CheckIfIsClose(element->GetEndTime(), copyElement.m_endTime, MCore::Math::epsilon))
                         {
                             element->SetIsCut(true);
                         }
@@ -1728,7 +1729,7 @@ namespace EMStudio
             {
                 QAction* action = menu.addAction("Add Motion Event");
                 action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-                connect(action, SIGNAL(triggered()), this, SLOT(OnAddElement()));
+                connect(action, &QAction::triggered, this, &TrackDataWidget::OnAddElement);
 
                 // add action to add a motion event which gets its param and type from the selected preset
                 EMStudioPlugin* plugin = EMStudio::GetPluginManager()->FindActivePlugin(MotionEventsPlugin::CLASS_ID);
@@ -1739,7 +1740,7 @@ namespace EMStudio
                     {
                         QAction* presetAction = menu.addAction("Add Preset Event");
                         presetAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-                        connect(presetAction, SIGNAL(triggered()), this, SLOT(OnCreatePresetEvent()));
+                        connect(presetAction, &QAction::triggered, this, &TrackDataWidget::OnCreatePresetEvent);
                     }
                 }
 
@@ -1747,40 +1748,40 @@ namespace EMStudio
                 {
                     action = menu.addAction("Cut All Events In Track");
                     action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
-                    connect(action, SIGNAL(triggered()), this, SLOT(OnCutTrack()));
+                    connect(action, &QAction::triggered, this, &TrackDataWidget::OnCutTrack);
 
                     action = menu.addAction("Copy All Events In Track");
                     action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
-                    connect(action, SIGNAL(triggered()), this, SLOT(OnCopyTrack()));
+                    connect(action, &QAction::triggered, this, &TrackDataWidget::OnCopyTrack);
                 }
 
                 if (GetIsReadyForPaste())
                 {
                     action = menu.addAction("Paste");
                     action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
-                    connect(action, SIGNAL(triggered()), this, SLOT(OnPaste()));
+                    connect(action, &QAction::triggered, this, &TrackDataWidget::OnPaste);
 
                     action = menu.addAction("Paste At Location");
                     action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Paste.png"));
-                    connect(action, SIGNAL(triggered()), this, SLOT(OnPasteAtLocation()));
+                    connect(action, &QAction::triggered, this, &TrackDataWidget::OnPasteAtLocation);
                 }
             }
             else if (element->GetIsSelected())
             {
                 QAction* action = menu.addAction("Cut");
                 action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
-                connect(action, SIGNAL(triggered()), this, SLOT(OnCutElement()));
+                connect(action, &QAction::triggered, this, &TrackDataWidget::OnCutElement);
 
                 action = menu.addAction("Copy");
                 action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Copy.png"));
-                connect(action, SIGNAL(triggered()), this, SLOT(OnCopyElement()));
+                connect(action, &QAction::triggered, this, &TrackDataWidget::OnCopyElement);
             }
         }
         else
         {
             QAction* action = menu.addAction("Add Event Track");
             action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Plus.png"));
-            connect(action, SIGNAL(triggered()), this, SLOT(OnAddTrack()));
+            connect(action, &QAction::triggered, this, &TrackDataWidget::OnAddTrack);
         }
 
         // menu entry for removing elements
@@ -1796,7 +1797,7 @@ namespace EMStudio
             // add the action
             QAction* action = menu.addAction(actionName.c_str());
             action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Minus.png"));
-            connect(action, SIGNAL(triggered()), mPlugin, SLOT(RemoveSelectedMotionEventsInTrack()));
+            connect(action, &QAction::triggered, this, &TrackDataWidget::RemoveSelectedMotionEventsInTrack);
         }
 
         // menu entry for removing all elements
@@ -1805,7 +1806,7 @@ namespace EMStudio
             // add the action
             QAction* action = menu.addAction("Clear Track");
             action->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Clear.png"));
-            connect(action, SIGNAL(triggered()), this, SLOT(RemoveAllMotionEventsInTrack()));
+            connect(action, &QAction::triggered, this, &TrackDataWidget::RemoveAllMotionEventsInTrack);
         }
 
         // show the menu at the given position
@@ -1835,19 +1836,7 @@ namespace EMStudio
 
     void TrackDataWidget::AddMotionEvent(int32 x, int32 y)
     {
-        mPlugin->SetRedrawFlag();
-        // calculate the start time for the motion event
-        double dropTimeInSeconds = mPlugin->PixelToTime(x);
-        //mPlugin->CalcTime( x, &dropTimeInSeconds, nullptr, nullptr, nullptr, nullptr );
-
-        // get the time track on which we dropped the preset
-        TimeTrack* timeTrack = mPlugin->GetTrackAt(y);
-        if (timeTrack == nullptr)
-        {
-            return;
-        }
-
-        CommandSystem::CommandHelperAddMotionEvent(timeTrack->GetName(), dropTimeInSeconds, dropTimeInSeconds);
+        mPlugin->AddMotionEvent(x, y);
     }
 
 
@@ -1939,23 +1928,23 @@ namespace EMStudio
         mCopyElements.clear();
 
         // get the time track name
-        TimeTrack* timeTrack = mPlugin->GetTrackAt(mContextMenuY);
+        const TimeTrack* timeTrack = mPlugin->GetTrackAt(mContextMenuY);
         if (timeTrack == nullptr)
         {
             return;
         }
-        AZStd::string trackName = timeTrack->GetName();
+        const AZStd::string trackName = timeTrack->GetName();
 
         // check if the motion is valid and return failure in case it is not
-        EMotionFX::Motion* motion = mPlugin->GetMotion();
+        const EMotionFX::Motion* motion = mPlugin->GetMotion();
         if (motion == nullptr)
         {
             return;
         }
 
         // get the motion event table and find the track on which we will work on
-        EMotionFX::MotionEventTable* eventTable = motion->GetEventTable();
-        EMotionFX::MotionEventTrack* eventTrack = eventTable->FindTrackByName(trackName.c_str());
+        const EMotionFX::MotionEventTable* eventTable = motion->GetEventTable();
+        const EMotionFX::MotionEventTrack* eventTrack = eventTable->FindTrackByName(trackName.c_str());
         if (eventTrack == nullptr)
         {
             return;
@@ -1967,24 +1956,23 @@ namespace EMStudio
         for (uint32 i = 0; i < numElements; ++i)
         {
             // get the element and skip all unselected ones
-            TimeTrackElement* element = timeTrack->GetElement(i);
-            if (selectedItemsOnly && element->GetIsSelected() == false)
+            const TimeTrackElement* element = timeTrack->GetElement(i);
+            if (selectedItemsOnly && !element->GetIsSelected())
             {
                 continue;
             }
 
             // get the motion event
-            EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(i);
+            const EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(i);
 
             // create the copy paste element and add it to the array
-            CopyElement copyElem;
-            copyElem.mMotionID          = motion->GetID();
-            copyElem.mTrackName         = eventTrack->GetName();
-            copyElem.mEventType         = motionEvent.GetEventTypeString();
-            copyElem.mEventParameters   = eventTrack->GetParameter(motionEvent.GetParameterIndex());
-            copyElem.mStartTime         = motionEvent.GetStartTime();
-            copyElem.mEndTime           = motionEvent.GetEndTime();
-            mCopyElements.push_back(copyElem);
+            mCopyElements.emplace_back(
+                motion->GetID(),
+                eventTrack->GetNameString(),
+                motionEvent.GetEventDatas(),
+                motionEvent.GetStartTime(),
+                motionEvent.GetEndTime()
+            );
         }
     }
 
@@ -1996,7 +1984,7 @@ namespace EMStudio
 
         FillCopyElements(false);
 
-        mCutMode            = true;
+        mCutMode = true;
     }
 
 
@@ -2007,7 +1995,7 @@ namespace EMStudio
 
         FillCopyElements(false);
 
-        mCutMode            = false;
+        mCutMode = false;
     }
 
 
@@ -2018,7 +2006,7 @@ namespace EMStudio
 
         FillCopyElements(true);
 
-        mCutMode            = true;
+        mCutMode = true;
     }
 
 
@@ -2029,7 +2017,7 @@ namespace EMStudio
 
         FillCopyElements(true);
 
-        mCutMode            = false;
+        mCutMode = false;
     }
 
 
@@ -2079,21 +2067,21 @@ namespace EMStudio
             {
                 const CopyElement& copyElement = mCopyElements[i];
 
-                if (copyElement.mStartTime  < minTime)
+                if (copyElement.m_startTime < minTime)
                 {
-                    minTime = copyElement.mStartTime;
+                    minTime = copyElement.m_startTime;
                 }
-                if (copyElement.mEndTime    < minTime)
+                if (copyElement.m_endTime < minTime)
                 {
-                    minTime = copyElement.mEndTime;
+                    minTime = copyElement.m_endTime;
                 }
-                if (copyElement.mStartTime  > maxTime)
+                if (copyElement.m_startTime > maxTime)
                 {
-                    maxTime = copyElement.mStartTime;
+                    maxTime = copyElement.m_startTime;
                 }
-                if (copyElement.mEndTime    > maxTime)
+                if (copyElement.m_endTime > maxTime)
                 {
-                    maxTime = copyElement.mEndTime;
+                    maxTime = copyElement.m_endTime;
                 }
             }
         }
@@ -2106,7 +2094,7 @@ namespace EMStudio
                 const CopyElement& copyElement = mCopyElements[i];
 
                 // get the motion to which the original element belongs to
-                EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(copyElement.mMotionID);
+                EMotionFX::Motion* motion = EMotionFX::GetMotionManager().FindMotionByID(copyElement.m_motionID);
                 if (motion == nullptr)
                 {
                     continue;
@@ -2114,22 +2102,21 @@ namespace EMStudio
 
                 // get the motion event table and track
                 EMotionFX::MotionEventTable*    eventTable  = motion->GetEventTable();
-                EMotionFX::MotionEventTrack*    eventTrack  = eventTable->FindTrackByName(copyElement.mTrackName.c_str());
+                EMotionFX::MotionEventTrack*    eventTrack  = eventTable->FindTrackByName(copyElement.m_trackName.c_str());
                 if (eventTrack == nullptr)
                 {
                     continue;
                 }
 
                 // get the number of events and iterate through them
-                uint32 eventNr = MCORE_INVALIDINDEX32;
-                const uint32 numEvents = eventTrack->GetNumEvents();
+                size_t eventNr = MCORE_INVALIDINDEX32;
+                const size_t numEvents = eventTrack->GetNumEvents();
                 for (eventNr = 0; eventNr < numEvents; ++eventNr)
                 {
                     EMotionFX::MotionEvent& motionEvent = eventTrack->GetEvent(eventNr);
-                    if (MCore::Compare<float>::CheckIfIsClose(motionEvent.GetStartTime(), copyElement.mStartTime, MCore::Math::epsilon) &&
-                        MCore::Compare<float>::CheckIfIsClose(motionEvent.GetEndTime(), copyElement.mEndTime, MCore::Math::epsilon) &&
-                        copyElement.mEventParameters == motionEvent.GetParameterString(eventTrack).c_str() &&
-                        copyElement.mEventType == motionEvent.GetEventTypeString())
+                    if (MCore::Compare<float>::CheckIfIsClose(motionEvent.GetStartTime(), copyElement.m_startTime, MCore::Math::epsilon) &&
+                        MCore::Compare<float>::CheckIfIsClose(motionEvent.GetEndTime(), copyElement.m_endTime, MCore::Math::epsilon) &&
+                        copyElement.m_eventDatas == motionEvent.GetEventDatas())
                     {
                         break;
                     }
@@ -2138,7 +2125,7 @@ namespace EMStudio
                 // remove event
                 if (eventNr != MCORE_INVALIDINDEX32)
                 {
-                    CommandSystem::CommandHelperRemoveMotionEvent(copyElement.mMotionID, copyElement.mTrackName.c_str(), eventNr, &commandGroup);
+                    CommandSystem::CommandHelperRemoveMotionEvent(copyElement.m_motionID, copyElement.m_trackName.c_str(), static_cast<uint32>(eventNr), &commandGroup);
                 }
             }
         }
@@ -2148,8 +2135,8 @@ namespace EMStudio
         {
             const CopyElement& copyElement = mCopyElements[i];
 
-            float startTime = copyElement.mStartTime;
-            float endTime   = copyElement.mEndTime;
+            float startTime = copyElement.m_startTime;
+            float endTime   = copyElement.m_endTime;
 
             // calculate the duration of the motion event
             float duration  = 0.0f;
@@ -2168,7 +2155,7 @@ namespace EMStudio
                 endTime     = startTime + duration;
             }
 
-            CommandSystem::CommandHelperAddMotionEvent(trackName.c_str(), startTime, endTime, copyElement.mEventType.c_str(), copyElement.mEventParameters.c_str(), &commandGroup);
+            CommandSystem::CommandHelperAddMotionEvent(trackName.c_str(), startTime, endTime, copyElement.m_eventDatas, &commandGroup);
         }
 
         // execute the group command
@@ -2401,11 +2388,11 @@ namespace EMStudio
         //---------------------
         QAction* action = menu.addAction("Zoom To Fit All");
         //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
-        connect(action, SIGNAL(triggered()), mPlugin, SLOT(OnZoomAll()));
+        connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnZoomAll);
 
         action = menu.addAction("Reset Timeline");
         //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
-        connect(action, SIGNAL(triggered()), mPlugin, SLOT(OnResetTimeline()));
+        connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnResetTimeline);
 
         //---------------------
         // Right-clicked on a motion item
@@ -2417,7 +2404,7 @@ namespace EMStudio
 
             action = menu.addAction("Show Node In Graph");
             //action->setIcon( MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/FitAll.png") );
-            connect(action, SIGNAL(triggered()), mPlugin, SLOT(OnShowNodeHistoryNodeInGraph()));
+            connect(action, &QAction::triggered, mPlugin, &TimeViewPlugin::OnShowNodeHistoryNodeInGraph);
         }
 
         // show the menu at the given position
@@ -2560,15 +2547,28 @@ namespace EMStudio
     {
         outString = "<table border=\"0\">";
 
-        // node name
-        outString += AZStd::string::format("<tr><td width=\"150\"><p style=\"color:rgb(200,200,200)\"><b>Event Type:&nbsp;</b></p></td>");
-        outString += AZStd::string::format("<td width=\"400\"><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", item->mEventInfo.mTypeString->c_str());
-
-        outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Event Parameters:&nbsp;</b></p></td>");
-        outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", item->mEventInfo.mParameters->c_str());
+        const EMotionFX::MotionEvent* motionEvent = item->mEventInfo.mEvent;
+        for (const EMotionFX::EventDataPtr& eventData : motionEvent->GetEventDatas())
+        {
+            if (eventData)
+            {
+                const auto& motionDataProperties = MCore::ReflectionSerializer::SerializeIntoMap(eventData.get());
+                if (motionDataProperties.IsSuccess())
+                {
+                    for (const AZStd::pair<AZStd::string, AZStd::string>& keyValuePair : motionDataProperties.GetValue())
+                    {
+                        outString += AZStd::string::format(
+                            "<tr><td><p style=\"color:rgb(200, 200, 200)\"><b>%s:&nbsp;</b></p></td>" // no comma, concat these 2 string literals
+                            "<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>",
+                            keyValuePair.first.c_str(),
+                            keyValuePair.second.c_str()
+                        );
+                    }
+                }
+            }
+        }
 
         outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Event ID:&nbsp;</b></p></td>");
-        outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%d</p></td></tr>", item->mEventInfo.mTypeID);
 
         outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Local Event Time:&nbsp;</b></p></td>");
         outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%.3f seconds</p></td></tr>", item->mEventInfo.mTimeValue);
@@ -2581,8 +2581,20 @@ namespace EMStudio
 
         if (item->mIsTickEvent == false)
         {
+            const static AZStd::string eventStartText = "Event Start";
+            const static AZStd::string eventActiveText = "Event Active";
+            const static AZStd::string eventEndText = "Event End";
+            const AZStd::string* outputEventStateText = &eventStartText;
+            if (item->mEventInfo.m_eventState == EMotionFX::EventInfo::EventState::ACTIVE)
+            {
+                outputEventStateText = &eventActiveText;
+            }
+            else if (item->mEventInfo.m_eventState == EMotionFX::EventInfo::EventState::END)
+            {
+                outputEventStateText = &eventEndText;
+            }
             outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Ranged Info:&nbsp;</b></p></td>");
-            outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", (item->mEventInfo.mIsEventStart) ? "Event Start" : "Event End");
+            outString += AZStd::string::format("<td><p style=\"color:rgb(115, 115, 115)\">%s</p></td></tr>", outputEventStateText->c_str());
         }
 
         outString += AZStd::string::format("<tr><td><p style=\"color:rgb(200,200,200)\"><b>Global Weight:&nbsp;</b></p></td>");

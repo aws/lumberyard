@@ -116,6 +116,10 @@ namespace Rain
 
         m_currentWorldPos = AZ::Vector3::CreateZero();
         AZ::TransformBus::EventResult(m_currentWorldPos, GetEntityId(), &AZ::TransformBus::Events::GetWorldTranslation);
+
+        m_currentWorldTransform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(m_currentWorldTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+        AZ::TickBus::Handler::BusConnect();
     }
 
     void EditorRainComponent::Deactivate()
@@ -124,12 +128,17 @@ namespace Rain
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect(GetEntityId());
 
+        AZ::TickBus::Handler::BusDisconnect();
+        TurnOffRain();
+        Rain::RainComponentRequestBus::Broadcast(&Rain::RainComponentRequestBus::Events::UpdateRain);
+
         EditorComponentBase::Deactivate();
     }
 
     void EditorRainComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
         m_currentWorldPos = world.GetPosition();
+        m_currentWorldTransform = world;
     }
 
     void EditorRainComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -139,6 +148,17 @@ namespace Rain
             component->m_enabled = m_enabled;
             component->m_rainOptions = m_rainOptions;
         }
+    }
+
+    void EditorRainComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
+    {
+        if (!m_enabled)
+        {
+            TurnOffRain();
+            return;
+        }
+
+        UpdateRainSettings(m_currentWorldTransform, m_rainOptions);
     }
 
     void EditorRainComponent::DisplayEntity(bool& handled)

@@ -15,6 +15,7 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
@@ -57,6 +58,7 @@ namespace LmbrCentral
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
         , private AzToolsFramework::EditorEvents::Bus::Handler
+        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
     {
     private:
         using Base = AzToolsFramework::Components::EditorComponentBase;
@@ -103,6 +105,13 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // TransformNotificationBus::Handler interface implementation
         void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override;
+        //////////////////////////////////////////////////////////////////////////
+
+        //////////////////////////////////////////////////////////////////////////
+        // EditorComponentSelectionRequestsBus::Handler interface implementation
+        AZ::Aabb GetEditorSelectionBounds() override;
+        bool SupportsEditorRayIntersect() override { return true; };
+        bool EditorSelectionIntersectRay(const AZ::Vector3& /*src*/, const AZ::Vector3& /*dir*/, AZ::VectorFloat& /*distance*/) override;
         //////////////////////////////////////////////////////////////////////////
 
         void BuildGameEntity(AZ::Entity* gameEntity) override;

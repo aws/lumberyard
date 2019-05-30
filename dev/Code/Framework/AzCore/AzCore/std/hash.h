@@ -13,6 +13,7 @@
 #define AZSTD_HASH_H 1
 
 #include <AzCore/std/utils.h>
+#include <AzCore/Math/Crc.h>
 
 namespace AZStd
 {
@@ -150,6 +151,17 @@ namespace AZStd
             cast_long_double = &value;
             AZ::u64 bits = *cast_u64;
             return static_cast<result_type>((bits == 0x7fffffffffffffff ? 0 : bits));
+        }
+    };
+
+    template<>
+    struct hash< const char* >
+    {
+        typedef const char*     argument_type;
+        typedef AZStd::size_t   result_type;
+        inline result_type operator()(argument_type value) const
+        {
+            return AZ_CRC(value);
         }
     };
 

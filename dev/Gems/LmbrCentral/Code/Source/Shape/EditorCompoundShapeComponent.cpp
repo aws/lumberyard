@@ -57,14 +57,118 @@ namespace LmbrCentral
         }
     }
 
+	AZ::Aabb EditorCompoundShapeComponent::GetEncompassingAabb()
+	{
+		AZ::Aabb finalAabb = AZ::Aabb::CreateNull();
+
+		for (AZ::EntityId childEntity : m_configuration.GetChildEntities())
+		{
+			AZ::Aabb childAabb = AZ::Aabb::CreateNull();
+			EBUS_EVENT_ID_RESULT(childAabb, childEntity, ShapeComponentRequestsBus, GetEncompassingAabb);
+			if (childAabb.IsValid())
+			{
+				finalAabb.AddAabb(childAabb);
+			}
+		}
+		return finalAabb;
+	}
+
+	bool EditorCompoundShapeComponent::IsPointInside(const AZ::Vector3& point)
+	{
+		bool result = false;
+		for (AZ::EntityId childEntity : m_configuration.GetChildEntities())
+		{
+			EBUS_EVENT_ID_RESULT(result, childEntity, ShapeComponentRequestsBus, IsPointInside, point);
+			if (result)
+			{
+				break;
+			}
+		}
+		return result;
+	}
+
+	float EditorCompoundShapeComponent::DistanceSquaredFromPoint(const AZ::Vector3& point)
+	{
+		float smallestDistanceSquared = FLT_MAX;
+		for (AZ::EntityId childEntity : m_configuration.GetChildEntities())
+		{
+			float currentDistanceSquared = FLT_MAX;
+			EBUS_EVENT_ID_RESULT(currentDistanceSquared, childEntity, ShapeComponentRequestsBus, DistanceSquaredFromPoint, point);
+			if (currentDistanceSquared < smallestDistanceSquared)
+			{
+				smallestDistanceSquared = currentDistanceSquared;
+			}
+		}
+		return smallestDistanceSquared;
+	}
+
+	bool EditorCompoundShapeComponent::IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
+	{
+		bool intersection = false;
+		for (const AZ::EntityId childEntity : m_configuration.GetChildEntities())
+		{
+			ShapeComponentRequestsBus::EventResult(intersection, childEntity, &ShapeComponentRequests::IntersectRay, src, dir, distance);
+			if (intersection)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	void EditorCompoundShapeComponent::OnEntityActivated(const AZ::EntityId& id)
+	{ 
+		m_currentlyActiveChildren++;
+		ShapeComponentNotificationsBus::MultiHandler::BusConnect(id);
+
+		if (ShapeComponentRequestsBus::Handler::BusIsConnected() && CompoundShapeComponentRequestsBus::Handler::BusIsConnected())
+		{
+			EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+		}
+	}
+
+	void EditorCompoundShapeComponent::OnEntityDeactivated(const AZ::EntityId& id)
+	{
+		m_currentlyActiveChildren--;
+		ShapeComponentNotificationsBus::MultiHandler::BusDisconnect(id);
+		EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+	}
+
+	void EditorCompoundShapeComponent::OnShapeChanged(ShapeComponentNotifications::ShapeChangeReasons changeReason)
+	{
+		if (changeReason == ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged)
+		{
+			EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+		}
+		else if (changeReason == ShapeComponentNotifications::ShapeChangeReasons::TransformChanged)
+		{
+			// If there are multiple shapes in a compound shape, then moving one of them changes the overall compound shape, otherwise the transform change is bubbled up directly
+			EBUS_EVENT_ID(GetEntityId(), ShapeComponentNotificationsBus, OnShapeChanged, (m_currentlyActiveChildren > 1) ? ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged
+				: ShapeComponentNotifications::ShapeChangeReasons::TransformChanged);
+		}
+	}
+
     void EditorCompoundShapeComponent::Activate()
     {
+		for (const AZ::EntityId& childEntity : m_configuration.GetChildEntities())
+		{
+			AZ::EntityBus::MultiHandler::BusConnect(childEntity);
+		}
+
+		ShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
         CompoundShapeComponentRequestsBus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorCompoundShapeComponent::Deactivate()
     {
-        CompoundShapeComponentRequestsBus::Handler::BusDisconnect(GetEntityId());
+		if(AZ::EntityBus::MultiHandler::BusIsConnected())
+		{
+			AZ::EntityBus::MultiHandler::BusDisconnect();
+		}
+		
+		ShapeComponentRequestsBus::Handler::BusDisconnect();
+        CompoundShapeComponentRequestsBus::Handler::BusDisconnect();
     }
     
     bool EditorCompoundShapeComponent::HasShapeComponentReferencingEntityId(const AZ::EntityId& entityId)
@@ -130,7 +234,18 @@ namespace LmbrCentral
             }
         }
 
+		RefreshChildrenBusConnexions();
         return AZ::Edit::PropertyRefreshLevels::None;
     }
 
+	void EditorCompoundShapeComponent::RefreshChildrenBusConnexions()
+	{
+		m_currentlyActiveChildren = 0;
+		AZ::EntityBus::MultiHandler::BusDisconnect();
+		
+		for (const AZ::EntityId& childEntity : m_configuration.GetChildEntities())
+		{
+			AZ::EntityBus::MultiHandler::BusConnect(childEntity);
+		}
+	}
 } // namespace LmbrCentral

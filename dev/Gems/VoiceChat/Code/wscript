@@ -1,0 +1,14 @@
+
+
+def build(bld):
+    bld.DefineGem(
+        # Add custom build options here
+        use           = ['AzFramework', 'Microphone', 'GridMate'],
+        linux_lib     = ['opus'],
+        win_lib       = ['Winmm', 'opus'],
+        win_file_list = ['voicechat_win.waf_files'],
+        linux_file_list = ['voicechat_linux.waf_files'],
+
+        msvc_cxxflags  = ['/w34456'],
+        clang_cxxflags = ['-Wshadow']
+    )

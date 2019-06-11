@@ -6,7 +6,7 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 
-#include "opus.h"
+#include <opus.h>
 
 using namespace Audio;
 

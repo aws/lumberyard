@@ -12,6 +12,8 @@
 #ifndef AZCORE_SERIALIZE_CONTEXT_H
 #define AZCORE_SERIALIZE_CONTEXT_H
 
+#include <AzCore/Asset/AssetCommon.h>
+
 #include <AzCore/Memory/OSAllocator.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
@@ -19,7 +21,6 @@
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/string/string_view.h>
-#include <AzCore/std/function/function_fwd.h>
 
 #include <AzCore/std/typetraits/disjunction.h>
 #include <AzCore/std/typetraits/is_pointer.h>
@@ -81,16 +82,6 @@ namespace AZ
         T StaticInstance<T>::s_instance;
     }
 
-    namespace Data
-    {
-        class AssetData;
-
-        template<typename T>
-        class Asset;
-
-        typedef AZStd::function<bool(const Data::Asset<Data::AssetData>& asset)> AssetFilterCB;
-    }
-
     /**
      * Serialize context is a class that manages information
      * about all reflected data structures. You will use it
@@ -139,6 +130,8 @@ namespace AZ
         /// If registerIntegralTypes is true we will register the default serializer for all integral types.
         SerializeContext(bool registerIntegralTypes = true, bool createEditContext = false);
         virtual ~SerializeContext();
+
+        bool IsTypeReflected(AZ::Uuid typeId) const override;
 
         /// Create an edit context for this serialize context. If one already exist it will be returned.
         EditContext*    CreateEditContext();
@@ -242,11 +235,14 @@ namespace AZ
 
         /**
          * Call this function to traverse an instance's hierarchy by providing address and classId, if you have the typed pointer you can just call \ref EnumerateObject
-         * \param callContext enumerate call context
          * \param ptr pointer to the object for traversal
          * \param classId classId of object for traversal
+         * \param beginElemCB callback when we begin/open a child element
+         * \param endElemCB callback when we end/close a child element
+         * \param accessFlags \ref EnumerationAccessFlags
          * \param classData pointer to the class data for the traversed object to avoid calling FindClassData(classId) (can be null)
          * \param classElement pointer to class element (null for root elements)
+         * \param errorHandler optional pointer to the error handler.
          */
         bool EnumerateInstanceConst(EnumerateInstanceCallContext* callContext, const void* ptr, const Uuid& classId, const ClassData* classData, const ClassElement* classElement) const;
         bool EnumerateInstance(EnumerateInstanceCallContext* callContext, void* ptr, const Uuid& classId, const ClassData* classData, const ClassElement* classElement) const;
@@ -686,10 +682,10 @@ namespace AZ
         // @}
 
         /**
-         * Storage for persistent parameters passed to a root EnumerateInstance pass.
-         * EnumerateInstance is used in high frequency performance-sensitive scenarios, and this ensures
-         * minimal interaction with the memory manager for things like bound functors.
-         */
+        * Storage for persistent parameters passed to a root EnumerateInstance pass.
+        * EnumerateInstance is used in high frequency performance-sensitive scenarios, and this ensures
+        * minimal interaction with the memory manager for things like bound functors.
+        */
         struct EnumerateInstanceCallContext
         {
             EnumerateInstanceCallContext(const BeginElemEnumCB& beginElemCB, const EndElemEnumCB& endElemCB, const SerializeContext* context, unsigned int accessflags, ErrorHandler* errorHandler);
@@ -745,6 +741,11 @@ namespace AZ
         T Cast(void* instance, const Uuid& instanceClassId) const;
 
     private:
+        /**
+         * Generic enumerate function can can take both 'const void*' and 'void*' data pointer types.
+         */
+        template<class PtrType, class EnumType>
+        bool EnumerateInstanceTempl(PtrType ptr, const Uuid& classId, EnumType beginElemCB, const SerializeContext::EndElemEnumCB& endElemCB, const ClassData* classData, const char* elementName, const ClassElement* classElement);
 
         /// Enumerate function called to enumerate an azrtti hierarchy
         static void EnumerateBaseRTTIEnumCallback(const Uuid& id, void* userData);
@@ -910,7 +911,7 @@ namespace AZ
     * For specialized classes the Specialized Id is normally made up of the concatenation of the Template Class Uuid
     * and the Template Arguments Uuids using a SHA-1.
     */
-    class GenericClassInfo
+   class GenericClassInfo
     {
     public:
         GenericClassInfo()
@@ -1889,6 +1890,7 @@ namespace AZ
             genericInfo->Reflect(this);
         }
     }
+
 
     //=========================================================================
     // SerializeGenericTypeInfo<ValueType>::GetClassTypeId

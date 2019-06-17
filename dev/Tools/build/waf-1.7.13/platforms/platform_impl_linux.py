@@ -10,86 +10,12 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-from waflib.Configure import conf
 
-import re, os
-from waflib.TaskGen import extension,feature, before_method, after_method
-from waflib import Task, Logs, Utils
+import os
+from waflib.TaskGen import feature, after_method
+from waflib import Logs
 
-def load_linux_common_settings(v):
-    """
-    Setup all compiler and linker settings shared over all linux configurations
-    """
 
-    # Add common linux defines
-    v['DEFINES'] += [ 'LINUX', '__linux__' ]
-
-    # Setup default libraries to always link against
-    v['LIB'] = [ 'pthread', 'dl', 'c++abi', ]
-
-    # Pattern to transform outputs
-    v['cprogram_PATTERN']   = '%s'
-    v['cxxprogram_PATTERN'] = '%s'
-    v['cshlib_PATTERN']     = 'lib%s.so'
-    v['cxxshlib_PATTERN']   = 'lib%s.so'
-    v['cstlib_PATTERN']     = 'lib%s.a'
-    v['cxxstlib_PATTERN']   = 'lib%s.a'
-
-    # For now compile for SSE2
-    common_flags = [
-        '-msse2',
-    ]
-
-    v['CXXFLAGS'] += common_flags[:]
-    v['CFLAGS']  += common_flags[:]
-
-    v['LINKFLAGS'] += ['-stdlib=libc++']
-
-    # ASAN and ASLR
-    # once we can use clang 4, add , '-fsanitize-address-use-after-scope'
-    # disabled until the linker requirements are worked out on linux
-    v['LINKFLAGS_ASLR'] = [] #['-fsanitize=memory']
-    v['ASAN_cflags'] = [] # ['-fsanitize=address']
-    v['ASAN_cxxflags'] = [] # ['-fsanitize=address']
-
-@conf
-def load_debug_linux_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all linux configurations for
-    the 'debug' configuration
-    """
-    v = conf.env
-    load_linux_common_settings(v)
-
-@conf
-def load_profile_linux_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all linux configurations for
-    the 'profile' configuration
-    """
-    v = conf.env
-    load_linux_common_settings(v)
-
-@conf
-def load_performance_linux_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all linux configurations for
-    the 'performance' configuration
-    """
-    v = conf.env
-    load_linux_common_settings(v)
-
-@conf
-def load_release_linux_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all linux configurations for
-    the 'release' configuration
-    """
-    v = conf.env
-    load_linux_common_settings(v)
-
-###############################################################################
-###############################################################################
 LAUNCHER_SCRIPT='''#!/bin/bash
 PATTERN="%e.%t.coredump"
 CURRENT_VALUE=`cat /proc/sys/kernel/core_pattern`
@@ -101,6 +27,7 @@ fi
 ulimit -c unlimited
 xterm -T "${project.to_launch_executable} Launcher" -hold -e './${project.to_launch_executable}'
 '''
+
 
 # Function to generate the copy tasks for build outputs
 @feature('cprogram', 'cxxprogram')

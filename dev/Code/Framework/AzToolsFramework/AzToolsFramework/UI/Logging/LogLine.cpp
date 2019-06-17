@@ -26,6 +26,157 @@ namespace AzToolsFramework
 {
     namespace Logging
     {
+        static bool IsNumeral(char c)
+        {
+            return (c >= '0') && (c <= '0');
+        }
+
+        static AZStd::string RemoveRCFormatting(const AZStd::string& message)
+        {
+            // RC logs errors that start with an optional type qualifier, then a time stamp, then a message.
+            // Most importantly, the first 4 characters are either a type qualifier, a colon and 2 spaces, or 4 spaces
+            // followed by a time stamp which is 1 or 2 numerals, a colon, 2 numerals, and either nothing (meaning a zero length
+            // message) or a space, followed by a message
+            //
+            // Examples:
+            // 
+            //E:  0:00 Message with multiple words
+            //    1:00 Message with multiple words
+            // 
+            // This was initially done as a regex, but the format is so prescribed and fixed, and regex's so slow,
+            // that I switched to this. It also avoids problems caused by using static regex objects, which pre-allocate
+            // and then don't free at the right time. Also, it should be extremely fast this way.
+
+            size_t index = 0;
+            if (index >= message.size())
+            {
+                return message;
+            }
+
+            char nextValidCharacter = ':'; // next valid character can be a : or a space, depending on what comes first
+            switch (message[index])
+            {
+                case 'E':
+                case 'W':
+                case 'C':
+                break;
+
+                case ' ':
+                    nextValidCharacter = ' ';
+                break;
+
+                default:
+                    return message;
+                break;
+            }
+
+            index++;
+            if (index >= message.size())
+            {
+                return message;
+            }
+
+            if (message[index] != nextValidCharacter)
+            {
+                return message;
+            }
+
+            index++;
+            if (index >= message.size())
+            {
+                return message;
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                if (message[index] != ' ')
+                {
+                    return message;
+                }
+
+                index++;
+                if (index >= message.size())
+                {
+                    return message;
+                }
+            }
+
+            if (!IsNumeral(message[index]))
+            {
+                return message;
+            }
+
+            // one digit; check if we have two for the hours
+            index++;
+            if (index >= message.size())
+            {
+                return message;
+            }
+
+            if (IsNumeral(message[index]))
+            {
+                // only one extra digit; skip to :
+                index++;
+                if (index >= message.size())
+                {
+                    return message;
+                }
+            }
+
+            // have to have the hours : minutes separator by this point
+            if (message[index] != ':')
+            {
+                return message;
+            }
+            
+            index++;
+            if (index >= message.size())
+            {
+                return message;
+            }
+
+            if (!IsNumeral(message[index]))
+            {
+                return message;
+            }
+
+            index++;
+            if (index >= message.size())
+            {
+                return message;
+            }
+            
+
+            if (!IsNumeral(message[index]))
+            {
+                return message;
+            }
+
+            // If we're at the end of the string, return the zero length string
+            index++;
+            if (index >= message.size())
+            {
+                return "";
+            }
+
+            // otherwise, check for space
+            if (message[index] != ' ')
+            {
+                return message;
+            }
+
+            index++;
+
+            // explicitly check for a zero length string after the last space; substr can throw an exception otherwise
+            if (index >= message.size())
+            {
+                return "";
+            }
+
+            // otherwise, take the remaining string
+            return message.substr(index);
+        }
+
         LogLine::LogLine(const char* inMessage, const char* inWindow, LogType inType, AZ::u64 inTime, void* data)
             : m_message(inMessage)
             , m_window(inWindow)
@@ -143,6 +294,8 @@ namespace AzToolsFramework
                     }
                 }
             }
+
+            m_message = RemoveRCFormatting(m_message);
         }
 
         const AZStd::string& LogLine::GetLogMessage() const
@@ -490,5 +643,23 @@ namespace AzToolsFramework
                 return true;
             }
         }
+
+        bool LogLine::ParseContextLogLine(const LogLine& line, std::pair<QString, QString>& result)
+        {
+            // Kind of parsed content: C: [Source] = Value.....
+            static QRegularExpression rx("C:\\s*\\[([^\\n\\r\\[\\]]+)\\]\\s*=\\s*(.*)");
+            const QRegularExpressionMatch match = rx.match(QString::fromLatin1(line.GetLogMessage().c_str()));
+
+            if (match.hasMatch())
+            {
+                result.first = match.captured(1).trimmed();
+                result.second = match.captured(2).trimmed();
+                return true;
+            }
+
+            return false;
+        }
+
+
     }
 }

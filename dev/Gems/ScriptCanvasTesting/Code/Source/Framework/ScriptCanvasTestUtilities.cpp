@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -10,17 +10,184 @@
 *
 */
 
-#include <precompiled.h>
-
+#include <Editor/Framework/ScriptCanvasTraceUtilities.h>
+#include <Framework/ScriptCanvasTestUtilities.h>
+#include <Framework/ScriptCanvasTestNodes.h>
+#include <Editor/Framework/ScriptCanvasGraphUtilities.h>
+#include <Asset/EditorAssetSystemComponent.h>
+#include <AzCore/Asset/AssetManagerBus.h>
 #include <AzCore/Component/TickBus.h>
-
-#include "ScriptCanvasTestUtilities.h"
-#include <ScriptCanvas/Asset/RuntimeAssetHandler.h>
+#include <AzCore/IO/FileIO.h>
+#include <AzCore/IO/FileIOEventBus.h>
+#include <AzFramework/API/ApplicationAPI.h>
 #include <ScriptCanvas/Asset/RuntimeAsset.h>
+#include <ScriptCanvas/Asset/RuntimeAssetHandler.h>
 #include <ScriptCanvas/Execution/RuntimeComponent.h>
+
+namespace ScriptCanvasTestUtilitiesCPP
+{
+    const char* k_defaultExtension = "scriptcanvas";
+    const char* k_unitTestDirPathRelative = "@engroot@/Gems/ScriptCanvasTesting/Assets/ScriptCanvas/UnitTests";
+} // namespace ScriptCanvasTestUtilitiesCPP
 
 namespace ScriptCanvasTests
 {
+    using namespace ScriptCanvas;
+
+#define SC_CORE_UNIT_TEST_DIR "@engroot@/LY_SC_UnitTest_ScriptCanvas_CoreCPP_Temporary"
+#define SC_CORE_UNIT_TEST_NAME "serializationTest.scriptcanvas_compiled"
+    const char* k_tempCoreAssetDir = SC_CORE_UNIT_TEST_DIR;
+    const char* k_tempCoreAssetName = SC_CORE_UNIT_TEST_NAME;
+    const char* k_tempCoreAssetPath = SC_CORE_UNIT_TEST_DIR "/" SC_CORE_UNIT_TEST_NAME;
+#undef SC_CORE_UNIT_TEST_DIR
+#undef SC_CORE_UNIT_TEST_NAME
+
+    AZStd::string_view GetGraphNameFromPath(AZStd::string_view graphPath)
+    {
+        graphPath.remove_prefix(AZStd::min(graphPath.find_last_of("\\/") + 1, graphPath.size()));
+        return graphPath;
+    }
+
+    void VerifyReporter(const ScriptCanvasEditor::Reporter& reporter)
+    {
+        if (!reporter.GetGraphId().IsValid())
+        {
+            ADD_FAILURE() << "Graph is not valid";
+        }
+        else if (reporter.IsReportFinished())
+        {
+            bool reportCheckpoints = false;
+
+            const auto& successes = reporter.GetSuccess();
+            for (const auto& success : successes)
+            {
+                SUCCEED() << success.data();
+            }
+
+            if (!reporter.IsActivated())
+            {
+                ADD_FAILURE() << "Graph did not activate";
+            }
+
+            if (!reporter.IsDeactivated())
+            {
+                ADD_FAILURE() << "Graph did not deactivate";
+                reportCheckpoints = true;
+            }
+
+            if (!reporter.IsErrorFree())
+            {
+                ADD_FAILURE() << "Graph had errors";
+                reportCheckpoints = true;
+            }
+
+            const auto& failures = reporter.GetFailure();
+            for (const auto& failure : failures)
+            {
+                ADD_FAILURE() << failure.data();
+            }
+
+            if (!reporter.IsComplete())
+            {
+                ADD_FAILURE() << "Graph was not marked complete";
+                reportCheckpoints = true;
+            }
+
+            if (reportCheckpoints)
+            {
+                const auto& checkpoints = reporter.GetCheckpoints();
+                if (checkpoints.empty())
+                {
+                    ADD_FAILURE() << "No checkpoints or other unit test nodes found, using them can help parse graph test failures";
+                }
+                else
+                {
+                    AZStd::string checkpointPath = "Checkpoint Path:\n";
+                    int i = 0;
+
+                    for (const auto& checkpoint : checkpoints)
+                    {
+                        checkpointPath += AZStd::string::format("%2d: %s\n", ++i, checkpoint.data()).data();
+                    }
+
+                    ADD_FAILURE() << checkpointPath.data();
+                }
+            }
+        }
+        else
+        {
+            ADD_FAILURE() << "Graph report did not finish";
+        }
+    }
+
+    void RunUnitTestGraph(AZStd::string_view graphPath, ExecutionMode execution, const ScriptCanvasEditor::DurationSpec& duration)
+    {
+        const AZStd::string filePath = AZStd::string::format("%s/%s.%s", ScriptCanvasTestUtilitiesCPP::k_unitTestDirPathRelative, graphPath.data(), ScriptCanvasTestUtilitiesCPP::k_defaultExtension);
+        const ScriptCanvasEditor::Reporter reporter = ScriptCanvasEditor::RunGraph(filePath, execution, duration);
+        ScriptCanvasTests::VerifyReporter(reporter);
+    }
+
+    void RunUnitTestGraph(AZStd::string_view graphPath, const ScriptCanvasEditor::DurationSpec& duration)
+    {
+        ScriptCanvasTests::RunUnitTestGraph(graphPath, ExecutionMode::Interpreted, duration);
+    }
+
+    void RunUnitTestGraph(AZStd::string_view graphPath, ExecutionMode execution)
+    {
+        ScriptCanvasTests::RunUnitTestGraph(graphPath, execution, ScriptCanvasEditor::DurationSpec());
+    }
+
+    void RunUnitTestGraph(AZStd::string_view graphPath)
+    {
+        ScriptCanvasTests::RunUnitTestGraph(graphPath, ScriptCanvasEditor::DurationSpec());
+    }
+
+    void RunUnitTestGraphMixed(AZStd::string_view graphPath, const ScriptCanvasEditor::DurationSpec& duration)
+    {
+        const ScriptCanvasEditor::Reporter reporterIterpreted0 = RunGraph(graphPath, ExecutionMode::Interpreted, duration);
+        const ScriptCanvasEditor::Reporter reporterNative0 = RunGraph(graphPath, ExecutionMode::Native, duration);
+        const ScriptCanvasEditor::Reporter reporterIterpreted1 = RunGraph(graphPath, ExecutionMode::Interpreted, duration);
+        const ScriptCanvasEditor::Reporter reporterNative1 = RunGraph(graphPath, ExecutionMode::Native, duration);
+
+        VerifyReporter(reporterIterpreted0);
+        VerifyReporter(reporterNative0);
+
+        EXPECT_TRUE(reporterIterpreted0.IsActivated());
+        EXPECT_TRUE(reporterIterpreted1.IsComplete());
+        EXPECT_TRUE(reporterIterpreted0.IsErrorFree());
+
+        EXPECT_EQ(reporterNative0, reporterIterpreted0);
+        EXPECT_EQ(reporterNative0, reporterIterpreted1);
+        EXPECT_EQ(reporterNative1, reporterIterpreted0);
+        EXPECT_EQ(reporterNative1, reporterIterpreted1);
+
+        EXPECT_EQ(reporterNative0, reporterNative1);
+        EXPECT_EQ(reporterIterpreted0, reporterIterpreted1);
+    }
+
+    ScriptCanvasEditor::LoadTestGraphResult LoadTestGraph(AZStd::string_view graphPath)
+    {
+        const AZStd::string filePath = AZStd::string::format("%s/%s.%s", ScriptCanvasTestUtilitiesCPP::k_unitTestDirPathRelative, graphPath.data(), ScriptCanvasTestUtilitiesCPP::k_defaultExtension);
+        AZ::Outcome< AZ::Data::Asset<ScriptCanvas::RuntimeAsset>, AZStd::string> assetOutcome = AZ::Failure(AZStd::string("asset creation failed"));
+        ScriptCanvasEditor::EditorAssetConversionBus::BroadcastResult(assetOutcome, &ScriptCanvasEditor::EditorAssetConversionBusTraits::CreateRuntimeAsset, filePath);
+
+        if (assetOutcome.IsSuccess())
+        {
+            ScriptCanvasEditor::LoadTestGraphResult result;
+            result.m_asset = assetOutcome.GetValue();
+            result.m_graphEntity = AZStd::make_unique<AZ::Entity>("Loaded Graph");
+            result.m_graph = result.m_graphEntity->CreateComponent<ScriptCanvas::RuntimeComponent>(result.m_asset);
+            return result;
+        }
+
+        return {};
+    }
+
+    void RunUnitTestGraphMixed(AZStd::string_view graphPath)
+    {
+        RunUnitTestGraphMixed(graphPath, ScriptCanvasEditor::DurationSpec());
+    }
+
     TestBehaviorContextObject TestBehaviorContextObject::MaxReturnByValue(TestBehaviorContextObject lhs, TestBehaviorContextObject rhs)
     {
         return lhs.GetValue() >= rhs.GetValue() ? lhs : rhs;
@@ -120,7 +287,7 @@ namespace ScriptCanvasTests
         return node;
     }
 
-    AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, const AZStd::string& className, const AZStd::string& methodName)
+    AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, AZStd::string_view className, AZStd::string_view methodName)
     {
         using namespace ScriptCanvas;
 
@@ -243,11 +410,11 @@ namespace ScriptCanvasTests
 
     void DumpSlots(const ScriptCanvas::Node& node)
     {
-        const auto& slots = node.GetSlots();
+        const auto& nodeslots = node.GetSlots();
 
-        for (const auto& slot : slots)
+        for (const auto& nodeslot : nodeslots)
         {
-            AZ_TracePrintf("ScriptCanvasTest", "'%s':%s\n", slot.GetName().data(), SlotTypeToString(slot.GetType()));
+            AZ_TracePrintf("ScriptCanvasTest", "'%s':%s\n", nodeslot.GetName().data(), SlotTypeToString(nodeslot.GetType()));
         }
     }
 
@@ -395,6 +562,18 @@ namespace ScriptCanvasTests
     {
         AzFramework::EntityIdContextQueryBus::MultiHandler::BusDisconnect();
         m_unitTestEntityIdMap.clear();
+    }
+
+    AZ::EntityId UnitTestEntityContext::FindLoadedEntityIdMapping(const AZ::EntityId& staticId) const
+    {
+        auto idIter = m_unitTestEntityIdMap.find(staticId);
+
+        if (idIter != m_unitTestEntityIdMap.end())
+        {
+            return idIter->second;
+        }
+
+        return AZ::EntityId();
     }
 
     AZ::Entity* UnitTestEntityContext::CloneEntity(const AZ::Entity& sourceEntity)

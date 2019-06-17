@@ -287,7 +287,7 @@ Change FBX Setting's \"Update Materials\" to true or modify the associated mater
             SceneEvents::ProcessingResultCombiner result;
 
             auto physicalizeType = context.m_physicalizeType;
-            if (physicalizeType == PHYS_GEOM_TYPE_DEFAULT_PROXY)
+            if ((physicalizeType == PHYS_GEOM_TYPE_DEFAULT_PROXY) || (physicalizeType == PHYS_GEOM_TYPE_NO_COLLIDE))
             {
                 table.push_back(m_materialGroup->FindMaterialIndex(GFxFramework::MaterialExport::g_stringPhysicsNoDraw));
             }
@@ -338,7 +338,23 @@ Change FBX Setting's \"Update Materials\" to true or modify the associated mater
                 if (material)
                 {
                     azstrncpy(materialCGF->name, sizeof(materialCGF->name), material->GetName().c_str(), sizeof(materialCGF->name));
-                    materialCGF->nPhysicalizeType = material->IsPhysicalMaterial() ? PHYS_GEOM_TYPE_DEFAULT_PROXY : PHYS_GEOM_TYPE_NONE;
+                    int materialFlags = material->GetMaterialFlags();
+                    //MTL_FLAG_NODRAW_TOUCHBENDING and MTL_FLAG_NODRAW are mutually exclusive.
+                    const int errorMask = AZ::GFxFramework::EMaterialFlags::MTL_FLAG_NODRAW_TOUCHBENDING |
+                                          AZ::GFxFramework::EMaterialFlags::MTL_FLAG_NODRAW;
+                    AZ_Assert((materialFlags & errorMask) != errorMask, "A physics material can not be NODRAW and NODRAW_TOUCHBENDING at the the same time.");
+                    if (materialFlags & AZ::GFxFramework::EMaterialFlags::MTL_FLAG_NODRAW_TOUCHBENDING)
+                    {
+                        materialCGF->nPhysicalizeType = PHYS_GEOM_TYPE_NO_COLLIDE;
+                    }
+                    else if (materialFlags & AZ::GFxFramework::EMaterialFlags::MTL_FLAG_NODRAW)
+                    {
+                        materialCGF->nPhysicalizeType = PHYS_GEOM_TYPE_DEFAULT_PROXY;
+                    }
+                    else
+                    {
+                        materialCGF->nPhysicalizeType = PHYS_GEOM_TYPE_NONE;
+                    }
                     rootMaterial->subMaterials[i] = materialCGF;
                 }
             }

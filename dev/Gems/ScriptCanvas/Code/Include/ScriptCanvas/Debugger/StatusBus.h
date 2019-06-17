@@ -15,22 +15,100 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Outcome/Outcome.h>
 
+#include <ScriptCanvas/Debugger/ValidationEvents/ValidationEvent.h>
+
 namespace ScriptCanvas
 {
-    struct StatusErrors
+    class ValidationEvent;
+
+    class ValidationResults
     {
-        AZStd::vector<AZStd::string> m_graphErrors;
-        AZStd::vector<AZ::EntityId> m_invalidConnectionIds;
+        friend class Graph;
+    public:
+
+        ~ValidationResults()
+        {
+            ClearResults();
+        }
+
+        bool HasErrors() const
+        {
+            return HasSeverity(ValidationSeverity::Warning);
+        }
+
+        int ErrorCount() const
+        {
+            return CountSeverity(ValidationSeverity::Error);
+        }
+
+        bool HasWarnings() const
+        {
+            return HasSeverity(ValidationSeverity::Warning);
+        }
+
+        int WarningCount() const
+        {
+            return CountSeverity(ValidationSeverity::Warning);
+        }
+
+        void ClearResults()
+        {
+            for (auto validationEvent : m_validationEvents)
+            {
+                delete validationEvent;
+            }
+
+            m_validationEvents.clear();
+        }
+
+        const AZStd::vector< ValidationEvent* >& GetEvents() const
+        {
+            return m_validationEvents;
+        }
+
+    private:
+
+        bool HasSeverity(const ValidationSeverity& severity) const
+        {
+            for (auto validationEvent : m_validationEvents)
+            {
+                if (validationEvent->GetSeverity() == severity)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        int CountSeverity(const ValidationSeverity& severity) const
+        {
+            int count = 0;
+
+            for (auto validationEvent : m_validationEvents)
+            {
+                if (validationEvent->GetSeverity() == severity)
+                {
+                    ++count;
+                }
+            }
+
+            return count;
+        }
+
+        AZStd::vector< ValidationEvent* > m_validationEvents;
     };
-    class Graph;
+
     class StatusRequests : public AZ::EBusTraits
     {
     public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
 
         //! Validates the graph for invalid connections between node's endpoints
         //! Any errors are logged to the "Script Canvas" window
-        virtual AZ::Outcome<void, StatusErrors> ValidateGraph(const Graph&) = 0;
+        virtual void ValidateGraph(ValidationResults& validationEvents) = 0;
     };
 
     using StatusRequestBus = AZ::EBus<StatusRequests>;

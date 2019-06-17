@@ -29,12 +29,15 @@
 #include <functional>
 #include <utility>
 
+#include <AzToolsFramework/Viewport/ActionBus.h>
+
 class QSignalMapper;
 class QPixmap;
 class QDockWidget;
 class DynamicMenu;
 class MainWindow;
 class QtViewPaneManager;
+class ShortcutDispatcher;
 
 class PatchedAction
     : public QAction
@@ -84,6 +87,7 @@ private:
 
 class ActionManager
     : public QObject
+    , private AzToolsFramework::EditorActionRequestBus::Handler
 {
     Q_OBJECT
 
@@ -98,8 +102,8 @@ public:
         ActionWrapper& SetShortcut(const QKeySequence& shortcut) { m_action->setShortcut(shortcut); return *this; }
         ActionWrapper& SetToolTip(const QString& toolTip) { m_action->setToolTip(toolTip); return *this; }
         ActionWrapper& SetStatusTip(const QString& statusTip) { m_action->setStatusTip(statusTip); return *this; }
-
         ActionWrapper& SetCheckable(bool value) { m_action->setCheckable(value); return *this; }
+        ActionWrapper& SetReserved(); // if reserved, the action should not be allowed to be disabled or overridden
 
         //ActionWrapper &SetMenu(QMenu *menu) { m_action->setMenu(menu); return *this; }
         //ActionWrapper &SetMenu(QMenu *menu) { m_action->setMenu(menu); return *this; }
@@ -180,6 +184,10 @@ public:
     {
     public:
         MenuWrapper() = default;
+        MenuWrapper(QMenu* menu, ActionManager* am)
+            : m_menu(menu)
+            , m_actionManager(am) {}
+
         MenuWrapper& SetTitle(const QString& text) { m_menu->setTitle(text); return *this; }
         MenuWrapper& SetIcon(const QIcon& icon) { m_menu->setIcon(icon); return *this; }
 
@@ -197,9 +205,9 @@ public:
             return m_menu->addSeparator();
         }
 
-        MenuWrapper AddMenu(const QString& name)
+        MenuWrapper AddMenu(const QString& name, const QString& menuId = QString())
         {
-            auto menu = m_actionManager->AddMenu(name);
+            auto menu = m_actionManager->AddMenu(name, menuId);
             m_menu->addMenu(menu);
             return menu;
         }
@@ -209,22 +217,23 @@ public:
             return !m_menu;
         }
 
-        operator QMenu*() const
+        operator QMenu*()
         {
             return m_menu;
         }
-        QMenu* operator->() const { return m_menu; }
 
-        QMenu* Get() const
+        QMenu* operator->()
+        {
+            return m_menu;
+        }
+
+        QMenu* Get()
         {
             return m_menu;
         }
 
     private:
         friend ActionManager;
-        MenuWrapper(QMenu* menu, ActionManager* am)
-            : m_menu(menu)
-            , m_actionManager(am) { Q_ASSERT(m_menu); }
 
         QPointer<QMenu> m_menu = nullptr;
         ActionManager* m_actionManager = nullptr;
@@ -275,11 +284,13 @@ public:
     };
 
 public:
-    explicit ActionManager(MainWindow* parent, QtViewPaneManager* qtViewPaneManager);
+    explicit ActionManager(
+        MainWindow* parent, QtViewPaneManager* qtViewPaneManager,
+        ShortcutDispatcher* shortcutDispatcher);
     ~ActionManager();
     void AddMenu(QMenu* menu);
-    MenuWrapper AddMenu(const QString& name);
-    MenuWrapper CreateMenuPath(const QStringList& menuPath);
+    MenuWrapper AddMenu(const QString& title, const QString& menuId);
+    MenuWrapper FindMenu(const QString& menuId);
     bool ActionIsWidget(int actionId) const;
 
     void AddToolBar(QToolBar* toolBar);
@@ -287,12 +298,21 @@ public:
 
     void AddAction(QAction* action);
     void AddAction(int id, QAction* action);
+    void RemoveAction(QAction* action);
     ActionWrapper AddAction(int id, const QString& name);
     bool HasAction(QAction*) const;
     bool HasAction(int id) const;
 
     QAction* GetAction(int id) const;
     QList<QAction*> GetActions() const;
+
+    // AzToolsFramework::EditorActionRequests
+    void AddActionViaBus(int id, QAction* action) override;
+    void RemoveActionViaBus(QAction* action) override;
+    void EnableDefaultActions() override;
+    void DisableDefaultActions() override;
+    void AttachOverride(QWidget* object) override;
+    void DetachOverride() override;
 
     template<typename T>
     void RegisterUpdateCallback(int id, T* object, void (T::* method)(QAction*))
@@ -338,8 +358,6 @@ private slots:
     void UpdateActions();
 
 private:
-    QMenu* GetMenu(const QString& name) const;
-    QMenu* GetMenu(const QString& name, const QList<QAction*>& actions) const;
     QHash<int, QAction*> m_actions;
     QVector<QMenu*> m_menus;
     QVector<QToolBar*> m_toolBars;
@@ -349,6 +367,7 @@ private:
     MainWindow* const m_mainWindow;
 
     QtViewPaneManager* m_qtViewPaneManager;
+    ShortcutDispatcher* m_shortcutDispatcher = nullptr;
 
     // for sending shortcut metrics events
     bool m_isShortcutEvent = false;
@@ -359,12 +378,15 @@ private:
     // for sending main menu metrics events
     QSet<int> m_registeredViewPaneIds;
 
-    // Update the registered view pane Ids when the registered view pane list is modified
+    // update the registered view pane Ids when the registered view pane list is modified
     void RebuildRegisteredViewPaneIds();
 
     // Guard against recursive actions being triggered by double clicks on menu items
     // while modal dialogs are in the process of popping up
     QSet<int> m_executingIds;
+
+    // have all default actions (not including reserved actions) been suspended
+    bool m_defaultActionsSuspended = false;
 };
 
 class DynamicMenu

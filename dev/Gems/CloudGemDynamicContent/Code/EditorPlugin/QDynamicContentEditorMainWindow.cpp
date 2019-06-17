@@ -103,7 +103,7 @@ namespace DynamicContent
 
     void QDynamicContentEditorMainWindow::CheckPlatformLicense(QString platform)
     {
-        AZStd::string fullPathToAssets = gEnv->pFileIO->GetAlias("@assets@");
+        AZStd::string fullPathToAssets = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
         QString fullPath = fullPathToAssets.c_str();
         fullPath.replace("\\", "/");
         QStringList pathList = fullPath.split("/", QString::SkipEmptyParts);
@@ -283,7 +283,7 @@ namespace DynamicContent
             else if (key == COMMAND_GENERATE_KEYS)
             {
                 QString message = value.toString();
-                gEnv->pLog->Log("(Cloud Canvas) %s", message.toStdString().c_str());
+                AZ_TracePrintf("DynamicContentKeys", "%s", message.toStdString().c_str());
                 GenerateKeyCompleted();
                 return true;
             }
@@ -928,7 +928,7 @@ namespace DynamicContent
 
     bool QDynamicContentEditorMainWindow::FileProcessedByAssetProcessor(QString filePath)
     {
-        AZStd::string fullPathToAssets = gEnv->pFileIO->GetAlias("@assets@");
+        AZStd::string fullPathToAssets = AZ::IO::FileIOBase::GetInstance()->GetAlias("@assets@");
         QString fullPath = fullPathToAssets.c_str();
         fullPath.replace("\\", "/");
         QStringList pathList = fullPath.split("/");

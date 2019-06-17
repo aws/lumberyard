@@ -1,14 +1,7 @@
 {
-    "none": {
-        "Source": [
-            "Source/CloudGemDynamicContent_precompiled.cpp",
-            "Source/CloudGemDynamicContent_precompiled.h"
-        ]
-    },
     "auto": {
         "Include": [
-            "Include/DynamicContent/DynamicContentBus.h",
-            "Include/PresignedURL/PresignedURLBus.h"
+            "Include/DynamicContent/DynamicContentBus.h"
         ],
         "Implementation": [
             "Source/DynamicContentGem.h",
@@ -16,11 +9,7 @@
             "Source/DynamicContentTransferManager.h",
             "Source/DynamicContentTransferManager.cpp",
             "Source/DynamicContentFileInfo.h",
-            "Source/DynamicContentFileInfo.cpp",
-            "Source/FileTransferSupport/FileTransferSupport.h",
-            "Source/FileTransferSupport/FileTransferSupport.cpp",
-            "Source/PresignedURL/PresignedURL.h",
-            "Source/PresignedURL/PresignedURL.cpp"
+            "Source/DynamicContentFileInfo.cpp"
         ]
     }
 }

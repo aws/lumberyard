@@ -14,6 +14,8 @@
 
 #include <AzCore/base.h>
 
+#include <AzCore/std/string/string_view.h>
+
 //////////////////////////////////////////////////////////////////////////
 // Macros for pre-processor Crc32 conversion
 //
@@ -64,6 +66,8 @@ namespace AZ
          * Calculates the value from a string.
          */
         explicit Crc32(const char* str);
+
+        explicit Crc32(AZStd::string_view view);
 
         /**
          * Calculates the value from a block of raw data.

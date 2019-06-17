@@ -96,7 +96,6 @@ namespace LmbrCentral
     class EditorFlowGraphComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , private FlowGraphEditorRequestsBus::Handler
-        , private AzFramework::EntityDebugDisplayEventBus::Handler
     {
     public:
 
@@ -114,11 +113,6 @@ namespace LmbrCentral
         void Init() override;
         void Activate() override;
         void Deactivate() override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

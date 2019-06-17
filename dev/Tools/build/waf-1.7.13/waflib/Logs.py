@@ -332,3 +332,20 @@ def pprint(col, str, label='', sep='\n'):
 	for key, value in external_log_handlers.iteritems():
 		value.write_err("%s%s%s %s%s" % (colors(col), str, colors.NORMAL, label, sep))
 
+
+WARNED_MESSAGES = set()
+
+
+def warn_once(msg):
+	if msg not in WARNED_MESSAGES:
+		WARNED_MESSAGES.add(msg)
+		warn(msg)
+	
+	
+INFO_MESSAGES = set()
+
+
+def info_once(msg):
+	if msg not in INFO_MESSAGES:
+		INFO_MESSAGES.add(msg)
+		info(msg)

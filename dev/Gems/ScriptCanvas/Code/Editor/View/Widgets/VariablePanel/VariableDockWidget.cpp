@@ -11,6 +11,7 @@
 */
 #include <precompiled.h>
 
+#include <QAction>
 #include <QCompleter>
 #include <QEvent>
 #include <QGraphicsScene>
@@ -45,8 +46,8 @@
 #include <Editor/Translation/TranslationHelper.h>
 #include <Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/PropertyGridBus.h>
+#include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
-
 
 #include <ScriptCanvas/Data/DataRegistry.h>
 #include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
@@ -123,7 +124,7 @@ namespace ScriptCanvasEditor
             {
                 ScriptCanvas::VariableRequestBus::EventResult(m_variableName, m_variableId, &ScriptCanvas::VariableRequests::GetName);
 
-                AZStd::string_view variableTypeName = TranslationHelper::GetSafeTypeName(m_variableDatum->GetData().GetType());
+                const AZStd::string variableTypeName = TranslationHelper::GetSafeTypeName(m_variableDatum->GetData().GetType());
                 m_variableDatum->GetData().SetLabel(variableTypeName);
                 m_componentTitle = AZStd::string::format("%s Variable", variableTypeName.data());
 
@@ -194,6 +195,11 @@ namespace ScriptCanvasEditor
         GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
     }
 
+    void VariablePropertiesComponent::OnVariableExposureGroupChanged()
+    {
+        GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+    }
+
     /////////////////////////////
     // VariablePanelContextMenu
     /////////////////////////////
@@ -245,6 +251,41 @@ namespace ScriptCanvasEditor
             mimeEvent.ExecuteEvent(viewCenter, viewCenter, graphCanvasGraphId);
         });
 
+        QAction* copyAction = new QAction(QObject::tr("Copy %1").arg(variableName.c_str()), this);        
+        copyAction->setToolTip(QObject::tr("Copies the variable called - %1").arg(variableName.c_str()));
+        copyAction->setStatusTip(QObject::tr("Copies the variable called - %1").arg(variableName.c_str()));
+
+        QObject::connect(copyAction,
+            &QAction::triggered,
+            [dockWidget, varId](bool)
+        {
+            GraphVariablesTableView::CopyVariableToClipboard(dockWidget->GetActiveScriptCanvasGraphId(), varId);
+        });
+
+        QAction* pasteAction = new QAction(QObject::tr("Paste").arg(variableName.c_str()), this);
+        pasteAction->setToolTip(QObject::tr("Pastes the variable currently on the clipboard").arg(variableName.c_str()));
+        pasteAction->setStatusTip(QObject::tr("Pastes the variable currently on the clipboard").arg(variableName.c_str()));
+
+        pasteAction->setEnabled(GraphVariablesTableView::HasCopyVariableData());
+
+        QObject::connect(pasteAction,
+            &QAction::triggered,
+            [dockWidget, varId](bool)
+        {
+            GraphVariablesTableView::HandleVariablePaste(dockWidget->GetActiveScriptCanvasGraphId());
+        });
+
+        QAction* duplicateAction = new QAction(QObject::tr("Duplicate %1").arg(variableName.c_str()), this);
+        duplicateAction->setToolTip(QObject::tr("Duplicates the variable called - %1").arg(variableName.c_str()));
+        duplicateAction->setStatusTip(QObject::tr("Duplicates the variable called - %1").arg(variableName.c_str()));
+
+        QObject::connect(duplicateAction,
+            &QAction::triggered,
+            [dockWidget, varId](bool)
+        {
+            dockWidget->OnDuplicateVariable(varId);
+        });
+
         QAction* deleteAction = new QAction(QObject::tr("Delete %1").arg(variableName.c_str()), this);
         deleteAction->setToolTip(QObject::tr("Deletes the variable called - %1").arg(variableName.c_str()));
         deleteAction->setStatusTip(QObject::tr("Deletes the variable called - %1").arg(variableName.c_str()));
@@ -260,12 +301,38 @@ namespace ScriptCanvasEditor
         addAction(getAction);
         addAction(setAction);
         addSeparator();
-        addAction(deleteAction);
+        addAction(copyAction);
+        addAction(pasteAction);
+        addAction(duplicateAction);
+        addAction(deleteAction);        
     }
 
     ///////////////////////
     // VariableDockWidget
     ///////////////////////
+
+    AZStd::string VariableDockWidget::ConstructDefaultVariableName(AZ::u32 variableCounter)
+    {
+        return AZStd::string::format("Variable %u", variableCounter);
+    }
+
+    AZStd::string VariableDockWidget::FindDefaultVariableName(const AZ::EntityId& scriptCanvasGraphId)
+    {
+        bool nameAvailable = false;
+        AZStd::string varName;
+
+        do
+        {
+            AZ::u32 varCounter = 0;
+            SceneCounterRequestBus::EventResult(varCounter, scriptCanvasGraphId, &SceneCounterRequests::GetNewVariableCounter);
+
+            varName = ConstructDefaultVariableName(varCounter);
+
+            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(nameAvailable, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::IsNameAvailable, varName);
+        } while (!nameAvailable);
+
+        return varName;
+    }
 
     VariableDockWidget::VariableDockWidget(QWidget* parent /*= nullptr*/)
         : AzQtComponents::StyledDockWidget(parent)
@@ -296,6 +363,7 @@ namespace ScriptCanvasEditor
         ui->searchFilter->setEnabled(false);
 
         QObject::connect(ui->variablePalette, &VariablePaletteTableView::CreateVariable, this, &VariableDockWidget::OnCreateVariable);
+        QObject::connect(ui->variablePalette, &VariablePaletteTableView::CreateNamedVariable, this, &VariableDockWidget::OnCreateNamedVariable);
         QObject::connect(ui->graphVariables, &GraphVariablesTableView::DeleteVariables, this, &VariableDockWidget::OnDeleteVariables);
 
         m_filterTimer.setInterval(250);
@@ -329,6 +397,7 @@ namespace ScriptCanvasEditor
         GeneralRequestBus::BroadcastResult(m_scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
 
         ui->graphVariables->SetActiveScene(m_scriptCanvasGraphId);
+        ui->variablePalette->SetActiveScene(m_scriptCanvasGraphId);
 
         ui->addButton->setEnabled(m_scriptCanvasGraphId.IsValid());
         ui->searchFilter->setEnabled(m_scriptCanvasGraphId.IsValid());
@@ -349,6 +418,11 @@ namespace ScriptCanvasEditor
         {
             ShowGraphVariables();
         }
+    }
+
+    const AZ::EntityId& VariableDockWidget::GetActiveScriptCanvasGraphId() const
+    {
+        return m_scriptCanvasGraphId;
     }
 
     bool VariableDockWidget::IsShowingVariablePalette() const
@@ -457,13 +531,72 @@ namespace ScriptCanvasEditor
     {
         QModelIndex index = ui->graphVariables->indexAt(pos);
 
+        QActionGroup actionGroup(this);
+        actionGroup.setExclusive(true);
+
+        QAction* sortByName = actionGroup.addAction("Sort by name");
+        sortByName->setCheckable(true);
+
+        QAction* sortByType = actionGroup.addAction("Sort by type");
+        sortByType->setCheckable(true);
+
+        AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
+
+        if (settings->m_variablePanelSorting == GraphVariablesModel::ColumnIndex::Name)
+        {
+            sortByName->setChecked(true);
+        }
+        else
+        {
+            sortByType->setChecked(true);
+        }
+
+        QAction* cleanupAction = new QAction(QObject::tr("Remove unused variables"), this);
+
+        QAction* actionResult = nullptr;
+
         // Bring up the context menu if the item is valid
         if (index.row() > -1)
         {
             ScriptCanvas::VariableId varId = index.data(GraphVariablesModel::VarIdRole).value<ScriptCanvas::VariableId>();
 
             VariablePanelContextMenu menu(this, m_scriptCanvasGraphId, varId);
-            menu.exec(ui->graphVariables->mapToGlobal(pos));
+
+            menu.addSeparator();
+            menu.addAction(cleanupAction);
+            menu.addSeparator();
+            menu.addAction(sortByName);
+            menu.addAction(sortByType);
+            
+
+            actionResult = menu.exec(ui->graphVariables->mapToGlobal(pos));
+        }
+        else
+        {
+            QMenu menu;
+            
+            menu.addAction(cleanupAction);
+            menu.addSeparator();
+            menu.addAction(sortByName);
+            menu.addAction(sortByType);            
+
+            actionResult = menu.exec(ui->graphVariables->mapToGlobal(pos));
+        }
+
+        // Very likely the actions are dangling pointers here. Do not dereference them.
+        if (actionResult == sortByName)
+        {
+            settings->m_variablePanelSorting = GraphVariablesModel::ColumnIndex::Name;
+            ui->graphVariables->ApplyPreferenceSort();
+        }
+        else if (actionResult == sortByType)
+        {
+            settings->m_variablePanelSorting = GraphVariablesModel::ColumnIndex::Type;
+            ui->graphVariables->ApplyPreferenceSort();
+        }
+        else if (actionResult == cleanupAction)
+        {
+            OnRemoveUnusedVariables();
         }
     }
 
@@ -496,24 +629,45 @@ namespace ScriptCanvasEditor
             selection.push_back(m_propertyHelpersMap[varId]->GetId());
         }
 
-        PropertyGridRequestBus::Broadcast(&PropertyGridRequests::SetSelection, selection);
+        OnHighlightVariables(variableIds);
+        Q_EMIT OnVariableSelectionChanged(selection);
+    }
+
+    void VariableDockWidget::OnDuplicateVariable(const ScriptCanvas::VariableId& variableId)
+    {
+        ScriptCanvas::VariableNameValuePair* valuePair = nullptr;
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(valuePair, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, variableId);
+
+        if (valuePair == nullptr)
+        {
+            return;
+        }
+
+        ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::CloneVariable, (*valuePair));
     }
 
     void VariableDockWidget::OnCreateVariable(ScriptCanvas::Data::Type varType)
     {
+        AZStd::string varName = FindDefaultVariableName(m_scriptCanvasGraphId);
+        OnCreateNamedVariable(varName, varType);
+    }
+
+    void VariableDockWidget::OnCreateNamedVariable(const AZStd::string& variableName, ScriptCanvas::Data::Type varType)
+    {
         ShowGraphVariables();
-
-        AZ::u32 varCounter = 0;
-        SceneCounterRequestBus::EventResult(varCounter, m_scriptCanvasGraphId, &SceneCounterRequests::GetNewVariableCounter);
-
-        AZStd::string varName = AZStd::string::format("Variable %u", varCounter);
         ScriptCanvas::Datum datum(varType, ScriptCanvas::Datum::eOriginality::Original);
 
         AZ::Outcome<ScriptCanvas::VariableId, AZStd::string> outcome = AZ::Failure(AZStd::string());
-        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(outcome, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::AddVariable, varName, datum);
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(outcome, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::AddVariable, variableName, datum);
 
         AZ_Warning("VariablePanel", outcome.IsSuccess(), "Could not create new variable: %s", outcome.GetError().c_str());
         GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
+
+        // We already provide a naming hook for container types so we don't need to do re-force them into it.
+        if (outcome.IsSuccess() && !ScriptCanvas::Data::IsContainerType(varType))
+        {
+            ui->graphVariables->EditVariableName(outcome.GetValue());
+        }
     }
 
     void VariableDockWidget::OnDeleteVariables(const AZStd::unordered_set< ScriptCanvas::VariableId>& variableIds)
@@ -537,12 +691,24 @@ namespace ScriptCanvasEditor
                 }
             }
         }
+
+        ui->graphVariables->ResizeColumns();
         GeneralRequestBus::Broadcast(&GeneralRequests::PopPreventUndoStateUpdate);
 
         if (result)
         {
             GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, m_scriptCanvasGraphId);
         }
+    }
+
+    void VariableDockWidget::OnHighlightVariables(const AZStd::unordered_set< ScriptCanvas::VariableId>& variableIds)
+    {
+        EditorGraphRequestBus::Event(m_scriptCanvasGraphId, &EditorGraphRequests::HighlightVariables, variableIds);
+    }
+
+    void VariableDockWidget::OnRemoveUnusedVariables()
+    {
+        EditorGraphRequestBus::Event(m_scriptCanvasGraphId, &EditorGraphRequests::RemoveUnusedVariables);
     }
 
     bool VariableDockWidget::CanDeleteVariable(const ScriptCanvas::VariableId& variableId)

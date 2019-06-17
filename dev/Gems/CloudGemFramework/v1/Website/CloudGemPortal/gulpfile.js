@@ -419,7 +419,7 @@ var writeIndexDist = function (cb){
 
 gulp.task('js', gulp.series(writeIndexDist))
 
-gulp.task('bundle-gems', gulp.series('inline-template-gem', 'gem-ts', function (cb) {
+gulp.task('bundle-gems', gulp.series('js', 'inline-template-gem', 'gem-ts', function (cb) {
     var builder = new Builder('', systemjs_config);
 	return cloudGems()
     .pipe(through.obj(function bundle(file, encoding, done) {
@@ -1002,7 +1002,7 @@ var writeBootstrapAndStart = function (cb) {
 }
 
 var writeBootstrap = function (cb, output_path, region){
-    return executeLmbrAwsCommand('lmbr_aws cloud-gem-framework cloud-gem-portal --show-url-only --show-configuration' + (region ? ' --region-override ' + region : '' ) , function (stdout, stderr, err) {
+    return executeLmbrAwsCommand('lmbr_aws cloud-gem-framework cloud-gem-portal --show-bootstrap-configuration' + (region ? ' --region-override ' + region : '' ) , function (stdout, stderr, err) {
         var bootstrap_information = stdout.match(bootstrap_pattern)
         //is there a bootstrap configuration present?
         if (bootstrap_information) {

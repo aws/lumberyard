@@ -1,0 +1,44 @@
+<Params>
+ <AnimationList>
+  <Animation name="#filepath" path="animations/Environment"/>
+  <Animation name="*" path="*/*.caf"/>
+  <Animation name="*" path="*/*.bspace"/>
+  <Animation name="*" path="*/*.comb"/>
+ </AnimationList>
+ <BBoxIncludeList>
+  <Joint name="AM_Rock_Square_01_Joint"/>
+  <Joint name="AM_Rock_Square_02_Joint"/>
+  <Joint name="AM_Rock_Square_03_Joint"/>
+  <Joint name="AM_Rock_Square_05_Joint"/>
+  <Joint name="AM_Rock_Square_06_Joint"/>
+  <Joint name="AM_Rock_Square_07_Joint"/>
+  <Joint name="AM_Rock_Square_08_Joint"/>
+  <Joint name="AM_Rock_Square_09_Joint"/>
+  <Joint name="AM_Rock_Square_010_Joint"/>
+  <Joint name="AM_Rock_Square_011_Joint"/>
+  <Joint name="AM_Rock_Square_012_Joint"/>
+  <Joint name="AM_Rock_Square_013_Joint"/>
+  <Joint name="AM_Rock_Square_014_Joint"/>
+  <Joint name="AM_Rock_Square_04_Joint"/>
+  <Joint name="AM_Rock_Square_016_Joint"/>
+  <Joint name="AM_Rock_Square_017_Joint"/>
+  <Joint name="AM_Rock_Square_018_Joint"/>
+  <Joint name="AM_Rock_Square_019_Joint"/>
+  <Joint name="AM_Rock_Square_020_Joint"/>
+  <Joint name="AM_Rock_Square_021_Joint"/>
+  <Joint name="AM_Rock_Square_022_Joint"/>
+  <Joint name="AM_Rock_Square_024_Joint"/>
+  <Joint name="AM_Rock_Square_028_Joint"/>
+  <Joint name="AM_Rock_Square_027_Joint"/>
+  <Joint name="AM_Rock_Square_031_Joint"/>
+  <Joint name="AM_Rock_Square_034_Joint"/>
+  <Joint name="AM_Rock_Square_032_Joint"/>
+  <Joint name="AM_Rock_Square_033_Joint"/>
+  <Joint name="AM_Rock_Square_030_Joint"/>
+  <Joint name="ROOT"/>
+ </BBoxIncludeList>
+ <BBoxExtensionList>
+  <Axis negX="10" negY="10" negZ="10" posX="10" posY="10" posZ="10"/>
+ </BBoxExtensionList>
+ <IK_Definition />
+</Params>

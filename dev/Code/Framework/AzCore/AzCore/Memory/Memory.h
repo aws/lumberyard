@@ -250,7 +250,7 @@ namespace AZ {
     AZ_FORCE_INLINE static void AZ_CLASS_ALLOCATOR_DeAllocate(void* object) {                                                                                                                                                                       \
         AZ::AllocatorInstance< _Allocator >::Get().DeAllocate(object, sizeof(_Class), AZStd::alignment_of< _Class >::value);                                                                                                                        \
     }                                                                                                                                                                                                                                               \
-    void AZ_CLASS_ALLOCATOR_DECLARED();
+    template<bool Placeholder = true> void AZ_CLASS_ALLOCATOR_DECLARED();
 
 // If you want to avoid including the memory manager class in the header file use the _DECL (declaration) and _IMPL (implementations/definition) macros
 #define AZ_CLASS_ALLOCATOR_DECL                                                                                                                                                                                                                     \
@@ -295,7 +295,7 @@ namespace AZ {
     /* ========== AZ_CLASS_ALLOCATOR API ========== */                                                                                                                                                                                              \
     static void* AZ_CLASS_ALLOCATOR_Allocate();                                                                                                                                                                                                     \
     static void  AZ_CLASS_ALLOCATOR_DeAllocate(void* object);                                                                                                                                                                                       \
-    void AZ_CLASS_ALLOCATOR_DECLARED();
+    template<bool Placeholder = true> void AZ_CLASS_ALLOCATOR_DECLARED();
 
 #define AZ_CLASS_ALLOCATOR_IMPL_INTERNAL(_Class, _Allocator, _Flags, _Template)                                                                                                                                                                                         \
     /* ========== standard operator new/delete ========== */                                                                                                                                                                                        \

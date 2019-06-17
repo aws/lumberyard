@@ -371,7 +371,7 @@ namespace CloudGemTextToSpeech
     AZStd::string TextToSpeech::ResolvePath(const char* path, bool isDir) const
     {
         char resolvedGameFolder[AZ_MAX_PATH_LEN] = { 0 };
-        if (!gEnv->pFileIO->ResolvePath(path, resolvedGameFolder, AZ_MAX_PATH_LEN))
+        if (!AZ::IO::FileIOBase::GetInstance()->ResolvePath(path, resolvedGameFolder, AZ_MAX_PATH_LEN))
         {
             return "";
         }

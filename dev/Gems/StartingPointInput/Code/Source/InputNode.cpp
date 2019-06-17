@@ -23,10 +23,6 @@
 #include <PlayerProfileRequestBus.h>
 #include <ScriptCanvas/Libraries/Libraries.h>
 
-
-
-
-
 namespace InputNodes
 {
     void InputNode::OnActivate()
@@ -62,6 +58,7 @@ namespace InputNodes
         {
             PushOutput(output, *slot);
         }
+
         SignalOutput(pressedSlotId);
     }
 

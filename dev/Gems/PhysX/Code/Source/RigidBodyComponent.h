@@ -22,7 +22,6 @@
 
 namespace PhysX
 {
-    class RigidBody;
     class TransformForwardTimeInterpolator;
 
     /// Component used to register an entity as a dynamic rigid body in the PhysX simulation.
@@ -135,11 +134,12 @@ namespace PhysX
 
     private:
         void SetupConfiguration();
+        void CreatePhysics();
 
         std::unique_ptr<TransformForwardTimeInterpolator> m_interpolator;
 
         Physics::RigidBodyConfiguration m_configuration;
-        AZStd::shared_ptr<RigidBody> m_rigidBody;
+        AZStd::unique_ptr<Physics::RigidBody> m_rigidBody;
         Physics::World* m_world = nullptr;
 
         AZ::Vector3 m_initialScale = AZ::Vector3::CreateOne();

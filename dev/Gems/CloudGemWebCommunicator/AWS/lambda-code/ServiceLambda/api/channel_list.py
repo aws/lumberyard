@@ -12,11 +12,12 @@
 import boto3
 import json
 import CloudCanvas
-from cgf_utils import aws_utils
+import web_communicator_iot
+from cgf_utils import custom_resource_utils
 import errors
 
-iot_client = aws_utils.ClientWrapper(boto3.client('iot'))
-listener_policy = CloudCanvas.get_setting('IotPlayerPolicy')
+iot_client = web_communicator_iot.get_iot_client()
+listener_policy = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('IotPlayerPolicy'))
 
 def __get_player_channel_list(action_type, filter_type):
     iot_policy = iot_client.get_policy(policyName=listener_policy)
@@ -44,7 +45,7 @@ def get_subscription_channels():
 
 def _get_channel_table():
     if not hasattr(_get_channel_table, 'channel_table'):
-        channel_table_name = CloudCanvas.get_setting('ChannelDataTable')
+        channel_table_name = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('ChannelDataTable'))
 
         dynamoresource = boto3.resource('dynamodb')
         _get_channel_table.channel_table = dynamoresource.Table(channel_table_name)

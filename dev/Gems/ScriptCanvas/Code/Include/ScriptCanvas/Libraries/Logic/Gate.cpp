@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <Libraries/Logic/Gate.h>
 #include <Include/ScriptCanvas/Libraries/Logic/Gate.generated.cpp>
 

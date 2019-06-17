@@ -63,7 +63,7 @@ EditorPreferencesDialog::EditorPreferencesDialog(QWidget* pParent)
         if (serializeContext)
         {
             CEditorPreferencesPage_General::Reflect(*serializeContext);
-            CEditorPreferencesPage_Files::Reflect(*serializeContext);       
+            CEditorPreferencesPage_Files::Reflect(*serializeContext);
             CEditorPreferencesPage_ViewportGeneral::Reflect(*serializeContext);
             CEditorPreferencesPage_ViewportGizmo::Reflect(*serializeContext);
             CEditorPreferencesPage_ViewportMovement::Reflect(*serializeContext);
@@ -313,4 +313,11 @@ void EditorPreferencesDialog::CreatePages()
             category->setExpanded(true);
         }
     }
+}
+
+void EditorPreferencesDialog::AfterPropertyModified(AzToolsFramework::InstanceDataNode* node)
+{
+    // ensure we refresh all the property editor values as it is possible for them to
+    // change based on other values (e.g. legacy ui and new viewport not being compatible)
+    ui->propertyEditor->InvalidateValues();
 }

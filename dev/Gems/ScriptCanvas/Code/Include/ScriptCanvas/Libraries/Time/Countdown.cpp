@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "Countdown.h"
 
 namespace ScriptCanvas
@@ -19,7 +17,94 @@ namespace ScriptCanvas
     namespace Nodes
     {
         namespace Time
+        {
+            ///////////////
+            // TickDelay
+            ///////////////
+
+            TickDelay::TickDelay()
+                : Node()
+                , m_tickCounter(0)
+                , m_tickOrder(AZ::TICK_DEFAULT)
             {
+            }
+
+            void TickDelay::OnInputSignal(const SlotId&)
+            {
+                m_tickCounter = TickDelayProperty::GetTicks(this);
+
+                if (m_tickCounter >= 0)
+                {
+                    if (!AZ::SystemTickBus::Handler::BusIsConnected())
+                    {
+                        AZ::SystemTickBus::Handler::BusConnect();
+                    }
+                }
+            }
+
+            void TickDelay::OnSystemTick()
+            {
+                AZ::SystemTickBus::Handler::BusDisconnect();
+
+                if (!AZ::TickBus::Handler::BusIsConnected())
+                {
+                    AZ::TickBus::Handler::BusDisconnect();
+                }
+
+                m_tickOrder = TickDelayProperty::GetTickOrder(this);
+                AZ::TickBus::Handler::BusConnect();
+            }
+
+            void TickDelay::OnTick(float deltaTime, AZ::ScriptTimePoint timePoint)
+            {
+                --m_tickCounter;
+
+                if (m_tickCounter <= 0)
+                {
+                    const SlotId outSlot = TickDelayProperty::GetOutSlotId(this);
+
+                    SignalOutput(outSlot);
+                    AZ::TickBus::Handler::BusDisconnect();
+                }
+            }
+
+            int TickDelay::GetTickOrder()
+            {
+                return m_tickOrder;
+            }
+
+            bool Countdown::CountdownNodeVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+            {
+                // Fixed issue with out pins not being correctly marked as latent.
+                if (classElement.GetVersion() < 2)
+                {
+                    const char* slotsKey = "Slots";
+                    AZ::Crc32 slotsId = AZ::Crc32(slotsKey);
+
+                    AZStd::list< ScriptCanvas::Slot > nodeSlots;
+
+                    AZ::SerializeContext::DataElementNode* baseClassElement = classElement.FindSubElement(AZ::Crc32("BaseClass1"));
+                    AZ::SerializeContext::DataElementNode* dataNode = baseClassElement->FindSubElement(slotsId);
+
+                    if (dataNode && dataNode->GetData(nodeSlots))
+                    {
+                        baseClassElement->RemoveElementByName(slotsId);
+
+                        for (ScriptCanvas::Slot& slot : nodeSlots)
+                        {
+                            if (slot.GetName() == "Out")
+                            {
+                                slot.ConvertToLatentExecutionOut();
+                            }
+                        }
+
+                        baseClassElement->AddElementWithData(context, slotsKey, nodeSlots);
+                    }
+                }
+
+                return true;
+            }
+
             Countdown::Countdown()
                 : Node()
                 , m_countdownSeconds(0.f)

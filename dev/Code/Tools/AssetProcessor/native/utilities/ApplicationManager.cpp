@@ -241,7 +241,10 @@ void ApplicationManager::GetExternalBuilderFileList(QStringList& externalBuilder
     builderPaths.append(builderPath1);
 
     // Second priority, locate the Builds based on the engine root path + bin folder
-    QString builderPath2 = QDir::toNativeSeparators(QString(this->m_frameworkApp.GetEngineRoot()) + QString(BINFOLDER_NAME AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING) + builderFolderName);
+    AZStd::string_view binFolderName;
+    AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
+    QString builderPath2 = QDir::toNativeSeparators(QString(this->m_frameworkApp.GetEngineRoot()) + QString("%1" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING).arg(binFolderName.data()) + builderFolderName);
 #if defined (AZ_PLATFORM_WINDOWS)
     bool isDuplicate = (builderPath1.compare(builderPath2, Qt::CaseInsensitive)==0);
 #else
@@ -755,13 +758,23 @@ bool ApplicationManager::Activate()
     
     // the following controls what registry keys (or on mac or linux what entries in home folder) are used
     // so they should not be translated!
-    qApp->setOrganizationName("Amazon");
+    qApp->setOrganizationName(GetOrganizationName());
     qApp->setOrganizationDomain("amazon.com");
-    qApp->setApplicationName("Asset Processor");
+    qApp->setApplicationName(GetApplicationName());
 
     InstallTranslators();
 
     return true;
+}
+
+QString ApplicationManager::GetOrganizationName() const
+{
+    return "Amazon";
+}
+
+QString ApplicationManager::GetApplicationName() const
+{
+    return "Asset Processor";
 }
 
 bool ApplicationManager::PostActivate()

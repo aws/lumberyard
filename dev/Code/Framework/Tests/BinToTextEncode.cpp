@@ -28,7 +28,7 @@ namespace UnitTest
     {
     public:
         Base64Test()
-            : AllocatorsFixture(15, false)
+            : AllocatorsFixture()
             , m_systemEntity(nullptr)
         {
         }
@@ -40,6 +40,7 @@ namespace UnitTest
             AllocatorInstance<ThreadPoolAllocator>::Create();
             ComponentApplication::Descriptor desc;
             desc.m_useExistingAllocator = true;
+            desc.m_enableDrilling = false; // we already created a memory driller for the test (AllocatorsFixture)
             m_systemEntity = m_app.Create(desc);
         }
 

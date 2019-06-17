@@ -29,6 +29,7 @@
 #include "Audio/AudioAreaEnvironmentComponent.h"
 #include "Audio/AudioEnvironmentComponent.h"
 #include "Audio/AudioListenerComponent.h"
+#include "Audio/AudioMultiPositionComponent.h"
 #include "Audio/AudioPreloadComponent.h"
 #include "Audio/AudioProxyComponent.h"
 #include "Audio/AudioRtpcComponent.h"
@@ -242,6 +243,7 @@ namespace LmbrCentral
             AudioAreaEnvironmentComponent::CreateDescriptor(),
             AudioEnvironmentComponent::CreateDescriptor(),
             AudioListenerComponent::CreateDescriptor(),
+            AudioMultiPositionComponent::CreateDescriptor(),
             AudioPreloadComponent::CreateDescriptor(),
             AudioProxyComponent::CreateDescriptor(),
             AudioRtpcComponent::CreateDescriptor(),

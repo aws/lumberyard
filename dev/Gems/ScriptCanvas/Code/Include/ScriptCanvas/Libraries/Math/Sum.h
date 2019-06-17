@@ -15,6 +15,8 @@
 #include <Libraries/Core/BinaryOperator.h>
 #include <Libraries/Math/ArithmeticFunctions.h>
 
+#include <AzCore/Script/ScriptContextAttributes.h>
+
 namespace ScriptCanvas
 {
     class NodeVisitor;
@@ -35,12 +37,16 @@ namespace ScriptCanvas
                     {
                         serializeContext->Class<Sum, ArithmeticExpression>()
                             ->Version(0)
+                            ->Attribute(AZ::Script::Attributes::Deprecated, true)
                             ;
 
                         if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                         {
                             editContext->Class<Sum>("Add", "Add")
-                                ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                                ->ClassElement(AZ::Edit::ClassElements::EditorData, "This node is deprecated use the Add (+) node instead, it provides contextual type and slot configurations.")
+                                    ->Attribute(ScriptCanvas::Attributes::Node::TitlePaletteOverride, "DeprecatedNodeTitlePalette")
+                                    ->Attribute(AZ::Script::Attributes::Deprecated, true)
+                                    ->Attribute(AZ::Edit::Attributes::Category, "Math/Number/Deprecated")
                                     ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Add.png")
                                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                                 ;

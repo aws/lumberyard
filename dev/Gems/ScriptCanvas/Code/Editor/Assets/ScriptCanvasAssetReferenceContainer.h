@@ -154,7 +154,7 @@ namespace ScriptCanvasEditor
             {
                 if (assetRef->m_storeInObjectStream)
                 {
-                    assetRef->m_asset.SetAutoLoadBehavior(AZ::Data::AssetLoadBehavior::NoLoad);
+                    assetRef->m_asset.SetFlags(static_cast<AZ::u8>(AZ::Data::AssetLoadBehavior::NoLoad));
                 }
                 return &assetRef->m_asset;
             }

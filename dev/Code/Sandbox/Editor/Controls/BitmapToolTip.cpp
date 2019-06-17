@@ -49,7 +49,7 @@ CBitmapToolTip::CBitmapToolTip(QWidget* parent)
     layout->addWidget(m_staticBitmap);
     layout->addWidget(m_staticText);
 
-    auto* histogramLayout = new QHBoxLayout(this);
+    auto* histogramLayout = new QHBoxLayout();
     histogramLayout->addWidget(m_rgbaHistogram);
     histogramLayout->addWidget(m_alphaChannelHistogram);
     m_alphaChannelHistogram->setVisible(false);

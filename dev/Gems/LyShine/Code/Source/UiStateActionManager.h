@@ -112,14 +112,15 @@ protected: // data members
 template <typename T>
 inline T* UiStateActionManager::GetStateAction(int state, AZ::EntityId target)
 {
-    auto stateActions = GetStateActions(state);
-
-    for (auto stateAction : * stateActions)
+    if (auto stateActions = GetStateActions(state))
     {
-        T* stateT = azdynamic_cast<T*>(stateAction);
-        if (stateT && stateT->GetTargetEntity() == target)
+        for (auto stateAction : *stateActions)
         {
-            return stateT;
+            T* stateT = azdynamic_cast<T*>(stateAction);
+            if (stateT && stateT->GetTargetEntity() == target)
+            {
+                return stateT;
+            }
         }
     }
 

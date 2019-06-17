@@ -103,6 +103,9 @@ namespace GraphCanvas
 
         void SetPaletteOverride(const AZStd::string& paletteOverride) override;
         void SetDataPaletteOverride(const AZ::Uuid& uuid) override;
+        void SetColorPaletteOverride(const QColor& color) override;
+
+        void ConfigureIconConfiguration(PaletteIconConfiguration& paletteConfiguration) override;
 
         void ClearPaletteOverride() override;
         /////
@@ -136,7 +139,7 @@ namespace GraphCanvas
         AZ_CLASS_ALLOCATOR(GeneralNodeTitleGraphicsWidget, AZ::SystemAllocator, 0);        
 
         GeneralNodeTitleGraphicsWidget(const AZ::EntityId& entityId);
-        ~GeneralNodeTitleGraphicsWidget() override = default;
+        ~GeneralNodeTitleGraphicsWidget() override;
 
         void Activate();
         void Deactivate();
@@ -144,8 +147,12 @@ namespace GraphCanvas
         void SetTitle(const TranslationKeyedString& title);
         void SetSubTitle(const TranslationKeyedString& subtitle);
 
-        void SetPaletteOverride(const AZStd::string& paletteOverride);
+        void SetPaletteOverride(AZStd::string_view paletteOverride);
         void SetPaletteOverride(const AZ::Uuid& uuid);
+        void SetPaletteOverride(const QColor& color);
+
+        void ConfigureIconConfiguration(PaletteIconConfiguration& paletteConfiguration);
+
         void ClearPaletteOverride();
 
         void UpdateLayout();
@@ -183,6 +190,8 @@ namespace GraphCanvas
         AZ::EntityId m_entityId;
 
         const Styling::StyleHelper* m_paletteOverride;
+        Styling::StyleHelper* m_colorOverride;
+
         Styling::StyleHelper m_styleHelper;
     };
 }

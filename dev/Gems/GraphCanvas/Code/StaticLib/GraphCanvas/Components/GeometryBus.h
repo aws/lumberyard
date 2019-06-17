@@ -33,6 +33,8 @@ namespace GraphCanvas
 
         //! Set the entity's position in scene space.
         virtual void SetPosition(const AZ::Vector2&) = 0;
+
+        virtual void SignalBoundsChanged() = 0;
     };
 
     using GeometryRequestBus = AZ::EBus<GeometryRequests>;
@@ -47,6 +49,8 @@ namespace GraphCanvas
 
         //! Emitted when the position of the entity changes in the scene.
         virtual void OnPositionChanged(const AZ::EntityId& /*targetEntity*/, const AZ::Vector2& /*position*/) {}
+
+        virtual void OnBoundsChanged() {}
     };
 
     using GeometryNotificationBus = AZ::EBus<GeometryNotifications>;

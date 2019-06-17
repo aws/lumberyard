@@ -64,7 +64,7 @@ namespace Physics
         AZ_CLASS_ALLOCATOR(RagdollNode, AZ::SystemAllocator, 0);
         AZ_RTTI(RagdollNode, "{226D02B7-6138-4F6B-9870-DE5A1C3C5077}", WorldBody);
 
-        virtual AZStd::shared_ptr<RigidBody>& GetRigidBody() = 0;
+        virtual RigidBody& GetRigidBody() = 0;
         virtual ~RagdollNode() = default;
 
         virtual const AZStd::shared_ptr<Physics::Joint>& GetJoint() const = 0;
@@ -115,7 +115,7 @@ namespace Physics
         /// Gets a pointer to an individual rigid body in the ragdoll.
         /// @param nodeIndex Index in the physics representation of the character.  Note this does not necessarily
         /// correspond to indices used in other systems.
-        virtual AZStd::shared_ptr<RagdollNode> GetNode(size_t nodeIndex) const = 0;
+        virtual RagdollNode* GetNode(size_t nodeIndex) const = 0;
 
         /// Returns the number of ragdoll nodes in the ragdoll.
         virtual size_t GetNumNodes() const = 0;

@@ -119,11 +119,8 @@ def get_cloudwatch_namespace(arn):
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-def print_local(message):
-    print message
-
 def print_logger(message):
-    logger.info(message)
+    print message
 
 def print_none(message):
     return
@@ -131,11 +128,13 @@ def print_none(message):
 is_verbose = c.ENV_VERBOSE in os.environ and os.environ[c.ENV_VERBOSE] == "True"
 is_local = "AWS_LAMBDA_LOG_STREAM_NAME" not in os.environ
 debug_print = print_none
-if is_verbose:
-    if is_local:
-        debug_print = print_local
-    else:        
-        debug_print = print_logger
+
+def set_logger(is_verbose):    
+    global debug_print    
+    if is_verbose:                
+        debug_print = print_logger        
+
+set_logger(is_verbose)    
 
 def split(list, size, func=None):
     sets = []

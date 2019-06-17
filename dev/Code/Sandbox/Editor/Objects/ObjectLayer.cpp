@@ -16,6 +16,8 @@
 #include "HyperGraph/FlowGraphManager.h"
 #include "ObjectLayerManager.h"
 
+#include <AzCore/Math/Uuid.h>
+
 #define LAYER_ID(x) ((x) >> 16)
 #define OBJECT_ID(x) ((x) & 0xFFFF)
 #define MAKE_ID(layerId, objectId) (((layerId) << 16) | (objectId))
@@ -158,7 +160,7 @@ CObjectLayer::CObjectLayer(const GUID* pGUID)
 
 void CObjectLayer::BuildGuid()
 {
-    m_guid = QUuid::createUuid();
+    m_guid = AZ::Uuid::CreateRandom();
 }
 
 //////////////////////////////////////////////////////////////////////////

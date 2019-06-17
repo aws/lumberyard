@@ -31,6 +31,13 @@ function DynamicContentTest:OnActivate()
       -- Listen for updates
     self.dynamicContentUpdateBus = DynamicContentUpdateBus.Connect(self)
     self.staticDataUpdateBus = StaticDataUpdateBus.Connect(self)
+	if CloudGemWebCommunicatorUpdateBus ~= nil then
+	    Debug.Log("Listening for communicator updates")
+		self.communicatorUpdateBus = CloudGemWebCommunicatorUpdateBus.Connect(self, WebCommunicator.ModuleEntity)
+	else
+		Debug.Log("Web Communicator not found")
+	end
+	self.userStatus = nil
     self:UpdateGameProperties()
     self:UpdateUserDownloadable()
 end
@@ -99,17 +106,45 @@ function DynamicContentTest:UpdateUserDownloadable()
     local numRequests = #self.requestList
     Debug.Log("Paks available for Download: " .. numRequests)
     local displayEntity = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "RequestPakText")
+    local pakStatus = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "PakStatusText")
     fileStatus = DynamicContentRequestBus.Event.GetPakStatusString(DynamicContent.ModuleEntity,self.Properties.UserRequestedPak)
     Debug.Log("Status for ".. self.Properties.UserRequestedPak .. " is ".. fileStatus)
 
     if fileStatus == "WAITING_FOR_USER" then
-        Debug.Log("Download: " .. self.Properties.UserRequestedPak)
+      	Debug.Log("Download: " .. self.Properties.UserRequestedPak)
         UiTextBus.Event.SetText(displayEntity, self.Properties.UserRequestedPak)
     elseif fileStatus == "INITIALIZED" or fileStatus == "READY" or fileStatus == "MOUNTED" then
         UiTextBus.Event.SetText(displayEntity, "File Downloaded")
     else
         UiTextBus.Event.SetText(displayEntity, "No Paks Available")
     end
+
+	if self.userStatus ~= nil then
+		UiTextBus.Event.SetText(pakStatus, self.userStatus)
+	end
+end
+
+function DynamicContentTest:IsDynamicContentUpdate(channelName)
+	-- Test for the CloudGemDynamicContent broadcast channel
+	if channelName == "CloudGemDynamicContent" or channelName == "CloudGemDynamicContentPrivate" then
+		return true
+	end
+	return false
+end
+
+function DynamicContentTest:MessageReceived(channelName, messageData)
+	if self:IsDynamicContentUpdate(channelName) then
+    	Debug.Log("DynamicContent update received: " .. messageData)
+		DynamicContentRequestBus.Event.HandleWebCommunicatorUpdate(DynamicContent.ModuleEntity, messageData)
+    end
+end
+
+function DynamicContentTest:FileStatusChanged(fileName, fileStatus)
+    Debug.Log("Received file status update for " .. fileName .. " to status " .. fileStatus)
+	if fileName == self.Properties.UserRequestedPak then
+		self.userStatus = fileStatus
+		self:UpdateUserDownloadable()
+	end
 end
 
 return DynamicContentTest

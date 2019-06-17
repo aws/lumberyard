@@ -31,6 +31,7 @@ namespace AzQtComponents
         qreal hue() const;
         qreal saturation() const;
         qreal value() const;
+        qreal defaultVForHsMode() const;
 
         enum class Mode
         {
@@ -45,6 +46,7 @@ namespace AzQtComponents
         void setHue(qreal hue);
         void setSaturation(qreal saturation);
         void setValue(qreal value);
+        void setDefaultVForHsMode(qreal value);
 
     Q_SIGNALS:
         void gridPressed();
@@ -79,6 +81,7 @@ namespace AzQtComponents
         qreal m_hue;
         qreal m_saturation;
         qreal m_value;
+        qreal m_defaultVForHsMode;
 
         QPixmap m_pixmap;
     };

@@ -13,13 +13,14 @@
 #define AZCORE_ATTRIBUTE_READER_H
 
 #include <AzCore/RTTI/ReflectContext.h>
+#include <AzCore/std/string/string.h>
 
 namespace AZ
 {
     namespace Internal
     {
         template<class AttrType, class DestType, typename ... Args>
-        bool AttributeRead(DestType& value, Attribute* attr, void* instance, Args&& ... args)
+        bool AttributeRead(DestType& value, Attribute* attr, void* instance, const Args& ... args)
         {
             // try a value
             AttributeData<AttrType>* data = azdynamic_cast<AttributeData<AttrType>*>(attr);
@@ -32,7 +33,7 @@ namespace AZ
             AttributeFunction<AttrType(Args...)>* func = azdynamic_cast<AttributeFunction<AttrType(Args...)>*>(attr);
             if (func)
             {
-                value = static_cast<DestType>(func->Invoke(instance, AZStd::forward<Args>(args) ...));
+                value = static_cast<DestType>(func->Invoke(instance, args...));
                 return true;
             }
             // else you are on your own!
@@ -138,11 +139,11 @@ namespace AZ
         {
             static bool Read(DestType& value, Attribute* attr, void* classInstance, const Args& ... args)
             {
-                if (AttributeRead<float, DestType, Args...>(value, attr, classInstance, args ...))
+                if (AttributeRead<float, DestType>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<double, DestType, Args...>(value, attr, classInstance, args ...))
+                if (AttributeRead<double, DestType>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
@@ -155,11 +156,11 @@ namespace AZ
         {
             static bool Read(AZStd::string& value, Attribute* attr, void* classInstance, const Args& ... args)
             {
-                if (AttributeRead<const char*, AZStd::string, Args...>(value, attr, classInstance, args ...))
+                if (AttributeRead<const char*, AZStd::string>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }
-                if (AttributeRead<AZStd::string, AZStd::string, Args...>(value, attr, classInstance, args ...))
+                if (AttributeRead<AZStd::string, AZStd::string>(value, attr, classInstance, args ...))
                 {
                     return true;
                 }

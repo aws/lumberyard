@@ -34,7 +34,7 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Uuid("{F200B22A-5903-483A-BF63-5241BC03632B}")
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Start.png")
                     ScriptCanvas_Node::Version(2)
-                    ScriptCanvas_Node::Category("Utilities")
+                    ScriptCanvas_Node::Category("Timing")
                     ScriptCanvas_Node::GraphEntryPoint(true)
                 );
 

@@ -66,7 +66,7 @@ namespace EMotionFX
         void SetFunction(EFunction func);
         EFunction GetFunction() const;
 
-        uint32 GetVisualColor() const override;
+        AZ::Color GetVisualColor() const override;
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;

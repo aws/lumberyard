@@ -32,7 +32,7 @@ namespace GraphCanvas
         , public VisualRequestBus::Handler
         , public NodeNotificationBus::Handler
         , public NodeUIRequestBus::Handler
-        , public StyleNotificationBus::Handler        
+        , public StyleNotificationBus::Handler
     {
     private:
         enum NodeFrameDisplayState
@@ -65,6 +65,9 @@ namespace GraphCanvas
 
         void SetSelected(bool selected) override;
         bool IsSelected() const override;
+
+        void SetZValue(int zValue) override;
+        int GetZValue() const override;
         ////
 
         // GeometryNotificationBus
@@ -76,8 +79,8 @@ namespace GraphCanvas
         ////
 
         // QGraphicsItem
-        void contextMenuEvent(QGraphicsSceneContextMenuEvent* contextMenuEvent) override;
         QSizeF sizeHint(Qt::SizeHint which, const QSizeF& constraint = QSizeF()) const override;
+        void resizeEvent(QGraphicsSceneResizeEvent *) override;
         ////
 
         // RootGraphicsItem

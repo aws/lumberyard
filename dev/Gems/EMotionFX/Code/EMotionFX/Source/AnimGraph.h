@@ -67,7 +67,7 @@ namespace EMotionFX
         AnimGraphNode* RecursiveFindNodeById(AnimGraphNodeId nodeId) const;
         AnimGraphStateTransition* RecursiveFindTransitionById(AnimGraphConnectionId transitionId) const;
 
-        void RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, MCore::Array<AnimGraphNode*>* outNodes) const; // note: outNodes is NOT cleared internally, nodes are added to the array
+        void RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, AZStd::vector<AnimGraphNode*>* outNodes) const; // note: outNodes is NOT cleared internally, nodes are added to the array
         void RecursiveCollectTransitionConditionsOfType(const AZ::TypeId& conditionType, MCore::Array<AnimGraphTransitionCondition*>* outConditions) const; // note: outNodes is NOT cleared internally, nodes are added to the array
 
         // Collects all objects of type and/or derived type

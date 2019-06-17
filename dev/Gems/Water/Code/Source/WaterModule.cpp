@@ -12,17 +12,16 @@
 
 #include "Water_precompiled.h"
 
-#include <platform_impl.h>
+#if !defined(AZ_MONOLITHIC_BUILD)
+#include <platform_impl.h> // must be included once per DLL so things from CryCommon will function
+#endif
 
 #include <Water/WaterModule.h>
 #include <Water/WaterSystemComponent.h>
 #include <Water/WaterOceanComponent.h>
 #include <WaterVolumeComponent.h>
-
-#if WATER_GEM_EDITOR
-#include "WaterOceanEditor.h"
-#include "EditorWaterVolumeComponent.h"
-#endif // WATER_GEM_EDITOR
+#include <Source/OceanSurfaceDataComponent.h>
+#include <Source/WaterVolumeSurfaceDataComponent.h>
 
 #include <IGem.h>
 
@@ -35,23 +34,9 @@ namespace Water
             WaterSystemComponent::CreateDescriptor(),
             WaterOceanComponent::CreateDescriptor(),
             WaterVolumeComponent::CreateDescriptor(),
-#if WATER_GEM_EDITOR
-            EditorWaterVolumeComponent::CreateDescriptor(),
-            WaterOceanEditor::CreateDescriptor()
-#endif // WATER_GEM_EDITOR
+            OceanSurfaceDataComponent::CreateDescriptor(),
+            WaterVolumeSurfaceDataComponent::CreateDescriptor(),
         });
-
-#if WATER_GEM_EDITOR
-        m_waterConverter = AZStd::make_unique<WaterConverter>();
-        m_waterConverter->BusConnect();
-#endif // WATER_GEM_EDITOR
-    }
-
-    WaterModule::~WaterModule()
-    {
-#if WATER_GEM_EDITOR
-        m_waterConverter->BusDisconnect();
-#endif // WATER_GEM_EDITOR
     }
 
     /**
@@ -65,7 +50,9 @@ namespace Water
     }
 }
 
+#if !defined(WATER_GEM_EDITOR)
 // DO NOT MODIFY THIS LINE UNLESS YOU RENAME THE GEM
 // The first parameter should be GemName_GemIdLower
 // The second should be the fully qualified name of the class above
 AZ_DECLARE_MODULE_CLASS(Water_c5083fcf89b24ab68fb0611c01a07b1d, Water::WaterModule)
+#endif

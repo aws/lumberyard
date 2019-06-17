@@ -123,7 +123,7 @@ public:
 
 public slots:
     void OnSelectionChanged();
-    void OnSubMaterialSelectedInPreviewPane(const QModelIndex& current, const QModelIndex& previous);
+    void OnSubMaterialSelectedInPreviewPane(const QModelIndex& current);
     void SaveCurrentMaterial();
     void OnRefreshSelection();
     void OnMaterialAdded();

@@ -1,0 +1,5 @@
+<Entity
+ Name="ProceduralObject" 
+ Script="Scripts/Entities/Others/ProceduralObject.lua"
+ BBoxSelection="1"
+/>

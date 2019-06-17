@@ -59,12 +59,12 @@ namespace LmbrAWS
     {
         if (responseCode == static_cast<int>(Aws::Http::HttpResponseCode::OK))
         {
-            gEnv->pLog->LogAlways("Downloaded signed URL to %s", outputFile.c_str());
+            AZ_TracePrintf("DownloadPresigned","Downloaded signed URL to %s", outputFile.c_str());
             SuccessNotify(m_activationInfo.pGraph, m_activationInfo.myID);
         }
         else
         {
-            gEnv->pLog->LogAlways("Failed to download signed URL to %s (%s)", outputFile.c_str(), resultString.c_str());
+            AZ_TracePrintf("DownloadPresigned", "Failed to download signed URL to %s (%s)", outputFile.c_str(), resultString.c_str());
             ErrorNotify(m_activationInfo.pGraph, m_activationInfo.myID, "Failed to download signed url");
         }
     }

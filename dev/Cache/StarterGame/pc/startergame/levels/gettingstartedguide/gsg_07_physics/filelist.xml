@@ -1,0 +1,6 @@
+<download name="GSG_07_Physics" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="431993" md5="f28358c6cb4deb1e7cd152c940747c32"/>
+ </files>
+</download>

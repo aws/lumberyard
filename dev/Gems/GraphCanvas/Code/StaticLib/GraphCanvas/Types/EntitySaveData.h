@@ -81,6 +81,19 @@ namespace GraphCanvas
     public:
         AZ_TYPE_INFO(EntitySaveDataContainer, "{DCCDA882-AF72-49C3-9AAD-BA601322BFBC}");
         AZ_CLASS_ALLOCATOR(EntitySaveDataContainer, AZ::SystemAllocator, 0);
+
+        enum VersionInformation
+        {
+            NoVersion = -1,
+            AddedPersistentId,
+
+            CurrentVersion
+        };
+
+        EntitySaveDataContainer()
+        {
+            
+        }
         
         ~EntitySaveDataContainer()
         {

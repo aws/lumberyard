@@ -2775,6 +2775,12 @@ namespace AZ
         return m_indices == nullptr;
     }
 
+    bool SerializeContext::IsTypeReflected(AZ::Uuid typeId) const
+    {
+        const AZ::SerializeContext::ClassData* reflectedClassData = FindClassData(typeId);
+        return (reflectedClassData != nullptr);
+    }
+
     // Create the member OSAllocator and construct the unordered_map with that allocator
     SerializeContext::PerModuleGenericClassInfo::PerModuleGenericClassInfo()
         : m_moduleLocalGenericClassInfos(AZ::AZStdIAllocator(&m_moduleOSAllocator))

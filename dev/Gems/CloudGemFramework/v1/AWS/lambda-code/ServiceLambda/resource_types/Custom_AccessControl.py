@@ -16,15 +16,20 @@ import boto3
 import json
 import time
 
+from cgf_utils import custom_resource_utils
+
 from cgf_utils import aws_utils
 from cgf_utils import role_utils
+from cgf_utils import reference_type_utils
 from resource_manager_common import stack_info
+from resource_manager_common import constant
 
 from botocore.exceptions import ClientError
 
 PROPAGATION_DELAY_SECONDS = 10
 
 iam = aws_utils.ClientWrapper(boto3.client('iam'))
+s3_client = aws_utils.ClientWrapper(boto3.client('s3'))
 
 
 class ProblemList(object):
@@ -49,7 +54,7 @@ class ProblemList(object):
         self.__prefixes.pop()
 
     def append(self, message):
-        
+
         full_message = ''
         for prefix in self.__prefixes:
             full_message = full_message + prefix[0].format(*prefix[1])
@@ -61,7 +66,7 @@ class ProblemList(object):
 
 def handler(event, context):
     '''Entry point for the Custom::AccessControl resource handler.'''
-    
+
     # Validate RequestType
     request_type = event['RequestType']
     if request_type not in ['Create', 'Update', 'Delete']:
@@ -75,7 +80,7 @@ def handler(event, context):
     # Physical ID is always the same.
     physical_resource_id = aws_utils.get_stack_name_from_stack_arn(stack_arn) + '-' + event['LogicalResourceId']
 
-    # The AccessControl resource has no output values. 
+    # The AccessControl resource has no output values.
     data = {}
 
     # Accumlate problems encountered so we can give a full report.
@@ -100,7 +105,7 @@ def handler(event, context):
     if were_changes:
         print 'Delaying {} seconds for change propagation'.format(PROPAGATION_DELAY_SECONDS)
         time.sleep(PROPAGATION_DELAY_SECONDS)
-    
+
     # Successful execution.
     return custom_resource_response.success_response(data, physical_resource_id)
 
@@ -145,7 +150,7 @@ def _apply_resource_group_access_control(request_type, resource_group, problems)
             were_changes = True
 
     return were_changes
-    
+
 
 def _apply_deployment_access_control(request_type, deployment_access, resource_group_name, problems):
     '''Performs the processing necessary when the Custom::AccessControl resource is in a deployment access stack.
@@ -159,7 +164,7 @@ def _apply_deployment_access_control(request_type, deployment_access, resource_g
         problems - A ProblemList object used to report problems
 
     '''
-    
+
     # Get abstract to concrete role mappings for the target stack
     role_mappings = _get_explicit_role_mappings(deployment_access, problems)
 
@@ -179,7 +184,7 @@ def _apply_deployment_access_control(request_type, deployment_access, resource_g
             were_changes = True
 
     return were_changes
-    
+
 
 def _apply_project_access_control(request_type, project, problems):
     '''Performs the processing necessary when the Custom::AccessControl resource is in a project stack.
@@ -222,7 +227,7 @@ def _apply_project_access_control(request_type, project, problems):
             updated_imp_roles = _update_roles(request_type, policy_name, permissions, implicit_role_mappings)
             if updated_exp_roles or updated_imp_roles:
                 were_changes = True
-                
+
     return were_changes
 
 
@@ -238,7 +243,10 @@ def _get_resource_group_policy_name(resource_group):
         A string containing the policy name.
 
     '''
-    return '{}.{}-AccessControl'.format(resource_group.deployment.deployment_name, resource_group.resource_group_name)
+    project_uuid_prefix = resource_group.project.project_uuid
+    if project_uuid_prefix:
+        project_uuid_prefix = project_uuid_prefix + "."
+    return '{}{}.{}-AccessControl'.format(project_uuid_prefix, resource_group.deployment.deployment_name, resource_group.resource_group_name)
 
 def _get_project_policy_name(project):
     '''Constructs a policy name for a project.
@@ -254,10 +262,20 @@ def _get_project_policy_name(project):
     '''
     return 'PROJECT.{}-AccessControl'.format(project.project_name)
 
+def _get_reference_permission(resource):
+    reference_name = aws_utils.get_data_from_custom_physical_resource_id(resource.physical_id).get('ReferenceName')
+    reference_metadata = reference_type_utils.get_reference_metadata(resource.stack.project_stack.configuration_bucket, resource.stack.project_stack.project_name, reference_name)
+
+    return reference_metadata.get('Permissions', {})
+
+def _get_permissions_for_reference_type(resource, permissions):
+    reference_permission = _get_reference_permission(resource)
+
+    return map(lambda permission: {'AbstractRole': permission.get('AbstractRole'), 'Action': reference_permission.get('Action'), 'ResourceSuffix': reference_permission.get('ResourceSuffix')}, permissions)
 
 def _get_permissions(resource_info, problems):
     '''Looks for the following metadata in a stack template:
-    
+
           {
             "Resources": {
               "<logical-resource-id>": {
@@ -283,11 +301,11 @@ def _get_permissions(resource_info, problems):
         resource_info - a StackInfo object representing the stack with the metadata.  Can be of type ProjectInfo or ResourceGroupInfo
 
         problems - A ProblemList object used to report problems
-    
+
     Returns:
-   
+
       A dictionary constructed from the resource metadata:
-    
+
           {
              '<resource-arn>': [
                 {
@@ -311,6 +329,9 @@ def _get_permissions(resource_info, problems):
 
         permission_metadata = resource.get_cloud_canvas_metadata('Permissions')
         if permission_metadata is not None:
+            if reference_type_utils.is_reference_type(resource.type):
+                permission_metadata = _get_permissions_for_reference_type(resource, permission_metadata)
+
             print 'Found permission metadata on stack {} resource {}: {}.'.format(resource_info.stack_name, resource.logical_id, permission_metadata)
             problems.push_prefix('Stack {} resource {} ', resource_info.stack_name, resource.logical_id)
             permission_list.extend(_get_permission_list(resource_info.permission_context_name, resource.logical_id, permission_metadata, problems))
@@ -363,7 +384,7 @@ def _get_permission_list(resource_name, logical_resource_id, permission_metadata
 
         logical_resource_id - the logical id of the resource with the permission
 
-        permission_metadata_list - The permission metadata from the resource. 
+        permission_metadata_list - The permission metadata from the resource.
 
             [                                                           # optional list or a single object
                 {
@@ -375,9 +396,9 @@ def _get_permission_list(resource_name, logical_resource_id, permission_metadata
             ]
 
         problems - A ProblemList object used to report problems
-    
+
     Retuns:
-   
+
         A list constructed from the provided metadata:
 
             [
@@ -413,7 +434,7 @@ def _get_permission(resource_group_name, logical_resource_id, permission_metadat
 
         logical_resource_id - the logical id of the resource with the permission
 
-        permission_metadata - The permission metadata from the resource. 
+        permission_metadata - The permission metadata from the resource.
 
             {
                 "AbstractRole": [ "<abstract-role-name>", ... ],    # required list or single string
@@ -422,9 +443,9 @@ def _get_permission(resource_group_name, logical_resource_id, permission_metadat
             }
 
         problems - A ProblemList object used to report problems
-    
+
     Retuns:
-   
+
         A dict constructed from the provided metadata:
 
             {
@@ -465,14 +486,14 @@ def _get_permission_abstract_role_list(resource_group_name, abstract_role_list, 
 
         resource_group_name - the name of the resource group that defines the resource with the permission
 
-        abstract_role_list - The AbstractRole property from the permission metadata. 
+        abstract_role_list - The AbstractRole property from the permission metadata.
 
             [ "<abstract-role-name>", ... ],    # required list or single string
 
         problems - A ProblemList object used to report problems
-    
+
     Retuns:
-   
+
         A list constructed from the provided metadata:
 
             [ ["<resource-group-name>", "<abstract-role-name>"], ... ],
@@ -512,14 +533,14 @@ def _get_permission_resource_suffix_list(resource_suffix_list, problems):
 
     Args:
 
-        resource_suffix_list - The ResourceSuffix property from the permission metadata. 
+        resource_suffix_list - The ResourceSuffix property from the permission metadata.
 
             "ResourceSuffix": [ "<resource-suffix>", ... ]      # optional list or single string
 
         problems - A ProblemList object used to report problems
-    
+
     Retuns:
-   
+
         A list constructed from the provided metadata. The list will have one entry, '', if
         no value is provided in the metadata.
 
@@ -555,14 +576,14 @@ def _get_permission_allowed_action_list(allowed_action_list, problems):
 
     Args:
 
-        allowed_action_list - The Action property value from the metadata 
+        allowed_action_list - The Action property value from the metadata
 
             "Action": [ "<allowed-action>", ... ]               # required list or single string
 
         problems - A ProblemList object used to report problems
-    
+
     Retuns:
-   
+
         A list constructed from the provided metadata:
 
             "Action": [ "<allowed-action>", ... ],
@@ -595,18 +616,18 @@ def _get_permission_allowed_action_list(allowed_action_list, problems):
 def _get_implicit_role_mappings(resource_info, problems):
 
     '''Looks in a resource group stack for roles created by custom resources such as Custom::LambdaConfiguration
-    and Custom::ServiceApi. 
-    
+    and Custom::ServiceApi.
+
     Args:
 
         resource_info - a StackInfo object representing the stack with the metadata.  Can be of type ProjectInfo or ResourceGroupInfo
-    
+
         problems - A ProblemList object used to report problems
-    
+
     Returns:
 
         A dictionary containing the following data for each role discovered:
-    
+
           {
             "<role-physical-resource-id>": [
               {
@@ -627,26 +648,26 @@ def _get_implicit_role_mappings(resource_info, problems):
             for abstract_role_name, physical_role_name in resource_role_mappings.iteritems():
                 print 'Adding implicit abstract role {} mapping to physical role {} for stack {}.'.format(abstract_role_name, physical_role_name, resource_info.stack_name)
                 role_mapping_list = role_mappings.setdefault(
-                    physical_role_name, 
+                    physical_role_name,
                     [
                         {
                             'Effect': 'Allow',
                             'AbstractRole': []
-                        }                    
+                        }
                     ]
                 )
-                role_mapping_list[0]['AbstractRole'].append(                                
+                role_mapping_list[0]['AbstractRole'].append(
                     [
                         resource_info.permission_context_name,
                         abstract_role_name
-                    ] 
+                    ]
                 )
 
     return role_mappings
 
 def _get_explicit_role_mappings(stack, problems):
     '''Looks for the folling metadata in a stack template:
-    
+
           {
             "Resources": {
               "<role-logical-resource-id>": {
@@ -666,18 +687,18 @@ def _get_explicit_role_mappings(stack, problems):
               },
               ...
             }
-          }     
+          }
 
     Args:
 
         stack - a stack_info.StackInfo object representing the stack with the matadata
-    
+
         problems - A ProblemList object used to report problems
-    
+
     Returns:
 
         A dictionary constructed from that data:
-    
+
           {
             "<role-physical-resource-id>": [
               {
@@ -695,6 +716,7 @@ def _get_explicit_role_mappings(stack, problems):
     # Get all the role resources defined in the target stack.
 
     role_resources = stack.resources.get_by_type('AWS::IAM::Role')
+
     for role_resource in role_resources:
 
         problems.push_prefix('Stack {} resource {} ', stack.stack_name, role_resource.logical_id)
@@ -710,12 +732,27 @@ def _get_explicit_role_mappings(stack, problems):
 
         problems.pop_prefix()
 
+    shared_role_resources = stack.resources.get_by_type('Custom::CognitoIdPoolSharedRole')
+    for shared_role_resource in shared_role_resources:
+        role_mapping_metadata_list = shared_role_resource.get_cloud_canvas_metadata('RoleMappings')
+        if role_mapping_metadata_list is not None:
+            role_mapping_list = _get_role_mapping_list(
+                role_mapping_metadata_list, problems)
+            embedded_physical_resource_id = custom_resource_utils.get_embedded_physical_id(
+                shared_role_resource.physical_id)
+            role_name = _get_role_name_from_arn(embedded_physical_resource_id)
+            role_mappings[role_name] = role_mapping_list
+
     return role_mappings
+
+
+def _get_role_name_from_arn(arn):
+    return arn.split('/')[-1]
 
 
 def _get_role_mapping_list(role_mapping_metadata_list, problems):
     '''Constructs a role mapping list from resource metadata.
-    
+
     Args:
 
         role_mapping_metadata_list - The resource metadata.
@@ -727,13 +764,13 @@ def _get_role_mapping_list(role_mapping_metadata_list, problems):
                 },
                 ...
             ]
-    
+
         problems - A ProblemList object used to report problems
-    
+
     Returns:
 
         A list constructed from that data:
-    
+
             [
               {
                 "AbstractRole": [ ["<resource-group-name>", "<abstract-role-name>"], ... ],
@@ -759,7 +796,7 @@ def _get_role_mapping_list(role_mapping_metadata_list, problems):
 
 def _get_role_mapping(role_mapping_metadata, problems):
     '''Constructs a role mapping from resource metadata.
-    
+
     Args:
 
         role_mapping_metadata - The resource metadata.
@@ -768,13 +805,13 @@ def _get_role_mapping(role_mapping_metadata, problems):
                 "AbstractRole": [ "<resource-group-name>.<abstract-role-name>", ... ],  # required list or single string
                 "Effect": "<allow-or-deny>",                                            # required "Allow" or "Deny"
             }
-    
+
         problems - A ProblemList object used to report problems
-    
+
     Returns:
 
         A dict constructed from the metadata:
-    
+
             {
                 "AbstractRole": [ ["<resource-group-name>", "<abstract-role-name>"], ... ],
                 "Effect": "<allow-or-deny>",
@@ -782,7 +819,7 @@ def _get_role_mapping(role_mapping_metadata, problems):
 
     '''
 
-    # Validate the mapping is a dict with the required properties 
+    # Validate the mapping is a dict with the required properties
     # and only supported properties.
 
     if not isinstance(role_mapping_metadata, dict):
@@ -806,19 +843,19 @@ def _get_role_mapping(role_mapping_metadata, problems):
 
 def _get_role_mapping_effect(effect, problems):
     '''Constructs a role mapping effect from resource metadata.
-    
+
     Args:
 
         effect - The value of the 'Effect' property in the resource metadata.
 
             "<allow-or-deny>" # required "Allow" or "Deny"
-    
+
         problems - A ProblemList object used to report problems
-    
+
     Returns:
 
         Either 'Allow' or 'Deny'.
-    
+
     '''
 
     if effect is None:
@@ -832,19 +869,19 @@ def _get_role_mapping_effect(effect, problems):
 
 def _get_role_mapping_abstract_role_list(abstract_role_list, problems):
     '''Constructs an abstract role list from resource metadata.
-    
+
     Args:
 
         abstract_role_list - The value of the "AbstractRole" property from the resource metadata.
 
             "AbstractRole": [ "<resource-group-name>.<abstract-role-name>", ... ],  # required list or single string
-    
+
         problems - A ProblemList object used to report problems
-    
+
     Returns:
 
         A list constructed from the metadata:
-    
+
             [ ["<resource-group-name>", "<abstract-role-name>"], ... ]
 
     '''
@@ -914,7 +951,7 @@ def _update_roles(request_type, policy_name, permissions, role_mappings):
           }
 
     '''
-    
+
     were_changes = False
 
     print 'Updating roles for {} request using permissions {} and role_mappings {}.'.format(request_type, permissions, role_mappings)
@@ -931,7 +968,7 @@ def _update_roles(request_type, policy_name, permissions, role_mappings):
                 were_changes = True
             except ClientError as e:
                 if e.response["Error"]["Code"] not in ["NoSuchEntity", "AccessDenied"]:
-                    raise e    
+                    raise e
 
     else:
 
@@ -949,7 +986,7 @@ def _update_roles(request_type, policy_name, permissions, role_mappings):
                     were_changes = True
                 except ClientError as e:
                     if e.response["Error"]["Code"] not in ["NoSuchEntity", "AccessDenied"]:
-                        raise e    
+                        raise e
             else:
                 policy_content = json.dumps(policy)
                 print '{} requested. Putting role policy {} on role {}: {}'.format(request_type, policy_name, role_physical_id, policy_content)
@@ -989,7 +1026,7 @@ def _create_role_policy(permissions, role_mapping_list):
 
     Returns:
 
-        A dict that is a policy document with statements constructed from the permissions and 
+        A dict that is a policy document with statements constructed from the permissions and
         role_mapping_list data where the respective resource-group-name and abstract-role-names
         match.
 
@@ -1044,17 +1081,17 @@ def _create_role_policy(permissions, role_mapping_list):
 
 def _any_abstract_roles_match(permission_abstract_role_list, mapping_abstract_role_list):
     '''Determins if a permission abstract role matches a mapping abstract role.
-    
+
     Args:
-    
+
         Both input values have the form:
-    
+
             [ ("<resource-group-name>", "<abstract-role-name>"), ... ]
-    
+
     Returns:
-        
+
         True if there exists a tuple from both lists where both parts are the same or if the
-        <resource-group-name> part of the mapping is '*' and the <abstract-role-name> parts 
+        <resource-group-name> part of the mapping is '*' and the <abstract-role-name> parts
         match.
 
     '''
@@ -1071,7 +1108,3 @@ def _any_abstract_roles_match(permission_abstract_role_list, mapping_abstract_ro
 
     print 'No role match for {} and {}.'.format(permission_abstract_role_list, mapping_abstract_role_list)
     return False
-
-
-
-    

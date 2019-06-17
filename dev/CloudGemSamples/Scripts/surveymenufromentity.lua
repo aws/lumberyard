@@ -17,6 +17,7 @@ function surveymenu:OnActivate()
 	self.currentQuestionEntityID = EntityId()
 	self.maxAnswerChars = 1
 	self.checkboxConnections = {}
+	self.sentQuestions = false
 	
 	-- Let's load the canvas
 	self.canvasEntityId = UiCanvasManagerBus.Broadcast.LoadCanvas("Levels/InGameSurveySample/UI/InGameSurveyMenu.uicanvas")
@@ -52,18 +53,19 @@ function surveymenu:OnActivate()
 	util.SetMouseCursorVisible(true)
 	
 	self.notificationHandler = CloudGemInGameSurveyNotificationBus.Connect(self, self.entityId)
-
 end
 
 function surveymenu:OnTick(deltaTime,timePoint)
-	local emptyString = ""
-	CloudGemInGameSurveyRequestBus.Event.GetActiveSurvey_metadata(self.entityId, 10, emptyString, emptyString, nil)
-	self.tickBusHandler:Disconnect();
+	if not self.sentQuestions then
+		local emptyString = ""
+		CloudGemInGameSurveyRequestBus.Event.GetActiveSurvey_metadata(self.entityId,10, emptyString, emptyString, nil)
+		self.tickBusHandler:Disconnect();
+		self.sentQuestions = true
+	end	
 end
 
 function surveymenu:OnDeactivate()
 	self.notificationHandler:Disconnect();
-	self.tickBusHandler:Disconnect();
 	self.buttonHandler:Disconnect()
 	self:ResetCheckboxConnections(nil, 0)
 end

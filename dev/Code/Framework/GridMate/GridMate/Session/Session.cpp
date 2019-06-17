@@ -21,6 +21,8 @@
 
 #ifdef AZ_PLATFORM_WINDOWS
 #   include <AzCore/PlatformIncl.h>
+#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+#include <unistd.h>
 #endif
 
 namespace GridMate
@@ -2294,6 +2296,8 @@ GridMemberStateReplica::GridMemberStateReplica(GridMember* member)
     SetPriority(k_replicaPriorityRealTime);
 #if defined(AZ_PLATFORM_WINDOWS)
     m_processId.Set(GetCurrentProcessId());
+#elif defined(AZ_PLATFORM_APPLE) || defined(AZ_PLATFORM_LINUX)
+    m_processId.Set(getpid());
 #endif
 }
 

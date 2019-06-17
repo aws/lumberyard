@@ -47,6 +47,7 @@
 #include <ui_TerrainDialog.h>
 
 #include <Cry3DEngine/Environment/OceanEnvironmentBus.h>
+#include <AzToolsFramework/Physics/EditorTerrainComponentBus.h>
 
 #include "QtUtil.h"
 
@@ -97,12 +98,14 @@ CTerrainDialog::CTerrainDialog()
     m_pHeightmap = GetIEditor()->GetHeightmap();
 
     GetIEditor()->RegisterNotifyListener(this);
+    LmbrCentral::WaterNotificationBus::Handler::BusConnect();
 
     OnInitDialog();
 }
 
 CTerrainDialog::~CTerrainDialog()
 {
+    LmbrCentral::WaterNotificationBus::Handler::BusDisconnect();
     GetIEditor()->UnregisterNotifyListener(this);
     GetIEditor()->SetEditTool(nullptr);
     delete m_sLastParam;
@@ -124,7 +127,11 @@ void CTerrainDialog::RegisterViewClass()
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    AzToolsFramework::RegisterViewPane<CTerrainDialog>(LyViewPane::TerrainEditor, LyViewPane::CategoryTools, options);
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        AzToolsFramework::RegisterViewPane<CTerrainDialog>(
+            LyViewPane::TerrainEditor, LyViewPane::CategoryTools, options);
+    }
 }
 
 
@@ -891,7 +898,7 @@ void CTerrainDialog::OnSetUnitSize()
     }
 
     bool ok = false;
-    QString newUnitSize = QInputDialog::getItem(this, tr("Set Unit Size (Meters per texel)"), tr("Unit size (meters/texel)"), unitSizes, currentIndex, false, &ok);
+    QString newUnitSize = QInputDialog::getItem(this, tr("Set Unit Size"), tr("Unit size (meters/texel)"), unitSizes, currentIndex, false, &ok);
     if (ok)
     {
         GetIEditor()->GetHeightmap()->SetUnitSize(newUnitSize.toInt());
@@ -929,6 +936,7 @@ void CTerrainDialog::InvalidateTerrain()
 
     InvalidateViewport();
     UpdateTerrainDimensions();
+    Physics::EditorTerrainComponentRequestsBus::Broadcast(&Physics::EditorTerrainComponentRequests::UpdateHeightFieldAsset);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -970,6 +978,18 @@ void CTerrainDialog::OnEditorNotifyEvent(EEditorNotifyEvent event)
         */
     }
 }
+
+//////////////////////////////////////////////////////////////////////////
+void CTerrainDialog::OceanHeightChanged(float /*height*/)
+{
+    // If our ocean height has changed, and we're currently displaying water in our preview, 
+    // then we need to refresh the preview.
+    if (m_ui->viewport->GetShowWater())
+    {
+        InvalidateViewport();
+    }
+}
+
 
 //////////////////////////////////////////////////////////////////////////
 //void CTerrainDialog::OnCustomize()

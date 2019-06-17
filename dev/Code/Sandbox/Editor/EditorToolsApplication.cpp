@@ -18,6 +18,7 @@
 #include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
+
 #include <ParseEngineConfig.h>
 #include <Crates/Crates.h>
 #include <Engines/EnginesAPI.h> // For LyzardSDK

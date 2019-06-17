@@ -51,12 +51,12 @@ namespace AZ
 
                 SCENE_DATA_API AZ::SceneAPI::DataTypes::TangentSpace GetTangentSpace() const;
                 SCENE_DATA_API AZ::SceneAPI::DataTypes::BitangentMethod GetBitangentMethod() const;
-                SCENE_DATA_API size_t GetUVSetIndex() const;
+                SCENE_DATA_API AZ::u64 GetUVSetIndex() const;
                 SCENE_DATA_API bool GetNormalizeVectors() const;
 
-                SCENE_DATA_API static AZ::SceneAPI::DataTypes::IMeshVertexUVData* FindUVData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, size_t uvSet);
-                SCENE_DATA_API static AZ::SceneAPI::DataTypes::IMeshVertexTangentData* FindTangentData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, size_t setIndex, AZ::SceneAPI::DataTypes::TangentSpace tangentSpace);
-                SCENE_DATA_API static AZ::SceneAPI::DataTypes::IMeshVertexBitangentData* FindBitangentData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, size_t setIndex, AZ::SceneAPI::DataTypes::TangentSpace tangentSpace);
+                SCENE_DATA_API static AZ::SceneAPI::DataTypes::IMeshVertexUVData* FindUVData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, AZ::u64 uvSet);
+                SCENE_DATA_API static AZ::SceneAPI::DataTypes::IMeshVertexTangentData* FindTangentData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, AZ::u64 setIndex, AZ::SceneAPI::DataTypes::TangentSpace tangentSpace);
+                SCENE_DATA_API static AZ::SceneAPI::DataTypes::IMeshVertexBitangentData* FindBitangentData(AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, AZ::u64 setIndex, AZ::SceneAPI::DataTypes::TangentSpace tangentSpace);
 
                 static void Reflect(ReflectContext* context);
 
@@ -66,7 +66,7 @@ namespace AZ
 
                 AZ::SceneAPI::DataTypes::TangentSpace       m_tangentSpace;     /**< Specifies how to handle tangents. Either generate them, or import them. */
                 AZ::SceneAPI::DataTypes::BitangentMethod    m_bitangentMethod;  /**< Grab the bitangents from the generator/source or use an orthogonal basis by always calculating them? */
-                size_t                                      m_uvSetIndex;       /**< Generate the tangents from this UV set. */
+                AZ::u64                                     m_uvSetIndex;       /**< Generate the tangents from this UV set. */
                 bool                                        m_normalize;        /**< Normalize the tangent and bitangents? */
             };
         } // SceneData

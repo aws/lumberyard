@@ -73,6 +73,7 @@ namespace EMotionFX
                     ->Field("MotionSetAsset", &Configuration::m_motionSetAsset)
                     ->Field("ActiveMotionSetName", &Configuration::m_activeMotionSetName)
                     ->Field("ParameterDefaults", &Configuration::m_parameterDefaults)
+                    ->Field("DebugVisualize", &Configuration::m_visualize)
                 ;
             }
         }
@@ -103,7 +104,7 @@ namespace EMotionFX
                     ->Event("FindParameterIndex", &AnimGraphComponentRequestBus::Events::FindParameterIndex)
                     ->Event("FindParameterName", &AnimGraphComponentRequestBus::Events::FindParameterName)
                     
-                // Parameter setters
+                    // Setters
                     ->Event("SetParameterFloat", &AnimGraphComponentRequestBus::Events::SetParameterFloat)
                     ->Event("SetParameterBool", &AnimGraphComponentRequestBus::Events::SetParameterBool)
                     ->Event("SetParameterString", &AnimGraphComponentRequestBus::Events::SetParameterString)
@@ -118,7 +119,8 @@ namespace EMotionFX
                     ->Event("SetNamedParameterVector3", &AnimGraphComponentRequestBus::Events::SetNamedParameterVector3)
                     ->Event("SetNamedParameterRotationEuler", &AnimGraphComponentRequestBus::Events::SetNamedParameterRotationEuler)
                     ->Event("SetNamedParameterRotation", &AnimGraphComponentRequestBus::Events::SetNamedParameterRotation)
-                    // Parameter getters
+                    ->Event("SetVisualizeEnabled", &AnimGraphComponentRequestBus::Events::SetVisualizeEnabled)
+                    // Getters
                     ->Event("GetParameterFloat", &AnimGraphComponentRequestBus::Events::GetParameterFloat)
                     ->Event("GetParameterBool", &AnimGraphComponentRequestBus::Events::GetParameterBool)
                     ->Event("GetParameterString", &AnimGraphComponentRequestBus::Events::GetParameterString)
@@ -133,13 +135,14 @@ namespace EMotionFX
                     ->Event("GetNamedParameterVector3", &AnimGraphComponentRequestBus::Events::GetNamedParameterVector3)
                     ->Event("GetNamedParameterRotationEuler", &AnimGraphComponentRequestBus::Events::GetNamedParameterRotationEuler)
                     ->Event("GetNamedParameterRotation", &AnimGraphComponentRequestBus::Events::GetNamedParameterRotation)
-                // Anim Graph Sync
+                    ->Event("GetVisualizeEnabled", &AnimGraphComponentRequestBus::Events::GetVisualizeEnabled)
+                    // Anim Graph Sync
                     ->Event("SyncAnimGraph", &AnimGraphComponentRequestBus::Events::SyncAnimGraph)
                     ->Event("DesyncAnimGraph", &AnimGraphComponentRequestBus::Events::DesyncAnimGraph)
                 ;
 
                 behaviorContext->EBus<AnimGraphComponentNotificationBus>("AnimGraphComponentNotificationBus")
-                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::Preview)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::List)
                     ->Event("OnAnimGraphInstanceCreated", &AnimGraphComponentNotificationBus::Events::OnAnimGraphInstanceCreated)
                     ->Event("OnAnimGraphInstanceDestroyed", &AnimGraphComponentNotificationBus::Events::OnAnimGraphInstanceDestroyed)
                     ->Event("OnAnimGraphFloatParameterChanged", &AnimGraphComponentNotificationBus::Events::OnAnimGraphFloatParameterChanged)
@@ -151,6 +154,8 @@ namespace EMotionFX
                 ;
 
                 behaviorContext->EBus<AnimGraphComponentNetworkRequestBus>("AnimGraphComponentNetworkRequestBus")
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                    ->Attribute(AZ::Script::Attributes::Category, "Animation")
                     ->Event("IsAssetReady", &AnimGraphComponentNetworkRequestBus::Events::IsAssetReady)
                     ->Event("HasSnapshot", &AnimGraphComponentNetworkRequestBus::Events::HasSnapshot)
                     ->Event("CreateSnapshot", &AnimGraphComponentNetworkRequestBus::Events::CreateSnapshot)
@@ -395,6 +400,7 @@ namespace EMotionFX
                     return;
                 }
                 
+                m_animGraphInstance->SetVisualizationEnabled(cfg.m_visualize);
 
                 m_actorInstance->SetAnimGraphInstance(m_animGraphInstance.get());
 
@@ -886,6 +892,24 @@ namespace EMotionFX
                 }
                 SetParameterRotation(parameterIndex.GetValue(), value);
             }
+        }
+
+        void AnimGraphComponent::SetVisualizeEnabled(bool enabled)
+        {
+            if (m_animGraphInstance)
+            {
+                m_animGraphInstance->SetVisualizationEnabled(enabled);
+            }
+        }
+
+        bool AnimGraphComponent::GetVisualizeEnabled()
+        {
+            if (m_animGraphInstance)
+            {
+                return m_animGraphInstance->GetVisualizationEnabled();
+            }
+
+            return false;
         }
 
         //////////////////////////////////////////////////////////////////////////

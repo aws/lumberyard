@@ -10,7 +10,6 @@
 *
 */
 
-#include "precompiled.h"
 #include "BehaviorContextObject.h"
 #include <ScriptCanvas/Core/ScriptCanvasBus.h>
 #include <ScriptCanvas/Data/DataRegistry.h>

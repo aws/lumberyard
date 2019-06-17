@@ -172,17 +172,25 @@ namespace EMotionFX
             return false; // already a parameter named like that
         }
 
-        AZStd::unordered_map<AZStd::string_view, size_t>::iterator cachedIndexIterator = m_valueParameterIndexByName.find(parameter->GetName());
-        AZ_Assert(cachedIndexIterator != m_valueParameterIndexByName.end(), "Cached parameter indices are out of sync with the actual parameters.");
+        const bool isValueParameter = azrtti_istypeof<EMotionFX::ValueParameter>(parameter);
+        size_t oldIndex;
+        if (isValueParameter)
+        {
+            AZStd::unordered_map<AZStd::string_view, size_t>::iterator cachedIndexIterator = m_valueParameterIndexByName.find(parameter->GetName());
+            AZ_Assert(cachedIndexIterator != m_valueParameterIndexByName.end(), "Cached parameter indices are out of sync with the actual parameters.");
 
-        // Store the value parameter index so that we can re-add it without looking it up after renaming and remove it from the cached indices.
-        const size_t oldIndex = cachedIndexIterator->second;
-        m_valueParameterIndexByName.erase(cachedIndexIterator);
+            // Store the value parameter index so that we can re-add it without looking it up after renaming and remove it from the cached indices.
+            oldIndex = cachedIndexIterator->second;
+            m_valueParameterIndexByName.erase(cachedIndexIterator);
+        }
 
         parameter->SetName(newName);
 
-        // Re-add the parameter index after renaming the parameter.
-        m_valueParameterIndexByName.emplace(parameter->GetName(), oldIndex);
+        if (isValueParameter)
+        {
+            // Re-add the parameter index after renaming the parameter.
+            m_valueParameterIndexByName.emplace(parameter->GetName(), oldIndex);
+        }
         return true;
     }
 
@@ -454,6 +462,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime = isOwnedByRuntime;
+#else
+        AZ_UNUSED(isOwnedByRuntime);
 #endif
     }
 
@@ -472,6 +482,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         m_isOwnedByAsset = isOwnedByAsset;
+#else
+        AZ_UNUSED(isOwnedByAsset);
 #endif
     }
 
@@ -590,11 +602,11 @@ namespace EMotionFX
 
     void AnimGraph::FindAndRemoveCycles(AZStd::string* outRemovedConnectionsMessage)
     {
-        MCore::Array<AnimGraphNode*> blendTreeNodes;
+        AZStd::vector<AnimGraphNode*> blendTreeNodes;
         RecursiveCollectNodesOfType(azrtti_typeid<BlendTree>(), &blendTreeNodes);
 
-        const uint32 blendTreeNodesCount = blendTreeNodes.GetLength();
-        for (uint32 i = 0; i < blendTreeNodesCount; ++i)
+        const size_t blendTreeNodesCount = blendTreeNodes.size();
+        for (size_t i = 0; i < blendTreeNodesCount; ++i)
         {
             BlendTree* blendTree = static_cast<BlendTree*>(blendTreeNodes[i]);
             const AZStd::unordered_set<AZStd::pair<BlendTreeConnection*, AnimGraphNode*> > cycleConnections = blendTree->FindCycles();
@@ -618,15 +630,11 @@ namespace EMotionFX
         }
     }
 
-
-    // get the nodes of a given type, recursively
-    void AnimGraph::RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, MCore::Array<AnimGraphNode*>* outNodes) const
+    void AnimGraph::RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, AZStd::vector<AnimGraphNode*>* outNodes) const
     {
         mRootStateMachine->RecursiveCollectNodesOfType(nodeType, outNodes);
     }
 
-
-    // get the transition conditions of a given type, recursively
     void AnimGraph::RecursiveCollectTransitionConditionsOfType(const AZ::TypeId& conditionType, MCore::Array<AnimGraphTransitionCondition*>* outConditions) const
     {
         mRootStateMachine->RecursiveCollectTransitionConditionsOfType(conditionType, outConditions);

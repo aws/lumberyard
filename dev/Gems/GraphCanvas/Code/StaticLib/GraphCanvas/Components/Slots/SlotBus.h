@@ -35,11 +35,11 @@ namespace GraphCanvas
     //! Currently we only support input/output for creating connections.
     enum ConnectionType
     {
-        CT_None = 0,
-        CT_Input,
-        CT_Output,
+        CT_None = 0,    //!< Generally used by EBus handlers to indicate when a slot accepts no input
+        CT_Input,       //!< Indicates an input slot
+        CT_Output,      //!< Indicates an output slot
 
-        CT_Invalid = -1
+        CT_Invalid = -1 //!< Generally used as the default value, to detect when something didn't respond an EBus message
     };
 
     typedef AZ::Crc32 SlotType;
@@ -83,13 +83,31 @@ namespace GraphCanvas
     struct SlotConfiguration
     {
     public:
-        AZ_TYPE_INFO(SlotConfiguration, "{E080FC05-EEB6-47A6-B939-F62A45C2B1D2}");
+        AZ_RTTI(SlotConfiguration, "{E080FC05-EEB6-47A6-B939-F62A45C2B1D2}");
+        AZ_CLASS_ALLOCATOR(SlotConfiguration, AZ::SystemAllocator, 0);
+
+        virtual ~SlotConfiguration() = default;
 
         ConnectionType m_connectionType = ConnectionType::CT_Invalid;
 
         TranslationKeyedString m_tooltip = TranslationKeyedString();
         TranslationKeyedString m_name = TranslationKeyedString();
         SlotGroup m_slotGroup = SlotGroups::Invalid;
+    };
+
+    struct ExecutionSlotConfiguration
+        : public SlotConfiguration
+    {
+    public:
+        AZ_RTTI(ExecutionSlotConfiguration, "{1129A6DE-CF46-4E87-947F-D2EB432EEA2E}", SlotConfiguration);
+        AZ_CLASS_ALLOCATOR(ExecutionSlotConfiguration, AZ::SystemAllocator, 0);
+
+        ExecutionSlotConfiguration() = default;
+
+        ExecutionSlotConfiguration(const SlotConfiguration& slotConfiguration)
+            : SlotConfiguration(slotConfiguration)
+        {
+        }
     };
 
     struct SlotGroupConfiguration
@@ -160,8 +178,12 @@ namespace GraphCanvas
 
         //! Get the entity ID of the node that owns this slot, if any.
         virtual const AZ::EntityId& GetNode() const = 0;
+
         //! Set the entity ID of the node that owns this slot, if any.
         virtual void SetNode(const AZ::EntityId&) = 0;
+
+        //! Returns the endpoint represented by this SlotId
+        virtual Endpoint GetEndpoint() const = 0;
 
         //! Get the name, or label, of the slot.
         //! These generally appear as a label against \ref Input or \ref Output slots.
@@ -191,15 +213,36 @@ namespace GraphCanvas
         //! Get the connection type of the slot is in.
         virtual ConnectionType GetConnectionType() const = 0;
 
-        //! Returns whether or not this slot will accept a connection to the passed in slot.
-        virtual bool CanAcceptConnection(const Endpoint& endpoint) = 0;
+        // Used by the layout to set the ordering for the slot after it's been display. Will not be respected during the layout phase.
+        virtual void SetDisplayOrdering(int ordering) = 0;
+        
+        //! Returns the ordering index of the slot within it's given group.
+        virtual int GetDisplayOrdering() const = 0;
 
-        //! Returns the connection to be used when trying to create a connection from this object.
-        virtual AZ::EntityId CreateConnection() const = 0;
+        //! Returns whether or not this slot will accept a connection to the passed in slot.
+        AZ_DEPRECATED(bool CanAcceptConnection(const Endpoint& endpoint), "CanAcceptConnection has been renamed to IsConnectedTo. Return value has also been inverted.")
+        {
+            return !IsConnectedTo(endpoint);
+        }
+
+        virtual bool IsConnectedTo(const Endpoint& endpoint) const = 0;
+
+        virtual void FindConnectionsForEndpoints(const AZStd::unordered_set<Endpoint>& searchEndpoints, AZStd::unordered_set<ConnectionId>& connectedEndpoints) = 0;
+
+        virtual bool CanDisplayConnectionTo(const Endpoint& endpoint) const = 0;
+        virtual bool CanCreateConnectionTo(const Endpoint& endpoint) const = 0;
 
         //! Returns the connection to be used when trying to create a connection from this object.
         //! Will create a connection with the underlying data model.
         virtual AZ::EntityId CreateConnectionWithEndpoint(const Endpoint& endpoint) const = 0;
+
+        AZ_DEPRECATED(AZ::EntityId CreateConnection() const, "Renamed CreateConnection to DisplayConnection for logical consistency (create implies interaction with the model, which display implies interaction with the view)")
+        {
+            return DisplayConnection();
+        }
+
+        //! Returns the connection to be used when trying to create a connection from this object.
+        virtual AZ::EntityId DisplayConnection() const = 0;
 
         //! Returns the connection to be used when trying to create a connection from this object.
         //! Will not create a connection with the underlying data model.
@@ -238,6 +281,22 @@ namespace GraphCanvas
 
         //! Clears all of the connections currently attached to this slot.
         virtual void ClearConnections() = 0;
+
+        // Clones the configurations in use by a slot
+        virtual SlotConfiguration* CloneSlotConfiguration() const = 0;
+
+        // Mainly used by Grouping.
+        // As a way of remapping the virtual slots that are created down to the correct
+        // underlying model
+
+        // Adds a Endpoint that this connection wants to remap to for use with the underlying model
+        virtual void RemapSlotForModel(const Endpoint& endpoint) = 0;
+
+        // Signals whether or not the Endpoint needs to be remapped for the model
+        virtual bool HasModelRemapping() const = 0;
+
+        // Returns the list of slot remapping
+        virtual AZStd::vector< Endpoint > GetRemappedModelEndpoints() const = 0;
     };
 
     using SlotRequestBus = AZ::EBus<SlotRequests>;
@@ -251,6 +310,7 @@ namespace GraphCanvas
         using BusIdType = AZ::EntityId;
 
         virtual QPointF GetConnectionPoint() const = 0;
+        virtual QPointF GetJutDirection() const = 0;
     };
 
     using SlotUIRequestBus = AZ::EBus<SlotUIRequests>;
@@ -295,6 +355,7 @@ namespace GraphCanvas
 
         virtual void SetDividersEnabled(bool enabled) = 0;
         virtual void ConfigureSlotGroup(SlotGroup group, SlotGroupConfiguration configuration) = 0;
+        virtual int GetSlotGroupDisplayOrder(SlotGroup group) const = 0;
 
         virtual bool IsSlotGroupVisible(SlotGroup group) const = 0;
         virtual void SetSlotGroupVisible(SlotGroup group, bool visible) = 0;

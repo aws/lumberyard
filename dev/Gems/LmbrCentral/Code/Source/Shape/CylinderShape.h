@@ -23,7 +23,7 @@ namespace AZ
 
 namespace AzFramework
 {
-    class EntityDebugDisplayRequests;
+    class DebugDisplayRequests;
 }
 
 namespace LmbrCentral
@@ -50,6 +50,7 @@ namespace LmbrCentral
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
         AZ::Aabb GetEncompassingAabb() override;
+        void GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds) override;
         AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution) override;
         bool IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
 
@@ -67,10 +68,13 @@ namespace LmbrCentral
         void SetCylinderConfiguration(const CylinderShapeConfig& cylinderShapeConfig) { m_cylinderShapeConfig = cylinderShapeConfig; }
         const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
+    protected:
+
+        friend class EditorCylinderShapeComponent;
+        CylinderShapeConfig& ModifyConfiguration() { return m_cylinderShapeConfig; }
+
     private:
-        /**
-         * Runtime data - cache potentially expensive operations.
-         */
+        /// Runtime data - cache potentially expensive operations.
         class CylinderIntersectionDataCache
             : public IntersectionTestDataCache<CylinderShapeConfig>
         {
@@ -93,6 +97,6 @@ namespace LmbrCentral
 
     void DrawCylinderShape(
         const ShapeDrawParams& shapeDrawParams, const CylinderShapeConfig& cylinderShapeConfig,
-        AzFramework::EntityDebugDisplayRequests& displayContext);
+        AzFramework::DebugDisplayRequests& debugDisplay);
 
 } // namespace LmbrCentral

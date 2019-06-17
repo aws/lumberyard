@@ -1,0 +1,6 @@
+<Material MtlFlags="2623488" Shader="Watervolume" GenMask="800000DB" StringGenMask="" SurfaceType="mat_water" Diffuse="0,0,0,1" Specular="0.43134022,0.43134022,0.43134022,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Environment" File="nearest_cubemap" TexType="7"/>
+ </Textures>
+ <PublicParams NormalsScale="0.36399999" GlossMapTilling="0.1" SoftIntersectionFactor="1" DecalTilling="4" Tilling="2" FoamAmount="4" DetailNormalsScale="0.71700001" GlossMapBias="0" EnvCubeReflMul="0.5" VertexWaveScale="0.1" DetailTilling="1.78" DecalFalloff="1" EnvCubeScale="2" GlossMapScale="1" RealtimeReflMul="0.81999999" DecalStrength="1" FoamSoftIntersectionFactor="0.99400002" FoamTilling="1.45" RainTilling="0.5" WaterFlowSpeed="0.1"/>
+</Material>

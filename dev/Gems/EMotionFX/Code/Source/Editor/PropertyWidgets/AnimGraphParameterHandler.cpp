@@ -193,7 +193,13 @@ namespace EMotionFX
 
     void AnimGraphParameterPicker::OnPickClicked()
     {
-        if (!m_animGraph)
+        AnimGraph* animGraph = m_animGraph;
+        if (m_affectedByParameterChanges)
+        {
+            animGraph = m_affectedByParameterChanges->GetParameterAnimGraph();
+        }
+
+        if (!animGraph)
         {
             AZ_Error("EMotionFX", false, "Cannot open anim graph parameter selection window. No valid anim graph.");
             return;
@@ -201,7 +207,7 @@ namespace EMotionFX
 
         // Create and show the node picker window
         EMStudio::ParameterSelectionWindow selectionWindow(this, m_singleSelection);
-        selectionWindow.Update(m_animGraph, m_parameterNames);
+        selectionWindow.Update(animGraph, m_parameterNames);
         selectionWindow.setModal(true);
 
         if (selectionWindow.exec() != QDialog::Rejected)
@@ -339,7 +345,4 @@ namespace EMotionFX
         GUI->InitializeParameterNames(instance);
         return true;
     }
-
 } // namespace EMotionFX
-
-#include <Source/Editor/PropertyWidgets/AnimGraphParameterHandler.moc>

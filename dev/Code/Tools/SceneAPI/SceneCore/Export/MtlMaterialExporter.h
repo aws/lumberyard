@@ -133,7 +133,7 @@ namespace AZ
                 {
                     AZStd::shared_ptr<const AZ::SceneAPI::DataTypes::IMaterialData> m_materialData { nullptr };
                     bool m_usesVertexColoring { false };
-                    bool m_physicalize { false };
+                    int m_physicsMaterialFlags { 0 }; //Values of AZ::GFxFramework::EMaterialFlags
                     AZStd::string m_name;
                 };
 

@@ -20,11 +20,13 @@
 
 namespace LmbrCentral
 {
+    /// Provide a Component interface for CapsuleShape functionality.
     class CapsuleShapeComponent
         : public AZ::Component
     {
     public:
         AZ_COMPONENT(CapsuleShapeComponent, CapsuleShapeComponentTypeId);
+        static void Reflect(AZ::ReflectContext* context);
 
         // AZ::Component
         void Activate() override;
@@ -32,43 +34,24 @@ namespace LmbrCentral
         bool ReadInConfig(const AZ::ComponentConfig* baseConfig) override;
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
-    protected:
-        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-        {
-            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
-            provided.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
-        }
-
-        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
-        {
-            incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
-            incompatible.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
-        }
-
-        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
-        {
-            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
-        }
-
-        static void Reflect(AZ::ReflectContext* context);
-
     private:
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+
         CapsuleShape m_capsuleShape; ///< Stores underlying capsule type for this component.
     };
 
-    /**
-     * Concrete EntityDebugDisplay implementation for CapsuleShape.
-     */
+    /// Concrete EntityDebugDisplay implementation for CapsuleShape.
     class CapsuleShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
         , public ShapeComponentNotificationsBus::Handler
     {
     public:
         AZ_COMPONENT(CapsuleShapeDebugDisplayComponent, "{21A6A8CD-C0AC-477D-8574-556DB46CDD3B}", EntityDebugDisplayComponent)
+        static void Reflect(AZ::ReflectContext* context);
 
         CapsuleShapeDebugDisplayComponent() = default;
-
-        static void Reflect(AZ::ReflectContext* context);
 
         // AZ::Component
         void Activate() override;
@@ -77,13 +60,13 @@ namespace LmbrCentral
         bool WriteOutConfig(AZ::ComponentConfig* outBaseConfig) const override;
 
         // EntityDebugDisplayComponent
-        void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
-
-        // ShapeComponentNotificationsBus
-        void OnShapeChanged(ShapeChangeReasons changeReason) override;
+        void Draw(AzFramework::DebugDisplayRequests& debugDisplay) override;
 
     private:
         AZ_DISABLE_COPY_MOVE(CapsuleShapeDebugDisplayComponent)
+
+        // ShapeComponentNotificationsBus
+        void OnShapeChanged(ShapeChangeReasons changeReason) override;
 
         void GenerateVertices();
 

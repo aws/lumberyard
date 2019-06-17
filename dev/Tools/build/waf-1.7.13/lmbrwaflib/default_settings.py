@@ -10,10 +10,10 @@
 #
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
-from waflib.Configure import conf
+from waflib.Configure import conf, deprecated
 from waflib import Context
 from waflib import Logs
-from waflib import Build
+from waflib import Scripting
 from waflib import Options
 from waflib import Utils
 
@@ -21,13 +21,15 @@ from collections import Counter
 from incredibuild import internal_validate_incredibuild_registry_settings,\
                          internal_use_incredibuild,\
                          internal_verify_incredibuild_license
+from mscv_helper import find_valid_wsdk_version
+from settings_manager import LUMBERYARD_SETTINGS
 
-import ConfigParser 
+
 import sys
 import os
+import re
 import multiprocessing
-
-user_settings = None
+import hashlib
 
 ATTRIBUTE_CALLBACKS = {}
 """ Global Registry of callbacks for options which requires special processing """
@@ -123,19 +125,42 @@ def _get_boolean_value(ctx, msg, value):
 def _default_settings_node(ctx):
     """ Return a Node object pointing to the defaul_settings.json file """
     return ctx.root.make_node(Context.launch_dir).make_node('_WAF_/default_settings.json')
-    
-    
-def _load_default_settings_file(ctx):
-    """ Util function to load the default_settings.json file and cache it within the build context """
-    if hasattr(ctx, 'default_settings'):
-        return
-        
-    default_settings_node = _default_settings_node(ctx) 
-    ctx.default_settings = ctx.parse_json_file(default_settings_node)       
 
 
+def _get_default_value(ctx, settings, section_name, option_name):
+    """ Get and process the default value for a setting """
+    # No override, apply the default value and stringify it
+    value = settings.get('default_value', '')
+    if getattr(ctx.options, option_name) != value:
+        value = getattr(ctx.options, option_name)
+    if not isinstance(value, str):
+        value = str(value)
+
+    if ATTRIBUTE_CALLBACKS.get(option_name, None):
+        value = ATTRIBUTE_CALLBACKS[option_name](ctx, section_name, option_name, value)
+    return value
 
 
+@conf
+def get_default_settings(ctx):
+    return LUMBERYARD_SETTINGS.default_settings
+
+
+###############################################################################
+@conf
+def load_user_settings(ctx):
+    """
+    Get the user_settings (values that override default_settings)
+
+    :param ctx: Context
+    :return:    The override settings contained in a ConfigParser object
+    """
+    try:
+        return ctx.user_settings
+    except AttributeError:
+        pass
+    ctx.user_settings = LUMBERYARD_SETTINGS
+    return ctx.user_settings
 
 
 @register_attribute_callback
@@ -185,10 +210,10 @@ def _output_folder_disclaimer(ctx):
 def _auto_populate_windows_kit(ctx, option_name, compiler):
     wsdk_version = ''
     try:
-        wsdk_version = ctx.find_valid_wsdk_version()
+        wsdk_version = find_valid_wsdk_version()
         if wsdk_version == '':
             Logs.info('\nFailed to find a valid Windows Kit for {}.'.format(compiler))
-        setattr(ctx.options, option_name, wsdk_version)
+        # setattr(ctx.options, option_name, wsdk_version)
     except:
         pass
     return wsdk_version
@@ -198,6 +223,13 @@ def _auto_populate_windows_kit(ctx, option_name, compiler):
 def win_vs2017_winkit(ctx, section_name, option_name, value):
     """ Configure vs2017 windows kit. """
     return _auto_populate_windows_kit(ctx, option_name, "Visual Studio 2017")
+
+
+###############################################################################
+@register_attribute_callback
+def win_vs2017_vcvarsall_args(ctx, section_name, option_name, value):
+    """ Configure vs2017 vcvarsall args. """
+    return ''
 
 
 ###############################################################################
@@ -228,7 +260,6 @@ def out_folder_win32(ctx, section_name, option_name, value):
 def out_folder_win64_vs2017(ctx, section_name, option_name, value):
     """ Configure output folder for win x64 (vs2017) """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: ""%s"' % (value, option_name))
         return value
         
     # GUI
@@ -244,7 +275,6 @@ def out_folder_win64_vs2017(ctx, section_name, option_name, value):
 def out_folder_win64_vs2015(ctx, section_name, option_name, value):
     """ Configure output folder for win x64 (vs2015) """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: ""%s"' % (value, option_name))
         return value
         
     # GUI
@@ -257,10 +287,39 @@ def out_folder_win64_vs2015(ctx, section_name, option_name, value):
 
 ###############################################################################
 @register_attribute_callback
+def out_folder_win64_vs2017(ctx, section_name, option_name, value):
+    """ Configure output folder for win x64 (vs2017) """
+    if not _is_user_input_allowed(ctx, option_name, value):
+        return value
+        
+    # GUI
+    if not ctx.is_option_true('console_mode'):
+        return ctx.gui_get_attribute(section_name, option_name, value)
+        
+    _output_folder_disclaimer(ctx)
+    return _get_string_value(ctx, 'Win x64 Visual Studio 2017 Output Folder', value)
+
+
+###############################################################################
+@register_attribute_callback
+def out_folder_win64_vs2015(ctx, section_name, option_name, value):
+    """ Configure output folder for win x64 (vs2015) """
+    if not _is_user_input_allowed(ctx, option_name, value):
+        return value
+
+    # GUI
+    if not ctx.is_option_true('console_mode'):
+        return ctx.gui_get_attribute(section_name, option_name, value)
+
+    _output_folder_disclaimer(ctx)
+    return _get_string_value(ctx, 'Win x64 Visual Studio 2015 Server Output Folder', value)
+
+
+###############################################################################
+@register_attribute_callback
 def out_folder_win64_vs2013(ctx, section_name, option_name, value):
     """ Configure output folder for win x64 (vs2013) """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: ""%s"' % (value, option_name))
         return value
 
     # GUI
@@ -282,7 +341,6 @@ def out_folder_win64_vs2013(ctx, section_name, option_name, value):
 def out_folder_linux64(ctx, section_name, option_name, value):
     """ Configure output folder for linux x64 """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
         
     # GUI
@@ -298,7 +356,6 @@ def out_folder_linux64(ctx, section_name, option_name, value):
 def out_folder_darwin64(ctx, section_name, option_name, value):
     """ Configure output folder for Darwin x64 """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
         
     # GUI
@@ -314,7 +371,6 @@ def out_folder_darwin64(ctx, section_name, option_name, value):
 def out_folder_appletv(ctx, section_name, option_name, value):
     """ Configure output folder for Apple TV """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
     
     # GUI
@@ -330,13 +386,12 @@ def out_folder_appletv(ctx, section_name, option_name, value):
 def out_folder_ios(ctx, section_name, option_name, value):
     """ Configure output folder for iOS """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
-
+    
     # GUI
     if not ctx.is_option_true('console_mode'):
         return ctx.gui_get_attribute(section_name, option_name, value)
-
+        
     _output_folder_disclaimer(ctx)
     return _get_string_value(ctx, 'Ios Output Folder', value)
 
@@ -346,7 +401,6 @@ def out_folder_ios(ctx, section_name, option_name, value):
 def out_folder_android_armv7_clang(ctx, section_name, option_name, value):
     """ Configure output folder for Android ARMv7 Clang """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
 
     # GUI
@@ -362,7 +416,6 @@ def out_folder_android_armv7_clang(ctx, section_name, option_name, value):
 def out_folder_android_armv8_clang(ctx, section_name, option_name, value):
     """ Configure output folder for Android ARMv8 Clang """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
 
     # GUI
@@ -378,7 +431,6 @@ def out_folder_android_armv8_clang(ctx, section_name, option_name, value):
 def use_uber_files(ctx, section_name, option_name, value):
     """ Configure the usage of UberFiles """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
 
     info_str = ['UberFiles significantly improve total compile time of the CryEngine']
@@ -505,7 +557,7 @@ def hint_enabled_game_projects(ctx, section_name, option_name, value):
 def generate_vs_projects_automatically(ctx, section_name, option_name, value):
     """ Configure automatic project generation """
     if not _is_user_input_allowed(ctx, option_name, value):
-        Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
+        #Logs.info('\nUser Input disabled.\nUsing default value "%s" for option: "%s"' % (value, option_name))
         return value
         
     info_str = ['Allow WAF to track changes and automatically keep Visual Studio projects up-to-date for you?']
@@ -620,189 +672,23 @@ def hint_specs_to_include_in_project_generation(ctx, section_name, option_name, 
 
 ###############################################################################
 def options(ctx):
-    """ Create options for all entries in default_settings.json """
-    _load_default_settings_file(ctx)
-            
-    default_settings_file = _default_settings_node(ctx).abspath()
-        
-    # Load default settings
-    for settings_group, settings_list in ctx.default_settings.items():      
-        group = ctx.add_option_group(settings_group)        
+    LUMBERYARD_SETTINGS.apply_to_settings_context(ctx)
 
-        # Iterate over all options in this group
-        for settings in settings_list:
-            
-            # Do some basic sanity checking for each option
-            if not settings.get('attribute', None):
-                ctx.cry_file_error('One Option in group %s is missing mandatory setting "attribute"' % settings_group, default_settings_file)
-            if not settings.get('long_form', None):
-                ctx.cry_file_error('Option "%s" is missing mandatory setting "long_form"' % settings['attribute'], default_settings_file)
-            if not settings.get('description', None):
-                ctx.cry_file_error('Option "%s" is missing mandatory setting "description"' % settings['attribute'], default_settings_file)
-                
-            #   Add option with its default value
-            if settings.get('short_form'):
-                group.add_option(settings['short_form'], settings['long_form'],  dest=settings['attribute'], action='store', default=str(settings.get('default_value', '')), help=settings['description'])
-            else:
-                group.add_option(settings['long_form'],  dest=settings['attribute'], action='store', default=str(settings.get('default_value', '')), help=settings['description'])                          
-            
 ###############################################################################
 @conf
 def get_user_settings_node(ctx):
     """ Return a Node object pointing to the user_settings.options file """
     return ctx.root.make_node(Context.launch_dir).make_node('_WAF_/user_settings.options')
-    
-###############################################################################
-@conf 
-def load_user_settings(ctx):
-    """ Apply all loaded options if they are different that the default value, and no cmd line value is presented """
-    global user_settings
-
-    _load_default_settings_file(ctx)
-
-    write_user_settings     = False 
-    user_settings               = ConfigParser.ConfigParser()   
-    user_setting_file       = ctx.get_user_settings_node().abspath()
-    new_options                 = {}
-        
-    # Load existing user settings
-    if not os.path.exists( user_setting_file ):
-        write_user_settings = True  # No file, hence we need to write it
-    else:
-        user_settings.read( [user_setting_file] )
-
-    Logs.debug('default_settings: sys.argv = {}'.format(sys.argv))
-
-    # 'Misc Options' must be evaluated first because the values in 'Game Projects' relies on its values
-    section_name_and_settings_tuple_list = []
-    for section_name, settings_list in ctx.default_settings.items():
-        if section_name == 'Misc Options':
-            section_name_and_settings_tuple_list.insert(0,(section_name, settings_list))
-        else:
-            section_name_and_settings_tuple_list.append((section_name, settings_list))
-
-    # Load settings and check for newly set ones
-    for section_name, settings_list in section_name_and_settings_tuple_list:
-        
-        # Add not already present sections
-        if not user_settings.has_section(section_name):
-            user_settings.add_section(section_name)
-            write_user_settings = True
-            
-        # Iterate over all options in this group
-        for settings in settings_list:
-            option_name = settings['attribute']
-            # Start with the default value for current option stringified
-            default_value = settings.get('default_value', '')
-            value = default_value
-
-            hasUserSettingsOption = False
-            if  user_settings.has_option(section_name, option_name):
-                # Load the value from user settings if it is already present
-                hasUserSettingsOption = True
-                value = user_settings.get(section_name, option_name)
-                LOADED_OPTIONS[ option_name ] = value
-            else:
-                # Add info about newly added option
-                if not new_options.has_key(section_name):
-                    new_options[section_name] = []
-                
-                new_options[section_name].append(option_name)
-                
-                if getattr(ctx.options, option_name) != value:
-                    value = getattr(ctx.options, option_name)
-
-                if not isinstance(value, str):
-                    value = str(value)
-
-                if  ATTRIBUTE_CALLBACKS.get(option_name, None):
-                    value = ATTRIBUTE_CALLBACKS[option_name](ctx, section_name, option_name, value)
-
-                (isValid, warning, error) = ctx.verify_settings_option(option_name, value)
-
-                # Add option
-                if isValid:
-                    user_settings.set( section_name, option_name, str(value) )
-                    LOADED_OPTIONS[ option_name ] = value
-                    write_user_settings = True
-
-            # Check for settings provided by the cmd line
-            long_form           = settings['long_form']
-            short_form      = settings.get('short_form', None)
-            
-            # Settings on cmdline should have priority
-            # explicitly search for either the long form or short form argument, make sure to handle both --option=<SomeThing> and --option <Something> cases
-            bOptionSetOnCmdLine = False
-            for arg in sys.argv:
-                arg_tokens = arg.split('=')
-                if (arg_tokens[0] == long_form) or (short_form and arg_tokens[0] == short_form):
-                    Logs.debug('default_settings: found either long_form, "{}", or short_form, "{}", argument in command line param {}'.format(long_form, short_form, arg))
-                    bOptionSetOnCmdLine = True
-                    value = getattr(ctx.options, option_name)
-                    break
-
-            # Provide some information to the command line
-            if default_value != value:
-                from_location = "_WAF_/user_settings.options"
-                if bOptionSetOnCmdLine:
-                    from_location = "command line args"
-                Logs.info('default_settings: using option {}: "{}" from {} (default: "{}")'.format(option_name, value, from_location, default_value))
-            else:
-                Logs.debug('default_settings: options default {}: "{}"'.format(option_name, default_value))
-
-            # Remember option for internal processing
-            if bOptionSetOnCmdLine:
-                LOADED_OPTIONS[ option_name ] = value
-            elif hasUserSettingsOption:
-                setattr(ctx.options, option_name, value)
-
-    # Write user settings
-    if write_user_settings:
-        ctx.save_user_settings(user_settings)
-
-    # If use_incredibuild option was set but did not pass the ib validation, turn it off
-    if ctx.is_option_true('use_incredibuild') and not internal_validate_incredibuild_registry_settings(ctx):
-        setattr(ctx.options, 'use_incredibuild', 'False')
-
-    # If max_cores option was set to < 0, default it to a good hardware value
-    if int(ctx.options.max_cores) <= 0:
-        max_cores = 8   # fallback value
-        try:
-            max_cores = multiprocessing.cpu_count()
-        except:
-            Logs.warn('unable to query hardware for number of hw threads, using "%d"' % max_cores)
-        setattr(ctx.options, 'max_cores', max_cores)
-
-    return user_settings, new_options
 
 
-###############################################################################
 @conf
-def get_default_settings(ctx, section_name, setting_name):
-    default_value = ""
-    default_description = ""
-    
-    if not hasattr(ctx, 'default_settings'):
-        return (default_value, default_description)
-
-    for settings_group, settings_list in ctx.default_settings.items():
-        if settings_group == section_name:
-            for settings in settings_list:
-                if settings['attribute'] == setting_name:
-                    default_value = settings.get('default_value', '')
-                    default_description = settings.get('description', '')
-                    break
-            break
-    
-    return (default_value, default_description)
+def get_default_settings_value(ctx, section_name, setting_name):
+    return LUMBERYARD_SETTINGS.get_default_value_and_description(section_name, setting_name)
 
 
-###############################################################################
-@conf 
-def save_user_settings(ctx, config_parser):
-    # Write user settings   
-    with open(ctx.get_user_settings_node().abspath(), 'wb') as configfile:
-        config_parser.write(configfile)
+@conf
+def save_user_settings(ctx):
+    LUMBERYARD_SETTINGS.update_settings_file(True)
 
         
 ###############################################################################
@@ -827,43 +713,19 @@ def hint_settings_option(ctx, section_name, option_name, value):
     
 ###############################################################################
 @conf
-def set_settings_option(ctx, section_name, option_name, value): 
-    global user_settings
-    user_settings.set(section_name, option_name, str(value))
-    LOADED_OPTIONS[option_name] = value 
+def set_settings_option(ctx, section_name, option_name, value):
+
+    LUMBERYARD_SETTINGS.set_settings_value(option_name, value)
 
 
 @conf
 def update_settings_options_file(ctx):
-    '''
+    """
     Update the user_settings.options file if there are any changes from the command line
-    '''
+    """
+    LUMBERYARD_SETTINGS.update_settings_file(True)
 
-    disk_user_settings = ConfigParser.ConfigParser()
-    user_setting_file = ctx.get_user_settings_node().abspath()
-    write_user_settings = False
 
-    # Load existing user settings
-    disk_user_settings.read([user_setting_file])
-
-    # Go through all the sections and its options and check if there are any deltas from whats in memory
-    disk_sections = disk_user_settings.sections()
-    for disk_section in disk_sections:
-        disk_options = disk_user_settings.options(disk_section)
-        for disk_option in disk_options:
-            if disk_option not in LOADED_OPTIONS:
-                continue
-            disk_option_value = disk_user_settings.get(disk_section, disk_option)
-            current_option_value = LOADED_OPTIONS[disk_option]
-            # Change was detected, update the value and flag for update
-            if disk_option_value != current_option_value:
-                write_user_settings = True
-                disk_user_settings.set(disk_section, disk_option, str(current_option_value))
-
-    if write_user_settings:
-        ctx.save_user_settings(disk_user_settings)
-
-    return write_user_settings
 
 
 

@@ -12,7 +12,8 @@
 
 #pragma once
 
-#include <AzToolsFramework/Picking/DefaultContextBoundManager.h>
+#include <AzToolsFramework/Manipulators/ManipulatorBus.h>
+#include <AzToolsFramework/Picking/ContextBoundAPI.h>
 
 namespace AzToolsFramework
 {
@@ -25,25 +26,30 @@ namespace AzToolsFramework
          * bounds for performing raycasts/picking against.
          */
         class ManipulatorBoundManager
-            : public DefaultContextBoundManager
         {
         public:
             AZ_CLASS_ALLOCATOR(ManipulatorBoundManager, AZ::SystemAllocator, 0);
 
-            explicit ManipulatorBoundManager(ManipulatorManagerId manipulatorManagerId);
+            ManipulatorBoundManager() = default;
+            ManipulatorBoundManager(const ManipulatorBoundManager&) = delete;
+            ManipulatorBoundManager& operator=(const ManipulatorBoundManager&) = delete;
             ~ManipulatorBoundManager() = default;
 
-            /**
-             * Perform Raycast against bounds - store all rays hits and sort by hit distance.
-             */
-            void RaySelect(RaySelectInfo &rayInfo) override;
-
-        protected:
-            AZStd::shared_ptr<BoundShapeInterface> CreateShape(const BoundRequestShapeBase& ptrShape, RegisteredBoundId id, AZ::u64 userContext) override;
-            void DeleteShape(AZStd::shared_ptr<BoundShapeInterface> pShape) override;
+            RegisteredBoundId UpdateOrRegisterBound(
+                const BoundRequestShapeBase& shapeData, RegisteredBoundId id);
+            void UnregisterBound(RegisteredBoundId boundId);
+            void SetBoundValidity(RegisteredBoundId boundId, bool valid);
+            void RaySelect(RaySelectInfo &rayInfo);
 
         private:
+            AZStd::shared_ptr<BoundShapeInterface> CreateShape(
+                const BoundRequestShapeBase& ptrShape, RegisteredBoundId id);
+            void DeleteShape(const BoundShapeInterface* boundShape);
+
+            AZStd::unordered_map<RegisteredBoundId, AZStd::shared_ptr<BoundShapeInterface>> m_boundIdToShapeMap;
             AZStd::vector<AZStd::shared_ptr<BoundShapeInterface>> m_bounds; ///< All current manipulator bounds.
+
+            RegisteredBoundId m_nextBoundId = RegisteredBoundId(1); ///< Next bound id to use when a bound is registered.
         };
     } // namespace Picking
 } // namespace AzToolsFramework

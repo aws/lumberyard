@@ -10,7 +10,6 @@
 *
 */
 
-#include "precompiled.h"
 #include "Assign.h"
 
 namespace ScriptCanvas
@@ -78,7 +77,7 @@ namespace ScriptCanvas
                     {
                         editContext->Class<Assign>("Assign", "")
                             ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                                ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::All)
                                 ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/ScriptCanvas/Placeholder.png")
                             ;
                     }

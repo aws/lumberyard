@@ -92,8 +92,5 @@
    <header>AzQtComponents/Components/ExtendedLabel.h</header>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="search.qrc"/>
- </resources>
  <connections/>
 </ui>

@@ -44,6 +44,7 @@ namespace ScriptCanvasEditor
 
         void SetAsset(const AZ::Data::Asset<ScriptCanvasAsset>& asset);
         AZ::Data::Asset<ScriptCanvasAsset> GetAsset() const;
+        AZ::Data::AssetId GetAssetId() const;
 
         AZ::EntityId GetGraphId() const;
 

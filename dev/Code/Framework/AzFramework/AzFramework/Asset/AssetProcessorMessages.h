@@ -378,8 +378,7 @@ namespace AzFramework
         };
 
         //////////////////////////////////////////////////////////////////////////
-        //Show
-        // I don't know if this should really be here
+        //ShowAssetProcessorRequest
         class ShowAssetProcessorRequest
             : public BaseAssetProcessorMessage
         {
@@ -391,6 +390,23 @@ namespace AzFramework
 
             ShowAssetProcessorRequest() = default;
             unsigned int GetMessageType() const override;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        //ShowAssetInAssetProcessorRequest
+        class ShowAssetInAssetProcessorRequest
+            : public BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(ShowAssetInAssetProcessorRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(ShowAssetInAssetProcessorRequest, "{04A068A0-58D7-4404-ABAD-AED72287FFE8}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            ShowAssetInAssetProcessorRequest() = default;
+            unsigned int GetMessageType() const override;
+
+            AZ::OSString m_assetPath;
         };
 
         //////////////////////////////////////////////////////////////////////////

@@ -31,6 +31,7 @@
             ]
         },
         "win_x64_vs2017": "@win_x64_vs2015",
+        "win_x64_clang": "@win_x64_vs2015",
         "durango_vs2015": {
             "libpath": [
                 "lib/x64_vc14"

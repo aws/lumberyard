@@ -12,8 +12,6 @@
 
 #pragma once
 
-#include <AzTest/AzTest.h>
-
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Core/Contracts/DisallowReentrantExecutionContract.h>
 
@@ -161,6 +159,21 @@ namespace TestNodes
 
         void OnInit() override;
 
+        void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
+    };
+
+    //////////////////////////////////////////////////////////////////////////////
+    class ConfigurableNode
+        : public ScriptCanvas::Node
+    {
+    public:
+        AZ_COMPONENT(ConfigurableNode, "{61BF3D66-809A-4AAE-B20A-DFA2B51BE4EE}", ScriptCanvas::Node);
+        static void Reflect(AZ::ReflectContext* reflection);
+
+        ScriptCanvas::Slot* AddTestingSlot(const ScriptCanvas::SlotConfiguration& slotConfiguration);
+        ScriptCanvas::Slot* AddTestingDataSlot(const ScriptCanvas::DataSlotConfiguration& dataSlotConfiguration);
+
+    protected:
         void Visit(ScriptCanvas::NodeVisitor& visitor) const override { visitor.Visit(*this); }
     };
 }

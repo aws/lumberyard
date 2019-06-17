@@ -116,6 +116,27 @@ namespace ScriptCanvasEditor
             Metrics::SendMetric(operation, "", assetId.ToString<AZStd::string>().c_str());
         }
 
+        void SystemComponent::SendGraphStatistics(const AZ::Data::AssetId& assetId, const GraphStatisticsHelper& graphStatistics)
+        {
+            auto eventId = LyMetrics_CreateEvent(EventName);
+
+            LyMetrics_AddAttribute(eventId, Actions::Operation, Events::Canvas::GraphStatistics);
+            LyMetrics_AddAttribute(eventId, Attributes::AssetId, assetId.ToString<AZStd::string>().c_str());
+
+            double totalNodeCount = 0.0;
+
+            for (auto usagePair : graphStatistics.m_nodeIdentifierCount)
+            {
+                AZStd::string nodeIdentifier = AZStd::string::format("%zu", usagePair.first);
+                LyMetrics_AddMetric(eventId, nodeIdentifier.c_str(), usagePair.second);
+
+                totalNodeCount += usagePair.second;
+            }
+
+            LyMetrics_AddMetric(eventId, MetricKeys::TotalNodeCount, static_cast<double>(totalNodeCount));
+            LyMetrics_SubmitEvent(eventId);
+        }
+
         void SystemComponent::OnNodeAdded(const AZ::EntityId& nodeId)
         {
             for (auto nodeType : GetNodeTypeIds(nodeId))

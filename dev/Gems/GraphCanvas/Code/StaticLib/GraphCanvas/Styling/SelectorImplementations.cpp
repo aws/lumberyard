@@ -38,6 +38,27 @@ namespace GraphCanvas
             }
         }
 
+        /////////////////
+        // NullSelector
+        /////////////////
+
+        void NullSelector::Reflect(AZ::ReflectContext* context)
+        {
+            AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+            if (!serializeContext)
+            {
+                return;
+            }
+
+            serializeContext->Class<NullSelector, SelectorImplementation>()
+                ->Version(1)
+                ;
+        }
+
+        //////////////////
+        // BasicSelector
+        //////////////////
+
         class BasicSelectorEventHandler
             : public AZ::SerializeContext::IEventHandler
         {

@@ -13,6 +13,7 @@
 #include "AddToLayerMenu.h"
 
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/std/containers/stack.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/smart_ptr/shared_ptr.h>
 #include <AzCore/std/containers/stack.h>

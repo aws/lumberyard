@@ -5,6 +5,9 @@ import os
 import sys
 import urllib
 import urllib.request
+import uuid
+import traceback
+from botocore.exceptions import ClientError
 
 from dictionary_sorter import divide
 from dictionary_sorter import merge
@@ -13,7 +16,7 @@ from dictionary_sorter import build
 from harness import config
 from harness import decider
 from harness import worker
-
+from harness import cloudwatch
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -36,10 +39,6 @@ if __name__ == "__main__":
     parser.add_argument("--stdout", default=None)
     args = parser.parse_args()
 
-    if args.stdout:
-        fp = open(args.stdout, "w")
-        sys.stdout = fp
-        sys.stderr = fp
 
     try:
         # Fetch instance identity: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html
@@ -72,13 +71,25 @@ if __name__ == "__main__":
             aws_session_token=sts_result['SessionToken']
         )
 
+    if args.stdout:
+        if args.stdout == 'cloudwatch':
+            writeHandler = cloudwatch.OutputHandler('HARNESS-DEBUG', session, args.region, identity, 'decider' if args.run_decider else 'worker')
+        else:
+            fp = open(args.stdout, "w")
+            sys.stdout = fp
+            sys.stderr = fp
+
     divide_task = config.TaskConfig(args.div_task, args.div_task_version, divide.handler)
     merge_task = config.TaskConfig(args.merge_task, args.merge_task_version, merge.handler)
     build_task = config.TaskConfig(args.build_task, args.build_task_version, build.handler) if args.build_task else merge_task
     harness_config = config.Config(session, args.region, args.domain, args.task_list, divide_task, build_task,
                                    merge_task, args.log_group, args.log_db, args.kvs_db, args.config_bucket, identity)
 
-    if args.run_decider:
-        decider.run_decider(harness_config)
-    else:
-        worker.run_worker(harness_config)
+    try:
+        if args.run_decider:
+            decider.run_decider(harness_config)
+        else:
+            worker.run_worker(harness_config)
+    except Exception as e:
+            message = "Error - " + str(e) + "\n" + traceback.format_exc()
+            print(message)

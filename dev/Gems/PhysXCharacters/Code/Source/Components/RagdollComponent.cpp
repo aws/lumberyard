@@ -219,9 +219,9 @@ namespace PhysXCharacters
         }
     }
 
-    AZStd::shared_ptr<Physics::Ragdoll> RagdollComponent::GetRagdoll()
+    Physics::Ragdoll* RagdollComponent::GetRagdoll()
     {
-        return m_ragdoll;
+        return m_ragdoll.get();
     }
 
     void RagdollComponent::GetState(Physics::RagdollState& ragdollState) const
@@ -244,7 +244,7 @@ namespace PhysXCharacters
         m_ragdoll->SetNodeState(nodeIndex, nodeState);
     }
 
-    AZStd::shared_ptr<Physics::RagdollNode> RagdollComponent::GetNode(size_t nodeIndex) const
+    Physics::RagdollNode* RagdollComponent::GetNode(size_t nodeIndex) const
     {
         return m_ragdoll->GetNode(nodeIndex);
     }

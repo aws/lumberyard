@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
@@ -86,11 +87,6 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
         // LensFlareComponentEditorRequestBus::Handler interface implementation
         virtual void RefreshLensFlare() override;
         //////////////////////////////////////////////////////////////////////////
@@ -148,6 +144,11 @@ namespace LmbrCentral
         // AzToolsFramework::EditorEvents::Bus::Handler interface implementation
         void OnEditorSpecChange() override;
         //////////////////////////////////////////////////////////////////////////
+
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         AZStd::string GetSelectedLensFlareFullName() const;
         AZStd::string GetFlareNameFromPath(const AZStd::string& path) const;

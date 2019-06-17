@@ -32,9 +32,10 @@ namespace PhysXCharacters
         static void Reflect(AZ::ReflectContext* context);
 
         Ragdoll();
+        Ragdoll(const Ragdoll&) = delete;
         ~Ragdoll() = default;
 
-        void AddNode(const AZStd::shared_ptr<RagdollNode>& node);
+        void AddNode(AZStd::unique_ptr<RagdollNode> node);
         void SetParentIndices(const ParentIndices& parentIndices);
         void SetRootIndex(size_t nodeIndex);
         physx::PxRigidDynamic* GetPxRigidDynamic(size_t nodeIndex) const;
@@ -48,7 +49,7 @@ namespace PhysXCharacters
         void SetState(const Physics::RagdollState& ragdollState) override;
         void GetNodeState(size_t nodeIndex, Physics::RagdollNodeState& nodeState) const override;
         void SetNodeState(size_t nodeIndex, const Physics::RagdollNodeState& nodeState) override;
-        AZStd::shared_ptr<Physics::RagdollNode> GetNode(size_t nodeIndex) const override;
+        Physics::RagdollNode* GetNode(size_t nodeIndex) const override;
         size_t GetNumNodes() const override;
 
         // Physics::WorldBody
@@ -62,9 +63,11 @@ namespace PhysXCharacters
         void RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const override;
         AZ::Crc32 GetNativeType() const override;
         void* GetNativePointer() const override;
+        void AddToWorld(Physics::World&) override;
+        void RemoveFromWorld(Physics::World&) override;
 
     private:
-        AZStd::vector<AZStd::shared_ptr<RagdollNode>> m_nodes;
+        AZStd::vector<AZStd::unique_ptr<RagdollNode>> m_nodes;
         ParentIndices m_parentIndices;
         AZ::Outcome<size_t> m_rootIndex = AZ::Failure();
         bool m_isSimulated;

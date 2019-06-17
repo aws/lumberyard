@@ -173,17 +173,24 @@ namespace AzToolsFramework
         /*!
          * Event sent when the editor is set to Isolation Mode where only selected entities are visible
          */
-        virtual void OnEnterEditorIsolationMode() {};
+        virtual void OnEnterEditorIsolationMode() {}
 
         /*!
          * Event sent when the editor quits Isolation Mode
          */
-        virtual void OnExitEditorIsolationMode() {};
+        virtual void OnExitEditorIsolationMode() {}
 
         /*!
          * Sets  the position of the next entity to be instantiated, used by the EditorEntityModel when dragging from asset browser
          */
-        virtual void SetEntityInstantiationPosition(const AZ::EntityId& /*parent*/, const AZ::EntityId& /*beforeEntity*/) {};
+        virtual void SetEntityInstantiationPosition(const AZ::EntityId& /*parent*/, const AZ::EntityId& /*beforeEntity*/) {}
+
+        /*!
+        * Clears the position of the next entity to be instantiated, used by the EditorEntityModel if entity instantiation fails
+        * after SetEntityInstantiationPosition is called. This makes sure entities created after the initial event don't end up with a parent out of
+        * sync in the outliner and transform component.
+        */
+        virtual void ClearEntityInstantiationPosition() {}
 
         /*!
          * Called when the level is saved.
@@ -558,6 +565,16 @@ namespace AzToolsFramework
         virtual ResolveToolPathOutcome ResolveConfigToolsPath(const char* toolApplicationName) const = 0;
 
         /**
+         * LUMBERYARD INTERNAL USE ONLY.
+         *
+         * Run a specific redo command separate from the undo/redo system.
+         * In many cases before a modifcation on an entity takes place, it is first packaged into 
+         * undo/redo commands. Running the modification's redo command separete from the undo/redo 
+         * system simulates its execution, and avoids some code duplication.
+         */
+        virtual void RunRedoSeparately(UndoSystem::URSequencePoint* redoCommand) = 0;
+
+        /**
         * @deprecated
         */
         AZ_DEPRECATED(ResolveToolPathOutcome ResolveToolPath(const char* currentExecutablePath, const char* toolApplicationName) const, "ToolsApplicationRequests::ResolveToolPath is deprecated. Please use ToolsApplicationRequests::ResolveConfigToolsPath")
@@ -609,28 +626,63 @@ namespace AzToolsFramework
     };
 
     /**
-    * Bus for editor requests related to pick mode
-    */
+     * Bus for editor requests related to Pick Mode.
+     */
     class EditorPickModeRequests
         : public AZ::EBusTraits
     {
     public:
-
         using Bus = AZ::EBus<EditorPickModeRequests>;
 
-        //////////////////////////////////////////////////////////////////////////
         // EBusTraits overrides
+        using BusIdType = AzFramework::EntityContextId;
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        typedef AzFramework::EntityContextId BusIdType;
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-        //////////////////////////////////////////////////////////////////////////
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
-        /// Starts object pick mode -- next object selection will broadcasted via EntitySelectionEventBus::OnPickModeSelect,
-        /// and will not affect general object selection.
-        virtual void StartObjectPickMode() {};
-        virtual void StopObjectPickMode() {};
-        virtual void OnPickModeSelect(AZ::EntityId /*id*/) {}
+        /**
+         * Move the Editor out of Pick Mode.
+         * Note: The Editor is moved into Pick Mode by a button in the Entity Inspector UI.
+         */
+        virtual void StopEntityPickMode() = 0;
+        /**
+         * When in Pick Mode, set the picked entity to the assigned slot(s).
+         * @note It is only valid to make this request when the editor is in Pick Mode.
+         */
+        virtual void PickModeSelectEntity(AZ::EntityId entityId) = 0;
+    
+    protected:
+        ~EditorPickModeRequests() = default;
     };
+
+    /// Type to inherit to implement EditorPickModeRequests
+    using EditorPickModeRequestBus = AZ::EBus<EditorPickModeRequests>;
+
+    /**
+     * Bus for editor notifications related to Pick Mode.
+     */
+    class EditorPickModeNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        // EBusTraits overrides
+        using BusIdType = AzFramework::EntityContextId;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+
+        /**
+         * Notify other systems that the editor has entered Pick Mode select.
+         */
+        virtual void OnEntityPickModeStarted() {}
+        /**
+         * Notify other systems that the editor has left Pick Mode select.
+         */
+        virtual void OnEntityPickModeStopped() {}
+
+    protected:
+        ~EditorPickModeNotifications() = default;
+    };
+
+    /// Type to inherit to implement EditorPickModeNotifications
+    using EditorPickModeNotificationBus = AZ::EBus<EditorPickModeNotifications>;
 
     /**
      * Bus for general editor requests to be intercepted by the application (e.g. Sandbox).
@@ -664,6 +716,10 @@ namespace AzToolsFramework
         /// \param name - the name of the pane to be unregistered. This must match the name used for registration.
         virtual void UnregisterViewPane(const char* /*name*/) {};
 
+        /// Returns the widget contained/wrapped in a view pane.
+        /// \param viewPaneName - the name of the pane which contains the widget to be retrieved. This must match the name used for registration.
+        virtual QWidget* GetViewPaneWidget(const char* /*viewPaneName*/) { return nullptr; }
+
         /// Show an Editor window by name.
         void ShowViewPane(const char* paneName) { OpenViewPane(paneName); }
 
@@ -695,11 +751,6 @@ namespace AzToolsFramework
 
         /// Allow interception of cursor, for customizing selection behavior.
         virtual void UpdateObjectModeCursor(AZ::u32& /*cursorId*/, AZStd::string& /*cursorStr*/) {}
-
-        /// Starts object pick mode -- next object selection will broadcasted via EntitySelectionEventBus::OnPickModeSelect,
-        /// and will not affect general object selection.
-        virtual void StartObjectPickMode() {};
-        virtual void StopObjectPickMode() {};
 
         /// Creates editor-side representation of an underlying entity.
         virtual void CreateEditorRepresentation(AZ::Entity* /*entity*/) { }
@@ -812,6 +863,13 @@ namespace AzToolsFramework
 
         /// Clears current redo stack
         virtual void ClearRedoStack() {}
+        
+        /// Return the icon texture id (from internal IconManager) for a given entity icon path.
+        /// This can be passed to DrawTextureLabel to draw an entity icon.
+        virtual int GetIconTextureIdFromEntityIconPath(const AZStd::string& entityIconPath) = 0;
+
+        /// Returns if the Display Helpers option is toggled on in the Editor.
+        virtual bool DisplayHelpersVisible() = 0;
     };
 
     using EditorRequestBus = AZ::EBus<EditorRequests>;
@@ -825,7 +883,6 @@ namespace AzToolsFramework
     public:
         using Bus = AZ::EBus<EditorEvents>;
 
-        virtual void OnPickModeSelect(AZ::EntityId /*id*/) {}
         virtual void OnEscape() {}
 
         /// The editor has changed performance specs.
@@ -855,7 +912,12 @@ namespace AzToolsFramework
 
         /// Notify that the IEditor is ready
         virtual void NotifyIEditorAvailable(IEditor* /*editor*/) {}
+
+        /// Signal that an asset should be highlighted / selected
+        virtual void SelectAsset(const QString& /* assetPath */) {}
     };
+
+    using EditorEventsBus = AZ::EBus<EditorEvents>;
 
     /**
      * RAII Helper class for undo batches.
@@ -894,7 +956,7 @@ namespace AzToolsFramework
     private:
         AZ_DISABLE_COPY_MOVE(ScopedUndoBatch);
 
-        UndoSystem::URSequencePoint* m_undoBatch;
+        UndoSystem::URSequencePoint* m_undoBatch = nullptr;
     };
 
     /// Registers a view pane with the main editor. It will be listed under the "Tools" menu on the main window's menubar.
@@ -943,6 +1005,17 @@ namespace AzToolsFramework
         EditorRequests::Bus::Broadcast(&EditorRequests::UnregisterViewPane, viewPaneName);
     }
 
+    /// Returns the widget contained/wrapped in a view pane.
+    /// \param name - the name of the pane which contains the widget to be retrieved. This must match the name used for registration.
+    template <typename TWidget>
+    inline TWidget* GetViewPaneWidget(const char* viewPaneName)
+    {
+        QWidget* ret = nullptr;
+        EditorRequests::Bus::BroadcastResult(ret, &EditorRequests::GetViewPaneWidget, viewPaneName);
+
+        return qobject_cast<TWidget*>(ret);
+    }
+
     /// Opens a view pane if not already open, and activating the view pane if it was already opened.
     ///
     /// \param viewPaneName - name of the pane to open/activate. Must be the same as the name previously registered with RegisterViewPane.
@@ -968,6 +1041,17 @@ namespace AzToolsFramework
     inline void CloseViewPane(const char* viewPaneName)
     {
         EditorRequests::Bus::Broadcast(&EditorRequests::CloseViewPane, viewPaneName);
+    }
+
+    /**
+     * Helper to wrap checking if an undo/redo operation is in progress.
+     */
+    inline bool UndoRedoOperationInProgress()
+    {
+        bool isDuringUndoRedo = false;
+        ToolsApplicationRequestBus::BroadcastResult(
+            isDuringUndoRedo, &ToolsApplicationRequests::IsDuringUndoRedo);
+        return isDuringUndoRedo;
     }
 } // namespace AzToolsFramework
 

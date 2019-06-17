@@ -10,12 +10,12 @@
 *
 */
 
-#include <CloudGemDynamicContent_precompiled.h>
+#include <CloudCanvasCommon_precompiled.h>
 
-#include <CloudGemFramework/CloudGemFrameworkBus.h>
 #include <PresignedURL/PresignedURL.h>
 
 #include <FileTransferSupport/FileTransferSupport.h>
+#include <AzCore/EBus/EBus.h>
 
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
 #include <aws/core/client/ClientConfiguration.h>
@@ -40,12 +40,12 @@ namespace CloudCanvas
 
     PresignedURLManager::PresignedURLManager()
     {
-        PresignedURLRequestBus::Handler::BusConnect();
+
     }
 
     PresignedURLManager::~PresignedURLManager()
     {
-        PresignedURLRequestBus::Handler::BusDisconnect();
+
     }
 
     AZ::Job* PresignedURLManager::RequestDownloadSignedURLJob(const AZStd::string& signedURL, const AZStd::string& fileName, AZ::EntityId id)
@@ -66,28 +66,24 @@ namespace CloudCanvas
     {
         if (!signedURL.length())
         {
-            gEnv->pLog->LogAlways("Received blank URL for file %s", fileName.c_str());
+            AZ_TracePrintf("PresignedURL","Received blank URL for file %s", fileName.c_str());
             return nullptr;
         }
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+        EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
 
-        gEnv->pLog->LogAlways("Requesting download from URL: %s to %s", signedURL.c_str(), fileName.c_str());
+        AZ_TracePrintf("PresignedURL","Requesting download from URL: %s to %s", signedURL.c_str(), fileName.c_str());
 
         AZStd::string outputFile = FileTransferSupport::GetResolvedFile(fileName, {});
         if (!FileTransferSupport::CheckWritableMakePath(outputFile))
         {
-            gEnv->pLog->LogAlways("Can't write to %s (base %s)", outputFile.c_str(),fileName.c_str());
+            AZ_TracePrintf("PresignedURL","Can't write to %s (base %s)", outputFile.c_str(),fileName.c_str());
             return nullptr;
         }
         AZ::Job* job{ nullptr };
 
 #if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-        // Guarantee that CryMemoryManager has been initialized in this module before handing the function off to the jobs thread.  A bug was
-        // discovered in osx/clang where CryMemoryManager could crash when the code below was executed from the jobs thread without first guaranteeing that
-        // this module had initialized CryMemoryManager.  CryMemoryManager is being removed so this can go away soon.
-        CryGetIMemoryManager();
-        job = AZ::CreateJobFunction([signedURL, outputFile, id]()
+         job = AZ::CreateJobFunction([signedURL, outputFile, id]()
         {
             Aws::Client::ClientConfiguration presignedConfig;
             // This timeout value is not always used consistently across http clients - it can mean "how long between packets" or 
@@ -104,7 +100,7 @@ namespace CloudCanvas
             EBUS_EVENT_RESULT(requestResult, CloudCanvasCommon::CloudCanvasCommonRequestBus, RequestRootCAFile, caFile);
             if (caFile.length())
             {
-                AZ_TracePrintf("CloudCanvas", "PresignedURL using caFile %s with request result %d", caFile.c_str(), requestResult);
+                AZ_TracePrintf("PresignedURL", "PresignedURL using caFile %s with request result %d", caFile.c_str(), requestResult);
                 presignedConfig.caFile = caFile.c_str();
             }
 
@@ -120,7 +116,7 @@ namespace CloudCanvas
             AZStd::string returnString;
             if (!httpResponse)
             {
-                gEnv->pLog->LogAlways("No Response Received from request!  (Internal SDK Error)");
+                AZ_TracePrintf("PresignedURL","No Response Received from request!  (Internal SDK Error)");
                 if (!id.IsValid())
                 {
                     EBUS_EVENT(CloudCanvas::PresignedURLResultBus, GotPresignedURLResult, signedURL, 0, returnString, outputFile);

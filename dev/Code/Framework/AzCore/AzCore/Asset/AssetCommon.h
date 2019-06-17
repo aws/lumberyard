@@ -84,6 +84,7 @@ namespace AZ
          * Constants
          */
         static const AssetType  s_invalidAssetType = AZ::Uuid::CreateNull();
+        static const int  s_defaultCreationToken = -1;
 
         /**
          * Base class for all asset types.
@@ -145,8 +146,6 @@ namespace AZ
              */
             virtual bool IsRegisterReadonlyAndShareable() { return true; }
 
-            void RemoveFromDB();
-
             // Workaround for VS2013
             // https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
             AssetData(const AssetData&) = delete;
@@ -154,6 +153,11 @@ namespace AZ
             AZStd::atomic_int m_useCount;
             AZStd::atomic_int m_status;
             AssetId m_assetId;
+            // This is used to identify a unique asset and should only be set by the asset manager 
+            // and therefore does not need to be atomic.
+            // All shared copy of an asset should have the same identifier and therefore
+            // should not be modified while making copy of an existing asset. 
+            int m_creationToken = s_defaultCreationToken;
         };
 
         /**

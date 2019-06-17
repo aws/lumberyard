@@ -16,6 +16,7 @@
 #include <AzCore/Component/EntityUtils.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TransformBus.h>
+#include <AzCore/Component/NamedEntityId.h>
 
 #include <AzCore/Casting/lossy_cast.h>
 
@@ -129,7 +130,7 @@ namespace AZ
 #else // !AZ_PLATFORM_WINDOWS
     static const char* kTimeVariableName = "TimeIntervalStamp";
     static AZ::EnvironmentVariable<AZ::u64> g_sharedTimeStorage;
-    
+
     class TimeIntervalStamper
     {
     public:
@@ -138,7 +139,7 @@ namespace AZ
             , m_timeInterval(timeInterval)
         {
             AZ_Assert(m_timeInterval > 0, "You can't have 0 time interval!");
-            
+
             const bool isConstruct = true;
             const bool isTransferOwnership = false;
 
@@ -545,7 +546,7 @@ namespace AZ
         {
             component->Init();
         }
-        
+
         InvalidateDependencies(); // We need to re-evaluate dependencies
         return true;
     }
@@ -1003,9 +1004,13 @@ namespace AZ
                 ->Version(1, &EntityIdConverter)
                 ->Field("id", &EntityId::m_id);
 
+            NamedEntityId::Reflect(reflection);
+
             serializeContext->Class<ComponentConfig>()
                 ->Version(1)
             ;
+
+            EntityComponentIdPair::Reflect(reflection);
 
             EditContext* ec = serializeContext->GetEditContext();
             if (ec)

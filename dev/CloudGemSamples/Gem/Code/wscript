@@ -24,7 +24,7 @@ def build(bld):
         platforms = ['all'],
         configurations  = ['all'],
         pch         = 'StdAfx.cpp',
-        use         = ['AzGameFramework', 'CloudGemFrameworkStaticLibrary'],
+        use         = ['AzGameFramework', 'CloudGemFramework.StaticLibrary'],
         is_game_gem     = True,
 
         #==============================

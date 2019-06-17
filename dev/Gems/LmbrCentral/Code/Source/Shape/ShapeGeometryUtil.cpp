@@ -37,28 +37,26 @@ namespace LmbrCentral
     }
 
     void DrawShape(
-        AzFramework::EntityDebugDisplayRequests* displayContext,
+        AzFramework::DebugDisplayRequests& debugDisplay,
         const ShapeDrawParams& shapeDrawParams, const ShapeMesh& shapeMesh)
     {
         if (shapeDrawParams.m_filled)
         {
-            displayContext->DrawTrianglesIndexed(
+            debugDisplay.DrawTrianglesIndexed(
                 shapeMesh.m_vertexBuffer,
                 shapeMesh.m_indexBuffer,
                 shapeDrawParams.m_shapeColor
             );
         }
 
-        displayContext->DrawLines(
+        debugDisplay.DrawLines(
             shapeMesh.m_lineBuffer,
             shapeDrawParams.m_wireColor);
     }
 
-    /**
-     * Determine if a list of vertices constitute a simple polygon
-     * (none of the edges are self intersecting).
-     * https://en.wikipedia.org/wiki/Simple_polygon
-     */
+    /// Determine if a list of vertices constitute a simple polygon
+    /// (none of the edges are self intersecting).
+    /// https://en.wikipedia.org/wiki/Simple_polygon
     static bool SimplePolygon(const AZStd::vector<AZ::Vector2>& vertices)
     {
         const size_t vertexCount = vertices.size();
@@ -118,9 +116,7 @@ namespace LmbrCentral
         return total > 0.0f;
     }
 
-    /**
-     * Calculate the Wedge Product of two vectors (the area of the parallelogram formed by them)
-     */
+    /// Calculate the Wedge Product of two vectors (the area of the parallelogram formed by them)
     static AZ::VectorFloat Wedge(const AZ::Vector2& v1, const AZ::Vector2& v2)
     {
         return v1.GetX() * v2.GetY() - v1.GetY() * v2.GetX();
@@ -290,11 +286,9 @@ namespace LmbrCentral
             return vertices;
         }
 
-        /**
-         * Generate verts to be used when drawing triangles for cap (top vertex is ommitted and is
-         * added in concrete Start/End cap because of ordering - StartCap must at top vertex first,
-         * EndCap must add bottom vertex last.
-         */
+        /// Generate verts to be used when drawing triangles for cap (top vertex is ommitted and is
+        /// added in concrete Start/End cap because of ordering - StartCap must at top vertex first,
+        /// EndCap must add bottom vertex last.
         static AZ::Vector3* GenerateSolidCap(
             const AZ::Vector3& localPosition, const AZ::Vector3& direction,
             const AZ::Vector3& side, const float radius, const AZ::u32 sides, const AZ::u32 capSegments,
@@ -338,10 +332,8 @@ namespace LmbrCentral
                 localPosition + direction * radius, vertices);
         }
 
-        /**
-         * Generates a single segment of vertices - Extrudes the point using the normal * radius,
-         * then rotates it around the axis 'sides' times.
-         */
+        /// Generates a single segment of vertices - Extrudes the point using the normal * radius,
+        /// then rotates it around the axis 'sides' times.
         AZ::Vector3* GenerateSegmentVertices(
             const AZ::Vector3& point,
             const AZ::Vector3& axis,
@@ -446,4 +438,4 @@ namespace LmbrCentral
             }
         }
     }
-}
+} // namespace LmbrCentral

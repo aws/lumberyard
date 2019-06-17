@@ -11,7 +11,7 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 from waflib.Configure import conf
-from waflib import Context
+from waflib import Errors
 from waflib import Logs
 from cry_utils import split_comma_delimited_string, append_to_unique_list
 import re
@@ -19,8 +19,6 @@ import os
 
 PROJECT_SETTINGS_FILE = 'project.json'
 PROJECT_NAME_FIELD = 'project_name'
-
-
 def _project_setting_entry(ctx, project, entry, required=True):
     """
     Util function to load an entry from the projects.json file
@@ -123,6 +121,7 @@ def get_executable_name(self, project):
 @conf
 def get_dedicated_server_executable_name(self, project):
     return _project_setting_entry(self, project, 'executable_name') + '_Server'
+
 
 
 @conf
@@ -332,8 +331,7 @@ def project_and_platform_modules(self, project, platforms):
     supported_platforms = [];
 
     if platforms is None:
-        (current_platform, configuration) = self.get_platform_and_configuration()
-        supported_platforms = self.get_platform_list(current_platform)
+        supported_platforms = [platform.name() for platform in self.get_enabled_target_platforms()]
     elif not isinstance(platforms, list):
         supported_platforms.append(platforms)
     else:
@@ -341,10 +339,9 @@ def project_and_platform_modules(self, project, platforms):
 
     for platform in supported_platforms:
         platform_modules_string = platform + '_modules'
-
-    projects_settings = self.get_project_settings_map()
-    if platform_modules_string in projects_settings[project]:
-        platform_modules = platform_modules + _project_setting_entry(self, project, platform_modules_string)
+        projects_settings = self.get_project_settings_map()
+        if platform_modules_string in projects_settings[project]:
+            platform_modules = platform_modules + _project_setting_entry(self, project, platform_modules_string)
 
     return base_modules + platform_modules
 
@@ -449,39 +446,45 @@ def get_product_name(self, target, game_project):
 @conf
 def get_current_spec_list(ctx):
     """
-    Get the current spec list, either from -p/--project-specs or --specs-to-include-in-project-generation or
+    Get the current spec list.  If this is being called during configure, take into consideration all specs that were
+    loaded.  Otherwise, the spec list depends on either -p/--project-specs or --specs-to-include-in-project-generation or
     specs_to_include_in_project_generation in user_settings.options
     :param ctx: Current context
     :return: The current spec list
     """
     try:
-        return ctx.current_spec_list
+        return ctx.current_spec_list_map[ctx.cmd]
     except AttributeError:
-        pass
+        if not hasattr(ctx, 'current_spec_list_map'):
+            ctx.current_spec_list_map = {}
 
-    # Get either the current spec being built (build) or all the specs for the solution generation (configure/msvs)
-    current_spec = getattr(ctx.options, 'project_spec')
-    if not current_spec:
-        # Specs are from 'specs_to_include_in_project_generation'
-        spec_string_list = getattr(ctx.options, 'specs_to_include_in_project_generation', '').strip()
-        if len(spec_string_list) == 0:
-            ctx.fatal(
-                "[ERROR] Missing/Invalid specs ('specs_to_include_in_project_generation') in user_settings.options")
-        spec_list = [spec.strip() for spec in spec_string_list.split(',')]
-        if len(spec_list) == 0:
-            ctx.fatal("[ERROR] Empty spec list ('specs_to_include_in_project_generation') in user_settings.options")
+    if ctx.cmd in ('configure', 'generate_module_def_files', 'generate_uber_files'):
+        # If this is either the 'configure' command or the 'generate_module_def_files' command, then the spec list will be
+        # all of the loaded specs
+        spec_list = ctx.loaded_specs()
     else:
-        spec_list = [current_spec]
+        # Get either the current spec being built (build) or all the specs for the solution generation (configure/msvs)
+        current_spec = getattr(ctx.options, 'project_spec')
+        if not current_spec:
+
+            # Specs are from 'specs_to_include_in_project_generation'
+            spec_string_list = getattr(ctx.options, 'specs_to_include_in_project_generation', '').strip()
+            if len(spec_string_list) == 0:
+                ctx.fatal(
+                    "[ERROR] Missing/Invalid specs ('specs_to_include_in_project_generation') in user_settings.options")
+            spec_list = [spec.strip() for spec in spec_string_list.split(',')]
+            if len(spec_list) == 0:
+                ctx.fatal("[ERROR] Empty spec list ('specs_to_include_in_project_generation') in user_settings.options")
+        else:
+            spec_list = [current_spec]
 
     # Vet the list and make sure all of the specs are valid specs
     for spec in spec_list:
         if not ctx.is_valid_spec_name(spec):
-            ctx.fatal(
-                "[ERROR] Invalid spec '{}'.  Make sure it exists in the specs folder and is a valid spec file.".format(
-                    spec))
+            ctx.fatal("[ERROR] Invalid spec '{}'.  Make sure it exists in the specs folder and is a valid spec file.".format(spec))
 
-    ctx.current_spec_list = spec_list
-    return ctx.current_spec_list
+    ctx.current_spec_list_map[ctx.cmd] = spec_list
+    return ctx.current_spec_list_map[ctx.cmd]
 
 
 #############################################################################
@@ -513,7 +516,7 @@ def get_enabled_game_project_list(ctx):
             if len(game_projects_for_spec) > 0:
                 for game_project_for_spec in game_projects_for_spec:
                     if game_project_for_spec not in project_settings_map:
-                        Logs.warn("[WARN] Game project '{}' defined in spec {} is not a valid game project.  Will ignore.".format(game_project_for_spec, check_spec))
+                        Logs.warn("[WARN] Game project '{}' defined in spec {} is not a valid game project.  Will ignore.".format(game_project, check_spec))
                     else:
                         Logs.debug("lumberyard: Adding game project '{}' from spec '{}'".format(game_project_for_spec, check_spec))
                         game_project_set.add(game_project_for_spec)
@@ -526,6 +529,7 @@ def get_enabled_game_project_list(ctx):
                     game_project_set.add(default_enabled_game_project)
 
         return list(game_project_set)
+
 
     try:
         return ctx.enabled_game_projects_map[ctx.cmd]
@@ -582,6 +586,8 @@ def get_bootstrap_game_folder(self, default_game='SamplesProject'):
     game = default_game
     project_folder_node = getattr(self, 'srcnode', self.path)
     bootstrap_cfg = project_folder_node.make_node('bootstrap.cfg')
+    if not os.path.isfile(bootstrap_cfg.abspath()):
+        raise Errors.WafError("Missing file '{}'".format(bootstrap_cfg.abspath()))
     bootstrap_contents = bootstrap_cfg.read()
     try:
         game = re.search('^\s*sys_game_folder\s*=\s*(\w+)', bootstrap_contents, re.MULTILINE).group(1)
@@ -608,6 +614,8 @@ def get_bootstrap_vfs(self):
 
 
 GAME_PLATFORM_MAP = {
+    'android_armv7_clang' : 'android',
+    'android_armv8_clang' : 'android',
     'darwin_x64' : 'osx',
 }
 
@@ -621,7 +629,9 @@ def get_bootstrap_assets(self, platform=None):
     """
     if platform is None:
         platform = self.env['PLATFORM']
-    bootstrap_cfg = self.engine_node.make_node('bootstrap.cfg')
+
+    project_folder_node = getattr(self, 'srcnode', self.path)
+    bootstrap_cfg = project_folder_node.make_node('bootstrap.cfg')
     bootstrap_contents = bootstrap_cfg.read()
     assets = 'pc'
     game_platform = GAME_PLATFORM_MAP.get(platform, platform)
@@ -633,6 +643,7 @@ def get_bootstrap_assets(self, platform=None):
 
     return assets
 
+
 @conf
 def get_project_settings_map(ctx):
     """
@@ -641,27 +652,23 @@ def get_project_settings_map(ctx):
     :param ctx:
     :return:
     """
-
     try:
         return ctx.project_settings_map
     except AttributeError:
         pass
 
-    if not hasattr(ctx,'engine_path'):
-        ctx.calculate_engine_path()
+    engine_node = getattr(ctx, 'engine_node', ctx.path)
 
     # Warn on a legacy projects file
-    if os.path.exists(os.path.join(ctx.engine_path, '_WAF_', 'projects.json')):
+    if os.path.exists(os.path.join(engine_node.abspath(), '_WAF_', 'projects.json')):
         Logs.warn('projects.json file is deprecated.  Please follow the migration step listed in the release notes.')
 
     projects_settings = {}
-
-    if os.path.normcase(ctx.path.abspath()) == os.path.normcase(ctx.engine_path):
-        # If we are an internal project, search for project paths in the engine root
-        projects_settings_node_list = ctx.engine_node.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
-    else:
-        # If we are an external project, search for project paths in the external project path
-        projects_settings_node_list = ctx.path.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
+    projects_settings_node_list = engine_node.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
+    
+    # If the engine node is different from the ctx.path, then check the current ctx.path, which will be an external project base
+    if ctx.path.abspath() != engine_node.abspath():
+        projects_settings_node_list += ctx.path.ant_glob('*/{}'.format(PROJECT_SETTINGS_FILE))
 
     # Build update the map of project settings from the globbing for the project.json file
     for project_settings_node in projects_settings_node_list:

@@ -235,8 +235,8 @@
                     "Permissions": [
                         {
                             "AbstractRole": "ServiceLambda",
-                            "Action": ["iot:AttachPrincipalPolicy",
-                                "iot:DetachPrincipalPolicy",
+                            "Action": ["iot:AttachPolicy",
+                                "iot:DetachPolicy",
                                 "iot:ListPrincipalPolicies",
                                 "iot:CreateKeysAndCertificate",
                                 "iot:CreateThing",

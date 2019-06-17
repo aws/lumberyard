@@ -406,6 +406,8 @@ public:
     bool IsLegacyUIEnabled() override;
     void SetLegacyUIEnabled(bool enabled) override;
 
+    bool IsNewViewportInteractionModelEnabled() const override;
+
 protected:
 
     //////////////////////////////////////////////////////////////////////////
@@ -551,5 +553,6 @@ protected:
     static const char* m_crashLogFileName;
 
     bool m_isLegacyUIEnabled;
+    bool m_isNewViewportInteractionModelEnabled = false;
 };
 

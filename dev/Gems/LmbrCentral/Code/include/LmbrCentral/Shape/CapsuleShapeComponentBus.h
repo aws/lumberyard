@@ -12,24 +12,19 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
 
 namespace LmbrCentral
 {
-    /**
-     * Type ID for CapsuleShapeComponent
-     */
+    /// Type ID for CapsuleShapeComponent
     static const AZ::Uuid CapsuleShapeComponentTypeId = "{967EC13D-364D-4696-AB5C-C00CC05A2305}";
 
-    /**
-     * Type ID for EditorCapsuleShapeComponent
-     */
+    /// Type ID for EditorCapsuleShapeComponent
     static const AZ::Uuid EditorCapsuleShapeComponentTypeId = "{06B6C9BE-3648-4DA2-9892-755636EF6E19}";
 
-    /**
-     * Configuration data for CapsuleShapeComponent
-     */
+    /// Configuration data for CapsuleShapeComponent
     class CapsuleShapeConfig
-        : public AZ::ComponentConfig
+        : public ShapeComponentConfig
     {
     public:
         AZ_CLASS_ALLOCATOR(CapsuleShapeConfig, AZ::SystemAllocator, 0);
@@ -66,35 +61,25 @@ namespace LmbrCentral
 
     using CapsuleShapeConfiguration = CapsuleShapeConfig; ///< @deprecated Use CapsuleShapeConfig
 
-    /**
-     * Services provided by the Capsule Shape Component
-     */
+    /// Services provided by the Capsule Shape Component
     class CapsuleShapeComponentRequests 
         : public AZ::ComponentBus
     {
     public:
         virtual CapsuleShapeConfig GetCapsuleConfiguration() = 0;
 
-        /**
-         * @brief Returns the end to end height of the capsule, this includes the cylinder and both caps.
-         */
+        /// @brief Returns the end to end height of the capsule, this includes the cylinder and both caps.
         virtual float GetHeight() = 0;
 
-        /**
-         * @brief Returns the radius of the capsule.
-         */
+        /// @brief Returns the radius of the capsule.
         virtual float GetRadius() = 0;
 
-        /**
-         * @brief Sets the end to end height of capsule, this includes the cylinder and both caps.
-         * @param height new height of the capsule.
-         */
+        /// @brief Sets the end to end height of capsule, this includes the cylinder and both caps.
+        /// @param height new height of the capsule.
         virtual void SetHeight(float height) = 0;
 
-        /**
-         * @brief Sets radius of the capsule.
-         * @param radius new radius of the capsule.
-         */
+        /// @brief Sets radius of the capsule.
+        /// @param radius new radius of the capsule.
         virtual void SetRadius(float radius) = 0;
     };
 

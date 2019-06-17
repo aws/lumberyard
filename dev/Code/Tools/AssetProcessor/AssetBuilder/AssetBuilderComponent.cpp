@@ -156,7 +156,7 @@ bool AssetBuilderComponent::Run()
         AzFramework::BootstrapReaderRequestBus::Broadcast(&AzFramework::BootstrapReaderRequestBus::Events::SearchConfigurationForKey, "sys_game_folder", false, m_gameName);
     }
 
-    if(!GetParameter(s_paramGameCache, m_gameCache, !isDebugTask))
+    if (!GetParameter(s_paramGameCache, m_gameCache, !isDebugTask))
     {
         if (!isDebugTask)
         {
@@ -410,7 +410,9 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
 
         AZStd::vector<AssetBuilderSDK::PlatformInfo> enabledDebugPlatformInfos =
         {
-            {"debug platform", {"tools", "debug"}}
+            {
+                "debug platform", {"tools", "debug"}
+            }
         };
 
         AZStd::vector<AssetBuilderSDK::JobDescriptor> jobDescriptions;
@@ -461,7 +463,9 @@ bool AssetBuilderComponent::RunDebugTask(AZStd::string&& debugFile, bool runCrea
                 return false;
             }
 
-            AssetBuilderSDK::PlatformInfo enabledDebugPlatformInfo = { "debug platform",{ "tools", "debug" } };
+            AssetBuilderSDK::PlatformInfo enabledDebugPlatformInfo = {
+                "debug platform", { "tools", "debug" }
+            };
 
             AssetBuilderSDK::ProcessJobRequest processRequest;
             processRequest.m_watchFolder = watchFolder;
@@ -580,22 +584,22 @@ bool AssetBuilderComponent::RunOneShotTask(const AZStd::string& task)
     else if (task == s_taskCreateJob)
     {
         auto func = [this](const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
-        {
-            AZ_TraceContext("Source", request.m_sourceFile);
-            AZ_TraceContext("Platforms", AssetBuilderSDK::PlatformInfo::PlatformVectorAsString(request.m_enabledPlatforms));
-            m_assetBuilderDescMap.at(request.m_builderid)->m_createJobFunction(request, response);
-        };
+            {
+                AZ_TraceContext("Source", request.m_sourceFile);
+                AZ_TraceContext("Platforms", AssetBuilderSDK::PlatformInfo::PlatformVectorAsString(request.m_enabledPlatforms));
+                m_assetBuilderDescMap.at(request.m_builderid)->m_createJobFunction(request, response);
+            };
 
         return HandleTask<AssetBuilderSDK::CreateJobsRequest, AssetBuilderSDK::CreateJobsResponse>(inputFilePath, outputFilePath, func);
     }
     else if (task == s_taskProcessJob)
     {
         auto func = [this](const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response)
-        {
-            AZ_TraceContext("Source", request.m_fullPath);
-            AZ_TraceContext("Platform", request.m_platformInfo.m_identifier);
-            ProcessJob(m_assetBuilderDescMap.at(request.m_builderGuid)->m_processJobFunction, request, response);
-        };
+            {
+                AZ_TraceContext("Source", request.m_fullPath);
+                AZ_TraceContext("Platform", request.m_platformInfo.m_identifier);
+                ProcessJob(m_assetBuilderDescMap.at(request.m_builderGuid)->m_processJobFunction, request, response);
+            };
 
         return HandleTask<AssetBuilderSDK::ProcessJobRequest, AssetBuilderSDK::ProcessJobResponse>(inputFilePath, outputFilePath, func);
     }
@@ -864,20 +868,22 @@ bool AssetBuilderComponent::LoadBuilder(const AZStd::string& filePath)
 {
     auto assetBuilderInfo = AZStd::make_unique<AssetBuilder::ExternalModuleAssetBuilderInfo>(QString::fromUtf8(filePath.c_str()));
 
-    if (!assetBuilderInfo->IsLoaded())
+    if (assetBuilderInfo->IsAssetBuilder())
     {
-        AZ_Warning("AssetBuilder", false, "AssetBuilder was not able to load the library: %s\n", filePath.c_str());
-        return false;
+        if (!assetBuilderInfo->IsLoaded())
+        {
+            AZ_Warning("AssetBuilder", false, "AssetBuilder was not able to load the library: %s\n", filePath.c_str());
+            return false;
+        }
+
+        AZ_TracePrintf("AssetBuilder", "LoadBuilder - Initializing and registering builder [%s]\n", assetBuilderInfo->GetName().toUtf8().constData());
+
+        m_currentAssetBuilder = assetBuilderInfo.get();
+        m_currentAssetBuilder->Initialize();
+        m_currentAssetBuilder = nullptr;
+
+        m_assetBuilderInfoList.push_back(AZStd::move(assetBuilderInfo));
     }
-
-    AZ_TracePrintf("AssetBuilder", "LoadBuilder - Initializing and registering builder [%s]\n", assetBuilderInfo->GetName().toUtf8().constData());
-
-    m_currentAssetBuilder = assetBuilderInfo.get();
-    m_currentAssetBuilder->Initialize();
-    m_currentAssetBuilder = nullptr;
-
-    m_assetBuilderInfoList.push_back(AZStd::move(assetBuilderInfo));
-
     return true;
 }
 

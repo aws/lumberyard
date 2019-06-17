@@ -13,6 +13,8 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Jobs/Job.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/Component/EntityId.h>
 
 namespace CloudCanvas
 {

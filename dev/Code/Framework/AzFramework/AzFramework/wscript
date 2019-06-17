@@ -37,7 +37,6 @@ def build(bld):
         restricted_script   = 'update_restricted_parameters',
 
         android_file_list   = ['azframework_android.waf_files'],
-        android_use         = ['NativeActivityGlue'],
 
         ios_file_list       = ['azframework_ios.waf_files'],
 

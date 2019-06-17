@@ -11,6 +11,7 @@
 */
 
 #include "GradientSliderPage.h"
+#include <AzQtComponents/Utilities/Conversions.h>
 #include <Gallery/ui_GradientSliderPage.h>
 
 #include <AzQtComponents/Components/Widgets/GradientSlider.h>
@@ -22,15 +23,15 @@ GradientSliderPage::GradientSliderPage(QWidget* parent)
     ui->setupUi(this);
 
     ui->slider1->setColorFunction([](qreal position) {
-        return QColor::fromRgbF(1.0, 0.0, 0.0, position);
+        return AzQtComponents::toQColor(1.0, 0.0, 0.0, position);
     });
 
     ui->slider2->setColorFunction([](qreal position) {
-        return QColor::fromHslF(position, 1.0, 0.5);
+        return AzQtComponents::toQColor(position, 1.0, 0.5);
     });
 
     ui->slider3->setColorFunction([](qreal position) {
-        return QColor::fromRgbF(0.0, 0.0, position);
+        return AzQtComponents::toQColor(0.0, 0.0, position);
     });
 
     QString exampleText = R"(

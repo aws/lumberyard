@@ -10,7 +10,6 @@
 *
 */
 
-#include "precompiled.h"
 #include "BehaviorContextObjectPtr.h"
 
 #include <AzCore/RTTI/ReflectContext.h>

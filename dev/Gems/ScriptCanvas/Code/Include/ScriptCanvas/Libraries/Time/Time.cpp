@@ -10,11 +10,10 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <Libraries/Libraries.h>
 
 #include "Time.h"
+#include <ScriptCanvas/Core/Attributes.h>
 
 namespace ScriptCanvas
 {
@@ -47,6 +46,7 @@ namespace ScriptCanvas
             using namespace ScriptCanvas::Nodes::Time;
             AddNodeToRegistry<Time, Countdown>(nodeRegistry);
             AddNodeToRegistry<Time, Duration>(nodeRegistry);
+            AddNodeToRegistry<Time, TickDelay>(nodeRegistry);
             AddNodeToRegistry<Time, Timer>(nodeRegistry);
         }
         
@@ -54,6 +54,7 @@ namespace ScriptCanvas
         {
             return AZStd::vector<AZ::ComponentDescriptor*>({
                 ScriptCanvas::Nodes::Time::Countdown::CreateDescriptor(),
+                ScriptCanvas::Nodes::Time::TickDelay::CreateDescriptor(),
                 ScriptCanvas::Nodes::Time::Duration::CreateDescriptor(),
                 ScriptCanvas::Nodes::Time::Timer::CreateDescriptor(),
             });

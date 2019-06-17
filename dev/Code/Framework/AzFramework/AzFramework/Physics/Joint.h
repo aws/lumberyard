@@ -43,15 +43,15 @@ namespace Physics
         AZ_CLASS_ALLOCATOR(Joint, AZ::SystemAllocator, 0);
         AZ_RTTI(Joint, "{405F517C-E986-4ACB-9606-D5D080DDE987}");
 
-        virtual const AZStd::shared_ptr<WorldBody>& GetParentBody() const = 0;
-        virtual const AZStd::shared_ptr<WorldBody>& GetChildBody() const = 0;
-        virtual void SetParentBody(const AZStd::shared_ptr<WorldBody>& parentBody) = 0;
-        virtual void SetChildBody(const AZStd::shared_ptr<WorldBody>& childBody) = 0;
+        virtual Physics::WorldBody* GetParentBody() const = 0;
+        virtual Physics::WorldBody* GetChildBody() const = 0;
+        virtual void SetParentBody(Physics::WorldBody* parentBody) = 0;
+        virtual void SetChildBody(Physics::WorldBody* childBody) = 0;
         virtual const AZStd::string& GetName() const = 0;
         virtual void SetName(const AZStd::string& name) = 0;
         virtual const AZ::Crc32 GetNativeType() const = 0;
         virtual void* GetNativePointer() = 0;
-        /// Generates joint limit visualization data in appropriate format to pass to EntityDebugDisplayRequests draw functions.
+        /// Generates joint limit visualization data in appropriate format to pass to DebugDisplayRequests draw functions.
         /// @param scale Scale factor for the output display data.
         /// @param angularSubdivisions Level of detail in the angular direction (may be clamped in the implementation).
         /// @param radialSubdivisions Level of detail in the radial direction (may be clamped in the implementation).
@@ -67,9 +67,5 @@ namespace Physics
             AZStd::vector<AZ::u32>& indexBufferOut,
             AZStd::vector<AZ::Vector3>& lineBufferOut,
             AZStd::vector<bool>& lineValidityBufferOut) = 0;
-
-    private:
-        AZStd::shared_ptr<WorldBody> m_parentBody; ///< The parent body, can be nullptr for joints to the world.
-        AZStd::shared_ptr<WorldBody> m_childBody; ///< The child body, cannot be nullptr.
     };
 } // namespace Physics

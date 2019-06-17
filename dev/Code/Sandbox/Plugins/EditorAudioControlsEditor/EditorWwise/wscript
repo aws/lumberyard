@@ -15,16 +15,18 @@
 
 def build(bld):
 
-    # Build for EditorAudioControlsEditorWwise
+    # Build for EditorWwise
     bld.CryStandAlonePlugin(
 
         # Settings
-        target              = 'EditorAudioControlsEditorWwise',
+        target              = 'EditorWwise',
         vs_filter           = 'Sandbox/Plugins/AudioControlsEditor',
         copyright_org       = 'Amazon-CryTek',
         file_list           = ['editorwwise.waf_files'],
         platforms           = ['win', 'darwin'],
-        configurations      = ['debug', 'debug_test', 'profile', 'profile_test'],
+        configurations      = ['all'],
+        exclude_monolithic  = True,
+        client_only         = True,
         pch                 = "StdAfx.cpp",
         use                 = ['EditorCommon'],
         uselib              = ['QT5CORE'],

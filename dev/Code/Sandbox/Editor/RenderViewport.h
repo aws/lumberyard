@@ -28,12 +28,12 @@
 #include "Util/PredefinedAspectRatios.h"
 
 #include <AzCore/Component/EntityId.h>
+#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/EditorCameraBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
-
-#include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
+#include <MathConversion.h>
 
 // forward declarations.
 class CBaseObject;
@@ -47,7 +47,6 @@ namespace AzToolsFramework
     class ManipulatorManager;
 }
 
-/////////////////////////////////////////////////////////////////////////////
 // CRenderViewport window
 
 class SANDBOX_API CRenderViewport
@@ -57,19 +56,12 @@ class SANDBOX_API CRenderViewport
     , public Camera::EditorCameraRequestBus::Handler
     , public AzToolsFramework::EditorEntityContextNotificationBus::Handler
     , public AzFramework::InputSystemCursorConstraintRequestBus::Handler
-    , public AzToolsFramework::ViewportInteractionRequestBus::Handler
+    , public AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::Handler
+    , public AzToolsFramework::ViewportInteraction::MainEditorViewportInteractionRequestBus::Handler
     , public AzToolsFramework::EditorEvents::Bus::Handler
 {
     Q_OBJECT
 public:
-    using MouseInteraction = AzToolsFramework::ViewportInteraction::MouseInteraction;
-    using MousePick = AzToolsFramework::ViewportInteraction::MousePick;
-    using KeyboardInteraction = AzToolsFramework::ViewportInteraction::KeyboardInteraction;
-    using KeyboardModifiers = AzToolsFramework::ViewportInteraction::KeyboardModifiers;
-    using MouseButton = AzToolsFramework::ViewportInteraction::MouseButton;
-    using MouseButtons = AzToolsFramework::ViewportInteraction::MouseButtons;
-    using InteractionId = AzToolsFramework::ViewportInteraction::InteractionId;
-
     struct SResolution
     {
         SResolution()
@@ -166,23 +158,32 @@ public:
     // This switches the active camera to the next one in the list of (default, all custom cams).
     void CycleCamera();
 
-    /// Camera::CameraEditorRequests::Handler
+    // Camera::EditorCameraRequestBus
     void SetViewFromEntityPerspective(const AZ::EntityId& entityId) override;
     void SetViewAndMovementLockFromEntityPerspective(const AZ::EntityId& entityId, bool lockCameraMovement) override;
-    AZ::EntityId GetCurrentViewEntityId() { return m_viewEntityId; }
+    AZ::EntityId GetCurrentViewEntityId() override { return m_viewEntityId; }
 
-    /// AzToolsFramework::EditorEntityContextNotificationBus::Handler
+    // AzToolsFramework::EditorEntityContextNotificationBus
     void OnStartPlayInEditor() override;
     void OnStopPlayInEditor() override;
 
-    /// AzToolsFramework::ViewportInteractionRequestBus::Handler
-    AzToolsFramework::ViewportInteraction::CameraState GetCameraState() override;
+    // AzToolsFramework::ViewportInteractionRequestBus
+    AzFramework::CameraState GetCameraState() override;
     bool GridSnappingEnabled() override;
     float GridSize() override;
     bool AngleSnappingEnabled() override;
     float AngleStep() override;
-    AZ::Vector3 PickSurface(const AZ::Vector2& point) override;
+    QPoint ViewportWorldToScreen(const AZ::Vector3& worldPosition) override;
+
+    // AzToolsFramework::MainEditorViewportInteractionRequestBus
+    AZ::EntityId PickEntity(const QPoint& point) override;
+    AZ::Vector3 PickTerrain(const QPoint& point) override;
     float TerrainHeight(const AZ::Vector2& position) override;
+    void FindVisibleEntities(AZStd::vector<AZ::EntityId>& visibleEntitiesOut) override;
+    bool ShowingWorldSpace() override;
+    QWidget* GetWidgetForViewportContextMenu() override;
+    void BeginWidgetContext() override;
+    void EndWidgetContext() override;
 
     void ConnectViewportInteractionRequestBus();
     void DisconnectViewportInteractionRequestBus();
@@ -200,6 +201,16 @@ public:
 
     const DisplayContext& GetDisplayContext() const { return m_displayContext; }
     CBaseObject* GetCameraObject() const;
+
+    QPoint WidgetToViewport(const QPoint& point) const;
+    QPoint ViewportToWidget(const QPoint& point) const;
+    QSize WidgetToViewport(const QSize& size) const;
+
+    /// Take raw input and create a final mouse interaction.
+    /// @attention Do not map **point** from widget to viewport explicitly,
+    /// this is handled internally by BuildMouseInteraction - just pass directly.
+    AzToolsFramework::ViewportInteraction::MouseInteraction BuildMouseInteraction(
+        Qt::MouseButtons buttons, Qt::KeyboardModifiers modifiers, const QPoint& point);
 
     void SetPlayerPos()
     {
@@ -342,22 +353,8 @@ protected:
     SPreviousContext SetCurrentContext(int newWidth, int newHeight) const;
     void RestorePreviousContext(const SPreviousContext& x) const;
 
-    void PreWidgetRendering() override 
-    { 
-        m_preWidgetContext = SetCurrentContext(); 
-#if !defined(_RELEASE) && !defined(PERFORMANCE_BUILD)
-        AZ_Assert(m_cameraSetForWidgetRendering == false, "PreWidgetRendering called but widget rendering camera was already set!");
-        m_cameraSetForWidgetRendering = true;
-#endif
-    }
-    void PostWidgetRendering() override 
-    { 
-#if !defined(_RELEASE) && !defined(PERFORMANCE_BUILD)
-        AZ_Assert(m_cameraSetForWidgetRendering == true, "PostWidgetRendering called but widget rendering camera was already reset!");
-        m_cameraSetForWidgetRendering = false;
-#endif
-        RestorePreviousContext(m_preWidgetContext); 
-    }
+    void PreWidgetRendering() override;
+    void PostWidgetRendering() override;
 
     // Update the safe frame, safe action, safe title, and borders rectangles based on
     // viewport size and target aspect ratio.
@@ -392,7 +389,7 @@ protected:
     void ShowCursor();
 
     bool IsKeyDown(Qt::Key key) const;
-    
+
     enum class ViewSourceType
     {
         None,
@@ -403,10 +400,6 @@ protected:
         ViewSourceTypesCount,
     };
     void ResetToViewSourceType(const ViewSourceType& viewSourType);
-
-#if !defined(_RELEASE) && !defined(PERFORMANCE_BUILD)
-    bool m_cameraSetForWidgetRendering = false;
-#endif
 
     //! Assigned renderer.
     IRenderer*  m_renderer = nullptr;
@@ -557,15 +550,24 @@ protected:
     void OnRButtonUp(Qt::KeyboardModifiers modifiers, const QPoint& point) override;
     void OnMouseMove(Qt::KeyboardModifiers modifiers, Qt::MouseButtons buttons, const QPoint& point) override;
     void OnMouseWheel(Qt::KeyboardModifiers modifiers, short zDelta, const QPoint& pt) override;
-    MouseInteraction BuildMouseInteraction(MouseButtons buttons, KeyboardModifiers modifiers, const MousePick& mousePick) const;
-    KeyboardInteraction BuildKeyboardInteraction(AZ::u32 key, Qt::KeyboardModifiers modifiers) const;
-    MousePick BuildMousePick(const QPoint& point);
+
+    // From a series of input primitives, compose a complete mouse interaction.
+    AzToolsFramework::ViewportInteraction::MouseInteraction BuildMouseInteractionInternal(
+        AzToolsFramework::ViewportInteraction::MouseButtons buttons,
+        AzToolsFramework::ViewportInteraction::KeyboardModifiers modifiers,
+        const AzToolsFramework::ViewportInteraction::MousePick& mousePick) const;
+    // Given a point in the viewport, return the pick ray into the scene.
+    // note: The argument passed to parameter **point**, originating
+    // from a Qt event, must first be passed to WidgetToViewport before being
+    // passed to BuildMousePick.
+    AzToolsFramework::ViewportInteraction::MousePick BuildMousePick(const QPoint& point);
+
     bool event(QEvent* event) override;
     void OnDestroy();
 
     bool CheckRespondToInput() const;
 
-    // AzFramework::InputSystemCursorConstraintRequestBus::Handler
+    // AzFramework::InputSystemCursorConstraintRequestBus
     void* GetSystemCursorConstraintWindow() const override { return renderOverlayHWND(); }
 
     void BuildDragDropContext(AzQtComponents::ViewportDragContext& context, const QPoint& pt) override;
@@ -575,7 +577,8 @@ private:
     void PushDisableRendering();
     void PopDisableRendering();
     bool IsRenderingDisabled() const;
-    MousePick BuildMousePickInternal(const QPoint& point) const;
+    AzToolsFramework::ViewportInteraction::MousePick BuildMousePickInternal(
+        const QPoint& point) const;
 
     void RestoreViewportAfterGameMode();
 
@@ -588,12 +591,9 @@ private:
         return 1.0f;
 #endif
     }
-    QPoint WidgetToViewport(const QPoint &point) const;
-    QPoint ViewportToWidget(const QPoint &point) const;
-    QSize WidgetToViewport(const QSize &size) const;
 
-    virtual void BeginUndoTransaction() override;
-    virtual void EndUndoTransaction() override;
+    void BeginUndoTransaction() override;
+    void EndUndoTransaction() override;
 
     void UpdateCurrentMousePos(const QPoint& newPosition);
 
@@ -602,12 +602,12 @@ private:
 
     bool m_freezeViewportInput = false;
 
+    size_t m_cameraSetForWidgetRenderingCount = 0; ///< How many calls to PreWidgetRendering happened before
+                                                   ///< subsequent calls to PostWidetRendering.
     AZStd::shared_ptr<AzToolsFramework::ManipulatorManager> m_manipulatorManager;
 
     // Used to prevent circular set camera events
     bool m_ignoreSetViewFromEntityPerspective = false;
 };
-
-/////////////////////////////////////////////////////////////////////////////
 
 #endif // CRYINCLUDE_EDITOR_RENDERVIEWPORT_H

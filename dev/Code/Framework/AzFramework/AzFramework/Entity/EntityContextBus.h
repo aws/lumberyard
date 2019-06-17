@@ -219,6 +219,14 @@ namespace AzFramework
         virtual const AZ::SliceComponent::EntityIdToEntityIdMap& GetLoadedEntityIdMap() = 0;
 
         /**
+         * Returns the mapped of a stream-loaded EntityId to the remapped entity ID
+         * if remapping was performed.
+         * @return The remapped EntityId
+         *
+         */
+        virtual AZ::EntityId FindLoadedEntityIdMapping(const AZ::EntityId& staticId) const = 0;
+
+        /**
          * Clears the entity context by destroying all entities and slice instances 
          * that the entity context owns.
          */

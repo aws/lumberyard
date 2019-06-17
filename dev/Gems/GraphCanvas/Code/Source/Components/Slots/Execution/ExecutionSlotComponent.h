@@ -29,6 +29,10 @@ namespace GraphCanvas
 
         ~ExecutionSlotComponent();
 
+        // SlotRequestBus
+        SlotConfiguration* CloneSlotConfiguration() const override;
+        ////
+
     protected:
         ExecutionSlotComponent(const ExecutionSlotComponent&) = delete;
         ExecutionSlotComponent& operator=(const ExecutionSlotComponent&) = delete;

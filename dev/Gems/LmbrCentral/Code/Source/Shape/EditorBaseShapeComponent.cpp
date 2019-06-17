@@ -18,12 +18,29 @@
 
 namespace LmbrCentral
 {
+    void EditorBaseShapeComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+    }
+
+    void EditorBaseShapeComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+    {
+        incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+    }
+
+    void EditorBaseShapeComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
+    }
+
     void EditorBaseShapeComponent::Reflect(AZ::SerializeContext& context)
     {
         context.Class<EditorBaseShapeComponent, EditorComponentBase>()
+            ->Version(2)
             ->Field("Visible", &EditorBaseShapeComponent::m_visibleInEditor)
             ->Field("GameView", &EditorBaseShapeComponent::m_visibleInGameView)
             ->Field("DisplayFilled", &EditorBaseShapeComponent::m_displayFilled)
+            ->Field("ShapeColor", &EditorBaseShapeComponent::m_shapeColor)
             ;
 
         if (auto editContext = context.GetEditContext())
@@ -34,6 +51,9 @@ namespace LmbrCentral
                 ->DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorBaseShapeComponent::m_visibleInEditor, "Visible", "Always display this shape in the editor viewport")
                 ->DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorBaseShapeComponent::m_visibleInGameView, "Game View", "Display the shape while in Game View")
                 // ->DataElement(AZ::Edit::UIHandlers::CheckBox, &EditorBaseShapeComponent::m_displayFilled, "Filled", "Display the shape as either filled or wireframe") // hidden before selection is resolved
+                //   ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorBaseShapeComponent::OnDisplayFilledChanged)
+                ->DataElement(AZ::Edit::UIHandlers::Default, &EditorBaseShapeComponent::m_shapeColor, "Shape Color", "The color to use when rendering the faces of the shape object")
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorBaseShapeComponent::OnShapeColorChanged)
                 ;
         }
     }
@@ -76,14 +96,22 @@ namespace LmbrCentral
         return IsSelected() || m_visibleInEditor;
     }
 
-    AZ::Aabb EditorBaseShapeComponent::GetEditorSelectionBounds()
+    void EditorBaseShapeComponent::SetShapeComponentConfig(ShapeComponentConfig* shapeConfig)
+    {
+        m_shapeConfig = shapeConfig;
+    }
+
+    AZ::Aabb EditorBaseShapeComponent::GetEditorSelectionBoundsViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/)
     {
         AZ::Aabb aabb = AZ::Aabb::CreateNull();
         ShapeComponentRequestsBus::EventResult(aabb, GetEntityId(), &ShapeComponentRequests::GetEncompassingAabb);
         return aabb;
     }
 
-    bool EditorBaseShapeComponent::EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat & distance)
+    bool EditorBaseShapeComponent::EditorSelectionIntersectRayViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/,
+        const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat & distance)
     {
         // if we are not drawing this or it is wireframe, do not allow selection
         if (!CanDraw() || !m_displayFilled)
@@ -115,4 +143,23 @@ namespace LmbrCentral
             SetShapeWireframeColor(AzFramework::ViewportColors::WireColor);
         }
     }
+
+    void EditorBaseShapeComponent::OnShapeColorChanged()
+    {
+        m_shapeColor.SetA(AzFramework::ViewportColors::DeselectedColor.GetA());
+
+        if (m_shapeConfig)
+        {
+            m_shapeConfig->SetDrawColor(m_shapeColor);
+        }
+    }
+
+    void EditorBaseShapeComponent::OnDisplayFilledChanged()
+    {
+        if (m_shapeConfig)
+        {
+            m_shapeConfig->SetIsFilled(m_displayFilled);
+        }
+    }
+
 } // namespace LmbrCentral

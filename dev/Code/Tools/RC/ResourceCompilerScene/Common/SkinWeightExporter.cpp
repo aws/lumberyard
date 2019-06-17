@@ -44,6 +44,7 @@ namespace AZ
         {
             BindToCall(&SkinWeightExporter::ResolveRootBoneFromNode);
             BindToCall(&SkinWeightExporter::ProcessSkinWeights);
+            BindToCall(&SkinWeightExporter::ProcessTouchBendableSkinWeights);
         }
 
         void SkinWeightExporter::Reflect(ReflectContext* context)
@@ -89,6 +90,32 @@ namespace AZ
         SceneEvents::ProcessingResult SkinWeightExporter::ProcessSkinWeights(MeshNodeExportContext& context)
         {
             if (context.m_phase != Phase::Filling || !context.m_group.RTTI_IsTypeOf(AZ::SceneAPI::DataTypes::ISkinGroup::TYPEINFO_Uuid()))
+            {
+                return SceneEvents::ProcessingResult::Ignored;
+            }
+
+            AZ_TraceContext("Root bone", context.m_rootBoneName);
+
+            BoneNameIdMap boneNameIdMap;
+            SceneEvents::ProcessingResult result = SceneAPI::Events::Process<BuildBoneMapContext>(context.m_scene, context.m_rootBoneName, boneNameIdMap);
+            if (result == SceneEvents::ProcessingResult::Ignored)
+            {
+                AZ_TracePrintf(SceneUtils::WarningWindow, "No system registered that can handle skeletons for skins.");
+                return SceneEvents::ProcessingResult::Ignored;
+            }
+            else if (result == SceneEvents::ProcessingResult::Failure)
+            {
+                AZ_TracePrintf(SceneUtils::ErrorWindow, "Failed to load bone mapping for skin.");
+                return SceneEvents::ProcessingResult::Failure;
+            }
+
+            SetSkinWeights(context, boneNameIdMap);
+            return SceneEvents::ProcessingResult::Success;
+        }
+
+        SceneEvents::ProcessingResult SkinWeightExporter::ProcessTouchBendableSkinWeights(TouchBendableMeshNodeExportContext& context)
+        {
+            if (context.m_phase != Phase::Filling)
             {
                 return SceneEvents::ProcessingResult::Ignored;
             }

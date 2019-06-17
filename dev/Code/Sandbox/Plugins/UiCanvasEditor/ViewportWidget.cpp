@@ -260,7 +260,7 @@ ViewportWidget::ViewportWidget(EditorWindow* parent)
 
 ViewportWidget::~ViewportWidget()
 {
-    EditorPickModeRequests::Bus::Handler::BusDisconnect();
+    AzToolsFramework::EditorPickModeNotificationBus::Handler::BusDisconnect();
     FontNotificationBus::Handler::BusDisconnect();
 }
 
@@ -314,15 +314,15 @@ void ViewportWidget::EntityContextChanged()
 {
     if (m_inObjectPickMode)
     {
-        StopObjectPickMode();
+        OnEntityPickModeStopped();
     }
 
     // Disconnect from the PickModeRequests bus and reconnect with the new entity context
-    EditorPickModeRequests::Bus::Handler::BusDisconnect();
+    AzToolsFramework::EditorPickModeNotificationBus::Handler::BusDisconnect();
     UiEditorEntityContext* context = m_editorWindow->GetEntityContext();
     if (context)
     {
-        EditorPickModeRequests::Bus::Handler::BusConnect(context->GetContextId());
+        AzToolsFramework::EditorPickModeNotificationBus::Handler::BusConnect(context->GetContextId());
     }
 }
 
@@ -351,9 +351,11 @@ void ViewportWidget::SetRedrawEnabled(bool enabled)
 
 void ViewportWidget::PickItem(AZ::EntityId entityId)
 {
-    EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, OnPickModeSelect, entityId);
+    AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+        &AzToolsFramework::EditorPickModeRequests::PickModeSelectEntity, entityId);
 
-    EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+    AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+        &AzToolsFramework::EditorPickModeRequests::StopEntityPickMode);
 }
 
 QWidget* ViewportWidget::CreateViewportWithRulersWidget(QWidget* parent)
@@ -774,13 +776,13 @@ void ViewportWidget::resizeEvent(QResizeEvent* ev)
     QViewport::resizeEvent(ev);
 }
 
-void ViewportWidget::StartObjectPickMode()
+void ViewportWidget::OnEntityPickModeStarted()
 {
     m_inObjectPickMode = true;
     m_viewportInteraction->StartObjectPickMode();
 }
 
-void ViewportWidget::StopObjectPickMode()
+void ViewportWidget::OnEntityPickModeStopped()
 {
     if (m_inObjectPickMode)
     {

@@ -161,7 +161,16 @@ bool CCryDXGLSwapChain::UpdateTexture(bool bSetPixelFormat)
 HRESULT CCryDXGLSwapChain::Present(UINT SyncInterval, UINT Flags)
 {
     NCryMetal::CDevice* pDevice(m_spDevice->GetGLDevice());
+    ID3D11DeviceContext* pContext;
+    m_spDevice->GetImmediateContext(&pContext);
+    
+    //  This forces clear if someone cleared RT but haven't not rendered anything before present.
+    CCryDXGLDeviceContext::FromInterface(pContext)->GetMetalContext()->FlushFrameBufferState();
 
+    //Just commit the main CB and get another commandbuffer to do the final upscale. This will help the
+    //gpu get started on the neext frame early and reduce latency.
+    CCryDXGLDeviceContext::FromInterface(pContext)->GetMetalContext()->Flush(nil, 0);
+    
     if (!m_Drawable)
     {
         m_Drawable = [m_currentView.metalLayer nextDrawable];
@@ -180,13 +189,7 @@ HRESULT CCryDXGLSwapChain::Present(UINT SyncInterval, UINT Flags)
     //This assert is kept here as a reminder that m_Drawable can be NULL
     CRY_ASSERT(m_Drawable);
     
-    ID3D11DeviceContext* pContext;
-    m_spDevice->GetImmediateContext(&pContext);
-
-    //  This forces clear if someone cleared RT but haven't not rendered anything before present.
-    CCryDXGLDeviceContext::FromInterface(pContext)->GetMetalContext()->FlushFrameBufferState();
-
-    //  Igor: this essentially upscales virtual back buffer to the actual one.
+    //  This essentially upscales virtual back buffer to the actual one.
     if (m_Drawable && m_spExposedBackBufferTexture != m_spBackBufferTexture)
     {
         NCryMetal::CContext::CopyFilterType filterType = NCryMetal::CContext::POINT;

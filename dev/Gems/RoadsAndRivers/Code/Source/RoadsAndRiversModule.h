@@ -12,6 +12,7 @@
 #pragma once
 
 #include <IGem.h>
+#include <SurfaceData/SurfaceDataTagProviderRequestBus.h>
 
 namespace RoadsAndRivers
 {
@@ -25,6 +26,7 @@ namespace RoadsAndRivers
         AZ_CLASS_ALLOCATOR(RoadsAndRiversModule, AZ::SystemAllocator, 0);
 
         RoadsAndRiversModule();
+        AZ::ComponentTypeList GetRequiredSystemComponents() const override;
 
     private:
 #if defined(ROADS_RIVERS_EDITOR)
@@ -34,17 +36,19 @@ namespace RoadsAndRivers
 
     class RoadsAndRiversSystemComponent
         : public AZ::Component
+        , private SurfaceData::SurfaceDataTagProviderRequestBus::Handler
     {
     public:
-        AZ_COMPONENT(RoadsAndRiversSystemComponent, "{3561D3D4-2104-45E9-BF5A-4ED640907069}")
-
-        RoadsAndRiversSystemComponent() = default;
-        ~RoadsAndRiversSystemComponent() override = default;
-
-        // AZ::Component
-        void Activate() override {};
-        void Deactivate() override {};
+        AZ_COMPONENT(RoadsAndRiversSystemComponent, "{3561D3D4-2104-45E9-BF5A-4ED640907069}");
 
         static void Reflect(AZ::ReflectContext* context);
+
+        // AZ::Component
+        void Activate() override;
+        void Deactivate() override;
+
+        ////////////////////////////////////////////////////////////////////////
+        // SurfaceDataTagProviderRequestBus
+        void GetRegisteredSurfaceTagNames(SurfaceData::SurfaceTagNameSet& names) const override;
     };
 }

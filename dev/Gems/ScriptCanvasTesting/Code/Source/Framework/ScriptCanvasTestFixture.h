@@ -26,35 +26,21 @@
 #include <ScriptCanvas/ScriptCanvasGem.h>
 #include <AzCore/Memory/MemoryComponent.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include <ScriptCanvas/SystemComponent.h>
-#include <Asset/RuntimeAssetSystemComponent.h>
 #include <AzFramework/IO/LocalFileIO.h>
-#include <ScriptCanvas/Core/Connection.h>
-
-// disable test bodies to see if there's anything wrong with the system or test framework not related to ScriptCanvas testing
-#define TEST_BODIES_ENABLED 1 // 1 = enabled by default, 0 = disabled by default
-
-#define TEST_BODY_DEFAULT (TEST_BODIES_ENABLED)  
-#define TEST_BODY_EXCEPTION (!TEST_BODY_DEFAULT)
-
-#if (TEST_BODIES_ENABLED)
-#define RETURN_IF_TEST_BODIES_ARE_DISABLED(isException) if (!isException) { ADD_FAILURE(); return; }
-#else
-#define RETURN_IF_TEST_BODIES_ARE_DISABLED(isException) if (isException) { return; }
-#endif
 
 #define SC_EXPECT_DOUBLE_EQ(candidate, reference) EXPECT_NEAR(candidate, reference, 0.001)
 #define SC_EXPECT_FLOAT_EQ(candidate, reference) EXPECT_NEAR(candidate, reference, 0.001f)
 
 namespace ScriptCanvasTests
 {
+
     class ScriptCanvasTestFixture
         : public ::testing::Test
     {
-        static AZ::Debug::DrillerManager* s_drillerManager;
-        static const bool s_enableMemoryLeakChecking;
-
-        static ScriptCanvasTests::Application* GetApplication();
+    public:
+        static AZStd::atomic_bool s_asyncOperationActive;
 
     protected:
 
@@ -62,115 +48,271 @@ namespace ScriptCanvasTests
 
         static void SetUpTestCase()
         {
-            if (!s_drillerManager)
+            s_allocatorSetup.SetupAllocator();
+
+            s_asyncOperationActive = false;
+
+            if (s_application == nullptr)
             {
-                s_drillerManager = AZ::Debug::DrillerManager::Create();
-                // Memory driller is responsible for tracking allocations. 
-                // Tracking type and overhead is determined by app configuration.
-                s_drillerManager->Register(aznew AZ::Debug::MemoryDriller);
+                AZ::ComponentApplication::StartupParameters appStartup;
+                s_application = aznew ScriptCanvasTests::Application();
+
+                {
+                    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
+                    AZ::ComponentApplication::Descriptor descriptor;
+                    descriptor.m_enableDrilling = false;
+                    descriptor.m_useExistingAllocator = true;
+
+                    AZ::DynamicModuleDescriptor dynamicModuleDescriptor;
+                    dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.GraphCanvas.Editor.875b6fcbdeea44deaae7984ad9bb6cdc.v0.1.0";
+                    descriptor.m_modules.push_back(dynamicModuleDescriptor);
+                    dynamicModuleDescriptor.m_dynamicLibraryPath = "Gem.ScriptCanvasGem.Editor.869a0d0ec11a45c299917d45c81555e6.v0.1.0";
+                    descriptor.m_modules.push_back(dynamicModuleDescriptor);
+
+                    s_application->Start(descriptor, appStartup);
+                    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
+                }
             }
 
-            AZ::SystemAllocator::Descriptor systemAllocatorDesc;
-            systemAllocatorDesc.m_allocationRecords = s_enableMemoryLeakChecking;
-            systemAllocatorDesc.m_stackRecordLevels = 12;
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Create(systemAllocatorDesc);
+            AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance();
+            AZ_Assert(fileIO, "SC unit tests require filehandling");
 
-            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
-            if (records && s_enableMemoryLeakChecking)
+            if (!fileIO->GetAlias("@engroot@"))
             {
-                records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
+                const char* engineRoot = nullptr;
+                AzFramework::ApplicationRequests::Bus::BroadcastResult(engineRoot, &AzFramework::ApplicationRequests::GetEngineRoot);
+                AZ_Assert(engineRoot, "null engine root");
+                fileIO->SetAlias("@engroot@", engineRoot);
             }
 
-            AZ::ComponentApplication::StartupParameters appStartup;
-
-            appStartup.m_createStaticModulesCallback =
-                [](AZStd::vector<AZ::Module*>& modules)
-            {
-                modules.emplace_back(new ScriptCanvas::ScriptCanvasModule);
-            };
-
-            AZ::ComponentApplication::Descriptor appDesc;
-            appDesc.m_enableDrilling = false; // We'll manage our own driller in these tests
-            appDesc.m_useExistingAllocator = true; // Use the SystemAllocator we own in this test.
-
-            s_application = aznew ScriptCanvasTests::Application();
-            AZ::Entity* systemEntity = s_application->Create(appDesc, appStartup);
+            s_setupSucceeded = fileIO->GetAlias("@engroot@") != nullptr;
+            
             AZ::TickBus::AllowFunctionQueuing(true);
-
-            s_application->RegisterComponentDescriptor(ScriptCanvasTests::TestComponent::CreateDescriptor());
-            s_application->RegisterComponentDescriptor(TraceMessageComponent::CreateDescriptor());
-            s_application->RegisterComponentDescriptor(TestNodes::TestResult::CreateDescriptor());
-
-            systemEntity->CreateComponent<AZ::MemoryComponent>();
-            systemEntity->CreateComponent<AZ::AssetManagerComponent>();
-            systemEntity->CreateComponent<ScriptCanvas::SystemComponent>();
-            systemEntity->CreateComponent<ScriptCanvas::RuntimeAssetSystemComponent>();
-            systemEntity->CreateComponent<TraceMessageComponent>();
-
-            systemEntity->Init();
-            systemEntity->Activate();
         }
 
         static void TearDownTestCase()
         {
-            s_application->Destroy();
-            delete s_application;
-            s_application = nullptr;
+            // don't hang on to dangling assets
+            AZ::Data::AssetManager::Instance().DispatchEvents();
 
-            // This allows us to print the raw dump of allocations that have not been freed, but is not required. 
-            // Leaks will be reported when we destroy the allocator.
-            const bool printRecords = false;
-            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
-            if (records && printRecords)
+            if (AZ::IO::FileIOBase* fileIO = AZ::IO::FileIOBase::GetInstance())
             {
-                records->EnumerateAllocations(AZ::Debug::PrintAllocationsCB(false));
+                fileIO->DestroyPath(k_tempCoreAssetDir);
             }
 
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-
-            if (s_drillerManager)
+            if (s_application)
             {
-                AZ::Debug::DrillerManager::Destroy(s_drillerManager);
-                s_drillerManager = nullptr;
+                s_application->Stop();
+                delete s_application;
+                s_application = nullptr;
+            }
+
+            s_allocatorSetup.TeardownAllocator();
+        }
+
+        template<class T>
+        void RegisterComponentDescriptor()
+        {
+            AZ::ComponentDescriptor* descriptor = T::CreateDescriptor();
+
+            auto insertResult = m_descriptors.insert(descriptor);
+
+            if (insertResult.second)
+            {
+                GetApplication()->RegisterComponentDescriptor(descriptor);
             }
         }
 
         void SetUp() override
         {
+            ASSERT_TRUE(s_setupSucceeded) << "ScriptCanvasTestFixture set up failed, unit tests can't work properly";
             m_serializeContext = s_application->GetSerializeContext();
             m_behaviorContext = s_application->GetBehaviorContext();
-
-            if (!AZ::IO::FileIOBase::GetInstance())
-            {
-                m_fileIO.reset(aznew AZ::IO::LocalFileIO());
-                AZ::IO::FileIOBase::SetInstance(m_fileIO.get());
-            }
             AZ_Assert(AZ::IO::FileIOBase::GetInstance(), "File IO was not properly installed");
+
+            RegisterComponentDescriptor<TestNodes::TestResult>();
+            RegisterComponentDescriptor<TestNodes::ConfigurableNode>();
+
+            m_numericVectorType = ScriptCanvas::Data::Type::BehaviorContextObject(azrtti_typeid<AZStd::vector<ScriptCanvas::Data::NumberType>>());
+            m_stringToNumberMapType = ScriptCanvas::Data::Type::BehaviorContextObject(azrtti_typeid<AZStd::unordered_map<ScriptCanvas::Data::StringType, ScriptCanvas::Data::NumberType>>());
+            m_entityIdSetType = ScriptCanvas::Data::Type::BehaviorContextObject(azrtti_typeid<AZStd::unordered_set<ScriptCanvas::Data::EntityIDType>>());
+
+            m_dataSlotConfigurationType = ScriptCanvas::Data::Type::BehaviorContextObject(azrtti_typeid<ScriptCanvas::DataSlotConfiguration>());
         }
 
         void TearDown() override
         {
-            AZ::IO::FileIOBase::SetInstance(nullptr);
-            m_fileIO = nullptr;
+            ASSERT_TRUE(s_setupSucceeded) << "ScriptCanvasTestFixture set up failed, unit tests can't work properly";
+
+            for (AZ::ComponentDescriptor* componentDescriptor : m_descriptors)
+            {
+                GetApplication()->UnregisterComponentDescriptor(componentDescriptor);
+            }
+
+            m_descriptors.clear();
+
+            m_configurableEntityNodes.clear();
         }
 
-        AZStd::unique_ptr<AZ::IO::FileIOBase> m_fileIO;
+        TestNodes::ConfigurableNode* CreateConfigurableNode(AZStd::string entityName = "ConfigurableNodeEntity")
+        {
+            AZStd::unique_ptr<AZ::Entity> configurableNodeEntity = AZStd::make_unique<AZ::Entity>(entityName.c_str());
+            auto configurableNode = configurableNodeEntity->CreateComponent<TestNodes::ConfigurableNode>();
+            configurableNode->Init();
+
+            m_configurableEntityNodes.emplace_back(AZStd::move(configurableNodeEntity));
+
+            return configurableNode;
+        }
+
+        AZStd::vector< ScriptCanvas::Data::Type > GetContainerDataTypes() const
+        {
+            return { m_numericVectorType, m_stringToNumberMapType, m_entityIdSetType };
+        }
+
+        ScriptCanvas::Data::Type GetRandomContainerType() const
+        {
+            AZStd::vector< ScriptCanvas::Data::Type > containerTypes = GetContainerDataTypes();
+
+            // We have no types to randomize. Just return.
+            if (containerTypes.empty())
+            {
+                return m_numericVectorType;
+            }
+
+            int randomIndex = rand() % containerTypes.size();
+
+            ScriptCanvas::Data::Type randomType = containerTypes[randomIndex];
+            AZ_TracePrintf("ScriptCanvasTestFixture", "RandomContainerType: %s\n", randomType.GetAZType().ToString<AZStd::string>().c_str());
+            return randomType;
+        }
+
+        AZStd::vector< ScriptCanvas::Data::Type > GetPrimitiveTypes() const
+        {
+            return{
+                ScriptCanvas::Data::Type::AABB(),
+                ScriptCanvas::Data::Type::Boolean(),
+                ScriptCanvas::Data::Type::Color(),
+                ScriptCanvas::Data::Type::CRC(),
+                ScriptCanvas::Data::Type::EntityID(),
+                ScriptCanvas::Data::Type::Matrix3x3(),
+                ScriptCanvas::Data::Type::Matrix4x4(),
+                ScriptCanvas::Data::Type::Number(),
+                ScriptCanvas::Data::Type::OBB(),
+                ScriptCanvas::Data::Type::Plane(),
+                ScriptCanvas::Data::Type::Quaternion(),
+                ScriptCanvas::Data::Type::String(),
+                ScriptCanvas::Data::Type::Transform(),
+                ScriptCanvas::Data::Type::Vector2(),
+                ScriptCanvas::Data::Type::Vector3(),
+                ScriptCanvas::Data::Type::Vector4()
+            };
+        }
+
+        ScriptCanvas::Data::Type GetRandomPrimitiveType() const
+        {
+            AZStd::vector< ScriptCanvas::Data::Type > primitiveTypes = GetPrimitiveTypes();
+
+            // We have no types to randomize. Just return.
+            if (primitiveTypes.empty())
+            {
+                return ScriptCanvas::Data::Type::Number();
+            }
+
+            int randomIndex = rand() % primitiveTypes.size();
+
+            ScriptCanvas::Data::Type randomType = primitiveTypes[randomIndex];
+            AZ_TracePrintf("ScriptCanvasTestFixture", "RandomPrimitiveType: %s\n", randomType.GetAZType().ToString<AZStd::string>().c_str());
+            return randomType;
+        }
+
+        AZStd::vector< ScriptCanvas::Data::Type > GetBehaviorObjectTypes() const
+        {
+            return {
+                m_dataSlotConfigurationType
+            };
+        }
+
+        ScriptCanvas::Data::Type GetRandomObjectType() const
+        {
+            AZStd::vector< ScriptCanvas::Data::Type > objectTypes = GetBehaviorObjectTypes();
+
+            // We have no types to randomize. Just return.
+            if (objectTypes.empty())
+            {
+                return m_dataSlotConfigurationType;
+            }
+
+            int randomIndex = rand() % objectTypes.size();
+
+            ScriptCanvas::Data::Type randomType = objectTypes[randomIndex];
+            AZ_TracePrintf("ScriptCanvasTestFixture", "RandomObjectType: %s\n", randomType.GetAZType().ToString<AZStd::string>().c_str());
+            return randomType;
+        }
+
+        AZStd::vector< ScriptCanvas::Data::Type > GetTypes() const
+        {
+            auto primitives = GetPrimitiveTypes();
+            auto containers = GetContainerDataTypes();
+            auto objects = GetBehaviorObjectTypes();
+
+            primitives.reserve(containers.size() + objects.size());
+
+            primitives.insert(primitives.end(), containers.begin(), containers.end());
+            primitives.insert(primitives.end(), objects.begin(), objects.end());
+
+            return primitives;
+        }
+
+        ScriptCanvas::Data::Type GetRandomType() const
+        {
+            AZStd::vector< ScriptCanvas::Data::Type > types = GetTypes();
+
+            // We have no types to randomize. Just return.
+            if (types.empty())
+            {
+                return m_dataSlotConfigurationType;
+            }
+
+            int randomIndex = rand() % types.size();
+
+            ScriptCanvas::Data::Type randomType = types[randomIndex];
+            AZ_TracePrintf("ScriptCanvasTestFixture", "RandomType: %s\n", randomType.GetAZType().ToString<AZStd::string>().c_str());
+            return randomType;
+        }
+
+        AZStd::string GenerateSlotName()
+        {
+            AZStd::string slotName = AZStd::string::format("Slot %i", m_slotCounter);
+            ++m_slotCounter;
+
+            return slotName;
+        }
+
         AZ::SerializeContext* m_serializeContext;
         AZ::BehaviorContext* m_behaviorContext;
         UnitTestEntityContext m_entityContext;
-    };
 
-    class AsyncScriptCanvasTestFixture
-        : public ScriptCanvasTestFixture
-    {
+        // Really big(visually) data types just storing here for ease of use in situations.
+        ScriptCanvas::Data::Type m_numericVectorType;
+        ScriptCanvas::Data::Type m_stringToNumberMapType;
+        ScriptCanvas::Data::Type m_entityIdSetType;
 
-    public:
-        static void SetUpTestCase()
-        {
-            AsyncScriptCanvasTestFixture::m_asyncOperationActive = false;
-            ScriptCanvasTestFixture::SetUpTestCase();
-        }
+        ScriptCanvas::Data::Type m_dataSlotConfigurationType;
 
-        static AZStd::atomic_bool m_asyncOperationActive;
+        AZStd::vector< AZStd::unique_ptr<AZ::Entity> > m_configurableEntityNodes;
+
+        int m_slotCounter = 0;
+
+    protected:
+        static ScriptCanvasTests::Application* GetApplication() { return s_application; }
+        
+    private:
+
+        static UnitTest::AllocatorsBase s_allocatorSetup;
+        static bool s_setupSucceeded;
+
+        AZStd::unordered_set< AZ::ComponentDescriptor* > m_descriptors;
+        
     };
 }

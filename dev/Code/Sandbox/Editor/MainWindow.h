@@ -50,6 +50,7 @@ class ToolbarManager;
 class ToolbarCustomizationDialog;
 class QWidgetAction;
 class ActionManager;
+class ShortcutDispatcher;
 
 namespace AzToolsFramework
 {
@@ -119,7 +120,7 @@ public:
 #endif // #ifdef Q_OS_WIN
 
     ActionManager* GetActionManager() const;
-    
+
     void Initialize();
 
     // Returns the old and original main frame which we're porting away from.
@@ -205,7 +206,7 @@ private:
     QWidget* CreateToolbarWidget(int id);
     void ShowCustomizeToolbarDialog();
     void OnGotoSelected();
-    
+
     void ToggleConsole();
     void ToggleRollupBar();
     void RegisterOpenWndCommands();
@@ -228,8 +229,8 @@ private:
     void ConnectivityStateChanged(const AzToolsFramework::SourceControlState state) override;
 
     QToolButton* CreateLayerSelectButton();
-    QToolButton* CreateSnapToGridButton();
-    QToolButton* CreateSnapToAngleButton();
+    QWidget* CreateSnapToGridWidget();
+    QWidget* CreateSnapToAngleWidget();
 
     QComboBox* CreateSelectionMaskComboBox();
     QComboBox* CreateRefCoordComboBox();
@@ -250,7 +251,7 @@ private Q_SLOTS:
     void OnConnectionStatusClicked();
     void OnUpdateConnectionStatus();
     void ShowConnectionDisconnectedDialog();
-	void CGPMenuClicked();
+    void CGPMenuClicked();
     void OnEscapeAction();
 
     // When signal is sent from ActionManager and MainWindow receives it, call this function as slot to send metrics event
@@ -268,7 +269,8 @@ private:
     void RegisterStdViewClasses();
     CMainFrame* m_oldMainFrame;
     QtViewPaneManager* m_viewPaneManager;
-    ActionManager* m_actionManager;
+    ShortcutDispatcher* m_shortcutDispatcher = nullptr;
+    ActionManager* m_actionManager = nullptr;
     UndoStackStateAdapter* m_undoStateAdapter;
 
     KeyboardCustomizationSettings* m_keyboardCustomization;

@@ -1,0 +1,17 @@
+def build(bld):
+    bld.DefineGem(
+        Editor = dict(
+            vs_filter       = 'Gems/ScriptCanvas',
+            platforms       = ['win', 'darwin'],
+            win_features    = ['crcfix'],
+            autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+            features        = ['qt5','az_code_gen'],
+            configurations  = ['profile', 'debug', 'debug_test', 'profile_test'],
+            includes        = [ '.', '..', 'Source'],
+            defines         = ['SCRIPTCANVAS_EDITOR', 'SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'ENABLE_EXTENDED_MATH_SUPPORT=0'],
+            use             = ['ScriptCanvas', 'ScriptCanvasEditor', 'AssetBuilderSDK', 'GraphCanvasWidgets', 'AzToolsFramework'],
+            file_list       = ['scriptcanvastestingeditor.waf_files'],
+            test_all_file_list = ['scriptcanvastestingeditor_tests.waf_files'],
+            disable_pch     = True,
+        ),
+    )

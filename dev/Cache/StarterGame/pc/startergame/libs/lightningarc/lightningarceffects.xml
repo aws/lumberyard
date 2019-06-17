@@ -1,0 +1,269 @@
+<LightningArc>
+
+	<Arc name="Default">
+		<param name="lightningDeviation" value="0.2" />
+		<param name="lightningFuzzyness" value="0.1" />
+		<param name="branchMaxLevel" value="1" />
+		<param name="branchProbability" value="2.0" />
+		<param name="lightningVelocity" value="0.6" />
+		<param name="strikeTimeMin" value="0.35" />
+		<param name="strikeTimeMax" value="0.35" />
+		<param name="strikeFadeOut" value="0.6" />
+		<param name="strikeNumSegments" value="6" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="6" />
+		<param name="beamSize" value="0.2" />
+		<param name="beamTexTiling" value="0.25" />
+		<param name="beamTexShift" value="0.05" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="15.0" />
+	</Arc>
+
+	<Arc name="ExtendedArc">
+		<param name="lightningDeviation" value="0.1" />
+		<param name="lightningFuzzyness" value="0.05" />
+		<param name="branchMaxLevel" value="1" />
+		<param name="branchProbability" value="10.0" />
+		<param name="lightningVelocity" value="0.25" />
+		<param name="strikeTimeMin" value="2.0" />
+		<param name="strikeTimeMax" value="2.0" />
+		<param name="strikeFadeOut" value="1.0" />
+		<param name="strikeNumSegments" value="6" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="6" />
+		<param name="maxNumStrikes" value="5" />
+		<param name="beamSize" value="0.18" />
+		<param name="beamTexTiling" value="0.25" />
+		<param name="beamTexShift" value="0.05" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="18.0" />
+	</Arc>
+
+	<Arc name="KickSparks">
+		<param name="lightningDeviation" value="0.2" />
+		<param name="lightningFuzzyness" value="0.1" />
+		<param name="branchMaxLevel" value="1" />
+		<param name="branchProbability" value="3.0" />
+		<param name="lightningVelocity" value="16.0" />
+		<param name="strikeTimeMin" value="0.0" />
+		<param name="strikeTimeMax" value="0.05" />
+		<param name="strikeFadeOut" value="0.05" />
+		<param name="strikeNumSegments" value="6" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="6" />
+		<param name="beamSize" value="0.1" />
+		<param name="beamTexTiling" value="0.75" />
+		<param name="beamTexShift" value="0.15" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="15.0" />
+	</Arc>
+
+	<Arc name="SingleArc">
+		<param name="lightningDeviation" value="0.1" />
+		<param name="lightningFuzzyness" value="0.0" />
+		<param name="branchMaxLevel" value="3" />
+		<param name="branchProbability" value="2" />
+		<param name="lightningVelocity" value="0.1" />
+		<param name="strikeTimeMin" value="0.2" />
+		<param name="strikeTimeMax" value="0.5" />
+		<param name="strikeFadeOut" value="0.5" />
+		<param name="strikeNumSegments" value="5" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="2" />
+		<param name="beamSize" value="0.1" />
+		<param name="beamTexTiling" value="0.5" />
+		<param name="beamTexShift" value="0.1" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="0.1" />
+	</Arc>
+
+	<Arc name="SingleArcSmall">
+		<param name="lightningDeviation" value="0.001" />
+		<param name="lightningFuzzyness" value="0.0" />
+		<param name="branchMaxLevel" value="3" />
+		<param name="branchProbability" value="2" />
+		<param name="lightningVelocity" value="0.2" />
+		<param name="strikeTimeMin" value="0.04" />
+		<param name="strikeTimeMax" value="0.1" />
+		<param name="strikeFadeOut" value="0.5" />
+		<param name="strikeNumSegments" value="7" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="3" />
+		<param name="maxNumStrikes" value="3" />
+		<param name="beamSize" value="0.03" />
+		<param name="beamTexTiling" value="0.5" />
+		<param name="beamTexShift" value="2.5" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="0.1" />
+	</Arc>
+
+	<Arc name="HugeArc">
+		<param name="lightningDeviation" value="0.4" />
+		<param name="lightningFuzzyness" value="0.0" />
+		<param name="branchMaxLevel" value="3" />
+		<param name="branchProbability" value="1" />
+		<param name="lightningVelocity" value="50.2" />
+		<param name="strikeTimeMin" value="0.5" />
+		<param name="strikeTimeMax" value="0.5" />
+		<param name="strikeFadeOut" value="4.2" />
+		<param name="strikeNumSegments" value="7" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="6" />
+		<param name="beamSize" value="40" />
+		<param name="beamTexTiling" value="0.0001" />
+		<param name="beamTexShift" value="0.5" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="0.1" />
+	</Arc>
+
+	<Arc name="CurlArc">
+		<param name="lightningDeviation" value="0.14" />
+		<param name="lightningFuzzyness" value="0.01" />
+		<param name="branchMaxLevel" value="14" />
+		<param name="branchProbability" value="0.5" />
+		<param name="lightningVelocity" value="2.2" />
+		<param name="strikeTimeMin" value="0.1" />
+		<param name="strikeTimeMax" value="0.35" />
+		<param name="strikeFadeOut" value="0.21" />
+		<param name="strikeNumSegments" value="7" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="6" />
+		<param name="beamSize" value="1" />
+		<param name="beamTexTiling" value="0.11" />
+		<param name="beamTexShift" value="0.5" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="0.1" />
+	</Arc>
+
+	<Arc name="HugeRotating">
+		<param name="lightningDeviation" value="50.14" />
+		<param name="lightningFuzzyness" value="2.01" />
+		<param name="branchMaxLevel" value="10" />
+		<param name="branchProbability" value="0.5" />
+		<param name="lightningVelocity" value="4.7" />
+		<param name="strikeTimeMin" value="0.1" />
+		<param name="strikeTimeMax" value="0.59" />
+		<param name="strikeFadeOut" value="10.1" />
+		<param name="strikeNumSegments" value="3" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="15" />
+		<param name="maxNumStrikes" value="2" />
+		<param name="beamSize" value="12" />
+		<param name="beamTexTiling" value="0.01" />
+		<param name="beamTexShift" value="0.5" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="0.1" />
+	</Arc>
+
+	<Arc name="HugeBurst">
+		<param name="lightningDeviation" value="0.14" />
+		<param name="lightningFuzzyness" value="2.01" />
+		<param name="branchMaxLevel" value="10" />
+		<param name="branchProbability" value="0.5" />
+		<param name="lightningVelocity" value="54.7" />
+		<param name="strikeTimeMin" value="0.51" />
+		<param name="strikeTimeMax" value="1.29" />
+		<param name="strikeFadeOut" value="0.07" />
+		<param name="strikeNumSegments" value="7" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="15" />
+		<param name="maxNumStrikes" value="12" />
+		<param name="beamSize" value="21" />
+		<param name="beamTexTiling" value="0.01" />
+		<param name="beamTexShift" value="3.5" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="0.6" />
+	</Arc>
+
+	<Arc name="HugeBurstReverse">
+		<param name="lightningDeviation" value="10.0" />
+		<param name="lightningFuzzyness" value="1.0" />
+		<param name="branchMaxLevel" value="2" />
+		<param name="branchProbability" value="0.5" />
+		<param name="lightningVelocity" value="20.0" />
+		<param name="strikeTimeMin" value="0.1" />
+		<param name="strikeTimeMax" value="0.3" />
+		<param name="strikeFadeOut" value="0.5" />
+		<param name="strikeNumSegments" value="3" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="15" />
+		<param name="maxNumStrikes" value="2" />
+		<param name="beamSize" value="40" />
+		<param name="beamTexTiling" value="0.01" />
+		<param name="beamTexShift" value="1.9" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="10.1" />
+	</Arc>
+
+	<Arc name="ExplosionArc">
+		<param name="lightningDeviation" value="0.2" />
+		<param name="lightningFuzzyness" value="5" />
+		<param name="branchMaxLevel" value="5" />
+		<param name="branchProbability" value="10" />
+		<param name="lightningVelocity" value="30" />
+		<param name="strikeTimeMin" value="0.15" />
+		<param name="strikeTimeMax" value="0.25" />
+		<param name="strikeFadeOut" value="0.2" />
+		<param name="strikeNumSegments" value="6" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="15" />
+		<param name="beamSize" value="2.5" />
+		<param name="beamTexTiling" value="0.015" />
+		<param name="beamTexShift" value="0.05" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="2.0" />
+	</Arc>
+
+	<Arc name="Tesla">
+		<param name="lightningDeviation" value="0.3" />
+		<param name="lightningFuzzyness" value="0.2" />
+		<param name="branchMaxLevel" value="0" />
+		<param name="branchProbability" value="0.0" />
+		<param name="lightningVelocity" value="1.0" />
+		<param name="strikeTimeMin" value="0.0" />
+		<param name="strikeTimeMax" value="0.2" />
+		<param name="strikeFadeOut" value="0.5" />
+		<param name="strikeNumSegments" value="6" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="6" />
+		<param name="beamSize" value="0.3" />
+		<param name="beamTexTiling" value="0.75" />
+		<param name="beamTexShift" value="0.2" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="1.0" />
+	</Arc>
+
+	<Arc name="Tesla_fast">
+		<param name="lightningDeviation" value="0.3" />
+		<param name="lightningFuzzyness" value="0.2" />
+		<param name="branchMaxLevel" value="0" />
+		<param name="branchProbability" value="0.0" />
+		<param name="lightningVelocity" value="2.0" />
+		<param name="strikeTimeMin" value="0.08" />
+		<param name="strikeTimeMax" value="0.32" />
+		<param name="strikeFadeOut" value="0.25" />
+		<param name="strikeNumSegments" value="6" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="6" />
+		<param name="beamSize" value="0.3" />
+		<param name="beamTexTiling" value="0.75" />
+		<param name="beamTexShift" value="0.2" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="1.0" />
+	</Arc>
+
+	<Arc name="Tesla_core">
+		<param name="lightningDeviation" value="0.3" />
+		<param name="lightningFuzzyness" value="0.2" />
+		<param name="branchMaxLevel" value="2" />
+		<param name="branchProbability" value="1.5" />
+		<param name="lightningVelocity" value="1.0" />
+		<param name="strikeTimeMin" value="0.08" />
+		<param name="strikeTimeMax" value="0.3" />
+		<param name="strikeFadeOut" value="0.62" />
+		<param name="strikeNumSegments" value="6" /> <!-- int max is 7 -->
+		<param name="strikeNumPoints" value="5" />
+		<param name="maxNumStrikes" value="6" />
+		<param name="beamSize" value="0.2" />
+		<param name="beamTexTiling" value="0.25" />
+		<param name="beamTexShift" value="0.05" />
+		<param name="beamTexFrames" value="4.0" />
+		<param name="beamTexFPS" value="15.0" />
+	</Arc>
+
+</LightningArc>

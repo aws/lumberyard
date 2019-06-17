@@ -436,6 +436,7 @@ void CTimeOfDayDialog::RegisterViewClass()
     options.paneRect = QRect(100, 100, 1500, 800);
     options.canHaveMultipleInstances = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+    options.isDockable = false;
 
     AzToolsFramework::RegisterViewPane<CTimeOfDayDialog>("Time Of Day", LyViewPane::CategoryOther, options);
 }

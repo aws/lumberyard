@@ -23,6 +23,13 @@ namespace AzToolsFramework
 {
     void IconButton::enterEvent(QEvent *event)
     {
+        // do not update the button if it is disabled
+        if (!isEnabled())
+        {
+            m_mouseOver = false;
+            return;
+        }
+
         m_mouseOver = true;
         QPushButton::enterEvent(event);
     }

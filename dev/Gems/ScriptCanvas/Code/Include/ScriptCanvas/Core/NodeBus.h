@@ -34,6 +34,7 @@ namespace ScriptCanvas
         using BusIdType = ID;
 
         virtual Slot* GetSlot(const SlotId& slotId) const = 0;
+        virtual size_t GetSlotIndex(const SlotId& slotId) const = 0;
 
         //! Gets all of the slots on the node.
         //! Name is funky to avoid a mismatch with typing with another function
@@ -81,20 +82,12 @@ namespace ScriptCanvas
     class LogNotifications : public AZ::EBusTraits
     {
     public:
-
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
-
-        //        virtual void OnGraphActivate(const AZ::Uuid& editGraphId, const AZ::Uuid& runtimeGraphId) {}
-        virtual void OnNodeInputChanged(const AZStd::string& sourceNodeName, const AZStd::string& objectName, const AZStd::string& slotName) {}
-        virtual void OnNodeSignalOutput(const AZStd::string& sourceNodeName, const AZStd::string& targetNodeName, const AZStd::string& slotName) {}
-        virtual void OnNodeSignalInput(const AZ::Uuid& nodeId, const AZStd::string& name, const AZStd::string& slotName) {}
-
         virtual void LogMessage(const AZStd::string& log) {}
     };
-
     using LogNotificationBus = AZ::EBus<LogNotifications>;
-
+            
     class NodeNotifications
         : public AZ::EBusTraits
     {
@@ -107,6 +100,9 @@ namespace ScriptCanvas
         //! Events signaled when a slot is added or removed from a node
         virtual void OnSlotAdded(const SlotId& /*slotId*/) {}
         virtual void OnSlotRemoved(const SlotId& /*slotId*/) {}
+        virtual void OnSlotRenamed(const SlotId& /*slotId*/, AZStd::string_view /*newName*/) {}
+
+        virtual void OnSlotDisplayTypeChanged(const SlotId& /*slotId*/, const ScriptCanvas::Data::Type& /*slotType*/) {}
 
         virtual void OnSlotActiveVariableChanged(const SlotId& /*slotId*/, const VariableId& oldVariableId, const VariableId& newVariableId) {}
     };
@@ -123,9 +119,7 @@ namespace ScriptCanvas
         virtual const Datum* GetInput(const SlotId& slotId) const = 0;
         virtual Datum* ModInput(const SlotId& slotId) = 0;
         virtual AZ::EntityId GetGraphEntityId() const = 0;
-
-
     };
 
-    using EditorNodeRequestBus = AZ::EBus<EditorNodeRequests>;
+    using EditorNodeRequestBus = AZ::EBus<EditorNodeRequests>;    
 }

@@ -20,6 +20,7 @@
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 #include <AzQtComponents/Components/EditorProxyStyle.h>
 
+#include <QTimer>
 #include <QPainter>
 #include <QDebug>
 #include <QApplication>
@@ -29,6 +30,9 @@
 #include <QCloseEvent>
 #include <QDesktopWidget>
 #include <QDialog>
+#include <QStyleOption>
+#include <QScopedValueRollback>
+#include <QStyle>
 
 #ifdef Q_OS_WIN
 # include <QtGui/private/qhighdpiscaling_p.h>
@@ -58,7 +62,6 @@ namespace AzQtComponents
                 return false;
             }
 
-#ifdef Q_OS_WIN
             // Read the geometry based on the Qt format, bailing out if it's invalid
             QDataStream stream(geometry);
             stream.setVersion(QDataStream::Qt_4_0);
@@ -91,6 +94,23 @@ namespace AzQtComponents
                 >> fullScreen
                 >> restoredScreenWidth;
 
+            if (!window->isVisible())
+            {
+                if (maximized)
+                {
+                    window->showMaximized();
+                }
+                else if (fullScreen)
+                {
+                    window->showFullScreen();
+                }
+                else
+                {
+                    window->show();
+                }
+            }
+
+#ifdef Q_OS_WIN
             // Do fixup for maximized/fullscreen windows to ensure they match the screen size
             if (fullScreen || maximized)
             {
@@ -114,7 +134,7 @@ namespace AzQtComponents
     }
 
     WindowDecorationWrapper::WindowDecorationWrapper(Options options, QWidget* parent)
-        : QWidget(parent, options & OptionDisabled ? Qt::Window : WindowDecorationWrapper::specialFlagsForOS() | Qt::Window)
+        : QFrame(parent, options & OptionDisabled ? Qt::Window : WindowDecorationWrapper::specialFlagsForOS() | Qt::Window)
         , m_options(options)
         , m_titleBar(options & OptionDisabled ? nullptr : new TitleBar(this))
     {
@@ -210,7 +230,7 @@ namespace AzQtComponents
 
     static QPoint screenCenter(QWidget* w)
     {
-        const QDesktopWidget *desktop = QApplication::desktop();
+        const QDesktopWidget* desktop = QApplication::desktop();
         const int screenNumber = desktop->screenNumber(w);
         return desktop->availableGeometry(screenNumber).center();
     }
@@ -273,26 +293,17 @@ namespace AzQtComponents
         return m_titleBar;
     }
 
-    void WindowDecorationWrapper::enableSaveRestoreGeometry(const QString& organization, const QString& app,
-        const QString& key)
+    void WindowDecorationWrapper::enableSaveRestoreGeometry(const QString& organization, const QString& app, const QString& key, bool autoRestoreOnShow)
     {
-        if (m_settings)
-        {
-            qWarning() << Q_FUNC_INFO << "Save/restore already enabled";
-            return;
-        }
-
-        if (key.isEmpty() || app.isEmpty() || organization.isEmpty())
-        {
-            qWarning() << Q_FUNC_INFO << "Invalid parameters";
-            return;
-        }
-
-        m_settings = new QSettings(organization, app, this);
-        m_settingsKey = key;
+        enableSaveRestoreGeometry(new QSettings(organization, app, this), key, autoRestoreOnShow);
     }
 
-    void WindowDecorationWrapper::enableSaveRestoreGeometry(const QString& key)
+    void WindowDecorationWrapper::enableSaveRestoreGeometry(const QString& key, bool autoRestoreOnShow)
+    {
+        enableSaveRestoreGeometry(new QSettings(this), key, autoRestoreOnShow);
+    }
+
+    void WindowDecorationWrapper::enableSaveRestoreGeometry(QSettings* settings, const QString& key, bool autoRestoreOnShow)
     {
         if (m_settings)
         {
@@ -306,8 +317,13 @@ namespace AzQtComponents
             return;
         }
 
-        m_settings = new QSettings(this);
+        m_settings = settings;
         m_settingsKey = key;
+        m_autoRestoreOnShow = autoRestoreOnShow;
+        m_blockForRestoreOnShow = autoRestoreOnShow;
+
+        connect(qApp, &QCoreApplication::aboutToQuit, this, &WindowDecorationWrapper::saveGeometryToSettings);
+        connect(qApp, &QGuiApplication::applicationStateChanged, this, &WindowDecorationWrapper::saveGeometryToSettings);
     }
 
     bool WindowDecorationWrapper::saveRestoreGeometryEnabled() const
@@ -315,18 +331,11 @@ namespace AzQtComponents
         return m_settings != nullptr;
     }
 
-    void WindowDecorationWrapper::paintEvent(QPaintEvent*)
-    {
-        QPainter p(this);
-        p.setPen(QColor(33, 34, 35));
-        p.drawRect(rect().adjusted(0, 0, -1, -1));
-    }
-
     bool WindowDecorationWrapper::eventFilter(QObject* watched, QEvent* ev)
     {
         if (watched != m_guestWidget)
         {
-            return QWidget::eventFilter(watched, ev);
+            return QFrame::eventFilter(watched, ev);
         }
 
         if (ev->type() == QEvent::HideToParent)
@@ -374,7 +383,7 @@ namespace AzQtComponents
             updateConstraints();
         }
 
-        return QWidget::eventFilter(watched, ev);
+        return QFrame::eventFilter(watched, ev);
     }
 
     void WindowDecorationWrapper::resizeEvent(QResizeEvent* ev)
@@ -433,9 +442,59 @@ namespace AzQtComponents
         }
     }
 
+    void WindowDecorationWrapper::hideEvent(QHideEvent* ev)
+    {
+        saveGeometryToSettings();
+        QFrame::hideEvent(ev);
+    }
+
+    static void centerOnScreen(WindowDecorationWrapper* window)
+    {
+        const QDesktopWidget* desktop = QApplication::desktop();
+        QRect availableGeometry = desktop->availableGeometry(window);
+        QRect alignedRect = QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter, window->size(), availableGeometry);
+
+        window->setGeometry(alignedRect);
+    }
+
+    void WindowDecorationWrapper::showEvent(QShowEvent* ev)
+    {
+        if (m_autoRestoreOnShow && (m_settings != nullptr))
+        {
+            // use a timer to trigger this as soon as possible, but not now.
+            // We're in the middle of the show right now and restoreGeometryFromSettings
+            // can call show. No recursion shenanigans.
+            QTimer::singleShot(0, this, [this] {
+                if (!restoreGeometryFromSettings())
+                {
+                    // default to centering it on screen if the restore failed
+                    centerOnScreen(this);
+                }
+
+                m_blockForRestoreOnShow = false;
+            });
+
+            // reset this so that we don't do this again
+            m_autoRestoreOnShow = false;
+        }
+
+        QFrame::showEvent(ev);
+    }
+
     bool WindowDecorationWrapper::nativeEvent(const QByteArray& eventType, void* message, long* result)
     {
         return handleNativeEvent(eventType, message, result, this);
+    }
+
+    void WindowDecorationWrapper::changeEvent(QEvent* ev)
+    {
+        if (ev->type() == QEvent::WindowStateChange)
+        {
+            // only way to know when the window has minimized/maximized or full screen has changed
+            saveGeometryToSettings();
+        }
+
+        QFrame::changeEvent(ev);
     }
 
     /* static */
@@ -452,12 +511,22 @@ namespace AzQtComponents
         {
             if (widget->window() && msg->message == WM_NCHITTEST && GetAsyncKeyState(VK_RBUTTON) >= 0) // We're not interested in right click
             {
+
+                /**
+                 * This code block enables Windows native dragging, which enables the "Aero Snap" feature,
+                 * where we can snap our windows to the sides of the screen.
+                 */
                 HWND handle = (HWND)widget->window()->winId();
                 const LRESULT defWinProcResult = DefWindowProc(handle, msg->message, msg->wParam, msg->lParam);
                 if (defWinProcResult == 1)
                 {
                     if (auto wrapper = qobject_cast<const WindowDecorationWrapper *>(widget))
                     {
+                        /**
+                         * We only care about the title bars belonging to WindowDecorationWrapper.
+                         * The ones from StyledDockWidget::titleBar() must use our custom dragging, so the docking system works,
+                         * we can't use the native dragging and we can't have "Aero Snap" for dock widgets.
+                         */
                         TitleBar* titleBar = wrapper->titleBar();
                         const short global_x = static_cast<short>(LOWORD(msg->lParam));
                         const short global_y = static_cast<short>(HIWORD(msg->lParam));
@@ -549,8 +618,16 @@ namespace AzQtComponents
         {
             return;
         }
+        if (m_blockForRestoreOnShow)
+        {
+            // if m_blockForRestoreOnShow is set, it means that we haven't loaded
+            // settings from show yet. If we save the geometry settings now, it will
+            // overwrite the settings that were previously saved and haven't been restored yet.
+            return;
+        }
 
         QByteArray geo = saveGeometry();
+
         m_settings->setValue(m_settingsKey, geo);
     }
 
@@ -562,6 +639,7 @@ namespace AzQtComponents
         }
 
         const QByteArray savedGeometry = m_settings->value(m_settingsKey).toByteArray();
+        QScopedValueRollback<bool> rollback(m_restoringGeometry);
         m_restoringGeometry = true;
 
         if (!RestoreWindowState(this, savedGeometry))
@@ -573,6 +651,14 @@ namespace AzQtComponents
         m_restoringGeometry = false;
 
         return true;
+    }
+
+    void WindowDecorationWrapper::showFromSettings()
+    {
+        if (!restoreGeometryFromSettings())
+        {
+            show();
+        }
     }
 
     void WindowDecorationWrapper::applyFlagsAndAttributes()
@@ -734,10 +820,19 @@ namespace AzQtComponents
         return isWin10() ? Qt::WindowFlags() : Qt::CustomizeWindowHint;
     }
 
+    void WindowDecorationWrapper::drawFrame(const QStyleOption *option, QPainter *painter, const QWidget *widget)
+    {
+        Q_UNUSED(widget);
+        painter->save();
+        painter->setPen(QColor(33, 34, 35));
+        painter->drawRect(option->rect.adjusted(0, 0, -1, -1));
+        painter->restore();
+    }
+
     bool WindowDecorationWrapper::event(QEvent* ev)
     {
         // Overridden for debugging purposes
-        return QWidget::event(ev);
+        return QFrame::event(ev);
     }
 
 #include <Components/WindowDecorationWrapper.moc>

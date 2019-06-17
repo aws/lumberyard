@@ -14,12 +14,32 @@
 #if defined(AZ_QT_COMPONENTS_EXPORT_SYMBOLS)
 
 #include <AzTest/AzTest.h>
+#include <AzCore/Math/Color.h>
+#include <AzQtComponents/Components/Widgets/ColorPicker/Palette.h>
 
-AZ_UNIT_TEST_HOOK();
-
-TEST(AzQtComponentsTest, Sanity)
+// Environments subclass from AZ::Test::ITestEnvironment
+class AzQtComponentsTestEnvironment : public AZ::Test::ITestEnvironment
 {
-    EXPECT_EQ(1, 1);
-}
+public:
+    AzQtComponentsTestEnvironment()
+    {
+        // needed for the controller tests - only ever needs to be run once
+        AzQtComponents::registerMetaTypes();
+    }
+
+    virtual ~AzQtComponentsTestEnvironment() {}
+
+protected:
+
+    void SetupEnvironment() override
+    {
+    }
+
+    void TeardownEnvironment() override
+    {
+    }
+};
+
+AZ_UNIT_TEST_HOOK(new AzQtComponentsTestEnvironment);
 
 #endif // defined(AZ_QT_COMPONENTS_EXPORT_SYMBOLS)

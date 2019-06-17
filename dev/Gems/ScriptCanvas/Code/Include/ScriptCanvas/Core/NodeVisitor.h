@@ -12,18 +12,14 @@
 
 #pragma once
 
-// sooner rather than later,
-// this should get turned into Nodes::FunctionCall, Node::Expression, Nodes::Handler etc
-// one thing to remember is that a function call that sends output into two different nodes' input
-// is a function call statement (assigning output to variables, NOT a function call expression)
-
 #define SCRIPT_CANVAS_NODE_VISITOR_FUNCTIONS(PREFIX, SUFFIX)\
-    PREFIX Visit(const Node& node) { AZ_WarningOnce("ScriptCanvas", false, "Implement a Visit on all leaf node"); }; /* \todo delete me! */\
-    PREFIX Visit(const Nodes::Math::Divide& node) SUFFIX;\
-    PREFIX Visit(const Nodes::Math::Multiply& node) SUFFIX;\
-    PREFIX Visit(const Nodes::Math::Number& node) SUFFIX;\
-    PREFIX Visit(const Nodes::Math::Subtract& node) SUFFIX;\
-    PREFIX Visit(const Nodes::Math::Sum& node) SUFFIX;
+    PREFIX Visit(const Nodes::Core::Start& node) SUFFIX;\
+    PREFIX Visit(const Nodes::Debug::Log& node) SUFFIX;\
+    /* put your nodes above in alphabetical order, please */
+
+/* the goal should be: no special processing needed
+PREFIX Visit(const Nodes::String::Print& node) SUFFIX;\
+*/
 
 #define SCRIPT_CANVAS_NODE_VISITOR_FUNCTION_DECLARATIONS\
     SCRIPT_CANVAS_NODE_VISITOR_FUNCTIONS(virtual void, =0)
@@ -37,13 +33,19 @@ namespace ScriptCanvas
 
     namespace Nodes
     {
-        namespace Math
+        namespace Core
         {
-            class Divide;
-            class Multiply;
-            class Number;
-            class Subtract;
-            class Sum;
+            class Start;
+        }
+
+        namespace Debug
+        {
+            class Log;
+        }
+
+        namespace String
+        {
+            class Print;
         }
     }
 
@@ -53,6 +55,9 @@ namespace ScriptCanvas
 
     public:
         virtual ~NodeVisitor() = default;
+
+        // clients must decide what to do with the base node
+        virtual void Visit(const Node& node) = 0;
 
         SCRIPT_CANVAS_NODE_VISITOR_FUNCTION_DECLARATIONS;
     };

@@ -73,6 +73,8 @@ namespace AZ
             MTL_FLAG_MULTI_SUBMTL = 0x0100,   // This material is a multi sub material.
             MTL_FLAG_NODRAW = 0x0400,   // Do not render this material.
             MTL_64BIT_SHADERGENMASK = 0x80000,   // ShaderGen mask is remapped
+            ///! Set to 0x8000000 because it is not in CryCommon::EMaterialFlags
+            MTL_FLAG_NODRAW_TOUCHBENDING = 0x8000000, //Do not render this material. Used for TouchBending Simulation Trigger.
         };
 
         enum class TextureMapType
@@ -105,8 +107,9 @@ namespace AZ
             virtual bool UseVertexColor() const = 0;
             virtual void EnableUseVertexColor(bool useVertexColor) = 0;
 
-            virtual bool IsPhysicalMaterial() const = 0;
-            virtual void EnablePhysicalMaterial(bool physical) = 0;
+            ///! ORed enum EMaterialFlags
+            virtual int GetMaterialFlags() const = 0;
+            virtual void SetMaterialFlags(int flags) = 0;
 
             virtual const AZ::Vector3& GetDiffuseColor() const = 0;
             virtual void SetDiffuseColor(const AZ::Vector3& color) = 0;
@@ -143,10 +146,12 @@ namespace AZ
                 tempFloat = GetShininess();
                 hash.Add(&tempFloat, sizeof(float));
 
+                // Hash ints 
+                int tempInt = GetMaterialFlags();
+                hash.Add(&tempInt, sizeof(int));
+
                 // Hash booleans
                 bool tempBool = UseVertexColor();
-                hash.Add(&tempBool, sizeof(bool));
-                tempBool = IsPhysicalMaterial();
                 hash.Add(&tempBool, sizeof(bool));
 
                 return hash;

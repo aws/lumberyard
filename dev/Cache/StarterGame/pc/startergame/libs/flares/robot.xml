@@ -1,0 +1,86 @@
+<LensFlareLibrary Name="Robot">
+ <FlareItem Name="Robot.Streak" Type="Root" Enable="1" Id="{d68288d1-9dad-4198-87d5-dce58b50d4cc}" Library="Robot">
+  <Params>
+   <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="1" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+   <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+   <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+   <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+   <GlobalSettings EnableOcclusion="1" OcclusionSize="0.02,0.02" Flarefadetime="0.07" Shaftfadetime="1" Affectedbylightcolor="0" Affectedbylightradius="0" AffectedbylightFOV="1" MultiplyColor="1"/>
+   <Sensor CustomSensorVariationMap="0" EffectiveSensorSize="0.8"/>
+  </Params>
+  <FlareItem Name="Streak.GlowWide" Type="Glow" Enable="1">
+   <Params>
+    <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="1.5" Position="1,1" Tint="1,0.00121411,0.00121411" Tint.alpha="255" Orbitangle="0" OcclusionInteraction="0" AutoRotation="0" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="4,0.3" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <Glow Polygonfactor="32" Focusfactor="0.3" Gamma="1"/>
+   </Params>
+  </FlareItem>
+  <FlareItem Name="Streak.GlowCenter" Type="Glow" Enable="1">
+   <Params>
+    <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="4" Position="1,1" Tint="1,0.031896,0.031896" Tint.alpha="255" Orbitangle="0" OcclusionInteraction="0" AutoRotation="0" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="0.5,0.75" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <Glow Polygonfactor="32" Focusfactor="0.3" Gamma="1"/>
+   </Params>
+  </FlareItem>
+ </FlareItem>
+ <FlareItem Name="Robot.StreakNarrow" Type="Root" Enable="1" Id="{401b863e-45df-4089-9bca-bb9d56670c2a}" Library="Robot">
+  <Params>
+   <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="1" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+   <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+   <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+   <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+   <GlobalSettings EnableOcclusion="1" OcclusionSize="0.02,0.02" Flarefadetime="0.07" Shaftfadetime="1" Affectedbylightcolor="0" Affectedbylightradius="0" AffectedbylightFOV="1" MultiplyColor="1"/>
+   <Sensor CustomSensorVariationMap="0" EffectiveSensorSize="0.8"/>
+  </Params>
+  <FlareItem Name="StreakNarrow.GlowWide" Type="Glow" Enable="1">
+   <Params>
+    <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="1" Position="1,1" Tint="1,0.00121411,0.00121411" Tint.alpha="255" Orbitangle="0" OcclusionInteraction="0" AutoRotation="0" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="1.6,0.3" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <Glow Polygonfactor="32" Focusfactor="0.3" Gamma="1"/>
+   </Params>
+  </FlareItem>
+  <FlareItem Name="StreakNarrow.GlowCenter" Type="Glow" Enable="1">
+   <Params>
+    <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="2" Position="1,1" Tint="1,0.031896,0.031896" Tint.alpha="255" Orbitangle="0" OcclusionInteraction="0" AutoRotation="0" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="0.5,0.75" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <Glow Polygonfactor="32" Focusfactor="0.3" Gamma="1"/>
+   </Params>
+  </FlareItem>
+ </FlareItem>
+ <FlareItem Name="Robot.StreakNarrow_01" Type="Root" Enable="1" Id="{ff9c0427-a305-4a1c-8cf3-8255fc803ace}" Library="Robot">
+  <Params>
+   <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="1" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+   <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+   <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+   <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+   <GlobalSettings EnableOcclusion="1" OcclusionSize="0.02,0.02" Flarefadetime="0.07" Shaftfadetime="1" Affectedbylightcolor="0" Affectedbylightradius="0" AffectedbylightFOV="1" MultiplyColor="1"/>
+   <Sensor CustomSensorVariationMap="0" EffectiveSensorSize="0.8"/>
+  </Params>
+  <FlareItem Name="StreakNarrow_01.GlowWide" Type="Glow" Enable="1">
+   <Params>
+    <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="1" Position="1,1" Tint="1,0.00121411,0.00121411" Tint.alpha="255" Orbitangle="0" OcclusionInteraction="0" AutoRotation="0" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="1.6,0.3" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <Glow Polygonfactor="32" Focusfactor="0.3" Gamma="1"/>
+   </Params>
+  </FlareItem>
+  <FlareItem Name="StreakNarrow_01.GlowCenter" Type="Glow" Enable="1">
+   <Params>
+    <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="2" Position="1,1" Tint="1,0.031896,0.031896" Tint.alpha="255" Orbitangle="0" OcclusionInteraction="0" AutoRotation="0" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="0.5,0.75" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <Glow Polygonfactor="32" Focusfactor="0.3" Gamma="1"/>
+   </Params>
+  </FlareItem>
+ </FlareItem>
+</LensFlareLibrary>

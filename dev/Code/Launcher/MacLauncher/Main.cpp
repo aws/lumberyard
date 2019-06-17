@@ -51,3 +51,8 @@ int main(int argc, char* argv[])
     // Launch the Lumberyard application.
     return AppleLauncher::Launch("");
 }
+
+
+#if defined(AZ_MONOLITHIC_BUILD)
+#include <StaticModules.inl>
+#endif

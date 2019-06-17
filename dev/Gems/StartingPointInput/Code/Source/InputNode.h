@@ -17,7 +17,6 @@
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Core/Graph.h>
 #include <ScriptCanvas/CodeGen/CodeGen.h>
-#include <ScriptCanvas/Grammar/NodeVisitor.h>
 
 // CryCommon
 #include <CryCommon/InputEventBus.h>

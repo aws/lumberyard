@@ -50,7 +50,8 @@
 			"Implementation/GLView.hpp",
 			"Implementation/GLBlitFramebufferHelper.hpp",
 			"Implementation/GLBlitFramebufferHelper.cpp",
-			"Implementation/GLBlitShaders.hpp"
+			"Implementation/GLBlitShaders.hpp",
+			"Implementation/GLADLoader.cpp"
 		],
 		"DXGL/Interfaces":
 		[

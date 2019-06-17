@@ -130,13 +130,25 @@ def copy_and_modify(src_file, dst_file, pattern_and_replace_tuples):
 def calculate_file_hash(file_path):
     """
     Quickly compute a hash (md5) of a file
-    :param file_path:
-    :return:
+    :param file_path:   The file to hash
+    :return:    The md5 hash result (hex string)
     """
     with open(file_path) as file_to_hash:
         file_content = file_to_hash.read()
     digest = hashlib.md5()
     digest.update(file_content)
+    hash_result = digest.hexdigest()
+    return hash_result
+
+
+def calculate_string_hash(string_to_hash):
+    """
+    Quickly compute a hash (md5) of a string
+    :param string_to_hash:  The string to hash
+    :return:    The md5 hash result (hex string)
+    """
+    digest = hashlib.md5()
+    digest.update(string_to_hash)
     hash_result = digest.hexdigest()
     return hash_result
 
@@ -260,12 +272,16 @@ def copy_files_to_folder(required_src_files, optional_src_files, dst_folder, sta
                 print(status_format.format(src_file))
 
 
+# Special token used as a temp replacement to handle escapement of the '#' for non-standard '#'s during json parsing
+PRESERVE_LITERAL_HASH_REPLACE_TOKEN = '_&%%&_'
 
-def parse_json_file(json_file_path):
+
+def parse_json_file(json_file_path, allow_non_standard_comments=False):
     """
     Parse a json file into a utf-8 encoded python dictionary
-    :param json_file_path:
-    :return:
+    :param json_file_path:              The json file to parse
+    :param allow_non_standard_comments: Allow non-standard comment ('#') tags in the file
+    :return: Dictionary representation of the json file
     """
 
     def _decode_list(list_data):
@@ -295,8 +311,27 @@ def parse_json_file(json_file_path):
         return rv
 
     try:
-        with open(json_file_path) as json_file:
-            json_file_content = json_file.read()
+        if allow_non_standard_comments:
+            # If we are reading non-standard json files where we are accepting '#' as comment tokens, then the
+            # file must have CR/LF characters and will be read in line by line.
+            with open(json_file_path) as json_file:
+                json_lines = json_file.readlines()
+                json_file_content = ""
+                for json_line in json_lines:
+                    comment_index = json_line.find('#')
+                    literal_pound_index = json_line.find('##')
+                    if comment_index>=0 and comment_index != literal_pound_index:
+                        processed_line = json_line.split('#')[0].strip()
+                    else:
+                        if literal_pound_index>=0:
+                            processed_line = json_line.replace('##','#').strip()
+                        else:
+                            processed_line = json_line.strip()
+                        
+                    json_file_content += processed_line
+        else:
+            with open(json_file_path) as json_file:
+                json_file_content = json_file.read()
 
         json_file_data = json.loads(json_file_content, object_hook=_decode_dict)
         return json_file_data
@@ -406,66 +441,6 @@ def remove_junction(junction_path):
         os.unlink(junction_path)
 
 
-def get_path_to_executable_package_location(platform, executable_name, base_destination_node):
-    """
-    Gets the path to the executable location in a package based on the platform.
-
-    :param platform: The platform to get the executable location for
-    :param executable_name: Name of the executable that is being packaged
-    :param base_destination_node: Location where the platform speicific package is going to be placed
-
-    :return: The path to where the executable should be packaged. May be the same as base_destination_node
-    :rtype: Node
-    """
-
-    if 'darwin' in platform:
-        return base_destination_node.make_node(executable_name + ".app/Contents/MacOS/")
-    elif 'ios' in platform:
-        return base_destination_node.make_node(executable_name + ".app/Contents/")
-    else:
-        return base_destination_node
-
-
-def get_resource_node(platform, executable_name, base_destination_node):
-    """ 
-    Gets the path to where resources should be placed in a package based on the platform.
-
-    :param platform: The platform to get the resource location for
-    :param executable_name: Name of the executable that is being packaged
-    :param base_destination_node: Location where the platform speicific package is going to be placed
-
-    :return: The path to where resources should be packaged. May be the same as base_destination_node
-    :rtype: Node
-    """
-
-    if 'darwin' in platform:
-        return base_destination_node.make_node(executable_name + ".app/Contents/Resources/")
-    elif 'ios' in platform:
-        return base_destination_node.make_node(executable_name + ".app/Contents/")
-    else:
-        return base_destination_node
-
-
-def get_game_assets_node(platform, executable_name, base_destination_node):
-    """ 
-    Gets the path to where game assets should be placed in a package based on the platform.
-
-    :param platform: The platform to get the sources assets location for
-    :param executable_name: Name of the executable that is being packaged
-    :param base_destination_node: Location where the platform speicific package is going to be placed
-
-    :return: The path to where assets should be packaged. May be the same as base_destination_node
-    :rtype: Node
-    """
-
-    if 'darwin' in platform:
-        return base_destination_node.make_node(executable_name + ".app/Contents/Resources/assets")
-    elif 'ios' in platform:
-        return base_destination_node.make_node(executable_name + ".app/Contents/assets")
-    else:
-        return base_asset_location_node
-
-
 def get_spec_dependencies(ctx, modules_spec, valid_gem_types):
     """
     Goes through all the modules defined in a spec and determines if they would
@@ -530,8 +505,7 @@ def get_spec_dependencies(ctx, modules_spec, valid_gem_types):
                             game_engine_module_dependencies.add(module_dep)
 
     return game_engine_module_dependencies
-
-
+	
 def write_auto_gen_header(file):
     name, ext = os.path.splitext(os.path.basename(file.name))
 
@@ -546,3 +520,120 @@ def write_auto_gen_header(file):
     file.write('{} WARNING! All modifications will be lost!\n'.format(comment_str))
     file.write('{}\n'.format(full_line))
 
+
+ROLE_TO_DESCRIPTION_MAP = {
+    "compileengine":"Compile the engine and asset pipeline",
+    "compilegame":"Compile the game code",
+    "compilesandbox":"Compile Lumberyard Editor and tools",
+    "runeditor":"Run the Lumberyard Editor and tools",
+    "rungame":"Run your game project",
+    "vc120":"Visual Studio 2013",
+    "vc140":"Visual Studio 2015",
+    "vc141":"Visual Studio 2017"
+}
+
+
+def convert_roles_to_setup_assistant_description(sdk_roles):
+    required_checks = []
+    for sdk_role in sdk_roles or []:
+        if sdk_role in ROLE_TO_DESCRIPTION_MAP:
+            required_checks.append("'{}'".format(ROLE_TO_DESCRIPTION_MAP[sdk_role]))
+        else:
+            required_checks.append("Option '{}'".format(sdk_role))
+
+    return required_checks
+
+
+def is_value_true(value):
+    """
+    Helper function to attempt to evaluate a boolean (true) from a value
+
+    :param value:   The value to inspect
+    :return:        True or False
+    """
+
+    if isinstance(value, str):
+        lower_value = value.lower().strip()
+        if lower_value in ('true', 't', 'yes', 'y', '1'):
+            return True
+        elif lower_value in ('false', 'f', 'no', 'n', '0'):
+            return False
+        else:
+            raise ValueError("Invalid boolean string ('')".format(value))
+    elif isinstance(value,bool):
+        return value
+    elif isinstance(value,int):
+        return value != 0
+    else:
+        raise ValueError("Cannot deduce a boolean result from value {}".format(str(value)))
+
+
+def read_compile_settings_file(settings_file, configuration):
+    """
+    Read in a compile settings file and extract the dictionary of known values
+    :param settings_file:
+    :param configuration:
+    :return:
+    """
+
+    def _read_config_item(config_settings, key, evaluated_keys={}, pending_keys=[]):
+
+        if key in evaluated_keys:
+            return evaluated_keys[key]
+
+        read_values = config_settings[key]
+        evaluated_values = []
+        for read_value in read_values:
+            if read_value.startswith('@'):
+                alias_key = read_value[1:]
+                if alias_key not in config_settings:
+                    raise ValueError("Invalid alias key '{}' in section '{}'".format(read_value, key))
+                if alias_key in pending_keys:
+                    raise ValueError("Invalid alias key '{}' in section '{}' creates a circular reference.".format(read_value, key))
+                elif alias_key not in evaluated_keys:
+                    pending_keys.append(key)
+                    evaluated_values += _read_config_item(config_settings, alias_key, evaluated_keys, pending_keys)
+                    pending_keys.remove(key)
+                else:
+                    evaluated_values += evaluated_keys[alias_key]
+            else:
+                evaluated_values.append(read_value)
+
+        evaluated_keys[key] = evaluated_values
+        return evaluated_values
+
+    def _merge_config(left_config, right_config):
+        if right_config:
+            merged_config = {}
+            for left_key, left_values in left_config.items():
+                merged_config[left_key] = left_values[:]
+            for right_key, right_values in right_config.items():
+                if right_key in merged_config:
+                    merged_config[right_key] += [merge_item for merge_item in right_values if merge_item not in merged_config[right_key]]
+                else:
+                    merged_config[right_key] = right_values[:]
+            return merged_config
+        else:
+            return left_config
+
+    def _read_config_section(settings, section_name, default_section_name):
+
+        if default_section_name:
+            default_dict = _read_config_section(settings, default_section_name, None)
+        else:
+            default_dict = None
+
+        if section_name not in settings:
+            return default_dict
+
+        section_settings = settings.get(section_name)
+        result = {}
+        for key in section_settings.keys():
+            result[key] = _read_config_item(section_settings, key)
+        merged_result = _merge_config(result, default_dict)
+        return merged_result
+
+    settings_json = parse_json_file(settings_file, allow_non_standard_comments=True)
+
+    result = _read_config_section(settings_json, configuration, 'common')
+    return result

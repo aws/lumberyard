@@ -994,6 +994,8 @@ bool BatchApplicationManager::Activate()
 
 bool BatchApplicationManager::PostActivate()
 {
+    m_connectionManager->LoadConnections();
+
     InitializeInternalBuilders();
     if (!InitializeExternalBuilders())
     {

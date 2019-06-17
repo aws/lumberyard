@@ -495,11 +495,7 @@ namespace NAsyncCull
 
         bool DownLoadHWDepthBuffer(float nearPlane, float farPlane, float nearestMax, float Bias)
         {
-#if defined(LINUX)
-            Matrix44A   Reproject _ALIGN(16);
-#else
-            Matrix44A& Reproject    =   *reinterpret_cast<Matrix44A*>(&m_Reproject);
-#endif
+            Matrix44A& Reproject = *reinterpret_cast<Matrix44A*>(&m_Reproject);
 
             m_VMaxXY    =   NVMath::int32Tofloat(NVMath::Vec4(SIZEX, SIZEY, SIZEX, SIZEY));
 

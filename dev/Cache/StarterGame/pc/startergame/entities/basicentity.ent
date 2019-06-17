@@ -1,0 +1,5 @@
+<Entity
+ Name="BasicEntity"
+ Script="Scripts/Entities/Physics/BasicEntity.lua"
+
+/>

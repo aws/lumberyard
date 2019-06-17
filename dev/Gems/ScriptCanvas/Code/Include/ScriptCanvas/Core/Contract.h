@@ -11,7 +11,17 @@
 */
 #pragma once
 
+#include <AzCore/std/string/string.h>
 #include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/functional.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/RTTI/RTTI.h>
+
+namespace AZ
+{
+    class ReflectContext;
+}
 
 namespace ScriptCanvas
 {

@@ -4,3 +4,4 @@ CloudGemFramework.ResourceManagerCommon
 CloudGemFramework.ServiceClient_Python
 CloudGemFramework.Crypto
 CloudGemWebCommunicator.aws_iot_device_sdk_python
+CloudGemWebCommunicator.client

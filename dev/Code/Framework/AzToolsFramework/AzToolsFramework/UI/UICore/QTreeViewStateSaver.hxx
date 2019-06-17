@@ -14,6 +14,7 @@
 
 #include <AzCore/base.h>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
 
 #include <QObject>
 #include <QPointer>
@@ -137,5 +138,16 @@ namespace AzToolsFramework
 
         Q_DISABLE_COPY(QTreeViewStateSaver)
     };
-} //namespace AzToolsFramework
 
+    class TreeViewState
+    {
+    public:
+        static AZStd::unique_ptr<TreeViewState> CreateTreeViewState();
+
+        virtual ~TreeViewState() = default;
+
+        virtual void CaptureSnapshot(QTreeView* treeView) = 0;
+        virtual void ApplySnapshot(QTreeView* treeView) = 0;
+    };
+
+} //namespace AzToolsFramework

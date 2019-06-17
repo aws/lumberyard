@@ -10,11 +10,11 @@
 *
 */
 
-#include "precompiled.h"
 
-#include <Tests/ScriptCanvasTestFixture.h>
-#include <Tests/ScriptCanvasTestUtilities.h>
-#include <Tests/ScriptCanvasTestNodes.h>
+
+#include <Source/Framework/ScriptCanvasTestFixture.h>
+#include <Source/Framework/ScriptCanvasTestUtilities.h>
+#include <Source/Framework/ScriptCanvasTestNodes.h>
 
 #include <ScriptCanvas/Libraries/Core/Start.h>
 #include <ScriptCanvas/Libraries/Core/BehaviorContextObjectNode.h>
@@ -22,12 +22,12 @@
 #include <AzCore/std/string/string.h>
 
 using namespace ScriptCanvasTests;
+using namespace ScriptCanvasEditor;
 using namespace TestNodes;
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContextProperties)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
+    
     using namespace ScriptCanvas;
     using namespace Nodes;
 
@@ -133,7 +133,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContextProperties)
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContextObjectGenericConstructor)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -179,10 +179,11 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContextObjectGenericConstructor)
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
 
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, StringView::CreateDescriptor());
+    RegisterComponentDescriptor<StringView>();
+
     TemplateEventTestHandler<AZ::Uuid>::Reflect(m_serializeContext);
     TemplateEventTestHandler<AZ::Uuid>::Reflect(m_behaviorContext);
     TemplateEventTestHandler<AZStd::string>::Reflect(m_serializeContext);
@@ -263,24 +264,24 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
     graphEntity->Activate();
     EXPECT_FALSE(graph->IsInErrorState());
 
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     TemplateEventTestBus<AZ::Uuid>::Event(uuidBusId, &TemplateEventTest<AZ::Uuid>::GenericEvent);
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
 
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     TemplateEventTestBus<AZStd::string>::Event(stringBusId, &TemplateEventTest<AZStd::string>::GenericEvent);
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
 
     // string
     AZStd::string stringResultByUuid;
     AZStd::string stringResultByString;
     AZStd::string hello("Hello!");
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     TemplateEventTestBus<AZ::Uuid>::EventResult(stringResultByUuid, uuidBusId, &TemplateEventTest<AZ::Uuid>::UpdateNameEvent, hello);
     TemplateEventTestBus<AZStd::string>::EventResult(stringResultByString, stringBusId, &TemplateEventTest<AZStd::string>::UpdateNameEvent, hello);
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
 
     EXPECT_EQ(hello, stringResultByUuid);
@@ -292,10 +293,10 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
     AZ::Vector3 vectorResultByUuid = AZ::Vector3::CreateZero();
     AZ::Vector3 vectorResultByString = AZ::Vector3::CreateZero();
     AZ::Vector3 sevenAteNine(7.0f, 8.0f, 9.0f);
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     TemplateEventTestBus<AZ::Uuid>::EventResult(vectorResultByUuid, uuidBusId, &TemplateEventTest<AZ::Uuid>::VectorCreatedEvent, sevenAteNine);
     TemplateEventTestBus<AZStd::string>::EventResult(vectorResultByString, stringBusId, &TemplateEventTest<AZStd::string>::VectorCreatedEvent, sevenAteNine);
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
 
     AZStd::string vectorString = Datum(Data::Vector3Type(7, 8, 9)).ToString();
@@ -307,13 +308,14 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandlerNonEntityIdBusId)
 
     m_serializeContext->EnableRemoveReflection();
     m_behaviorContext->EnableRemoveReflection();
+    StringView::Reflect(m_serializeContext);
+    StringView::Reflect(m_behaviorContext);
     TemplateEventTestHandler<AZ::Uuid>::Reflect(m_serializeContext);
     TemplateEventTestHandler<AZ::Uuid>::Reflect(m_behaviorContext);
     TemplateEventTestHandler<AZStd::string>::Reflect(m_serializeContext);
     TemplateEventTestHandler<AZStd::string>::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, StringView::CreateDescriptor());
 };
 
 void ReflectSignCorrectly()
@@ -326,7 +328,7 @@ void ReflectSignCorrectly()
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_ClassExposition)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
 
     ReflectSignCorrectly();
@@ -532,7 +534,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ClassExposition)
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByValue)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -631,7 +633,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByValue)
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByPointer)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -730,7 +732,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByPointer)
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByReference)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -829,7 +831,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ObjectTrackingByReference)
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByReference)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -910,7 +912,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByReference)
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByValue)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -991,7 +993,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_InvalidInputByValue)
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByValue)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -1083,7 +1085,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByValu
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByPointer)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -1175,7 +1177,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByPoin
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByReference)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -1267,7 +1269,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasValueDataTypesByRefe
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasStringToNonAZStdString)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -1346,7 +1348,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_ScriptCanvasStringToNonAZStdStri
 
 TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
 
     EventTestHandler::Reflect(m_serializeContext);
@@ -1444,7 +1446,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
     EXPECT_TRUE(Connect(*graph, vectorID, "Get", print2ID, "Value"));
 
     AZ::Entity* graphEntity = graph->GetEntity();
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     graphEntity->Activate();
     EXPECT_FALSE(graph->IsInErrorState());
 
@@ -1481,7 +1483,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
     auto iterVector = AZStd::find(vectorResults.values.begin(), vectorResults.values.end(), allSeven);
     EXPECT_NE(iterVector, vectorResults.values.end());
     EXPECT_FALSE(graph->IsInErrorState());
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
 
     graphEntity->Deactivate();
     delete graphEntity;
@@ -1498,7 +1500,7 @@ TEST_F(ScriptCanvasTestFixture, BehaviorContext_BusHandler)
 
 TEST_F(ScriptCanvasTestFixture, GetterSetterProperties)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -1575,9 +1577,9 @@ TEST_F(ScriptCanvasTestFixture, GetterSetterProperties)
         EXPECT_TRUE(graph->Connect(behaviorContextPropertyNode->GetEntityId(), behaviorContextPropertyNode->GetSlotId("string: String"), resultStringNode->GetEntityId(), resultStringNode->GetSlotId("Set")));
         EXPECT_TRUE(graph->Connect(resultStringNode->GetEntityId(), resultStringNode->GetSlotId("Get"), printNode3->GetEntityId(), printNode3->GetSlotId("Value")));
 
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+        TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
         graphEntity->Activate();
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+        TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
         EXPECT_FALSE(graph->IsInErrorState());
         graphEntity->Deactivate();
 
@@ -1615,9 +1617,9 @@ TEST_F(ScriptCanvasTestFixture, GetterSetterProperties)
         EXPECT_TRUE(graph->Connect(vector4Node->GetEntityId(), vector4Node->GetSlotId("w: Number"), resultWNode->GetEntityId(), resultWNode->GetSlotId("Set")));
         EXPECT_TRUE(graph->Connect(vector4Node->GetEntityId(), vector4Node->GetSlotId("Get"), printNode->GetEntityId(), printNode->GetSlotId("Value")));
 
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+        TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
         graphEntity->Activate();
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+        TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
         EXPECT_FALSE(graph->IsInErrorState());
         graphEntity->Deactivate();
 
@@ -1663,9 +1665,9 @@ TEST_F(ScriptCanvasTestFixture, GetterSetterProperties)
         EXPECT_TRUE(graph->Connect(matrix4x4Node->GetEntityId(), matrix4x4Node->GetSlotId("position: Vector3"), resultPositionNode->GetEntityId(), resultPositionNode->GetSlotId("Set")));
         EXPECT_TRUE(graph->Connect(matrix4x4Node->GetEntityId(), matrix4x4Node->GetSlotId("Get"), printNode2->GetEntityId(), printNode2->GetSlotId("Value")));
 
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+        TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
         graphEntity->Activate();
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+        TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
         EXPECT_FALSE(graph->IsInErrorState());
         graphEntity->Deactivate();
 

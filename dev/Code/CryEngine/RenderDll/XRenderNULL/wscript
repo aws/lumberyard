@@ -15,13 +15,13 @@
 
 def build(bld):
 
-    supported_plats = ['win', 'linux']
+    supported_plats=['win', 'linux']
 
     platform = bld.env['PLATFORM']
     if platform == 'project_generator':
       supported_plats.extend(['darwin', 'android'])
 
-    if not bld.is_monolithic_build():
+    if not bld.is_build_monolithic():
       if 'darwin' in platform:
         supported_plats.append('darwin')
 
@@ -37,8 +37,12 @@ def build(bld):
         platforms           = supported_plats,
         configurations      = ['debug', 'debug_test',
                                'profile', 'profile_test',
-                               'dedicated_all',
-                               'debug_test_dedicated', 'profile_test_dedicated'],
+                               'debug_dedicated',
+                               'profile_dedicated',
+                               'performance_dedicated',
+                               'release_dedicated',
+                               'debug_test_dedicated',
+                               'profile_test_dedicated'],
 
         pch                 = '../StdAfx.cpp',
         includes            = ['..',

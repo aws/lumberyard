@@ -25,15 +25,16 @@ import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from datetime import datetime
 from subprocess import call, check_output, STDOUT
+from types import MethodType
 
-from branch_spec import get_supported_configurations
 from cry_utils import append_to_unique_list, get_command_line_limit
 from packaging import run_rc_job, generate_shaders_pak
+from settings_manager import LUMBERYARD_SETTINGS
 from utils import junction_directory, remove_junction, write_auto_gen_header
 
-from waflib import Context, TaskGen, Build, Utils, Node, Logs, Options
+from waflib import Context, TaskGen, Build, Utils, Node, Logs, Options, Errors
 from waflib.Build import POST_LAZY, POST_AT_ONCE
-from waflib.Configure import conf
+from waflib.Configure import conf, conf_event, ConfigurationContext
 from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 from waflib.TaskGen import feature, before, before_method, after_method, taskgen_method
 
@@ -73,8 +74,6 @@ ORIENTATION_FLAG_TO_KEY_MAP  = {
 LATEST_KEYWORD = 'latest'
 
 ANDROID_CACHE_FOLDER = 'AndroidCache'
-
-APK_WITH_ASSETS_SUFFIX = '_w_assets'
 
 # these are the default names for application icons and splash images
 APP_ICON_NAME = 'app_icon.png'
@@ -117,15 +116,19 @@ OBSOLETE_BUILD_TOOLS_VERSIONS = [
 ]
 
 # 'defines' for the different asset deployment modes
-ASSET_DEPLOY_LOOSE = 'loose'
-ASSET_DEPLOY_PAKS = 'paks'
-ASSET_DEPLOY_PROJECT_SETTINGS = 'project_settings'
+class Enum(tuple):
+    __getattr__ = tuple.index
 
-ASSET_DEPLOY_MODES = [
-    ASSET_DEPLOY_LOOSE,
-    ASSET_DEPLOY_PAKS,
-    ASSET_DEPLOY_PROJECT_SETTINGS
-]
+ASSET_MODE = Enum([
+    'configuration_default', # Uses the current build configuration to determine how to package the assets e.g. debug/profile = loose_files, release/performance = project_settings
+    'loose_files',           # no additional processing will be done on the compiled assets
+    'loose_paks',            # pak files will be generated from the compiled assets
+    'apk_files',             # the compiled assets will be packaged inside the APK
+    'apk_paks',              # pak files will be generated and packaged inside the APK
+    'project_settings'       # uses the use_[main|patch]_obb settings in project.json to determine if paks in the APK or OBBs will be used
+])
+
+APK_WITH_ASSETS_SUFFIX = '_w_assets'
 
 # root types
 ACCESS_NORMAL = 0 # the device is not rooted, we do not have access to any elevated permissions
@@ -254,6 +257,8 @@ def clear_splash_assets(project_node, path_prefix):
 def options(opt):
     group = opt.add_option_group('android-specific config')
 
+    group.add_option('--deploy-android-asset-mode', dest = 'deploy_android_asset_mode', action = 'store', default = None, help = 'Deprecated: this option has been renamed to --android-asset-mode')
+
     group.add_option('--android-sdk-version-override', dest = 'android_sdk_version_override', action = 'store', default = None, help = 'Override the Android SDK version used in the Java compilation.  Only works during configure.')
     group.add_option('--android-ndk-platform-override', dest = 'android_ndk_platform_override', action = 'store', default = None, help = 'Override the Android NDK platform version used in the native compilation.  Only works during configure.')
 
@@ -322,6 +327,7 @@ def configure(conf):
     env['ANDROID_NDK_REV_FULL'] = ndk_rev
     env['ANDROID_NDK_REV_MAJOR'] = ndk_rev_major
     env['ANDROID_NDK_REV_MINOR'] = ndk_rev_minor
+    env['ANDROID_IS_NDK_19_PLUS'] = ndk_rev_major >= 19
 
     # validate the desired SDK (Java) version
     installed_sdk_versions = os.listdir(os.path.join(sdk_root, 'platforms'))
@@ -1073,9 +1079,9 @@ def collect_source_paths(android_task, module_tasks, src_path_tag):
     config = bld.env['CONFIGURATION']
 
     search_tags = [
+        src_path_tag,
         'android_{}'.format(src_path_tag),
         'android_{}_{}'.format(config, src_path_tag),
-
         '{}_{}'.format(platform, src_path_tag),
         '{}_{}_{}'.format(platform, config, src_path_tag),
     ]
@@ -1379,9 +1385,9 @@ def link_aws_sdk_core_after_android(self):
     Android monolithic builds require the aws core library to be linked after any
     other aws libs in order for the symbols to be resolved correctly.
     '''
-    if not (self.bld.is_android_platform(self.env['PLATFORM']) and self.bld.spec_monolithic_build()):
+    if not (self.bld.is_android_platform(self.env['PLATFORM']) and self.bld.is_build_monolithic()):
         return
-
+ 
     if 'AWS_CPP_SDK_CORE' in self.uselib:
         self.uselib = [ uselib for uselib in self.uselib if uselib != 'AWS_CPP_SDK_CORE' ]
         self.uselib.append('AWS_CPP_SDK_CORE')
@@ -1423,7 +1429,6 @@ def android_natives_processing(self):
         src_lib = output_node.make_node(src.name)
         for builder_node in game_project_builder_nodes:
             self.create_debug_strip_task(src_lib, builder_node)
-
 
     third_party_artifacts = getattr(self.env, 'COPY_3RD_PARTY_ARTIFACTS', [])
     for artifact in third_party_artifacts:
@@ -1912,11 +1917,11 @@ def apply_android(self):
 
     main_package = getattr(self, 'android_package', None)
     if not main_package:
-        self.fatal('[ERROR] No "android_package" specified in Android package task.')
+        raise Errors.WafError('[ERROR] No "android_package" specified in Android package task.')
 
     javac_task = getattr(self, 'javac_task', None)
     if not javac_task:
-        self.fatal('[ERROR] It seems the "javac" task failed to be generated, unable to complete the Android build process.')
+        raise Errors.WafError('[ERROR] It seems the "javac" task failed to be generated, unable to complete the Android build process.')
 
     self.code_gen_task = code_gen_task = self.create_task('android_code_gen')
 
@@ -2145,10 +2150,10 @@ def apply_android_apk(self):
     # 2. jarsign and 3. zipalign
     final_apk_out = self.bld.get_output_folders(self.bld.env['PLATFORM'], self.bld.env['CONFIGURATION'])[0]
     self.sign_and_align_apk(
-        executable_name, # base_apk_name
-        unsigned_unaligned_apk, # raw_apk
-        apk_output_dir, # intermediate_folder
-        final_apk_out # final_output
+        base_apk_name = executable_name,
+        raw_apk = unsigned_unaligned_apk,
+        intermediate_folder = apk_output_dir,
+        final_output = final_apk_out
     )
 
     # task chaining
@@ -2432,7 +2437,10 @@ def build_shader_paks(ctx, game, assets_type, layout_node):
         shutil.copy2(pak.abspath(), dest_node.abspath())
 
 
-def pack_assets_in_apk(ctx, executable_name, layout_node):
+class pack_apk(Task):
+
+    color = 'PINK'
+
     class command_buffer:
         def __init__(self, base_command_args):
             self._args_master = base_command_args
@@ -2443,77 +2451,75 @@ def pack_assets_in_apk(ctx, executable_name, layout_node):
 
         def flush(self):
             if len(self.args) > len(self._args_master):
-                command = ' '.join(self.args)
-                Logs.debug('android_deploy: Running command - {}'.format(command))
-                call(command, shell = True)
+                Logs.debug('android: Running command - {}'.format(self.args))
+                call(self.args)
 
                 self.args = self._args_master[:]
                 self.len = self._base_len
 
-    android_cache = get_android_cache_node(ctx)
+    def runnable_status(self):
+        if not self.inputs:
+            self.source_apk.sig = Utils.h_file(self.source_apk.abspath())
 
-    # create a copy of the existing bare bones APK for the assets
-    variant = getattr(ctx.__class__, 'variant', None)
-    if not variant:
-        (platform, configuration) = ctx.get_platform_and_configuration()
-        variant = '{}_{}'.format(platform, configuration)
+            self.inputs  = [
+                self.source_apk
+            ] + self.assets.ant_glob('**/*', excl=['user/'])
 
-    raw_apk_path = os.path.join(ctx.get_bintemp_folder_node().name, variant, ctx.get_android_project_relative_path(), executable_name, 'apk')
-    barebones_apk_path = '{}/{}_unaligned_unsigned.apk'.format(raw_apk_path, executable_name)
+        result = super(pack_apk, self).runnable_status()
 
-    if not os.path.exists(barebones_apk_path):
-        ctx.fatal('[ERROR] Unable to find the barebones APK in path {}.  Run the build command for {} again to generate it.'.format(barebones_apk_path, variant))
+        if result == SKIP_ME and not os.path.isfile(self.outputs[0].abspath()):
+            return RUN_ME
 
-    apk_cache_node = android_cache.make_node(['apk', variant])
-    apk_cache_node.mkdir()
+        return result
 
-    raw_apk_with_asset_node = apk_cache_node.make_node('{}_unaligned_unsigned{}.apk'.format(executable_name, APK_WITH_ASSETS_SUFFIX))
+    def run(self):
+        bld = self.generator.bld
+        source_assets_path = self.assets.abspath()
+        target_apk_path = self.outputs[0].abspath()
 
-    shutil.copy2(barebones_apk_path, raw_apk_with_asset_node.abspath())
+        shutil.copy2(self.source_apk.abspath(), target_apk_path)
 
-    # We need to make the 'assets' junction in order to generate the correct pathing structure when adding
-    # files to an existing APK
-    asset_dir = 'assets'
-    asset_junction = android_cache.make_node(asset_dir)
+        # We need to make the 'assets' junction in order to generate the correct pathing structure when adding files to an existing APK
+        android_cache = bld.get_android_cache_node()
+        asset_junction = android_cache.make_node('assets')
 
-    if os.path.exists(asset_junction.abspath()):
+        if os.path.exists(asset_junction.abspath()):
+            remove_junction(asset_junction.abspath())
+
+        try:
+            Logs.debug('android: Creating assets junction "{}" ==> "{}"'.format(source_assets_path, asset_junction.abspath()))
+            junction_directory(source_assets_path, asset_junction.abspath())
+        except:
+            bld.fatal("[ERROR] Could not create junction for asset folder {}".format(source_assets_path))
+
+        # add the assets to the APK
+        command = pack_apk.command_buffer([
+            bld.env['AAPT'],
+            'add',
+            target_apk_path
+        ])
+        command_len_max = get_command_line_limit()
+
+        with push_dir(android_cache.abspath()):
+            Logs.debug('android: -> from {}'.format(os.getcwd()))
+
+            assets = asset_junction.ant_glob('**/*')
+            for asset in assets:
+                file_path = asset.path_from(android_cache)
+
+                file_path = file_path.replace('\\', '/')
+
+                path_len = len(file_path) + 4 # buffer for space and quotes
+                if (command.len + path_len) >= command_len_max:
+                    command.flush()
+
+                command.len += path_len
+                command.args.append(file_path)
+
+            # flush the command buffer one more time
+            command.flush()
+
         remove_junction(asset_junction.abspath())
-
-    try:
-        Logs.debug('android_deploy: Creating assets junction "{}" ==> "{}"'.format(layout_node.abspath(), asset_junction.abspath()))
-        junction_directory(layout_node.abspath(), asset_junction.abspath())
-    except:
-        ctx.fatal("[ERROR] Could not create junction for asset folder {}".format(layout_node.abspath()))
-
-    # add the assets to the APK
-    command = command_buffer([
-        '"{}"'.format(ctx.env['AAPT']),
-        'add',
-        '"{}"'.format(raw_apk_with_asset_node.abspath())
-    ])
-    command_len_max = get_command_line_limit()
-
-    with push_dir(android_cache.abspath()):
-        ctx.user_message('Packing assets into the APK...')
-        Logs.debug('android_deploy: -> from {}'.format(os.getcwd()))
-
-        assets = asset_junction.ant_glob('**/*')
-        for asset in assets:
-            file_path = asset.path_from(android_cache)
-
-            file_path = '"{}"'.format(file_path.replace('\\', '/'))
-
-            path_len = len(file_path) + 1 # 1 for the space
-            if (command.len + path_len) >= command_len_max:
-                command.flush()
-
-            command.len += path_len
-            command.args.append(file_path)
-
-        # flush the command buffer one more time
-        command.flush()
-
-    return apk_cache_node, raw_apk_with_asset_node
 
 
 class adb_copy_output(Task):
@@ -2565,47 +2571,59 @@ def adb_copy_task(self, android_device, src_node, output_target):
 
 
 ###############################################################################
-class DeployAndroidContext(Build.BuildContext):
-    fun = 'deploy'
+def wrap_android_install_context(ctx):
+    sdk_root = ctx.get_env_file_var('LY_ANDROID_SDK', required = True)
 
+    global ADB_QUOTED_PATH
+    ADB_QUOTED_PATH = '"{}"'.format(os.path.join(sdk_root, 'platform-tools', 'adb'))
 
-    def __init__(self, **kw):
-        super(DeployAndroidContext, self).__init__(**kw)
+    def get_android_asset_mode(self):
+        if not hasattr(self, 'android_asset_mode'):
 
-        sdk_root = self.get_env_file_var('LY_ANDROID_SDK', required = True)
+            # convert the old option, if specified
+            asset_mode = self.options.deploy_android_asset_mode
+            if asset_mode:
+                Logs.warn('[WARN] Using deprecated option --deploy-android-asset-mode, option has been renamed to --android-asset-mode')
 
-        global ADB_QUOTED_PATH
-        ADB_QUOTED_PATH = '"{}"'.format(os.path.join(sdk_root, 'platform-tools', 'adb'))
+                default_option = ASSET_MODE[ASSET_MODE.configuration_default]
+                old_to_new_option = {
+                    'loose'             : 'loose_files',
+                    'paks'              : 'loose_paks',
+                    'project_settings'  : 'project_settings',
+                }
 
+                asset_mode = old_to_new_option.get(asset_mode.lower(), default_option)
+            else:
+                asset_mode = self.options.android_asset_mode.lower()
 
-    def get_asset_deploy_mode(self):
-        if not hasattr(self, 'asset_deploy_mode'):
-            asset_deploy_mode = self.options.deploy_android_asset_mode.lower()
+            if asset_mode not in ASSET_MODE:
+                self.fatal('[ERROR] Unable to determine the android asset mode.  Valid options for --android-asset-mode are limited to: {}'.format(ASSET_MODE))
 
-            paks_required = self.env['CONFIGURATION'] in ('release', 'performance')
+            config = self.env['CONFIGURATION']
+
+            configuration_settings = LUMBERYARD_SETTINGS.get_root_configuration_name(config)
+            root_configuration = configuration_settings.base_config.name if configuration_settings.base_config else configuration_settings.name
+
+            config_to_mode = {
+                'debug'         : ASSET_MODE.loose_files,
+                'profile'       : ASSET_MODE.loose_files,
+                'release'       : ASSET_MODE.project_settings,
+                'performance'   : ASSET_MODE.project_settings,
+            }
 
             if self.options.from_android_studio:
                 # force a mode where assets are not packed into the APK since android studio handles the APK generation
-                asset_deploy_mode = (ASSET_DEPLOY_PAKS if paks_required else ASSET_DEPLOY_LOOSE)
+                asset_mode = (ASSET_MODE.loose_paks if self.paks_required else ASSET_MODE.loose_files)
 
-            elif paks_required:
-                # force release mode to use the project's settings
-                asset_deploy_mode = ASSET_DEPLOY_PROJECT_SETTINGS
+            elif ASSET_MODE.index(asset_mode) == ASSET_MODE.configuration_default or self.paks_required:
+                asset_mode = config_to_mode[root_configuration]
 
-            if asset_deploy_mode not in ASSET_DEPLOY_MODES:
-                bld.fatal('[ERROR] Unable to determine the asset deployment mode.  Valid options for --deploy-android-asset-mode are limited to: {}'.format(ASSET_DEPLOY_MODES))
+            else:
+               asset_mode = ASSET_MODE.index(asset_mode)
 
-            self.asset_deploy_mode = asset_deploy_mode
-            setattr(self.options, 'deploy_android_asset_mode', asset_deploy_mode)
+            self.android_asset_mode = asset_mode
 
-        return self.asset_deploy_mode
-
-
-    def use_vfs(self):
-        if not hasattr(self, 'cached_use_vfs'):
-            self.cached_use_vfs = (self.get_bootstrap_vfs() == '1')
-        return self.cached_use_vfs
-
+        return self.android_asset_mode
 
     def use_obb(self):
         if not hasattr(self, 'cached_use_obb'):
@@ -2618,35 +2636,20 @@ class DeployAndroidContext(Build.BuildContext):
 
         return self.cached_use_obb
 
-    def get_asset_cache_path(self):
-        if not hasattr(self, 'asset_cache_path'):
-            game = self.get_bootstrap_game_folder()
-            assets = self.get_bootstrap_assets('android')
-            self.asset_cache_path = os.path.join('Cache', game, assets)
-
-        return self.asset_cache_path
-
-    def get_asset_cache(self):
-        if not hasattr(self, 'asset_cache'):
-            self.asset_cache = self.path.find_dir(self.get_asset_cache_path())
-
-        return self.asset_cache
-
-
     def get_layout_node(self):
         if not hasattr(self, 'android_layout_node'):
             game = self.get_bootstrap_game_folder()
-            asset_deploy_mode = self.get_asset_deploy_mode()
+            asset_mode = self.get_android_asset_mode()
 
-            if asset_deploy_mode == ASSET_DEPLOY_LOOSE:
-                self.android_layout_node = self.get_asset_cache()
+            if asset_mode in (ASSET_MODE.loose_files, ASSET_MODE.apk_files):
+                self.android_layout_node = self.get_assets_cache_node()
 
-            elif asset_deploy_mode == ASSET_DEPLOY_PAKS:
-                paks_cache = '{}_paks'.format(self.get_asset_cache_path())
+            elif asset_mode in (ASSET_MODE.loose_paks, ASSET_MODE.apk_paks):
+                paks_cache = '{}_paks'.format(self.assets_cache_path)
                 self.android_layout_node = self.path.make_node(paks_cache)
 
-            elif asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS:
-                cache_folder = '{}_{}'.format(self.get_asset_cache_path(), 'obb' if self.use_obb() else 'paks')
+            elif asset_mode == ASSET_MODE.project_settings:
+                cache_folder = '{}_{}'.format(self.assets_cache_path, 'obb' if self.use_obb() else 'paks')
                 self.android_layout_node = self.path.make_node(cache_folder)
 
         # just in case get_layout_node is called before deploy_android_asset_mode has been validated, which
@@ -2656,10 +2659,8 @@ class DeployAndroidContext(Build.BuildContext):
         except:
             self.fatal('[ERROR] Unable to determine the asset layout node for Android.')
 
-
     def user_message(self, message):
         Logs.pprint('CYAN', '[INFO] {}'.format(message))
-
 
     def log_error(self, message):
         if self.options.from_editor_deploy or self.options.from_android_studio:
@@ -2668,126 +2669,131 @@ class DeployAndroidContext(Build.BuildContext):
             Logs.error(message)
 
 
-# create a deployment context for each build variant
-for target in ['android_armv7_clang', 'android_armv8_clang']:
-    for configuration in get_supported_configurations(target):
-        build_variant = '{}_{}'.format(target, configuration)
+    ctx.use_obb = MethodType(use_obb, ctx)
+    ctx.get_android_asset_mode = MethodType(get_android_asset_mode, ctx)
+    ctx.get_layout_node = MethodType(get_layout_node, ctx)
+    ctx.user_message = MethodType(user_message, ctx)
+    ctx.log_error = MethodType(log_error, ctx)
 
-        package_context = type(
-            '{}_package_context'.format(build_variant),
-            (DeployAndroidContext,),
-            {
-                'cmd' : 'deploy_{}'.format(build_variant),
-                'variant' : build_variant,
-                'features' : ['deploy_android_prepare']
-            })
-
-        deploy_context = type(
-            '{}_deploy_context'.format(build_variant),
-            (DeployAndroidContext,),
-            {
-                'cmd' : 'deploy_devices_{}'.format(build_variant),
-                'variant' : build_variant,
-                'features' : ['deploy_android_devices']
-            })
+    return ctx
 
 
-@taskgen_method
-@feature('deploy_android_prepare')
-def prepare_to_deploy_android(tsk_gen):
+@feature('package_android_armv7_clang', 'package_android_armv8_clang')
+def package_android(tsk_gen):
     '''
     Prepare the deploy process by generating the necessary asset layout
     directories, pak / obb files and packing assets in the APK if necessary.
     '''
-
-    bld = tsk_gen.bld
+    bld = wrap_android_install_context(tsk_gen.bld)
     platform = bld.env['PLATFORM']
     configuration = bld.env['CONFIGURATION']
 
-    # handle a few non-fatal early out cases
-    if not bld.is_android_platform(platform) or not bld.is_option_true('deploy_android'):
-        bld.user_message('Skipping Android Deployment...')
+    if not bld.is_android_platform(platform):
         return
 
-    game = bld.get_bootstrap_game_folder()
+    game = bld.project
     if game not in bld.get_enabled_game_project_list():
         Logs.warn('[WARN] The game project specified in bootstrap.cfg - {} - is not in the '
                     'enabled game projects list.  Skipping Android deployment...'.format(game))
         return
 
     # determine the selected asset deploy mode
-    asset_deploy_mode = bld.get_asset_deploy_mode()
-    Logs.debug('android_deploy: Using asset mode - {}'.format(asset_deploy_mode))
+    asset_mode = bld.get_android_asset_mode()
+    Logs.debug('android_package: Using asset mode - {}'.format(ASSET_MODE[asset_mode]))
 
-    assets_platform = bld.get_bootstrap_assets('android')
+    assets_platform = bld.assets_platform
 
-    if bld.get_asset_cache() is None:
-        assets_dir = bld.get_asset_cache_path()
+    if bld.get_assets_cache_node() is None:
+        assets_dir = bld.assets_cache_path
         output_folders = [ folder.name for folder in bld.get_standard_host_output_folders() ]
 
         bld.log_error('[ERROR] There is no asset cache to read from at "{}". Please run AssetProcessor or '
                       'AssetProcessorBatch from {} with "{}" assets enabled in the '
-                      'AssetProcessorPlatformConfig.ini'.format(assets_dir, '/'.join(output_folders), assets_platform))
+                      'AssetProcessorPlatformConfig.ini'.format(assets_dir, '|'.join(output_folders), assets_platform))
         return
 
-    # handle the asset pre-processing
-    if (asset_deploy_mode == ASSET_DEPLOY_PAKS) or (asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS):
-        if bld.use_vfs():
-            bld.fatal('[ERROR] Cannot use VFS when the --deploy-android-asset-mode is set to "{}".  Please set remote_filesystem=0 in bootstrap.cfg'.format(asset_deploy_mode))
+    assets_cache = bld.get_assets_cache_node()
+    layout_node = bld.get_layout_node()
 
-        asset_cache = bld.get_asset_cache()
-        layout_node = bld.get_layout_node()
+    if not os.path.exists(layout_node.abspath()):
+        layout_node.mkdir()
+
+    # clear all stale transient files (e.g. logs, shader source, etc.) from the source asset cache
+    bld.clear_user_cache(assets_cache)
+
+    # handle the asset pre-processing
+    if asset_mode in (ASSET_MODE.loose_paks, ASSET_MODE.apk_paks, ASSET_MODE.project_settings):
+        if bld.use_vfs():
+            bld.fatal('[ERROR] Cannot use VFS when the --android-asset-mode is set to "{}".  Please set remote_filesystem=0 in bootstrap.cfg'.format(ASSET_MODE[asset_mode]))
+
+        is_obb = bld.use_obb()
+        use_project_settings = (asset_mode == ASSET_MODE.project_settings)
+
+        if is_obb and not use_project_settings:
+            bld.fatal('[ERROR] Cannot use OBBs when the --android-asset-mode is set to "{}".  Either change --android-asset-mode to '
+                '"configuration_default" or update the "use_main_obb"|"use_patch_obb" settings the game\'s project.json file.'.format(ASSET_MODE[asset_mode]))
+
+        # clear all stale transient files (e.g. logs, shader source/paks, etc.) from the pak file cache
+        bld.clear_user_cache(layout_node)
+        bld.clear_shader_cache(layout_node)
 
         # generate the pak/obb files
-        is_obb = (asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS) and bld.use_obb()
         rc_job_file = bld.get_android_rc_obb_job(game) if is_obb else bld.get_android_rc_pak_job(game)
-        rc_job = os.path.join('Bin64', 'rc', rc_job_file)
 
         bld.user_message('Generating the necessary pak files...')
-        run_rc_job(bld, game, rc_job, assets_platform, asset_cache.relpath(), layout_node.relpath(), is_obb)
+        run_rc_job(
+            bld,
+            game,
+            assets_platform,
+            assets_cache.relpath(),
+            layout_node.relpath(),
+            job = rc_job_file, 
+            is_obb = is_obb
+        )
 
-        # handles the shaders
-        if asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS:
-
-            shadercachestartup_pak = '{}/shadercachestartup.pak'.format(game).lower()
-            shaderscache_pak = '{}/shadercache.pak'.format(game).lower()
-
+        # generate the shader paks
+        if use_project_settings:
             bld.user_message('Generating the shader pak files...')
             build_shader_paks(bld, game, assets_platform, layout_node)
 
-            # get the keystore passwords
-            set_key_and_store_pass(bld)
+    # pack the assets into the apk
+    if asset_mode in (ASSET_MODE.apk_files, ASSET_MODE.apk_paks, ASSET_MODE.project_settings):
+        # get the keystore passwords
+        set_key_and_store_pass(bld)
 
-            # generate the new apk with assets in it
-            executable_name = bld.get_executable_name(game)
-            apk_cache_node, raw_apk_with_asset = pack_assets_in_apk(bld, executable_name, layout_node)
+        # generate the new apk with assets in it
+        executable_name = bld.get_executable_name(game)
 
-            # sign and align the apk
-            final_apk_out = bld.get_output_folders(platform, configuration)[0]
-            tsk_gen.sign_and_align_apk(
-                executable_name, # base_apk_name
-                raw_apk_with_asset, # raw_apk
-                apk_cache_node, # intermediate_folder
-                final_apk_out, # final_output
-                APK_WITH_ASSETS_SUFFIX # suffix
-            )
+        variant = getattr(bld.__class__, 'variant', None)
+        if not variant:
+            (platform, configuration) = bld.get_platform_and_configuration()
+            variant = '{}_{}'.format(platform, configuration)
 
-    adb_call('start-server')
+        apk_out_root = bld.get_bintemp_folder_node().make_node([variant, bld.get_android_project_relative_path(), executable_name, 'apk'])
 
-    if get_list_of_android_devices():
-        Options.commands.append('deploy_devices_' + platform + '_' + configuration)
+        pack_apk_task = tsk_gen.create_task('pack_apk')
 
-    else:
-        if bld.options.from_editor_deploy:
-            bld.fatal('[ERROR] No Android devices detected, unable to deploy')
-        else:
-            Logs.warn('[WARN] No Android devices detected, skipping deployment...')
-        adb_call('kill-server')
+        pack_apk_task.source_apk = apk_out_root.make_node('{}_unaligned_unsigned.apk'.format(executable_name))
+        pack_apk_task.assets = layout_node
+
+        tgt_apk_node = apk_out_root.make_node('{}_unaligned_unsigned{}.apk'.format(executable_name, APK_WITH_ASSETS_SUFFIX))
+        pack_apk_task.set_outputs(tgt_apk_node)
+
+        # sign and align the apk
+        final_apk_out = bld.get_output_folders(platform, configuration)[0]
+        tsk_gen.sign_and_align_apk(
+            base_apk_name = executable_name,
+            raw_apk = tgt_apk_node,
+            intermediate_folder = apk_out_root,
+            final_output = final_apk_out,
+            suffix = APK_WITH_ASSETS_SUFFIX
+        )
+
+        tsk_gen.jarsign_task.set_run_after(pack_apk_task)
 
 
-@taskgen_method
-@feature('deploy_android_devices')
-def deploy_to_devices(tsk_gen):
+@feature('deploy_android_armv7_clang', 'deploy_android_armv8_clang')
+def deploy_android(tsk_gen):
     '''
     Installs the project APK and copies the layout directory to all the
     android devices that are connected to the host.
@@ -2802,23 +2808,35 @@ def deploy_to_devices(tsk_gen):
 
         return should_copy
 
-    bld = tsk_gen.bld
+    bld = wrap_android_install_context(tsk_gen.bld)
     platform = bld.env['PLATFORM']
     configuration = bld.env['CONFIGURATION']
+
+    if not bld.is_android_platform(platform):
+        return
 
     # ensure the adb server is running
     if adb_call('start-server') is None:
         bld.log_error('[ERROR] Failed to start adb server, unable to perform the deploy')
         return
 
-    game = bld.get_bootstrap_game_folder()
+    connected_devices = get_list_of_android_devices()
+    if not connected_devices:
+        adb_call('kill-server')
+        if bld.options.from_editor_deploy:
+            bld.fatal('[ERROR] No Android devices detected, unable to deploy')
+        else:
+            Logs.warn('[WARN] No Android devices detected, skipping deployment...')
+            return
+
+    game = bld.project
     executable_name = bld.get_executable_name(game)
 
-    asset_deploy_mode = bld.get_asset_deploy_mode()
+    asset_mode = bld.get_android_asset_mode()
 
     # create the path to the APK
     suffix = ''
-    if asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS:
+    if asset_mode in (ASSET_MODE.apk_files, ASSET_MODE.apk_paks, ASSET_MODE.project_settings):
         suffix = APK_WITH_ASSETS_SUFFIX
 
     output_folder = bld.get_output_folders(platform, configuration)[0]
@@ -2830,13 +2848,13 @@ def deploy_to_devices(tsk_gen):
     deploy_executable = bld.is_option_true('deploy_android_executable') and not bld.options.from_android_studio
 
     if bld.use_vfs():
-        if asset_deploy_mode == ASSET_DEPLOY_LOOSE:
+        if asset_mode == ASSET_MODE.loose_files:
             deploy_assets = True
         else:
             # this is already checked in the prepare stage, but just to be safe...
-            bld.fatal('[ERROR] Cannot use VFS when the --deploy-android-asset-mode is set to "{}".  Please set remote_filesystem=0 in bootstrap.cfg'.format(asset_deploy_mode))
+            bld.fatal('[ERROR] Cannot use VFS when the --android-asset-mode is set to "{}".  Please set remote_filesystem=0 in bootstrap.cfg'.format(ASSET_MODE[asset_mode]))
     else:
-        deploy_assets = asset_deploy_mode in (ASSET_DEPLOY_LOOSE, ASSET_DEPLOY_PAKS)
+        deploy_assets = asset_mode in (ASSET_MODE.loose_files, ASSET_MODE.loose_paks)
 
     # no sense in pushing the assets if we are cleaning the device and not reinstalling the APK from normal command line
     if do_clean and not deploy_executable and not bld.options.from_android_studio:
@@ -2849,7 +2867,9 @@ def deploy_to_devices(tsk_gen):
         return
 
 
-    deploy_libs = bld.options.deploy_android_attempt_libs_only and not (do_clean or bld.options.from_editor_deploy or bld.options.from_android_studio) and not (asset_deploy_mode == ASSET_DEPLOY_PROJECT_SETTINGS)
+    deploy_libs = (bld.options.deploy_android_attempt_libs_only 
+                    and not (do_clean or bld.options.from_editor_deploy or bld.options.from_android_studio) 
+                    and asset_mode not in (ASSET_MODE.apk_files, ASSET_MODE.apk_paks, ASSET_MODE.project_settings))
     Logs.debug('android_deploy: The option to attempt library only deploy is %s', 'ENABLED' if deploy_libs else 'DISABLED')
 
     variant = '{}_{}'.format(platform, configuration)
@@ -2876,9 +2896,7 @@ def deploy_to_devices(tsk_gen):
     # file is newer than what the device has, and if so copy it to the device.
     timestamp_file_name = 'deploy.timestamp'
 
-    connected_devices = get_list_of_android_devices()
     target_devices = []
-
     device_filter = bld.options.deploy_android_device_filter
     if not device_filter:
         target_devices = connected_devices
@@ -3008,17 +3026,12 @@ def deploy_to_devices(tsk_gen):
         if deploy_assets:
 
             if bld.use_vfs():
-                files_to_transfer = [
-                    'bootstrap.cfg',
-                    '{}/config/game.xml'.format(game).lower()
-                ]
-
-                for file in files_to_transfer:
+                for file in bld.get_bootstrap_files():
                     local_node = layout_node.find_resource(file)
                     if not local_node:
                         bld.fatal('[ERROR] Failed to locate file {} in path {}'.format(os.path.normpath(file), layout_node.abspath()))
 
-                    target_file = '{}/{}'.format(output_target, file)
+                    target_file = '{}/{}'.format(output_target, string.replace(local_node.path_from(layout_node), '\\', '/'))
                     tsk_gen.adb_copy_task(android_device, local_node, target_file)
 
             else:
@@ -3059,3 +3072,32 @@ def deploy_to_devices(tsk_gen):
     if not deploy_count:
         bld.fatal('[ERROR] Failed to deploy the build to any connected devices.')
 
+
+@conf_event(after_methods=['update_valid_configurations_file'],
+            after_events=['inject_generate_uber_command', 'inject_generate_module_def_command', 'inject_msvs_command'])
+def inject_android_studio_command(conf):
+    """
+    Make sure the android studio generation command is injected
+    """
+    if not isinstance(conf, ConfigurationContext):
+        return
+    
+    # Android target platform commands
+    enabled_platform_names = [platform.name() for platform in conf.get_enabled_target_platforms()]
+    if any(platform for platform in enabled_platform_names if conf.is_android_platform(platform)):
+
+        # build the base Android projects required for generating their respective APKs
+        android_builder_func = getattr(conf, 'create_base_android_projects', None)
+        if not android_builder_func:
+            conf.fatal('[ERROR] Failed to find required Android builder function - create_base_android_projects')
+
+        if not android_builder_func():
+            conf.fatal('[ERROR] Failed to generate the base projects required to build Android')
+
+        # rebuild the project if invoked from android studio or sepcifically requested to do so
+        if conf.options.from_android_studio or conf.is_option_true('generate_android_studio_projects_automatically'):
+            if 'build' in Options.commands:
+                build_cmd_idx = Options.commands.index('build')
+                Options.commands.insert(build_cmd_idx, 'android_studio')
+            else:
+                Options.commands.append('android_studio')

@@ -1,0 +1,115 @@
+{
+    "platform"      : "darwin_x64",
+    "display_name"  : "Mac x64",
+    "hosts"         : "darwin",
+    "aliases"       : "clang,darwin",
+    "has_server"    : true,
+    "enabled"       : true,
+    "has_tests"     : true,
+    "needs_java"    : false,
+
+    "modules": [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_clang",
+        "platforms/platform_impl_darwin",
+        "platforms/platform_settings_darwin_x64"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.clang.json"
+    ],
+
+    "attributes"    : {
+        "is_apple"              : true,
+        "is_mac"                : true,
+        "default_folder_name"   : "BinMac64",
+        "lib_prefix"            : "lib",
+        "qt_supported"          : true,
+        "qt_platform_dir"       : "clang_64",
+        "qtga_subfolders"       : [
+            "macx/libqtga.dylib",
+            "macx/libqtga_debug.dylib"
+        ],
+        "default_launcher_name" :  "MacLauncher"
+    },
+
+    "settings"      : {
+        "Mac Options" :
+        [
+            {
+                "long_form"         : "--mac-build-monolithic",
+                "attribute"         : "mac_build_monolithic",
+                "default_value"     : "False",
+                "description"       : "Flag to generate a monolithic or a non-monolithic build for Mac, options are True or False"
+            },
+            {
+                "long_form"         : "--darwin-paks",
+                "attribute"         : "darwin_paks",
+                "default_value"     : "False",
+                "description"       : "Forces paks to be built in non-release builds"
+            }
+         ],
+        "Mac Project Generator" :
+        [
+            {
+                "long_form"         : "--generate-mac-projects-automatically",
+                "attribute"         : "generate_mac_projects_automatically",
+                "default_value"     : "True",
+                "description"       : "Automatically generate Darwin Projects"
+            },
+            {
+                "long_form"         : "--mac-project-name",
+                "attribute"         : "mac_project_name",
+                "default_value"     : "LumberyardSDK",
+                "description"       : "Name of the generated project"
+            },
+            {
+                "long_form"         : "--mac-project-folder",
+                "attribute"         : "mac_project_folder",
+                "default_value"     : "Solutions",
+                "description"       : "Name of the folder in which the generated mac projects should be stored"
+            }
+        ]
+    },
+
+    "env": {
+        "DEFINES": [
+            "APPLE",
+            "MAC",
+            "__APPLE__",
+            "DARWIN",
+            "__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0"
+        ],
+        "FRAMEWORK": [
+            "Foundation",
+            "Cocoa",
+            "Carbon",
+            "CoreServices",
+            "ApplicationServices",
+            "AudioUnit",
+            "CoreAudio",
+            "AppKit",
+            "ForceFeedback",
+            "IOKit",
+            "OpenGL",
+            "GameController"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "-mmacosx-version-min=10.10",   # Set Minimum mac os version to 10.10
+            "-msse4.2"
+        ],
+        "LINKFLAGS": [
+            "-mmacosx-version-min=10.10",   # Set Minimum mac os version to 10.10
+            "-Wl,-undefined,error",
+            "-headerpad_max_install_names"
+        ],
+        "LIB": [
+            "c",
+            "m",
+            "pthread",
+            "ncurses"
+        ]
+    }
+}
+

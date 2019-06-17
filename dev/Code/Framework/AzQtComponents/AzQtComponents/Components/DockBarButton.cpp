@@ -11,11 +11,10 @@
 */
 
 #include <AzQtComponents/Components/DockBarButton.h>
+#include <AzQtComponents/Components/Style.h>
 
-#include <QEvent>
-#include <QMouseEvent>
-#include <QWidget>
-
+#include <QStyleOptionButton>
+#include <QStylePainter>
 
 namespace AzQtComponents
 {
@@ -27,15 +26,25 @@ namespace AzQtComponents
         , m_buttonType(buttonType)
         , m_isDarkStyle(darkStyle)
     {
-        setStyleSheet("QPushButton { border: 0px; background: transparent; min-width: 0px;}");
+        switch (m_buttonType)
+        {
+            case DockBarButton::CloseButton:
+                Style::addClass(this, QStringLiteral("close"));
+                break;
+            case DockBarButton::MaximizeButton:
+                Style::addClass(this, QStringLiteral("maximize"));
+                break;
+            case DockBarButton::MinimizeButton:
+                Style::addClass(this, QStringLiteral("minimize"));
+                break;
+            case DockBarButton::DividerButton:
+                break;
+        }
 
-        // Set our default icon and widget size based on the icon size
-        QPixmap icon(pixmapForButton());
-        setIcon(icon);
-        setFixedSize(icon.size());
-
-        // Enable mouse events even when no mouse buttons are held down (so we can change the button icon when hovered over)
-        setMouseTracking(true);
+        if (m_isDarkStyle)
+        {
+            Style::addClass(this, QStringLiteral("dark"));
+        }
         
         // Handle when our button is clicked
         QObject::connect(this, &QPushButton::clicked, this, &DockBarButton::handleButtonClick);
@@ -45,82 +54,34 @@ namespace AzQtComponents
         setFocusPolicy(Qt::ClickFocus);
     }
 
-    /**
-     * Handle widget enter events
-     */
-    void DockBarButton::enterEvent(QEvent*)
+    void DockBarButton::paintEvent(QPaintEvent *)
     {
-        // Set the on hover icon when the mouse is over our button
-        setIcon(pixmapForButton(false, true));
-    }
+        QStylePainter p(this);
+        QStyleOptionButton option;
+        initStyleOption(&option);
 
-    /**
-     * Handle widget leave events
-     */
-    void DockBarButton::leaveEvent(QEvent*)
-    {
-        // Set the default icon when our button is no longer hovered over
-        setIcon(pixmapForButton());
-    }
-
-    /**
-     * Handle mouse press events
-     */
-    void DockBarButton::mousePressEvent(QMouseEvent* event)
-    {
-        // Set the pressed icon
-        setIcon(pixmapForButton(true));
-
-        // Allow the mouse press event to continue propogation
-        QPushButton::mousePressEvent(event);
-    }
-
-    /**
-     * Handle mouse release events
-     */
-    void DockBarButton::mouseReleaseEvent(QMouseEvent* event)
-    {
-        // Set the default icon when we our button is no longer pressed
-        setIcon(pixmapForButton());
-
-        // Allow the mouse release event to continue propogation
-        QPushButton::mouseReleaseEvent(event);
-    }
-
-    /**
-     * Return the appropriate icon for the specified button state
-     */
-    QPixmap DockBarButton::pixmapForButton(bool pressed, bool hovered) const
-    {
-        // Construct the icon path suffix from the button state and dark style flag
-        QString suffix;
-        
-        if (isEnabled())
-        {
-            suffix = pressed ? QString("_press")
-                : hovered ? QString("_hover")
-                : QString("");
-        }
-
-        if (m_isDarkStyle)
-        {
-            suffix.append("_dark");
-        }
-
-        // Return the appropriate icon based on the button state and our button type
+        // Set the icon based on m_buttonType. This allows the icon to be changed in a QStyle, or in
+        // a Qt Style Sheet by changing the titlebar-close-icon, titlebar-maximize-icon, and
+        // titlebar-minimize-icon properties.
+        // Used in combination with the close, maximize, minimize and dark classes set in the
+        // constructor, and :hover and :pressed selectors available to buttons, we have full control
+        // of the pixmap in the style sheet.
         switch (m_buttonType)
         {
-        case DockBarButton::CloseButton:
-            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_close%1.png").arg(suffix));
-        case DockBarButton::MaximizeButton:
-            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_maximize%1.png").arg(suffix));
-        case DockBarButton::MinimizeButton:
-            return QPixmap(QString(":/stylesheet/img/titlebar/titlebar_minimize%1.png").arg(suffix));
-        case DockBarButton::DividerButton:
-            break;
+            case DockBarButton::CloseButton:
+                option.icon = style()->standardIcon(QStyle::SP_TitleBarCloseButton, &option, this);
+                break;
+            case DockBarButton::MaximizeButton:
+                option.icon = style()->standardIcon(QStyle::SP_TitleBarMaxButton, &option, this);
+                break;
+            case DockBarButton::MinimizeButton:
+                option.icon = style()->standardIcon(QStyle::SP_TitleBarMinButton, &option, this);
+                break;
+            default:
+                break;
         }
 
-        return {};
+        p.drawControl(QStyle::CE_PushButton, option);
     }
 
     /**

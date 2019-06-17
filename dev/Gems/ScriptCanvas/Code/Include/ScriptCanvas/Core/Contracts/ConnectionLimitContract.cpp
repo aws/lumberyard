@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "precompiled.h"
+
 #include "ConnectionLimitContract.h"
 #include <ScriptCanvas/Core/ContractBus.h>
 #include <ScriptCanvas/Core/GraphBus.h>
@@ -42,6 +42,15 @@ namespace ScriptCanvas
 
             return AZ::Failure(errorMessage);
         }
+    }
+
+    ConnectionLimitContract::ConnectionLimitContract(AZ::s32 limit) 
+        : m_limit(AZStd::GetMax(-1, limit)) 
+    {}
+
+    void ConnectionLimitContract::SetLimit(AZ::s32 limit) 
+    { 
+        m_limit = AZStd::GetMax(-1, limit); 
     }
 
     void ConnectionLimitContract::Reflect(AZ::ReflectContext* reflection)

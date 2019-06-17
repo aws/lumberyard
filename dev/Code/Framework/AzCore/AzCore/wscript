@@ -33,8 +33,6 @@ def build(bld):
         defines         = list(defines),
         export_defines  = list(defines),
         features        = ['internal_telemetry'],
-        test_all_defines = ['AZCORE_ENABLE_MEMORY_TRACKING'],
-        test_all_export_defines = ['AZCORE_ENABLE_MEMORY_TRACKING'],
 
         # Compiler Specific
         msvc_cxxflags       = ['/W4'],

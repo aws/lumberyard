@@ -121,7 +121,7 @@ namespace CommandSystem
         AZStd::vector<UndoObject> m_oldData; /**< Array of undo items. Each item means we started a motion on an actor and have to stop it again in the undo process. */
     
         static void CommandParametersToPlaybackInfo(MCore::Command* command, const MCore::CommandLine& parameters, EMotionFX::PlayBackInfo* outPlaybackInfo);
-        static AZStd::string PlayBackInfoToCommandParameters(EMotionFX::PlayBackInfo* playbackInfo);
+        static AZStd::string PlayBackInfoToCommandParameters(const EMotionFX::PlayBackInfo* playbackInfo);
     MCORE_DEFINECOMMAND_END
 
 

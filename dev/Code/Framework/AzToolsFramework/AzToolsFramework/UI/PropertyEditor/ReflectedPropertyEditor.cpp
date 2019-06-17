@@ -25,6 +25,7 @@
 #include <QtCore/QTimer>
 #include <QtCore/QSet>
 #include <AzToolsFramework/UI/PropertyEditor/ComponentEditor.hxx>
+#include <AzCore/std/sort.h>
 
 namespace AzToolsFramework
 {
@@ -203,6 +204,9 @@ namespace AzToolsFramework
         bool HasSavedExpandState(AZ::u32 pathKey) const;
 
         PropertyModificationRefreshLevel m_queuedRefreshLevel;
+        // If a full refresh is queued at a higher level (Entity Property Editor for example), we may need to pause
+        // partial refreshes from occurring until the full refresh is complete.
+        bool m_preventRefresh = false;
 
         bool m_hideRootProperties;
         bool m_queuedTabOrderRefresh;
@@ -218,7 +222,7 @@ namespace AzToolsFramework
         ReadOnlyQueryFunction   m_readOnlyQueryFunction;
         HiddenQueryFunction     m_hiddenQueryFunction;
         IndicatorQueryFunction  m_indicatorQueryFunction;
-        
+
         // Offset to add to size hint. Used to leave a border around the widget
         QSize m_sizeHintOffset;
 
@@ -318,10 +322,11 @@ namespace AzToolsFramework
         m_impl->m_rowLayout->setContentsMargins(0, 0, 0, 0);
         m_impl->m_rowLayout->setSpacing(0);
 
-        
+
         m_impl->PropertyEditorGUIMessages::Bus::Handler::BusConnect();
         m_impl->InternalReflectedPropertyEditorEvents::Bus::Handler::BusConnect();
         m_impl->m_queuedRefreshLevel = Refresh_None;
+        m_impl->m_preventRefresh = false;
         m_impl->m_ptrNotify = nullptr;
         m_impl->m_hideRootProperties = false;
         m_impl->m_queuedTabOrderRefresh = false;
@@ -336,6 +341,8 @@ namespace AzToolsFramework
 
     ReflectedPropertyEditor::~ReflectedPropertyEditor()
     {
+        m_releasePrompt = true;
+
         m_impl->InternalReflectedPropertyEditorEvents::Bus::Handler::BusDisconnect();
         m_impl->PropertyEditorGUIMessages::Bus::Handler::BusDisconnect();
     }
@@ -462,6 +469,8 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::ClearInstances()
     {
+        m_releasePrompt = true;
+
         m_impl->SaveExpansion();
         m_impl->ReturnAllToPool();
         m_impl->m_instances.clear();
@@ -534,6 +543,7 @@ namespace AzToolsFramework
 
         return result;
     }
+    
     bool IsParentAssociativeContainer(InstanceDataNode* node)
     {
         return node->GetParent() && node->GetParent()->GetClassMetadata()->m_container && node->GetParent()->GetClassMetadata()->m_container->GetAssociativeContainerInterface();
@@ -747,19 +757,44 @@ namespace AzToolsFramework
 
                 AZ_Assert(children.size() == 2, "Pair must have only two children");
                 const char* displayName = "";
-                
+
                 if (node->GetElementEditMetadata())
                 {
                     displayName = node->GetElementEditMetadata()->m_name;
                 }
-                
+
                 AddProperty(&children.back(), pParent, depth, displayName);
             }
             else
             {
+                using WeightedNode = AZStd::pair<int, AzToolsFramework::InstanceDataNode*>;
+                // Sort lowest display order first
+                auto compareFunc = [](WeightedNode lhs, WeightedNode rhs) -> bool { return lhs.first < rhs.first; };
+                AZStd::multiset<WeightedNode, decltype(compareFunc)> sortedChildrenNodes(compareFunc);
+
+                // Build a list of children and their display order values
                 for (auto& childNode : children)
                 {
-                    AddProperty(&childNode, pParent, depth);
+                    int childAppearanceOrder = 0;
+
+                    auto* classData = childNode.GetClassMetadata();
+                    auto* editorData = classData && classData->m_editData ? classData->m_editData->FindElementData(AZ::Edit::ClassElements::EditorData) : nullptr;
+
+                    if (editorData)
+                    {
+                        if (AZ::Edit::Attribute* attribute = editorData->FindAttribute(AZ::Edit::Attributes::DisplayOrder))
+                        {
+                            PropertyAttributeReader reader(childNode.GetInstance(0), attribute);
+                            reader.Read<int>(childAppearanceOrder);
+                        }
+                    }
+
+                    sortedChildrenNodes.insert({childAppearanceOrder, &childNode});
+                }
+
+                for (WeightedNode& pair : sortedChildrenNodes)
+                {
+                    AddProperty(pair.second, pParent, depth);
                 }
             }
         }
@@ -784,6 +819,8 @@ namespace AzToolsFramework
     /// Must call after Add/Remove instance for the change to be applied
     void ReflectedPropertyEditor::InvalidateAll(const char* filter)
     {
+        m_releasePrompt = true;
+
         setUpdatesEnabled(false);
         m_impl->m_selectedRow = nullptr;
         if (m_impl->m_ptrNotify && m_impl->m_selectedRow)
@@ -920,6 +957,8 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::InvalidateAttributesAndValues()
     {
+        m_releasePrompt = true;
+
         for (InstanceDataHierarchy& instance : m_impl->m_instances)
         {
             instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_impl->m_dynamicEditDataProvider);
@@ -950,6 +989,8 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::InvalidateValues()
     {
+        m_releasePrompt = true;
+
         for (InstanceDataHierarchy& instance : m_impl->m_instances)
         {
             bool dataIdentical = instance.RefreshComparisonData(AZ::SerializeContext::ENUM_ACCESS_FOR_READ, m_impl->m_dynamicEditDataProvider);
@@ -1166,6 +1207,10 @@ namespace AzToolsFramework
         {
             return false;
         }
+        else if (widget->ForceAutoExpand())
+        {
+            return true;
+        }
 
         const auto& key = CreatePathKey(widget);
         if (HasSavedExpandState(key))
@@ -1241,6 +1286,44 @@ namespace AzToolsFramework
         InternalReflectedPropertyEditorEvents::Bus::Broadcast(&InternalReflectedPropertyEditorEvents::QueueInvalidationIfSharedData, sender, level, instanceSet);
     }
 
+    // calculate the index/offset of the instance data node in the container
+    // (useful for notifying which element in a vector was modified/removed)
+    static size_t CalculateElementIndexInContainer(
+        InstanceDataNode* node, void* parentInstanceNode,
+        AZ::SerializeContext::IDataContainer* container, AZStd::vector<void*>& nodeInstancesOut)
+    {
+        // get the node's instance list, giving the ElementInstances attribute for containers priority over the raw instance list
+        if (!node->ReadAttribute(AZ::Edit::InternalAttributes::ElementInstances, nodeInstancesOut))
+        {
+            for (size_t i = 0, instanceCount = node->GetNumInstances(); i < instanceCount; ++i)
+            {
+                nodeInstancesOut.push_back((node->GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
+                    ? node->GetInstanceAddress(i)
+                    : node->GetInstance(i));
+            }
+        }
+
+        size_t elementIndex = 0;
+        void* elementPtr = nodeInstancesOut.empty() ? nullptr : nodeInstancesOut.front();
+
+        // find the index of the element we are about to remove
+        container->EnumElements(parentInstanceNode, [&elementIndex, elementPtr](
+            void* instancePointer, const AZ::Uuid& /*elementClassId*/,
+            const AZ::SerializeContext::ClassData* /*elementGenericClassData*/,
+            const AZ::SerializeContext::ClassElement* /*genericClassElement*/)
+        {
+            if (instancePointer == elementPtr)
+            {
+                return false;
+            }
+
+            elementIndex++;
+            return true;
+        });
+
+        return elementIndex;
+    }
+
     void ReflectedPropertyEditor::Impl::RequestWrite(QWidget* editorGUI)
     {
         auto it = m_userWidgetsToData.find(editorGUI);
@@ -1285,8 +1368,24 @@ namespace AzToolsFramework
 
                 handler->WriteGUIValuesIntoProperty_Internal(editorGUI, node);
 
+                // if the element being modified exists in a container, calculate
+                // the index to be passed through to PropertyNotify
+                const auto calculateElementIndex = [](InstanceDataNode* node) -> size_t {
+                    if (InstanceDataNode* parent = node->GetParent())
+                    {
+                        if (AZ::SerializeContext::IDataContainer* container = parent->GetClassMetadata()->m_container)
+                        {
+                            AZStd::vector<void*> nodeInstancesOut;
+                            return CalculateElementIndexInContainer(
+                                node, parent->GetInstance(0), container, nodeInstancesOut);
+                        }
+                    }
+
+                    return 0;
+                };
+
                 // once we've written our values, we need to potentially callback:
-                PropertyModificationRefreshLevel level = widget->DoPropertyNotify();
+                const PropertyModificationRefreshLevel level = widget->DoPropertyNotify(calculateElementIndex(node));
 
                 if (m_ptrNotify)
                 {
@@ -1420,8 +1519,8 @@ namespace AzToolsFramework
 
         // Bail out if the user aborts (or the container is empty, which is by definition a no-op)
         if (isContainerEmpty ||
-            QMessageBox::question(this, 
-            QStringLiteral("Clear container?"), 
+            QMessageBox::question(this,
+            QStringLiteral("Clear container?"),
             QStringLiteral("Are you sure you want to remove all elements from this container?")) == QMessageBox::No)
         {
             return;
@@ -1456,7 +1555,7 @@ namespace AzToolsFramework
             {
                 if (InstanceDataNode* pParent = node->GetParent())
                 {
-                    if (AZ::Edit::AttributeFunction<void()>* func_void = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(attribute.second))
+                    if (auto funcVoid = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(attribute.second))
                     {
                         for (size_t instanceIndex = 0; instanceIndex < pParent->GetNumInstances(); ++instanceIndex)
                         {
@@ -1464,11 +1563,11 @@ namespace AzToolsFramework
                             for (AZ::s64 elementIndex = instanceElements[instanceIndex] - 1; elementIndex >= 0 ; --elementIndex)
                             {
                                 // remove callback (without element index)
-                                func_void->Invoke(pParent->GetInstance(instanceIndex));
+                                funcVoid->Invoke(pParent->GetInstance(instanceIndex));
                             }
                         }
                     }
-                    else if (AZ::Edit::AttributeFunction<void(size_t)>* func_size_t = azdynamic_cast<AZ::Edit::AttributeFunction<void(size_t)>*>(attribute.second))
+                    else if (auto funcIndex = azdynamic_cast<AZ::Edit::AttributeFunction<void(size_t)>*>(attribute.second))
                     {
                         for (size_t instanceIndex = 0; instanceIndex < pParent->GetNumInstances(); ++instanceIndex)
                         {
@@ -1477,7 +1576,7 @@ namespace AzToolsFramework
                             {
                                 // remove callback (with element index)
                                 size_t tempElementIndex = elementIndex;
-                                func_size_t->Invoke(pParent->GetInstance(instanceIndex), std::move(tempElementIndex));
+                                funcIndex->Invoke(pParent->GetInstance(instanceIndex), AZStd::move(tempElementIndex));
                             }
                         }
                     }
@@ -1525,41 +1624,15 @@ namespace AzToolsFramework
         AZ_Assert(container->IsFixedSize() == false ||
             container->IsSmartPointer(), "We can't remove elements from a fixed size container!");
 
-        // Get the node's instance list, giving the ElementInstances attribute for containers priority over the raw instance list
-        AZStd::vector<void*> nodeInstances;
-        if (!node->ReadAttribute(AZ::Edit::InternalAttributes::ElementInstances, nodeInstances))
-        {
-            for (size_t i = 0, instanceCount = node->GetNumInstances(); i < instanceCount; ++i)
-            {
-                nodeInstances.push_back((node->GetElementMetadata()->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER) 
-                    ? node->GetInstanceAddress(i) 
-                    : node->GetInstance(i));
-            }
-        }
-
-        size_t elementIndex = 0;
-        {
-            void* elementPtr = nodeInstances.front();
-
-            // find the index of the element we are about to remove
-            container->EnumElements(pContainerNode->GetInstance(0), [&elementIndex, elementPtr](void* instancePointer, const AZ::Uuid& /*elementClassId*/,
-                const AZ::SerializeContext::ClassData* /*elementGenericClassData*/,
-                const AZ::SerializeContext::ClassElement* /*genericClassElement*/)
-            {
-                if (instancePointer == elementPtr)
-                {
-                    return false;
-                }
-
-                elementIndex++;
-                return true;
-            });
-        }
+        // the index of the element being removed
+        AZStd::vector<void*> nodeInstancesOut;
+        const size_t elementIndex = CalculateElementIndexInContainer(
+            node, pContainerNode->GetInstance(0), container, nodeInstancesOut);
 
         // pass the context as the last parameter to actually delete the related data.
         for (AZStd::size_t instanceIndex = 0; instanceIndex < pContainerNode->GetNumInstances(); ++instanceIndex)
         {
-            void* elementPtr = nodeInstances[instanceIndex];
+            void* elementPtr = nodeInstancesOut[instanceIndex];
             container->RemoveElement(pContainerNode->GetInstance(instanceIndex), elementPtr, pContainerNode->GetSerializeContext());
         }
 
@@ -1575,19 +1648,19 @@ namespace AzToolsFramework
             {
                 if (InstanceDataNode* pParent = pContainerNode->GetParent())
                 {
-                    if (AZ::Edit::AttributeFunction<void()>* func_void = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(attribute.second))
+                    if (auto funcVoid = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(attribute.second))
                     {
                         for (size_t instanceIndex = 0; instanceIndex < pParent->GetNumInstances(); ++instanceIndex)
                         {
-                            func_void->Invoke(pParent->GetInstance(instanceIndex));
+                            funcVoid->Invoke(pParent->GetInstance(instanceIndex));
                         }
                     }
-                    else if (AZ::Edit::AttributeFunction<void(size_t)>* func_size_t = azdynamic_cast<AZ::Edit::AttributeFunction<void(size_t)>*>(attribute.second))
+                    else if (auto funcIndex = azdynamic_cast<AZ::Edit::AttributeFunction<void(size_t)>*>(attribute.second))
                     {
                         for (size_t instanceIndex = 0; instanceIndex < pParent->GetNumInstances(); ++instanceIndex)
                         {
                             size_t tempElementIndex = elementIndex;
-                            func_size_t->Invoke(pParent->GetInstance(instanceIndex), std::move(tempElementIndex));
+                            funcIndex->Invoke(pParent->GetInstance(instanceIndex), AZStd::move(tempElementIndex));
                         }
                     }
                 }
@@ -1730,14 +1803,34 @@ namespace AzToolsFramework
             QDialogButtonBox* buttonBox = new QDialogButtonBox;
             buttonBox->addButton(QDialogButtonBox::Ok);
             buttonBox->addButton(QDialogButtonBox::Cancel);
-            connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-            connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+            // We cannot use exec here as it is modal and we need to be able to click in the viewport or drag entities onto the dislog
+            int dialogFlag = -1;
+            connect(buttonBox, &QDialogButtonBox::accepted, &dialog, [&dialogFlag]() {dialogFlag = 1; });
+            connect(buttonBox, &QDialogButtonBox::rejected, &dialog, [&dialogFlag]() {dialogFlag = 0; });
             layout->addWidget(buttonBox);
 
-            return dialog.exec() == QDialog::Accepted;
+            // Make sure the dialog stays on top ready for dropping onto
+            dialog.setWindowFlags(Qt::WindowStaysOnTopHint);
+            dialog.show();
+
+            m_releasePrompt = false;
+
+            while (dialogFlag < 0)
+            {
+                if (m_releasePrompt)
+                {
+                    dialogFlag = 0;
+                    dialog.reject();
+                    break;
+                }
+
+                qApp->processEvents();
+            }
+
+            return dialogFlag ? true : false;
         };
 
-        pContainerNode->CreateContainerElement(CreateContainerElementSelectClassCallback,
+        bool createdElement = pContainerNode->CreateContainerElement(CreateContainerElementSelectClassCallback,
             [this, pContainerNode, promptForValue](void* dataPtr, const AZ::SerializeContext::ClassElement* classElement, bool noDefaultData, AZ::SerializeContext*) -> bool
         {
             bool handled = false;
@@ -1757,7 +1850,7 @@ namespace AzToolsFramework
                     ReflectedPropertyEditorHelper::HandleDefaultNumericValues(keyPtr.get(), keyId);
 
                     handled = promptForValue(keyPtr.get(), keyId, "New Key");
-                    
+
                     if (handled)
                     {
                         associativeInterface->SetElementKey(dataPtr, keyPtr.get());
@@ -1777,40 +1870,43 @@ namespace AzToolsFramework
         }
         );
 
-        // Fire any add notifications for the container widget.
-        for (const AZ::Edit::AttributePair& attribute : pContainerNode->GetElementEditMetadata()->m_attributes)
+        if (createdElement)
         {
-            if (attribute.first == AZ::Edit::Attributes::AddNotify)
+            // Fire any add notifications for the container widget.
+            for (const AZ::Edit::AttributePair& attribute : pContainerNode->GetElementEditMetadata()->m_attributes)
             {
-                AZ::Edit::AttributeFunction<void()>* func = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(attribute.second);
-                if (func)
+                if (attribute.first == AZ::Edit::Attributes::AddNotify)
                 {
-                    InstanceDataNode* pParent = pContainerNode->GetParent();
-                    if (pParent)
+                    AZ::Edit::AttributeFunction<void()>* func = azdynamic_cast<AZ::Edit::AttributeFunction<void()>*>(attribute.second);
+                    if (func)
                     {
-                        for (size_t idx = 0; idx < pParent->GetNumInstances(); ++idx)
+                        InstanceDataNode* pParent = pContainerNode->GetParent();
+                        if (pParent)
                         {
-                            func->Invoke(pParent->GetInstance(idx));
+                            for (size_t idx = 0; idx < pParent->GetNumInstances(); ++idx)
+                            {
+                                func->Invoke(pParent->GetInstance(idx));
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Fire general change notifications for the container widget.
-        if (widget)
-        {
-            widget->DoPropertyNotify();
-        }
+            // Fire general change notifications for the container widget.
+            if (widget)
+            {
+                widget->DoPropertyNotify();
+            }
 
-        // Only seal the undo stack once all modifications have been completed
-        if (m_impl->m_ptrNotify)
-        {
-            m_impl->m_ptrNotify->AfterPropertyModified(pContainerNode);
-            m_impl->m_ptrNotify->SealUndoStack();
-        }
+            // Only seal the undo stack once all modifications have been completed
+            if (m_impl->m_ptrNotify)
+            {
+                m_impl->m_ptrNotify->AfterPropertyModified(pContainerNode);
+                m_impl->m_ptrNotify->SealUndoStack();
+            }
 
-        QueueInvalidation(Refresh_EntireTree);
+            QueueInvalidation(Refresh_EntireTree);
+        }
     }
 
     void ReflectedPropertyEditor::SetAutoResizeLabels(bool autoResizeLabels)
@@ -1823,9 +1919,20 @@ namespace AzToolsFramework
         m_impl->m_queuedRefreshLevel = Refresh_None;
     }
 
+    void ReflectedPropertyEditor::PreventRefresh(bool shouldPrevent)
+    {
+        // If we've set this to true twice in a row, then when one of them sets it to false, refreshes will be allowed
+        // potentially before the second caller is ready for them.  This case should get examined to see why nested calls
+        // are happening.  Either m_preventRefresh might need to turn into a refcount to allow nesting, or the assert might
+        // be invalid, or the nesting shouldn't occur at all.
+        AZ_Assert(!(m_impl->m_preventRefresh && shouldPrevent), 
+                  "PreventRefresh set to 'true' twice.  If multiple different callers are setting this, it might need to become a refcount.");
+        m_impl->m_preventRefresh = shouldPrevent;
+    }
+
     void ReflectedPropertyEditor::QueueInvalidation(PropertyModificationRefreshLevel level)
     {
-        if ((int)level > m_impl->m_queuedRefreshLevel)
+        if ((!m_impl->m_preventRefresh) && ((int)level > m_impl->m_queuedRefreshLevel))
         {
             // the callback told us that we need to do something more drastic than we're already scheduled to do (which might be nothing)
             bool rerequest = (m_impl->m_queuedRefreshLevel == Refresh_None); // if we haven't scheduled a refresh, then we will schedule one.
@@ -1844,7 +1951,7 @@ namespace AzToolsFramework
 
     void ReflectedPropertyEditor::DoRefresh()
     {
-        if (m_impl->m_queuedRefreshLevel == Refresh_None)
+        if (m_impl->m_preventRefresh || (m_impl->m_queuedRefreshLevel == Refresh_None))
         {
             return;
         }
@@ -1921,15 +2028,19 @@ namespace AzToolsFramework
             widget->SetExpanded(true);
             m_impl->ExpandChildren(widget, true, false);
         }
+
+        m_impl->AdjustLabelWidth();
     }
+
     void ReflectedPropertyEditor::CollapseAll()
     {
-        const auto widgetsToExpand = m_impl->getTopLevelWidgets();
-        for (auto widget : widgetsToExpand)
+        const auto widgetsToCollapse = m_impl->getTopLevelWidgets();
+        for (auto widget : widgetsToCollapse)
         {
-            bool isGroup = m_impl->m_groupWidgets.find({ widget, widget->label().toUtf8().data() }) != m_impl->m_groupWidgets.end();
+            const auto key = AZStd::make_pair(widget->GetParentRow(), widget->label().toUtf8().data());
+            bool isGroup = m_impl->m_groupWidgets.find(key) != m_impl->m_groupWidgets.end();
             if (!isGroup || widget->GetParentRow() == nullptr)
-        {
+            {
                 widget->SetExpanded(false);
                 m_impl->ExpandChildren(widget, false, false);
             }

@@ -14,6 +14,7 @@
 #include <PhysX_precompiled.h>
 
 #include <Pipeline/HeightFieldAssetHandler.h>
+#include <Pipeline/StreamWrapper.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzCore/IO/FileIO.h>
 #include <PhysX/HeightFieldAsset.h>
@@ -21,6 +22,8 @@
 #include <PhysX/ComponentTypeIds.h>
 #include <Source/Pipeline/HeightFieldAssetHandler.h>
 
+#include <extensions/PxSerialization.h>
+#include <extensions/PxDefaultStreams.h>
 
 namespace PhysX
 {
@@ -111,26 +114,89 @@ namespace PhysX
                 AZ_Error("PhysX HeightField Asset", false, "This should be a PhysX HeightField Asset, as this is the only type we process.");
                 return false;
             }
+            
+            // Wrap az stream behind physx interface
+            PhysX::StreamWrapper readerStream(stream);
 
             // Read the file header
             HeightFieldAssetHeader header;
-            stream->Read(sizeof(header), &header);
+            readerStream.read(&header, sizeof(header));
 
-            // Parse version 1.
-            if (header.m_assetVersion == 1 && header.m_assetDataSize > 0)
+            // Parse version 1 (load from cooking).
+            if (header.m_assetVersion == 1)
             {
-                // Read heightFieldData
-                AZStd::vector<uint8_t> assetDataBuffer;
-                assetDataBuffer.resize(header.m_assetDataSize);
-                stream->Read(header.m_assetDataSize, &assetDataBuffer[0]);
-                
-                // Deserialise buffer into heightfield
-                physx::PxDefaultMemoryInputData inputStream(assetDataBuffer.begin(), header.m_assetDataSize);
-                physx::PxPhysics& physx = PxGetPhysics();
-                physXHeightFieldAsset->m_heightField = physx.createHeightField(inputStream);
-        
-                AZ_Error("PhysX HeightField Asset", physXHeightFieldAsset->m_heightField != nullptr, "Failed to construct PhysX mesh from the cooked data. Possible data corruption.");
-                return physXHeightFieldAsset->m_heightField != nullptr;
+                if (header.m_assetDataSize > 0)
+                {
+                    // Create heightfield from cooked file
+                    physx::PxPhysics& physx = PxGetPhysics();
+                    physXHeightFieldAsset->SetHeightField(physx.createHeightField(readerStream));
+
+                    AZ_Error("PhysX HeightField Asset", physXHeightFieldAsset->m_heightField != nullptr, "Failed to construct PhysX mesh from the cooked data. Possible data corruption.");
+                    return physXHeightFieldAsset->m_heightField != nullptr;
+                }
+                else
+                {
+                    AZ_Warning("HeightFieldAssetHandler", false, "Empty heightfield file. Try resaving your level");
+                }
+            }
+            else
+            {
+                AZ_Warning("HeightFieldAssetHandler", false, "Unsupported asset version");
+            }
+
+            return false;
+        }
+
+        bool HeightFieldAssetHandler::SaveAssetData(const AZ::Data::Asset<AZ::Data::AssetData>& asset, AZ::IO::GenericStream* stream)
+        {
+            HeightFieldAsset* physXHeightFieldAsset = asset.GetAs<HeightFieldAsset>();
+            if (!physXHeightFieldAsset)
+            {
+                AZ_Error("PhysX HeightField Asset", false, "This should be a PhysX HeightField Asset. HeightFieldAssetHandler doesn't handle any other asset type.");
+                return false;
+            }
+
+            physx::PxHeightField* heightField = physXHeightFieldAsset->GetHeightField();
+            if (!heightField)
+            {
+                AZ_Warning("PhysX HeightField Asset", false, "There is no heightfield to save.");
+                return false;
+            }
+
+            HeightFieldAssetHeader header;
+            if (header.m_assetVersion == 1)
+            {
+                physx::PxCooking* cooking = nullptr;
+                SystemRequestsBus::BroadcastResult(cooking, &SystemRequests::GetCooking);
+
+                // Read samples from heightfield
+                AZStd::vector<physx::PxHeightFieldSample> samples;
+                samples.resize(heightField->getNbColumns() * heightField->getNbRows());
+                heightField->saveCells(samples.data(), (physx::PxU32)samples.size() * heightField->getSampleStride());
+
+                // Read description from heightfield
+                physx::PxHeightFieldDesc heightFieldDesc;
+                heightFieldDesc.format = heightField->getFormat();
+                heightFieldDesc.nbColumns = heightField->getNbColumns();
+                heightFieldDesc.nbRows = heightField->getNbRows();
+                heightFieldDesc.samples.data = samples.data();
+                heightFieldDesc.samples.stride = heightField->getSampleStride();
+
+                // Cook description to file
+                physx::PxDefaultMemoryOutputStream writer;
+                bool success = cooking->cookHeightField(heightFieldDesc, writer);
+
+                header.m_assetDataSize = writer.getSize();
+
+                PhysX::StreamWrapper writerStream(stream);
+                writerStream.write(&header, sizeof(header));
+                writerStream.write(writer.getData(), writer.getSize());
+
+                return success;
+            }
+            else
+            {
+                AZ_Warning("HeightFieldAssetHandler", false, "Unsupported asset version");
             }
 
             return false;

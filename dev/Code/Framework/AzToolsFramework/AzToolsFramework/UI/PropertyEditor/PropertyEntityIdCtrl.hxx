@@ -38,8 +38,8 @@ namespace AzToolsFramework
 
     class PropertyEntityIdCtrl
         : public QWidget
-        , private EditorPickModeRequests::Bus::Handler
-        , private AzToolsFramework::EditorEvents::Bus::Handler
+        , private EditorPickModeRequestBus::Handler
+        , private EditorEvents::Bus::Handler
     {
         Q_OBJECT
     public:
@@ -61,15 +61,12 @@ namespace AzToolsFramework
         virtual void dropEvent(QDropEvent* event) override;
         virtual void dragLeaveEvent(QDragLeaveEvent* event) override;
 
-        //////////////////////////////////////////////////////////////////////////
-        // EditorPickModeRequests::Bus::Handler
-        void StopObjectPickMode() override;
-        void OnPickModeSelect(AZ::EntityId /*id*/) override;        
-        //////////////////////////////////////////////////////////////////////////
+        // EditorPickModeRequestBus
+        void StopEntityPickMode() override;
+        void PickModeSelectEntity(AZ::EntityId /*id*/) override;
 
         // AzToolsFramework::EditorEvents::Bus::Handler
         void OnEscape() override;
-        ////
 
         void SetRequiredServices(const AZStd::vector<AZ::ComponentServiceType>& requiredServices);
         void SetIncompatibleServices(const AZStd::vector<AZ::ComponentServiceType>& incompatibleServices);
@@ -89,8 +86,9 @@ namespace AzToolsFramework
     protected:
         bool IsCorrectMimeData(const QMimeData* mimeData) const;
         bool EntityIdsFromMimeData(const QMimeData &mimeData, AzToolsFramework::EditorEntityIdContainer* entityIdListContainer = nullptr) const;
-        void InitObjectPickMode();
-        void CancelObjectPickMode();
+
+        // Move the editor into Pick Mode.
+        void StartEntityPickMode();
         AzFramework::EntityContextId GetPickModeEntityContextId();
 
         QString BuildTooltip();

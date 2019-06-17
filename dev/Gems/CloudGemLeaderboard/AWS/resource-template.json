@@ -560,6 +560,7 @@
                             "ResourceSuffix": [
                                 "/api/POST/score",
                                 "/api/GET/score/*",
+                                "/api/POST/score/dedicated",
                                 "/api/GET/scores/*",
                                 "/api/GET/leaderboard/*",
                                 "/api/POST/leaderboard/*"

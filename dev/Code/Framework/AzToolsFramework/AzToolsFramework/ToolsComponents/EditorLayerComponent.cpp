@@ -18,10 +18,14 @@
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/Slice/SliceAsset.h>
 #include <AzCore/std/containers/stack.h>
+#include <AzCore/std/string/regex.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/API/ComponentEntityObjectBus.h>
+#include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzToolsFramework/Entity/EditorEntityContextBus.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorLockComponentBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/ToolsComponents/TransformComponent.h>
@@ -30,6 +34,8 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QMenu>
+#include <QMessageBox>
 
 namespace AzToolsFramework
 {
@@ -65,10 +71,11 @@ namespace AzToolsFramework
             if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
             {
                 serializeContext->Class<EditorLayer>()
-                    ->Version(2)
+                    ->Version(3)
                     ->Field("layerEntities", &EditorLayer::m_layerEntities)
                     ->Field("sliceAssetsToSliceInstances", &EditorLayer::m_sliceAssetsToSliceInstances)
                     ->Field("m_layerProperties", &EditorLayer::m_layerProperties)
+                    ->Field("m_layerEntityId", &EditorLayer::m_layerEntityId)
                     ;
             }
         }
@@ -444,6 +451,7 @@ namespace AzToolsFramework
             AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
             // Move the editable data into the data serialized to the layer, and not the layer component.
             layer.m_layerProperties = m_editableLayerProperties;
+            layer.m_layerEntityId = GetEntityId();
             m_cachedLayerProperties = m_editableLayerProperties;
             // When serialization begins, clear out the editor data so it doesn't serialize to the level.
             m_editableLayerProperties.Clear();
@@ -771,7 +779,7 @@ namespace AzToolsFramework
                 }
                 // Layers use their parents as a namespace to minimize collisions,
                 // so a child layer's name is "ParentName.LayerName".
-                layerName = ancestorLayerNameResult.GetValue() + "." + layerName;
+                layerName = AZStd::string::format("%s%s%s", ancestorLayerNameResult.GetValue().c_str(), GetLayerSeparator().c_str(), layerName.c_str());
             }
             return AZ::Success(layerName);
         }
@@ -817,7 +825,8 @@ namespace AzToolsFramework
                 return layerBaseNameResult;
             }
 
-            AZStd::string layerFullFileName = layerBaseNameResult.GetValue() + +"." + GetLayerExtension().toStdString().c_str();
+            AZStd::string layerFullFileName(
+                AZStd::string::format("%s%s",layerBaseNameResult.GetValue().c_str(),GetLayerExtensionWithDot().c_str()));
             return AZ::Success(layerFullFileName);
         }
 
@@ -906,12 +915,12 @@ namespace AzToolsFramework
                 return cleanupFailureResult;
             }
             AZ::IO::Result removeResult = fileIO->Remove(tempFile.toUtf8().data());
-            if (!removeResult)
-            {
-                return cleanupFailureResult;
-            }
+if (!removeResult)
+{
+    return cleanupFailureResult;
+}
 
-            return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
+return CleanupTempFolder(layerTempFolder, &cleanupFailureResult);
         }
 
         LayerResult EditorLayerComponent::CleanupTempFolder(const QDir& layerTempFolder, const LayerResult* currentFailure)
@@ -983,12 +992,401 @@ namespace AzToolsFramework
                 layer.m_layerEntities.push_back(childEntityIdToPtr->second);
 
                 AzToolsFramework::Components::TransformComponent* childTransform =
-                    childEntityIdToPtr->second->FindComponent<AzToolsFramework::Components::TransformComponent>();
+                childEntityIdToPtr->second->FindComponent<AzToolsFramework::Components::TransformComponent>();
                 if (childTransform)
                 {
                     GatherAllNonLayerNonSliceDescendants(entityList, layer, entityIdsToEntityPtrs, *childTransform);
                 }
             }
+        }
+
+        void EditorLayerComponent::CreateLayerAssetContextMenu(QMenu* menu, const AZStd::string& fullFilePath, QString levelPath)
+        {
+            if (!menu)
+            {
+                return;
+            }
+
+            // Make sure tooltips are enabled, so additional information can be shown.
+            menu->setToolTipsVisible(true);
+
+            // Errors are handled and prevented in two ways:
+            //  If the error is simple and doesn't need any user feedback, then create the menu option, but greyed out.
+            //  If there is need for user feedback, then create the menu option and show an error after it's selected.
+            //      If the missing layer requires another missing layer to be recovered first, then an error message
+            //          is useful because there's an action that can be taken to resolve, which is to recover the other layer first.
+
+            // Slash directions might not match, so use QDir to fix that.
+            QDir filePathFixedSlashes(fullFilePath.c_str());
+            QDir levelPathFixedSlashes(levelPath);
+
+            QAction* layerRecoveryAction = menu->addAction(QObject::tr("Recover layer"), [fullFilePath]()
+            {
+                RecoverLayer(fullFilePath);
+            });
+            // Start with the basic tooltip. Any reasons this can't be recovered will update the tooltip.
+            layerRecoveryAction->setToolTip(QObject::tr("Recover a layer created in this level"));
+
+            bool isLayerRecoveryAvailable = true;
+            // To minimize issues with entity ID collision, prevent importing layers from outside this level.
+            if (!filePathFixedSlashes.absolutePath().startsWith(levelPathFixedSlashes.absolutePath()))
+            {
+                isLayerRecoveryAvailable = false;
+                layerRecoveryAction->setToolTip(QObject::tr("Layers from different levels cannot be recovered"));
+            }
+
+            AZStd::string fileNameNoExtension;
+            AzFramework::StringFunc::Path::GetFileName(fullFilePath.c_str(), fileNameNoExtension);
+
+            EntityIdSet layerEntities;
+            AzToolsFramework::Layers::EditorLayerInfoRequestsBus::Broadcast(
+                &AzToolsFramework::Layers::EditorLayerInfoRequestsBus::Events::GatherLayerEntitiesWithName,
+                fileNameNoExtension,
+                layerEntities);
+
+            // If this layer is already in the scene and loaded, then it can't be recovered.
+            if (!layerEntities.empty())
+            {
+                isLayerRecoveryAvailable = false;
+                layerRecoveryAction->setToolTip(QObject::tr("Layer already exists in this level"));
+            }
+
+            layerRecoveryAction->setEnabled(isLayerRecoveryAvailable);
+        }
+
+        bool EditorLayerComponent::CanAttemptToRecoverLayerAndGetLayerInfo(
+            const AZStd::string& fullFilePath,
+            AZStd::string& newLayerName,
+            AZ::EntityId& layerParentId)
+        {
+            AZStd::string fileNameNoExtension;
+            AzFramework::StringFunc::Path::GetFileName(fullFilePath.c_str(), fileNameNoExtension);
+
+            // Sanitize the separator, because there's a good chance it is a special character, like '.'.
+            AZStd::regex specialCharacters{ R"([-[\]{}()*+?.,\^$|#\s])" };
+            AZStd::string layerAncestorSeparatorSanitized(AZStd::regex_replace(GetLayerSeparator(), specialCharacters, AZStd::string(R"(\$&)")));
+
+            AZStd::regex ancestorRegex(AZStd::string::format("(.*)%s(.*)$", layerAncestorSeparatorSanitized.c_str()));
+            AZStd::string layerAncestor(AZStd::regex_replace(fileNameNoExtension, ancestorRegex, "$1"));
+
+            // If this layer has ancestry, check if it's available in the scene.
+            if (layerAncestor.compare(fileNameNoExtension) != 0)
+            {
+                // Check if the layer has a parent, and if that parent is available.
+                EntityIdSet layerEntities;
+                AzToolsFramework::Layers::EditorLayerInfoRequestsBus::Broadcast(
+                    &AzToolsFramework::Layers::EditorLayerInfoRequestsBus::Events::GatherLayerEntitiesWithName,
+                    layerAncestor,
+                    layerEntities);
+                if (layerEntities.size() > 1)
+                {
+                    AZ_Error(
+                        "LayerRecovery",
+                        false,
+                        "Unable to recover the layer. There is more than one layer with the name %s in the scene. Rename these layers and try again.",
+                        layerAncestor.c_str());
+                    return false;
+                }
+                newLayerName = AZStd::regex_replace(fileNameNoExtension, ancestorRegex, "$2");
+                if (layerEntities.empty())
+                {
+                    QWidget* mainWindow = nullptr;
+                    AzToolsFramework::EditorRequestBus::BroadcastResult(
+                        mainWindow,
+                        &AzToolsFramework::EditorRequestBus::Events::GetMainWindow);
+                    QMessageBox rebuildAncestryMessageBox(mainWindow);
+                    rebuildAncestryMessageBox.setWindowTitle(QObject::tr("Missing layer hierarchy"));
+                    rebuildAncestryMessageBox.setText(QObject::tr("The recovered layer's hierarchy doesn't exist in the scene."));
+                    rebuildAncestryMessageBox.setInformativeText(QObject::tr("A parent layer named %0 will be created if you recover this layer.").arg(layerAncestor.c_str()));
+                    rebuildAncestryMessageBox.setIcon(QMessageBox::Warning);
+                    rebuildAncestryMessageBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+                    rebuildAncestryMessageBox.setDefaultButton(QMessageBox::Cancel);
+                    int rebuildAncestryMessageBoxResult = rebuildAncestryMessageBox.exec();
+                    switch (rebuildAncestryMessageBoxResult)
+                    {
+                    case QMessageBox::Ok:
+                        layerParentId = CreateMissingLayerAncestors(layerAncestor);
+                        break;
+                    case QMessageBox::Cancel:
+                        // The user chose to cancel this operation.
+                        return false;
+                    }
+                }
+                else
+                {
+                    layerParentId = *layerEntities.begin();
+                }
+            }
+            // There is no ancestry, so the parent ID is invalid and the entity name is just the file name.
+            else
+            {
+                newLayerName = fileNameNoExtension;
+                layerParentId = AZ::EntityId();
+            }
+            return true;
+        }
+
+        AZ::EntityId EditorLayerComponent::CreateMissingLayerAncestors(const AZStd::string& nearestLayerAcenstorName)
+        {
+            // The standard default color for layers is defined in a Qt JSON file that can't be accessed from here.
+            AZ::Color missingLayerColor(0.5f, 0.5f, 0.5f, 1.0f);
+            // Create a single layer matching the passed in ancestory.
+            AZ::Entity* newEntity = CreateLayerEntity(nearestLayerAcenstorName, missingLayerColor);
+            return newEntity->GetId();
+        }
+
+        LayerResult EditorLayerComponent::UpdateListOfDiscoveredEntityIds(AZStd::unordered_set<AZ::EntityId> &discoveredEntityIds, const AZ::EntityId& newEntity)
+        {
+            if (discoveredEntityIds.find(newEntity) != discoveredEntityIds.end())
+            {
+                return LayerResult(
+                    LayerResultStatus::Error,
+                    QObject::tr("This layer contains entity IDs that already exist. This layer can't be recovered."));
+            }
+            discoveredEntityIds.insert(newEntity);
+            return LayerResult::CreateSuccess();
+        }
+
+        LayerResult EditorLayerComponent::IsLayerDataSafeToRecover(const AZStd::shared_ptr<Layers::EditorLayer> loadedLayer, AZ::SliceComponent& rootSlice)
+        {
+            if (loadedLayer.get() == nullptr)
+            {
+                return LayerResult(LayerResultStatus::Error, "Cannot recover a null layer.");
+            }
+
+            if (!loadedLayer->m_layerEntityId.IsValid())
+            {
+                // Layers missing the layer entity ID never shipped externally.
+                // Internal teams will be given the release note that they have to re-save layers
+                // from before this update to be able to recover them.
+                return LayerResult(LayerResultStatus::Error, "This layer lacks necessary recovery information and may have been created before the recover layer feature was available. This layer cannot be recovered.");
+            }
+
+            // Track all entity IDs that have been found so far.
+            AZStd::unordered_set<AZ::EntityId> usedEntityIds;
+
+            // Make sure the incoming layer doesn't have any duplicate entity IDs.
+            for (AZ::Entity* loadedEntity : loadedLayer->m_layerEntities)
+            {
+                LayerResult discoveryUpdateResult = UpdateListOfDiscoveredEntityIds(usedEntityIds, loadedEntity->GetId());
+                if(!discoveryUpdateResult.IsSuccess())
+                {
+                    return discoveryUpdateResult;
+                }
+            }
+
+            EntityList editorEntities;
+            rootSlice.GetEntities(editorEntities);
+
+            // Make sure the layer itself is not in the scene.
+            LayerResult layerDiscoveryResult = UpdateListOfDiscoveredEntityIds(usedEntityIds, loadedLayer->m_layerEntityId);
+            if (!layerDiscoveryResult.IsSuccess())
+            {
+                return layerDiscoveryResult;
+            }
+
+
+            // Make sure the layer doesn't have entity IDs that conflict with other entity IDs in the scene.
+            for (AZ::Entity* editorEntity : editorEntities)
+            {
+                LayerResult discoveryUpdateResult = UpdateListOfDiscoveredEntityIds(usedEntityIds, editorEntity->GetId());
+                if (!discoveryUpdateResult.IsSuccess())
+                {
+                    return discoveryUpdateResult;
+                }
+            }
+
+            for (const auto& assetToSliceInstanceIter :
+                loadedLayer->m_sliceAssetsToSliceInstances)
+            {
+                if (assetToSliceInstanceIter.first.IsError())
+                {
+                    return LayerResult(LayerResultStatus::Error, "This layer contains a reference to a slice that can't be loaded. This layer can't be recovered.");
+                }
+
+                for (const auto& sliceInstance : assetToSliceInstanceIter.second)
+                {
+                    if (sliceInstance == nullptr)
+                    {
+                        return LayerResult(LayerResultStatus::Error, "This layer contains a slice that can't be loaded. This layer can't be recovered.");
+                    }
+                    for (const auto& sliceIdToInstanceId : sliceInstance->GetEntityIdMap())
+                    {
+                        // Check if the instance's entity ID was already in the scene.
+                        LayerResult discoveryUpdateResult = UpdateListOfDiscoveredEntityIds(usedEntityIds, sliceIdToInstanceId.second);
+                        if (!discoveryUpdateResult.IsSuccess())
+                        {
+                            return discoveryUpdateResult;
+                        }
+                    }
+                }
+            }
+
+            return LayerResult::CreateSuccess();
+        }
+
+        AZ::Entity* EditorLayerComponent::CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const AZ::EntityId& optionalEntityId)
+        {
+            AzToolsFramework::ScopedUndoBatch undo("New Layer");
+            AZ::Entity* newEntity = nullptr;
+            if (optionalEntityId.IsValid())
+            {
+                AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+                    newEntity,
+                    &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntityWithId,
+                    name.c_str(),
+                    optionalEntityId);
+            }
+            else
+            {
+                AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+                    newEntity,
+                    &AzToolsFramework::EditorEntityContextRequestBus::Events::CreateEditorEntity,
+                    name.c_str());
+            }
+
+            if (!newEntity)
+            {
+                AZ_Error("Editor", false, "Unable to create a layer entity.");
+                return nullptr;
+            }
+
+            // Layers are not visible in the 3D viewport, turn them off.
+            // The outliner won't allow anyone to turn them back on.
+            AzToolsFramework::EditorVisibilityRequestBus::Event(
+                newEntity->GetId(),
+                &AzToolsFramework::EditorVisibilityRequests::SetVisibilityFlag,
+                false);
+
+            AzToolsFramework::EditorMetricsEventsBus::Broadcast(
+                &AzToolsFramework::EditorMetricsEventsBus::Events::EntityCreated,
+                newEntity->GetId());
+            AzToolsFramework::EntityIdList selection = { newEntity->GetId() };
+            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+                &AzToolsFramework::ToolsApplicationRequests::Bus::Events::SetSelectedEntities,
+                selection);
+
+            AzToolsFramework::Layers::EditorLayerComponent* newLayer = aznew AzToolsFramework::Layers::EditorLayerComponent();
+
+            newLayer->SetLayerColor(layerColor);
+
+            AZStd::vector<AZ::Component*> newComponents;
+            newComponents.push_back(newLayer);
+
+            AzToolsFramework::Layers::EditorLayerCreationBus::Broadcast(
+                &AzToolsFramework::Layers::EditorLayerCreationBus::Events::OnNewLayerEntity,
+                *newEntity,
+                newComponents);
+
+            AzToolsFramework::EntityCompositionRequestBus::Broadcast(
+                &AzToolsFramework::EntityCompositionRequests::AddExistingComponentsToEntity,
+                newEntity,
+                newComponents);
+
+            return newEntity;
+        }
+
+        void EditorLayerComponent::RecoverLayer(const AZStd::string& fullFilePath)
+        {
+            // Recovering a layer takes these steps:
+            // 1: Perform error checking that can occur before loading.
+            //      Layers with missing parents need to present the user with a choice to re-generate
+            //          the hierarchy, or cancel the operation so they can resolve it a different way.
+            // 2: Load the layer off disk into a LayerComponent.
+            // 3: Validate that it's safe to add the entities and slice instances to the level.
+            //      Unexpected issues can occur if multiple entities exist with the same entity ID.
+            //          These issues range from crashing, to memory leaks, to actions performing on the wrong entity.
+            // 4: If it's safe, then add that layer to the scene. If it's not safe, erase it all and show an error.
+
+            AZStd::string newLayerName;
+            AZ::EntityId layerParentId;
+            if (!CanAttemptToRecoverLayerAndGetLayerInfo(fullFilePath, newLayerName, layerParentId))
+            {
+                return;
+            }
+
+            AZStd::shared_ptr<EditorLayer> recoveredLayer(AZ::Utils::LoadObjectFromFile<EditorLayer>(fullFilePath.c_str()));
+            if (!recoveredLayer)
+            {
+                AZ_Error(
+                    "LayerRecovery",
+                    false,
+                    "The layer file at path %s could not be loaded to be recovered.",
+                    fullFilePath.c_str());
+                return;
+            }
+
+            LayerResult result = RecoverEditorLayer(recoveredLayer, newLayerName, layerParentId);
+            result.MessageResult();
+        }
+
+        LayerResult EditorLayerComponent::RecoverEditorLayer(
+            const AZStd::shared_ptr<Layers::EditorLayer> editorLayer,
+            const AZStd::string& newLayerName,
+            const AZ::EntityId& layerParentId)
+        {
+            if (editorLayer.get() == nullptr)
+            {
+                return LayerResult(LayerResultStatus::Error, "Cannot recover a null layer.");
+            }
+            AZ::SliceComponent* rootSlice = nullptr;
+            AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+                rootSlice,
+                &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+            if (!rootSlice)
+            {
+                return LayerResult(LayerResultStatus::Error, "The root slice is unavailable. This layer can't be recovered. Check your editor status and try again.");
+            }
+
+            // IsLayerDataSafeToRecover reports any errors it encounters.
+            LayerResult isSafeToRecoverResult = IsLayerDataSafeToRecover(editorLayer, *rootSlice);
+            if (!isSafeToRecoverResult.IsSuccess())
+            {
+                return isSafeToRecoverResult;
+            }
+
+            AzToolsFramework::ScopedUndoBatch undo("RecoverLayer");
+            AZ::Entity* newLayerEntity = CreateLayerEntity(newLayerName, editorLayer->m_layerProperties.m_color, editorLayer->m_layerEntityId);
+
+            if (newLayerEntity == nullptr)
+            {
+                return LayerResult(LayerResultStatus::Error, "Lumberyard was unable to create a layer entity.");
+            }
+
+            // If this new layer has a parent, then set its parent.
+            if (layerParentId.IsValid())
+            {
+                AZ::TransformBus::Event(
+                    newLayerEntity->GetId(),
+                    &AZ::TransformBus::Events::SetParent,
+                    layerParentId);
+            }
+
+            // Gather the slice instances on this layer so they can be added to the root slice.
+            AZ::SliceComponent::SliceAssetToSliceInstancePtrs sliceInstancesToAddToScene;
+            for (auto& assetToSliceInstanceIter :
+                editorLayer->m_sliceAssetsToSliceInstances)
+            {
+                sliceInstancesToAddToScene[assetToSliceInstanceIter.first].insert(
+                    assetToSliceInstanceIter.second.begin(),
+                    assetToSliceInstanceIter.second.end());
+            }
+
+            AzToolsFramework::EditorEntityContextRequestBus::Broadcast(
+                &AzToolsFramework::EditorEntityContextRequestBus::Events::AddEditorEntities,
+                editorLayer->m_layerEntities);
+
+            AZStd::unordered_set<const AZ::SliceComponent::SliceInstance*> instances;
+            rootSlice->AddSliceInstances(sliceInstancesToAddToScene, instances);
+
+            for (auto& sliceInstanceIter : instances)
+            {
+                EditorEntityContextRequestBus::Broadcast(
+                    &EditorEntityContextRequests::AddEditorSliceEntities,
+                    sliceInstanceIter->GetInstantiated()->m_entities);
+            }
+
+            return LayerResult::CreateSuccess();
         }
     }
 }

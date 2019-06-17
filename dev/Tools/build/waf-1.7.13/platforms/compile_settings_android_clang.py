@@ -8,21 +8,18 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+
 import os
-
-from compile_settings_android import load_android_toolchains, load_android_tools
-
 from waflib.Configure import conf
+from lumberyard import deprecated
 
 
-################################################################
-################################################################
+@conf
 def load_android_clang_toolchains(ctx, architecture, host_platform):
     env = ctx.env
     ndk_root = env['ANDROID_NDK_HOME']
     ndk_rev = env['ANDROID_NDK_REV_MAJOR']
-
-    is_ndk_19_plus = (ndk_rev >= 19)
+    is_ndk_19_plus = env['ANDROID_IS_NDK_19_PLUS']
 
     if architecture == 'armv7':
         target_abi = ctx.get_android_armv7_clang_target_abi()
@@ -80,7 +77,7 @@ def load_android_clang_toolchains(ctx, architecture, host_platform):
                 os.path.join(gcc_toolchain_root, 'bin')
             ]
 
-    if not (load_android_toolchains(ctx, ndk_toolchain_search_paths, **ndk_toolchains) and load_android_tools(ctx)):
+    if not (ctx.load_android_toolchains(ndk_toolchain_search_paths, **ndk_toolchains) and ctx.load_android_tools()):
         ctx.fatal('[ERROR] android_{}_clang setup failed'.format(architecture))
 
     env['CFLAGS'] += common_flags[:]
@@ -88,8 +85,6 @@ def load_android_clang_toolchains(ctx, architecture, host_platform):
     env['LINKFLAGS'] += common_flags[:]
 
 
-################################################################
-################################################################
 @conf
 def load_android_clang_common_settings(conf):
     """
@@ -99,24 +94,12 @@ def load_android_clang_common_settings(conf):
 
     env = conf.env
     ndk_root = env['ANDROID_NDK_HOME']
-    ndk_rev = env['ANDROID_NDK_REV_MAJOR']
+    is_ndk_19_plus = env['ANDROID_IS_NDK_19_PLUS']
 
-    is_ndk_19_plus = (ndk_rev >= 19)
+    common_flags = []
+    cxx_flags = []
 
-    common_flags = [
-        '-femulated-tls',       # All accesses to TLS variables are converted to calls to __emutls_get_address in the runtime library
-    ]
-    cxx_flags = [
-        '-fms-extensions',      # Allow MSVC language extensions
-    ]
-
-    if is_ndk_19_plus:
-        libcpp = ['-stdlib=libc++']
-
-        cxx_flags += libcpp[:]
-        env['LINKFLAGS'] += libcpp[:]
-
-    else:
+    if not is_ndk_19_plus:
         stl_root = os.path.join(ndk_root, 'sources', 'cxx-stl', 'llvm-libc++')
 
         env['INCLUDES'] += [
@@ -137,7 +120,6 @@ def load_android_clang_common_settings(conf):
             conf.add_to_android_cache(os.path.join(stl_root, 'libs', env['ANDROID_ARCH'], 'libc++_shared.so'))
         ]
 
-
     env['CFLAGS'] += common_flags[:]
     env['CXXFLAGS'] += common_flags[:] + cxx_flags[:]
 
@@ -151,40 +133,3 @@ def load_android_clang_common_settings(conf):
     # disable support for the following build options
     env['COMPILER_FLAGS_DisableOptimization'] = [ ]
     env['COMPILER_FLAGS_DebugSymbols'] = [ ]
-
-
-@conf
-def load_debug_android_clang_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all android clang configurations
-    for the "debug" configuration
-    """
-    conf.load_android_clang_common_settings()
-
-
-@conf
-def load_profile_android_clang_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all android clang configurations
-    for the "profile" configuration
-    """
-    conf.load_android_clang_common_settings()
-
-
-@conf
-def load_performance_android_clang_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all android clang configurations
-    for the "performance" configuration
-    """
-    conf.load_android_clang_common_settings()
-
-
-@conf
-def load_release_android_clang_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all android clang configurations
-    for the "release" configuration
-    """
-    conf.load_android_clang_common_settings()
-

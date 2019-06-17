@@ -175,6 +175,11 @@ namespace GraphCanvas
 
         // TODO collapsed and highlighted
 
+        for (auto& mapPair : m_dynamicSelectors)
+        {
+            selectors.emplace_back(mapPair.second);
+        }
+
         return selectors;
     }
 
@@ -188,7 +193,7 @@ namespace GraphCanvas
         }
         else
         {
-            // Temporary disabling, since with the block comments, we can add the same selector twice(no reasonable way of resolving this)
+            // Temporary disabling, since with the Node Group, we can add the same selector twice(no reasonable way of resolving this)
             //
             // Will need to port some code to deal with a voting type system of what selectors to add on here rather then just assuming a one on
             // one off system.
@@ -231,7 +236,7 @@ namespace GraphCanvas
         StyleNotificationBus::Event(GetEntityId(), &StyleNotificationBus::Events::OnStyleChanged);
     }
 
-    void StylingComponent::OnSceneCleared(const AZ::EntityId& scene)
+    void StylingComponent::OnRemovedFromScene(const AZ::EntityId& scene)
     {
         SceneNotificationBus::Handler::BusDisconnect();
     }

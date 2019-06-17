@@ -13,22 +13,27 @@ from __future__ import print_function
 import json
 import boto3
 import CloudCanvas
+import os
 from cgf_utils import custom_resource_utils
 from botocore.exceptions import ClientError
+import fleet_status
+import datetime
+
+from botocore.client import Config
 
 FLEET_CONFIGURATION_KEY = 'fleet_configuration.json'
 SUCCEED_STATUS = 'SUCCEED'
 
 INSTANCE_STARTUP_SCRIPT = """<script>
-start cmd /c C:\Python36\python.exe C:\CloudCanvasHarness\main.py --domain %(domain)s --task-list %(task_list)s --div-task %(div_task)s --merge-task %(merge_task)s --build-task %(build_task)s --config-bucket %(s3)s --log-db %(log_db)s --stdout C:\worker.log
-start cmd /c C:\Python36\python.exe C:\CloudCanvasHarness\main.py --domain %(domain)s --task-list %(task_list)s --div-task %(div_task)s --merge-task %(merge_task)s --build-task %(build_task)s --config-bucket %(s3)s --log-db %(log_db)s -rd --stdout C:\decider.log
+start cmd /c C:\Python36\python.exe C:\CloudCanvasHarness\main.py --domain %(domain)s --task-list %(task_list)s --div-task %(div_task)s --merge-task %(merge_task)s --build-task %(build_task)s --config-bucket %(s3)s --log-db %(log_db)s --region %(region)s --stdout cloudwatch
+start cmd /c C:\Python36\python.exe C:\CloudCanvasHarness\main.py --domain %(domain)s --task-list %(task_list)s --div-task %(div_task)s --merge-task %(merge_task)s --build-task %(build_task)s --config-bucket %(s3)s --log-db %(log_db)s --region %(region)s -rd --stdout cloudwatch
 </script>
 <persist>true</persist>
 """
 
 
 def post_fleet_config(config):
-    bucket = boto3.resource('s3').Bucket(CloudCanvas.get_setting("computefarm"))
+    bucket = boto3.resource('s3', config=Config(signature_version='s3v4')).Bucket(CloudCanvas.get_setting("computefarm"))
 
     try:
         bucket.put_object(Body=json.dumps(config), Key=FLEET_CONFIGURATION_KEY)
@@ -38,13 +43,14 @@ def post_fleet_config(config):
     return SUCCEED_STATUS
 
 def get_fleet_config():
-    client = boto3.client('s3')
+    client = boto3.client('s3', config=Config(signature_version='s3v4'))
 
     try:       
         response = client.get_object(Bucket=CloudCanvas.get_setting("computefarm"), Key=FLEET_CONFIGURATION_KEY)
         body = json.loads(response["Body"].read())
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDenied':
+            print('Error retrieving Fleet Configuration: {}'.format(e))
             return {}
     
     if 'instanceNum' in body:
@@ -80,7 +86,8 @@ def create_launch_configuration(config):
         'build_task': CloudCanvas.get_setting('BuildTask'),
         'merge_task': CloudCanvas.get_setting('MergeTask'),
         'log_db': custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('LogDB')),
-        's3': CloudCanvas.get_setting('S3Bucket')
+        's3': CloudCanvas.get_setting('S3Bucket'),
+        'region': os.environ['AWS_DEFAULT_REGION']
     }
 
     try:
@@ -106,7 +113,8 @@ def create_launch_configuration(config):
     return SUCCEED_STATUS
 
 def create_or_update_autoscaling_group(config):
-    create_autoscaling_group = False if get_fleet_config() else True
+    cur_config = get_fleet_config()
+    create_autoscaling_group = False if cur_config else True
 
     try:
         if create_autoscaling_group:
@@ -117,6 +125,7 @@ def create_or_update_autoscaling_group(config):
                 MaxSize = config['maxSize'],
                 VPCZoneIdentifier = ",".join([CloudCanvas.get_setting("EC2Subnet" + x) for x in ("A", "B", "C")])
                 )
+            config['updateTime'] = '{}'.format(datetime.datetime.now(fleet_status.utcinfo()))
         else:
             __get_autoscaling_client().update_auto_scaling_group(
                 AutoScalingGroupName = config['autoScalingGroupName'],
@@ -125,9 +134,12 @@ def create_or_update_autoscaling_group(config):
                 MaxSize = config['maxSize'],
                 VPCZoneIdentifier = ",".join([CloudCanvas.get_setting("EC2Subnet" + x) for x in ("A", "B", "C")])
                 )
+            if config['minSize'] != cur_config.get('instanceNum'):
+                config['updateTime'] = '{}'.format(datetime.datetime.now(fleet_status.utcinfo()))
     except ClientError as e:
         return e.response['Error']['Code']
 
+    post_fleet_config(config)
     return SUCCEED_STATUS
 
 def delete_autoscaling_group(name):
@@ -137,7 +149,7 @@ def delete_autoscaling_group(name):
             ForceDelete=True
             )
 
-        client = boto3.client('s3')
+        client = boto3.client('s3', config=Config(signature_version='s3v4'))
         client.delete_object(Bucket=CloudCanvas.get_setting("computefarm"), Key=FLEET_CONFIGURATION_KEY)
     except ClientError as e:
         return e.response['Error']['Code']

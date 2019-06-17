@@ -51,19 +51,19 @@ def validate_request_data(score_data, cognito_id):
         print("Provided score ({}) is invalid for stat ({})".format(score_data["value"], score_data["stat"]))
         raise errors.ClientError("Invalid score")
 
-    if not identity_validator.validate_user(score_data["user"], cognito_id):
+    if cognito_id and not identity_validator.validate_user(score_data["user"], cognito_id):
         print("The user {} provided incorrect cognito ID {}".format(score_data["user"], cognito_id))
         raise errors.ClientError("This client is not authorized to submit scores for user {}".format(score_data["user"]))
 
-    if not leaderboard_utils.is_user_valid(score_data["user"]):
+    if cognito_id and not leaderboard_utils.is_user_valid(score_data["user"]):
         print("The user ({}) is invalid for stat ({})".format(score_data["user"], score_data["stat"]))
         raise errors.ClientError("Invalid user")
 
 
 
-def update_table_entry(key, submission, existing_data, table):    
+def update_table_entry(key, submission, existing_data, table):
     final_entry = leaderboard_utils.resolve_update(submission, existing_data)
-    try:        
+    try:
         table.put_item(Item=final_entry)
         # cut down to just the one you are
         return {
@@ -138,10 +138,10 @@ def delete_score(user, stat):
 
 
 
-def submit_score(score_data, cognito_id):
+def submit_score(score_data, cognito_id = None):
     validate_request_data(score_data, cognito_id)
-    # make sure that the score is a decimal, not a float and round the decimal as DynamoDb doesn't support double decimals        
-    score_data["value"] = Decimal(Decimal(score_data["value"]).quantize(Decimal('.000000'), rounding=ROUND_HALF_UP))        
+    # make sure that the score is a decimal, not a float and round the decimal as DynamoDb doesn't support double decimals
+    score_data["value"] = Decimal(Decimal(score_data["value"]).quantize(Decimal('.000000'), rounding=ROUND_HALF_UP))
     # read current data of the table
     table_key = {
         "user" : score_data["user"]

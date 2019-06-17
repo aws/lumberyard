@@ -2,16 +2,17 @@ import json
 import util
 import botocore.exceptions
 
-from importer_class import ResourceImporter 
-from importer_class import DynamoDBImporter 
-from importer_class import S3Importer 
+from importer_class import ResourceImporter
+from importer_class import DynamoDBImporter
+from importer_class import S3Importer
 from importer_class import LambdaImporter
 from importer_class import SQSImporter
 from importer_class import SNSImporter
 
 from errors import HandledError
 from botocore.exceptions import EndpointConnectionError
-       
+from botocore.exceptions import ClientError
+
 def importer_generator(type, region, context):
     try:
         if type == 'dynamodb':
@@ -26,8 +27,9 @@ def importer_generator(type, region, context):
             resource_importer = SNSImporter(region, context)
         else:
             raise HandledError('Type {} is not supported.'.format(type))
-    except EndpointConnectionError as e:
+    except (EndpointConnectionError, ClientError) as e:
         raise HandledError(e.message)
+
     return resource_importer
 
 def import_resource(context,args):

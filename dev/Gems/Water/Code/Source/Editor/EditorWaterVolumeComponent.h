@@ -41,7 +41,7 @@ namespace Water
 
         static void Reflect(AZ::ReflectContext* context);
 
-        void DrawWaterVolume(AzFramework::EntityDebugDisplayRequests* dc);
+        void DrawWaterVolume(AzFramework::DebugDisplayRequests& debugDisplay);
 
         //Overriding WaterVolumeCommon to connect/disconnect to editor specific bus
         void Activate() override;
@@ -79,7 +79,7 @@ namespace Water
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires);
         static void Reflect(AZ::ReflectContext* context);
-        
+
         ~EditorWaterVolumeComponent() = default;
 
         // EditorComponentBase
@@ -90,8 +90,10 @@ namespace Water
         void BuildGameEntity(AZ::Entity* gameEntity);
 
         // EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
-        
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
+
     private:
         //Reflected members
         EditorWaterVolumeCommon m_common;

@@ -61,11 +61,11 @@ namespace EMotionFX
     AnimGraphReferenceNode::~AnimGraphReferenceNode()
     {
         // This node listens to changes in AnimGraph and MotionSet assets. We need to remove this node before disconnecting the asset bus to avoid the disconnect 
-		// removing the MotionSet which can in turn access this node that is being deleted.
+        // removing the MotionSet which can in turn access this node that is being deleted.
         if (mAnimGraph)
         {
             mAnimGraph->RemoveObject(this);
-			mAnimGraph = nullptr;
+            mAnimGraph = nullptr;
         }
         AZ::Data::AssetBus::MultiHandler::BusDisconnect();
     }
@@ -138,7 +138,7 @@ namespace EMotionFX
             m_motionSetAsset = asset;
 
             // TODO: remove once "owned by runtime"/ "SetIsOwnedByRuntime" is gone
-            // For now we will be assuming the assigned motion set is an asset already and is not directly editable in the editor.
+            // The motion set asset held by reference node should not be editable in editor.
             asset.GetAs<Integration::MotionSetAsset>()->m_emfxMotionSet->SetIsOwnedByRuntime(true);
 
             OnMotionSetAssetReady();
@@ -162,7 +162,8 @@ namespace EMotionFX
             m_motionSetAsset = asset;
 
             // TODO: remove once "owned by runtime" is gone
-            asset.GetAs<Integration::MotionSetAsset>()->m_emfxMotionSet->SetIsOwnedByRuntime(false);
+            // The motion set asset held by reference node should not be editable in editor.
+            asset.GetAs<Integration::MotionSetAsset>()->m_emfxMotionSet->SetIsOwnedByRuntime(true);
 
             OnMotionSetAssetReady();
         }

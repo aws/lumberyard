@@ -12,6 +12,8 @@
 #pragma once
 
 #include <AzCore/JSON/document.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/string/string.h>
 
 namespace CloudCanvas
 {

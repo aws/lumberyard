@@ -81,10 +81,14 @@ namespace GraphCanvas
         // GeometryRequestBus
         AZ::Vector2 GetPosition() const override;
         void SetPosition(const AZ::Vector2& position) override;
+
+        void SignalBoundsChanged() override;
         ////
 
         // VisualNotificationBus
         void OnItemChange(const AZ::EntityId& entityId, QGraphicsItem::GraphicsItemChange, const QVariant&) override;
+        void OnPositionAnimateBegin(const AZ::Vector2& targetPoint) override;
+        void OnPositionAnimateEnd() override;
         ////
 
         // EntitySaveDataRequestBus
@@ -96,5 +100,8 @@ namespace GraphCanvas
 
         GeometryComponentSaveData m_saveData;
         AZ::Vector2 m_oldPosition;
+
+        bool m_animating;
+        AZ::Vector2 m_animatingPosition;
     };
 }

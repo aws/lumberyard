@@ -93,9 +93,8 @@ namespace RoadsAndRivers
         {
             if (node && gEnv && gEnv->p3DEngine)
             {
-                const int configSpec = gEnv->pSystem->GetConfigSpec(true);
                 AZ::u32 rendFlags = static_cast<AZ::u32>(node->GetRndFlags());
-                const bool hidden = static_cast<AZ::u32>(configSpec) < static_cast<AZ::u32>(specs);
+                const bool hidden = !gEnv->p3DEngine->CheckMinSpec(static_cast<uint32>(specs));
                 if (hidden)
                 {
                     rendFlags |= ERF_HIDDEN;

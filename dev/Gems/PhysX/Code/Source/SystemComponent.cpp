@@ -255,6 +255,19 @@ namespace PhysX
         AZ::AllocatorInstance<PhysXAllocator>::Destroy();
     }
 
+    physx::PxAllocatorCallback* SystemComponent::GetPhysXAllocatorCallback()
+    {
+        AZ_Assert(m_physxSDKGlobals.m_physics, "Attempting to get the PhysX Allocator before the PhysX SDK has been initialized.");
+        return &(m_physxSDKGlobals.m_azAllocator);
+    }
+    
+    physx::PxErrorCallback* SystemComponent::GetPhysXErrorCallback()
+    {
+        AZ_Assert(m_physxSDKGlobals.m_physics, "Attempting to get the PhysX Error Callback before the PhysX SDK has been initialized.");
+        return &(m_physxSDKGlobals.m_azErrorCallback);
+    }
+
+
     template<typename AssetHandlerT, typename AssetT>
     void RegisterAsset(AZStd::vector<AZStd::unique_ptr<AZ::Data::AssetHandler>>& assetHandlers)
     {
@@ -270,6 +283,9 @@ namespace PhysX
         {
             return;
         }
+
+        m_materialManager.Connect();
+
 
         // Assets related work
         auto materialAsset = aznew AzFramework::GenericAssetHandler<Physics::MaterialLibraryAsset>("Physics Material", "Physics", "physmaterial");
@@ -420,6 +436,8 @@ namespace PhysX
         // Reset material manager
         m_materialManager.ReleaseAllMaterials();
 
+        m_materialManager.Disconnect();
+
         delete m_cpuDispatcher;
         m_cpuDispatcher = nullptr;
         m_assetHandlers.clear();
@@ -544,14 +562,14 @@ namespace PhysX
         return physxWorld;
     }
 
-    AZStd::shared_ptr<Physics::RigidBodyStatic> SystemComponent::CreateStaticRigidBody(const Physics::WorldBodyConfiguration& configuration)
+    AZStd::unique_ptr<Physics::RigidBodyStatic> SystemComponent::CreateStaticRigidBody(const Physics::WorldBodyConfiguration& configuration)
     {
-        return AZStd::make_shared<PhysX::RigidBodyStatic>(configuration);
+        return AZStd::make_unique<PhysX::RigidBodyStatic>(configuration);
     }
 
-    AZStd::shared_ptr<Physics::RigidBody> SystemComponent::CreateRigidBody(const Physics::RigidBodyConfiguration& configuration)
+    AZStd::unique_ptr<Physics::RigidBody> SystemComponent::CreateRigidBody(const Physics::RigidBodyConfiguration& configuration)
     {
-        return AZStd::make_shared<RigidBody>(configuration);
+        return AZStd::make_unique<RigidBody>(configuration);
     }
 
     AZStd::shared_ptr<Physics::Shape> SystemComponent::CreateShape(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& configuration)
@@ -605,7 +623,7 @@ namespace PhysX
     }
 
     AZStd::shared_ptr<Physics::Joint> SystemComponent::CreateJoint(const AZStd::shared_ptr<Physics::JointLimitConfiguration>& configuration,
-        const AZStd::shared_ptr<Physics::WorldBody>& parentBody, const AZStd::shared_ptr<Physics::WorldBody>& childBody)
+        Physics::WorldBody* parentBody, Physics::WorldBody* childBody)
     {
         return JointUtils::CreateJoint(configuration, parentBody, childBody);
     }
@@ -641,8 +659,12 @@ namespace PhysX
     {
         Configuration configuration;
         configuration.m_collisionLayers.SetName(Physics::CollisionLayer::Default, "Default");
+        configuration.m_collisionLayers.SetName(Physics::CollisionLayer::TouchBend, "TouchBend");
+
         configuration.m_collisionGroups.CreateGroup("All", Physics::CollisionGroup::All, Physics::CollisionGroups::Id(), true);
         configuration.m_collisionGroups.CreateGroup("None", Physics::CollisionGroup::None, Physics::CollisionGroups::Id::Create(), true);
+        configuration.m_collisionGroups.CreateGroup("All_NoTouchBend", Physics::CollisionGroup::All_NoTouchBend, Physics::CollisionGroups::Id::Create(), true);
+
         return configuration;
     }
 

@@ -2661,6 +2661,7 @@ void CD3D9Renderer::FX_DrawShader_InstancedHW(CShader* ef, SShaderPass* slw)
     CHWShader_D3D* pCurHS, * pCurDS;
     bool bTessEnabled = FX_SetTessellationShaders(pCurHS, pCurDS, slw);
 
+    vp->UpdatePerInstanceConstantBuffer();
     ps->UpdatePerInstanceConstantBuffer();
 
     #ifdef TESSELLATION_RENDERER
@@ -4592,7 +4593,14 @@ void CD3D9Renderer::FX_FlushShader_General()
                 rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_VOLUMETRIC_FOG];
             }
         }
-
+        rd->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_FOG_VOLUME_HIGH_QUALITY_SHADER]);
+        static ICVar* pCVarFogVolumeShadingQuality = gEnv->pConsole->GetCVar("e_FogVolumeShadingQuality");
+        if (pCVarFogVolumeShadingQuality->GetIVal() > 0)
+        {
+            rRP.m_FlagsShader_RT |= g_HWSR_MaskBit[HWSR_FOG_VOLUME_HIGH_QUALITY_SHADER];
+        }
+        
+        
         const uint64 objFlags = rRP.m_ObjFlags;
         if (objFlags & FOB_NEAREST)
         {

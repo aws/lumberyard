@@ -21,9 +21,12 @@
 #include <GraphCanvas/Editor/EditorTypes.h>
 
 #include <Editor/Include/ScriptCanvas/Bus/NodeIdPair.h>
+#include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Endpoint.h>
 
+
 #include <ScriptCanvas/Variable/VariableCore.h>
+#include <ScriptEvents/ScriptEventsAsset.h>
 
 namespace GraphCanvas
 {
@@ -73,6 +76,12 @@ namespace ScriptCanvasEditor
 
     using NodeDescriptorRequestBus = AZ::EBus<NodeDescriptorRequests>;
 
+    struct HandlerEventConfiguration
+    {
+        ScriptCanvas::EBusEventId m_eventId;
+        AZStd::string             m_eventName;
+    };
+
     class EBusHandlerNodeDescriptorRequests : public AZ::EBusTraits
     {
     public:
@@ -80,15 +89,17 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual AZStd::string GetBusName() const = 0;
+        virtual AZStd::string_view GetBusName() const = 0;
 
-        virtual GraphCanvas::WrappedNodeConfiguration GetEventConfiguration(const AZStd::string& eventName) const = 0;
-        virtual bool ContainsEvent(const AZStd::string& eventName) const = 0;
+        virtual GraphCanvas::WrappedNodeConfiguration GetEventConfiguration(const ScriptCanvas::EBusEventId& eventId) const = 0;
+        virtual bool ContainsEvent(const ScriptCanvas::EBusEventId& eventId) const = 0;
 
-        virtual AZStd::vector< AZStd::string > GetEventNames() const = 0;
+        virtual AZStd::vector< HandlerEventConfiguration > GetEventConfigurations() const = 0;
 
-        virtual AZ::EntityId FindEventNodeId(const AZStd::string& eventName) const = 0;
-        virtual GraphCanvas::Endpoint FindEventNodeEndpoint(const ScriptCanvas::SlotId& slotId) const = 0;
+        virtual AZ::EntityId FindEventNodeId(const ScriptCanvas::EBusEventId& eventName) const = 0;
+        virtual AZ::EntityId FindGraphCanvasNodeIdForSlot(const ScriptCanvas::SlotId& slotId) const = 0;
+
+        virtual GraphCanvas::Endpoint MapSlotToGraphCanvasEndpoint(const ScriptCanvas::SlotId& slotId) const = 0;
     };
 
     using EBusHandlerNodeDescriptorRequestBus = AZ::EBus<EBusHandlerNodeDescriptorRequests>;
@@ -100,8 +111,10 @@ namespace ScriptCanvasEditor
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual AZStd::string GetBusName() const = 0;
-        virtual AZStd::string GetEventName() const = 0;
+        virtual AZStd::string_view GetBusName() const = 0;
+        virtual AZStd::string_view GetEventName() const = 0;
+
+        virtual ScriptCanvas::EBusEventId GetEventId() const = 0;
     };
 
     using EBusHandlerEventNodeDescriptorRequestBus = AZ::EBus<EBusHandlerEventNodeDescriptorRequests>;
@@ -139,6 +152,7 @@ namespace ScriptCanvasEditor
         using BusIdType = AZ::EntityId;
 
         virtual AZ::u32 GetNewVariableCounter() = 0;
+        virtual void ReleaseVariableCounter(AZ::u32 variableCounter) = 0;
     };
 
     using SceneCounterRequestBus = AZ::EBus<SceneCounterRequests>;
@@ -153,6 +167,41 @@ namespace ScriptCanvasEditor
     };
 
     using ScriptCanvasWrapperNodeDescriptorRequestBus = AZ::EBus<ScriptCanvasWrapperNodeDescriptorRequests>;
+
+    class ScriptEventReceiverNodeDescriptorRequests : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = GraphCanvas::NodeId;
+
+        virtual AZ::Data::AssetId GetAssetId() const = 0;
+    };
+
+    using ScriptEventReceiverNodeDescriptorRequestBus = AZ::EBus<ScriptEventReceiverNodeDescriptorRequests>;
+
+    class ScriptEventReceiveNodeDescriptorNotifications : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = GraphCanvas::NodeId;
+
+        virtual void OnScriptEventReloaded(const AZ::Data::Asset<ScriptEvents::ScriptEventsAsset>& asset) {};
+    };
+
+    using ScriptEventReceiveNodeDescriptorNotificationBus = AZ::EBus<ScriptEventReceiveNodeDescriptorNotifications>;
+
+    class ScriptEventReceiverEventNodeDescriptorRequests : public AZ::EBusTraits
+    {
+    public:
+        //! The id here is the id of the node.
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual const ScriptEvents::Method& GetMethodDefinition() = 0;
+        virtual AZStd::string GetEventName() = 0;
+    };
+
+    using ScriptEventReceiverEventNodeDescriptorBus = AZ::EBus<ScriptEventReceiverEventNodeDescriptorRequests>;
 
     namespace Deprecated
     {

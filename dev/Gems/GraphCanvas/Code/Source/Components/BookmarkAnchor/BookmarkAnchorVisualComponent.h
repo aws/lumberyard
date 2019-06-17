@@ -49,6 +49,8 @@ namespace GraphCanvas
 
         void SetColor(const QColor& drawColor);
 
+        QPainterPath GetOutline() const;
+
         // RootGraphicsItem
         QRectF GetBoundingRect() const override;
         ////
@@ -76,11 +78,12 @@ namespace GraphCanvas
 
     private:
 
+        QPainterPath m_outline;
         QColor m_drawColor;
 
         Styling::StyleHelper m_style;
 
-        float m_animationDuration;
+        float m_animationDuration;        
     };
 
     //! Some sort of visual indicator of a bookmark, just to help focus, and allow for easier changing of bookmark locations
@@ -122,6 +125,11 @@ namespace GraphCanvas
 
         void SetSelected(bool selected) override;
         bool IsSelected() const override;
+
+        QPainterPath GetOutline() const override;
+
+        void SetZValue(int zValue) override;
+        int GetZValue() const override;
         ////
 
         // SceneMemberNotifications
@@ -139,6 +147,6 @@ namespace GraphCanvas
         const BookmarkAnchorVisualComponent& operator=(const BookmarkAnchorVisualComponent&) = delete;
         ////
 
-        AZStd::unique_ptr<BookmarkAnchorVisualGraphicsWidget>  m_graphicsWidget;
+        AZStd::unique_ptr<BookmarkAnchorVisualGraphicsWidget>  m_graphicsWidget;        
     };
 }

@@ -13,7 +13,6 @@
 
 // Description : make physical representation
 
-
 #include "StdAfx.h"
 
 #include "StatObj.h"
@@ -23,6 +22,8 @@
 #include "CGFContent.h"
 #include "ObjMan.h"
 #define SMALL_MESH_NUM_INDEX 30
+
+#include "TouchBendingCVegetationAgent.h"
 
 //////////////////////////////////////////////////////////////////////////
 void CStatObj::PhysicalizeCompiled(CNodeCGF* pNode, int bAppend)
@@ -3471,10 +3472,47 @@ void CStatObj::FreeFoliageData()
     m_chunkBoneIds.resize(0);
 }
 
+void CStatObj::InitializeSkinnedChunk()
+{
+    if (!gEnv->IsDedicated() && m_pBoneMapping && m_pRenderMesh && !m_pRenderMesh->GetChunksSkinned().size() && m_pRenderMesh->GetVerticesCount())
+    {
+        int i, j;
+        m_pRenderMesh->CreateChunksSkinned();
+
+        TRenderChunkArray& meshChunks = m_pRenderMesh->GetChunksSkinned();
+        for (i = 0; i < (int)meshChunks.size(); i++)
+        {
+            if ((meshChunks[i].m_nMatFlags & (MTL_FLAG_NOPHYSICALIZE | MTL_FLAG_NODRAW)) == MTL_FLAG_NOPHYSICALIZE)
+            {
+                meshChunks[i].m_bUsesBones = true;
+                if (meshChunks[i].pRE)
+                {
+                    meshChunks[i].pRE->mfUpdateFlags(FCEF_SKINNED);
+                }
+            }
+        }
+
+        for (i = 0; i < (int)meshChunks.size(); i++)
+        {
+            if (!meshChunks[i].m_bUsesBones)
+            {
+                for (j = meshChunks[i].nFirstVertId; j < (int)meshChunks[i].nFirstVertId + (int)meshChunks[i].nNumVerts; j++)
+                {
+                    m_pBoneMapping[j].boneIds[0] = m_pBoneMapping[j].boneIds[1] = 0;
+                }
+            }
+        }
+
+        m_pRenderMesh->SetSkinningDataVegetation(m_pBoneMapping);
+    }
+}
+
 void CStatObj::AnalyzeFoliage(IRenderMesh* pRenderMesh, CContentCGF* pCGF)
 {
     FUNCTION_PROFILER_3DENGINE;
     LOADING_TIME_PROFILE_SECTION;
+
+    AZ_Assert(pCGF, "Foliage CGF content is NULL.");
 
     if (pRenderMesh && m_nFlags & STATIC_OBJECT_DYNAMIC)
     {
@@ -3484,10 +3522,6 @@ void CStatObj::AnalyzeFoliage(IRenderMesh* pRenderMesh, CContentCGF* pCGF)
     while (pHelpersHost->m_pParentObject)
     {
         pHelpersHost = pHelpersHost->m_pParentObject;
-    }
-    if (!pHelpersHost->FindSubObject_StrStr("branch"))
-    {
-        return;
     }
 
     FreeFoliageData();
@@ -3512,14 +3546,34 @@ void CStatObj::AnalyzeFoliage(IRenderMesh* pRenderMesh, CContentCGF* pCGF)
         idmat = pgeom->pMatMapping[pgeom->surface_idx];
     }
 
-    if (pCGF && pCGF->GetFoliageInfo()->nSpines)
+    //Add LOD support for touch bending vegetation
+    //Get correct bone mapping and vertex count from skinned or legacy data format.
+    const SFoliageInfoCGF& fi = *pCGF->GetFoliageInfo();
+    const SMeshBoneMapping_uint8* pBoneMappingSrc = nullptr;
+    int vertexCount = 0;
+    bool isSkinnedCGF = pCGF->GetExportInfo()->bSkinnedCGF;
+    if (isSkinnedCGF && fi.chunkBoneIds.size() == 0)
+    {
+        AZStd::unordered_map<AZStd::string, SMeshBoneMappingInfo_uint8*>::const_iterator iter = fi.boneMappings.find(this->m_cgfNodeName.c_str());
+        if (iter != fi.boneMappings.end())
+        {
+            vertexCount = iter->second->nVertexCount;
+            pBoneMappingSrc = iter->second->pBoneMapping;
+        }
+    }
+    else
+    {
+        vertexCount = fi.nSkinnedVtx;
+        pBoneMappingSrc = fi.pBoneMapping;
+    }
+
+    if (pCGF && fi.nSpines)
     {
         if (pRenderMesh)
         {
             pRenderMesh->GenerateQTangents();
         }
 
-        const SFoliageInfoCGF& fi = *pCGF->GetFoliageInfo();
         SSpine* const pSpines = (SSpine*)CryModuleMalloc(fi.nSpines * sizeof(SSpine));
         for (int i = 0; i < fi.nSpines; ++i)
         {
@@ -3537,11 +3591,25 @@ void CStatObj::AnalyzeFoliage(IRenderMesh* pRenderMesh, CContentCGF* pCGF)
             dstSpine.iAttachSeg = srcSpine.iAttachSeg;
             dstSpine.nVtx = nVtx;
 
-            COMPILE_TIME_ASSERT(sizeof(Vec3) == sizeof(dstSpine.pVtx[0]) && sizeof(Vec3) == sizeof(srcSpine.pVtx[0]));
+#define ARE_THE_SAME(arg1, arg2, type) ((AZStd::is_same<decltype(arg1), type& >::value) && (AZStd::is_same<decltype(arg2), type& >::value))
+
+            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pVtx[0], dstSpine.pVtx[0], Vec3), "Unexpected type");
             memcpy(dstSpine.pVtx = new Vec3[nVtx], srcSpine.pVtx, sizeof(Vec3) * nVtx);
 
-            COMPILE_TIME_ASSERT(sizeof(Vec4) == sizeof(dstSpine.pSegDim[0]) && sizeof(Vec4) == sizeof(srcSpine.pSegDim[0]));
+            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pSegDim[0], dstSpine.pSegDim[0], Vec4), "Unexpected type");
             memcpy(dstSpine.pSegDim = new Vec4[nVtx], srcSpine.pSegDim, sizeof(Vec4) * nVtx);
+
+            //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pStiffness[0], dstSpine.pStiffness[0], float), "Unexpected type");
+            memcpy(dstSpine.pStiffness = new float[nVtx], srcSpine.pStiffness, sizeof(float) * nVtx);
+
+            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pDamping[0], dstSpine.pDamping[0], float), "Unexpected type");
+            memcpy(dstSpine.pDamping = new float[nVtx], srcSpine.pDamping, sizeof(float) * nVtx);
+
+            AZ_STATIC_ASSERT(ARE_THE_SAME(srcSpine.pThickness[0], dstSpine.pThickness[0], float), "Unexpected type");
+            memcpy(dstSpine.pThickness = new float[nVtx], srcSpine.pThickness, sizeof(float) * nVtx);
+
+#undef ARE_THE_SAME
 
             dstSpine.pVtxCur = new Vec3[nVtx];
         }
@@ -3553,9 +3621,10 @@ void CStatObj::AnalyzeFoliage(IRenderMesh* pRenderMesh, CContentCGF* pCGF)
         }
 
         SMeshBoneMapping_uint8* pBoneMapping;
-        memcpy(pBoneMapping = new SMeshBoneMapping_uint8[fi.nSkinnedVtx], fi.pBoneMapping, sizeof(pBoneMapping[0]) * fi.nSkinnedVtx);
+        memcpy(pBoneMapping = new SMeshBoneMapping_uint8[vertexCount], pBoneMappingSrc, sizeof(pBoneMapping[0]) * vertexCount);
 
-        // Convert per-subset bone ids to per-mesh bone ids
+        // Convert per-subset bone ids to per-mesh bone ids. Only for locator based setup, skinned CGF already has bone mapping mapped to mesh bone id.
+        if (!isSkinnedCGF)
         {
             const char* err = 0;
 
@@ -3642,6 +3711,13 @@ errorDetected:
         m_pBoneMapping = pBoneMapping;
         m_nSpines = fi.nSpines;
         m_pSpines = pSpines;
+
+        // Initialize skinning chunk and set bone mapping for render mesh
+        if (isSkinnedCGF)
+        {
+            InitializeSkinnedChunk();
+        }
+
         return;
     }
 #ifdef RUNTIME_ANALYZE_FOLIAGE
@@ -4199,6 +4275,11 @@ int CStatObj::PhysicalizeFoliage(IPhysicalEntity* pTrunk, const Matrix34& mtxWor
             }
             pr.surface_idx = m_pSpines[i].idmat;
             pr.collDist = 0.03f + 0.07f * isneg(3.0f - m_pSpines[i].len);
+            //Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+            pr.pStiffness = m_pSpines[i].pStiffness;
+            pr.pDamping = m_pSpines[i].pDamping;
+            pr.pThickness = m_pSpines[i].pThickness;
+
             pfd.iForeignFlags = i;
             pRes->m_pRopes[i]->SetParams(&pr);
             pRes->m_pRopes[i]->SetParams(&pf);
@@ -4249,99 +4330,8 @@ int CStatObj::PhysicalizeFoliage(IPhysicalEntity* pTrunk, const Matrix34& mtxWor
         }
     }
 
-    if (!gEnv->IsDedicated() && m_pRenderMesh && !m_pRenderMesh->GetChunksSkinned().size() && m_pRenderMesh->GetVerticesCount())
-    {
-        m_pRenderMesh->CreateChunksSkinned();
-
-        TRenderChunkArray& meshChunks = m_pRenderMesh->GetChunksSkinned();
-        for (i = 0; i < (int)meshChunks.size(); i++)
-        {
-            if ((meshChunks[i].m_nMatFlags & (MTL_FLAG_NOPHYSICALIZE | MTL_FLAG_NODRAW)) == MTL_FLAG_NOPHYSICALIZE)
-            {
-                meshChunks[i].m_bUsesBones = true;
-                if (meshChunks[i].pRE)
-                {
-                    meshChunks[i].pRE->mfUpdateFlags(FCEF_SKINNED);
-                }
-            }
-        }
-
-        for (i = 0; i < (int)meshChunks.size(); i++)
-        {
-            if (!meshChunks[i].m_bUsesBones)
-            {
-                for (j = meshChunks[i].nFirstVertId; j < (int)meshChunks[i].nFirstVertId + (int)meshChunks[i].nNumVerts; j++)
-                {
-                    m_pBoneMapping[j].boneIds[0] = m_pBoneMapping[j].boneIds[1] = 0;
-                }
-            }
-        }
-
-        if (0)
-        {
-            //--------------------------------------------------------------------------------------
-            //--- this code is checking if all bone-mappings in the subsets are in a valid range ---
-            //--------------------------------------------------------------------------------------
-            for (uint32 s = 0; s < (uint32)meshChunks.size(); s++)
-            {
-                const uint32 nStartIndex = meshChunks[s].nFirstVertId;
-                const uint32 nNumVertices = meshChunks[s].nNumVerts;
-
-                if (meshChunks[s].m_bUsesBones)
-                {
-                    for (i = nStartIndex; i < (int)(nStartIndex + nNumVertices); i++)
-                    {
-                        uint32 v = i;
-                        // get bone-ids
-                        uint16 b0 = m_pBoneMapping[v].boneIds[0];
-                        uint16 b1 = m_pBoneMapping[v].boneIds[1];
-                        uint16 b2 = m_pBoneMapping[v].boneIds[2];
-                        uint16 b3 = m_pBoneMapping[v].boneIds[3];
-                        // get weights
-                        const uint8 w0 = m_pBoneMapping[v].weights[0];
-                        const uint8 w1 = m_pBoneMapping[v].weights[1];
-                        const uint8 w2 = m_pBoneMapping[v].weights[2];
-                        const uint8 w3 = m_pBoneMapping[v].weights[3];
-                        // if weight is zero set bone ID to zero as the bone has no influence anyway,
-                        if (w0 == 0)
-                        {
-                            b0 = 0;
-                        }
-                        if (w1 == 0)
-                        {
-                            b1 = 0;
-                        }
-                        if (w2 == 0)
-                        {
-                            b2 = 0;
-                        }
-                        if (w3 == 0)
-                        {
-                            b3 = 0;
-                        }
-                        static const int maxBoneIdx = 255;
-                        assert(b0 <= maxBoneIdx);
-                        assert(b1 <= maxBoneIdx);
-                        assert(b2 <= maxBoneIdx);
-                        assert(b3 <= maxBoneIdx);
-
-                        /*
-                        if (b0 > maxBoneIdx)
-                            CryFatalError("Fatal Error: index out of range: Index: %d   maxBoneIdx: %d",b0,maxBoneIdx );
-                        if (b1 > maxBoneIdx)
-                            CryFatalError("Fatal Error: index out of range: Index: %d   maxBoneIdx: %d",b1,maxBoneIdx );
-                        if (b2 > maxBoneIdx)
-                            CryFatalError("Fatal Error: index out of range: Index: %d   maxBoneIdx: %d",b2,maxBoneIdx );
-                        if (b3 > maxBoneIdx)
-                            CryFatalError("Fatal Error: index out of range: Index: %d   maxBoneIdx: %d",b3,maxBoneIdx );
-                            */
-                    }
-                }
-            }
-        }
-
-        m_pRenderMesh->SetSkinningDataVegetation(m_pBoneMapping);
-    }
+    //To support legacy data. New skinned CGF has this done in AnalyzeFoliage
+    InitializeSkinnedChunk();
 
     pIRes = pRes;
     return m_nSpines;
@@ -4354,6 +4344,12 @@ int CStatObj::PhysicalizeFoliage(IPhysicalEntity* pTrunk, const Matrix34& mtxWor
 
 CStatObjFoliage::~CStatObjFoliage()
 {
+    if (m_touchBendingSkeletonProxy)
+    {
+        AZ::TouchBendingCVegetationAgent::GetInstance()->OnFoliageDestroyed(this);
+        m_touchBendingSkeletonProxy = nullptr;
+    }
+
     if (m_pRopes)
     {
         for (int i = 0; i < m_nRopes; i++)
@@ -4521,7 +4517,7 @@ SSkinningData* CStatObjFoliage::GetSkinningData(const Matrix34& RenderMat34, con
     uint32 spineCount = uint32(m_pStatObj->m_nSpines);
     for (uint32 i = 0; i < spineCount; ++i)
     {
-        if (!m_pRopes[i])
+        if (!m_touchBendingSkeletonProxy && !m_pRopes[i])
         {
             uint32 spineVertexCount = m_pStatObj->m_pSpines[i].nVtx - 1;
             for (uint32 j = 0; j < spineVertexCount; ++j)
@@ -4605,6 +4601,12 @@ void CStatObjFoliage::Update(float dt, const CCamera& rCamera)
         return;
     }
     FUNCTION_PROFILER_3DENGINE;
+
+    if (m_touchBendingSkeletonProxy)
+    {
+        AZ::TouchBendingCVegetationAgent::GetInstance()->UpdateFoliage(this, dt, rCamera);
+        return;
+    }
 
     int i, j, nContactEnts = 0, nColl;
     //int nContacts[4]={0,0,0,0};

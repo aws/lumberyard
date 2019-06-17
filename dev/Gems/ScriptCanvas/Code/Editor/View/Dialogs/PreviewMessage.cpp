@@ -13,6 +13,7 @@
 #include "precompiled.h"
 #include "PreviewMessage.h"
 #include <Editor/Settings.h>
+#include <AzCore/UserSettings/UserSettingsProvider.h>
 
 #include <ScriptCanvas/Bus/ScriptCanvasBus.h>
 
@@ -84,6 +85,7 @@ namespace ScriptCanvasEditor
         if (settings)
         {
             settings->m_showPreviewMessage = (m_dontShowAgainCheckbox->checkState() != Qt::CheckState::Checked);
+            AZ::UserSettingsOwnerRequestBus::Event(AZ::UserSettings::CT_LOCAL, &AZ::UserSettingsOwnerRequests::SaveSettings);
         }
         
         QDialog::closeEvent(evt);

@@ -303,24 +303,23 @@ namespace Camera
         camera.SetMatrix(AZTransformToLYTransform(world.GetOrthogonalized()));
     }
 
-    void EditorCameraComponent::DisplayEntity(bool& handled)
+    void EditorCameraComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        auto* displayInterface = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        if (displayInterface)
-        {
-            AZ::Transform transform = AZ::Transform::CreateIdentity();
-            AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
-            EditorDisplay(*displayInterface, transform, handled);
-        }
+        AZ::Transform transform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
+        EditorDisplay(debugDisplay, transform);
     }
 
-    void EditorCameraComponent::EditorDisplay(AzFramework::EntityDebugDisplayRequests& displayInterface, const AZ::Transform& world, bool& handled)
+    void EditorCameraComponent::EditorDisplay(
+        AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Transform& world)
     {
         const float distance = m_farClipPlaneDistance * m_frustumViewPercentLength * 0.01f;
 
         float tangent = static_cast<float>(tan(0.5f * AZ::DegToRad(m_fov)));
         float height = distance * tangent;
-        float width = height * displayInterface.GetAspectRatio();
+        float width = height * debugDisplay.GetAspectRatio();
 
         AZ::Vector3 farPoints[4];
         farPoints[0] = AZ::Vector3( width, distance,  height);
@@ -335,16 +334,15 @@ namespace Camera
         nearPoints[2] = farPoints[2].GetNormalizedSafe() * m_nearClipPlaneDistance;
         nearPoints[3] = farPoints[3].GetNormalizedSafe() * m_nearClipPlaneDistance;
 
-
-        displayInterface.PushMatrix(world);
-        displayInterface.SetColor(m_frustumDrawColor.GetAsVector4());
-        displayInterface.DrawLine(nearPoints[0], farPoints[0]);
-        displayInterface.DrawLine(nearPoints[1], farPoints[1]);
-        displayInterface.DrawLine(nearPoints[2], farPoints[2]);
-        displayInterface.DrawLine(nearPoints[3], farPoints[3]);
-        displayInterface.DrawPolyLine(nearPoints, AZ_ARRAY_SIZE(nearPoints));
-        displayInterface.DrawPolyLine(farPoints, AZ_ARRAY_SIZE(farPoints));
-        displayInterface.PopMatrix();
+        debugDisplay.PushMatrix(world);
+        debugDisplay.SetColor(m_frustumDrawColor.GetAsVector4());
+        debugDisplay.DrawLine(nearPoints[0], farPoints[0]);
+        debugDisplay.DrawLine(nearPoints[1], farPoints[1]);
+        debugDisplay.DrawLine(nearPoints[2], farPoints[2]);
+        debugDisplay.DrawLine(nearPoints[3], farPoints[3]);
+        debugDisplay.DrawPolyLine(nearPoints, AZ_ARRAY_SIZE(nearPoints));
+        debugDisplay.DrawPolyLine(farPoints, AZ_ARRAY_SIZE(farPoints));
+        debugDisplay.PopMatrix();
     }
 
     void EditorCameraComponent::BuildGameEntity(AZ::Entity* gameEntity)

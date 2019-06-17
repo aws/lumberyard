@@ -20,6 +20,8 @@ from cgf_utils import custom_resource_utils
 from resource_manager_common import constant
 from resource_types.cognito import identity_pool
 from resource_manager_common import stack_info
+from botocore.client import Config
+import os
 
 def handler(event, context):
 
@@ -30,7 +32,8 @@ def handler(event, context):
             'UseAuthSettingsObject': properties.String(),
             'AllowUnauthenticatedIdentities': properties.String(),
             'DeveloperProviderName': properties.String(default=''),
-            'Roles': properties.Object( default={}, 
+            'ShareMode': properties.String(default=''), # SHARED when the pool from the file should be used
+            'Roles': properties.Object( default={},
             schema={
                 '*': properties.String()
             }),
@@ -44,9 +47,18 @@ def handler(event, context):
             )
         })
 
+
     #give the identity pool a unique name per stack
     stack_manager = stack_info.StackInfoManager()
     stack_name = aws_utils.get_stack_name_from_stack_arn(event['StackId'])
+
+    shared_pool = aws_utils.get_cognito_pool_from_file(
+        props.ConfigurationBucket,
+        props.ConfigurationKey,
+        event['LogicalResourceId'],
+        stack_manager.get_stack_info(event['StackId'])
+        )
+
     identity_pool_name = stack_name+props.IdentityPoolName
     identity_pool_name = identity_pool_name.replace('-', ' ')
     identity_client = identity_pool.get_identity_client()
@@ -54,10 +66,17 @@ def handler(event, context):
     found_pool = identity_pool.get_identity_pool(identity_pool_id)
 
     request_type = event['RequestType']
+    if shared_pool and props.ShareMode == 'SHARED':
+        data = {
+            'IdentityPoolName': identity_pool_name,
+            'IdentityPoolId': shared_pool['PhysicalResourceId']
+        }
+        return custom_resource_response.success_response(data, shared_pool['PhysicalResourceId'])
+
     if request_type == 'Delete':
         if found_pool != None:
-            identity_client.delete_identity_pool(IdentityPoolId=identity_pool_id) 
-        data = {}       
+            identity_client.delete_identity_pool(IdentityPoolId=identity_pool_id)
+        data = {}
 
     else:
         use_auth_settings_object = props.UseAuthSettingsObject.lower() == 'true'
@@ -66,34 +85,34 @@ def handler(event, context):
         if use_auth_settings_object == True:
             #download the auth settings from s3
             player_access_key = 'player-access/'+constant.AUTH_SETTINGS_FILENAME
-            auth_doc = json.loads(_load_doc_from_s3(props.ConfigurationBucket, player_access_key))             
+            auth_doc = json.loads(_load_doc_from_s3(props.ConfigurationBucket, player_access_key))
 
             #if the doc has entries add them to the supported_login_providers dictionary
             if len(auth_doc) > 0:
                 for key, value in auth_doc.iteritems():
-                    supported_login_providers[value['provider_uri']] = value['app_id']         
+                    supported_login_providers[value['provider_uri']] = value['app_id']
 
         cognito_identity_providers = identity_pool.get_cognito_identity_providers(stack_manager, event['StackId'], event['LogicalResourceId'])
 
         print 'Identity Providers: ', cognito_identity_providers
         allow_anonymous = props.AllowUnauthenticatedIdentities.lower() == 'true'
         #if the pool exists just update it, otherwise create a new one
-        
+
         args = {
-            'IdentityPoolName': identity_pool_name, 
+            'IdentityPoolName': identity_pool_name,
             'AllowUnauthenticatedIdentities': allow_anonymous,
-            'SupportedLoginProviders': supported_login_providers, 
+            'SupportedLoginProviders': supported_login_providers,
             'CognitoIdentityProviders': cognito_identity_providers
         }
-        
+
         if props.DeveloperProviderName:
             args['DeveloperProviderName'] = props.DeveloperProviderName
-        
+
         if found_pool != None:
-           identity_client.update_identity_pool(IdentityPoolId=identity_pool_id, **args)    
+           identity_client.update_identity_pool(IdentityPoolId=identity_pool_id, **args)
         else:
-           response = identity_client.create_identity_pool(**args) 
-           identity_pool_id=response['IdentityPoolId'] 
+           response = identity_client.create_identity_pool(**args)
+           identity_pool_id=response['IdentityPoolId']
 
         #update the roles for the pool
         role_mappings = {}
@@ -109,24 +128,25 @@ def handler(event, context):
 
         data = {
                 'IdentityPoolName': identity_pool_name,
-                'IdentityPoolId': identity_pool_id       
-        }  
-    
+                'IdentityPoolId': identity_pool_id
+        }
+
     physical_resource_id = identity_pool_id
 
     return custom_resource_response.success_response(data, physical_resource_id)
 
+
 def _load_doc_from_s3(bucket, key):
-    s3_client = boto3.client('s3', region_name=aws_utils.current_region)    
-    
+    s3_client = boto3.client('s3', region_name=aws_utils.current_region, config=Config(signature_version='s3v4'))
+
     auth_doc = None
 
-    try:        
+    try:
         auth_res = s3_client.get_object(Bucket = bucket, Key = key)
         auth_doc = auth_res['Body'].read()
     except botocore.exceptions.ClientError as e:
         error_code = e.response['Error']['Code']
         if error_code == 'NoSuchKey' or error_code == 'AccessDenied':
-            auth_doc = '{ }'       
-    
+            auth_doc = '{ }'
+
     return auth_doc

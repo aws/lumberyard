@@ -74,8 +74,8 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="search.qrc">
-       <normaloff>:/AssetBrowser/Resources/filter.png</normaloff>:/AssetBrowser/Resources/filter.png</iconset>
+      <iconset resource="../../../../AzQtComponents/AzQtComponents/Components/resources.qrc">
+       <normaloff>:/stylesheet/img/filter.svg</normaloff>:/stylesheet/img/filter.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -97,7 +97,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="search.qrc"/>
+  <include location="../../../../AzQtComponents/AzQtComponents/Components/resources.qrc"/>
  </resources>
  <connections/>
 </ui>

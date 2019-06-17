@@ -1,0 +1,11 @@
+{
+    "description"           : "Configuration to build Asset Processor",
+    "visual_studio_name"    : "Asset Processor",
+    "disable_game_projects" : true,
+    "platforms" : ["win", "darwin"],
+    "modules" :
+    [
+        "AssetProcessor",
+        "AssetProcessorBatch"
+    ]
+}

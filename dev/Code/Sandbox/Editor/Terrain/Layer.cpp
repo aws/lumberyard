@@ -25,6 +25,8 @@
 
 #include <QPainter>
 
+#include <AzCore/Math/Uuid.h>
+
 //! Size of the texture preview
 #define LAYER_TEX_PREVIEW_CX 128
 //! Size of the texture preview
@@ -77,7 +79,7 @@ CLayer::CLayer()
     m_minSlopeAngle = 0;
     m_maxSlopeAngle = 90;
 
-    m_guid = QUuid::createUuid();
+    m_guid = AZ::Uuid::CreateRandom();
 
     // Create the bitmap
     m_bmpLayerTexPrev = QImage(LAYER_TEX_PREVIEW_CX, LAYER_TEX_PREVIEW_CX, QImage::Format_RGBA8888);

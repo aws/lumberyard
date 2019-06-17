@@ -51,6 +51,8 @@ namespace Water
 
         static void Reflect(AZ::ReflectContext* context);
 
+        ~WaterVolumeCommon();
+
         //Helper startup
         virtual void Init(const AZ::EntityId& entityId);
         virtual void Activate();

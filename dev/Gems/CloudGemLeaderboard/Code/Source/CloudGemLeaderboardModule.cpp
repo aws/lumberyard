@@ -15,18 +15,18 @@
 
 #include "CloudGemLeaderboardSystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemLeaderboard
 {
     class CloudGemLeaderboardModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemLeaderboardModule, "{AD272FCE-0082-42EB-B251-8C6EA063778B}", CryHooksModule);
+        AZ_RTTI(CloudGemLeaderboardModule, "{AD272FCE-0082-42EB-B251-8C6EA063778B}", AZ::Module);
 
         CloudGemLeaderboardModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

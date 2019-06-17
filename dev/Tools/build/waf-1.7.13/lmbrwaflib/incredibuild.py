@@ -112,6 +112,7 @@ def internal_validate_incredibuild_registry_settings(ctx):
     Logs.info('[INFO] Registry values updated for incredibuild')
     return True
 
+INTERNAL_INCREDIBUILD_LICENSE_CHECK = None
 
 ########################################################################################################
 def internal_use_incredibuild(ctx, section_name, option_name, value, verification_fn):
@@ -127,16 +128,20 @@ def internal_use_incredibuild(ctx, section_name, option_name, value, verificatio
         return value
 
     _incredibuild_disclaimer(ctx)
-    ctx.start_msg('Incredibuild Licence Check')
+
+    if Logs.verbose > 1:
+        ctx.start_msg('Incredibuild Licence Check')
     (res, warning, error) = verification_fn(ctx, option_name, value)
     if not res:
         if warning:
             Logs.warn(warning)
         if error:
-            ctx.end_msg(error, color='YELLOW')
+            if Logs.verbose > 1:
+                ctx.end_msg(error, color='YELLOW')
         return 'False'
 
-    ctx.end_msg('ok')
+    if Logs.verbose > 1:
+        ctx.end_msg('ok')
     return value
 
 
@@ -145,11 +150,11 @@ def _incredibuild_disclaimer(ctx):
     """ Helper function to show a disclaimer over incredibuild before asking for settings """
     if getattr(ctx, 'incredibuild_disclaimer_shown', False):
         return
-    Logs.info('\nWAF is using Incredibuild for distributed Builds')
-    Logs.info('To be able to compile with WAF, various licenses are required:')
-    Logs.info('The "IncrediBuild for Make && Build Tools Package"   is always needed')
-    Logs.info('If some packages are missing, please ask IT')
-    Logs.info('to assign the needed ones to your machine')
+    Logs.debug('incredibuild:\nWAF is using Incredibuild for distributed Builds')
+    Logs.debug('incredibuild:To be able to compile with WAF, various licenses are required:')
+    Logs.debug('incredibuild:The "IncrediBuild for Make && Build Tools Package"   is always needed')
+    Logs.debug('incredibuild:If some packages are missing, please ask IT')
+    Logs.debug('incredibuild:to assign the needed ones to your machine')
 
     ctx.incredibuild_disclaimer_shown = True
 

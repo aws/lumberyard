@@ -75,6 +75,7 @@ namespace AzToolsFramework
         void EntityDeregistered(AZ::EntityId entityId) override;
         void EntityParentChanged(AZ::EntityId entityId, AZ::EntityId newParentId, AZ::EntityId oldParentId) override;
         void SetEntityInstantiationPosition(const AZ::EntityId& parent, const AZ::EntityId& beforeEntity) override;
+        void ClearEntityInstantiationPosition() override;
 
         ////////////////////////////////////////////////////////////////////////
         // EditorMetricsEventsBus
@@ -217,6 +218,9 @@ namespace AzToolsFramework
             void RemoveFromCyclicDependencyList(const AZ::EntityId& entityId) override;
             AzToolsFramework::EntityIdList GetCyclicDependencyList() const override;
 
+            bool IsComponentExpanded(AZ::ComponentId id) const override;
+            void SetComponentExpanded(AZ::ComponentId id, bool expanded) override;
+
             ////////////////////////////////////////////////////////////////////////
             // EditorLockComponentNotificationBus::Handler
             ////////////////////////////////////////////////////////////////////////
@@ -312,6 +316,8 @@ namespace AzToolsFramework
             AZ::SerializeContext* m_serializeContext = nullptr;
 
             AZStd::set<AZ::ComponentId> m_overriddenComponents;
+
+            AZStd::unordered_map<AZ::ComponentId, bool> m_componentExpansionStateMap;
         };
 
         EditorEntityModelEntry& GetInfo(const AZ::EntityId& entityId);

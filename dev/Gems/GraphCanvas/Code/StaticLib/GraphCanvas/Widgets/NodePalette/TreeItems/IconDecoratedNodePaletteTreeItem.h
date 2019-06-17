@@ -13,19 +13,26 @@
 
 #include <AzCore/RTTI/RTTI.h>
 
+#include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Widgets/NodePalette/TreeItems/NodePaletteTreeItem.h>
 
 namespace GraphCanvas
 {
     class IconDecoratedNodePaletteTreeItem
         : public NodePaletteTreeItem
+        , public StyleManagerNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(IconDecoratedNodePaletteTreeItem, AZ::SystemAllocator, 0);
         AZ_RTTI(IconDecoratedNodePaletteTreeItem, "{674FE7BB-C15C-4532-B580-336C7C6173A3}", NodePaletteTreeItem);
 
-        IconDecoratedNodePaletteTreeItem(const QString& name, EditorId editorId);
+        IconDecoratedNodePaletteTreeItem(AZStd::string_view name, EditorId editorId);
         ~IconDecoratedNodePaletteTreeItem() override = default;
+
+        void AddIconColorPalette(const AZStd::string& colorPalette);
+        
+        void OnStylesUnloaded();
+        void OnStylesLoaded();
             
     protected:
 
@@ -33,7 +40,8 @@ namespace GraphCanvas
 
         void OnTitlePaletteChanged() override;
 
-    private:        
+    private:
+        PaletteIconConfiguration m_paletteConfiguration;
         const QPixmap* m_iconPixmap;
     };
 }

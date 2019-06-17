@@ -86,6 +86,7 @@ namespace CloudGemFramework
     protected:
         Aws::Map<Aws::String, std::shared_ptr<TokenRetrievalStrategy> > InitializeTokenRetrievalStrategies(const std::shared_ptr<Aws::Lambda::LambdaClient>& client, const char* lambdaName);
         bool GetRefreshTokenForProvider(AZStd::string& refreshToken, const AZStd::string& provider);
+        bool GetServerIdentity();
 
         // CloudCanvasCommonNotificationBus
         void ApiInitialized() override;

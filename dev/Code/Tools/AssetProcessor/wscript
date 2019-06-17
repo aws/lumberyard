@@ -38,7 +38,8 @@ def build(bld):
         vs_filter        = 'Tools/AssetProcessor',
         file_list        = ['assetprocessor.waf_files', 'assetprocessor_gui.waf_files'],
         platforms        = ['win', 'darwin'],
-        configurations   = ['debug_all', 'profile_all'],
+        configurations   = ['all'],
+        exclude_monolithic = True,
         win_file_list    = ['assetprocessor_win.waf_files'],
         darwin_file_list = ['assetprocessor_gui_macos.waf_files'],
         disable_pch      = True,
@@ -56,21 +57,15 @@ def build(bld):
                            'QT5WIDGETS',
                            'QT5XML',
                            'BOOST',
-                           'SQLITE'
+                           'SQLITE',
+                           'D3D_COMPILER',
+                           'SSLEAY',
+                           'LUA_COMPILER',
+                           'FFMPEG_EXE'
                            ],
         defines         = defines,
 
         # Platform Specific
-        win_copy_dependent_files = [ 'Bin64/d3dx11_43.dll',
-                                     'Bin64/D3DCompiler_43.dll',
-                                     'Bin64/d3dcompiler_46.dll',
-                                     'Bin64/d3dcompiler_47.dll',
-                                     'Bin64/libeay32.dll',
-                                     'Bin64/LuaCompiler.exe',
-                                     'Bin64/ffmpeg.exe',
-                                     'Bin64/ssleay32.dll',
-                                     'Bin64/xinput1_3.dll'],
-
         win_features    = ['generate_rc_file', 'crcfix'],
         win_includes    = ['native'],  # for the resource.h file
         win_lib         = ['shell32'],
@@ -93,7 +88,8 @@ def build(bld):
         win_file_list   = ['assetprocessor_win.waf_files'],
         darwin_file_list = ['assetprocessor_macos.waf_files'],
         platforms       = ['win', 'darwin'],
-        configurations  = ['debug_all', 'profile_all'],
+        configurations  = ['all'],
+        exclude_monolithic = True,
         disable_pch     = True,
         features        = ['qt5'],
         includes        = [bld.Path('Code/Tools/GemRegistry/include')],

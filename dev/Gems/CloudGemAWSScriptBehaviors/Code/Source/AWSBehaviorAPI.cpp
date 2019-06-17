@@ -141,7 +141,7 @@ namespace CloudGemAWSScriptBehaviors
     AZ::Job* AWSBehaviorAPI::CreateHttpJob(const AZStd::string& url) const
     {
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+        EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
         AZ::Job* job{ nullptr };
         job = AZ::CreateJobFunction([this, url]()
         {
@@ -182,7 +182,11 @@ namespace CloudGemAWSScriptBehaviors
 
             if (!httpResponse)
             {
-                EBUS_EVENT(AWSBehaviorAPINotificationsBus, OnError, "No Response Received from request!  (Internal SDK Error)");
+                AZStd::function<void()> notifyOnMainThread = []()
+                {
+                    AWSBehaviorAPINotificationsBus::Broadcast(&AWSBehaviorAPINotificationsBus::Events::OnError, "No Response Received from request!  (Internal SDK Error)");
+                };
+                AZ::TickBus::QueueFunction(notifyOnMainThread);
                 return;
             }
 
@@ -192,16 +196,26 @@ namespace CloudGemAWSScriptBehaviors
 
             if (contentType != "application/json")
             {
-                EBUS_EVENT(AWSBehaviorAPINotificationsBus, OnError, "Unexpected content type returned from API request: " + contentType);
+                AZStd::function<void()> notifyOnMainThread = [contentType]()
+                {
+                    AWSBehaviorAPINotificationsBus::Broadcast(&AWSBehaviorAPINotificationsBus::Events::OnError, "Unexpected content type returned from API request: " + contentType);
+                };
+                AZ::TickBus::QueueFunction(notifyOnMainThread);
                 return;
             }
 
             auto& body = httpResponse->GetResponseBody();
             Aws::StringStream readableOut;
             readableOut << body.rdbuf();
+            Aws::String responseString = readableOut.str();
 
-            EBUS_EVENT(AWSBehaviorAPINotificationsBus, OnSuccess, AZStd::string("Success!"));
-            EBUS_EVENT(AWSBehaviorAPINotificationsBus, GetResponse, responseCode, readableOut.str().c_str());
+            // respond on the main thread because script context ebus behaviour handlers are not thread safe
+            AZStd::function<void()> notifyOnMainThread = [responseCode, responseString]()
+            {
+                AWSBehaviorAPINotificationsBus::Broadcast(&AWSBehaviorAPINotificationsBus::Events::OnSuccess, AZStd::string("Success!"));
+                AWSBehaviorAPINotificationsBus::Broadcast(&AWSBehaviorAPINotificationsBus::Events::GetResponse, responseCode, responseString.c_str());
+            };
+            AZ::TickBus::QueueFunction(notifyOnMainThread);
         }, true, jobContext);
         return job;
     }

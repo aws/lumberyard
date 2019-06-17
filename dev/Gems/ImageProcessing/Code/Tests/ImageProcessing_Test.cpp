@@ -1,12 +1,12 @@
-    /*
-* All or portions of this file Copyright(c) Amazon.com, Inc.or its affiliates or
+/*
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
-*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
 
@@ -21,6 +21,7 @@
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
 
 #include <AzCore/Memory/Memory.h>
+#include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/IO/LocalFileIO.h>
 #include <Processing/PixelFormatInfo.h>
 #include <BuilderSettings/BuilderSettingManager.h>
@@ -50,9 +51,10 @@
 //#define DEBUG_OUTPUT_IMAGES
 
 //There are some test functions in this test which are DISABLED. They were mainly for programming tests. 
-//It's only recommanded to enable them for programming test purpose.
+//It's only recommended to enable them for programming test purpose.
 
-#include <Tests/TestTypes.h>
+#include <AzCore/UnitTest/UnitTest.h>
+#include <AzCore/UnitTest/TestTypes.h>
 #include "../Source/ImageBuilderComponent.h"
 
 using namespace ImageProcessing;
@@ -61,15 +63,15 @@ namespace UnitTest
 {
 
 class ImageProcessingTest
-    : public AllocatorsFixture
+    : public ScopedAllocatorSetupFixture
 {
 protected:
-
+    AZStd::unique_ptr<QCoreApplication> m_coreApplication; // required by engine root and IsExtensionSupported
     AZStd::unique_ptr<AZ::SerializeContext> m_context;
+    AZStd::string m_engineRoot;
     
     void SetUp() override
     {
-        AllocatorsFixture::SetUp();
         BuilderSettingManager::CreateInstance();
 
         //prepare reflection
@@ -84,7 +86,11 @@ protected:
         }
 
         //load qt plugins for some image file formats support
+        int argc = 0;
+        char** argv = nullptr;
+        m_coreApplication.reset(new QCoreApplication(argc, argv));
         AzQtComponents::PrepareQtPaths();
+        m_engineRoot = AZStd::string(AzQtComponents::FindEngineRootDir(nullptr).toLocal8Bit().data());
 
         InitialImageFilenames();
 
@@ -97,10 +103,11 @@ protected:
         delete AZ::IO::FileIOBase::GetInstance();
         AZ::IO::FileIOBase::SetInstance(nullptr);
 
-        m_context.release();
+        m_context.reset();
         BuilderSettingManager::DestroyInstance();
         CPixelFormats::DestroyInstance();
-        AllocatorsFixture::TearDown();
+
+        m_coreApplication.reset();
     }
     
     //enum names for Images with specific identification
@@ -126,7 +133,7 @@ protected:
     //intialial image file names for testing
     void InitialImageFilenames()
     {
-        const char* fileFolder = "../Gems/ImageProcessing/Code/Tests/TestAssets/";
+        const AZStd::string fileFolder = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/";
 
         m_imagFileNameMap[Image_20X16_RGBA8_Png] = fileFolder + AZStd::string("20x16_32bit.png");
         m_imagFileNameMap[Image_32X32_16bit_F_Tif] = fileFolder + AZStd::string("32x32_16bit_f.tif");
@@ -155,8 +162,8 @@ public:
         }
 
         //create the directory if it's not exist
-        const char* outputDir = "../Gems/ImageProcessing/Code/Tests/TestAssets/Output/";
-        QDir dir(outputDir);
+        const AZStd::string outputDir = AZStd::string(AzQtComponents::FindEngineRootDir(nullptr).toLocal8Bit().data()) + "/Gems/ImageProcessing/Code/Tests/TestAssets/Output/";
+        QDir dir(outputDir.c_str());
         if (!dir.exists()) 
         {
             dir.mkpath(".");
@@ -182,7 +189,7 @@ public:
 
             //generate file name
             char filePath[2048];
-            azsprintf(filePath, "%s%s_%s_mip%d_%dx%d.png", outputDir, imageName.c_str()
+            azsprintf(filePath, "%s%s_%s_mip%d_%dx%d.png", outputDir.c_str(), imageName.c_str()
                 , CPixelFormats::GetInstance().GetPixelFormatInfo(originPixelFormat)->szName
                 , mip, width, height);
 
@@ -554,7 +561,7 @@ TEST_F(ImageProcessingTest, TestConvertFormatUncompressed)
 
     ASSERT_TRUE(dstImage2->CompareImage(dstImage1));
 
-    //convert image to all one channel formats then convert them back to RGBX8 for comparasion
+    //convert image to all one channel formats then convert them back to RGBX8 for comparison
     imageToProcess.Set(srcImage);
     imageToProcess.ConvertFormatUncompressed(ePixelFormat_R8);
     imageToProcess.ConvertFormatUncompressed(ePixelFormat_R8G8B8X8);
@@ -579,7 +586,7 @@ TEST_F(ImageProcessingTest, TestConvertFormatUncompressed)
     ASSERT_TRUE(dstImage3->CompareImage(dstImage1));
     ASSERT_TRUE(dstImage4->CompareImage(dstImage1));
 
-    //convert image to all two channels formats then convert them back to RGBX8 for comparasion
+    //convert image to all two channels formats then convert them back to RGBX8 for comparison
     imageToProcess.Set(srcImage);
     imageToProcess.ConvertFormatUncompressed(ePixelFormat_R8G8);
     imageToProcess.ConvertFormatUncompressed(ePixelFormat_R8G8B8X8);
@@ -602,12 +609,12 @@ TEST_F(ImageProcessingTest, TestConvertFormatUncompressed)
 TEST_F(ImageProcessingTest, DISABLED_TestConvertPVRTC)
 {
     //load builder presets
-    AZStd::string buiderSetting("../Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
+    AZStd::string buiderSetting = m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings";
     auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings(buiderSetting, m_context.get());
     
     AZStd::vector<AZStd::string> outPaths;
-    AZStd::string inputFile = "../Gems/ImageProcessing/Code/Tests/TestAssets/normalSmoothness_ddna.tif";     
-    const char* outputFolder = "../Gems/ImageProcessing/Code/Tests/TestAssets/temp/";
+    AZStd::string inputFile = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/normalSmoothness_ddna.tif";     
+    const AZStd::string outputFolder = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/temp/";
     ImageConvertProcess* process = CreateImageConvertProcess(inputFile, outputFolder, "ios", m_context.get());
     if (process != nullptr)
     {
@@ -756,7 +763,7 @@ TEST_F(ImageProcessingTest, TestColorSpaceConversion)
 //It will only change the file if the file was checked out
 TEST_F(ImageProcessingTest, DISABLED_ModifyBuilderSetting)
 {
-    AZStd::string buiderSetting("../Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
+    AZStd::string buiderSetting = m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings";
     QFileInfo fileInfo(buiderSetting.c_str());
     if (fileInfo.isWritable())
     {
@@ -767,7 +774,7 @@ TEST_F(ImageProcessingTest, DISABLED_ModifyBuilderSetting)
 
 TEST_F(ImageProcessingTest, VerifyRestrictedPlatform)
 {
-    AZStd::string buiderSetting("../Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
+    AZStd::string buiderSetting = m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings";
     auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings(buiderSetting, m_context.get());
     PlatformNameList platforms = BuilderSettingManager::Instance()->GetPlatformList();
 
@@ -779,14 +786,14 @@ TEST_F(ImageProcessingTest, VerifyRestrictedPlatform)
 TEST_F(ImageProcessingTest, DISABLED_TestCubemap)
 {    
     //load builder presets
-    AZStd::string buiderSetting("../Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
+    AZStd::string buiderSetting = m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings";
     auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings(buiderSetting, m_context.get());
 
-    const char* outputFolder = "../Gems/ImageProcessing/Code/Tests/TestAssets/temp/";
+    const AZStd::string outputFolder = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/temp/";
     AZStd::string inputFile;
     AZStd::vector<AZStd::string> outPaths;
 
-    inputFile = "../Engine/EngineAssets/Shading/defaultProbe_cm.tif";
+    inputFile = m_engineRoot + "/Engine/EngineAssets/Shading/defaultProbe_cm.tif";
 
     IImageObjectPtr srcImage(LoadImageFromFile(inputFile));
     ImageToProcess imageToProcess(srcImage);
@@ -832,10 +839,10 @@ TEST_F(ImageProcessingTest, DISABLED_TestBuilderImageConvertor)
     AZStd::string srcFolder = "E:/Javelin_NWLYDev/dev/Assets/Textures";
 
     //load builder presets
-    AZStd::string buiderSetting("../Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
+    AZStd::string buiderSetting = m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings";
     auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings(buiderSetting, m_context.get());
 
-    const char* outputFolder = "../Gems/ImageProcessing/Code/Tests/TestAssets/temp/";
+    const AZStd::string outputFolder = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/temp/";
     AZStd::string inputFile;
     AZStd::vector<AZStd::string> outPaths;
     
@@ -900,7 +907,7 @@ TEST_F(ImageProcessingTest, DISABLED_TestBuilderImageConvertor)
 TEST_F(ImageProcessingTest, DISABLED_TestLoadDdsImage)
 {
     IImageObjectPtr originImage, alphaImage;
-    AZStd::string inputFolder = "../Cache/SamplesProject/pc/samplesproject/engineassets/texturemsg/";
+    AZStd::string inputFolder = m_engineRoot + "/Cache/SamplesProject/pc/samplesproject/engineassets/texturemsg/";
     AZStd::string inputFile;
     
     inputFile = "E:/Javelin_NWLYDev/dev/Cache/Assets/pc/assets/textures/blend_maps/moss/jav_moss_ddn.dds";
@@ -924,8 +931,8 @@ TEST_F(ImageProcessingTest, DISABLED_TestLoadDdsImage)
 
 TEST_F(ImageProcessingTest, DISABLED_CompareOutputImage)
 {
-    AZStd::string curretTextureFolder = "../TestAssets/TextureAssets/assets_new/textures";
-    AZStd::string oldTextureFolder = "../TestAssets/TextureAssets/assets_old/textures";
+    AZStd::string curretTextureFolder = m_engineRoot + "/TestAssets/TextureAssets/assets_new/textures";
+    AZStd::string oldTextureFolder = m_engineRoot + "/TestAssets/TextureAssets/assets_old/textures";
     bool outputOnlyDifferent = false;
     QDirIterator it(curretTextureFolder.c_str(), QStringList() << "*.dds", QDir::Files, QDirIterator::Subdirectories);
     QFile f("../texture_comparison_output.csv");
@@ -972,14 +979,14 @@ TEST_F(ImageProcessingTest, DISABLED_CompareOutputImage)
 }
 
 class ImageProcessingSerializationTest
-    : public AllocatorsFixture
+    : public ScopedAllocatorSetupFixture
 {
 protected:
     AZStd::unique_ptr<AZ::SerializeContext> m_context;
+    AZStd::string m_engineRoot;
 
     void SetUp() override
     {
-        AllocatorsFixture::SetUp();
         BuilderSettingManager::CreateInstance();
 
         m_context = AZStd::make_unique<AZ::SerializeContext>();
@@ -991,6 +998,12 @@ protected:
         {
             AZ::IO::FileIOBase::SetInstance(aznew AZ::IO::LocalFileIO());
         }
+        {
+            int argc = 0;
+            char** argv = nullptr;
+            QCoreApplication app(argc, argv);
+            m_engineRoot = AZStd::string(AzQtComponents::FindEngineRootDir(nullptr).toLocal8Bit().data());
+        }
     }
 
     void TearDown() override
@@ -998,19 +1011,18 @@ protected:
         delete AZ::IO::FileIOBase::GetInstance();
         AZ::IO::FileIOBase::SetInstance(nullptr);
 
-        m_context.release();
+        m_context.reset();
         BuilderSettingManager::DestroyInstance();
         CPixelFormats::DestroyInstance();
-        AllocatorsFixture::TearDown();
     }
 };
 
 TEST_F(ImageProcessingSerializationTest, LoadBuilderSettingsFromRC_SerializingLegacyDataIn_InvalidFiles)
 {
-    AZStd::string filepath("../Gems/ImageProcessing/Code/Tests/TestAssets/rc.ini_Missing");
+    AZStd::string filepath = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/rc.ini_Missing";
     ASSERT_FALSE(BuilderSettingManager::Instance()->LoadBuilderSettingsFromRC(filepath).IsSuccess());
 
-    filepath = "../Bin64/rc/rc.ini";
+    filepath = m_engineRoot + "/Code/Tools/RC/Config/rc/rc.ini";
     auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettingsFromRC(filepath);
     ASSERT_TRUE(outcome.IsSuccess());
 
@@ -1018,14 +1030,14 @@ TEST_F(ImageProcessingSerializationTest, LoadBuilderSettingsFromRC_SerializingLe
 
     // Load legacy texture settings from file that not exists
     TextureSettings legacyTextureSetting;
-    AZStd::string notExistingFile = "../Gems/ImageProcessing/Code/Tests/TestAssets/NotExistingFile";
+    AZStd::string notExistingFile = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/NotExistingFile";
     auto legacyLoadOutcome = TextureSettings::LoadLegacyTextureSettingFromFile("", notExistingFile, legacyTextureSetting, m_context.get());
     EXPECT_FALSE(legacyLoadOutcome.IsSuccess());
 
     // Load legacy texture settings from file whose format is wrong
 
     // Wrong override data
-    AZStd::string wrongFormatFile = "../Gems/ImageProcessing/Code/Tests/TestAssets/invalid.exportsettings";
+    AZStd::string wrongFormatFile = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/invalid.exportsettings";
     AZStd::string wrongFormatContent = "/autooptimizefile=0 /preset=Diffuse_highQ /reduce=\"es3:0,randomdata,ios:3,osx_gl:0,pc:4\" /ser=0";
     if (AZ::IO::FileIOBase::GetInstance()->Open(wrongFormatFile.c_str(), AZ::IO::OpenMode::ModeWrite, fileHandle))
     {
@@ -1055,12 +1067,12 @@ TEST_F(ImageProcessingSerializationTest, LoadBuilderSettingsFromRC_SerializingLe
 
 TEST_F(ImageProcessingSerializationTest, TextureSettingReflect_SerializingLegacyDataIn_EmbeddedSetting)
 {
-    AZStd::string buiderSetting("../Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
+    AZStd::string buiderSetting(m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
     auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings(buiderSetting, m_context.get());
 
     // Load legacy texture settings
     TextureSettings legacyTextureSetting;
-    AZStd::string textureFilepath = "../Gems/ImageProcessing/Code/Tests/TestAssets/Lenstexture_dirtyglass.tif";
+    AZStd::string textureFilepath = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/Lenstexture_dirtyglass.tif";
     AZStd::string textureSetting = LoadEmbeddedSettingFromFile(textureFilepath);
     EXPECT_FALSE(textureSetting.empty());
 
@@ -1072,12 +1084,12 @@ TEST_F(ImageProcessingSerializationTest, TextureSettingReflect_SerializingLegacy
 
 TEST_F(ImageProcessingSerializationTest, TextureSettingReflect_SerializingLegacyDataIn_CommonAndPlatformSpecificSettingsAreSerializedCorrectly)
 {
-    AZStd::string buiderSetting("../Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
+    AZStd::string buiderSetting(m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
     auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings(buiderSetting, m_context.get());
 
     // Load legacy texture settings
     TextureSettings legacyTextureSetting;
-    AZStd::string textureFilepath = "../Gems/ImageProcessing/Code/Tests/TestAssets/1024x1024_24bit.tif";
+    AZStd::string textureFilepath = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/1024x1024_24bit.tif";
     auto legacyLoadOutcome = TextureSettings::LoadLegacyTextureSettingFromFile(textureFilepath, 
         textureFilepath + TextureSettings::legacyExtensionName, legacyTextureSetting, m_context.get());
 
@@ -1099,12 +1111,12 @@ TEST_F(ImageProcessingSerializationTest, TextureSettingReflect_SerializingLegacy
 
 TEST_F(ImageProcessingSerializationTest, TextureSettingReflect_SerializingModernDataOutThenIn_PreSerializedAndPostSerializedDataIsEquivalent)
 {
-    AZStd::string buiderSetting("../Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
+    AZStd::string buiderSetting(m_engineRoot + "/Gems/ImageProcessing/Code/Source/ImageBuilderDefaultPresets.settings");
     auto outcome = BuilderSettingManager::Instance()->LoadBuilderSettings(buiderSetting, m_context.get());
 
     // Load legacy texture settings
     TextureSettings legacyTextureSetting;
-    AZStd::string textureFilepath = "../Gems/ImageProcessing/Code/Tests/TestAssets/1024x1024_24bit.tif";
+    AZStd::string textureFilepath = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/1024x1024_24bit.tif";
     auto legacyLoadOutcome = TextureSettings::LoadLegacyTextureSettingFromFile(textureFilepath, 
         textureFilepath+TextureSettings::legacyExtensionName, legacyTextureSetting, m_context.get());
 
@@ -1165,8 +1177,8 @@ TEST_F(ImageProcessingSerializationTest, TextureSettingReflect_SerializingModern
 
 TEST_F(ImageProcessingSerializationTest, BuilderSettingsReflect_SerializingDataInAndOut_WritesAndParsesFileAccurately)
 {    
-    AZStd::string buildSettingsFilepath = "../Gems/ImageProcessing/Code/Tests/TestAssets/tempPresets.settings";
-    AZStd::string rcFilePath = "../Bin64/rc/rc.ini";
+    AZStd::string buildSettingsFilepath = m_engineRoot + "/Gems/ImageProcessing/Code/Tests/TestAssets/tempPresets.settings";
+    AZStd::string rcFilePath = m_engineRoot + "/Code/Tools/RC/Config/rc/rc.ini";
     
     auto loadOutcome = BuilderSettingManager::Instance()->LoadBuilderSettingsFromRC(rcFilePath);
     ASSERT_TRUE(loadOutcome.IsSuccess());

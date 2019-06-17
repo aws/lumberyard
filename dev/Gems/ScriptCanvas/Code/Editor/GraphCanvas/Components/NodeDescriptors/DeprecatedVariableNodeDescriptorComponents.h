@@ -26,12 +26,14 @@ namespace ScriptCanvasEditor
 {
     namespace Deprecated
     {
+        // Deprecated in 1.12
         class VariableNodeDescriptorComponent
             : public NodeDescriptorComponent
             , public VariableNodeDescriptorRequestBus::Handler
             , public GraphCanvas::Deprecated::SceneVariableRequestBus::Handler
             , public GraphCanvas::Deprecated::VariableRequestBus::Handler
             , public GraphCanvas::NodeNotificationBus::Handler
+            , public GraphCanvas::SceneMemberNotificationBus::Handler
         {
         public:
             AZ_COMPONENT(VariableNodeDescriptorComponent, "{2E21B07C-B963-413A-B753-1BAFD0AEEA7D}", NodeDescriptorComponent);
@@ -62,9 +64,11 @@ namespace ScriptCanvasEditor
 
             // GraphCanvas::NodeNotificationBus
             void OnAddedToScene(const AZ::EntityId& sceneId) override;
-            void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
+            void OnRemovedFromScene(const AZ::EntityId& sceneId) override;            
+            ////
 
-            void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphCanvas::GraphSerialization& graphSerialization) override;
+            // GraphCanvas::SceneMemberNotifications
+            void OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphCanvas::GraphSerialization& graphSerialization) override;
             ////
 
         private:
@@ -88,6 +92,7 @@ namespace ScriptCanvasEditor
             , public SetVariableNodeDescriptorRequestBus::Handler
             , public GraphCanvas::NodeNotificationBus::Handler
             , public GraphCanvas::SlotNotificationBus::Handler
+            , public GraphCanvas::SceneMemberNotificationBus::Handler
         {
         public:
             AZ_COMPONENT(SetVariableNodeDescriptorComponent, "{11747A7B-13F4-4CAE-9743-08995532FC0B}", NodeDescriptorComponent);
@@ -115,6 +120,9 @@ namespace ScriptCanvasEditor
             // GraphCanvas::NodeNotificationBus
             using GraphCanvas::NodeNotificationBus::Handler::OnNameChanged;
             void OnAddedToScene(const AZ::EntityId& sceneId) override;
+            ////
+
+            // GraphCanvas::SceneMemberNotificationBus
             void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
             ////
             
@@ -137,7 +145,8 @@ namespace ScriptCanvasEditor
         class GetVariableNodeDescriptorComponent
             : public NodeDescriptorComponent
             , public GetVariableNodeDescriptorRequestBus::Handler
-            , public GraphCanvas::NodeNotificationBus::Handler        
+            , public GraphCanvas::NodeNotificationBus::Handler
+            , public GraphCanvas::SceneMemberNotificationBus::Handler
         {
         public:
             AZ_COMPONENT(GetVariableNodeDescriptorComponent, "{4FE9C826-0CE6-40D0-8253-3A7524358819}", NodeDescriptorComponent);
@@ -159,6 +168,9 @@ namespace ScriptCanvasEditor
             // GraphCanvas::NodeNotificationBus
             using GraphCanvas::NodeNotificationBus::Handler::OnNameChanged;
             void OnAddedToScene(const AZ::EntityId& sceneId) override;
+            ////
+
+            // GraphCanvas::SceneMemberNotificationBus
             void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
             ////
             

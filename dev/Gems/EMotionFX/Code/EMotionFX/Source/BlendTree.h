@@ -61,8 +61,8 @@ namespace EMotionFX
         bool GetCanHaveChildren() const override                        { return true; }
         bool GetSupportsDisable() const override                        { return true; }
         bool GetSupportsVisualization() const override                  { return true; }
-        uint32 GetVisualColor() const override                          { return MCore::RGBA(53, 170, 53); }
-        uint32 GetHasChildIndicatorColor() const override               { return MCore::RGBA(1, 193, 68); }
+        AZ::Color GetVisualColor() const override                       { return AZ::Color(0.21f, 0.67f, 0.21f, 1.0f); }
+        AZ::Color GetHasChildIndicatorColor() const override            { return AZ::Color(0.0f, 0.76f, 0.27f, 1.0f); }
 
         void Rewind(AnimGraphInstance* animGraphInstance) override;
         bool GetHasOutputPose() const override                          { return true; }

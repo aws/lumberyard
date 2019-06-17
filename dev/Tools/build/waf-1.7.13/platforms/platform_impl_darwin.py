@@ -11,112 +11,95 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 
-from waflib import Logs
+from waflib import Logs, Utils
 from waflib.Configure import conf
-from waflib.TaskGen import feature, before_method, after_method
-from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME, SUCCESS
+from waflib.TaskGen import feature, after_method
+from waflib.Task import Task, ASK_LATER, RUN_ME, SKIP_ME
 from waflib.Errors import WafError
-import subprocess, re, os
 
-# the default file permissions after copies are made.  511 => 'chmod 777 <file>'
-FILE_PERMISSIONS = 511
+import subprocess
+import re
+import os
 
-@conf
-def load_darwin_common_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all darwin configurations
-    """
-    v = conf.env
-    
-    # Setup common defines for darwin
-    v['DEFINES'] += [ 'APPLE', 'MAC', '__APPLE__', 'DARWIN' ]
-    # This avoid the SDK to add defines for certain macros that collide against functions with the same name in the engine
-    v['DEFINES'] += [ '__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0']
-    
-    # Set Minimum mac os version to 10.10
-    v['CFLAGS'] += [ '-mmacosx-version-min=10.10', '-msse4.2' ]
-    v['CXXFLAGS'] += [ '-mmacosx-version-min=10.10', '-msse4.2' ]
-    v['LINKFLAGS'] += [ '-mmacosx-version-min=10.10', '-Wl,-undefined,error', '-headerpad_max_install_names']
-    
-    # For now, only support 64 bit MacOs Applications
-    v['ARCH'] = ['x86_64']
-    
-    # Pattern to transform outputs
-    v['cprogram_PATTERN']   = '%s'
-    v['cxxprogram_PATTERN'] = '%s'
-    v['cshlib_PATTERN']     = 'lib%s.dylib'
-    v['cxxshlib_PATTERN']   = 'lib%s.dylib'
-    v['cstlib_PATTERN']      = 'lib%s.a'
-    v['cxxstlib_PATTERN']    = 'lib%s.a'
-    v['macbundle_PATTERN']    = 'lib%s.dylib'
-    
-    # Specify how to translate some common operations for a specific compiler   
-    v['FRAMEWORK_ST']       = ['-framework']
-    v['FRAMEWORKPATH_ST']   = '-F%s'
-    v['RPATH_ST'] = '-Wl,-rpath,%s'
-    
-    # Default frameworks to always link
-    v['FRAMEWORK'] = [ 'Foundation', 'Cocoa', 'Carbon', 'CoreServices', 'ApplicationServices', 'AudioUnit', 'CoreAudio', 'AppKit', 'ForceFeedback', 'IOKit', 'OpenGL', 'GameController' ]
-    
-    # Default libraries to always link
-    v['LIB'] = ['c', 'm', 'pthread', 'ncurses']
-    
-    # Setup compiler and linker settings  for mac bundles
-    v['CFLAGS_MACBUNDLE'] = v['CXXFLAGS_MACBUNDLE'] = '-fpic'
-    v['LINKFLAGS_MACBUNDLE'] = [
-        '-dynamiclib',
-        '-undefined', 
-        'dynamic_lookup'
-        ]
-        
-    # Set the path to the current sdk
-    sdk_path = subprocess.check_output(["xcrun", "--sdk", "macosx", "--show-sdk-path"]).strip()
-    v['CFLAGS'] += [ '-isysroot' + sdk_path, ]
-    v['CXXFLAGS'] += [ '-isysroot' + sdk_path, ]
-    v['LINKFLAGS'] += [ '-isysroot' + sdk_path, ]
-    v['ISYSROOT'] = sdk_path
-
-    # Since we only support a single darwin target (clang-64bit), we specify all tools directly here    
-    v['AR'] = 'ar'
-    v['CC'] = 'clang'
-    v['CXX'] = 'clang++'
-    v['LINK'] = v['LINK_CC'] = v['LINK_CXX'] = 'clang++'
-    
-@conf
-def load_debug_darwin_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all darwin configurations for
-    the 'debug' configuration
-    """
-    v = conf.env
-    conf.load_darwin_common_settings()
 
 @conf
-def load_profile_darwin_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all darwin configurations for
-    the 'debug' configuration
-    """
-    v = conf.env
-    conf.load_darwin_common_settings()
+def register_darwin_external_ly_identity(ctx, configuration):
+    # Do not regsiter as an external library if the source exists
+    if os.path.exists(ctx.Path('Code/Tools/LyIdentity/wscript')):
+        return
+
+    platform = 'mac'
+
+    if configuration not in ('Debug', 'Release'):
+        raise WafError("Invalid configuration value {}", configuration)
+
+    target_platform = 'darwin'
+    ly_identity_base_path = ctx.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity')
+    include_path = os.path.join(ly_identity_base_path, 'include')
+    stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, configuration)
+    shlib_path = os.path.join(ly_identity_base_path, 'bin', platform, configuration)
+
+    ctx.register_3rd_party_uselib('LyIdentity_shared',
+                                   target_platform,
+                                   includes=[include_path],
+                                   defines=['LINK_LY_IDENTITY_DYNAMICALLY'],
+                                   importlib=['libLyIdentity_shared.dylib'],
+                                   sharedlibpath=[shlib_path],
+                                   sharedlib=['libLyIdentity_shared.dylib'])
+
+    ctx.register_3rd_party_uselib('LyIdentity_static',
+                                   target_platform,
+                                   includes=[include_path],
+                                   libpath=[stlib_path],
+                                   lib=['libLyIdentity_static.a'])
+
 
 @conf
-def load_performance_darwin_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all darwin configurations for
-    the 'debug' configuration
-    """
-    v = conf.env
-    conf.load_darwin_common_settings()
+def register_darwin_external_ly_metrics(ctx, configuration):
+    # Do not regsiter as an external library if the source exists
+    if os.path.exists(ctx.Path('Code/Tools/LyMetrics/wscript')):
+        return
 
-@conf
-def load_release_darwin_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all darwin configurations for
-    the 'debug' configuration
-    """
-    v = conf.env
-    conf.load_darwin_common_settings()
+    platform = 'mac'
+
+    if configuration not in ('Debug', 'Release'):
+        raise WafError("Invalid configuration value {}", configuration)
+
+    target_platform = 'darwin'
+    ly_identity_base_path = ctx.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics')
+    include_path = os.path.join(ly_identity_base_path, 'include')
+    stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, configuration)
+    shlib_path = os.path.join(ly_identity_base_path, 'bin', platform, configuration)
+
+    ctx.register_3rd_party_uselib('LyMetricsShared_shared',
+                                  target_platform,
+                                  includes=[include_path],
+                                  defines=['LINK_LY_METRICS_DYNAMICALLY'],
+                                  importlib=['libLyMetricsShared_shared.dylib'],
+                                  sharedlibpath=[shlib_path],
+                                  sharedlib=['libLyMetricsShared_shared.dylib'])
+
+    ctx.register_3rd_party_uselib('LyMetricsShared_static',
+                                  target_platform,
+                                  includes=[include_path],
+                                  libpath=[stlib_path],
+                                  lib=['libLyMetricsShared_static.a'])
+
+    ctx.register_3rd_party_uselib('LyMetricsProducer_shared',
+                                  target_platform,
+                                  includes=[include_path],
+                                  defines=['LINK_LY_METRICS_PRODUCER_DYNAMICALLY'],
+                                  importlib=['libLyMetricsProducer_shared.dylib'],
+                                  sharedlibpath=[shlib_path],
+                                  sharedlib=['libLyMetricsProducer_shared.dylib'])
+
+    ctx.register_3rd_party_uselib('LyMetricsProducer_static',
+                                  target_platform,
+                                  includes=[include_path],
+                                  libpath=[stlib_path],
+                                  lib=['libLyMetricsProducer_static.a'])
+
+
 
 
 class update_to_use_rpath(Task):
@@ -131,24 +114,8 @@ class update_to_use_rpath(Task):
 
     def runnable_status(self):
         self_status = Task.runnable_status(self)
-
-        # Check only for ASK_LATER and not != RUN_ME. The runnable_status
-        # method will return SKIP_ME for pre-built libraries that are only
-        # being copied but we still need to run the rpath update on the library
         if self_status == ASK_LATER: 
-            return self_status
-
-        if self.use_link_task:
-            # Need to use hasrun to determine if the task was runned or skipped
-            # as runnable_status is always returning RUN_ME after the task has
-            # been run. 
-
-            # If the link_task status is not success then the link task was
-            # either skipped or we had an error so no reason to run. We don't
-            # have to worry about NOT_RUN state since we set this task to only
-            # run after the link_task has been run when we create it below.  
-            if self.generator.link_task.hasrun != SUCCESS:
-                return SKIP_ME
+            return ASK_LATER
 
         source_lib = self.inputs[0]
         if source_lib.abspath() in self.processed_libs or source_lib in self.queued_libs:
@@ -175,7 +142,7 @@ class update_to_use_rpath(Task):
 
         # Make sure that we can write to the source lib since we will be
         # changing various references to libraries and its ID
-        source_lib.chmod(FILE_PERMISSIONS)
+        source_lib.chmod(Utils.O755)
 
         self.update_dependent_libs_to_use_rpath(source_lib)
 
@@ -254,9 +221,8 @@ def update_3rd_party_libs_to_use_rpath(self):
                 target_full_path = output_path_node.make_node(source_filename)
 
                 try:
-                    target_full_path.chmod(FILE_PERMISSIONS)
-                    task = self.create_task('update_to_use_rpath', target_full_path)
-                    task.use_link_task = False
+                    target_full_path.chmod(Utils.O755)
+                    self.create_task('update_to_use_rpath', target_full_path)
                 except:
                     pass
          
@@ -267,9 +233,11 @@ def add_rpath_update_tasks(self):
     '''
     Update the libraries and executables that we build to use rpath and reference
     any dependencies that don't have an aboslute path or rpath already to use
-    rpath as well. 
+    rpath as well. The update task should not run often as most libraries
+    should already use rpath and be linked to libraries that are using rpath as
+    well.  There are a few libraries though that may be missed so this will
+    ensure in the end all libraries and executables will load on macOS
     '''
-
     if 'darwin' not in self.env['PLATFORM']:
         return
 
@@ -277,85 +245,6 @@ def add_rpath_update_tasks(self):
         return
 
     for src in self.link_task.outputs:
-        task = self.create_task('update_to_use_rpath', src)
-        task.set_run_after(self.link_task)
-        task.use_link_task = True
+        self.create_task('update_to_use_rpath', src)
 
 
-@conf
-def register_darwin_external_ly_identity(self, configuration):
-
-    # Do not regsiter as an external library if the source exists
-    if os.path.exists(self.Path('Code/Tools/LyIdentity/wscript')):
-        return
-
-    platform = 'mac'
-
-    if configuration not in ('Debug', 'Release'):
-        raise WafError("Invalid configuration value {}", configuration)
-
-    target_platform = 'darwin'
-    ly_identity_base_path = self.CreateRootRelativePath('Tools/InternalSDKs/LyIdentity')
-    include_path = os.path.join(ly_identity_base_path, 'include')
-    stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, configuration)
-    shlib_path = os.path.join(ly_identity_base_path, 'bin', platform, configuration)
-
-    self.register_3rd_party_uselib('LyIdentity_shared',
-                                   target_platform,
-                                   includes=[include_path],
-                                   defines=['LINK_LY_IDENTITY_DYNAMICALLY'],
-                                   importlib=['libLyIdentity_shared.dylib'],
-                                   sharedlibpath=[shlib_path],
-                                   sharedlib=['libLyIdentity_shared.dylib'])
-
-    self.register_3rd_party_uselib('LyIdentity_static',
-                                   target_platform,
-                                   includes=[include_path],
-                                   libpath=[stlib_path],
-                                   lib=['libLyIdentity_static.a'])
-
-@conf
-def register_darwin_external_ly_metrics(self, configuration):
-
-    # Do not regsiter as an external library if the source exists
-    if os.path.exists(self.Path('Code/Tools/LyMetrics/wscript')):
-        return
-
-    platform = 'mac'
-
-    if configuration not in ('Debug', 'Release'):
-        raise WafError("Invalid configuration value {}", configuration)
-
-    target_platform = 'darwin'
-    ly_identity_base_path = self.CreateRootRelativePath('Tools/InternalSDKs/LyMetrics')
-    include_path = os.path.join(ly_identity_base_path, 'include')
-    stlib_path = os.path.join(ly_identity_base_path, 'lib', platform, configuration)
-    shlib_path = os.path.join(ly_identity_base_path, 'bin', platform, configuration)
-
-    self.register_3rd_party_uselib('LyMetricsShared_shared',
-                                target_platform,
-                                includes=[include_path],
-                                defines=['LINK_LY_METRICS_DYNAMICALLY'],
-                                importlib=['libLyMetricsShared_shared.dylib'],
-                                sharedlibpath=[shlib_path],
-                                sharedlib=['libLyMetricsShared_shared.dylib'])
-
-    self.register_3rd_party_uselib('LyMetricsShared_static',
-                                   target_platform,
-                                   includes=[include_path],
-                                   libpath=[stlib_path],
-                                   lib=['libLyMetricsShared_static.a'])
-
-    self.register_3rd_party_uselib('LyMetricsProducer_shared',
-                                   target_platform,
-                                   includes=[include_path],
-                                   defines=['LINK_LY_METRICS_PRODUCER_DYNAMICALLY'],
-                                   importlib=['libLyMetricsProducer_shared.dylib'],
-                                   sharedlibpath=[shlib_path],
-                                   sharedlib=['libLyMetricsProducer_shared.dylib'])
-
-    self.register_3rd_party_uselib('LyMetricsProducer_static',
-                                   target_platform,
-                                   includes=[include_path],
-                                   libpath=[stlib_path],
-                                   lib=['libLyMetricsProducer_static.a'])

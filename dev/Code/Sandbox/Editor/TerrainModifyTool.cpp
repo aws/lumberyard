@@ -192,9 +192,13 @@ bool CTerrainModifyTool::MouseCallback(CViewport* view, EMouseEvent event, QPoin
     }
     else if (event == eMouseLDown && bCollideWithTerrain)
     {
-        if (!GetIEditor()->IsUndoRecording())
+        AzToolsFramework::UndoSystem::URSequencePoint* undoOperation = nullptr;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+            undoOperation, &AzToolsFramework::ToolsApplicationRequests::GetCurrentUndoBatch);
+        if (!undoOperation)
         {
-            GetIEditor()->BeginUndo();
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+                undoOperation, &AzToolsFramework::ToolsApplicationRequests::BeginUndoBatch, "Modify Terrain");
         }
         Paint();
         m_nPaintingMode = ePaintMode_InProgress;
@@ -233,9 +237,11 @@ bool CTerrainModifyTool::MouseCallback(CViewport* view, EMouseEvent event, QPoin
     // come back without releasing the mouse
     if ((m_nPaintingMode == ePaintMode_Ready && event != eMouseMove) || event == eMouseLUp)
     {
-        if (GetIEditor()->IsUndoRecording())
+        AzToolsFramework::UndoSystem::URSequencePoint* undoOperation = nullptr;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(undoOperation, &AzToolsFramework::ToolsApplicationRequests::GetCurrentUndoBatch);
+        if (undoOperation)
         {
-            GetIEditor()->AcceptUndo("Terrain Modify");
+            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::EndUndoBatch);
         }
         m_nPaintingMode = ePaintMode_None;
     }

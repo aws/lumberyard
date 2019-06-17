@@ -18,6 +18,7 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 
+#include <platform.h>
 #include <ISystem.h>
 #include <ITimer.h>
 
@@ -119,7 +120,8 @@ namespace CloudGemDefectReporter
 
     void FPSDropReportingComponent::OnTick(float deltaTime, AZ::ScriptTimePoint time)
     {
-        float frameTimeInSeconds = gEnv->pTimer->GetRealFrameTime();
+        SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+        float frameTimeInSeconds = pEnv->pTimer->GetRealFrameTime();
 
         if (DetectFPSDrop(frameTimeInSeconds))
         {

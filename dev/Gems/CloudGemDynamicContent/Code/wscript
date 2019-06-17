@@ -43,8 +43,10 @@ def build(bld):
         file_list   = file_list,
         pch     = '',
         platforms = ['all'],
-
+        disable_pch = True,
         win_lib    = ['gdi32'],
+
+        use = ['CloudCanvasCommon.StaticLibrary'],
 
         restricted_script = 'update_restricted_parameters',
     )

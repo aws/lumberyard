@@ -636,7 +636,7 @@ namespace EMStudio
         }
         else
         {
-            OnContextMenuEvent(this, mousePos, globalMousePos, mPlugin, selectedAnimGraphNodes, true);
+            OnContextMenuEvent(this, mousePos, globalMousePos, mPlugin, selectedAnimGraphNodes, true, false);
         }
     }
 

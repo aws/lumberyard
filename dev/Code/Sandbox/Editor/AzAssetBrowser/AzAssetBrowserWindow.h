@@ -41,9 +41,14 @@ public:
     explicit AzAssetBrowserWindow(QWidget* parent = nullptr);
     virtual ~AzAssetBrowserWindow();
 
+    void SelectAsset(const QString& assetPath);
+
     static void RegisterViewClass();
 
+    static QObject* createListenerForShowAssetEditorEvent(QObject* parent);
+
 private:
+
     QScopedPointer<Ui::AzAssetBrowserWindowClass> m_ui;
     QScopedPointer<AzToolsFramework::AssetBrowser::AssetBrowserFilterModel> m_filterModel;
     AzToolsFramework::AssetBrowser::AssetBrowserModel* m_assetBrowserModel;

@@ -13,10 +13,65 @@
 
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 
-#include <Editor/GraphCanvas/Components/SlotMappingComponent.h>
+#include <Editor/GraphCanvas/Components/MappingComponent.h>
+#include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 
 namespace ScriptCanvasEditor
 {
+    ////////////////////////////////
+    // SceneMemberMappingComponent
+    ////////////////////////////////
+
+    void SceneMemberMappingComponent::Reflect(AZ::ReflectContext* context)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
+
+        if (serializeContext)
+        {
+            serializeContext->Class<SceneMemberMappingComponent, AZ::Component>()
+                ->Field("SourceId", &SceneMemberMappingComponent::m_sourceId)
+                ->Version(1)
+                ;
+        }
+    }
+
+    SceneMemberMappingComponent::SceneMemberMappingComponent(const AZ::EntityId& sourceId)
+        : m_sourceId(sourceId)
+    {
+    }
+
+    void SceneMemberMappingComponent::Activate()
+    {
+        SceneMemberMappingConfigurationRequestBus::Handler::BusConnect(GetEntityId());
+        ConfigureMapping(m_sourceId);
+    }
+
+    void SceneMemberMappingComponent::Deactivate()
+    {
+        SceneMemberMappingRequestBus::Handler::BusDisconnect();
+        SceneMemberMappingConfigurationRequestBus::Handler::BusDisconnect();
+    }
+
+    void SceneMemberMappingComponent::ConfigureMapping(const AZ::EntityId& scriptCanvasMemberId)
+    {
+        if (m_sourceId.IsValid())
+        {
+            SceneMemberMappingRequestBus::Handler::BusDisconnect();
+        }
+
+        m_sourceId = scriptCanvasMemberId;
+
+        if (m_sourceId.IsValid())
+        {
+            SceneMemberMappingRequestBus::Handler::BusConnect(m_sourceId);
+        }
+    }
+
+    AZ::EntityId SceneMemberMappingComponent::GetGraphCanvasEntityId() const
+    {
+        return GetEntityId();
+    }
+
     /////////////////////////
     // SlotMappingComponent
     /////////////////////////
@@ -28,20 +83,32 @@ namespace ScriptCanvasEditor
         if (serializeContext)
         {
             serializeContext->Class<SlotMappingComponent, AZ::Component>()
-                ->Version(0)
+                ->Version(1)
+                ->Field("SourceId", &SlotMappingComponent::m_sourceId)
             ;
         }
     }   
 
+    SlotMappingComponent::SlotMappingComponent(const AZ::EntityId& sourceId)
+        : m_sourceId(sourceId)
+    {
+    }
+
     void SlotMappingComponent::Activate()
     {
         m_slotMapping.clear();
+
         GraphCanvas::NodeNotificationBus::Handler::BusConnect(GetEntityId());
+        SceneMemberMappingConfigurationRequestBus::Handler::BusConnect(GetEntityId());
+
+        ConfigureMapping(m_sourceId);
     }
     
     void SlotMappingComponent::Deactivate()
     {
         GraphCanvas::NodeNotificationBus::Handler::BusDisconnect();
+
+        SlotMappingRequestBus::MultiHandler::BusDisconnect();
     }
     
     void SlotMappingComponent::OnAddedToScene(const AZ::EntityId&)
@@ -51,13 +118,14 @@ namespace ScriptCanvasEditor
         
         for (const AZ::EntityId& slotId : slotIds)
         {
-            OnSlotAdded(slotId);
+            OnSlotAddedToNode(slotId);
         }
 
-        SlotMappingRequestBus::Handler::BusConnect(GetEntityId());
+        SlotMappingRequestBus::MultiHandler::BusConnect(GetEntityId());
+        SlotMappingRequestBus::MultiHandler::BusConnect(m_sourceId);
     }
     
-    void SlotMappingComponent::OnSlotAdded(const AZ::EntityId& slotId)
+    void SlotMappingComponent::OnSlotAddedToNode(const AZ::EntityId& slotId)
     {
         AZStd::any* userData = nullptr;
         
@@ -69,7 +137,7 @@ namespace ScriptCanvasEditor
         }
     }
     
-    void SlotMappingComponent::OnSlotRemoved(const AZ::EntityId& slotId)
+    void SlotMappingComponent::OnSlotRemovedFromNode(const AZ::EntityId& slotId)
     {
         AZStd::any* userData = nullptr;
 
@@ -93,5 +161,43 @@ namespace ScriptCanvasEditor
         }
 
         return mappedId;
+    }
+
+    void SlotMappingComponent::OnSlotRenamed(const ScriptCanvas::SlotId& slotId, AZStd::string_view newName)
+    {
+        AZ::EntityId graphCanvasSlotId = MapToGraphCanvasId(slotId);
+
+        if (graphCanvasSlotId.IsValid())
+        {
+            GraphCanvas::SlotRequestBus::Event(graphCanvasSlotId, &GraphCanvas::SlotRequests::SetName, newName);
+        }
+    }
+
+    void SlotMappingComponent::OnSlotDisplayTypeChanged(const ScriptCanvas::SlotId& slotId, const ScriptCanvas::Data::Type& slotType)
+    {
+        AZ::EntityId graphCanvasSlotId = MapToGraphCanvasId(slotId);
+
+        if (graphCanvasSlotId.IsValid())
+        {
+            AZ::Uuid typeId = ScriptCanvas::Data::ToAZType(slotType);
+            GraphCanvas::DataSlotRequestBus::Event(graphCanvasSlotId, &GraphCanvas::DataSlotRequests::SetDataAndContainedTypeIds, typeId, ScriptCanvas::Data::GetContainedTypes(typeId));
+        }
+    }
+
+    void SlotMappingComponent::ConfigureMapping(const AZ::EntityId& scriptCanvasMemberId)
+    {
+        if (m_sourceId.IsValid())
+        {
+            ScriptCanvas::NodeNotificationsBus::Handler::BusDisconnect();
+            SlotMappingRequestBus::MultiHandler::BusDisconnect(m_sourceId);
+        }
+
+        m_sourceId = scriptCanvasMemberId;
+
+        if (m_sourceId.IsValid())
+        {
+            ScriptCanvas::NodeNotificationsBus::Handler::BusConnect(m_sourceId);
+            SlotMappingRequestBus::MultiHandler::BusConnect(m_sourceId);
+        }
     }
 }

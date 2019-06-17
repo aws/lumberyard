@@ -47,6 +47,9 @@ namespace AZ
                 void InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target) override;
                 Events::ProcessingResult UpdateManifest(Containers::Scene& scene, ManifestAction action,
                     RequestingApplication requester) override;
+                void GetAvailableModifiers(SceneAPI::Events::ManifestMetaInfo::ModifiersList& modifiers,
+                    const SceneAPI::Containers::Scene& scene,
+                    const SceneAPI::DataTypes::IManifestObject& target) override;
 
                 void GetVirtualTypeName(AZStd::string& name, Crc32 type) override;
                 void GetAllVirtualTypes(AZStd::set<Crc32>& types) override;

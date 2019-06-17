@@ -54,6 +54,9 @@ namespace PhysX
         virtual AZ::Crc32 GetNativeType() const override;
         virtual void* GetNativePointer() const override;
 
+        void AddToWorld(Physics::World&) override;
+        void RemoveFromWorld(Physics::World&) override;
+
     private:
         void CreatePxActor(const Physics::WorldBodyConfiguration& configuration);
         AZStd::shared_ptr<physx::PxRigidStatic> m_staticRigidBody;

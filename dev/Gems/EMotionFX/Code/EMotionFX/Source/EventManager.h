@@ -297,7 +297,6 @@ namespace EMotionFX
 
         void OnSimulatePhysics(float timeDelta);
         void OnCustomEvent(uint32 eventType, void* data);
-        void OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color);
         void OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color);
         void OnDrawTriangles();
 

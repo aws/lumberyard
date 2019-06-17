@@ -1387,9 +1387,11 @@ public:
     
     // Prepare the GPU-targets for next frame's CPU depth readback
     void FX_ZTargetReadBack();
+    void UpdateOcclusionDataForCPU();
 
     // Perform the CPU-side readback of the GPU target prepared in FX_ZTargetReadBack
     void FX_ZTargetReadBackOnCPU();
+    
 
     void FX_UpdateCharCBs();
     void* FX_AllocateCharInstCB(SSkinningData*, uint32);

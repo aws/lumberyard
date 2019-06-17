@@ -64,7 +64,13 @@ class EDITOR_COMMON_API QViewport
 {
     Q_OBJECT
 public:
-    QViewport(QWidget* parent);
+
+    enum StartupMode {
+        StartupMode_Immediate = 1, // Startup() will be called by QViewport's CTOR
+        StartupMode_Manual // Startup() will be called by the derived class
+    };
+
+    explicit QViewport(QWidget* parent, StartupMode startupMode = StartupMode_Immediate);
     ~QViewport();
     void Startup();
 

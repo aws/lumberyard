@@ -1,0 +1,86 @@
+<toolboxmacros shelfName="environmentModesToolbar" prettyName="Environment Modes" showByDefault="false">
+ <macro title="GlobalFog" shortcut="" icon="icons\fog.png" tooltip="Toggles global fog on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_GlobalFog')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Clouds" shortcut="" icon="icons\cloud_dark.png" tooltip="Toggles clouds on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Clouds')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Rain" shortcut="" icon="icons\cloud_dark_rain.png" tooltip="Toggles rain on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','r_Rain')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Sun" shortcut="" icon="icons\sun.big.png" tooltip="Toggles sun on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Sun')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Skybox" shortcut="" icon="icons\sky.png" tooltip="Toggles skybox on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Skybox')" bVariableToggle="0"/>
+ </macro>
+ <macro title="TimeOfDay" shortcut="" icon="icons\tod.png" tooltip="Cycles through the time of day in 1.5 hour increments">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_TimeOfDay')" bVariableToggle="0"/>
+ </macro>
+ <macro title="SSReflections" shortcut="" icon="icons\reflections.png" tooltip="Toggles screen space reflections on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','r_SSReflections')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Shadows" shortcut="" icon="icons\shadows.png" tooltip="Toggles shadows on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Shadows')" bVariableToggle="0"/>
+ </macro>
+ <macro title='Transparency' shortcut="" icon="icons\transparency.png" tooltip="Toggles transparent objects on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','r_TransparentPasses')" bVariableToggle="0"/>
+ </macro>
+ <!--macro title="e_GI" shortcut="" icon="icons\gi.png" tooltip="Toggles GI lighting on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_GI')" bVariableToggle="0"/>
+ </macro!-->
+ <macro title="ssdo" shortcut="" icon="icons\ssdo_toggle.png" tooltip="Toggles screen space directional occlusion on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','r_ssdo')" bVariableToggle="0"/>
+ </macro>
+ <macro title="DynamicLights" shortcut="" icon="icons\dynamiclights.png" tooltip="Toggles all dynamic lights on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_DynamicLights')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Brushes" shortcut="" icon="icons\brushes.png" tooltip="Toggles brushes on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Brushes')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Designer" shortcut="" icon="icons\designer.png" tooltip="Toggles designer geometry on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','designerObjects')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Entities" shortcut="" icon="icons\entities.png" tooltip="Toggles entities on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Entities')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Prefabs" shortcut="" icon="icons\prefab.png" tooltip="Toggles prefabs on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','PrefabObjects')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Vegetation" shortcut="" icon="icons\vegetation.png" tooltip="Toggles vegetation on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Vegetation')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Decals" shortcut="" icon="icons\decals.png" tooltip="Toggles decals on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Decals')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Terrain" shortcut="" icon="icons\terrain.png" tooltip="Toggles terrain on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Terrain')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Particles" shortcut="" icon="icons\particles.png" tooltip="Toggles particles on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Particles')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Flares" shortcut="" icon="icons\lens_flare.png" tooltip="Toggles flares on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','r_Flares')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Beams" shortcut="" icon="icons\beams.png" tooltip="Toggles beams on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','r_Beams')" bVariableToggle="0"/>
+ </macro>
+ <macro title="FogVolumes" shortcut="" icon="icons\fogvolumes.png" tooltip="Toggles fog volumes on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_FogVolumes')" bVariableToggle="0"/>
+ </macro>
+ <macro title="WaterOcean" shortcut="" icon="icons\ocean.png" tooltip="Toggles ocean water on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_WaterOcean')" bVariableToggle="0"/>
+ </macro>
+ <macro title="WaterVolumes" shortcut="" icon="icons\water_volume.png" tooltip="Toggles water volumes on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_WaterVolumes')" bVariableToggle="0"/>
+ </macro>
+ <macro title="Wind" shortcut="" icon="icons\wind.png" tooltip="Toggles wind on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_Wind')" bVariableToggle="0"/>
+ </macro>
+ <macro title="BBoxes" shortcut="" icon="icons\bounding_box.png" tooltip="Toggles BBoxes on / off">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','e_BBoxes')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="Reset the view to default configuration">
+  <command type="1" text="general.run_file_parameters('environmentmodes.py','default_view')" bVariableToggle="0"/>
+ </macro>
+</toolboxmacros>

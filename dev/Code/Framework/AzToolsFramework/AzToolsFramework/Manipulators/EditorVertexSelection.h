@@ -14,18 +14,17 @@
 
 #include <AzCore/Math/VertexContainer.h>
 #include <AzCore/Math/VertexContainerInterface.h>
-#include <AzCore/Math/VectorConversions.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Manipulators/ManipulatorBus.h>
 #include <AzToolsFramework/Manipulators/HoverSelection.h>
 #include <AzToolsFramework/Manipulators/SelectionManipulator.h>
 #include <AzToolsFramework/Manipulators/TranslationManipulators.h>
+#include <AzToolsFramework/Viewport/ActionBus.h>
+#include <AzToolsFramework/ViewportSelection/EditorBoxSelect.h>
 
 namespace AzToolsFramework
 {
-    /**
-     * Concrete implementation of AZ::VariableVertices backed by an AZ::VertexContainer.
-     */
+    /// Concrete implementation of AZ::VariableVertices backed by an AZ::VertexContainer.
     template<typename Vertex>
     class VariableVerticesVertexContainer
         : public AZ::VariableVertices<Vertex>
@@ -39,6 +38,8 @@ namespace AzToolsFramework
         void AddVertex(const Vertex& vertex) override { m_vertexContainer.AddVertex(vertex); }
         bool InsertVertex(size_t index, const Vertex& vertex) override { return m_vertexContainer.InsertVertex(index, vertex); }
         bool RemoveVertex(size_t index) override { return m_vertexContainer.RemoveVertex(index); }
+        void SetVertices(const AZStd::vector<Vertex>& vertices) override { m_vertexContainer.SetVertices(vertices); };
+        void ClearVertices() override { m_vertexContainer.Clear(); }
         size_t Size() const override { return m_vertexContainer.Size();  }
         bool Empty() const override { return m_vertexContainer.Empty(); }
 
@@ -46,28 +47,7 @@ namespace AzToolsFramework
         AZ::VertexContainer<Vertex>& m_vertexContainer;
     };
 
-    /**
-     * Concrete implementation of AZ::FixedVertices backed by an AZStd::fixed_vector.
-     */
-    template<typename Vertex, size_t Count>
-    class FixedVerticesVector
-        : public AZ::FixedVertices<Vertex>
-    {
-    public:
-        explicit FixedVerticesVector(AZStd::fixed_vector<Vertex, Count>& fixedVector)
-            : m_fixedVector(fixedVector) {}
-
-        bool GetVertex(size_t index, Vertex& vertex) const override { if (index < m_fixedVector.size()) { vertex = m_fixedVector[index]; return true; } return false; }
-        void UpdateVertex(size_t index, const Vertex& vertex) override { m_fixedVector[index] = vertex; }
-        size_t Size() const override { return m_fixedVector.size();  }
-
-    private:
-        AZStd::fixed_vector<Vertex, Count>& m_fixedVector;
-    };
-
-    /**
-     * Concrete implementation of AZ::FixedVertices backed by an AZStd::array.
-     */
+    /// Concrete implementation of AZ::FixedVertices backed by an AZStd::array.
     template<typename Vertex, size_t Count>
     class FixedVerticesArray
         : public AZ::FixedVertices<Vertex>
@@ -104,226 +84,191 @@ namespace AzToolsFramework
         AZStd::array<Vertex, Count>& m_array;
     };
 
-    /**
-     * EditorVertexSelection provides an interface for a collection of manipulators to expose
-     * editing of vertices in a container/collection. EditorVertexSelection is templated on the
-     * type of Vertex (Vector2/Vector3) stored in the container.
-     * EditorVertexSelectionBase provides common behaviour shared across Fixed and Variable selections.
-     */
+    /// EditorVertexSelection provides an interface for a collection of manipulators to expose
+    /// editing of vertices in a container/collection. EditorVertexSelection is templated on the
+    /// type of Vertex (Vector2/Vector3) stored in the container.
+    /// EditorVertexSelectionBase provides common behavior shared across Fixed and Variable selections.
     template<typename Vertex>
     class EditorVertexSelectionBase
-        : private ManipulatorRequestBus::Handler
+        : private AzFramework::EntityDebugDisplayEventBus::Handler
+        , private AzFramework::ViewportDebugDisplayEventBus::Handler
     {
     public:
         EditorVertexSelectionBase() = default;
-        virtual ~EditorVertexSelectionBase() {}
+        EditorVertexSelectionBase(const EditorVertexSelectionBase&) = delete;
+        EditorVertexSelectionBase& operator=(const EditorVertexSelectionBase&) = delete;
+        virtual ~EditorVertexSelectionBase() = default;
 
-        void Create(AZ::EntityId entityId, ManipulatorManagerId managerId,
+        /// Setup and configure the EditorVertexSelection for operation.
+        void Create(
+            const AZ::EntityComponentIdPair& entityComponentIdPair, ManipulatorManagerId managerId,
+            AZStd::unique_ptr<HoverSelection> hoverSelection,
             TranslationManipulators::Dimensions dimensions,
             TranslationManipulatorConfiguratorFn translationManipulatorConfigurator);
+
+        /// Create a translation manipulator for a given vertex.
+        void CreateTranslationManipulator(
+            AZ::EntityId entityId, ManipulatorManagerId managerId, const Vertex& vertex, size_t index);
+
+        /// Destroy all manipulators associated with the vertex selection.
         void Destroy();
 
-        /**
-         * Update manipulators based on local changes to vertex positions.
-         */
+        /// Set custom callback for when vertex positions are updated.
+        void SetVertexPositionsUpdatedCallback(const AZStd::function<void()>& callback);
+
+        /// Update manipulators based on local changes to vertex positions.
         void RefreshLocal();
-        /**
-         * Update manipulators based on changes to the entities transform.
-         */
+        /// Update the translation manipulator to be correctly positioned based
+        /// on the current selection (recenter it).
+        void RefreshTranslationManipulator();
+        /// Update manipulators based on changes to the entities transform.
         void RefreshSpace(const AZ::Transform& worldFromLocal);
 
+        /// Set bounds dirty (need recalculating) for all owned manipulators (selection, translation, hover).
         void SetBoundsDirty();
 
-        // ManipulatorRequestBus::Handler
-        void ClearSelected() override;
-        void SetSelectedPosition(const AZ::Vector3& localPosition) override;
+        /// How should the EditorVertexSelection respond to mouse input.
+        virtual bool HandleMouse(
+            const ViewportInteraction::MouseInteractionEvent& mouseInteraction);
 
-        /**
-         * Create a translation manipulator for a given vertex.
-         */
-        void CreateTranslationManipulator(
-            AZ::EntityId entityId, ManipulatorManagerId managerId,
-            TranslationManipulators::Dimensions dimensions, const Vertex& vertex, size_t index,
-            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator);
+        /// The Actions provided by the EditorVertexSelection while it is active.
+        /// e.g. Vertex deletion, duplication etc.
+        AZStd::vector<ActionOverride> ActionOverrides() const;
 
-        AZStd::function<void()> m_onVertexPositionsUpdated = nullptr; ///< Callback for when vertex positions are changed.
+        /// Let the EditorVertexSelection know a batch movement is about to begin so it
+        /// can avoid certain unnecessary updates.
+        void BeginBatchMovement();
 
-        /**
-         * Derived VertexContainers must implement these virtual functions to customize behaviour.
-         */
-        virtual AZ::FixedVertices<Vertex>* GetVertices() const = 0;
-        virtual void SetupSelectionManipulator(
-            const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator, AZ::EntityId entityId,
-            ManipulatorManagerId managerId, TranslationManipulators::Dimensions dimensions, size_t index,
-            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator) = 0;
-        virtual void OnCreated(AZ::EntityId /*entityId*/) {}
-        virtual void OnDestroyed() {}
-
-        // must be set before Create is called
-        AZStd::unique_ptr<HoverSelection> m_hoverSelection = nullptr; ///< Interface to hover selection, representing bounds that can be selected.
+        /// Let the EditorVertexSelection know a batch movement has ended so it can return
+        /// to its normal state.
+        void EndBatchMovement();
 
     protected:
-        /**
-         * Set selected manipulators and vertices position from offset from starting position when pressed.
-         */
-        void UpdateManipulatorsAndVerticesFromOffset(
-            IndexedTranslationManipulator<Vertex>& translationManipulator, const AZ::Vector3& localOffset);
+        /// Internal interface for EditorVertexSelection.
+        virtual void SetupSelectionManipulator(
+            const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator,
+            AZ::EntityId entityId, ManipulatorManagerId managerId, size_t index) = 0;
+        virtual void PrepareActions() = 0;
 
-        /**
-         * Set selected manipulators and vertices position from position.
-         */
-        void UpdateManipulatorsAndVerticesFromPosition(
-            IndexedTranslationManipulator<Vertex>& translationManipulator, const AZ::Vector3& localPosition);
-
-        /**
-         * Default behaviour when clicking on a selection manipulator (representing a vertex).
-         */
+        /// Default behavior when clicking on a selection manipulator (representing a vertex).
         void SelectionManipulatorSelectCallback(
-            size_t index, const ViewportInteraction::MouseInteraction& interaction, AZ::EntityId entityId,
-            ManipulatorManagerId managerId, TranslationManipulators::Dimensions dimensions,
-            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator);
+            size_t index, const ViewportInteraction::MouseInteraction& interaction,
+            AZ::EntityId entityId, ManipulatorManagerId managerId);
 
+        /// Destroy the translation manipulator and deselect all vertices.
+        void ClearSelected();
+
+        AZ::EntityId GetEntityId() const { return m_entityComponentIdPair.GetEntityId(); }
+        AZ::ComponentId GetComponentId() const { return m_entityComponentIdPair.GetComponentId(); }
+        ManipulatorManagerId GetManipulatorManagerId() const { return m_manipulatorManagerId; }
+
+        /// Is the translation vertex manipulator in 2D or 3D.
+        TranslationManipulators::Dimensions Dimensions() const { return m_dimensions; }
+
+        /// How to configure the translation manipulator (view and axes).
+        TranslationManipulatorConfiguratorFn ConfiguratorFn() const { return  m_manipulatorConfiguratorFn; }
+
+        /// The state we are in when editing vertices.
+        enum class State
+        {
+            Selecting,
+            Translating,
+        };
+
+        void SetState(State state);
+
+        AZStd::unique_ptr<HoverSelection> m_hoverSelection = nullptr; ///< Interface to hover selection, representing bounds that can be selected.
         AZStd::shared_ptr<IndexedTranslationManipulator<Vertex>> m_translationManipulator = nullptr; ///< Manipulator when vertex is selected to translate it.
         AZStd::vector<AZStd::shared_ptr<SelectionManipulator>> m_selectionManipulators; ///< Manipulators for each vertex when entity is selected.
+        AZStd::array<AZStd::vector<ActionOverride>, 2> m_actionOverrides; ///< Available actions corresponding to each mode.
 
     private:
-        AZ_DISABLE_COPY_MOVE(EditorVertexSelectionBase)
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
-        /**
-         * Called after manipulator and vertex positions have been updated.
-         */
-        void ManipulatorsAndVerticesUpdated();
+        // AzFramework::ViewportDebugDisplayEventBus
+        void DisplayViewport2d(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
-        AZ::EntityId m_entityId; ///< Id of the entity this editor vertex selection was created on.
+        /// Set selected manipulator and vertices position from offset from starting position when pressed.
+        void UpdateManipulatorsAndVerticesFromOffset(
+            IndexedTranslationManipulator<Vertex>& translationManipulator,
+            const AZ::Vector3& localManipulatorStartPosition,
+            const AZ::Vector3& localManipulatorOffset);
+
+        /// Set the position of the TranslationManipulators (if active).
+        void SetSelectedPosition(const AZ::Vector3& localPosition);
+
+        template<typename V, typename AZStd::enable_if<AZStd::is_same<V, AZ::Vector3>::value>::type* = nullptr>
+        void UpdateManipulatorSpace(const AzFramework::ViewportInfo& viewportInfo);
+        template<typename V, typename AZStd::enable_if<AZStd::is_same<V, AZ::Vector2>::value>::type* = nullptr>
+        void UpdateManipulatorSpace(const AzFramework::ViewportInfo& viewportInfo) const;
+
+        EditorBoxSelect m_editorBoxSelect; ///< Provide box select support for vertex selection.
+        AZ::EntityComponentIdPair m_entityComponentIdPair; ///< Id of the Entity and Component this editor vertex selection was created on.
+        ManipulatorManagerId m_manipulatorManagerId; ///< Id of the manager manipulators created from this type will be associated with.
+        TranslationManipulators::Dimensions m_dimensions = TranslationManipulators::Dimensions::Three; ///< The dimensions this vertex selection was created with.
+        TranslationManipulatorConfiguratorFn m_manipulatorConfiguratorFn = nullptr; ///< Function pointer set on Create to decide look and functionality of translation manipulator.
+        AZStd::function<void()> m_onVertexPositionsUpdated = nullptr; ///< Callback for when vertex positions are changed.
+        State m_state = State::Selecting; ///< Different states VertexSelection can be in.
+        bool m_worldSpace = false; ///< Are the manipulators being used in local or world space.
+        bool m_batchMovementInProgress = false; ///< If a batch movement operation is in progress we do not want to
+                                                ///< refresh the VertexSelection during it for performance reasons.
     };
 
-    /**
-     * EditorVertexSelectionFixed provides selection and editing for a fixed length number of
-     * vertices. New vertices cannot be inserted/added or removed.
-     */
+    /// EditorVertexSelectionFixed provides selection and editing for a fixed length number of
+    /// vertices. New vertices cannot be inserted/added or removed.
     template<typename Vertex>
     class EditorVertexSelectionFixed
         : public EditorVertexSelectionBase<Vertex>
     {
     public:
+        AZ_CLASS_ALLOCATOR_DECL
+
         EditorVertexSelectionFixed() = default;
-
-        // EditorVertexSelectionBase
-        AZ::FixedVertices<Vertex>* GetVertices() const override { return m_vertices.get(); }
-        void SetupSelectionManipulator(
-            const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator, AZ::EntityId entityId,
-            ManipulatorManagerId managerId, TranslationManipulators::Dimensions dimensions, size_t index,
-            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator) override;
-
-        AZStd::unique_ptr<AZ::FixedVertices<Vertex>> m_vertices; ///< Reference to backing store of vertices, set when created.
+        EditorVertexSelectionFixed(const EditorVertexSelectionFixed&) = delete;
+        EditorVertexSelectionFixed& operator=(const EditorVertexSelectionFixed&) = delete;
 
     private:
-        AZ_DISABLE_COPY_MOVE(EditorVertexSelectionFixed)
+        // EditorVertexSelectionBase
+        void SetupSelectionManipulator(
+            const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator,
+            AZ::EntityId entityId, ManipulatorManagerId managerId, size_t index) override;
+        void PrepareActions() override;
     };
 
-    /**
-     * EditorVertexSelectionVariable provides selection and editing for a variable length number of
-     * vertices. New vertices can be inserted/added or removed from the collection.
-     */
+    /// EditorVertexSelectionVariable provides selection and editing for a variable length number of
+    /// vertices. New vertices can be inserted/added or removed from the collection.
     template<typename Vertex>
     class EditorVertexSelectionVariable
         : public EditorVertexSelectionBase<Vertex>
-        , private DestructiveManipulatorRequestBus::Handler
     {
     public:
+        AZ_CLASS_ALLOCATOR_DECL
+
         EditorVertexSelectionVariable() = default;
-
-        // DestructiveManipulatorRequestBus::Handler
-        void DestroySelected() override;
-
-        // EditorVertexSelectionBase
-        AZ::FixedVertices<Vertex>* GetVertices() const override { return m_vertices.get(); }
-        void SetupSelectionManipulator(
-            const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator, AZ::EntityId entityId,
-            ManipulatorManagerId managerId, TranslationManipulators::Dimensions dimensions, size_t index,
-            TranslationManipulatorConfiguratorFn translationManipulatorConfigurator) override;
-        void OnCreated(AZ::EntityId entityId) override;
-        void OnDestroyed() override;
-
-        AZStd::unique_ptr<AZ::VariableVertices<Vertex>> m_vertices; ///< Reference to backing store of vertices, set when created.
+        EditorVertexSelectionVariable(const EditorVertexSelectionVariable&) = delete;
+        EditorVertexSelectionVariable& operator=(const EditorVertexSelectionVariable&) = delete;
 
     private:
-        AZ_DISABLE_COPY_MOVE(EditorVertexSelectionVariable)
+        // EditorVertexSelectionBase
+        void SetupSelectionManipulator(
+            const AZStd::shared_ptr<SelectionManipulator>& selectionManipulator,
+            AZ::EntityId entityId, ManipulatorManagerId managerId, size_t vertIndex) override;
+        void PrepareActions() override;
+
+        /// @return The center point of the selected vertices.
+        Vertex InsertSelectedInPlace(
+            AZStd::vector<typename IndexedTranslationManipulator<Vertex>::VertexLookup>& manipulators);
+        void DuplicateSelected();
+        void DestroySelected();
     };
 
-    // template helper to map a local/world space position into a vertex container
-    // depending on if it is storing Vector2s or Vector3s.
+    /// Helper for inserting a vertex in a variable vertices container.
     template<typename Vertex>
-    AZ_FORCE_INLINE Vertex AdaptVertexIn(const AZ::Vector3&) { return AZ::Vector3::CreateZero(); }
+    void InsertVertexAfter(AZ::EntityId entityId, size_t vertIndex, const Vertex& localPosition);
 
-    template<>
-    AZ_FORCE_INLINE AZ::Vector3 AdaptVertexIn<AZ::Vector3>(const AZ::Vector3& vector) { return vector; }
-
-    template<>
-    AZ_FORCE_INLINE AZ::Vector2 AdaptVertexIn<AZ::Vector2>(const AZ::Vector3& vector) { return Vector3ToVector2(vector); }
-
-    // template helper to map a vertex (vector) from a vertex container to a local/world space position
-    // depending on if the vertex container is storing Vector2s or Vector3s.
-    template<typename Vertex>
-    AZ_FORCE_INLINE AZ::Vector3 AdaptVertexOut(const Vertex&) { return AZ::Vector3::CreateZero(); }
-
-    template<>
-    AZ_FORCE_INLINE AZ::Vector3 AdaptVertexOut<AZ::Vector3>(const AZ::Vector3& vector) { return vector; }
-
-    template<>
-    AZ_FORCE_INLINE AZ::Vector3 AdaptVertexOut<AZ::Vector2>(const AZ::Vector2& vector) { return Vector2ToVector3(vector); }
-
-    /**
-     * Utility functions for rendering vertex container text indices
-     */
-    namespace EditorVertexSelectionUtil
-    {
-        static const float DefaultVertexTextSize = 1.5f;
-
-        static const AZ::Color DefaultVertexTextColor = AZ::Color(1.f, 1.f, 1.f, 1.f);
-
-        static const AZ::Vector3 DefaultVertexTextOffset = AZ::Vector3(0.f, 0.f, -0.1f);
-
-        /**
-         * Displays a single vertex container index as text at the given position
-         */
-        void DisplayVertexContainerIndex(AzFramework::EntityDebugDisplayRequests& displayContext
-            , const AZ::Vector3& position
-            , size_t index
-            , float textSize
-        );
-
-        /**
-         * Displays all vertex container indices as text at the position of each vertex when selected
-         */
-        template<typename Vertex>
-        void DisplayVertexContainerIndices(AzFramework::EntityDebugDisplayRequests& displayContext
-            , const AzToolsFramework::EditorVertexSelectionBase<Vertex>& vertexContainer
-            , const AZ::Transform& transform
-            , bool isSelected
-            , float textSize = DefaultVertexTextSize
-            , const AZ::Color& textColor = DefaultVertexTextColor
-            , const AZ::Vector3& textOffset = DefaultVertexTextOffset
-        )
-        {
-            if (!isSelected)
-            {
-                return;
-            }
-
-            displayContext.SetColor(textColor);
-            if (auto vertices = vertexContainer.GetVertices())
-            {
-                for (auto i = 0; i < vertices->Size(); ++i)
-                {
-                    Vertex vertex;
-                    if (vertices->GetVertex(i, vertex))
-                    {
-                        AZ::Vector3 position = AdaptVertexOut(vertex) + textOffset;
-                        DisplayVertexContainerIndex(displayContext, transform * position, i, textSize);
-                    }
-                }
-            }
-        }
-    }
-}
+} // namespace AzToolsFramework

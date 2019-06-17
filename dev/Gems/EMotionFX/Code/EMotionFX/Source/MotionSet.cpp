@@ -599,6 +599,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         m_isOwnedByRuntime = isOwnedByRuntime;
+#else
+        AZ_UNUSED(isOwnedByRuntime);
 #endif
     }
 
@@ -617,6 +619,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         m_isOwnedByAsset = isOwnedByAsset;
+#else
+        AZ_UNUSED(isOwnedByAsset);
 #endif
     }
 

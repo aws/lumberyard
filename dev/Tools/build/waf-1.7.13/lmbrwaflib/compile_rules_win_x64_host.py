@@ -55,7 +55,7 @@ def find_dx12(conf, windows_kit):
                 if windows_kit in path:
                     for root, dirs, files in os.walk(path):
                         if 'd3d12.lib' in files:
-                            Logs.warn('[DX12] libraries found, can compile for DX12')
+                            Logs.debug('[DX12] libraries found, can compile for DX12')
                             DX12_LIB_DIR[windows_kit] = root
                             break
                     if DX12_LIB_DIR[windows_kit]:
@@ -106,5 +106,11 @@ def load_win_x64_host_settings(conf):
     v['CODE_GENERATOR_PYTHON_HOME_DEBUG'] = conf.Path('Tools/Python/2.7.12/windows')
     v['CODE_GENERATOR_INCLUDE_PATHS'] = []
 
+    crcfix_dir = conf.Path('Tools/crcfix/bin/vc141')
+    if not os.path.exists(crcfix_dir):
+        crcfix_dir = conf.Path('Tools/crcfix/bin/vc140')
+        if not os.path.exists(crcfix_dir):
+            Logs.warn('Unable to locate the crcfix subfolder.  Make sure that you have VS2017 crcfix binaries available')
+    v['CRCFIX_PATH'] = [crcfix_dir]
     v['CRCFIX_EXECUTABLE'] = 'crcfix.exe'
 

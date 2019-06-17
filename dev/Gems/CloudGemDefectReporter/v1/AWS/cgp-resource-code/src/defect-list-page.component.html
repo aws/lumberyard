@@ -23,7 +23,6 @@
 
 <!-- Bookmarks Facet -->
 <div *ngIf="tabIndex === 2">
-    <!-- Ngx Datatable -->
     <defect-datatable #bookmarktable
         [aws]="aws"
         [metricApiHandler]="getMetricApiHandler()"
@@ -52,6 +51,6 @@
 </div>
 
 <!-- Jira Integration Facet -->
-<div *ngIf="tabIndex === 6">
+<div *ngIf="isJiraIntegrationEnabled && tabIndex === 6">
     <jira-integration [context]="context" [isLoadingReportFields]="defectListOverviewTab.datatable.loading" [reportFields]="defectListOverviewTab.datatable.reportFields"></jira-integration>
 </div>

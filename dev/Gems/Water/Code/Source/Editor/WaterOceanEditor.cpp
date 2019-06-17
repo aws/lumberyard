@@ -17,6 +17,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <LmbrCentral/Physics/WaterNotificationBus.h>
 
 #include "QtUtil.h"
 
@@ -71,12 +72,14 @@ namespace Water
     void WaterOceanEditor::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
         provided.push_back(AZ_CRC("WaterOceanEditor", 0x487c0aa8));
+        provided.push_back(AZ_CRC("WaterOceanService", 0x12a06661));
     }
 
     // static
     void WaterOceanEditor::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
         incompatible.push_back(AZ_CRC("WaterOceanEditor", 0x487c0aa8));
+        incompatible.push_back(AZ_CRC("WaterOceanService", 0x12a06661));
     }
 
     // static
@@ -115,12 +118,6 @@ namespace Water
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
         OnEntityVisibilityChanged(entityVisible);
 
-        // all data has been loaded, reload the ocean
-        GetIEditor()->SetModifiedFlag();
-        GetIEditor()->SetModifiedModule(eModifiedTerrain);
-        GetIEditor()->Notify(eNotify_OnTerrainRebuild);
-        GetIEditor()->RegisterNotifyListener(this);
-
         AzToolsFramework::Components::EditorComponentBase::Activate();
 
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
@@ -128,6 +125,12 @@ namespace Water
         AZ::Transform worldTransform = AZ::Transform::Identity();
         EBUS_EVENT_ID_RESULT(worldTransform, GetEntityId(), AZ::TransformBus, GetWorldTM);
         m_data.SetOceanLevel(worldTransform.GetPosition().GetZ());
+
+        // all data has been loaded and ocean height has been set, so notify the Editor that things have changed.
+        GetIEditor()->SetModifiedFlag();
+        GetIEditor()->SetModifiedModule(eModifiedTerrain);
+        GetIEditor()->Notify(eNotify_OnTerrainRebuild);
+        GetIEditor()->RegisterNotifyListener(this);
     }
 
     // called when Editor de-activates the component when going into Game Mode
@@ -168,5 +171,6 @@ namespace Water
     void WaterOceanEditor::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
         m_data.SetOceanLevel(world.GetPosition().GetZ());
+        LmbrCentral::WaterNotificationBus::Broadcast(&LmbrCentral::WaterNotificationBus::Events::OceanHeightChanged, world.GetPosition().GetZ());
     }
 }

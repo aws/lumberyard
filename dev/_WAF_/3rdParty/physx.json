@@ -79,6 +79,7 @@
             ]
         },
         "win_x64_vs2017": "@win_x64_vs2015",
+        "win_x64_clang": "@win_x64_vs2015",
         "linux_x64": {
             "ccflags": [
               "-Wno-return-type-c-linkage"
@@ -89,17 +90,17 @@
             "sharedlibpath": ["${lib_paths}/bin/linux64"],
             "import_debug": [
                 "lib${lib_names_linux}DEBUG.a",
-                "lib${lib_names_shared}DEBUG_x64.so"
+                "lib${lib_names}DEBUG_x64.so"
             ],
             "import_release": [
                 "lib${lib_names_linux}PROFILE.a",
-                "lib${lib_names_shared}PROFILE_x64.so"
+                "lib${lib_names}PROFILE_x64.so"
             ],
             "shared_debug": [
-                "${lib_names_shared}DEBUG_x64.so"
+                "${lib_names}DEBUG_x64.so"
             ],
             "shared_release": [
-                "${lib_names_shared}PROFILE_x64.so"
+                "${lib_names}PROFILE_x64.so"
             ]
         },
         "darwin_x64": {

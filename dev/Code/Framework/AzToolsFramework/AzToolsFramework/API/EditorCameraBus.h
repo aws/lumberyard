@@ -15,8 +15,8 @@
 namespace Camera
 {
     /**
-    * This bus allows you to get and set the current editor viewport camera 
-    */
+     * This bus allows you to get and set the current editor viewport camera
+     */
     class EditorCameraRequests : public AZ::EBusTraits
     {
     public:
@@ -24,30 +24,30 @@ namespace Camera
         virtual ~EditorCameraRequests() = default;
 
         /**
-        * Sets the view from the entity's perspective
-        * @param entityId the id of the entity whose perspective is to be used
-        */
+         * Sets the view from the entity's perspective
+         * @param entityId the id of the entity whose perspective is to be used
+         */
         virtual void SetViewFromEntityPerspective(const AZ::EntityId& /*entityId*/) {}
 
         /**
-        * Sets the view from the entity's perspective
-        * @param entityId the id of the entity whose perspective is to be used
-        * @param lockCameraMovement disallow camera movement from user input in the editor render viewport.
-        */
+         * Sets the view from the entity's perspective
+         * @param entityId the id of the entity whose perspective is to be used
+         * @param lockCameraMovement disallow camera movement from user input in the editor render viewport.
+         */
         virtual void SetViewAndMovementLockFromEntityPerspective(const AZ::EntityId& /*entityId*/, bool /*lockCameraMovement*/) {}
 
         /**
-        * Gets the id of the current view entity. Invalid EntityId is returned for the default editor camera
-        * @return the entityId of the entity currently being used as the view.  The Invalid entity id is returned for the default editor camera
-        */
+         * Gets the id of the current view entity. Invalid EntityId is returned for the default editor camera
+         * @return the entityId of the entity currently being used as the view.  The Invalid entity id is returned for the default editor camera
+         */
         virtual AZ::EntityId GetCurrentViewEntityId() { return AZ::EntityId(); }
     };
 
     using EditorCameraRequestBus = AZ::EBus<EditorCameraRequests>;
 
     /**
-    * This is the bus to interface with the camera system component
-    */
+     * This is the bus to interface with the camera system component
+     */
     class EditorCameraSystemRequests : public AZ::EBusTraits
     {
     public:
@@ -59,19 +59,20 @@ namespace Camera
     using EditorCameraSystemRequestBus = AZ::EBus<EditorCameraSystemRequests>;
 
     /**
-    * Handle this bus to be notified when the current editor viewport entity id changes
-    */
+     * Handle this bus to be notified when the current editor viewport entity id changes
+     */
     class EditorCameraNotifications : public AZ::EBusTraits
     {
     public:
         virtual ~EditorCameraNotifications() = default;
 
         /**
-        * Handle this message to know when the current viewports view entity has changed
-        * @param newViewId the id of the entity the current view has switched to
-        */
-        virtual void OnViewportViewEntityChanged(const AZ::EntityId& newViewId) {}
+         * Handle this message to know when the current viewports view entity has changed
+         * @param newViewId the id of the entity the current view has switched to
+         */
+        virtual void OnViewportViewEntityChanged(const AZ::EntityId& /*newViewId*/) {}
     };
+
     using EditorCameraNotificationBus = AZ::EBus<EditorCameraNotifications>;
 
 } // namespace Camera

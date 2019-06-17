@@ -161,11 +161,7 @@ bool CD3D9Renderer::PrepareShadowGenForFrustum(ShadowMapFrustum* pCurFrustum, SR
     {
         return false;
     }
-    if (!(pCurFrustum->pCastersList))
-    {
-        return false;
-    }
-    if (pCurFrustum->pCastersList->Count() <= 0 && pCurFrustum->pJobExecutedCastersList->Count() <= 0 &&
+    if (pCurFrustum->m_castersList.IsEmpty() && pCurFrustum->m_jobExecutedCastersList.IsEmpty() &&
         !pCurFrustum->IsCached() && pCurFrustum->m_eFrustumType != ShadowMapFrustum::e_GsmDynamicDistance)
     {
         return false;
@@ -473,9 +469,9 @@ void CD3D9Renderer::PrepareShadowGenForFrustumNonJobs(const int nFlags)
             SRenderingPassInfo passInfo = SRenderingPassInfo::CreateShadowPassRenderingInfo(tmpCamera, pCurFrustum->m_Flags, pCurFrustum->nShadowMapLod,
                     pCurFrustum->IsCached(), pCurFrustum->bIsMGPUCopy, &pCurFrustum->nShadowGenMask, nS, pCurFrustum->nShadowGenID[nThreadID][nS], nRenderingFlags);
 
-            for (int casterIdx = 0; casterIdx < pCurFrustum->pCastersList->Count(); casterIdx++)
+            for (int casterIdx = 0; casterIdx < pCurFrustum->m_castersList.Count(); ++casterIdx)
             {
-                IShadowCaster* pEnt  = (*pCurFrustum->pCastersList)[casterIdx];
+                IShadowCaster* pEnt  = pCurFrustum->m_castersList[casterIdx];
 
                 //TOFIX reactivate OmniDirectionalShadow
                 if (pCurFrustum->bOmniDirectionalShadow)
@@ -1112,7 +1108,7 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
 #if defined(CRY_USE_METAL)
                     //Clear calls are cached until a draw call is made. If there is nothing in the caster list no draw calls will be made.
                     //Hence make a draw call to clear the render targets.
-                    if (lof->pCastersList->Count() == 0)
+                    if (lof->m_castersList.IsEmpty() && lof->m_jobExecutedCastersList.IsEmpty())
                     {
                         FX_Commit();
                         FX_ClearTargetRegion();
@@ -1199,7 +1195,7 @@ bool CD3D9Renderer::PrepareDepthMap(ShadowMapFrustum* lof, int nLightFrustumID, 
                 FX_ProcessRenderList(EFSLIST_GENERAL, 1, FX_FlushShader_ShadowGen, false);
             }
             else
-            if (lof->pCastersList)
+            if (!lof->m_castersList.IsEmpty() || !lof->m_jobExecutedCastersList.IsEmpty())
             {
                 FX_ProcessRenderList(nFirstShadowGenRI,
                     nLastShadowGenRI,
@@ -2002,16 +1998,23 @@ void CD3D9Renderer::FX_ClearShadowMaskTexture()
         curSliceRVDesc.m_Desc.nFirstSlice = i;
         SResourceView& firstSliceRV = CTexture::s_ptexShadowMask->GetResourceView(curSliceRVDesc);
 
-        FX_ClearTarget(static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), Clr_Transparent, 0, nullptr);
-
 #if defined(CRY_USE_METAL)
-        // On metal we have to submit a draw call in order for a clear to take affect.
-        // Doing the commit/clear target region will produce the needed draw call for the clear.
-        FX_PushRenderTarget(0, static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), nullptr);
-        RT_SetViewport(0, 0, CTexture::s_ptexShadowMask->GetWidth(), CTexture::s_ptexShadowMask->GetHeight());
-        FX_Commit();
-        FX_ClearTargetRegion();
-        FX_PopRenderTarget(0);
+        static ICVar* pVar = iConsole->GetCVar("e_ShadowsClearShowMaskAtLoad");
+        if (pVar && pVar->GetIVal())
+        {
+            FX_ClearTarget(static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), Clr_Transparent, 0, nullptr);
+            
+            // On metal we have to submit a draw call in order for a clear to take affect.
+            // Doing the commit/clear target region will produce the needed draw call for the clear.
+            FX_PushRenderTarget(0, static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), nullptr);
+            
+            RT_SetViewport(0, 0, CTexture::s_ptexShadowMask->GetWidth(), CTexture::s_ptexShadowMask->GetHeight());
+            FX_Commit();
+            FX_ClearTargetRegion();
+            FX_PopRenderTarget(0);
+        }
+#else
+        FX_ClearTarget(static_cast<D3DSurface*>(firstSliceRV.m_pDeviceResourceView), Clr_Transparent, 0, nullptr);
 #endif
     }
 }

@@ -42,7 +42,7 @@ namespace PhysX
 
         /// Gets the static rigid body associated with the collider if one was created.
         /// @return the static rigid body pointer
-        virtual AZStd::shared_ptr<PhysX::RigidBodyStatic> GetStaticRigidBody() = 0;
+        virtual PhysX::RigidBodyStatic* GetStaticRigidBody() = 0;
     };
     using ColliderComponentRequestBus = AZ::EBus<ColliderComponentRequests>;
 

@@ -51,15 +51,6 @@ namespace LmbrCentral
         }
     }
 
-    void EditorSimpleAnimationComponent::DisplayEntity(bool& handled)
-    {
-        // Don't draw extra visualization unless selected.
-        if (!IsSelected())
-        {
-            handled = true;
-        }
-    }
-
     void EditorSimpleAnimationComponent::Activate()
     {
         EditorComponentBase::Activate();
@@ -74,14 +65,12 @@ namespace LmbrCentral
 
         AnimationInformationBus::Handler::BusConnect(GetEntityId());
         MeshComponentNotificationBus::Handler::BusConnect(GetEntityId());
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
     }
 
     void EditorSimpleAnimationComponent::Deactivate()
     {
         AnimationInformationBus::Handler::BusDisconnect();
         MeshComponentNotificationBus::Handler::BusDisconnect();
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
 
         EditorComponentBase::Deactivate();
     }
@@ -158,7 +147,7 @@ namespace LmbrCentral
     {
         UpdateCharacterInstance();
     }
-    
+
     void EditorSimpleAnimationComponent::OnAnimationSetRemovedAnimation(const char* /*animationPath*/, const char* /*animationName*/)
     {
         UpdateCharacterInstance();

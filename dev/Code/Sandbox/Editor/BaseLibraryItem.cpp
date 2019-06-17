@@ -16,7 +16,7 @@
 #include "BaseLibrary.h"
 #include "BaseLibraryManager.h"
 
-#include <QUuid>
+#include <AzCore/Math/Uuid.h>
 
 //undo object for multi-changes inside library item. such as set all variables to default values. 
 //For example: change particle emitter shape will lead to multiple variable changes
@@ -198,7 +198,7 @@ const QString& CBaseLibraryItem::GetName() const
 //////////////////////////////////////////////////////////////////////////
 void CBaseLibraryItem::GenerateId()
 {
-    GUID guid = QUuid::createUuid();
+    GUID guid = AZ::Uuid::CreateRandom();
     SetGUID(guid);
 }
 

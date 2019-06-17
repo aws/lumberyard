@@ -9,16 +9,20 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *
  */
+
 #pragma once
+
+#include "OccluderAreaComponent.h"
+#include "EditorOccluderAreaComponentBus.h"
 
 #include <AzCore/Component/TransformBus.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
+#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <LegacyEntityConversion/LegacyEntityConversionBus.h>
-#include <OccluderAreaComponentBus.h>
-#include "OccluderAreaComponent.h"
 
 namespace Visibility
 {
@@ -29,7 +33,6 @@ namespace Visibility
         : public OccluderAreaConfiguration
     {
     public:
-        friend class EditorOccluderAreaComponent; //So it can access component
         AZ_TYPE_INFO(EditorOccluderAreaConfiguration, "{032F466F-25CB-5460-AC2F-B04236C87878}", OccluderAreaConfiguration);
         AZ_CLASS_ALLOCATOR(EditorOccluderAreaConfiguration, AZ::SystemAllocator, 0);
 
@@ -38,16 +41,19 @@ namespace Visibility
         void OnChange() override;
         void OnVerticesChange() override;
 
+        void SetEntityId(AZ::EntityId entityId);
+
     private:
-        EditorOccluderAreaComponent* m_component = nullptr;
+        AZ::EntityId m_entityId;
     };
 
     class EditorOccluderAreaComponent
         : public AzToolsFramework::Components::EditorComponentBase
-        , private OccluderAreaRequestBus::Handler
+        , private EditorOccluderAreaRequestBus::Handler
+        , private AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
-        , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
-        , public AZ::TransformNotificationBus::Handler
+        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
+        , private AZ::TransformNotificationBus::Handler
     {
         friend class OccluderAreaConverter;
         friend class EditorOccluderAreaConfiguration;
@@ -55,8 +61,8 @@ namespace Visibility
         using Base = AzToolsFramework::Components::EditorComponentBase;
 
     public:
-
         AZ_COMPONENT(EditorOccluderAreaComponent, "{1A209C7C-6C06-5AE6-AD60-22CD8D0DAEE3}", AzToolsFramework::Components::EditorComponentBase);
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
@@ -64,84 +70,58 @@ namespace Visibility
 
         static void Reflect(AZ::ReflectContext* context);
 
-        IVisArea* m_area = nullptr;
-
-        EditorOccluderAreaComponent();
+        EditorOccluderAreaComponent() = default;
+        EditorOccluderAreaComponent(const EditorOccluderAreaComponent&) = delete;
+        EditorOccluderAreaComponent& operator=(const EditorOccluderAreaComponent&) = delete;
         ~EditorOccluderAreaComponent();
 
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
+        void BuildGameEntity(AZ::Entity* gameEntity) override;
 
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-        /// Update the object runtime after changes to the Configuration.
-        /// Called by the default RequestBus SetXXX implementations,
-        /// and used to initially set up the object the first time the
-        /// Configuration are set.
-        void UpdateObject();
+        // EditorComponentSelectionRequestsBus
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
+        bool EditorSelectionIntersectRayViewport(
+            const AzFramework::ViewportInfo& viewportInfo, const AZ::Vector3& src,
+            const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        bool SupportsEditorRayIntersect() override { return true; }
 
-        void SetDisplayFilled(const bool value) override
-        {
-            m_config.m_displayFilled = value;
-            UpdateObject();
-        }
-        bool GetDisplayFilled() override
-        {
-            return m_config.m_displayFilled;
-        }
-
-        void SetCullDistRatio(const float value) override
-        {
-            m_config.m_cullDistRatio = value;
-            UpdateObject();
-        }
-        float GetCullDistRatio() override
-        {
-            return m_config.m_cullDistRatio;
-        }
-
-        void SetUseInIndoors(const bool value) override
-        {
-            m_config.m_useInIndoors = value;
-            UpdateObject();
-        }
-        bool GetUseInIndoors() override
-        {
-            return m_config.m_useInIndoors;
-        }
-
-        void SetDoubleSide(const bool value) override
-        {
-            m_config.m_doubleSide = value;
-            UpdateObject();
-        }
-        bool GetDoubleSide() override
-        {
-            return m_config.m_doubleSide;
-        }
-
-        void DisplayEntity(bool& handled) override;
-
-        void BuildGameEntity(AZ::Entity* gameEntity) override;
+        /// EditorOccluderAreaRequestBus
+        void SetDisplayFilled(bool value) override;
+        bool GetDisplayFilled() override;
+        void SetCullDistRatio(float value) override;
+        float GetCullDistRatio() override;
+        void SetUseInIndoors(bool value) override;
+        bool GetUseInIndoors() override;
+        void SetDoubleSide(bool value) override;
+        bool GetDoubleSide() override;
+        bool GetVertex(size_t index, AZ::Vector3& vertex) const override;
+        bool UpdateVertex(size_t index, const AZ::Vector3& vertex) override;
+        size_t Size() const override { return m_config.m_vertices.size(); }
+        void UpdateOccluderAreaObject() override;
 
     private:
-		AZ_DISABLE_COPY_MOVE(EditorOccluderAreaComponent)
-
         friend EditorOccluderAreaConfiguration;
 
-        // EntitySelectionEventsBus
-        void OnSelected() override;
-        void OnDeselected() override;
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
-        // Manipulator handling
-        void CreateManipulators();
-
-        //Reflected members
+        // Reflected members
         EditorOccluderAreaConfiguration m_config;
 
-        AzToolsFramework::EditorVertexSelectionFixed<AZ::Vector3> m_vertexSelection; ///< Handles all manipulator interactions with vertices.
+        using ComponentModeDelegate = AzToolsFramework::ComponentModeFramework::ComponentModeDelegate;
+        ComponentModeDelegate m_componentModeDelegate; ///< Responsible for detecting ComponentMode activation
+                                                       ///< and creating a concrete ComponentMode.
+
+        // Unreflected members
+        IVisArea* m_area = nullptr;
     };
 
     class OccluderAreaConverter: public AZ::LegacyConversion::LegacyConversionEventBus::Handler
@@ -149,8 +129,7 @@ namespace Visibility
     public:
         AZ_CLASS_ALLOCATOR(OccluderAreaConverter, AZ::SystemAllocator, 0);
 
-        OccluderAreaConverter() {
-        }
+        OccluderAreaConverter() = default;
 
         // ------------------- LegacyConversionEventBus::Handler -----------------------------
         AZ::LegacyConversion::LegacyConversionResult ConvertEntity(CBaseObject* pEntityToConvert) override;

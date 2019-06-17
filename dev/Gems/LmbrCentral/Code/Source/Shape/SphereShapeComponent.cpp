@@ -19,6 +19,23 @@
 
 namespace LmbrCentral
 {
+    void SphereShapeComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+        provided.push_back(AZ_CRC("SphereShapeService", 0x90c8dc80));
+    }
+
+    void SphereShapeComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+    {
+        incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+        incompatible.push_back(AZ_CRC("SphereShapeService", 0x90c8dc80));
+    }
+
+    void SphereShapeComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
+    }
+
     void SphereShapeDebugDisplayComponent::Reflect(AZ::ReflectContext* context)
     {
         EntityDebugDisplayComponent::Reflect(context);
@@ -44,9 +61,9 @@ namespace LmbrCentral
         EntityDebugDisplayComponent::Deactivate();
     }
 
-    void SphereShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* displayContext)
+    void SphereShapeDebugDisplayComponent::Draw(AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        DrawSphereShape(g_defaultShapeDrawParams, m_sphereShapeConfig, *displayContext);
+        DrawSphereShape(m_sphereShapeConfig.GetDrawParams(), m_sphereShapeConfig, debugDisplay);
     }
 
     bool SphereShapeDebugDisplayComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
@@ -94,8 +111,8 @@ namespace LmbrCentral
                 &ClassConverters::DeprecateSphereColliderConfiguration)
                 ;
 
-            serializeContext->Class<SphereShapeConfig>()
-                ->Version(1)
+            serializeContext->Class<SphereShapeConfig, ShapeComponentConfig>()
+                ->Version(2)
                 ->Field("Radius", &SphereShapeConfig::m_radius)
                 ;
 

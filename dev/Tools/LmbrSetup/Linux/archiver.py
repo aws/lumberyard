@@ -64,7 +64,7 @@ _EXCLUDED_PATH_PATTERNS = [
     re.compile('dev/Tools/Python/2.7.13($|/.*)', re.I),
     re.compile('dev/Tools/Redistributables($|/.*)', re.I),
     re.compile('dev/Tools/RemoteConsole($|/.*)', re.I),
-    re.compile('(3rdparty|dev)/.+?/(lib|bin)/(ios|steamos|android|appletv|mac|osx|vc120|vc140|x86|x64|win|msvc)($|/.*)', re.I),
+    re.compile('(3rdparty|dev)/.+?/(lib|bin)/(ios|steamos|android|appletv|mac|osx|vc12|vc14|x86|x64|win|msvc)([^/]*?)($|/.*)', re.I),
 ]
 
 _EXCLUDED_EXTENSIONS = set([

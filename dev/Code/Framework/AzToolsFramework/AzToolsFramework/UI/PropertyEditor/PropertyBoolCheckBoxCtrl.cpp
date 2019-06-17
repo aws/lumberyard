@@ -94,6 +94,7 @@ namespace AzToolsFramework
         connect(newCtrl, &PropertyBoolCheckBoxCtrl::valueChanged, this, [newCtrl]()
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
             });
         return newCtrl;
     }

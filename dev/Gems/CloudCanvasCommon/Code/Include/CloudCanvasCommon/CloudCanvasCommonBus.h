@@ -15,6 +15,11 @@
 
 #include <CloudCanvas/ICloudCanvas.h>
 
+namespace AZ
+{
+    class JobContext;
+}
+
 namespace CloudCanvasCommon
 {
 
@@ -33,6 +38,7 @@ namespace CloudCanvasCommon
         virtual int GetEndpointHttpResponseCode(const AZStd::string& endPoint) { return 0; }
         // Called by RequestRootCAFile - Skips platform checks
         virtual CloudCanvas::RequestRootCAFileResult GetUserRootCAFile(AZStd::string& resultPath) = 0;
+        virtual AZ::JobContext* GetDefaultJobContext() { return nullptr; }
     };
     using CloudCanvasCommonRequestBus = AZ::EBus<CloudCanvasCommonRequests>;
 

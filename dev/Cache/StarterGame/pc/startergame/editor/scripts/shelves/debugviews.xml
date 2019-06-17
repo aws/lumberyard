@@ -1,0 +1,25 @@
+<toolboxmacros shelfName="debugViewsToolbar" prettyName="Debug Views" showByDefault="false">
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="GBuffers - Toggle through all available GBuffer debug views">
+  <command type="1" text="general.run_file_parameters(r'debugviews\debug_views.py','gbuffers')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="Profiling - Toggle through all available Profile debug views">
+  <command type="1" text="general.run_file_parameters(r'debugviews\debug_views.py','profiling')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="AI - Toggle through all available AI debug views">
+  <command type="1" text="general.run_file_parameters(r'debugviews\debug_views.py','ai')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="Art - Toggle through all available Art debug views">
+  <command type="1" text="general.run_file_parameters(r'debugviews\debug_views.py','art')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="MaterialFX - Toggle through all available Material debug views">
+  <command type="1" text="general.run_file_parameters(r'debugviews\debug_views.py','materialfx')" bVariableToggle="0"/>
+ </macro>
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="Reset the view to default configuration">
+  <command type="1" text="general.run_file_parameters(r'debugviews\debug_views.py','default_view')" bVariableToggle="0"/>
+ </macro>
+ <!-- to be reinstated using ATL
+ <macro title="" shortcut="" icon="icons\placeholder.png" tooltip="SOUNDFX - Toggle through all available Sound debug views">
+  <command type="1" text="general.run_file_parameters(r'debugviews\debug_views.py','soundfx')" bVariableToggle="0"/>
+ </macro>
+ -->
+</toolboxmacros>

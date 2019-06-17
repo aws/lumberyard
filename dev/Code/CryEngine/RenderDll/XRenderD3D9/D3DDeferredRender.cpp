@@ -224,7 +224,7 @@ void CD3D9Renderer::FX_DeferredShadowPass(const SRenderLight* pLight, ShadowMapF
             return;
         }
 
-        if (pShadowFrustum->pCastersList == NULL)
+        if (pShadowFrustum->m_castersList.IsEmpty() && pShadowFrustum->m_jobExecutedCastersList.IsEmpty())
         {
             return;
         }

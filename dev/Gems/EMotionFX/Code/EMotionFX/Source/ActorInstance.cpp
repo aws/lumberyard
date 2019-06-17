@@ -34,6 +34,7 @@
 #include "MorphSetupInstance.h"
 #include "Node.h"
 #include <EMotionFX/Source/RagdollInstance.h>
+#include <EMotionFX/Source/DebugDraw.h>
 
 
 namespace EMotionFX
@@ -57,6 +58,7 @@ namespace EMotionFX
         mBoolFlags              = 0;
         mActor                  = actor;
         mLODLevel               = 0;
+        m_requestedLODLevel     = 0;
         mNumAttachmentRefs      = 0;
         mThreadIndex            = threadIndex;
         mAttachedTo             = nullptr;
@@ -178,6 +180,8 @@ namespace EMotionFX
             mAnimGraphInstance->Destroy();
         }
 
+        GetDebugDraw().UnregisterActorInstance(this);
+
         // delete all attachments
         // actor instances that are attached will be detached, and not deleted from memory
         const uint32 numAttachments = mAttachments.GetLength();
@@ -225,6 +229,9 @@ namespace EMotionFX
     // update the transformation data
     void ActorInstance::UpdateTransformations(float timePassedInSeconds, bool updateMatrices, bool sampleMotions)
     {
+        // Update the LOD level in case a change was requested.
+        UpdateLODLevel();
+
         const Recorder& recorder = GetRecorder();
         timePassedInSeconds *= GetEMotionFX().GetGlobalSimulationSpeed();
 
@@ -1147,7 +1154,7 @@ namespace EMotionFX
     }
 
 
-    void ActorInstance::SetRagdoll(const AZStd::shared_ptr<Physics::Ragdoll>& ragdoll)
+    void ActorInstance::SetRagdoll(Physics::Ragdoll* ragdoll)
     {
         if (ragdoll && ragdoll->GetNumNodes() > 0)
         {
@@ -1396,24 +1403,30 @@ namespace EMotionFX
         }
     }
 
-
-    // set the new current LOD level for the actor instance
     void ActorInstance::SetLODLevel(uint32 level)
     {
-        // enable and disable all nodes accordingly (do not call this after setting the new mLODLevel)
-        SetSkeletalLODLevelNodeFlags(level);
-
-        // make sure the LOD level is valid and update it
-        mLODLevel = MCore::Clamp<uint32>(level, 0, mActor->GetNumLODLevels() - 1);
-        /*
-            // update the transform data
-            MorphSetup* morphSetup = mActor->GetMorphSetup(mLODLevel);
-            if (morphSetup)
-                mTransformData->SetNumMorphWeights( morphSetup->GetNumMorphTargets() );
-            else
-                mTransformData->SetNumMorphWeights( 0 );*/
+        m_requestedLODLevel = level;
     }
 
+    void ActorInstance::UpdateLODLevel()
+    {
+        // Switch LOD level in case a change was requested.
+        if (mLODLevel != m_requestedLODLevel)
+        {
+            // Make sure the LOD level is valid and update it.
+            mLODLevel = MCore::Clamp<uint32>(m_requestedLODLevel, 0, mActor->GetNumLODLevels() - 1);
+
+            // Enable and disable all nodes accordingly (do not call this after setting the new mLODLevel)
+            SetSkeletalLODLevelNodeFlags(mLODLevel);
+
+            /*// update the transform data
+                MorphSetup* morphSetup = mActor->GetMorphSetup(mLODLevel);
+                if (morphSetup)
+                    mTransformData->SetNumMorphWeights( morphSetup->GetNumMorphTargets() );
+                else
+                    mTransformData->SetNumMorphWeights( 0 );*/
+        }
+    }
 
     // enable or disable nodes based on the skeletal LOD flags
     void ActorInstance::UpdateSkeletalLODFlags()
@@ -1518,25 +1531,27 @@ namespace EMotionFX
 
 
     // draw a skeleton using lines, calling the drawline callbacks in the event handlers
-    void ActorInstance::DrawSkeleton(Pose& pose, uint32 color)
+    void ActorInstance::DrawSkeleton(Pose& pose, const AZ::Color& color)
     {
         Skeleton* skeleton = mActor->GetSkeleton();
 
-        // iterate over all enabled nodes
+        DebugDraw& debugDraw = GetDebugDraw();
+        DebugDraw::ActorInstanceData* drawData = debugDraw.GetActorInstanceData(this);
+        drawData->Lock();
+
         const uint32 numNodes = mEnabledNodes.GetLength();
         for (uint32 i = 0; i < numNodes; ++i)
         {
             const uint32 nodeIndex = mEnabledNodes[i];
             const uint32 parentIndex = skeleton->GetNode(nodeIndex)->GetParentIndex();
-
-            // if there is a parent node
             if (parentIndex != MCORE_INVALIDINDEX32)
             {
                 const AZ::Vector3 startPos = pose.GetWorldSpaceTransform(nodeIndex).mPosition;
                 const AZ::Vector3 endPos = pose.GetWorldSpaceTransform(parentIndex).mPosition;
-                GetEventManager().OnDrawLine(startPos, endPos, color);
+                drawData->AddLine(startPos, endPos, color);
             }
         }
+        drawData->Unlock();
     }
 
 
@@ -1977,6 +1992,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         SetFlag(BOOL_OWNEDBYRUNTIME, isOwnedByRuntime);
+#else
+        AZ_UNUSED(isOwnedByRuntime);
 #endif
     }
 

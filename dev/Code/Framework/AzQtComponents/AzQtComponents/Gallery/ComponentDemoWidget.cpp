@@ -15,6 +15,7 @@
 
 #include <QSettings>
 
+#include "AssetBrowserFolderPage.h"
 #include "BreadCrumbsPage.h"
 #include "BrowseEditPage.h"
 #include "ButtonPage.h"
@@ -29,9 +30,15 @@
 #include "SegmentControlPage.h"
 #include "SliderPage.h"
 #include "SvgLabelPage.h"
+#include "TabWidgetPage.h"
 #include "ToggleSwitchPage.h"
 #include "TypographyPage.h"
 #include "SpinBoxPage.h"
+#include "StyleSheetPage.h"
+#include "FilteredSearchWidgetPage.h"
+#include "TableViewPage.h"
+#include "StyledDockWidgetPage.h"
+#include "TitleBarPage.h"
 
 #include <QMenuBar>
 #include <QMenu>
@@ -69,6 +76,13 @@ ComponentDemoWidget::ComponentDemoWidget(bool legacyUISetting, QWidget* parent)
     sortedPages.insert("ComboBoxes", new ComboBoxPage(this));
     sortedPages.insert("SpinBox", spinBoxPage);
     sortedPages.insert("SVGLabel", new SvgLabelPage(this));
+    sortedPages.insert("Qt Style Sheets", new StyleSheetPage(this));
+    sortedPages.insert("TabWidget", new TabWidgetPage(this));
+    sortedPages.insert("AssetBrowserFolder", new AssetBrowserFolderPage(this));
+    sortedPages.insert("FilteredSearchWidget", new FilteredSearchWidgetPage(this));
+    sortedPages.insert("TableView", new TableViewPage(this));
+    sortedPages.insert("StyledDockWidget", new StyledDockWidgetPage(this));
+    sortedPages.insert("TitleBar", new TitleBarPage(this));
 
     for (const auto& title : sortedPages.keys())
     {

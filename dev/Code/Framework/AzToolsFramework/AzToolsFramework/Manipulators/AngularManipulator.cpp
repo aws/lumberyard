@@ -15,38 +15,17 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Manipulators/ManipulatorView.h>
 #include <AzToolsFramework/Manipulators/ManipulatorSnapping.h>
-#include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
 {
-    /**
-     * Transform local axis of object to orientation when in world space.
-     */
-    AZ::Vector3 LocalAxisToWorld(
-        const ManipulatorSpace manipulatorSpace,
-        const AZ::Transform& worldFromLocal,
-        const AZ::Vector3& axis)
-    {
-        switch (manipulatorSpace)
-        {
-        case ManipulatorSpace::Local:
-            return worldFromLocal.Multiply3x3(axis);
-        case ManipulatorSpace::World:
-            // fallthrough
-        default:
-            return axis;
-        }
-    }
+    static const float s_circularRotateThresholdDegrees = 80.0f;
 
     AngularManipulator::ActionInternal AngularManipulator::CalculateManipulationDataStart(
         const Fixed& fixed, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform,
-        const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, const float rayDistance,
-        const ManipulatorSpace manipulatorSpace)
+        const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, const float rayDistance)
     {
-        AZ::Transform worldFromLocalWithTransform = worldFromLocal * localTransform;
-
-        const AZ::Vector3 worldAxis = LocalAxisToWorld(
-            manipulatorSpace, worldFromLocalWithTransform, fixed.m_axis).GetNormalized();
+        const AZ::Transform worldFromLocalWithTransform = worldFromLocal * localTransform;
+        const AZ::Vector3 worldAxis = TransformDirectionNoScaling(worldFromLocalWithTransform, fixed.m_axis);
 
         ActionInternal actionInternal;
         // default plane normal and point used for rotation
@@ -55,7 +34,8 @@ namespace AzToolsFramework
 
         // if angular manipulator axis is at right angles to us, use initial ray direction
         // as plane normal and use hit position on manipulator as plane point
-        if (rayDirection.Dot(worldAxis).GetAbs() < 0.05f)
+        const float pickAngle = AZ::RadToDeg(acosf(rayDirection.Dot(worldAxis).GetAbs()));
+        if (pickAngle > s_circularRotateThresholdDegrees)
         {
             actionInternal.m_start.m_planeNormal = -rayDirection;
             actionInternal.m_start.m_planePoint = rayOrigin + rayDirection * rayDistance;
@@ -77,17 +57,12 @@ namespace AzToolsFramework
 
     AngularManipulator::Action AngularManipulator::CalculateManipulationDataAction(
         const Fixed& fixed, ActionInternal& actionInternal, const AZ::Transform& worldFromLocal,
-        const AZ::Transform& localTransform, const bool snapping, const float angleStep,
-        const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, const ManipulatorSpace manipulatorSpace)
+        const AZ::Transform& localTransform, const bool snapping, const float angleStepDegrees,
+        const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
+        const ViewportInteraction::KeyboardModifiers keyboardModifiers)
     {
         const AZ::Transform worldFromLocalWithTransform = worldFromLocal * localTransform;
-
-        const AZ::Vector3 worldAxis = LocalAxisToWorld(
-            manipulatorSpace, worldFromLocalWithTransform, fixed.m_axis).GetNormalized();
-
-        const AZ::Transform localFromWorldWithTransform = worldFromLocalWithTransform.GetInverseFast();
-        const AZ::Vector3 localAxis = Internal::TransformAxisForSpace(
-            manipulatorSpace, localFromWorldWithTransform, AZ::Quaternion::CreateIdentity(), fixed.m_axis).GetNormalized();
+        const AZ::Vector3 worldAxis = TransformDirectionNoScaling(worldFromLocalWithTransform, fixed.m_axis);
 
         AZ::Vector3 worldHitPosition = AZ::Vector3::CreateZero();
         Internal::CalculateRayPlaneIntersectingPoint(rayOrigin, rayDirection,
@@ -114,7 +89,7 @@ namespace AzToolsFramework
         {
             actionInternal.m_current.m_preSnapRadians += rotationAngleRad * rotateSign;
 
-            const float angleStepRad = AZ::DegToRad(angleStep);
+            const float angleStepRad = AZ::DegToRad(angleStepDegrees);
             const float preSnapRotateSign = Sign(actionInternal.m_current.m_preSnapRadians);
             // if we move more than angleStep in a frame, make sure we catch up
             while (fabsf(actionInternal.m_current.m_preSnapRadians) >= angleStepRad)
@@ -130,18 +105,19 @@ namespace AzToolsFramework
         }
 
         Action action;
-        action.m_start.m_localOrientation = AZ::Quaternion::CreateFromTransform(
+        action.m_start.m_space = AZ::Quaternion::CreateFromTransform(
             actionInternal.m_start.m_worldFromLocal).GetNormalizedExact();
-        action.m_current.m_localRotation = (AZ::Quaternion::CreateFromTransform(
-            actionInternal.m_start.m_localTransform).GetNormalizedExact() *
-            AZ::Quaternion::CreateFromAxisAngle(localAxis, actionInternal.m_current.m_radians)).GetNormalizedExact();
+        action.m_start.m_rotation = AZ::Quaternion::CreateFromTransform(
+            actionInternal.m_start.m_localTransform).GetNormalizedExact();
+        action.m_current.m_delta = AZ::Quaternion::CreateFromAxisAngleExact(
+            fixed.m_axis, actionInternal.m_current.m_radians).GetNormalizedExact();
+        action.m_modifiers = keyboardModifiers;
 
         return action;
     }
 
-    AngularManipulator::AngularManipulator(const AZ::EntityId entityId, const AZ::Transform& worldFromLocal)
-        : BaseManipulator(entityId)
-        , m_worldFromLocal(worldFromLocal)
+    AngularManipulator::AngularManipulator(const AZ::Transform& worldFromLocal)
+        : m_worldFromLocal(worldFromLocal)
     {
         AttachLeftMouseDownImpl();
     }
@@ -164,9 +140,6 @@ namespace AzToolsFramework
     void AngularManipulator::OnLeftMouseDownImpl(
         const ViewportInteraction::MouseInteraction& interaction, const float rayIntersectionDistance)
     {
-        const ManipulatorSpace manipulatorSpace =
-            GetManipulatorSpace(GetManipulatorManagerId());
-
         const bool snapping = AngleSnapping(interaction.m_interactionId.m_viewportId);
         const float angleStep = AngleStep(interaction.m_interactionId.m_viewportId);
 
@@ -174,7 +147,7 @@ namespace AzToolsFramework
         m_actionInternal = CalculateManipulationDataStart(
             m_fixed, TransformNormalizedScale(m_worldFromLocal), TransformNormalizedScale(m_localTransform),
             interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
-            rayIntersectionDistance, manipulatorSpace);
+            rayIntersectionDistance);
 
         if (m_onLeftMouseDownCallback)
         {
@@ -182,7 +155,7 @@ namespace AzToolsFramework
                 m_fixed, m_actionInternal, m_actionInternal.m_start.m_worldFromLocal,
                 m_actionInternal.m_start.m_localTransform, snapping, angleStep,
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
-                manipulatorSpace));
+                interaction.m_keyboardModifiers));
         }
     }
 
@@ -197,7 +170,7 @@ namespace AzToolsFramework
                 AngleSnapping(interaction.m_interactionId.m_viewportId),
                 AngleStep(interaction.m_interactionId.m_viewportId),
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
-                GetManipulatorSpace(GetManipulatorManagerId())));
+                interaction.m_keyboardModifiers));
         }
     }
 
@@ -211,23 +184,49 @@ namespace AzToolsFramework
                 AngleSnapping(interaction.m_interactionId.m_viewportId),
                 AngleStep(interaction.m_interactionId.m_viewportId),
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
-                GetManipulatorSpace(GetManipulatorManagerId())));
+                interaction.m_keyboardModifiers));
         }
     }
 
     void AngularManipulator::Draw(
         const ManipulatorManagerState& managerState,
-        AzFramework::EntityDebugDisplayRequests& display,
-        const ViewportInteraction::CameraState& cameraState,
+        AzFramework::DebugDisplayRequests& debugDisplay,
+        const AzFramework::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
         m_manipulatorView->Draw(
             GetManipulatorManagerId(), managerState,
             GetManipulatorId(), {
-                TransformNormalizedScale(m_worldFromLocal) * TransformNormalizedScale(m_localTransform),
+                m_worldFromLocal * m_localTransform,
                 AZ::Vector3::CreateZero(), MouseOver()
             },
-            display, cameraState, mouseInteraction, GetManipulatorSpace(GetManipulatorManagerId()));
+            debugDisplay, cameraState, mouseInteraction);
+    }
+
+    void AngularManipulator::SetAxis(const AZ::Vector3& axis)
+    {
+        m_fixed.m_axis = axis;
+    }
+
+    void AngularManipulator::SetSpace(const AZ::Transform& worldFromLocal)
+    {
+        m_worldFromLocal = worldFromLocal;
+    }
+
+    void AngularManipulator::SetLocalTransform(const AZ::Transform& localTransform)
+    {
+        m_localTransform = localTransform;
+    }
+
+    void AngularManipulator::SetLocalPosition(const AZ::Vector3& localPosition)
+    {
+        m_localTransform.SetTranslation(localPosition);
+    }
+
+    void AngularManipulator::SetLocalOrientation(const AZ::Quaternion& localOrientation)
+    {
+        m_localTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            localOrientation, m_localTransform.GetTranslation());
     }
 
     void AngularManipulator::SetView(AZStd::unique_ptr<ManipulatorView>&& view)
@@ -244,4 +243,5 @@ namespace AzToolsFramework
     {
         m_manipulatorView->Invalidate(GetManipulatorManagerId());
     }
-}
+
+} // namespace AzToolsFramework

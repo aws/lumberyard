@@ -569,7 +569,11 @@ inline IStatObj* IRenderNode::GetEntityStatObj(unsigned int nPartId, unsigned in
 struct IVegetation
     : public IRenderNode
 {
-    virtual float GetScale(void) const = 0;
+    virtual float GetScale() const = 0;
+    virtual void SetUniformScale(float fScale) = 0;
+    virtual void SetPosition(const Vec3& pos) = 0;
+    virtual void SetRotation(const Ang3& rotation) = 0;
+    virtual void PrepareBBox() = 0;
 };
 
 struct IBrush

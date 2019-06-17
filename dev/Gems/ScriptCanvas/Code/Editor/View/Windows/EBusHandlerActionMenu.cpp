@@ -20,11 +20,13 @@
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/Nodes/Wrapper/WrapperNodeBus.h>
 
-#include "Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h"
-#include "Editor/Translation/TranslationHelper.h"
 #include "Editor/View/Windows/EBusHandlerActionMenu.h"
-#include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
 #include <Editor/View/Windows/ui_ebushandleractionlistwidget.h>
+
+#include <Editor/Include/ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+#include <Editor/Translation/TranslationHelper.h>
+#include <Editor/View/Widgets/NodePalette/ScriptEventsNodePaletteTreeItemTypes.h>
+#include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
 
 #include <ScriptCanvas/Bus/RequestBus.h>
 
@@ -105,21 +107,22 @@ namespace ScriptCanvasEditor
 
         EBusHandlerNodeDescriptorRequestBus::EventResult(m_busName, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetBusName);
         
-        AZStd::vector< AZStd::string > eventNames;
-        EBusHandlerNodeDescriptorRequestBus::EventResult(eventNames, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetEventNames);
+        AZStd::vector< HandlerEventConfiguration > eventConfigurations;
+        EBusHandlerNodeDescriptorRequestBus::EventResult(eventConfigurations, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetEventConfigurations);
         
-        m_actionItems.resize(eventNames.size());
+        m_actionItems.resize(eventConfigurations.size());
          
-        for (unsigned int i=0; i < eventNames.size(); ++i)
+        for (unsigned int i=0; i < eventConfigurations.size(); ++i)
         {
             EBusHandlerActionItem& actionItem = m_actionItems[i];
-            actionItem.m_name = QString(eventNames[i].c_str());
+            actionItem.m_name = QString(eventConfigurations[i].m_eventName.c_str());
+            actionItem.m_eventId = eventConfigurations[i].m_eventId;
 
-            AZStd::string translatedName = TranslationHelper::GetKeyTranslation(TranslationContextGroup::EbusHandler, m_busName, eventNames[i], TranslationItemType::Node, TranslationKeyId::Name);
+            AZStd::string translatedName = TranslationHelper::GetKeyTranslation(TranslationContextGroup::EbusHandler, m_busName, eventConfigurations[i].m_eventName, TranslationItemType::Node, TranslationKeyId::Name);
 
             if (translatedName.empty())
             {
-                actionItem.m_displayName = QString(eventNames[i].c_str());
+                actionItem.m_displayName = actionItem.m_name;
             }
             else
             {
@@ -128,7 +131,7 @@ namespace ScriptCanvasEditor
             
             actionItem.m_index = i;
             
-            EBusHandlerNodeDescriptorRequestBus::EventResult(actionItem.m_active, ebusNode, &EBusHandlerNodeDescriptorRequests::ContainsEvent, eventNames[i]);
+            EBusHandlerNodeDescriptorRequestBus::EventResult(actionItem.m_active, ebusNode, &EBusHandlerNodeDescriptorRequests::ContainsEvent, eventConfigurations[i].m_eventId);
         }
 
         layoutChanged();
@@ -158,18 +161,46 @@ namespace ScriptCanvasEditor
         AZ::EntityId graphCanvasGraphId;
         GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, m_ebusNode, &GraphCanvas::SceneMemberRequests::GetScene);
 
-        AZStd::string eventName(actionItem.m_name.toUtf8().data());
+        ScriptCanvas::EBusEventId eventId(actionItem.m_eventId);
 
         if (actionItem.m_active)
         {
             AZ::Vector2 dummyPosition(0, 0);
-            CreateEBusHandlerEventMimeEvent mimeEvent(QString(m_busName.c_str()), actionItem.m_name);
+            NodeIdPair idPair;
 
-            NodeIdPair idPair = mimeEvent.CreateEventNode(graphCanvasGraphId, dummyPosition);
+            if (ScriptEventReceiverNodeDescriptorRequestBus::FindFirstHandler(m_ebusNode) != nullptr)
+            {
+                AZ::Data::AssetId assetId;
+                ScriptEventReceiverNodeDescriptorRequestBus::EventResult(assetId, m_ebusNode, &ScriptEventReceiverNodeDescriptorRequests::GetAssetId);
+
+                AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> asset = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(assetId, true, nullptr, true);
+
+                if (asset.IsReady())
+                {
+                    const ScriptEvents::ScriptEvent& definition = asset.Get()->m_definition;
+
+                    ScriptEvents::Method methodDefinition;
+                    
+                    if (definition.FindMethod(actionItem.m_name.toUtf8().data(), methodDefinition))
+                    {
+                        eventId = methodDefinition.GetEventId();
+
+                        CreateScriptEventsReceiverMimeEvent mimeEvent(asset.GetId(), methodDefinition);
+                        idPair = mimeEvent.CreateEventNode(graphCanvasGraphId, dummyPosition);
+                    }
+                }
+            }
+            else
+            {
+                CreateEBusHandlerEventMimeEvent mimeEvent(m_busName, actionItem.m_name.toUtf8().data(), actionItem.m_eventId);
+                idPair = mimeEvent.CreateEventNode(graphCanvasGraphId, dummyPosition);
+
+                eventId = AZ::Crc32(m_busName.c_str());
+            }
 
             GraphCanvas::WrappedNodeConfiguration configuration;
 
-            EBusHandlerNodeDescriptorRequestBus::EventResult(configuration, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetEventConfiguration, eventName);
+            EBusHandlerNodeDescriptorRequestBus::EventResult(configuration, m_ebusNode, &EBusHandlerNodeDescriptorRequests::GetEventConfiguration, eventId);
             GraphCanvas::WrapperNodeRequestBus::Event(m_ebusNode, &GraphCanvas::WrapperNodeRequests::WrapNode, idPair.m_graphCanvasId, configuration);
 
             AZ::EntityId scriptCanvasGraphId;
@@ -180,7 +211,7 @@ namespace ScriptCanvasEditor
         else
         {
             AZ::EntityId nodeId;
-            EBusHandlerNodeDescriptorRequestBus::EventResult(nodeId, m_ebusNode, &EBusHandlerNodeDescriptorRequests::FindEventNodeId, eventName);
+            EBusHandlerNodeDescriptorRequestBus::EventResult(nodeId, m_ebusNode, &EBusHandlerNodeDescriptorRequests::FindEventNodeId, eventId);
 
             if (nodeId.IsValid())
             {

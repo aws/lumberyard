@@ -138,7 +138,7 @@ namespace EMotionFX
         bool    GetHasVisualGraph() const override { return true; }
         bool    GetHasOutputPose() const override { return true; }
         bool    GetNeedsNetTimeSync() const override { return true; }
-        uint32  GetVisualColor() const override { return MCore::RGBA(59, 181, 200); }
+        AZ::Color GetVisualColor() const override { return AZ::Color(0.23f, 0.71f, 0.78f, 1.0f); }
         void    OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         AnimGraphPose* GetMainOutputPose(AnimGraphInstance* animGraphInstance) const override { return GetOutputPose(animGraphInstance, OUTPUTPORT_POSE)->GetValue(); }
 

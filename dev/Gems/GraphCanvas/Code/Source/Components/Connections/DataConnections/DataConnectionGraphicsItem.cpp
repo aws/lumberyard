@@ -82,6 +82,13 @@ namespace GraphCanvas
         m_dataPinStyleMonitor.SetSourceId(newSlotId);
         PopulateDataColor(m_sourceDataColor, newSlotId);
         UpdatePen();
+
+        if (DataSlotNotificationBus::MultiHandler::BusIsConnectedId(oldSlotId))
+        {
+            DataSlotNotificationBus::MultiHandler::BusDisconnect(oldSlotId);
+        }
+
+        DataSlotNotificationBus::MultiHandler::BusConnect(newSlotId);
     }
     
     void DataConnectionGraphicsItem::OnTargetSlotIdChanged(const AZ::EntityId& oldSlotId, const AZ::EntityId& newSlotId)
@@ -95,6 +102,34 @@ namespace GraphCanvas
         
         m_dataPinStyleMonitor.SetTargetId(newSlotId);
         PopulateDataColor(m_targetDataColor, newSlotId);
+        UpdatePen();
+
+        if (DataSlotNotificationBus::MultiHandler::BusIsConnectedId(oldSlotId))
+        {
+            DataSlotNotificationBus::MultiHandler::BusDisconnect(oldSlotId);
+        }
+
+        DataSlotNotificationBus::MultiHandler::BusConnect(newSlotId);
+    }
+
+    void DataConnectionGraphicsItem::OnDisplayTypeChanged(const AZ::Uuid&, const AZStd::vector<AZ::Uuid>&)
+    {
+        const AZ::EntityId* busId = DataSlotNotificationBus::GetCurrentBusId();
+
+        if (busId == nullptr)
+        {
+            return;
+        }
+
+        if (GetSourceSlotEntityId() == (*busId))
+        {
+            PopulateDataColor(m_sourceDataColor, (*busId));
+        }
+        else if(GetTargetSlotEntityId() == (*busId))
+        {
+            PopulateDataColor(m_targetDataColor, (*busId));
+        }
+
         UpdatePen();
     }
 
@@ -162,17 +197,36 @@ namespace GraphCanvas
         // Leave the color alone if we don't have a valid connection. Other logic deals with its coloring then.
         if (slotId.IsValid())
         {
-            AZ::Uuid dataType;
-            DataSlotRequestBus::EventResult(dataType, slotId, &DataSlotRequests::GetDataTypeId);
-
-            AZ::EntityId sceneId;
-            SceneMemberRequestBus::EventResult(sceneId, slotId, &SceneMemberRequests::GetScene);
-            
-            EditorId editorId;
-            SceneRequestBus::EventResult(editorId, sceneId, &SceneRequests::GetEditorId);
+            DataSlotType dataType = DataSlotType::Unknown;
+            DataSlotRequestBus::EventResult(dataType, slotId, &DataSlotRequests::GetDataSlotType);
 
             const Styling::StyleHelper* stylingHelper = nullptr;
-            StyleManagerRequestBus::EventResult(stylingHelper, editorId, &StyleManagerRequests::FindDataColorPalette, dataType);
+            
+            if (dataType == DataSlotType::Container)
+            {
+                size_t typeCount = 0;
+                DataSlotRequestBus::EventResult(typeCount, slotId, &DataSlotRequests::GetContainedTypesCount);
+
+                if (typeCount == 1)
+                {
+                    // Vector/Array/Set
+                    DataSlotRequestBus::EventResult(stylingHelper, slotId, &DataSlotRequests::GetContainedTypeColorPalette, 0);
+                }
+                else if(typeCount > 1)
+                {
+                    // Multi-Type container (e.g. Map)
+                    DataSlotRequestBus::EventResult(stylingHelper, slotId, &DataSlotRequests::GetDataColorPalette);
+                }
+                else
+                {
+                    // Container with no contained types (e.g. dynamic container slot)
+                    DataSlotRequestBus::EventResult(stylingHelper, slotId, &DataSlotRequests::GetDataColorPalette);
+                }
+            }
+            else
+            {
+                DataSlotRequestBus::EventResult(stylingHelper, slotId, &DataSlotRequests::GetDataColorPalette);
+            }
 
             if (stylingHelper != nullptr)
             {

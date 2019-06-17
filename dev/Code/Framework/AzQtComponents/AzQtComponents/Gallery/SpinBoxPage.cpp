@@ -17,6 +17,8 @@
 #include <QUndoCommand>
 #include <QPointer>
 #include <QEvent>
+#include <QAction>
+#include <QMenu>
 
 template<typename Spinbox, typename ValueType>
 class SpinBoxChangedCommand : public QUndoCommand
@@ -135,7 +137,9 @@ void SpinBoxPage::track(SpinBoxType* spinBox)
     QObject::connect(spinBox, &SpinBoxType::globalUndoTriggered, &m_undoStack, &QUndoStack::undo);
     QObject::connect(spinBox, &SpinBoxType::globalRedoTriggered, &m_undoStack, &QUndoStack::redo);
 
-    QObject::connect(spinBox, &SpinBoxType::contextMenuAboutToShow, this, [this](QAction* undo, QAction* redo) {
+    QObject::connect(spinBox, &SpinBoxType::contextMenuAboutToShow, this, [this](QMenu* menu, QAction* undo, QAction* redo) {
+        Q_UNUSED(menu);
+
         undo->setEnabled(m_undoStack.canUndo());
         redo->setEnabled(m_undoStack.canRedo());
     });

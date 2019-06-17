@@ -19,10 +19,15 @@
 #include "RoadComponent.h"
 #include "RiverComponent.h"
 #include "SplineGeometry.h"
+#include "RoadSurfaceDataComponent.h"
+#include "RiverSurfaceDataComponent.h"
+
 
 #if defined(ROADS_RIVERS_EDITOR)
 #include "EditorRoadComponent.h"
 #include "EditorRiverComponent.h"
+#include "EditorRoadSurfaceDataComponent.h"
+#include "EditorRiverSurfaceDataComponent.h"
 #include "LegacyConversion/RoadsAndRiversLegacyConverter.h"
 #endif
 
@@ -35,20 +40,64 @@ namespace RoadsAndRivers
             RoadsAndRiversSystemComponent::CreateDescriptor(),
             RoadComponent::CreateDescriptor(),
             RiverComponent::CreateDescriptor(),
+            RoadSurfaceDataComponent::CreateDescriptor(),
+            RiverSurfaceDataComponent::CreateDescriptor()
         });
 
 #if defined(ROADS_RIVERS_EDITOR)
         m_descriptors.insert(m_descriptors.end(), {
             EditorRoadComponent::CreateDescriptor(),
-            EditorRiverComponent::CreateDescriptor()
-        });
+            EditorRiverComponent::CreateDescriptor(),
+            EditorRoadSurfaceDataComponent::CreateDescriptor(),
+            EditorRiverSurfaceDataComponent::CreateDescriptor()
+            });
         m_legacyConverter = AZStd::make_unique<RoadsAndRiversConverter>();
 #endif
+    }
+
+    AZ::ComponentTypeList RoadsAndRiversModule::GetRequiredSystemComponents() const
+    {
+        return AZ::ComponentTypeList{
+            azrtti_typeid<RoadsAndRiversSystemComponent>(),
+        };
     }
 
     void RoadsAndRiversSystemComponent::Reflect(AZ::ReflectContext* context)
     {
         SplineUtils::ReflectHelperClasses(context);
+
+        if (AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serialize->Class<RoadsAndRiversSystemComponent, AZ::Component>()
+                ->Version(0);
+
+            if (AZ::EditContext* ec = serialize->GetEditContext())
+            {
+                ec->Class<RoadsAndRiversSystemComponent>("RoadsAndRivers", "Roads and Rivers Component")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
+                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ;
+            }
+        }
+    }
+
+    void RoadsAndRiversSystemComponent::Activate()
+    {
+        SurfaceData::SurfaceDataTagProviderRequestBus::Handler::BusConnect();
+    }
+
+    void RoadsAndRiversSystemComponent::Deactivate()
+    {
+        SurfaceData::SurfaceDataTagProviderRequestBus::Handler::BusDisconnect();
+    }
+
+    void RoadsAndRiversSystemComponent::GetRegisteredSurfaceTagNames(SurfaceData::SurfaceTagNameSet& names) const
+    {
+        names.insert(Constants::s_riverTagName);
+        names.insert(Constants::s_waterTagName);
+        names.insert(Constants::s_underWaterTagName);
+        names.insert(Constants::s_roadTagName);
     }
 }
 

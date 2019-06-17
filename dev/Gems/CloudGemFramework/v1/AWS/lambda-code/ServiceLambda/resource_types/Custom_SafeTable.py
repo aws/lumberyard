@@ -44,13 +44,8 @@ def handler(event, context):
     dynamodb = aws_utils.ClientWrapper(boto3.client('dynamodb'))
     wait_for_account_tables()
 
-    throughput = get_throughput_from_dict(event['ResourceProperties']['ProvisionedThroughput'])
-
     request_type = event['RequestType']
-
-    table_resource_name = ""
     table_name = get_table_name(event)
-    stream_specification = event["ResourceProperties"].get("StreamSpecification", {})
 
     if request_type == 'Create':
         try:
@@ -63,11 +58,11 @@ def handler(event, context):
                     wait_for_account_tables()
                     response = create_table(table_name, event)
                 else:
-                    response = {}
+                    raise e
             table_response = _TableResponse(response)
         except RuntimeError as e:
             return custom_resource_response.failure_response(e.message)
-
+        tag_table(dynamodb, response, event)
     elif request_type == 'Update':
         try:
             if not table_name in gather_tables(dynamodb):
@@ -79,9 +74,8 @@ def handler(event, context):
                         response = create_table(table_name, event)
                     else:
                         raise e
-
                 table_response = _TableResponse(response)
-
+                tag_table(dynamodb, response, event)
             else:
                 try:
                     response = update_table(table_name, event)
@@ -120,6 +114,8 @@ def handler(event, context):
 
 def create_table(table_name, event):
     dynamodb = aws_utils.ClientWrapper(boto3.client('dynamodb'))
+    if "FromBackup" in event["ResourceProperties"]:
+        return create_from_backup(table_name, event["ResourceProperties"]["FromBackup"], event["ResourceProperties"].get("BackupArn", None))
     if "GlobalSecondaryIndexes" in event["ResourceProperties"]:
         if "LocalSecondaryIndexes" in event["ResourceProperties"]:
             return dynamodb.create_table(
@@ -158,6 +154,42 @@ def create_table(table_name, event):
         ProvisionedThroughput=get_throughput_from_dict(event['ResourceProperties']['ProvisionedThroughput']),
         StreamSpecification=get_stream_spec_from_dict(event["ResourceProperties"].get("StreamSpecification", {})),
     )
+
+
+def create_from_backup(table_name, backup_name, backup_arn):
+    dynamodb = aws_utils.ClientWrapper(boto3.client('dynamodb'))
+    backups = get_backups(dynamodb)
+    if backup_arn is None:
+        backup_arn = get_latest_arn_by_name(backups, backup_name)
+    if not backup_arn:
+        raise Exception("Dynamodb backup arn could not be found for {}".format(backup_name))
+
+    response = dynamodb.restore_table_from_backup(
+        TargetTableName=table_name, BackupArn=backup_arn)
+    return response
+
+
+def get_latest_arn_by_name(backups, backup_name):
+    backup_summary = {}
+    for b in backups:
+        if b["BackupName"] == backup_name:
+            if not backup_summary:
+                backup_summary = b
+            elif b["BackupCreationDateTime"] > backup_summary["BackupCreationDateTime"]:
+                backup_summary = b
+    if not backup_summary:
+        raise Exception("Dynamodb backup named {} could not be found".format(backup_name))
+    return backup_summary.get("BackupArn", "")
+
+
+def get_backups(client):
+    response = client.list_backups()
+    backup_summaries = response["BackupSummaries"]
+    while 'LastEvaluatedBackupArn' in response:
+        response = client.list_backups(
+            ExclusiveStartBackupArn=response['LastEvaluatedBackupArn'])
+        backup_summaries = backup_summaries + response["BackupSummaries"]
+    return backup_summaries
 
 
 def update_table(table_name, event):
@@ -212,6 +244,7 @@ def update_stream_spec(dynamodb, table_name, event, description):
         StreamSpecification=stream_specification
     )
 
+
 def update_global_secondary_indexes(dynamodb, table_name, event, description):
     event_gsi = event["ResourceProperties"].get("GlobalSecondaryIndexes", [])
     existing_gsi = description['Table'].get('GlobalSecondaryIndexes', [])
@@ -265,10 +298,12 @@ def wait_for_account_tables():
         backoff(attempts)
         attempts += 1
 
+
 def get_table_name(event):
     stack_manager = stack_info.StackInfoManager()
     owning_stack_info = stack_manager.get_stack_info(event['StackId'])
     return owning_stack_info.stack_name + '-' + event['LogicalResourceId'] 
+
 
 def gather_tables(client):
     tables = []
@@ -281,11 +316,12 @@ def gather_tables(client):
 
     return tables
 
+
 def wait_for_idle_table(dynamodb, table_name):
     response = dynamodb.describe_table(TableName = table_name)
     status = response['Table'].get("TableStatus", "")
     attempts = 0
-    while status == 'UPDATING':
+    while status in ['UPDATING', 'CREATING']:
         backoff(attempts)
         attempts = attempts + 1
         response = dynamodb.describe_table(TableName = table_name)
@@ -298,6 +334,7 @@ def sanitize_secondary_indexes(index_input):
         sanitized.append(index)
     return sanitized
 
+
 def get_stream_spec_from_dict(input_dict):
     if not input_dict:
         input_dict = {"StreamEnabled": False }
@@ -306,12 +343,48 @@ def get_stream_spec_from_dict(input_dict):
     
     return input_dict
 
+
 def get_throughput_from_dict(input_dict):
     return {
         'ReadCapacityUnits': int(input_dict["ReadCapacityUnits"]),
         'WriteCapacityUnits': int(input_dict["WriteCapacityUnits"])
     }
 
+
+def tag_table(client, create_response, event):
+    stack_manager = stack_info.StackInfoManager()
+    stack = stack_manager.get_stack_info(event['StackId'])
+    if stack.stack_type == stack_info.StackInfo.STACK_TYPE_RESOURCE_GROUP:
+        deployment_name = stack.deployment.deployment_name
+        resource_group_name = stack.resource_group_name
+        tags=[
+            {
+                'Key': 'Deployment',
+                'Value': deployment_name
+            },
+            {
+                'Key': 'Gem',
+                'Value': resource_group_name
+            }
+        ]
+
+    if not tags:
+        print "Table is not part of a resource group stack, aborting tagging operation"
+        return
+
+    table_arn = create_response.get("TableDescription", {}).get("TableArn", "")
+    if not table_arn:
+        print "Table name was not in the response object, cannot tag resource"
+        return
+
+    table_name = create_response.get(
+        "TableDescription", {}).get("TableName", "")
+    wait_for_idle_table(client, table_name)
+
+    client.tag_resource(
+        ResourceArn=table_arn,
+        Tags=tags
+    )
 
 def updates_in_progress(client, all_tables):
     updating_tables = []

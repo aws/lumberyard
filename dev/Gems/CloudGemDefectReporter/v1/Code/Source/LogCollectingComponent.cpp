@@ -167,7 +167,8 @@ namespace CloudGemDefectReporter
 
     const char* LogCollectingComponent::GetLogFilePath() const
     {
-        if (gEnv->IsEditor())
+        SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+        if (pEnv->IsEditor())
         {
             return "@log@/Editor.log";
         }

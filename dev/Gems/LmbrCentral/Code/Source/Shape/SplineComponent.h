@@ -19,9 +19,7 @@
 
 namespace LmbrCentral
 {
-    /**
-     * Common functionality and data for the SplineComponent.
-     */
+    /// Common functionality and data for the SplineComponent.
     class SplineCommon
     {
     public:
@@ -35,13 +33,12 @@ namespace LmbrCentral
 
         void ChangeSplineType(AZ::u64 splineType);
 
-        /**
-         * Override callbacks to be used when spline changes/is modified.
-         */
+        /// Override callbacks to be used when spline changes/is modified.
         void SetCallbacks(
-            const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
-            const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
-            const AZStd::function<void()>& OnClearVertices, const AZStd::function<void()>& OnChangeType);
+            const AZ::IndexFunction& OnAddVertex, const AZ::IndexFunction& OnRemoveVertex,
+            const AZ::IndexFunction& OnUpdateVertex, const AZ::VoidFunction& OnSetVertices,
+            const AZ::VoidFunction& OnClearVertices, const AZ::VoidFunction& OnChangeType,
+            const AZ::BoolFunction& OnOpenClose);
 
         AZ::SplinePtr m_spline; ///< Reference to the underlying spline data.
 
@@ -50,18 +47,16 @@ namespace LmbrCentral
 
         AZ::u64 m_splineType = AZ::LinearSpline::RTTI_Type().GetHash(); ///< The currently set spline type (default to Linear).
 
-        AZStd::function<void(size_t)> m_onAddVertex = nullptr;
-        AZStd::function<void(size_t)> m_onRemoveVertex = nullptr;
-        AZStd::function<void()> m_onUpdateVertex = nullptr;
-        AZStd::function<void()> m_onSetVertices = nullptr;
-        AZStd::function<void()> m_onClearVertices = nullptr;
-
-        AZStd::function<void()> m_onChangeType = nullptr;
+        AZ::IndexFunction m_onAddVertex = nullptr;
+        AZ::IndexFunction m_onRemoveVertex = nullptr;
+        AZ::IndexFunction m_onUpdateVertex = nullptr;
+        AZ::VoidFunction m_onSetVertices = nullptr;
+        AZ::VoidFunction m_onClearVertices = nullptr;
+        AZ::VoidFunction m_onChangeType = nullptr;
+        AZ::BoolFunction m_onOpenCloseChange = nullptr;
     };
 
-    /**
-     * Component interface to core spline implementation.
-     */
+    /// Component interface to core spline implementation.
     class SplineComponent
         : public AZ::Component
         , private SplineComponentRequestBus::Handler
@@ -99,13 +94,15 @@ namespace LmbrCentral
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("SplineService", 0x2b674d3c));
-            provided.push_back(AZ_CRC("VertexContainerService", 0x22cf8e10));
+            provided.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
+            provided.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("SplineService", 0x2b674d3c));
-            incompatible.push_back(AZ_CRC("VertexContainerService", 0x22cf8e10));
+            incompatible.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
+            incompatible.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)

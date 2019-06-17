@@ -71,44 +71,29 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
         self.verify_s3_object_exists(bucket, key)
 
     def __230_verify_cgp_default_url(self):
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only', '--silent-create-admin', '-d', self.TEST_DEPLOYMENT_NAME)
+        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only')
 
         url = self.lmbr_aws_stdout
         self.assertTrue(url, "The Cloud Gem Portal URL was not generated.")
 
-        awsaccesskeyid, expiration, signature = self.__validate_presigned_url_parts(url)
-
-        self.assertAlmostEqual(int(expiration), constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS, delta=5) # +/- 5 seconds
-
         host, querystring = self.__parse_url_into_parts(url)
 
-        self.assertTrue(querystring, "The URL querystring was not found.")
+        self.assertIsNone(querystring, "The URL querystring was not empty.")
 
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-current-configuration', '--silent-create-admin', '-d', self.TEST_DEPLOYMENT_NAME)
+        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-bootstrap-configuration')
         s_object = str(self.lmbr_aws_stdout)
         
         bootstrap_config = json.loads(s_object)
 
         self.__validate_bootstrap_config(bootstrap_config)
 
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only', '--silent-create-admin', '-d', self.TEST_DEPLOYMENT_NAME)
+        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only')
 
         url2 = self.lmbr_aws_stdout
         self.assertTrue(url2, "The Cloud Gem Portal URL was not generated.")
 
         request = requests.get(str(url2).strip())
         self.assertEqual(request.status_code, 200, "The pre-signed url response code was not 200 but instead it was " + str(request.status_code))
-
-    def __240_verify_cgp_url_with_expiration(self):
-        expiration_duration_in_seconds = 1200
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only', '--silent-create-admin', '--duration-seconds', str(expiration_duration_in_seconds), '-d', self.TEST_DEPLOYMENT_NAME)
-
-        url = self.lmbr_aws_stdout
-        self.assertTrue(url, "The Cloud Gem Portal URL was not generated.")
-
-        awsaccesskeyid, expiration, signature = self.__validate_presigned_url_parts(url)
-
-        self.assertAlmostEqual(int(expiration), expiration_duration_in_seconds, delta=5) # +/- 5 seconds
 
     def __600_verify_cgp_user_pool(self):
         self.__verify_only_administrator_can_signup_user_for_cgp()
@@ -117,7 +102,7 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
 
     def __860_verify_cgp_user_pool_after_project_update(self):
         self.base_update_project_stack()
-        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only', '--silent-create-admin', '-d', self.TEST_DEPLOYMENT_NAME)
+        self.lmbr_aws('cloud-gem-framework', 'cloud-gem-portal', '--show-url-only')
         time.sleep(20) # Give the cloud gem framework a few seconds to populate cgp_bootstrap 
         self.__verify_only_administrator_can_signup_user_for_cgp()
         self.__verify_cgp_user_pool_groups()
@@ -130,6 +115,9 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
         self.teardown_base_stack()        
 
     def __parse_url_into_parts(self, url):
+        if "?" not in url:
+            return url, None
+
         parts = url.split('?')
 
         self.assertEqual(len(parts), 2, 'The Cloud Gem Portal URL is malformed.')
@@ -267,56 +255,6 @@ class IntegrationTest_CloudGemFramework_CloudGemPortal(base_stack_test.BaseStack
         )
         sts = session.client('sts')
         return sts
-
-    def __validate_presigned_url_parts(self, url):
-        parts = url.split('?')
-
-        self.assertEqual(len(parts), 2, 'The pre-signed URL is malformed.')
-        querystring_fragment = parts[1]
-        qf_parts = querystring_fragment.split('#')
-
-        querystring = qf_parts[0]
-
-        self.assertTrue(querystring, "The pre-signed URL querystring is missing.")
-
-        q_parts = querystring.split("&")
-        self.assertEqual(len(q_parts), 6, 'The pre-signed URL querystring is malformed.')
-        kv_algorithm= q_parts[0]
-        kv_expires = q_parts[1]
-        kv_creds = q_parts[2]
-        kv_header = q_parts[3]
-        kv_date= q_parts[4]
-        kv_signature = q_parts[5]
-
-        self.assertTrue(kv_creds, "The AWS access key id is missing in the pre-signed URL.")
-        self.assertTrue(kv_expires, "The expiration is missing in the pre-signed URL.")
-        self.assertTrue(kv_signature, "The signature is missing in the pre-signed URL.")
-        self.assertTrue(kv_algorithm, "The AWS algorithm id is missing in the pre-signed URL.")
-        self.assertTrue(kv_header, "The header is missing in the pre-signed URL.")
-        self.assertTrue(kv_date, "The date is missing in the pre-signed URL.")
-
-        aws_access_key_parts = kv_creds.split('=')
-        expires_parts = kv_expires.split('=')
-        signature_parts = kv_signature.split('=')
-        header_parts = kv_header.split('=')
-        date_parts = kv_date.split('=')
-        algorithm_parts = kv_algorithm.split('=')
-
-        self.assertEqual(aws_access_key_parts[0], 'X-Amz-Credential', "The AWS access key id is missing in the pre-signed URL.")
-        self.assertEqual(expires_parts[0], 'X-Amz-Expires', "The expiration is missing in the pre-signed URL.")
-        self.assertEqual(signature_parts[0], 'X-Amz-Signature', "The signature is missing in the pre-signed URL.")
-        self.assertEqual(header_parts[0], 'X-Amz-SignedHeaders', "The AWS header id is missing in the pre-signed URL.")
-        self.assertEqual(date_parts[0], 'X-Amz-Date', "The date is missing in the pre-signed URL.")
-        self.assertEqual(algorithm_parts[0], 'X-Amz-Algorithm', "The algorithm id is missing in the pre-signed URL.")
-
-        self.assertTrue(aws_access_key_parts[1], "The AWS access key id value is missing in the pre-signed URL.")
-        self.assertTrue(expires_parts[1], "The expiration value is missing in the pre-signed URL.")
-        self.assertTrue(signature_parts[1], "The signature value is missing in the pre-signed URL.")
-        self.assertTrue(header_parts[1], "The AWS header value is missing in the pre-signed URL.")
-        self.assertTrue(date_parts[1], "The data value is missing in the pre-signed URL.")
-        self.assertTrue(algorithm_parts[1], "The algorithm value is missing in the pre-signed URL.")
-
-        return aws_access_key_parts[1], expires_parts[1], signature_parts[1]
 
     def __get_cgp_content_file_path(self):
 

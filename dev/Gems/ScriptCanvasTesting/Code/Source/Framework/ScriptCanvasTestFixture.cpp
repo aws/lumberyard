@@ -10,21 +10,13 @@
 *
 */
 
-#include "precompiled.h"
+
 #include "ScriptCanvasTestFixture.h"
 
 namespace ScriptCanvasTests
 {
     Application* ScriptCanvasTestFixture::s_application = nullptr;
-
-    AZ::Debug::DrillerManager* ScriptCanvasTestFixture::s_drillerManager = nullptr;
-    const bool ScriptCanvasTestFixture::s_enableMemoryLeakChecking = false;
-
-    Application* ScriptCanvasTestFixture::GetApplication()
-    {
-        return s_application;
-    }
-
-    AZStd::atomic_bool AsyncScriptCanvasTestFixture::m_asyncOperationActive{};
+    UnitTest::AllocatorsBase ScriptCanvasTestFixture::s_allocatorSetup = {};
+    AZStd::atomic_bool ScriptCanvasTestFixture::s_asyncOperationActive = {};
+    bool ScriptCanvasTestFixture::s_setupSucceeded = false;
 }
-

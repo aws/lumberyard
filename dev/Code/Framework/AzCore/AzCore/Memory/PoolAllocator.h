@@ -101,7 +101,6 @@ namespace AZ
             void Destroy()
             {
                 OnDestroy();
-                m_schema.GarbageCollect();
                 m_schema.Destroy();
 #ifdef AZCORE_ENABLE_MEMORY_TRACKING
                 if (m_records)

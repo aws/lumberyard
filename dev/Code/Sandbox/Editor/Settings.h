@@ -615,6 +615,8 @@ struct SANDBOX_API SEditorSettings
 
     bool bEnableUI2;
 
+    bool newViewportInteractionModel = false; ///< Toggle for new Viewport Interaction Model.
+
 private:
     void SaveValue(const char* sSection, const char* sKey, int value);
     void SaveValue(const char* sSection, const char* sKey, const QColor& value);

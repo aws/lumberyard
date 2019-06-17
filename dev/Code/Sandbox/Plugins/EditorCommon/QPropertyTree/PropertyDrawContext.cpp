@@ -381,11 +381,16 @@ void PropertyDrawContext::drawEntry(const wchar_t* text, bool pathEllipsis, bool
     // the drawing context requires context so that the style sheet can be used:
     QFrame frameForContext;
     QLineEdit forContext;
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
     QStyleOptionFrameV2 option;
+    option.features = QStyleOptionFrameV2::None;
+#else
+    QStyleOptionFrame option;
+    option.features = QStyleOptionFrame::None;
+#endif
     option.state = QStyle::State_Sunken;
     option.lineWidth = tree->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, &option, &frameForContext);
     option.midLineWidth = 0;
-    option.features = QStyleOptionFrameV2::None;
     if (!grayBackground)
         option.state |= QStyle::State_Enabled;
 	else {

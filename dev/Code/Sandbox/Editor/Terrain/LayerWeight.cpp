@@ -24,7 +24,9 @@ LayerWeight::LayerWeight(const AZStd::vector<uint8>& layerIds, const AZStd::vect
     for (decltype(count)i = 1; i < count; ++i)
     {
         auto j = i;
-        while (j > 0 && sortedWeights[j] > sortedWeights[j - 1])
+
+        // By using >=, we ensure that the highest priority layers (which are at the end of the unsorted list) are always placed first in the list
+        while (j > 0 && sortedWeights[j] >= sortedWeights[j - 1])
         {
             std::swap(sortedWeights[j], sortedWeights[j - 1]);
             std::swap(sortedLayerIds[j], sortedLayerIds[j - 1]);
@@ -155,7 +157,7 @@ void LayerWeight::Normalize(int ignoreIndex, int remainder)
         {
             if (i != ignoreIndex)
             {
-                const uint8 AmountToChange = std::min(Weights[i], static_cast<uint8>(remainder));
+                const uint8 AmountToChange = static_cast<uint8>(std::min(static_cast<int>(Weights[i]), remainder));
                 Weights[i] -= AmountToChange;
                 if (Weights[i] == 0)
                 {

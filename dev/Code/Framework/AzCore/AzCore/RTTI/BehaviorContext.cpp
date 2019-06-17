@@ -239,6 +239,12 @@ namespace AZ
         }
     }
 
+    bool BehaviorContext::IsTypeReflected(AZ::Uuid typeId) const
+    {
+        auto classTypeIt = m_typeToClassMap.find(typeId);
+        return (classTypeIt != m_typeToClassMap.end());
+    }
+
     //=========================================================================
     // BehaviorClass
     //=========================================================================
@@ -248,6 +254,7 @@ namespace AZ
         , m_defaultConstructor(nullptr)
         , m_destructor(nullptr)
         , m_cloner(nullptr)
+        , m_equalityComparer(nullptr)
         , m_userData(nullptr)
         , m_typeId(Uuid::CreateNull())
         , m_alignment(0)
@@ -433,12 +440,12 @@ namespace AZ
 
     bool BehaviorEBusHandler::BusForwarderEvent::HasResult() const
     {
-        return !m_parameters.empty() && m_parameters.front().m_typeId != azrtti_typeid<void>();
+        return !m_parameters.empty() && !m_parameters.front().m_typeId.IsNull() && m_parameters.front().m_typeId != azrtti_typeid<void>();
     }
 
     namespace BehaviorContextHelper
     {
-        AZ::BehaviorClass* GetClass(BehaviorContext* behaviorContext, const AZ::Uuid& id)
+        AZ::BehaviorClass* GetClass(BehaviorContext* behaviorContext, const AZ::TypeId& id)
         {
             const auto& classIterator = behaviorContext->m_typeToClassMap.find(id);
             if (classIterator != behaviorContext->m_typeToClassMap.end())
@@ -470,7 +477,7 @@ namespace AZ
             return classIter->second;
         }
 
-        const BehaviorClass* GetClass(AZ::Uuid typeID)
+        const BehaviorClass* GetClass(const AZ::TypeId& typeID)
         {
             AZ::BehaviorContext* behaviorContext(nullptr);
             AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
@@ -491,7 +498,7 @@ namespace AZ
             return classIter->second;
         }
     
-        AZ::Uuid GetClassType(const AZStd::string& classNameString)
+        AZ::TypeId GetClassType(const AZStd::string& classNameString)
         {
             const char* className = classNameString.c_str();
             AZ::BehaviorContext* behaviorContext(nullptr);
@@ -499,14 +506,14 @@ namespace AZ
             if (!behaviorContext)
             {
                 AZ_Error("Behavior Context", false, "A behavior context is required!");
-                return AZ::Uuid::CreateNull();
+                return AZ::TypeId::CreateNull();
             }
 
             const auto classIter(behaviorContext->m_classes.find(className));
             if (classIter == behaviorContext->m_classes.end())
             {
                 AZ_Error("Behavior Context", false, "No class by name of %s in the behavior context!", className);
-                return AZ::Uuid::CreateNull();
+                return AZ::TypeId::CreateNull();
             }
 
             AZ::BehaviorClass* behaviorClass(classIter->second);
@@ -518,9 +525,8 @@ namespace AZ
         {
             return (parameter.m_traits & AZ::BehaviorParameter::TR_STRING) == AZ::BehaviorParameter::TR_STRING;
         }
-
     }
-
+ 
 } // namespace AZ
 
 #endif // AZ_UNITY_BUILD

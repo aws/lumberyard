@@ -65,7 +65,11 @@ void CTerrainTool::RegisterViewClass()
     options.isLegacyReplacement = true;
     options.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    RegisterQtViewPane<CTerrainTool>(GetIEditor(), LyViewPane::TerrainTool, LyViewPane::CategoryTools, options);
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        RegisterQtViewPane<CTerrainTool>(
+            GetIEditor(), LyViewPane::TerrainTool, LyViewPane::CategoryTools, options);
+    }
 }
 
 #include <TerrainPanel.moc>

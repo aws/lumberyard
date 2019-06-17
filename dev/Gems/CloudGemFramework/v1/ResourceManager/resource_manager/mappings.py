@@ -50,7 +50,7 @@ def update(context, args, force=False):
 
     if args.release:
         args.deployment = context.config.release_deployment
-    
+
     if not args.deployment:
         args.deployment = context.config.default_deployment
 
@@ -135,7 +135,7 @@ def __update_user_mappings_from_file(context, player_mappings_file):
     with open(player_mappings_file) as mappings_file:
         mappings = json.load(mappings_file)
     context.config.set_user_mappings(mappings.get("LogicalMappings", {}))
-    
+
 def __update_logical_mappings_files(context, deployment_name, args=None):
     exclusions = __get_mapping_exclusions(context)
     ## AuthenticatedPlayer is a superset of general "Player" and "AuthenticatedPlayer" permissions
@@ -143,7 +143,7 @@ def __update_logical_mappings_files(context, deployment_name, args=None):
     player_mappings = __get_mappings(context, deployment_name, exclusions, 'AuthenticatedPlayer', args)
 
     #update the user-settings.json file if this is the default deployment stack or a explicit deployment stack parameter was received in the CLI args list.
-    #If a explicit deployment stack parameter was received then someone is requesting the mappings to be set for to that specific deployment regardless whether it is the default    
+    #If a explicit deployment stack parameter was received then someone is requesting the mappings to be set for to that specific deployment regardless whether it is the default
     if args:
         print("Deployment: ", args.deployment)
     else:
@@ -175,14 +175,14 @@ def __logical_mapping_file_path(context):
     logicalMappingsPath = context.config.root_directory_path
     logicalMappingsPath = os.path.join(logicalMappingsPath, context.config.game_directory_name)
     logicalMappingsPath = os.path.join(logicalMappingsPath, 'Config')
-    
+
     return logicalMappingsPath
 
 
 def __remove_old_mapping_files(context, deployment_name = None):
     if deployment_name is None:
         __remove_all_old_mapping_files(context)
-    logicalMappingsPath = __logical_mapping_file_path(context) 
+    logicalMappingsPath = __logical_mapping_file_path(context)
     server_mappings_file = os.path.join(logicalMappingsPath, '{}.{}.{}'.format(deployment_name, 'server', constant.MAPPING_FILE_SUFFIX))
     player_mappings_file = os.path.join(logicalMappingsPath, '{}.{}.{}'.format(deployment_name, 'player', constant.MAPPING_FILE_SUFFIX))
     if os.path.exists(player_mappings_file) and context.config.validate_writable(player_mappings_file):
@@ -192,7 +192,7 @@ def __remove_old_mapping_files(context, deployment_name = None):
 
 def __remove_all_old_mapping_files(context):
     logicalMappingsPath = __logical_mapping_file_path(context)
-    if not os.path.exists(logicalMappingsPath):      
+    if not os.path.exists(logicalMappingsPath):
         return
     cwd = os.getcwd()
     os.chdir(logicalMappingsPath)
@@ -202,7 +202,7 @@ def __remove_all_old_mapping_files(context):
             continue
         try:
             os.remove(f)
-        except: 
+        except:
             pass
     os.chdir(cwd)
 
@@ -214,13 +214,17 @@ def __get_mapping_exclusions(context):
 
 
 def __get_mappings(context, deployment_name, exclusions, role, args=None):
-
+    iam = context.aws.client('iam')
     mappings = {}
-
     deployment_stack_id = context.config.get_deployment_stack_id(deployment_name)
 
     region = util.get_region_from_arn(deployment_stack_id)
     account_id = util.get_account_id_from_arn(deployment_stack_id)
+
+    # Assemble and add the iam role ARN to the server mappings
+    deployment_access_stack_id = context.config.get_deployment_access_stack_id(deployment_name, True if args is not None and args.is_gui else False)
+    server_role_id = context.stack.get_physical_resource_id(deployment_access_stack_id, role, optional=True)
+    server_role_arn = iam.get_role(RoleName=server_role_id).get('Role', {}).get('Arn', '')
 
     context.view.retrieving_mappings(deployment_name, deployment_stack_id, role)
 
@@ -230,7 +234,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
     resources = context.stack.describe_resources(deployment_stack_id, recursive=True)
 
     for logical_name, description in resources.iteritems():
-        
+
         if logical_name in exclusions:
             continue
 
@@ -276,7 +280,7 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
         access_resources = context.stack.describe_resources(access_stack_arn, recursive=True)
         for logical_name, description in access_resources.iteritems():
             if description['ResourceType'] == 'Custom::CognitoIdentityPool':
-                
+
                 if logical_name in exclusions:
                     continue
 
@@ -291,6 +295,9 @@ def __get_mappings(context, deployment_name, exclusions, role, args=None):
 
     if 'account_id' not in exclusions:
         mappings['account_id'] = { 'PhysicalResourceId': account_id, 'ResourceType': 'Configuration' }
+
+    if 'server_role_arn' not in exclusions and role is not 'AuthenticatedPlayer':
+        mappings['server_role_arn'] = { 'PhysicalResourceId': server_role_arn, 'ResourceType': 'Configuration' }
 
     return mappings
 
@@ -330,6 +337,8 @@ def __get_player_accessible_arns(context, deployment_name, role, args=None):
     deployment_access_stack_id = context.config.get_deployment_access_stack_id(deployment_name, True if args is not None and args.is_gui else False)
     player_role_id = context.stack.get_physical_resource_id(deployment_access_stack_id, role, optional=True)
 
+    if player_role_id.startswith("{"): # same check that happens in custom_resource info class
+        player_role_id = custom_resource_utils.get_embedded_physical_id(player_role_id).split("/")[-1]
     if player_role_id == None:
         return {}
 

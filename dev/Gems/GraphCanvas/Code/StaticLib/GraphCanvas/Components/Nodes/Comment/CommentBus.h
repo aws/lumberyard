@@ -14,9 +14,13 @@
 #include <qrect.h>
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
+#include <AzCore/EBus/EBus.h>
+#include <AzCore/Math/Color.h>
 #include <AzCore/Math/Vector2.h>
+
+#include <GraphCanvas/Editor/EditorTypes.h>
+#include <GraphCanvas/Utils/StateControllers/StateController.h>
 
 class QGraphicsLayoutItem;
 
@@ -101,19 +105,4 @@ namespace GraphCanvas
     };
 
     using CommentLayoutRequestBus = AZ::EBus<CommentLayoutRequests>;
-
-    class BlockCommentRequests
-        : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
-
-        virtual void SetBlock(QRectF blockRectangle) = 0;
-
-        virtual void BlockInteriorMovement() = 0;
-        virtual void UnblockInteriorMovement() = 0;
-    };
-
-    using BlockCommentRequestBus = AZ::EBus<BlockCommentRequests>;
 }

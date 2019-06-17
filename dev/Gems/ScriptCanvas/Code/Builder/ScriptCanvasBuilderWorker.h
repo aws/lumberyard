@@ -12,9 +12,11 @@
 
 #pragma once
 
-#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AssetBuilderSDK/AssetBuilderBusses.h>
 #include <AssetBuilderSDK/AssetBuilderSDK.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/Asset/AssetCommon.h>
 
 namespace AZ
 {
@@ -24,22 +26,30 @@ namespace AZ
     }
 }
 
+namespace ScriptCanvas
+{
+    class RuntimeAsset;
+}
+
 namespace ScriptCanvasBuilder
 {
     class Worker
         : public AssetBuilderSDK::AssetBuilderCommandBus::Handler
     {
     public:
+        static AZ::Outcome<AZ::Data::Asset<ScriptCanvas::RuntimeAsset>, AZStd::string> CreateRuntimeAsset(AZStd::string_view graphPath);
+        static AZ::Data::Asset<ScriptCanvas::RuntimeAsset> ProcessEditorAsset(AZ::Data::AssetHandler& editorAssetHandler, AZ::IO::GenericStream& editorAssetStream);
+
         Worker();
         ~Worker();
-
+        
         int GetVersionNumber() const;
         const char* GetFingerprintString() const;
 
         //! Asset Builder Callback Functions
         void CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response) const;
         void ProcessJob(const AssetBuilderSDK::ProcessJobRequest& request, AssetBuilderSDK::ProcessJobResponse& response) const;
-
+        
         //////////////////////////////////////////////////////////////////////////
         //!AssetBuilderSDK::AssetBuilderCommandBus interface
         void ShutDown() override;

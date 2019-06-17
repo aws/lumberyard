@@ -1,0 +1,42 @@
+{
+  "none": {
+  },
+  "auto": {
+    "Source": [
+      "Source/ScriptEventsSystemComponent.h",
+      "Source/ScriptEventsSystemComponent.cpp"
+    ],
+    "Include": [
+      "Include/ScriptEvents/ScriptEventsGem.h",
+      "Include/ScriptEvents/ScriptEventsAsset.h",
+      "Include/ScriptEvents/ScriptEventsAssetRef.h",
+      "Include/ScriptEvents/ScriptEventsBus.h",
+      "Include/ScriptEvents/ScriptEventFundamentalTypes.h",
+      "Include/ScriptEvents/ScriptEventDefinition.h",
+      "Include/ScriptEvents/ScriptEventDefinition.cpp",
+      "Include/ScriptEvents/ScriptEvent.h",
+      "Include/ScriptEvents/ScriptEventMethod.h",
+      "Include/ScriptEvents/ScriptEvent.cpp",
+      "Include/ScriptEvents/ScriptEventParameter.h",
+      "Include/ScriptEvents/ScriptEventTypes.h"
+    ],
+    "Include/Internal": [
+      "Include/ScriptEvents/Internal/VersionedProperty.h",
+      "Include/ScriptEvents/Internal/VersionedProperty.cpp",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/BehaviorContextFactoryMethods.h",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/DefaultEventHandler.h",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/DefaultEventHandler.cpp",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/ScriptEventMethod.h",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/ScriptEventMethod.cpp",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/ScriptEventBroadcast.h",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/ScriptEventBroadcast.cpp",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/ScriptEventsBindingBus.h",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/ScriptEventBinding.h",
+      "Include/ScriptEvents/Internal/BehaviorContextBinding/ScriptEventBinding.cpp"
+    ],
+    "Include/Components": [
+      "Include/ScriptEvents/Components/ScriptEventReferencesComponent.h",
+      "Include/ScriptEvents/Components/ScriptEventReferencesComponent.cpp"
+    ]
+  }
+}

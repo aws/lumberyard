@@ -3,9 +3,9 @@
         "Root": [
             "StdAfx.cpp"
         ],
-        "EditTools/ManipulatorShim":[
-            "ManipulatorShim.h",
-            "ManipulatorShim.cpp"
+        "EditTools/NullEditTool":[
+            "NullEditTool.h",
+            "NullEditTool.cpp"
         ],
         "Translations": [
             "Translations/editor_en-us.ts",

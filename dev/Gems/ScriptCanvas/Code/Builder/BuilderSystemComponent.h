@@ -38,7 +38,7 @@ namespace ScriptCanvasBuilder
 
         static void Reflect(AZ::ReflectContext* context);
 
-        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
         ////////////////////////////////////////////////////////////////////////
         // AZ::Component interface implementation

@@ -88,17 +88,25 @@ bool CTerrainHoleTool::MouseCallback(CViewport* view, EMouseEvent event, QPoint&
 
     if (event == eMouseLDown || (event == eMouseMove && (flags & MK_LBUTTON)))
     {
-        if (!GetIEditor()->IsUndoRecording())
+        AzToolsFramework::UndoSystem::URSequencePoint* undoOperation = nullptr;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+            undoOperation, &AzToolsFramework::ToolsApplicationRequests::GetCurrentUndoBatch);
+
+        if (!undoOperation)
         {
-            GetIEditor()->BeginUndo();
+            AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+                undoOperation, &AzToolsFramework::ToolsApplicationRequests::BeginUndoBatch, "Modify Terrain");
         }
         Modify();
     }
     else
     {
-        if (GetIEditor()->IsUndoRecording())
+        AzToolsFramework::UndoSystem::URSequencePoint* undoOperation = nullptr;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+            undoOperation, &AzToolsFramework::ToolsApplicationRequests::GetCurrentUndoBatch);
+        if (undoOperation)
         {
-            GetIEditor()->AcceptUndo("Terrain Hole");
+            AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::EndUndoBatch);
         }
     }
 

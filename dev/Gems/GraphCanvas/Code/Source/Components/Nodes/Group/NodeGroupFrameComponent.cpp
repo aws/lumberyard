@@ -11,47 +11,56 @@
 */
 #include "precompiled.h"
 
-#include <qcursor.h>
-#include <QScopedValueRollback>
-#include <QPainter>
+#include <QCursor>
 #include <QGraphicsLayout>
 #include <QGraphicsSceneEvent>
+#include <QPainter>
+#include <QScopedValueRollback>
+#include <QTimer>
 
-#include <Components/Nodes/Comment/BlockCommentNodeFrameComponent.h>
+#include <AzToolsFramework/Entity/EditorEntityHelpers.h>
+
+#include <Components/Nodes/Group/NodeGroupFrameComponent.h>
 
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/GeometryBus.h>
 #include <GraphCanvas/Components/GridBus.h>
+#include <GraphCanvas/Components/LayerBus.h>
+#include <GraphCanvas/Components/PersistentIdBus.h>
 #include <GraphCanvas/Components/Nodes/Comment/CommentBus.h>
 #include <GraphCanvas/Editor/GraphCanvasProfiler.h>
+#include <GraphCanvas/GraphCanvasBus.h>
 #include <GraphCanvas/tools.h>
 #include <GraphCanvas/Styling/StyleHelper.h>
+#include <GraphCanvas/Utils/GraphUtils.h>
 #include <GraphCanvas/Utils/QtVectorMath.h>
+
 #include <Utils/ConversionUtils.h>
 
 namespace GraphCanvas
 {
-    ///////////////////////////////////////////
-    // BlockCommentNodeFrameComponentSaveData
-    ///////////////////////////////////////////
+    ////////////////////////////////////
+    // NodeGroupFrameComponentSaveData
+    ////////////////////////////////////
 
-    BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponentSaveData::BlockCommentNodeFrameComponentSaveData()
-        : m_color(1.0f, 1.0f, 1.0f, 1.0f)
+    NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::NodeGroupFrameComponentSaveData()
+        : m_color(252.0f/255.0f, 249.0f/255.0f, 166.0f/255.0f, 1.0f)
         , m_displayHeight(-1)
         , m_displayWidth(-1)
         , m_enableAsBookmark(false)
         , m_shortcut(k_findShortcut)
+        , m_isCollapsed(false)
         , m_callback(nullptr)
     {
     }
 
-    BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponentSaveData::BlockCommentNodeFrameComponentSaveData(BlockCommentNodeFrameComponent* nodeFrameComponent)
-        : BlockCommentNodeFrameComponentSaveData()
+    NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::NodeGroupFrameComponentSaveData(NodeGroupFrameComponent* nodeFrameComponent)
+        : NodeGroupFrameComponentSaveData()
     {
         m_callback = nodeFrameComponent;
     }
 
-    void BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponentSaveData::operator=(const BlockCommentNodeFrameComponentSaveData& other)
+    void NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::operator=(const NodeGroupFrameComponentSaveData& other)
     {
         // Purposefully skipping over the callback.
         m_color = other.m_color;
@@ -60,18 +69,21 @@ namespace GraphCanvas
 
         m_enableAsBookmark = other.m_enableAsBookmark;
         m_shortcut = other.m_shortcut;
+
+        m_isCollapsed = other.m_isCollapsed;
+        m_persistentGroupedIds = other.m_persistentGroupedIds;
     }
 
-    void BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponentSaveData::OnColorChanged()
+    void NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::OnColorChanged()
     {
         if (m_callback)
         {
-            m_callback->OnColorChanged();
+            m_callback->OnColorChange();
             SignalDirty();
         }
     }
 
-    void BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponentSaveData::OnBookmarkStatusChanged()
+    void NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::OnBookmarkStatusChanged()
     {
         if (m_callback)
         {
@@ -80,11 +92,26 @@ namespace GraphCanvas
         }
     }
 
-    ///////////////////////////////////
-    // BlockCommentNodeFrameComponent
-    ///////////////////////////////////
+    void NodeGroupFrameComponent::NodeGroupFrameComponentSaveData::OnCollapsedStatusChanged()
+    {
+        if (m_callback)
+        {
+            if (m_isCollapsed)
+            {
+                m_callback->CollapseGroup();
+            }
+            else
+            {
+                m_callback->ExpandGroup();
+            }
+        }
+    }
 
-    bool BlockCommentNodeFrameComponentVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    ////////////////////////////
+    // NodeGroupFrameComponent
+    ////////////////////////////
+
+    bool NodeGroupFrameComponentVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {
         if (classElement.GetVersion() == 1)
         {
@@ -92,7 +119,7 @@ namespace GraphCanvas
             AZ::Crc32 heightId = AZ_CRC("DisplayHeight", 0x7e251278);
             AZ::Crc32 widthId = AZ_CRC("DisplayWidth", 0x5a55d875);
 
-            BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponentSaveData saveData;
+            NodeGroupFrameComponent::NodeGroupFrameComponentSaveData saveData;
 
             AZ::SerializeContext::DataElementNode* dataNode = classElement.FindSubElement(colorId);
 
@@ -127,69 +154,75 @@ namespace GraphCanvas
         return true;
     }
 
-    void BlockCommentNodeFrameComponent::Reflect(AZ::ReflectContext* context)
+    void NodeGroupFrameComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<BlockCommentNodeFrameComponentSaveData, ComponentSaveData>()
-                ->Version(2)
-                ->Field("Color", &BlockCommentNodeFrameComponentSaveData::m_color)
-                ->Field("DisplayHeight", &BlockCommentNodeFrameComponentSaveData::m_displayHeight)
-                ->Field("DisplayWidth", &BlockCommentNodeFrameComponentSaveData::m_displayWidth)
-                ->Field("EnableAsBookmark", &BlockCommentNodeFrameComponentSaveData::m_enableAsBookmark)
-                ->Field("QuickIndex", &BlockCommentNodeFrameComponentSaveData::m_shortcut)
+            serializeContext->Class<NodeGroupFrameComponentSaveData, ComponentSaveData>()
+                ->Version(3)
+                ->Field("Color", &NodeGroupFrameComponentSaveData::m_color)
+                ->Field("DisplayHeight", &NodeGroupFrameComponentSaveData::m_displayHeight)
+                ->Field("DisplayWidth", &NodeGroupFrameComponentSaveData::m_displayWidth)
+                ->Field("EnableAsBookmark", &NodeGroupFrameComponentSaveData::m_enableAsBookmark)
+                ->Field("QuickIndex", &NodeGroupFrameComponentSaveData::m_shortcut)
+                ->Field("Collapsed", &NodeGroupFrameComponentSaveData::m_isCollapsed)
+                ->Field("PersistentGroupedId", &NodeGroupFrameComponentSaveData::m_persistentGroupedIds)
             ;
 
-            serializeContext->Class<BlockCommentNodeFrameComponent, GraphCanvasPropertyComponent>()
-                ->Version(2, &BlockCommentNodeFrameComponentVersionConverter)
-                ->Field("SaveData", &BlockCommentNodeFrameComponent::m_saveData)
+            serializeContext->Class<NodeGroupFrameComponent, GraphCanvasPropertyComponent>()
+                ->Version(2, &NodeGroupFrameComponentVersionConverter)
+                ->Field("SaveData", &NodeGroupFrameComponent::m_saveData)
             ;
 
             AZ::EditContext* editContext = serializeContext->GetEditContext();
 
             if (editContext)
             {
-                editContext->Class<BlockCommentNodeFrameComponentSaveData>("BlockCommentFrameComponentSaveData", "Structure that stores all of the save information for a block comment.")
+                editContext->Class<NodeGroupFrameComponentSaveData>("NodeGroupFrameComponentSaveData", "Structure that stores all of the save information for a Node Group.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "Properties")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &BlockCommentNodeFrameComponentSaveData::m_color, "Block Color", "The color that the block comment should be rendered using.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlockCommentNodeFrameComponentSaveData::OnColorChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &BlockCommentNodeFrameComponentSaveData::m_enableAsBookmark, "Enable as Bookmark", "Toggles whether or not the block comment is registered as a bookmark.")
-                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &BlockCommentNodeFrameComponentSaveData::OnBookmarkStatusChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &NodeGroupFrameComponentSaveData::m_color, "Group Color", "The color that the Node Group should be rendered using.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &NodeGroupFrameComponentSaveData::OnColorChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &NodeGroupFrameComponentSaveData::m_enableAsBookmark, "Enable as Bookmark", "Toggles whether or not the Node Group is registered as a bookmark.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &NodeGroupFrameComponentSaveData::OnBookmarkStatusChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &NodeGroupFrameComponentSaveData::m_isCollapsed, "Collapse Group", "Toggles whether or not the specified Node Group is collapsed.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &NodeGroupFrameComponentSaveData::OnCollapsedStatusChanged)
                 ;
 
-                editContext->Class<BlockCommentNodeFrameComponent>("Block Comment Frame", "A comment that applies to the visible area.")
+                editContext->Class<NodeGroupFrameComponent>("Node Group Frame", "A comment that applies to the visible area.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "Properties")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &BlockCommentNodeFrameComponent::m_saveData, "SaveData", "The modifiable information about this block comment.")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &NodeGroupFrameComponent::m_saveData, "SaveData", "The modifiable information about this Node Group.")
                     ;
             }
         }
     }
 
-    BlockCommentNodeFrameComponent::BlockCommentNodeFrameComponent()
+    NodeGroupFrameComponent::NodeGroupFrameComponent()
         : m_saveData(this)
         , m_displayLayout(nullptr)
         , m_frameWidget(nullptr)
         , m_titleWidget(nullptr)
         , m_blockWidget(nullptr)
-        , m_allowInteriorMovement(true)
+        , m_enableSelectionManipulation(true)
         , m_needsElements(true)
+        , m_groupedElementsDirty(true)
+        , m_isExternallyControlled(false)
     {
     }
 
-    void BlockCommentNodeFrameComponent::Init()
+    void NodeGroupFrameComponent::Init()
     {
         GraphCanvasPropertyComponent::Init();
 
         m_displayLayout = new QGraphicsLinearLayout(Qt::Vertical);
         m_displayLayout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-        m_titleWidget = aznew BlockCommentNodeFrameTitleWidget();
-        m_blockWidget = aznew BlockCommentNodeFrameBlockAreaWidget();
+        m_titleWidget = aznew NodeGroupFrameTitleWidget();
+        m_blockWidget = aznew NodeGroupFrameBlockAreaWidget();
 
-        m_frameWidget = AZStd::make_unique<BlockCommentNodeFrameGraphicsWidget>(GetEntityId(), (*this));
+        m_frameWidget = AZStd::make_unique<NodeGroupFrameGraphicsWidget>(GetEntityId(), (*this));
 
         m_frameWidget->setLayout(m_displayLayout);
 
@@ -205,36 +238,43 @@ namespace GraphCanvas
         EntitySaveDataRequestBus::Handler::BusConnect(GetEntityId());
     }
 
-    void BlockCommentNodeFrameComponent::Activate()
+    void NodeGroupFrameComponent::Activate()
     {
         GraphCanvasPropertyComponent::Activate();
 
         NodeNotificationBus::Handler::BusConnect(GetEntityId());
         StyleNotificationBus::Handler::BusConnect(GetEntityId());
-        BlockCommentRequestBus::Handler::BusConnect(GetEntityId());
+        NodeGroupRequestBus::Handler::BusConnect(GetEntityId());
         BookmarkRequestBus::Handler::BusConnect(GetEntityId());
         BookmarkNotificationBus::Handler::BusConnect(GetEntityId());
-        SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
+        SceneMemberNotificationBus::MultiHandler::BusConnect(GetEntityId());
+        NodeGroupRequestBus::Handler::BusConnect(GetEntityId());
 
         m_frameWidget->Activate();
     }
 
-    void BlockCommentNodeFrameComponent::Deactivate()
+    void NodeGroupFrameComponent::Deactivate()
     {
         GraphCanvasPropertyComponent::Deactivate();
 
         m_frameWidget->Deactivate();
 
-        SceneMemberNotificationBus::Handler::BusDisconnect();
+        NodeGroupRequestBus::Handler::BusDisconnect();
+        SceneMemberNotificationBus::MultiHandler::BusDisconnect();
         BookmarkNotificationBus::Handler::BusDisconnect();
         BookmarkRequestBus::Handler::BusDisconnect();
-        BlockCommentRequestBus::Handler::BusDisconnect();
+        NodeGroupRequestBus::Handler::BusDisconnect();
         StyleNotificationBus::Handler::BusDisconnect();
         NodeNotificationBus::Handler::BusDisconnect();
         SceneNotificationBus::Handler::BusDisconnect();
     }
 
-    void BlockCommentNodeFrameComponent::SetBlock(QRectF blockRectangle)
+    StateController<bool>* NodeGroupFrameComponent::GetExternallyControlledStateController()
+    {
+        return &m_isExternallyControlled;
+    }
+
+    void NodeGroupFrameComponent::SetGroupSize(QRectF blockRectangle)
     {
         QScopedValueRollback<bool> allowMovement(m_frameWidget->m_allowMovement, false);
 
@@ -245,6 +285,7 @@ namespace GraphCanvas
         m_saveData.SignalDirty();
 
         m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
+        m_frameWidget->adjustSize();
 
         QPointF position = blockRectangle.topLeft();
 
@@ -253,81 +294,313 @@ namespace GraphCanvas
         GeometryRequestBus::Event(GetEntityId(), &GeometryRequests::SetPosition, AZ::Vector2(position.x(), position.y()));
     }
 
-    void BlockCommentNodeFrameComponent::BlockInteriorMovement()
-    {
-        m_allowInteriorMovement = false;
+    QRectF NodeGroupFrameComponent::GetGroupBoundingBox() const
+    {        
+        return m_blockWidget->sceneBoundingRect();
     }
 
-    void BlockCommentNodeFrameComponent::UnblockInteriorMovement()
+    AZ::Color NodeGroupFrameComponent::GetGroupColor() const
     {
-        m_allowInteriorMovement = true;
+        return m_saveData.m_color;
     }
 
-    void BlockCommentNodeFrameComponent::OnNodeActivated()
+    void NodeGroupFrameComponent::CollapseGroup()
     {
-        QGraphicsLayout* layout = nullptr;
-        NodeLayoutRequestBus::EventResult(layout, GetEntityId(), &NodeLayoutRequests::GetLayout);
-
-        layout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
-        m_titleWidget->setLayout(layout);
-
-        CommentRequestBus::Event(GetEntityId(), &CommentRequests::SetCommentMode, CommentMode::BlockComment);
-    }
-
-    void BlockCommentNodeFrameComponent::OnAddedToScene(const AZ::EntityId& sceneId)
-    {
-        OnBookmarkStatusChanged();
-
-        SceneNotificationBus::Handler::BusDisconnect();
-        SceneNotificationBus::Handler::BusConnect(sceneId);
-
-        CommentNotificationBus::Handler::BusConnect(GetEntityId());
-        GeometryNotificationBus::Handler::BusConnect(GetEntityId());
-
-        GeometryRequestBus::EventResult(m_previousPosition, GetEntityId(), &GeometryRequests::GetPosition);
-
-        m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
-
-        OnColorChanged();
-
-        if (m_saveData.m_enableAsBookmark)
+        if (!m_saveData.m_isCollapsed
+            || !m_collapsedNodeId.IsValid())
         {
-            BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::RegisterBookmark, GetEntityId());
-            SceneBookmarkRequestBus::Handler::BusConnect(sceneId);
-        }
+            // Only want to search for new elements if the grouped elements is empty.
+            // Otherwise we just want to use whatever we previously found.
+            //
+            // This will occur when we are loading from a save and are using the persistent Id's to figure out
+            // what we should do.
+            //
+            // Will also help in situations where we expand and collapse a node group without manipulating anything
+            // within the scene(or only manipulating the group)
+            CacheGroupedElements();
 
-        m_saveData.RegisterIds(GetEntityId(), sceneId);
-    }
+            m_saveData.m_isCollapsed = true;
 
-    void BlockCommentNodeFrameComponent::OnRemovedFromScene(const AZ::EntityId& sceneId)
-    {
-        bool isRegistered = false;
-        BookmarkManagerRequestBus::EventResult(isRegistered, sceneId, &BookmarkManagerRequests::IsBookmarkRegistered, GetEntityId());
+            CollapsedNodeGroupConfiguration groupedConfiguration;
+            groupedConfiguration.m_nodeGroupId = GetEntityId();
 
-        if (isRegistered)
-        {
-            BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::UnregisterBookmark, GetEntityId());
+            AZ::Entity* nodeGroup = nullptr;
+            GraphCanvasRequestBus::BroadcastResult(nodeGroup, &GraphCanvasRequests::CreateCollapsedNodeGroupAndActivate, groupedConfiguration);
 
-            SceneBookmarkRequestBus::Handler::BusDisconnect(sceneId);
-        }
-    }
+            GraphId graphId;
+            SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &SceneMemberRequests::GetScene);
 
-    void BlockCommentNodeFrameComponent::OnSceneMemberDeserializedForGraph(const AZ::EntityId& graphId)
-    {
-        if (m_saveData.m_enableAsBookmark)
-        {
-            AZ::EntityId conflictedId;
-            BookmarkManagerRequestBus::EventResult(conflictedId, graphId, &BookmarkManagerRequests::FindBookmarkForShortcut, m_saveData.m_shortcut);
-
-            if (conflictedId.IsValid() && m_saveData.m_shortcut > 0)
+            if (nodeGroup)
             {
-                m_saveData.m_shortcut = k_findShortcut;
+                m_collapsedNodeId = nodeGroup->GetId();
+
+                AZ::Vector2 position = ConversionUtils::QPointToVector(m_frameWidget->sceneBoundingRect().center());
+
+                GeometryRequestBus::Event(nodeGroup->GetId(), &GeometryRequests::SetPosition, position);
+
+                SceneRequestBus::Event(graphId, &SceneRequests::Add, nodeGroup->GetId());
+
+                SceneMemberNotificationBus::MultiHandler::BusConnect(m_collapsedNodeId);
+                NodeGroupNotificationBus::Event(GetEntityId(), &NodeGroupNotifications::OnCollapsed, m_collapsedNodeId);
+
+                // Want to add in the collapsed node id to maintain our selection information correctly.
+                GraphCanvasPropertyBus::Event(GetEntityId(), &GraphCanvasPropertyInterface::AddBusId, m_collapsedNodeId);
+            }
+            else
+            {
+                m_saveData.m_isCollapsed = false;
+            }
+
+            if (m_collapsedNodeId.IsValid())
+            {
+                m_saveData.SignalDirty();
+                GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
+
+                if (m_enableSelectionManipulation)
+                {
+                    SceneMemberUIRequestBus::Event(m_collapsedNodeId, &SceneMemberUIRequests::SetSelected, true);
+                }
+            }
+            else
+            {
+                m_saveData.m_isCollapsed = false;
+                m_saveData.m_persistentGroupedIds.clear();
             }
         }
     }
 
-    void BlockCommentNodeFrameComponent::OnStyleChanged()
+    void NodeGroupFrameComponent::ExpandGroup()
+    {
+        if (m_saveData.m_isCollapsed || m_collapsedNodeId.IsValid())
+        {
+            if (m_collapsedNodeId.IsValid())
+            {
+                AZ::EntityId collapsedNodeId = m_collapsedNodeId;
+                CollapsedNodeGroupRequestBus::Event(collapsedNodeId, &CollapsedNodeGroupRequests::ExpandGroup);
+
+                GraphCanvasPropertyBus::Event(GetEntityId(), &GraphCanvasPropertyInterface::RemoveBusId, collapsedNodeId);
+            }
+            else
+            {
+                OnExpanded();
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::UngroupGroup()
+    {
+        GraphId graphId;
+        SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+        {
+            ScopedGraphUndoBlocker undoBlocker(graphId);
+
+            if (m_saveData.m_isCollapsed)
+            {
+                ExpandGroup();
+            }
+
+            m_groupedElements.clear();
+            m_groupedElementsDirty = false;
+
+            AZStd::unordered_set< AZ::EntityId > deletionSet = { GetEntityId() };
+
+            SceneRequestBus::Event(graphId, &SceneRequests::Delete, deletionSet);
+        }
+
+        GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
+    }
+
+    bool NodeGroupFrameComponent::IsCollapsed() const
+    {
+        return m_saveData.m_isCollapsed;
+    }
+
+    AZ::EntityId NodeGroupFrameComponent::GetCollapsedNodeId() const
+    {
+        return m_collapsedNodeId;
+    }
+
+    void NodeGroupFrameComponent::FindGroupedElements(AZStd::vector< NodeId >& groupedElements)
+    {
+        if (m_groupedElementsDirty)
+        {
+            FindInteriorElements(groupedElements);
+        }
+        else
+        {
+            groupedElements = m_groupedElements;
+        }
+    }
+
+    bool NodeGroupFrameComponent::IsInTitle(const QPointF& scenePos) const
+    {
+        return m_titleWidget->sceneBoundingRect().contains(scenePos);
+    }
+
+    void NodeGroupFrameComponent::OnCollapsed(const NodeId& collapsedNodeId)
+    {
+        const AZ::EntityId* busId = NodeGroupNotificationBus::GetCurrentBusId();
+
+        if (busId)
+        {
+            NodeGroupNotificationBus::MultiHandler::BusDisconnect((*busId));
+
+            m_groupedElements.push_back(collapsedNodeId);
+
+            if (!NodeGroupNotificationBus::MultiHandler::BusIsConnected())
+            {
+                RestoreCollapsedState();
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::OnNodeActivated()
+    {
+        const AZ::EntityId* busId = NodeNotificationBus::GetCurrentBusId();
+
+        if (busId != nullptr)
+        {
+            if ((*busId) == GetEntityId())
+            {
+                QGraphicsLayout* layout = nullptr;
+                NodeLayoutRequestBus::EventResult(layout, GetEntityId(), &NodeLayoutRequests::GetLayout);
+
+                layout->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+                m_titleWidget->setLayout(layout);
+
+                CommentRequestBus::Event(GetEntityId(), &CommentRequests::SetCommentMode, CommentMode::BlockComment);
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::OnAddedToScene(const AZ::EntityId& sceneId)
+    {
+        const AZ::EntityId* busId = NodeNotificationBus::GetCurrentBusId();
+
+        if (busId != nullptr)
+        {
+            if ((*busId) == GetEntityId())
+            {
+                OnBookmarkStatusChanged();
+
+                SceneNotificationBus::Handler::BusDisconnect();
+                SceneNotificationBus::Handler::BusConnect(sceneId);
+
+                CommentNotificationBus::Handler::BusConnect(GetEntityId());
+                GeometryNotificationBus::Handler::BusConnect(GetEntityId());
+
+                GeometryRequestBus::EventResult(m_previousPosition, GetEntityId(), &GeometryRequests::GetPosition);
+
+                m_frameWidget->ResizeTo(m_saveData.m_displayHeight, m_saveData.m_displayWidth);
+
+                OnColorChange();
+
+                if (m_saveData.m_enableAsBookmark)
+                {
+                    BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::RegisterBookmark, GetEntityId());
+                    SceneBookmarkRequestBus::Handler::BusConnect(sceneId);
+                }
+
+                m_saveData.RegisterIds(GetEntityId(), sceneId);
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::OnRemovedFromScene(const AZ::EntityId& sceneId)
+    {
+        const AZ::EntityId* busId = SceneMemberNotificationBus::GetCurrentBusId();
+
+        if (busId != nullptr)
+        {
+            if ((*busId) == GetEntityId())
+            {
+                bool isRegistered = false;
+                BookmarkManagerRequestBus::EventResult(isRegistered, sceneId, &BookmarkManagerRequests::IsBookmarkRegistered, GetEntityId());
+
+                if (isRegistered)
+                {
+                    BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::UnregisterBookmark, GetEntityId());
+
+                    SceneBookmarkRequestBus::Handler::BusDisconnect(sceneId);
+                }
+
+                AZStd::vector< AZ::EntityId > memberIds;
+                FindGroupedElements(memberIds);
+
+                AZStd::unordered_set< AZ::EntityId > deletionIds;
+                deletionIds.insert(memberIds.begin(), memberIds.end());
+
+                SceneRequestBus::Event(sceneId, &SceneRequests::Delete, deletionIds);
+            }
+            else if ((*busId) == m_collapsedNodeId)
+            {
+                m_collapsedNodeId.SetInvalid();
+
+                OnExpanded();
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::OnSceneMemberAboutToSerialize(GraphSerialization& serializationTarget)
+    {
+        const AZ::EntityId* busId = SceneMemberNotificationBus::GetCurrentBusId();
+
+        if (busId != nullptr)
+        {
+            if ((*busId) == GetEntityId())
+            {
+                AZStd::vector< AZ::EntityId > groupedElements;
+                FindGroupedElements(groupedElements);
+
+                AZStd::unordered_set< AZ::EntityId > memberIds;
+                memberIds.insert(groupedElements.begin(), groupedElements.end());
+
+                GraphUtils::ParseMembersForSerialization(serializationTarget, memberIds);
+            }
+            else if ((*busId) == m_collapsedNodeId)
+            {
+                // Groups we don't want to copy over the collapsed node. But instead we want to copy over
+                // the source group(this object).
+                //
+                // Remove the collapsed node id. And add in the group id.
+                serializationTarget.GetGraphData().m_nodes.erase(AzToolsFramework::GetEntity(m_collapsedNodeId));
+
+                AZStd::unordered_set< AZ::EntityId > memberIds = { GetEntityId() };
+                GraphUtils::ParseMembersForSerialization(serializationTarget, memberIds);
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphSerialization& serializationTarget)
+    {
+        const AZ::EntityId* busId = SceneMemberNotificationBus::GetCurrentBusId();
+
+        if (busId != nullptr)
+        {
+            if ((*busId) == GetEntityId())
+            {
+                EditorId editorId;
+                SceneRequestBus::EventResult(editorId, graphId, &SceneRequests::GetEditorId);
+
+                PersistentIdNotificationBus::Handler::BusConnect(editorId);
+
+                if (m_saveData.m_enableAsBookmark)
+                {
+                    AZ::EntityId conflictedId;
+                    BookmarkManagerRequestBus::EventResult(conflictedId, graphId, &BookmarkManagerRequests::FindBookmarkForShortcut, m_saveData.m_shortcut);
+
+                    if (conflictedId.IsValid() && m_saveData.m_shortcut > 0)
+                    {
+                        m_saveData.m_shortcut = k_findShortcut;
+                    }
+                }
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::OnStyleChanged()
     {
         m_titleWidget->RefreshStyle(GetEntityId());
         m_blockWidget->RefreshStyle(GetEntityId());
@@ -342,9 +615,9 @@ namespace GraphCanvas
         m_frameWidget->SetResizableMinimum(finalMin);
     }
 
-    void BlockCommentNodeFrameComponent::OnPositionChanged(const AZ::EntityId& entityId, const AZ::Vector2& position)
+    void NodeGroupFrameComponent::OnPositionChanged(const AZ::EntityId& entityId, const AZ::Vector2& position)
     {
-        if (m_frameWidget->m_allowMovement && m_allowInteriorMovement)
+        if (m_frameWidget->m_allowMovement && !m_isExternallyControlled.GetState())
         {
             FindElementsForDrag();
 
@@ -369,9 +642,9 @@ namespace GraphCanvas
         m_previousPosition = position;
     }
 
-    void BlockCommentNodeFrameComponent::WriteSaveData(EntitySaveDataContainer& saveDataContainer) const
+    void NodeGroupFrameComponent::WriteSaveData(EntitySaveDataContainer& saveDataContainer) const
     {
-        BlockCommentNodeFrameComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<BlockCommentNodeFrameComponentSaveData>();
+        NodeGroupFrameComponentSaveData* saveData = saveDataContainer.FindCreateSaveData<NodeGroupFrameComponentSaveData>();
 
         if (saveData)
         {
@@ -379,9 +652,9 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameComponent::ReadSaveData(const EntitySaveDataContainer& saveDataContainer)
+    void NodeGroupFrameComponent::ReadSaveData(const EntitySaveDataContainer& saveDataContainer)
     {
-        BlockCommentNodeFrameComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<BlockCommentNodeFrameComponentSaveData>();
+        NodeGroupFrameComponentSaveData* saveData = saveDataContainer.FindSaveDataAs<NodeGroupFrameComponentSaveData>();
 
         if (saveData)
         {
@@ -389,12 +662,12 @@ namespace GraphCanvas
         }
     }
 
-    AZ::EntityId BlockCommentNodeFrameComponent::GetBookmarkId() const
+    AZ::EntityId NodeGroupFrameComponent::GetBookmarkId() const
     {
         return GetEntityId();
     }
 
-    void BlockCommentNodeFrameComponent::RemoveBookmark()
+    void NodeGroupFrameComponent::RemoveBookmark()
     {
         m_saveData.m_enableAsBookmark = false;
 
@@ -403,18 +676,18 @@ namespace GraphCanvas
         m_saveData.SignalDirty();
     }
 
-    int BlockCommentNodeFrameComponent::GetShortcut() const
+    int NodeGroupFrameComponent::GetShortcut() const
     {
         return m_saveData.m_shortcut;
     }
 
-    void BlockCommentNodeFrameComponent::SetShortcut(int shortcut)
+    void NodeGroupFrameComponent::SetShortcut(int shortcut)
     {
         m_saveData.m_shortcut = shortcut;
         m_saveData.SignalDirty();
     }
 
-    AZStd::string BlockCommentNodeFrameComponent::GetBookmarkName() const
+    AZStd::string NodeGroupFrameComponent::GetBookmarkName() const
     {
         AZStd::string comment;
         CommentRequestBus::EventResult(comment, GetEntityId(), &CommentRequests::GetComment);
@@ -422,22 +695,33 @@ namespace GraphCanvas
         return comment;
     }
 
-    void BlockCommentNodeFrameComponent::SetBookmarkName(const AZStd::string& bookmarkName)
+    void NodeGroupFrameComponent::SetBookmarkName(const AZStd::string& bookmarkName)
     {
         CommentRequestBus::Event(GetEntityId(), &CommentRequests::SetComment, bookmarkName);
     }
 
-    QRectF BlockCommentNodeFrameComponent::GetBookmarkTarget() const
+    QRectF NodeGroupFrameComponent::GetBookmarkTarget() const
     {
+        if (m_saveData.m_isCollapsed && m_collapsedNodeId.IsValid())
+        {
+            QGraphicsItem* graphicsItem = nullptr;
+            SceneMemberUIRequestBus::EventResult(graphicsItem, m_collapsedNodeId, &SceneMemberUIRequests::GetRootGraphicsItem);
+
+            if (graphicsItem)
+            {
+                return graphicsItem->sceneBoundingRect();
+            }
+        }
+
         return m_frameWidget->sceneBoundingRect();
     }
 
-    QColor BlockCommentNodeFrameComponent::GetBookmarkColor() const
+    QColor NodeGroupFrameComponent::GetBookmarkColor() const
     {
         return GraphCanvas::ConversionUtils::AZToQColor(m_saveData.m_color);
     }
 
-    void BlockCommentNodeFrameComponent::OnBookmarkTriggered()
+    void NodeGroupFrameComponent::OnBookmarkTriggered()
     {
         static const float k_gridSteps = 5.0f;
         AZ::EntityId graphId;
@@ -471,20 +755,26 @@ namespace GraphCanvas
         SceneRequestBus::Event(graphId, &SceneRequests::CreatePulse, pulseConfiguration);
     }
 
-    void BlockCommentNodeFrameComponent::OnCommentChanged(const AZStd::string&)
+    void NodeGroupFrameComponent::OnCommentChanged(const AZStd::string&)
     {
         BookmarkNotificationBus::Event(GetEntityId(), &BookmarkNotifications::OnBookmarkNameChanged);
     }
 
-    void BlockCommentNodeFrameComponent::OnSceneMemberDragBegin()
+    void NodeGroupFrameComponent::OnSceneMemberDragBegin()
     {
         if (m_frameWidget->IsSelected())
         {
             FindElementsForDrag();
+            EnableGroupedDisplayState(true);
+            CacheGroupedElements();
+        }
+        else
+        {
+            DirtyGroupedElements();
         }
     }
 
-    void BlockCommentNodeFrameComponent::OnSceneMemberDragComplete()
+    void NodeGroupFrameComponent::OnSceneMemberDragComplete()
     {
         m_needsElements = true;
 
@@ -494,62 +784,123 @@ namespace GraphCanvas
         }
 
         m_movingElements.clear();
-
-        for (const AZ::EntityId& blockComment : m_containedBlockComments)
-        {
-            BlockCommentRequestBus::Event(blockComment, &BlockCommentRequests::UnblockInteriorMovement);
-        }
-
-        m_containedBlockComments.clear();
+        m_externallyControlledStateSetter.ResetStateSetter();
     }
 
-    void BlockCommentNodeFrameComponent::OnDragSelectStart()
+    void NodeGroupFrameComponent::OnDragSelectStart()
     {
         m_frameWidget->SetUseTitleShape(true);
 
-        // Work around for when the drag selection starts inside of the block comment.
+        // Work around for when the drag selection starts inside of the Node Group.
         m_frameWidget->setSelected(false);
     }
 
-    void BlockCommentNodeFrameComponent::OnDragSelectEnd()
+    void NodeGroupFrameComponent::OnDragSelectEnd()
     {
         m_frameWidget->SetUseTitleShape(false);
     }
 
-    void BlockCommentNodeFrameComponent::SetDisplayHeight(float height)
+    void NodeGroupFrameComponent::OnEntitiesDeserializationComplete()
     {
-        m_saveData.m_displayHeight = height;
-        m_saveData.SignalDirty();
+        RestoreCollapsedState();
     }
 
-    void BlockCommentNodeFrameComponent::SetDisplayWidth(float width)
+    void NodeGroupFrameComponent::OnGraphLoadComplete()
     {
-        m_saveData.m_displayWidth = width;
-        m_saveData.SignalDirty();
+        RestoreCollapsedState();
     }
 
-    void BlockCommentNodeFrameComponent::EnableInteriorHighlight(bool highlight)
+    void NodeGroupFrameComponent::OnSceneMemberAdded(const AZ::EntityId&)
     {
-        m_highlightDisplayStateStateSetter.ResetStateSetter();
-
-        if (highlight)
+        if (!m_saveData.m_isCollapsed)
         {
-            AZStd::vector< AZ::EntityId > highlightEntities;
-            FindInteriorElements(highlightEntities);
-
-            for (const AZ::EntityId& entityId : highlightEntities)
-            {
-                StateController<RootGraphicsItemDisplayState>* stateController = nullptr;
-                RootGraphicsItemRequestBus::EventResult(stateController, entityId, &RootGraphicsItemRequests::GetDisplayStateStateController);
-
-                m_highlightDisplayStateStateSetter.AddStateController(stateController);
-            }
-
-            m_highlightDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::GroupHighlight);
+            DirtyGroupedElements();
         }
     }
 
-    void BlockCommentNodeFrameComponent::FindInteriorElements(AZStd::vector< AZ::EntityId >& interiorElements)
+    void NodeGroupFrameComponent::OnSceneMemberRemoved(const AZ::EntityId&)
+    {
+        if (!m_saveData.m_isCollapsed)
+        {
+            DirtyGroupedElements();
+        }
+    }
+
+    void NodeGroupFrameComponent::OnPersistentIdsRemapped(const AZStd::unordered_map<PersistentGraphMemberId, PersistentGraphMemberId>& persistentIdRemapping)
+    {
+        AZStd::vector< PersistentGraphMemberId > oldPersistentIds = AZStd::move(m_saveData.m_persistentGroupedIds);
+
+        m_saveData.m_persistentGroupedIds.clear();
+        m_saveData.m_persistentGroupedIds.reserve(oldPersistentIds.size());
+
+        for (PersistentGraphMemberId oldPersistentId : oldPersistentIds)
+        {
+            auto remappedIter = persistentIdRemapping.find(oldPersistentId);
+
+            if (remappedIter != persistentIdRemapping.end())
+            {
+                m_saveData.m_persistentGroupedIds.emplace_back(remappedIter->second);
+            }
+        }
+
+        PersistentIdNotificationBus::Handler::BusDisconnect();
+    }
+
+    void NodeGroupFrameComponent::RestoreCollapsedState()
+    {
+        if (m_saveData.m_isCollapsed)
+        {
+            m_frameWidget->adjustSize();
+
+            m_groupedElements.clear();
+
+            bool canCollapseNode = true;
+
+            for (const PersistentGraphMemberId& persistentMemberId : m_saveData.m_persistentGroupedIds)
+            {
+                AZ::EntityId graphMemberId;
+                PersistentIdRequestBus::EventResult(graphMemberId, persistentMemberId, &PersistentIdRequests::MapToEntityId);
+
+                if (graphMemberId.IsValid())
+                {
+                    if (GraphUtils::IsNodeGroup(graphMemberId))
+                    {
+                        bool isCollapsed = false;
+                        NodeGroupRequestBus::EventResult(isCollapsed, graphMemberId, &NodeGroupRequests::IsCollapsed);
+
+                        if (isCollapsed)
+                        {
+                            NodeId collapsedNodeId;
+                            NodeGroupRequestBus::EventResult(collapsedNodeId, graphMemberId, &NodeGroupRequests::GetCollapsedNodeId);
+
+                            if (!collapsedNodeId.IsValid())
+                            {
+                                NodeGroupNotificationBus::MultiHandler::BusConnect(graphMemberId);
+                            }
+                            else
+                            {
+                                m_groupedElements.push_back(collapsedNodeId);
+                            }
+                        }
+
+                        continue;
+                    }
+
+                    m_groupedElements.push_back(graphMemberId);
+                }
+            }
+
+            m_groupedElementsDirty = false;
+
+            if (canCollapseNode)
+            {
+                QScopedValueRollback<bool> manipulationBlocker(m_enableSelectionManipulation, false);
+                CollapseGroup();
+            }
+        }
+    }
+
+    void NodeGroupFrameComponent::FindInteriorElements(AZStd::vector< NodeId >& interiorElements)
     {
         AZ::EntityId sceneId;
         SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
@@ -581,24 +932,88 @@ namespace GraphCanvas
 
         for (const AZ::EntityId& testElement : elementList)
         {
-            if (ConnectionRequestBus::FindFirstHandler(testElement) != nullptr || testElement == GetEntityId())
+            if (GraphUtils::IsConnection(testElement) || testElement == GetEntityId())
             {
                 continue;
             }
 
-            interiorElements.push_back(testElement);
+            bool isVisible = true;
+
+            VisualRequestBus::EventResult(isVisible, testElement, &VisualRequests::IsVisible);
+
+            if (isVisible)
+            {
+                interiorElements.push_back(testElement);
+            }
         }
     }
 
-    void BlockCommentNodeFrameComponent::OnColorChanged()
+    float NodeGroupFrameComponent::SetDisplayHeight(float height)
+    {
+        if (m_frameWidget && m_frameWidget->m_minimumSize.height() > height)
+        {
+            height = m_frameWidget->m_minimumSize.height();
+        }
+
+        m_saveData.m_displayHeight = height;
+        m_saveData.SignalDirty();
+
+        DirtyGroupedElements();
+
+        return height;
+    }
+
+    float NodeGroupFrameComponent::SetDisplayWidth(float width)
+    {
+        if (m_frameWidget && m_frameWidget->m_minimumSize.width() > width)
+        {
+            width = m_frameWidget->m_minimumSize.width();
+        }
+
+        m_saveData.m_displayWidth = width;
+        m_saveData.SignalDirty();
+
+        DirtyGroupedElements();
+
+        return width;
+    }
+
+    void NodeGroupFrameComponent::EnableInteriorHighlight(bool highlight)
+    {
+        m_highlightDisplayStateStateSetter.ResetStateSetter();
+
+        if (highlight)
+        {
+            SetupHighlightElementsStateSetters();
+            m_highlightDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::GroupHighlight);
+        }
+    }
+
+    void NodeGroupFrameComponent::EnableGroupedDisplayState(bool enabled)
+    {
+        m_forcedGroupDisplayStateStateSetter.ResetStateSetter();
+
+        m_forcedGroupLayerStateSetter.ResetStateSetter();
+
+        if (enabled)
+        {
+            SetupGroupedElementsStateSetters();
+
+            m_forcedGroupDisplayStateStateSetter.SetState(RootGraphicsItemDisplayState::GroupHighlight);
+            m_forcedGroupLayerStateSetter.SetState("grouped");
+        }
+    }
+
+    void NodeGroupFrameComponent::OnColorChange()
     {
         m_titleWidget->SetColor(m_saveData.m_color);
         m_blockWidget->SetColor(m_saveData.m_color);
 
         BookmarkNotificationBus::Event(GetEntityId(), &BookmarkNotifications::OnBookmarkColorChanged);
+        NodeGroupNotificationBus::Event(GetEntityId(), &NodeGroupNotifications::OnColorChanged, m_saveData.m_color);
     }
 
-    void BlockCommentNodeFrameComponent::OnBookmarkStatusChanged()
+    void NodeGroupFrameComponent::OnBookmarkStatusChanged()
     {
         AZ::EntityId sceneId;
         SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
@@ -624,25 +1039,160 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameComponent::FindElementsForDrag()
+    void NodeGroupFrameComponent::CacheGroupedElements()
+    {
+        if (!m_saveData.m_isCollapsed && m_groupedElementsDirty)
+        {
+            m_groupedElements.clear();
+
+            FindInteriorElements(m_groupedElements);
+
+            m_saveData.m_persistentGroupedIds.clear();
+
+            for (AZ::EntityId groupedMemberId : m_groupedElements)
+            {
+                if (GraphUtils::IsCollapsedNodeGroup(groupedMemberId))
+                {
+                    CollapsedNodeGroupRequestBus::EventResult(groupedMemberId, groupedMemberId, &CollapsedNodeGroupRequests::GetSourceGroup);
+                }
+
+                PersistentGraphMemberId graphMemberId = PersistentGraphMemberId::CreateNull();
+                PersistentMemberRequestBus::EventResult(graphMemberId, groupedMemberId, &PersistentMemberRequests::GetPersistentGraphMemberId);
+
+                if (!graphMemberId.IsNull())
+                {
+                    m_saveData.m_persistentGroupedIds.emplace_back(graphMemberId);
+                }
+            }
+
+            m_groupedElementsDirty = false;
+        }
+    }
+
+    void NodeGroupFrameComponent::DirtyGroupedElements()
+    {
+
+        // We only want to invalidate our grouped elements when we aren't collapsed.
+        if (!m_saveData.m_isCollapsed && !m_groupedElementsDirty)
+        {
+            m_groupedElementsDirty = true;
+            EnableGroupedDisplayState(false);
+
+            m_saveData.m_persistentGroupedIds.clear();
+            m_saveData.SignalDirty();
+
+            m_groupedElements.clear();            
+        }
+    }
+
+    void NodeGroupFrameComponent::SetupHighlightElementsStateSetters()
+    {
+        AZStd::vector< AZ::EntityId > highlightEntities;
+        FindGroupedElements(highlightEntities);
+
+        for (const AZ::EntityId& entityId : highlightEntities)
+        {
+            StateController<RootGraphicsItemDisplayState>* stateController = nullptr;
+            RootGraphicsItemRequestBus::EventResult(stateController, entityId, &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+            m_highlightDisplayStateStateSetter.AddStateController(stateController);
+        }
+    }
+
+    void NodeGroupFrameComponent::SetupGroupedElementsStateSetters()
+    {
+        AZStd::vector< AZ::EntityId > groupedElements;
+        FindGroupedElements(groupedElements);
+
+        groupedElements.push_back(GetEntityId());
+
+        SubGraphParsingConfig config;
+        config.m_createNonConnectableSubGraph = true;
+
+        SubGraphParsingResult subGraphResult = GraphUtils::ParseSceneMembersIntoSubGraphs(groupedElements, config);
+
+        SetupSubGraphGroupedElementsStateSetters(subGraphResult.m_nonConnectableGraph);
+
+        for (const GraphSubGraph& subGraph : subGraphResult.m_subGraphs)
+        {
+            SetupSubGraphGroupedElementsStateSetters(subGraph);
+        }
+    }
+
+    void NodeGroupFrameComponent::SetupSubGraphGroupedElementsStateSetters(const GraphSubGraph& subGraph)
+    {
+        for (const AZ::EntityId& elementId : subGraph.m_containedNodes)
+        {
+            if (elementId == m_collapsedNodeId)
+            {
+                continue;
+            }
+
+            StateController<RootGraphicsItemDisplayState>* displayStateController = nullptr;
+            RootGraphicsItemRequestBus::EventResult(displayStateController, elementId, &RootGraphicsItemRequests::GetDisplayStateStateController);
+
+            m_forcedGroupDisplayStateStateSetter.AddStateController(displayStateController);
+
+            StateController<AZStd::string>* layerStateController = nullptr;
+            LayerControllerRequestBus::EventResult(layerStateController, elementId, &LayerControllerRequests::GetLayerModifierController);
+
+            m_forcedGroupLayerStateSetter.AddStateController(layerStateController);
+        }
+
+        for (const AZ::EntityId& elementId : subGraph.m_innerConnections)
+        {
+            StateController<AZStd::string>* layerStateController = nullptr;
+            LayerControllerRequestBus::EventResult(layerStateController, elementId, &LayerControllerRequests::GetLayerModifierController);
+
+            m_forcedGroupLayerStateSetter.AddStateController(layerStateController);
+        }
+    }
+
+    void NodeGroupFrameComponent::OnExpanded()
+    {
+        GraphId graphId;
+        SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+        m_saveData.m_isCollapsed = false;
+        m_saveData.SignalDirty();
+
+        GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
+
+        if (m_enableSelectionManipulation)
+        {
+            m_frameWidget->SetSelected(true);
+        }
+
+        EnableGroupedDisplayState(true);
+    }
+
+    void NodeGroupFrameComponent::FindElementsForDrag()
     {
         if (m_needsElements)
         {
             AZ_Warning("Graph Canvas", m_movingElements.empty(), "Moving elements should be empty when scraping for new elements.");
-            AZ_Warning("Graph Canvas", m_containedBlockComments.empty(), "Contained Block Comments should be empty when scraping for new elements.");
+            AZ_Warning("Graph Canvas", !m_externallyControlledStateSetter.HasState() && !m_externallyControlledStateSetter.HasTargets(), "Externally Controlled Objects should be empty when scraping for new elements.")
+
+            m_externallyControlledStateSetter.SetState(true);
 
             m_needsElements = false;
-            FindInteriorElements(m_movingElements);
+
+            FindGroupedElements(m_movingElements);
 
             AZStd::vector< AZ::EntityId >::iterator elementIter = m_movingElements.begin();
 
             while (elementIter != m_movingElements.end())
             {
                 AZ::EntityId currentElement = (*elementIter);
-                if (BlockCommentRequestBus::FindFirstHandler(currentElement) != nullptr)
+                if (GraphUtils::IsNodeGroup(currentElement))
                 {
-                    BlockCommentRequestBus::Event(currentElement, &BlockCommentRequests::BlockInteriorMovement);
-                    m_containedBlockComments.insert(currentElement);
+                    StateController<bool>* stateController = nullptr;
+                    NodeGroupRequestBus::EventResult(stateController, currentElement, &NodeGroupRequests::GetExternallyControlledStateController);
+
+                    if (stateController)
+                    {
+                        m_externallyControlledStateSetter.AddStateController(stateController);
+                    }
                 }
 
                 // We don't want to move anything that is selected, since in the drag move
@@ -650,7 +1200,7 @@ namespace GraphCanvas
                 bool isSelected = false;
                 SceneMemberUIRequestBus::EventResult(isSelected, currentElement, &SceneMemberUIRequests::IsSelected);
 
-                // Next, for anything that is inside the intersection of two block comments, we only
+                // Next, for anything that is inside the intersection of two Node Groups, we only
                 // want one of them to be able to move them in the case of a double selection.
                 // So we will let each one try to lock something for external movement, and then unset that
                 // once the movement is complete
@@ -674,35 +1224,35 @@ namespace GraphCanvas
         }
     }
 
-    /////////////////////////////////////
-    // BlockCommentNodeFrameTitleWidget
-    /////////////////////////////////////
+    //////////////////////////////
+    // NodeGroupFrameTitleWidget
+    //////////////////////////////
 
-    BlockCommentNodeFrameTitleWidget::BlockCommentNodeFrameTitleWidget()
+    NodeGroupFrameTitleWidget::NodeGroupFrameTitleWidget()
         : m_frameWidget(nullptr)
     {
         setAcceptHoverEvents(false);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 
-    void BlockCommentNodeFrameTitleWidget::RefreshStyle(const AZ::EntityId& parentId)
+    void NodeGroupFrameTitleWidget::RefreshStyle(const AZ::EntityId& parentId)
     {
         m_styleHelper.SetStyle(parentId, Styling::Elements::BlockComment::Title);
         update();
     }
 
-    void BlockCommentNodeFrameTitleWidget::SetColor(const AZ::Color& color)
+    void NodeGroupFrameTitleWidget::SetColor(const AZ::Color& color)
     {
         m_color = ConversionUtils::AZToQColor(color);
         update();
     }
 
-    void BlockCommentNodeFrameTitleWidget::RegisterFrame(BlockCommentNodeFrameGraphicsWidget* frameWidget)
+    void NodeGroupFrameTitleWidget::RegisterFrame(NodeGroupFrameGraphicsWidget* frameWidget)
     {
         m_frameWidget = frameWidget;
     }
 
-    void BlockCommentNodeFrameTitleWidget::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent)
+    void NodeGroupFrameTitleWidget::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent)
     {
         if (m_frameWidget)
         {
@@ -717,7 +1267,7 @@ namespace GraphCanvas
         QGraphicsWidget::mousePressEvent(mouseEvent);
     }
 
-    void BlockCommentNodeFrameTitleWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+    void NodeGroupFrameTitleWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
     {
         GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
 
@@ -771,7 +1321,7 @@ namespace GraphCanvas
         QGraphicsWidget::paint(painter, option, widget);
     }
 
-    QVariant BlockCommentNodeFrameTitleWidget::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value)
+    QVariant NodeGroupFrameTitleWidget::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value)
     {
         if (m_frameWidget)
         {
@@ -781,33 +1331,33 @@ namespace GraphCanvas
         return QGraphicsWidget::itemChange(change, value);
     }
 
-    /////////////////////////////////////////
-    // BlockCommentNodeFrameBlockAreaWidget
-    /////////////////////////////////////////
+    //////////////////////////////////
+    // NodeGroupFrameBlockAreaWidget
+    //////////////////////////////////
 
-    BlockCommentNodeFrameBlockAreaWidget::BlockCommentNodeFrameBlockAreaWidget()
+    NodeGroupFrameBlockAreaWidget::NodeGroupFrameBlockAreaWidget()
     {
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     }
 
-    void BlockCommentNodeFrameBlockAreaWidget::RegisterFrame(BlockCommentNodeFrameGraphicsWidget* frame)
+    void NodeGroupFrameBlockAreaWidget::RegisterFrame(NodeGroupFrameGraphicsWidget* frame)
     {
         m_frameWidget = frame;
     }
 
-    void BlockCommentNodeFrameBlockAreaWidget::RefreshStyle(const AZ::EntityId& parentId)
+    void NodeGroupFrameBlockAreaWidget::RefreshStyle(const AZ::EntityId& parentId)
     {
         m_styleHelper.SetStyle(parentId, Styling::Elements::BlockComment::BlockArea);
         update();
     }
 
-    void BlockCommentNodeFrameBlockAreaWidget::SetColor(const AZ::Color& color)
+    void NodeGroupFrameBlockAreaWidget::SetColor(const AZ::Color& color)
     {
         m_color = ConversionUtils::AZToQColor(color);
         update();
     }
 
-    void BlockCommentNodeFrameBlockAreaWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+    void NodeGroupFrameBlockAreaWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
     {
         QPen border = m_styleHelper.GetBorder();
 
@@ -889,11 +1439,11 @@ namespace GraphCanvas
         QGraphicsWidget::paint(painter, option, widget);
     }
 
-    ////////////////////////////////////////
-    // BlockCommentNodeFrameGraphicsWidget
-    ////////////////////////////////////////
+    /////////////////////////////////
+    // NodeGroupFrameGraphicsWidget
+    /////////////////////////////////
 
-    BlockCommentNodeFrameGraphicsWidget::BlockCommentNodeFrameGraphicsWidget(const AZ::EntityId& entityKey, BlockCommentNodeFrameComponent& nodeFrameComponent)
+    NodeGroupFrameGraphicsWidget::NodeGroupFrameGraphicsWidget(const AZ::EntityId& entityKey, NodeGroupFrameComponent& nodeFrameComponent)
         : NodeFrameGraphicsWidget(entityKey)
         , m_nodeFrameComponent(nodeFrameComponent)
         , m_useTitleShape(false)
@@ -908,7 +1458,7 @@ namespace GraphCanvas
         setCacheMode(QGraphicsItem::CacheMode::NoCache);
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::RefreshStyle(const AZ::EntityId& styleEntity)
+    void NodeGroupFrameGraphicsWidget::RefreshStyle(const AZ::EntityId& styleEntity)
     {
         m_style.SetStyle(styleEntity, "");
 
@@ -916,7 +1466,7 @@ namespace GraphCanvas
         setOpacity(backgroundColor.alphaF() / 255.0);
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::SetResizableMinimum(const QSizeF& minimumSize)
+    void NodeGroupFrameGraphicsWidget::SetResizableMinimum(const QSizeF& minimumSize)
     {
         m_resizableMinimum = minimumSize;
 
@@ -934,17 +1484,24 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::SetUseTitleShape(bool enable)
+    void NodeGroupFrameGraphicsWidget::SetUseTitleShape(bool enable)
     {
         m_useTitleShape = enable;
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::OnActivated()
+    void NodeGroupFrameGraphicsWidget::OnActivated()
     {
         SceneMemberNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::hoverEnterEvent(QGraphicsSceneHoverEvent* hoverEvent)
+    QPainterPath NodeGroupFrameGraphicsWidget::GetOutline() const
+    {
+        QPainterPath path;
+        path.addRect(sceneBoundingRect());
+        return path;
+    }
+
+    void NodeGroupFrameGraphicsWidget::hoverEnterEvent(QGraphicsSceneHoverEvent* hoverEvent)
     {
         NodeFrameGraphicsWidget::hoverEnterEvent(hoverEvent);
 
@@ -956,7 +1513,7 @@ namespace GraphCanvas
         m_nodeFrameComponent.EnableInteriorHighlight(true);
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::hoverMoveEvent(QGraphicsSceneHoverEvent* hoverEvent)
+    void NodeGroupFrameGraphicsWidget::hoverMoveEvent(QGraphicsSceneHoverEvent* hoverEvent)
     {
         NodeFrameGraphicsWidget::hoverMoveEvent(hoverEvent);
 
@@ -973,7 +1530,7 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent)
+    void NodeGroupFrameGraphicsWidget::hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent)
     {
         NodeFrameGraphicsWidget::hoverLeaveEvent(hoverEvent);
         ResetCursor();
@@ -986,7 +1543,7 @@ namespace GraphCanvas
         m_nodeFrameComponent.EnableInteriorHighlight(false);
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::mousePressEvent(QGraphicsSceneMouseEvent* pressEvent)
+    void NodeGroupFrameGraphicsWidget::mousePressEvent(QGraphicsSceneMouseEvent* pressEvent)
     {
         if (m_adjustHorizontal != 0 || m_adjustVertical != 0)
         {
@@ -1012,7 +1569,7 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent)
+    void NodeGroupFrameGraphicsWidget::mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent)
     {
         if (m_resizeComment)
         {
@@ -1069,6 +1626,9 @@ namespace GraphCanvas
                 newHeight = RoundToClosestStep(height, GetGridYStep());
             }
 
+            newWidth = m_nodeFrameComponent.SetDisplayWidth(newWidth);
+            newHeight = m_nodeFrameComponent.SetDisplayHeight(newHeight);
+
             qreal widthDelta = newWidth - originalSize.width();
             qreal heightDelta = newHeight - originalSize.height();
 
@@ -1093,9 +1653,6 @@ namespace GraphCanvas
             setPreferredSize(newWidth, newHeight);
             setMaximumSize(newWidth, newHeight);
 
-            m_nodeFrameComponent.SetDisplayWidth(newWidth);
-            m_nodeFrameComponent.SetDisplayHeight(newHeight);
-
             adjustSize();
             updateGeometry();
             
@@ -1109,7 +1666,7 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent* releaseEvent)
+    void NodeGroupFrameGraphicsWidget::mouseReleaseEvent(QGraphicsSceneMouseEvent* releaseEvent)
     {
         if (m_resizeComment)
         {
@@ -1119,6 +1676,11 @@ namespace GraphCanvas
             m_allowCommentReaction = false;
 
             m_nodeFrameComponent.EnableInteriorHighlight(true);
+
+            GraphId graphId;
+            SceneMemberRequestBus::EventResult(graphId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+            GraphModelRequestBus::Event(graphId, &GraphModelRequests::RequestUndoPoint);
         }
         else
         {
@@ -1126,7 +1688,7 @@ namespace GraphCanvas
         }
     }
 
-    bool BlockCommentNodeFrameGraphicsWidget::sceneEventFilter(QGraphicsItem*, QEvent* event)
+    bool NodeGroupFrameGraphicsWidget::sceneEventFilter(QGraphicsItem*, QEvent* event)
     {
         switch (event->type())
         {
@@ -1143,17 +1705,17 @@ namespace GraphCanvas
         return false;
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::OnEditBegin()
+    void NodeGroupFrameGraphicsWidget::OnEditBegin()
     {
         m_allowCommentReaction = true;
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::OnEditEnd()
+    void NodeGroupFrameGraphicsWidget::OnEditEnd()
     {
         m_allowCommentReaction = false;
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::OnCommentSizeChanged(const QSizeF& oldSize, const QSizeF& newSize)
+    void NodeGroupFrameGraphicsWidget::OnCommentSizeChanged(const QSizeF& oldSize, const QSizeF& newSize)
     {
         if (m_allowCommentReaction)
         {
@@ -1209,38 +1771,17 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::OnCommentFontReloadBegin()
+    void NodeGroupFrameGraphicsWidget::OnCommentFontReloadBegin()
     {
         m_allowCommentReaction = true;
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::OnCommentFontReloadEnd()
+    void NodeGroupFrameGraphicsWidget::OnCommentFontReloadEnd()
     {
         m_allowCommentReaction = false;
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent* contextMenuEvent)
-    {
-        QPointF scenePos = contextMenuEvent->scenePos();
-
-        if (m_nodeFrameComponent.m_titleWidget->sceneBoundingRect().contains(scenePos))
-        {
-            NodeFrameGraphicsWidget::contextMenuEvent(contextMenuEvent);
-        }
-        else
-        {
-            contextMenuEvent->accept();
-
-            AZ::EntityId sceneId;
-            SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
-
-            SceneRequestBus::Event(sceneId, &SceneRequests::ClearSelection);
-
-            SceneUIRequestBus::Event(sceneId, &SceneUIRequests::OnSceneContextMenuEvent, sceneId, contextMenuEvent);
-        }
-    }
-
-    void BlockCommentNodeFrameGraphicsWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEvent)
+    void NodeGroupFrameGraphicsWidget::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEvent)
     {
         if (m_adjustHorizontal != 0
             || m_adjustVertical != 0)
@@ -1305,20 +1846,25 @@ namespace GraphCanvas
                     blockBoundingRect.setHeight(calculatedBounds.height());
                 }
 
-                m_nodeFrameComponent.SetBlock(blockBoundingRect);
+                m_nodeFrameComponent.SetGroupSize(blockBoundingRect);
             }
+
+            GraphModelRequestBus::Event(sceneId, &GraphModelRequests::RequestUndoPoint);
         }
         else if (m_nodeFrameComponent.m_titleWidget->sceneBoundingRect().contains(mouseEvent->scenePos()))
         {
-            CommentUIRequestBus::Event(GetEntityId(), &CommentUIRequests::SetEditable, true);
+            NodeGroupRequestBus::Event(GetEntityId(), &NodeGroupRequests::CollapseGroup);
         }
         else
         {
             NodeFrameGraphicsWidget::mouseDoubleClickEvent(mouseEvent);
+
+            mouseEvent->accept();
+            NodeGroupRequestBus::Event(GetEntityId(), &NodeGroupRequests::CollapseGroup);
         }
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+    void NodeGroupFrameGraphicsWidget::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
     {   
         if (isSelected())
         {
@@ -1357,7 +1903,7 @@ namespace GraphCanvas
         QGraphicsWidget::paint(painter, option, widget);
     }
 
-    QPainterPath BlockCommentNodeFrameGraphicsWidget::shape() const
+    QPainterPath NodeGroupFrameGraphicsWidget::shape() const
     {
         // We want to use the title shape for determinig things like selection range with a drag select.
         // But we need to use the full shape for things like mouse events.
@@ -1373,13 +1919,13 @@ namespace GraphCanvas
         }
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::OnMemberSetupComplete()
+    void NodeGroupFrameGraphicsWidget::OnMemberSetupComplete()
     {
         m_allowMovement = true;
         CommentNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::ResizeTo(float height, float width)
+    void NodeGroupFrameGraphicsWidget::ResizeTo(float height, float width)
     {
         prepareGeometryChange();
 
@@ -1400,12 +1946,12 @@ namespace GraphCanvas
         updateGeometry();
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::OnDeactivated()
+    void NodeGroupFrameGraphicsWidget::OnDeactivated()
     {
         CommentNotificationBus::Handler::BusDisconnect();
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::UpdateMinimumSize()
+    void NodeGroupFrameGraphicsWidget::UpdateMinimumSize()
     {
         QSizeF styleMinimum = m_style.GetMinimumSize();
 
@@ -1458,12 +2004,12 @@ namespace GraphCanvas
         update();
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::ResetCursor()
+    void NodeGroupFrameGraphicsWidget::ResetCursor()
     {
         setCursor(Qt::ArrowCursor);
     }
 
-    void BlockCommentNodeFrameGraphicsWidget::UpdateCursor(QPointF cursorPoint)
+    void NodeGroupFrameGraphicsWidget::UpdateCursor(QPointF cursorPoint)
     {
         qreal border = m_style.GetAttribute(Styling::Attribute::BorderWidth, 1.0);
         border = AZStd::GetMax(10.0, border);

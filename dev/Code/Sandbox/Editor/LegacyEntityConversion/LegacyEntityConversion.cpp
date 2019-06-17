@@ -38,7 +38,7 @@
 #include <LmbrCentral/Rendering/GeomCacheComponentBus.h>
 #include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <LmbrCentral/Shape/SphereShapeComponentBus.h>
-#include <LmbrCentral/Shape/PolygonPrismShapeComponentBus.h>
+#include <LmbrCentral/Shape/EditorPolygonPrismShapeComponentBus.h>
 
 // crycommon
 #include "MathConversion.h"

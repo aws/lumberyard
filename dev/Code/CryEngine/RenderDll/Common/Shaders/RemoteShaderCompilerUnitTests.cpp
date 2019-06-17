@@ -11,124 +11,315 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
-
+#include <AzCore/UnitTest/UnitTest.h>
+#include <AzCore/Memory/AllocatorScope.h>
+#include <Tests/TestTypes.h>
+#include "Mocks/IConsoleMock.h"
+#include "Mocks/ICVarMock.h"
+#include "Mocks/ISystemMock.h"
 #include "RemoteCompiler.h"
 
 namespace NRemoteCompiler
 {
-    class ShaderSrvUnitTestAccessor
+    using ::testing::NiceMock;
+    using ::testing::Return;
+
+    using SystemAllocatorScope = AZ::AllocatorScope<AZ::LegacyAllocator, CryStringAllocator>;
+
+    // define a dummy compressor decompressor that simply does nothing.
+    // the actual ISystem::Decompress / Compress should be tested in isolation in the unit it lives in.
+    // this is expected to fit both of these functions:
+    //virtual bool CompressDataBlock(const void* input, size_t inputSize, void* output, size_t& outputSize, int level = 3) = 0;
+    //virtual bool DecompressDataBlock(const void* input, size_t inputSize, void* output, size_t& outputSize) = 0;
+    // it operates by copying the input into the output and the input size into the output size and always returning true.
+    ACTION(MockCompressDecompress)
+    {
+        AZ_Assert(arg3 >= arg1, "MockCompressDecompress would overrun buffer (%i must be >= %i)", (int)arg3, (int)arg1);
+        if (arg3 < arg1)
+        {
+            return false;
+        }
+
+        memcpy(arg2, arg0, arg1);
+        arg3 = arg1;
+        return true;
+    };
+
+    using ::UnitTest::AllocatorsTestFixture;
+
+    class RemoteCompilerTest
+        : public AllocatorsTestFixture
+        , public SystemAllocatorScope 
     {
     public:
-        ShaderSrvUnitTestAccessor(CShaderSrv& srv)
-            : m_srv(srv) { }
+
+        const int m_fakePortNumber = 12345;
+
+        void SetUp() override
+        {
+            using namespace ::testing;
+
+            AllocatorsTestFixture::SetUp();
+            SystemAllocatorScope::ActivateAllocators();
+
+            m_priorEnv = gEnv;
+
+            m_data.reset(new DataMembers);
+
+            ON_CALL(m_data->m_console, GetCVar(_))
+                .WillByDefault(Return(&m_data->m_cvarMock));
+
+            ON_CALL(m_data->m_system, CompressDataBlock(_, _, _, _, _))
+                .WillByDefault(MockCompressDecompress());
+
+            ON_CALL(m_data->m_system, DecompressDataBlock(_, _, _, _))
+                .WillByDefault(MockCompressDecompress());
+
+            ON_CALL(m_data->m_cvarMock, GetIVal())
+                .WillByDefault(Return(m_fakePortNumber));
+
+            memset(&m_data->m_stubEnv, 0, sizeof(SSystemGlobalEnvironment));
+            m_data->m_stubEnv.pConsole = &m_data->m_console;
+            m_data->m_stubEnv.pSystem = &m_data->m_system;
+            gEnv = &m_data->m_stubEnv;
+        }
+
+        void TearDown() override
+        {
+            gEnv = m_priorEnv;
+            m_data.reset();
+            SystemAllocatorScope::DeactivateAllocators();
+            AllocatorsTestFixture::TearDown();
+        }
+
+        struct DataMembers
+        {
+            NiceMock<SystemMock> m_system;
+            NiceMock<ConsoleMock> m_console;
+            NiceMock<CVarMock> m_cvarMock;
+            SSystemGlobalEnvironment m_stubEnv;
+        };
+
+        AZStd::unique_ptr<DataMembers> m_data;
+
+        SSystemGlobalEnvironment* m_priorEnv = nullptr;
+    };
+
+    // allow punch through to PRIVATE functions so that they do not need to be made PUBLIC.
+    class ShaderSrvUnitTestAccessor
+        : public CShaderSrv
+    {
+    public:
+        EServerError SendRequestViaEngineConnection(std::vector<uint8>& rCompileData)   const
+        {
+            return CShaderSrv::SendRequestViaEngineConnection(rCompileData);
+        }
 
         bool EncapsulateRequestInEngineConnectionProtocol(std::vector<uint8>& rCompileData) const
         {
-            return m_srv.EncapsulateRequestInEngineConnectionProtocol(rCompileData);
+            return CShaderSrv::EncapsulateRequestInEngineConnectionProtocol(rCompileData);
         }
-        EServerError SendRequestViaEngineConnection(std::vector<uint8>&  rCompileData) const
-        {
-            return m_srv.SendRequestViaEngineConnection(rCompileData);
-        }
-
-    private:
-        CShaderSrv& m_srv;
     };
 
-    // tests the "engine-connection" based shader compiler capability.
-    // note that it tests it in isolation, it does not test the connection layer
-    // and it does not test existing code present before remote proxying was implemented.
-    INTEG_TEST(RemoteShaderCompilerUnitTests, TestRemoteShaderCompilerInterface)
+    TEST_F(RemoteCompilerTest, CShaderSrv_Constructor_WithNoGameName_Fails)
     {
-        CShaderSrv& srv = CShaderSrv::Instance();
-        ShaderSrvUnitTestAccessor srv_(srv);
+        EXPECT_CALL(m_data->m_cvarMock, GetString());
 
+        AZ_TEST_START_ASSERTTEST;
+        ShaderSrvUnitTestAccessor srv;
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    TEST_F(RemoteCompilerTest, CShaderSrv_Constructor_WithValidGameName_Succeeds)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
+
+        ShaderSrvUnitTestAccessor srv;
+    }
+
+    TEST_F(RemoteCompilerTest, CShaderSrv_EncapsulateRequestInEngineConnectionProtocol_EmptyData_Fails)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
+
+        ShaderSrvUnitTestAccessor srv;
         srv.EnableUnitTestingMode(true);
-
-        unsigned short oldPort = gRenDev->CV_r_ShaderCompilerPort;
-        gRenDev->CV_r_ShaderCompilerPort = 12345;
-        string oldString = gRenDev->CV_r_ShaderCompilerServer->GetString();
-        const char* testList = "10.20.30.40";
-        gRenDev->CV_r_ShaderCompilerServer->Set(testList);
-
-        // okay, lets give it a go
 
         std::vector<uint8> testVector;
 
-        std::string testString("_-=!-");
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_FALSE(srv.EncapsulateRequestInEngineConnectionProtocol(testVector)); // empty vector error condition
+        AZ_TEST_STOP_ASSERTTEST(1); // expect the above to have thrown an AZ_ERROR
+    }
 
-        EXPECT_TRUE(!srv_.EncapsulateRequestInEngineConnectionProtocol(testVector)); // empty vector error condition
+    TEST_F(RemoteCompilerTest, CShaderSrv_EncapsulateRequestInEngineConnectionProtocol_ValidData_EmptyServerList_Fails)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
+
+        ShaderSrvUnitTestAccessor srv;
+        srv.EnableUnitTestingMode(true);
+
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillRepeatedly(Return("")); // empty server list
+
+        std::vector<uint8> testVector;
+        std::string testString("_-=!-");
         testVector.insert(testVector.begin(), testString.begin(), testString.end());
 
-        EXPECT_TRUE(srv_.EncapsulateRequestInEngineConnectionProtocol(testVector));
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_FALSE(srv.EncapsulateRequestInEngineConnectionProtocol(testVector)); // empty vector error condition
+        AZ_TEST_STOP_ASSERTTEST(1); // expect the above to have thrown an AZ_ERROR
+    }
 
-        // now test the actual contents to make sure they were packed and follow the protocol.  Unpack it as if you are a client.
+    TEST_F(RemoteCompilerTest, CShaderSrv_EncapsulateRequestInEngineConnectionProtocol_ValidInputs_Succeeds)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
 
-        // the payload must be
-        // [original payload][null][serverlist][null][port][serverlistlength])
-        EXPECT_TRUE(testVector.size() > testString.size() + (sizeof(short) + sizeof(unsigned int) + 2)); // +2 for the 2 nulls
+        ShaderSrvUnitTestAccessor srv;
+        srv.EnableUnitTestingMode(true);
 
-        // find out the length of the serverlist:
-        unsigned char* data_end = reinterpret_cast<unsigned char*>(testVector.data()) + testVector.size();
-        unsigned int* serverListSizePtr = reinterpret_cast<unsigned int*>(data_end - sizeof(unsigned int));
-        unsigned short* serverPortPtr = reinterpret_cast<unsigned short*>(data_end - sizeof(unsigned int) - sizeof(unsigned short));
+        // After this, it will repeatedly call get cvar to get the server address:
+        const char* testList = "10.20.30.40";
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillRepeatedly(Return(testList));
 
-        // its also expected to be in little endian, and so are the unit tests.
+        std::vector<uint8> testVector;
+        std::string testString("_-=!-");
+        testVector.insert(testVector.begin(), testString.begin(), testString.end());
 
-        unsigned int serverListSizeValue = *serverListSizePtr;
-        unsigned short serverPortValue = *serverPortPtr;
-        EXPECT_TRUE(serverListSizeValue < 4096); // a server list will never be this big - if it is, it means endian swapping was not done right
-        EXPECT_TRUE(serverPortValue == 12345);
-        char* end_of_serverList = reinterpret_cast<char*>(serverPortPtr) - 1;
-        char* beginning_of_serverList = end_of_serverList - serverListSizeValue;
-        EXPECT_TRUE(*end_of_serverList == 0);
-        EXPECT_TRUE(serverListSizeValue == strlen(testList));
+        EXPECT_TRUE(srv.EncapsulateRequestInEngineConnectionProtocol(testVector));
+    }
 
-        EXPECT_TRUE(memcmp(beginning_of_serverList, testList, strlen(testList)) == 0);
-        EXPECT_TRUE(reinterpret_cast<ptrdiff_t>(end_of_serverList) > reinterpret_cast<ptrdiff_t>(testVector.data())); // make sure its within range!
-        // now read the payload
-        // there is a null after the server list but before the payload.
-        size_t inner_payload_size = static_cast<size_t>(beginning_of_serverList - reinterpret_cast<char*>(testVector.data())) - 1; // -1 for the null
+    TEST_F(RemoteCompilerTest, CShaderSrv_SendRequestViaEngineConnection_EmptyData_Fails)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
 
-        EXPECT_TRUE(inner_payload_size == 5);
-        EXPECT_TRUE(memcmp(testVector.data(), testString.data(), 5) == 0);
+        ShaderSrvUnitTestAccessor srv;
+        srv.EnableUnitTestingMode(true);
 
-        // packing test done!
-        testVector.clear();
+        // After this, it will repeatedly call get cvar to get the server address:
+        const char* testList = "10.20.30.40";
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillRepeatedly(Return(testList));
 
-        // test for empty data - recvfailed expected
+        std::vector<uint8> testVector;
+        std::string testString("empty");
+
+        // test for empty data - recvfailed expected (error emitted)
+        AZ_TEST_START_ASSERTTEST;
         testString = "empty";
         testVector.assign(testString.begin(), testString.end());
-        EXPECT_TRUE(srv_.SendRequestViaEngineConnection(testVector) == EServerError::ESRecvFailed);
+        EXPECT_EQ(srv.SendRequestViaEngineConnection(testVector), EServerError::ESRecvFailed);
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    TEST_F(RemoteCompilerTest, CShaderSrv_SendRequestViaEngineConnection_IncompleteData_Fails)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
+
+        ShaderSrvUnitTestAccessor srv;
+        srv.EnableUnitTestingMode(true);
+
+        // After this, it will repeatedly call get cvar to get the server address:
+        const char* testList = "10.20.30.40";
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillRepeatedly(Return(testList));
+
+        std::vector<uint8> testVector;
+        std::string testString("incomplete");
+        testVector.assign(testString.begin(), testString.end());
 
         // test for incomplete data - recvfailed expected
-        testString = "incomplete";
-        testVector.assign(testString.begin(), testString.end());
-        EXPECT_TRUE(srv_.SendRequestViaEngineConnection(testVector) == EServerError::ESRecvFailed);
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_EQ(srv.SendRequestViaEngineConnection(testVector), EServerError::ESRecvFailed);
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
 
-        // test for corrupt data - recvfailed expecged
-        testString = "corrupt";
-        testVector.assign(testString.begin(), testString.end());
-        EXPECT_TRUE(srv_.SendRequestViaEngineConnection(testVector) == EServerError::ESRecvFailed);
+    TEST_F(RemoteCompilerTest, CShaderSrv_SendRequestViaEngineConnection_CorruptData_Fails)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
 
+        ShaderSrvUnitTestAccessor srv;
+        srv.EnableUnitTestingMode(true);
+
+        // After this, it will repeatedly call get cvar to get the server address:
+        const char* testList = "10.20.30.40";
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillRepeatedly(Return(testList));
+
+        std::vector<uint8> testVector;
+        std::string testString("corrupt");
+        testVector.assign(testString.begin(), testString.end());
+
+        // test for incomplete data - recvfailed expected
+        AZ_TEST_START_ASSERTTEST;
+        EXPECT_EQ(srv.SendRequestViaEngineConnection(testVector), EServerError::ESRecvFailed);
+        AZ_TEST_STOP_ASSERTTEST(1);
+    }
+
+    TEST_F(RemoteCompilerTest, CShaderSrv_SendRequestViaEngineConnection_CompileError_Fails_ReturnsText)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
+
+        ShaderSrvUnitTestAccessor srv;
+        srv.EnableUnitTestingMode(true);
+
+        // After this, it will repeatedly call get cvar to get the server address:
+        const char* testList = "10.20.30.40";
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillRepeatedly(Return(testList));
+
+        std::vector<uint8> testVector;
+        std::string testString("corrupt");
+        testVector.assign(testString.begin(), testString.end());
         // test for an actual compile error - decompressed compile erro rexpected to be attached.
         testString = "compile_failure";
         testVector.assign(testString.begin(), testString.end());
-        EXPECT_TRUE(srv_.SendRequestViaEngineConnection(testVector) == EServerError::ESCompileError);
+        EXPECT_EQ(srv.SendRequestViaEngineConnection(testVector), EServerError::ESCompileError);
         // validate hte compile erorr decompressed successfully
         const char* expected_decode = "decompressed_plaintext";
-        EXPECT_TRUE(testVector.size() == strlen(expected_decode));
-        EXPECT_TRUE(memcmp(testVector.data(), expected_decode, strlen(expected_decode)) == 0);
+        EXPECT_EQ(testVector.size(), strlen(expected_decode));
+        EXPECT_EQ(memcmp(testVector.data(), expected_decode, strlen(expected_decode)), 0);
+    }
 
-        testString = "success";
+    TEST_F(RemoteCompilerTest, CShaderSrv_SendRequestViaEngineConnection_ValidInput_Succeeds_ReturnsText)
+    {
+        // when we construct the server it calls get on the game name
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillOnce(Return("StarterGame"));
+
+        ShaderSrvUnitTestAccessor srv;
+        srv.EnableUnitTestingMode(true);
+
+        // After this, it will repeatedly call get cvar to get the server address:
+        const char* testList = "10.20.30.40";
+        EXPECT_CALL(m_data->m_cvarMock, GetString())
+            .WillRepeatedly(Return(testList));
+
+        AZStd::string testString = "success";
+        std::vector<uint8> testVector;
         testVector.assign(testString.begin(), testString.end());
-        EXPECT_TRUE(srv_.SendRequestViaEngineConnection(testVector) == EServerError::ESOK);
-        // validate that the result decompressed successfully - its expected to contain "decompressed_plaintext"
-        EXPECT_TRUE(testVector.size() == strlen(expected_decode));
-        EXPECT_TRUE(memcmp(testVector.data(), expected_decode, strlen(expected_decode)) == 0);
 
-        gRenDev->CV_r_ShaderCompilerPort = oldPort;
-        gRenDev->CV_r_ShaderCompilerServer->Set(oldString);
-        srv.EnableUnitTestingMode(false);
+        EXPECT_EQ(srv.SendRequestViaEngineConnection(testVector), EServerError::ESOK);
+
+        // validate that the result decompressed successfully - its expected to contain "decompressed_plaintext"
+        const char* expected_decode = "decompressed_plaintext";
+        EXPECT_EQ(testVector.size(), strlen(expected_decode));
+        EXPECT_EQ(memcmp(testVector.data(), expected_decode, strlen(expected_decode)), 0);
     }
 }

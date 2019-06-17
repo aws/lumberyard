@@ -28,4 +28,27 @@ namespace ScriptCanvasEditor
     };
 
     using SlotMappingRequestBus = AZ::EBus<SlotMappingRequests>;
+
+    class SceneMemberMappingConfigurationRequests : public AZ::EBusTraits
+    {
+    public:
+        // This bus will be keyed off of the GraphCanvas::MemberId.
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual void ConfigureMapping(const AZ::EntityId& scriptCanvasMemberId) = 0;
+    };
+
+    using SceneMemberMappingConfigurationRequestBus = AZ::EBus<SceneMemberMappingConfigurationRequests>;
+
+    class SceneMemberMappingRequests : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::EntityId;
+
+        virtual AZ::EntityId GetGraphCanvasEntityId() const = 0;
+    };
+
+    using SceneMemberMappingRequestBus = AZ::EBus<SceneMemberMappingRequests>;
 }

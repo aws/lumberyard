@@ -20,6 +20,8 @@
 #include "ActorInstance.h"
 #include "EventManager.h"
 #include "BaseObject.h"
+#include "DebugDraw.h"
+#include "EventManager.h"
 #include "Importer/Importer.h"
 
 
@@ -308,7 +310,6 @@ namespace EMotionFX
         virtual void OnSimulatePhysics(float timeDelta)                                                                                     { MCORE_UNUSED(timeDelta); }
         virtual void OnCustomEvent(uint32 eventType, void* data)                                                                            { MCORE_UNUSED(eventType); MCORE_UNUSED(data); }
 
-        virtual void OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)                                       { MCORE_UNUSED(posA); MCORE_UNUSED(posB); MCORE_UNUSED(color); }
         virtual void OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color) { MCORE_UNUSED(posA); MCORE_UNUSED(posB); MCORE_UNUSED(posC); MCORE_UNUSED(normalA); MCORE_UNUSED(normalB); MCORE_UNUSED(normalC); MCORE_UNUSED(color); }
         virtual void OnDrawTriangles() {}
 

@@ -41,8 +41,8 @@ namespace AzQtComponents
         OverlayWidgetLayer::OverlayWidgetLayer(OverlayWidget* parent, QWidget* centerWidget, QWidget* breakoutWidget, 
             const char* title, const OverlayWidgetButtonList& buttons)
             : QFrame(parent)
-            , m_parent(parent)
             , m_ui(new Ui::OverlayWidgetLayer())
+            , m_parent(parent)
             , m_breakoutDialog(nullptr)
             , m_breakoutCloseButtonIndex(-1)
         {

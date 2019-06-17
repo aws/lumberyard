@@ -30,35 +30,18 @@ namespace AZ
 
 namespace GraphCanvas
 {
-
-    //! Represents whether a connection can be made between two entities, including a detail message explaining why.
-    struct Connectability
+    struct ConnectionEndpoints
     {
-        enum Status
-        {
-            NotConnectable,
-            Connectable,
-            AlreadyConnected
-        };
+        ConnectionEndpoints() = default;
 
-        AZ::EntityId entity;
-        Status status;
-        AZStd::string details;
-
-        Connectability()
-            : status(NotConnectable)
-            , details(AZStd::string())
+        ConnectionEndpoints(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint)
+            : m_sourceEndpoint(sourceEndpoint)
+            , m_targetEndpoint(targetEndpoint)
         {
         }
 
-        Connectability(AZ::EntityId entity, Status status, const AZStd::string& details = AZStd::string())
-            : entity(entity)
-            , status(status)
-            , details(details)
-        {
-        }
-
-        Connectability& operator=(const Connectability&) = default;
+        Endpoint m_sourceEndpoint;
+        Endpoint m_targetEndpoint;
     };
 
     //! ConnectionRequests
@@ -73,6 +56,7 @@ namespace GraphCanvas
         virtual AZ::EntityId GetSourceSlotId() const = 0;
         //! Resolve the node the source slot belongs to.
         virtual AZ::EntityId GetSourceNodeId() const = 0;
+
         //! Retrieves the source endpoint for this connection
         virtual Endpoint GetSourceEndpoint() const = 0;
         //! Retrieves the source position for this connection
@@ -80,16 +64,33 @@ namespace GraphCanvas
         //! Begins moving the source of this connection.
         virtual void StartSourceMove() = 0;
 
+        //! Changes the visual Source of the connection to the specified endpoint. Will not
+        //  modify the underlying model connection.
+        virtual void SnapSourceDisplayTo(const Endpoint& endpoint) = 0;
+        virtual void AnimateSourceDisplayTo(const Endpoint& endpoint, float duration) = 0;
+
         //! Get this connection's target slot ID.
         virtual AZ::EntityId GetTargetSlotId() const = 0;
         //! Resolve the Node the target slot belongs to.
         virtual AZ::EntityId GetTargetNodeId() const = 0;
+
         //! Retrieves the target endpoint for this connection
         virtual Endpoint GetTargetEndpoint() const = 0;
         //! Retrieves the target position for this connection
         virtual QPointF GetTargetPosition() const = 0;
         //! Begins moving the target of this connection.
         virtual void StartTargetMove() = 0;
+
+        //! Retrieves both the endpoitns for the specified connection
+        virtual ConnectionEndpoints GetEndpoints() const
+        {
+            return ConnectionEndpoints(GetSourceEndpoint(), GetTargetEndpoint());
+        }
+
+        //! Changes the visual target of the connection to the specified endpoint. Will not
+        //  modify the underlying model connection.
+        virtual void SnapTargetDisplayTo(const Endpoint& endpoint) = 0;
+        virtual void AnimateTargetDisplayTo(const Endpoint& endpoint, float duration) = 0;
 
         virtual bool ContainsEndpoint(const Endpoint& endpoint) const = 0;
 
@@ -100,6 +101,8 @@ namespace GraphCanvas
 
         //! Get user data from this connection
         virtual AZStd::any* GetUserData() = 0;
+
+        virtual void ChainProposalCreation(const QPointF& scenePos, const QPoint& screenPos) = 0;
     };
 
     using ConnectionRequestBus = AZ::EBus<ConnectionRequests>;
@@ -116,14 +119,18 @@ namespace GraphCanvas
         //! # Parameters
         //! 1. The previous source slot entity ID.
         //! 2. The new source slot entity ID.
-        virtual void OnSourceSlotIdChanged(const AZ::EntityId&, const AZ::EntityId&) {};
+        virtual void OnSourceSlotIdChanged(const AZ::EntityId&, const AZ::EntityId&) {}
         //! The target slot for the connection changed.
         //! # Parameters
         //! 1. The previous target slot entity ID.
         //! 2. The new target slot entity ID.
-        virtual void OnTargetSlotIdChanged(const AZ::EntityId&, const AZ::EntityId&) {};
+        virtual void OnTargetSlotIdChanged(const AZ::EntityId&, const AZ::EntityId&) {}
+
         //! The connection's tooltip changed.
-        virtual void OnTooltipChanged(const AZStd::string&) {};
+        virtual void OnTooltipChanged(const AZStd::string&) {}
+
+        virtual void OnMoveBegin() {}
+        virtual void OnMoveComplete() {}
     };
 
     using ConnectionNotificationBus = AZ::EBus<ConnectionNotifications>;
@@ -141,19 +148,15 @@ namespace GraphCanvas
 
     using ConnectionUIRequestBus = AZ::EBus<ConnectionUIRequests>;
 
-    //! Requests that are serviced by any object that wishes to be connectible with other entities by means of
-    //! GraphCanvas::Connection.
-    class ConnectableObjectRequests : public AZ::EBusTraits
+    class ConnectionVisualNotifications
+        : public AZ::EBusTraits
     {
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-        using BusIdType = AZ::EntityId;
+        using BusIdType = ConnectionId;
 
-        //! Check whether the entity is connectible with another entity.
-        //! # Parameters
-        //! 1. The entity that is asking for connection partners
-        virtual Connectability CanConnectWith(const AZ::EntityId& slotId) const = 0;
+        virtual void OnConnectionPathUpdated() {}
     };
 
-    using ConnectableObjectRequestBus = AZ::EBus<ConnectableObjectRequests>;
+    using ConnectionVisualNotificationBus = AZ::EBus<ConnectionVisualNotifications>;
 }

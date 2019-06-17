@@ -17,6 +17,7 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzToolsFramework/API/EntityCompositionRequestBus.h>
 #include <AzQtComponents/Components/Widgets/Card.h>
+#include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 
 #include <QFrame>
 #include <QIcon>
@@ -50,7 +51,9 @@ namespace AzToolsFramework
     {
         Q_OBJECT;
     public:
-        ComponentEditor(AZ::SerializeContext* context, IPropertyEditorNotify* notifyTarget = nullptr, QWidget* parent = nullptr);
+        explicit ComponentEditor(
+            AZ::SerializeContext* context, IPropertyEditorNotify* notifyTarget = nullptr, QWidget* parent = nullptr);
+        ~ComponentEditor();
 
         void AddInstance(AZ::Component* componentInstance, AZ::Component* aggregateInstance, AZ::Component* compareInstance);
         void ClearInstances(bool invalidateImmediately);
@@ -60,6 +63,8 @@ namespace AzToolsFramework
 
         void InvalidateAll(const char* filter = nullptr);
         void QueuePropertyEditorInvalidation(PropertyModificationRefreshLevel refreshLevel);
+        void CancelQueuedRefresh();
+        void PreventRefresh(bool shouldPrevent);
         void contextMenuEvent(QContextMenuEvent *event) override;
 
         void UpdateExpandability();
@@ -83,7 +88,15 @@ namespace AzToolsFramework
         AZStd::vector<AZ::Component*>& GetComponents();
         const AZStd::vector<AZ::Component*>& GetComponents() const;
 
+        const AZ::Uuid& GetComponentType() const { return m_componentType; }
+
         void SetComponentOverridden(const bool overridden);
+
+        // Calls match EditorComponentModeNotificationBus - called from EntityPropertyEditor
+        void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes);
+        void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes);
+        void ActiveComponentModeChanged(const AZ::Uuid& componentType);
+
     Q_SIGNALS:
         void OnExpansionContractionDone();
         void OnDisplayComponentEditorMenu(const QPoint& position);
@@ -123,7 +136,6 @@ namespace AzToolsFramework
         AZ::Uuid m_componentType = AZ::Uuid::CreateNull();
 
         AZStd::vector<AZ::Component*> m_components;
-        AZStd::vector<QWidget*> m_notifications;
         AZ::Crc32 m_savedKeySeed;
     };
 

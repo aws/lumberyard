@@ -19,7 +19,8 @@
             "Include/PhysX/Utils.h",
             "Include/PhysX/Utils.inl",
             "Include/PhysX/MathConversion.h",
-            "Include/PhysX/ComponentTypeIds.h"
+            "Include/PhysX/ComponentTypeIds.h",
+            "Include/PhysX/TriggerEventCallback.h"
         ],
         "Source/Components": [
             "Source/SystemComponent.cpp",
@@ -43,7 +44,9 @@
             "Source/Pipeline/MeshAssetHandler.cpp",
             "Source/Pipeline/MeshAssetHandler.h",
             "Source/Pipeline/HeightFieldAssetHandler.cpp",
-            "Source/Pipeline/HeightFieldAssetHandler.h"
+            "Source/Pipeline/HeightFieldAssetHandler.h",
+            "Source/Pipeline/StreamWrapper.cpp",
+            "Source/Pipeline/StreamWrapper.h"
         ],
         "Source": [
             "Source/Module.cpp",

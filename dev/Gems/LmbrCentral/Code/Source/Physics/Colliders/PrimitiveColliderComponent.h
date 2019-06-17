@@ -38,6 +38,7 @@ namespace LmbrCentral
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("ColliderService", 0x902d4e93));
+            provided.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
@@ -84,7 +85,7 @@ namespace LmbrCentral
     protected:
         //! Adds geometry for primitive shape to the IPhysicalEntity.
         int AddPrimitiveFromEntityToPhysicalEntity(
-            const AZ::EntityId& entityId, 
+            const AZ::EntityId& entityId,
             IPhysicalEntity& physicalEntity,
             int nextPartId,
             int primitiveType,

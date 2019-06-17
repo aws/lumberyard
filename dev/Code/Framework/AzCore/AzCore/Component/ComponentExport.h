@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/Math/Crc.h>
-#include <AzCore/Rtti/TypeInfo.h>
+#include <AzCore/RTTI/TypeInfo.h>
 
 #include <AzCore/std/containers/unordered_set.h>
 
@@ -31,14 +31,24 @@ namespace AZ
         ExportedComponent()
             : m_component(nullptr)
             , m_deleteAfterExport(false) 
+            , m_componentExportHandled(true)
         {}
-        ExportedComponent(AZ::Component* component, bool deleteAfterExport)
+        ExportedComponent(AZ::Component* component, bool deleteAfterExport, bool componentExportHandled = true)
             : m_component(component)
             , m_deleteAfterExport(deleteAfterExport)
+            , m_componentExportHandled(componentExportHandled)
         {}
 
         AZ::Component* m_component;     ///< Pointer to exported component. Null is valid, and conveys no component should be exported.
         bool m_deleteAfterExport;       ///< If true (false by default), the returned component will be cleaned up by the asset pipeline.
+
+        /**
+         * If true (true by default), the component export has been handled.
+         * This allows callbacks to announce whether they've handled or ignored the export.  If this has been set to false, anything set
+         * in m_component or m_deleteAfterExport will be ignored.  If it has been set to true, the m_component value will be used as the
+         * exported component.  (A value of null in m_component means "don't export anything")
+         */
+        bool m_componentExportHandled;
     };
 
     // List of platform tag Crcs for component exporting.

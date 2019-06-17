@@ -20,8 +20,14 @@
 #include <QTime>
 
 Connection::Connection(AssetProcessor::PlatformConfiguration* config, qintptr socketDescriptor, QObject* parent)
+    : Connection(false, config, socketDescriptor, parent)
+{
+}
+
+Connection::Connection(bool isUserCreatedConnection, AssetProcessor::PlatformConfiguration* config, qintptr socketDescriptor, QObject* parent)
     : QObject(parent)
     , m_platformConfig(config)
+    , m_userCreatedConnection(isUserCreatedConnection)
 {
     Q_ASSERT(m_platformConfig);
     m_runElapsed = true;
@@ -67,7 +73,18 @@ Connection::Connection(AssetProcessor::PlatformConfiguration* config, qintptr so
 
     connect(this, &Connection::TerminateConnection, m_connectionWorker, &AssetProcessor::ConnectionWorker::RequestTerminate, Qt::DirectConnection);
     connect(this, &Connection::NormalConnectionRequested, m_connectionWorker, &AssetProcessor::ConnectionWorker::ConnectToEngine);
-    connect(m_connectionWorker, &AssetProcessor::ConnectionWorker::Identifier, this, &Connection::SetIdentifier);
+
+    connect(m_connectionWorker, &AssetProcessor::ConnectionWorker::Identifier, this, [this](QString identifier) {
+        // For user created connections, the id is user generated (either because they've manually entered some text
+        // this session, or because the id was loaded from a session previously saved where the user entered it).
+        // As such, when the connection worker reports a new id from after the connection occurs,
+        // we only pay attention to it when it is not a user created connection.
+        if (!m_userCreatedConnection)
+        {
+            SetIdentifier(identifier);
+        }
+    });
+
     connect(m_connectionWorker, &AssetProcessor::ConnectionWorker::AssetPlatform, this, &Connection::SetAssetPlatform);
     connect(m_connectionWorker, &AssetProcessor::ConnectionWorker::ConnectionDisconnected, this, &Connection::OnConnectionDisconnect, Qt::QueuedConnection);
     // the blocking queued connection is here because the worker calls OnConnectionEstablished and then immediately starts emitting messages about
@@ -206,6 +223,7 @@ void Connection::SaveConnection(QSettings& qSettings)
     qSettings.setValue("port", Port());
     qSettings.setValue("assetplatform", AssetPlatform());
     qSettings.setValue("autoConnect", AutoConnect());
+    qSettings.setValue("userConnection", m_userCreatedConnection);
 }
 
 void Connection::LoadConnection(QSettings& qSettings)
@@ -216,6 +234,8 @@ void Connection::LoadConnection(QSettings& qSettings)
     SetAssetPlatform(qSettings.value("assetplatform").toString());
     SetAutoConnect(qSettings.value("autoConnect").toBool());
     SetStatus(Disconnected);
+
+    m_userCreatedConnection = qSettings.value("userConnection", false).toBool();
 }
 
 void Connection::SetStatus(Connection::ConnectionStatus status)
@@ -301,7 +321,16 @@ void Connection::OnConnectionDisconnect()
         disconnect(m_connectionWorker, &AssetProcessor::ConnectionWorker::ReceiveMessage, this, &Connection::ReceiveMessage);
     }
 
-    SetIdentifier(QString());
+    // For user created connections, the id is user generated (either because they've manually entered some text
+    // this session, or because the id was loaded from a session previously saved where the user entered it).
+    // As such, when a connection disconnects, we only want to clear the id when the connection was triggered
+    // from something other than the user (i.e. like when an automatic connection from Editor or a job worker 
+    // disconnects).
+    if (!m_userCreatedConnection)
+    {
+        SetIdentifier(QString());
+    }
+
     SetAssetPlatform(QString());
     if (m_autoConnect)
     {
@@ -879,6 +908,11 @@ bool Connection::InitiatedConnection() const
         return m_connectionWorker->InitiatedConnection();
     }
     return false;
+}
+
+bool Connection::UserCreatedConnection() const
+{
+    return m_userCreatedConnection;
 }
 
 #include <native/connection/connection.moc>

@@ -11,7 +11,10 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 from waflib.Configure import conf
+from lumberyard import deprecated
 
+
+@conf
 def load_clang_common_settings(conf):
     """
     Setup all compiler/linker flags with are shared over all targets using the clang compiler
@@ -64,6 +67,8 @@ def load_clang_common_settings(conf):
     v['LINKFLAGS_cxxstlib'] = ['-Wl,-Bstatic']
     v['LINKFLAGS_cxxshtib'] = ['-Wl,-Bstatic']
 
+    # Moved to common.clang.json
+    """
     # Set common compiler flags
     COMMON_COMPILER_FLAGS = [
         # Enable all warnings and treat them as errors,
@@ -106,13 +111,18 @@ def load_clang_common_settings(conf):
         ]
 
     # Copy common flags to prevent modifing references
-    v['CFLAGS'] += COMMON_COMPILER_FLAGS[:]
 
-    v['CXXFLAGS'] += COMMON_COMPILER_FLAGS[:] + [
+    #v['CFLAGS'] += COMMON_COMPILER_FLAGS[:]
+    """
+
+    # Moved to common.clang.json
+    """
+    v['CXXFLAGS'] += [
         '-std=c++1y',               # C++14
         '-fno-rtti',                # Disable RTTI
         '-fno-exceptions',          # Disable Exceptions
     ]
+    """
 
     # Linker Flags
     v['LINKFLAGS'] += []
@@ -150,16 +160,20 @@ def load_clang_common_settings(conf):
     v['ASAN_cflags'] = []
     v['ASAN_cxxflags'] = []
 
+
+@deprecated("no longer needed in the platform/configuration restructure")
 @conf
 def load_debug_clang_settings(conf):
     """
     Setup all compiler/linker flags with are shared over all targets using the clang compiler
     for the "debug" configuration
     """
-    v = conf.env
-    load_clang_common_settings(conf)
+    # load_clang_common_settings(conf)
 
-    COMPILER_FLAGS = [
+    # Moved to common.clang.json
+    """
+    v = conf.env
+     COMPILER_FLAGS = [
         '-O0',      # No optimization
         '-g',       # debug symbols
         '-fno-inline', # don't inline functions
@@ -168,38 +182,50 @@ def load_debug_clang_settings(conf):
 
     v['CFLAGS'] += COMPILER_FLAGS
     v['CXXFLAGS'] += COMPILER_FLAGS
+    """
 
+@deprecated("no longer needed in the platform/configuration restructure")
 @conf
 def load_profile_clang_settings(conf):
     """
     Setup all compiler/linker flags with are shared over all targets using the clang compiler
     for the "profile" configuration
     """
-    v = conf.env
-    load_clang_common_settings(conf)
+    # v = conf.env
+    # load_clang_common_settings(conf)
 
+    # Moved to common.clang.json
+    """
     COMPILER_FLAGS = [
         '-O2',
         ]
-
+    
     v['CFLAGS'] += COMPILER_FLAGS
     v['CXXFLAGS'] += COMPILER_FLAGS
+    """
+    pass
 
+
+@deprecated("no longer needed in the platform/configuration restructure")
 @conf
 def load_performance_clang_settings(conf):
     """
     Setup all compiler/linker flags with are shared over all targets using the clang compiler
     for the "performance" configuration
     """
-    v = conf.env
-    load_clang_common_settings(conf)
+    # v = conf.env
+    # load_clang_common_settings(conf)
 
+    # Moved to common.clang.json
+    """
     COMPILER_FLAGS = [
         '-O2',
         ]
-
     v['CFLAGS'] += COMPILER_FLAGS
     v['CXXFLAGS'] += COMPILER_FLAGS
+    """
+    pass
+
 
 @conf
 def load_release_clang_settings(conf):
@@ -207,12 +233,16 @@ def load_release_clang_settings(conf):
     Setup all compiler/linker flags with are shared over all targets using the clang compiler
     for the "release" configuration
     """
-    v = conf.env
-    load_clang_common_settings(conf)
+    # v = conf.env
+    # load_clang_common_settings(conf)
 
+    # Moved to common.clang.json
+    """
     COMPILER_FLAGS = [
-        '-O2',
-        ]
+      '-O2',
+      ]
 
     v['CFLAGS'] += COMPILER_FLAGS
     v['CXXFLAGS'] += COMPILER_FLAGS
+    """
+    pass

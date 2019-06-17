@@ -228,11 +228,10 @@ namespace EMStudio
             }
 
             EMotionFX::Motion*          motion              = entry->mMotion;
-            EMotionFX::PlayBackInfo*    defaultPlayBackInfo = motion->GetDefaultPlayBackInfo();
+            const EMotionFX::PlayBackInfo* defaultPlayBackInfo = motion->GetDefaultPlayBackInfo();
 
             if (defaultPlayBackInfo == nullptr)
             {
-                motion->CreateDefaultPlayBackInfo();
                 defaultPlayBackInfo = motion->GetDefaultPlayBackInfo();
             }
 

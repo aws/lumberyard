@@ -1,4 +1,10 @@
 {
+    "none": {
+        "_Natvis_": [
+            "natvis/qt.natvis"
+        ]
+    },
+
     "auto": {
         "Utilities": [
             "Utilities/MouseHider_win.cpp",

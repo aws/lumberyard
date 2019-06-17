@@ -12,25 +12,29 @@
  */
 
 #include <PhysX_precompiled.h>
-#include <AzCore/Serialization/EditContext.h>
+
 #include <AzCore/Script/ScriptTimePoint.h>
-#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <AzCore/Serialization/EditContext.h>
+#include <AzFramework/Physics/RigidBody.h>
 #include <AzFramework/Physics/SystemBus.h>
 #include <AzFramework/Viewport/ViewportColors.h>
+#include <AzToolsFramework/ComponentModes/BoxComponentMode.h>
+#include <AzToolsFramework/Maths/TransformUtils.h>
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <Editor/EditorClassConverters.h>
+#include <LmbrCentral/Geometry/GeometrySystemComponentBus.h>
+#include <LmbrCentral/Shape/BoxShapeComponentBus.h>
 #include <PhysX/ConfigurationBus.h>
-#include <Source/EditorSystemComponent.h>
-#include <Source/EditorColliderComponent.h>
-#include <Source/SphereColliderComponent.h>
+#include <PhysX/EditorRigidBodyRequestBus.h>
 #include <Source/BoxColliderComponent.h>
 #include <Source/CapsuleColliderComponent.h>
-#include <Source/MeshColliderComponent.h>
+#include <Source/EditorColliderComponent.h>
 #include <Source/EditorRigidBodyComponent.h>
-#include <LmbrCentral/Geometry/GeometrySystemComponentBus.h>
-#include <Editor/EditorClassConverters.h>
+#include <Source/EditorSystemComponent.h>
+#include <Source/MeshColliderComponent.h>
+#include <Source/SphereColliderComponent.h>
 #include <Source/Utils.h>
 #include <Source/World.h>
-#include <AzFramework/Physics/RigidBody.h>
-#include <PhysX/EditorRigidBodyRequestBus.h>
 
 namespace PhysX
 {
@@ -55,25 +59,28 @@ namespace PhysX
                 editContext->Class<EditorProxyShapeConfig>(
                     "EditorProxyShapeConfig", "PhysX Base shape collider")
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &EditorProxyShapeConfig::m_shapeType, "Shape", "The shape of the collider")
-                    ->EnumAttribute(Physics::ShapeType::Sphere, "Sphere")
-                    ->EnumAttribute(Physics::ShapeType::Box, "Box")
-                    ->EnumAttribute(Physics::ShapeType::Capsule, "Capsule")
-                    ->EnumAttribute(Physics::ShapeType::PhysicsAsset, "PhysicsAsset")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                        ->EnumAttribute(Physics::ShapeType::Sphere, "Sphere")
+                        ->EnumAttribute(Physics::ShapeType::Box, "Box")
+                        ->EnumAttribute(Physics::ShapeType::Capsule, "Capsule")
+                        ->EnumAttribute(Physics::ShapeType::PhysicsAsset, "PhysicsAsset")
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, AZ::Edit::PropertyRefreshLevels::EntireTree)
+                            // note: we do not want the user to be able to change shape types while in ComponentMode (there will
+                            // potentially be different ComponentModes for different shape types)
+                            ->Attribute(AZ::Edit::Attributes::ReadOnly, &AzToolsFramework::ComponentModeFramework::InComponentMode)
 
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorProxyShapeConfig::m_sphere, "Sphere", "Configuration of sphere shape")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, &EditorProxyShapeConfig::IsSphereConfig)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorProxyShapeConfig::OnConfigurationChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorProxyShapeConfig::m_box, "Box", "Configuration of box shape")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, &EditorProxyShapeConfig::IsBoxConfig)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorProxyShapeConfig::OnConfigurationChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorProxyShapeConfig::m_capsule, "Capsule", "Configuration of capsule shape")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, &EditorProxyShapeConfig::IsCapsuleConfig)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorProxyShapeConfig::OnConfigurationChanged)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorProxyShapeConfig::m_physicsAsset, "Asset", "Configuration of asset shape")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, &EditorProxyShapeConfig::IsAssetConfig)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorProxyShapeConfig::OnConfigurationChanged)
-                ;
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &EditorProxyShapeConfig::m_sphere, "Sphere", "Configuration of sphere shape")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorProxyShapeConfig::IsSphereConfig)
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorProxyShapeConfig::OnConfigurationChanged)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &EditorProxyShapeConfig::m_box, "Box", "Configuration of box shape")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorProxyShapeConfig::IsBoxConfig)
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorProxyShapeConfig::OnConfigurationChanged)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &EditorProxyShapeConfig::m_capsule, "Capsule", "Configuration of capsule shape")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorProxyShapeConfig::IsCapsuleConfig)
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorProxyShapeConfig::OnConfigurationChanged)
+                        ->DataElement(AZ::Edit::UIHandlers::Default, &EditorProxyShapeConfig::m_physicsAsset, "Asset", "Configuration of asset shape")
+                            ->Attribute(AZ::Edit::Attributes::Visibility, &EditorProxyShapeConfig::IsAssetConfig)
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorProxyShapeConfig::OnConfigurationChanged)
+                            ;
             }
         }
     }
@@ -120,35 +127,39 @@ namespace PhysX
                 ->Field("ColliderConfiguration", &EditorColliderComponent::m_configuration)
                 ->Field("ShapeConfiguration", &EditorColliderComponent::m_shapeConfiguration)
                 ->Field("MeshAsset", &EditorColliderComponent::m_meshColliderAsset)
-            ;
+                ->Field("ComponentMode", &EditorColliderComponent::m_componentModeDelegate)
+                ;
 
             if (auto editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<EditorColliderComponent>(
                     "PhysX Collider", "PhysX shape collider")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PhysXCollider.svg")
-                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/PhysXCollider.svg")
-                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/physx-base-collider")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-
+                        ->Attribute(AZ::Edit::Attributes::Category, "PhysX")
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/PhysXCollider.svg")
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/PhysXCollider.svg")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/physx-base-collider")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorColliderComponent::m_configuration, "Collider Configuration", "Configuration of the collider")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorColliderComponent::OnConfigurationChanged)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorColliderComponent::OnConfigurationChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorColliderComponent::m_shapeConfiguration, "Shape Configuration", "Configuration of the shape")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorColliderComponent::OnConfigurationChanged)
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorColliderComponent::OnConfigurationChanged)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorColliderComponent::m_meshColliderAsset, "PxMesh", "PhysX mesh collider asset")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, &EditorColliderComponent::IsAssetConfig)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorColliderComponent::OnConfigurationChanged)
-                ;
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorColliderComponent::IsAssetConfig)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorColliderComponent::OnConfigurationChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorColliderComponent::m_componentModeDelegate, "Component Mode", "Collider Component Mode")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, &EditorColliderComponent::ShouldShowBoxComponentModeButton)
+                        ;
             }
         }
     }
 
-    EditorColliderComponent::EditorColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration)
+    EditorColliderComponent::EditorColliderComponent(
+        const Physics::ColliderConfiguration& colliderConfiguration,
+        const Physics::ShapeConfiguration& shapeConfiguration)
         : m_configuration(colliderConfiguration)
         , m_shapeConfiguration(shapeConfiguration)
     {
@@ -231,8 +242,14 @@ namespace PhysX
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
         PhysX::MeshColliderComponentRequestsBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::BoxManipulatorRequestBus::Handler::BusConnect(
+            AZ::EntityComponentIdPair(GetEntityId(), GetId()));
 
-        m_boxManipulator.SetHandler(this);
+        // ComponentMode
+        m_componentModeDelegate.ConnectWithSingleComponentMode<
+            EditorColliderComponent, AzToolsFramework::BoxComponentMode>(
+                AZ::EntityComponentIdPair(GetEntityId(), GetId()), nullptr);
+
         UpdateMeshAsset();
 
         m_warningColor = AZ::Color(1.0f, 0.0f, 0.0f, 1.0f);
@@ -249,34 +266,35 @@ namespace PhysX
 
     void EditorColliderComponent::Deactivate()
     {
+        AzToolsFramework::BoxManipulatorRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
+        PhysX::MeshColliderComponentRequestsBus::Handler::BusDisconnect();
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
 
-        m_boxManipulator.SetHandler(nullptr);
-        m_boxManipulator.OnDeselect();
+        m_componentModeDelegate.Disconnect();
 
         m_editorBody = nullptr;
     }
 
     AZ::u32 EditorColliderComponent::OnConfigurationChanged()
     {
-        if (m_shapeConfiguration.IsBoxConfig())
-        {
-            m_boxManipulator.OnSelect(GetEntityId());
-            m_configuration.m_materialSelection.SetMaterialSlots(Physics::MaterialSelection::SlotsArray());
-        }
-        else if (m_shapeConfiguration.IsAssetConfig())
+        if (m_shapeConfiguration.IsAssetConfig())
         {
             UpdateMeshAsset();
-            m_boxManipulator.OnDeselect();
         }
         else
         {
-            m_boxManipulator.OnDeselect();
             m_configuration.m_materialSelection.SetMaterialSlots(Physics::MaterialSelection::SlotsArray());
         }
+
+        // ensure we refresh the ComponentMode (and Manipulators) when the configuration
+        // changes to keep the ComponentMode in sync with the shape (otherwise the manipulators
+        // will move out of alignment with the shape)
+        AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequestBus::Broadcast(
+            &AzToolsFramework::ComponentModeFramework::ComponentModeSystemRequests::Refresh,
+            AZ::EntityComponentIdPair(GetEntityId(), GetId()));
 
         UpdateShapeConfigurationScale();
         CreateStaticEditorCollider();
@@ -284,23 +302,17 @@ namespace PhysX
         m_meshDirty = true;
         PhysX::EditorRigidBodyRequestBus::Event(GetEntityId(), &PhysX::EditorRigidBodyRequests::RefreshEditorRigidBody);
 
-        return AZ::Edit::PropertyRefreshLevels::EntireTree;
+        return AZ::Edit::PropertyRefreshLevels::None;
     }
 
     void EditorColliderComponent::OnSelected()
     {
-        if (m_shapeConfiguration.IsBoxConfig())
-        {
-            m_boxManipulator.OnSelect(GetEntityId());
-        }
-
         AZ::TickBus::Handler::BusConnect();
         PhysX::ConfigurationNotificationBus::Handler::BusConnect();
     }
 
     void EditorColliderComponent::OnDeselected()
     {
-        m_boxManipulator.OnDeselect();
         PhysX::ConfigurationNotificationBus::Handler::BusDisconnect();
         AZ::TickBus::Handler::BusDisconnect();
     }
@@ -326,7 +338,8 @@ namespace PhysX
 
     AZ::Transform EditorColliderComponent::GetColliderTransform() const
     {
-        return AZ::Transform::CreateFromQuaternionAndTranslation(m_configuration.m_rotation, m_configuration.m_position * GetNonUniformScale());
+        return AZ::Transform::CreateFromQuaternionAndTranslation(
+            m_configuration.m_rotation, m_configuration.m_position * GetNonUniformScale());
     }
 
     float EditorColliderComponent::GetUniformScale() const
@@ -496,7 +509,9 @@ namespace PhysX
         OnAssetReady(asset);
     }
 
-    void EditorColliderComponent::DisplayEntity(bool& handled)
+    void EditorColliderComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         // Let each collider decide how to scale itself, so extract the scale here.
         AZ::Transform entityWorldTransformWithoutScale = GetWorldTM();
@@ -510,62 +525,58 @@ namespace PhysX
 
         if (m_configuration.m_visible || (colliderProximityVisualization.m_enabled && colliderIsInRange))
         {
-            AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-            AZ_Assert(displayContext, "Invalid display context.");
-
-            displayContext->PushMatrix(entityWorldTransformWithoutScale);
-            Display(*displayContext);
-            displayContext->PopMatrix();
-            handled = true;
+            debugDisplay.PushMatrix(entityWorldTransformWithoutScale);
+            Display(debugDisplay);
+            debugDisplay.PopMatrix();
         }
     }
 
-    void EditorColliderComponent::Display(AzFramework::EntityDebugDisplayRequests& displayContext)
+    void EditorColliderComponent::Display(AzFramework::DebugDisplayRequests& debugDisplay)
     {
         BuildMeshes();
 
         switch (m_shapeConfiguration.m_shapeType)
         {
         case Physics::ShapeType::Sphere:
-            DrawSphere(displayContext, m_shapeConfiguration.m_sphere);
+            DrawSphere(debugDisplay, m_shapeConfiguration.m_sphere);
             break;
         case Physics::ShapeType::Box:
-            DrawBox(displayContext, m_shapeConfiguration.m_box);
+            DrawBox(debugDisplay, m_shapeConfiguration.m_box);
             break;
         case Physics::ShapeType::Capsule:
-            DrawCapsule(displayContext, m_shapeConfiguration.m_capsule);
+            DrawCapsule(debugDisplay, m_shapeConfiguration.m_capsule);
             break;
         case Physics::ShapeType::PhysicsAsset:
-            DrawMesh(displayContext);
+            DrawMesh(debugDisplay);
             break;
         }
     }
 
-    void EditorColliderComponent::DrawSphere(AzFramework::EntityDebugDisplayRequests& displayContext, const Physics::SphereShapeConfiguration& config)
+    void EditorColliderComponent::DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay, const Physics::SphereShapeConfiguration& config)
     {
         AZ::Transform scaleMatrix = AZ::Transform::CreateScale(AZ::Vector3(GetUniformScale()));
-        displayContext.PushMatrix(GetColliderTransform() * scaleMatrix);
-        displayContext.SetColor(AzFramework::ViewportColors::DeselectedColor);
-        displayContext.DrawBall(AZ::Vector3::CreateZero(), config.m_radius);
-        displayContext.SetColor(AzFramework::ViewportColors::WireColor);
-        displayContext.DrawWireSphere(AZ::Vector3::CreateZero(), config.m_radius);
-        displayContext.PopMatrix();
+        debugDisplay.PushMatrix(GetColliderTransform() * scaleMatrix);
+        debugDisplay.SetColor(AzFramework::ViewportColors::DeselectedColor);
+        debugDisplay.DrawBall(AZ::Vector3::CreateZero(), config.m_radius);
+        debugDisplay.SetColor(AzFramework::ViewportColors::WireColor);
+        debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), config.m_radius);
+        debugDisplay.PopMatrix();
     }
 
-    void EditorColliderComponent::DrawBox(AzFramework::EntityDebugDisplayRequests& displayContext, const Physics::BoxShapeConfiguration& config)
+    void EditorColliderComponent::DrawBox(AzFramework::DebugDisplayRequests& debugDisplay, const Physics::BoxShapeConfiguration& config)
     {
         AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale());
-        displayContext.PushMatrix(GetColliderTransform() * scaleMatrix);
-        displayContext.SetColor(AzFramework::ViewportColors::DeselectedColor);
-        displayContext.DrawSolidBox(-config.m_dimensions * 0.5f, config.m_dimensions * 0.5f);
-        displayContext.SetColor(AzFramework::ViewportColors::WireColor);
-        displayContext.DrawWireBox(-config.m_dimensions * 0.5f, config.m_dimensions * 0.5f);
-        displayContext.PopMatrix();
+        debugDisplay.PushMatrix(GetColliderTransform() * scaleMatrix);
+        debugDisplay.SetColor(AzFramework::ViewportColors::DeselectedColor);
+        debugDisplay.DrawSolidBox(-config.m_dimensions * 0.5f, config.m_dimensions * 0.5f);
+        debugDisplay.SetColor(AzFramework::ViewportColors::WireColor);
+        debugDisplay.DrawWireBox(-config.m_dimensions * 0.5f, config.m_dimensions * 0.5f);
+        debugDisplay.PopMatrix();
     }
 
-    void EditorColliderComponent::DrawCapsule(AzFramework::EntityDebugDisplayRequests& displayContext, const Physics::CapsuleShapeConfiguration& config)
+    void EditorColliderComponent::DrawCapsule(AzFramework::DebugDisplayRequests& debugDisplay, const Physics::CapsuleShapeConfiguration& config)
     {
-        displayContext.PushMatrix(GetColliderTransform());
+        debugDisplay.PushMatrix(GetColliderTransform());
         AZ::Vector3 scale = GetCapsuleScale();
 
         LmbrCentral::CapsuleGeometrySystemRequestBus::Broadcast(
@@ -578,10 +589,10 @@ namespace PhysX
             m_points
             );
 
-        displayContext.DrawTrianglesIndexed(m_verts, m_indices, AzFramework::ViewportColors::DeselectedColor);
-        displayContext.DrawLines(m_points, AzFramework::ViewportColors::WireColor);
-        displayContext.SetLineWidth(m_colliderVisualizationLineWidth);
-        displayContext.PopMatrix();
+        debugDisplay.DrawTrianglesIndexed(m_verts, m_indices, AzFramework::ViewportColors::DeselectedColor);
+        debugDisplay.DrawLines(m_points, AzFramework::ViewportColors::WireColor);
+        debugDisplay.SetLineWidth(m_colliderVisualizationLineWidth);
+        debugDisplay.PopMatrix();
     }
 
     void EditorColliderComponent::UpdateColliderMeshColor(AZ::Color& baseColor, AZ::u32 triangleCount) const
@@ -596,34 +607,34 @@ namespace PhysX
         }
     }
 
-    void EditorColliderComponent::DrawTriangleMesh(AzFramework::EntityDebugDisplayRequests& displayContext, physx::PxBase* meshData) const
+    void EditorColliderComponent::DrawTriangleMesh(AzFramework::DebugDisplayRequests& debugDisplay, physx::PxBase* meshData) const
     {
         if (!m_verts.empty())
         {
             AZ::u64 triangleCount = m_indices.size() / 3;
             UpdateColliderMeshColor(m_convexCollisionMeshColor, triangleCount);
-            displayContext.DrawTrianglesIndexed(m_verts, m_indices, m_convexCollisionMeshColor);
-            displayContext.DrawLines(m_points, m_wireFrameColor);
+            debugDisplay.DrawTrianglesIndexed(m_verts, m_indices, m_convexCollisionMeshColor);
+            debugDisplay.DrawLines(m_points, m_wireFrameColor);
         }
     }
 
-    void EditorColliderComponent::DrawConvexMesh(AzFramework::EntityDebugDisplayRequests& displayContext, physx::PxBase* meshData) const
+    void EditorColliderComponent::DrawConvexMesh(AzFramework::DebugDisplayRequests& debugDisplay, physx::PxBase* meshData) const
     {
         if (!m_verts.empty())
         {
             AZ::u64 triangleCount = m_verts.size() / 3;
             UpdateColliderMeshColor(m_triangleCollisionMeshColor, triangleCount);
-            displayContext.DrawTriangles(m_verts, m_triangleCollisionMeshColor);
-            displayContext.DrawLines(m_points, m_wireFrameColor);
+            debugDisplay.DrawTriangles(m_verts, m_triangleCollisionMeshColor);
+            debugDisplay.DrawLines(m_points, m_wireFrameColor);
         }
     }
 
-    void EditorColliderComponent::DrawMesh(AzFramework::EntityDebugDisplayRequests& displayContext)
+    void EditorColliderComponent::DrawMesh(AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (m_meshColliderAsset && m_meshColliderAsset.IsReady())
         {
             AZ::Transform scaleMatrix = AZ::Transform::CreateScale(GetNonUniformScale() * m_shapeConfiguration.m_physicsAsset.m_assetScale);
-            displayContext.PushMatrix(GetColliderTransform() * scaleMatrix);
+            debugDisplay.PushMatrix(GetColliderTransform() * scaleMatrix);
 
             physx::PxBase* meshData = m_meshColliderAsset.Get()->GetMeshData();
 
@@ -631,15 +642,15 @@ namespace PhysX
             {
                 if (meshData->is<physx::PxTriangleMesh>())
                 {
-                    DrawTriangleMesh(displayContext, meshData);
+                    DrawTriangleMesh(debugDisplay, meshData);
                 }
                 else
                 {
-                    DrawConvexMesh(displayContext, meshData);
+                    DrawConvexMesh(debugDisplay, meshData);
                 }
             }
 
-            displayContext.PopMatrix();
+            debugDisplay.PopMatrix();
         }
     }
 
@@ -871,7 +882,6 @@ namespace PhysX
         }
     }
 
-
     bool EditorColliderComponent::IsAssetConfig() const
     {
         return m_shapeConfiguration.IsAssetConfig();
@@ -890,7 +900,12 @@ namespace PhysX
 
     AZ::Transform EditorColliderComponent::GetCurrentTransform()
     {
-        return GetWorldTM() * GetColliderTransform();
+        return AzToolsFramework::TransformNormalizedScale(GetWorldTM()) * GetColliderTransform();
+    }
+
+    AZ::Vector3 EditorColliderComponent::GetBoxScale()
+    {
+        return GetWorldTM().RetrieveScale();
     }
 
     AZ::Vector3 EditorColliderComponent::GetCapsuleScale()
@@ -914,16 +929,15 @@ namespace PhysX
     void EditorColliderComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/)
     {
         UpdateShapeConfigurationScale();
-        m_boxManipulator.RefreshManipulators();
         CreateStaticEditorCollider();
         Physics::EditorWorldBus::Broadcast(&Physics::EditorWorldRequests::MarkEditorWorldDirty);
     }
 
     // PhysX::ConfigurationNotificationBus
-    void EditorColliderComponent::OnConfigurationRefreshed(const Configuration& configuration)
+    void EditorColliderComponent::OnConfigurationRefreshed(const Configuration& /*configuration*/)
     {
-        AZ_UNUSED(configuration);
-        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
+        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+            &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
             AzToolsFramework::PropertyModificationRefreshLevel::Refresh_AttributesAndValues);
     }
 
@@ -933,5 +947,16 @@ namespace PhysX
         shapeConfiguration.m_scale = GetWorldTM().ExtractScale();
         m_meshDirty = true;
     }
-}
 
+    AZ::Crc32 EditorColliderComponent::ShouldShowBoxComponentModeButton() const
+    {
+        if (m_shapeConfiguration.IsBoxConfig())
+        {
+            return AZ::Edit::PropertyVisibility::ShowChildrenOnly;
+        }
+        else
+        {
+            return AZ::Edit::PropertyVisibility::Hide;
+        }
+    }
+} // namespace PhysX

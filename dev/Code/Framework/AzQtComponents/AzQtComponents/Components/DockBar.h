@@ -15,8 +15,6 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 
 #include <QColor>
-#include <QFont>
-#include <QFontMetrics>
 #include <QObject>
 #include <QPixmap>
 #include <QString>
@@ -51,9 +49,15 @@ namespace AzQtComponents
             ResizeTopMargin = 4,
         };
 
+        static void drawFrame(QPainter* painter, const QRect& area, bool drawSideBorders, const DockBarColors& colors);
+        static void drawSolidFrame(QPainter* painter, const QRect& area, const QColor& backgroundColor);
+        static void drawTabContents(QPainter* painter, const QRect& area, const DockBarColors& colors, const QString& title);
+        static int getTitleMinWidth(const QString& title, bool enableTear = true);
+        static DockBarColors getColors(bool active);
+
         explicit DockBar(QObject* parent = nullptr);
-        DockBarColors GetColors(bool active);
-        int GetTitleMinWidth(const QString& title, bool enableTear = true);
+        DockBarColors GetColors(bool active) { return DockBar::getColors(active); }
+        int GetTitleMinWidth(const QString& title, bool enableTear = true) { return DockBar::getTitleMinWidth(title, enableTear); }
         void DrawSegment(QPainter& painter, const QRect& area,
             int buttonsX, bool enableTear, bool drawSideBorders, const DockBarColors& colors,
             const QString& title = QString());
@@ -61,11 +65,9 @@ namespace AzQtComponents
             int buttonsX, bool drawAppIcon, const QColor& backgroundColor, const QColor& textColor, const QString& title = QString());
 
     private:
-        int drawIcon(QPainter& painter, int x, const QPixmap& icon);
-        void drawTitle(QPainter& painter, int leftContentWidth, const QRect& area,
+        static int drawIcon(QPainter* painter, int x, const QPixmap& icon);
+        static void drawTitle(QPainter* painter, int leftContentWidth, const QRect& area,
             int buttonsX, const QColor& color, const QString& title);
-        QFont m_font;
-        QFontMetrics m_fontMetrics;
         QPixmap m_tearIcon;
         QPixmap m_applicationIcon;
     };

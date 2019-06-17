@@ -10,11 +10,11 @@
 *
 */
 
-#include "precompiled.h"
 
-#include <Tests/ScriptCanvasTestFixture.h>
-#include <Tests/ScriptCanvasTestUtilities.h>
-#include <Tests/ScriptCanvasTestNodes.h>
+
+#include <Source/Framework/ScriptCanvasTestFixture.h>
+#include <Source/Framework/ScriptCanvasTestUtilities.h>
+#include <Source/Framework/ScriptCanvasTestNodes.h>
 
 #include <AzCore/Serialization/IdUtils.h>
 
@@ -28,9 +28,9 @@ using namespace TestNodes;
 
 TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, AddNodeWithRemoveSlot::CreateDescriptor());
+    RegisterComponentDescriptor<AddNodeWithRemoveSlot>();
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -133,15 +133,11 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlot)
     }
 
     graphEntity.reset();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, AddNodeWithRemoveSlot::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, AddRemoveSlotNotifications)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, AddNodeWithRemoveSlot::CreateDescriptor());
+    RegisterComponentDescriptor<AddNodeWithRemoveSlot>();
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -171,15 +167,11 @@ TEST_F(ScriptCanvasTestFixture, AddRemoveSlotNotifications)
     EXPECT_EQ(2U, nodeNotifications.GetSlotsRemoved());
 
     numberAddEntity.reset();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, AddNodeWithRemoveSlot::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, InsertSlot)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, InsertSlotConcatNode::CreateDescriptor());
+    RegisterComponentDescriptor<InsertSlotConcatNode>();
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -240,14 +232,10 @@ TEST_F(ScriptCanvasTestFixture, InsertSlot)
     EXPECT_EQ("Hello Ice Cream World", resultDatum->GetData().ToString());
 
     graphEntity.reset();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, InsertSlotConcatNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NativeProperties)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace Nodes;
 
@@ -350,8 +338,6 @@ TEST_F(ScriptCanvasTestFixture, NativeProperties)
 TEST_F(ScriptCanvasTestFixture, ExtractPropertiesNativeType)
 {
     // TODO: Add Extract test for all Native Types
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace Nodes;
 
@@ -424,7 +410,7 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesNativeType)
 
     // execute
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graphEntity->Activate();
     }
     EXPECT_FALSE(graph->IsInErrorState());
@@ -433,11 +419,6 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesNativeType)
     AZ::Entity* connectionEntity{};
     EXPECT_TRUE(graph->FindConnection(connectionEntity, { vector3Node->GetEntityId(), vector3Node->GetSlotId("Get") }, { extractPropertyNode->GetEntityId(), extractPropertyNode->GetSlotId("Source") }));
     EXPECT_TRUE(graph->DisconnectById(connectionEntity->GetId()));
-    EXPECT_EQ(0, extractPropertyNode->GetPropertyFields().size());
-    EXPECT_FALSE(extractPropertyNode->GetSourceSlotDataType().IsValid());
-    EXPECT_TRUE(graph->GetConnectedEndpoints({ numberResultNode1->GetEntityId(), numberResultNode1->GetSlotId("Set") }).empty()); // x result node
-    EXPECT_TRUE(graph->GetConnectedEndpoints({ numberResultNode2->GetEntityId(), numberResultNode1->GetSlotId("Set") }).empty()); // y result node
-    EXPECT_TRUE(graph->GetConnectedEndpoints({ numberResultNode3->GetEntityId(), numberResultNode1->GetSlotId("Set") }).empty()); // z result node
 
     const float tolerance = 0.001f;
     // x result
@@ -460,8 +441,6 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesNativeType)
 
 TEST_F(ScriptCanvasTestFixture, ExtractPropertiesBehaviorType)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     TestBehaviorContextProperties::Reflect(m_serializeContext);
     TestBehaviorContextProperties::Reflect(m_behaviorContext);
 
@@ -542,7 +521,7 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesBehaviorType)
 
     // execute
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graphEntity->Activate();
     }
     EXPECT_FALSE(graph->IsInErrorState());
@@ -551,11 +530,6 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesBehaviorType)
     AZ::Entity* connectionEntity{};
     EXPECT_TRUE(graph->FindConnection(connectionEntity, { behaviorContextPropertyNode->GetEntityId(), behaviorContextPropertyNode->GetSlotId("Get") }, { extractPropertyNode->GetEntityId(), extractPropertyNode->GetSlotId("Source") }));
     EXPECT_TRUE(graph->DisconnectById(connectionEntity->GetId()));
-    EXPECT_EQ(0, extractPropertyNode->GetPropertyFields().size());
-    EXPECT_FALSE(extractPropertyNode->GetSourceSlotDataType().IsValid());
-    EXPECT_TRUE(graph->GetConnectedEndpoints({ booleanResultNode->GetEntityId(), booleanResultNode->GetSlotId("Set") }).empty()); // x result node
-    EXPECT_TRUE(graph->GetConnectedEndpoints({ numberResultNode->GetEntityId(), numberResultNode->GetSlotId("Set") }).empty()); // y result node
-    EXPECT_TRUE(graph->GetConnectedEndpoints({ stringResultNode->GetEntityId(), stringResultNode->GetSlotId("Set") }).empty()); // z result node
 
                                                                                                                                 // boolean result
     auto booleanResult = booleanResultNode->GetInput_UNIT_TEST<Data::BooleanType>("Set");
@@ -585,7 +559,6 @@ TEST_F(ScriptCanvasTestFixture, ExtractPropertiesBehaviorType)
 
 TEST_F(ScriptCanvasTestFixture, IsNullCheck)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
 
     EventTestHandler::Reflect(m_serializeContext);
@@ -635,7 +608,7 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
 
     // test the reference type contract
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         EXPECT_FALSE(Connect(*graph, isNullResultFalseID, "Get", isNullTrueID, "Reference"));
     }
 
@@ -652,7 +625,7 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
     AZ::Entity* graphEntity = graph->GetEntity();
 
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graphEntity->Activate();
     }
     EXPECT_FALSE(graph->IsInErrorState());
@@ -699,7 +672,6 @@ TEST_F(ScriptCanvasTestFixture, IsNullCheck)
 
 TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
 
     EventTestHandler::Reflect(m_serializeContext);
@@ -727,7 +699,7 @@ TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
 
     AZ::Entity* graphEntity = graph->GetEntity();
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graphEntity->Activate();
     }
     // just don't crash, but be in error
@@ -748,8 +720,6 @@ TEST_F(ScriptCanvasTestFixture, NullThisPointerDoesNotCrash)
 
 TEST_F(ScriptCanvasTestFixture, Assignment)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Data;
     using namespace Nodes;
@@ -827,7 +797,7 @@ TEST_F(ScriptCanvasTestFixture, Assignment)
 
 TEST_F(ScriptCanvasTestFixture, ValueTypes)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
 
     Datum number0(Datum(0));
@@ -925,7 +895,8 @@ namespace
 
 TEST_F(ScriptCanvasTestFixture, SerializationSaveTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
     //////////////////////////////////////////////////////////////////////////
@@ -1035,9 +1006,9 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest)
     auto nodeIDs = graph->GetNodes();
     EXPECT_EQ(9, nodeIDs.size());
 
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
     graphEntity->Activate();
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
 
     vector3C = *vector3NodeC->GetInput_UNIT_TEST<AZ::Vector3>("Set");
@@ -1057,14 +1028,24 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest)
     auto* fileIO = AZ::IO::LocalFileIO::GetInstance();
     EXPECT_TRUE(fileIO != nullptr);
 
+    auto pathResult = fileIO->CreatePath(k_tempCoreAssetDir);;
+    EXPECT_EQ(pathResult.GetResultCode(), AZ::IO::ResultCode::Success) << "Path failed to create";
+
     // Save it
     bool result = false;
-    AZ::IO::FileIOStream outFileStream("serializationTest.scriptcanvas_compiled", AZ::IO::OpenMode::ModeWrite);
+    AZ::IO::FileIOStream outFileStream(k_tempCoreAssetPath, AZ::IO::OpenMode::ModeWrite);
     if (outFileStream.IsOpen())
     {
         RuntimeAssetHandler runtimeAssetHandler;
         AZ::Data::Asset<RuntimeAsset> runtimeAsset = CreateRuntimeAsset(graph);
-        EXPECT_TRUE(runtimeAssetHandler.SaveAssetData(runtimeAsset, &outFileStream));
+        EXPECT_TRUE(runtimeAssetHandler.SaveAssetData(runtimeAsset, &outFileStream)) << "Asset failed to save";
+
+        auto* fileIO = AZ::IO::LocalFileIO::GetInstance();
+        EXPECT_TRUE(fileIO->Exists(k_tempCoreAssetPath));
+    }
+    else
+    {
+        ADD_FAILURE() << "File stream not open";
     }
 
     outFileStream.Close();
@@ -1072,7 +1053,7 @@ TEST_F(ScriptCanvasTestFixture, SerializationSaveTest)
 
 TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Graph)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     //////////////////////////////////////////////////////////////////////////
 
@@ -1083,11 +1064,11 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Graph)
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::CreateGraphOnEntity, graphEntity.get());
 
     auto* fileIO = AZ::IO::LocalFileIO::GetInstance();
-    EXPECT_NE(nullptr, fileIO);
-    EXPECT_TRUE(fileIO->Exists("serializationTest.scriptcanvas_compiled"));
+    ASSERT_NE(nullptr, fileIO);
+    EXPECT_TRUE(fileIO->Exists(k_tempCoreAssetPath));
 
     // Load it
-    AZ::IO::FileIOStream inFileStream("serializationTest.scriptcanvas_compiled", AZ::IO::OpenMode::ModeRead);
+    AZ::IO::FileIOStream inFileStream(k_tempCoreAssetPath, AZ::IO::OpenMode::ModeRead);
     if (inFileStream.IsOpen())
     {
         // Serialize the graph entity back in.
@@ -1108,9 +1089,9 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Graph)
 
         // Initialize the entity
         graphEntity->Init();
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+        ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
         graphEntity->Activate();
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+        ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
 
         // Run the graph component
         graph = graphEntity->FindComponent<Graph>();
@@ -1154,29 +1135,33 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_Graph)
         EXPECT_TRUE(GraphHasVectorWithValue(*graph, allThree));
         EXPECT_FALSE(GraphHasVectorWithValue(*graph, allFour));
     }
+    else
+    {
+        ADD_FAILURE() << "in stream did not open";
+    }
 }
 
 TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_RuntimeComponent)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     //////////////////////////////////////////////////////////////////////////
 
     // Make the graph.
     AZStd::unique_ptr<AZ::Entity> executionEntity = AZStd::make_unique<AZ::Entity>("Loaded Graph");
-    auto executionComponent = executionEntity->CreateComponent<RuntimeComponent>();
+    auto executionComponent = executionEntity->CreateComponent<ScriptCanvas::RuntimeComponent>();
 
     auto* fileIO = AZ::IO::LocalFileIO::GetInstance();
     EXPECT_NE(nullptr, fileIO);
-    EXPECT_TRUE(fileIO->Exists("serializationTest.scriptcanvas_compiled"));
+    EXPECT_TRUE(fileIO->Exists(k_tempCoreAssetPath));
 
     // Load it
-    AZ::IO::FileIOStream inFileStream("serializationTest.scriptcanvas_compiled", AZ::IO::OpenMode::ModeRead);
+    AZ::IO::FileIOStream inFileStream(k_tempCoreAssetPath, AZ::IO::OpenMode::ModeRead);
     if (inFileStream.IsOpen())
     {
         // Serialize the runtime asset back in.
         RuntimeAssetHandler runtimeAssetHandler;
-        AZ::Data::Asset<RuntimeAsset> runtimeAsset;
+        AZ::Data::Asset<ScriptCanvas::RuntimeAsset> runtimeAsset;
         runtimeAsset.Create(AZ::Uuid::CreateRandom());
         EXPECT_TRUE(runtimeAssetHandler.LoadAssetData(runtimeAsset, &inFileStream, {}));
         runtimeAssetHandler.InitAsset(runtimeAsset, true, false);
@@ -1187,11 +1172,11 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_RuntimeComponent)
         // Initialize the entity
         executionComponent->SetRuntimeAsset(runtimeAsset);
         executionEntity->Init();
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+        ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
         executionEntity->Activate();
         // Dispatch the AssetBus events to force onAssetReady event
         AZ::Data::AssetManager::Instance().DispatchEvents();
-        TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+        ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
         EXPECT_FALSE(executionComponent->IsInErrorState());
 
         const AZ::Vector3 allOne(1, 1, 1);
@@ -1264,11 +1249,9 @@ TEST_F(ScriptCanvasTestFixture, SerializationLoadTest_RuntimeComponent)
 }
 
 TEST_F(ScriptCanvasTestFixture, Contracts)
-{
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+{    
     using namespace ScriptCanvas;
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ContractNode::CreateDescriptor());
+    RegisterComponentDescriptor<ContractNode>();
 
     //////////////////////////////////////////////////////////////////////////
     // Make the graph.
@@ -1302,7 +1285,7 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
 
     // invalid
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         EXPECT_FALSE(graph->Connect(startNode, AZ::EntityUtils::FindFirstDerivedComponent<Node>(startEntity)->GetSlotId("Out"), contract0Node, AZ::EntityUtils::FindFirstDerivedComponent<Node>(contract0Entity)->GetSlotId("Out")));
         EXPECT_FALSE(graph->Connect(startNode, AZ::EntityUtils::FindFirstDerivedComponent<Node>(startEntity)->GetSlotId("In"), contract0Node, AZ::EntityUtils::FindFirstDerivedComponent<Node>(contract0Entity)->GetSlotId("In")));
         EXPECT_FALSE(graph->Connect(startNode, AZ::EntityUtils::FindFirstDerivedComponent<Node>(startEntity)->GetSlotId("In"), contract0Node, AZ::EntityUtils::FindFirstDerivedComponent<Node>(contract0Entity)->GetSlotId("Get String")));
@@ -1328,19 +1311,20 @@ TEST_F(ScriptCanvasTestFixture, Contracts)
     EXPECT_FALSE(graph->IsInErrorState());
     graph->GetEntity()->Deactivate();
     delete graph->GetEntity();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ContractNode::CreateDescriptor());
 }
+
+#if defined (SCRIPTCANVAS_ERRORS_ENABLED)
 
 TEST_F(ScriptCanvasTestFixture, Error)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
 
     ScriptUnitTestEventHandler::Reflect(m_serializeContext);
     ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, InfiniteLoopNode::CreateDescriptor());
+
+    RegisterComponentDescriptor<UnitTestErrorNode>();
+    RegisterComponentDescriptor<InfiniteLoopNode>();
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1375,7 +1359,7 @@ TEST_F(ScriptCanvasTestFixture, Error)
 
     // test to make sure the graph received an error
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graph->GetEntity()->Activate();
     }
     EXPECT_TRUE(graph->IsInErrorState());
@@ -1385,27 +1369,13 @@ TEST_F(ScriptCanvasTestFixture, Error)
 
     graph->GetEntity()->Deactivate();
     delete graph->GetEntity();
-
-
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, InfiniteLoopNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, ErrorHandled)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
 
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
+    RegisterComponentDescriptor<UnitTestErrorNode>();
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1450,7 +1420,7 @@ TEST_F(ScriptCanvasTestFixture, ErrorHandled)
     EXPECT_TRUE(Connect(*graph, errorHandlerID, "Out", sideEffectID2, "In"));
 
     {
-        ScopedOutputSuppression supressOutput; // temporarily suppress the output, since we don't fully support error handling correction, yet
+        ScriptCanvasEditor::ScopedOutputSuppression supressOutput; // temporarily suppress the output, since we don't fully support error handling correction, yet
         graph->GetEntity()->Activate();
     }
     
@@ -1460,25 +1430,12 @@ TEST_F(ScriptCanvasTestFixture, ErrorHandled)
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX2), 1);
 
     delete graph->GetEntity();
-
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, ErrorNode)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
-
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1515,7 +1472,7 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
 
     // test to make sure the graph received an error
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graph->GetEntity()->Activate();
     }
     EXPECT_TRUE(graph->IsInErrorState());
@@ -1533,27 +1490,12 @@ TEST_F(ScriptCanvasTestFixture, ErrorNode)
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 1);
 
     delete graph->GetEntity();
-
-
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
-
 }
 
 TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
-
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1588,7 +1530,7 @@ TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
     EXPECT_TRUE(Connect(*graph, sideFX1NodeID, "Get", sideEffectID, "String: 0"));
 
     {
-        ScopedOutputSuppression supressOutput; // temporarily suppress the output, since we don't fully support error handling correction, yet
+        ScriptCanvasEditor::ScopedOutputSuppression supressOutput; // temporarily suppress the output, since we don't fully support error handling correction, yet
         graph->GetEntity()->Activate();
     }
 
@@ -1604,26 +1546,13 @@ TEST_F(ScriptCanvasTestFixture, ErrorNodeHandled)
     EXPECT_EQ(unitTestHandler.SideEffectCount(sideFX1), 2);
 
     delete graph->GetEntity();
-
-
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, UnitTestErrorNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
     using namespace ScriptCanvas;
 
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, InfiniteLoopNode::CreateDescriptor());
+    RegisterComponentDescriptor<InfiniteLoopNode>();
 
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
@@ -1664,7 +1593,7 @@ TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
     EXPECT_TRUE(Connect(*graph, errorHandlerID, "Out", sideEffectPassID, "In"));
 
     {
-        ScopedOutputSuppression suppressOutput;
+        ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
         graph->GetEntity()->Activate();
     }
 
@@ -1682,20 +1611,14 @@ TEST_F(ScriptCanvasTestFixture, InfiniteLoopDetected)
     EXPECT_EQ(0, unitTestHandler.SideEffectCount(sideFXfail));
 
     delete graph->GetEntity();
-
-    m_serializeContext->EnableRemoveReflection();
-    m_behaviorContext->EnableRemoveReflection();
-    ScriptUnitTestEventHandler::Reflect(m_serializeContext);
-    ScriptUnitTestEventHandler::Reflect(m_behaviorContext);
-    m_serializeContext->DisableRemoveReflection();
-    m_behaviorContext->DisableRemoveReflection();
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, InfiniteLoopNode::CreateDescriptor());
 }
+
+#endif // SCRIPTCANAS_ERRORS_ENABLED
+
 
 TEST_F(ScriptCanvasTestFixture, BinaryOperationTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas::Nodes;
     using namespace ScriptCanvas::Nodes::Comparison;
 
@@ -1858,7 +1781,7 @@ TEST_F(ScriptCanvasTestFixture, BinaryOperationTest)
 
 TEST_F(ScriptCanvasTestFixture, EntityRefTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
@@ -1967,9 +1890,9 @@ TEST_F(ScriptCanvasTestFixture, EntityRefTest)
 
     // Execute the graph
 
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
     graph->GetEntity()->Activate();
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
     delete graph->GetEntity();
 
@@ -1979,7 +1902,7 @@ const int k_executionCount = 998;
 
 TEST_F(ScriptCanvasTestFixture, ExecutionLength)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
 
     Graph* graph(nullptr);
@@ -2005,11 +1928,16 @@ TEST_F(ScriptCanvasTestFixture, ExecutionLength)
     }
 
     AZ::Entity* graphEntity = graph->GetEntity();
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, true);
     graphEntity->Activate();
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    ScriptCanvasEditor::TraceSuppressionBus::Broadcast(&ScriptCanvasEditor::TraceSuppressionRequests::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
 
     graphEntity->Deactivate();
     delete graphEntity;
+}
+
+TEST_F(ScriptCanvasTestFixture, AnyNode)
+{
+	RunUnitTestGraph("LY_SC_UnitTest_Any");
 }

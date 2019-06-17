@@ -29,6 +29,57 @@ namespace ScriptCanvas
     {
         namespace Time
         {
+            class TickDelay
+                : public Node
+                , AZ::TickBus::Handler
+                , AZ::SystemTickBus::Handler
+            {
+                ScriptCanvas_Node(TickDelay,
+                    ScriptCanvas_Node::Name("Tick Delay")
+                    ScriptCanvas_Node::Uuid("{399A2608-77E3-41F9-90FA-58A9B6E0E34D}")
+                    ScriptCanvas_Node::Description("Delays all incoming execution for the specified number of ticks")
+                );
+            public:
+                TickDelay();
+
+                void OnInputSignal(const SlotId&) override;
+
+                // SystemTickBus
+                void OnSystemTick() override;
+                ////
+
+                // TickBus
+                void OnTick(float deltaTime, AZ::ScriptTimePoint timePoint) override;
+                int GetTickOrder() override;
+                ////
+
+            protected:
+
+                // Inputs
+                ScriptCanvas_In(ScriptCanvas_In::Name("In", "When signaled, execution is delayed at this node for the specified amount of frames.")
+                    ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
+
+                // Outputs
+                ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Out", "Signaled after waiting for the specified amount of frames."));
+
+                // Data
+                ScriptCanvas_PropertyWithDefaults(int, 1,
+                    ScriptCanvas_Property::Name("Ticks", "The amount of ticks that need to occur before exeuction triggers")
+                    ScriptCanvas_Property::Input
+                    ScriptCanvas_Property::Default
+                );
+
+                ScriptCanvas_PropertyWithDefaults(int, static_cast<int>(AZ::TICK_DEFAULT),
+                    ScriptCanvas_Property::Name("Tick Order", "Where in the Tick Order this delay should happen")
+                    ScriptCanvas_Property::Input
+                    ScriptCanvas_Property::Default
+                );
+
+            private:
+                int m_tickCounter;
+                int m_tickOrder;
+            };
+
             class Countdown 
                 : public Node
                 , AZ::TickBus::Handler
@@ -37,7 +88,10 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Name("Delay")
                     ScriptCanvas_Node::Uuid("{FAEADF5A-F7D9-415A-A3E8-F534BD379B9A}")
                     ScriptCanvas_Node::Description("Counts down time from a specified value.")
+                    ScriptCanvas_Node::Version(2, CountdownNodeVersionConverter)
                 );
+
+                static bool CountdownNodeVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
             public:
 
@@ -53,7 +107,7 @@ namespace ScriptCanvas
                                 ScriptCanvas_In::Contracts({ DisallowReentrantExecutionContract }));
 
                 // Outputs
-                ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Out", "Signaled when the delay reaches zero."));
+                ScriptCanvas_OutLatent(ScriptCanvas_OutLatent::Name("Out", "Signaled when the delay reaches zero."));
 
                 // Data
                 ScriptCanvas_Property(float,

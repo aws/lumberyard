@@ -15,18 +15,18 @@
 
 #include "CloudGemAWSScriptBehaviorsSystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemAWSScriptBehaviors
 {
     class CloudGemAWSScriptBehaviorsModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemAWSScriptBehaviorsModule, "{3144765E-4C7C-463C-A5F7-E5D8B5FE57B5}", CryHooksModule);
+        AZ_RTTI(CloudGemAWSScriptBehaviorsModule, "{3144765E-4C7C-463C-A5F7-E5D8B5FE57B5}", AZ::Module);
 
         CloudGemAWSScriptBehaviorsModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

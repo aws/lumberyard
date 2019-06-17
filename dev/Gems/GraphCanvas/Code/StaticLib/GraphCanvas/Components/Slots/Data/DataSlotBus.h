@@ -16,6 +16,9 @@
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
 
+#include <GraphCanvas/Components/Slots/SlotBus.h>
+#include <GraphCanvas/Styling/StyleHelper.h>
+
 namespace GraphCanvas
 {
     class DataSlotConnectionPin;
@@ -30,7 +33,30 @@ namespace GraphCanvas
 
         // This is a special value that is used as a 'source' variable.
         // Rather then a set to a variable.
-        Variable
+        Variable,
+
+        // Container types
+        Container
+    };
+
+    struct DataSlotConfiguration
+        : public SlotConfiguration
+    {
+    public:
+        AZ_RTTI(DataSlotConfiguration, "{76933814-A77A-4877-B72D-5DB0F541EDA5}", SlotConfiguration);
+        AZ_CLASS_ALLOCATOR(DataSlotConfiguration, AZ::SystemAllocator, 0);
+
+        DataSlotConfiguration() = default;
+
+        DataSlotConfiguration(const SlotConfiguration& slotConfiguration)
+            : SlotConfiguration(slotConfiguration)
+        {
+        }
+
+        DataSlotType            m_dataSlotType;
+
+        AZ::Uuid                m_typeId;
+        AZStd::vector<AZ::Uuid> m_containerTypeIds;
     };
 
     class DataSlotRequests
@@ -51,8 +77,16 @@ namespace GraphCanvas
 
         virtual DataSlotType GetDataSlotType() const = 0;
 
-        virtual const AZ::Uuid& GetDataTypeId() const = 0;
-        virtual QColor GetDataColor() const = 0;
+        virtual AZ::Uuid GetDataTypeId() const = 0;
+        virtual void SetDataTypeId(AZ::Uuid typeId) = 0;
+
+        virtual const Styling::StyleHelper* GetDataColorPalette() const = 0;
+
+        virtual size_t GetContainedTypesCount() const = 0;
+        virtual AZ::Uuid GetContainedTypeId(size_t index) const = 0;
+        virtual const Styling::StyleHelper* GetContainedTypeColorPalette(size_t index) const = 0;
+
+        virtual void SetDataAndContainedTypeIds(AZ::Uuid typeId, const AZStd::vector<AZ::Uuid>& typeIds = AZStd::vector<AZ::Uuid>()) = 0;
     };
 
     using DataSlotRequestBus = AZ::EBus<DataSlotRequests>;
@@ -66,6 +100,7 @@ namespace GraphCanvas
 
         virtual void OnVariableAssigned(const AZ::EntityId& variableId) { };
         virtual void OnDataSlotTypeChanged(const DataSlotType& dataSlotType) { };
+        virtual void OnDisplayTypeChanged(const AZ::Uuid& dataType, const AZStd::vector<AZ::Uuid>& typeIds) {};
     };
     
     using DataSlotNotificationBus = AZ::EBus<DataSlotNotifications>;

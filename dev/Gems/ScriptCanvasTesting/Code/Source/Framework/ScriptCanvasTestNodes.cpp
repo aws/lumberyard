@@ -10,10 +10,12 @@
 *
 */
 
-#include "precompiled.h"
+
 #include "ScriptCanvasTestNodes.h"
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Graph.h>
+
+#include <gtest/gtest.h>
 
 namespace TestNodes
 {
@@ -289,8 +291,12 @@ namespace TestNodes
         SlotId addedSlotId;
         if (!SlotExists(slotName, SlotType::DataIn, addedSlotId))
         {
-            AZStd::vector<ContractDescriptor> contracts{ { []() { return aznew TypeContract(); } } };
-            addedSlotId = InsertInputDatumSlot(index, { slotName, "", SlotType::DataIn, contracts }, Datum(Data::StringType()));
+            DataSlotConfiguration dataConfig;
+            dataConfig.m_name = slotName;
+            dataConfig.m_toolTip = "";
+            dataConfig.m_slotType = SlotType::DataIn;
+
+            addedSlotId = InsertInputDatumSlot(index, dataConfig, Datum(Data::StringType()));
         }
 
         return addedSlotId;
@@ -330,5 +336,33 @@ namespace TestNodes
         Node::AddSlot("In", "", ScriptCanvas::SlotType::ExecutionIn);
         Node::AddSlot("Out", "", ScriptCanvas::SlotType::ExecutionOut);
         AddOutputTypeSlot("Result", "", ScriptCanvas::Data::Type::String(), OutputStorage::Optional);
+    }
+
+    //////////////
+    // EmptyNode
+    //////////////
+
+    void ConfigurableNode::Reflect(AZ::ReflectContext* reflection)
+    {
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection))
+        {
+            serializeContext->Class<ConfigurableNode, ScriptCanvas::Node>()
+                ->Version(0)
+                ;
+        }
+    }
+
+    ScriptCanvas::Slot* ConfigurableNode::AddTestingSlot(const ScriptCanvas::SlotConfiguration& slotConfiguration)
+    {
+        ScriptCanvas::SlotId slotId = AddSlot(slotConfiguration);
+
+        return GetSlot(slotId);
+    }
+
+    ScriptCanvas::Slot* ConfigurableNode::AddTestingDataSlot(const ScriptCanvas::DataSlotConfiguration& dataSlotConfiguration)
+    {
+        ScriptCanvas::SlotId slotId = AddDataSlot(dataSlotConfiguration);
+
+        return GetSlot(slotId);
     }
 }

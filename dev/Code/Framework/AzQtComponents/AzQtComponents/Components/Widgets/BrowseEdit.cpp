@@ -53,7 +53,7 @@ namespace AzQtComponents
         boxLayout->setSpacing(0);
 
         m_data->m_lineEdit = new QLineEdit(this);
-        Style::doNotStyle(m_data->m_lineEdit);
+        Style::flagToIgnore(m_data->m_lineEdit);
         setFocusProxy(m_data->m_lineEdit);
         m_data->m_lineEdit->setObjectName("line-edit");
         m_data->m_lineEdit->installEventFilter(this);

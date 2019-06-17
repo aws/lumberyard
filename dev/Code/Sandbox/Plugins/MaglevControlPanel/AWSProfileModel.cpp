@@ -118,7 +118,15 @@ bool AWSProfileModel::AWSCredentialsFileExists() const
 void AWSProfileModel::ProcessOutputProfileList(const QVariant& value)
 {
     auto map = value.value<QVariantMap>();
+    for (auto thisElement : map)
+    {
+        qDebug() << "First: " << thisElement.toString();
+    }
     auto list = map["Profiles"].toList();
+    for (auto thisElement : list)
+    {
+        qDebug() << "Name: " << thisElement.toString();
+    }
     Sort(list, AWSProfileColumn::Name);
 
     // UpdateItems does the begin/end stuff that is necessary, but the view currently depends on the modelReset signal to refresh itself.

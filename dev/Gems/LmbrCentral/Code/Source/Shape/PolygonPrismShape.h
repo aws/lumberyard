@@ -18,31 +18,29 @@
 
 namespace AzFramework
 {
-    class EntityDebugDisplayRequests;
+    class DebugDisplayRequests;
 }
 
 namespace LmbrCentral
 {
     struct ShapeDrawParams;
 
-    /**
-     * Buffer to store triangles of top and bottom of Polygon Prism.
-     */
+    /// Buffer to store triangles of top and bottom of Polygon Prism.
     struct PolygonPrismMesh
     {
         AZStd::vector<AZ::Vector3> m_triangles;
         AZStd::vector<AZ::Vector3> m_lines;
     };
 
-    /**
-     * Configuration data for PolygonPrismShapeComponent.
-     * Internally represented as a vertex list with a height (extrusion) property.
-     * All vertices must lie on the same plane to form a specialized type of prism, a polygon prism.
-     * A Vector2 is used to enforce this.
-     */
+    /// Configuration data for PolygonPrismShapeComponent.
+    /// Internally represented as a vertex list with a height (extrusion) property.
+    /// All vertices must lie on the same plane to form a specialized type of prism, a polygon prism.
+    /// A Vector2 is used to enforce this.
     class PolygonPrismShape
         : private ShapeComponentRequestsBus::Handler
         , private PolygonPrismShapeComponentRequestBus::Handler
+        , private AZ::FixedVerticesRequestBus<AZ::Vector2>::Handler
+        , private AZ::VariableVerticesRequestBus<AZ::Vector2>::Handler
         , private AZ::TransformNotificationBus::Handler
     {
     public:
@@ -51,6 +49,9 @@ namespace LmbrCentral
 
         PolygonPrismShape();
         virtual ~PolygonPrismShape() = default;
+
+        PolygonPrismShape(const PolygonPrismShape& other);
+        PolygonPrismShape& operator=(const PolygonPrismShape& other);
 
         static void Reflect(AZ::ReflectContext* context);
 
@@ -87,9 +88,7 @@ namespace LmbrCentral
         const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
     private:
-        /**
-         * Runtime data - cache potentially expensive operations.
-         */
+        /// Runtime data - cache potentially expensive operations.
         class PolygonPrismIntersectionDataCache
             : public IntersectionTestDataCache<AZ::PolygonPrism>
         {
@@ -108,42 +107,30 @@ namespace LmbrCentral
         AZ::EntityId m_entityId; ///< Id of the entity the box shape is attached to.
     };
 
-    /**
-     * Generate mesh used for rendering top and bottom of PolygonPrism shape.
-     */
+    /// Generate mesh used for rendering top and bottom of PolygonPrism shape.
     void GeneratePolygonPrismMesh(
         const AZStd::vector<AZ::Vector2>& vertices, float height,
         PolygonPrismMesh& polygonPrismMeshOut);
 
     void DrawPolygonPrismShape(
         const ShapeDrawParams& shapeDrawParams, const PolygonPrismMesh& polygonPrismMesh,
-        AzFramework::EntityDebugDisplayRequests& displayContext);
+        AzFramework::DebugDisplayRequests& debugDisplay);
 
-    /**
-     * Small set of util functions for PolygonPrism.
-     */
+    /// Small set of util functions for PolygonPrism.
     namespace PolygonPrismUtil
     {
-        /**
-         * Routine to calculate Aabb for orientated polygon prism shape
-         */
+        /// Routine to calculate Aabb for orientated polygon prism shape
         AZ::Aabb CalculateAabb(const AZ::PolygonPrism& polygonPrism, const AZ::Transform& transform);
 
-        /**
-         * Return if a point in world space is contained within a polygon prism shape
-         */
+        /// Return if a point in world space is contained within a polygon prism shape
         bool IsPointInside(const AZ::PolygonPrism& polygonPrism, const AZ::Vector3& point, const AZ::Transform& transform);
 
-        /**
-         * Return distance squared from point in world space from polygon prism shape
-         */
+        /// Return distance squared from point in world space from polygon prism shape
         float DistanceSquaredFromPoint(const AZ::PolygonPrism& polygonPrism, const AZ::Vector3& point, const AZ::Transform& transform);
 
-        /**
-         * Return if a ray is intersecting the polygon prism.
-         */
+        /// Return if a ray is intersecting the polygon prism.
         bool IntersectRay(
             AZStd::vector<AZ::Vector3> triangles, const AZ::Transform& worldFromLocal,
             const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance);
     }
-}
+} // namespace LmbrCentral

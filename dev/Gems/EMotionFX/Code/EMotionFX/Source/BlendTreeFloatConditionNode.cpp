@@ -209,11 +209,10 @@ namespace EMotionFX
     }
 
 
-    uint32 BlendTreeFloatConditionNode::GetVisualColor() const
+    AZ::Color BlendTreeFloatConditionNode::GetVisualColor() const
     {
-        return MCore::RGBA(255, 100, 50);
+        return AZ::Color(1.0f, 0.39f, 0.2f, 1.0f);
     }
-
 
 
     //-----------------------------------------------

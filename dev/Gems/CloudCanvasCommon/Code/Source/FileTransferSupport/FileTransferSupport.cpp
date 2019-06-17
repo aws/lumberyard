@@ -10,13 +10,14 @@
 *
 */
 
-#include <CloudGemDynamicContent_precompiled.h>
-
 #include <FileTransferSupport/FileTransferSupport.h>
 
 #include <AzCore/IO/SystemFile.h>
 #include <AzFramework/IO/LocalFileIO.h>
 
+#include <platform.h>
+#include <ICryPak.h>
+#include <ISystem.h>
 namespace CloudCanvas
 {
     namespace FileTransferSupport
@@ -79,7 +80,7 @@ namespace CloudCanvas
             {
                 if (!CheckWritableMakePath(thisEntry.second))
                 {
-                    gEnv->pLog->LogAlways("Can't write to %s", thisEntry.second.c_str());
+                    AZ_TracePrintf("FileTransferSupport","Can't write to %s", thisEntry.second.c_str());
                 }
             }
         }
@@ -107,8 +108,9 @@ namespace CloudCanvas
             static const int hashLength = 16;
             AZStd::vector<unsigned char> hashVec;
             hashVec.resize(hashLength);
-
-            gEnv->pCryPak->ComputeMD5(sanitizedString.c_str(), &hashVec[0],0, useDirectAccess);
+            SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+            ICryPak* cryPak = pEnv->pCryPak;
+            cryPak->ComputeMD5(sanitizedString.c_str(), &hashVec[0],0, useDirectAccess);
 
             return hashVec;
         }

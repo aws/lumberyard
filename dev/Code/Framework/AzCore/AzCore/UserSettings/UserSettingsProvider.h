@@ -63,6 +63,38 @@ namespace AZ
     };
     typedef EBus<UserSettingsMessages> UserSettingsBus;
 
+    class UserSettingsOwnerRequests
+        : public EBusTraits
+    {
+    public:
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits settings
+        static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Single;
+        static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
+        typedef u32 BusIdType;
+        //////////////////////////////////////////////////////////////////////////
+
+        virtual void SaveSettings() = 0;
+    };
+
+    typedef EBus<UserSettingsOwnerRequests> UserSettingsOwnerRequestBus;
+
+    class UserSettingsNotifications
+        : public EBusTraits
+    {
+    public:
+        //////////////////////////////////////////////////////////////////////////
+        // EBusTraits settings
+        static const EBusHandlerPolicy HandlerPolicy = EBusHandlerPolicy::Multiple;
+        static const EBusAddressPolicy AddressPolicy = EBusAddressPolicy::ById;
+        typedef u32 BusIdType;
+        //////////////////////////////////////////////////////////////////////////
+
+        virtual void OnUserSettingsActivated() {};
+    };
+
+    typedef EBus<UserSettingsNotifications> UserSettingsNotificationBus;
+
     /**
      *
      */

@@ -37,8 +37,7 @@ namespace AzToolsFramework
         return { localFromWorldNormalized * worldClosestPositionLineSegment * scale.GetReciprocal() };
     }
 
-    LineSegmentSelectionManipulator::LineSegmentSelectionManipulator(AZ::EntityId entityId)
-        : BaseManipulator(entityId)
+    LineSegmentSelectionManipulator::LineSegmentSelectionManipulator()
     {
         AttachLeftMouseDownImpl();
     }
@@ -65,13 +64,13 @@ namespace AzToolsFramework
 
         if (m_onLeftMouseDownCallback)
         {
-            ViewportInteraction::CameraState cameraState;
-            ViewportInteractionRequestBus::EventResult(
+            AzFramework::CameraState cameraState;
+            ViewportInteraction::ViewportInteractionRequestBus::EventResult(
                 cameraState, interaction.m_interactionId.m_viewportId,
-                &ViewportInteractionRequestBus::Events::GetCameraState);
+                &ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
 
             m_onLeftMouseDownCallback(CalculateManipulationDataAction(
-                WorldFromLocalWithUniformScale(GetEntityId()), interaction.m_mousePick.m_rayOrigin,
+                TransformUniformScale(m_worldFromLocal), interaction.m_mousePick.m_rayOrigin,
                 interaction.m_mousePick.m_rayDirection, cameraState.m_farClip, m_localStart, m_localEnd));
         }
     }
@@ -80,21 +79,21 @@ namespace AzToolsFramework
     {
         if (MouseOver() && m_onLeftMouseUpCallback)
         {
-            ViewportInteraction::CameraState cameraState;
-            ViewportInteractionRequestBus::EventResult(
+            AzFramework::CameraState cameraState;
+            ViewportInteraction::ViewportInteractionRequestBus::EventResult(
                 cameraState, interaction.m_interactionId.m_viewportId,
-                &ViewportInteractionRequestBus::Events::GetCameraState);
+                &ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
 
             m_onLeftMouseUpCallback(CalculateManipulationDataAction(
-                WorldFromLocalWithUniformScale(GetEntityId()), interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
+                TransformUniformScale(m_worldFromLocal), interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
                 cameraState.m_farClip, m_localStart, m_localEnd));
         }
     }
 
     void LineSegmentSelectionManipulator::Draw(
         const ManipulatorManagerState& managerState,
-        AzFramework::EntityDebugDisplayRequests& display,
-        const ViewportInteraction::CameraState& cameraState,
+        AzFramework::DebugDisplayRequests& debugDisplay,
+        const AzFramework::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
         // if the ctrl modifier key state has changed - set out bounds to dirty and
@@ -109,8 +108,11 @@ namespace AzToolsFramework
         {
             m_manipulatorView->Draw(
                 GetManipulatorManagerId(), managerState,
-                GetManipulatorId(), { WorldFromLocalWithUniformScale(GetEntityId()), m_localStart, MouseOver() },
-                display, cameraState, mouseInteraction, ManipulatorSpace::Local);
+                GetManipulatorId(), {
+                    TransformUniformScale(m_worldFromLocal),
+                    m_localStart, MouseOver()
+                },
+                debugDisplay, cameraState, mouseInteraction);
         }
     }
 

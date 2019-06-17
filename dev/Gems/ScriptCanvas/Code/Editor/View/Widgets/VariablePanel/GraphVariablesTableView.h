@@ -21,8 +21,10 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
 
+#include <ScriptCanvas/Bus/NodeIdPair.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
 
+#include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Widgets/StyledItemDelegates/IconDecoratedNameDelegate.h>
 
 namespace ScriptCanvasEditor
@@ -88,7 +90,7 @@ namespace ScriptCanvasEditor
 
     private:
 
-        bool IsEditabletype(ScriptCanvas::Data::Type scriptCanvasDataType) const;
+        bool IsEditableType(ScriptCanvas::Data::Type scriptCanvasDataType) const;
 
         void PopulateSceneVariables();
 
@@ -119,14 +121,21 @@ namespace ScriptCanvasEditor
     {
         Q_OBJECT
     public:
+        static bool HasCopyVariableData();
+        static void CopyVariableToClipboard(const AZ::EntityId& scriptCanvasGraphId, const ScriptCanvas::VariableId& variableId);
+        static void HandleVariablePaste(const AZ::EntityId& scriptCanvasGraphId);
+
         AZ_CLASS_ALLOCATOR(GraphVariablesTableView, AZ::SystemAllocator, 0);
         GraphVariablesTableView(QWidget* parent);
 
         void SetActiveScene(const AZ::EntityId& scriptCanvasGraphId);
         void SetFilter(const QString& filterString);
 
+        void EditVariableName(ScriptCanvas::VariableId variableId);
+
         // QObject
         void hideEvent(QHideEvent* event) override;
+        void resizeEvent(QResizeEvent* event) override;
         ////
 
         // QTableView
@@ -137,9 +146,20 @@ namespace ScriptCanvasEditor
         void OnSelectionChanged();
         ////
 
+        void ApplyPreferenceSort();
+
+        void ResizeColumns();
+
     public slots:
         void OnVariableAdded(QModelIndex modelIndex);
         void OnDeleteSelected();
+        void OnCopySelected();
+        void OnPaste();
+        void OnDuplicate();
+
+        void SetCycleTarget(ScriptCanvas::VariableId variableId);
+        void CycleToNextVariableNode();
+        void CycleToPreviousVariableNode();
 
     signals:
         void SelectionChanged(const AZStd::unordered_set< ScriptCanvas::VariableId >& variableIds);
@@ -147,8 +167,17 @@ namespace ScriptCanvasEditor
 
     private:
 
+        void ConfigureHelper();
+
         AZ::EntityId                             m_graphCanvasGraphId;
+        AZ::EntityId                             m_scriptCanvasGraphId;
         GraphVariablesModelSortFilterProxyModel* m_proxyModel;
         GraphVariablesModel*                     m_model;
+
+        QAction*                             m_nextInstanceAction;
+        QAction*                             m_previousInstanceAction;
+
+        ScriptCanvas::VariableId             m_cyclingVariableId;
+        GraphCanvas::NodeFocusCyclingHelper  m_cyclingHelper;
     };
 }

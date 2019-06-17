@@ -102,11 +102,20 @@ namespace CloudGemAWSScriptBehaviors
         auto job = S3DownloadRequestJob::Create(
             [](S3DownloadRequestJob* job) // OnSuccess handler
             {
-                EBUS_EVENT(AWSBehaviorS3DownloadNotificationsBus, OnSuccess, "File Downloaded");
+                AZStd::function<void()> notifyOnMainThread = []()
+                {
+                    AWSBehaviorS3DownloadNotificationsBus::Broadcast(&AWSBehaviorS3DownloadNotificationsBus::Events::OnSuccess, "File Downloaded");
+                };
+                AZ::TickBus::QueueFunction(notifyOnMainThread);
             },
             [](S3DownloadRequestJob* job) // OnError handler
             {
-                EBUS_EVENT(AWSBehaviorS3DownloadNotificationsBus, OnError, job->error.GetMessage().c_str());
+                Aws::String errorMessage = job->error.GetMessage();
+                AZStd::function<void()> notifyOnMainThread = [errorMessage]()
+                {
+                    AWSBehaviorS3DownloadNotificationsBus::Broadcast(&AWSBehaviorS3DownloadNotificationsBus::Events::OnError, errorMessage.c_str());
+                };
+                AZ::TickBus::QueueFunction(notifyOnMainThread);
             },
             &config
         );

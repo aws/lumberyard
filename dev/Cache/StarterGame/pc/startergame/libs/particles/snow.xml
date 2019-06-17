@@ -1,0 +1,13 @@
+<ParticleLibrary Name="snow" SandboxVersion="3.61.1142.464" ParticleVersion="24">
+<Particles Name="snow.heavy_snow_sheets">
+    <Params Count="1000" Continuous="true" ParticleLifeTime="5" RandomOffset="x=48,y=48,z=48" EmitAngle="180,Random=1" Texture="textures/sprites/snow/snow_tiled1.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="Random=0.574,ParticleAge=(t=0.64,v=1;t=1)" DiffuseBacklighting="1" EmissiveLighting="1" Size="0.1,Random=0.851,ParticleAge=(;t=0.27,v=1)" Stretch="0.01,Random=0.604" Speed="2,Random=1" AirResistance="0.33,Random=1" GravityScale="0.455,Random=0.861" Turbulence3DSpeed="0.88" BindEmitterToCamera="true" SpaceLoop="true" RandomAngles="y=180" RandomRotationRate="y=444" CameraMinDistance="8" VisibleIndoors="If_False" VisibleUnderwater="If_False" FillRateCost="2.46"/>
+    <Childs>
+        <Particles Name="light_sheet">
+            <Params Count="20" Continuous="true" ParticleLifeTime="5" RandomOffset="x=87,y=87,z=87" EmitAngle="Random=1" Texture="textures/sprites/smoke/smoke_white_tiled2.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" SoftParticle="true" Alpha="0.2,Random=0.228,ParticleAge=(;t=0.506,v=1;t=1)" DiffuseBacklighting="0.2" EmissiveLighting="0.2" Size="50,Random=0.473,ParticleAge=(v=0.27;t=1,v=1)" Stretch="0.04,Random=0.604" Speed="Random=1" AirResistance="200,Random=1" GravityScale="Random=0.861" BindEmitterToCamera="true" SpaceLoop="true" RandomAngles="y=90" RandomRotationRate="y=22" CameraMinDistance="12" VisibleIndoors="If_False" VisibleUnderwater="If_False" FillRateCost="4" ConfigMin="Medium"/>
+        </Particles>
+        <Particles Name="close_blur">
+            <Params Count="500" Continuous="true" ParticleLifeTime="5" RandomOffset="x=24,y=24,z=24" EmitAngle="180,Random=1" OrientToVelocity="true" Texture="textures/sprites/snow/snow_tiled1_motion.tif" TextureTiling="TilesX=2,TilesY=2,VariantCount=4" Alpha="0.75,Random=0.574,ParticleAge=(t=0.64,v=1;t=1)" DiffuseBacklighting="1" EmissiveLighting="1" Size="0.1,Random=0.851,ParticleAge=(;t=0.27,v=1)" Stretch="0.01,Random=0.604" Speed="2,Random=1" AirResistance="2.4,Random=1" GravityScale="0.317,Random=0.861" Turbulence3DSpeed="1.93" BindEmitterToCamera="true" SpaceLoop="true" RandomAngles="y=180" RandomRotationRate="y=444" CameraMinDistance="1" VisibleIndoors="If_False" VisibleUnderwater="If_False" FillRateCost="2.46" ConfigMin="Medium"/>
+        </Particles>
+    </Childs>
+</Particles>
+</ParticleLibrary>

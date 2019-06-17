@@ -29,5 +29,5 @@ def build(bld):
         
         file_list = file_list,
         uselib = ['AWS_CPP_SDK_CORE', 'MD5'],
-        use = ['CloudGemFrameworkStaticLibrary', 'CrySoundSystem']
+        use = ['CloudGemFramework.StaticLibrary', 'CrySoundSystem']
     )

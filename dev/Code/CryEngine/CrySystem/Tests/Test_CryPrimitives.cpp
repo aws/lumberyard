@@ -287,7 +287,7 @@ TEST_F(CryPrimitives, CUT_CryString)
     EXPECT_TRUE(nPosition == 16);
 
 
-    nPosition = strTestFindLastOfOverload3.find_last_of(cstr3a, 8, 8);
+    nPosition = strTestFindLastOfOverload3.find_last_of(cstr3a, 8, 2);
     EXPECT_TRUE(nPosition == 4);
 
 

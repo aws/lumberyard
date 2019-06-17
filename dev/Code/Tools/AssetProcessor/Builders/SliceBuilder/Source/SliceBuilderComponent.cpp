@@ -1,12 +1,12 @@
 /*
-* All or portions of this file Copyright(c) Amazon.com, Inc.or its affiliates or
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
-*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
 
@@ -57,7 +57,7 @@ namespace SliceBuilder
         builderDescriptor.m_name = "Slice Builder";
         builderDescriptor.m_version = 1;
         builderDescriptor.m_analysisFingerprint = builderAnalysisFingerprint;
-        builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern("*.slice", AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
+        builderDescriptor.m_patterns.push_back(AssetBuilderSDK::AssetBuilderPattern(AZ::SliceAsset::GetFileFilter(), AssetBuilderSDK::AssetBuilderPattern::PatternType::Wildcard));
         builderDescriptor.m_busId = SliceBuilderWorker::GetUUID();
         builderDescriptor.m_createJobFunction = AZStd::bind(&SliceBuilderWorker::CreateJobs, m_sliceBuilder.get(), AZStd::placeholders::_1, AZStd::placeholders::_2);
         builderDescriptor.m_processJobFunction = AZStd::bind(&SliceBuilderWorker::ProcessJob, m_sliceBuilder.get(), AZStd::placeholders::_1, AZStd::placeholders::_2);

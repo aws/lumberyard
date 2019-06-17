@@ -317,8 +317,30 @@ def write_cloudwatch_metrics(context, save_duration, delete_duration):
                     "Unit":'Seconds'                    
                 },
                 ]
-            )
-    
+            )    
+    if context.get(c.KEY_WRITE_DETAILED_CLOUDWATCH_EVENTS, False):
+        util.debug_print("Sending detailed CloudWatch events")
+        write_detailed_cloud_watch_event_logs(context, cw)
+
+def write_detailed_cloud_watch_event_logs(context, cw):
+    events = context[c.KEY_AGGREGATOR].events    
+    params = []
+    for event_name, event_count in events.iteritems():
+        params.append(
+            {
+                "MetricName":c.CW_METRIC_NAME_PROCESSED,
+                "Dimensions":[{'Name':c.CW_METRIC_DIMENSION_NAME_CONSUMER, 'Value': event_name}],
+                "Timestamp":datetime.datetime.utcnow(),
+                "Value": event_count,                                
+                "Unit":'Count'                                      
+            }
+        )                
+        if len(params) >= c.CW_MAX_METRIC_SUBMISSIONS:
+            cw.put_metric_data(util.get_cloudwatch_namespace(util.get_cloudwatch_namespace(context[c.KEY_LAMBDA_FUNCTION])), params)
+            params = []
+
+    if len(params) > 0:
+        cw.put_metric_data(util.get_cloudwatch_namespace(util.get_cloudwatch_namespace(context[c.KEY_LAMBDA_FUNCTION])), params)
 
 def write_initial_stats(context):    
     pass

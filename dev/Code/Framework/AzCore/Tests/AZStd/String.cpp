@@ -1144,7 +1144,7 @@ namespace UnitTest
         AZ_TEST_ASSERT(cstr2.at(7) == 0);
         AZ_TEST_STOP_ASSERTTEST(1);
         AZ_TEST_ASSERT(!cstr2.empty());
-        AZ_TEST_ASSERT(cstr2.to_string() == string("Test"));
+        AZ_TEST_ASSERT(cstr2.data() == string("Test"));
         AZ_TEST_ASSERT((string)cstr2 == string("Test"));
 
         string_view cstr3 = cstr2;

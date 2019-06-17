@@ -280,7 +280,7 @@ namespace AZ
             }
 
             Data::AssetId       m_assetId;
-            SliceInstanceId     m_instanceId;
+            SliceInstanceId    m_instanceId;
             EntityId            m_ancestorId;
             DataPatch::FlagsMap m_dataFlags;
         };
@@ -322,6 +322,12 @@ namespace AZ
 
             /// Returns a reference to the data flags per entity.
             const DataFlagsPerEntity& GetDataFlags() const
+            {
+                return m_dataFlags;
+            }
+
+            /// Returns a reference to the data flags per entity.
+            DataFlagsPerEntity& GetDataFlags()
             {
                 return m_dataFlags;
             }
@@ -368,6 +374,11 @@ namespace AZ
             {
                 m_instanceId = id;
             }
+
+            /// Returns data flags whose addresses align with those in the data patch.
+            DataPatch::FlagsMap GetDataFlagsForPatching() const;
+
+            static DataFlagsPerEntity::IsValidEntityFunction GenerateValidEntityFunction(const SliceInstance*);
 
             // The lookup is built lazily when accessing the map, but constness is desirable
             // in the higher level APIs.
@@ -583,12 +594,12 @@ namespace AZ
          * with those instances.
          * @param sliceInstances instances that will be given to this slice. It will be empty after this operation completes.
          */
-        void AddSliceInstances(SliceAssetToSliceInstancePtrs& sliceInstances);
+        void AddSliceInstances(SliceAssetToSliceInstancePtrs& sliceInstances, AZStd::unordered_set<const SliceInstance*>& instancesOut);
         
         /**
          * Adds the IDs of all non-metadata entities, including the ones based on instances, to the provided set.
-         * @param entities An entity ID set to add the IDs to
-         */
+        * @param entities An entity ID set to add the IDs to
+        */
         bool GetEntityIds(EntityIdSet& entities);
 
         /**
@@ -676,6 +687,16 @@ namespace AZ
 
         /// Same as \ref RemoveEntity but by using entityId
         bool RemoveEntity(EntityId entityId, bool isDeleteEntity = true, bool isRemoveEmptyInstance = true);
+
+        /**
+        * A performant way to remove every entity from a SliceComponent. Operates in the same way as though you were to loop
+        * through every entity in a SliceComponent and call RemoveEntity(entityId) on them, but using this method will be
+        * much faster and is highly recommended. 
+        *
+        * \param deleteEntities true by default as we own all entities, pass false to just remove the entity and gain ownership of it
+        * \param removeEmptyInstances true by default. When set to true, instances will be removed when the last of their entities is removed
+        */
+        void RemoveAllEntities(bool deleteEntities = true, bool removeEmptyInstances = true); 
 
         /*
         * Removes an entity not associated with a slice instance.
@@ -1055,6 +1076,7 @@ namespace AZ
     } // namespace IdUtils
 
 } // namespace AZ
+
 
 namespace AZStd
 {

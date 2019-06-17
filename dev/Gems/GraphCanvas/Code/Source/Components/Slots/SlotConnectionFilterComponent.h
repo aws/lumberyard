@@ -22,7 +22,6 @@ namespace GraphCanvas
     class SlotConnectionFilterComponent
         : public AZ::Component
         , protected ConnectionFilterRequestBus::Handler
-        , protected ConnectableObjectRequestBus::Handler
     {
     public:
         AZ_COMPONENT(SlotConnectionFilterComponent, "{6238C5B7-A1B5-442A-92FF-8BC94BB94385}");
@@ -53,10 +52,7 @@ namespace GraphCanvas
 
         // ConnectionFilterRequestBus
         void AddFilter(ConnectionFilter* slotFilter) override;
-        ////
-
-        // ConnectableObjectRequestBus
-        Connectability CanConnectWith(const AZ::EntityId& slotId) const;
+        bool CanConnectWith(const Endpoint& endpoint) const override;
         ////
 
     private:

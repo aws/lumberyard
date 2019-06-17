@@ -39,13 +39,13 @@ namespace PhysX
         AZ_CLASS_ALLOCATOR(Joint, AZ::SystemAllocator, 0);
         AZ_RTTI(Joint, "{3C739E22-8EF0-419F-966B-C575A1F5A08B}", Physics::Joint);
 
-        Joint(physx::PxJoint* pxJoint, const AZStd::shared_ptr<Physics::WorldBody>& parentBody,
-            const AZStd::shared_ptr<Physics::WorldBody>& childBody);
+        Joint(physx::PxJoint* pxJoint, Physics::WorldBody* parentBody,
+            Physics::WorldBody* childBody);
 
-        const AZStd::shared_ptr<Physics::WorldBody>& GetParentBody() const override;
-        const AZStd::shared_ptr<Physics::WorldBody>& GetChildBody() const override;
-        void SetParentBody(const AZStd::shared_ptr<Physics::WorldBody>& parentBody) override;
-        void SetChildBody(const AZStd::shared_ptr<Physics::WorldBody>& childBody) override;
+        Physics::WorldBody* GetParentBody() const override;
+        Physics::WorldBody* GetChildBody() const override;
+        void SetParentBody(Physics::WorldBody* parentBody) override;
+        void SetChildBody(Physics::WorldBody* childBody) override;
         const AZStd::string& GetName() const override;
         void SetName(const AZStd::string& name) override;
         void* GetNativePointer() override;
@@ -55,8 +55,8 @@ namespace PhysX
 
         using PxJointUniquePtr = AZStd::unique_ptr<physx::PxJoint, AZStd::function<void(physx::PxJoint*)>>;
         PxJointUniquePtr m_pxJoint;
-        AZStd::shared_ptr<Physics::WorldBody> m_parentBody;
-        AZStd::shared_ptr<Physics::WorldBody> m_childBody;
+        Physics::WorldBody* m_parentBody;
+        Physics::WorldBody* m_childBody;
         AZStd::string m_name;
     };
 
@@ -67,8 +67,8 @@ namespace PhysX
         AZ_CLASS_ALLOCATOR(D6Joint, AZ::SystemAllocator, 0);
         AZ_RTTI(D6Joint, "{962C4044-2BD2-4E4C-913C-FB8E85A2A12A}", Joint);
 
-        D6Joint(physx::PxJoint* pxJoint, const AZStd::shared_ptr<Physics::WorldBody>& parentBody,
-            const AZStd::shared_ptr<Physics::WorldBody>& childBody)
+        D6Joint(physx::PxJoint* pxJoint, Physics::WorldBody* parentBody,
+            Physics::WorldBody* childBody)
             : Joint(pxJoint, parentBody, childBody)
         {
         }
@@ -100,7 +100,7 @@ namespace PhysX
         static AZStd::shared_ptr<Physics::JointLimitConfiguration> CreateJointLimitConfiguration(AZ::TypeId jointType);
 
         static AZStd::shared_ptr<Physics::Joint> CreateJoint(const AZStd::shared_ptr<Physics::JointLimitConfiguration>& configuration,
-            const AZStd::shared_ptr<Physics::WorldBody>& parentBody, const AZStd::shared_ptr<Physics::WorldBody>& childBody);
+            Physics::WorldBody* parentBody, Physics::WorldBody* childBody);
 
         static D6JointState CalculateD6JointState(
             const AZ::Quaternion& parentWorldRotation,

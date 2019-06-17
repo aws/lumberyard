@@ -12,6 +12,9 @@
 
 #include <AzQtComponents/Components/Widgets/GradientSlider.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Utilities/Conversions.h>
+#include <AzCore/Casting/numeric_cast.h>
+
 
 #include <QPainter>
 #include <QStyle>
@@ -27,6 +30,19 @@ GradientSlider::GradientSlider(Qt::Orientation orientation, QWidget* parent)
     : QSlider(orientation, parent)
 {
     setProperty("class", s_gradientSliderClass);
+    setFocusPolicy(Qt::ClickFocus);
+
+    setMouseTracking(true);
+
+    m_colorFunction = [this](qreal value) {
+        return QColor::fromRgbF(value, value, value);
+    };
+
+    m_toolTipFunction = [this](qreal value) {
+        QColor rgb = m_colorFunction(value);
+
+        return QStringLiteral("RGB: %1, %2, %3").arg(rgb.red()).arg(rgb.green()).arg(rgb.blue());
+    };
 }
 
 GradientSlider::GradientSlider(QWidget* parent)
@@ -38,16 +54,26 @@ GradientSlider::~GradientSlider()
 {
 }
 
-void GradientSlider::setColorFunction(ColorFunction colorFunction)
+void GradientSlider::setColorFunction(GradientSlider::ColorFunction colorFunction)
 {
     m_colorFunction = colorFunction;
     updateGradient();
+}
+
+void GradientSlider::setToolTipFunction(GradientSlider::ToolTipFunction toolTipFunction)
+{
+    m_toolTipFunction = toolTipFunction;
 }
 
 void GradientSlider::updateGradient()
 {
     initGradientColors();
     update();
+}
+
+QColor GradientSlider::colorAt(qreal position) const
+{
+    return m_colorFunction(position);
 }
 
 void GradientSlider::initGradientColors()
@@ -76,6 +102,21 @@ void GradientSlider::resizeEvent(QResizeEvent* e)
     const QRect r = contentsRect();
     m_gradient.setStart(r.bottomLeft());
     m_gradient.setFinalStop(orientation() == Qt::Horizontal ? r.bottomRight() : r.topLeft());
+}
+
+void GradientSlider::mouseMoveEvent(QMouseEvent* event)
+{
+    int intValue = Slider::valueFromPosition(this, event->pos(), width(), height(), rect().bottom());
+
+    qreal value = (aznumeric_cast<qreal, int>(intValue - minimum()) / aznumeric_cast<qreal, int>(maximum() - minimum()));
+    QColor rgb = m_colorFunction(value);
+
+    const QString toolTipText = m_toolTipFunction(value);
+
+    QPoint globalPosition = mapToGlobal(QPoint(0, 0));
+    Slider::showHoverToolTip(toolTipText, globalPosition, this, this, width(), height(), m_toolTipOffset);
+
+    QSlider::mouseMoveEvent(event);
 }
 
 void GradientSlider::keyPressEvent(QKeyEvent * e)

@@ -199,6 +199,7 @@
             "StereoRendererBus.h",
             "CharacterBoundsBus.h",
             "ColorGradingBus.h",
+            "HeightmapUpdateNotificationBus.h",
             "RTTBus.h"	    
         ],
         "Interfaces_h/AI Interfaces":
@@ -516,7 +517,7 @@
             "Console_std.h",
             "CryAssert_Android.h",
             "CryAssert_impl.h",
-            "CryAssert_IOS.h",
+            "CryAssert_iOS.h",
             "CryAssert_Linux.h",
             "CryAssert_Mac.h",
             "CryDLMalloc.h",
@@ -796,6 +797,12 @@
         "Terrain/Bus":
         [
             "Terrain/Bus/LegacyTerrainBus.h"
+        ],
+
+        "Vegetation":
+        [
+            "Vegetation/StaticVegetationBus.h",
+            "Vegetation/MapHandle.h"
         ],
 
         "CryAction": [

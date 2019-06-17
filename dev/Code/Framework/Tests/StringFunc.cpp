@@ -11,7 +11,7 @@
 */
 
 #include <Tests/TestTypes.h>
-
+#include <gtest/gtest-param-test.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
 
@@ -19,28 +19,7 @@ namespace AzFramework
 {
     using namespace UnitTest;
 
-    class StringFuncTest
-    : public AllocatorsFixture
-    {
-    public:
-        StringFuncTest()
-            : AllocatorsFixture(15, false)
-        {
-        }
-
-        ~StringFuncTest() = default;
-
-        void SetUp() override
-        {
-            AllocatorsFixture::SetUp();
-        }
-
-        void TearDown() override
-        {
-            AllocatorsFixture::TearDown();
-        }
-    };
-
+    using StringFuncTest = AllocatorsFixture;
 
     // Strip out any trailing path separators
     
@@ -155,4 +134,86 @@ namespace AzFramework
         ASSERT_TRUE(result);
         ASSERT_EQ(input, expectedDriveResult);
     }
+
+
+
+    class TestPathStringArgs
+    {
+    public:
+        TestPathStringArgs(const char* input, const char* expected_output)
+            : m_input(input),
+            m_expected(expected_output)
+        {}
+
+        const char* m_input;
+        const char* m_expected;
+
+    };
+
+    class StringPathFuncTest
+    : public StringFuncTest,
+      public ::testing::WithParamInterface<TestPathStringArgs>
+    {
+    public:
+        StringPathFuncTest() = default;
+        virtual ~StringPathFuncTest() = default;
+    };
+
+
+    TEST_P(StringPathFuncTest, TestNormalizePath)
+    {
+        const TestPathStringArgs& param = GetParam();
+
+        AZStd::string input = AZStd::string(param.m_input);
+        AZStd::string expected = AZStd::string(param.m_expected);
+
+        bool result = AzFramework::StringFunc::Path::Normalize(input);
+        EXPECT_TRUE(result);
+        EXPECT_EQ(input, expected);
+    }
+
+
+#if AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+
+    INSTANTIATE_TEST_CASE_P(
+        PathWithSingleDotSubFolders,
+        StringPathFuncTest, 
+        ::testing::Values(
+            TestPathStringArgs("F:\\test\\to\\get\\.\\drive\\", "F:\\test\\to\\get\\drive\\")
+        ));
+
+    INSTANTIATE_TEST_CASE_P(
+        PathWithDoubleDotSubFolders,
+        StringPathFuncTest, 
+        ::testing::Values(
+            TestPathStringArgs("C:\\One\\Two\\..\\Three\\",                                          "C:\\One\\Three\\"),
+            TestPathStringArgs("C:\\One\\..\\..\\Two\\",                                             "C:\\Two\\"),
+            TestPathStringArgs("C:\\One\\Two\\Three\\..\\",                                          "C:\\One\\Two\\"),
+            TestPathStringArgs("F:\\test\\to\\get\\..\\blue\\orchard\\..\\drive\\",                  "F:\\test\\to\\blue\\drive\\"),
+            TestPathStringArgs("F:\\test\\to\\.\\.\\get\\..\\.\\.\\drive\\",                         "F:\\test\\to\\drive\\"),
+            TestPathStringArgs("F:\\..\\test\\to\\.\\.\\get\\..\\.\\.\\drive\\",                     "F:\\test\\to\\drive\\"),
+            TestPathStringArgs("F:\\..\\..\\..\\test\\to\\.\\.\\get\\..\\.\\.\\drive\\",             "F:\\test\\to\\drive\\"),
+            TestPathStringArgs("F:\\..\\..\\..\\test\\to\\.\\.\\get\\..\\.\\.\\drive\\..\\..\\..\\", "F:\\"),
+            TestPathStringArgs("F:\\..\\",                                                           "F:\\")
+   ));
+#else
+    INSTANTIATE_TEST_CASE_P(
+        PathWithSingleDotSubFolders,
+        StringPathFuncTest, ::testing::Values(
+            TestPathStringArgs("//test/to/get/./drive/", "//test/to/get/drive/")
+        ));
+
+    INSTANTIATE_TEST_CASE_P(
+        PathWithDoubleDotSubFolders,
+        StringPathFuncTest, 
+        ::testing::Values(
+            TestPathStringArgs("//one/two/../three/",                     "//one/three/"),
+            TestPathStringArgs("//one/../../two/",                        "//two/"),
+            TestPathStringArgs("//one/two/three/../",                     "//one/two/"),
+            TestPathStringArgs("//test/to/get/../blue/orchard/../drive/", "//test/to/blue/drive/"),
+            TestPathStringArgs("//test/to/././get.//././.drive/",         "//test/to/get./.drive/"),
+            TestPathStringArgs("//../../test/to/././get/../././drive/",   "//test/to/drive/")
+    ));
+#endif //AZ_TRAIT_OS_USE_WINDOWS_FILE_PATHS
+    
 }

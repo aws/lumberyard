@@ -562,47 +562,64 @@ namespace AzToolsFramework
         if (nodeEditData)
         {
             const AZ::Edit::ElementData* groupData = nullptr;
+            const AZ::Edit::ElementData* previousData = nullptr;
 
             for (auto& element : nodeEditData->m_elements)
             {
+                if (element.IsClassElement() && element.m_elementId == AZ::Edit::ClassElements::Group)
+                {
+                    groupData = (element.m_description && element.m_description[0]) ? &element : nullptr;
+                    continue;
+                }
+
+                //create ui elements in their relative edit context positions
                 if (element.m_elementId == AZ::Edit::ClassElements::UIElement)
                 {
+                    //if there is no matching, previous element, assume the UI element comes first
+                    m_childIndexOverride = 0;
+
+                    if (previousData)
+                    {
+                        //search for matching sibling element data by name
+                        auto it = AZStd::find_if(
+                            node->m_children.begin(),
+                            node->m_children.end(),
+                            [previousData](const InstanceDataNode& otherNode) {
+                            return otherNode.m_classElement->m_editData == previousData;
+                        });
+                        if (it != node->m_children.end())
+                        {
+                            //if there is element data matching the previous entry, place the UI element after it
+                            m_childIndexOverride = AZStd::distance(node->m_children.begin(), it) + 1;
+                        }
+                    }
+
                     // For every UIElement, generate an InstanceDataNode pointed at our instance with the corresponding attributes
                     for (size_t i = 0, numInstances = node->GetNumInstances(); i < numInstances; ++i)
                     {
                         m_supplementalElementData.push_back();
                         auto& serializeFieldElement = m_supplementalElementData.back();
-                        auto classData = node->GetClassMetadata();
 
                         serializeFieldElement.m_name = element.m_description;
                         serializeFieldElement.m_nameCrc = AZ::Crc32(element.m_description);
-                        serializeFieldElement.m_azRtti = classData->m_azRtti;
+                        serializeFieldElement.m_azRtti = nullptr;
                         serializeFieldElement.m_dataSize = sizeof(void*);
                         serializeFieldElement.m_offset = 0;
-                        serializeFieldElement.m_typeId = classData->m_typeId;
+                        serializeFieldElement.m_typeId = AZ::Uuid::CreateNull();
                         serializeFieldElement.m_editData = &element;
                         serializeFieldElement.m_flags = AZ::SerializeContext::ClassElement::FLG_UI_ELEMENT;
-                        serializeFieldElement.m_attributeOwnership = AZ::SerializeContext::ClassElement::AttributeOwnership::None;
 
                         m_curParentNode = node;
-                        BeginNode(node->GetInstance(i), classData, &serializeFieldElement, dynamicEditDataProvider);
+                        BeginNode(node->GetInstance(i), nullptr, &serializeFieldElement, dynamicEditDataProvider);
                         m_curParentNode->m_groupElementData = groupData;
                         EndNode();
                     }
                 }
-                else if (element.IsClassElement() && element.m_elementId == AZ::Edit::ClassElements::Group)
-                {
-                    if (!element.m_description || !element.m_description[0])
-                    {
-                        groupData = nullptr;
-                    }
-                    else
-                    {
-                        groupData = &element;
-                    }
-                }
+
+                previousData = &element;
             }
 
+            m_childIndexOverride = -1;
             m_curParentNode = nullptr;
         }
     }
@@ -701,6 +718,11 @@ namespace AzToolsFramework
 
         bool GetValueStringRepresentation(const InstanceDataNode* node, AZStd::string& value)
         {
+            if (!node || !node->GetClassMetadata())
+            {
+                return false;
+            }
+
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
@@ -749,7 +771,8 @@ namespace AzToolsFramework
         }
     }
 
-    //----------------------------------------------------------------------------- 
+    //-----------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------
     void InstanceDataHierarchy::FixupEditData(InstanceDataNode* node, int siblingIdx)
     {
         AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
@@ -767,7 +790,12 @@ namespace AzToolsFramework
 
         if (mergeElementEditData || mergeContainerEditData || showAsKeyValue)
         {
-            AZStd::string label = GetDisplayLabel(node, siblingIdx);
+            AZStd::string label;
+            
+            if (!showAsKeyValue)
+            {
+                label = GetDisplayLabel(node);
+            }
 
             // Grab a copy of our instances if we might need to move them to a key/value attribute.
             // We need a copy because the current node may well be replaced in its entirety by one of its children.
@@ -873,7 +901,6 @@ namespace AzToolsFramework
 
         const AZ::Edit::ElementData* elementEditData = nullptr;
 
-        AZ_Assert(classData, "Serializable instances must have valid classData!");
         if (classElement)
         {
             // Find the correct element edit data to use
@@ -900,10 +927,13 @@ namespace AzToolsFramework
                     overridingInstance = ResolvePointer(overridingInstance, *overridingElementData, *m_context);
                 }
 
-                const AZ::Edit::ElementData* useData = editDataOverride.m_override(overridingInstance, objectPtr, classData->m_typeId);
-                if (useData)
+                if (classData)
                 {
-                    elementEditData = useData;
+                    const AZ::Edit::ElementData* useData = editDataOverride.m_override(overridingInstance, objectPtr, classData->m_typeId);
+                    if (useData)
+                    {
+                        elementEditData = useData;
+                    }
                 }
             }
         }
@@ -915,7 +945,7 @@ namespace AzToolsFramework
             if (!m_curParentNode)
             {
                 // Only accept root instances that are of the same type
-                if (classData->m_typeId == m_classData->m_typeId)
+                if (classData && classData->m_typeId == m_classData->m_typeId)
                 {
                     node = this;
                 }
@@ -971,8 +1001,19 @@ namespace AzToolsFramework
             }
             else
             {
-                m_curParentNode->m_children.push_back();
-                node = &m_curParentNode->m_children.back();
+                if (m_childIndexOverride >= 0)
+                {
+                    auto position = m_curParentNode->m_children.begin();
+                    AZStd::advance(position, m_childIndexOverride);
+
+                    auto iterator = m_curParentNode->m_children.insert(position);
+                    node = &(*iterator);
+                }
+                else
+                {
+                    m_curParentNode->m_children.push_back();
+                    node = &m_curParentNode->m_children.back();
+                }
             }
             node->m_instances.push_back(ptr);
             node->m_classData = classData;
@@ -994,18 +1035,21 @@ namespace AzToolsFramework
             // Compute node's identifier, which is used to compute full address within a hierarchy.
             if (m_curParentNode)
             {
-                if (m_curParentNode->GetClassMetadata()->m_container)
+                if (m_curParentNode->GetClassMetadata() && m_curParentNode->GetClassMetadata()->m_container)
                 {
-                    // Within a container, use persistentId if available, otherwise use a CRC of name and container index.
-                    AZ::SerializeContext::ClassPersistentId persistentId = classData->GetPersistentId(*m_context);
-                    if (persistentId)
+                    if (classData)
                     {
-                        node->m_identifier = static_cast<Identifier>(persistentId(ResolvePointer(ptr, *classElement, *m_context)));
-                    }
-                    else
-                    {
-                        AZStd::string indexedName = AZStd::string::format("%s_%d", classData->m_name, m_curParentNode->m_children.size() - 1);
-                        node->m_identifier = static_cast<Identifier>(AZ::Crc32(indexedName.c_str()));
+                        // Within a container, use persistentId if available, otherwise use a CRC of name and container index.
+                        AZ::SerializeContext::ClassPersistentId persistentId = classData->GetPersistentId(*m_context);
+                        if (persistentId)
+                        {
+                            node->m_identifier = static_cast<Identifier>(persistentId(ResolvePointer(ptr, *classElement, *m_context)));
+                        }
+                        else
+                        {
+                            AZStd::string indexedName = AZStd::string::format("%s_%d", classData->m_name, m_curParentNode->m_children.size() - 1);
+                            node->m_identifier = static_cast<Identifier>(AZ::Crc32(indexedName.c_str()));
+                        }
                     }
                 }
                 else
@@ -1014,7 +1058,7 @@ namespace AzToolsFramework
                     node->m_identifier = classElement->m_nameCrc;
                 }
             }
-            else
+            else if (classData)
             {
                 // Root level, use crc of class type.
                 node->m_identifier = AZ_CRC(classData->m_name);
@@ -1024,7 +1068,7 @@ namespace AzToolsFramework
         }
 
         // if our data contains dynamic edit data handler, push it on the stack
-        if (classData->m_editData && classData->m_editData->m_editDataProvider)
+        if (classData && classData->m_editData && classData->m_editData->m_editDataProvider)
         {
             m_editDataOverrides.push_back();
             m_editDataOverrides.back().m_override = classData->m_editData->m_editDataProvider;
@@ -1099,7 +1143,6 @@ namespace AzToolsFramework
             m_curParentNode = m_curParentNode->m_parent;
         }
         m_nodeDiscarded = false;
-
         return true;
     }
 
@@ -1126,9 +1169,18 @@ namespace AzToolsFramework
 
             node->ClearComparisonData();
 
-            for (InstanceDataNode& child : node->m_children)
+            for (auto childIterator = node->m_children.begin(); childIterator != node->m_children.end();)
             {
-                stack.push_back(&child);
+                // Remove any fake nodes that have been added
+                if (childIterator->IsRemovedVersusComparison())
+                {
+                    childIterator = node->m_children.erase(childIterator);
+                }
+                else
+                {
+                    stack.push_back(&(*childIterator));
+                    ++childIterator;
+                }
             }
         }
 
@@ -1319,6 +1371,10 @@ namespace AzToolsFramework
         {
             return false;
         }
+        else if (!targetNode->m_classData || !sourceNode->m_classData)
+        {
+            return targetNode->m_classData == sourceNode->m_classData;
+        }
 
         return targetNode->m_classData->m_serializer->CompareValueData(sourceNode->FirstInstance(), targetNode->FirstInstance());
     }
@@ -1358,7 +1414,11 @@ namespace AzToolsFramework
 
         targetNode->m_comparisonNode = sourceNode;
 
-        if (targetNode->m_classData->m_typeId == sourceNode->m_classData->m_typeId)
+        if (!targetNode->m_classData || !sourceNode->m_classData)
+        {
+            return;
+        }
+        else if (targetNode->m_classData->m_typeId == sourceNode->m_classData->m_typeId)
         {
             if (targetNode->m_classData->m_container)
             {
@@ -1505,6 +1565,11 @@ namespace AzToolsFramework
         const AZ::SerializeContext::ClassData* sourceClass = sourceNode->GetClassMetadata();
         const AZ::SerializeContext::ClassData* targetClass = targetNode->GetClassMetadata();
 
+        if (!sourceClass || !targetClass)
+        {
+            return false;
+        }
+
         if (sourceClass->m_typeId == targetClass->m_typeId)
         {
             // Drill down and apply adds/removes/copies as we go.
@@ -1625,16 +1690,24 @@ namespace AzToolsFramework
                         {
                             matchedChild = true;
 
-                            if (!targetChild.GetClassMetadata() || targetChild.GetClassMetadata()->m_typeId != sourceChild.GetClassMetadata()->m_typeId)
+                            const AZ::SerializeContext::ClassData* targetClassData = targetChild.GetClassMetadata();
+                            const AZ::SerializeContext::ClassData* sourceClassData = sourceChild.GetClassMetadata();
+
+                            // are these proxy nodes?
+                            if (!targetClassData && !sourceClassData)
+                            {
+                                continue;
+                            }
+                            else if (targetClassData->m_typeId != sourceClassData->m_typeId)
                             {
                                 AZStd::string sourceTypeId;
                                 AZStd::string targetTypeId;
 
-                                sourceChild.GetClassMetadata()->m_typeId.ToString(sourceTypeId);
-                                targetChild.GetClassMetadata()->m_typeId.ToString(targetTypeId);
+                                sourceClassData->m_typeId.ToString(sourceTypeId);
+                                targetClassData->m_typeId.ToString(targetTypeId);
 
                                 AZ_Error("Serializer", false, "Nodes with same identifier are not of the same serializable type: types \"%s\" : %s and \"%s\" : %s.",
-                                    sourceChild.GetClassMetadata()->m_name, sourceTypeId.c_str(), targetChild.GetClassMetadata()->m_name, targetTypeId.c_str());
+                                    sourceClassData->m_name, sourceTypeId.c_str(), targetClassData->m_name, targetTypeId.c_str());
                                 return false;
                             }
 
@@ -1711,7 +1784,7 @@ namespace AzToolsFramework
                         void* targetPointer = targetClass->m_container->ReserveElement(targetInstance, sourceChildToAdd->m_classElement);
                         AZ_Assert(targetPointer, "Failed to allocate container element");
 
-                        if (sourceChildToAdd->m_classElement->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
+                        if (sourceChildToAdd->GetClassMetadata() && sourceChildToAdd->m_classElement->m_flags & AZ::SerializeContext::ClassElement::FLG_POINTER)
                         {
                             // It's a container of pointers, so allocate a new target class instance.
                             AZ_Assert(sourceChildToAdd->GetClassMetadata()->m_factory != nullptr, "We are attempting to create '%s', but no factory is provided! Either provide factory or change data member '%s' to value not pointer!", sourceNode->m_classData->m_name, sourceNode->m_classElement->m_name);

@@ -2806,7 +2806,7 @@ void CUiAnimViewDopeSheetBase::DrawTimeLineInFrames(QPainter* painter, const QRe
         {
             painter->setPen(black);
             painter->drawLine(x, rc.bottom() - 2, x, rc.bottom() - 14);
-            painter->drawStaticText(x + 2, rc.top(), QString::number(fFrame));
+            painter->drawText(x + 2, rc.top(), QString::number(fFrame));
             painter->setPen(ltgray);
         }
         else
@@ -2852,7 +2852,7 @@ void CUiAnimViewDopeSheetBase::DrawTimeLineInSeconds(QPainter* painter, const QR
         {
             painter->setPen(black);
             painter->drawLine(x, rc.bottom() - 2, x, rc.bottom() - 14);
-            painter->drawStaticText(x + 2, rc.top(), QString::number(st));
+            painter->drawText(x + 2, rc.top(), QString::number(st));
             painter->setPen(ltgray);
         }
         else

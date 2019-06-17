@@ -42,6 +42,8 @@ namespace AzQtComponents
     {
         Q_OBJECT
         Q_PROPERTY(Qt::Orientation orientation READ orientation WRITE setOrientation)
+        Q_PROPERTY(int toolTipOffsetX READ toolTipOffsetX WRITE setToolTipOffsetX)
+        Q_PROPERTY(int toolTipOffsetY READ toolTipOffsetY WRITE setToolTipOffsetY)
 
     public:
 
@@ -105,6 +107,15 @@ namespace AzQtComponents
         void setOrientation(Qt::Orientation orientation);
         Qt::Orientation orientation() const;
 
+        QPoint toolTipOffset() const { return m_toolTipOffset; }
+        void setToolTipOffset(const QPoint& toolTipOffset) { m_toolTipOffset = toolTipOffset; }
+
+        int toolTipOffsetX() const { return m_toolTipOffset.x(); }
+        void setToolTipOffsetX(int toolTipOffsetX) { m_toolTipOffset.setX(toolTipOffsetX); }
+
+        int toolTipOffsetY() const { return m_toolTipOffset.y(); }
+        void setToolTipOffsetY(int toolTipOffsetY) { m_toolTipOffset.setY(toolTipOffsetY); }
+
         /*!
          * Apply custom formatting to the hover tooltip.
          * For example, for percentages:
@@ -115,6 +126,16 @@ namespace AzQtComponents
          * 
          */
         void setToolTipFormatting(QString prefix, QString postFix);
+
+        /*!
+         * Shows a hover tooltip with the right positioning on top of a slider
+         */
+        static void showHoverToolTip(QString toolTipText, const QPoint& globalPosition, QSlider* slider, QWidget* toolTipParentWidget, int width, int height, const QPoint& toolTipOffset);
+
+        /*!
+         * Returns the value along the slider (between min and max) corresponding to the input pos
+         */
+        static int valueFromPosition(QSlider* slider, const QPoint& pos, int width, int height, int bottom);
 
         /*!
          * Applies the Mid Point styling to a Slider.
@@ -171,8 +192,7 @@ namespace AzQtComponents
 
         QPoint m_mousePos;
 
-        QPoint m_horizontalToolTipOffset;
-        QPoint m_verticalToolTipOffset;
+        QPoint m_toolTipOffset;
     };
 
 
@@ -223,6 +243,7 @@ namespace AzQtComponents
         Q_PROPERTY(double maximum READ maximum WRITE setMaximum)
         Q_PROPERTY(int numSteps READ numSteps WRITE setNumSteps)
         Q_PROPERTY(double value READ value WRITE setValue NOTIFY valueChanged USER true)
+        Q_PROPERTY(int decimals READ decimals WRITE setDecimals);
 
     public:
         SliderDouble(QWidget* parent = nullptr);
@@ -242,6 +263,9 @@ namespace AzQtComponents
 
         void setRange(double min, double max, int numSteps = 100);
 
+        int decimals() const { return m_decimals; }
+        void setDecimals(int decimals) { m_decimals = decimals; }
+
     Q_SIGNALS:
         void valueChanged(double value);
 
@@ -254,6 +278,7 @@ namespace AzQtComponents
         double m_minimum = 0.0;
         double m_maximum = 1.0;
         int m_numSteps = 100;
+        int m_decimals;
     };
 
 } // namespace AzQtComponents

@@ -1,0 +1,28 @@
+<profile version="1">
+
+  <!-- platforms - Used to define which keys to map for each action based on the platform that is in use -->
+  <platforms>
+    <PC keyboard="1" xboxpad="1" ps3pad="0" androidkey="0"/>
+  </platforms>
+
+  <!-- default - Default action key mappings -->
+  <actionmap name="default">
+  </actionmap>
+
+  <actionmap name="player">
+    <!-- USER DEFINED -->
+
+    <!-- USED INTERNALLY - DO NOT REMOVE -->
+    <action name="moveleft" onPress="1" onRelease="1" retriggerable="1" keyboard="a"/>
+    <action name="moveright" onPress="1" onRelease="1" retriggerable="1" keyboard="d"/>
+    <action name="moveforward" onPress="1" onRelease="1" retriggerable="1" keyboard="w"/>
+    <action name="moveback" onPress="1" onRelease="1" retriggerable="1" keyboard="s"/>
+    <action name="rotateyaw" keyboard="maxis_x" />
+    <action name="rotatepitch" keyboard="maxis_y" />
+    <action name="xi_movey" xboxpad="xi_thumbly"/>
+    <action name="xi_movex" xboxpad="xi_thumblx"/>
+    <action name="xi_rotateyaw" xboxpad="xi_thumbrx"/>
+    <action name="xi_rotatepitch" xboxpad="xi_thumbry"/>
+  </actionmap>
+
+</profile>

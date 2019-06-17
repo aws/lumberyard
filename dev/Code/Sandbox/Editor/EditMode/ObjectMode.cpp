@@ -38,6 +38,7 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/Entity/EditorEntityTransformBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponentBus.h>
+#include <AzToolsFramework/ViewportSelection/EditorInteractionSystemViewportSelectionRequestBus.h>
 
 #include <QMenu>
 #include <QCursor>
@@ -886,9 +887,28 @@ bool CObjectMode::OnLButtonDblClk(CViewport* view, int nFlags, const QPoint& poi
         HitContext hitInfo;
         view->HitTest(point, hitInfo);
 
-        CBaseObject* hitObj = hitInfo.object;
-        if (hitObj)
+        if (CBaseObject* hitObj = hitInfo.object)
         {
+            // check if the object is an AZ::Entity
+            if ((hitObj->GetType() == OBJTYPE_AZENTITY))
+            {
+                if (CRenderViewport* renderViewport = viewport_cast<CRenderViewport*>(view))
+                {
+                    // if we double clicked on an AZ::Entity/Component, build a mouse interaction
+                    // and send a double click event to the EditorInteractionSystemViewportSelectionRequestBus.
+                    // if we have double clicked on a component supporting ComponentMode, we will enter it.
+                    // note: this is to support entering ComponentMode with a double click using the old viewport interaction model
+                    const auto mouseInteraction = renderViewport->BuildMouseInteraction(
+                        Qt::LeftButton, QGuiApplication::queryKeyboardModifiers(), point);
+                    
+                    AzToolsFramework::EditorInteractionSystemViewportSelectionRequestBus::Event(
+                        AzToolsFramework::GetEntityContextId(),
+                        &AzToolsFramework::ViewportInteraction::MouseViewportRequests::HandleMouseInteraction,
+                        AzToolsFramework::ViewportInteraction::MouseInteractionEvent(
+                            mouseInteraction, AzToolsFramework::ViewportInteraction::MouseEvent::DoubleClick));
+                }
+            }
+
             // Fire double click event on hit object.
             hitObj->OnEvent(EVENT_DBLCLICK);
         }
@@ -971,8 +991,10 @@ bool CObjectMode::OnRButtonUp(CViewport* view, int nFlags, const QPoint& point)
                 // hit object has not been selected
                 if (!selections->IsContainObject(hitInfo.object))
                 {
+                    view->BeginUndo();
                     GetIEditor()->GetObjectManager()->ClearSelection();
                     GetIEditor()->GetObjectManager()->SelectObject(hitInfo.object, true);
+                    view->AcceptUndo("Select Object(s)");
                 }
 
                 // Save so we can use this for the context menu later
@@ -988,7 +1010,9 @@ bool CObjectMode::OnRButtonUp(CViewport* view, int nFlags, const QPoint& point)
                 view->SetConstructionMatrix(COORDS_PARENT, tm);
                 view->SetConstructionMatrix(COORDS_USERDEFINED, userTM);
 
+                view->BeginUndo();
                 GetIEditor()->GetObjectManager()->ClearSelection();
+                view->AcceptUndo("Select Object(s)");
             }
         }
 

@@ -1,0 +1,9 @@
+{
+    "auto": {
+        "Source": [
+            "Source/ScriptCanvasTestingModule.cpp",
+            "Source/ScriptCanvasTestingSystemComponent.cpp",
+            "Source/ScriptCanvasTestingSystemComponent.h"
+        ]
+    }
+}

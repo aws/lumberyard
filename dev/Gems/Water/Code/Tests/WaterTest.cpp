@@ -332,7 +332,7 @@ TEST_F(WaterTestApp, Ocean_ScriptingOceanEnvironmentRequestBus)
 
 
 #if WATER_GEM_EDITOR
-#include "../Source/WaterOceanEditor.h"
+#include "../Source/Editor/WaterOceanEditor.h"
 
 TEST_F(WaterTestApp, Ocean_EditorCreateGameEntity)
 {

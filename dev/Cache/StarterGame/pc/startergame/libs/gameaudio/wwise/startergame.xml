@@ -1,0 +1,781 @@
+<ATLConfig atl_name="startergame">
+ <AudioTriggers>
+  <ATLTrigger atl_name="Play_msc_MenuAmb" path="music">
+   <WwiseEvent wwise_name="Play_msc_MenuAmb"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_msc_heavy_entity_fight" path="music/msc_combat">
+   <WwiseEvent wwise_name="Stop_msc_heavy_entity_fight"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_msc_heavy_entity_fight" path="music/msc_combat">
+   <WwiseEvent wwise_name="Play_msc_heavy_entity_fight"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="play_music_combat_exited" path="music/msc_combat">
+   <WwiseEvent wwise_name="play_music_combat_exited"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="play_music_combat_entered" path="music/msc_combat">
+   <WwiseEvent wwise_name="play_music_combat_entered"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_msc_startarea_amb_subtle_withsting" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Stop_msc_startarea_amb_subtle_withsting"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_rtcp_IntroCorridorSeq_DynamicsUp" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Play_rtcp_IntroCorridorSeq_DynamicsUp"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_rtcp_IntroCorridorSeq_DynamicsDown" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Play_rtcp_IntroCorridorSeq_DynamicsDown"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_msc_IntroCorridorSeq_Strings_4" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Play_msc_IntroCorridorSeq_Strings_4"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_msc_IntroCorridorSeq_Strings_3" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Play_msc_IntroCorridorSeq_Strings_3"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_msc_IntroCorridorSeq_Strings_2" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Play_msc_IntroCorridorSeq_Strings_2"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_msc_startarea_amb2_stringtrills" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Play_msc_startarea_amb2_stringtrills"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_msc_startarea_amb1_subtle" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Play_msc_startarea_amb1_subtle"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_msc_BeautifulPlanet" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Stop_msc_BeautifulPlanet"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_msc_startarea_amb_subtle" path="music/msc_corridorseq">
+   <WwiseEvent wwise_name="Stop_msc_startarea_amb_subtle"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_msc_PleasantVista" path="music">
+   <WwiseEvent wwise_name="Stop_msc_PleasantVista"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_msc_PleasantVista" path="music">
+   <WwiseEvent wwise_name="Play_msc_PleasantVista"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_AMZ_cinematic_outro_2D_sfx" path="cinematics">
+   <WwiseEvent wwise_name="Stop_AMZ_cinematic_outro_2D_sfx"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_AMZ_cinematic_intro_2D_sfx" path="cinematics">
+   <WwiseEvent wwise_name="Stop_AMZ_cinematic_intro_2D_sfx"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_cinematic_intro_2D_sfx" path="cinematics">
+   <WwiseEvent wwise_name="Play_AMZ_cinematic_intro_2D_sfx"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_cinematic_outro_2D" path="cinematics">
+   <WwiseEvent wwise_name="Play_AMZ_cinematic_outro_2D"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="play_pickup_health_collect" path="pickups">
+   <WwiseEvent wwise_name="play_pickup_health_collect"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="play_pickup_objctv_dropped" path="pickups">
+   <WwiseEvent wwise_name="play_pickup_objctv_dropped"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="play_pickup_objctv_collect" path="pickups">
+   <WwiseEvent wwise_name="play_pickup_objctv_collect"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_drone_movement" path="chr/shipAI">
+   <WwiseEvent wwise_name="Stop_drone_movement"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_drone_movement" path="chr/shipAI">
+   <WwiseEvent wwise_name="Play_drone_movement"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_teleport" path="chr/enemies">
+   <WwiseEvent wwise_name="Play_nme_teleport"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_wpn_plasma_pistol_fire_impact" path="chr/enemies/weapons">
+   <WwiseEvent wwise_name="Play_nme_wpn_plasma_pistol_fire_impact"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_wpn_plama_pistol_fire" path="chr/enemies/weapons">
+   <WwiseEvent wwise_name="Play_nme_wpn_plama_pistol_fire"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_state_SuspiciouseToTracking" path="chr/enemies/nme_states">
+   <WwiseEvent wwise_name="Play_nme_state_SuspiciouseToTracking"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_state_CombatTotracking" path="chr/enemies/nme_states">
+   <WwiseEvent wwise_name="Play_nme_state_CombatTotracking"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_state_entersuspicious" path="chr/enemies/nme_states">
+   <WwiseEvent wwise_name="Play_nme_state_entersuspicious"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_state_enteridle" path="chr/enemies/nme_states">
+   <WwiseEvent wwise_name="Play_nme_state_enteridle"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="play_nme_state_detection_entercombat" path="chr/enemies/nme_states">
+   <WwiseEvent wwise_name="play_nme_state_detection_entercombat"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_fol_hit" path="chr/enemies">
+   <WwiseEvent wwise_name="Play_nme_fol_hit"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_nme_fol_death" path="chr/enemies">
+   <WwiseEvent wwise_name="Play_nme_fol_death"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_wpn_plasma_grenade_2nd_expl" path="chr/player/weapons">
+   <WwiseEvent wwise_name="Play_pla_wpn_plasma_grenade_2nd_expl"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_wpn_plasma_grenade_fire" path="chr/player/weapons">
+   <WwiseEvent wwise_name="Play_pla_wpn_plasma_grenade_fire"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_wpn_plasma_grenade_expl" path="chr/player/weapons">
+   <WwiseEvent wwise_name="Play_pla_wpn_plasma_grenade_expl"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_wpn_plasma_pistol_hit" path="chr/player/weapons">
+   <WwiseEvent wwise_name="Play_pla_wpn_plasma_pistol_hit"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_wpn_plasma_pistol_fire_no_NRG" path="chr/player/weapons">
+   <WwiseEvent wwise_name="Play_pla_wpn_plasma_pistol_fire_no_NRG"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_wpn_plasma_pistol_fire" path="chr/player/weapons">
+   <WwiseEvent wwise_name="Play_pla_wpn_plasma_pistol_fire"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_fstp_walk" path="chr/player/foley">
+   <WwiseEvent wwise_name="Play_pla_fstp_walk"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_fstp_run" path="chr/player/foley">
+   <WwiseEvent wwise_name="Play_pla_fstp_run"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_pla_foley_terminaltype_02_EFX" path="chr/player/foley/interactions">
+   <WwiseEvent wwise_name="Stop_pla_foley_terminaltype_02_NEW"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_foley_terminaltype_01_EFX" path="chr/player/foley/interactions">
+   <WwiseEvent wwise_name="Play_pla_foley_terminaltype_01_NEW"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_foley_terminaltype" path="chr/player/foley/interactions">
+   <WwiseEvent wwise_name="Play_pla_foley_terminaltype"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_fstp_jump_takeoff" path="chr/player/foley/jump">
+   <WwiseEvent wwise_name="Play_pla_fstp_jump_takeoff"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_fstp_jump_landlight" path="chr/player/foley/jump">
+   <WwiseEvent wwise_name="Play_pla_fstp_jump_landlight"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_fstp_jump_landhard" path="chr/player/foley/jump">
+   <WwiseEvent wwise_name="Play_pla_fstp_jump_landhard"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_foley_jump_doublejump" path="chr/player/foley/jump">
+   <WwiseEvent wwise_name="Play_pla_foley_jump_doublejump"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="stop_pla_fol_jump_fallwind_loop" path="chr/player/foley/jump">
+   <WwiseEvent wwise_name="stop_pla_fol_jump_fallwind_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="play_pla_fol_jump_fallwind_loop" path="chr/player/foley/jump">
+   <WwiseEvent wwise_name="play_pla_fol_jump_fallwind_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="play_pla_fol_into_standup" path="chr/player/foley">
+   <WwiseEvent wwise_name="play_pla_fol_into_standup"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pla_fol_run" path="chr/player/foley">
+   <WwiseEvent wwise_name="Play_pla_fol_run"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_pausestate" path="HUD">
+   <WwiseEvent wwise_name="Play_pausestate"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_unpausestate" path="HUD">
+   <WwiseEvent wwise_name="Play_unpausestate"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_results_fail" path="HUD/missionresults">
+   <WwiseEvent wwise_name="Play_HUD_results_fail"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_commsarray_enterHUD" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_commsarray_enterHUD"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_HUD_commsarray_rotationdownload" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Stop_HUD_commsarray_rotationdownload"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_commsarray_select_upgradehealth" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_commsarray_select_upgradehealth"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_commsarray_select_upgradeenergy" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_commsarray_select_upgradeenergy"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_commsarray_select_upgradecomplete_Stop_upgrade" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_commsarray_select_upgradecomplete_Stop_upgrade"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_commsarray_scroll" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_commsarray_scroll"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_commsarray_rotationdownload" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_commsarray_rotationdownload"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_commsarray_openupgrades" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_commsarray_openupgrades"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_commsarray_datatransfer_complete" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_commsarray_datatransfer_complete"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_CommsArray_InMenu" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Play_HUD_CommsArray_InMenu"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_HUD_CommsArray_InMenu" path="HUD/commsarray">
+   <WwiseEvent wwise_name="Stop_HUD_CommsArray_InMenu"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_transmission_open" path="HUD/transmission">
+   <WwiseEvent wwise_name="Play_HUD_transmission_open"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_transmission_close" path="HUD/transmission">
+   <WwiseEvent wwise_name="Play_HUD_transmission_close"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_energy_restoring" path="HUD/energy_bar">
+   <WwiseEvent wwise_name="Play_HUD_energy_restoring"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_energy_full" path="HUD/energy_bar">
+   <WwiseEvent wwise_name="Play_HUD_energy_full"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_energy_depleted" path="HUD/energy_bar">
+   <WwiseEvent wwise_name="Play_HUD_energy_depleted"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_wpn_switch" path="HUD/wpn_switch">
+   <WwiseEvent wwise_name="Play_HUD_wpn_switch"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_HUD_press_start" path="HUD/start_screen">
+   <WwiseEvent wwise_name="Play_HUD_press_start"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_character_col_chr_rock" path="impacts/impacts_nme">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_character_col_chr_rock"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_character_col_chr_grass" path="impacts/impacts_nme">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_character_col_chr_grass"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_character_col_chr_dirt" path="impacts/impacts_nme">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_character_col_chr_dirt"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_character_col_chr_chr" path="impacts/impacts_nme">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_character_col_chr_chr"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_col_robot_grass" path="impacts/impacts_nme">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_col_robot_grass"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_obj_col_player_crate" path="impacts/impacts_crates">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_obj_col_player_crate"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_obj_crate_soil_col" path="impacts/impacts_crates">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_obj_crate_soil_col"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_obj_crate_crate_col" path="impacts/impacts_crates">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_obj_crate_crate_col"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_obj_col_crate_grass" path="impacts/impacts_crates">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_obj_col_crate_grass"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_obj_col_crate_dirt" path="impacts/impacts_crates">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_obj_col_crate_dirt"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_obj_col_crate_crate" path="impacts/impacts_crates">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_obj_col_crate_crate"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZN_sfx_env_Tport_Start" path="env/Teleporter">
+   <WwiseEvent wwise_name="Play_AMZN_sfx_env_Tport_Start"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZN_sfx_env_Tport_End" path="env/Teleporter">
+   <WwiseEvent wwise_name="Play_AMZN_sfx_env_Tport_End"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZN_sfx_env_TPort_OffPad" path="env/Teleporter">
+   <WwiseEvent wwise_name="Play_AMZN_sfx_env_TPort_OffPad"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZN_sfx_env_TPort_Loop" path="env/Teleporter">
+   <WwiseEvent wwise_name="Play_AMZN_sfx_env_TPort_Loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZN_sfx_laserportcullis_plyrimpact" path="env/laserportcullis">
+   <WwiseEvent wwise_name="Play_AMZN_sfx_laserportcullis_plyrimpact"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZN_sfx_env_laserportcullis_start" path="env/laserportcullis">
+   <WwiseEvent wwise_name="Play_AMZN_sfx_env_laserportcullis_start"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_rockSlide_top_right" path="env/rockslide">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_rockSlide_top_right"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_rockSlide_top_left" path="env/rockslide">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_rockSlide_top_left"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_rockSlide_sweetener" path="env/rockslide">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_rockSlide_sweetener"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_rockSlide_bottom_right" path="env/rockslide">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_rockSlide_bottom_right"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_rockSlide_bottom_left" path="env/rockslide">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_rockSlide_bottom_left"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_door_scanner_alarm" path="env/doors">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_door_scanner_alarm"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_AMZ_sfx_env_door_scanner" path="env/doors">
+   <WwiseEvent wwise_name="Stop_AMZ_sfx_env_door_scanner"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_door_scanner_success" path="env/doors">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_door_scanner_success"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_door_scanner_fail" path="env/doors">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_door_scanner_fail"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_door_scanner" path="env/doors">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_door_scanner"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_ship_door_open" path="env/doors">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_ship_door_open"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_ship_door_close" path="env/doors">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_ship_door_close"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_commsarray_updatejack" path="env/comsarray">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_commsarray_updatejack"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_commsarray_shieldloop" path="env/comsarray">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_commsarray_shieldloop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_AMZ_sfx_env_commsarray_shieldloop_Play_powerdown" path="env/comsarray">
+   <WwiseEvent wwise_name="Stop_AMZ_sfx_env_commsarray_shieldloop_Play_powerdown"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_AMZ_sfx_env_comms_laser_loop" path="env/comsarray">
+   <WwiseEvent wwise_name="Stop_AMZ_sfx_env_comms_laser_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_comms_powerdown" path="env/comsarray">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_comms_powerdown"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_comms_laser_loop" path="env/comsarray">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_comms_laser_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_shipAI_ext_loop" path="env/shipAI">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_shipAI_ext_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_windthrutrees" path="env/spfx/field">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_windthrutrees"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_windgust_mono" path="env/spfx/field">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_windgust_mono"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_rockdebris" path="env/spfx/field">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_rockdebris"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_waterfall_med_close_quiet" path="env/spfx/river">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_waterfall_med_close_quiet"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_waterfall_lrg_close_mono" path="env/spfx/river">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_waterfall_lrg_close_mono"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_waterfall_sml_close" path="env/spfx/river">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_waterfall_sml_close"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_waterfall_med_close" path="env/spfx/river">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_waterfall_med_close"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_river_gentle" path="env/spfx/river">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_river_gentle"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_rocksdebris_beforerockslide" path="env/spfx/forest">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_rocksdebris_beforerockslide"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_birds_med" path="env/spfx/forest">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_birds_med"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_birds_dist" path="env/spfx/forest">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_birds_dist"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_bird_sngl_close" path="env/spfx/forest">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_bird_sngl_close"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_ship_groan" path="env/spfx/ship_ext">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_ship_groan"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_generator_loop" path="env/spfx/ship_int">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_generator_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Amz_sfx_spfx_computererror" path="env/spfx/ship_int">
+   <WwiseEvent wwise_name="Play_Amz_sfx_spfx_computererror"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Amz_sfx_spfx_computeralarm_loop" path="env/spfx/ship_int">
+   <WwiseEvent wwise_name="Play_Amz_sfx_spfx_computeralarm_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_cryochamber_loop" path="env/spfx/ship_int">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_cryochamber_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_steam" path="env/spfx/ship_int">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_steam"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_com_malf" path="env/spfx/ship_int">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_com_malf"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_com_holo_loop" path="env/spfx/ship_int">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_com_holo_loop"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_spfx_elec_spark" path="env/spfx/ship_int">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_spfx_elec_spark"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_AMZ_sfx_env_blend" path="env">
+   <WwiseEvent wwise_name="Play_AMZ_sfx_env_blend"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_RobotVoice_LowState" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Play_RobotVoice_LowState"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_VOX_nme_IdleOrSuspiciousToTracking" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Play_VOX_nme_IdleOrSuspiciousToTracking"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_VOX_nme_CombatToTracking" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Play_VOX_nme_CombatToTracking"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_VOX_nme_TrackingsToIdle" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Play_VOX_nme_TrackingsToIdle"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_VOX_nme_SuspiciousToIdle" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Play_VOX_nme_SuspiciousToIdle"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_VOX_nme_IdleToSuspicious" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Play_VOX_nme_IdleToSuspicious"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_VOX_nme_SuspiciousToCombat" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Stop_VOX_nme_SuspiciousToCombat"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_VOX_nme_death" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Play_VOX_nme_death"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_VOX_nme_SuspiciousToCombat" path="VOX/nme_AI">
+   <WwiseEvent wwise_name="Play_VOX_nme_SuspiciousToCombat"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_Vox_ShipAI_StopVOXShipExt" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Stop_Vox_ShipAI_StopVOXShipExt"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_SMAAInfo_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_SMAAInfo_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_KeyFeat_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_KeyFeat_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_KeyFeatInfo_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_KeyFeatInfo_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Stop_Vox_ShipAI_StopVOXCave" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Stop_Vox_ShipAI_StopVOXCave"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TOD_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TOD_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TODUsing_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TODUsing_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TODInfo_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TODInfo_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TODEnvProbe_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TODEnvProbe_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TAA_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TAA_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TAAUseful_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TAAUseful_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TAATechniqueReduces_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TAATechniqueReduces_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TAAInfo_002" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TAAInfo_002"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TAAInfo_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TAAInfo_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TAAConfigure_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TAAConfigure_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_TAAAccumulationBuffer_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_TAAAccumulationBuffer_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_SAA_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_SAA_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_SAAInfo_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_SAAInfo_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_SAAHowItWorks_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_SAAHowItWorks_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_SAAColourValues_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_SAAColourValues_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_OIT_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_OIT_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_OITUseful_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_OITUseful_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_OITInfo_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_OITInfo_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_OITExample_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_OITExample_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Cave_OITConfigure_001" path="VOX/mainship_AI/vox_mainshipAI_cave">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Cave_OITConfigure_001"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_FinalComArrayShutdown" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_FinalComArrayShutdown"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_MainframeComputerEarth" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_MainframeComputerEarth"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_RandomCommsArrayshutdown" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_RandomCommsArrayshutdown"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_RandomCommsArrayUpdate" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_RandomCommsArrayUpdate"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_WeponSigCloseBy" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_WeponSigCloseBy"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_OutroVO" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_OutroVO"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_OutroInstallPowerCells" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_OutroInstallPowerCells"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_OutroDeliverDataNow" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_OutroDeliverDataNow"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_MissionBegins" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_MissionBegins"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_IntroCinematic_Broken" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_IntroCinematic_Broken"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_DetectThreeArrays" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_DetectThreeArrays"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_RedSecurityAllert" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_RedSecurityAllert"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_RedKeyCardFound" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_RedKeyCardFound"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_ProceedRedDoor" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_ProceedRedDoor"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_MoonTerrarform" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_MoonTerrarform"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_WeaponSignature" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_WeaponSignature"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_TerraformingMoveQuick" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_TerraformingMoveQuick"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Terraforming75" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Terraforming75"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_MilitaryArray" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_MilitaryArray"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_HighNumberEnemies" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_HighNumberEnemies"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_BlueKeyCard" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_BlueKeyCard"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_BlueDoorAccessGranted" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_BlueDoorAccessGranted"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_BlueDoor" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_BlueDoor"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_ScanningForWeapon" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_ScanningForWeapon"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_PlamaLaucherDetected" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_PlamaLaucherDetected"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_MountainRange" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_MountainRange"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_MoreEnemies" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_MoreEnemies"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_SomeSectionsVolitle" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_SomeSectionsVolitle"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_ShipEnginesLessThan1" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_ShipEnginesLessThan1"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_IntelUpdate" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_IntelUpdate"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_CantAcessDoor" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_CantAcessDoor"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_ScanNmes" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_ScanNmes"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_WarningCorruption" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_WarningCorruption"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_ShipMainframe" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_ShipMainframe"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_GreetingsJack" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_GreetingsJack"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_Vox_ShipAI_Caution" path="VOX/mainship_AI">
+   <WwiseEvent wwise_name="Play_Vox_ShipAI_Caution"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_rtcp_OutCave" path="_states">
+   <WwiseEvent wwise_name="Play_rtcp_OutCave"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_rtcp_InCave" path="_states">
+   <WwiseEvent wwise_name="Play_rtcp_InCave"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_rtcp_reverb_ShipInt_Corridor" path="_states">
+   <WwiseEvent wwise_name="Play_rtcp_reverb_ShipInt_Corridor"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_rtcp_reverb_shipint" path="_states">
+   <WwiseEvent wwise_name="Play_rtcp_reverb_shipint"/>
+  </ATLTrigger>
+  <ATLTrigger atl_name="Play_rtcp_reverb_ext" path="_states">
+   <WwiseEvent wwise_name="Play_rtcp_reverb_ext"/>
+  </ATLTrigger>
+ </AudioTriggers>
+ <AudioRtpcs>
+  <ATLRtpc atl_name="rtpc_shipAIdrone_height" path="_rtpc">
+   <WwiseRtpc wwise_name="rtpc_shipAIdrone_height"/>
+  </ATLRtpc>
+  <ATLRtpc atl_name="rtpc_shipAIdrone_speed" path="_rtpc">
+   <WwiseRtpc wwise_name="rtpc_shipAIdrone_speed"/>
+  </ATLRtpc>
+  <ATLRtpc atl_name="rtpc_reverb" path="_rtpc">
+   <WwiseRtpc wwise_name="rtpc_reverb"/>
+  </ATLRtpc>
+  <ATLRtpc atl_name="rtpc_playerHeight" path="_rtpc">
+   <WwiseRtpc wwise_name="rtpc_playerHeight"/>
+  </ATLRtpc>
+  <ATLRtpc atl_name="rtpc_distance" path="_rtpc">
+   <WwiseRtpc wwise_name="rtpc_distance"/>
+  </ATLRtpc>
+ </AudioRtpcs>
+ <AudioSwitches>
+  <ATLSwitch atl_name="world_location" path="_states">
+   <ATLSwitchState atl_name="None">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="None"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="forest">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="forest"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="ridge">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="ridge"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="river">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="river"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="ship_ext">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="ship_ext"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="ship_int">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="ship_int"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="containers">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="containers"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="field">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="field"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="cave">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="cave"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="cave_water">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="cave_water"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="cave_forest">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="cave_forest"/>
+    </WwiseState>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="ShipCorridor_int">
+    <WwiseState wwise_name="world_location">
+     <WwiseValue wwise_name="ShipCorridor_int"/>
+    </WwiseState>
+   </ATLSwitchState>
+  </ATLSwitch>
+  <ATLSwitch atl_name="SurfaceType" path="_switches">
+   <ATLSwitchState atl_name="default">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="default"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="grass">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="grass"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="metal">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="metal"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="soil">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="soil"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="grit">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="grit"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="rock">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="rock"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="water">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="water"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="wood">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="wood"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+   <ATLSwitchState atl_name="rock_dusty">
+    <WwiseSwitch wwise_name="SurfaceType">
+     <WwiseValue wwise_name="rock_dusty"/>
+    </WwiseSwitch>
+   </ATLSwitchState>
+  </ATLSwitch>
+ </AudioSwitches>
+ <AudioEnvironments>
+  <ATLEnvironment atl_name="reverb" path="_envFX">
+   <WwiseAuxBus wwise_name="reverb"/>
+  </ATLEnvironment>
+ </AudioEnvironments>
+ <AudioPreloads>
+  <ATLPreloadRequest atl_name="content" path="_bnk" atl_type="AutoLoad">
+   <ATLPlatforms>
+    <Platform atl_name="windows" atl_config_group_name="default"/>
+    <Platform atl_name="mac" atl_config_group_name="default"/>
+    <Platform atl_name="linux" atl_config_group_name="default"/>
+    <Platform atl_name="android" atl_config_group_name="default"/>
+    <Platform atl_name="ios" atl_config_group_name="default"/>
+    <Platform atl_name="appletv" atl_config_group_name="default"/>
+    <Platform atl_name="xboxone" atl_config_group_name="default"/>
+    <Platform atl_name="ps4" atl_config_group_name="default"/>
+   </ATLPlatforms>
+   <ATLConfigGroup atl_name="default">
+    <WwiseFile wwise_name="content.bnk"/>
+   </ATLConfigGroup>
+  </ATLPreloadRequest>
+ </AudioPreloads>
+</ATLConfig>

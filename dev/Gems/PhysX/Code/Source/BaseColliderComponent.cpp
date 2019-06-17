@@ -19,8 +19,10 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
+#include <AzFramework/Physics/Utils.h>
 
 #include <Source/BaseColliderComponent.h>
+#include <Source/RigidBodyComponent.h>
 #include <Source/RigidBodyStatic.h>
 #include <Source/SystemComponent.h>
 #include <Source/Utils.h>
@@ -54,6 +56,7 @@ namespace PhysX
 
     void BaseColliderComponent::Deactivate()
     {
+        Physics::Utils::DeferDelete(AZStd::move(m_staticRigidBody));
         AZ::EntityBus::Handler::BusDisconnect();
         ColliderComponentRequestBus::Handler::BusDisconnect();
     }
@@ -78,14 +81,14 @@ namespace PhysX
         return m_staticRigidBody != nullptr;
     }
 
-    AZStd::shared_ptr<PhysX::RigidBodyStatic> BaseColliderComponent::GetStaticRigidBody()
+    PhysX::RigidBodyStatic* BaseColliderComponent::GetStaticRigidBody()
     {
-        return m_staticRigidBody;
+        return m_staticRigidBody.get();
     }
 
     void BaseColliderComponent::InitStaticRigidBody()
     {
-        bool hasRigidBodyComponent = Physics::RigidBodyRequestBus::FindFirstHandler(GetEntityId()) != nullptr;
+        bool hasRigidBodyComponent = GetEntity()->FindComponent<PhysX::RigidBodyComponent>() != nullptr;
         bool hasCharacterComponent = Physics::CharacterRequestBus::FindFirstHandler(GetEntityId()) != nullptr;
         
         if (!hasRigidBodyComponent && !hasCharacterComponent)
@@ -111,7 +114,7 @@ namespace PhysX
                 configuration.m_entityId = GetEntityId();
                 configuration.m_debugName = GetEntity()->GetName();
 
-                m_staticRigidBody = AZStd::make_shared<PhysX::RigidBodyStatic>(configuration);
+                m_staticRigidBody = AZStd::make_unique<PhysX::RigidBodyStatic>(configuration);
 
                 ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [this](ColliderComponentRequests* handler)
                 {

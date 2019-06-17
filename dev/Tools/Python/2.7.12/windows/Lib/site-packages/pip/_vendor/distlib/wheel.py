@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2016 Vinay Sajip.
+# Copyright (C) 2013-2017 Vinay Sajip.
 # Licensed to the Python Software Foundation under a contributor agreement.
 # See LICENSE.txt and CONTRIBUTORS.txt.
 #
@@ -26,7 +26,7 @@ import zipfile
 from . import __version__, DistlibException
 from .compat import sysconfig, ZipFile, fsdecode, text_type, filter
 from .database import InstalledDistribution
-from .metadata import Metadata, METADATA_FILENAME
+from .metadata import Metadata, METADATA_FILENAME, WHEEL_METADATA_FILENAME
 from .util import (FileOperator, convert_path, CSVReader, CSVWriter, Cache,
                    cached_property, get_cache_base, read_exports, tempdir)
 from .version import NormalizedVersion, UnsupportedVersionError
@@ -35,11 +35,11 @@ logger = logging.getLogger(__name__)
 
 cache = None    # created when needed
 
-if hasattr(sys, 'pypy_version_info'):
+if hasattr(sys, 'pypy_version_info'):  # pragma: no cover
     IMP_PREFIX = 'pp'
-elif sys.platform.startswith('java'):
+elif sys.platform.startswith('java'):  # pragma: no cover
     IMP_PREFIX = 'jy'
-elif sys.platform == 'cli':
+elif sys.platform == 'cli':  # pragma: no cover
     IMP_PREFIX = 'ip'
 else:
     IMP_PREFIX = 'cp'
@@ -222,17 +222,23 @@ class Wheel(object):
             wv = wheel_metadata['Wheel-Version'].split('.', 1)
             file_version = tuple([int(i) for i in wv])
             if file_version < (1, 1):
-                fn = 'METADATA'
+                fns = [WHEEL_METADATA_FILENAME, METADATA_FILENAME, 'METADATA']
             else:
-                fn = METADATA_FILENAME
-            try:
-                metadata_filename = posixpath.join(info_dir, fn)
-                with zf.open(metadata_filename) as bf:
-                    wf = wrapper(bf)
-                    result = Metadata(fileobj=wf)
-            except KeyError:
-                raise ValueError('Invalid wheel, because %s is '
-                                 'missing' % fn)
+                fns = [WHEEL_METADATA_FILENAME, METADATA_FILENAME]
+            result = None
+            for fn in fns:
+                try:
+                    metadata_filename = posixpath.join(info_dir, fn)
+                    with zf.open(metadata_filename) as bf:
+                        wf = wrapper(bf)
+                        result = Metadata(fileobj=wf)
+                        if result:
+                            break
+                except KeyError:
+                    pass
+            if not result:
+                raise ValueError('Invalid wheel, because metadata is '
+                                 'missing: looked in %s' % ', '.join(fns))
         return result
 
     def get_wheel_metadata(self, zf):
@@ -436,7 +442,9 @@ class Wheel(object):
         This can be used to issue any warnings to raise any exceptions.
         If kwarg ``lib_only`` is True, only the purelib/platlib files are
         installed, and the headers, scripts, data and dist-info metadata are
-        not written.
+        not written. If kwarg ``bytecode_hashed_invalidation`` is True, written
+        bytecode will try to use file-hash based invalidation (PEP-552) on
+        supported interpreter versions (CPython 2.7+).
 
         The return value is a :class:`InstalledDistribution` instance unless
         ``options.lib_only`` is True, in which case the return value is ``None``.
@@ -445,6 +453,7 @@ class Wheel(object):
         dry_run = maker.dry_run
         warner = kwargs.get('warner')
         lib_only = kwargs.get('lib_only', False)
+        bc_hashed_invalidation = kwargs.get('bytecode_hashed_invalidation', False)
 
         pathname = os.path.join(self.dirname, self.filename)
         name_ver = '%s-%s' % (self.name, self.version)
@@ -551,7 +560,8 @@ class Wheel(object):
                                                            '%s' % outfile)
                         if bc and outfile.endswith('.py'):
                             try:
-                                pyc = fileop.byte_compile(outfile)
+                                pyc = fileop.byte_compile(outfile,
+                                                          hashed_invalidation=bc_hashed_invalidation)
                                 outfiles.append(pyc)
                             except Exception:
                                 # Don't give up if byte-compilation fails,
@@ -919,7 +929,7 @@ def compatible_tags():
 
     arches = [ARCH]
     if sys.platform == 'darwin':
-        m = re.match('(\w+)_(\d+)_(\d+)_(\w+)$', ARCH)
+        m = re.match(r'(\w+)_(\d+)_(\d+)_(\w+)$', ARCH)
         if m:
             name, major, minor, arch = m.groups()
             minor = int(minor)

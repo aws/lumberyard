@@ -232,6 +232,50 @@ namespace
         {
             return Styling::Attribute::ConnectionDefaultMarquee;
         }
+        else if (attribute == Styling::Attributes::PaletteStyle)
+        {
+            return Styling::Attribute::PaletteStyle;
+        }
+        else if (attribute == Styling::Attributes::MaximumStripeSize)
+        {
+            return Styling::Attribute::MaximumStripeSize;
+        }
+        else if (attribute == Styling::Attributes::MinimumStripes)
+        {
+            return Styling::Attribute::MinimumStripes;
+        }
+        else if (attribute == Styling::Attributes::StripeAngle)
+        {
+            return Styling::Attribute::StripeAngle;
+        }
+        else if (attribute == Styling::Attributes::StripeColor)
+        {
+            return Styling::Attribute::StripeColor;
+        }
+        else if (attribute == Styling::Attributes::StripeOffset)
+        {
+            return Styling::Attribute::StripeOffset;
+        }
+        else if (attribute == Styling::Attributes::PatternTemplate)
+        {
+            return Styling::Attribute::PatternTemplate;
+        }
+        else if (attribute == Styling::Attributes::PatternPalettes)
+        {
+            return Styling::Attribute::PatternPalettes;
+        }
+        else if (attribute == Styling::Attributes::OddOffsetPercent)
+        {
+            return Styling::Attribute::OddOffsetPercent;
+        }
+        else if (attribute == Styling::Attributes::EvenOffsetPercent)
+        {
+            return Styling::Attribute::EvenOffsetPercent;
+        }
+        else if (attribute == Styling::Attributes::MinimumRepetitions)
+        {
+            return Styling::Attribute::MinimumRepetitions;
+        }
         else if (attribute == Styling::Attributes::ZValue)
         {
             return Styling::Attribute::ZValue;
@@ -394,6 +438,24 @@ namespace
         {
             return{};
         }
+    }
+
+    Styling::PaletteStyle ParsePaletteStyle(const QString& value)
+    {
+        if (QString::compare(value, QLatin1String("solid"), Qt::CaseInsensitive) == 0)
+        {
+            return Styling::PaletteStyle::Solid;
+        }
+        else if (QString::compare(value, QLatin1String("candystripe"), Qt::CaseInsensitive) == 0)
+        {
+            return Styling::PaletteStyle::CandyStripe;
+        }
+        else if (QString::compare(value, QLatin1String("pattern-fill"), Qt::CaseInsensitive) == 0)
+        {
+            return Styling::PaletteStyle::PatternFill;
+        }
+
+        return Styling::PaletteStyle::Solid;
     }
 
     bool IsLineCurveValid(const QString& value)
@@ -650,7 +712,6 @@ namespace GraphCanvas
             {
                 Attribute attribute = AttributeFromString(member->name.GetString());
 
-
                 switch (attribute)
                 {
                 case Attribute::BackgroundColor:
@@ -659,6 +720,7 @@ namespace GraphCanvas
                 case Attribute::Color:
                 case Attribute::BorderColor:
                 case Attribute::LineColor:
+                case Attribute::StripeColor:
                 {
                     QString value(member->value.GetString());
 
@@ -704,7 +766,12 @@ namespace GraphCanvas
                 case Attribute::ConnectionDragPercent:
                 case Attribute::ConnectionDragMoveBuffer:
                 case Attribute::ConnectionDefaultMarquee:
-                case Attribute::ZValue:                
+                case Attribute::ZValue:
+                case Attribute::MaximumStripeSize:
+                case Attribute::MinimumStripes:
+                case Attribute::StripeAngle:
+                case Attribute::StripeOffset:
+                case Attribute::MinimumRepetitions:
                 {
                     if (member->value.IsInt())
                     {
@@ -751,6 +818,8 @@ namespace GraphCanvas
                     break;
                 }
                 case Attribute::Opacity:
+                case Attribute::OddOffsetPercent:
+                case Attribute::EvenOffsetPercent:
                 {
                     // Handler percent case
                     QString theValue(member->value.GetString());
@@ -790,7 +859,7 @@ namespace GraphCanvas
                         style->SetAttribute(attribute, QVariant::fromValue(ParseLineCurve(value)));
                     }
                     break;
-                }                
+                }
 
                 case Attribute::CapStyle:
                 {
@@ -891,6 +960,18 @@ namespace GraphCanvas
                 }
                 case Attribute::Selectors:
                     break;
+                case Attribute::PaletteStyle:
+                {
+                    QString value(member->value.GetString());
+                    style->SetAttribute(attribute, QVariant::fromValue(ParsePaletteStyle(value)));
+                    break;
+                }
+                case Attribute::PatternTemplate:
+                case Attribute::PatternPalettes:
+                {
+                    QString value(member->value.GetString());
+                    style->SetAttribute(attribute, value);
+                }
                 default:
                     qWarning() << "Invalid attribute:" << member->name.GetString();
                 }

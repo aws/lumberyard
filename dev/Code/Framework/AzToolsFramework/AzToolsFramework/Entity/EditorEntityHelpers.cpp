@@ -9,12 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "EditorEntityHelpers.h"
 
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/std/algorithm.h>
+#include <AzCore/std/sort.h>
 #include <AzCore/RTTI/AttributeReader.h>
 #include <AzToolsFramework/Commands/EntityStateCommand.h>
 #include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
@@ -22,16 +24,17 @@
 #include <AzToolsFramework/Metrics/LyEditorMetricsBus.h>
 #include <AzToolsFramework/Slice/SliceMetadataEntityContextBus.h>
 #include <AzToolsFramework/Slice/SliceUtilities.h>
+#include <AzToolsFramework/ToolsComponents/EditorLockComponentBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
-
-#include <AzCore/std/sort.h>
+#include <AzToolsFramework/ToolsComponents/EditorInspectorComponentBus.h>
 
 namespace AzToolsFramework
 {
     namespace Internal
     {
         /// Internal helper function for CloneInstantiatedEntities. Performs the initial cloning of the given set of entities if they
-        /// are slice or subslice entities, recursively. Populates a list of loose entities to clone as it traverses the duplication set.
+        /// are slice or sub-slice entities, recursively. Populates a list of loose entities to clone as it traverses the duplication set.
         /// @param duplicationSet The set of entities to clone.
         /// @param out_allEntityClones Output parameter populated with all cloned entities.
         /// @param out_sourceToCloneEntityIdMap Output parameter populated with a map from all source entities to cloned entities.
@@ -50,7 +53,7 @@ namespace AzToolsFramework
         /// @param inout_allEntityClones The collection of entities that have been cloned and should have entity references updated
         ///         based on the given map.
         /// @param sourceToCloneEntityIdMap A map of entity IDs to update in the given clone list, any references to key will be
-        ///         changed to a referenec to value instead.
+        ///         changed to a reference to value instead.
         void UpdateClonedEntityReferences(
             AZ::SliceComponent::InstantiatedContainer& inout_allEntityClones,
             const AZ::SliceComponent::EntityIdToEntityIdMap& sourceToCloneEntityIdMap);
@@ -85,7 +88,7 @@ namespace AzToolsFramework
             const AZ::SliceComponent::EntityAncestorList& ancestors,
             EntityList& out_allEntityClones,
             AZ::SliceComponent::EntityIdToEntityIdMap& out_sourceToCloneEntityIdMap);
-        
+
         /// Internal helper function for CloneInstantiatedEntities. Clones the given entity collection as loose entities.
         /// @param duplicationList The collection of entities to clone.
         /// @param out_allEntityClones Output parameter populated with all cloned entities.
@@ -348,8 +351,8 @@ namespace AzToolsFramework
         // Prune out any entries in the child order array that aren't currently known to be children
         entityChildOrder.erase(
             AZStd::remove_if(
-                entityChildOrder.begin(), 
-                entityChildOrder.end(), 
+                entityChildOrder.begin(),
+                entityChildOrder.end(),
                 [&children](const AZ::EntityId& entityId)
                 {
                     // Return true to remove if entity id was not in the child array
@@ -498,6 +501,321 @@ namespace AzToolsFramework
         return result;
     }
 
+    void RemoveHiddenComponents(AZ::Entity::ComponentArrayType& componentsOnEntity)
+    {
+        componentsOnEntity.erase(
+            AZStd::remove_if(
+                componentsOnEntity.begin(), componentsOnEntity.end(),
+                [](const AZ::Component* component)
+                {
+                    return !ShouldInspectorShowComponent(component);
+                }),
+            componentsOnEntity.end());
+    }
+
+    bool IsSelected(const AZ::EntityId entityId)
+    {
+        bool selected = false;
+        EditorEntityInfoRequestBus::EventResult(
+            selected, entityId, &EditorEntityInfoRequestBus::Events::IsSelected);
+        return selected;
+    }
+
+    bool IsSelectableInViewport(const AZ::EntityId entityId)
+    {
+        bool visibleFlag = false;
+        EditorVisibilityRequestBus::EventResult(
+            visibleFlag, entityId, &EditorVisibilityRequests::GetVisibilityFlag);
+
+        bool locked = false;
+        EditorLockComponentRequestBus::EventResult(
+            locked, entityId, &EditorLockComponentRequests::GetLocked);
+
+        return visibleFlag && !locked;
+    }
+
+    static void SetEntityLockStateRecursively(
+        const AZ::EntityId entityId, const bool locked,
+        const AZ::EntityId toggledEntityId, const bool toggledEntityWasLayer)
+    {
+        if (!entityId.IsValid())
+        {
+            return;
+        }
+
+        /// first set lock state of the entity in the outliner we clicked on to lock
+        if (!toggledEntityWasLayer || toggledEntityId == entityId)
+        {
+            EditorLockComponentRequestBus::Event(entityId, &EditorLockComponentRequests::SetLocked, locked);
+        }
+        else
+        {
+            bool prevLockState = false;
+            EditorLockComponentRequestBus::EventResult(
+                prevLockState, entityId, &EditorLockComponentRequests::GetLocked);
+
+            // for all other entities, if we're unlocking and they were individually already locked,
+            // keep their lock state, otherwise if we're locking, set all entities to be locked.
+            // note: this notification will update the lock state in ComponentEntityObject and EditorLockComponent
+            bool newLockState = locked ? true : prevLockState;
+            EditorLockComponentNotificationBus::Event(
+                entityId, &EditorLockComponentNotificationBus::Events::OnEntityLockChanged,
+                newLockState);
+        }
+
+        EntityIdList children;
+        EditorEntityInfoRequestBus::EventResult(
+            children, entityId, &EditorEntityInfoRequestBus::Events::GetChildren);
+
+        for (auto childId : children)
+        {
+            SetEntityLockStateRecursively(childId, locked, toggledEntityId, toggledEntityWasLayer);
+        }
+    }
+
+    void SetEntityLockState(const AZ::EntityId entityId, const bool locked)
+    {
+        // when an entity is unlocked, if it was in a locked layer(s), unlock those layers
+        if (!locked)
+        {
+            AZ::EntityId currentEntityId = entityId;
+            while (currentEntityId.IsValid())
+            {
+                AZ::EntityId parentId;
+                EditorEntityInfoRequestBus::EventResult(
+                    parentId, currentEntityId, &EditorEntityInfoRequestBus::Events::GetParent);
+
+                bool parentLayer = false;
+                Layers::EditorLayerComponentRequestBus::EventResult(
+                    parentLayer, parentId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+                if (parentLayer)
+                {
+                    bool parentLayerLocked = false;
+                    EditorEntityInfoRequestBus::EventResult(
+                        parentLayerLocked, parentId, &EditorEntityInfoRequestBus::Events::IsJustThisEntityLocked);
+
+                    if (parentLayerLocked)
+                    {
+                        // if a child of a layer has its lock state changed to false, change that layer to no longer be locked
+                        // do this for all layers in the hierarchy (this is because not all entities under these layers
+                        // will be locked so the layer cannot be represented as 'fully' locked)
+                        EditorLockComponentRequestBus::Event(parentId, &EditorLockComponentRequests::SetLocked, false);
+                    }
+                }
+
+                currentEntityId = parentId;
+            }
+        }
+
+        bool isLayer = false;
+        Layers::EditorLayerComponentRequestBus::EventResult(
+            isLayer, entityId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+        SetEntityLockStateRecursively(entityId, locked, entityId, isLayer);
+    }
+
+    void ToggleEntityLockState(const AZ::EntityId entityId)
+    {
+        if (entityId.IsValid())
+        {
+            bool locked = false;
+            EditorLockComponentRequestBus::EventResult(
+                locked, entityId, &EditorLockComponentRequests::GetLocked);
+
+            AzToolsFramework::ScopedUndoBatch undo("Toggle Entity Lock State");
+
+            if (IsSelected(entityId))
+            {
+                // handles the case where we have multiple entities selected but must click one entity
+                // specifically in the outliner, this will apply the lock state to all entities in the selection
+                EntityIdList selectedEntityIds;
+                ToolsApplicationRequestBus::BroadcastResult(
+                    selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
+
+                for (auto selectedId : selectedEntityIds)
+                {
+                    SetEntityLockState(selectedId, !locked);
+                }
+            }
+            else
+            {
+                // just change the single clicked entity in the outliner
+                // without affecting the current selection (should one exist)
+                SetEntityLockState(entityId, !locked);
+            }
+        }
+    }
+
+    static void SetEntityVisibilityInternal(const AZ::EntityId entityId, const bool visibility)
+    {
+        bool layerEntity = false;
+        Layers::EditorLayerComponentRequestBus::EventResult(
+            layerEntity, entityId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+        if (layerEntity)
+        {
+            // update the EditorLayerComponent state to stay in sync with Entity visibility
+            Layers::EditorLayerComponentRequestBus::Event(
+                entityId, &Layers::EditorLayerComponentRequestBus::Events::SetLayerChildrenVisibility,
+                visibility);
+        }
+        else
+        {
+            EditorVisibilityRequestBus::Event(
+                entityId, &EditorVisibilityRequestBus::Events::SetVisibilityFlag, visibility);
+        }
+    }
+
+    static void SetEntityVisibilityStateRecursively(
+        const AZ::EntityId entityId, const bool visible,
+        const AZ::EntityId toggledEntityId, const bool toggledEntityWasLayer)
+    {
+        if (!entityId.IsValid())
+        {
+            return;
+        }
+
+        if (!toggledEntityWasLayer || toggledEntityId == entityId)
+        {
+            SetEntityVisibilityInternal(entityId, visible);
+        }
+        else
+        {
+            bool oldVisibilityState = IsEntitySetToBeVisible(entityId);
+
+            bool newVisibilityState = visible ? oldVisibilityState : false;
+            EditorVisibilityNotificationBus::Event(
+                entityId, &EditorVisibilityNotificationBus::Events::OnEntityVisibilityFlagChanged,
+                newVisibilityState);
+        }
+
+        EntityIdList children;
+        EditorEntityInfoRequestBus::EventResult(
+            children, entityId, &EditorEntityInfoRequestBus::Events::GetChildren);
+
+        for (auto childId : children)
+        {
+            SetEntityVisibilityStateRecursively(childId, visible, toggledEntityId, toggledEntityWasLayer);
+        }
+    }
+
+    void SetEntityVisibility(const AZ::EntityId entityId, const bool visible)
+    {
+        // when an entity is set to visible, if it was in an invisible layer(s), make that layer visible
+        if (visible)
+        {
+            AZ::EntityId currentEntityId = entityId;
+            while (currentEntityId.IsValid())
+            {
+                AZ::EntityId parentId;
+                EditorEntityInfoRequestBus::EventResult(
+                    parentId, currentEntityId, &EditorEntityInfoRequestBus::Events::GetParent);
+
+                bool parentLayer = false;
+                Layers::EditorLayerComponentRequestBus::EventResult(
+                    parentLayer, parentId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+                if (parentLayer)
+                {
+                    if (!IsEntitySetToBeVisible(parentId))
+                    {
+                        // if a child of a layer has its visibility state changed to true, change
+                        // that layer to be visible, do this for all layers in the hierarchy
+                        SetEntityVisibilityInternal(parentId, true);
+                        // even though layer visibility is saved to each layer individually, parents still
+                        // need to be checked recursively so that the entity that was toggled can become visible
+                    }
+                }
+
+                currentEntityId = parentId;
+            }
+        }
+
+        bool isLayer = false;
+        Layers::EditorLayerComponentRequestBus::EventResult(
+            isLayer, entityId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+        SetEntityVisibilityStateRecursively(entityId, visible, entityId, isLayer);
+    }
+
+    void ToggleEntityVisibility(const AZ::EntityId entityId)
+    {
+        if (entityId.IsValid())
+        {
+            bool visible = IsEntitySetToBeVisible(entityId);
+
+            AzToolsFramework::ScopedUndoBatch undo("Toggle Entity Visibility");
+
+            if (IsSelected(entityId))
+            {
+                EntityIdList selectedEntityIds;
+                ToolsApplicationRequestBus::BroadcastResult(
+                    selectedEntityIds, &ToolsApplicationRequests::GetSelectedEntities);
+
+                for (AZ::EntityId selectedId : selectedEntityIds)
+                {
+                    SetEntityVisibility(selectedId, !visible);
+                }
+            }
+            else
+            {
+                // just change the single clicked entity in the outliner
+                // without affecting the current selection (should one exist)
+                SetEntityVisibility(entityId, !visible);
+            }
+        }
+    }
+
+    bool IsEntitySetToBeVisible(const AZ::EntityId entityId)
+    {
+        // Visibility state is tracked in 5 places, see OutlinerListModel::dataForLock for info on 3 of these ways.
+        // Visibility's fourth state over lock is the EditorVisibilityRequestBus has two sets of
+        // setting and getting functions for visibility. Get/SetVisibilityFlag is what should be used in most cases.
+        // The fifth state is tracked on layers. Layers are always invisible to other systems, so the visibility flag
+        // is set false there. However, layers need to be able to toggle visibility to hide/show their children, so
+        // layers have a unique flag.
+        bool layerEntity = false;
+        Layers::EditorLayerComponentRequestBus::EventResult(
+            layerEntity, entityId, &Layers::EditorLayerComponentRequestBus::Events::HasLayer);
+
+        bool visible = true;
+        if (layerEntity)
+        {
+            Layers::EditorLayerComponentRequestBus::EventResult(
+                visible, entityId, &Layers::EditorLayerComponentRequestBus::Events::AreLayerChildrenVisible);
+        }
+        else
+        {
+            EditorVisibilityRequestBus::EventResult(
+                visible, entityId, &EditorVisibilityRequestBus::Events::GetVisibilityFlag);
+        }
+
+        return visible;
+    }
+
+    AZ::Vector3 GetWorldTranslation(const AZ::EntityId entityId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        AZ::Vector3 worldTranslation = AZ::Vector3::CreateZero();
+        AZ::TransformBus::EventResult(
+            worldTranslation, entityId, &AZ::TransformBus::Events::GetWorldTranslation);
+
+        return worldTranslation;
+    }
+
+    AZ::Vector3 GetLocalTranslation(const AZ::EntityId entityId)
+    {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
+
+        AZ::Vector3 localTranslation = AZ::Vector3::CreateZero();
+        AZ::TransformBus::EventResult(
+            localTranslation, entityId, &AZ::TransformBus::Events::GetLocalTranslation);
+
+        return localTranslation;
+    }
+
     bool CloneInstantiatedEntities(const EntityIdSet& entitiesToClone, EntityIdSet& clonedEntities)
     {
         EditorMetricsEventsBus::Broadcast(
@@ -528,7 +846,7 @@ namespace AzToolsFramework
             allEntityClonesContainer.m_entities,
             sourceToCloneEntityIdMap,
             clonedLooseEntities);
-        
+
         // Update any references cloned entities have to each other.
         Internal::UpdateClonedEntityReferences(allEntityClonesContainer, sourceToCloneEntityIdMap);
 
@@ -574,7 +892,7 @@ namespace AzToolsFramework
                 bool hasInstanceEntityAncestors = false;
                 if (owningSliceAddress.IsValid())
                 {
-                    hasInstanceEntityAncestors = owningSliceAddress.first->GetInstanceEntityAncestry(entityId, ancestors);
+                    hasInstanceEntityAncestors = owningSliceAddress.GetReference()->GetInstanceEntityAncestry(entityId, ancestors);
                 }
                 AZ::SliceComponent::SliceInstanceAddress sourceSliceInstance;
 
@@ -711,7 +1029,7 @@ namespace AzToolsFramework
                     "Unable to clone slice instance, check your duplicated entity selection and verify it contains the entities you expect to see.");
                 return false;
             }
-            
+
             for (AZ::Entity* clone : newInstance.GetInstance()->GetInstantiated()->m_entities)
             {
                 out_allEntityClones.push_back(clone);
@@ -763,7 +1081,7 @@ namespace AzToolsFramework
                     sourceSubSliceAncestry,
                     ancestor.m_sliceAddress,
                     &sourceToCloneSliceEntityIdMap);
-                
+
                 for (AZ::Entity* instanceEntity : clonedAddress.GetInstance()->GetInstantiated()->m_entities)
                 {
                     out_allEntityClones.push_back(instanceEntity);
@@ -773,7 +1091,7 @@ namespace AzToolsFramework
                     out_sourceToCloneEntityIdMap.insert(sourceIdToCloneId);
                 }
 
-                // Only perform one clone, and priortize the first found ancestor, which will track against
+                // Only perform one clone, and prioritize the first found ancestor, which will track against
                 // the rest of the ancestors automatically.
                 result = true;
                 break;
@@ -806,5 +1124,4 @@ namespace AzToolsFramework
             }
         }
     } // namespace Internal
-
 } // namespace AzToolsFramework

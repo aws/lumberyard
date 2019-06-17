@@ -1667,7 +1667,7 @@ void CD3D9Renderer::FX_GmemTransition(const EGmemTransitions transition)
             FX_PushRenderTarget(5, CTexture::s_ptexSceneNormalsMap, NULL);
 
             dontCareColorLoad = { true,  true, true, true,  true, true };
-            dontCareColorSave = { false, true, true, false, false, true };
+            dontCareColorSave = { false, true, true, false, true, true };
         }
         else if (eGT_128bpp_PATH == currentGmemPath)
         {
@@ -1744,7 +1744,13 @@ void CD3D9Renderer::FX_GmemTransition(const EGmemTransitions transition)
             if (downsampleDepth)
             {
                 GetUtils().DownsampleDepth(CTexture::s_ptexGmemStenLinDepth, CTexture::s_ptexZTargetScaled, true);
-                GetUtils().DownsampleDepth(CTexture::s_ptexZTargetScaled, CTexture::s_ptexZTargetScaled2, false);
+                GetUtils().DownsampleDepth(CTexture::s_ptexZTargetScaled, CTexture::s_ptexZTargetScaled2, true);
+                static ICVar* checkOcclusion = gEnv->pConsole->GetCVar("e_CheckOcclusion");
+                if(checkOcclusion->GetIVal())
+                {
+                    //Downsample to the occlusion buffer dimensions
+                    GetUtils().DownsampleDepth(CTexture::s_ptexZTargetScaled2, m_occlusionData[m_occlusionBufferIndex].m_zTargetReadback, true);
+                }
             }
 
             if (deferredPasses)
@@ -5350,7 +5356,8 @@ void CD3D9Renderer::CPUOcclusionData::SetupOcclusionData(const char* textureName
     {
         unsigned int flags = FT_DONT_STREAM | FT_DONT_RELEASE | FT_STAGE_READBACK;
         m_zTargetReadback = CTexture::CreateTextureObject(textureName, s_occlusionBufferWidth, s_occlusionBufferHeight, 1, eTT_2D, flags, eTF_Unknown);
-        m_zTargetReadback->CreateRenderTarget(CTexture::s_eTFZ, Clr_FarPlane_R);
+        //CPU reading code expects it to be 32 bit float. Changing this to 16bit would require "16bit to 32bitfloat" conversion in FX_ZTargetReadBackOnCPU.
+        m_zTargetReadback->CreateRenderTarget(eTF_R32F, Clr_FarPlane_R); 
     }
 
     m_occlusionReadbackData.Reset(bReverseDepth);    
@@ -5399,6 +5406,30 @@ bool IsDepthReadbackOcclusionEnabled()
     return true;
 }
 
+void CD3D9Renderer::UpdateOcclusionDataForCPU()
+{
+    const bool bReverseDepth = (m_RP.m_TI[m_RP.m_nProcessThreadID].m_PersFlags & RBPF_REVERSE_DEPTH) != 0;
+    
+    // Copy to CPU accessible memory
+    m_occlusionData[m_occlusionBufferIndex].m_zTargetReadback->GetDevTexture()->DownloadToStagingResource(0);
+    
+    Matrix44 mCurView, mCurProj;
+    mCurView.SetIdentity();
+    mCurProj.SetIdentity();
+    GetModelViewMatrix(reinterpret_cast<f32*>(&mCurView));
+    GetProjectionMatrix(reinterpret_cast<f32*>(&mCurProj));
+    
+    if (bReverseDepth)
+    {
+        mCurProj = ReverseDepthHelper::Convert(mCurProj);
+    }
+    
+    m_occlusionData[m_occlusionBufferIndex].m_occlusionViewProj = mCurView * mCurProj;
+    m_occlusionData[m_occlusionBufferIndex].m_occlusionDataState = CPUOcclusionData::OcclusionDataState::OcclusionDataOnGPU;
+    
+    m_occlusionBufferIndex = (m_occlusionBufferIndex + 1) % s_numOcclusionReadbackTextures;
+}
+
 void CD3D9Renderer::FX_ZTargetReadBackOnCPU()
 {
     PROFILE_LABEL_SCOPE("DEPTH READBACK CPU");
@@ -5416,6 +5447,14 @@ void CD3D9Renderer::FX_ZTargetReadBackOnCPU()
     if (!IsDepthReadbackOcclusionEnabled() || (SRendItem::m_RecurseLevel[m_RP.m_nProcessThreadID] > 0))
     {
         return;
+    }
+
+    const bool isGmemEnabled = FX_GetEnabledGmemPath(nullptr) != CD3D9Renderer::eGT_REGULAR_PATH;
+    if (isGmemEnabled)
+    {
+        //Since FX_ZTargetReadBack can not be run for gmem path we update the
+        //occlusion data for m_occlusionData here.
+        UpdateOcclusionDataForCPU();
     }
 
     static ICVar* pCVCoverageBufferLatency = gEnv->pConsole->GetCVar("e_CoverageBufferNumberFramesLatency");    
@@ -5548,7 +5587,11 @@ void CD3D9Renderer::FX_ZTargetReadBack()
     }
 #endif // if AZ_RENDER_TO_TEXTURE_GEM_ENABLED
 
-    if (!IsDepthReadbackOcclusionEnabled())
+    //Check for gmem as this code runs after gbuffer breaking gmem path. Besides we can just use
+    //downsampled linearized depth for occlusion.
+    const bool isGmemEnabled = FX_GetEnabledGmemPath(nullptr) != CD3D9Renderer::eGT_REGULAR_PATH;
+
+    if (!IsDepthReadbackOcclusionEnabled() || isGmemEnabled)
     {
         return;
     }
@@ -5589,8 +5632,6 @@ void CD3D9Renderer::FX_ZTargetReadBack()
 
         InvalidateCoverageBufferData();
     }
-
-    const AZ::u8 occlusionDataIndex = m_occlusionBufferIndex;
 
     // downsample on GPU
     RECT srcRect;
@@ -5636,7 +5677,7 @@ void CD3D9Renderer::FX_ZTargetReadBack()
     }
 
     pSrc = pDst;
-    pDst = m_occlusionData[occlusionDataIndex].m_zTargetReadback;
+    pDst = m_occlusionData[m_occlusionBufferIndex].m_zTargetReadback;
     PostProcessUtils().StretchRect(pSrc, pDst, false, false, false, false, downsampleMode);
 
     //  Blend ID into top left pixel of readback buffer
@@ -5663,30 +5704,13 @@ void CD3D9Renderer::FX_ZTargetReadBack()
 
     gcpRendD3D->FX_PopRenderTarget(0);
     gcpRendD3D->RT_SetViewport(0, 0, GetWidth(), GetHeight());
-
-    // Copy to CPU accessible memory
-    m_occlusionData[occlusionDataIndex].m_zTargetReadback->GetDevTexture()->DownloadToStagingResource(0);
-
+    
     if (bUseNativeDepth)
     {
         CTexture::s_ptexZTarget->SetShaderResourceView(pZTargetOrigSRV, bMSAA);
     }
     
-    Matrix44 mCurView, mCurProj;
-    mCurView.SetIdentity();
-    mCurProj.SetIdentity();
-    GetModelViewMatrix(reinterpret_cast<f32*>(&mCurView));
-    GetProjectionMatrix(reinterpret_cast<f32*>(&mCurProj));
-
-    if (bReverseDepth)
-    {
-        mCurProj = ReverseDepthHelper::Convert(mCurProj);
-    }
-    
-    m_occlusionData[occlusionDataIndex].m_occlusionViewProj = mCurView * mCurProj;
-    m_occlusionData[occlusionDataIndex].m_occlusionDataState = CPUOcclusionData::OcclusionDataState::OcclusionDataOnGPU;
-    
-    m_occlusionBufferIndex = (m_occlusionBufferIndex + 1) % s_numOcclusionReadbackTextures;
+    UpdateOcclusionDataForCPU();
 }
 
 void CD3D9Renderer::FX_UpdateCharCBs()

@@ -10,10 +10,10 @@
 *
 */
 
-#include "precompiled.h"
 
-#include <Tests/ScriptCanvasTestFixture.h>
-#include <Tests/ScriptCanvasTestUtilities.h>
+
+#include <Source/Framework/ScriptCanvasTestFixture.h>
+#include <Source/Framework/ScriptCanvasTestUtilities.h>
 
 #include <AzCore/Math/Vector3.h>
 #include <ScriptCanvas/Libraries/Math/Math.h>
@@ -98,7 +98,7 @@ AZStd::vector<ScriptCanvas::Datum> TestMathFunction(std::initializer_list<AZStd:
 
 TEST_F(ScriptCanvasTestFixture, MathCustom)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
 
     UnitTestEventsHandler unitTestHandler;
@@ -170,7 +170,7 @@ TEST_F(ScriptCanvasTestFixture, MathCustom)
 
 TEST_F(ScriptCanvasTestFixture, MathMixed1)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -288,7 +288,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed1)
 
 TEST_F(ScriptCanvasTestFixture, MathMixed2)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -444,7 +444,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed2)
 
 TEST_F(ScriptCanvasTestFixture, MathMixed3)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -625,7 +625,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed3)
 
 TEST_F(ScriptCanvasTestFixture, MathMixed4)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
@@ -807,7 +807,7 @@ TEST_F(ScriptCanvasTestFixture, MathMixed4)
 
 TEST_F(ScriptCanvasTestFixture, MathOperations)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes::Math;
@@ -2717,11 +2717,10 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
-#if ENABLE_EXTENDED_MATH_SUPPORT
     {   // ModXNode
         Data::Vector2Type a(1, 2);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModXNode>({ "Vector2: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
+        auto output = TestMathFunction<SetXNode>({ "Vector2: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
         auto result = a;
         result.SetX(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
@@ -2731,13 +2730,14 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
     {   // ModYNode
         Data::Vector2Type a(1, 2);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModYNode>({ "Vector2: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
+        auto output = TestMathFunction<SetYNode>({ "Vector2: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector2" }, { Datum(zero) });
         auto result = a;
         result.SetY(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector2Type>()));
         EXPECT_FALSE(result.IsClose(a));
     }
 
+#if ENABLE_EXTENDED_MATH_SUPPORT
     { // MultiplyAdd
         Data::Vector2Type a(2, 2);
         Data::Vector2Type b(3, 3);
@@ -2801,38 +2801,21 @@ TEST_F(ScriptCanvasTestFixture, Vector2Nodes)
         EXPECT_TRUE(a.IsClose(*output[0].GetAs<Data::Vector2Type>()));
     }
 
-    { // Slerp  != lerp at 0.25f
-        Data::Vector2Type from(0.f, 0.f);
-        Data::Vector2Type to(1.f, 1.f);
-        Data::NumberType t(0.25);
+    { // Slerp
+        Data::Vector2Type from(1.f, 0.f);
+        Data::Vector2Type to(0.f, 1.f);
+        Data::NumberType t(0.5);
 
-        auto slerp = from.Slerp(to, Data::ToVectorFloat(t));
+        auto slerp = from.Slerp(to, static_cast<float>(Data::ToVectorFloat(t)));
         auto outputSlerp = TestMathFunction<SlerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(slerp.IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
 
-        auto lerp = from.Lerp(to, Data::ToVectorFloat(t));
+        auto lerp = from.Lerp(to, static_cast<float>(Data::ToVectorFloat(t)));
         auto outputLerp = TestMathFunction<LerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
         EXPECT_TRUE(lerp.IsClose(*outputLerp[0].GetAs<Data::Vector2Type>()));
 
         EXPECT_FALSE(lerp.IsClose(slerp));
-        EXPECT_FALSE(outputLerp[0].GetAs<Data::Vector2Type>()->IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
-    }
-
-    { // Slerp == lerp for given t of 0.5
-        Data::Vector2Type from(0.f, 0.f);
-        Data::Vector2Type to(1.f, 1.f);
-        Data::NumberType t(0.5);
-
-        auto slerp = from.Slerp(to, Data::ToVectorFloat(t));
-        auto outputSlerp = TestMathFunction<SlerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
-        EXPECT_TRUE(slerp.IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
-
-        auto lerp = from.Lerp(to, Data::ToVectorFloat(t));
-        auto outputLerp = TestMathFunction<LerpNode>({ "Vector2: From", "Vector2: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector2" }, { Datum(zero) });
-        EXPECT_TRUE(lerp.IsClose(*outputLerp[0].GetAs<Data::Vector2Type>()));
-
-        EXPECT_TRUE(lerp.IsClose(slerp));
-        EXPECT_TRUE(outputLerp[0].GetAs<Data::Vector2Type>()->IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
+        EXPECT_FALSE((*outputLerp[0].GetAs<Data::Vector2Type>()).IsClose(*outputSlerp[0].GetAs<Data::Vector2Type>()));
     }
 
     {   // Subtract
@@ -3149,11 +3132,10 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
     }
 
-#if ENABLE_EXTENDED_MATH_SUPPORT
     {   // ModXNode
         Data::Vector3Type a(1, 2, 3);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModXNode>({ "Vector3: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
+        auto output = TestMathFunction<SetXNode>({ "Vector3: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         auto result = a;
         result.SetX(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
@@ -3163,7 +3145,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     {   // ModYNode
         Data::Vector3Type a(1, 2, 3);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModYNode>({ "Vector3: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
+        auto output = TestMathFunction<SetYNode>({ "Vector3: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         auto result = a;
         result.SetY(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
@@ -3173,13 +3155,14 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     {   // ModZNode
         Data::Vector3Type a(1, 2, 3);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModZNode>({ "Vector3: Source", "Number: Z" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
+        auto output = TestMathFunction<SetZNode>({ "Vector3: Source", "Number: Z" }, { Datum(a), Datum(b) }, { "Result: Vector3" }, { Datum(zero) });
         auto result = a;
         result.SetZ(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector3Type>()));
         EXPECT_FALSE(result.IsClose(a));
     }    
 
+#if ENABLE_EXTENDED_MATH_SUPPORT
     { // MultiplyAdd
         Data::Vector3Type a(2, 2, 2);
         Data::Vector3Type b(3, 3, 3);
@@ -3271,7 +3254,7 @@ TEST_F(ScriptCanvasTestFixture, Vector3Nodes)
     { // Slerp
         Data::Vector3Type from(0.f, 0.f, 0.f);
         Data::Vector3Type to(1.f, 1.f, 1.f);
-        Data::NumberType t(0.25); // note that slerp and lerp are equal at t=0, t=0.5, and t=1.0 in this case, so 0.25 is used.
+        Data::NumberType t(0.5);
 
         auto slerp = from.Slerp(to, Data::ToVectorFloat(t));
         auto outputSlerp = TestMathFunction<SlerpNode>({ "Vector3: From", "Vector3: To", "Number: T" }, { Datum(from), Datum(to), Datum(t) }, { "Result: Vector3" }, { Datum(zero) });
@@ -3513,11 +3496,10 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
         SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
-#if ENABLE_EXTENDED_MATH_SUPPORT
     {   // ModXNode
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModXNode>({ "Vector4: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
+        auto output = TestMathFunction<SetXNode>({ "Vector4: Source", "Number: X" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = a;
         result.SetX(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
@@ -3527,7 +3509,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     {   // ModYNode
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModYNode>({ "Vector4: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
+        auto output = TestMathFunction<SetYNode>({ "Vector4: Source", "Number: Y" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = a;
         result.SetY(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
@@ -3537,7 +3519,7 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     {   // ModZNode
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModZNode>({ "Vector4: Source", "Number: Z" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
+        auto output = TestMathFunction<SetZNode>({ "Vector4: Source", "Number: Z" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = a;
         result.SetZ(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
@@ -3547,13 +3529,12 @@ TEST_F(ScriptCanvasTestFixture, Vector4Nodes)
     {   // ModWNode
         Data::Vector4Type a(1, 2, 3, 4);
         Data::NumberType b(0);
-        auto output = TestMathFunction<ModWNode>({ "Vector4: Source", "Number: W" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
+        auto output = TestMathFunction<SetWNode>({ "Vector4: Source", "Number: W" }, { Datum(a), Datum(b) }, { "Result: Vector4" }, { Datum(zero) });
         auto result = a;
         result.SetW(Data::ToVectorFloat(b));
         EXPECT_TRUE(result.IsClose(*output[0].GetAs<Data::Vector4Type>()));
         EXPECT_FALSE(result.IsClose(a));
     }
-#endif
 
     {   // MultiplyByNumber
         Data::Vector4Type a(1, 2, 3, 4);
@@ -3943,6 +3924,12 @@ TEST_F(ScriptCanvasTestFixture, QuaternionNodes)
         SC_EXPECT_FLOAT_EQ(result, aznumeric_caster(*output[0].GetAs<Data::NumberType>()));
     }
 
+    { // CreateFromEulerAnglesNode
+        Data::QuaternionType baseValue = AZ::ConvertEulerDegreesToQuaternion(AZ::Vector3(1.0f,2.0f,3.0f));
+        auto output = TestMathFunction<CreateFromEulerAnglesNode>({ "Number: Yaw", "Number: Pitch", "Number: Roll" }, { Datum(1.0f), Datum(2.0f), Datum(3.0f) }, { "Result: Quaternion" }, { Datum(AZ::Quaternion()) });
+        EXPECT_TRUE(baseValue.IsClose(*output[0].GetAs<Data::QuaternionType>()));
+    }
+
 #if ENABLE_EXTENDED_MATH_SUPPORT
     { // GetElement
         const Data::QuaternionType source(1, 2, 3, 4);
@@ -4189,7 +4176,14 @@ TEST_F(ScriptCanvasTestFixture, RandomNodes)
             EXPECT_TRUE(value.GetW() >= min.GetW() && value.GetW() <= max.GetW());
         }
     }
-
-    MathRandom::DeleteRandomDetails();
-
 } // Test RandomNodes
+
+TEST_F(ScriptCanvasTestFixture, MathOperations_Graph)
+{
+	RunUnitTestGraph("LY_SC_UnitTest_MathOperations");
+}
+
+TEST_F(ScriptCanvasTestFixture, MathCustom_Graph)
+{
+	RunUnitTestGraph("LY_SC_UnitTest_UnitTest_MathCustom");
+}

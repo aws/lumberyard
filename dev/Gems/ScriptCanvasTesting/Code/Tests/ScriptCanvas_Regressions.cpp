@@ -10,7 +10,12 @@
 *
 */
 
-#include "precompiled.h"
-#include <Tests/ScriptCanvasTestFixture.h>
+
+#include <Source/Framework/ScriptCanvasTestFixture.h>
 
 using namespace ScriptCanvasTests;
+
+TEST_F(ScriptCanvasTestFixture, Regression_LY_79396)
+{
+    RunUnitTestGraph("LY_SC_UnitTest_LY_79396");
+}

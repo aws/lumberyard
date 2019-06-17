@@ -95,7 +95,7 @@ namespace AZ
 
     public:
         /**
-        Default construction is not allowed only allowed to support generic interactions with Outcome objects of all template argumetns; user
+        Default construction is only allowed to support generic interactions with Outcome objects of all template argumetns; user
         Outcome must be either in success state or failure state
         */
         AZ_FORCE_INLINE Outcome();

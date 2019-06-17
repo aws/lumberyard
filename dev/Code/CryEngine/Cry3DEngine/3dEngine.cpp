@@ -78,8 +78,9 @@
 #include <AzFramework/IO/FileOperations.h>
 #include <AzCore/Jobs/LegacyJobExecutor.h>
 #include <AzCore/Math/MathUtils.h>
+#include <AzCore/std/parallel/mutex.h>
 
-// requiered for LARGE_INTEGER used by QueryPerformanceCounter
+// required for LARGE_INTEGER used by QueryPerformanceCounter
 #ifdef WIN32
 #include <CryWindows.h>
 #endif
@@ -141,6 +142,13 @@ namespace
         virtual void Error(const char* format) {Cry3DEngineBase::Error("%s", format); }
         virtual bool IsValidationEnabled() { return Cry3DEngineBase::GetCVars()->e_StatObjValidate != 0; }
     };
+}
+
+namespace OceanGlobals
+{
+    float g_oceanLevel = 0.0f;
+    float g_oceanStep = 1.0f; 
+    AZStd::recursive_mutex g_oceanParamsMutex;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -353,6 +361,8 @@ C3DEngine::C3DEngine(ISystem* pSystem)
     m_volFogHeightDensity2 = Vec3(4000.0f, 0, 0);
     m_volFogGradientCtrl = Vec3(1, 1, 1);
 
+    m_terrainAabb = AZ::Aabb::CreateNull();
+
     m_vFogColor = Vec3(1.0f, 1.0f, 1.0f);
     m_vAmbGroundCol = Vec3(0.0f, 0.0f, 0.0f);
 
@@ -459,6 +469,11 @@ C3DEngine::~C3DEngine()
     delete m_pCVars;
 
     delete m_pDeferredPhysicsEventManager;
+}
+
+bool C3DEngine::CheckMinSpec(uint32 nMinSpec)
+{
+    return Cry3DEngineBase::CheckMinSpec(nMinSpec);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -598,9 +613,9 @@ void C3DEngine::OnFrameStart()
     }
 }
 
-float g_oceanLevel, g_oceanStep; // TODO: need to fix/wrap these
 float GetOceanLevelCallback(int ix, int iy)
 {
+    using namespace OceanGlobals;
     return OceanToggle::IsActive() ? OceanRequest::GetAccurateOceanHeight(Vec3(ix * g_oceanStep, iy * g_oceanStep, g_oceanLevel)) : gEnv->p3DEngine->GetAccurateOceanHeight(Vec3(ix * g_oceanStep, iy * g_oceanStep, g_oceanLevel));
 }
 
@@ -661,6 +676,9 @@ void C3DEngine::Update()
     IPhysicalEntity* pArea;
     if ((pArea = gEnv->pPhysicalWorld->AddGlobalArea())->GetParams(&pa))
     {
+        using namespace OceanGlobals;
+        AZStd::lock_guard<decltype(g_oceanParamsMutex)> lock(g_oceanParamsMutex);
+
         g_oceanLevel = OceanToggle::IsActive() ? OceanRequest::GetOceanLevel() : GetWaterLevel();
         bool bOceanEnabled = GetFloatCVar(e_PhysOceanCell) > 0 && (OceanToggle::IsActive() ? OceanRequest::OceanIsEnabled() : g_oceanLevel > 0);
 
@@ -2282,45 +2300,47 @@ bool C3DEngine::SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, in
         rGroup.szFileName[0] = 0;
     }
 
-    rGroup.bHideability   = siGroup.bHideability;
-    rGroup.bHideabilitySecondary  = siGroup.bHideabilitySecondary;
+    rGroup.bHideability = siGroup.bHideability;
+    rGroup.bHideabilitySecondary = siGroup.bHideabilitySecondary;
     rGroup.nPlayerHideable = siGroup.nPlayerHideable;
-    rGroup.fBending         = siGroup.fBending;
-    rGroup.nCastShadowMinSpec   = siGroup.nCastShadowMinSpec;
-    rGroup.bRecvShadow   = siGroup.bRecvShadow;
-    rGroup.bDynamicDistanceShadows   = siGroup.bDynamicDistanceShadows;
+    rGroup.fBending = siGroup.fBending;
+    rGroup.nCastShadowMinSpec = siGroup.nCastShadowMinSpec;
+    rGroup.bRecvShadow = siGroup.bRecvShadow;
+    rGroup.bDynamicDistanceShadows = siGroup.bDynamicDistanceShadows;
 
-    rGroup.bUseAlphaBlending                        = siGroup.bUseAlphaBlending;
-    rGroup.fSpriteDistRatio                     = siGroup.fSpriteDistRatio;
-    rGroup.fLodDistRatio                      = siGroup.fLodDistRatio;
-    rGroup.fShadowDistRatio                     = siGroup.fShadowDistRatio;
-    rGroup.fMaxViewDistRatio                        = siGroup.fMaxViewDistRatio;
+    rGroup.bUseAlphaBlending = siGroup.bUseAlphaBlending;
+    rGroup.fSpriteDistRatio = siGroup.fSpriteDistRatio;
+    rGroup.fLodDistRatio = siGroup.fLodDistRatio;
+    rGroup.fShadowDistRatio = siGroup.fShadowDistRatio;
+    rGroup.fMaxViewDistRatio = siGroup.fMaxViewDistRatio;
 
-    rGroup.fBrightness                                  = siGroup.fBrightness;
+    rGroup.fBrightness = siGroup.fBrightness;
 
     _smart_ptr<IMaterial> pPreviousGroupMaterial = rGroup.pMaterial;
-    rGroup.pMaterial                                        = siGroup.pMaterial;
+    rGroup.pMaterial = siGroup.pMaterial;
 
-    rGroup.fDensity                                     = siGroup.fDensity;
-    rGroup.fElevationMax                                = siGroup.fElevationMax;
-    rGroup.fElevationMin                                = siGroup.fElevationMin;
-    rGroup.fSize                                                = siGroup.fSize;
-    rGroup.fSizeVar                                     = siGroup.fSizeVar;
-    rGroup.fSlopeMax                                        = siGroup.fSlopeMax;
-    rGroup.fSlopeMin                                        = siGroup.fSlopeMin;
+    rGroup.fDensity = siGroup.fDensity;
+    rGroup.fElevationMax = siGroup.fElevationMax;
+    rGroup.fElevationMin = siGroup.fElevationMin;
+    rGroup.fSize = siGroup.fSize;
+    rGroup.fSizeVar = siGroup.fSizeVar;
+    rGroup.fSlopeMax = siGroup.fSlopeMax;
+    rGroup.fSlopeMin = siGroup.fSlopeMin;
     rGroup.fStiffness = siGroup.fStiffness;
     rGroup.fDamping = siGroup.fDamping;
     rGroup.fVariance = siGroup.fVariance;
     rGroup.fAirResistance = siGroup.fAirResistance;
 
-    rGroup.bRandomRotation             = siGroup.bRandomRotation;
+    rGroup.bRandomRotation = siGroup.bRandomRotation;
     rGroup.nRotationRangeToTerrainNormal = siGroup.nRotationRangeToTerrainNormal;
     rGroup.nMaterialLayers = siGroup.nMaterialLayers;
 
-    rGroup.bUseTerrainColor             = siGroup.bUseTerrainColor && Get3DEngine()->m_bShowTerrainSurface;
-    rGroup.bAllowIndoor                                 = siGroup.bAllowIndoor;
+    rGroup.bUseTerrainColor = siGroup.bUseTerrainColor && Get3DEngine()->m_bShowTerrainSurface;
+    rGroup.bAllowIndoor = siGroup.bAllowIndoor;
     rGroup.fAlignToTerrainCoefficient = Get3DEngine()->m_bShowTerrainSurface ? siGroup.fAlignToTerrainCoefficient : 0.f;
-    rGroup.bAutoMerged       = siGroup.bAutoMerged;
+
+    bool previousAutoMerged = rGroup.bAutoMerged;
+    rGroup.bAutoMerged = siGroup.bAutoMerged;
     rGroup.minConfigSpec = siGroup.minConfigSpec;
 
     rGroup.nID = siGroup.nID;
@@ -2332,7 +2352,7 @@ bool C3DEngine::SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, in
         pTerrain->MarkAllSectorsAsUncompiled();
     }
 
-    // If we're in the editor and either the group material has changed or the mesh has changed
+    // Refresh if we've enabled dynamic merged mesh generation and either the group material has changed, the mesh has changed, or our automerge setting has changed
     if (gEnv->IsEditor() && (pPreviousGroupMaterial != rGroup.pMaterial || pPreviousObject != rGroup.pStatObj))
     {
         m_pMergedMeshesManager->ResetActiveNodes();
@@ -2861,12 +2881,17 @@ IStatObj* C3DEngine::LoadDesignerObject(int nVersion, const char* szBinaryStream
 float C3DEngine::GetWaterLevel(const Vec3* pvPos, IPhysicalEntity* pent, bool bAccurate)
 {
     FUNCTION_PROFILER_3DENGINE;
+    if (!OceanGlobals::g_oceanParamsMutex.try_lock())
+    {
+        return OceanGlobals::g_oceanLevel;
+    }
 
     bool bInVisarea = m_pVisAreaManager && m_pVisAreaManager->GetVisAreaFromPos(*pvPos) != 0;
 
     Vec3 gravity;
     pe_params_buoyancy pb[4];
-    int i, nBuoys = m_pPhysicalWorld->CheckAreas(*pvPos, gravity, pb, 4, -1, ZERO, pent);
+    int iMedium = 0; // medium values, -1 == ignore medium areas, 0 = water areas, 1 = air areas.
+    int i, nBuoys = m_pPhysicalWorld->CheckAreas(*pvPos, gravity, pb, 4, iMedium, ZERO, pent);
 
     float max_level = (!bInVisarea) ? (bAccurate ? GetAccurateOceanHeight(*pvPos) : GetWaterLevel()) : WATER_LEVEL_UNKNOWN;
 
@@ -2884,6 +2909,7 @@ float C3DEngine::GetWaterLevel(const Vec3* pvPos, IPhysicalEntity* pent, bool bA
         }
     }
 
+    OceanGlobals::g_oceanParamsMutex.unlock();
     return max(WATER_LEVEL_UNKNOWN, max_level);
 }
 
@@ -3715,6 +3741,14 @@ void C3DEngine::UnlockCGFResources()
     }
 }
 
+void C3DEngine::FreeUnusedCGFResources()
+{
+    if (m_pObjManager)
+    {
+        m_pObjManager->FreeNotUsedCGFs();
+    }
+}
+
 void CLightEntity::ShadowMapInfo::Release(struct IRenderer* pRenderer)
 {
     delete this;
@@ -3904,10 +3938,21 @@ bool C3DEngine::GetShowTerrainSurface()
     return m_bShowTerrainSurface;
 }
 
+const AZ::Aabb& C3DEngine::GetTerrainAabb() const
+{
+    return m_terrainAabb;
+}
+
 ITerrain* C3DEngine::CreateTerrain(const STerrainInfo& TerrainInfo)
 {
-    delete m_pTerrain;
+    SAFE_DELETE(m_pTerrain);
     m_pTerrain = new CTerrain(TerrainInfo);
+    float terrainSize = (float)m_pTerrain->GetTerrainSize()-TERRAIN_AABB_PADDING;
+    if( terrainSize < TERRAIN_AABB_PADDING)
+    {
+        terrainSize = TERRAIN_AABB_PADDING;
+    }
+    m_terrainAabb = AZ::Aabb::CreateFromMinMax(AZ::Vector3(TERRAIN_AABB_PADDING, TERRAIN_AABB_PADDING, -FLT_MAX), AZ::Vector3(terrainSize, terrainSize, FLT_MAX));
     return (ITerrain*)m_pTerrain;
 }
 
@@ -5430,7 +5475,7 @@ void C3DEngine::PhysicsAreaUpdates::GarbageCollect()
             {
                 pFrontIter->pRenderNode->m_pRNTmpData->nPhysAreaChangedProxyId = (uint32)(pFrontIter - pHead);
             }
-			
+            
             pBackIter->bIsValid = false;
 
             --pBackIter;

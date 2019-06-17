@@ -4,12 +4,15 @@
 from __future__ import absolute_import
 
 import distutils.util
+from distutils import log
 import platform
 import re
 import sys
 import sysconfig
 import warnings
 from collections import OrderedDict
+
+from .extern import six
 
 from . import glibc
 
@@ -69,8 +72,8 @@ def get_flag(var, fallback, expected=True, warn=True):
     val = get_config_var(var)
     if val is None:
         if warn:
-            warnings.warn("Config variable '{0}' is unset, Python ABI tag may "
-                          "be incorrect".format(var), RuntimeWarning, 2)
+            log.debug("Config variable '%s' is unset, Python ABI tag may "
+                      "be incorrect", var)
         return fallback()
     return val == expected
 
@@ -96,8 +99,8 @@ def get_abi_tag():
                     lambda: sys.maxunicode == 0x10ffff,
                     expected=4,
                     warn=(impl == 'cp' and
-                          sys.version_info < (3, 3))) \
-                and sys.version_info < (3, 3):
+                          six.PY2)) \
+                and six.PY2:
             u = 'u'
         abi = '%s%s%s%s%s' % (impl, get_impl_ver(), d, m, u)
     elif soabi and soabi.startswith('cpython-'):
@@ -158,7 +161,7 @@ def is_manylinux1_compatible():
 
 def get_darwin_arches(major, minor, machine):
     """Return a list of supported arches (including group arches) for
-    the given major, minor and machine architecture of an macOS machine.
+    the given major, minor and machine architecture of a macOS machine.
     """
     arches = []
 

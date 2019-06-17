@@ -38,6 +38,11 @@ namespace LmbrCentral
 
         void SetObstructionType(Audio::ObstructionType) {}
 
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+        {
+            LmbrCentral::AudioTriggerComponent::GetDependentServices(dependent);
+        }
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             LmbrCentral::AudioTriggerComponent::GetProvidedServices(provided);

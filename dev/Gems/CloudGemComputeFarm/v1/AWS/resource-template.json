@@ -430,6 +430,17 @@
                                     ],
                                     "Effect": "Allow",
                                     "Resource": { "Fn::Join": [ "", [ "arn:aws:autoscaling:*:", {"Ref": "AWS::AccountId"}, ":*"] ] }
+                                },
+                                {
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents",
+                                        "logs:DescribeLogGroups",
+                                        "logs:DescribeLogStreams"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*",
+                                    "Effect": "Allow"
                                 }
                             ]
                         }
@@ -506,6 +517,10 @@
                         {
                             "Action": ["dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem", "dynamodb:PutItem", "dynamodb:DeleteItem"],
                             "AbstractRole": "ServiceLambda"
+                        },
+                        {
+                            "Action": ["dynamodb:Query", "dynamodb:Scan"],
+                            "AbstractRole": "ShutdownLambdaFunction"
                         }
                     ]
                 }
@@ -545,6 +560,12 @@
                                 "swf:DescribeWorkflowExecution",
                                 "swf:CancelWorkflowExecution",
                                 "swf:TerminateWorkflowExecution"
+                            ]
+                        },
+                        {
+                            "AbstractRole": "ShutdownLambdaFunction",
+                            "Action": [
+                                "swf:DescribeWorkflowExecution"
                             ]
                         }
                     ]
@@ -594,6 +615,15 @@
                         },
                         {
                             "AbstractRole": [ "ServiceLambda" ],
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetObject",
+                                "s3:DeleteObject"
+                            ],
+                            "ResourceSuffix": "/*"
+                        },
+                        {
+                            "AbstractRole": [ "ShutdownLambdaFunction" ],
                             "Action": [
                                 "s3:PutObject",
                                 "s3:GetObject",
@@ -652,6 +682,13 @@
                                 "autoscaling:DescribeAutoScalingGroups",
                                 "ec2:DescribeKeyPairs"
                             ]
+                        },
+                        {
+                            "AbstractRole": "ShutdownLambdaFunction",
+                            "Action": [
+                                "autoscaling:UpdateAutoScalingGroup",
+                                "autoscaling:DescribeAutoScalingGroups"
+                            ]
                         }
                     ]
                 }
@@ -662,6 +699,107 @@
                 }
             },
             "Type": "Custom::AutoscalingPermissions"
+        },
+        "ShutdownLambdaFunction": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Fn::GetAtt": [
+                            "ShutdownLambdaConfiguration", 
+                            "ConfigurationBucket"
+                        ]
+                    }, 
+                    "S3Key": {
+                        "Fn::GetAtt": [
+                            "ShutdownLambdaConfiguration", 
+                            "ConfigurationKey"
+                        ]
+                    }
+                }, 
+                "Handler": "shutdown_lambda.handler", 
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ShutdownLambdaConfiguration", 
+                        "Role"
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "Fn::GetAtt": [
+                            "ShutdownLambdaConfiguration",
+                            "CCSettings"
+                        ]
+                    }
+                },
+                "Runtime": {
+                    "Fn::GetAtt": [
+                        "ShutdownLambdaConfiguration", 
+                        "Runtime"
+                    ]
+                },
+                "Timeout": 300
+            }, 
+            "Type": "AWS::Lambda::Function"
+        }, 
+        "ShutdownLambdaConfiguration": {
+            "Properties": {
+                "ConfigurationBucket": {
+                    "Ref": "ConfigurationBucket"
+                }, 
+                "ConfigurationKey": {
+                    "Ref": "ConfigurationKey"
+                }, 
+                "FunctionName": "ShutdownLambdaFunction", 
+                "Runtime": "python2.7", 
+                "ServiceToken": {
+                    "Ref": "ProjectResourceHandler"
+                }, 
+                "Settings": {
+                    "LogDB": {
+                        "Ref": "LogDB"
+                    },
+                    "Workflow": {
+                        "Ref": "Workflow"
+                    },
+                    "KVS": {
+                        "Ref": "KVS"
+                    },
+                    "computefarm": {
+                        "Ref": "computefarm"
+                    },
+                    "EC2SubnetA": {
+                        "Ref": "EC2SubnetA"
+                    },
+                    "EC2SubnetB": {
+                        "Ref": "EC2SubnetB"
+                    },
+                    "EC2SubnetC": {
+                        "Ref": "EC2SubnetC"
+                    }
+                }
+            }, 
+            "Type": "Custom::LambdaConfiguration"
+        },        
+        "ScheduledRule": {
+          "Type": "AWS::Events::Rule",
+          "Properties": {
+            "Description": "ScheduledRule",
+            "ScheduleExpression": "rate(5 minutes)",
+            "State": "ENABLED",
+            "Targets": [{
+              "Arn": { "Fn::GetAtt": ["ShutdownLambdaFunction", "Arn"] },
+              "Id": "TargetFunction"
+            }]
+          }
+        },
+        "PermissionForEventsToInvokeLambda": {
+          "Type": "AWS::Lambda::Permission",
+          "Properties": {
+            "FunctionName": { "Ref": "ShutdownLambdaFunction" },
+            "Action": "lambda:InvokeFunction",
+            "Principal": "events.amazonaws.com",
+            "SourceArn": { "Fn::GetAtt": ["ScheduledRule", "Arn"] }
+          }
         }
     }
 }

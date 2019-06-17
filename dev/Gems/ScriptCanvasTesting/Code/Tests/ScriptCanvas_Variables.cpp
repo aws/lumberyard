@@ -10,10 +10,10 @@
 *
 */
 
-#include "precompiled.h"
 
-#include <Tests/ScriptCanvasTestFixture.h>
-#include <Tests/ScriptCanvasTestUtilities.h>
+
+#include <Source/Framework/ScriptCanvasTestFixture.h>
+#include <Source/Framework/ScriptCanvasTestUtilities.h>
 
 #include <AzCore/Serialization/Utils.h>
 #include <AzCore/std/string/string.h>
@@ -24,6 +24,8 @@
 
 namespace ScriptCanvasTests
 {
+    using namespace ScriptCanvasEditor;
+
     class StringArray
     {
     public:
@@ -75,24 +77,21 @@ using namespace ScriptCanvasTests;
 
 TEST_F(ScriptCanvasTestFixture, CreateVariableTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     StringArray::Reflect(m_serializeContext);
     StringArray::Reflect(m_behaviorContext);
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-
-    using namespace ScriptCanvas;
-    using namespace Nodes;
-
-    AZStd::unique_ptr<AZ::Entity> propertyEntity = AZStd::make_unique<AZ::Entity>("PropertyGraph");
-    propertyEntity->CreateComponent<GraphVariableManagerComponent>();
-    propertyEntity->Init();
-    propertyEntity->Activate();
-    
-    // execute this in a scoped section since some Datum's destructions depend on type ids that get removed when the 
-    // serialization context is removed
     {
+        using namespace ScriptCanvas;
+        using namespace Nodes;
+
+        AZStd::unique_ptr<AZ::Entity> propertyEntity = AZStd::make_unique<AZ::Entity>("PropertyGraph");
+        propertyEntity->CreateComponent<GraphVariableManagerComponent>();
+        propertyEntity->Init();
+        propertyEntity->Activate();
+
         auto vector3Datum1 = Datum(Data::Vector3Type(1.1f, 2.0f, 3.6f));
         auto vector3Datum2 = Datum(Data::Vector3Type(0.0f, -86.654f, 134.23f));
         auto vector4Datum = Datum(Data::Vector4Type(6.0f, 17.5f, -41.75f, 400.875f));
@@ -137,8 +136,10 @@ TEST_F(ScriptCanvasTestFixture, CreateVariableTest)
         EXPECT_TRUE(addVariablesOutcome[0].GetValue().IsValid());
         EXPECT_TRUE(addVariablesOutcome[1]);
         EXPECT_TRUE(addVariablesOutcome[1].GetValue().IsValid());
+
+        propertyEntity.reset();
     }
-    propertyEntity.reset();
+
     m_serializeContext->EnableRemoveReflection();
     m_behaviorContext->EnableRemoveReflection();
     StringArray::Reflect(m_serializeContext);
@@ -151,7 +152,7 @@ TEST_F(ScriptCanvasTestFixture, CreateVariableTest)
 
 TEST_F(ScriptCanvasTestFixture, AddVariableFailTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -165,7 +166,7 @@ TEST_F(ScriptCanvasTestFixture, AddVariableFailTest)
     auto vector3Datum2 = Datum(Data::Vector3Type(0.0f, -86.654f, 134.23f));
 
     const AZStd::string_view propertyName = "SameName";
-   
+
     AZ::Outcome<VariableId, AZStd::string> addPropertyOutcome(AZ::Failure(AZStd::string("Uninitialized")));
     GraphVariableManagerRequestBus::EventResult(addPropertyOutcome, propertyEntity->GetId(), &GraphVariableManagerRequests::AddVariable, propertyName, vector3Datum1);
     EXPECT_TRUE(addPropertyOutcome);
@@ -180,24 +181,23 @@ TEST_F(ScriptCanvasTestFixture, AddVariableFailTest)
 
 TEST_F(ScriptCanvasTestFixture, RemoveVariableTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     StringArray::Reflect(m_serializeContext);
     StringArray::Reflect(m_behaviorContext);
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-
-    using namespace ScriptCanvas;
-    using namespace Nodes;
-
-    AZStd::unique_ptr<AZ::Entity> propertyEntity = AZStd::make_unique<AZ::Entity>("PropertyGraph");
-    propertyEntity->CreateComponent<GraphVariableManagerComponent>();
-    propertyEntity->Init();
-    propertyEntity->Activate();
-
-    // execute this in a scoped section since some Datum's destructions depend on type ids that get removed when the 
-    // serialization context is removed
     {
+
+
+        using namespace ScriptCanvas;
+        using namespace Nodes;
+
+        AZStd::unique_ptr<AZ::Entity> propertyEntity = AZStd::make_unique<AZ::Entity>("PropertyGraph");
+        propertyEntity->CreateComponent<GraphVariableManagerComponent>();
+        propertyEntity->Init();
+        propertyEntity->Activate();
+
         auto vector3Datum1 = Datum(Data::Vector3Type(1.1f, 2.0f, 3.6f));
         auto vector3Datum2 = Datum(Data::Vector3Type(0.0f, -86.654f, 134.23f));
         auto vector4Datum = Datum(Data::Vector4Type(6.0f, 17.5f, -41.75f, 400.875f));
@@ -303,10 +303,9 @@ TEST_F(ScriptCanvasTestFixture, RemoveVariableTest)
             GraphVariableManagerRequestBus::EventResult(properties, propertyEntity->GetId(), &GraphVariableManagerRequests::GetVariables);
             EXPECT_EQ(numVariablesAdded, (*properties).size() + 1);
         }
+
+        propertyEntity.reset();
     }
-
-    propertyEntity.reset();
-
     m_serializeContext->EnableRemoveReflection();
     m_behaviorContext->EnableRemoveReflection();
     StringArray::Reflect(m_serializeContext);
@@ -319,7 +318,7 @@ TEST_F(ScriptCanvasTestFixture, RemoveVariableTest)
 
 TEST_F(ScriptCanvasTestFixture, FindVariableTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -355,7 +354,7 @@ TEST_F(ScriptCanvasTestFixture, FindVariableTest)
         ASSERT_NE(nullptr, propertyPair);
         propertyDatumById = &propertyPair->m_varDatum;
         EXPECT_EQ(stringVariableDatum, propertyDatumById->GetData());
-        EXPECT_EQ(*propertyDatumById, *propertyDatumByName); 
+        EXPECT_EQ(*propertyDatumById, *propertyDatumByName);
     }
 
     {
@@ -380,7 +379,7 @@ TEST_F(ScriptCanvasTestFixture, FindVariableTest)
 
 TEST_F(ScriptCanvasTestFixture, ModifyVariableTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -422,23 +421,22 @@ TEST_F(ScriptCanvasTestFixture, ModifyVariableTest)
 
 TEST_F(ScriptCanvasTestFixture, SerializationTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     StringArray::Reflect(m_serializeContext);
     StringArray::Reflect(m_behaviorContext);
 
     using namespace ScriptCanvas;
     using namespace Nodes;
-
-    AZStd::unique_ptr<AZ::Entity> propertyEntity = AZStd::make_unique<AZ::Entity>("PropertyGraph");
-    auto propertyEntityId = propertyEntity->GetId();
-    propertyEntity->CreateComponent<GraphVariableManagerComponent>();
-    propertyEntity->Init();
-    propertyEntity->Activate();
-
-    // execute this in a scoped section since some Datum's destructions depend on type ids that get removed when the 
-    // serialization context is removed
     {
+
+
+        AZStd::unique_ptr<AZ::Entity> propertyEntity = AZStd::make_unique<AZ::Entity>("PropertyGraph");
+        auto propertyEntityId = propertyEntity->GetId();
+        propertyEntity->CreateComponent<GraphVariableManagerComponent>();
+        propertyEntity->Init();
+        propertyEntity->Activate();
+
         auto stringArrayDatum = Datum(StringArray());
 
         AZ::Outcome<VariableId, AZStd::string> addPropertyOutcome(AZ::Failure(AZStd::string("Uninitialized")));
@@ -499,9 +497,9 @@ TEST_F(ScriptCanvasTestFixture, SerializationTest)
         VariableDatum* superMatrixProperty = &propertyPair->m_varDatum;
         const Datum& matrix3x3Datum = superMatrixProperty->GetData();
         EXPECT_EQ(identityMatrixDatum, matrix3x3Datum);
-    }
-    propertyEntity.reset();
 
+        propertyEntity.reset();
+    }
     m_serializeContext->EnableRemoveReflection();
     m_behaviorContext->EnableRemoveReflection();
     StringArray::Reflect(m_serializeContext);
@@ -512,7 +510,7 @@ TEST_F(ScriptCanvasTestFixture, SerializationTest)
 
 TEST_F(ScriptCanvasTestFixture, GetVariableNodeTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
     using namespace ScriptCanvas;
     using namespace Nodes;
     using namespace TestNodes;
@@ -621,7 +619,7 @@ TEST_F(ScriptCanvasTestFixture, GetVariableNodeTest)
 
 TEST_F(ScriptCanvasTestFixture, SetVariableNodeTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace Nodes;
@@ -636,68 +634,90 @@ TEST_F(ScriptCanvasTestFixture, SetVariableNodeTest)
 
     graphEntity->Init();
 
+    Datum planeDatum(Data::PlaneType::CreateFromCoefficients(0.0f, 0.0f, 0.0f, 0.0f));
+
+    // Add in Plane Variable to Variable Component
+    AZStd::string_view varName = "TestPlane";
+    AZ::Outcome<VariableId, AZStd::string> addVariableOutcome(AZ::Failure(AZStd::string("Uninitialized")));
+    GraphVariableManagerRequestBus::EventResult(addVariableOutcome, graphUniqueId, &GraphVariableManagerRequests::AddVariable, varName, planeDatum);
+    EXPECT_TRUE(addVariableOutcome);
+    EXPECT_TRUE(addVariableOutcome.GetValue().IsValid());
+    const VariableId planeVariableId = addVariableOutcome.GetValue();
+
+    // Create Set Variable Node
+    AZ::EntityId outID;
+    auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outID);
+    auto setVariableNode = CreateTestNode<Nodes::Core::SetVariableNode>(graphUniqueId, outID);
+    auto fromNormalAndPointNode = CreateTestNode<PlaneNodes::FromNormalAndPointNode>(graphUniqueId, outID);
+
+    auto testPlane = Data::PlaneType::CreateFromNormalAndPoint(Data::Vector3Type(3.0f, -1.0f, 2.0f), Data::Vector3Type::CreateZero());
+    auto vector3NormalNode = CreateDataNode(graphUniqueId, testPlane.GetNormal(), outID);
+    auto vector3PointNode = CreateDataNode(graphUniqueId, Data::Vector3Type::CreateZero(), outID);
+    auto planeResultNode = CreateDataNode(graphUniqueId, Data::PlaneType::CreateFromNormalAndPoint(Data::Vector3Type(3.0f, -1.0f, 2.0f), Data::Vector3Type::CreateZero()), outID);
+
+    // data
+    EXPECT_TRUE(Connect(*graph, vector3NormalNode->GetEntityId(), "Get", fromNormalAndPointNode->GetEntityId(), "Vector3: Normal"));
+    EXPECT_TRUE(Connect(*graph, vector3PointNode->GetEntityId(), "Get", fromNormalAndPointNode->GetEntityId(), "Vector3: Point"));
+
+    // This should fail to connect until the SetVariableNode has a valid Variable associated with it
     {
-        Datum planeDatum(Data::PlaneType::CreateFromCoefficients(0.0f, 0.0f, 0.0f, 0.0f));
-
-        // Add in Plane Variable to Variable Component
-        AZStd::string_view varName = "TestPlane";
-        AZ::Outcome<VariableId, AZStd::string> addVariableOutcome(AZ::Failure(AZStd::string("Uninitialized")));
-        GraphVariableManagerRequestBus::EventResult(addVariableOutcome, graphUniqueId, &GraphVariableManagerRequests::AddVariable, varName, planeDatum);
-        EXPECT_TRUE(addVariableOutcome);
-        EXPECT_TRUE(addVariableOutcome.GetValue().IsValid());
-        const VariableId planeVariableId = addVariableOutcome.GetValue();
-
-        // Create Set Variable Node
-        AZ::EntityId outID;
-        auto startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, outID);
-        auto setVariableNode = CreateTestNode<Nodes::Core::SetVariableNode>(graphUniqueId, outID);
-        auto fromNormalAndPointNode = CreateTestNode<PlaneNodes::FromNormalAndPointNode>(graphUniqueId, outID);
-
-        auto testPlane = Data::PlaneType::CreateFromNormalAndPoint(Data::Vector3Type(3.0f, -1.0f, 2.0f), Data::Vector3Type::CreateZero());
-        auto vector3NormalNode = CreateDataNode(graphUniqueId, testPlane.GetNormal(), outID);
-        auto vector3PointNode = CreateDataNode(graphUniqueId, Data::Vector3Type::CreateZero(), outID);
-
-        // data
-        EXPECT_TRUE(Connect(*graph, vector3NormalNode->GetEntityId(), "Get", fromNormalAndPointNode->GetEntityId(), "Vector3: Normal"));
-        EXPECT_TRUE(Connect(*graph, vector3PointNode->GetEntityId(), "Get", fromNormalAndPointNode->GetEntityId(), "Vector3: Point"));
-
-        // This should fail to connect until the SetVariableNode has a valid Variable associated with it
-        {
-            ScopedOutputSuppression suppressOutput;
-            EXPECT_FALSE(graph->Connect(fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Plane: Result"), setVariableNode->GetEntityId(), setVariableNode->GetDataInSlotId()));
-        }
-        EXPECT_FALSE(setVariableNode->GetId().IsValid());
-        EXPECT_FALSE(setVariableNode->GetDataInSlotId().IsValid());
-        setVariableNode->SetId(planeVariableId); // This associates the variable with the node and adds the input slot
-        auto dataInputSlotId = setVariableNode->GetDataInSlotId();
-        EXPECT_TRUE(graph->Connect(fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane"), setVariableNode->GetEntityId(), dataInputSlotId));
-
-        // logic
-        EXPECT_TRUE(Connect(*graph, startNode->GetEntityId(), "Out", fromNormalAndPointNode->GetEntityId(), "In"));
-        EXPECT_TRUE(Connect(*graph, fromNormalAndPointNode->GetEntityId(), "Out", setVariableNode->GetEntityId(), "In"));
-
-        // execute
-        graphEntity->Activate();
-        EXPECT_FALSE(graph->IsInErrorState());
-        graphEntity->Deactivate();
-
-        AZ::Entity* connectionEntity{};
-        EXPECT_TRUE(graph->FindConnection(connectionEntity, { fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane") }, { setVariableNode->GetEntityId(), dataInputSlotId }));
-        setVariableNode->SetId({});
-        EXPECT_FALSE(graph->FindConnection(connectionEntity, { fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane") }, { setVariableNode->GetEntityId(), dataInputSlotId }));
-        EXPECT_FALSE(setVariableNode->GetId().IsValid());
-        EXPECT_FALSE(setVariableNode->GetDataInSlotId().IsValid());
-
-        VariableDatum* variableDatum{};
-        GraphVariableManagerRequestBus::EventResult(variableDatum, graphUniqueId, &GraphVariableManagerRequests::FindVariable, varName);
-        ASSERT_NE(nullptr, variableDatum);
-
-        // Get Variable Plane and verify that it is the same as the plane created from
-        auto variablePlane = variableDatum->GetData().ModAs<Data::PlaneType>();
-        ASSERT_NE(nullptr, variablePlane);
-
-        EXPECT_EQ(testPlane, *variablePlane);
+        ScopedOutputSuppression suppressOutput;
+        EXPECT_FALSE(graph->Connect(fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Plane: Result"), setVariableNode->GetEntityId(), setVariableNode->GetDataInSlotId()));
     }
+    EXPECT_FALSE(setVariableNode->GetId().IsValid());
+    EXPECT_FALSE(setVariableNode->GetDataInSlotId().IsValid());
+    setVariableNode->SetId(planeVariableId); // This associates the variable with the node and adds the input slot
+    auto dataInputSlotId = setVariableNode->GetDataInSlotId();
+    EXPECT_TRUE(graph->Connect(fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane"), setVariableNode->GetEntityId(), dataInputSlotId));
 
-    graphEntity.reset();
+    auto dataOutputSlotId = setVariableNode->GetDataOutSlotId();
+    EXPECT_TRUE(graph->Connect(setVariableNode->GetEntityId(), dataOutputSlotId, planeResultNode->GetEntityId(), planeResultNode->GetSlotId("Set")));
+
+    // logic
+    EXPECT_TRUE(Connect(*graph, startNode->GetEntityId(), "Out", fromNormalAndPointNode->GetEntityId(), "In"));
+    EXPECT_TRUE(Connect(*graph, fromNormalAndPointNode->GetEntityId(), "Out", setVariableNode->GetEntityId(), "In"));
+
+    // execute
+    graphEntity->Activate();
+    EXPECT_FALSE(graph->IsInErrorState());
+    graphEntity->Deactivate();
+
+    AZ::Entity* connectionEntity{};
+    EXPECT_TRUE(graph->FindConnection(connectionEntity, { fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane") }, { setVariableNode->GetEntityId(), dataInputSlotId }));
+    setVariableNode->SetId({});
+    EXPECT_FALSE(graph->FindConnection(connectionEntity, { fromNormalAndPointNode->GetEntityId(), fromNormalAndPointNode->GetSlotId("Result: Plane") }, { setVariableNode->GetEntityId(), dataInputSlotId }));
+    EXPECT_FALSE(setVariableNode->GetId().IsValid());
+    EXPECT_FALSE(setVariableNode->GetDataInSlotId().IsValid());
+
+    VariableDatum* variableDatum{};
+    GraphVariableManagerRequestBus::EventResult(variableDatum, graphUniqueId, &GraphVariableManagerRequests::FindVariable, varName);
+    ASSERT_NE(nullptr, variableDatum);
+
+    // Get Variable Plane and verify that it is the same as the plane created from
+    auto variablePlane = variableDatum->GetData().ModAs<Data::PlaneType>();
+    ASSERT_NE(nullptr, variablePlane);
+
+    EXPECT_EQ(testPlane, *variablePlane);
+
+    auto resultPlane = planeResultNode->GetInput_UNIT_TEST<Data::PlaneType>("Set");
+    ASSERT_NE(nullptr, resultPlane);
+
+    auto expectedNormal = variablePlane->GetNormal();
+    EXPECT_EQ(expectedNormal, resultPlane->GetNormal());
+
+}
+
+TEST_F(ScriptCanvasTestFixture, Vector2AllNodes)
+{
+	RunUnitTestGraph("LY_SC_UnitTest_Vector2_AllNodes");
+}
+
+TEST_F(ScriptCanvasTestFixture, Vector3_GetNode)
+{
+	RunUnitTestGraph("LY_SC_UnitTest_Vector3_Variable_GetNode");
+}
+
+TEST_F(ScriptCanvasTestFixture, Vector3_SetNode)
+{
+	RunUnitTestGraph("LY_SC_UnitTest_Vector3_Variable_SetNode");
 }

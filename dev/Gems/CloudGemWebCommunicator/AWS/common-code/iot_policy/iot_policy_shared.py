@@ -11,10 +11,11 @@
 
 from cgf_utils import aws_utils
 from resource_manager_common import stack_info
+import web_communicator_iot
 import boto3
 import json
 
-iot_client = aws_utils.ClientWrapper(boto3.client('iot'))
+iot_client = web_communicator_iot.get_iot_client()
 
 
 def _get_subscription_resources(stack, client_id):
@@ -97,7 +98,7 @@ def detach_policy_principals(physical_resource_id):
                 ## Response is in the form of accountId:CognitoId - when we detach we only want cognitoId
                 principal_name = thisPrincipal.split(':',1)[1]
             try:
-                iot_client.detach_principal_policy(policyName=physical_resource_id, principal=principal_name)
+                iot_client.detach_policy(policyName=physical_resource_id, target=principal_name)
             except Exception as e:
                 return e
 

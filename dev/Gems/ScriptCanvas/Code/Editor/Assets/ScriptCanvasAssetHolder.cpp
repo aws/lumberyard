@@ -92,7 +92,7 @@ namespace ScriptCanvasEditor
         AzToolsFramework::OpenViewPane(LyViewPane::ScriptCanvas);
 
         AZ::Outcome<int, AZStd::string> openOutcome = AZ::Failure(AZStd::string());
-        GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, m_scriptCanvasAsset, -1, m_ownerId);
+        GeneralRequestBus::BroadcastResult(openOutcome, &GeneralRequests::OpenScriptCanvasAsset, m_scriptCanvasAsset, -1);
         if (!openOutcome)
         {
             AZ_Warning("Script Canvas", openOutcome, "%s", openOutcome.GetError().data());
@@ -185,5 +185,10 @@ namespace ScriptCanvasEditor
     AZ::Data::Asset<ScriptCanvasAsset> ScriptCanvasAssetHolder::GetAsset() const
     {
         return m_scriptCanvasAsset;
+    }
+
+    AZ::Data::AssetId ScriptCanvasAssetHolder::GetAssetId() const
+    {
+        return m_scriptCanvasAsset.GetId();
     }
 }

@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "precompiled.h"
 
 #include <ScriptCanvas/Data/DataRegistry.h>
 
@@ -106,12 +105,15 @@ namespace ScriptCanvas
         AZ_Error("Script Canvas", it.second, "Cannot register a second Trait struct with the same ScriptCanvas type(%u)", it.first->first);
     }
 
-    void DataRegistry::RegisterType(const AZ::TypeId& typeId)
+    void DataRegistry::RegisterType(const AZ::TypeId& typeId, TypeProperties typeProperties)
     {
         Data::Type behaviorContextType = Data::FromAZType(typeId);
         if (behaviorContextType.GetType() == Data::eType::BehaviorContextObject && !behaviorContextType.GetAZType().IsNull())
         {
-            m_creatableTypes.insert(behaviorContextType);
+            if (m_creatableTypes.find(behaviorContextType) == m_creatableTypes.end())
+            {
+                m_creatableTypes[behaviorContextType] = typeProperties;
+            }
         }
     }
 

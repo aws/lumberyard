@@ -26,73 +26,75 @@
 #include <GraphCanvas/Styling/StyleHelper.h>
 
 #include <Components/Nodes/NodeComponent.h>
-#include <Components/Nodes/Comment/BlockCommentNodeFrameComponent.h>
-#include <Components/Nodes/Comment/BlockCommentNodeLayoutComponent.h>
+#include <Components/Nodes/Group/NodeGroupFrameComponent.h>
+#include <Components/Nodes/Group/NodeGroupLayerControllerComponent.h>
+#include <Components/Nodes/Group/NodeGroupLayoutComponent.h>
 #include <Components/Nodes/Comment/CommentNodeTextComponent.h>
 
 namespace GraphCanvas
 {
-    ////////////////////////////////////
-    // BlockCommentNodeLayoutComponent
-    ////////////////////////////////////
-    void BlockCommentNodeLayoutComponent::Reflect(AZ::ReflectContext* context)
+    /////////////////////////////
+    // NodeGroupLayoutComponent
+    /////////////////////////////
+    void NodeGroupLayoutComponent::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
         if (serializeContext)
         {
-            serializeContext->Class<BlockCommentNodeLayoutComponent, NodeLayoutComponent>()
+            serializeContext->Class<NodeGroupLayoutComponent, NodeLayoutComponent>()
                 ->Version(1)
                 ;
         }
     }
 
-    AZ::Entity* BlockCommentNodeLayoutComponent::CreateBlockCommentNodeEntity()
+    AZ::Entity* NodeGroupLayoutComponent::CreateNodeGroupEntity()
     {
         // Create this Node's entity.
         NodeConfiguration config;
         config.SetShowInOutliner(false);
 
         AZ::Entity* entity = NodeComponent::CreateCoreNodeEntity(config);
-        entity->SetName("BlockComment");
+        entity->SetName("NodeGroup");
 
         entity->CreateComponent<StylingComponent>(Styling::Elements::BlockComment::BlockComment, AZ::EntityId());
-        entity->CreateComponent<BlockCommentNodeFrameComponent>();
-        entity->CreateComponent<BlockCommentNodeLayoutComponent>();
-        entity->CreateComponent<CommentNodeTextComponent>();
+        entity->CreateComponent<NodeGroupFrameComponent>();
+        entity->CreateComponent<NodeGroupLayoutComponent>();
+        entity->CreateComponent<CommentNodeTextComponent>("Untitled Group");
+        entity->CreateComponent<NodeGroupLayerControllerComponent>();
 
         return entity;
     }
 
-    BlockCommentNodeLayoutComponent::BlockCommentNodeLayoutComponent()
+    NodeGroupLayoutComponent::NodeGroupLayoutComponent()
     {
     }
 
-    BlockCommentNodeLayoutComponent::~BlockCommentNodeLayoutComponent()
+    NodeGroupLayoutComponent::~NodeGroupLayoutComponent()
     {
     }
 
-    void BlockCommentNodeLayoutComponent::OnStyleChanged()
+    void NodeGroupLayoutComponent::OnStyleChanged()
     {
         m_style.SetStyle(GetEntityId());
         UpdateLayoutParameters();
     }
 
-    void BlockCommentNodeLayoutComponent::Init()
+    void NodeGroupLayoutComponent::Init()
     {
         NodeLayoutComponent::Init();
         m_layout = new QGraphicsLinearLayout(Qt::Vertical);
         m_comment = new QGraphicsLinearLayout(Qt::Horizontal);
     }
 
-    void BlockCommentNodeLayoutComponent::Activate()
+    void NodeGroupLayoutComponent::Activate()
     {
         NodeLayoutComponent::Activate();
         NodeNotificationBus::Handler::BusConnect(GetEntityId());
 
-        StyleNotificationBus::Handler::BusConnect(GetEntityId());        
+        StyleNotificationBus::Handler::BusConnect(GetEntityId());
     }
 
-    void BlockCommentNodeLayoutComponent::Deactivate()
+    void NodeGroupLayoutComponent::Deactivate()
     {
         NodeLayoutComponent::Deactivate();
         
@@ -100,7 +102,7 @@ namespace GraphCanvas
         NodeNotificationBus::Handler::BusDisconnect();
     }
 
-    void BlockCommentNodeLayoutComponent::OnNodeActivated()
+    void NodeGroupLayoutComponent::OnNodeActivated()
     {
         QGraphicsLayoutItem* commentGraphicsItem = nullptr;
         CommentLayoutRequestBus::EventResult(commentGraphicsItem, GetEntityId(), &CommentLayoutRequestBus::Events::GetGraphicsLayoutItem);
@@ -113,7 +115,7 @@ namespace GraphCanvas
         UpdateLayoutParameters();
     }
 
-    void BlockCommentNodeLayoutComponent::UpdateLayoutParameters()
+    void NodeGroupLayoutComponent::UpdateLayoutParameters()
     {
         qreal border = m_style.GetAttribute(Styling::Attribute::BorderWidth, 0.);
         qreal spacing = m_style.GetAttribute(Styling::Attribute::Spacing, 4.);

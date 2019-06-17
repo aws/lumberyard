@@ -9,15 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-
-#include "precompiled.h"
-
 #include <AzCore/PlatformDef.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
 
-#include <Tests/ScriptCanvasTestFixture.h>
-#include <Tests/ScriptCanvasTestUtilities.h>
+#include <Source/Framework/ScriptCanvasTestFixture.h>
+#include <Source/Framework/ScriptCanvasTestUtilities.h>
 
 using namespace ScriptCanvasTests;
+using namespace ScriptCanvasEditor;
 
 // Asynchronous ScriptCanvas Behaviors
 
@@ -91,7 +90,7 @@ public:
 
     void OnActivate() override
     {
-        AsyncScriptCanvasTestFixture::m_asyncOperationActive = true;
+        ScriptCanvasTestFixture::s_asyncOperationActive = true;
         AZ::TickBus::Handler::BusConnect();
         AsyncEventNotificationBus::Handler::BusConnect(GetEntityId());
 
@@ -127,7 +126,7 @@ public:
         // Disconnect from tick bus as well
         AZ::TickBus::Handler::BusDisconnect();
 
-        AsyncScriptCanvasTestFixture::m_asyncOperationActive = false;
+        ScriptCanvasTestFixture::s_asyncOperationActive = false;
     }
 
     void OnTick(float deltaTime, AZ::ScriptTimePoint) override
@@ -142,24 +141,25 @@ private:
     double m_duration = 0.f;
 };
 
-TEST_F(AsyncScriptCanvasTestFixture, Asynchronous_Behaviors)
+TEST_F(ScriptCanvasTestFixture, Asynchronous_Behaviors)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
 
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, AsyncNode::CreateDescriptor());
+    RegisterComponentDescriptor<AsyncNode>();
 
     // Make the graph.
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
-    EXPECT_TRUE(graph != nullptr);
+    ASSERT_TRUE(graph != nullptr);
 
     AZ::Entity* graphEntity = graph->GetEntity();
     graphEntity->Init();
 
     const AZ::EntityId& graphEntityId = graph->GetEntityId();
     const AZ::EntityId& graphUniqueId = graph->GetUniqueId();
+
+    AZ::Entity* startEntity{ aznew AZ::Entity };
+    startEntity->Init();
 
     AZ::EntityId startNodeId;
     Nodes::Core::Start* startNode = CreateTestNode<Nodes::Core::Start>(graphUniqueId, startNodeId);
@@ -174,7 +174,7 @@ TEST_F(AsyncScriptCanvasTestFixture, Asynchronous_Behaviors)
         graphEntity->Activate();
 
         // Tick the TickBus while the graph entity is active
-        while (AsyncScriptCanvasTestFixture::m_asyncOperationActive)
+        while (ScriptCanvasTestFixture::s_asyncOperationActive)
         {
             AZ::TickBus::ExecuteQueuedEvents();
             AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
@@ -184,8 +184,6 @@ TEST_F(AsyncScriptCanvasTestFixture, Asynchronous_Behaviors)
 
     graphEntity->Deactivate();
     delete graphEntity;
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, AsyncNode::CreateDescriptor());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -211,7 +209,7 @@ namespace
 class AsyncFibonacciComputeNode
     : public AsyncNode
 {
-public:
+public:    
     AZ_COMPONENT(AsyncFibonacciComputeNode, "{B198F52D-708C-414B-BB90-DFF0462D7F03}", AsyncNode);
 
     AsyncFibonacciComputeNode()
@@ -279,18 +277,17 @@ private:
     double m_duration = 0.f;
 };
 
-TEST_F(AsyncScriptCanvasTestFixture, ComputeFibonacciAsyncGraphTest)
+TEST_F(ScriptCanvasTestFixture, ComputeFibonacciAsyncGraphTest)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
 
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, AsyncFibonacciComputeNode::CreateDescriptor());
+    RegisterComponentDescriptor<AsyncNode>();
+    RegisterComponentDescriptor<AsyncFibonacciComputeNode>();
 
     // Make the graph.
     Graph* graph = nullptr;
     SystemRequestBus::BroadcastResult(graph, &SystemRequests::MakeGraph);
-    EXPECT_TRUE(graph != nullptr);
+    ASSERT_NE(graph, nullptr);
 
     AZ::Entity* graphEntity = graph->GetEntity();
     graphEntity->Init();
@@ -309,7 +306,7 @@ TEST_F(AsyncScriptCanvasTestFixture, ComputeFibonacciAsyncGraphTest)
     graphEntity->Activate();
 
     // Tick the TickBus while the graph entity is active
-    while (AsyncScriptCanvasTestFixture::m_asyncOperationActive)
+    while (ScriptCanvasTestFixture::s_asyncOperationActive)
     {
         AZ::TickBus::ExecuteQueuedEvents();
         AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(100));
@@ -318,8 +315,6 @@ TEST_F(AsyncScriptCanvasTestFixture, ComputeFibonacciAsyncGraphTest)
 
     graphEntity->Deactivate();
     delete graphEntity;
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, AsyncFibonacciComputeNode::CreateDescriptor());
 }
 
 #endif // AZ_COMPILER_MSVC >= 1900

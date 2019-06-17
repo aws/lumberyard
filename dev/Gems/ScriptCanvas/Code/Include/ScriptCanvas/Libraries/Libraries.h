@@ -14,6 +14,8 @@
 
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/containers/unordered_map.h>
 
 namespace AZ
 {
@@ -88,6 +90,9 @@ namespace ScriptCanvas
             static void Reflect(AZ::ReflectContext*);
             static void InitNodeRegistry(NodeRegistry& nodeRegistry);
             static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+
+            ~Core() override = default;
+
         };
 
         struct Math : public LibraryDefinition
@@ -97,6 +102,9 @@ namespace ScriptCanvas
             static void Reflect(AZ::ReflectContext*);
             static void InitNodeRegistry(NodeRegistry& nodeRegistry);
             static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+
+            ~Math() override = default;
+
         };
 
         struct Logic : public LibraryDefinition
@@ -106,6 +114,9 @@ namespace ScriptCanvas
             static void Reflect(AZ::ReflectContext*);
             static void InitNodeRegistry(NodeRegistry& nodeRegistry);
             static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+
+            ~Logic() override = default;
+
         };
 
         struct Entity : public LibraryDefinition
@@ -115,6 +126,9 @@ namespace ScriptCanvas
             static void Reflect(AZ::ReflectContext*);
             static void InitNodeRegistry(NodeRegistry& nodeRegistry);
             static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+
+            ~Entity() override = default;
+
         };
 
         struct Time : public LibraryDefinition
@@ -124,6 +138,9 @@ namespace ScriptCanvas
             static void Reflect(AZ::ReflectContext*);
             static void InitNodeRegistry(NodeRegistry& nodeRegistry);
             static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+
+            ~Time() override = default;
+
         };
 
         struct String : public LibraryDefinition
@@ -133,6 +150,32 @@ namespace ScriptCanvas
             static void Reflect(AZ::ReflectContext*);
             static void InitNodeRegistry(NodeRegistry& nodeRegistry);
             static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+
+            ~String() override = default;
+        };
+
+        struct UnitTesting : public LibraryDefinition
+        {
+            AZ_RTTI(UnitTesting, "{50EB4F9F-CB8E-4946-A389-23216083FC4B}", LibraryDefinition);
+
+            static void Reflect(AZ::ReflectContext*);
+            static void InitNodeRegistry(NodeRegistry& nodeRegistry);
+            static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+
+            ~UnitTesting() override = default;
+
+        };
+
+        struct Operators : public LibraryDefinition
+        {
+            AZ_RTTI(Operators, "{ED0D5642-4E89-4265-B687-251236961AF4}", LibraryDefinition);
+
+            static void Reflect(AZ::ReflectContext*);
+            static void InitNodeRegistry(NodeRegistry& nodeRegistry);
+            static AZStd::vector<AZ::ComponentDescriptor*> GetComponentDescriptors();
+
+            ~Operators() override = default;
+
         };
 
     }

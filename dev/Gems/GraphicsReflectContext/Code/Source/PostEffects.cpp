@@ -235,7 +235,7 @@ namespace GraphicsReflectContext
 
     void PostEffects::EnableEffectGroup(AZStd::string_view groupName)
     {
-        auto group = GetGroup(groupName.to_string().c_str());
+        auto group = GetGroup(groupName.data());
         if (group)
         {
             group->SetEnable(true);
@@ -244,7 +244,7 @@ namespace GraphicsReflectContext
     
     void PostEffects::DisableEffectGroup(AZStd::string_view groupName)
     {
-        auto group = GetGroup(groupName.to_string().c_str());
+        auto group = GetGroup(groupName.data());
         if (group)
         {
             group->SetEnable(false);
@@ -253,7 +253,7 @@ namespace GraphicsReflectContext
     
     void PostEffects::ApplyEffectGroupAtPosition(AZStd::string_view groupName, const AZ::Vector3& position)
     {
-        auto group = GetGroup(groupName.to_string().c_str());
+        auto group = GetGroup(groupName.data());
         if (group && group->GetEnable())
         {
             group->ApplyAtPosition(AZVec3ToLYVec3(position));

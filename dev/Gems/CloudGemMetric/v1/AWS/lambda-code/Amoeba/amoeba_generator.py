@@ -150,7 +150,9 @@ class Amoeba(object):
             elif e.response['Error']['Code'] == 'NoSuchKey':                
                 print '{}: for key {}'.format(e.response['Error']['Code'], key)
             else:
-                util.logger.error(e)                  
+                util.logger.error(e) 
+        except Exception as unexpected:
+            util.logger.error(unexpected)
         return None
 
     def __add_to_sqs(self, files):
@@ -197,7 +199,7 @@ class Amoeba(object):
 
     def __excret(self, key, filename, data, sep):            
         output_path = "{}{}{}".format(key,sep,filename)
-        print "\t\tSaving ingested file to '{}'".format(output_path)            
+        print "\t\tSaving ingested file to '{}{}'".format(self.bucket, output_path)            
         writer.write(self.bucket, output_path, data, sep, m_schema.object_encoding(data.columns.values)) 
         
     def __delete_keys(self, keys):

@@ -84,6 +84,8 @@ namespace AzToolsFramework
 
         void CancelQueuedRefresh(); // Cancels any pending property refreshes
 
+        void PreventRefresh(bool shouldPrevent);    // Set to true to prevent refreshes from happening, false to allow them.
+
         void SetAutoResizeLabels(bool autoResizeLabels);
 
         InstanceDataNode* GetNodeFromWidget(QWidget* pTarget) const;
@@ -129,11 +131,9 @@ namespace AzToolsFramework
 
         void SetDynamicEditDataProvider(DynamicEditDataProvider provider);
 
-        using VisibilityCallback = AZStd::function<void(InstanceDataNode* node, NodeDisplayVisibility& visibility, bool& checkChildVisibility)>;
-        void SetVisibilityCallback(VisibilityCallback callback);
 
         QWidget* GetContainerWidget();
-
+        
         void SetSizeHintOffset(const QSize& offset);
         QSize GetSizeHintOffset() const;
 
@@ -147,16 +147,20 @@ namespace AzToolsFramework
         // during construction, therefore doesn't support updating dynamically after showing the widget.
         void SetLeafIndentation(int indentation);
 
+        using VisibilityCallback = AZStd::function<void(InstanceDataNode* node, NodeDisplayVisibility& visibility, bool& checkChildVisibility)>;
+        void SetVisibilityCallback(VisibilityCallback callback);
+
     signals:
         void OnExpansionContractionDone();
     private:
         class Impl;
         std::unique_ptr<Impl> m_impl;
-
+        
         AZStd::string m_currentFilterString;
 
         virtual void paintEvent(QPaintEvent* event) override;
         int m_updateDepth = 0;
+        bool m_releasePrompt = false;
 
     private slots:
         void OnPropertyRowExpandedOrContracted(PropertyRowWidget* widget, InstanceDataNode* node, bool expanded, bool fromUserInteraction);

@@ -80,7 +80,7 @@ namespace CommandSystem
     }
 
 
-    AZStd::string CommandPlayMotion::PlayBackInfoToCommandParameters(EMotionFX::PlayBackInfo* playbackInfo)
+    AZStd::string CommandPlayMotion::PlayBackInfoToCommandParameters(const EMotionFX::PlayBackInfo* playbackInfo)
     {
         return AZStd::string::format("-blendInTime %f -blendOutTime %f -playSpeed %f -targetWeight %f -eventWeightThreshold %f -maxPlayTime %f -numLoops %i -priorityLevel %i -startNodeIndex %i -blendMode %i -playMode %i -mirrorMotion %s -mix %s -playNow %s -motionExtraction %s -retarget %s -freezeAtLastFrame %s -enableMotionEvents %s -blendOutBeforeEnded %s -canOverwrite %s -deleteOnZeroWeight %s -inPlace %s",
             playbackInfo->mBlendInTime,
@@ -544,11 +544,6 @@ namespace CommandSystem
 
         // get the default playback info from the motion
         EMotionFX::PlayBackInfo* defaultPlayBackInfo = motion->GetDefaultPlayBackInfo();
-        if (defaultPlayBackInfo == nullptr)
-        {
-            outResult = AZStd::string::format("Motion '%s' does not have a default playback info. Cannot adjust default playback info.", filename.c_str());
-            return false;
-        }
 
         // copy the current playback info to the undo data
         mOldPlaybackInfo = *defaultPlayBackInfo;

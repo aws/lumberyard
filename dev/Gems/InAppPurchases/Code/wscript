@@ -13,7 +13,7 @@ from waflib.Build import BuildContext
 
 def build(bld):
 
-    if isinstance(bld, BuildContext):
+    if isinstance(bld, BuildContext) and hasattr(bld, 'read_aar'):
         bld.read_aar(
             name = 'billing',
             group = 'com.android.billingclient',

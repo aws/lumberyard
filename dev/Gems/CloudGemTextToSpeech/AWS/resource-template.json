@@ -206,7 +206,7 @@
             "DependsOn": [
                 "characterdefs"
             ],
-            "Type": "Custom::BucketClearer"
+            "Type": "Custom::S3DeleteObjects"
         },
         "ServiceApi": {
             "Metadata": {

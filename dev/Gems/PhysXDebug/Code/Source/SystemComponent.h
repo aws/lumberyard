@@ -25,7 +25,7 @@
 #include <AzFramework/Physics/SystemBus.h>
 
 #ifdef IMGUI_ENABLED
-#include <ImGui/imgui.h>
+#include <imgui/imgui.h>
 #include <ImGuiBus.h>
 #endif // #ifdef IMGUI_ENABLED
 
@@ -226,6 +226,10 @@ namespace PhysXDebug
         AZStd::vector<AZ::u32> m_jointIndexBuffer;
         AZStd::vector<AZ::Vector3> m_jointLineBuffer;
         AZStd::vector<bool> m_jointLineValidityBuffer;
+
+        // imgui curve editor
+        ImGui::CurveEditorWindowParams m_windowParams;
+        int m_maxPoints;
     };
 
     /// Possible console parameters for physx_Debug cvar.

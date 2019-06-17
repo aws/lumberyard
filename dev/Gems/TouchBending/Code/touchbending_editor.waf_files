@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Source/Pipeline": [
+            "Source/Pipeline/TouchBendingSceneSystemComponent.cpp",
+            "Source/Pipeline/TouchBendingSceneSystemComponent.h",
+            "Source/Pipeline/TouchBendingRuleBehavior.cpp",
+            "Source/Pipeline/TouchBendingRuleBehavior.h",
+            "Source/Pipeline/TouchBendingRule.cpp",
+            "Source/Pipeline/TouchBendingRule.h"
+        ]
+    }
+}

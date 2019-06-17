@@ -12,39 +12,27 @@
 
 #pragma once
 
-#include <AzCore/EBus/EBus.h>
-#include <AzFramework/Asset/SimpleAsset.h>
+#include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/VertexContainerInterface.h>
 
 namespace Visibility
 {
-    /**
-    * Request bus for the VisArea component
-    */
-    class VisAreaComponentBus
-        : public AZ::ComponentBus
+    /// Request bus for the VisAreaComponent.
+    class VisAreaComponentRequests
     {
-        public:
-            //////////////////////////////////////////////////////////////////////////
-            // EBus Traits overrides
-            // Using Defaults
-            //////////////////////////////////////////////////////////////////////////
+    public:
+        virtual float GetHeight() = 0;
+        virtual bool GetDisplayFilled() = 0;
+        virtual bool GetAffectedBySun() = 0;
+        virtual float GetViewDistRatio() = 0;
+        virtual bool GetOceanIsVisible() = 0;
 
-            virtual ~VisAreaComponentBus() {}
-            
-            virtual void SetHeight(const float value) = 0;
-            virtual float GetHeight() = 0;
-            virtual void SetDisplayFilled(const bool value) = 0;
-            virtual bool GetDisplayFilled() = 0;
-            virtual void SetAffectedBySun(const bool value) = 0;
-            virtual bool GetAffectedBySun() = 0;
-            virtual void SetViewDistRatio(const float value) = 0;
-            virtual float GetViewDistRatio() = 0;
-            virtual void SetOceanIsVisible(const bool value) = 0;
-            virtual bool GetOceanIsVisible() = 0;
-            virtual void SetVertices(const AZStd::vector<AZ::Vector3>& value) = 0;
-            virtual const AZStd::vector<AZ::Vector3>& GetVertices() = 0;
+    protected:
+        ~VisAreaComponentRequests() = default;
     };
 
-    using VisAreaComponentRequestBus = AZ::EBus<VisAreaComponentBus>;
+    /// Type to inherit to implement VisAreaComponentRequests.
+    using VisAreaComponentRequestBus = AZ::EBus<VisAreaComponentRequests, AZ::ComponentBus>;
 
 } // namespace Visibility

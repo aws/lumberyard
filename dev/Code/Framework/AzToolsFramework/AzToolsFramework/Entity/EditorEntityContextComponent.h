@@ -73,6 +73,7 @@ namespace AzToolsFramework
         void ResetEditorContext() override;
 
         AZ::Entity* CreateEditorEntity(const char* name) override;
+        AZ::Entity* CreateEditorEntityWithId(const char* name, const AZ::EntityId& entityId) override;
         void AddEditorEntity(AZ::Entity* entity) override;
         void AddEditorEntities(const EntityList& entities) override;
         void AddEditorSliceEntities(const EntityList& entities) override;
@@ -169,7 +170,6 @@ namespace AzToolsFramework
         }
 
     protected:
-
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
@@ -177,6 +177,9 @@ namespace AzToolsFramework
         void OnContextEntityRemoved(const AZ::EntityId& id) override;
 
         void HandleNewMetadataEntitiesCreated(AZ::SliceComponent& slice) override;
+
+        // Helper function for creating editor ready entities.
+        void FinalizeEditorEntity(AZ::Entity* entity);
 
         void SetupEditorEntity(AZ::Entity* entity);
         void SetupEditorEntities(const EntityList& entities);
@@ -187,7 +190,7 @@ namespace AzToolsFramework
         AZStd::vector<InstantiatingSlicePair> m_instantiatingSlices;
 
     private:
-		EditorEntityContextComponent(const EditorEntityContextComponent&) = delete;
+        EditorEntityContextComponent(const EditorEntityContextComponent&) = delete;
         //! Indicates whether or not the editor is simulating the game.
         bool m_isRunningGame;
 
@@ -208,13 +211,13 @@ namespace AzToolsFramework
             ~QueuedSliceReplacement() = default;
             QueuedSliceReplacement() = default;
 
-		private:
-			//! Workaround for VS2013 is_copy_constructible returning true for deleted copy constructors
-			//! https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
+        private:
+            //! Workaround for VS2013 is_copy_constructible returning true for deleted copy constructors
+            //! https://connect.microsoft.com/VisualStudio/feedback/details/800328/std-is-copy-constructible-is-broken
             QueuedSliceReplacement(const QueuedSliceReplacement&) = delete;
             QueuedSliceReplacement& operator=(const QueuedSliceReplacement&) = delete;
-		public:
 
+        public:
             void Setup(const char* path,
                 const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& selectedToAssetMap,
                 const AZStd::unordered_set<AZ::EntityId>& entitiesInSelection,

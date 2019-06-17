@@ -31,7 +31,7 @@ namespace UnitTest
 
     /// Default allocator.
     class AllocatorDefaultTest
-        : public AllocatorsFixture
+        : public AllocatorsTestFixture
     {
     public:
         void run()

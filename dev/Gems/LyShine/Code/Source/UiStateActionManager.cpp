@@ -390,5 +390,10 @@ AZStd::vector<AZ::EntityId> UiStateActionManager::GetTargetEntitiesInAllStates()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 UiStateActionManager::StateActions* UiStateActionManager::GetStateActions(int state)
 {
-    return m_states[state];
+    if (state >= 0 && state < m_states.size())
+    {
+        return m_states[state];
+    }
+
+    return nullptr;
 }

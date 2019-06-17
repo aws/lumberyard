@@ -15,6 +15,8 @@
 #include <QDebug>
 #include <QCoreApplication>
 
+const QString s_connectionSettingsPrefix = QStringLiteral("AssetProcessorUnitTests_");
+
 ConnectionManagerUnitTest::ConnectionManagerUnitTest()
 {
     m_connectionManager = ConnectionManager::Get();
@@ -46,7 +48,7 @@ void ConnectionManagerUnitTest::RunFirstPartOfUnitTestsForConnectionManager()
         Q_EMIT UnitTestFailed("Count is Invalid");
         return;
     }
-    m_connectionManager->SaveConnections();
+    m_connectionManager->SaveConnections(s_connectionSettingsPrefix);
     //removing all connections
     for (auto iter = m_connectionManager->getConnectionMap().begin(); iter != m_connectionManager->getConnectionMap().end(); iter++)
     {
@@ -62,7 +64,7 @@ void ConnectionManagerUnitTest::RunSecondPartOfUnitTestsForConnectionManager()
         Q_EMIT UnitTestFailed("Count is Invalid");
         return;
     }
-    m_connectionManager->LoadConnections();
+    m_connectionManager->LoadConnections(s_connectionSettingsPrefix);
     count = m_connectionManager->getCount();
     if (count != 4)
     {
@@ -102,7 +104,7 @@ void ConnectionManagerUnitTest::RunSecondPartOfUnitTestsForConnectionManager()
         return;
     }
 
-    connId = m_connectionManager->addConnection();
+    connId = m_connectionManager->addUserConnection();
     count = m_connectionManager->getCount();
     if (count != 5)
     {
@@ -207,10 +209,10 @@ void ConnectionManagerUnitTest::ConnectionDeleted(unsigned int connId)
 
 void ConnectionManagerUnitTest::UpdateConnectionManager()
 {
-    unsigned int connId1 = m_connectionManager->addConnection();
-    unsigned int connId2 = m_connectionManager->addConnection();
-    unsigned int connId3 = m_connectionManager->addConnection();
-    unsigned int connId4 = m_connectionManager->addConnection();
+    unsigned int connId1 = m_connectionManager->addUserConnection();
+    unsigned int connId2 = m_connectionManager->addUserConnection();
+    unsigned int connId3 = m_connectionManager->addUserConnection();
+    unsigned int connId4 = m_connectionManager->addUserConnection();
     Connection* c1 = m_connectionManager->getConnection(connId1);
     Connection* c2 = m_connectionManager->getConnection(connId2);
     Connection* c3 = m_connectionManager->getConnection(connId3);

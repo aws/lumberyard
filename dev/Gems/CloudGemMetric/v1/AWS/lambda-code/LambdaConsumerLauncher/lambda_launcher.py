@@ -62,10 +62,12 @@ def initialize_s3_kms():
             kms.create_key_alias(key_id, c.KMS_KEY_ID)
 
 
-def cli(context, args):
-    from resource_manager_common import constant
-    credentials = context.aws.load_credentials()
+def cli(context, args):    
+    util.set_logger(args.verbose)    
     
+    from resource_manager_common import constant
+    credentials = context.aws.load_credentials()    
+
     resources = util.get_resources(context)
     os.environ[c.ENV_SHARED_BUCKET] = context.config.configuration_bucket_name
     os.environ[c.ENV_S3_STORAGE] = resources[c.RES_S3_STORAGE]      

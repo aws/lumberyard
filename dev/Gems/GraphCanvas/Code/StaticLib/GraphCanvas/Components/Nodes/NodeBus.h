@@ -16,8 +16,11 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/std/containers/vector.h>
 
+#include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Types/GraphCanvasGraphSerialization.h>
 #include <GraphCanvas/Types/TranslationTypes.h>
+
+#include <GraphCanvas/Components/Slots/SlotBus.h>
 
 namespace AZ
 {
@@ -62,6 +65,12 @@ namespace GraphCanvas
         //! Obtain a collection of the entity IDs of the slots owned by a node.
         virtual AZStd::vector<AZ::EntityId> GetSlotIds() const = 0;
 
+        virtual AZStd::vector< SlotId > GetVisibleSlotIds() const = 0;
+
+        virtual AZStd::vector<SlotId> FindVisibleSlotIdsByType(const ConnectionType& connectionType, const SlotType& slotType) const = 0;
+
+        virtual bool HasConnections() const = 0;
+
         //! Get user data from this node
         virtual AZStd::any* GetUserData() = 0;
 
@@ -87,8 +96,8 @@ namespace GraphCanvas
         //! Emitted when the node is added to a scene
         virtual void OnAddedToScene(const AZ::EntityId& sceneId) {};
 
-        //! Emitted when the node is removed from a scene
-        virtual void OnRemovedFromScene(const AZ::EntityId& sceneId) {};
+        //! Emitted when a node is about to be deleted
+        virtual void OnNodeAboutToBeDeleted() {};
 
         //! Emitted when the name of a node changes.
         virtual void OnNameChanged(const AZStd::string&) {}
@@ -100,17 +109,17 @@ namespace GraphCanvas
         //! The addition of a slot to the node causes the emission of this event.
         //! # Parameters
         //! 1. The entity ID of the slot that was added.
-        virtual void OnSlotAdded(const AZ::EntityId&) {}
+        virtual void OnSlotAddedToNode(const AZ::EntityId&) {}
 
         //! The removal of a slot to the node causes the emission of this event.
         //! # Parameters
         //! 1. The entity ID of the slot that was removed.
-        virtual void OnSlotRemoved(const AZ::EntityId&) {}
+        virtual void OnSlotRemovedFromNode(const AZ::EntityId&) {}
 
         virtual void OnNodeActivated() {};
 
-        virtual void OnNodeAboutToSerialize(GraphSerialization&) {}
-        virtual void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphSerialization&) {}
+        AZ_DEPRECATED(virtual void OnNodeAboutToSerialize(GraphSerialization&), "NodeNotification OnNodeAboutToSerialize deprecated in favor of SceneMemberNotificationOnSceneMemberAboutToSerialize") {}
+        AZ_DEPRECATED(virtual void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphSerialization&), "NodeNotification OnNodeAboutToSerialize deprecated in favor of SceneMemberNotificationOnSceneMemberAboutToSerialize") {}
 
         virtual void OnNodeWrapped(const AZ::EntityId& wrappingNode) {}
         virtual void OnNodeUnwrapped(const AZ::EntityId& wrappingNode) {}

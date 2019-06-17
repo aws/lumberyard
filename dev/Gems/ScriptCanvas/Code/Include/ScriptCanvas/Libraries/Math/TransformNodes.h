@@ -216,7 +216,7 @@ namespace ScriptCanvas
         {
             return a * b;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(MultiplyByTransform, "Math/Transform", "{66C3FBB9-498E-4E96-8683-63843F28AFE9}", "returns A * B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(MultiplyByTransform, "Math/Transform", "{66C3FBB9-498E-4E96-8683-63843F28AFE9}", "This node is deprecated, use Multiply (*), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE Vector3Type MultiplyByVector3(const TransformType& source, const Vector3Type multiplier)
         {

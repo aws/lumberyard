@@ -13,6 +13,7 @@
 
 #include <AzQtComponents/Components/Widgets/GradientSlider.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorController.h>
+#include <AzQtComponents/Components/Widgets/ColorPicker/ColorValidator.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorComponentSliders.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorPreview.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorRGBAEdit.h>
@@ -21,15 +22,16 @@
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteView.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteCard.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/PaletteCardCollection.h>
-#include <AzQtComponents/Components/Widgets/ColorPicker/GammaEdit.h>
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorWarning.h>
 #include <AzQtComponents/Components/Widgets/Eyedropper.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Utilities/Conversions.h>
 #include <AzQtComponents/Utilities/ColorUtilities.h>
 
 #include <QEvent>
 #include <QResizeEvent>
+#include <QApplication>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QVBoxLayout>
@@ -38,10 +40,13 @@
 #include <QMenu>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QScopedValueRollback>
 #include <QSettings>
 #include <QToolButton>
 #include <QDirIterator>
 #include <QUndoStack>
+#include <QTimer>
+#include <QCursor>
 
 // settings keys
 static const char* g_colorPickerSection = "ColorPicker";
@@ -53,18 +58,28 @@ static const char* g_showRGBSlidersKey = "RGBSliders";
 static const char* g_showHSSlidersKey = "HSSliders";
 static const char* g_quickPaletteKey = "QuickPalette";
 static const char* g_colorLibrariesKey = "ColorLibraries";
+static const char* g_colorLibraryNameKey = "Name";
+static const char* g_colorLibraryExpandedKey = "Expanded";
 static const char* g_swatchSizeKey = "SwatchSize";
-static const char* g_showGammaKey = "Gamma";
-static const char* g_gammaCheckedKey = "GammaChecked";
-static const char* g_gammaValueKey = "GammaValue";
+static const char* g_windowGeometryKey = "WindowGeometry";
+static const char* g_paletteFileDialogKey = "PaletteFileDialogPath";
+static const char* g_showQuickPaletteKey = "ShowQuickPalette";
 
 namespace AzQtComponents
 {
 
-    namespace
+    namespace ColorPickerHelpers
     {
         const QString SEPARATOR_CLASS = QStringLiteral("HorizontalSeparator");
-        static const AZ::Color INVALID_COLOR = AZ::Color{ -1.0f, -1.0f, -1.0f, -1.0f };
+        const QString SEPARATOR_CONTAINER_CLASS = QStringLiteral("HorizontalSeparatorContainer");
+        const AZ::Color INVALID_COLOR = AZ::Color{ -1.0f, -1.0f, -1.0f, -1.0f };
+
+        const int SPIN_BOX_MARGIN_FUDGE = 1;
+
+        Internal::ColorLibrarySettings defaultColorLibrarySettings()
+        {
+            return Internal::ColorLibrarySettings{true};
+        }
 
         void RemoveAllWidgets(QLayout* layout)
         {
@@ -74,26 +89,16 @@ namespace AzQtComponents
             }
         }
 
-        QFrame* MakeSeparator(QWidget* parent)
-        {
-            auto separator = new QFrame(parent);
-            separator->setFrameStyle(QFrame::StyledPanel);
-            separator->setFrameShadow(QFrame::Plain);
-            separator->setFrameShape(QFrame::HLine);
-            Style::addClass(separator, SEPARATOR_CLASS);
-            return separator;
-        }
-
         const char* ConfigurationName(ColorPicker::Configuration configuration)
         {
             switch (configuration)
             {
-            case ColorPicker::Configuration::A:
-                return "ConfigurationA";
-            case ColorPicker::Configuration::B:
-                return "ConfigurationB";
-            case ColorPicker::Configuration::C:
-                return "ConfigurationC";
+            case ColorPicker::Configuration::RGBA:
+                return "ConfigurationRGBA";
+            case ColorPicker::Configuration::RGB:
+                return "ConfigurationRGB";
+            case ColorPicker::Configuration::HueSaturation:
+                return "ConfigurationHueSaturation";
             }
 
             Q_UNREACHABLE();
@@ -101,11 +106,23 @@ namespace AzQtComponents
 
         void ReadColorGridConfig(QSettings& settings, const QString& name, ColorPicker::ColorGridConfig& colorGrid)
         {
-            settings.beginGroup(name);
-            colorGrid.minimumSize = settings.value("MinimumSize", colorGrid.minimumSize).toSize();
-            settings.endGroup();
+            ConfigHelpers::GroupGuard(&settings, name);
+            ConfigHelpers::read<QSize>(settings, QStringLiteral("MinimumSize"), colorGrid.minimumSize);
         }
-    } // namespace
+
+        void ReadDialoButtonsConfig(QSettings& settings, const QString& name, ColorPicker::DialogButtonsConfig& dialogButtons)
+        {
+            ConfigHelpers::GroupGuard(&settings, name);
+            ConfigHelpers::read<int>(settings, QStringLiteral("TopPadding"), dialogButtons.topPadding);
+        }
+
+        QString rgbToolTip(const QString& relevantInfo, const QColor& color)
+        {
+            return QStringLiteral("%0\nRGB: %1, %2, %3").arg(relevantInfo).arg(color.red()).arg(color.green()).arg(color.blue());
+        }
+    } // namespace ColorPickerHelpers
+
+    using namespace ColorPickerHelpers; // only for the end of this scope, which is the AzQtComponents namespace
     
     class ColorPicker::CurrentColorChangedCommand : public QUndoCommand
     {
@@ -167,6 +184,10 @@ namespace AzQtComponents
         , m_card(card)
         , m_colorLibrary(colorLibrary)
     {
+        QObject::connect(card.data(), &PaletteCard::contextMenuRequested, picker, [picker, card](const QPoint& point)
+        {
+            picker->paletteContextMenuRequested(card, point);
+        });
     }
 
     ColorPicker::PaletteAddedCommand::~PaletteAddedCommand()
@@ -223,10 +244,11 @@ namespace AzQtComponents
 ColorPicker::Config ColorPicker::loadConfig(QSettings& settings)
 {
     Config config = defaultConfig();
-    config.padding = settings.value(QStringLiteral("Padding"), config.padding).toInt();
-    config.spacing = settings.value(QStringLiteral("Spacing"), config.spacing).toInt();
-    config.maximumContentHeight = settings.value(QStringLiteral("MaximumContentHeight"), config.maximumContentHeight).toInt();
+    ConfigHelpers::read<int>(settings, QStringLiteral("Padding"), config.padding);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Spacing"), config.spacing);
+    ConfigHelpers::read<int>(settings, QStringLiteral("MaximumContentHeight"), config.maximumContentHeight);
     ReadColorGridConfig(settings, "ColorGrid", config.colorGrid);
+    ReadDialoButtonsConfig(settings, "DialogButtons", config.dialogButtons);
     return config;
 }
 
@@ -238,6 +260,9 @@ ColorPicker::Config ColorPicker::defaultConfig()
         492, // MaximumContentHeight
         {    // ColorGrid
             {194, 150} // ColorGrid/MinimumSize
+        },
+        {    // DialogButtons
+            12 // DialogButtons/TopPadding
         }
     };
 }
@@ -260,42 +285,61 @@ void ColorPicker::polish(const ColorPicker::Config& config)
     m_config = config;
 
     // Outer layout
-    layout()->setSpacing(m_config.spacing);
+    layout()->setSpacing(0);
     layout()->setContentsMargins({ 0, m_config.padding, 0, m_config.padding });
+
+    // Container layout
+    m_containerWidget->layout()->setSpacing(m_config.spacing);
+
+    // The scroll bar shows and hides on hover, but the space is taken up by it always
+    // so we have to account for that by adjusting the right padding by that much.
+    m_containerWidget->layout()->setContentsMargins({ m_config.padding, 0, m_config.padding - m_scrollArea->verticalScrollBar()->sizeHint().width(), m_config.padding });
 
     // Color grid, preview, eyedropper
     m_colorGrid->setMinimumSize(m_config.colorGrid.minimumSize);
 
-    m_hsvPickerLayout->setContentsMargins({ m_config.padding, 0, m_config.padding, 0 });
+    m_hsvPickerLayout->setContentsMargins({ 0, 0, 0, 0 });
+    m_hsvPickerLayout->setSpacing(m_config.spacing);
 
-    m_rgbaEdit->setHorizontalSpacing(m_config.spacing);
-    m_rgbHexLayout->setContentsMargins({ m_config.padding, m_config.spacing, m_config.padding, 0 });
-    m_rgbHexLayout->setSpacing(m_config.spacing);
+    m_rgbaEdit->setHorizontalSpacing(m_config.spacing - (SPIN_BOX_MARGIN_FUDGE * 2));
+    m_rgbHexLayout->setContentsMargins({ 0, m_config.spacing, 0, 0 });
+    m_rgbHexLayout->setSpacing(m_config.spacing - (SPIN_BOX_MARGIN_FUDGE * 2));
 
-    m_quickPaletteLayout->setContentsMargins(QMargins{ m_config.padding, 0, m_config.padding, 0 });
-    m_quickPaletteLayout->addWidget(m_paletteView);
+    m_quickPaletteLayout->setContentsMargins(QMargins{ 0, 0, 0, 0 });
 
-    m_paletteCardCollection->setContentsMargins(QMargins{ 0, 0, m_config.padding, 0 });
-    m_gammaEdit->setContentsMargins(QMargins{ m_config.padding, 0, m_config.padding, 0 });
+    m_paletteCardCollection->setContentsMargins(QMargins{ 0, 0, 0, 0 });
 
     // Special case as the artboards show a 12px padding above the buttons
-    m_dialogButtonBox->setContentsMargins(QMargins{ m_config.padding, 4, m_config.padding, 0 });
+    m_dialogButtonBox->setContentsMargins(QMargins{ m_config.padding, m_config.dialogButtons.topPadding, m_config.padding, 0 });
 
-    m_hslSliders->layout()->setContentsMargins(QMargins{ m_config.padding, 0, m_config.padding, 0 });
+    m_hslSliders->layout()->setContentsMargins(QMargins{ 0, 0, 0, 0 });
     m_hslSliders->layout()->setSpacing(m_config.spacing);
-    m_hsvSliders->layout()->setContentsMargins(QMargins{ m_config.padding, 0, m_config.padding, 0 });
+    m_hsvSliders->layout()->setContentsMargins(QMargins{ 0, 0, 0, 0 });
     m_hsvSliders->layout()->setSpacing(m_config.spacing);
-    m_rgbSliders->layout()->setContentsMargins(QMargins{ m_config.padding, 0, m_config.padding, 0 });
+    m_rgbSliders->layout()->setContentsMargins(QMargins{ 0, 0, 0, 0 });
     m_rgbSliders->layout()->setSpacing(m_config.spacing);
+
+    for (QWidget* separator : m_separators)
+    {
+        separator->layout()->setContentsMargins(QMargins{ 0, 0, 0, 0 });
+    }
+
+    m_paletteCardCollection->setCardContentMargins(QMargins{ 0, 0, 0, 0 });
+    m_quickPaletteCard->setContentsMargins(QMargins{ 0, 0, 0, 0 });
 }
 
-ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* parent)
-    : StyledDialog(parent)
+ColorPicker::ColorPicker(ColorPicker::Configuration configuration, const QString& context, QWidget* parent)
+    : LogicalTabOrderingWidget<StyledDialog>(parent)
     , m_configuration(configuration)
+    , m_context(context.isEmpty() ? g_colorPickerSection : context)
     , m_undoStack(new QUndoStack(this))
     , m_previousColor(INVALID_COLOR)
+    , m_defaultVForHsMode(0.85)
+    , m_defaultLForHsMode(0.85)
 {
     qRegisterMetaTypeStreamOperators<Palette>("AzQtComponents::Palette");
+
+    setFocusPolicy(Qt::NoFocus);
 
     m_currentColorController = new Internal::ColorController(this);
     connect(m_currentColorController, &Internal::ColorController::colorChanged, this, &ColorPicker::currentColorChanged);
@@ -310,6 +354,7 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     mainLayout->setSizeConstraint(QLayout::SetFixedSize);
 
     m_scrollArea = new QScrollArea(this);
+    m_scrollArea->setFocusPolicy(Qt::NoFocus);
     mainLayout->addWidget(m_scrollArea);
 
     m_scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -324,6 +369,11 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     containerLayout->setSizeConstraint(QLayout::SetFixedSize);
     containerLayout->setContentsMargins(0, 0, 0, 0);
 
+    // warning widget
+
+    m_warning = new ColorWarning(ColorWarning::Mode::Warning, {}, tr("Selected color is the closest available"), this);
+    m_warning->hide();
+
     // alpha slider + color grid + lightness slider + color preview
 
     m_hsvPickerLayout = new QGridLayout();
@@ -332,10 +382,14 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     // alpha slider
 
     m_alphaSlider = new GradientSlider(Qt::Vertical, this);
+    Style::addClass(m_alphaSlider, "AlphaGradient");
     m_alphaSlider->setColorFunction([this](qreal position) {
         auto color = ToQColor(m_currentColorController->color());
         color.setAlphaF(position);
         return color;
+    });
+    m_alphaSlider->setToolTipFunction([this](qreal position) {
+        return QStringLiteral("Alpha: %0").arg(toString(position, m_alphaSlider->decimals(), m_alphaSlider->locale()));
     });
     m_alphaSlider->setMinimum(0);
     m_alphaSlider->setMaximum(255);
@@ -352,6 +406,7 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     // color grid
 
     m_colorGrid = new ColorGrid(this);
+    m_colorGrid->setDefaultVForHsMode(m_defaultVForHsMode);
 
     connect(m_currentColorController, &Internal::ColorController::hsvHueChanged, m_colorGrid, &ColorGrid::setHue);
     connect(m_currentColorController, &Internal::ColorController::hsvSaturationChanged, m_colorGrid, &ColorGrid::setSaturation);
@@ -366,7 +421,11 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
 
     m_hueSlider = new GradientSlider(Qt::Vertical, this);
     m_hueSlider->setColorFunction([](qreal position) {
-        return QColor::fromHsvF(position, 1.0, 1.0);
+        return toQColor(Internal::ColorController::fromHsv(position, 1.0, 1.0));
+    });
+    m_hueSlider->setToolTipFunction([this](qreal position) {
+        QString prefix = QStringLiteral("Hue: %0").arg(qRound(position * m_hueSlider->maximum()));
+        return rgbToolTip(prefix, toQColor(Internal::ColorController::fromHsv(position, m_currentColorController->hsvSaturation(), m_currentColorController->value())));
     });
     m_hueSlider->setMinimum(0);
     m_hueSlider->setMaximum(360);
@@ -385,7 +444,11 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
 
     m_valueSlider = new GradientSlider(Qt::Vertical, this);
     m_valueSlider->setColorFunction([this](qreal position) {
-        return QColor::fromHsvF(m_currentColorController->hsvHue(), m_currentColorController->hsvSaturation(), position);
+        return toQColor(Internal::ColorController::fromHsv(m_currentColorController->hsvHue(), m_currentColorController->hsvSaturation(), position));
+    });
+    m_valueSlider->setToolTipFunction([this](qreal position) {
+        QString prefix = QStringLiteral("V: %0").arg(qRound(position * m_valueSlider->maximum()));
+        return rgbToolTip(prefix, toQColor(Internal::ColorController::fromHsv(m_currentColorController->hsvHue(), m_currentColorController->hsvSaturation(), position)));
     });
     m_valueSlider->setMinimum(0);
     m_valueSlider->setMaximum(255);
@@ -405,10 +468,12 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     // eyedropper button
 
     m_eyedropperButton = new QToolButton(this);
+    m_eyedropperButton->setFocusPolicy(Qt::NoFocus);
     QIcon eyedropperIcon;
     eyedropperIcon.addPixmap(QPixmap(":/ColorPickerDialog/ColorGrid/eyedropper-normal.png"), QIcon::Normal);
     m_eyedropperButton->setIcon(eyedropperIcon);
     m_hsvPickerLayout->addWidget(m_eyedropperButton, 1, 0);
+    m_eyedropperButton->setToolTip(tr("Left click on this and hold the button down. On left mouse button release, the color under the mouse cursor will be picked."));
     m_eyedropper = new Eyedropper(this, m_eyedropperButton);
     connect(m_eyedropper, &Eyedropper::colorSelected, this, [this](const QColor& color) { setCurrentColor(FromQColor(color)); });
     connect(m_eyedropperButton, &QToolButton::pressed, m_eyedropper, &Eyedropper::show);
@@ -419,29 +484,30 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     connect(this, &ColorPicker::currentColorChanged, m_preview, &ColorPreview::setCurrentColor);
     connect(this, &ColorPicker::selectedColorChanged, m_preview, &ColorPreview::setSelectedColor);
 
+    connect(m_preview, &ColorPreview::colorContextMenuRequested, this, &ColorPicker::showPreviewContextMenu);
+
     // toggle hue/saturation and saturation/value color grid button
 
     m_toggleHueGridButton = new QToolButton(this);
+    m_toggleHueGridButton->setFocusPolicy(Qt::NoFocus);
     QIcon toggleHueGridIcon;
     toggleHueGridIcon.addPixmap(QPixmap(":/ColorPickerDialog/ColorGrid/toggle-normal-on.png"), QIcon::Normal, QIcon::On);
     m_toggleHueGridButton->setIcon(toggleHueGridIcon);
     m_toggleHueGridButton->setCheckable(true);
     m_toggleHueGridButton->setChecked(true);
+    m_toggleHueGridButton->setToolTip("Click this to toggle the color grid between Saturation/Value mode and Hue/Saturation mode");
     m_hsvPickerLayout->addWidget(m_toggleHueGridButton, 1, 2);
 
     connect(m_toggleHueGridButton, &QAbstractButton::toggled, this, [this](bool checked) {
         setColorGridMode(checked ? ColorGrid::Mode::SaturationValue : ColorGrid::Mode::HueSaturation);
     });
 
-    m_warning = new ColorWarning(ColorWarning::Mode::Warning, {}, tr("Selected color is the closest available"), this);
-    connect(m_currentColorController, &Internal::ColorController::colorChanged, m_warning, [this](const AZ::Color& qt) { m_warning->setColor(qt); });
-
     // RGBA edit
 
     m_rgbHexLayout = new QHBoxLayout();
     containerLayout->addLayout(m_rgbHexLayout);
 
-    m_rgbHexLayout->addStretch(1);
+    m_rgbHexLayout->addStretch();
 
     m_rgbaEdit = new ColorRGBAEdit(this);
     m_rgbHexLayout->addWidget(m_rgbaEdit);
@@ -458,29 +524,29 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     connect(m_rgbaEdit, &ColorRGBAEdit::valueChangeEnded, this, &ColorPicker::endDynamicColorChange);
 
     // hex
-
     m_hexEdit = new ColorHexEdit(this);
     m_rgbHexLayout->addWidget(m_hexEdit);
 
-    m_rgbHexLayout->addStretch(1);
+    m_rgbHexLayout->addStretch();
 
     connect(m_currentColorController, &Internal::ColorController::redChanged, m_hexEdit, &ColorHexEdit::setRed);
     connect(m_currentColorController, &Internal::ColorController::greenChanged, m_hexEdit, &ColorHexEdit::setGreen);
     connect(m_currentColorController, &Internal::ColorController::blueChanged, m_hexEdit, &ColorHexEdit::setBlue);
+    connect(m_currentColorController, &Internal::ColorController::alphaChanged, m_hexEdit, &ColorHexEdit::setAlpha);
     connect(m_hexEdit, &ColorHexEdit::redChanged, m_currentColorController, &Internal::ColorController::setRed);
     connect(m_hexEdit, &ColorHexEdit::greenChanged, m_currentColorController, &Internal::ColorController::setGreen);
     connect(m_hexEdit, &ColorHexEdit::blueChanged, m_currentColorController, &Internal::ColorController::setBlue);
+    connect(m_hexEdit, &ColorHexEdit::alphaChanged, m_currentColorController, &Internal::ColorController::setAlpha);
     connect(m_hexEdit, &ColorHexEdit::valueChangeBegan, this, &ColorPicker::beginDynamicColorChange);
     connect(m_hexEdit, &ColorHexEdit::valueChangeEnded, this, &ColorPicker::endDynamicColorChange);
 
-    // sliders separator
-
-    m_slidersSeparator = MakeSeparator(this);
-    containerLayout->addWidget(m_slidersSeparator);
-
     // HSL sliders
 
+    m_hslSlidersSeparator = makePaddedSeparator(this);
+    containerLayout->addWidget(m_hslSlidersSeparator);
+
     m_hslSliders = new HSLSliders(this);
+    m_hslSliders->setDefaultLForHsMode(m_defaultLForHsMode);
     containerLayout->addWidget(m_hslSliders);
 
     connect(m_currentColorController, &Internal::ColorController::hslHueChanged, m_hslSliders, &HSLSliders::setHue);
@@ -494,7 +560,12 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
 
     // HSV sliders
 
+    m_hsvSlidersSeparator = makePaddedSeparator(this);
+    m_hsvSlidersSeparator->hide();
+    containerLayout->addWidget(m_hsvSlidersSeparator);
+
     m_hsvSliders = new HSVSliders(this);
+    m_hsvSliders->setDefaultVForHsMode(this->m_defaultVForHsMode);
     m_hsvSliders->hide();
     containerLayout->addWidget(m_hsvSliders);
 
@@ -508,6 +579,10 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     connect(m_hsvSliders, &HSVSliders::valueChangeEnded, this, &ColorPicker::endDynamicColorChange);
 
     // RGB sliders
+
+    m_rgbSlidersSeparator = makePaddedSeparator(this);
+    m_rgbSlidersSeparator->hide();
+    containerLayout->addWidget(m_rgbSlidersSeparator);
 
     m_rgbSliders = new RGBSliders(this);
     m_rgbSliders->hide();
@@ -524,34 +599,47 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
 
     // quick palette
 
-    m_quickPaletteSeparator = MakeSeparator(this);
+    m_quickPaletteSeparator = makePaddedSeparator(this);
     containerLayout->addWidget(m_quickPaletteSeparator);
 
+    m_quickPalette = QSharedPointer<Palette>::create();
+    m_quickPaletteCard = new QuickPaletteCard(m_quickPalette, m_currentColorController, m_undoStack, this);
 
-    m_paletteView = new PaletteView(&m_quickPalette, m_currentColorController, m_undoStack, this);
-
-    m_paletteView->addDefaultRGBColors();
-    connect(m_paletteView, &PaletteView::selectedColorsChanged, this, [this](const QVector<AZ::Color>& selectedColors) {
+    connect(m_quickPaletteCard, &QuickPaletteCard::selectedColorsChanged, this, [this](const QVector<AZ::Color>& selectedColors) {
         if (selectedColors.size() == 1)
         {
             m_currentColorController->setColor(selectedColors[0]);
         }
     });
-    connect(m_preview, &ColorPreview::colorSelected, m_paletteView, &PaletteView::tryAddColor);
+
+    connect(m_quickPaletteCard, &QuickPaletteCard::contextMenuRequested, this, &ColorPicker::quickPaletteContextMenuRequested);
+
+    connect(m_preview, &ColorPreview::colorSelected, m_quickPaletteCard, [this](const AZ::Color& color) {
+        if (!m_quickPaletteCard->contains(color))
+        {
+            m_quickPaletteCard->tryAdd(color);
+        }
+    });
 
     m_quickPaletteLayout = new QHBoxLayout();
     containerLayout->addLayout(m_quickPaletteLayout);
+    m_quickPaletteLayout->addWidget(m_quickPaletteCard);
 
     // color libraries
 
-    m_paletteCardSeparator = MakeSeparator(this);
+    m_paletteCardSeparator = makePaddedSeparator(this);
     m_paletteCardSeparator->hide();
     containerLayout->addWidget(m_paletteCardSeparator);
 
     m_paletteCardCollection = new PaletteCardCollection(m_currentColorController, m_undoStack, this);
     m_paletteCardCollection->hide();
     connect(m_paletteCardCollection, &PaletteCardCollection::removePaletteClicked, this, &ColorPicker::removePaletteCardRequested);
-    connect(m_paletteCardCollection, &PaletteCardCollection::savePaletteClicked, this, &ColorPicker::savePalette);
+    connect(m_paletteCardCollection, &PaletteCardCollection::savePaletteClicked, this, [this](QSharedPointer<PaletteCard> palette) {
+        savePalette(palette, false);
+    });
+    connect(m_paletteCardCollection, &PaletteCardCollection::savePaletteAsClicked, this, [this](QSharedPointer<PaletteCard> palette) {
+        savePalette(palette, true);
+    });
     connect(m_paletteCardCollection, &PaletteCardCollection::paletteCountChanged, this, [this] {
         const bool visible = m_paletteCardCollection->count() > 0;
         m_paletteCardSeparator->setVisible(visible);
@@ -559,36 +647,18 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
     });
     containerLayout->addWidget(m_paletteCardCollection);
 
-    // gamma
-
-    m_gammaEditSeparator = MakeSeparator(this);
-    containerLayout->addWidget(m_gammaEditSeparator);
-
-    m_gammaEdit = new GammaEdit(this);
-    connect(m_gammaEdit, &GammaEdit::gammaChanged, m_preview, &ColorPreview::setGamma);
-    connect(m_gammaEdit, &GammaEdit::toggled, m_preview, &ColorPreview::setGammaEnabled);
-    connect(m_gammaEdit, &GammaEdit::gammaChanged, m_paletteView, &PaletteView::setGamma);
-    connect(m_gammaEdit, &GammaEdit::toggled, m_paletteView, &PaletteView::setGammaEnabled);
-    connect(m_gammaEdit, &GammaEdit::gammaChanged, m_paletteCardCollection, &PaletteCardCollection::setGamma);
-    connect(m_gammaEdit, &GammaEdit::toggled, m_paletteCardCollection, &PaletteCardCollection::setGammaEnabled);
-    containerLayout->addWidget(m_gammaEdit);
-
     // buttons
 
-    mainLayout->addWidget(MakeSeparator(this));
+    mainLayout->addWidget(makeSeparator(this));
 
     m_dialogButtonBox = new QDialogButtonBox(QDialogButtonBox::StandardButtons(QDialogButtonBox::Ok | QDialogButtonBox::Cancel), this);
+    m_dialogButtonBox->setFocusPolicy(Qt::NoFocus);
     mainLayout->addWidget(m_dialogButtonBox);
 
     connect(m_dialogButtonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(m_dialogButtonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
     initContextMenu(configuration);
-
-    setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(this, &QWidget::customContextMenuRequested, this, [this](const QPoint& point) {
-        m_menu->exec(mapToGlobal(point));
-    });
 
     m_undoAction = new QAction(tr("Undo"), this);
     m_undoAction->setShortcut(QKeySequence::Undo);
@@ -604,26 +674,38 @@ ColorPicker::ColorPicker(ColorPicker::Configuration configuration, QWidget* pare
 
     setConfiguration(configuration);
 
+    enableSaveRestoreGeometry(QStringLiteral("%1/%2/%3").arg(m_context).arg(ConfigurationName(m_configuration)).arg(g_windowGeometryKey));
+    
+    // restore the settings after a delay. There's some weirdness going on with restoring the
+    // geometry too early
+    QTimer::singleShot(0, this, &StyledDialog::restoreGeometryFromSettings);
+
     readSettings();
+}
+
+void ColorPicker::warnColorAdjusted(const QString& message)
+{
+    m_warning->setToolTip(message);
+    m_warning->show();
 }
 
 void ColorPicker::setConfiguration(Configuration configuration)
 {
     switch (configuration)
     {
-    case Configuration::A:
-        applyConfigurationA();
+    case Configuration::RGBA:
+        applyConfigurationRGBA();
         break;
-    case Configuration::B:
-        applyConfigurationB();
+    case Configuration::RGB:
+        applyConfigurationRGB();
         break;
-    case Configuration::C:
-        applyConfigurationC();
+    case Configuration::HueSaturation:
+        applyConfigurationHueSaturation();
         break;
     }
 }
 
-void ColorPicker::applyConfigurationA()
+void ColorPicker::applyConfigurationRGBA()
 {
     m_alphaSlider->show();
     m_toggleHueGridButton->show();
@@ -645,18 +727,18 @@ void ColorPicker::applyConfigurationA()
 
     m_hslSliders->setMode(HSLSliders::Mode::Hsl);
     m_hslSliders->show();
+    m_hslSlidersSeparator->show();
     m_hsvSliders->hide();
+    m_hsvSlidersSeparator->hide();
     m_rgbSliders->hide();
-    m_gammaEditSeparator->show();
-    m_gammaEdit->show();
 }
 
-void ColorPicker::applyConfigurationB()
+void ColorPicker::applyConfigurationRGB()
 {
     m_alphaSlider->hide();
     m_toggleHueGridButton->show();
 
-    m_rgbaEdit->setMode(ColorRGBAEdit::Mode::Rgba);
+    m_rgbaEdit->setMode(ColorRGBAEdit::Mode::Rgb);
 
     RemoveAllWidgets(m_hsvPickerLayout);
     m_hsvPickerLayout->addWidget(m_colorGrid, 0, 0, 1, 2);
@@ -671,13 +753,16 @@ void ColorPicker::applyConfigurationB()
     setColorGridMode(ColorGrid::Mode::SaturationValue);
 
     m_hslSliders->hide();
+    m_hslSlidersSeparator->hide();
     m_hsvSliders->hide();
+    m_hsvSlidersSeparator->hide();
     m_rgbSliders->show();
-    m_gammaEditSeparator->hide();
-    m_gammaEdit->hide();
+    m_rgbSlidersSeparator->show();
+
+    initializeValidation(new RGBColorValidator(this));
 }
 
-void ColorPicker::applyConfigurationC()
+void ColorPicker::applyConfigurationHueSaturation()
 {
     m_alphaSlider->hide();
     m_hueSlider->hide();
@@ -687,21 +772,27 @@ void ColorPicker::applyConfigurationC()
     m_rgbaEdit->setMode(ColorRGBAEdit::Mode::Rgb);
     m_rgbaEdit->setReadOnly(true);
 
+    m_rgbaEdit->hide();
+    m_hexEdit->hide();
+
     RemoveAllWidgets(m_hsvPickerLayout);
     m_hsvPickerLayout->addWidget(m_colorGrid, 0, 0, 1, 2);
 
     m_hsvPickerLayout->addWidget(m_eyedropperButton, 1, 0);
     m_hsvPickerLayout->addWidget(m_preview, 1, 1);
-    m_hsvPickerLayout->addWidget(m_warning, 2, 0, 1, 3);
+    m_hsvPickerLayout->addWidget(m_warning, 2, 0, 1, 2);
 
     m_colorGrid->setMode(ColorGrid::Mode::HueSaturation);
 
     m_hslSliders->setMode(HSLSliders::Mode::Hs);
     m_hslSliders->show();
+    m_hslSlidersSeparator->show();
     m_hsvSliders->hide();
+    m_hsvSlidersSeparator->hide();
     m_rgbSliders->hide();
-    m_gammaEditSeparator->show();
-    m_gammaEdit->show();
+    m_rgbSlidersSeparator->hide();
+
+    initializeValidation(new HueSaturationValidator(m_defaultVForHsMode, this));
 }
 
 ColorPicker::~ColorPicker()
@@ -737,9 +828,9 @@ void ColorPicker::setSelectedColor(const AZ::Color& color)
     emit selectedColorChanged(m_selectedColor);
 }
 
-AZ::Color ColorPicker::getColor(ColorPicker::Configuration configuration, const AZ::Color& initial, const QString& title, const QStringList& palettePaths, QWidget* parent)
+AZ::Color ColorPicker::getColor(ColorPicker::Configuration configuration, const AZ::Color& initial, const QString& title, const QString& context, const QStringList& palettePaths, QWidget* parent)
 {
-    ColorPicker dialog(configuration, parent);
+    ColorPicker dialog(configuration, context, parent);
     dialog.setWindowTitle(title);
     dialog.setCurrentColor(initial);
     dialog.setSelectedColor(initial);
@@ -756,10 +847,94 @@ AZ::Color ColorPicker::getColor(ColorPicker::Configuration configuration, const 
     return initial;
 }
 
-void ColorPicker::closeEvent(QCloseEvent* e)
+void ColorPicker::done(int result)
 {
+    const auto changedCards = std::any_of(m_colorLibraries.keyBegin(), m_colorLibraries.keyEnd(),
+        [](const QSharedPointer<PaletteCard>& card) { return card->modified(); });
+    if (changedCards)
+    {
+        QMessageBox::StandardButtons buttons = QMessageBox::StandardButtons(QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+        QMessageBox::StandardButton defaultButton = QMessageBox::Yes;
+        int messageBoxResult = QMessageBox::question(this, tr("Color Picker"), tr("There are palettes with unsaved changes. Would you like to save them now?"), buttons, defaultButton);
+        switch (messageBoxResult)
+        {
+            case QMessageBox::Yes:
+            {
+                bool userSaveCancelledOrError = !saveChangedPalettes();
+                if (userSaveCancelledOrError)
+                {
+                    return;
+                }
+                break;
+            }
+
+            case QMessageBox::Cancel:
+                return;
+
+            case QMessageBox::No:
+                // do nothing but continue closing
+                break;
+        }
+    }
+
     writeSettings();
-    QDialog::closeEvent(e);
+    QDialog::done(result);
+}
+
+void ColorPicker::contextMenuEvent(QContextMenuEvent* e)
+{
+    static bool recursionGuardValue = false;
+
+    QPoint globalPosition = e->globalPos();
+
+    // When triggered from the keyboard on Windows, with the context menu key, the position in the event
+    // can't be trusted.
+    // Also, it defaults to sending the event to the color picker container, instead of to the widget
+    // under the cursor.
+    if ((e->reason() == QContextMenuEvent::Keyboard) && !recursionGuardValue)
+    {
+        // This can be called recursively, so we have to watch out
+        QScopedValueRollback<bool> recursionGuard(recursionGuardValue, true);
+
+        // Change the position, even if we're going to fall through to using the color picker's context menu
+        globalPosition = QCursor::pos();
+
+        // Manually look for the widget under the cursor and attempt to send it the event
+        QWidget* widgetUnderCursor = QApplication::widgetAt(globalPosition);
+        if (widgetUnderCursor && (widgetUnderCursor != this))
+        {
+            QContextMenuEvent eventCopy(e->reason(), widgetUnderCursor->mapFromGlobal(globalPosition), globalPosition, e->modifiers());
+            if (QApplication::sendEvent(widgetUnderCursor, &eventCopy))
+            {
+                e->accept();
+                return;
+            }
+        }
+
+        // Intentionally fall-through if there wasn't a different widget under the cursor
+    }
+
+    m_menu->exec(globalPosition);
+
+    e->accept();
+}
+
+bool ColorPicker::saveChangedPalettes()
+{
+    for (auto it = m_colorLibraries.begin(); it != m_colorLibraries.end(); ++it)
+    {
+        auto& card = it.key();
+        if (card->modified())
+        {
+            auto& colorLibrary = it.value();
+            if (!saveColorLibrary(colorLibrary, false))
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 void ColorPicker::setColorGridMode(ColorGrid::Mode mode)
@@ -768,7 +943,7 @@ void ColorPicker::setColorGridMode(ColorGrid::Mode mode)
 
     if (m_hueSlider->layout() && !m_valueSlider->layout())
     {
-        // Configuration "C" has neither of these so we shouldn't change their visibility
+        // The HueSaturation configuration has neither of these along the color grid so we shouldn't change their visibility
         return;
     }
 
@@ -788,19 +963,22 @@ void ColorPicker::initContextMenu(ColorPicker::Configuration configuration)
 {
     m_menu = new QMenu(this);
 
-    m_showLinearValuesAction = m_menu->addAction(tr("Show linear values"));
-    m_showLinearValuesAction->setCheckable(true);
-    m_showLinearValuesAction->setChecked(true);
-    connect(m_showLinearValuesAction, &QAction::toggled, m_rgbaEdit, &QWidget::setVisible);
+    if (configuration != Configuration::HueSaturation)
+    {
+        m_showLinearValuesAction = m_menu->addAction(tr("Show linear values"));
+        m_showLinearValuesAction->setCheckable(true);
+        m_showLinearValuesAction->setChecked(true);
+        connect(m_showLinearValuesAction, &QAction::toggled, m_rgbaEdit, &QWidget::setVisible);
 
-    m_showHexValueAction = m_menu->addAction(tr("Show hex value"));
-    m_showHexValueAction->setCheckable(true);
-    m_showHexValueAction->setChecked(true);
-    connect(m_showHexValueAction, &QAction::toggled, m_hexEdit, &QWidget::setVisible);
+        m_showHexValueAction = m_menu->addAction(tr("Show hex value"));
+        m_showHexValueAction->setCheckable(true);
+        m_showHexValueAction->setChecked(true);
+        connect(m_showHexValueAction, &QAction::toggled, m_hexEdit, &QWidget::setVisible);
 
-    m_menu->addSeparator();
+        m_menu->addSeparator();
+    }
 
-    if (configuration != Configuration::C)
+    if (configuration != Configuration::HueSaturation)
     {
         auto sliderGroup = new QActionGroup(this);
         sliderGroup->setExclusive(false);
@@ -809,27 +987,21 @@ void ColorPicker::initContextMenu(ColorPicker::Configuration configuration)
         m_showHSLSlidersAction->setCheckable(true);
         sliderGroup->addAction(m_showHSLSlidersAction);
         connect(m_showHSLSlidersAction, &QAction::toggled, m_hslSliders, &QWidget::setVisible);
-        connect(m_showHSLSlidersAction, &QAction::toggled, this, [this](bool checked) {
-            m_slidersSeparator->setVisible(checked || m_hsvSliders->isVisible() || m_rgbSliders->isVisible());
-        });
+        connect(m_showHSLSlidersAction, &QAction::toggled, m_hslSlidersSeparator, &QWidget::setVisible);
 
         m_showHSVSlidersAction = m_menu->addAction(tr("Show HSV sliders"));
         m_showHSVSlidersAction->setCheckable(true);
         sliderGroup->addAction(m_showHSVSlidersAction);
         connect(m_showHSVSlidersAction, &QAction::toggled, m_hsvSliders, &QWidget::setVisible);
-        connect(m_showHSVSlidersAction, &QAction::toggled, this, [this](bool checked) {
-            m_slidersSeparator->setVisible(checked || m_hslSliders->isVisible() || m_rgbSliders->isVisible());
-        });
+        connect(m_showHSVSlidersAction, &QAction::toggled, m_hsvSlidersSeparator, &QWidget::setVisible);
 
         m_showRGBSlidersAction = m_menu->addAction(tr("Show RGB sliders"));
         m_showRGBSlidersAction->setCheckable(true);
         sliderGroup->addAction(m_showRGBSlidersAction);
         connect(m_showRGBSlidersAction, &QAction::toggled, m_rgbSliders, &QWidget::setVisible);
-        connect(m_showRGBSlidersAction, &QAction::toggled, this, [this](bool checked) {
-            m_slidersSeparator->setVisible(checked || m_hslSliders->isVisible() || m_hsvSliders->isVisible());
-        });
+        connect(m_showRGBSlidersAction, &QAction::toggled, m_rgbSlidersSeparator, &QWidget::setVisible);
 
-        if (configuration == Configuration::A)
+        if (configuration == Configuration::RGBA)
         {
             m_showHSLSlidersAction->setChecked(true);
         }
@@ -844,7 +1016,7 @@ void ColorPicker::initContextMenu(ColorPicker::Configuration configuration)
         m_showHSLSlidersAction->setCheckable(true);
         m_showHSLSlidersAction->setChecked(true);
         connect(m_showHSLSlidersAction, &QAction::toggled, m_hslSliders, &QWidget::setVisible);
-        connect(m_showHSLSlidersAction, &QAction::toggled, m_slidersSeparator, &QWidget::setVisible);
+        connect(m_showHSLSlidersAction, &QAction::toggled, m_hslSlidersSeparator, &QWidget::setVisible);
     }
 
     m_menu->addSeparator();
@@ -854,64 +1026,41 @@ void ColorPicker::initContextMenu(ColorPicker::Configuration configuration)
     auto smallSwatches = m_menu->addAction(tr("Small swatches"));
     smallSwatches->setCheckable(true);
     connect(smallSwatches, &QAction::toggled, this, [this](bool checked) {
-        if (checked)
-        {
-            const QSize size{ 16, 16 };
-            m_paletteView->setItemSize(size);
-            m_paletteCardCollection->setSwatchSize(size);
-        }
+        const int swatchSizeSmall = 16;
+        swatchSizeActionToggled(checked, swatchSizeSmall);
     });
     m_swatchSizeGroup->addAction(smallSwatches);
 
     auto mediumSwatches = m_menu->addAction(tr("Medium swatches"));
     mediumSwatches->setCheckable(true);
     connect(mediumSwatches, &QAction::toggled, this, [this](bool checked) {
-        if (checked)
-        {
-            const QSize size{ 24, 24 };
-            m_paletteView->setItemSize(size);
-            m_paletteCardCollection->setSwatchSize(size);
-        }
+        const int swatchSizeMedium = 24;
+        swatchSizeActionToggled(checked, swatchSizeMedium);
     });
     m_swatchSizeGroup->addAction(mediumSwatches);
 
     auto largeSwatches = m_menu->addAction(tr("Large swatches"));
     largeSwatches->setCheckable(true);
     connect(largeSwatches, &QAction::toggled, this, [this](bool checked) {
-        if (checked)
-        {
-            const QSize size{ 32, 32 };
-            m_paletteView->setItemSize(size);
-            m_paletteCardCollection->setSwatchSize(size);
-        }
+        const int swatchSizeLarge = 32;
+        swatchSizeActionToggled(checked, swatchSizeLarge);
     });
     m_swatchSizeGroup->addAction(largeSwatches);
-
-    auto hideSwatches = m_menu->addAction(tr("Hide swatches"));
-    hideSwatches->setCheckable(true);
-    connect(hideSwatches, &QAction::toggled, this, [this](bool checked) {
-        m_paletteView->setVisible(!checked);
-        m_quickPaletteSeparator->setVisible(!checked);
-    });
-    m_swatchSizeGroup->addAction(hideSwatches);
 
     smallSwatches->setChecked(true);
 
     m_menu->addSeparator();
 
-    m_menu->addAction(tr("Import color palette..."), this, &ColorPicker::importPalette);
-    m_menu->addAction(tr("New color palette"), this, &ColorPicker::newPalette);
+    m_toggleQuickPaletteAction = m_menu->addAction(tr("Hide Quick Palette"));
+    connect(m_toggleQuickPaletteAction, &QAction::triggered, this, [this]() {
+        bool wasVisible = m_quickPaletteCard->isVisible();
+        setQuickPaletteVisibility(!wasVisible);
+    });
 
-    if (configuration != Configuration::B)
-    {
-        m_menu->addSeparator();
+    m_menu->addSeparator();
 
-        m_showGammaAction = m_menu->addAction(tr("Show gamma"));
-        m_showGammaAction->setCheckable(true);
-        m_showGammaAction->setChecked(true);
-        connect(m_showGammaAction, &QAction::toggled, m_gammaEdit, &QWidget::setVisible);
-        connect(m_showGammaAction, &QAction::toggled, m_gammaEditSeparator, &QWidget::setVisible);
-    }
+    m_importPaletteAction = m_menu->addAction(tr("Import color palette..."), this, &ColorPicker::importPalette);
+    m_newPaletteAction = m_menu->addAction(tr("New color palette"), this, &ColorPicker::newPalette);
 }
 
 void ColorPicker::importPalettesFromFolder(const QString& path)
@@ -924,11 +1073,11 @@ void ColorPicker::importPalettesFromFolder(const QString& path)
     QDirIterator it(path, QStringList() << "*.pal", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext())
     {
-        importPaletteFromFile(it.next());
+        importPaletteFromFile(it.next(), defaultColorLibrarySettings());
     }
 }
 
-bool ColorPicker::importPaletteFromFile(const QString& fileName)
+bool ColorPicker::importPaletteFromFile(const QString& fileName, const Internal::ColorLibrarySettings& settings)
 {
     if (fileName.isEmpty())
     {
@@ -941,22 +1090,29 @@ bool ColorPicker::importPaletteFromFile(const QString& fileName)
         return false;
     }
 
-    addPalette(palette, fileName, QFileInfo(fileName).baseName());
+    addPalette(palette, fileName, QFileInfo(fileName).baseName(), settings);
     return true;
 }
 
 void ColorPicker::importPalette()
 {
-    QString fileName = QFileDialog::getOpenFileName(this, tr("Import Color Palette"), {}, tr("Color Palettes (*.pal)"));
-    if (!fileName.isEmpty() && !importPaletteFromFile(fileName))
+    QString lastDirectory = m_lastSaveDirectory;
+
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Import Color Palette"), lastDirectory, tr("Color Palettes (*.pal)"));
+    if (!fileName.isEmpty() && !importPaletteFromFile(fileName, defaultColorLibrarySettings()))
     {
         QMessageBox::critical(this, tr("Color Palette Import Error"), tr("Failed to import \"%1\"").arg(fileName));
+    }
+
+    if (!fileName.isEmpty())
+    {
+        m_lastSaveDirectory = fileName;
     }
 }
 
 void ColorPicker::newPalette()
 {
-    addPalette(QSharedPointer<Palette>::create(), {}, tr("Untitled"));
+    addPalette(QSharedPointer<Palette>::create(), {}, tr("Untitled"), defaultColorLibrarySettings());
 }
 
 void ColorPicker::removePaletteCardRequested(QSharedPointer<PaletteCard> card)
@@ -972,19 +1128,24 @@ void ColorPicker::removePaletteCardRequested(QSharedPointer<PaletteCard> card)
 
     PaletteRemovedCommand* removed = new PaletteRemovedCommand(this, card, m_colorLibraries[card]);
     m_undoStack->push(removed);
+
+    markToRecalculateTabKeyOrdering();
 }
 
-void ColorPicker::addPalette(QSharedPointer<Palette> palette, const QString& fileName, const QString& title)
+void ColorPicker::addPalette(QSharedPointer<Palette> palette, const QString& fileName, const QString& title, const Internal::ColorLibrarySettings& settings)
 {
     QSharedPointer<PaletteCard> card = m_paletteCardCollection->makeCard(palette, title);
+    card->setExpanded(settings.expanded);
     PaletteAddedCommand* added = new PaletteAddedCommand(this, card, ColorLibrary{ fileName, palette });
     m_undoStack->push(added);
+
+    markToRecalculateTabKeyOrdering();
 }
 
 void ColorPicker::addPaletteCard(QSharedPointer<PaletteCard> card, ColorLibrary colorLibrary)
 {        
     Palette loader;
-    QString fileName = QStringLiteral("%1.pal").arg(card->title());
+    QString fileName = colorLibrary.fileName;
     bool loaded = loader.load(fileName);
 
     if (!loaded || (loaded && loader.colors() != card->palette()->colors()))
@@ -998,6 +1159,8 @@ void ColorPicker::addPaletteCard(QSharedPointer<PaletteCard> card, ColorLibrary 
 
     m_colorLibraries[card] = colorLibrary;
     m_paletteCardCollection->addCard(card);
+
+    markToRecalculateTabKeyOrdering();
 }
 
 void ColorPicker::removePaletteCard(QSharedPointer<PaletteCard> card)
@@ -1009,14 +1172,16 @@ void ColorPicker::removePaletteCard(QSharedPointer<PaletteCard> card)
     
     m_colorLibraries.remove(card);
     m_paletteCardCollection->removeCard(card);
+
+    markToRecalculateTabKeyOrdering();
 }
 
-void AzQtComponents::ColorPicker::beginDynamicColorChange()
+void ColorPicker::beginDynamicColorChange()
 {
     m_dynamicColorChange = true;
 }
 
-void AzQtComponents::ColorPicker::endDynamicColorChange()
+void ColorPicker::endDynamicColorChange()
 {
     AZ::Color newColor = m_currentColorController->color();
     if (!m_previousColor.IsClose(newColor))
@@ -1027,32 +1192,171 @@ void AzQtComponents::ColorPicker::endDynamicColorChange()
     m_dynamicColorChange = false;
 }
 
-void ColorPicker::savePalette(QSharedPointer<PaletteCard> card)
+void ColorPicker::initializeValidation(ColorValidator* validator)
+{
+    m_currentColorController->setValidator(validator);
+    connect(validator, &ColorValidator::colorWarning, this, &ColorPicker::warnColorAdjusted);
+    connect(validator, &ColorValidator::colorAccepted, m_warning, &QWidget::hide);
+}
+
+void ColorPicker::showPreviewContextMenu(const QPoint& p, const AZ::Color& selectedColor)
+{
+    QMenu previewMenu;
+
+    QAction* quickPaletteAction = previewMenu.addAction(tr("Add to Quick palette"));
+    connect(quickPaletteAction, &QAction::triggered, this, [this, selectedColor]() {
+        m_quickPaletteCard->tryAdd(selectedColor);
+    });
+    quickPaletteAction->setEnabled(!m_quickPaletteCard->contains(selectedColor));
+
+    int paletteCount = m_paletteCardCollection->count();
+    if (paletteCount > 0)
+    {
+        previewMenu.addSeparator();
+
+        for (int paletteIndex = 0; paletteIndex < paletteCount; paletteIndex++)
+        {
+            QSharedPointer<PaletteCard> paletteCard = m_paletteCardCollection->paletteCard(paletteIndex);
+            QAction* namedPaletteAction = previewMenu.addAction(tr("Add to %1 palette").arg(paletteCard->title()));
+            connect(namedPaletteAction, &QAction::triggered, [paletteCard, selectedColor]() {
+                paletteCard->tryAdd(selectedColor);
+            });
+            namedPaletteAction->setEnabled(!paletteCard->contains(selectedColor));
+        }
+    }
+
+    previewMenu.exec(m_preview->mapToGlobal(p));
+}
+
+void ColorPicker::swatchSizeActionToggled(bool checked, int newSize)
+{
+    if (checked)
+    {
+        const QSize size{ newSize, newSize };
+        m_quickPaletteCard->setSwatchSize(size);
+        m_paletteCardCollection->setSwatchSize(size);
+    }
+}
+
+void ColorPicker::setQuickPaletteVisibility(bool show)
+{
+    m_quickPaletteCard->setVisible(show);
+    m_quickPaletteSeparator->setVisible(show);
+
+    m_toggleQuickPaletteAction->setText(tr(show ? "Hide Quick Palette" : "Show Quick Palette"));
+}
+
+void ColorPicker::paletteContextMenuRequested(QSharedPointer<PaletteCard> paletteCard, const QPoint& point)
+{
+    QMenu menu;
+    menu.addAction(tr("Save palette"), paletteCard.data(), &PaletteCard::saveClicked);
+    menu.addAction(tr("Save palette as..."), paletteCard.data(), &PaletteCard::saveAsClicked);
+    menu.addAction(tr("Close palette"), paletteCard.data(), &PaletteCard::removeClicked);
+    menu.addSeparator();
+    menu.addAction(m_importPaletteAction);
+    menu.addAction(m_newPaletteAction);
+    menu.addSeparator();
+    menu.addActions(m_swatchSizeGroup->actions());
+
+    menu.addSeparator();
+
+    menu.addAction(m_toggleQuickPaletteAction);
+    
+    menu.addSeparator();
+
+    QAction* moveUp = menu.addAction(tr("Move up"));
+    connect(moveUp, &QAction::triggered, this, [&paletteCard, this]() {
+        m_paletteCardCollection->moveUp(paletteCard);
+    });
+
+    QAction* moveDown = menu.addAction(tr("Move down"));
+    connect(moveDown, &QAction::triggered, this, [&paletteCard, this]() {
+        m_paletteCardCollection->moveDown(paletteCard);
+    });
+
+    moveUp->setEnabled(m_paletteCardCollection->canMoveUp(paletteCard));
+    moveDown->setEnabled(m_paletteCardCollection->canMoveDown(paletteCard));
+
+    menu.exec(point);
+}
+
+void ColorPicker::quickPaletteContextMenuRequested(const QPoint& point)
+{
+    QMenu menu;
+    menu.addAction(m_toggleQuickPaletteAction);
+    menu.addSeparator();
+    menu.addAction(m_importPaletteAction);
+    menu.addAction(m_newPaletteAction);
+    menu.addSeparator();
+    menu.addActions(m_swatchSizeGroup->actions());
+
+    menu.exec(point);
+}
+
+QWidget* ColorPicker::makeSeparator(QWidget* parent)
+{
+    // makes a horizontal line separator; will not play nicely with the show-on-hover scrollbar
+    auto separator = new QFrame(parent);
+    separator->setFrameStyle(QFrame::StyledPanel);
+    separator->setFrameShadow(QFrame::Plain);
+    separator->setFrameShape(QFrame::HLine);
+    Style::addClass(separator, SEPARATOR_CLASS);
+    return separator;
+}
+
+QWidget* ColorPicker::makePaddedSeparator(QWidget* parent)
+{
+    // makes a horizontal line separator that has padding and plays nicely with the show-on-hover scrollbar
+    QWidget* container = new QWidget(parent);
+    Style::addClass(container, SEPARATOR_CONTAINER_CLASS);
+    QLayout* containerLayout = new QVBoxLayout(container);
+
+    QWidget* separator = makeSeparator(container);
+    containerLayout->addWidget(separator);
+    m_separators.push_back(container);
+
+    return container;
+}
+
+void ColorPicker::savePalette(QSharedPointer<PaletteCard> card, bool queryFileName)
 {
     if (!m_paletteCardCollection->containsCard(card) || !m_colorLibraries.contains(card))
     {
         return;
     }
 
-    QString dir = m_colorLibraries[card].fileName;
-    QString fileName = QFileDialog::getSaveFileName(this, tr("Export Color Palette"), dir, tr("Color Palettes (*.pal)"));
-    if (fileName.isEmpty())
+    auto& colorLibrary = m_colorLibraries[card];
+    if (saveColorLibrary(colorLibrary, queryFileName))
     {
-        return;
+        card->setTitle(QFileInfo(colorLibrary.fileName).baseName());
+        card->setModified(false);
+    }
+}
+
+bool ColorPicker::saveColorLibrary(ColorLibrary& colorLibrary, bool queryFileName)
+{
+    if (queryFileName || colorLibrary.fileName.isEmpty())
+    {
+        QString lastDirectory = colorLibrary.fileName.isEmpty() ? m_lastSaveDirectory : colorLibrary.fileName;
+
+        auto fileName = QFileDialog::getSaveFileName(this, tr("Save Palette As"), lastDirectory, tr("Color Palettes (*.pal)"));
+        if (fileName.isEmpty())
+        {
+            return false;
+        }
+
+        m_lastSaveDirectory = fileName;
+
+        colorLibrary.fileName = fileName;
     }
 
-    if (!card->palette()->save(fileName))
+    if (!colorLibrary.palette->save(colorLibrary.fileName))
     {
-        QMessageBox::critical(this, tr("Color Palette Export Error"), tr("Failed to export \"%1\"").arg(fileName));
-        return;
+        QMessageBox::critical(this, tr("Color Palette Export Error"), tr("Failed to save \"%1\"").arg(colorLibrary.fileName));
+        return false;
     }
 
-    m_colorLibraries[card].fileName = fileName;
-
-    card->setTitle(QFileInfo(fileName).baseName());
-    card->setModified(false);
-
-    writeSettings();
+    return true;
 }
 
 int ColorPicker::colorLibraryIndex(const Palette* palette) const
@@ -1065,7 +1369,7 @@ int ColorPicker::colorLibraryIndex(const Palette* palette) const
 void ColorPicker::readSettings()
 {
     QSettings settings;
-    settings.beginGroup(g_colorPickerSection);
+    settings.beginGroup(m_context);
 
     QString sectionName = ConfigurationName(m_configuration);
     if (!settings.childGroups().contains(sectionName))
@@ -1074,21 +1378,21 @@ void ColorPicker::readSettings()
     }
     settings.beginGroup(sectionName);
 
-    bool showLinearValues = settings.value(g_showLinearValuesKey, true).toBool();
-    m_showLinearValuesAction->setChecked(showLinearValues);
-
-    bool showHexValues = settings.value(g_showHexValuesKey, true).toBool();
-    m_showHexValueAction->setChecked(showHexValues);
-
-    if (m_configuration != Configuration::C)
+    if (m_configuration != Configuration::HueSaturation)
     {
-        bool showHSLSliders = settings.value(g_showHSLSlidersKey, m_configuration == Configuration::A).toBool();
+        bool showLinearValues = settings.value(g_showLinearValuesKey, true).toBool();
+        m_showLinearValuesAction->setChecked(showLinearValues);
+
+        bool showHexValues = settings.value(g_showHexValuesKey, true).toBool();
+        m_showHexValueAction->setChecked(showHexValues);
+
+        bool showHSLSliders = settings.value(g_showHSLSlidersKey, m_configuration == Configuration::RGBA).toBool();
         m_showHSLSlidersAction->setChecked(showHSLSliders);
 
         bool showHSVSliders = settings.value(g_showHSVSlidersKey, false).toBool();
         m_showHSVSlidersAction->setChecked(showHSVSliders);
 
-        bool showRGBSliders = settings.value(g_showRGBSlidersKey, m_configuration == Configuration::B).toBool();
+        bool showRGBSliders = settings.value(g_showRGBSlidersKey, m_configuration == Configuration::RGB).toBool();
         m_showRGBSlidersAction->setChecked(showRGBSliders);
     }
     else
@@ -1099,14 +1403,30 @@ void ColorPicker::readSettings()
 
     if (settings.contains(g_quickPaletteKey))
     {
-        m_quickPalette = settings.value(g_quickPaletteKey).value<Palette>();
+        *m_quickPalette = settings.value(g_quickPaletteKey).value<Palette>();
     }
 
-    QStringList colorLibraries = settings.value(g_colorLibrariesKey).toStringList();
-    QStringList missingLibraries;
-    for (const auto& fileName : colorLibraries)
+    QVector<std::pair<QString, Internal::ColorLibrarySettings>> colorLibraries;
+    if (settings.contains(g_colorLibrariesKey) && !settings.contains(QStringLiteral("%1/size").arg(g_colorLibrariesKey)))
     {
-        if (!importPaletteFromFile(fileName))
+        settings.remove(g_colorLibrariesKey);
+    }
+
+    const int colorLibrariesCount = settings.beginReadArray(g_colorLibrariesKey);
+    for (int i = 0; i < colorLibrariesCount; ++i)
+    {
+        settings.setArrayIndex(i);
+        colorLibraries.push_back(std::make_pair(settings.value(g_colorLibraryNameKey).toString(),
+            Internal::ColorLibrarySettings{settings.value(g_colorLibraryExpandedKey).toBool()}));
+    }
+    settings.endArray();
+
+    QStringList missingLibraries;
+    for (auto it = colorLibraries.constBegin(), end = colorLibraries.constEnd(); it != end; ++it)
+    {
+        const QString& fileName = it->first;
+        const Internal::ColorLibrarySettings& colorLibrarySettings = it->second;
+        if (!importPaletteFromFile(fileName, colorLibrarySettings))
         {
             missingLibraries.append(QDir::toNativeSeparators(fileName));
         }
@@ -1126,28 +1446,20 @@ void ColorPicker::readSettings()
         swatchSizeActions[swatchSize]->setChecked(true);
     }
 
-    if (m_configuration != Configuration::B)
-    {
-        bool showGammaEdit = settings.value(g_showGammaKey, true).toBool();
-        m_showGammaAction->setChecked(showGammaEdit);
+    m_lastSaveDirectory = settings.value(g_paletteFileDialogKey).toString();
 
-        bool gammaChecked = settings.value(g_gammaCheckedKey, false).toBool();
-        m_gammaEdit->setChecked(gammaChecked);
-
-        double gammaValue = settings.value(g_gammaValueKey, 1.0).toDouble();
-        m_gammaEdit->setGamma(gammaValue);
-    }
+    setQuickPaletteVisibility(settings.value(g_showQuickPaletteKey, true).toBool());
 }
 
 void ColorPicker::writeSettings() const
 {
     QSettings settings;
-    settings.beginGroup(QStringLiteral("%1/%2").arg(g_colorPickerSection, ConfigurationName(m_configuration)));
+    settings.beginGroup(QStringLiteral("%1/%2").arg(m_context, ConfigurationName(m_configuration)));
 
     settings.setValue(g_showLinearValuesKey, m_rgbaEdit->isVisible());
     settings.setValue(g_showHexValuesKey, m_hexEdit->isVisible());
 
-    if (m_configuration != Configuration::C)
+    if (m_configuration != Configuration::HueSaturation)
     {
         settings.setValue(g_showHSLSlidersKey, m_hslSliders->isVisible());
         settings.setValue(g_showHSVSlidersKey, m_hsvSliders->isVisible());
@@ -1158,17 +1470,23 @@ void ColorPicker::writeSettings() const
         settings.setValue(g_showHSSlidersKey, m_hslSliders->isVisible());
     }
 
-    settings.setValue(g_quickPaletteKey, QVariant::fromValue(m_quickPalette));
+    settings.setValue(g_quickPaletteKey, QVariant::fromValue(*m_quickPalette));
 
-    QStringList colorLibraries;
-    for (const auto& item : m_colorLibraries)
+    // Iterate over the color libraries based on the order in the palette card collection.
+    // That way, when the user moves the palette cards, the order will be saved properly
+    settings.beginWriteArray(g_colorLibrariesKey);
+    for (int i = 0, count = m_paletteCardCollection->count(); i < count; i++)
     {
-        if (!item.fileName.isEmpty())
+        QSharedPointer<PaletteCard> paletteCard = m_paletteCardCollection->paletteCard(i);
+        const ColorLibrary& colorLibrary = m_colorLibraries[paletteCard];
+        if (!colorLibrary.fileName.isEmpty())
         {
-            colorLibraries.append(item.fileName);
+            settings.setArrayIndex(i);
+            settings.setValue(g_colorLibraryNameKey, colorLibrary.fileName);
+            settings.setValue(g_colorLibraryExpandedKey, paletteCard->isExpanded());
         }
     }
-    settings.setValue(g_colorLibrariesKey, colorLibraries);
+    settings.endArray();
 
     auto swatchSizeActions = m_swatchSizeGroup->actions();
     auto it = std::find_if(swatchSizeActions.begin(), swatchSizeActions.end(),
@@ -1179,12 +1497,9 @@ void ColorPicker::writeSettings() const
         settings.setValue(g_swatchSizeKey, swatchSize);
     }
 
-    if (m_configuration != Configuration::B)
-    {
-        settings.setValue(g_showGammaKey, m_gammaEdit->isVisible());
-        settings.setValue(g_gammaCheckedKey, m_gammaEdit->isChecked());
-        settings.setValue(g_gammaValueKey, m_gammaEdit->gamma());
-    }
+    settings.setValue(g_paletteFileDialogKey, m_lastSaveDirectory);
+
+    settings.setValue(g_showQuickPaletteKey, m_quickPaletteCard->isVisible());
 
     settings.endGroup();
     settings.sync();
@@ -1202,8 +1517,9 @@ bool ColorPicker::eventFilter(QObject* o, QEvent* e)
         if (sz.height() > m_config.maximumContentHeight)
         {
             sz.setHeight(m_config.maximumContentHeight);
-            sz.setWidth(sz.width() + m_scrollArea->verticalScrollBar()->sizeHint().width());
         }
+
+        sz.setWidth(sz.width() + m_scrollArea->verticalScrollBar()->sizeHint().width());
 
         m_scrollArea->setMinimumSize(sz);
     }

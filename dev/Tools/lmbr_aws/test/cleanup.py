@@ -53,6 +53,7 @@ class Cleaner:
         self.sqs = session.client('sqs')                
         self.glue = session.client('glue')
         self.iot_client = session.client('iot')
+        self.swf = session.client('swf')
         
     def cleanup(self, prefixes, exceptions):
         self.__prefixes = prefixes
@@ -68,6 +69,7 @@ class Cleaner:
         self._delete_glue_crawlers()
         self._delete_glue_databases()
         self._delete_buckets()
+        self._delete_swf_resources()
 
         #users/roles/policies need to be deleted last
         self._delete_users()
@@ -744,6 +746,27 @@ class Cleaner:
                 break
             else:
                 res = self.iot_client.list_policies(pageSize=100, marker=next_marker)
+
+    def _delete_swf_resources(self):
+
+        print '\n\nlooking for SWF resources with names starting with one of', self.__describe_prefixes()
+
+        res = self.swf.list_domains(registrationStatus='REGISTERED', maximumPageSize=100)
+        while True:
+            for domain in res['domainInfos']:          
+                name = domain['name']
+                if not self._has_prefix(name):
+                    continue    
+                try:
+                    print '  deleting SWF domain {}'.format(name)
+                    self.swf.deprecate_domain(name=name)
+                except ClientError as e:
+                    print '    ERROR', e.message
+            next_marker = res.get('nextPageToken', None)
+            if next_marker is None:
+                break
+            else:
+                res = self.swf.list_domains(maximumPageSize=100, nextPageToken=next_marker)
                 
 if __name__ == '__main__':
     def __get_user_settings_path():

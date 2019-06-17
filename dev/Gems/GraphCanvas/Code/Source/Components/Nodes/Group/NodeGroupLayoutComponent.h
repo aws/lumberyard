@@ -28,21 +28,21 @@ class QGraphicsGridLayout;
 
 namespace GraphCanvas
 {
-    //! Lays out the parts of the block comment node
-    class BlockCommentNodeLayoutComponent
+    //! Lays out the parts of the Node Group node
+    class NodeGroupLayoutComponent
         : public NodeLayoutComponent
         , protected NodeNotificationBus::Handler
         , protected StyleNotificationBus::Handler
     {
     public:
-        AZ_COMPONENT(BlockCommentNodeLayoutComponent, "{0DD4204A-8A75-48C1-AA91-9878BCB0C4D0}", NodeLayoutComponent);
+        AZ_COMPONENT(NodeGroupLayoutComponent, "{0DD4204A-8A75-48C1-AA91-9878BCB0C4D0}", NodeLayoutComponent);
 
         static void Reflect(AZ::ReflectContext*);
 
-        static AZ::Entity* CreateBlockCommentNodeEntity();
+        static AZ::Entity* CreateNodeGroupEntity();
 
-        BlockCommentNodeLayoutComponent();
-        ~BlockCommentNodeLayoutComponent() override;
+        NodeGroupLayoutComponent();
+        ~NodeGroupLayoutComponent() override;
 
         // AZ::Component
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)

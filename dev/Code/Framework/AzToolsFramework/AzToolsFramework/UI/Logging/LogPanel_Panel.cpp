@@ -46,35 +46,6 @@ namespace AzToolsFramework
         // some tweakables
         static int s_defaultRingBufferSize = 2000; // how many messages in a traceprintf log tab to keep before older ones will be expired (by default)
 
-        class SavedState
-            : public AZ::UserSettings
-        {
-        public:
-            AZ_RTTI(SavedState, "{1FC8C746-7E5D-4b9b-9DEA-DA282CEAFF30}", AZ::UserSettings);
-            AZ_CLASS_ALLOCATOR(SavedState, AZ::SystemAllocator, 0);
-            AZStd::vector<LogPanel::TabSettings> m_tabSettings;
-
-            SavedState() {}
-
-            static void Reflect(AZ::ReflectContext* context)
-            {
-                AZ::SerializeContext* serialize = azrtti_cast<AZ::SerializeContext*>(context);
-                if (serialize)
-                {
-                    serialize->Class<SavedState, AZ::UserSettings>()
-                        ->Version(1)
-                        ->Field("m_tabSettings", &SavedState::m_tabSettings);
-
-                    serialize->Class<LogPanel::TabSettings>()
-                        ->Version(1)
-                        ->Field("window", &LogPanel::TabSettings::m_window)
-                        ->Field("tabName", &LogPanel::TabSettings::m_tabName)
-                        ->Field("textFilter", &LogPanel::TabSettings::m_textFilter)
-                        ->Field("filterFlags", &LogPanel::TabSettings::m_filterFlags);
-                }
-            }
-        };
-
         struct BaseLogPanel::Impl
         {
             QTabWidget* pTabWidget;
@@ -104,13 +75,13 @@ namespace AzToolsFramework
 
             // 2) add buttons for "Copy all", "Reset" and "Add" actions
 
-            QPushButton* pCopyAllButton = new QPushButton(tr("Copy all"), this);
+            QPushButton* pCopyAllButton = new QPushButton(QIcon(QStringLiteral(":/stylesheet/img/logging/copy.svg")), tr("Copy all"), this);
             layoutWidget->layout()->addWidget(pCopyAllButton);
 
-            QPushButton* pResetButton = new QPushButton(tr("Reset"), this);
+            QPushButton* pResetButton = new QPushButton(QIcon(QStringLiteral(":/stylesheet/img/logging/reset.svg")), tr("Reset"), this);
             layoutWidget->layout()->addWidget(pResetButton);
 
-            QPushButton* pContextButton = new QPushButton(tr("Add..."), this);
+            QPushButton* pContextButton = new QPushButton(QIcon(QStringLiteral(":/stylesheet/img/logging/add-filter.svg")), tr("Add..."), this);
             layoutWidget->layout()->addWidget(pContextButton);
 
             layout()->addWidget(layoutWidget);
@@ -173,7 +144,7 @@ namespace AzToolsFramework
         {
             // user clicked the "Add..." button
 
-            NewLogTabDialog newDialog;
+            NewLogTabDialog newDialog(this);
             if (newDialog.exec() == QDialog::Accepted)
             {
                 // add a new tab with those settings.
@@ -753,14 +724,18 @@ namespace AzToolsFramework
                     bool rich = index.data(ExtraRoles::RichTextRole).toBool();
                     if (rich)
                     {
-                        QStyleOptionViewItemV4 optionV4 = option;
-                        initStyleOption(&optionV4, index);
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
+                        QStyleOptionViewItemV4 viewItem = option;
+                        initStyleOption(&viewItem, index);
+#else
+                        const QStyleOptionViewItem& viewItem = option;
+#endif
 
                         QTextDocument doc;
-                        doc.setHtml(optionV4.text);
+                        doc.setHtml(viewItem.text);
                         doc.setDocumentMargin(2);
-                        doc.setDefaultFont(optionV4.font);
-                        doc.setTextWidth(optionV4.rect.width());
+                        doc.setDefaultFont(viewItem.font);
+                        doc.setTextWidth(viewItem.rect.width());
                         return QSize(doc.idealWidth(), doc.size().height());
                     }
                 }
@@ -776,34 +751,38 @@ namespace AzToolsFramework
                 // if we contain links then make it rich...
                 if (rich)
                 {
-                    QStyleOptionViewItemV4 optionV4 = option;
-                    initStyleOption(&optionV4, index);
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
+                    QStyleOptionViewItemV4 tempOption = option;
+#else
+                    QStyleOptionViewItem tempOption = option;
+#endif
+                    initStyleOption(&tempOption, index);
 
-                    QStyle* style = optionV4.widget ? optionV4.widget->style() : QApplication::style();
+                    QStyle* style = tempOption.widget ? tempOption.widget->style() : QApplication::style();
 
                     QTextDocument doc;
-                    doc.setHtml(optionV4.text);
+                    doc.setHtml(tempOption.text);
                     doc.setDocumentMargin(2);
-                    doc.setDefaultFont(optionV4.font);
-                    doc.setTextWidth(optionV4.rect.width());
+                    doc.setDefaultFont(tempOption.font);
+                    doc.setTextWidth(tempOption.rect.width());
 
                     /// Painting item without text
-                    optionV4.text = QString();
-                    style->drawControl(QStyle::CE_ItemViewItem, &optionV4, painter);
+                    tempOption.text.clear();
+                    style->drawControl(QStyle::CE_ItemViewItem, &tempOption, painter);
 
                     QAbstractTextDocumentLayout::PaintContext ctx;
 
                     // Highlighting text if item is selected
-                    if (optionV4.state & QStyle::State_Selected)
+                    if (tempOption.state & QStyle::State_Selected)
                     {
-                        ctx.palette.setColor(QPalette::Text, optionV4.palette.color(QPalette::Active, QPalette::HighlightedText));
+                        ctx.palette.setColor(QPalette::Text, tempOption.palette.color(QPalette::Active, QPalette::HighlightedText));
                     }
                     else
                     {
-                        ctx.palette.setColor(QPalette::Text, optionV4.palette.color(QPalette::Active, QPalette::Text));
+                        ctx.palette.setColor(QPalette::Text, tempOption.palette.color(QPalette::Active, QPalette::Text));
                     }
 
-                    QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &optionV4);
+                    QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &tempOption);
                     painter->save();
                     painter->translate(textRect.topLeft());
                     painter->setClipRect(textRect.translated(-textRect.topLeft()));
@@ -850,7 +829,11 @@ namespace AzToolsFramework
                 QString data = index.data(Qt::DisplayRole).toString();
                 bool isRich = index.data(ExtraRoles::RichTextRole).toBool();
 
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
                 QStyleOptionViewItemV4 options = option;
+#else
+                QStyleOptionViewItem options = option;
+#endif
                 initStyleOption(&options, index);
 
                 QLabel* richLabel = new QLabel(parent);

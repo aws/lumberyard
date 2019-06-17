@@ -35,6 +35,41 @@
 
 namespace AzFramework
 {
+    bool TargetInfo::IsSelf() const
+    {
+        return m_flags & TF_SELF && m_networkId == k_selfNetworkId;
+    }
+
+    bool TargetInfo::IsValid() const
+    {
+        return m_lastSeen != 0;
+    }
+
+    const char* TargetInfo::GetDisplayName() const
+    {
+        return m_displayName.c_str();
+    }
+
+    AZ::u32 TargetInfo::GetPersistentId() const
+    {
+        return m_persistentId;
+    }
+
+    int TargetInfo::GetNetworkId() const
+    {
+        return m_networkId;
+    }
+
+    AZ::u32 TargetInfo::GetStatusFlags() const
+    {
+        return m_flags;
+    }
+
+    bool TargetInfo::IsIdentityEqualTo(const TargetInfo& other) const
+    {
+        return m_persistentId == other.m_persistentId;
+    }
+
     struct TargetManagementSettings
         : public AZ::UserSettings
     {
@@ -230,6 +265,8 @@ namespace AzFramework
         Neighborhood::NeighborReplicaPtr        m_neighborReplica;
     };
 
+    const AZ::u32 k_nullNetworkId = static_cast<AZ::u32>(-1);
+
     TargetManagementComponent::TargetManagementComponent()
         : m_serializeContext(nullptr)
         , m_networkImpl(nullptr)
@@ -244,11 +281,40 @@ namespace AzFramework
     void TargetManagementComponent::Activate()
     {
         EBUS_EVENT_RESULT(m_serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
-        m_settings = AZ::UserSettings::CreateFind<TargetManagementSettings>(AZ_CRC("TargetManagementSettings", 0x26fb3ccc), AZ::UserSettings::CT_GLOBAL);
+        {
+            AZStd::string persistentName = "Lumberyard";
 
-#if defined(AZ_PLATFORM_WINDOWS)
+        #if defined(AZ_PLATFORM_WINDOWS)
+            char procPath[256];
+            const DWORD ret = GetModuleFileName(nullptr, procPath, 256);
+            if (ret > 0)
+            {
+                char procName[256];
+                ::_splitpath_s(procPath, nullptr, 0, nullptr, 0, procName, 256, nullptr, 0);
+                persistentName = procName;
+            }
+        #elif defined(AZ_PLATFORM_APPLE_OSX)
+            char procName[PROC_PIDPATHINFO_MAXSIZE];
+            if (proc_pidpath(getpid(), procName, sizeof(procName)) > 0)
+            {
+                persistentName = procName;
+                size_t slash = persistentName.find_last_of('/');
+                persistentName = persistentName.substr(slash + 1);
+            }
+        #endif
+
+            AZStd::string targetManagementSettingsKey = AZStd::string::format("TargetManagementSettings::%s", persistentName.c_str());
+            m_settings = AZ::UserSettings::CreateFind<TargetManagementSettings>(AZ::Crc32(targetManagementSettingsKey.c_str()), AZ::UserSettings::CT_GLOBAL);
+
+            if (m_settings->m_persistentName.empty())
+            {
+                m_settings->m_persistentName = persistentName;
+            }
+        }
+
         if (m_settings->m_neighborhoodName.empty())
         {
+        #if defined(AZ_PLATFORM_WINDOWS)
             // On windows, if the neighborhood name was not provided we
             // will use the local computer name as the name since most of
             // the time the hub should be running on the local machine.
@@ -258,58 +324,26 @@ namespace AzFramework
             {
                 m_settings->m_neighborhoodName = localhost;
             }
-        }
-        if (m_settings->m_persistentName.empty())
-        {
-            char procPath[256];
-            const DWORD ret = GetModuleFileName(nullptr, procPath, 256);
-            if (ret > 0)
-            {
-                char procName[256];
-                ::_splitpath_s(procPath, nullptr, 0, nullptr, 0, procName, 256, nullptr, 0);
-                m_settings->m_persistentName = procName;
-            }
-            else
-            {
-                m_settings->m_persistentName = "Lumberyard";
-            }
-        }
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-        if (m_settings->m_neighborhoodName.empty())
-        {
+        #elif defined(AZ_PLATFORM_APPLE_OSX)
             char localhost[512];
             if (gethostname(localhost, sizeof(localhost)) == 0)
             {
                 m_settings->m_neighborhoodName = localhost;
             }
+        #endif
         }
-        if (m_settings->m_persistentName.empty())
-        {
-            char procName[PROC_PIDPATHINFO_MAXSIZE];
-            if (proc_pidpath(getpid(), procName, sizeof(procName)) > 0)
-            {
-                m_settings->m_persistentName = procName;
-                size_t slash = m_settings->m_persistentName.find_last_of('/');
-                m_settings->m_persistentName = m_settings->m_persistentName.substr(slash + 1);
-            }
-            else
-            {
-                m_settings->m_persistentName = "Lumberyard";
-            }
-        }
-#endif
 
         // Always set our desired target to be initially offline
         m_settings->m_lastTarget.m_flags &= ~TF_ONLINE;
 
         // Add a target for the local application.
-        const AZ::u32 nullNetworkId = static_cast<AZ::u32>(-1);
-        TargetContainer::pair_iter_bool ret = m_availableTargets.insert_key(nullNetworkId);
+        TargetContainer::pair_iter_bool ret = m_availableTargets.insert_key(k_selfNetworkId);
+
         TargetInfo& ti = ret.first->second;
         ti.m_lastSeen = time(nullptr);
         ti.m_displayName = m_settings->m_persistentName;
         ti.m_persistentId = AZ::Crc32(m_settings->m_persistentName.c_str());
-        ti.m_networkId = nullNetworkId;
+        ti.m_networkId = k_selfNetworkId;
         ti.m_flags |= TF_ONLINE | TF_DEBUGGABLE | TF_RUNNABLE | TF_SELF;
         EBUS_QUEUE_EVENT(TargetManagerClient::Bus, TargetJoinedNetwork, ti);
 
@@ -492,22 +526,44 @@ namespace AzFramework
     // the target controls who gets lua commands, tweak stuff, that kind of thing
     void TargetManagementComponent::SetDesiredTarget(AZ::u32 desiredTargetID)
     {
+        AZ_TracePrintf("TargetManagementComponent", "Set Target - %u", desiredTargetID);
+
         if (desiredTargetID != static_cast<AZ::u32>(m_settings->m_lastTarget.m_networkId))
         {
             TargetInfo ti = GetTargetInfo(desiredTargetID);
             AZ::u32 oldTargetID = m_settings->m_lastTarget.m_networkId;
             m_settings->m_lastTarget = ti;
-            EBUS_QUEUE_EVENT(TargetManagerClient::Bus, DesiredTargetChanged, desiredTargetID, oldTargetID);
+
+            if ((ti.IsValid()) && ((ti.m_flags & (TF_ONLINE | TF_SELF)) != 0))
+            {
+                EBUS_EVENT(TargetManagerClient::Bus, DesiredTargetChanged, desiredTargetID, oldTargetID);
+            }
+            else
+            {
+                EBUS_QUEUE_EVENT(TargetManagerClient::Bus, DesiredTargetChanged, desiredTargetID, oldTargetID);
+            }
 
             if ((ti.IsValid()) && ((ti.m_flags & TF_ONLINE) != 0))
             {
-                EBUS_QUEUE_EVENT(TargetManagerClient::Bus, DesiredTargetConnected, true);
+                if (ti.m_flags & TF_SELF)
+                {
+                    EBUS_EVENT(TargetManagerClient::Bus, DesiredTargetConnected, true);
+                }
+                else
+                {
+                    EBUS_QUEUE_EVENT(TargetManagerClient::Bus, DesiredTargetConnected, true);
+                }
             }
             else
             {
                 EBUS_QUEUE_EVENT(TargetManagerClient::Bus, DesiredTargetConnected, false);
             }
         }
+    }
+
+    void TargetManagementComponent::SetDesiredTargetInfo(const TargetInfo& targetInfo)
+    {
+        SetDesiredTarget(targetInfo.GetNetworkId());
     }
 
     // retrieve what it was set to.
@@ -540,6 +596,12 @@ namespace AzFramework
         return false;
     }
 
+    bool TargetManagementComponent::IsDesiredTargetOnline()
+    {
+        TargetInfo desiredTarget = GetDesiredTarget();
+        return IsTargetOnline(desiredTarget.GetNetworkId());
+    }
+
     void TargetManagementComponent::SetMyPersistentName(const char* name)
     {
         AZ_Assert(m_networkImpl->m_session == NULL, "We cannot change our neighborhood while connected!");
@@ -549,6 +611,18 @@ namespace AzFramework
     const char* TargetManagementComponent::GetMyPersistentName()
     {
         return m_settings->m_persistentName.c_str();
+    }
+
+    TargetInfo TargetManagementComponent::GetMyTargetInfo() const
+    {
+        auto mapIter = m_availableTargets.find(k_nullNetworkId);
+
+        if (mapIter != m_availableTargets.end())
+        {
+            return mapIter->second;
+        }
+
+        return TargetInfo();
     }
 
     void TargetManagementComponent::SetNeighborhood(const char* name)
@@ -578,9 +652,18 @@ namespace AzFramework
                 inboxMessage->AddCustomBlob(blob, msg.GetCustomBlobSize(), true);
             }
 
-            m_inboxMutex.lock();
-            m_inbox.push_back(inboxMessage);
-            m_inboxMutex.unlock();
+            if (msg.IsImmediateSelfDispatchEnabled())
+            {
+                TmMsgPtr receivedMessage(inboxMessage);
+                EBUS_EVENT_ID(inboxMessage->GetId(), TmMsgBus, OnReceivedMsg, receivedMessage);
+            }
+            else
+            {
+                m_inboxMutex.lock();
+                m_inbox.push_back(inboxMessage);
+                m_inboxMutex.unlock();
+            }
+            
             return;
         }
 

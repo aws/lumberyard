@@ -10,13 +10,14 @@
 *
 */
 
-#include "precompiled.h"
 #include "Libraries.h"
 
 #include <Libraries/Core/Core.h>
 #include <Libraries/Logic/Logic.h>
 #include <Libraries/Math/Math.h>
 #include <Libraries/Comparison/Comparison.h>
+#include <Libraries/UnitTesting/UnitTestingLibrary.h>
+#include <AzCore/std/containers/vector.h>
 
 namespace ScriptCanvas
 {
@@ -33,6 +34,11 @@ namespace ScriptCanvas
         Comparison::InitNodeRegistry(*g_nodeRegistry);
         Time::InitNodeRegistry(*g_nodeRegistry);
         String::InitNodeRegistry(*g_nodeRegistry);
+        Operators::InitNodeRegistry(*g_nodeRegistry);
+
+#ifndef _RELEASE
+        Library::UnitTesting::InitNodeRegistry(*g_nodeRegistry);
+#endif
     }
 
     void ResetNodeRegistry()
@@ -56,6 +62,11 @@ namespace ScriptCanvas
         Comparison::Reflect(reflectContext);
         Time::Reflect(reflectContext);
         String::Reflect(reflectContext);
+        Operators::Reflect(reflectContext);
+
+#ifndef _RELEASE
+        Library::UnitTesting::Reflect(reflectContext);
+#endif
     }
 
     AZStd::vector<AZ::ComponentDescriptor*> GetLibraryDescriptors()
@@ -81,6 +92,15 @@ namespace ScriptCanvas
 
         componentDescriptors = String::GetComponentDescriptors();
         libraryDescriptors.insert(libraryDescriptors.end(), componentDescriptors.begin(), componentDescriptors.end());
+
+        componentDescriptors = Operators::GetComponentDescriptors();
+        libraryDescriptors.insert(libraryDescriptors.end(), componentDescriptors.begin(), componentDescriptors.end());
+
+#ifndef _RELEASE
+        componentDescriptors = Library::UnitTesting::GetComponentDescriptors();
+        libraryDescriptors.insert(libraryDescriptors.end(), componentDescriptors.begin(), componentDescriptors.end());
+#endif
+
 
         return libraryDescriptors;
     }

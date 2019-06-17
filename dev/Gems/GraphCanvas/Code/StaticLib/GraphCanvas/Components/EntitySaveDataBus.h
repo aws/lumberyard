@@ -32,6 +32,7 @@ namespace GraphCanvas
         virtual void WriteSaveData(EntitySaveDataContainer& saveDataContainer) const = 0;
         
         // Signal that the Save Data should be read in from the specified container.
+        // This should be signalled before the entity is added to the scene.
         virtual void ReadSaveData(const EntitySaveDataContainer& saveDataContainer) = 0;
     };
 

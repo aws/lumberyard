@@ -23,7 +23,6 @@
 
 #include <android/input.h>
 #include <android/keycodes.h>
-#include <android_native_app_glue.h>
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,13 +51,6 @@ namespace AzFramework
         {
             AzFramework::PermissionRequestResultNotification::Bus::Broadcast(&AzFramework::PermissionRequestResultNotification::OnRequestPermissionsResult, granted);
         }
-
-        // this callback is triggered on the same thread the events are pumped
-        static int32_t InputHandler(android_app* app, AInputEvent* event)
-        {
-            RawInputNotificationBusAndroid::Broadcast(&RawInputNotificationsAndroid::OnRawInputEvent, event);
-            return 0;
-        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +68,7 @@ namespace AzFramework
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         // AndroidAppRequests
-        void SetAppState(android_app* appState) override;
+        void SetEventDispatcher(AndroidEventDispatcher* eventDispatcher) override;
         bool RequestPermission(const AZStd::string& permission, const AZStd::string& rationale) override;
 
         ////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +93,7 @@ namespace AzFramework
         void PumpSystemEventLoopUntilEmpty() override;
 
     private:
-        android_app* m_appState;
+        AndroidEventDispatcher* m_eventDispatcher;
         ApplicationLifecycleEvents::Event m_lastEvent;
 
         AZStd::atomic<bool> m_requestResponseReceived;
@@ -119,7 +111,7 @@ namespace AzFramework
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     ApplicationAndroid::ApplicationAndroid()
-        : m_appState(nullptr)
+        : m_eventDispatcher(nullptr)
         , m_lastEvent(ApplicationLifecycleEvents::Event::None)
     {
         m_lumberyardActivity.reset(aznew AZ::Android::JNI::Object(AZ::Android::Utils::GetActivityClassRef(), AZ::Android::Utils::GetActivityRef()));
@@ -146,14 +138,10 @@ namespace AzFramework
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    void ApplicationAndroid::SetAppState(android_app* appState)
+    void ApplicationAndroid::SetEventDispatcher(AndroidEventDispatcher* eventDispatcher)
     {
-        AZ_Assert(!m_appState, "Duplicate call to setting the Android application state!");
-        m_appState = appState;
-        if (m_appState)
-        {
-            m_appState->onInputEvent = InputHandler;
-        }
+        AZ_Assert(!m_eventDispatcher, "Duplicate call to setting the Android event dispatcher!");
+        m_eventDispatcher = eventDispatcher;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -259,48 +247,20 @@ namespace AzFramework
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void ApplicationAndroid::PumpSystemEventLoopOnce()
     {
-        AZ_ErrorOnce("ApplicationAndroid", m_appState, "The Android application state is not valid, unable to pump the event loop properly.");
-        if (m_appState)
+        AZ_ErrorOnce("ApplicationAndroid", m_eventDispatcher, "The Android event dispatcher is not valid, unable to pump the event loop properly.");
+        if (m_eventDispatcher)
         {
-            int events;
-            android_poll_source* source;
-            AZ::Android::AndroidEnv* androidEnv = AZ::Android::AndroidEnv::Get();
-
-            // passing a negative value will cause the function to block till it recieves an event
-            if (ALooper_pollOnce(androidEnv->IsRunning() ? 0 : -1, NULL, &events, reinterpret_cast<void**>(&source)) >= 0)
-            {
-                if (source != NULL)
-                {
-                    source->process(m_appState, source);
-                }
-            }
+            m_eventDispatcher->PumpEventLoopOnce();
         }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     void ApplicationAndroid::PumpSystemEventLoopUntilEmpty()
     {
-        AZ_ErrorOnce("ApplicationAndroid", m_appState, "The Android application state is not valid, unable to pump the event loop properly.");
-        if (m_appState)
+        AZ_ErrorOnce("ApplicationAndroid", m_eventDispatcher, "The Android event dispatcher is not valid, unable to pump the event loop properly.");
+        if (m_eventDispatcher)
         {
-            int events;
-            android_poll_source* source;
-            AZ::Android::AndroidEnv* androidEnv = AZ::Android::AndroidEnv::Get();
-
-            // passing a negative value will cause the function to block till it recieves an event
-            while (ALooper_pollAll(androidEnv->IsRunning() ? 0 : -1, NULL, &events, reinterpret_cast<void**>(&source)) >= 0)
-            {
-                if (source != NULL)
-                {
-                    source->process(m_appState, source);
-                }
-
-                if (m_appState->destroyRequested != 0)
-                {
-                    ApplicationRequests::Bus::Broadcast(&ApplicationRequests::ExitMainLoop);
-                    break;
-                }
-            }
+            m_eventDispatcher->PumpAllEvents();
         }
     }
 } // namespace AzFramework

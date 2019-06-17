@@ -38,20 +38,9 @@ namespace UnitTest
     using namespace GridMate;
 
     class NetBindingWithSlicesTest
-        : public AllocatorsFixture
+        : public ScopedAllocatorSetupFixture
     {
     public:
-        NetBindingWithSlicesTest()
-            : AllocatorsFixture(15, false)
-        {
-           
-        }
-
-        ~NetBindingWithSlicesTest()
-        {
-            
-        }
-
         const NetBindingContextSequence k_fakeContextSeq = 1;
         const AZ::SliceComponent::SliceInstanceId k_fakeSliceInstanceId = Uuid::CreateRandom();
         const AZ::SliceComponent::SliceInstanceId k_fakeSliceInstanceId_Another = Uuid::CreateRandom();
@@ -109,8 +98,6 @@ namespace UnitTest
 
         void SetUp() override
         {
-            AllocatorsFixture::SetUp();
-
             m_applicationContext.reset(aznew SerializeContext());
 
             AllocatorInstance<GridMateAllocatorMP>::Create();
@@ -189,8 +176,6 @@ namespace UnitTest
             AllocatorInstance<ThreadPoolAllocator>::Destroy();
 
             m_applicationContext.reset();
-
-            AllocatorsFixture::TearDown();
         }
     };
 

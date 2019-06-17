@@ -13,16 +13,13 @@
 #pragma once
 
 #include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzToolsFramework/Manipulators/LinearManipulator.h>
 
 namespace AzToolsFramework
 {
-    /**
-     * ScaleManipulators is an aggregation of 3 linear manipulators for each basis axis who share
-     * the same transform, and a single linear manipulator at the center of the transform whose
-     * axis is world up (z).
-     */
+    /// ScaleManipulators is an aggregation of 3 linear manipulators for each basis axis who share
+    /// the same transform, and a single linear manipulator at the center of the transform whose
+    /// axis is world up (z).
     class ScaleManipulators
         : public Manipulators
     {
@@ -30,7 +27,7 @@ namespace AzToolsFramework
         AZ_RTTI(ScaleManipulators, "{5D1F1D47-1D5B-4E42-B47E-23F108F8BF7D}")
         AZ_CLASS_ALLOCATOR(ScaleManipulators, AZ::SystemAllocator, 0)
 
-        ScaleManipulators(AZ::EntityId entityId, const AZ::Transform& worldFromLocal);
+        explicit ScaleManipulators(const AZ::Transform& worldFromLocal);
 
         void InstallAxisLeftMouseDownCallback(const LinearManipulator::MouseActionCallback& onMouseDownCallback);
         void InstallAxisMouseMoveCallback(const LinearManipulator::MouseActionCallback& onMouseMoveCallback);
@@ -40,8 +37,10 @@ namespace AzToolsFramework
         void InstallUniformMouseMoveCallback(const LinearManipulator::MouseActionCallback& onMouseMoveCallback);
         void InstallUniformLeftMouseUpCallback(const LinearManipulator::MouseActionCallback& onMouseUpCallback);
 
-        void SetLocalTransform(const AZ::Transform& localTransform);
-        void SetSpace(const AZ::Transform& worldFromLocal);
+        void SetSpace(const AZ::Transform& worldFromLocal) override;
+        void SetLocalTransform(const AZ::Transform& localTransform) override;
+        void SetLocalPosition(const AZ::Vector3& localPosition) override;
+        void SetLocalOrientation(const AZ::Quaternion& localOrientation) override;
 
         void SetAxes(
             const AZ::Vector3& axis1,
@@ -60,7 +59,7 @@ namespace AzToolsFramework
         // Manipulators
         void ProcessManipulators(const AZStd::function<void(BaseManipulator*)>&) override;
 
-        AZStd::vector<AZStd::unique_ptr<LinearManipulator>> m_axisScaleManipulators;
-        AZStd::unique_ptr<LinearManipulator> m_uniformScaleManipulator;
+        AZStd::array<AZStd::shared_ptr<LinearManipulator>, 3> m_axisScaleManipulators;
+        AZStd::shared_ptr<LinearManipulator> m_uniformScaleManipulator;
     };
 } // namespace AzToolsFramework

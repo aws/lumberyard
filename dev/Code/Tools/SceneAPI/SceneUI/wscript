@@ -20,11 +20,12 @@ def build(bld):
         disable_pch                 = True,
         file_list                   = 'SceneUI.waf_files',
         platforms                   = ['win', 'darwin'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        client_only                 = True,
+        exclude_monolithic          = True,
         test_all_file_list          = 'SceneUI_testing.waf_files',
         includes                    = [ bld.Path('Code/Tools') ],
-        use                         = ['SceneCore', 'SceneData', 'AzCore', 'AzFramework', 'AzToolsFramework', 'EmotionFXStaticLib', 'AzQtComponents'],
+        use                         = ['SceneCore', 'SceneData', 'AzCore', 'AzFramework', 'AzToolsFramework', 'AzQtComponents'],
         defines                     = [ 'SCENE_UI_EXPORTS' ],
         features                    = ['qt5', 'crcfix'],
-        autod_uselib                = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS']
+        uselib                      = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS']
     )

@@ -20,10 +20,17 @@
             "Uuid": "6fc787a982184217a5a553ca24676cfa"
         },
         {
-            "VersionConstraints": ["~>1.0.0"], 
-            "_comment": "CloudGemMetric", 
+            "VersionConstraints": [ "~>1.0.0" ],
+            "_comment": "CloudGemMetric",
             "Uuid": "e1bf83aa0ddc49418c6b5689c111cb26"
-        }
+        },          
+        {
+            "Uuid": "102e23cf4c4c4b748585edbce2bbdc65",
+            "VersionConstraints": [
+                "~>0.1"
+            ],
+            "_comment": "CloudCanvasCommon"
+        } 
     ], 
     "Name": "CloudGemDefectReporter"
 }

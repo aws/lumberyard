@@ -38,7 +38,7 @@
         {
             "long_form": "--force-version", 
             "attribute": "version", 
-            "default_value": "1.18.0.0", 
+            "default_value": "1.19.0.0", 
             "description": "Version to embed in final build outputs"
         }, 
         {
@@ -93,7 +93,7 @@
             "long_form": "--bullseye-included-modules", 
             "attribute": "bullseye_included_modules", 
             "default_value": "", 
-            "description": "Tells bullseye a list of specific modules to process. Comma separted list. If empty applies to all modules not excluded."
+            "description": "Tells bullseye a list of specific modules to process. Comma separated list. If empty applies to all modules not excluded."
         }, 
         {
             "long_form": "--bullseye-cov-file", 
@@ -193,120 +193,10 @@
             "description": "Endpoint to submit crash reports to"
         }, 
         {
-            "long_form": "--always-build-engine-and-tools", 
-            "attribute": "always_build_engine_and_tools", 
+            "long_form": "--enable-dynamic-file-globbing", 
+            "attribute": "enable_dynamic_file_globbing", 
             "default_value": "False", 
-            "description": "If set to true, then always build the engine and tools from source even if the project folder is external to the engine folder"
-        }
-    ], 
-    "Output Folder": [
-        {
-            "long_form": "--output-folder-win64-clang", 
-            "attribute": "out_folder_win64_clang", 
-            "default_value": "Bin64clang", 
-            "description": "Absolute or relative Win64 for clang build output path"
-        }, 
-        {
-            "long_form": "--output-folder-win64-vs2017", 
-            "attribute": "out_folder_win64_vs2017", 
-            "default_value": "Bin64vc141", 
-            "description": "Absolute or relative Win64 for VS2017 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-win64-vs2015", 
-            "attribute": "out_folder_win64_vs2015", 
-            "default_value": "Bin64vc140", 
-            "description": "Absolute or relative Win64 for VS2015 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-win64-vs2013", 
-            "attribute": "out_folder_win64_vs2013", 
-            "default_value": "Bin64vc120", 
-            "description": "Absolute or relative Win64 for VS2013 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-durango-vs2017", 
-            "attribute": "out_folder_durango_vs2017", 
-            "default_value": "BinDurangoVc141", 
-            "description": "Absolute or relative Durango for VS2017 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-durango-vs2015", 
-            "attribute": "out_folder_durango_vs2015", 
-            "default_value": "BinDurangoVc140", 
-            "description": "Absolute or relative Durango for VS2015 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-mac64", 
-            "attribute": "out_folder_mac64", 
-            "default_value": "BinMac64", 
-            "description": "Absolute or relative Mac/Darwin64 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-orbis-vs2015", 
-            "attribute": "out_folder_orbis_vs2015", 
-            "default_value": "BinOrbisVc140", 
-            "description": "Absolute or relative Orbis for VS2015 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-orbis-vs2017", 
-            "attribute": "out_folder_orbis_vs2017", 
-            "default_value": "BinOrbisVc141", 
-            "description": "Absolute or relative Orbis for VS2017 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-ios", 
-            "attribute": "out_folder_ios", 
-            "default_value": "BinIos", 
-            "description": "Absolute or relative iOS build output path"
-        }, 
-        {
-            "long_form": "--output-folder-appletv", 
-            "attribute": "out_folder_appletv", 
-            "default_value": "BinAppleTV", 
-            "description": "Absolute or relative AppleTV build output path"
-        }, 
-        {
-            "long_form": "--output-folder-linux64", 
-            "attribute": "out_folder_linux64", 
-            "default_value": "BinLinux64", 
-            "description": "Absolute or relative Linux64 build output path"
-        }, 
-        {
-            "long_form": "--output-folder-android-armv7-clang", 
-            "attribute": "out_folder_android_armv7_clang", 
-            "default_value": "BinAndroidArmv7Clang", 
-            "description": "Absolute or relative Android ARMv7 clang build output path"
-        }, 
-        {
-            "long_form": "--output-folder-android-armv8-clang", 
-            "attribute": "out_folder_android_armv8_clang", 
-            "default_value": "BinAndroidArmv8Clang", 
-            "description": "Absolute or relative Android ARMv8 clang build output path"
-        }, 
-        {
-            "long_form": "--output-folder-ext-debug", 
-            "attribute": "output_folder_ext_debug", 
-            "default_value": "Debug", 
-            "description": "The output folder name extension for debug builds"
-        }, 
-        {
-            "long_form": "--output-folder-ext-profile", 
-            "attribute": "output_folder_ext_profile", 
-            "default_value": "", 
-            "description": "The output folder name extension for profile builds"
-        }, 
-        {
-            "long_form": "--output-folder-ext-performance", 
-            "attribute": "output_folder_ext_performance", 
-            "default_value": "Performance", 
-            "description": "The output folder name extension for performance builds"
-        }, 
-        {
-            "long_form": "--output-folder-ext-release", 
-            "attribute": "output_folder_ext_release", 
-            "default_value": "Release", 
-            "description": "The output folder name extension for release builds"
+            "description": "Enables globbing of files during all build operations, globbing only once during configure"
         }
     ], 
     "Misc Options": [
@@ -327,6 +217,18 @@
             "attribute": "bootstrap_third_party_override", 
             "default_value": "", 
             "description": "Optional parameter to pass the location of the 3rd party folder as part of the configure/bootstrap process"
+        }, 
+        {
+            "long_form": "--has-test-configs", 
+            "attribute": "has_test_configs", 
+            "default_value": "True", 
+            "description": "Optional parameter enable the _test configurations"
+        }, 
+        {
+            "long_form": "--has-server-configs", 
+            "attribute": "has_server_configs", 
+            "default_value": "True", 
+            "description": "Optional parameter enable the _dedicated_server configurations"
         }
     ], 
     "Packaging Options": [
@@ -385,178 +287,6 @@
             "attribute": "msvs_version", 
             "default_value": "14", 
             "description": "Version of the MS Visual Studio Solution to generate"
-        }
-    ], 
-    "Windows Options": [
-        {
-            "long_form": "--win-vs2017-vswhere-args", 
-            "attribute": "win_vs2017_vswhere_args", 
-            "default_value": "-version [15.7.27703.2035,15.9.28307.423]", 
-            "description": "The arguments to pass to vswhere when locating vs2017 executables. The default maximum is the last version that Lumberyard was tested against before release. The default minimum is the last known ABI incompatiblity for Lumberyard builds."
-        }, 
-        {
-            "long_form": "--win-vs2017-winkit", 
-            "attribute": "win_vs2017_winkit", 
-            "default_value": "", 
-            "description": "The windows kit that vs2017 builds windows targets against"
-        }, 
-        {
-            "long_form": "--win-vs2017-vcvarsall-args", 
-            "attribute": "win_vs2017_vcvarsall_args", 
-            "default_value": "", 
-            "description": "Additional arguments to pass to vcvarsall.bat"
-        }, 
-        {
-            "long_form": "--win-vs2015-winkit", 
-            "attribute": "win_vs2015_winkit", 
-            "default_value": "", 
-            "description": "The windows kit that vs2015 builds windows targets against"
-        }, 
-        {
-            "long_form": "--win-enable-clang-for-windows", 
-            "attribute": "win_enable_clang_for_windows", 
-            "default_value": "False", 
-            "description": "Enables building and configuring with Clang for Windows"
-        }
-    ], 
-    "Android Options": [
-        {
-            "long_form": "--android-maven-force-http-requests", 
-            "attribute": "android_maven_force_http", 
-            "default_value": "False", 
-            "description": "Force Android Maven library requests to use HTTP instead of HTTPS"
-        }
-    ], 
-    "Android Project Generator": [
-        {
-            "long_form": "--generate-android-studio-projects-automatically", 
-            "attribute": "generate_android_studio_projects_automatically", 
-            "default_value": "True", 
-            "description": "Automatically generate Android Studio Projects"
-        }, 
-        {
-            "long_form": "--android-studio-project-name", 
-            "attribute": "android_studio_project_name", 
-            "default_value": "LumberyardAndroidSDK", 
-            "description": "Name of the root Android project folder and Android Studio project name"
-        }, 
-        {
-            "long_form": "--android-studio-project-folder", 
-            "attribute": "android_studio_project_folder", 
-            "default_value": "Solutions", 
-            "description": "Name of the folder in which the generate Android Studio project should be stored"
-        }
-    ], 
-    "Android Deploy": [
-        {
-            "long_form": "--deploy-android", 
-            "attribute": "deploy_android", 
-            "default_value": "True", 
-            "description": "Deploy to an android device"
-        }, 
-        {
-            "long_form": "--deploy-android-clean-device", 
-            "attribute": "deploy_android_clean_device", 
-            "default_value": "True", 
-            "description": "Removes any previous assets for the game project that were copied. If the deploy-android-executable option is specified as well then the package specified deploy-android-package-name will also be uninstalled."
-        }, 
-        {
-            "long_form": "--deploy-android-executable", 
-            "attribute": "deploy_android_executable", 
-            "default_value": "True", 
-            "description": "Install the executable, i.e. APK, on the android device"
-        }, 
-        {
-            "long_form": "--deploy-android-replace-apk", 
-            "attribute": "deploy_android_replace_apk", 
-            "default_value": "True", 
-            "description": "When installing the APK to the device use the -r option to force the replacement of the package"
-        }, 
-        {
-            "long_form": "--deploy-android-install-options", 
-            "attribute": "deploy_android_install_options", 
-            "default_value": "", 
-            "description": "Additional options to specify for the install command"
-        }, 
-        {
-            "long_form": "--deploy-android-asset-mode", 
-            "attribute": "deploy_android_asset_mode", 
-            "default_value": "Loose", 
-            "description": "Specify the asset deployment mode.  loose: Pushes the compiled loose assets to device or runs under VFS mode if set in the bootstrap.  paks: Generates and pushes the Pak files to device.  project_settings: Uses the options specified in your game's project.json file, release forces this mode."
-        }, 
-        {
-            "long_form": "--deploy-android-device-filter", 
-            "attribute": "deploy_android_device_filter", 
-            "default_value": "", 
-            "description": "Comma separated list of Android device IDs to deploy to.  If left empty, the deploy will be to all connected devices."
-        }
-    ], 
-    "iOS Project Generator": [
-        {
-            "long_form": "--generate-ios-projects-automatically", 
-            "attribute": "generate_ios_projects_automatically", 
-            "default_value": "True", 
-            "description": "Automatically generate iOS Projects"
-        }, 
-        {
-            "long_form": "--ios-project-name", 
-            "attribute": "ios_project_name", 
-            "default_value": "LumberyardiOSSDK", 
-            "description": "Name of the generated project"
-        }, 
-        {
-            "long_form": "--ios-project-folder", 
-            "attribute": "ios_project_folder", 
-            "default_value": "Solutions", 
-            "description": "Name of the folder in which the generated ios projects should be stored"
-        }
-    ], 
-    "Apple TV Project Generator": [
-        {
-            "long_form": "--generate-appletv-projects-automatically", 
-            "attribute": "generate_appletv_projects_automatically", 
-            "default_value": "True", 
-            "description": "Automatically generate Apple TV Projects"
-        }, 
-        {
-            "long_form": "--appletv-project-name", 
-            "attribute": "appletv_project_name", 
-            "default_value": "LumberyardAppleTVSDK", 
-            "description": "Name of the generated project"
-        }, 
-        {
-            "long_form": "--appletv-project-folder", 
-            "attribute": "appletv_project_folder", 
-            "default_value": "Solutions", 
-            "description": "Name of the folder in which the generated Apple TV projects should be stored"
-        }
-    ], 
-    "Mac Options": [
-        {
-            "long_form": "--mac-build-monolithic", 
-            "attribute": "mac_build_monolithic", 
-            "default_value": "False", 
-            "description": "Flag to generate a monolithic or a nonmonolithic build for Mac, options are True or False"
-        }
-    ], 
-    "Mac Project Generator": [
-        {
-            "long_form": "--generate-mac-projects-automatically", 
-            "attribute": "generate_mac_projects_automatically", 
-            "default_value": "True", 
-            "description": "Automatically generate Darwin Projects"
-        }, 
-        {
-            "long_form": "--mac-project-name", 
-            "attribute": "mac_project_name", 
-            "default_value": "LumberyardSDK", 
-            "description": "Name of the generated project"
-        }, 
-        {
-            "long_form": "--mac-project-folder", 
-            "attribute": "mac_project_folder", 
-            "default_value": "Solutions", 
-            "description": "Name of the folder in which the generated mac projects should be stored"
         }
     ]
 }

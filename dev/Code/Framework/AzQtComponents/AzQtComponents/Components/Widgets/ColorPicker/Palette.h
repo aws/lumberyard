@@ -136,3 +136,12 @@ namespace AzQtComponents
 Q_DECLARE_METATYPE(AZ::Color);
 Q_DECLARE_METATYPE(AzQtComponents::Palette)
 
+namespace AzQtComponents
+{
+    inline void registerMetaTypes()
+    {
+        qRegisterMetaType<AZ::Color>();
+        qRegisterMetaType<AzQtComponents::Palette>();
+    }
+}
+

@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -10,9 +10,32 @@
 *
 */
 
-#include "precompiled.h"
-
-#include <Tests/ScriptCanvasTestFixture.h>
-
+#include <Source/Framework/ScriptCanvasTestFixture.h>
 
 using namespace ScriptCanvasTests;
+
+TEST_F(ScriptCanvasTestFixture, StringMethodCStyle2CStyle)
+{
+    RunUnitTestGraph("LY_SC_UnitTest_StringMethodCStyle2CStyle");
+}
+
+TEST_F(ScriptCanvasTestFixture, EBusStringResultCStyle2CStyle)
+{
+    RunUnitTestGraph("LY_SC_UnitTest_EBusStringResultCStyle2CStyle");
+}
+
+TEST_F(ScriptCanvasTestFixture, EBusStringResultCStyle2String)
+{
+    RunUnitTestGraph("LY_SC_UnitTest_EBusStringResultCStyle2String");
+}
+
+TEST_F(ScriptCanvasTestFixture, EBusStringResultCStyle2StringView)
+{
+    RunUnitTestGraph("LY_SC_UnitTest_EBusStringResultCStyle2StringView");
+}
+
+TEST_F(ScriptCanvasTestFixture, EBusResultNested)
+{
+    RunUnitTestGraph("LY_SC_UnitTest_EBusResultNested");
+}
+

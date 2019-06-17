@@ -13,23 +13,19 @@
 
 #include <AzCore/Component/ComponentBus.h>
 
+#include <LmbrCentral/Shape/ShapeComponentBus.h>
+
 namespace LmbrCentral
 {
-    /**
-     * Type ID of CylinderShapeComponent
-     */
+    /// Type ID of CylinderShapeComponent
     static const AZ::Uuid CylinderShapeComponentTypeId = "{B0C6AA97-E754-4E33-8D32-33E267DB622F}";
 
-    /**
-     * Type ID of EditorCylinderShapeComponent
-     */
+    /// Type ID of EditorCylinderShapeComponent
     static const AZ::Uuid EditorCylinderShapeComponentTypeId = "{D5FC4745-3C75-47D9-8C10-9F89502487DE}";
 
-    /**
-     * Configuration data for CylinderShapeComponent
-     */
+    /// Configuration data for CylinderShapeComponent
     class CylinderShapeConfig
-        : public AZ::ComponentConfig
+        : public ShapeComponentConfig
     {
     public:
         AZ_CLASS_ALLOCATOR(CylinderShapeConfig, AZ::SystemAllocator, 0);
@@ -66,35 +62,25 @@ namespace LmbrCentral
 
     using CylinderShapeConfiguration = CylinderShapeConfig; ///< @deprecated Use CylinderShapeConfig.
 
-    /**
-     * Services provided by the Cylinder Shape Component.
-     */
+    /// Services provided by the Cylinder Shape Component.
     class CylinderShapeComponentRequests
         : public AZ::ComponentBus
     {
     public:
         virtual CylinderShapeConfig GetCylinderConfiguration() = 0;
 
-        /**
-         * @brief Returns the end to end height of the cylinder.
-         */
+        /// @brief Returns the end to end height of the cylinder.
         virtual float GetHeight() = 0;
 
-        /**
-         * @brief Returns the radius of the cylinder.
-         */
+        /// @brief Returns the radius of the cylinder.
         virtual float GetRadius() = 0;
         
-        /**
-         * @brief Sets height of the cylinder
-         * @param height new height of the cylinder
-         */
+        /// @brief Sets height of the cylinder
+        /// @param height new height of the cylinder
         virtual void SetHeight(float height) = 0;
 
-        /**
-         * @brief Sets radius of the cylinder
-         * @param radius new radius of the cylinder
-         */
+        /// @brief Sets radius of the cylinder
+        /// @param radius new radius of the cylinder
         virtual void SetRadius(float radius) = 0;
     };
 

@@ -20,12 +20,10 @@
 
 namespace LmbrCentral
 {
-    /**
-     * Component interface for Polygon Prism.
-     * Formal Definition: A polygonal prism is a 3-dimensional prism made from two translated polygons connected by rectangles.
-     * Here the representation is defined by one polygon (internally represented as a vertex container - list of vertices) and a height (extrusion) property.
-     * All points lie on the local plane Z = 0.
-     */
+    /// Component interface for Polygon Prism.
+    /// Formal Definition: A polygonal prism is a 3-dimensional prism made from two translated polygons connected by rectangles.
+    /// Here the representation is defined by one polygon (internally represented as a vertex container - list of vertices) and a height (extrusion) property.
+    /// All points lie on the local plane Z = 0.
     class PolygonPrismShapeComponent
         : public AZ::Component
     {
@@ -45,14 +43,16 @@ namespace LmbrCentral
         {
             provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
             provided.push_back(AZ_CRC("PolygonPrismShapeService", 0x1cbc4ed4));
-            provided.push_back(AZ_CRC("VertexContainerService", 0x22cf8e10));
+            provided.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
+            provided.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
         }
 
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
             incompatible.push_back(AZ_CRC("PolygonPrismShapeService", 0x1cbc4ed4));
-            incompatible.push_back(AZ_CRC("VertexContainerService", 0x22cf8e10));
+            incompatible.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
+            incompatible.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -66,9 +66,7 @@ namespace LmbrCentral
         PolygonPrismShape m_polygonPrismShape; ///< Stores configuration of a Polygon Prism Shape for this component
     };
 
-    /**
-     * Concrete EntityDebugDisplay implementation for PolygonPrismShape.
-     */
+    /// Concrete EntityDebugDisplay implementation for PolygonPrismShape.
     class PolygonPrismShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
         , public ShapeComponentNotificationsBus::Handler
@@ -80,13 +78,15 @@ namespace LmbrCentral
         explicit PolygonPrismShapeDebugDisplayComponent(const AZ::PolygonPrism& polygonPrism)
             : m_polygonPrism(polygonPrism) {}
 
+        void SetShapeConfig(const PolygonPrismShapeConfig& shapeConfig);
+
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
         static void Reflect(AZ::ReflectContext* context);
 
-        void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
+        void Draw(AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         // ShapeComponentNotificationsBus
         void OnShapeChanged(ShapeChangeReasons changeReason) override;
@@ -98,5 +98,7 @@ namespace LmbrCentral
 
         AZ::PolygonPrism m_polygonPrism; ///< Stores configuration data for PolygonPrism shape.
         PolygonPrismMesh m_polygonPrismMesh; ///< Buffer to store triangles of top and bottom of Polygon Prism.
+
+        PolygonPrismShapeConfig m_polygonShapeConfig;
     };
 } // namespace LmbrCentral

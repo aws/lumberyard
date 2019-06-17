@@ -9,14 +9,14 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/base.h>
 #include <AzCore/Component/Component.h>
-
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
 #include "EditorUtils.h"
 #include "Road.h"
@@ -24,8 +24,8 @@
 namespace RoadsAndRivers
 {
     /**
-     * In-editor road component. Handles debug drawing of the road geometry, listents to callbacks of underlying spline  
-     * to regenerate the road
+     * In-editor road component. Handles debug drawing of the road geometry, listens to callbacks of underlying spline  
+     * to regenerate the road.
      */
     class EditorRoadComponent
         : public AzToolsFramework::Components::EditorComponentBase
@@ -56,14 +56,19 @@ namespace RoadsAndRivers
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
     private:
-        // EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         // EditorComponentSelectionRequestsBus::Handler
-        AZ::Aabb GetEditorSelectionBounds() override;
-        bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
+        bool EditorSelectionIntersectRayViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
         bool SupportsEditorRayIntersect() override { return true; };
-        AZ::u32 GetBoundingBoxDisplayType() override { return AzToolsFramework::EditorComponentSelectionRequests::NoBoundingBox; }
+        AZ::u32 GetBoundingBoxDisplayType() override { return NoBoundingBox; }
 
         // EditorComponentSelectionNotificationsBus::Handler
         void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override;
@@ -93,4 +98,4 @@ namespace RoadsAndRivers
         AzToolsFramework::EntityAccentType m_accentType = AzToolsFramework::EntityAccentType::None;
         Road m_road;
     };
-}
+} // namespace RoadsAndRivers

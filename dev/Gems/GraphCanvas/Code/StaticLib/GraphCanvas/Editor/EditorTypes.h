@@ -11,6 +11,7 @@
 */
 #pragma once
 
+#include <AzCore/std/any.h>
 #include <AzCore/Math/Crc.h>
 #include <AzCore/Component/EntityId.h>
 
@@ -19,10 +20,16 @@ namespace GraphCanvas
     typedef AZ::Crc32 EditorId;
     typedef AZ::EntityId GraphId;
 
+    typedef AZ::EntityId ViewId;
+
     typedef AZ::EntityId SlotId;
     typedef AZ::EntityId NodeId;
     typedef AZ::EntityId ConnectionId;
     typedef AZ::EntityId BookmarkId;
 
     typedef AZ::EntityId DockWidgetId;
+
+    typedef AZ::EntityId GraphicsEffectId;
+
+    typedef AZ::Uuid PersistentGraphMemberId;
 }

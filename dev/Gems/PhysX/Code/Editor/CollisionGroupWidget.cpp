@@ -12,10 +12,11 @@
 
 #include <PhysX_precompiled.h>
 #include <Editor/CollisionGroupWidget.h>
-#include <AzFramework/Physics/PropertyTypes.h>
+#include <Editor/ConfigurationWindowBus.h>
 #include <PhysX/ConfigurationBus.h>
-
-#include <QEvent>
+#include <AzFramework/Physics/PropertyTypes.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <LyViewPaneNames.h>
 
 namespace PhysX
 {
@@ -33,23 +34,17 @@ namespace PhysX
         QWidget* CollisionGroupWidget::CreateGUI(QWidget* parent)
         {
             widget_t* picker = new widget_t(parent);
-            picker->installEventFilter(this);
+            
+            picker->GetEditButton()->setToolTip("Edit Collision Groups");
 
-            connect(picker, &widget_t::currentTextChanged, this, [picker]()
+            connect(picker->GetComboBox(), &QComboBox::currentTextChanged, this, [picker]()
             {
                 EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
             });
 
-            return picker;
-        }
+            connect(picker->GetEditButton(), &QPushButton::clicked, this, &CollisionGroupWidget::OnEditButtonClicked);
 
-        bool CollisionGroupWidget::eventFilter(QObject* /*object*/, QEvent* event)
-        {
-            if (event->type() == QEvent::Wheel)
-            {
-                return true;
-            }
-            return false;
+            return picker;
         }
 
         bool CollisionGroupWidget::IsDefaultHandler() const
@@ -71,23 +66,32 @@ namespace PhysX
 
         void CollisionGroupWidget::WriteGUIValuesIntoProperty(size_t index, widget_t* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
         {
-            instance = GetGroupFromName(GUI->currentText().toUtf8().data());
+            instance = GetGroupFromName(GUI->GetComboBox()->currentText().toUtf8().data());
         }
 
         bool CollisionGroupWidget::ReadValuesIntoGUI(size_t index, widget_t* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
         {
-            QSignalBlocker signalBlocker(GUI);
-            GUI->clear();
+            QSignalBlocker signalBlocker(GUI->GetComboBox());
+            GUI->GetComboBox()->clear();
 
             auto groupNames = GetGroupNames();
             for (auto& layerName : groupNames)
             {
-                GUI->addItem(layerName.c_str());
+                GUI->GetComboBox()->addItem(layerName.c_str());
             }
 
             auto groupName = GetNameFromGroup(instance);
-            GUI->setCurrentText(groupName.c_str());
+            GUI->GetComboBox()->setCurrentText(groupName.c_str());
             return true;
+        }
+
+        void CollisionGroupWidget::OnEditButtonClicked()
+        {
+            // Open configuration window
+            AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequests::OpenViewPane, LyViewPane::PhysXConfigurationEditor);
+
+            // Set to collision groups tab
+            ConfigurationWindowRequestBus::Broadcast(&ConfigurationWindowRequests::ShowCollisionGroupsTab);
         }
 
         Physics::CollisionGroups::Id CollisionGroupWidget::GetGroupFromName(const AZStd::string& groupName)

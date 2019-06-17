@@ -22,6 +22,11 @@ class CContentCGF;
 struct CMaterialCGF;
 class CMesh;
 class CPhysicsInterface;
+//START: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
+struct CSkinningInfo;
+struct SFoliageInfoCGF;
+struct SSpineRC;
+//END: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
 
 class CStaticObjectCompiler
 {
@@ -57,6 +62,13 @@ private:
     void ValidateBreakableJoints(const CContentCGF* pCGF);
 
     bool MakeMergedCGF(CContentCGF* pCompiledCGF, CContentCGF* pCGF);
+
+    //START: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
+    void BuildFoliageInfoFromSkinningInfo(SFoliageInfoCGF& foliageInfo, const CSkinningInfo* pSkinningInfo, CContentCGF* pCGF);
+    void CreateSpinesFromSkinningData(SSpineRC** pSpines, int& spineCount, const CSkinningInfo* pSkinningInfo, const CMesh& mesh, CContentCGF* pCGF);
+    void ConnectSpines(SSpineRC* pSpines, const CSkinningInfo* pSkinningInfo, int spineCount);
+    void SetupPhysData(SSpineRC* pSpines, int spineCount, const CSkinningInfo* pSkinningInfo, const CMesh& mesh);
+    //END: Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
 
 private:
     CPhysicsInterface* m_pPhysicsInterface;

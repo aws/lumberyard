@@ -1,0 +1,33 @@
+<TagDefinition version="2">
+ <Tags>
+  <Tag name="Idle"/>
+  <Tag name="Moving"/>
+  <Tag name="Aiming"/>
+  <Tag name="IdleTurn"/>
+  <Tag name="Idle2Move"/>
+  <Tag name="Move2Idle"/>
+  <Tag name="MovingTurnLeft"/>
+  <Tag name="MovingTurnRight"/>
+  <Tag name="JumpIdle"/>
+  <Tag name="JumpRunning"/>
+  <Tag name="JumpRunningDouble"/>
+  <Tag name="Falling"/>
+  <Tag name="LandingSoft"/>
+  <Tag name="LandingMedium"/>
+  <Tag name="LandingHard"/>
+  <Tag name="Shoot"/>
+  <Tag name="Hit"/>
+  <Tag name="Dead" subTagDef="Animations/Mannequin/ADB/jacktags.xml"/>
+  <Tag name="InteractStart"/>
+  <Tag name="InteractIdle"/>
+  <Tag name="InteractEnd"/>
+  <Tag name="IdleAmbient01"/>
+  <Tag name="IdleAmbient02"/>
+  <Tag name="IdleAmbientCheckGun"/>
+  <Tag name="IdleAmbientLookLeft"/>
+  <Tag name="IdleAmbientLookRight"/>
+  <Tag name="IdleAmbientLookRightLeft"/>
+  <Tag name="IdleAmbientLookSuspicious"/>
+  <Tag name="Strafe"/>
+ </Tags>
+</TagDefinition>

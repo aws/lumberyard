@@ -1,0 +1,5 @@
+<Entity
+ Name="CameraTarget"
+ Script="Scripts/Entities/Others/CameraTarget.lua"
+ Invisible="1"
+/>

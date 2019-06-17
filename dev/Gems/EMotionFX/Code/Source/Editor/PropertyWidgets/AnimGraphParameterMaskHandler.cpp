@@ -29,12 +29,10 @@ namespace EMotionFX
     {
     }
 
-
     AZ::u32 AnimGraphParameterMaskHandler::GetHandlerName() const
     {
         return AZ_CRC("AnimGraphParameterMask", 0x67dd0993);
     }
-
 
     QWidget* AnimGraphParameterMaskHandler::CreateGUI(QWidget* parent)
     {
@@ -47,14 +45,12 @@ namespace EMotionFX
         return picker;
     }
 
-
     void AnimGraphParameterMaskHandler::ConsumeAttribute(AnimGraphParameterPicker* GUI, AZ::u32 attrib, AzToolsFramework::PropertyAttributeReader* attrValue, const char* debugName)
     {
         if (attrValue)
         {
             AnimGraphNode* node = static_cast<AnimGraphNode*>(attrValue->GetInstancePointer());
             m_object = azdynamic_cast<ObjectAffectedByParameterChanges*>(node);
-            GUI->SetAnimGraph(m_object->GetParameterAnimGraph());
             GUI->SetObjectAffectedByParameterChanges(m_object);
         }
 
@@ -67,14 +63,12 @@ namespace EMotionFX
             }
         }
     }
-    
 
     void AnimGraphParameterMaskHandler::WriteGUIValuesIntoProperty(size_t index, AnimGraphParameterPicker* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
         // Don't update the parameter names yet, we still need the information for constructing the command group.
         instance = m_object->GetParameters();
     }
-
 
     bool AnimGraphParameterMaskHandler::ReadValuesIntoGUI(size_t index, AnimGraphParameterPicker* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
     {
@@ -83,5 +77,3 @@ namespace EMotionFX
         return true;
     }
 } // namespace EMotionFX
-
-#include <Source/Editor/PropertyWidgets/AnimGraphParameterMaskHandler.moc>

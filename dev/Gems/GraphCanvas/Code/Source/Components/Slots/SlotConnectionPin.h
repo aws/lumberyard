@@ -53,28 +53,30 @@ namespace GraphCanvas
 		
 		// SlotUIRequestBus
         QPointF GetConnectionPoint() const override;
+        QPointF GetJutDirection() const override;
         ////
 
     protected:
 
         // QGraphicsItem
-        QRectF boundingRect() const;
+        QRectF boundingRect() const override;
         void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
         void keyPressEvent(QKeyEvent* keyEvent) override;
         void keyReleaseEvent(QKeyEvent* keyEvent) override;
         void hoverEnterEvent(QGraphicsSceneHoverEvent* hoverEvent) override;
         void hoverLeaveEvent(QGraphicsSceneHoverEvent* hoverEvent) override;
         void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
-        void contextMenuEvent(QGraphicsSceneContextMenuEvent* contextMenuEvent) override;
         ////
 
         // QGraphicsLayoutItem
         void setGeometry(const QRectF& rect) override;
         QSizeF sizeHint(Qt::SizeHint which, const QSizeF& constraint = {}) const override;
-		////
+        ////
 
         virtual void DrawConnectionPin(QPainter *painter, QRectF drawRect, bool isConnected);
         virtual void OnRefreshStyle();
+
+        ConnectionType m_connectionType;
 
         AZ::EntityId m_slotId;
 

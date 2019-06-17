@@ -146,7 +146,7 @@ namespace Water
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveTimestep, "Timestep", "How often the wave simulation ticks.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.001f)		// Above 1 millisec updates - closer to 0 will create major slowdown, and 0 will freeze the editor
+                    ->Attribute(AZ::Edit::Attributes::Min, 0.001f) // Above 1 millisec updates - closer to 0 will create major slowdown, and 0 will freeze the editor
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &WaterVolumeCommon::m_waveSleepThreshold, "Sleep Threshold", "The lowest velocity for a cell to rest.")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &WaterVolumeCommon::OnPhysicsParamChange)
@@ -188,12 +188,12 @@ namespace Water
         WaterVolumeCommon::Deactivate();
     }
 
-    void EditorWaterVolumeCommon::DrawWaterVolume(AzFramework::EntityDebugDisplayRequests* dc)
+    void EditorWaterVolumeCommon::DrawWaterVolume(AzFramework::DebugDisplayRequests& debugDisplay)
     {
         const AZStd::vector<AZ::Vector3>& vertices = m_azVerts;
         size_t vertCount = vertices.size();
 
-        dc->SetColor(s_waterAreaColor.GetAsVector4());
+        debugDisplay.SetColor(s_waterAreaColor.GetAsVector4());
 
         //Draw walls for every line segment
         for (size_t i = 0; i < vertCount; ++i)
@@ -214,17 +214,17 @@ namespace Water
 
             if (m_displayFilled)
             {
-                dc->SetAlpha(0.3f);
+                debugDisplay.SetAlpha(0.3f);
                 //Draw filled quad with two winding orders to make it double sided
-                dc->DrawQuad(lowerLeft, lowerRight, upperRight, upperLeft);
-                dc->DrawQuad(lowerLeft, upperLeft, upperRight, lowerRight);
+                debugDisplay.DrawQuad(lowerLeft, lowerRight, upperRight, upperLeft);
+                debugDisplay.DrawQuad(lowerLeft, upperLeft, upperRight, lowerRight);
             }
 
-            dc->SetAlpha(1.0f);
-            dc->DrawLine(lowerLeft, lowerRight);
-            dc->DrawLine(lowerRight, upperRight);
-            dc->DrawLine(upperRight, upperLeft);
-            dc->DrawLine(upperLeft, lowerLeft);
+            debugDisplay.SetAlpha(1.0f);
+            debugDisplay.DrawLine(lowerLeft, lowerRight);
+            debugDisplay.DrawLine(lowerRight, upperRight);
+            debugDisplay.DrawLine(upperRight, upperLeft);
+            debugDisplay.DrawLine(upperLeft, lowerLeft);
         }
     }
 
@@ -252,7 +252,7 @@ namespace Water
     }
     void EditorWaterVolumeComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        //Only compatible with Box, Cylinder and PolygonPrism shapes 
+        //Only compatible with Box, Cylinder and PolygonPrism shapes
         incompatible.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
         incompatible.push_back(AZ_CRC("SphereShapeService", 0x90c8dc80));
         incompatible.push_back(AZ_CRC("CompoundShapeService", 0x4f7c640a));
@@ -322,18 +322,11 @@ namespace Water
         gameEntity->CreateComponent<WaterVolumeComponent>(&m_common);
     }
 
-    void EditorWaterVolumeComponent::DisplayEntity(bool& handled)
+    void EditorWaterVolumeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        if (dc == nullptr)
-        {
-            handled = false;
-            return;
-        }
-
-        m_common.DrawWaterVolume(dc);
-
-        handled = true;
+        m_common.DrawWaterVolume(debugDisplay);
     }
 
     AZ::LegacyConversion::LegacyConversionResult WaterConverter::ConvertEntity(CBaseObject* entityToConvert)

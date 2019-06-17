@@ -10,16 +10,19 @@
 *
 */
 
-#include "precompiled.h"
 
-#include <Tests/ScriptCanvasTestFixture.h>
-#include <Tests/ScriptCanvasTestUtilities.h>
+
+#include <Source/Framework/ScriptCanvasTestFixture.h>
+#include <Source/Framework/ScriptCanvasTestUtilities.h>
 
 #include <ScriptCanvas/Core/NodeFunctionGeneric.h>
 
+#pragma warning( push )
+#pragma warning( disable : 5046) //'function' : Symbol involving type with internal linkage not defined
+
 using namespace ScriptCanvasTests;
 
-namespace ScriptCanvas_NodeGenerics
+namespace 
 {
 
     AZ_INLINE void ArgsNoReturn(float)
@@ -120,15 +123,15 @@ namespace ScriptCanvas
 
 TEST_F(ScriptCanvasTestFixture, NodeGenerics)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-    using namespace ScriptCanvas;
+    
+    using namespace ScriptCanvasEditor;
 
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::ArgsNoReturnNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::ArgsReturnMultiNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::NoArgsNoReturnNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::NoArgsReturnNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::NoArgsReturnMultiNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, NormalizeWithDefaultNode::CreateDescriptor());
+    RegisterComponentDescriptor<ArgsNoReturnNode>();
+    RegisterComponentDescriptor<ArgsReturnMultiNode>();
+    RegisterComponentDescriptor<NoArgsNoReturnNode>();
+    RegisterComponentDescriptor<NoArgsReturnNode>();
+    RegisterComponentDescriptor<NoArgsReturnMultiNode>();
+    RegisterComponentDescriptor<NormalizeWithDefaultNode>();
 
     UnitTestEventsHandler unitTestHandler;
     unitTestHandler.BusConnect();
@@ -145,18 +148,18 @@ TEST_F(ScriptCanvasTestFixture, NodeGenerics)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId noArgsNoReturnNodeID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::NoArgsNoReturnNode>(graphUniqueId, noArgsNoReturnNodeID);
+    CreateTestNode<NoArgsNoReturnNode>(graphUniqueId, noArgsNoReturnNodeID);
     AZ::EntityId argsNoReturnNodeID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::ArgsNoReturnNode>(graphUniqueId, argsNoReturnNodeID);
+    CreateTestNode<ArgsNoReturnNode>(graphUniqueId, argsNoReturnNodeID);
     AZ::EntityId noArgsReturnNodeID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::NoArgsReturnNode>(graphUniqueId, noArgsReturnNodeID);
+    CreateTestNode<NoArgsReturnNode>(graphUniqueId, noArgsReturnNodeID);
 
     AZ::EntityId normalizeWithDefaultNodeID;
     auto normalizeWithDefaultNode = CreateTestNode<NormalizeWithDefaultNode>(graphUniqueId, normalizeWithDefaultNodeID);
 
     AZ::EntityId unused0, unused1;
-    CreateTestNode<ScriptCanvas_NodeGenerics::ArgsReturnMultiNode>(graphUniqueId, unused0);
-    CreateTestNode<ScriptCanvas_NodeGenerics::NoArgsReturnMultiNode>(graphUniqueId, unused1);
+    CreateTestNode<ArgsReturnMultiNode>(graphUniqueId, unused0);
+    CreateTestNode<NoArgsReturnMultiNode>(graphUniqueId, unused1);
 
     EXPECT_TRUE(Connect(*graph, startID, "Out", noArgsNoReturnNodeID, "In"));
     EXPECT_TRUE(Connect(*graph, noArgsNoReturnNodeID, "Out", argsNoReturnNodeID, "In"));
@@ -164,9 +167,9 @@ TEST_F(ScriptCanvasTestFixture, NodeGenerics)
 
     EXPECT_TRUE(Connect(*graph, noArgsReturnNodeID, "Out", normalizeWithDefaultNodeID, "In"));
 
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, true);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, true);
     graph->GetEntity()->Activate();
-    TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressPrintf, false);
+    TraceSuppressionBus::Broadcast(&TraceSuppressionRequests::SuppressPrintf, false);
     EXPECT_FALSE(graph->IsInErrorState());
 
     if (auto tolerance = normalizeWithDefaultNode->GetInput_UNIT_TEST<Data::NumberType>("Number: Tolerance"))
@@ -190,25 +193,19 @@ TEST_F(ScriptCanvasTestFixture, NodeGenerics)
     delete graph->GetEntity();
 
     EXPECT_EQ(unitTestHandler.SideEffectCount(), 3);
-
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::ArgsNoReturnNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::ArgsReturnMultiNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::NoArgsNoReturnNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::NoArgsReturnNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::NoArgsReturnMultiNode::CreateDescriptor());
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, NormalizeWithDefaultNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByValue)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByValueNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByValueNode::CreateDescriptor());
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -227,7 +224,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByValue)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByValueID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByValueNode>(graphUniqueId, maxByValueID);
+    CreateTestNode<MaxReturnByValueNode>(graphUniqueId, maxByValueID);
 
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
@@ -311,19 +308,17 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByValue)
     TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByValueNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointer)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByPointerNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByPointerNode::CreateDescriptor());
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -342,7 +337,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointer)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByValueID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByPointerNode>(graphUniqueId, maxByValueID);
+    CreateTestNode<MaxReturnByPointerNode>(graphUniqueId, maxByValueID);
 
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
@@ -426,19 +421,17 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointer)
     TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByPointerNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByReference)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByReferenceNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByReferenceNode::CreateDescriptor());
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -457,7 +450,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByReference)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByValueID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByReferenceNode>(graphUniqueId, maxByValueID);
+    CreateTestNode<MaxReturnByReferenceNode>(graphUniqueId, maxByValueID);
 
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
@@ -541,19 +534,17 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByReference)
     TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByReferenceNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByValueInteger)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByValueIntegerNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
-    TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByValueIntegerNode::CreateDescriptor());
+    TestBehaviorContextObject::Reflect(m_behaviorContext);    
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -572,7 +563,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByValueInteger)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByValueID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByValueIntegerNode>(graphUniqueId, maxByValueID);
+    CreateTestNode<MaxReturnByValueIntegerNode>(graphUniqueId, maxByValueID);
 
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
@@ -648,19 +639,19 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByValueInteger)
     TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByValueIntegerNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointerInteger)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
+    
 
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByPointerIntegerNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
-    TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByPointerIntegerNode::CreateDescriptor());
+    TestBehaviorContextObject::Reflect(m_behaviorContext);    
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -679,7 +670,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointerInteger)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByValueID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByPointerIntegerNode>(graphUniqueId, maxByValueID);
+    CreateTestNode<MaxReturnByPointerIntegerNode>(graphUniqueId, maxByValueID);
 
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
@@ -755,19 +746,17 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointerInteger)
     TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByPointerIntegerNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByReferenceInteger)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByReferenceIntegerNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByReferenceIntegerNode::CreateDescriptor());
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -786,7 +775,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByReferenceInteger)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByValueID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByReferenceIntegerNode>(graphUniqueId, maxByValueID);
+    CreateTestNode<MaxReturnByReferenceIntegerNode>(graphUniqueId, maxByValueID);
 
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
@@ -859,22 +848,20 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByReferenceInteger)
     m_serializeContext->EnableRemoveReflection();
     m_behaviorContext->EnableRemoveReflection();
     TestBehaviorContextObject::Reflect(m_serializeContext);
-    TestBehaviorContextObject::Reflect(m_behaviorContext);
+    TestBehaviorContextObject::Reflect(m_behaviorContext);    
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByReferenceIntegerNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByValueMulti)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByValueMultiNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByValueMultiNode::CreateDescriptor());
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -893,7 +880,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByValueMulti)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByValueID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByValueMultiNode>(graphUniqueId, maxByValueID);
+    CreateTestNode<MaxReturnByValueMultiNode>(graphUniqueId, maxByValueID);
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
     Core::BehaviorContextObjectNode* valueNode1 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID1);
@@ -1035,19 +1022,17 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByValueMulti)
     TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByValueMultiNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByReferenceMulti)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByReferenceMultiNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByReferenceMultiNode::CreateDescriptor());
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -1066,7 +1051,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByReferenceMulti)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByReferenceID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByReferenceMultiNode>(graphUniqueId, maxByReferenceID);
+    CreateTestNode<MaxReturnByReferenceMultiNode>(graphUniqueId, maxByReferenceID);
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
     Core::BehaviorContextObjectNode* valueNode1 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID1);
@@ -1208,19 +1193,17 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByReferenceMulti)
     TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByReferenceMultiNode::CreateDescriptor());
 }
 
 TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointerMulti)
 {
-    RETURN_IF_TEST_BODIES_ARE_DISABLED(TEST_BODY_DEFAULT);
-
     using namespace ScriptCanvas;
     using namespace ScriptCanvas::Nodes;
 
+    RegisterComponentDescriptor<MaxReturnByPointerMultiNode>();
+
     TestBehaviorContextObject::Reflect(m_serializeContext);
     TestBehaviorContextObject::Reflect(m_behaviorContext);
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::RegisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByPointerMultiNode::CreateDescriptor());
 
     TestBehaviorContextObject::ResetCounts();
 
@@ -1239,7 +1222,7 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointerMulti)
     CreateTestNode<Nodes::Core::Start>(graphUniqueId, startID);
 
     AZ::EntityId maxByPointerID;
-    CreateTestNode<ScriptCanvas_NodeGenerics::MaxReturnByPointerMultiNode>(graphUniqueId, maxByPointerID);
+    CreateTestNode<MaxReturnByPointerMultiNode>(graphUniqueId, maxByPointerID);
     AZ::EntityId valueID1, valueID2, valueID3, valueID4, valueID5;
 
     Core::BehaviorContextObjectNode* valueNode1 = CreateTestNode<Core::BehaviorContextObjectNode>(graphUniqueId, valueID1);
@@ -1381,5 +1364,6 @@ TEST_F(ScriptCanvasTestFixture, NodeGenericsByPointerMulti)
     TestBehaviorContextObject::Reflect(m_behaviorContext);
     m_serializeContext->DisableRemoveReflection();
     m_behaviorContext->DisableRemoveReflection();
-    AZ::ComponentApplicationBus::Broadcast(&AZ::ComponentApplicationRequests::UnregisterComponentDescriptor, ScriptCanvas_NodeGenerics::MaxReturnByPointerMultiNode::CreateDescriptor());
 }
+
+#pragma warning( pop )

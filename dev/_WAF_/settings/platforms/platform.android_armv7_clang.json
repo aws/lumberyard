@@ -1,0 +1,69 @@
+{
+    "platform"      : "android_armv7_clang",
+    "display_name"  : "Android ARM v7",
+    "hosts"         : "darwin,win32",
+    "aliases"       : "clang,android",
+    "has_server"    : false,
+    "enabled"       : true,
+    "needs_java"    : true,
+
+    "modules": [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_android",
+        "platforms/compile_settings_clang",
+        "platforms/compile_settings_android_clang",
+        "lmbrwaflib/android",
+        "lmbrwaflib/android_library",
+        "lmbrwaflib/android_studio",
+        "platforms/platform_settings_android_armv7_clang"
+    ],
+
+    "includes": [
+        "common.android.json",
+        "common.json",
+        "common.clang.json",
+        "common.android.clang.json"
+    ],
+
+    "attributes": {
+        "default_folder_name"       : "BinAndroidArmv7Clang",
+        "msvs": {
+            "msvs_ver"          : "14",
+            "prefix"            : "android",
+            "compat_toolsets"   : ["v120", "v140"],
+            "toolset_name"      : "ARM"
+        }
+    },
+
+    "settings": {
+    },
+
+    "env": {
+        "DEFINES": [
+            "LINUX32",
+            "__ARM_NEON__"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "-mfloat-abi=softfp",   # float ABI: hardware code gen, soft calling convention
+            "-mfpu=neon"            # enable neon, implies -mfpu=VFPv3-D32
+        ],
+        "LINKFLAGS": [
+            "-Wl,--fix-cortex-a8",  # required to fix a bug in some Cortex-A8 implementations for neon support
+            "-Wl,--icf=safe"        # removes duplicate code
+        ],
+        "@ANDROID_IS_NDK_19_PLUS@:CFLAGS,CXXFLAGS": [
+            "-mthumb",
+            "-fpic"
+        ]
+    },
+    "env/debug": {
+        "EXT_LIBS": [
+            "@EXT_LIB_ANDROID_ARM_GDBSERVER_PATH@" #, Note: gdbserver is only required for debuggable builds
+        ]
+    },
+    "env/profile": {
+        "EXT_LIBS": [
+            "@EXT_LIB_ANDROID_ARM_GDBSERVER_PATH@" #, Note: gdbserver is only required for debuggable builds
+        ]
+    }
+}

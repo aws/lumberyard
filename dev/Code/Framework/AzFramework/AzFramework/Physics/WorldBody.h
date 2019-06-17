@@ -52,7 +52,6 @@ namespace Physics
     };
 
     class WorldBody
-        : public AZStd::enable_shared_from_this<WorldBody>
     {
     public:
         AZ_CLASS_ALLOCATOR(WorldBody, AZ::SystemAllocator, 0);
@@ -85,7 +84,8 @@ namespace Physics
         virtual AZ::Crc32 GetNativeType() const = 0;
         virtual void* GetNativePointer() const = 0;
 
-        virtual void AddedToWorld() {};
+        virtual void AddToWorld(Physics::World&) = 0;
+        virtual void RemoveFromWorld(Physics::World&) = 0;
 
     private:
         void* m_customUserData = nullptr;

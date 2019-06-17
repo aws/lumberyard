@@ -12,14 +12,13 @@
 #ifndef AZCORE_SERIALIZE_AZSTD_CONTAINERS_INL
 #define AZCORE_SERIALIZE_AZSTD_CONTAINERS_INL
 
-#include <AzCore/std/tuple.h>
-
+#include <AzCore/Outcome/Outcome.h>
 #include <AzCore/Memory/OSAllocator.h>
-#include <AzCore/IO/GenericStreams.h>
-#include <AzCore/Component/ComponentApplicationBus.h>
+#include <AzCore/std/containers/stack.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
 #include <AzCore/std/tuple.h>
-#include <AzCore/std/typetraits/is_base_of.h>
+
+#include <AzCore/IO/GenericStreams.h>
 
 namespace AZStd
 {
@@ -367,7 +366,7 @@ namespace AZ
         class AZStdRandomAccessContainer
             : public AZStdBasicContainer<T, IsStableIterators>
         {
-            /// Returns true for RandomAccessContaines.
+            /// Returns true for RandomAccessContainers.
             bool CanAccessElementsByIndex() const override { return true; }
 
             /// Get an element's address by its index (called before the element is loaded).
@@ -613,7 +612,7 @@ namespace AZ
             using ValueType = typename T::value_type;
             using ValueClass = AZStd::remove_pointer_t<ValueType>;
             using KeyType = typename T::key_type;
-            typedef typename Internal::RValueToLValueWrapper<KeyType> WrappedKeyType;
+            using WrappedKeyType = RValueToLValueWrapper<KeyType>;
 
             // Helper for looking up our key type and assigning keys to T::value_type.
             // Currently we assumed that if T::value_type is an AZStd::pair, we're keyed by pair.first, otherwise we're keyed by value_type
@@ -628,7 +627,7 @@ namespace AZ
 
             template <class T1, class T2>
             struct KeyHelper<AZStd::pair<T1, T2>, false>
-            {
+        {
                 static void SetElementKey(ValueType* element, KeyType&& key)
                 {
                     element->first = AZStd::move(key);
@@ -926,6 +925,7 @@ namespace AZ
                 }
             }
 
+
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
             virtual const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
             {
@@ -1143,6 +1143,7 @@ namespace AZ
                     classElement.m_attributes.clear();
                 }
             }
+
 
             /// Returns the element generic (offsets are mostly invalid 0xbad0ffe0, there are exceptions). Null if element with this name can't be found.
             const SerializeContext::ClassElement* GetElement(u32 elementNameCrc) const override
@@ -1390,7 +1391,7 @@ namespace AZ
                 }
         };
 
-        template<class T>
+        template <class T>
         class AZRValueContainer
             : public SerializeContext::IDataContainer
         {
@@ -2710,6 +2711,90 @@ namespace AZ
         }
     };
 
+    AZ_INLINE static const Uuid GetGenericOutcomeTypeId()
+    {
+        return Uuid("{DF6803FE-1C95-4DB8-8C08-6CDA5353ACD7}");
+    };
+
+    /// Generic specialization for AZ::Outcome
+    template<class t_Success, class t_Failure>
+    struct SerializeGenericTypeInfo< AZ::Outcome<t_Success, t_Failure> >
+    {
+        typedef typename AZ::Outcome<t_Success, t_Failure> OutcomeType;
+
+        class GenericClassOutcome
+            : public GenericClassInfo
+        {
+        public:
+            AZ_TYPE_INFO(GenericClassOutcome, GetGenericOutcomeTypeId());
+            GenericClassOutcome()
+            {
+                m_classData = SerializeContext::ClassData::Create<OutcomeType>("AZ::Outcome", GetSpecializedTypeId(), Internal::NullFactory::GetInstance(), nullptr);
+            }
+
+            SerializeContext::ClassData* GetClassData() override
+            {
+                return &m_classData;
+            }
+
+            size_t GetNumTemplatedArguments() override
+            {
+                return 2;
+            }
+
+            const Uuid& GetTemplatedTypeId(size_t element) override
+            {
+                if (element == 0)
+                {
+                    return SerializeGenericTypeInfo<t_Success>::GetClassTypeId();
+                }
+                else
+                {
+                    return SerializeGenericTypeInfo<t_Failure>::GetClassTypeId();
+                }
+            }
+
+            const Uuid& GetSpecializedTypeId() const override
+            {
+                return azrtti_typeid<OutcomeType>();
+            }
+
+            const Uuid& GetGenericTypeId() const override
+            {
+                return TYPEINFO_Uuid();
+            }
+
+            void Reflect(SerializeContext* serializeContext)
+            {
+                if (serializeContext)
+                {
+                    serializeContext->RegisterGenericClassInfo(GetSpecializedTypeId(), this, &AnyTypeInfoConcept<OutcomeType>::CreateAny);
+                    if (GenericClassInfo* successGenericClassInfo = SerializeGenericTypeInfo<t_Success>::GetGenericInfo())
+                    {
+                        successGenericClassInfo->Reflect(serializeContext);
+                    }
+
+                    if (GenericClassInfo* failureGenericClassInfo = SerializeGenericTypeInfo<t_Failure>::GetGenericInfo())
+                    {
+                        failureGenericClassInfo->Reflect(serializeContext);
+                    }
+                }
+            }
+
+            SerializeContext::ClassData m_classData;
+        };
+
+        using ClassInfoType = GenericClassOutcome;
+        static ClassInfoType* GetGenericInfo()
+        {
+            return GetCurrentSerializeContextModule().CreateGenericClassInfo<OutcomeType>();
+        }
+
+        static const Uuid& GetClassTypeId()
+        {
+            return GetGenericInfo()->GetClassData()->m_typeId;
+        }
+    };
 
     /// Generic specialization for AZStd::pair
     template<class T1, class T2>
@@ -2935,7 +3020,6 @@ namespace AZ
         };
 
         using ClassInfoType = GenericClassWrapper;
-
         static ClassInfoType* GetGenericInfo()
         {
             return GetCurrentSerializeContextModule().CreateGenericClassInfo<WrapperType>();
@@ -3595,7 +3679,7 @@ namespace AZ
 
             size_t GetNumTemplatedArguments() override
             {
-                return 0;
+                return 1;
             }
 
             const Uuid& GetTemplatedTypeId(size_t element) override

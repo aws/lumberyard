@@ -109,6 +109,8 @@ namespace AzFramework
 
             //! Show the AssetProcessor App
             virtual void ShowAssetProcessor() = 0;
+            //! Show an asset in the AssetProcessor App
+            virtual void ShowInAssetProcessor(const AZStd::string& assetPath) = 0;
             //! Sets the asset processor port to use when connecting
             virtual void SetAssetProcessorPort(AZ::u16 port) = 0;
             //! Sets the asset processor IP to use when connecting
@@ -139,6 +141,12 @@ namespace AzFramework
             //! Notifies listeners that connection to the Asset Processor failed
             virtual void ConnectionFailed() {};
         };
+
+        namespace ConnectionIdentifiers
+        {
+            static const char* Editor = "EDITOR";
+            static const char* Game = "GAME";
+        }
     } // namespace AssetSystem
     using AssetSystemBus = AZ::EBus<AssetSystem::AssetSystemNotifications>;
     using AssetSystemInfoBus = AZ::EBus<AssetSystem::AssetSystemInfoNotifications>;

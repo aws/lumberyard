@@ -172,7 +172,7 @@ void CLocalizedStringsManager::LocalizationDumpLoadedInfo(IConsoleCmdArgs* pArgs
         {
             if (tagit->second.id == it->second.nTagID)
             {
-                CryLogAlways("	%s", it->first.c_str());
+                CryLogAlways("\t%s", it->first.c_str());
             }
 
             if (pLoca->m_pLanguage)
@@ -191,7 +191,7 @@ void CLocalizedStringsManager::LocalizationDumpLoadedInfo(IConsoleCmdArgs* pArgs
         }
 
         // This line messes up Uncrustify so turn it off: *INDENT-OFF*
-        CryLogAlways("		Entries %d, Approx Size %" PRISIZE_T "Kb", entries, pSizer->GetTotalSize() / 1024);
+        CryLogAlways("\t\tEntries %d, Approx Size %" PRISIZE_T "Kb", entries, pSizer->GetTotalSize() / 1024);
         // turn it back on again: *INDENT-ON*
 
         SAFE_RELEASE(pSizer);
@@ -1486,7 +1486,16 @@ bool CLocalizedStringsManager::DoLoadExcelXmlSpreadsheet(const char* sFileName, 
                     compressedTotal += compBufSize;
 
                     uint8* szCompressedString = new uint8[compBufSize];
+#ifdef AZ_PLATFORM_WINDOWS
+                    if (pStringToCompress->TranslatedText.szCompressed)
+                    {
+                        AZ::AllocatorInstance<AZ::LegacyAllocator>::Get().DeAllocate(pStringToCompress->TranslatedText.szCompressed, __FILE__, __LINE__);
+                        pStringToCompress->TranslatedText.szCompressed = nullptr;
+                    }
+#else
                     SAFE_DELETE_ARRAY(pStringToCompress->TranslatedText.szCompressed);
+#endif
+
                     memcpy(szCompressedString, compressionBuffer, compBufSize);
                     pStringToCompress->TranslatedText.szCompressed = szCompressedString;
 

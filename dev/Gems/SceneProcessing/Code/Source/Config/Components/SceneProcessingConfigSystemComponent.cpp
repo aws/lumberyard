@@ -16,6 +16,7 @@
 #include <Config/SettingsObjects/NodeSoftNameSetting.h>
 #include <Config/SettingsObjects/FileSoftNameSetting.h>
 #include <Config/Components/SceneProcessingConfigSystemComponent.h>
+#include <Config/Widgets/GraphTypeSelector.h>
 
 namespace AZ
 {
@@ -60,6 +61,7 @@ namespace AZ
 
         void SceneProcessingConfigSystemComponent::Activate()
         {
+            SceneProcessingConfig::GraphTypeSelector::Register();
             SceneProcessingConfigRequestBus::Handler::BusConnect();
             AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusConnect();
         }
@@ -68,6 +70,7 @@ namespace AZ
         {
             AZ::SceneAPI::Events::AssetImportRequestBus::Handler::BusDisconnect();
             SceneProcessingConfigRequestBus::Handler::BusDisconnect();
+            SceneProcessingConfig::GraphTypeSelector::Unregister();
         }
 
         SceneProcessingConfigSystemComponent::~SceneProcessingConfigSystemComponent()
@@ -87,6 +90,55 @@ namespace AZ
         const AZStd::vector<SoftNameSetting*>* SceneProcessingConfigSystemComponent::GetSoftNames()
         {
             return &m_softNames;
+        }
+
+        bool SceneProcessingConfigSystemComponent::AddSoftName(SoftNameSetting* newSoftname)
+        {
+            bool success = true;
+            Crc32 newHash = newSoftname->GetVirtualTypeHash();
+            for (SoftNameSetting* softName : m_softNames)
+            {
+                //First check whether an item with the same CRC value already exists.
+                if (newHash == softName->GetVirtualTypeHash())
+                {
+                    AZ_Error("SceneProcessing", "newSoftname(%s) and existing softName(%s) have the same hash: 0x%X",
+                             newSoftname->GetVirtualType().c_str(), softName->GetVirtualType().c_str(), newHash);
+                    success = false;
+                    break;
+                }
+            }
+            if (success)
+            {
+                m_softNames.push_back(newSoftname);
+            }
+            return success;
+        }
+
+        bool SceneProcessingConfigSystemComponent::AddNodeSoftName(const char* pattern,
+            SceneAPI::SceneCore::PatternMatcher::MatchApproach approach,
+            const char* virtualType, bool includeChildren)
+        {
+            SoftNameSetting* newSoftname = aznew NodeSoftNameSetting(pattern, approach, virtualType, includeChildren);
+            bool success = AddSoftName(newSoftname);
+            if (!success)
+            {
+                delete newSoftname;
+            }
+            return success;
+        }
+
+        bool SceneProcessingConfigSystemComponent::AddFileSoftName(const char* pattern,
+            SceneAPI::SceneCore::PatternMatcher::MatchApproach approach,
+            const char* virtualType, bool inclusive, const AZStd::string& graphObjectTypeName)
+        {
+            SoftNameSetting* newSoftname = aznew FileSoftNameSetting(pattern, approach, virtualType, inclusive,
+                { FileSoftNameSetting::GraphType(graphObjectTypeName) });
+            bool success = AddSoftName(newSoftname);
+            if (!success)
+            {
+                delete newSoftname;
+            }
+            return success;
         }
 
         void SceneProcessingConfigSystemComponent::AreCustomNormalsUsed(bool &value)

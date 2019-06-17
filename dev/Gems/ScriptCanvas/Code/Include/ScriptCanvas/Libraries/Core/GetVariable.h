@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <AzCore/Serialization/EditContextConstants.inl>
+
 #include <ScriptCanvas/CodeGen/CodeGen.h>
 #include <ScriptCanvas/Core/GraphBus.h>
 #include <ScriptCanvas/Core/Node.h>
@@ -39,8 +41,6 @@ namespace ScriptCanvas
                     ScriptCanvas_Node::Icon("Editor/Icons/ScriptCanvas/Placeholder.png")
                     ScriptCanvas_Node::Version(0)
                 );
-
-                friend class GetVariableNodeEventHandler;
 
                 //// VariableNodeRequestBus
                 void SetId(const VariableId& variableId) override;
@@ -77,8 +77,8 @@ namespace ScriptCanvas
 
                 ScriptCanvas_EditPropertyWithDefaults(VariableId, m_variableId, , EditProperty::NameLabelOverride("Variable Name"),
                     EditProperty::DescriptionTextOverride("Name of ScriptCanvas Variable"),
-                    EditProperty::UIHandler(Attributes::UIHandlers::GenericComboBox),
-                    EditProperty::EditAttributes(ScriptCanvas::Attributes::GenericValueList(&GetVariableNode::GetGraphVariables), ScriptCanvas::Attributes::PostChangeNotify(&GetVariableNode::OnIdChanged)));
+                    EditProperty::UIHandler(AZ::Edit::UIHandlers::ComboBox),
+                    EditProperty::EditAttributes(AZ::Edit::Attributes::GenericValueList(&GetVariableNode::GetGraphVariables), AZ::Edit::Attributes::PostChangeNotify(&GetVariableNode::OnIdChanged)));
 
                 ScriptCanvas_SerializeProperty(SlotId, m_variableDataOutSlotId);
 

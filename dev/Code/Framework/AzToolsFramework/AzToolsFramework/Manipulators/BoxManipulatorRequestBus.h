@@ -12,44 +12,35 @@
 
 #pragma once
 
-#include <AzToolsFramework/Manipulators/LinearManipulator.h>
+#include <AzCore/Component/ComponentBus.h>
 
 namespace AzToolsFramework
 {
-    /**
-     * Interface for handling box manipulator updates.
-     */
-    class BoxManipulatorHandler
+    /// Interface for handling box manipulator requests.
+    /// Used by \ref BoxComponentMode.
+    class BoxManipulatorRequests
+        : public AZ::EntityComponentBus
     {
     public:
-        virtual ~BoxManipulatorHandler() = default;
+        /// Get the X/Y/Z dimensions of the box shape/collider.
         virtual AZ::Vector3 GetDimensions() = 0;
+        /// Set the X/Y/Z dimensions of the box shape/collider.
         virtual void SetDimensions(const AZ::Vector3& dimensions) = 0;
+        /// Get the transform of the box shape/collider.
+        /// This is used by \ref BoxComponentMode instead of the \ref \AZ::TransformBus
+        /// because a collider may have an additional translation/orientation offset from
+        /// the Entity transform.
         virtual AZ::Transform GetCurrentTransform() = 0;
+        /// Get the scale currently applied to the box.
+        /// With the Box Shape, the largest x/y/z component is taken
+        /// so scale is always uniform, with colliders the scale may
+        /// be different per component.
+        virtual AZ::Vector3 GetBoxScale() = 0;
+
+    protected:
+        ~BoxManipulatorRequests() = default;
     };
 
-    /**
-     * Class that encapsulates linear manipulators for editing box dimensions.
-     * A handler should be set that provides the underlying dimensions being
-     * manipulated.
-     */
-    class BoxManipulator
-    {
-    public:
-        void OnSelect(AZ::EntityId entityId);
-        void OnDeselect();
-        void SetHandler(BoxManipulatorHandler* handler);
-        void RefreshManipulators();
-
-    private:
-        void CreateManipulators();
-        void DestroyManipulators();
-        void UpdateManipulators();
-        void OnMouseMoveManipulator(const AzToolsFramework::LinearManipulator::Action& action);
-
-        AZ::EntityId m_entityId; ///< The entity id of the selected object.
-        AZStd::array<AZStd::shared_ptr<AzToolsFramework::LinearManipulator>, 6> m_linearManipulators; ///< Manipulators for editing box size.
-        BoxManipulatorHandler* m_handler = nullptr; ///< Callback to invoke when the manipulators change the dimensions.
-    };
-}
-
+    /// Type to inherit to implement BoxManipulatorRequests
+    using BoxManipulatorRequestBus = AZ::EBus<BoxManipulatorRequests>;
+} // namespace AzToolsFramework

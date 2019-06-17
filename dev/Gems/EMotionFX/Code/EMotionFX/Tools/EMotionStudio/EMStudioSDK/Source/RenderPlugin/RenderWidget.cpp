@@ -39,8 +39,8 @@ namespace EMStudio
         // create our event handler
         EMotionFX::GetEventManager().AddEventHandler(&mEventHandler);
 
-        mLines.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
-        mLines.Reserve(2048);
+        //mLines.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
+        //mLines.Reserve(2048);
 
         mSelectedActorInstances.SetMemoryCategory(MEMCATEGORY_EMSTUDIOSDK_RENDERPLUGINBASE);
 
@@ -1152,20 +1152,38 @@ namespace EMStudio
             plugin->Render(mPlugin, &renderInfo);
         }
 
-        // render custom lines
-        const uint32 numLines = mLines.GetLength();
-        for (uint32 i = 0; i < numLines; ++i)
-        {
-            const Line& curLine = mLines[i];
-            renderUtil->RenderLine(curLine.mPosA, curLine.mPosB, MCore::RGBAColor(curLine.mColor)); // TODO: make renderutil use uint32 colors instead
-        }
-        ClearLines();
+        RenderDebugDraw();
 
         // render all triangles
         RenderTriangles();
+    }
 
-        // render any remaining lines
+
+    void RenderWidget::RenderDebugDraw()
+    {
+        MCommon::RenderUtil* renderUtil = mPlugin->GetRenderUtil();
+        if (!renderUtil)
+        {
+            return;
+        }
+
+        EMotionFX::DebugDraw& debugDraw = EMotionFX::GetDebugDraw();
+        debugDraw.Lock();
+        for (const auto& item : debugDraw.GetActorInstanceData())
+        {
+            EMotionFX::DebugDraw::ActorInstanceData* actorInstanceData = item.second;
+            actorInstanceData->Lock();
+            int numLines = 0;
+            for (const EMotionFX::DebugDraw::Line& line : actorInstanceData->GetLines())
+            {
+                const MCore::RGBAColor color(line.m_startColor.GetR(), line.m_startColor.GetG(), line.m_startColor.GetB(), line.m_startColor.GetA());
+                renderUtil->RenderLine(line.m_start, line.m_end, color);
+                numLines++;
+            }
+            actorInstanceData->Unlock();
+        }
         renderUtil->RenderLines();
+        debugDraw.Unlock();
     }
 
 

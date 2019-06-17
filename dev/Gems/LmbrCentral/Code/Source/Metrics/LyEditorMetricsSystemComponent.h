@@ -82,6 +82,14 @@ namespace LyEditorMetrics
         void BeginSelectionChange() override;
         void EndSelectionChange() override;
 
+        void EnteredComponentMode(
+            const AZStd::vector<AZ::EntityId>& entityIds, const AZStd::vector<AZ::Uuid>& componentTypeIds) override;
+        void LeftComponentMode(
+            const AZStd::vector<AZ::EntityId>& entityIds, const AZStd::vector<AZ::Uuid>& componentTypeIds) override;
+
+        void EnabledNewViewportInteractionModel() override;
+        void DisabledNewViewportInteractionModel() override;
+
         ////////////////////////////////////////////////////////////////////////
         // ToolsApplicationEvents
         void BeforeEntitySelectionChanged() override;
@@ -131,6 +139,10 @@ namespace LyEditorMetrics
 
         // helper function for add/remove component metrics events
         void SendComponentsMetricsEvent(const char* eventName, const AZ::EntityId& entityId, const AZ::Uuid& componentTypeId);
+
+        // helper function for multiple component metrics events (ComponentMode)
+        void SendComponentsMetricsEvent(
+            const char* eventName, const AZStd::vector<AZ::EntityId>& entityIds, const AZStd::vector<AZ::Uuid>& componentTypeIds);
 
         // helper function for sending parent changed events
         void SendParentIdMetricsEvent(const char* eventName, const AZ::EntityId& entityId, const AZ::EntityId& newParentId, const AZ::EntityId& oldParentId);

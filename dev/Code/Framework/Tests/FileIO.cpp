@@ -155,7 +155,7 @@ namespace UnitTest
     namespace LocalFileIOTest
     {
         class FolderFixture
-            : public AllocatorsFixture
+            : public ScopedAllocatorSetupFixture
         {
         public:
             AZStd::string m_root;
@@ -221,8 +221,6 @@ namespace UnitTest
 
             void SetUp() override
             {
-                AllocatorsFixture::SetUp();
-
                 // lets use a random temp folder name
                 srand(clock());
                 m_randomFolderKey = rand();
@@ -247,7 +245,6 @@ namespace UnitTest
                     LocalFileIO local;
                     local.DestroyPath(folderName.c_str());
                 }
-                AllocatorsFixture::TearDown();
             }
             void CreateTestFiles()
             {

@@ -457,7 +457,7 @@ bool CAnimationConvertor::RebuildDatabases()
         }
     }
 
-    string devRoot = gEnv->pFileIO->GetAlias("@devroot@");
+    string devRoot = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devroot@");
     string sourceFolder = PathHelpers::Join(devRoot, m_sourceGameFolderPath);
     targetGameFolderPath = PathHelpers::Join(devRoot, targetGameFolderPath);
 

@@ -45,7 +45,6 @@ ICryXML* LoadICryXML()
 
 extern "C" DLL_EXPORT void __stdcall RegisterConvertors(IResourceCompiler* pRC)
 {
-    gEnv = pRC->GetSystemEnvironment();
     SetRCLog(pRC->GetIRCLog());
 
     ICryXML* pCryXML = LoadICryXML();

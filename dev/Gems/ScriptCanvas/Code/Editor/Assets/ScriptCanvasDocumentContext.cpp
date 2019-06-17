@@ -235,7 +235,7 @@ namespace ScriptCanvasEditor
         m_scriptCanvasAssetFileInfo.emplace(assetId, AZStd::move(scFileInfo));
 
         AZ::Data::AssetBus::MultiHandler::BusConnect(assetId);
-        auto loadingAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, azrtti_typeid<ScriptCanvasAsset>(), true, nullptr, loadBlocking);
+        auto loadingAsset = AZ::Data::AssetManager::Instance().GetAsset(assetId, ScriptCanvasAssetHandler::GetAssetTypeStatic(), true, nullptr, loadBlocking);
 
         Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendMetric, ScriptCanvasEditor::Metrics::Events::Canvas::OpenGraph);
 

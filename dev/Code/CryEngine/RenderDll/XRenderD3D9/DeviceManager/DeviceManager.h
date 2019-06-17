@@ -310,7 +310,8 @@ public:
         USAGE_DIRECT_ACCESS              = BIT(0),
         USAGE_DIRECT_ACCESS_CPU_COHERENT = BIT(1),
         USAGE_DIRECT_ACCESS_GPU_COHERENT = BIT(2),
-        USAGE_TRANSIENT                  = BIT(5), //  Igor: this forces Metal runtime to create a special mode buffer. Mapped data is valid during a single frame only and until next map.
+        USAGE_TRANSIENT                  = BIT(5), //This forces Metal runtime to create a special mode buffer. Mapped data is valid during a single frame only and until next map.
+        USAGE_MEMORYLESS                 = BIT(16), //Used to tag memoryless textures on ios
         USAGE_DEPTH_STENCIL              = BIT(17),
         USAGE_RENDER_TARGET              = BIT(18),
         USAGE_DYNAMIC                    = BIT(19),

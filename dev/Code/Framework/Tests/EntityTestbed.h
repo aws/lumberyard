@@ -77,7 +77,7 @@ namespace UnitTest
         AZ::IO::LocalFileIO m_localFileIO;
 
         EntityTestbed()
-            : AllocatorsFixture(200, false)
+            : AllocatorsFixture()
         {
         }
 

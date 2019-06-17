@@ -485,8 +485,9 @@ namespace AZ
         // This problem could also be solved by using ref-counting for reflected data.
         ScriptSystemRequestBus::Broadcast(&ScriptSystemRequests::GarbageCollect);
 
-        // Uninit and unload any dynamic modules.
-        m_moduleManager.reset();
+        // Deactivate all module entities before the System Entity is deactivated, but do not unload the modules as
+        // components on the SystemEntity are allowed to reference module data at this point.
+        m_moduleManager->DeactivateEntities();
 
         // deactivate all system components
         if (systemEntity)
@@ -495,15 +496,20 @@ namespace AZ
             {
                 systemEntity->Deactivate();
             }
-
-            delete systemEntity;
         }
 
         m_entities.clear();
         m_entities.rehash(0); // force free all memory
 
-
         DestroyReflectionManager();
+
+        // Uninit and unload any dynamic modules.
+        m_moduleManager.reset();
+
+        if (systemEntity)
+        {
+            delete systemEntity;
+        }
 
         // delete all descriptors left for application clean up
         EBUS_EVENT(ComponentDescriptorBus, ReleaseDescriptor);
@@ -1021,7 +1027,97 @@ namespace AZ
         }
 
         azstrcpy(m_exeDirectory, AZ_ARRAY_SIZE(m_exeDirectory), exeDirectory);
+
+        CalculateBinFolder();
+
 #endif
+    }
+    /// Calculates the Bin folder name where the application is running from (off of the engine root folder)
+    void ComponentApplication::CalculateBinFolder()
+    {
+        azstrcpy(m_binFolder, AZ_ARRAY_SIZE(m_binFolder), "");
+
+#if !defined(AZ_RESTRICTED_PLATFORM) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_APPLE_IOS)
+        if (strlen(m_exeDirectory) > 0)
+        {
+            bool engineMarkerFound = false;
+            // Prepare a working mutable path initialized with the current exe path
+            char workingExeDirectory[AZ_MAX_PATH_LEN];
+            azstrcpy(workingExeDirectory, AZ_ARRAY_SIZE(workingExeDirectory), m_exeDirectory);
+
+            const char* lastCheckFolderName = "";
+
+            // Calculate the bin folder name by walking up the path folders until we find the 'engine.json' file marker
+            size_t checkFolderIndex = strlen(workingExeDirectory);
+            if (checkFolderIndex > 0)
+            {
+                checkFolderIndex--; // Skip the right-most trailing slash since exeDirectory represents a folder
+                while (true)
+                {
+                    // Eat up all trailing slashes
+                    while ((checkFolderIndex > 0) && workingExeDirectory[checkFolderIndex] == '/')
+                    {
+                        workingExeDirectory[checkFolderIndex] = '\0';
+                        checkFolderIndex--;
+                    }
+                    // Check if the current index is the drive letter separater
+                    if (workingExeDirectory[checkFolderIndex] == ':')
+                    {
+                        // If we reached a drive letter separator, then use the last check folder 
+                        // name as the bin folder since we cant go any higher
+                        break;
+                    }
+                    else
+                    {
+
+                        // Find the next path separator
+                        while ((checkFolderIndex > 0) && workingExeDirectory[checkFolderIndex] != '/')
+                        {
+                            checkFolderIndex--;
+                        }
+                    }
+                    // Split the path and folder and test for engine.json
+                    if (checkFolderIndex > 0)
+                    {
+                        lastCheckFolderName = &workingExeDirectory[checkFolderIndex + 1];
+                        workingExeDirectory[checkFolderIndex] = '\0';
+                        if (CheckPathForEngineMarker(workingExeDirectory))
+                        {
+                            // engine.json was found at the folder, break now to register the lastCheckFolderName as the bin folder
+                            engineMarkerFound = true;
+
+                            // Set the bin folder name only if the engine marker was found
+                            azstrcpy(m_binFolder, AZ_ARRAY_SIZE(m_binFolder), lastCheckFolderName);
+
+                            break;
+                        }
+                        checkFolderIndex--;
+                    }
+                    else
+                    {
+                        // We've reached the beginning, break out of the loop
+                        break;
+                    }
+                }
+                AZ_Warning("ComponentApplication", engineMarkerFound, "Unable to determine Bin folder. Cannot locate engine marker file 'engine.json'");
+            }
+        }
+#endif // !defined(AZ_RESTRICTED_PLATFORM) && !defined(AZ_PLATFORM_ANDROID) && !defined(AZ_PLATFORM_APPLE_TV) && !defined(AZ_PLATFORM_APPLE_IOS)
+    }
+
+    //=========================================================================
+    // CheckEngineMarkerFile
+    //=========================================================================
+    bool ComponentApplication::CheckPathForEngineMarker(const char* fullPath) const
+    {
+        static const char* engineMarkerFileName = "engine.json";
+        char engineMarkerFullPathToCheck[AZ_MAX_PATH_LEN] = "";
+
+        azstrcpy(engineMarkerFullPathToCheck, AZ_ARRAY_SIZE(engineMarkerFullPathToCheck), fullPath);
+        azstrcat(engineMarkerFullPathToCheck, AZ_ARRAY_SIZE(engineMarkerFullPathToCheck), "/");
+        azstrcat(engineMarkerFullPathToCheck, AZ_ARRAY_SIZE(engineMarkerFullPathToCheck), engineMarkerFileName);
+
+        return AZ::IO::SystemFile::Exists(engineMarkerFullPathToCheck);
     }
 
     //=========================================================================

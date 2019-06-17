@@ -98,5 +98,21 @@ namespace Physics
                 }
             }
         }
+
+        void DeferDelete(AZStd::unique_ptr<Physics::WorldBody> worldBody)
+        {
+            if (!worldBody)
+            {
+                return;
+            }
+
+            // If the body is in a world, remove it from the world and defer 
+            // the deletion until after the next update to ensure trigger exit events get raised.
+            if (Physics::World* world = worldBody->GetWorld())
+            {
+                world->RemoveBody(*worldBody);
+                world->DeferDelete(AZStd::move(worldBody));
+            }
+        }
     }
 }

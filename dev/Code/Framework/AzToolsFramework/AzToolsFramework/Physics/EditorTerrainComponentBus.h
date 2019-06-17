@@ -17,11 +17,8 @@
 namespace Physics
 {
     class MaterialId;
-}
 
-namespace PhysX
-{
-    /// Services provided by the PhysX Mesh Collider Component.
+    /// Services provided by the Editor Terrain Component.
     class EditorTerrainComponentRequests
         : public AZ::ComponentBus
     {
@@ -32,8 +29,17 @@ namespace PhysX
         /// @param verts The list of verts in the mesh
         /// @param indices The ordering of the verts into triangles
         virtual void GetTrianglesForHeightField(AZStd::vector<AZ::Vector3>& verts, AZStd::vector<AZ::u32>& indices, AZStd::vector<Physics::MaterialId>& materialIds) const = 0;
+
+        /// Updates the height field asset in memory.
+        virtual void UpdateHeightFieldAsset() = 0;
+
+        /// Saves the height field asset to disk.
+        virtual void SaveHeightFieldAsset() = 0;
+
+        /// Loads the height field asset from disk.
+        virtual void LoadHeightFieldAsset() = 0;
     };
 
-    /// Bus to service the PhysX Mesh Collider Component event group.
+    /// Bus to service the Editor Terrain Component.
     using EditorTerrainComponentRequestsBus = AZ::EBus<EditorTerrainComponentRequests>;
 } // namespace PhysX

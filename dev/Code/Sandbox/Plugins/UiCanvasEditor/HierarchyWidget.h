@@ -20,7 +20,7 @@
 
 class HierarchyWidget
     : public QTreeWidget
-    , private AzToolsFramework::EditorPickModeRequests::Bus::Handler
+    , private AzToolsFramework::EditorPickModeNotificationBus::Handler
     , private AzToolsFramework::EntityHighlightMessages::Bus::Handler
 {
     Q_OBJECT
@@ -105,10 +105,9 @@ protected:
 
 private:
 
-    // EditorPickModeRequests
-    void StartObjectPickMode() override;
-    void StopObjectPickMode() override;
-    // ~EditorPickModeRequests
+    // EditorPickModeNotificationBus
+    void OnEntityPickModeStarted() override;
+    void OnEntityPickModeStopped() override;
 
     // EntityHighlightMessages
     void EntityHighlightRequested(AZ::EntityId entityId) override;

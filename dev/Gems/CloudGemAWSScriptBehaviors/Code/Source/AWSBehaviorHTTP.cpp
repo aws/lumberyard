@@ -88,7 +88,7 @@ namespace CloudGemAWSScriptBehaviors
     AZ::Job* AWSBehaviorHTTP::CreateHttpGetJob(const AZStd::string& url) const
     {
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+        EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
         AZ::Job* job{ nullptr };
         job = AZ::CreateJobFunction([url]()
         {
@@ -110,7 +110,11 @@ namespace CloudGemAWSScriptBehaviors
 
             if (!httpResponse)
             {
-                EBUS_EVENT(AWSBehaviorHTTPNotificationsBus, OnError, "No Response Received from request!  (Internal SDK Error)");
+                AZStd::function<void()> notifyOnMainThread = []()
+                {
+                    AWSBehaviorHTTPNotificationsBus::Broadcast(&AWSBehaviorHTTPNotificationsBus::Events::OnError, "No Response Received from request!  (Internal SDK Error)");
+                };
+                AZ::TickBus::QueueFunction(notifyOnMainThread);
                 return;
             }
 
@@ -131,8 +135,13 @@ namespace CloudGemAWSScriptBehaviors
             readableOut << body.rdbuf();
             returnString = readableOut.str().c_str();
             
-            EBUS_EVENT(AWSBehaviorHTTPNotificationsBus, OnSuccess, AZStd::string("Success!"));
-            EBUS_EVENT(AWSBehaviorHTTPNotificationsBus, GetResponse, responseCode, stringMap, contentType, returnString);
+            // respond on the main thread because script context ebus behaviour handlers are not thread safe
+            AZStd::function<void()> notifyOnMainThread = [responseCode, stringMap, contentType, returnString]()
+            {
+                AWSBehaviorHTTPNotificationsBus::Broadcast(&AWSBehaviorHTTPNotificationsBus::Events::OnSuccess, AZStd::string("Success!"));
+                AWSBehaviorHTTPNotificationsBus::Broadcast(&AWSBehaviorHTTPNotificationsBus::Events::GetResponse, responseCode, stringMap, contentType, returnString);
+            };
+            AZ::TickBus::QueueFunction(notifyOnMainThread);
         }, true, jobContext);
         return job;
     }

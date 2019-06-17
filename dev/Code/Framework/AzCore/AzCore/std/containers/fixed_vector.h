@@ -435,9 +435,13 @@ namespace AZStd
         }
         AZ_FORCE_INLINE void        swap(this_type& rhs)
         {
-            this_type tempVec = *this;
-            *this = rhs;
-            rhs = tempVec;
+            // Fixed containers cannot swap pointers, they need to do full copies.
+            // Fixed containers of large size may ran out of stack memory. Since we don't know how deep in the stack
+            // we are (or would cost too much to get) we default to use the temporary swap variable in the heap
+            this_type* tempVec = new this_type(AZStd::move(*this));
+            *this = AZStd::move(rhs);
+            rhs = AZStd::move(*tempVec);
+            delete tempVec;
         }
 
         // TR1 Extension. (\todo We should return 0 if there is no data.)

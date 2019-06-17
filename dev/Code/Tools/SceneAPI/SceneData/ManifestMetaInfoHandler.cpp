@@ -82,10 +82,6 @@ namespace AZ
                     {
                         modifiers.push_back(SceneData::OriginRule::TYPEINFO_Uuid());
                     }
-                    if (existingRules.find(SceneData::PhysicsRule::TYPEINFO_Uuid()) == existingRules.end())
-                    {
-                        modifiers.push_back(SceneData::PhysicsRule::TYPEINFO_Uuid());
-                    }
                 }
                 else if (target.RTTI_IsTypeOf(DataTypes::ISkinGroup::TYPEINFO_Uuid()))
                 {

@@ -12,6 +12,7 @@
 #
 from waflib.Configure import conf
 from waflib.Errors import WafError
+from lumberyard import deprecated
 import os
 
 @conf
@@ -30,39 +31,7 @@ def load_windows_common_settings(conf):
     # Load Resource Compiler Tool
     conf.load_rc_tool()
     
-@conf
-def load_debug_windows_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all windows configurations for
-    the 'debug' configuration
-    """
-    conf.load_windows_common_settings()
     
-@conf
-def load_profile_windows_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all windows configurations for
-    the 'debug' configuration
-    """
-    conf.load_windows_common_settings()
-    
-@conf
-def load_performance_windows_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all windows configurations for
-    the 'debug' configuration
-    """
-    conf.load_windows_common_settings()
-    
-@conf
-def load_release_windows_settings(conf):
-    """
-    Setup all compiler and linker settings shared over all windows configurations for
-    the 'debug' configuration
-    """
-    conf.load_windows_common_settings()
-
-
 @conf
 def register_win_x64_external_ly_identity(self, compiler, configuration):
 

@@ -5,8 +5,9 @@ import datetime
 import json
 import CloudCanvas
 import service
-
-from cgf_utils import custom_resource_utils
+import errors
+from botocore.exceptions import ClientError
+from cgf_utils import custom_resource_utils, aws_utils
 
 # import errors
 #
@@ -17,7 +18,7 @@ from cgf_utils import custom_resource_utils
 # Any other exception results in HTTP 500 with a generic internal service error message.
 
 log_db = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('LogDB'))
-dynamo_client = boto3.client('dynamodb')
+dynamo_client = aws_utils.ClientWrapper(boto3.client('dynamodb'))
 
 buffer_time = 5
 
@@ -82,8 +83,12 @@ def get(request, run_id, time):
     events = []
     
     while True:
-        response = dynamo_client.query(**query_params)
-        events.extend([_process_data({'M': item}) for item in response['Items']])
+        response = {}
+        try:
+            response = dynamo_client.query(**query_params)
+        except ClientError as e:
+            raise errors.ClientError('Error querying LogDB. {}'.format(e.response['Error']['Message']))
+        events.extend([_process_data({'M': item}) for item in response.get('Items',[])])
         
         next_key = response.get('LastEvaluatedKey', None)
         if next_key:

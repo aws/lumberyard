@@ -104,7 +104,7 @@ CSelectObjectDlg::CSelectObjectDlg(QWidget* parent)
     m_model->SetIsLinkTool(m_bIsLinkTool);
 
     ui->setupUi(this);
-    ui->tableView->setModel(m_model);
+    ui->tableView->setModel(m_model.data());
 
     connect(ui->displayModeVisible, &QRadioButton::toggled, this, &CSelectObjectDlg::UpdateDisplayMode);
     connect(ui->displayModeFrozen, &QRadioButton::toggled, this, &CSelectObjectDlg::UpdateDisplayMode);
@@ -144,7 +144,7 @@ CSelectObjectDlg::CSelectObjectDlg(QWidget* parent)
 
     connect(ui->fastSelectLineEdit, &QLineEdit::textChanged, this, &CSelectObjectDlg::FastSelectFilterChanged);
     connect(ui->propertyLineEdit, &QLineEdit::textChanged, this, &CSelectObjectDlg::FastSelectFilterChanged);
-    connect(m_model, &ObjectSelectorModel::countChanged, this, &CSelectObjectDlg::UpdateCountLabel);
+    connect(m_model.data(), &ObjectSelectorModel::countChanged, this, &CSelectObjectDlg::UpdateCountLabel);
 
     connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &CSelectObjectDlg::OnVisualSelectionChanged);
     connect(ui->tableView, &QTableView::doubleClicked, this, &CSelectObjectDlg::OnDoubleClick);
@@ -269,7 +269,7 @@ void CSelectObjectDlg::UpdateObjectMask()
 
 void CSelectObjectDlg::InvertSelection()
 {
-    SelectObjectModelSynchronizer stateSynchronizer(m_model);
+    SelectObjectModelSynchronizer stateSynchronizer(m_model.data());
 
     m_bIgnoreCallbacks = true;
     m_ignoreSelectionChanged = true; // Performance optimization
@@ -300,7 +300,7 @@ void CSelectObjectDlg::InvertSelection()
 
 void CSelectObjectDlg::SelectAll()
 {
-    SelectObjectModelSynchronizer stateSynchronizer(m_model);
+    SelectObjectModelSynchronizer stateSynchronizer(m_model.data());
 
     auto objects = m_model->GetObjects();
     const int size = objects.size();
@@ -429,7 +429,7 @@ void CSelectObjectDlg::AutoSelectItemObject(int iItem)
 
 void CSelectObjectDlg::SelectNone()
 {
-    SelectObjectModelSynchronizer stateSynchronizer(m_model);
+    SelectObjectModelSynchronizer stateSynchronizer(m_model.data());
 
     m_ignoreSelectionChanged = true; // Performance optimization
     // Select here means the "Select" object property, not table view selection
@@ -465,7 +465,7 @@ void CSelectObjectDlg::SelectNone()
 
 void CSelectObjectDlg::Select()
 {
-    SelectObjectModelSynchronizer stateSynchronizer(m_model);
+    SelectObjectModelSynchronizer stateSynchronizer(m_model.data());
 
     ApplyListSelectionToObjectManager();
     UpdateCountLabel();
@@ -722,7 +722,7 @@ void CSelectObjectDlg::OnDoubleClick(const QModelIndex& idx)
         auto obj1 = idx.data(ObjectSelectorModel::ObjectRole).value<CBaseObject*>();
         if (obj1 && !obj1->IsSelected() && obj1->IsSelectable())
         {
-            SelectObjectModelSynchronizer stateSynchronizer(m_model);
+            SelectObjectModelSynchronizer stateSynchronizer(m_model.data());
 
             ApplyListSelectionToObjectManager();
 

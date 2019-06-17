@@ -35,8 +35,8 @@ public:
     void RenderTemporalAA(CTexture* sourceTexture, CTexture* outputTarget, const DepthOfFieldParameters& depthOfFieldParameters);
 
 private:
-    void RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture);
-    void RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture);
+    void RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT);
+    void RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT);
     void RenderComposites(CTexture* sourceTexture);
     void OnRendererFreeResources(int flags) override;
 private:

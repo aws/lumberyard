@@ -31,6 +31,11 @@ class QCoreApplication;
 
 namespace AssetProcessor
 {
+    enum ASSET_BUILDER_TYPE
+    {
+        INVALID, VALID, NONE
+    };
+
     // A string like "AssetBuilder.exe" which names the executable of the asset builder.
     extern const char* const s_assetBuilderRelativePath;
 
@@ -44,6 +49,7 @@ namespace AssetProcessor
         const QString& GetName() const;
         QString GetModuleFullPath() const;
 
+
         //! Perform a load of the external module, this is required before initialize.
         bool Load();
 
@@ -55,6 +61,9 @@ namespace AssetProcessor
 
         //! Perform the necessary process of uninitializing an external builder
         void UnInitialize();
+
+        //! Check to see if the builder has the required functions defined.
+        ASSET_BUILDER_TYPE IsAssetBuilder();
 
         //! Register a builder descriptor ID to track as part of this builders lifecycle management
         void RegisterBuilderDesc(const AZ::Uuid& builderDesc);

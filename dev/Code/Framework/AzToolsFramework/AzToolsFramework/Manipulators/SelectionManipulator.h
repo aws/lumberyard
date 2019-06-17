@@ -19,24 +19,32 @@ namespace AzToolsFramework
 {
     class ManipulatorView;
 
-    /**
-     * Represents a sphere that can be clicked on to trigger a particular behaviour
-     * For example clicking a preview point to create a translation manipulator.
-     */
+    /// Represents a sphere that can be clicked on to trigger a particular behavior
+    /// For example clicking a preview point to create a translation manipulator.
     class SelectionManipulator
         : public BaseManipulator
     {
+        /// Private constructor.
+        explicit SelectionManipulator(const AZ::Transform& worldFromLocal);
+
     public:
         AZ_RTTI(SelectionManipulator, "{966F44B7-E287-4C28-9734-5958F1A13A1D}", BaseManipulator);
         AZ_CLASS_ALLOCATOR(SelectionManipulator, AZ::SystemAllocator, 0);
 
-        SelectionManipulator(AZ::EntityId entityId, const AZ::Transform& worldFromLocal);
+        SelectionManipulator() = delete;
+        SelectionManipulator(const SelectionManipulator&) = delete;
+        SelectionManipulator& operator=(const SelectionManipulator&) = delete;
+
         ~SelectionManipulator() = default;
 
-        /**
-         * This is the function signature of callbacks that will be invoked
-         * whenever a selection manipulator is clicked on.
-         */
+        /// A Manipulator must only be created and managed through a shared_ptr.
+        static AZStd::shared_ptr<SelectionManipulator> MakeShared(const AZ::Transform& worldFromLocal)
+        {
+            return AZStd::shared_ptr<SelectionManipulator>(aznew SelectionManipulator(worldFromLocal));
+        }
+
+        /// This is the function signature of callbacks that will be invoked
+        /// whenever a selection manipulator is clicked on.
         using MouseActionCallback = AZStd::function<void(const ViewportInteraction::MouseInteraction&)>;
 
         void InstallLeftMouseDownCallback(const MouseActionCallback& onMouseDownCallback);
@@ -46,8 +54,8 @@ namespace AzToolsFramework
 
         void Draw(
             const ManipulatorManagerState& managerState,
-            AzFramework::EntityDebugDisplayRequests& display,
-            const ViewportInteraction::CameraState& cameraState,
+            AzFramework::DebugDisplayRequests& debugDisplay,
+            const AzFramework::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction) override;
 
         void SetPosition(const AZ::Vector3& position) { m_position = position; }
@@ -63,8 +71,6 @@ namespace AzToolsFramework
         void SetView(AZStd::unique_ptr<ManipulatorView>&& view);
 
     private:
-        AZ_DISABLE_COPY_MOVE(SelectionManipulator)
-
         void OnLeftMouseDownImpl(
             const ViewportInteraction::MouseInteraction& interaction,
             float rayIntersectionDistance) override;

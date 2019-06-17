@@ -1,0 +1,39 @@
+{
+    "none": {
+        "Source": [
+            "Source/SurfaceData_precompiled.cpp",
+            "Source/SurfaceData_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Include": [
+            "Include/SurfaceData/SurfaceDataConstants.h",
+            "Include/SurfaceData/SurfaceDataTypes.h",
+            "Include/SurfaceData/SurfaceDataSystemRequestBus.h",
+            "Include/SurfaceData/SurfaceDataSystemNotificationBus.h",
+            "Include/SurfaceData/SurfaceDataTagEnumeratorRequestBus.h",
+            "Include/SurfaceData/SurfaceDataTagProviderRequestBus.h",
+            "Include/SurfaceData/SurfaceDataProviderRequestBus.h",
+            "Include/SurfaceData/SurfaceDataModifierRequestBus.h",
+            "Include/SurfaceData/SurfaceTag.h"
+        ],
+        "Include/Utility": [
+            "Include/SurfaceData/Utility/SurfaceDataUtility.h"
+        ],
+        "Source": [
+            "Source/SurfaceDataModule.h",
+            "Source/SurfaceDataModule.cpp",
+            "Source/SurfaceDataSystemComponent.cpp",
+            "Source/SurfaceDataSystemComponent.h",
+            "Source/TerrainSurfaceDataSystemComponent.cpp",
+            "Source/TerrainSurfaceDataSystemComponent.h",
+            "Source/SurfaceTag.cpp"
+        ],
+        "Source/Components": [
+            "Source/Components/SurfaceDataMeshComponent.cpp",
+            "Source/Components/SurfaceDataMeshComponent.h",
+            "Source/Components/SurfaceDataShapeComponent.cpp",
+            "Source/Components/SurfaceDataShapeComponent.h"
+        ]
+    }
+}

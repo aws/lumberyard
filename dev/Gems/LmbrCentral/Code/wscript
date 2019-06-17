@@ -15,6 +15,7 @@ def build(bld):
 
     bld.DefineGem(
         includes     = [bld.Path('Code/CryEngine/CryAction')],
+        export_includes = ['include'],
         win_features = ['crcfix'],
 
         editor       = dict(

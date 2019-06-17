@@ -16,11 +16,59 @@ namespace AzToolsFramework
 {
     namespace Picking
     {
-        ManipulatorBoundManager::ManipulatorBoundManager(ManipulatorManagerId manipulatorManagerId)
-            : DefaultContextBoundManager(manipulatorManagerId) {}
+        RegisteredBoundId ManipulatorBoundManager::UpdateOrRegisterBound(
+            const BoundRequestShapeBase& shapeData, RegisteredBoundId boundId)
+        {
+            if (boundId == InvalidBoundId)
+            {
+                // make a new bound
+                boundId = m_nextBoundId++;
+            }
+
+            auto result = m_boundIdToShapeMap.find(boundId);
+            if (result == m_boundIdToShapeMap.end())
+            {
+                if (AZStd::shared_ptr<BoundShapeInterface> createdShape = CreateShape(shapeData, boundId))
+                {
+                    m_boundIdToShapeMap[boundId] = createdShape;
+                    createdShape->SetValidity(true);
+                }
+                else
+                {
+                    boundId = InvalidBoundId;
+                }
+            }
+            else
+            {
+                result->second->SetShapeData(shapeData);
+                result->second->SetValidity(true);
+            }
+
+            return boundId;
+        }
+
+        void ManipulatorBoundManager::UnregisterBound(const RegisteredBoundId boundId)
+        {
+            const auto findIter = m_boundIdToShapeMap.find(boundId);
+            if (findIter != m_boundIdToShapeMap.end())
+            {
+                DeleteShape(findIter->second.get());
+                m_boundIdToShapeMap.erase(findIter);
+            }
+        }
+
+        void ManipulatorBoundManager::SetBoundValidity(
+            const RegisteredBoundId boundId, const bool valid)
+        {
+            auto found = m_boundIdToShapeMap.find(boundId);
+            if (found != m_boundIdToShapeMap.end())
+            {
+                found->second->SetValidity(valid);
+            }
+        }
 
         AZStd::shared_ptr<BoundShapeInterface> ManipulatorBoundManager::CreateShape(
-            const BoundRequestShapeBase& shapeData, RegisteredBoundId id, AZ::u64 /*userContext*/)
+            const BoundRequestShapeBase& shapeData, const RegisteredBoundId id)
         {
             AZ_Assert(id != InvalidBoundId, "Invalid Bound Id!");
 
@@ -29,9 +77,15 @@ namespace AzToolsFramework
             return shape;
         }
 
-        void ManipulatorBoundManager::DeleteShape(AZStd::shared_ptr<BoundShapeInterface> bound)
+        void ManipulatorBoundManager::DeleteShape(const BoundShapeInterface* boundShape)
         {
-            const auto found = AZStd::find(m_bounds.begin(), m_bounds.end(), bound);
+            const auto found = AZStd::find_if(
+                m_bounds.begin(), m_bounds.end(),
+                [boundShape](const AZStd::shared_ptr<BoundShapeInterface>& storedBoundShape)
+            {
+                return boundShape == storedBoundShape.get();
+            });
+
             if (found != m_bounds.end())
             {
                 m_bounds.erase(found);
@@ -52,7 +106,8 @@ namespace AzToolsFramework
                     float t = 0.0f;
                     if (bound->IntersectRay(rayInfo.m_origin, rayInfo.m_direction, t))
                     {
-                        const auto hitItr = AZStd::lower_bound(rayHits.begin(), rayHits.end(), BoundIdHitDistance(0, t),
+                        const auto hitItr = AZStd::lower_bound(
+                            rayHits.begin(), rayHits.end(), BoundIdHitDistance(0, t),
                             [](const BoundIdHitDistance& lhs, const BoundIdHitDistance& rhs)
                         {
                             return lhs.second < rhs.second;

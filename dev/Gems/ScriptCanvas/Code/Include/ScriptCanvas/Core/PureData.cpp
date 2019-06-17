@@ -10,14 +10,17 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "PureData.h"
 
 namespace ScriptCanvas
 {
     const char* PureData::k_getThis("Get");
     const char* PureData::k_setThis("Set");
+
+    PureData::~PureData()
+    {
+
+    }
     
     const AZStd::unordered_map<AZStd::string, AZStd::pair<SlotId, SlotId>>& PureData::GetPropertyNameSlotMap() const
     {

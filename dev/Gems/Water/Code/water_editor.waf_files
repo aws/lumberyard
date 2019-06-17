@@ -1,10 +1,20 @@
 {
-    "auto": {
-        "Source": [
-            "Source/WaterOceanEditor.cpp",
-            "Source/WaterOceanEditor.h",
-            "Source/EditorWaterVolumeComponent.h",
-            "Source/EditorWaterVolumeComponent.cpp"
-        ]
-    }
+  "none": {
+    "Source": [
+      "Source/WaterEditorModule.cpp",
+      "Source/WaterEditorModule.h"
+    ]
+  },
+  "auto": {
+      "Source/Editor": [
+      "Source/Editor/WaterOceanEditor.cpp",
+      "Source/Editor/WaterOceanEditor.h",
+      "Source/Editor/EditorWaterVolumeComponent.h",
+      "Source/Editor/EditorWaterVolumeComponent.cpp",
+      "Source/Editor/EditorOceanSurfaceDataComponent.cpp",
+      "Source/Editor/EditorOceanSurfaceDataComponent.h",
+      "Source/Editor/EditorWaterVolumeSurfaceDataComponent.cpp",
+      "Source/Editor/EditorWaterVolumeSurfaceDataComponent.h"
+    ]
+  }
 }

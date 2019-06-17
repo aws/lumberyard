@@ -1203,6 +1203,11 @@ QPushButton#assetTypeSelector
     padding: 0 0 0 2;
 }
 
+QPushButton#assetTypeSelector::menu-indicator
+{
+    image : url(none.jpg);
+}
+
 QPushButton#assetTypeSelector:hover
 {
     border: none;
@@ -1512,6 +1517,18 @@ QMenu::item:disabled {
     color: #555555;
 }
 
+QMenu::separator
+{
+    height: 0px;
+    margin: 2px 6px 2px 6px;
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: #303030;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: #222222;
+}
+
 QComboBox {
     height: 17px;
     border-radius: 1px;
@@ -1667,6 +1684,10 @@ VectorEdit[flavor="4"] QLineEdit { /* Valid */
     border-color: rgb(84, 190, 93);
 }
 
+QExpandingLineEdit {
+    background-color: rgb(255, 255, 255);
+}
+
 QAbstractItemView {
     background-color: rgb(56, 58, 59);
     alternate-background-color: rgb(66, 68, 69);
@@ -1706,6 +1727,137 @@ QHeaderView::section::horizontal {
 
 QHeaderView::section::horizontal:last, QHeaderView::section:horizontal:only-one {
 	border-right: none;
+}
+
+/**
+* TitleBar is a QFrame with a QHBoxLayout that contains the following children.
+* qproperty-windowTitleOverride can be used to override the title.
+* #icon: a QLabel displaying an icon. The icon is set using qproperty-pixmap.
+* #title: an AzQtComponents::TitleBarLabel displaying text.
+* #buttons: a QFrame containing the DockBarButtons in a QHBoxLayout.
+*/
+
+AzQtComponents--TitleBar {
+    padding-left: 1px;
+    padding-right: 7px; /* DockBar::ButtonsSpacing + DockBar::CloseButtonRightMargin */
+}
+
+AzQtComponents--TitleBar * {
+    /* The normal TitleBar background is a gradient, so make sure all child widgets have transparent
+     * backgrounds.
+     */
+    background-color: "transparent";
+}
+
+AzQtComponents--TitleBar[drawSimple="true"] {
+    background: rgb(221, 221, 221);
+    margin-bottom: 1px; /* Hardcoded in DockBar::drawSolidFrame */
+    padding-bottom: -1px; /* Use negative padding to offset margin-bottom and keep things centered */
+    padding-right: 1px; /* g_simpleBarButtonMarginsInPixels */
+}
+
+AzQtComponents--TitleBar QLabel#icon {
+    margin-left: 2px; /* DockBar::HandleLeftMargin */
+    qproperty-pixmap: url(:/stylesheet/img/ly_application_icon.png);
+}
+
+AzQtComponents--TitleBar[drawSimple="false"][tearEnabled="true"] QLabel#icon {
+    qproperty-pixmap: url(:/stylesheet/img/titlebar_tear.png);
+}
+
+AzQtComponents--TitleBar AzQtComponents--TitleBarLabel#title {
+    font-family: "Open Sans";
+    font-size: 8pt;
+
+    padding-left: 6px; /* TitleLeftMargin - 2px added by QLabel paint code */
+    margin-right: 18px; /* DockBar::TitleRightMargin */
+    margin-bottom: 1px /* Hardcoded in DockBar::drawTitle */
+}
+
+AzQtComponents--TitleBar[drawSimple="true"] AzQtComponents--TitleBarLabel#title {
+    color: rgb(0, 0, 0);
+}
+
+AzQtComponents--DockBarButton {
+    background-color: "transparent";
+    border: 0px;
+    min-width: 19px;
+    max-width: 19px;
+    min-height: 19px;
+    max-height: 19px;
+    qproperty-iconSize: 16px 16px;
+}
+
+AzQtComponents--DockBarButton.close {
+    titlebar-close-icon: url(:/stylesheet/img/titlebar/titlebar_close.png);
+}
+AzQtComponents--DockBarButton.close:hover {
+    titlebar-close-icon: url(:/stylesheet/img/titlebar/titlebar_close_hover.png);
+}
+AzQtComponents--DockBarButton.close:pressed {
+    titlebar-close-icon: url(:/stylesheet/img/titlebar/titlebar_close_press.png);
+}
+
+AzQtComponents--DockBarButton.close.dark {
+    titlebar-close-icon: url(:/stylesheet/img/titlebar/titlebar_close_dark.png);
+}
+AzQtComponents--DockBarButton.close.dark:hover {
+    titlebar-close-icon: url(:/stylesheet/img/titlebar/titlebar_close_hover_dark.png);
+}
+AzQtComponents--DockBarButton.close.dark:pressed {
+    titlebar-close-icon: url(:/stylesheet/img/titlebar/titlebar_close_press_dark.png);
+}
+
+AzQtComponents--DockBarButton.maximize {
+    titlebar-maximize-icon: url(:/stylesheet/img/titlebar/titlebar_maximize.png);
+}
+AzQtComponents--DockBarButton.maximize:hover {
+    titlebar-maximize-icon: url(:/stylesheet/img/titlebar/titlebar_maximize_hover.png);
+}
+AzQtComponents--DockBarButton.maximize:pressed {
+    titlebar-maximize-icon: url(:/stylesheet/img/titlebar/titlebar_maximize_press.png);
+}
+
+AzQtComponents--DockBarButton.maximize.dark {
+    titlebar-maximize-icon: url(:/stylesheet/img/titlebar/titlebar_maximize_dark.png);
+}
+AzQtComponents--DockBarButton.maximize.dark:hover {
+    titlebar-maximize-icon: url(:/stylesheet/img/titlebar/titlebar_maximize_hover_dark.png);
+}
+AzQtComponents--DockBarButton.maximize.dark:pressed {
+    titlebar-maximize-icon: url(:/stylesheet/img/titlebar/titlebar_maximize_press_dark.png);
+}
+
+AzQtComponents--DockBarButton.minimize{
+    titlebar-minimize-icon: url(:/stylesheet/img/titlebar/titlebar_minimize.png);
+}
+AzQtComponents--DockBarButton.minimize:hover {
+    titlebar-minimize-icon: url(:/stylesheet/img/titlebar/titlebar_minimize_hover.png);
+}
+AzQtComponents--DockBarButton.minimize:pressed {
+    titlebar-minimize-icon: url(:/stylesheet/img/titlebar/titlebar_minimize_press.png);
+}
+
+AzQtComponents--DockBarButton.minimize.dark {
+    titlebar-minimize-icon: url(:/stylesheet/img/titlebar/titlebar_minimize_dark.png);
+}
+AzQtComponents--DockBarButton.minimize.dark:hover {
+    titlebar-minimize-icon: url(:/stylesheet/img/titlebar/titlebar_minimize_hover_dark.png);
+}
+AzQtComponents--DockBarButton.minimize.dark:pressed {
+    titlebar-minimize-icon: url(:/stylesheet/img/titlebar/titlebar_minimize_press_dark.png);
+}
+
+AzQtComponents--DockTabBar {
+    qproperty-singleTabFillsWidth: true;
+}
+
+AzQtComponents--ButtonDivider {
+    background-image: url(:/stylesheet/img/titlebar_divider.png);
+    min-width: 2px;
+    max-width: 2px;
+    min-height: 14px;
+    max-height: 14px;
 }
 
 AzQtComponents--StyledDetailsTableView {
@@ -2152,6 +2304,76 @@ WelcomeScreenDialog QFrame#imageFrame
     background-color: transparent;
 }
 
+AzQtComponents--FilteredSearchWidget QLineEdit#textSearch
+{
+    qproperty-frame: false;
+    selection-background-color: rgb(233, 99, 0);
+    background: #6e7071;
+    background-image: url(:/stylesheet/img/search.svg);
+    background-repeat: no-repeat;
+    background-position: left;
+    padding: 2 2 2 24;
+    color: rgb(255, 255, 255);
+}
+
+AzQtComponents--FilteredSearchWidget #filteredParent
+{
+    /* correct for some kind of weird margin/padding on
+       the left side moving the tag buttons and making
+       them misaligned */
+    margin-left: -4px;
+}
+
+AzQtComponents--FilteredSearchWidget QPushButton#assetTypeSelector
+{
+    icon-size: 16px 14px;
+    max-height: 24px;
+    max-width: 24px;
+}
+
+AzQtComponents--FilteredSearchWidget QPushButton#assetTypeSelector::menu-indicator
+{
+    image: url(none.jpg);
+    subcontrol-position: right center;
+    subcontrol-origin: padding;
+}
+
+AzQtComponents--FilteredSearchWidget QLabel#label
+{
+    color: white;
+}
+
+AzQtComponents--FilteredSearchWidget AzQtComponents--ExtendedLabel#clearLabel
+{
+    color: rgb(66, 133, 234);
+}
+
+AzQtComponents--FilteredSearchWidget AzQtComponents--ExtendedLabel#clearLabel:hover
+{
+    color: rgb(145, 189, 255);
+}
+
+AzQtComponents--FilterCriteriaButton
+{
+    padding: 0px;
+    border-radius: 2px;
+    border: 1px solid #808080;
+    background-color: #2E2E2E;
+}
+
+AzQtComponents--FilterCriteriaButton QLabel,
+AzQtComponents--FilterCriteriaButton QPushButton
+{
+    border: 0px;
+    background-color: transparent;
+}
+
+AzQtComponents--FilterCriteriaButton QPushButton
+{
+    qproperty-icon: url(:/stylesheet/img/titlebar/titlebar_close.png);
+    max-height: 18px;
+    min-height: 18px;
+}
 
 
 /* Tooltip font styles */
@@ -2612,4 +2834,55 @@ AzToolsFramework--AssetBrowser--AssetBrowserTreeView::branch:open:has-children:!
 AzToolsFramework--AssetBrowser--AssetBrowserTreeView::branch:open:has-children:has-siblings  {
         border-image: none;
         image: url("EDITOR:Icons/AssetBrowser/CaretOpen_16.png");
+}
+
+AzQtComponents--SegmentBar QAbstractButton
+{
+    background-color: #333333;
+    border-color: #000000;
+    border-style: solid;
+    border-width: 1px;
+
+    font-size: 12px;
+
+    height: 28px;
+
+    line-height: 24px;
+
+    margin-left: 0px;
+
+    margin-bottom: 15px;
+
+    min-width: 68px; /* 100 - (padding-left + padding-right) */
+
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+AzQtComponents--SegmentBar[orientation="1"] QAbstractButton.TabMiddle,
+AzQtComponents--SegmentBar[orientation="1"] QAbstractButton.TabLast
+{
+    margin-left: -1px;
+}
+
+AzQtComponents--SegmentBar[orientation="2"] QAbstractButton
+{
+    text-align: left;
+}
+
+AzQtComponents--SegmentBar[orientation="2"] QAbstractButton.TabMiddle,
+AzQtComponents--SegmentBar[orientation="2"] QAbstractButton.TabLast
+{
+    margin-top: -1px;
+}
+
+AzQtComponents--SegmentBar QAbstractButton:checked
+{
+    background-color: #222222;
+}
+
+AzQtComponents--SegmentBar QAbstractButton:hover:!checked,
+AzQtComponents--SegmentBar QAbstractButton:pressed:!checked
+{
+    background-color: #444444;
 }

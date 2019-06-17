@@ -20,6 +20,7 @@
 
 #include <Components/Nodes/Comment/CommentNodeLayoutComponent.h>
 
+#include <Components/Nodes/Comment/CommentLayerControllerComponent.h>
 #include <Components/Nodes/Comment/CommentNodeFrameComponent.h>
 #include <Components/Nodes/Comment/CommentNodeTextComponent.h>
 #include <Components/Nodes/General/GeneralNodeFrameComponent.h>
@@ -60,6 +61,7 @@ namespace GraphCanvas
         entity->CreateComponent<CommentNodeFrameComponent>();
         entity->CreateComponent<CommentNodeLayoutComponent>();
         entity->CreateComponent<CommentNodeTextComponent>();
+        entity->CreateComponent<CommentLayerControllerComponent>();
 
         return entity;
     }

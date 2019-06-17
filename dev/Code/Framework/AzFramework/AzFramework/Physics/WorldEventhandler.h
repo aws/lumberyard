@@ -69,4 +69,5 @@ namespace Physics
         /// Raised when two shapes stop contacting each other.
         virtual void OnCollisionEnd(const CollisionEvent& collisionEvent) = 0;
     };
-}
+
+} //namespace Physics

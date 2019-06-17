@@ -76,7 +76,7 @@ namespace AZStd
         //////////////////////////////////////////////////////////////////////////
         // 23.2.4.1 construct/copy/destroy
         /// Construct an empty vector.
-        AZ_FORCE_INLINE explicit vector()
+        AZ_FORCE_INLINE vector()
             : m_start(0)
             , m_last(0)
             , m_end(0)
@@ -118,7 +118,7 @@ namespace AZStd
                 m_last  = m_end;
             }
         }
-        explicit vector(size_type numElements, const_reference value, const allocator_type& allocator)
+        vector(size_type numElements, const_reference value, const allocator_type& allocator)
             : m_start(0)
             , m_last(0)
             , m_end(0)

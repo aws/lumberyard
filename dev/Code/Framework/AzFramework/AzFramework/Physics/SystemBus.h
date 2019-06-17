@@ -132,8 +132,8 @@ namespace Physics
         /// @param settings Custom world configuration.
         virtual AZStd::shared_ptr<World> CreateWorldCustom(AZ::Crc32 id, const WorldConfiguration& settings) = 0;
 
-        virtual AZStd::shared_ptr<RigidBodyStatic> CreateStaticRigidBody(const WorldBodyConfiguration& configuration) = 0;
-        virtual AZStd::shared_ptr<RigidBody> CreateRigidBody(const RigidBodyConfiguration& configuration) = 0;
+        virtual AZStd::unique_ptr<RigidBodyStatic> CreateStaticRigidBody(const WorldBodyConfiguration& configuration) = 0;
+        virtual AZStd::unique_ptr<RigidBody> CreateRigidBody(const RigidBodyConfiguration& configuration) = 0;
         virtual AZStd::shared_ptr<Shape> CreateShape(const ColliderConfiguration& colliderConfiguration, const ShapeConfiguration& configuration) = 0;
         virtual AZStd::shared_ptr<Material> CreateMaterial(const Physics::MaterialConfiguration& materialConfiguration) = 0;
         virtual AZStd::shared_ptr<Material> GetDefaultMaterial() = 0;
@@ -142,8 +142,8 @@ namespace Physics
         virtual AZStd::vector<AZ::TypeId> GetSupportedJointTypes() = 0;
         virtual AZStd::shared_ptr<JointLimitConfiguration> CreateJointLimitConfiguration(AZ::TypeId jointType) = 0;
         virtual AZStd::shared_ptr<Joint> CreateJoint(const AZStd::shared_ptr<JointLimitConfiguration>& configuration,
-            const AZStd::shared_ptr<Physics::WorldBody>& parentBody, const AZStd::shared_ptr<Physics::WorldBody>& childBody) = 0;
-        /// Generates joint limit visualization data in appropriate format to pass to EntityDebugDisplayRequests draw functions.
+            Physics::WorldBody* parentBody, Physics::WorldBody* childBody) = 0;
+        /// Generates joint limit visualization data in appropriate format to pass to DebugDisplayRequests draw functions.
         /// @param configuration The joint configuration to generate visualization data for.
         /// @param parentRotation The rotation of the joint's parent body (in the same frame as childRotation).
         /// @param childRotation The rotation of the joint's child body (in the same frame as parentRotation).

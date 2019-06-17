@@ -15,26 +15,16 @@ def build(bld):
     bld.CryDedicatedServer(
         target              = 'DedicatedLauncher',
         platforms           = ['win'],
-        configurations      = ['debug_dedicated',
-                               'debug_test_dedicated',
-                               'profile_dedicated',
-                               'profile_test_dedicated',
-                               'performance_dedicated',
-                               'release_dedicated'],
+        configurations      = ['all'],
+        server_only         = True,
         use                 = ['CryRenderNULL',
                                'AzGameFramework'],
         includes            = [bld.Path('Code/Launcher')],
 
-        win_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],
-        win_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_SHARED'],
-        win_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
-        win_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
-
-        linux_debug_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
-        linux_profile_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
-        linux_performance_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
-        linux_release_dedicated_uselib = ['AWS_GAMELIFT_SERVER_STATIC'],
-
+        debug_uselib        = ['AWS_GAMELIFT_SERVER_SHARED'],
+        profile_uselib      = ['AWS_GAMELIFT_SERVER_SHARED'],
+        performance_uselib  = ['AWS_GAMELIFT_SERVER_STATIC'],
+        release_uselib      = ['AWS_GAMELIFT_SERVER_STATIC'],
 
         file_list           = 'launcher.waf_files',
         lib                 = 'Shell32',

@@ -386,10 +386,6 @@ namespace AZStd
             rshorten(n);
         }
 
-        // Forward declare in string_view.h, implemented in string.h to avoid string_view having to include string.h
-        template<class Allocator = AZStd::allocator>
-        basic_string<value_type, traits_type, Allocator> to_string(Allocator alloc = Allocator()) const;
-
         basic_string_view& operator=(const basic_string_view& s) { if (&s != this) { m_begin = s.m_begin; m_end = s.m_end; } return *this; }
         basic_string_view& operator=(const_pointer s) { return *this = basic_string_view(s); }
 

@@ -120,7 +120,13 @@ AllocationRecords::RegisterAllocation(void* address, size_t byteSize, size_t ali
     }
 
     Debug::AllocationRecordsType::pair_iter_bool iterBool = m_records.insert_key(address);
-    AZ_Assert(iterBool.second, "Memory address 0x%p is already allocated and in the records!", address);
+    
+    if (!iterBool.second)
+    {
+        // If that memory address was already registered, print the stack trace of the previous registration
+        PrintAllocationsCB(true, (m_saveNames || m_mode == RECORD_FULL))(address, iterBool.first->second, m_numStackLevels);
+        AZ_Assert(iterBool.second, "Memory address 0x%p is already allocated and in the records!", address);
+    }
 
     Debug::AllocationInfo& ai = iterBool.first->second;
     ai.m_byteSize =  byteSize;
@@ -439,14 +445,13 @@ PrintAllocationsCB::operator()(void* address, const AllocationInfo& info, unsign
 
     if (m_isDetailed)
     {
-        if (m_includeNameAndFilename && info.m_fileName)
+        if (!info.m_stackFrames)
         {
             AZ_Printf("Memory", " %s (%d)\n", info.m_fileName, info.m_lineNum);
         }
-
-        // Allocation callstack
-        if (info.m_stackFrames)
+        else
         {
+            // Allocation callstack
             const unsigned char decodeStep = 40;
             Debug::SymbolStorage::StackLine lines[decodeStep];
             unsigned char iFrame = 0;

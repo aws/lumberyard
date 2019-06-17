@@ -24,6 +24,7 @@ namespace PhysX
 {
     namespace Pipeline
     {
+
         /// Represents a PhysX height field asset.
         class HeightFieldAsset
             : public AZ::Data::AssetData
@@ -34,6 +35,11 @@ namespace PhysX
             AZ_CLASS_ALLOCATOR(HeightFieldAsset, AZ::SystemAllocator, 0);
             AZ_RTTI(HeightFieldAsset, "{B61189FE-B2D7-4AF1-8951-CB5C0F7834FC}", AZ::Data::AssetData);
 
+            ~HeightFieldAsset()
+            {
+                ReleaseMemory();
+            }
+
             physx::PxHeightField* GetHeightField()
             {
                 return m_heightField;
@@ -41,11 +47,25 @@ namespace PhysX
 
             void SetHeightField(physx::PxHeightField* heightField)
             {
+                ReleaseMemory();
+                
                 m_heightField = heightField;
-                m_status.store(static_cast<int>(AZ::Data::AssetData::AssetStatus::ReadyPreNotify));
+                m_status = static_cast<int>(AssetStatus::Ready);
             }
 
+        protected:
+            
+
         private:
+            void ReleaseMemory()
+            {
+                if (m_heightField)
+                {
+                    m_heightField->release();
+                    m_heightField = nullptr;
+                }
+            }
+
             physx::PxHeightField* m_heightField = nullptr;
         };
     } // namespace Pipeline

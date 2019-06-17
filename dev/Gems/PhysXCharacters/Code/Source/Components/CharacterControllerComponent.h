@@ -105,6 +105,6 @@ namespace PhysXCharacters
 
         AZStd::unique_ptr<Physics::CharacterConfiguration> m_characterConfig;
         AZStd::unique_ptr<Physics::ShapeConfiguration> m_shapeConfig;
-        AZStd::shared_ptr<Physics::Character> m_controller;
+        AZStd::unique_ptr<Physics::Character> m_controller;
     };
 } // namespace PhysXCharacters

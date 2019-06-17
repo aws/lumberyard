@@ -19,10 +19,10 @@ def build(bld):
         target                      = 'GridHub',
         vs_filter                   = 'Tools',
         file_list                   = ['gridhub.waf_files'],
-        platforms                   = ['win'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        platforms                   = ['win','darwin'],
+        client_only                 = True,
+        exclude_monolithic          = True,
         disable_pch                 = True,
-        copy_dependent_files        = ['Bin64/d3dcompiler_47.dll'],
         features                    = ['qt5'],
         use                         = ['AzCore',
                                        'GridMateForTools'],
@@ -33,10 +33,24 @@ def build(bld):
                                        'QT5OPENGL',
                                        'QT5NETWORK',
                                        'QT5SVG',
-                                       'QT5WIDGETS'],
+                                       'QT5WIDGETS',
+                                       'D3D_COMPILER_47'],
         defines                     = ['GRIDMATE_FOR_TOOLS'],
 
         # Platform Specific
-        darwin_rpath        = ['@executable_path/../BinMac64/qtlibs_mac/Frameworks' ],
+        darwin_rpath        = ["@executable_path", "@executable_path/../../..", "@executable_path/qtlibs/lib", "@executable_path/../../../qtlibs/lib"],
+        darwin_file_list    = ['gridhub_darwin.waf_files'],
+        darwin_xcassets     = 'Code/Tools/GridHub/GridHub/Images.xcassets',
         win_lib             = [ 'shell32','ole32','uuid','shlwapi' ]
+    )
+
+
+def package_darwin_x64(pkg):
+    build(pkg) # Need to call this to generate our task_generator
+    pkg.package_tool(
+        target           = 'GridHub',
+        platforms        = ['darwin'],
+        configurations   = ['debug', 'profile'],
+        include_all_libs = True,
+        dir_resources    = ['qtlibs'],
     )

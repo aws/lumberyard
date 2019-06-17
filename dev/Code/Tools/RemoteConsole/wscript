@@ -24,7 +24,6 @@ def build(bld):
         configurations          = ['all'],
 
         use                     = ['AzFramework'],
-        defines                 = ['NOT_USE_CRY_MEMORY_MANAGER'],
         export_includes         = ['Core'],
     )
 

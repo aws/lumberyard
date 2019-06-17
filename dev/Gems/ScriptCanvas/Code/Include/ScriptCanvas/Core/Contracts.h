@@ -18,3 +18,5 @@
 #include "Contracts/SlotTypeContract.h"
 #include "Contracts/TypeContract.h"
 #include "Contracts/IsReferenceTypeContract.h"
+#include "Contracts/SupportsMethodContract.h"
+#include "Contracts/MathOperatorContract.h"

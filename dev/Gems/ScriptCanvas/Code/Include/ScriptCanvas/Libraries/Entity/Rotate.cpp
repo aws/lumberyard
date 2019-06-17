@@ -10,7 +10,6 @@
 *
 */
 
-#include "precompiled.h"
 #include "Rotate.h"
 
 #include <AzCore/Component/TransformBus.h>

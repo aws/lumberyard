@@ -21,6 +21,7 @@
 #include <AzQtComponents/Components/DockTabWidget.h>
 #include <AzQtComponents/Components/StyledDockWidget.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
 
 #include <QObject>
 #include <QVector>
@@ -246,6 +247,10 @@ private:
 
     bool m_enableLegacyCryEntities;
     AzQtComponents::FancyDocking* m_advancedDockManager;
+
+    using EditorComponentModeNotificationBusImpl = AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBusImpl;
+    EditorComponentModeNotificationBusImpl m_componentModeNotifications; /**< Helper for EditorComponentModeNotificationBus so 
+                                                                           *  QtViewPaneManager does not need to inherit directly from it. */
 };
 
 template<class TWidget>

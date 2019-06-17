@@ -213,6 +213,7 @@ namespace EMotionFX
             void CheckActorCreation();
             void DestroyActor();
             void CheckAttachToEntity();
+            void RenderDebugDraw();
 
             Configuration                                   m_configuration;            ///< Component configuration.
                                                                                         /// Live state

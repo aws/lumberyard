@@ -21,7 +21,7 @@
 
 namespace GraphCanvas
 {
-    //////////////////////////////In
+    //////////////////////////////
     // AnimatedPulseControlPoint
     //////////////////////////////
     
@@ -52,12 +52,11 @@ namespace GraphCanvas
     //////////////////
     
     AnimatedPulse::AnimatedPulse(const AnimatedPulseConfiguration& pulseConfiguration)
-        : QGraphicsItem()
+        : GraphicsEffect<QGraphicsItem>()
         , m_elapsedDuration(0)
         , m_configuration(pulseConfiguration)
-        , m_id(AZ::Entity::MakeId())
     {
-        PulseRequestBus::Handler::BusConnect(m_id);
+        PulseRequestBus::Handler::BusConnect(GetId());
         AZ::TickBus::Handler::BusConnect();
 
         setAcceptHoverEvents(false);
@@ -106,11 +105,6 @@ namespace GraphCanvas
         // we are positioned at the center of the to allow for the drawing to make sense. So we need to offset out bounding box
         // accordingly.
         m_boundingRect.moveTo(-m_boundingRect.width() * 0.5f, -m_boundingRect.height() * 0.5f);
-    }
-
-    AZ::EntityId AnimatedPulse::GetId() const
-    {
-        return m_id;
     }
 
     void AnimatedPulse::OnTick(float deltaTime, AZ::ScriptTimePoint timePoint)
@@ -230,8 +224,8 @@ namespace GraphCanvas
         painter->restore();
     }
 
-    AnimatedPulse* AnimatedPulse::GetPulse()
+    void AnimatedPulse::OnGraphicsEffectCancelled()
     {
-        return this;
-    }
+        PulseNotificationBus::Event(GetId(), &PulseNotifications::OnPulseCanceled);
+    }    
 }

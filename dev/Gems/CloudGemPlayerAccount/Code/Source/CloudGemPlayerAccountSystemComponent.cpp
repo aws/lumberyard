@@ -258,7 +258,7 @@ namespace CloudGemPlayerAccount
     void CloudGemPlayerAccountSystemComponent::OnBeforeIdentityUpdate()
     {
         if (m_userPoolLogicalName.empty()) {
-            gEnv->pLog->LogWarning("CloudGemPlayerAccountSystemComponent: The user pool logical name has not been set.");
+            AZ_Warning("PlayerAccount", false, "CloudGemPlayerAccountSystemComponent: The user pool logical name has not been set.");
             return;
         }
 
@@ -266,7 +266,7 @@ namespace CloudGemPlayerAccount
         const auto regionSize = poolId.find('_');
         if (regionSize == AZStd::string::npos)
         {
-            gEnv->pLog->LogWarning("CloudGemPlayerAccountSystemComponent: Unable to register token retrieval strategy, missing region.");
+            AZ_Warning("PlayerAccount", false, "CloudGemPlayerAccountSystemComponent: Unable to register token retrieval strategy, missing region.");
             return;
         }
 
@@ -1059,7 +1059,7 @@ namespace CloudGemPlayerAccount
             }
             else
             {
-                gEnv->pLog->LogError("Unable to refresh auth tokens for user %s: %s %s", username.c_str(), job->error.GetExceptionName().c_str(), job->error.GetMessage().c_str());
+                AZ_Warning("PlayerAccount", false, "Unable to refresh auth tokens for user %s: %s %s", username.c_str(), job->error.GetExceptionName().c_str(), job->error.GetMessage().c_str());
                 handler(existingTokens);
             }
             SignOutIfTokenIsInvalid(job, username);
@@ -1331,7 +1331,7 @@ namespace CloudGemPlayerAccount
         const auto regionSize = poolId.find('_');
         if (regionSize == AZStd::string::npos)
         {
-            gEnv->pLog->LogWarning("CloudGemPlayerAccountSystemComponent: Invalid user pool id, it does not contain a region prefix.");
+            AZ_Warning("PlayerAccount", false, "CloudGemPlayerAccountSystemComponent: Invalid user pool id, it does not contain a region prefix.");
             return AZStd::string();
         }
 

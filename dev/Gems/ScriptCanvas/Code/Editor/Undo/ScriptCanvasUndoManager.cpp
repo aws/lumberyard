@@ -23,6 +23,8 @@
 #include <ScriptCanvas/Bus/UndoBus.h>
 #include <Editor/Include/ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 #include <ScriptCanvas/Bus/RequestBus.h>
+#include <GraphCanvas/Editor/GraphModelBus.h>
+#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 
 namespace ScriptCanvasEditor
 {
@@ -158,6 +160,7 @@ namespace ScriptCanvasEditor
 
     void UndoManager::Redo()
     {
+        GRAPH_CANVAS_PROFILE_FUNCTION();
         SceneUndoState* sceneUndoState = FindActiveUndoState();
 
         if (sceneUndoState)
@@ -175,6 +178,7 @@ namespace ScriptCanvasEditor
 
     void UndoManager::Undo()
     {
+        GRAPH_CANVAS_PROFILE_FUNCTION();
         SceneUndoState* sceneUndoState = FindActiveUndoState();
 
         if (sceneUndoState)
@@ -246,21 +250,23 @@ namespace ScriptCanvasEditor
         AZ::EntityId graphCanvasGraphId;
         EditorGraphRequestBus::EventResult(graphCanvasGraphId, scriptCanvasEntityId, &EditorGraphRequests::GetGraphCanvasGraphId);
 
-        GraphCanvas::GraphData* graphCanvasGraphData{};
-        GraphCanvas::SceneRequestBus::EventResult(graphCanvasGraphData, graphCanvasGraphId, &GraphCanvas::SceneRequests::GetGraphData);
+        GraphCanvas::GraphModelRequestBus::Event(graphCanvasGraphId, &GraphCanvas::GraphModelRequests::OnSaveDataDirtied, scriptCanvasEntityId);
+        GraphCanvas::GraphModelRequestBus::Event(graphCanvasGraphId, &GraphCanvas::GraphModelRequests::OnSaveDataDirtied, graphCanvasGraphId);
+
+        UndoData undoData;
 
         ScriptCanvas::GraphData* graphData{};
         ScriptCanvas::GraphRequestBus::EventResult(graphData, scriptCanvasEntityId, &ScriptCanvas::GraphRequests::GetGraphData);
 
         const ScriptCanvas::VariableData* varData{};
         ScriptCanvas::GraphVariableManagerRequestBus::EventResult(varData, scriptCanvasEntityId, &ScriptCanvas::GraphVariableManagerRequests::GetVariableDataConst);
-
-        UndoData undoData;
-        if (graphData && graphCanvasGraphData && varData)
+        
+        if (graphData && varData)
         {
-            undoData.m_graphCanvasGraphData = *graphCanvasGraphData;
             undoData.m_graphData = *graphData;
             undoData.m_variableData = *varData;
+
+            EditorGraphRequestBus::EventResult(undoData.m_visualSaveData, scriptCanvasEntityId, &EditorGraphRequests::GetGraphCanvasSaveData);
         }
 
         return undoData;

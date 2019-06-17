@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "Sequencer.h"
 
 #include <Include/ScriptCanvas/Libraries/Logic/Sequencer.generated.cpp>

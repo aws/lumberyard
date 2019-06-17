@@ -510,7 +510,7 @@ def _determine_additional_properties(dispatch_object_stack):
     #    path
     #    swagger   (bottom)
     # 
-    # "additional_properties" property values are aggregated together, starting with 
+    # "additional-properties" property values are aggregated together, starting with 
     # the values at the bottom of the stack.
 
     additional_properties = {}
@@ -530,7 +530,7 @@ def _determine_additional_request_template_content(dispatch_object_stack):
     #    path
     #    swagger   (bottom)
     # 
-    # "additional_request_template_content" property values are aggregated together, 
+    # "additional-request-template-content" property values are aggregated together, 
     # starting with the values at the bottom of the stack.
 
     additional_request_template_content = ''
@@ -550,7 +550,7 @@ def _determine_additional_response_template_content(dispatch_object_stack):
     #    path
     #    swagger   (bottom)
     # 
-    # "additional_response_template_content" property values are aggregated together, 
+    # "additional-response-template-content" property values are aggregated together, 
     # starting with the values at the bottom of the stack.
 
     additional_response_template_content = {}

@@ -45,8 +45,7 @@
 #include "Environment/OceanEnvironmentBus.h"
 
 #include <LoadScreenBus.h>
-
-
+#include <StatObjBus.h>
 
 //------------------------------------------------------------------------------
 #define LEVEL_DATA_FILE "LevelData.xml"
@@ -380,6 +379,7 @@ void C3DEngine::UnloadLevel()
     GetRenderer()->FlushRTCommands(true, true, true);
 
     SVOGILegacyRequestBus::Broadcast(&SVOGILegacyRequests::ReleaseData);
+    InstanceStatObjEventBus::Broadcast(&InstanceStatObjEventBus::Events::ReleaseData);
 
     FreeRNTmpDataPool();
 

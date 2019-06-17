@@ -9,7 +9,9 @@
     },
     "auto": {
         "Tests": [
-            "Tests/MaestroTest.cpp"
+          "Tests/MaestroTest.cpp",
+          "Tests/Tracks/BoolTrackTest.cpp",
+          "Tests/Tracks/AnimTrackTest.cpp"
         ]
     }
 }

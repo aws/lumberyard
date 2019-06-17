@@ -20,6 +20,10 @@ namespace AssetProcessor
 {
     JobsModel::JobsModel(QObject* parent)
         : QAbstractItemModel(parent)
+        , m_pendingIcon(QStringLiteral(":/stylesheet/img/logging/pending.svg"))
+        , m_errorIcon(QStringLiteral(":/stylesheet/img/logging/error.svg"))
+        , m_okIcon(QStringLiteral(":/stylesheet/img/logging/valid.svg"))
+        , m_processingIcon(QStringLiteral(":/stylesheet/img/logging/processing.svg"))
     {
     }
 
@@ -61,23 +65,39 @@ namespace AssetProcessor
 
     QVariant JobsModel::headerData(int section, Qt::Orientation orientation, int role) const
     {
-        if (orientation == Qt::Horizontal && role == Qt::DisplayRole)
+        if (orientation != Qt::Horizontal)
         {
-            switch (section)
+            return QAbstractItemModel::headerData(section, orientation, role);
+        }
+
+        switch (role)
+        {
+            case Qt::DisplayRole:
             {
-            case ColumnStatus:
-                return tr("Status");
-            case ColumnSource:
-                return tr("Source");
-            case ColumnPlatform:
-                return tr("Platform");
-            case ColumnJobKey:
-                return tr("Job Key");
-            case ColumnCompleted:
-                return tr("Completed");
+                switch (section)
+                {
+                case ColumnStatus:
+                    return tr("Status");
+                case ColumnSource:
+                    return tr("Source");
+                case ColumnPlatform:
+                    return tr("Platform");
+                case ColumnJobKey:
+                    return tr("Job Key");
+                case ColumnCompleted:
+                    return tr("Completed");
+                default:
+                    break;
+                }
+            }
+
+            case Qt::TextAlignmentRole:
+            {
+                return Qt::AlignLeft + Qt::AlignVCenter;
+            }
+
             default:
                 break;
-            }
         }
 
         return QAbstractItemModel::headerData(section, orientation, role);
@@ -103,6 +123,26 @@ namespace AssetProcessor
 
         switch (role)
         {
+        case Qt::DecorationRole:
+        {
+            if (index.column() == ColumnStatus) {
+                using namespace AzToolsFramework::AssetSystem;
+
+                switch (getItem(index.row())->m_jobState) {
+                case JobStatus::Queued:
+                    return m_pendingIcon;
+                case JobStatus::Failed_InvalidSourceNameExceedsMaxLimit:  // fall through intentional
+                case JobStatus::Failed:
+                    return m_errorIcon;
+                case JobStatus::Completed:
+                    return m_okIcon;
+                case JobStatus::InProgress:
+                    return m_processingIcon;
+                }
+            }
+
+            break;
+        }
         case Qt::DisplayRole:
             switch (index.column())
             {
@@ -121,27 +161,66 @@ namespace AssetProcessor
             }
         case logRole:
         {
+            using namespace AzToolsFramework::AssetSystem;
+            using namespace AssetUtilities;
+
+            JobInfo jobInfo;
+            AssetJobLogResponse jobLogResponse;
+            auto* cachedJobInfo = getItem(index.row());
+            jobInfo.m_sourceFile = cachedJobInfo->m_elementId.GetInputAssetName().toUtf8().data();
+            jobInfo.m_platform = cachedJobInfo->m_elementId.GetPlatform().toUtf8().data();
+            jobInfo.m_jobKey = cachedJobInfo->m_elementId.GetJobDescriptor().toUtf8().data();
+            jobInfo.m_builderGuid = cachedJobInfo->m_builderGuid;
+            jobInfo.m_jobRunKey = cachedJobInfo->m_jobRunKey;
+
+            ReadJobLogResult readJobLogResult = ReadJobLog(jobInfo, jobLogResponse);
+
+            const char* jobLogData = jobLogResponse.m_jobLog.c_str();
+
+            // ReadJobLog prepends the result with Error: if it can't find the file, even if the job was
+            // completed successfully or is still pending, so we detect that and give a less panicky response
+            // to the end user.
+            if (readJobLogResult == ReadJobLogResult::MissingLogFile)
+            {
+                switch (cachedJobInfo->m_jobState)
+                {
+                    case JobStatus::Completed:
+                        jobLogData = "The log file from the last (successful) run of this job could not be found.\nLogs are not always generated for successful jobs and this does not indicate an error.";
+                        break;
+
+                    case JobStatus::InProgress:
+                    case JobStatus::Queued:
+                        jobLogData = "The job is still processing and the log file has not yet been created";
+                        break;
+
+                    default:
+                        // leave the job log as it is
+                        break;
+                }
+            }
+
+            return QVariant(jobLogData);
+        }
+        case Qt::TextAlignmentRole:
+        {
+            return Qt::AlignLeft + Qt::AlignVCenter;
+        }
+        case statusRole:
+        {
+            return QVariant::fromValue(getItem(index.row())->m_jobState);
+        }
+        case logFileRole:
+        {
             AzToolsFramework::AssetSystem::JobInfo jobInfo;
-            AzToolsFramework::AssetSystem::AssetJobLogResponse jobLogResponse;
             jobInfo.m_sourceFile = getItem(index.row())->m_elementId.GetInputAssetName().toUtf8().data();
             jobInfo.m_platform = getItem(index.row())->m_elementId.GetPlatform().toUtf8().data();
             jobInfo.m_jobKey = getItem(index.row())->m_elementId.GetJobDescriptor().toUtf8().data();
             jobInfo.m_builderGuid = getItem(index.row())->m_builderGuid;
             jobInfo.m_jobRunKey = getItem(index.row())->m_jobRunKey;
-            AssetUtilities::ReadJobLog(jobInfo, jobLogResponse);
-            return QVariant(jobLogResponse.m_jobLog.c_str());
+
+            AZStd::string logFile = AssetUtilities::ComputeJobLogFolder() + "/" + AssetUtilities::ComputeJobLogFileName(jobInfo);
+            return QVariant(logFile.c_str());
         }
-        case Qt::TextAlignmentRole:
-            switch (index.column())
-            {
-            case ColumnStatus:  // fall through intentional
-            case ColumnPlatform:  // fall through intentional
-            case ColumnJobKey:  // fall through intentional
-            case ColumnCompleted:
-                return Qt::AlignHCenter;
-            default:
-                break;
-            }
 
         default:
             break;
@@ -160,7 +239,7 @@ namespace AssetProcessor
         return nullptr; //invalid index
     }
 
-    QString JobsModel::GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state) const
+    QString JobsModel::GetStatusInString(const AzToolsFramework::AssetSystem::JobStatus& state)
     {
         using namespace AzToolsFramework::AssetSystem;
 

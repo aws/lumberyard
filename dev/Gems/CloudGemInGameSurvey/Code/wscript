@@ -29,5 +29,5 @@ def build(bld):
  
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
          
-        use = ['CloudGemFrameworkStaticLibrary']
+        use = ['CloudGemFramework.StaticLibrary']
     )

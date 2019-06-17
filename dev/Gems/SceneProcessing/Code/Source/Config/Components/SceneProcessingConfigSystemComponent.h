@@ -51,7 +51,14 @@ namespace AZ
 
             void Clear();
 
+            // SceneProcessingConfigRequestBus START
             const AZStd::vector<SoftNameSetting*>* GetSoftNames() override;
+            bool AddNodeSoftName(const char* pattern,
+                SceneAPI::SceneCore::PatternMatcher::MatchApproach approach,
+                const char* virtualType, bool includeChildren) override;
+            bool AddFileSoftName(const char* pattern, SceneAPI::SceneCore::PatternMatcher::MatchApproach approach,
+                const char* virtualType, bool inclusive, const AZStd::string& graphObjectTypeName) override;
+            // SceneProcessingConfigRequestBus END
 
             void AreCustomNormalsUsed(bool &value) override;
 
@@ -63,6 +70,10 @@ namespace AZ
             static void GetDependentServices(ComponentDescriptor::DependencyArrayType& dependent);
 
         private:
+            /// It is the responsibility of the caller to delete newSoftname if this method returns
+            /// false.
+            bool AddSoftName(SoftNameSetting* newSoftname);
+
             static void ReflectSceneModule(ReflectContext* context, const AZStd::unique_ptr<DynamicModuleHandle>& module);
             static void ActivateSceneModule(const AZStd::unique_ptr<DynamicModuleHandle>& module);
             static void DeactivateSceneModule(const AZStd::unique_ptr<DynamicModuleHandle>& module);

@@ -9,7 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
+
 #ifndef LEVELEDITORMENUHANDLER_H
 #define LEVELEDITORMENUHANDLER_H
 
@@ -19,6 +21,8 @@
 #include <QPointer>
 #include "ActionManager.h"
 
+#include <AzToolsFramework/ComponentMode/EditorComponentModeBus.h>
+
 class MainWindow;
 class QtViewPaneManager;
 class NetPromoterScoreDialog;
@@ -26,10 +30,12 @@ class QSettings;
 
 class LevelEditorMenuHandler
     : public QObject
+    , private AzToolsFramework::ComponentModeFramework::EditorComponentModeNotificationBus::Handler
+    , private AzToolsFramework::EditorMenuRequestBus::Handler
 {
     Q_OBJECT
 public:
-    explicit LevelEditorMenuHandler(MainWindow* mainWindow, QtViewPaneManager* const viewPaneManager, QSettings& settings);
+    LevelEditorMenuHandler(MainWindow* mainWindow, QtViewPaneManager* const viewPaneManager, QSettings& settings);
     ~LevelEditorMenuHandler();
 
     void Initialize();
@@ -58,6 +64,7 @@ private slots:
 private:
     QMenu* CreateFileMenu();
     QMenu* CreateEditMenu();
+    void PopulateEditMenu(ActionManager::MenuWrapper& editMenu);
     QMenu* CreateGameMenu();
     QMenu* CreateToolsMenu();
     QMenu* CreateAWSMenu();
@@ -65,7 +72,6 @@ private:
     QMenu* CreateHelpMenu();
 
     void checkOrOpenView();
-
 
     QMap<QString, QList<QtViewPane*>> CreateMenuMap(QMap<QString, QList<QtViewPane*>>& menuMap, QtViewPanes& allRegisteredViewPanes);
     void CreateMenuOptions(QMap<QString, QList<QtViewPane*>>* menuMap, ActionManager::MenuWrapper& menu, const char* category);
@@ -93,6 +99,14 @@ private:
     void LoadLegacyLayout();
 
     void LoadNetPromoterScoreDialog(ActionManager::MenuWrapper& menu);
+
+    // EditorComponentModeNotificationBus
+    void EnteredComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
+    void LeftComponentMode(const AZStd::vector<AZ::Uuid>& componentModeTypes) override;
+
+    // EditorMenuRequestBus
+    void AddEditMenuAction(QAction* action) override;
+    void RestoreEditMenuToDefault() override;
     
     MainWindow* m_mainWindow;
     ActionManager* m_actionManager;
@@ -118,6 +132,5 @@ private:
     QSettings& m_settings;
     bool m_enableLegacyCryEntities;
 };
-
 
 #endif // LEVELEDITORMENUHANDLER_H

@@ -1,0 +1,12 @@
+AzQtComponents--TabWidgetActionToolBar QPushButton,
+AzQtComponents--TabWidgetActionToolBar QPushButton:hover,
+AzQtComponents--TabWidgetActionToolBar QPushButton:pressed
+{
+    qproperty-flat: true;
+    background-color: #111111;
+}
+
+AzQtComponents--TabWidgetActionToolBar
+{
+    background-color: #111111;
+}

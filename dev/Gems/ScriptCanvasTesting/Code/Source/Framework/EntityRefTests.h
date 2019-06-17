@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <AzTest/AzTest.h>
+
 namespace ScriptCanvasTests
 {
     class EntityRefTestEvents : public AZ::EBusTraits
@@ -29,7 +31,7 @@ namespace ScriptCanvasTests
         , EntityRefTestEventBus::Handler
     {
     public:
-        AZ_COMPONENT(TestComponent, "{527680AE-BF46-4BC8-A923-A39B458A3B53}", AZ::Component);
+        AZ_COMPONENT(TestComponent, "{527680AE-BF46-4BC8-A923-A39B458A3B53}");
 
         void Init() override {}
         void Activate() override

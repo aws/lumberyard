@@ -16,14 +16,19 @@
 #include <AzCore/Math/Transform.h>
 #include <Shape/ShapeGeometryUtil.h>
 
+#if LMBR_CENTRAL_EDITOR
+#include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#endif
+
 namespace LmbrCentral
 {
-    float Lerpf(float from, float to, float fraction)
+    float Lerpf(const float from, const float to, const float fraction)
     {
         return AZ::Lerp(from, to, fraction);
     }
 
-    AZ::Vector3 CalculateNormal(const AZ::Vector3& previousNormal, const AZ::Vector3& previousTangent, const AZ::Vector3& currentTangent)
+    AZ::Vector3 CalculateNormal(
+        const AZ::Vector3& previousNormal, const AZ::Vector3& previousTangent, const AZ::Vector3& currentTangent)
     {
         // Rotates the previous normal by the angle difference between two tangent segments. Ensures
         // The normal is continuous along the tube.
@@ -47,8 +52,9 @@ namespace LmbrCentral
     void TubeShape::Reflect(AZ::SerializeContext& context)
     {
         context.Class <TubeShape>()
+            ->Version(1)
             ->Field("Radius", &TubeShape::m_radius)
-            ->Field("VariableRadius", &TubeShape::m_variableRadius)
+            ->Field("VariableRadius", &TubeShape::m_variableRadius)            
             ;
 
         if (auto editContext = context.GetEditContext())
@@ -59,8 +65,10 @@ namespace LmbrCentral
                 ->DataElement(AZ::Edit::UIHandlers::Default, &TubeShape::m_radius, "Radius", "Radius of the tube")
                     ->Attribute(AZ::Edit::Attributes::Min, 0.1f)
                     ->Attribute(AZ::Edit::Attributes::Step, 0.5f)
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &TubeShape::BaseRadiusChanged)
                 ->DataElement(AZ::Edit::UIHandlers::Default, &TubeShape::m_variableRadius, "Variable Radius", "Variable radius along the tube")
-                ;
+                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &TubeShape::VariableRadiusChanged)
+                    ;
         }
     }
 
@@ -99,6 +107,8 @@ namespace LmbrCentral
     void TubeShape::SetRadius(float radius)
     {
         m_radius = radius;
+        ValidateAllVariableRadii();
+
         ShapeComponentNotificationsBus::Event(
             m_entityId, &ShapeComponentNotificationsBus::Events::OnShapeChanged,
             ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
@@ -109,17 +119,32 @@ namespace LmbrCentral
         return m_radius;
     }
 
-    void TubeShape::SetVariableRadius(int index, float radius)
+    void TubeShape::SetVariableRadius(int vertIndex, float radius)
     {
-        m_variableRadius.SetElement(index, radius);
+        m_variableRadius.SetElement(vertIndex, radius);
+        ValidateVariableRadius(vertIndex);
+
         ShapeComponentNotificationsBus::Event(
             m_entityId, &ShapeComponentNotificationsBus::Events::OnShapeChanged,
             ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
     }
 
-    float TubeShape::GetVariableRadius(int index) const
+    void TubeShape::SetAllVariableRadii(float radius)
     {
-        return m_variableRadius.GetElement(index);
+        for (size_t vertIndex = 0; vertIndex < m_variableRadius.Size(); ++vertIndex)
+        {
+            m_variableRadius.SetElement(vertIndex, radius);
+            ValidateVariableRadius(vertIndex);
+        }
+         
+        ShapeComponentNotificationsBus::Event(
+            m_entityId, &ShapeComponentNotificationsBus::Events::OnShapeChanged,
+            ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+    }
+
+    float TubeShape::GetVariableRadius(int vertIndex) const
+    {
+        return m_variableRadius.GetElement(vertIndex);
     }
 
     float TubeShape::GetTotalRadius(const AZ::SplineAddress& address) const
@@ -135,6 +160,7 @@ namespace LmbrCentral
     void TubeShape::OnSplineChanged()
     {
         SplineComponentRequestBus::EventResult(m_spline, m_entityId, &SplineComponentRequests::GetSpline);
+        ShapeComponentNotificationsBus::Event(m_entityId, &ShapeComponentNotificationsBus::Events::OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
     }
 
     AZ::SplinePtr TubeShape::GetSpline()
@@ -187,8 +213,7 @@ namespace LmbrCentral
         const auto address = m_spline->GetNearestAddressPosition(localPoint).m_splineAddress;
         const float radiusSq = powf(m_radius, 2.0f);
         const float variableRadiusSq =
-            powf(m_variableRadius.GetElementInterpolated(
-                address.m_segmentIndex, address.m_segmentFraction, Lerpf), 2.0f);
+            powf(m_variableRadius.GetElementInterpolated(address, Lerpf), 2.0f);
 
         return (m_spline->GetPosition(address) - localPoint).GetLengthSq() < (radiusSq + variableRadiusSq) *
             scale.GetMaxElement();
@@ -201,9 +226,9 @@ namespace LmbrCentral
         const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
         const AZ::Vector3 localPoint = localFromWorldNormalized * point * maxScale.GetReciprocal();
 
-        auto splineQueryResult = m_spline->GetNearestAddressPosition(localPoint);
-        const float variableRadius = m_variableRadius.GetElementInterpolated(
-            splineQueryResult.m_splineAddress.m_segmentIndex, splineQueryResult.m_splineAddress.m_segmentFraction, Lerpf);
+        const auto splineQueryResult = m_spline->GetNearestAddressPosition(localPoint);
+        const float variableRadius =
+            m_variableRadius.GetElementInterpolated(splineQueryResult.m_splineAddress, Lerpf);
 
         return powf((sqrtf(splineQueryResult.m_distanceSq) - (m_radius + variableRadius)) * maxScale.GetMaxElement(), 2.0f);
     }
@@ -216,8 +241,7 @@ namespace LmbrCentral
 
         const auto splineQueryResult = IntersectSpline(transformUniformScale, src, dir, *m_spline);
         const float variableRadius = m_variableRadius.GetElementInterpolated(
-            splineQueryResult.m_splineAddress.m_segmentIndex,
-            splineQueryResult.m_splineAddress.m_segmentFraction, Lerpf);
+            splineQueryResult.m_splineAddress, Lerpf);
 
         const float totalRadius = m_radius + variableRadius;
         distance = (splineQueryResult.m_rayDistance - totalRadius) * m_currentTransform.RetrieveScale().GetMaxElement();
@@ -225,9 +249,7 @@ namespace LmbrCentral
         return static_cast<float>(sqrtf(splineQueryResult.m_distanceSq)) < totalRadius;
     }
 
-    /**
-     * Generates all vertex positions. Assumes the vertex pointer is valid
-     */
+    /// Generates all vertex positions. Assumes the vertex pointer is valid
     static void GenerateSolidTubeMeshVertices(
         const AZ::SplinePtr& spline, const SplineAttribute<float>& variableRadius,
         const float radius, const AZ::u32 sides, const AZ::u32 capSegments, AZ::Vector3* vertices)
@@ -242,7 +264,7 @@ namespace LmbrCentral
                 spline->GetPosition(address),
                 previousTangent,
                 normal,
-                radius + variableRadius.GetElementInterpolated(address.m_segmentIndex, address.m_segmentFraction, Lerpf),
+                radius + variableRadius.GetElementInterpolated(address, Lerpf),
                 sides, capSegments, vertices);
         }
 
@@ -261,7 +283,7 @@ namespace LmbrCentral
                     spline->GetPosition(address),
                     currentTangent,
                     normal,
-                    radius + variableRadius.GetElementInterpolated(address.m_segmentIndex, address.m_segmentFraction, Lerpf),
+                    radius + variableRadius.GetElementInterpolated(address, Lerpf),
                     sides, vertices);
 
                 address.m_segmentFraction += stepDelta;
@@ -279,36 +301,41 @@ namespace LmbrCentral
                 spline->GetPosition(endAddress),
                 spline->GetTangent(endAddress),
                 normal,
-                radius + variableRadius.GetElementInterpolated(endAddress.m_segmentIndex, endAddress.m_segmentFraction, Lerpf),
+                radius + variableRadius.GetElementInterpolated(endAddress, Lerpf),
                 sides, capSegments, vertices);
         }
     }
 
-    /**
-     * Generates vertices and indices for a tube shape
-     * Split into two stages:
-     * - Generate vertex positions
-     * - Generate indices (faces)
-     *
-     * Heres a rough diagram of how it is built:
-     *   ____________
-     *  /_|__|__|__|_\
-     *  \_|__|__|__|_/
-     *
-     *  - A single vertex at each end of the tube
-     *  - Angled end cap segments
-     *  - Middle segments
-     */
+    /// Generates vertices and indices for a tube shape
+    /// Split into two stages:
+    /// - Generate vertex positions
+    /// - Generate indices (faces)
+    /// Heres a rough diagram of how it is built:
+    ///   ____________
+    ///  /_|__|__|__|_\
+    ///  \_|__|__|__|_/
+    ///  - A single vertex at each end of the tube
+    ///  - Angled end cap segments
+    ///  - Middle segments
     void GenerateSolidTubeMesh(
         const AZ::SplinePtr& spline, const SplineAttribute<float>& variableRadius,
         const float radius, const AZ::u32 capSegments, const AZ::u32 sides,
         AZStd::vector<AZ::Vector3>& vertexBufferOut,
         AZStd::vector<AZ::u32>& indexBufferOut)
     {
-        const AZ::u32 segments = spline->GetSegmentCount() * spline->GetSegmentGranularity() + spline->GetSegmentCount() - 1;
+        const size_t segmentCount = spline->GetSegmentCount();
+        if (segmentCount == 0)
+        {
+            // clear the buffers so we no longer draw anything
+            vertexBufferOut.clear();
+            indexBufferOut.clear();
+            return;
+        }
+
+        const AZ::u32 segments = segmentCount * spline->GetSegmentGranularity() + segmentCount - 1;
         const AZ::u32 totalSegments = segments + capSegments * 2;
         const AZ::u32 capSegmentTipVerts = capSegments > 0 ? 2 : 0;
-        const size_t numVerts = sides * (totalSegments+1) + capSegmentTipVerts;
+        const size_t numVerts = sides * (totalSegments + 1) + capSegmentTipVerts;
         const size_t numTriangles = (sides * totalSegments) * 2 + (sides * capSegmentTipVerts);
 
         vertexBufferOut.resize(numVerts);
@@ -322,10 +349,8 @@ namespace LmbrCentral
             sides, segments, capSegments, &indexBufferOut[0]);
     }
 
-    /**
-     * Compose Caps, Lines and Loops to produce a final wire mesh matching the style of other
-     * debug draw components.
-     */
+    /// Compose Caps, Lines and Loops to produce a final wire mesh matching the style of other
+    /// debug draw components.
     void GenerateWireTubeMesh(
         const AZ::SplinePtr& spline, const SplineAttribute<float>& variableRadius,
         const float radius, const AZ::u32 capSegments, const AZ::u32 sides,
@@ -366,7 +391,7 @@ namespace LmbrCentral
                 spline->GetPosition(address),
                 -previousDirection,
                 side,
-                radius + variableRadius.GetElementInterpolated(address.m_segmentIndex, address.m_segmentFraction, Lerpf),
+                radius + variableRadius.GetElementInterpolated(address, Lerpf),
                 capSegments,
                 vertices);
         }
@@ -386,12 +411,12 @@ namespace LmbrCentral
                 const auto nextPosition = spline->GetPosition(nextAddress);
                 const auto direction = spline->GetTangent(address);
                 const auto nextDirection = spline->GetTangent(nextAddress);
-                side = CalculateNormal(side, previousDirection, direction);
-                nextSide = CalculateNormal(nextSide, direction, nextDirection);
+                side = spline->GetNormal(address);
+                nextSide = spline->GetNormal(nextAddress);
                 const auto up = side.Cross(direction);
                 const auto nextUp = nextSide.Cross(nextDirection);
-                const auto finalRadius = radius + variableRadius.GetElementInterpolated(address.m_segmentIndex, address.m_segmentFraction, Lerpf);
-                const auto nextFinalRadius = radius + variableRadius.GetElementInterpolated(nextAddress.m_segmentIndex, nextAddress.m_segmentFraction, Lerpf);
+                const auto finalRadius = radius + variableRadius.GetElementInterpolated(address, Lerpf);
+                const auto nextFinalRadius = radius + variableRadius.GetElementInterpolated(nextAddress, Lerpf);
 
                 // left line
                 vertices = WriteVertex(
@@ -451,7 +476,8 @@ namespace LmbrCentral
             const auto endAddress = spline->GetAddressByFraction(1.0f);
             const auto endPosition = spline->GetPosition(endAddress);
             const auto endDirection = spline->GetTangent(endAddress);
-            const auto endRadius = radius + variableRadius.GetElementInterpolated(endAddress.m_segmentIndex, endAddress.m_segmentFraction, Lerpf);
+            const auto endRadius =
+                radius + variableRadius.GetElementInterpolated(endAddress, Lerpf);
 
             // end cap
             CapsuleTubeUtil::GenerateWireCap(
@@ -482,26 +508,70 @@ namespace LmbrCentral
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<TubeShapeMeshConfig>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("EndSegments", &TubeShapeMeshConfig::m_endSegments)
                 ->Field("Sides", &TubeShapeMeshConfig::m_sides)
+                ->Field("ShapeConfig", &TubeShapeMeshConfig::m_shapeComponentConfig)
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
-                editContext->Class<TubeShapeMeshConfig>("Configuration", "Tube Shape Mesh Configutation")
+                editContext->Class<TubeShapeMeshConfig>("Configuration", "Tube Shape Mesh Configuration")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &TubeShapeMeshConfig::m_endSegments, "End Segments", "Number Of segments at each end of the tube in the editor")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &TubeShapeMeshConfig::m_endSegments, "End Segments",
+                        "Number Of segments at each end of the tube in the editor")
                         ->Attribute(AZ::Edit::Attributes::Min, 1)
                         ->Attribute(AZ::Edit::Attributes::Max, 10)
                         ->Attribute(AZ::Edit::Attributes::Step, 1)
-                    ->DataElement(AZ::Edit::UIHandlers::Slider, &TubeShapeMeshConfig::m_sides, "Sides", "Number of Sides of the tube in the editor")
+                    ->DataElement(AZ::Edit::UIHandlers::Slider, &TubeShapeMeshConfig::m_sides, "Sides",
+                        "Number of Sides of the tube in the editor")
                         ->Attribute(AZ::Edit::Attributes::Min, 3)
                         ->Attribute(AZ::Edit::Attributes::Max, 32)
                         ->Attribute(AZ::Edit::Attributes::Step, 1)
                         ;
             }
+        }
+    }
+
+    static void RefreshUI()
+    {
+#if LMBR_CENTRAL_EDITOR
+        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+            &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
+            AzToolsFramework::PropertyModificationRefreshLevel::Refresh_Values);
+#endif
+    }
+
+    void TubeShape::BaseRadiusChanged()
+    {
+        // ensure all variable radii stay in bounds should the base radius
+        // change and cause the resulting total radius to be negative
+        ValidateAllVariableRadii();
+        RefreshUI();
+    }
+
+    void TubeShape::VariableRadiusChanged(size_t vertIndex)
+    {
+        ValidateVariableRadius(vertIndex);
+        RefreshUI();
+    }
+
+    void TubeShape::ValidateVariableRadius(const size_t vertIndex)
+    {
+        // if the total radius is less than 0, adjust the variable radius
+        // to ensure the total radius stays positive
+        if (GetTotalRadius(AZ::SplineAddress(vertIndex)) < 0.0f)
+        {
+            SetVariableRadius(vertIndex, -GetRadius());
+        }
+    }
+
+    void TubeShape::ValidateAllVariableRadii()
+    {
+        for (size_t vertIndex = 0; vertIndex < m_spline->GetVertexCount(); ++vertIndex)
+        {
+            ValidateVariableRadius(vertIndex);
         }
     }
 } // namespace LmbrCentral

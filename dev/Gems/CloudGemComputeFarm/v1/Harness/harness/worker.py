@@ -1,3 +1,14 @@
+#
+# All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
+# its licensors.
+#
+# For complete copyright and license terms please see the LICENSE at the root of this
+# distribution (the "License"). All use of this software is governed by the License,
+# or, if provided, by the license below or the license accompanying this file. Do not
+# remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+
 import datetime
 import json
 import os
@@ -33,9 +44,12 @@ class Heartbeat(threading.Thread):
                         taskToken=task_token
                     )
                     self.cancelRequested = heartbeat.get('cancelRequested', False)
-
-                except:
+                except botocore.exceptions.ClientError as e:
+                    if e.response['Error']['Code'] != 'UnknownResourceFault':
+                        print('Error on record_activity_task_heartbeat Error code {} : response {} : {}'.format(e.response['Error']['Code'], e.response, e))
+                except Exception as e:
                     # This can fail on occasion if the task is already marked as complete
+                    print('Error on record_activity_task_heartbeat : {}'.format(e))
                     pass
 
             time.sleep(60)
@@ -179,7 +193,7 @@ def run_worker(config):
             )
 
         except Exception as e:
-            message = str(e) + "\n" + traceback.format_exc()
+            message = "Error - " + str(e) + "\n" + traceback.format_exc()
             print(message)
 
             try:

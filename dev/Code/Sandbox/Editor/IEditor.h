@@ -277,7 +277,7 @@ struct IUIEvent
 struct IDocListener
 {
     virtual ~IDocListener() = default;
-    
+
     //! Called after new level is created.
     virtual void OnNewDocument() = 0;
     //! Called after level have been loaded.
@@ -444,7 +444,7 @@ enum EModifiedModule
 struct IPickObjectCallback
 {
     virtual ~IPickObjectCallback() = default;
-    
+
     //! Called when object picked.
     virtual void OnPick(CBaseObject* picked) = 0;
     //! Called when pick mode cancelled.
@@ -480,7 +480,7 @@ class CTrackViewSequence;
 struct ITrackViewSequenceManager
 {
     virtual IAnimSequence* OnCreateSequenceObject(QString name, bool isLegacySequence = true, AZ::EntityId entityId = AZ::EntityId()) = 0;
-    
+
     //! Notifies of the delete of a sequence entity OR legacy sequence object
     //! @param entityId The Sequence Component Entity Id OR the legacy sequence object Id packed in the lower 32-bits, as returned from IAnimSequence::GetSequenceEntityId()
     virtual void OnDeleteSequenceEntity(const AZ::EntityId& entityId) = 0;
@@ -908,8 +908,8 @@ struct IEditor
     // Console federation helper
     virtual void LaunchAWSConsole(QString destUrl) = 0;
 
-	// Prompt to open the Project Configurator with a specific message.
-	virtual bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location) = 0;
+    // Prompt to open the Project Configurator with a specific message.
+    virtual bool ToProjectConfigurator(const QString& msg, const QString& caption, const QString& location) = 0;
 
     // Provides a way to extend the context menu of an object. The function gets called every time the menu is opened.
     typedef Functor2<QMenu*, const CBaseObject*> TContextMenuExtensionFunc;
@@ -940,6 +940,8 @@ struct IEditor
     // For flagging if the legacy UI items should be enabled
     virtual bool IsLegacyUIEnabled() = 0;
     virtual void SetLegacyUIEnabled(bool enabled) = 0;
+
+    virtual bool IsNewViewportInteractionModelEnabled() const = 0;
 };
 
 //! Callback used by editor when initializing for info in UI dialogs

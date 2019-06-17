@@ -31,8 +31,6 @@ namespace Maestro
 {
     void EditorSequenceAgentComponent::Reflect(AZ::ReflectContext* context)
     {
-        AZ::EntityComponentIdPair::Reflect(context);
-
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
 
         if (serializeContext)

@@ -697,7 +697,7 @@ def build(bld):
         platforms = ['all'],
         uselib = $-USE-LIB-LIST-$,
 
-        use = ['CloudGemFrameworkStaticLibrary']
+        use = ['CloudGemFramework.StaticLibrary']
 
     )
 '''

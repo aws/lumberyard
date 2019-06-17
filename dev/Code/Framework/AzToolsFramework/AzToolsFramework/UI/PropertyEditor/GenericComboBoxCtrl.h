@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -12,14 +12,20 @@
 
 #pragma once
 
-#include <AzCore/Memory/SystemAllocator.h>
 #include <QtWidgets/QWidget>
+
+#include <AzCore/Math/Uuid.h>
+
+#include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/Serialization/EditContextConstants.inl>
+
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
-#include <ScriptCanvas/Core/Attributes.h>
+#include <QPushButton>
 
 class QComboBox;
 
-namespace ScriptCanvasEditor
+
+namespace AzToolsFramework
 {
     template<typename T>
     class GenericComboBoxHandler;
@@ -61,22 +67,28 @@ namespace ScriptCanvasEditor
         GenericComboBoxCtrl(QWidget* pParent = nullptr);
         ~GenericComboBoxCtrl() override = default;
 
+        const T& value() const;
+        void setValue(const T& value);
+
+        void addElements(const AZStd::vector<AZStd::pair<T, AZStd::string>>& genericValues);
+        void addElement(const AZStd::pair<T, AZStd::string>& genericValue);
+        void setElements(const AZStd::vector<AZStd::pair<T, AZStd::string>>& genericValues);
+
     protected:
         QWidget* GetFirstInTabOrder() override;
         QWidget* GetLastInTabOrder() override;
-        void UpdateTabOrder() override;
-
-        const T& value() const;
-        void setValue(const T& value);
-        void addGenericValuesItems(const AZStd::vector<AZStd::pair<T, AZStd::string>>& genericValues);
-        void setGenericValuesItems(const AZStd::vector<AZStd::pair<T, AZStd::string>>& genericValues);
+        void UpdateTabOrder() override;        
 
         void onChildComboBoxValueChange(int comboBoxIndex) override;
 
     private:
+
+        void addElementImpl(const AZStd::pair<T, AZStd::string>& genericValue);
+
         QComboBox* m_pComboBox;
         AZStd::vector<AZStd::pair<T, AZStd::string>> m_values;
         AZ::AttributeFunction <void(const T&)>* m_postChangeNotifyCB{};
+
     };
 
     template<typename T>
@@ -90,7 +102,7 @@ namespace ScriptCanvasEditor
         using ComboBoxCtrl = GenericComboBoxCtrlBase;
         GenericComboBoxHandler() = default;
 
-        AZ::u32 GetHandlerName(void) const override { return ScriptCanvas::Attributes::UIHandlers::GenericComboBox; }
+        AZ::u32 GetHandlerName(void) const override { return AZ::Edit::UIHandlers::ComboBox; }
         QWidget* GetFirstInTabOrder(ComboBoxCtrl* widget) override { return widget->GetFirstInTabOrder(); }
         QWidget* GetLastInTabOrder(ComboBoxCtrl* widget) override { return widget->GetLastInTabOrder(); }
         void UpdateWidgetInternalTabbing(ComboBoxCtrl* widget) override { widget->UpdateTabOrder(); }
@@ -100,9 +112,10 @@ namespace ScriptCanvasEditor
         void WriteGUIValuesIntoProperty(size_t index, ComboBoxCtrl* GUI, typename GenericComboBoxHandler::property_t& instance, AzToolsFramework::InstanceDataNode* node) override;
         bool ReadValuesIntoGUI(size_t index, ComboBoxCtrl* GUI, const typename GenericComboBoxHandler::property_t& instance, AzToolsFramework::InstanceDataNode* node)  override;
 
-        bool AutoDelete() const override { return false; }
+        bool AutoDelete() const override { return true; }
 
     private:
+
         void InvokePostChangeNotify(size_t index, GenericComboBoxCtrl<T>* genericGUI, const typename GenericComboBoxHandler::property_t& oldValue, AzToolsFramework::InstanceDataNode* node) const;
     };
 
@@ -112,7 +125,7 @@ namespace ScriptCanvasEditor
         auto propertyHandler = aznew GenericComboBoxHandler<T>();
         AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::RegisterPropertyType, propertyHandler);
         return propertyHandler;
-    }
+    };
 }
 
-#include <ScriptCanvas/View/EditCtrls/GenericComboBoxCtrl.inl>
+#include <AzToolsFramework/UI/PropertyEditor/GenericComboBoxCtrl.inl>

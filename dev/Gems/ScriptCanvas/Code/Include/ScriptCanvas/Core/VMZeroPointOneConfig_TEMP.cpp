@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "Graph.h"
 
 namespace ScriptCanvas

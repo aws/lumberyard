@@ -64,7 +64,8 @@ MIME_TYPE_TEXT_PLAIN = 'text/plain'
 '''
 Event version for event published by S3 source.
 '''
-S3_EVENT_VERSION = '2.0'
+S3_EVENT_VERSION_MIN = 2.0
+S3_EVENT_VERSION_MAX = 2.1
 
 '''
 Name of the sanitized bucket.

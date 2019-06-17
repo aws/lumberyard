@@ -17,6 +17,7 @@
 #include <AzCore/Serialization/ObjectStream.h>
 #include <AzCore/std/string/string.h>
 
+#include <GraphCanvas/Components/Slots/Data/DataSlotBus.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
 
 #include <GraphCanvas/Components/NodePropertyDisplay/NodePropertyDisplay.h>
@@ -27,6 +28,9 @@
 #include <GraphCanvas/Components/NodePropertyDisplay/ReadOnlyDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/StringDataInterface.h>
 #include <GraphCanvas/Components/NodePropertyDisplay/VectorDataInterface.h>
+
+#include <GraphCanvas/Components/Nodes/NodeConfiguration.h>
+#include <GraphCanvas/Components/Nodes/Group/NodeGroupBus.h>
 
 namespace AZ
 {
@@ -100,11 +104,28 @@ namespace GraphCanvas
             return InitActivateEntity(CreateCommentNode());
         }
 
-        virtual AZ::Entity* CreateBlockCommentNode() const = 0;
-
-        AZ::Entity* CreateBlockCommentNodeAndActivate() const
+        AZ_DEPRECATED(AZ::Entity* CreateBlockCommentNode() const, "CreateBlockCommentNode has been renamed to CreateNodeGroup to better reflect functionality.")
         {
-            return InitActivateEntity(CreateBlockCommentNode());
+            return CreateNodeGroup();
+        }
+
+        AZ_DEPRECATED(AZ::Entity* CreateBlockCommentNodeAndActivate() const, "CreateBlockCommentNodeAndActivate has been renamed to CreateNodeGroupAndActivate to better reflect functionality.")
+        {
+            return CreateNodeGroupAndActivate();
+        }
+
+        virtual AZ::Entity* CreateNodeGroup() const = 0;
+
+        AZ::Entity* CreateNodeGroupAndActivate() const
+        {
+            return InitActivateEntity(CreateNodeGroup());
+        }
+
+        virtual AZ::Entity* CreateCollapsedNodeGroup(const CollapsedNodeGroupConfiguration& groupedNodeConfiguration) const = 0;
+
+        AZ::Entity* CreateCollapsedNodeGroupAndActivate(const CollapsedNodeGroupConfiguration& groupedNodeConfiguration)
+        {
+            return InitActivateEntity(CreateCollapsedNodeGroup(groupedNodeConfiguration));
         }
 
         //! Create a wrapper node.
@@ -118,23 +139,25 @@ namespace GraphCanvas
             return InitActivateEntity(CreateWrapperNode(nodeType));
         }
 
+        virtual AZ::Entity* CreateSlot(const AZ::EntityId& nodeId, const SlotConfiguration& slotConfiguration) const = 0;
+
         //! Create a data slot
         //! param: nodeId is the parent node
         //! param: typeId is the data type of the data slot.
         //! param: slotConfiguration is the various configurable aspects of the slot.
-        virtual AZ::Entity* CreateDataSlot(const AZ::EntityId& nodeId, const AZ::Uuid& typeId, const SlotConfiguration& slotConfiguration) const = 0;
+        AZ_DEPRECATED(AZ::Entity* CreateDataSlot(const AZ::EntityId& nodeId, const DataSlotConfiguration& dataSlotConfiguration, const SlotConfiguration& slotConfiguration) const, "DataSlotConfiguration now inherit from SlotConfiguration. Please make a single configuration and invoke CreateSlot.")
+        {
+            DataSlotConfiguration mergedConfiguration = dataSlotConfiguration;
 
-        //! Create a variable reference slot
-        //! param: nodeId is the parent node
-        //! param: typeId is the data type of the data slot.
-        //! param: slotConfiguration is the various configurable aspects of the slot.
-        virtual AZ::Entity* CreateVariableReferenceSlot(const AZ::EntityId& nodeId, const AZ::Uuid& typeId, const SlotConfiguration& slotConfiguration) const = 0;
+            mergedConfiguration.m_connectionType = slotConfiguration.m_connectionType;
 
-        //! Create a variable source slot
-        //! param: nodeId is the parent node
-        //! param: typeId is the data type of the data slot.
-        //! param: slotConfiguration is the various configurable aspects of the slot.
-        virtual AZ::Entity* CreateVariableSourceSlot(const AZ::EntityId& nodeId, const AZ::Uuid& typeId, const SlotConfiguration& slotConfiguration) const = 0;
+            mergedConfiguration.m_name = slotConfiguration.m_name;
+            mergedConfiguration.m_tooltip = slotConfiguration.m_tooltip;
+
+            mergedConfiguration.m_slotGroup = slotConfiguration.m_slotGroup;
+
+            return CreateSlot(nodeId, mergedConfiguration);
+        }
 
         //! Creates a BooleanNodeProperty display using the specified BooleanDataInterface
         //! param: dataInterface is the interface to local data to be used in the operation of the NodePropertyDisplay.
@@ -179,7 +202,11 @@ namespace GraphCanvas
         //! Create an execution slot
         //! param: nodeId is the parent node
         //! param: slotConfiguration is the various configurable aspects of the slot.
-        virtual AZ::Entity* CreateExecutionSlot(const AZ::EntityId& nodeId, const SlotConfiguration& slotConfiguration) const = 0;
+        AZ_DEPRECATED(AZ::Entity* CreateExecutionSlot(const AZ::EntityId& nodeId, const SlotConfiguration& slotConfiguration) const, "Execution Slots now have their own configuration. Please construct a ExecutionSlotConfiguration object, and invoke CreateSlot.")
+        {
+            ExecutionSlotConfiguration executionConfiguration(slotConfiguration);
+            return CreateSlot(nodeId, executionConfiguration);
+        }
 
         //! Create a property slot
         //! param: nodeId is the parent node

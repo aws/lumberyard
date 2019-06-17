@@ -25,8 +25,8 @@ namespace ScriptCanvas
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
 
-        virtual const SlotId& GetSourceSlot() const = 0;
         virtual const SlotId& GetTargetSlot() const = 0;
+        virtual const SlotId& GetSourceSlot() const = 0;
 
         virtual const AZ::EntityId& GetTargetNode() const = 0;
         virtual const AZ::EntityId& GetSourceNode() const = 0;

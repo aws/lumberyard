@@ -60,7 +60,7 @@ namespace EMotionFX
 
         void SetMathFunction(EMathFunction func);
 
-        uint32 GetVisualColor() const override { return MCore::RGBA(0, 123, 167); }
+        AZ::Color GetVisualColor() const override { return AZ::Color(0.0f, 0.48f, 0.65f, 1.0f); }
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;

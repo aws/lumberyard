@@ -37,13 +37,16 @@ namespace LmbrCentral
         m_currentEntityTransform = world;
     }
 
-    void EntityDebugDisplayComponent::DisplayEntity(bool& handled)
+    void EntityDebugDisplayComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        DisplayShape(handled,
+        DisplayShape(
+            debugDisplay,
             []() { return true; }, // canDraw function - in game mode/view we always want to draw, so just return true
-            [this](AzFramework::EntityDebugDisplayRequests* displayContext) 
-            { 
-                Draw(displayContext); 
+            [this](AzFramework::DebugDisplayRequests& debugDisplay)
+            {
+                Draw(debugDisplay);
             },
             m_currentEntityTransform);
     }

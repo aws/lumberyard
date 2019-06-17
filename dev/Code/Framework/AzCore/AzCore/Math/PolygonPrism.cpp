@@ -13,7 +13,6 @@
 #ifndef AZ_UNITY_BUILD
 
 #include <AzCore/Math/PolygonPrism.h>
-#include <AzCore/Math/VectorConversions.h>
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -28,7 +27,7 @@ namespace AZ
 
     void PolygonPrism::Reflect(ReflectContext* context)
     {
-        if (SerializeContext* serializeContext = azrtti_cast<SerializeContext*>(context))
+        if (auto serializeContext = azrtti_cast<SerializeContext*>(context))
         {
             serializeContext->Class<PolygonPrism>()
                 ->Version(1)
@@ -52,7 +51,7 @@ namespace AZ
             }
         }
 
-        if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
+        if (auto behaviorContext = azrtti_cast<BehaviorContext*>(context))
         {
             behaviorContext->Class<PolygonPrism>()
                 ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
@@ -63,7 +62,7 @@ namespace AZ
         }
     }
 
-    void PolygonPrism::SetHeight(float height)
+    void PolygonPrism::SetHeight(const float height)
     {
         if (!IsCloseMag(height, m_height))
         {
@@ -81,33 +80,33 @@ namespace AZ
     }
 
     void PolygonPrism::SetCallbacks(
-        const AZStd::function<void()>& OnChangeElement,
-        const AZStd::function<void()>& OnChangeContainer,
-        const AZStd::function<void()>& OnChangeHeight)
+        const VoidFunction& onChangeElement,
+        const VoidFunction& onChangeContainer,
+        const VoidFunction& onChangeHeight)
     {
         m_vertexContainer.SetCallbacks(
-            [OnChangeContainer](size_t) { OnChangeContainer(); },
-            [OnChangeContainer](size_t) { OnChangeContainer(); },
-            OnChangeElement,
-            OnChangeContainer,
-            OnChangeContainer);
+            [onChangeContainer](size_t) { onChangeContainer(); },
+            [onChangeContainer](size_t) { onChangeContainer(); },
+            [onChangeElement](size_t) { onChangeElement(); },
+            onChangeContainer,
+            onChangeContainer);
 
-        m_onChangeHeightCallback = OnChangeHeight;
+        m_onChangeHeightCallback = onChangeHeight;
     }
 
     void PolygonPrism::SetCallbacks(
-        const AZStd::function<void(size_t)>& OnAddVertex, const AZStd::function<void(size_t)>& OnRemoveVertex,
-        const AZStd::function<void()>& OnUpdateVertex, const AZStd::function<void()>& OnSetVertices,
-        const AZStd::function<void()>& OnClearVertices, const AZStd::function<void()>& OnChangeHeight)
+        const IndexFunction& onAddVertex, const IndexFunction& onRemoveVertex,
+        const IndexFunction& onUpdateVertex, const VoidFunction& onSetVertices,
+        const VoidFunction& onClearVertices, const VoidFunction& onChangeHeight)
     {
         m_vertexContainer.SetCallbacks(
-            OnAddVertex,
-            OnRemoveVertex,
-            OnUpdateVertex,
-            OnSetVertices,
-            OnClearVertices);
+            onAddVertex,
+            onRemoveVertex,
+            onUpdateVertex,
+            onSetVertices,
+            onClearVertices);
 
-        m_onChangeHeightCallback = OnChangeHeight;
+        m_onChangeHeightCallback = onChangeHeight;
     }
 
     AZ_CLASS_ALLOCATOR_IMPL(PolygonPrism, SystemAllocator, 0)

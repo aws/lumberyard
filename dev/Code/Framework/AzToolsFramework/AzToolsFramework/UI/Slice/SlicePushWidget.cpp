@@ -959,9 +959,10 @@ namespace AzToolsFramework
                     continue;
                 }
 
-                if (item->m_address == confictTestItem->m_address)
+                if (item->m_address == confictTestItem->m_address && item->m_slicePushType == FieldTreeItem::SlicePushType::Changed)
                 {
                     // Check whether both changes will be pushed to the same entity down in the target slice.
+                    // Only items of 'SlicePushType::Changed' needs to be checked. Additions and removals don't generate override conflict.
 
                     AZ::Entity* rootEntity_item = nullptr;
                     FieldTreeItem* entityField_item = item->m_entityItem;
@@ -1411,7 +1412,10 @@ namespace AzToolsFramework
             FieldTreeItem* pItem = stack.back();
             stack.pop_back();
 
-            pItem->setCheckState(0, checkState);
+            if (!pItem->isDisabled())
+            {
+                pItem->setCheckState(0, checkState);
+            }
 
             for (int i = 0; i < pItem->childCount(); ++i)
             {
@@ -1896,7 +1900,7 @@ namespace AzToolsFramework
                     // would cause addresses to be re-generated, causing the cached addresses for other changes in the transaction to resolve incorrectly.
                     // This also provides a cleaner interface, often times the interface for changes to containers wouldn't match what users expected.
                     // This also prevents users from creating strange situations in slices, by making big changes to a container and only partially pushing those changes.
-                    const bool isContainer = node->GetClassMetadata()->m_container != nullptr;
+                    const bool isContainer = node->GetClassMetadata() ? node->GetClassMetadata()->m_container != nullptr : false;
                     bool childrenHavePersistentId = true;
                     if (isContainer && node->GetChildren().size() > 0)
                     {
@@ -2208,7 +2212,7 @@ namespace AzToolsFramework
             {
                 AddStatusMessage(AzToolsFramework::SlicePushWidget::StatusMessageType::Warning, 
                                     QObject::tr("(A) Invalid additions detected. These are unsaveable because slices cannot contain instances of themselves. "
-                                                "Saving these additions would create a cyclic asset dependency, causing infinite recursion."));
+                                        "Saving these additions would create a cyclic asset dependency, causing infinite recursion."));
             }
             if (hasUnpushableTransformDescendants)
             {

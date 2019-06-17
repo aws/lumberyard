@@ -63,6 +63,7 @@ namespace ScriptCanvas
             Matrix4x4,
             OBB,
             Plane,
+            NamedEntityID,
             // Function, 
             // List,
         };
@@ -72,6 +73,7 @@ namespace ScriptCanvas
         using CRCType = AZ::Crc32;
         using ColorType = AZ::Color;
         using EntityIDType = AZ::EntityId;
+        using NamedEntityIDType = AZ::NamedEntityId;
         using Matrix3x3Type = AZ::Matrix3x3;
         using Matrix4x4Type = AZ::Matrix4x4;
         using NumberType = double;
@@ -97,6 +99,7 @@ namespace ScriptCanvas
             static Type Color();
             static Type CRC();
             static Type EntityID();
+            static Type NamedEntityID();
             static Type Invalid();
             static Type Matrix3x3();
             static Type Matrix4x4();
@@ -113,7 +116,7 @@ namespace ScriptCanvas
             // the default ctr produces the invalid type, and is only here to help the compiler
             Type();
 
-            const AZ::Uuid& GetAZType() const;
+            AZ::Uuid GetAZType() const;
             eType GetType() const;
             bool IsValid() const;
             explicit operator bool() const;
@@ -156,8 +159,13 @@ namespace ScriptCanvas
         template<typename T>
         Type FromAZType();
 
-        const char* GetBehaviorContextName(const AZ::Uuid& type);
-        const char* GetName(const Type& type);
+        // returns the most raw name for the type
+        const char* GetBehaviorContextName(const AZ::Uuid& azType);
+        const char* GetBehaviorContextName(const Type& type);
+        // returns a possibly prettier name for the type
+        AZStd::string GetBehaviorClassName(const AZ::Uuid& typeID);
+        // returns a possibly prettier name for the type
+        AZStd::string GetName(const Type& type);
 
         AZ_INLINE NumberType FromVectorFloat(AZ::VectorFloat number)
         {
@@ -185,6 +193,22 @@ namespace ScriptCanvas
         bool IsVectorType(const Type& type);
         AZ::Uuid ToAZType(const Type& type);
 
+        bool IsContainerType(const AZ::Uuid& type);
+        bool IsContainerType(const Type& type);
+        bool IsMapContainerType(const AZ::Uuid& type);
+        bool IsMapContainerType(const Type& type);
+        bool IsOutcomeType(const AZ::Uuid& type);
+        bool IsOutcomeType(const Type& type);
+        bool IsSetContainerType(const AZ::Uuid& type);
+        bool IsSetContainerType(const Type& type);
+        bool IsVectorContainerType(const AZ::Uuid& type);
+        bool IsVectorContainerType(const Type& type);
+
+        AZStd::vector<AZ::Uuid> GetContainedTypes(const AZ::Uuid& type);
+        AZStd::vector<Type> GetContainedTypes(const Type& type);
+        AZStd::pair<AZ::Uuid, AZ::Uuid> GetOutcomeTypes(const AZ::Uuid& type);
+        AZStd::pair<Type, Type> GetOutcomeTypes(const Type& type);
+
         bool IsAABB(const AZ::Uuid& type);
         bool IsAABB(const Type& type);
         bool IsBoolean(const AZ::Uuid& type);
@@ -195,6 +219,8 @@ namespace ScriptCanvas
         bool IsCRC(const Type& type);
         bool IsEntityID(const AZ::Uuid& type);
         bool IsEntityID(const Type& type);
+        bool IsNamedEntityID(const AZ::Uuid& type);
+        bool IsNamedEntityID(const Type& type);
         bool IsNumber(const AZ::Uuid& type);
         bool IsNumber(const Type& type);
         bool IsMatrix3x3(const AZ::Uuid& type);
@@ -277,6 +303,16 @@ namespace ScriptCanvas
             return type.GetType() == eType::EntityID;
         }
 
+        AZ_INLINE bool IsNamedEntityID(const AZ::Uuid& type)
+        {
+            return type == azrtti_typeid<AZ::NamedEntityId>();
+        }
+
+        AZ_INLINE bool IsNamedEntityID(const Type& type)
+        {
+            return type.GetType() == eType::NamedEntityID;
+        }
+
         AZ_INLINE bool IsMatrix3x3(const AZ::Uuid& type)
         {
             return type == azrtti_typeid<AZ::Matrix3x3>();
@@ -299,17 +335,15 @@ namespace ScriptCanvas
 
         AZ_INLINE bool IsNumber(const AZ::Uuid& type)
         {
-            return type == azrtti_typeid<char>()
-                || type == azrtti_typeid<short>()
-                || type == azrtti_typeid<int>()
-                || type == azrtti_typeid<long>()
-                || type == azrtti_typeid<AZ::s8>()
+            return type == azrtti_typeid<AZ::s8>()
+                || type == azrtti_typeid<AZ::s16>()
+                || type == azrtti_typeid<AZ::s32>()
                 || type == azrtti_typeid<AZ::s64>()
-                || type == azrtti_typeid<unsigned char>()
-                || type == azrtti_typeid<unsigned int>()
-                || type == azrtti_typeid<unsigned long>()
-                || type == azrtti_typeid<unsigned short>()
+                || type == azrtti_typeid<AZ::u8>()
+                || type == azrtti_typeid<AZ::u16>()
+                || type == azrtti_typeid<AZ::u32>()
                 || type == azrtti_typeid<AZ::u64>()
+                || type == azrtti_typeid<unsigned long>()
                 || type == azrtti_typeid<float>()
                 || type == azrtti_typeid<double>()
                 || type == azrtti_typeid<AZ::VectorFloat>();
@@ -400,15 +434,12 @@ namespace ScriptCanvas
             return type.GetType() == eType::Vector4;
         }
 
-        AZ_INLINE AZ::Uuid ToAZType(const Type& type)
+        AZ_INLINE AZ::Uuid ToAZType(eType type)
         {
-            switch (type.GetType())
+            switch (type)
             {
             case eType::AABB:
                 return azrtti_typeid<AABBType>();
-
-            case eType::BehaviorContextObject:
-                return type.GetAZType();
 
             case eType::Boolean:
                 return azrtti_typeid<bool>();
@@ -421,6 +452,9 @@ namespace ScriptCanvas
 
             case eType::EntityID:
                 return azrtti_typeid<AZ::EntityId>();
+
+            case eType::NamedEntityID:
+                return azrtti_typeid<AZ::NamedEntityId>();
 
             case eType::Invalid:
                 return AZ::Uuid::CreateNull();
@@ -463,6 +497,17 @@ namespace ScriptCanvas
                 // check for behavior context support
                 return AZ::Uuid::CreateNull();
             }
+        }
+
+        AZ_INLINE AZ::Uuid ToAZType(const Type& type)
+        {
+            eType typeEnum = type.GetType();
+            if (typeEnum == eType::BehaviorContextObject)
+            {
+                return type.GetAZType();
+            }
+
+            return ToAZType(typeEnum);
         }
 
         AZ_INLINE bool IsVectorType(const AZ::Uuid& type)
@@ -513,6 +558,7 @@ namespace ScriptCanvas
                 | 1 << static_cast<AZ::u32>(eType::Color)
                 | 1 << static_cast<AZ::u32>(eType::CRC)
                 | 1 << static_cast<AZ::u32>(eType::EntityID)
+                | 1 << static_cast<AZ::u32>(eType::NamedEntityID)
                 | 1 << static_cast<AZ::u32>(eType::Matrix3x3)
                 | 1 << static_cast<AZ::u32>(eType::Matrix4x4)
                 | 1 << static_cast<AZ::u32>(eType::Number)
@@ -522,7 +568,7 @@ namespace ScriptCanvas
                 | 1 << static_cast<AZ::u32>(eType::Transform)
                 | 1 << static_cast<AZ::u32>(eType::Vector3)
                 | 1 << static_cast<AZ::u32>(eType::Vector2)
-                | 1 << static_cast<AZ::u32>(eType::Vector4)
+                | 1 << static_cast<AZ::u32>(eType::Vector4)                
             };
 
             return ((1 << static_cast<AZ::u32>(type.GetType())) & s_valueTypes) != 0;
@@ -575,10 +621,21 @@ namespace ScriptCanvas
             return Type(eType::EntityID);
         }
 
-        AZ_FORCE_INLINE const AZ::Uuid& Type::GetAZType() const
+        AZ_FORCE_INLINE Type Type::NamedEntityID()
         {
-            AZ_Assert(m_type == eType::BehaviorContextObject, "this type doesn't expose an AZ type");
-            return m_azType;
+            return Type(eType::NamedEntityID);
+        }
+
+        AZ_FORCE_INLINE AZ::Uuid Type::GetAZType() const
+        {
+            if (m_type == eType::BehaviorContextObject)
+            {
+                return m_azType;
+            }
+            else
+            {
+                return ScriptCanvas::Data::ToAZType((*this));
+            }
         }
 
         AZ_FORCE_INLINE eType Type::GetType() const

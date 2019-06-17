@@ -36,8 +36,8 @@ namespace GraphCanvas
             [ this ]()
             {
                 // Mainview -> Magnifier
-                UpdateCompleteSceneContentInSceneCoordinates();
-                ApplyMainViewToMagnifier();
+                m_updateSceneContentNeeded = true;
+                m_ApplyMainViewToMagnifierNeeded = true;
             });
         m_miniMapDragUpdateTimer.setInterval(MINIMAP_UPDATE_TIMER_DELAY_IN_MILLISECONDS);
 
@@ -125,7 +125,7 @@ namespace GraphCanvas
     {
         // The main view has been resized.
         // Mainview -> Magnifier
-        ApplyMainViewToMagnifier();
+        m_ApplyMainViewToMagnifierNeeded = true;
     }
 
     // ViewNotificationBus
@@ -133,7 +133,7 @@ namespace GraphCanvas
     {
         // The main view has scrolled.
         // Mainview -> Magnifier
-        ApplyMainViewToMagnifier();
+        m_ApplyMainViewToMagnifierNeeded = true;
     }
 
     // ViewNotificationBus
@@ -141,23 +141,23 @@ namespace GraphCanvas
     {
         // The main view has been centered on an area using CenterOnArea()
         // Mainview -> Magnifier
-        ApplyMainViewToMagnifier();
+        m_ApplyMainViewToMagnifierNeeded = true;
     }
 
     // SceneNotificationBus
     void MiniMapGraphicsView::OnNodeAdded(const AZ::EntityId& nodeId)
     {
         // Mainview -> Magnifier
-        UpdateCompleteSceneContentInSceneCoordinates();
-        ApplyMainViewToMagnifier();
+        m_updateSceneContentNeeded = true;
+        m_ApplyMainViewToMagnifierNeeded = true;
     }
 
     // SceneNotificationBus
     void MiniMapGraphicsView::OnNodeRemoved(const AZ::EntityId& nodeId)
     {
         // Mainview -> Magnifier
-        UpdateCompleteSceneContentInSceneCoordinates();
-        ApplyMainViewToMagnifier();
+        m_updateSceneContentNeeded = true;
+        m_ApplyMainViewToMagnifierNeeded = true;
     }
 
     // SceneNotificationBus
@@ -194,7 +194,7 @@ namespace GraphCanvas
             SceneRequestBus::EventResult(m_mainViewId, m_sceneId, &SceneRequests::GetViewId);
             ViewNotificationBus::Handler::BusConnect(m_mainViewId);
 
-            UpdateCompleteSceneContentInSceneCoordinates();
+            m_updateSceneContentNeeded = true;
 
             QGraphicsScene* graphicsScene = nullptr;
             SceneRequestBus::EventResult(graphicsScene, m_sceneId, &SceneRequests::AsQGraphicsScene);
@@ -205,7 +205,7 @@ namespace GraphCanvas
         }
 
         // Mainview -> Magnifier
-        ApplyMainViewToMagnifier();
+        m_ApplyMainViewToMagnifierNeeded = true;
     }
 
     QSize MiniMapGraphicsView::minimumSizeHint() const
@@ -216,7 +216,7 @@ namespace GraphCanvas
     void MiniMapGraphicsView::resizeEvent(QResizeEvent* ev)
     {
         // Mainview -> Magnifier
-        ApplyMainViewToMagnifier();
+        m_ApplyMainViewToMagnifierNeeded = true;
 
         QGraphicsView::resizeEvent(ev);
     }
@@ -231,7 +231,7 @@ namespace GraphCanvas
         // Mainview <- Magnifier
         ApplyMagnifierToMainView(ev);
         // Mainview -> Magnifier
-        ApplyMainViewToMagnifier();
+        m_ApplyMainViewToMagnifierNeeded = true;
 
         QGraphicsView::mousePressEvent(ev);
     }
@@ -241,7 +241,7 @@ namespace GraphCanvas
         // Mainview <- Magnifier
         ApplyMagnifierToMainView(ev);
         // Mainview -> Magnifier
-        ApplyMainViewToMagnifier();
+        m_ApplyMainViewToMagnifierNeeded = true;
 
         QGraphicsView::mouseMoveEvent(ev);
     }
@@ -251,7 +251,7 @@ namespace GraphCanvas
         // Mainview <- Magnifier
         ApplyMagnifierToMainView(ev);
         // Mainview -> Magnifier
-        ApplyMainViewToMagnifier();
+        m_ApplyMainViewToMagnifierNeeded = true;
 
         // IMPORTANT: We DON'T want to invoke QGraphicsView::mouseReleaseEvent(ev)
         // here because it would invoke SceneNotifications::OnMouseReleased.
@@ -265,6 +265,17 @@ namespace GraphCanvas
         {
             // There's no scene.
             return;
+        }
+
+        if (m_ApplyMainViewToMagnifierNeeded)
+        {
+            ApplyMainViewToMagnifier();
+            m_ApplyMainViewToMagnifierNeeded = false;
+        }
+        if (m_updateSceneContentNeeded)
+        {
+            UpdateCompleteSceneContentInSceneCoordinates();
+            m_updateSceneContentNeeded = false;
         }
 
         QGraphicsView::paintEvent(ev);

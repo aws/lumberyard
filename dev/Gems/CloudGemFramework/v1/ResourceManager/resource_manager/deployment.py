@@ -15,11 +15,15 @@ import util
 import copy
 import json
 import time
+import os
 
 import resource_group
 import mappings
 import project
 import stack
+import cognito_pools
+from cgf_utils import custom_resource_utils
+
 
 from botocore.exceptions import NoCredentialsError
 
@@ -45,8 +49,9 @@ def create_stack(context, args):
         raise HandledError('The project already has a {} deployment.'.format(args.deployment))
 
     # Does deployment-template.json include resource group from a gem which isn't enabled for the project?
-    for resource_group_name in context.resource_groups.keys():
-         __check_resource_group_gem_status(context, resource_group_name)
+    for resource_group in context.resource_groups.values():
+        __validate_resource_group_resources(resource_group)
+        __check_resource_group_gem_status(context, resource_group.name)
 
     # Is the deployment name valid?
     util.validate_stack_name(args.deployment)
@@ -121,6 +126,8 @@ def create_stack(context, args):
     deployment_uploader = project_uploader.get_deployment_uploader(args.deployment)
 
     template_url = before_update(context, deployment_uploader)
+    if os.path.exists(context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME)):
+        deployment_uploader.upload_file(constant.COGNITO_POOLS_FILENAME, context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME))
 
     deployment_stack_parameters = __get_deployment_stack_parameters(context, args.deployment, uploader = deployment_uploader)
 
@@ -317,7 +324,8 @@ def create_stack(context, args):
         if not updated_mappings:
             __update_mappings(context, args.deployment)
 
-    after_update(context, deployment_uploader)
+    after_update(context, deployment_uploader, args.record_cognito_pools)
+
 
 def __set_release_deployment(context, deployment):
     context.config.set_release_deployment(deployment)
@@ -524,8 +532,9 @@ def update_stack(context, args):
         args.deployment = context.config.default_deployment
 
     # Does deployment-template.json include resource group from a gem which isn't enabled for the project?
-    for resource_group_name in context.resource_groups.keys():
-         __check_resource_group_gem_status(context, resource_group_name)
+    for resource_group in context.resource_groups.values():
+        __validate_resource_group_resources(resource_group)
+        __check_resource_group_gem_status(context, resource_group.name)
 
     # Resource group (and other) file write checks
     create_and_validate_writable_list(context)
@@ -561,6 +570,9 @@ def update_stack(context, args):
     deployment_uploader = project_uploader.get_deployment_uploader(args.deployment)
 
     deployment_template_url = before_update(context, deployment_uploader)
+    if os.path.exists(context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME)):
+        deployment_uploader.upload_file(
+            constant.COGNITO_POOLS_FILENAME, context.config.join_aws_directory_path(constant.COGNITO_POOLS_FILENAME))
 
     parameters = __get_deployment_stack_parameters(context, args.deployment, uploader = deployment_uploader)
     enabled_resource_groups = [resource_group for resource_group in context.resource_groups.values() if resource_group.is_enabled]
@@ -705,7 +717,7 @@ def update_stack(context, args):
         except stack.StackOperationException:
             pass
 
-    after_update(context, deployment_uploader)
+    after_update(context, deployment_uploader, args.record_cognito_pools)
 
     # Update mappings...
     __update_mappings(context, args.deployment, has_changes)
@@ -808,7 +820,7 @@ def before_update(context, deployment_uploader):
     return deployment_template_url
 
 
-def after_update(context, deployment_uploader):
+def after_update(context, deployment_uploader, record_pools):
 
     for group in context.resource_groups.values():
         if group.is_enabled:
@@ -816,7 +828,8 @@ def after_update(context, deployment_uploader):
                 deployment_uploader,
                 group.name
             )
-
+    if record_pools:
+        __record_cognito_pools(context, deployment_uploader)
     # Deprecated in 1.9 - TODO: remove
     deployment_uploader.execute_uploader_post_hooks()
 
@@ -825,6 +838,24 @@ def after_update(context, deployment_uploader):
         args = [deployment_uploader.deployment_name, None],
         deprecated = True
     )
+
+
+def __record_cognito_pools(context, deployment_uploader):
+    access_stack_arn = context.config.get_deployment_access_stack_id(
+        deployment_uploader.deployment_name, True)
+    pools = {
+        "DeploymentAccess": {}
+    }
+    if access_stack_arn != None:
+        access_resources = context.stack.describe_resources(
+            access_stack_arn, recursive=True)
+        for resource_name, definition in access_resources.iteritems():
+            if definition["ResourceType"] in ["Custom::CognitoIdentityPool", "Custom::CognitoUserPool"]:
+                pools["DeploymentAccess"][resource_name] = {
+                    "PhysicalResourceId": custom_resource_utils.get_embedded_physical_id(definition['PhysicalResourceId']),
+                    "Type": definition["ResourceType"]
+                }
+    cognito_pools.write_to_project_file(context, pools)
 
 
 def tags(context, args):
@@ -899,6 +930,14 @@ def list(context, args):
 def describe_stack(context, args):
     stack_description = _get_deployment_stack_description(context, args.deployment)
     context.view.deployment_stack_description(args.deployment, stack_description)
+
+
+def __validate_resource_group_resources(resource_group):
+    if not resource_group.is_enabled:
+        return
+    for name, description in resource_group.template["Resources"].iteritems():
+        if description["Type"] == "Custom::ResourceTypes":
+            raise HandledError("{}:{} is of the type Custom::ResourceTypes, that type is not allowed outside of a ProjectStack.".format(resource_group.name, name))
 
 
 def _get_effective_deployment_stack_id(context, deployment_name):

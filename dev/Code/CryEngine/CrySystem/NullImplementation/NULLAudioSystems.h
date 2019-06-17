@@ -40,6 +40,7 @@ namespace Audio
         void SetObstructionCalcType(const EAudioObjectObstructionCalcType) override {}
         void SetPosition(const SATLWorldPosition&) override {}
         void SetPosition(const Vec3&) override {}
+        void SetMultiplePositions(const MultiPositionParams& positions) override {}
         void SetEnvironmentAmount(const TAudioEnvironmentID, const float) override {}
         void SetCurrentEnvironments(const EntityId nEntityToIgnore = 0) override {}
         void SetLipSyncProvider(ILipSyncProvider* const) override {}

@@ -35,7 +35,7 @@ extern "C" PLUGIN_API void QueryPluginSettings(SPluginSettings& settings)
 
 //-----------------------------------------------------------------------------------------------//
 // Call this to signal that the parent (EditorAudioControlsEditor) plugin is being released.
-// This will allow this plugin (EditorAudioControlsEditorWwise) to do some cleanup.
+// This will allow this plugin (EditorWwise) to do some cleanup.
 extern "C" PLUGIN_API void OnPluginRelease()
 {
     delete g_pWwiseInterface;
@@ -45,7 +45,7 @@ extern "C" PLUGIN_API void OnPluginRelease()
 //-----------------------------------------------------------------------------------------------//
 extern "C" PLUGIN_API AudioControls::IAudioSystemEditor * GetAudioInterface(IEditor * pEditor)
 {
-    ModuleInitISystem(pEditor->GetSystem(), "EditorAudioControlsEditorWwise");
+    ModuleInitISystem(pEditor->GetSystem(), "EditorWwise");
     if (!g_pWwiseInterface)
     {
         g_pWwiseInterface = new AudioControls::CAudioSystemEditor_wwise();

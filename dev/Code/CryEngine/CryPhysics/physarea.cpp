@@ -369,7 +369,7 @@ int CPhysArea::ApplyParams(const Vec3& pt, Vec3& gravity, const Vec3& vel, pe_pa
                                 sz = (Rabs = m_R).Fabs() * sz;
                                 heightfield hf, * phf = &hf;
                                 int iyscale = 1, vmask = 0;
-                                float* pdata;
+                                float* pdata = nullptr;
                                 Vec3 vel(ZERO), *pvel = &vel;
                                 float (* getHeight)(float* data, getHeightCallback func, int ix, int iy);
                                 if (m_pWaterMan)
@@ -1648,13 +1648,13 @@ void CPhysArea::Update(float dt)
         else
         {
             // Keep searching for a container vessel each frame.
-			// Ideally we would use collision / intersection tracking to trigger this
-			// but that is not possible in the editor. In actual usage,
-			// this branch terminates rapidly as the physics for the container volume
-			// gets activated in a frame or two.
-			// The user should not, however, place water areas with defined volumes and no
-			// container, as this will have an ongoing cost to search for a container
-			// each frame.
+            // Ideally we would use collision / intersection tracking to trigger this
+            // but that is not possible in the editor. In actual usage,
+            // this branch terminates rapidly as the physics for the container volume
+            // gets activated in a frame or two.
+            // The user should not, however, place water areas with defined volumes and no
+            // container, as this will have an ongoing cost to search for a container
+            // each frame.
             m_pWorld->ActivateArea(this);
         }
     }

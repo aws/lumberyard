@@ -9,9 +9,9 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include <ScriptCanvas/View/EditCtrls/GenericComboBoxCtrl.h>
+#include <AzToolsFramework/UI/PropertyEditor/GenericComboBoxCtrl.h>
 
-namespace ScriptCanvasEditor
+namespace AzToolsFramework
 {
     GenericComboBoxCtrlBase::GenericComboBoxCtrlBase(QWidget* pParent)
         : QWidget(pParent)
@@ -19,4 +19,4 @@ namespace ScriptCanvasEditor
     }
 }
 
-#include <Editor/Static/Include/ScriptCanvas/View/EditCtrls/GenericComboBoxCtrl.moc>
+#include <UI/PropertyEditor/GenericComboBoxCtrl.moc>

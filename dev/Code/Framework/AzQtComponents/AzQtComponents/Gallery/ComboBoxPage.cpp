@@ -32,6 +32,7 @@ ComboBoxPage::ComboBoxPage(QWidget* parent)
         ui->m_data->addItem(QString("Option %1").arg(i), i);
     }
     ui->m_data->setCurrentIndex(0);
+    ui->m_flat->setModel(ui->m_data->model());
 
     // Make the control with data be editable too
     ui->m_data->setEditable(true);

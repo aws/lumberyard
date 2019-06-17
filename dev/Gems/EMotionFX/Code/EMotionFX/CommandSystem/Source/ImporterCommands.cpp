@@ -288,9 +288,6 @@ namespace CommandSystem
         AzFramework::StringFunc::Path::GetFileName(filename.c_str(), motionName);
         motion->SetName(motionName.c_str());
 
-        // create the default playback info in case there is none yet
-        motion->CreateDefaultPlayBackInfo();
-
         // select the motion automatically
         if (parameters.GetValueAsBool("autoSelect", this))
         {

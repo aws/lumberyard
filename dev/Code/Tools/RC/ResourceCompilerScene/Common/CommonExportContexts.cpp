@@ -102,6 +102,12 @@ namespace AZ
         {
         }
 
+        TouchBendableMeshNodeExportContext::TouchBendableMeshNodeExportContext(const MeshNodeExportContext& copyContext, AZStd::string& rootBoneName, Phase phase)
+            : MeshNodeExportContext(copyContext, phase)
+        {
+            m_rootBoneName = rootBoneName;
+        }
+
         ResolveRootBoneFromNodeContext::ResolveRootBoneFromNodeContext(
             AZStd::string& result, const SceneAPI::Containers::Scene& scene, SceneAPI::Containers::SceneGraph::NodeIndex nodeIndex)
             : m_scene(scene)

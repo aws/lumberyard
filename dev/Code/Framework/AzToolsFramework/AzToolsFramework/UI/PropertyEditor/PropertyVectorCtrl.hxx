@@ -85,6 +85,7 @@ namespace AzToolsFramework
 
     Q_SIGNALS:
         void valueChanged(double);
+        void editingFinished();
 
     public Q_SLOTS:
         void onValueChanged(double newValue);
@@ -207,6 +208,7 @@ namespace AzToolsFramework
 Q_SIGNALS:
         void valueChanged(double);
         void valueAtIndexChanged(int elementIndex, double newValue);
+        void editingFinished();
 
     public Q_SLOTS:
         QWidget* GetFirstInTabOrder();

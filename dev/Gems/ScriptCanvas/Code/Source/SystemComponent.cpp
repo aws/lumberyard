@@ -9,7 +9,6 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-#include "precompiled.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -25,6 +24,26 @@
 #include <ScriptCanvas/Execution/RuntimeComponent.h>
 #include <ScriptCanvas/Variable/GraphVariableManagerComponent.h>
 #include <ScriptCanvas/SystemComponent.h>
+
+#if defined(SC_EXECUTION_TRACE_ENABLED)
+#include <ScriptCanvas/Asset/ExecutionLogAsset.h>
+#endif
+
+namespace
+{
+    bool IsDeprecated(const AZ::AttributeArray& attributes)
+    {
+        bool isDeprecated{};
+
+        if (auto isDeprecatedAttributePtr = AZ::FindAttribute(AZ::Script::Attributes::Deprecated, attributes))
+        {
+            AZ::AttributeReader(nullptr, isDeprecatedAttributePtr).Read<bool>(isDeprecated);
+        }
+
+        return isDeprecated;
+    }
+
+}
 
 namespace ScriptCanvas
 {
@@ -50,6 +69,12 @@ namespace ScriptCanvas
                     ;
             }
         }
+
+#if defined(SC_EXECUTION_TRACE_ENABLED)
+        ExecutionLogData::Reflect(context);
+        ExecutionLogAsset::Reflect(context);
+#endif//defined(SC_EXECUTION_TRACE_ENABLED)
+
     }
 
     void SystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -149,6 +174,7 @@ namespace ScriptCanvas
             AZ_Assert(node, "ClassData (%s) does not correspond to a supported ScriptCanvas Node", classData->m_name);
             if (node && nodeEntity)
             {
+                nodeEntity->SetName(classData->m_name);
                 nodeEntity->AddComponent(node);
             }
 
@@ -190,21 +216,30 @@ namespace ScriptCanvas
         auto dataRegistry = ScriptCanvas::GetDataRegistry();
         for (const auto& classIter : behaviorContext->m_classes)
         {
-            const AZ::BehaviorClass* behaviorClass = classIter.second;
+            TypeProperties typeProperties;
 
+            bool canCreate{};
+            const AZ::BehaviorClass* behaviorClass = classIter.second;
             // BehaviorContext classes with the ExcludeFrom attribute with a value of the ExcludeFlags::List is not creatable
             const AZ::u64 exclusionFlags = AZ::Script::Attributes::ExcludeFlags::List;
             auto excludeClassAttributeData = azrtti_cast<const AZ::Edit::AttributeData<AZ::Script::Attributes::ExcludeFlags>*>(AZ::FindAttribute(AZ::Script::Attributes::ExcludeFrom, behaviorClass->m_attributes));
-            if (excludeClassAttributeData && (excludeClassAttributeData->Get(nullptr) & exclusionFlags))
-            {
-                continue;
-            }
 
-            bool canCreate = serializeContext->FindClassData(behaviorClass->m_typeId) != nullptr;
+            const AZ::u64 flags = excludeClassAttributeData ? excludeClassAttributeData->Get(nullptr) : 0;
+            bool listOnly = ((flags & AZ::Script::Attributes::ExcludeFlags::ListOnly) == AZ::Script::Attributes::ExcludeFlags::ListOnly); // ListOnly exclusions may create variables
+
+            canCreate = listOnly || (!excludeClassAttributeData || (!(flags & exclusionFlags)));
+            canCreate = canCreate && (serializeContext->FindClassData(behaviorClass->m_typeId));
+            canCreate = canCreate && !IsDeprecated(behaviorClass->m_attributes);
+
+            if (AZ::FindAttribute(AZ::ScriptCanvasAttributes::AllowInternalCreation, behaviorClass->m_attributes))
+            {
+                canCreate = true;
+                typeProperties.m_isTransient = true;
+            }
 
             // create able variables must have full memory support
             canCreate = canCreate &&
-                (behaviorClass->m_allocate
+                    ( behaviorClass->m_allocate
                     && behaviorClass->m_cloner
                     && behaviorClass->m_mover
                     && behaviorClass->m_destructor
@@ -213,7 +248,7 @@ namespace ScriptCanvas
 
             if (canCreate)
             {
-                dataRegistry->RegisterType(behaviorClass->m_typeId);
+                dataRegistry->RegisterType(behaviorClass->m_typeId, typeProperties);
             }
         }
     }
@@ -229,13 +264,15 @@ namespace ScriptCanvas
         AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
         AZ_Assert(serializeContext, "Serialize Context should not be missing at this point");
 
+        TypeProperties typeProperties;
+
         // BehaviorContext classes with the ExcludeFrom attribute with a value of the ExcludeFlags::List is not creatable
         const AZ::u64 exclusionFlags = AZ::Script::Attributes::ExcludeFlags::List;
         auto excludeClassAttributeData = azrtti_cast<const AZ::Edit::AttributeData<AZ::Script::Attributes::ExcludeFlags>*>(AZ::FindAttribute(AZ::Script::Attributes::ExcludeFrom, behaviorClass->m_attributes));
         bool canCreate = !excludeClassAttributeData || !(excludeClassAttributeData->Get(nullptr) & exclusionFlags);
-
-        canCreate = canCreate && serializeContext->FindClassData(behaviorClass->m_typeId) != nullptr;
-
+        canCreate = canCreate && (serializeContext->FindClassData(behaviorClass->m_typeId) || AZ::FindAttribute(AZ::ScriptCanvasAttributes::AllowInternalCreation, behaviorClass->m_attributes));
+        canCreate = canCreate && !IsDeprecated(behaviorClass->m_attributes);
+        
         // create able variables must have full memory support
         canCreate = canCreate &&
             (behaviorClass->m_allocate
@@ -247,8 +284,7 @@ namespace ScriptCanvas
 
         if (canCreate)
         {
-
-            dataRegistry->RegisterType(behaviorClass->m_typeId);
+            dataRegistry->RegisterType(behaviorClass->m_typeId, typeProperties);
         }
     }
 

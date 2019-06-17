@@ -15,7 +15,7 @@
 #include <IRenderer.h>
 #include <IEditor.h>
 #include <QResizeEvent>
-#include <ImGui/imgui.h>
+#include <imgui/imgui.h>
 #include "ImGuiBus.h"
 #include "ImGuiManager.h"
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>

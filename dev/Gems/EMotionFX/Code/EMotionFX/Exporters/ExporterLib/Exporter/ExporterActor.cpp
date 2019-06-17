@@ -70,7 +70,7 @@ namespace ExporterLib
         }
         else
         {
-            AZ_Error("EMotionFX", false, "Cannot save physics setup. SaveObjectToStream() failed.");
+            AZ_Error("EMotionFX", false, "Cannot save physics setup. Please enable the PhysX and the PhysXCharacters gems.");
         }
     }
 

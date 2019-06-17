@@ -295,10 +295,11 @@ namespace AzFramework
         AZ::SliceComponent* rootSlice = GetRootSlice();
         if (rootSlice)
         {
-            AZ::SliceComponent::SliceInstanceAddress address = rootSlice->FindSlice(id);
-            if (address.IsValid())
+            const auto address = rootSlice->FindSlice(id);
+            if (address.GetInstance())
             {
-                const auto instantiatedSliceEntities = address.GetInstance()->GetInstantiated();
+                auto sliceInstance = address.GetInstance();
+                const auto instantiatedSliceEntities = sliceInstance->GetInstantiated();
                 if (instantiatedSliceEntities)
                 {
                     for (AZ::Entity* currentEntity : instantiatedSliceEntities->m_entities)
@@ -330,7 +331,6 @@ namespace AzFramework
         return false;
     }
 
-    //========================================
     //=========================================================================
     // GameEntityContextComponent::ActivateGameEntity
     //=========================================================================
@@ -447,7 +447,7 @@ namespace AzFramework
         {
             InstantiatingDynamicSliceInfo& instantiating = instantiatingIter->second;
 
-                const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
+            const AZ::SliceComponent::EntityList& entities = sliceAddress.GetInstance()->GetInstantiated()->m_entities;
 
             // If the context was loaded from a stream and Ids were remapped, fix up entity Ids in that slice that
             // point to entities in the stream (i.e. level entities).

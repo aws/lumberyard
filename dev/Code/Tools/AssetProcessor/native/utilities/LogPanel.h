@@ -10,16 +10,16 @@
 *
 */
 #pragma once
-#include <AzToolsFramework/UI/Logging/TracePrintFLogPanel.h>
+#include <AzToolsFramework/UI/Logging/StyledTracePrintFLogPanel.h>
 
 namespace AssetProcessor
 {
     //! LogPanel - an implementation of TracePrintFLogPanel which shows recent traceprintfs
     //! CreateTabs will create a new instance of LogTab
-    class LogPanel : public AzToolsFramework::LogPanel::TracePrintFLogPanel
+    class LogPanel : public AzToolsFramework::LogPanel::StyledTracePrintFLogPanel
     {
     public:
-        explicit LogPanel(QWidget* pParent = nullptr);
+        explicit LogPanel(QWidget* parent = nullptr);
         ~LogPanel() override = default;
     protected:
         QWidget* CreateTab(const AzToolsFramework::LogPanel::TabSettings& settings) override;
@@ -27,11 +27,11 @@ namespace AssetProcessor
 
     //! LogTab - a Log View listening on AZ Traceprintfs and puts them in a ring buffer
     //! It also filters traceprintfs based on the thread local job id
-    class LogTab : public AzToolsFramework::LogPanel::AZTracePrintFLogTab
+    class LogTab : public AzToolsFramework::LogPanel::StyledTracePrintFLogTab
     {
     public:
         AZ_CLASS_ALLOCATOR(LogTab, AZ::SystemAllocator, 0);
-        explicit LogTab(QWidget* pParent, const AzToolsFramework::LogPanel::TabSettings& in_settings);
+        explicit LogTab(const AzToolsFramework::LogPanel::TabSettings& settings, QWidget* parent = nullptr);
         ~LogTab() override = default;
         void AddInitialLogMessage();
         //////////////////////////////////////////////////////////////////////////

@@ -25,6 +25,7 @@
 #include <GraphCanvas/Styling/StyleHelper.h>
 
 class QGraphicsGridLayout;
+class QMimeData;
 
 namespace GraphCanvas
 {
@@ -36,6 +37,7 @@ namespace GraphCanvas
         , public NodeNotificationBus::MultiHandler
         , public WrapperNodeRequestBus::Handler
         , public StyleNotificationBus::Handler
+        , public SceneMemberNotificationBus::MultiHandler
     {
     private:
         
@@ -177,10 +179,13 @@ namespace GraphCanvas
         // NodeNotificationBus
         void OnNodeActivated() override;
 
-        void OnNodeAboutToSerialize(GraphSerialization& sceneSerialization) override;
-        void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphSerialization& sceneSerialization) override;
-
         void OnAddedToScene(const AZ::EntityId& sceneId) override;
+        ////
+
+        // SceneMemberNotification
+        void OnSceneMemberAboutToSerialize(GraphSerialization& sceneSerialization) override;
+        void OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphSerialization& sceneSerialization) override;
+
         void OnRemovedFromScene(const AZ::EntityId& sceneId) override;
         ////
 

@@ -67,15 +67,22 @@ private:
         bool m_enableSceneInspector;
         bool m_enableUI2;
         bool m_enableLegacyUI;
+        bool m_enableNewViewportInteractionModel;
 
         // Only used to tell if the user has changed this value since it requires a restart
         bool m_enableLegacyUIInitialValue;
+        bool m_enableNewViewportInteractionModelInitialValue;
+
+        // Callbacks when either m_enableNewViewportInteractionModel or m_enableLegacyUI
+        // change to ensure they both cannot be enabled at the same time
+        void SynchronizeLegacyUi();
+        void SynchronizeNewViewportInteractionModel();
     };
 
     struct Messaging
     {
         AZ_TYPE_INFO(Messaging, "{A6AD87CB-E905-409B-A2BF-C43CDCE63B0C}")
-        
+
         bool m_showDashboard;
         bool m_showCircularDependencyError;
     };

@@ -446,7 +446,12 @@ void AssetImporterWindow::OnInspect()
     QLabel* label = new QLabel("Please close the inspector to continue editing the settings.");
     label->setWordWrap(true);
     label->setAlignment(Qt::AlignCenter);
-    m_overlay->PushLayer(label, aznew AZ::SceneAPI::UI::SceneGraphInspectWidget(*m_assetImporterDocument->GetScene()), "Scene Inspector", buttons);
+
+    // make sure the inspector doesn't outlive the AssetImporterWindow, since we own the data it will be inspecting.
+    auto* theInspectWidget = aznew AZ::SceneAPI::UI::SceneGraphInspectWidget(*m_assetImporterDocument->GetScene());
+    QObject::connect(this, &QObject::destroyed, theInspectWidget, [theInspectWidget]() { theInspectWidget->window()->close(); } );
+    
+    m_overlay->PushLayer(label, theInspectWidget, "Scene Inspector", buttons);
 }
 
 void AssetImporterWindow::OverlayLayerAdded()

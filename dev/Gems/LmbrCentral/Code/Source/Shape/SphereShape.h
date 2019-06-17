@@ -18,13 +18,14 @@
 
 namespace AzFramework
 {
-    class EntityDebugDisplayRequests;
+    class DebugDisplayRequests;
 }
 
 namespace LmbrCentral
 {
     struct ShapeDrawParams;
 
+    /// Provide SphereShape functionality.
     class SphereShape
         : public ShapeComponentRequestsBus::Handler
         , public SphereShapeComponentRequestsBus::Handler
@@ -43,6 +44,7 @@ namespace LmbrCentral
         // ShapeComponentRequestsBus::Handler
         AZ::Crc32 GetShapeType() override { return AZ_CRC("Sphere", 0x55f96687); }
         AZ::Aabb GetEncompassingAabb() override;
+        void GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds) override;
         bool IsPointInside(const AZ::Vector3& point)  override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
         bool IntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
@@ -59,10 +61,13 @@ namespace LmbrCentral
         void SetSphereConfiguration(const SphereShapeConfig& sphereShapeConfig) { m_sphereShapeConfig = sphereShapeConfig; }
         const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
+    protected:
+
+        friend class EditorSphereShapeComponent;
+        ShapeComponentConfig& ModifyShapeComponent() { return m_sphereShapeConfig; }
+
     private:
-        /**
-         * Runtime data - cache potentially expensive operations.
-         */
+        /// Runtime data - cache potentially expensive operations.
         class SphereIntersectionDataCache
             : public IntersectionTestDataCache<SphereShapeConfig>
         {
@@ -83,6 +88,6 @@ namespace LmbrCentral
 
     void DrawSphereShape(
         const ShapeDrawParams& shapeDrawParams, const SphereShapeConfig& sphereShapeConfig,
-        AzFramework::EntityDebugDisplayRequests& displayContext);
+        AzFramework::DebugDisplayRequests& debugDisplay);
 
 } // namespace LmbrCentral

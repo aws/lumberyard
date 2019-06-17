@@ -14,6 +14,7 @@
 
 #include <AzCore/Serialization/EditContext.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
 {
@@ -27,13 +28,12 @@ namespace AzToolsFramework
                     ->Field("VisibilityFlag", &EditorVisibilityComponent::m_visibilityFlag)
                     ;
 
-                AZ::EditContext* ptrEdit = serializeContext->GetEditContext();
-                if (ptrEdit)
+                if (AZ::EditContext* editContext = serializeContext->GetEditContext())
                 {
-                    ptrEdit->Class<EditorVisibilityComponent>("Visibility", "Edit-time entity visibility")
+                    editContext->Class<EditorVisibilityComponent>("Visibility", "Edit-time entity visibility")
                         ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
                             ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
-                            ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushable)    
+                            ->Attribute(AZ::Edit::Attributes::SliceFlags, AZ::Edit::SliceFlags::NotPushable)
                             ->Attribute(AZ::Edit::Attributes::HideIcon, true);
                 }
             }
@@ -69,7 +69,8 @@ namespace AzToolsFramework
         void EditorVisibilityComponent::Activate()
         {
             EditorComponentBase::Activate();
-            EditorVisibilityNotificationBus::Event(GetEntityId(), &EditorVisibilityNotifications::OnEntityVisibilityFlagChanged, m_visibilityFlag);
+            EditorVisibilityNotificationBus::Event(
+                GetEntityId(), &EditorVisibilityNotifications::OnEntityVisibilityFlagChanged, m_visibilityFlag);
         }
 
         void EditorVisibilityComponent::Deactivate()
@@ -82,7 +83,15 @@ namespace AzToolsFramework
             if (m_currentVisibility != visibility)
             {
                 m_currentVisibility = visibility;
-                EditorVisibilityNotificationBus::Event(m_entity->GetId(), &EditorVisibilityNotifications::OnEntityVisibilityChanged, m_currentVisibility);
+
+                // notify individual entities connected to this bus
+                EditorEntityVisibilityNotificationBus::Event(
+                    m_entity->GetId(), &EditorEntityVisibilityNotifications::OnEntityVisibilityChanged, visibility);
+
+                // notify systems connected to this bus of the entity that changed
+                EditorContextVisibilityNotificationBus::Event(
+                    GetEntityContextId(), &EditorContextVisibilityNotifications::OnEntityVisibilityChanged,
+                    m_entity->GetId(), visibility);
             }
         }
 
@@ -96,8 +105,18 @@ namespace AzToolsFramework
             if (m_visibilityFlag != flag)
             {
                 m_visibilityFlag = flag;
-                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequestBus::Events::AddDirtyEntity, m_entity->GetId());
-                EditorVisibilityNotificationBus::Event(m_entity->GetId(), &EditorVisibilityNotifications::OnEntityVisibilityFlagChanged, m_visibilityFlag);
+
+                AzToolsFramework::ToolsApplicationRequestBus::Broadcast(
+                    &AzToolsFramework::ToolsApplicationRequestBus::Events::AddDirtyEntity, m_entity->GetId());
+
+                // notify individual entities connected to this bus
+                EditorEntityVisibilityNotificationBus::Event(
+                    m_entity->GetId(), &EditorEntityVisibilityNotifications::OnEntityVisibilityFlagChanged, flag);
+
+                // notify systems connected to this bus of the entity that changed
+                EditorContextVisibilityNotificationBus::Event(
+                    GetEntityContextId(), &EditorContextVisibilityNotifications::OnEntityVisibilityFlagChanged,
+                    m_entity->GetId(), flag);
             }
         }
 

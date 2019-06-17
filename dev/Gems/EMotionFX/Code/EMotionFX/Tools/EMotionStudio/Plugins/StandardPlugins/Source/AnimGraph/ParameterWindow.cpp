@@ -1062,13 +1062,10 @@ namespace EMStudio
             }
 
             // Get the list of all parameter nodes
-            MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
+            AZStd::vector<EMotionFX::AnimGraphNode*> parameterNodes;
             m_animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
-            const uint32 numParameterNodes = parameterNodes.GetLength();
-            for (uint32 paramNodeIndex = 0; paramNodeIndex < numParameterNodes; ++paramNodeIndex)
+            for (const EMotionFX::AnimGraphNode* parameterNode : parameterNodes)
             {
-                const EMotionFX::AnimGraphNode* parameterNode = parameterNodes[paramNodeIndex];
-
                 // Get the list of connections from the port whose type is
                 // being changed
                 const uint32 sourcePortIndex = parameterNode->FindOutputPortIndex(parameter->GetName().c_str());
@@ -1283,9 +1280,7 @@ namespace EMStudio
         }
     }
 
-
-    // remove all parameters and groups
-    void ParameterWindow::OnClearButton()
+    void ParameterWindow::ClearParameters(bool showConfirmationDialog)
     {
         if (!m_animGraph)
         {
@@ -1293,7 +1288,8 @@ namespace EMStudio
         }
 
         // ask the user if he really wants to remove all parameters
-        if (QMessageBox::question(this, "Remove all groups and parameters?", "Are you sure you want to remove all parameters and all group parameters from the anim graph?", QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
+        if (showConfirmationDialog &&
+            QMessageBox::question(this, "Remove all groups and parameters?", "Are you sure you want to remove all parameters and all group parameters from the anim graph?", QMessageBox::Yes | QMessageBox::No, QMessageBox::No) != QMessageBox::Yes)
         {
             return;
         }
@@ -1304,14 +1300,12 @@ namespace EMStudio
         CommandSystem::ClearParametersCommand(m_animGraph, &commandGroup);
         CommandSystem::ClearGroupParameters(m_animGraph, &commandGroup);
 
-        // Execute the command group.
         AZStd::string result;
         if (!GetCommandManager()->ExecuteCommandGroup(commandGroup, result))
         {
             AZ_Error("EMotionFX", false, result.c_str());
         }
     }
-
 
     // move the parameter up in the list
     void ParameterWindow::OnMoveParameterUp()

@@ -62,6 +62,7 @@ extern int g_CpuFlags;
 #define CPUF_3DNOW 0x04
 #define CPUF_MMX   0x08
 #define CPUF_SSE3  0x10
+#define CPUF_F16C  0x20
 
 #ifdef _CPU_SSE
 

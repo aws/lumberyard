@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Component/TransformBus.h>
@@ -20,7 +21,7 @@
 
 namespace AzFramework 
 {
-    class EntityDebugDisplayRequests;
+    class DebugDisplayRequests;
 }
 
 namespace LmbrCentral
@@ -54,7 +55,7 @@ namespace LmbrCentral
         /**
          * Displays the force volume.
          */
-        void Display(AzFramework::EntityDebugDisplayRequests& displayContext);
+        void Display(AzFramework::DebugDisplayRequests& debugDisplay);
 
     private:
         // TransformNotificationBus
@@ -122,6 +123,6 @@ namespace LmbrCentral
         /**
          * Draws an arrow in the direction.
          */
-        void DisplayForceDirection(const ForceVolume& forceVolume, AzFramework::EntityDebugDisplayRequests& displayContext, const AZ::Vector3& worldPoint);
+        void DisplayForceDirection(const ForceVolume& forceVolume, AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Vector3& worldPoint);
     }
 }

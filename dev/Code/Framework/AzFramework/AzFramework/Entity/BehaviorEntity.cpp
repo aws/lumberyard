@@ -150,6 +150,7 @@ namespace AzFramework
                 ->Method("Activate", &BehaviorEntity::Activate)
                 ->Method("Deactivate", &BehaviorEntity::Deactivate)
                 ->Method("CreateComponent", &BehaviorEntity::CreateComponent, behaviorContext->MakeDefaultValues(static_cast<const AZ::ComponentConfig*>(nullptr)))
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::List)
                 ->Method("DestroyComponent", &BehaviorEntity::DestroyComponent)
                 ->Method("GetComponents", &BehaviorEntity::GetComponents)
                 ->Method("FindComponentOfType", &BehaviorEntity::FindComponentOfType)
@@ -157,7 +158,9 @@ namespace AzFramework
                 ->Method("GetComponentType", &BehaviorEntity::GetComponentType)
                 ->Method("GetComponentName", &BehaviorEntity::GetComponentName)
                 ->Method("SetComponentConfiguration", &BehaviorEntity::SetComponentConfiguration)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::List)
                 ->Method("GetComponentConfiguration", &BehaviorEntity::GetComponentConfiguration)
+                    ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::List)
                 // Allow BehaviorEntity to be passed to functions expecting AZ::Entity*
                 ->WrappingMember<AZ::Entity*>(&BehaviorEntity::GetRawEntityPtr)
                 ;

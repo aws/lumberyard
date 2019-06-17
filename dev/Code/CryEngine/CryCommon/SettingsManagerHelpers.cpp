@@ -22,6 +22,9 @@
 #include <locale>
 #include <string>
 
+#include <AzCore/std/string/string_view.h>
+#include <AzCore/Component/ComponentApplicationBus.h>
+
 #if defined(AZ_PLATFORM_WINDOWS)
 #include <windows.h>
 #include <shellapi.h> //ShellExecuteW()
@@ -265,8 +268,13 @@ void CSettingsManagerTools::GetEditorExecutable(SettingsManagerHelpers::CWCharBu
     bool bFound = false;
     if (Is64bitWindows())
     {
+        AZStd::string_view binFolderName;
+        AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
         const size_t len = editorExe.length();
-        editorExe.appendAscii("/" BINFOLDER_NAME "/Editor.exe");
+        editorExe.appendAscii("/");
+        editorExe.appendAscii(binFolderName.data());
+        editorExe.appendAscii("/Editor.exe");
         bFound = FileExists(editorExe.c_str());
         if (!bFound)
         {

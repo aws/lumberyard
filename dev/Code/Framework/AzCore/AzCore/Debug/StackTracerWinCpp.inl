@@ -305,8 +305,8 @@ namespace AZ {
                 return;
             }
 
-            const HMODULE hNtDll = ::GetModuleHandle(_T("ntdll.dll"));
-            m_LdrRegisterDllNotification = reinterpret_cast<PLDR_REGISTER_DLL_NOTIFICATION>(::GetProcAddress(hNtDll, "LdrRegisterDllNotification"));
+            const HMODULE hNtDll = GetModuleHandle(_T("ntdll.dll"));
+            m_LdrRegisterDllNotification = reinterpret_cast<PLDR_REGISTER_DLL_NOTIFICATION>(GetProcAddress(hNtDll, "LdrRegisterDllNotification"));
 
             if (m_LdrRegisterDllNotification)
             {
@@ -329,8 +329,8 @@ namespace AZ {
                 return;
             }
 
-            const HMODULE hNtDll = ::GetModuleHandle(_T("ntdll.dll"));
-            m_LdrUnregisterDllNotification = reinterpret_cast<PLDR_UNREGISTER_DLL_NOTIFICATION>(::GetProcAddress(hNtDll, "LdrUnregisterDllNotification"));
+            const HMODULE hNtDll = GetModuleHandle(_T("ntdll.dll"));
+            m_LdrUnregisterDllNotification = reinterpret_cast<PLDR_UNREGISTER_DLL_NOTIFICATION>(GetProcAddress(hNtDll, "LdrUnregisterDllNotification"));
 
             if (m_LdrUnregisterDllNotification)
             {

@@ -12,43 +12,30 @@
 #pragma once
 
 #include "DataInterface.h"
+#include "NumericDataInterface.h"
 
 namespace GraphCanvas
 {
-    class NumericDataInterface 
-        : public DataInterface
+    // Deprecated name for the NumericDataInterface
+    class DoubleDataInterface
+        : public NumericDataInterface
     {
-    public:    
-        virtual double GetNumber() const = 0;
-        virtual void SetNumber(double value) = 0;
-
-        virtual int GetDecimalPlaces() const
+    public:
+        AZ_DEPRECATED(DoubleDataInterface(), "DoubleDataInterface renamed to NumericDataInterface")
         {
-            return 7;
         }
 
-        virtual int GetDisplayDecimalPlaces() const
+        virtual double GetDouble() const = 0;
+        virtual void SetDouble(double value) = 0;
+
+        double GetNumber() const override final
         {
-            return 4;
-        }
-        
-        virtual double GetMin() const
-        {
-            // Had some weird issues with the numeric limits min
-            // and the QtDoubleSpinBox not accepting it(would turn it into a zero)
-            // And adding 1 to the numeric_limits<double>::min() turned it into a 1.
-            // So, hardcoding to some sufficiently large negative value.
-            return -999999999;
+            return GetDouble();
         }
 
-        virtual double GetMax() const
+        void SetNumber(double value) override final
         {
-            return std::numeric_limits<double>::max();
-        }
-
-        const char* GetSuffix() const
-        {
-            return "";
+            SetDouble(value);
         }
     };
 }

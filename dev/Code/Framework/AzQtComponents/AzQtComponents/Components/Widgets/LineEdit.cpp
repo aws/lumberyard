@@ -12,6 +12,7 @@
 
 #include <AzQtComponents/Components/Widgets/LineEdit.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 
 #include <QLineEdit>
 #include <QAction>
@@ -22,11 +23,13 @@
 #include <QPainter>
 #include <QStyleOption>
 #include <QDebug>
+#include <QToolButton>
 
 namespace AzQtComponents
 {
     constexpr const char* HasSearchAction = "HasSearchAction";
     constexpr const char* HasError = "HasError";
+    constexpr const char* SearchToolButton = "SearchToolButton";
 
     class LineEditWatcher : public QObject
     {
@@ -141,43 +144,70 @@ namespace AzQtComponents
         }
     };
 
-    QPointer<LineEditWatcher> LineEdit::m_lineEditWatcher = nullptr;
+    QPointer<LineEditWatcher> LineEdit::s_lineEditWatcher = nullptr;
+    unsigned int LineEdit::s_watcherReferenceCount = 0;
 
     void LineEdit::applySearchStyle(QLineEdit* lineEdit)
     {
-        QAction* searchAction = lineEdit->addAction(QIcon(":/stylesheet/img/16x16/Search.png"), QLineEdit::LeadingPosition);
-        searchAction->setEnabled(false);
+        if (lineEdit->property(HasSearchAction).toBool())
+        {
+            return;
+        }
+
         lineEdit->setProperty(HasSearchAction, true);
+
+        auto searchToolButton = lineEdit->findChild<QToolButton*>(SearchToolButton);
+        if (!searchToolButton)
+        {
+            // Adding a QAction to a QLineEdit results in a private QToolButton derived widget being
+            // added as a child of the QLineEdit.
+            // We cannot simply call QWidget::removeAction in LineEdit::removeSearchStyle because
+            // this results in a crash when LineEdit::removeSearchStyle is called during
+            // QApplication::setStyle. QWidget::removeAction deletes the private widget and then
+            // QApplication attempts to unpolish the deleted private widget.
+            // To work around this we find the private widget after it has been added and set it's
+            // object name so we can find it again in LineEdit::removeSearchStyle.
+            auto searchAction = lineEdit->addAction(QIcon(":/stylesheet/img/search-dark.svg"), QLineEdit::LeadingPosition);
+            searchAction->setEnabled(false);
+
+            auto childToolButtons = lineEdit->findChildren<QToolButton*>();
+            for (auto toolButton : childToolButtons)
+            {
+                if (toolButton->defaultAction() == searchAction)
+                {
+                    toolButton->setObjectName(SearchToolButton);
+                    break;
+                }
+            }
+            return;
+        }
+
+        searchToolButton->show();
+    }
+
+    void LineEdit::removeSearchStyle(QLineEdit* lineEdit)
+    {
+        if (!lineEdit->property(HasSearchAction).toBool())
+        {
+            return;
+        }
+
+        lineEdit->setProperty(HasSearchAction, false);
+
+        auto searchToolButton = lineEdit->findChild<QToolButton*>(SearchToolButton);
+        searchToolButton->hide();
     }
 
     LineEdit::Config LineEdit::loadConfig(QSettings& settings)
     {
-        auto ReadInteger = [](QSettings& settings, const QString& name, int& value)
-        {
-            // only overwrite the value if it's set; otherwise, it'll stay the default
-            if (settings.contains(name))
-            {
-                value = settings.value(name).toInt();
-            }
-        };
-
-        auto ReadColor = [](QSettings& settings, const QString& name, QColor& color)
-        {
-            // only overwrite the value if it's set; otherwise, it'll stay the default
-            if (settings.contains(name))
-            {
-                color = QColor(settings.value(name).toString());
-            }
-        };
-
         Config config = defaultConfig();
 
          // Keep radius in sync with css, it is not possible to get it back from the style option :/
-        ReadInteger(settings, "BorderRadius", config.borderRadius);
-        ReadColor(settings, "BorderColor", config.borderColor);
-        ReadColor(settings, "FocusedBorderColor", config.focusedBorderColor);
-        ReadColor(settings, "ErrorBorderColor", config.errorBorderColor);
-        ReadColor(settings, "PlaceHolderTextColor", config.placeHolderTextColor);
+        ConfigHelpers::read<int>(settings, QStringLiteral("BorderRadius"), config.borderRadius);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("BorderColor"), config.borderColor);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("FocusedBorderColor"), config.focusedBorderColor);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("ErrorBorderColor"), config.errorBorderColor);
+        ConfigHelpers::read<QColor>(settings, QStringLiteral("PlaceHolderTextColor"), config.placeHolderTextColor);
 
         return config;
     }
@@ -199,39 +229,53 @@ namespace AzQtComponents
 
     void LineEdit::initializeWatcher()
     {
-        Q_ASSERT(m_lineEditWatcher.isNull());
-        m_lineEditWatcher = new LineEditWatcher;
+        if (!s_lineEditWatcher)
+        {
+            Q_ASSERT(s_watcherReferenceCount == 0);
+            s_lineEditWatcher = new LineEditWatcher;
+        }
+
+        ++s_watcherReferenceCount;
     }
 
     void LineEdit::uninitializeWatcher()
     {
-        delete m_lineEditWatcher;
+        Q_ASSERT(!s_lineEditWatcher.isNull());
+        Q_ASSERT(s_watcherReferenceCount > 0);
+
+        --s_watcherReferenceCount;
+
+        if (s_watcherReferenceCount == 0)
+        {
+            delete s_lineEditWatcher;
+            s_lineEditWatcher = nullptr;
+        }
     }
 
     bool LineEdit::polish(Style* style, QWidget* widget, const LineEdit::Config& config)
     {
-        Q_ASSERT(!m_lineEditWatcher.isNull());
+        Q_ASSERT(!s_lineEditWatcher.isNull());
 
         auto lineEdit = qobject_cast<QLineEdit*>(widget);
 
         if (lineEdit)
         {
-            QObject::connect(lineEdit, &QLineEdit::textChanged, m_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
-            QObject::connect(lineEdit, &QLineEdit::returnPressed, m_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
-            QObject::connect(lineEdit, &QLineEdit::editingFinished, m_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
+            QObject::connect(lineEdit, &QLineEdit::textChanged, s_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
+            QObject::connect(lineEdit, &QLineEdit::returnPressed, s_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
+            QObject::connect(lineEdit, &QLineEdit::editingFinished, s_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
 
             QPalette pal = lineEdit->palette();
             pal.setColor(QPalette::PlaceholderText, config.placeHolderTextColor);
 
             lineEdit->setPalette(pal);
-            lineEdit->installEventFilter(m_lineEditWatcher);
+            lineEdit->installEventFilter(s_lineEditWatcher);
 
             // initial state checks
-            m_lineEditWatcher->updateErrorState(lineEdit);
-            m_lineEditWatcher->updateClearButtonState(lineEdit);
+            s_lineEditWatcher->updateErrorState(lineEdit);
+            s_lineEditWatcher->updateClearButtonState(lineEdit);
 
             style->repolishOnSettingsChange(lineEdit);
-            m_lineEditWatcher->m_config = config;
+            s_lineEditWatcher->m_config = config;
         }
 
         return lineEdit;
@@ -242,17 +286,17 @@ namespace AzQtComponents
         Q_UNUSED(style);
         Q_UNUSED(config);
 
-        Q_ASSERT(!m_lineEditWatcher.isNull());
+        Q_ASSERT(!s_lineEditWatcher.isNull());
 
         auto lineEdit = qobject_cast<QLineEdit*>(widget);
 
         if (lineEdit)
         {
-            QObject::disconnect(lineEdit, &QLineEdit::textChanged, m_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
-            QObject::disconnect(lineEdit, &QLineEdit::returnPressed, m_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
-            QObject::disconnect(lineEdit, &QLineEdit::editingFinished, m_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
+            QObject::disconnect(lineEdit, &QLineEdit::textChanged, s_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
+            QObject::disconnect(lineEdit, &QLineEdit::returnPressed, s_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
+            QObject::disconnect(lineEdit, &QLineEdit::editingFinished, s_lineEditWatcher, &LineEditWatcher::updateClearButtonStateSlot);
 
-            lineEdit->removeEventFilter(m_lineEditWatcher);
+            lineEdit->removeEventFilter(s_lineEditWatcher);
         }
 
         return lineEdit;
@@ -260,40 +304,45 @@ namespace AzQtComponents
 
     bool LineEdit::drawFrame(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const LineEdit::Config& config)
     {
-        const auto lineEdit = qobject_cast<const QLineEdit*>(widget);
-
-        if (lineEdit)
+        auto lineEdit = qobject_cast<const QLineEdit*>(widget);
+        if (!lineEdit)
         {
-            if (lineEdit->hasFrame())
-            {
-                const QStyleOptionFrame *fo = qstyleoption_cast<const QStyleOptionFrame*>(option);
-                const bool isFocused = option->state.testFlag(QStyle::State_HasFocus);
-                const QBrush backgroundColor = option->palette.brush(widget->backgroundRole());
-                const QPen frameColor(lineEdit->property(HasError).toBool()
-                                      ? config.errorBorderColor
-                                      : (isFocused
-                                         ? config.focusedBorderColor
-                                         : (config.borderColor.isValid()
-                                            ? config.borderColor
-                                            : backgroundColor)),
-                                      fo->lineWidth);
-
-                // Drawing a color border may require some shift for the pen width,
-                // this shift is not required if the border is to be transparent (it serve as a margin).
-                if (frameColor.color().rgba64().isTransparent())
-                {
-                    const auto frameRect = style->lineEditRect(lineEdit->rect(), fo->lineWidth, config.borderRadius + (fo->lineWidth /2));
-                    Style::drawFrame(painter, frameRect, QPen(Qt::NoPen), backgroundColor);
-                }
-                else
-                {
-                    const auto frameRect = style->borderLineEditRect(lineEdit->rect(), fo->lineWidth, config.borderRadius + (fo->lineWidth /2));
-                    Style::drawFrame(painter, frameRect, frameColor, backgroundColor);
-                }
-            }
+            return false;
         }
 
-        return lineEdit;
+        if (lineEdit->hasFrame())
+        {
+            const QStyleOptionFrame *fo = qstyleoption_cast<const QStyleOptionFrame*>(option);
+            const bool isFocused = option->state.testFlag(QStyle::State_HasFocus);
+            const QBrush backgroundColor = option->palette.brush(widget->backgroundRole());
+            const QPen frameColor(lineEdit->property(HasError).toBool()
+                                  ? config.errorBorderColor
+                                  : (isFocused
+                                     ? config.focusedBorderColor
+                                     : (config.borderColor.isValid()
+                                        ? config.borderColor
+                                        : backgroundColor)),
+                                  fo->lineWidth);
+
+            // Drawing a color border may require some shift for the pen width,
+            // this shift is not required if the border is to be transparent (it serve as a margin).
+            if (frameColor.color().rgba64().isTransparent())
+            {
+                const auto frameRect = style->lineEditRect(lineEdit->rect(), fo->lineWidth, config.borderRadius + (fo->lineWidth /2));
+                Style::drawFrame(painter, frameRect, QPen(Qt::NoPen), backgroundColor);
+            }
+            else
+            {
+                const auto frameRect = style->borderLineEditRect(lineEdit->rect(), fo->lineWidth, config.borderRadius + (fo->lineWidth /2));
+                Style::drawFrame(painter, frameRect, frameColor, backgroundColor);
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        return true;
     }
 
     QIcon LineEdit::clearButtonIcon(const QStyleOption* option, const QWidget* widget)

@@ -17,8 +17,8 @@ def build(bld):
         target           = 'AppleTVLauncher',
         file_list        = 'appletvlauncher.waf_files',
         platforms        = ['appletv'],
-        configurations   = ['debug', 'profile', 'performance', 'release'],
-        appletv_launcher = True,
+        exclude_test     = True,
+        client_only      = True,
         use              = ['AzGameFramework',
                             'FREETYPE2',
                             'TOMCRYPT',
@@ -26,4 +26,15 @@ def build(bld):
         includes         = [bld.Path('Code/CryEngine/CrySystem'),
                             bld.Path('Code/Launcher')],
         cxxflags         = ['-x', 'objective-c++'],
+    )
+
+
+def package(pkg):
+    build(pkg) # Need to execute this to generate our task_generator...
+    pkg.package_game(
+        target          = '{}Launcher'.format(pkg.project),
+        task_gen_name   = '{}AppleTVLauncher'.format(pkg.project),
+        platforms       = ['appletv'],
+        exclude_test    = True,
+        client_only     = True,
     )

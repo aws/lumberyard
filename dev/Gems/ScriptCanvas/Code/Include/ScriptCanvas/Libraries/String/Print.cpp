@@ -10,8 +10,10 @@
 *
 */
 
-#include "precompiled.h"
 #include "Print.h"
+
+#include <ScriptCanvas/Execution/RuntimeBus.h>
+#include <ScriptCanvas/Execution/ExecutionBus.h>
 
 namespace ScriptCanvas
 {
@@ -21,11 +23,19 @@ namespace ScriptCanvas
         {
             void Print::OnInputSignal(const SlotId& slotId)
             {
+#if !defined(PERFORMANCE_BUILD) && !defined(_RELEASE) 
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::ScriptCanvas, "ScriptCanvas::Print::OnInputSignal");
+
                 AZStd::string text = ProcessFormat();
 
                 AZ_TracePrintf("Script Canvas", "%s\n", text.c_str());
                 LogNotificationBus::Event(GetGraphId(), &LogNotifications::LogMessage, text);
 
+                AZ::EntityId assetNodeId{};
+                ScriptCanvas::RuntimeRequestBus::EventResult(assetNodeId, m_executionUniqueId, &ScriptCanvas::RuntimeRequests::FindAssetNodeIdByRuntimeNodeId, GetEntityId());
+
+                SC_EXECUTION_TRACE_ANNOTATE_NODE((*this), (AnnotateNodeSignal(CreateGraphInfo(m_executionUniqueId, GetGraphIdentifier()), AnnotateNodeSignal::AnnotationLevel::Info, text, AZ::NamedEntityId(assetNodeId, GetNodeName()))));
+#endif
                 SignalOutput(GetSlotId("Out"));
 
             }

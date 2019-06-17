@@ -59,7 +59,7 @@ namespace AzToolsFramework
             {
                 auto componentClassData = component ? GetComponentClassData(component) : nullptr;
                 // Currently, the only time a component is considered fixed to an entity is if it's not a valid candidate for being added
-                return componentClassData && AppearsInGameComponentMenu(*componentClassData);
+                return componentClassData && (AppearsInGameComponentMenu(*componentClassData) || AppearsInLayerComponentMenu(*componentClassData) || AppearsInLevelComponentMenu(*componentClassData));
             }
 
             // Check if existing components provide all services required by component

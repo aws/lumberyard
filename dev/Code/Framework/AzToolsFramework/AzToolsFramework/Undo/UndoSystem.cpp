@@ -270,7 +270,7 @@ namespace AzToolsFramework
 
         URSequencePoint* UndoStack::Undo()
         {
-            AZ_TracePrintf("Undo System", "Undo operation at cursor = %d and buffer size = %d\n", m_Cursor, int(m_SequencePointsBuffer.size()));
+            // AZ_TracePrintf("Undo System", "Undo operation at cursor = %d and buffer size = %d\n", m_Cursor, int(m_SequencePointsBuffer.size()));
 
             AZ_Assert(!reentryGuard, "UndoStack operations are not reentrant");
             reentryGuard = true;
@@ -293,7 +293,7 @@ namespace AzToolsFramework
         }
         URSequencePoint* UndoStack::Redo()
         {
-            AZ_TracePrintf("Undo System", "Redo operation at cursor = %d and buffer size %d\n", m_Cursor, int(m_SequencePointsBuffer.size()));
+            // AZ_TracePrintf("Undo System", "Redo operation at cursor = %d and buffer size %d\n", m_Cursor, int(m_SequencePointsBuffer.size()));
 
             AZ_Assert(!reentryGuard, "UndoStack operations are not reentrant");
             reentryGuard = true;
@@ -394,7 +394,7 @@ namespace AzToolsFramework
         {
             if (!CanRedo())
             {
-                return nullptr;
+                return "";
             }
 
             return m_SequencePointsBuffer[m_Cursor + 1]->GetName().c_str();
@@ -403,7 +403,7 @@ namespace AzToolsFramework
         {
             if (!CanUndo())
             {
-                return nullptr;
+                return "";
             }
 
             return m_SequencePointsBuffer[m_Cursor]->GetName().c_str();

@@ -45,6 +45,7 @@ namespace AzQtComponents
 
     Q_SIGNALS:
         void colorSelected(const AZ::Color& color);
+        void colorContextMenuRequested(const QPoint& pos, const AZ::Color& color);
 
     protected:
         QSize sizeHint() const override;
@@ -54,6 +55,8 @@ namespace AzQtComponents
         void mouseMoveEvent(QMouseEvent* e) override;
 
     private:
+        AZ::Color colorUnderPoint(const QPoint& p);
+
         AZ::Color m_currentColor;
         AZ::Color m_selectedColor;
         bool m_gammaEnabled;

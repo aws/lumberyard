@@ -16,6 +16,7 @@
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Memory/SystemAllocator.h>
 
+#include <GraphCanvas/GraphicsItems/GraphicsEffect.h>
 #include <GraphCanvas/GraphicsItems/PulseBus.h>
 
 namespace GraphCanvas
@@ -52,7 +53,7 @@ namespace GraphCanvas
     };
     
     class AnimatedPulse
-        : public QGraphicsItem
+        : public GraphicsEffect<QGraphicsItem>
         , public AZ::TickBus::Handler
         , public PulseRequestBus::Handler
     {
@@ -61,8 +62,6 @@ namespace GraphCanvas
 
         AnimatedPulse(const AnimatedPulseConfiguration& pulseConfiguration);
         ~AnimatedPulse() = default;
-
-        AZ::EntityId GetId() const;
         
         // TickBus
         void OnTick(float deltaTime, AZ::ScriptTimePoint timePoint) override;
@@ -73,9 +72,9 @@ namespace GraphCanvas
         
         void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
         ////
-
-        // PulseRequestBus
-        AnimatedPulse* GetPulse() override;
+        
+        // GraphicsEffect
+        void OnGraphicsEffectCancelled() override;
         ////
         
     private:
@@ -84,7 +83,5 @@ namespace GraphCanvas
     
         float m_elapsedDuration;        
         AnimatedPulseConfiguration m_configuration;
-
-        AZ::EntityId m_id;
     };
 }

@@ -77,7 +77,8 @@ CViewManager::CViewManager()
 
     GetIEditor()->RegisterNotifyListener(this);
 
-    m_manipulatorManager = AZStd::make_shared<AzToolsFramework::ManipulatorManager>(AzToolsFramework::ManipulatorManagerId(1));
+    m_manipulatorManager =
+        AZStd::make_shared<AzToolsFramework::ManipulatorManager>(AzToolsFramework::g_mainManipulatorManagerId);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -282,20 +283,6 @@ void CViewManager::OnEditorNotifyEvent(EEditorNotifyEvent event)
         break;
     case eNotify_OnUpdateViewports:
         UpdateViews();
-        break;
-    case eNotify_OnRefCoordSysChange:
-        if (m_manipulatorManager)
-        {
-            RefCoordSys refCoordsSys = GetIEditor()->GetReferenceCoordSys();
-            if (refCoordsSys == RefCoordSys::COORDS_WORLD)
-            {
-                m_manipulatorManager->SetManipulatorSpace(AzToolsFramework::ManipulatorSpace::World);
-            }
-            else
-            {
-                m_manipulatorManager->SetManipulatorSpace(AzToolsFramework::ManipulatorSpace::Local);
-            }
-        }
         break;
     }
 }

@@ -191,6 +191,14 @@ namespace AZ
          * @return A pointer to the name of the path that contains the application's executable.
          */
         virtual const char*             GetExecutableFolder() const = 0;
+
+        /**
+        * Gets the Bin folder name where the application is running from. The folder is relative to the engine root.
+        * @return A pointer to the bin folder name.
+        */
+        virtual const char*             GetBinFolder() const = 0;
+
+
         /**
          * Returns a pointer to the driller manager, if driller is enabled.
          * The driller manager manages all active driller sessions and driller factories.

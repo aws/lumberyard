@@ -415,7 +415,7 @@ namespace PhysX
         Physics::RigidBodyConfiguration rigidBodyConfiguration;
         AZ::Vector3 halfExtents(1.0f, 2.0f, 3.0f);
 
-        AZStd::shared_ptr<Physics::RigidBody> rigidBody;
+        AZStd::unique_ptr<Physics::RigidBody> rigidBody;
         Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfiguration);
         ASSERT_TRUE(rigidBody != nullptr);
 
@@ -559,7 +559,7 @@ namespace PhysX
         AZ::TransformConfig transformConfig;
         transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
         entity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
-        auto boxCollider = entity->CreateComponent<BoxColliderComponent>();
+        AZ::Component* boxCollider = entity->CreateComponent<BoxColliderComponent>();
 
         Physics::RigidBodyConfiguration rigidBodyConfig;
         entity->CreateComponent<RigidBodyComponent>(rigidBodyConfig);
@@ -599,7 +599,7 @@ namespace PhysX
         // run the simulation for a while
         AZStd::shared_ptr<Physics::World> world;
         Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
-        for (int timeStep = 0; timeStep < 500; timeStep++)
+        for (int timeStep = 0; timeStep < 150; timeStep++)
         {
             world->Update(1.0f / 60.0f);
         }
@@ -630,7 +630,7 @@ namespace PhysX
     TEST_F(PhysXSpecificTest, RigidBody_GetNativeType_ReturnsPhysXRigidBodyType)
     {
         Physics::RigidBodyConfiguration rigidBodyConfiguration;
-        AZStd::shared_ptr<Physics::RigidBody> rigidBody;
+        AZStd::unique_ptr<Physics::RigidBody> rigidBody;
         Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfiguration);
         EXPECT_EQ(rigidBody->GetNativeType(), AZ::Crc32("PhysXRigidBody"));
     }
@@ -638,7 +638,7 @@ namespace PhysX
     TEST_F(PhysXSpecificTest, RigidBody_GetNativePointer_ReturnsValidPointer)
     {
         Physics::RigidBodyConfiguration rigidBodyConfiguration;
-        AZStd::shared_ptr<Physics::RigidBody> rigidBody;
+        AZStd::unique_ptr<Physics::RigidBody> rigidBody;
         Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfiguration);
         physx::PxBase* nativePointer = static_cast<physx::PxBase*>(rigidBody->GetNativePointer());
         EXPECT_TRUE(strcmp(nativePointer->getConcreteTypeName(), "PxRigidDynamic") == 0);
@@ -656,6 +656,26 @@ namespace PhysX
         Physics::ColliderConfiguration colliderConfiguartion;
         colliderConfiguartion.m_isTrigger = true;
         triggerEntity->CreateComponent<ColliderT>(colliderConfiguartion, config);
+
+        triggerEntity->Init();
+        triggerEntity->Activate();
+
+        return triggerEntity;
+    }
+
+    template<typename ColliderT>
+    AZ::Entity* CreateDynamicTriggerAtPosition(const AZ::Vector3& position)
+    {
+        auto triggerEntity = aznew AZ::Entity("DynamicTriggerEntity");
+
+        AZ::TransformConfig transformConfig;
+        transformConfig.m_worldTransform = AZ::Transform::CreateTranslation(position);
+        triggerEntity->CreateComponent<AzFramework::TransformComponent>()->SetConfiguration(transformConfig);
+        ColliderT::Configuration config;
+        Physics::ColliderConfiguration colliderConfiguartion;
+        colliderConfiguartion.m_isTrigger = true;
+        triggerEntity->CreateComponent<ColliderT>(colliderConfiguartion, config);
+        triggerEntity->CreateComponent<RigidBodyComponent>();
 
         triggerEntity->Init();
         triggerEntity->Activate();
@@ -692,12 +712,12 @@ namespace PhysX
         ASSERT_EQ(enteredEvents.size(), 1);
         ASSERT_EQ(exitedEvents.size(), 1);
 
-        EXPECT_EQ(enteredEvents[0].m_triggerBody, triggerBody.get());
+        EXPECT_EQ(enteredEvents[0].m_triggerBody, triggerBody);
         EXPECT_EQ(enteredEvents[0].m_triggerShape, triggerShape.get());
         EXPECT_EQ(enteredEvents[0].m_otherBody, testBoxBody);
         EXPECT_EQ(enteredEvents[0].m_otherShape, testBoxShape.get());
 
-        EXPECT_EQ(exitedEvents[0].m_triggerBody, triggerBody.get());
+        EXPECT_EQ(exitedEvents[0].m_triggerBody, triggerBody);
         EXPECT_EQ(exitedEvents[0].m_triggerShape, triggerShape.get());
         EXPECT_EQ(exitedEvents[0].m_otherBody, testBoxBody);
         EXPECT_EQ(exitedEvents[0].m_otherShape, testBoxShape.get());
@@ -820,7 +840,7 @@ namespace PhysX
         auto obj02 = AZStd::shared_ptr<AZ::Entity>(AddStaticUnitTestObject<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f), "TestBox01"));
 
         auto body01 = obj01->FindComponent<RigidBodyComponent>()->GetRigidBody();
-        auto body02 = obj02->FindComponent<BoxColliderComponent>()->GetStaticRigidBody().get();
+        auto body02 = obj02->FindComponent<BoxColliderComponent>()->GetStaticRigidBody();
 
         auto shape01 = body01->GetShape(0).get();
         auto shape02 = body02->GetShape(0).get();
@@ -860,7 +880,7 @@ namespace PhysX
         // Create sphere
         auto sphere = AZStd::shared_ptr<AZ::Entity>(AddUnitTestObject<SphereColliderComponent>(AZ::Vector3(0.0f, 0.0f, 10.0f), "TestSphere77"));
 
-        AZStd::shared_ptr<Physics::RigidBodyStatic> terrainBody;
+        Physics::RigidBodyStatic* terrainBody;
         Physics::TerrainRequestBus::BroadcastResult(terrainBody, &Physics::TerrainRequests::GetTerrainTile, 0.0f, 0.0f);
 
         auto terrainShape = terrainBody->GetShape(0);
@@ -872,10 +892,10 @@ namespace PhysX
         ASSERT_GE(listener01.m_beginCollisions.size(), 1);
         ASSERT_GE(listener01.m_endCollisions.size(), 1);
 
-        EXPECT_EQ(listener01.m_beginCollisions[0].m_body2, terrainBody.get());
+        EXPECT_EQ(listener01.m_beginCollisions[0].m_body2, terrainBody);
         EXPECT_EQ(listener01.m_beginCollisions[0].m_shape2, terrainShape.get());
 
-        EXPECT_EQ(listener01.m_endCollisions[0].m_body2, terrainBody.get());
+        EXPECT_EQ(listener01.m_endCollisions[0].m_body2, terrainBody);
         EXPECT_EQ(listener01.m_endCollisions[0].m_shape2, terrainShape.get());
     }
 
@@ -883,7 +903,7 @@ namespace PhysX
     {
         // Create terrain
         auto terrain = CreateFlatTestTerrain();
-        AZStd::shared_ptr<Physics::RigidBodyStatic> terrainBody;
+        Physics::RigidBodyStatic* terrainBody;
         Physics::TerrainRequestBus::BroadcastResult(terrainBody, &Physics::TerrainRequests::GetTerrainTile, 0.0f, 0.0f);
 
         Physics::RayCastRequest request;
@@ -895,7 +915,7 @@ namespace PhysX
         Physics::WorldRequestBus::BroadcastResult(hit, &Physics::WorldRequests::RayCast, request);
 
         ASSERT_EQ(hit, true);
-        EXPECT_EQ(hit.m_body, terrainBody.get());
+        EXPECT_EQ(hit.m_body, terrainBody);
         EXPECT_EQ(hit.m_shape, terrainBody->GetShape(0).get());
     }
 
@@ -903,7 +923,7 @@ namespace PhysX
     {
         // Create terrain
         auto terrain = CreateFlatTestTerrain();
-        AZStd::shared_ptr<Physics::RigidBodyStatic> terrainBody;
+        Physics::RigidBodyStatic* terrainBody;
         Physics::TerrainRequestBus::BroadcastResult(terrainBody, &Physics::TerrainRequests::GetTerrainTile, 0.0f, 0.0f);
 
         Physics::RayCastRequest request;
@@ -919,7 +939,7 @@ namespace PhysX
         Physics::WorldRequestBus::BroadcastResult(hit, &Physics::WorldRequests::RayCast, request);
 
         ASSERT_EQ(hit, true);
-        EXPECT_EQ(hit.m_body, terrainBody.get());
+        EXPECT_EQ(hit.m_body, terrainBody);
         EXPECT_EQ(hit.m_shape, terrainBody->GetShape(0).get());
     }
 
@@ -995,7 +1015,7 @@ namespace PhysX
         rigidBodyConfiguration.m_computeCenterOfMass = true;
         rigidBodyConfiguration.m_computeInertiaTensor = true;
 
-        AZStd::shared_ptr<Physics::RigidBody> rigidBody;
+        AZStd::unique_ptr<Physics::RigidBody> rigidBody;
         Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfiguration);
         ASSERT_TRUE(rigidBody != nullptr);
 
@@ -1018,7 +1038,7 @@ namespace PhysX
         rigidBodyConfiguration.m_centerOfMassOffset = AZ::Vector3::CreateOne();
         rigidBodyConfiguration.m_computeInertiaTensor = true;
 
-        AZStd::shared_ptr<Physics::RigidBody> rigidBody;
+        AZStd::unique_ptr<Physics::RigidBody> rigidBody;
         Physics::SystemRequestBus::BroadcastResult(rigidBody, &Physics::SystemRequests::CreateRigidBody, rigidBodyConfiguration);
         ASSERT_TRUE(rigidBody != nullptr);
 
@@ -1031,6 +1051,96 @@ namespace PhysX
 
         auto com = rigidBody->GetCenterOfMassLocal();
         EXPECT_TRUE(com.IsClose(AZ::Vector3::CreateOne(), PhysXSpecificTest::tolerance));
+    }
+
+    TEST_F(PhysXSpecificTest, TriggerArea_BodyDestroyedInsideTrigger_OnTriggerExitEventRaised)
+    {
+        // set up a trigger box
+        auto triggerBox = CreateTriggerAtPosition<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f));
+        auto triggerBody = triggerBox->FindComponent<BoxColliderComponent>()->GetStaticRigidBody();
+
+        // Create a test box above the trigger so when it falls down it'd enter and leave the trigger box
+        auto testBox = AddUnitTestObject(AZ::Vector3(0.0f, 0.0f, 1.5f), "TestBox");
+        auto testBoxBody = testBox->FindComponent<RigidBodyComponent>()->GetRigidBody();
+
+        // Listen for trigger events on the box
+        TestTriggerAreaNotificationListener testTriggerAreaNotificationListener(triggerBox->GetId());
+
+        // run the simulation for a while
+        AZStd::shared_ptr<Physics::World> world;
+        Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
+
+        const auto& enteredEvents = testTriggerAreaNotificationListener.GetEnteredEvents();
+        const auto& exitedEvents = testTriggerAreaNotificationListener.GetExitedEvents();
+
+        for (int timeStep = 0; timeStep < 100; timeStep++)
+        {
+            world->Update(1.0f / 60.0f);
+
+            // Body entered the trigger area, kill it!!!
+            if (enteredEvents.size() > 0 && testBox != nullptr)
+            {
+                delete testBox;
+                testBox = nullptr;
+            }
+        }
+
+        ASSERT_EQ(testBox, nullptr);
+        ASSERT_EQ(enteredEvents.size(), 1);
+        ASSERT_EQ(exitedEvents.size(), 1);
+
+        EXPECT_EQ(enteredEvents[0].m_triggerBody, triggerBody);
+        EXPECT_EQ(enteredEvents[0].m_otherBody, testBoxBody);
+
+        EXPECT_EQ(exitedEvents[0].m_triggerBody, triggerBody);
+        EXPECT_EQ(exitedEvents[0].m_otherBody, testBoxBody);
+
+        delete triggerBox;
+    }
+
+    TEST_F(PhysXSpecificTest, TriggerArea_StaticBodyDestroyedInsideDynamicTrigger_OnTriggerExitEventRaised)
+    {
+        // Set up a static non trigger box
+        auto staticBox = AddStaticUnitTestObject<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 0.0f));
+        auto staticBody = staticBox->FindComponent<BoxColliderComponent>()->GetStaticRigidBody();
+
+        // Create a test trigger box above the static box so when it falls down it'd enter and leave the trigger box
+        auto dynamicTrigger = CreateDynamicTriggerAtPosition<BoxColliderComponent>(AZ::Vector3(0.0f, 0.0f, 5.0f));
+        auto dynamicBody = dynamicTrigger->FindComponent<RigidBodyComponent>()->GetRigidBody();
+
+        // Listen for trigger events on the box
+        TestTriggerAreaNotificationListener testTriggerAreaNotificationListener(dynamicTrigger->GetId());
+
+        // run the simulation for a while
+        AZStd::shared_ptr<Physics::World> world;
+        Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
+
+        const auto& enteredEvents = testTriggerAreaNotificationListener.GetEnteredEvents();
+        const auto& exitedEvents = testTriggerAreaNotificationListener.GetExitedEvents();
+
+        for (int timeStep = 0; timeStep < 100; timeStep++)
+        {
+            world->Update(1.0f / 60.0f);
+
+            // Body entered the trigger area, kill it!!!
+            if (enteredEvents.size() > 0 && staticBox != nullptr)
+            {
+                delete staticBox;
+                staticBox = nullptr;
+            }
+        }
+
+        ASSERT_EQ(staticBox, nullptr);
+        ASSERT_EQ(enteredEvents.size(), 1);
+        ASSERT_EQ(exitedEvents.size(), 1);
+
+        EXPECT_EQ(enteredEvents[0].m_triggerBody, dynamicBody);
+        EXPECT_EQ(enteredEvents[0].m_otherBody, staticBody);
+
+        EXPECT_EQ(exitedEvents[0].m_triggerBody, dynamicBody);
+        EXPECT_EQ(exitedEvents[0].m_otherBody, staticBody);
+
+        delete dynamicTrigger;
     }
 } // namespace PhysX
 

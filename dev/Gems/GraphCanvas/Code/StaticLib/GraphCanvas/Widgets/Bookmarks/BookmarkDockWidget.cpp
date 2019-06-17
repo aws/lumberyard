@@ -25,7 +25,7 @@
 #include <GraphCanvas/Widgets/Bookmarks/BookmarkTableModel.h>
 #include <GraphCanvas/Widgets/Resources/Resources.h>
 
-namespace GraphCanvas
+namespace
 {
     class BookmarkContextMenu
         : public QMenu
@@ -35,7 +35,7 @@ namespace GraphCanvas
             : QMenu()
         {
             AZStd::string bookmarkName;
-            BookmarkRequestBus::EventResult(bookmarkName, bookmarkId, &BookmarkRequests::GetBookmarkName);
+            GraphCanvas::BookmarkRequestBus::EventResult(bookmarkName, bookmarkId, &GraphCanvas::BookmarkRequests::GetBookmarkName);
 
             QAction* triggerAction = new QAction(QObject::tr("Go to %1").arg(bookmarkName.c_str()), this);
             triggerAction->setToolTip(QObject::tr("Focuses on the selected bookmark"));
@@ -44,7 +44,7 @@ namespace GraphCanvas
             QObject::connect(triggerAction, &QAction::triggered,
                 [graphCanvasGraphId, bookmarkId](bool)
             {
-                BookmarkManagerRequestBus::Event(graphCanvasGraphId, &BookmarkManagerRequests::JumpToBookmark, bookmarkId);
+                GraphCanvas::BookmarkManagerRequestBus::Event(graphCanvasGraphId, &GraphCanvas::BookmarkManagerRequests::JumpToBookmark, bookmarkId);
             });
 
             QAction* deleteAction = new QAction(QObject::tr("Delete %1").arg(bookmarkName.c_str()), this);
@@ -54,7 +54,7 @@ namespace GraphCanvas
             QObject::connect(deleteAction, &QAction::triggered,
                 [bookmarkId](bool)
             {
-                BookmarkRequestBus::Event(bookmarkId, &BookmarkRequests::RemoveBookmark);
+                GraphCanvas::BookmarkRequestBus::Event(bookmarkId, &GraphCanvas::BookmarkRequests::RemoveBookmark);
             });
 
             addAction(triggerAction);
@@ -62,7 +62,10 @@ namespace GraphCanvas
             addAction(deleteAction);
         }
     };
+}
 
+namespace GraphCanvas
+{
     ///////////////////////
     // BookmarkDockWidget
     ///////////////////////

@@ -19,6 +19,8 @@
 
 #include <AzCore/Component/Entity.h>
 
+#include <ScriptCanvas/GraphCanvas/NodeDescriptorBus.h>
+
 namespace Ui
 {
     class EBusHandlerActionListWidget;
@@ -34,6 +36,7 @@ namespace ScriptCanvasEditor
         QString m_name;
         QString m_displayName;
         bool m_active = false;
+        ScriptCanvas::EBusEventId m_eventId;
     };
     
     class EBusHandlerActionSourceModel

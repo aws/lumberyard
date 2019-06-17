@@ -31,4 +31,5 @@ public:
 
 private:
     bool ReadGameFolderFromBootstrap(AZStd::string& result) const;
+    void InstallCtrlHandler();
 };

@@ -182,6 +182,7 @@ namespace AssetProcessor
     public:
         static QString GetStateDescription(const JobState& state);
         static void ExecuteBuilderCommand(BuilderParams builderParams);
+        static void AutoFailJob(BuilderParams& builderParams);
         static bool CopyCompiledAssets(BuilderParams& params, AssetBuilderSDK::ProcessJobResponse& response);
 
         QString GetJobKey() const;

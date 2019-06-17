@@ -321,7 +321,8 @@ namespace EMStudio
                 {
                     EMotionFX::AnimGraphNode* node = modelItemData->m_object.m_node;
                     QPixmap pixmap(QSize(12, 8));
-                    QColor nodeColor = node->GetVisualColor();
+                    QColor nodeColor;
+                    nodeColor.setRgbF(node->GetVisualColor().GetR(), node->GetVisualColor().GetG(), node->GetVisualColor().GetB(), 1.0f);
                     nodeColor.darker(30);
                     pixmap.fill(nodeColor);
                     return pixmap;
@@ -1278,13 +1279,12 @@ namespace EMStudio
 
     bool AnimGraphModel::ParameterEdited(EMotionFX::AnimGraph* animGraph)
     {
-        MCore::Array<EMotionFX::AnimGraphNode*> parameterNodes;
+        AZStd::vector<EMotionFX::AnimGraphNode*> parameterNodes;
         animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::BlendTreeParameterNode>(), &parameterNodes);
 
-        const uint32 parameterNodeCount = parameterNodes.GetLength();
-        for (uint32 i = 0; i < parameterNodeCount; ++i)
+        for (EMotionFX::AnimGraphNode* parameterNode : parameterNodes)
         {
-            QModelIndexList modelIndexes = FindModelIndexes(parameterNodes[i]);
+            QModelIndexList modelIndexes = FindModelIndexes(parameterNode);
             for (QModelIndex& modelIndex : modelIndexes)
             {
                 GetParentIfReferencedRootStateMachine(modelIndex);
@@ -1299,20 +1299,19 @@ namespace EMStudio
 
     bool AnimGraphModel::MotionEdited()
     {
-        MCore::Array<EMotionFX::AnimGraphNode*> motionNodes;
+        AZStd::vector<EMotionFX::AnimGraphNode*> motionNodes;
 
         const uint32 numAnimGraphs = EMotionFX::GetAnimGraphManager().GetNumAnimGraphs();
         for (uint32 i = 0; i < numAnimGraphs; ++i)
         {
             EMotionFX::AnimGraph* animGraph = EMotionFX::GetAnimGraphManager().GetAnimGraph(i);
 
-            motionNodes.Clear();
+            motionNodes.clear();
             animGraph->RecursiveCollectNodesOfType(azrtti_typeid<EMotionFX::AnimGraphMotionNode>(), &motionNodes);
 
-            const uint32 motionNodesCount = motionNodes.GetLength();
-            for (uint32 j = 0; j < motionNodesCount; ++j)
+            for (EMotionFX::AnimGraphNode* motionNode : motionNodes)
             {
-                QModelIndexList modelIndexes = FindModelIndexes(motionNodes[j]);
+                QModelIndexList modelIndexes = FindModelIndexes(motionNode);
                 for (QModelIndex& modelIndex : modelIndexes)
                 {
                     GetParentIfReferencedRootStateMachine(modelIndex);

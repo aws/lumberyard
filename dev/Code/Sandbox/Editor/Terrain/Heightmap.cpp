@@ -41,6 +41,8 @@
 
 #include <QMessageBox>
 
+#include <CryCommon/HeightmapUpdateNotificationBus.h>
+
 #ifndef VERIFY
 #define VERIFY(EXPRESSION) { auto e = EXPRESSION; assert(e); }
 #endif
@@ -1866,7 +1868,7 @@ void CHeightmap::DrawSpot(unsigned long iX, unsigned long iY,
         }
     }
 
-    NotifyModified(iX - iWidth, iY - iWidth, iX + iWidth, iY + iWidth);
+    NotifyModified(iX - iWidth, iY - iWidth, iWidth * 2, iWidth * 2);
 }
 
 void CHeightmap::DrawSpot2(int iX, int iY, int radius, float insideRadius, float fHeight, float fHardness, bool bAddNoise, float noiseFreq, float noiseScale)
@@ -1947,7 +1949,7 @@ void CHeightmap::DrawSpot2(int iX, int iY, int radius, float insideRadius, float
     }
 
     // We modified the heightmap.
-    NotifyModified(iX - radius, iY - radius, iX + radius, iY + radius);
+    NotifyModified(iX - radius, iY - radius, radius * 2, radius * 2);
 }
 
 void CHeightmap::RiseLowerSpot(int iX, int iY, int radius, float insideRadius, float fHeight, float fHardness, bool bAddNoise, float noiseFreq, float noiseScale)
@@ -2027,7 +2029,7 @@ void CHeightmap::RiseLowerSpot(int iX, int iY, int radius, float insideRadius, f
     }
 
     // We modified the heightmap.
-    NotifyModified(iX - radius, iY - radius, iX + radius, iY + radius);
+    NotifyModified(iX - radius, iY - radius, radius * 2, radius * 2);
 }
 
 void CHeightmap::SmoothSpot(int iX, int iY, int radius, float fHeight, float fHardness)
@@ -2093,7 +2095,7 @@ void CHeightmap::SmoothSpot(int iX, int iY, int radius, float fHeight, float fHa
     }
 
     // We modified the heightmap.
-    NotifyModified(iX - radius, iY - radius, iX + radius, iY + radius);
+    NotifyModified(iX - radius, iY - radius, radius * 2, radius * 2);
 }
 
 void CHeightmap::Hold()
@@ -2397,12 +2399,22 @@ void CHeightmap::UpdateEngineTerrain(int left, int bottom, int areaSize, int _he
         p3DEngine->GetITerrain()->SetTerrainElevation(bottom, left, areaSize, m_pHeightmap.data(), WeightmapSize, surfaceWeights);
     }
 
-    const Vec2 worldModPosition(
-        originalInputY1* nHeightMapUnitSize + originalInputAreaSize* nHeightMapUnitSize / 2,
-        originalInputX1* nHeightMapUnitSize + originalInputAreaSize* nHeightMapUnitSize / 2);
     const float areaRadius = originalInputAreaSize * nHeightMapUnitSize / 2;
+    const Vec2 worldModPosition(
+        originalInputY1 * nHeightMapUnitSize + areaRadius,
+        originalInputX1 * nHeightMapUnitSize + areaRadius);
 
     GetIEditor()->GetGameEngine()->OnTerrainModified(worldModPosition, areaRadius, (originalInputAreaSize == m_iWidth));
+
+    int x1 = originalInputX1 * nHeightMapUnitSize;
+    int y1 = originalInputY1 * nHeightMapUnitSize;
+    int x2 = x1 + originalInputAreaSize * nHeightMapUnitSize;
+    int y2 = y1 + originalInputAreaSize * nHeightMapUnitSize;
+
+    // Y and X switched by historical reasons.
+    const AZ::Vector3 min = AZ::Vector3(y1, x1, -AZ_FLT_MAX);
+    const AZ::Vector3 max = AZ::Vector3(y2, x2, AZ_FLT_MAX);
+    AZ::HeightmapUpdateNotificationBus::Broadcast(&AZ::HeightmapUpdateNotificationBus::Events::HeightmapModified, AZ::Aabb::CreateFromMinMax(min, max));
 }
 
 
@@ -3284,15 +3296,20 @@ t_hmap CHeightmap::GetSafeXY(const uint32 dwX, const uint32 dwY) const
 
 void CHeightmap::RecordUndo(int x1, int y1, int width, int height, bool bInfo)
 {
-    if (!m_standaloneMode && GetIEditor()->IsUndoRecording())
+    AzToolsFramework::UndoSystem::URSequencePoint* undoOperation = nullptr;
+    AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(undoOperation, &AzToolsFramework::ToolsApplicationRequests::GetCurrentUndoBatch);
+
+    if (!m_standaloneMode && undoOperation)
     {
         if (bInfo)
         {
-            GetIEditor()->RecordUndo(new CUndoHeightmapInfo(x1, y1, width, height, this));
+            auto undoCommand = aznew AzToolsFramework::LegacyCommand<IUndoObject>("Modify Terrain Command", AZStd::make_unique<CUndoHeightmapInfo>(x1, y1, width, height, this));
+            undoCommand->SetParent(undoOperation);
         }
         else
         {
-            GetIEditor()->RecordUndo(new CUndoHeightmapModify(x1, y1, width, height, this));
+            auto undoCommand = aznew AzToolsFramework::LegacyCommand<IUndoObject>("Modify Terrain Command", AZStd::make_unique<CUndoHeightmapModify>(x1, y1, width, height, this));
+            undoCommand->SetParent(undoOperation);
         }
     }
 }
@@ -3306,7 +3323,7 @@ void CHeightmap::RecordAzUndoBatchTerrainModify(AZ::u32 x, AZ::u32 y, AZ::u32 wi
     ToolsApplicationRequests::Bus::BroadcastResult(undoOperation, &ToolsApplicationRequests::BeginUndoBatch, "Modify Terrain");
     if (undoOperation != nullptr)
     {
-        auto undoCommand = new LegacyCommand<IUndoObject>("Modify Terrain Command", AZStd::make_unique<CUndoHeightmapModify>(x, y, width, height, this));
+        auto undoCommand = aznew LegacyCommand<IUndoObject>("Modify Terrain Command", AZStd::make_unique<CUndoHeightmapModify>(x, y, width, height, this));
         // ToolsApplication takes care of memory deallocation for undoCommand
         undoCommand->SetParent(undoOperation);
     }
@@ -3759,7 +3776,7 @@ std::shared_ptr<CFloatImage> CHeightmap::GetHeightmapFloatImage(bool scaleValues
     return rotatedImage;
 }
 
-void CHeightmap::NotifyModified(int x, int y, int width, int height)
+void CHeightmap::NotifyModified(int x /*= 0*/, int y /*= 0*/, int width /*= 0*/, int height /*= 0*/)
 {
     // TODO: Make this a generic delegate (not hardcoded to the global Editor instance...)
     if (!m_standaloneMode)

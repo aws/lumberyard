@@ -1578,6 +1578,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         SetFlag(BOOL_ISOWNEDBYRUNTIME, isOwnedByRuntime);
+#else
+        AZ_UNUSED(isOwnedByRuntime);
 #endif
     }
 

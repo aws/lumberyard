@@ -52,12 +52,10 @@ typedef Ang3_tpl<f32>       Ang3;
 #if defined(QT_VERSION)
 #include <QColor>
 #include <QString>
-#include <QUuid>
 #elif defined(_AFX)
 #include "Util/GuidUtil.h"
 #endif
 
-// Guid needs to be included after QUuid to enable QUuid <-> GUID conversions
 #include <AzCore/Math/Guid.h>
 #include <AzCore/Math/Uuid.h>
 
@@ -558,9 +556,9 @@ public:
     //   Sets GUID attribute.
     void setAttr(const char* key, const GUID& value)
     {
-        QUuid uuid;
+        AZ::Uuid uuid;
         uuid = value;
-        setAttr(key, uuid.toString().toUtf8().data());
+        setAttr(key, uuid.ToString<AZStd::string>().c_str());
     };
 
     // Summary:
@@ -572,7 +570,7 @@ public:
             return false;
         }
         const char* guidStr = getAttr(key);
-        value = QUuid(guidStr);
+        value = AZ::Uuid(guidStr);
         if (value.Data1 == 0)
         {
             memset(&value, 0, sizeof(value));
@@ -703,17 +701,17 @@ public:
         Update();
     }
 
-	bool operator!=(const XmlNodeRefIterator& rhs) {
-		return m_index != rhs.m_index;
-	}
-	XmlNodeRefIterator& operator++() {
-		++m_index;
-		Update();
-		return *this;
-	}
-	IXmlNode* operator*() const {
-		return m_currentChildNode;
-	}
+    bool operator!=(const XmlNodeRefIterator& rhs) {
+        return m_index != rhs.m_index;
+    }
+    XmlNodeRefIterator& operator++() {
+        ++m_index;
+        Update();
+        return *this;
+    }
+    IXmlNode* operator*() const {
+        return m_currentChildNode;
+    }
 
 private:
     void Update()

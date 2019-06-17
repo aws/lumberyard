@@ -14,6 +14,7 @@
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
+#include <AzToolsFramework/UI/UICore/QTreeViewStateSaver.hxx>
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 
 #include <QDialog>
@@ -76,6 +77,11 @@ private Q_SLOTS:
     void SelectionChangedSlot();
     void RestoreState();
 
+    void OnFilterUpdated();
+
 private:
+
+    bool m_hasFilter;
+    AZStd::unique_ptr<AzToolsFramework::TreeViewState> m_filterStateSaver;
     AZStd::intrusive_ptr<AzToolsFramework::QWidgetSavedState> m_persistentState;
 };

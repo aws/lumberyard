@@ -314,17 +314,6 @@ namespace EMotionFX
     }
 
 
-    // draw a debug line
-    void EventManager::OnDrawLine(const AZ::Vector3& posA, const AZ::Vector3& posB, uint32 color)
-    {
-        const EventHandlerVector& eventHandlers = m_eventHandlersByEventType[EVENT_TYPE_ON_DRAW_LINE];
-        for (EventHandler* eventHandler : eventHandlers)
-        {
-            eventHandler->OnDrawLine(posA, posB, color);
-        }
-    }
-
-
     // draw a debug triangle
     void EventManager::OnDrawTriangle(const AZ::Vector3& posA, const AZ::Vector3& posB, const AZ::Vector3& posC, const AZ::Vector3& normalA, const AZ::Vector3& normalB, const AZ::Vector3& normalC, uint32 color)
     {

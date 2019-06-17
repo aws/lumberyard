@@ -29,12 +29,16 @@ namespace GraphCanvas
     struct Endpoint;
 
     class GraphCanvasMimeEvent;
-    class GraphCanvasTreeItem;    
+    class GraphCanvasTreeItem;
 }
 
 namespace ScriptCanvasEditor
 {
+    struct CategoryInformation;
+    struct NodePaletteModelInformation;
+
     class ScriptCanvasAsset;
+
     namespace Widget
     {
         struct GraphTabMetadata;
@@ -47,12 +51,15 @@ namespace ScriptCanvasEditor
 
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
 
+        virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAssetId(const AZ::Data::AssetId& scriptCanvasAsset) = 0;
+
         //! Opens an existing graph and returns the tab index in which it was open in.
         //! \param Asset structure used for holding ScriptCanvas Graph
-        //! \param hostId of optional entity id of entity used to open the ScriptCanvas Asset. This will be used to track the Entity Context in which the graph was loaded in
         //! \return index of open tab if the asset was able to be open successfully or error message of why the open failed
-        virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1, AZ::EntityId hostId = AZ::EntityId()) = 0;
+        virtual AZ::Outcome<int, AZStd::string> OpenScriptCanvasAsset(const AZ::Data::Asset<ScriptCanvasAsset>& scriptCanvasAsset, int tabIndex = -1) = 0;
         virtual int CloseScriptCanvasAsset(const AZ::Data::AssetId&) = 0;
+
+        virtual bool IsScriptCanvasAssetOpen(const AZ::Data::AssetId& assetId) const = 0;
 
         virtual void OnChangeActiveGraphTab(const Widget::GraphTabMetadata&) {}
 
@@ -76,7 +83,19 @@ namespace ScriptCanvasEditor
             return AZ::EntityId();
         }
 
+        virtual AZ::EntityId FindGraphCanvasGraphIdByAssetId(const AZ::Data::AssetId& assetId) const
+        {
+            return AZ::EntityId();
+        }
+
+        virtual AZ::EntityId FindScriptCanvasGraphIdByAssetId(const AZ::Data::AssetId& assetId) const
+        {
+            return AZ::EntityId();
+        }
+        
         virtual bool IsInUndoRedo(const AZ::EntityId& graphCanvasGraphId) const = 0;
+
+        virtual bool IsActiveInUndoRedo() const = 0;
 
         virtual void UpdateName(const AZ::EntityId& /*graphId*/, const AZStd::string& /*name*/) {}
 
@@ -95,9 +114,29 @@ namespace ScriptCanvasEditor
         // Sets the value of the ignore undo point tracker to 0.
         // Therefore allowing undo points to be posted
         virtual void ClearPreventUndoStateUpdate() = 0;
+
+        virtual void TriggerUndo() = 0;
+        virtual void TriggerRedo() = 0;
+
+        virtual const CategoryInformation* FindNodePaletteCategoryInformation(AZStd::string_view categoryPath) const = 0;
+        virtual const NodePaletteModelInformation* FindNodePaletteModelInformation(const ScriptCanvas::NodeTypeIdentifier& nodeType) const = 0;
     };
 
     using GeneralRequestBus = AZ::EBus<GeneralRequests>;
+
+    class GeneralAssetNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+        using BusIdType = AZ::Data::AssetId;
+
+        virtual void OnAssetVisualized() {};
+        virtual void OnAssetUnloaded() {};
+    };
+
+    using GeneralAssetNotificationBus = AZ::EBus<GeneralAssetNotifications>;
 
     class NodeCreationNotifications : public AZ::EBusTraits
     {
@@ -127,6 +166,9 @@ namespace ScriptCanvasEditor
 
         virtual NodeIdPair ProcessCreateNodeMimeEvent(GraphCanvas::GraphCanvasMimeEvent* mimeEvent, const AZ::EntityId& graphCanvasGraphId, AZ::Vector2 nodeCreationPos) = 0;
         virtual const GraphCanvas::GraphCanvasTreeItem* GetNodePaletteRoot() const = 0;
+
+        virtual void SignalAutomationBegin() = 0;
+        virtual void SignalAutomationEnd() = 0;
     };
 
     using AutomationRequestBus = AZ::EBus<AutomationRequests>;

@@ -955,16 +955,7 @@ void ResourceManagementView::SourceUpdatedCreateResourceGroup(const QString& res
 
 void ResourceManagementView::DoCreateResourceGroup(const QString& resourceGroupName, const QString& initialContent)
 {
-    auto callback = [this](const QString& errorMessage)
-    {
-        if (!errorMessage.isEmpty())
-        {
-            QMessageBox::critical(this, "Error", errorMessage);
-        }
-    };
-
-    m_waitingForResourceGroup = resourceGroupName;
-    m_projectModel->CreateCloudGem(resourceGroupName, initialContent, callback);
+   QMessageBox::critical(this, "Error", "Adding resource groups is no longer supported and was deprecated in Lumberyard 1.11.  Please use the 'lmbr_aws gem create' command.");   
 }
 
 void ResourceManagementView::SourceChangedCreateResourceGroup(const QString& resourceGroupName, const QString& initialContent)

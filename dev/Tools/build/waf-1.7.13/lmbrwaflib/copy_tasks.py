@@ -18,13 +18,13 @@ import glob
 import shutil
 import time
 import stat
-import datetime
+import fnmatch
 
 try:
     import _winreg
 except ImportError:
     pass
-DEPENDENT_TARGET_BLACKLISTED_SUBFOLDERS = ['EditorPlugins']
+DEPENDENT_TARGET_BLACKLISTED_SUBFOLDERS = ['EditorPlugins', 'Builders']
 
 def hash_range(filename, start, size):
     f = open(filename, 'rb')
@@ -641,7 +641,11 @@ def copy_dependent_objects(self, source_file, source_node, target_node, source_e
                 os.makedirs( file_item_target_path )
 
             if not build_folder_tree_only:
-                self.create_copy_task(source_file_node, target_file_node)
+                if should_overwrite_file(source_file_node.abspath(),target_file_node.abspath()):
+                    if os.path.exists(target_file_node.abspath()):
+                        os.chmod(target_file_node.abspath(), stat.S_IWRITE)
+                    fast_copy2(source_file_node.abspath(),target_file_node.abspath())			
+#                self.create_copy_task(source_file_node, target_file_node)
         # Check if this is a folder, make sure the path exists and recursively act on the folder
         elif os.path.isdir(source_file_path):
             folder_items = os.listdir(source_file_path)
@@ -658,7 +662,7 @@ def copy_dependent_objects(self, source_file, source_node, target_node, source_e
 
 
 @after_method('set_pdb_flags')
-@feature('c', 'cxx')
+@feature('c', 'cxx', 'copy_artifacts')
 def add_copy_artifacts(self):
     """
     Function to generate the copy tasks to the target Bin64(.XXX) folder.  This will take any collection of source artifacts and copy them flattened into the Bin64(.XXX) target folder
@@ -695,9 +699,8 @@ def add_copy_artifacts(self):
         for dependent_files in include_source_artifacts:
             self.copy_dependent_objects(dependent_files,source_node,target_node,exclude_source_artifacts,False,True)
 
-
 @after_method('set_pdb_flags')
-@feature('c', 'cxx')
+@feature('c', 'cxx', 'copy_mirror_artifacts')
 def add_mirror_artifacts(self):
     """
     Function to generate the copy tasks for mirroring artifacts from Bin64.  This will take files that
@@ -929,6 +932,7 @@ def copy_3rd_party_extras(self):
     if self.bld.cmd in ('msvs', 'android_studio'):
         return
 
+    project_root_norm_path = os.path.normpath(self.bld.srcnode.abspath())
     current_platform = self.bld.env['PLATFORM']
     current_configuration = self.bld.env['CONFIGURATION']
 
@@ -1007,8 +1011,17 @@ def copy_3rd_party_extras(self):
 
         for target_node in self.bld.get_output_folders(current_platform, current_configuration, self):
             for source_file, target_file in raw_src_and_tgt:
-                source = self.bld.root.make_node(source_file)
-                target = target_node.make_node(target_file)
+                if source_file.startswith(project_root_norm_path):
+                    source_file_relative_path = source_file[len(project_root_norm_path)+1:]
+                    source = self.bld.srcnode.make_node(source_file_relative_path)
+                else:
+                    source = self.bld.root.make_node(source_file)
+                    
+                output_subfolder = getattr(self, 'output_sub_folder', None)
+                if output_subfolder:
+                    target = target_node.make_node(output_subfolder).make_node(target_file)
+                else:
+                    target = target_node.make_node(target_file)
                 self.create_copy_task(source, target)
 
         return True
@@ -1031,18 +1044,23 @@ def copy_3rd_party_extras(self):
             _process_copy_command(copy_extra_command)
 
 
-@feature('copy_module_dependent_files')
-@before_method('process_source')
-def copy_module_dependent_files(self):
+def copy_module_dependent_files(self, keep_folder_tree=False):
     """
     Feature to process copying external module dependent files (files that are not directly
     part of any module build) to the target output folder
+
+    ant_glob is used, so that we can use pattern 'folder/**/*.ext' to copy files.
+
+    If keep_folder_tree is set to be True, the files will be copied to output_folder with the original folder structure.
     """
 
     if self.bld.env['PLATFORM'] == 'project_generator':
         return
 
     copy_dependent_env_key = 'COPY_DEPENDENT_FILES_{}'.format(self.target.upper())
+    if keep_folder_tree:
+        copy_dependent_env_key = 'COPY_DEPENDENT_FILES_KEEP_FOLDER_TREE_{}'.format(self.target.upper())
+
     if copy_dependent_env_key not in self.env:
         return
 
@@ -1053,8 +1071,9 @@ def copy_module_dependent_files(self):
     copied_files = 0
 
     def _copy_single_file(src_file, tgt_folder):
-
         src_filename = os.path.split(src_file)[1]
+        if not os.path.exists(tgt_folder):
+            os.makedirs(tgt_folder)
         tgt_file = os.path.join(tgt_folder, src_filename)
 
         if should_overwrite_file(src_file, tgt_file):
@@ -1067,7 +1086,7 @@ def copy_module_dependent_files(self):
             except:
                 Logs.warn('[WARN] Unable to copy {} to destination {}.  '
                           'Check the file permissions or any process that may be locking it.'
-                          .format(copy_external_file, tgt_file))
+                          .format(src_file, tgt_file))
             return False
 
     # Iterate through all target output folders
@@ -1082,27 +1101,77 @@ def copy_module_dependent_files(self):
             output_paths.append(target_node.abspath())
 
         for output_path in output_paths:
-
             for copy_external_file in external_files:
-
-                # Is this a potential wildcard pattern?
-                is_pattern = '*' in os.path.basename(copy_external_file)
-                if is_pattern:
-                    # If this is a wildcard pattern, make sure its base directory is valid
-                    if not os.path.exists(os.path.dirname(copy_external_file)):
-                        continue
-                    files_from_pattern = glob.glob(copy_external_file)
-                    for file_from_pattern in files_from_pattern:
-                        if _copy_single_file(file_from_pattern, output_path):
-                            copied_files += 1
+                # Determine the absolute path of the source file/directory/glob pattern
+                if os.path.isabs(copy_external_file):
+                    copy_external_file_abspath = copy_external_file
+                elif self.bld.path.is_child_of(self.bld.engine_node):
+                    copy_external_file_abspath = os.path.normpath(os.path.join(self.bld.engine_node.abspath(), copy_external_file))
                 else:
-                    # Skip if the file does not exist or is a directory
-                    if not os.path.exists(copy_external_file):
-                        continue
-                    if os.path.isdir(copy_external_file):
-                        continue
-                    if _copy_single_file(copy_external_file, output_path):
+                    copy_external_file_abspath = os.path.normpath(os.path.join(self.bld.path.path.abspath(), copy_external_file))
+
+                # Save the base directory from the absolute path. The base path will be used as a target folder if
+                # this is a folder copy
+                basedir = os.path.dirname(copy_external_file_abspath)
+                while '*' in basedir:
+                    basedir = os.path.dirname(basedir)
+                
+                # If the file path is a directory, then assume it will be a recursive copy
+                if os.path.isdir(copy_external_file_abspath):
+                    copy_external_file_abspath = os.path.join(copy_external_file_abspath,'**/*')
+
+                '''
+                basedir is only used when we use 'copy_module_dependent_files_keep_folder_tree'
+                The copied file will keep the folder structure relative to basedir, instead of relative to dev
+                If we use
+                copy_module_dependent_files_keep_folder_tree = ['GameCode/Coatlicue/Editor/sources/data']
+                the files will be copied to dev/output_folder/data/...
+                '''
+                search_dir = os.path.dirname(copy_external_file_abspath)
+                search_file = os.path.basename(copy_external_file_abspath)
+                is_search_pattern = '*' in search_file
+                is_recursive = False
+
+                while '*' in search_dir:
+                    is_recursive = True
+                    search_dir = os.path.dirname(search_dir)
+
+                if is_search_pattern or is_recursive:
+                    files_to_copy = []
+                    if is_recursive:
+                        for root, directories, filenames in os.walk(search_dir):
+                            for filename in filenames:
+                                if fnmatch.fnmatch(filename, search_file):
+                                    files_to_copy.append(os.path.join(root, filename))
+                    else:
+                        for filename in os.listdir(search_dir):
+                            if fnmatch.fnmatch(filename, search_file):
+                                files_to_copy.append(os.path.join(search_dir, filename))
+                else:
+                    files_to_copy = [copy_external_file_abspath]
+
+                for file_to_copy in files_to_copy:
+                    output_folder = output_path
+                    if keep_folder_tree:
+                        glob_file_rel_path = os.path.relpath(file_to_copy, basedir)
+                        glob_file_rel_folder = os.path.dirname(glob_file_rel_path)
+                        output_folder = os.path.join(output_path, glob_file_rel_folder)
+                    if _copy_single_file(file_to_copy, output_folder):
                         copied_files += 1
 
     if copied_files > 0:
         Logs.info('[INFO] {} dependent files copied for target {}.'.format(copied_files, self.target))
+
+
+@feature('copy_module_dependent_files')
+@before_method('process_source')
+def copy_module_dependent_files_not_keep_folder_tree(self):
+    copy_module_dependent_files(self)
+
+
+@feature('copy_module_dependent_files_keep_folder_tree')
+@before_method('process_source')
+def copy_module_dependent_files_keep_folder_tree(self):
+    copy_module_dependent_files(self, keep_folder_tree=True)
+
+

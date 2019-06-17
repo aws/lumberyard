@@ -185,7 +185,11 @@ enum ETextureFlags
     FT_DONT_RELEASE            = 0x00010000,
     FT_ASYNC_PREPARE           = 0x00020000,
     FT_DONT_STREAM             = 0x00040000,
-    FT_USAGE_PREDICATED_TILING = 0x00080000,
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    FT_USAGE_MEMORYLESS        = 0x00080000, //reusing an unused bit for ios
+#else
+    FT_USAGE_PREDICATED_TILING = 0x00080000, //unused
+#endif
     FT_FAILED                  = 0x00100000,
     FT_FROMIMAGE               = 0x00200000,
     FT_STATE_CLAMP             = 0x00400000,

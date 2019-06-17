@@ -37,9 +37,9 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
     Desc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
     Desc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
 
-#if defined(CRY_USE_METAL)
+#if defined(AZ_PLATFORM_APPLE_OSX)
     // For metal when we do a subresource copy we render to the texture so need to set the render target flag
-    Desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+    Desc.BindFlags |= D3D11_BIND_RENDER_TARGET; //todo: Remove this for mac too
 #endif
 
     // BindFlags play a part in matching the descriptions. Only search after we have finished
@@ -63,9 +63,9 @@ D3DResource* CDeviceManager::AllocateStagingResource(D3DResource* pForTex, bool 
             stagingDesc.CPUAccessFlags = bUpload ? D3D11_CPU_ACCESS_WRITE     : D3D11_CPU_ACCESS_READ;
             stagingDesc.BindFlags      = bUpload ? D3D11_BIND_SHADER_RESOURCE : 0;
 
-#if defined(CRY_USE_METAL)
+#if defined(AZ_PLATFORM_APPLE_OSX)
             // For metal when we do a subresource copy we render to the texture so need to set the render target flag
-            stagingDesc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+            stagingDesc.BindFlags |= D3D11_BIND_RENDER_TARGET; //todo: Remove this for mac too
 #endif
 
             if (memcmp(&stagingDesc, &Desc, sizeof(Desc)) != 0)
@@ -247,10 +247,19 @@ HRESULT CDeviceManager::Create2DTexture(const string& textureName, uint32 nWidth
     {
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
+    
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    if (nUsage & USAGE_MEMORYLESS)
+    {
+        nBindFlags |= D3D11_BIND_MEMORYLESS;
+    }
+#endif
+    
     if (nUsage & USAGE_UNORDERED_ACCESS)
     {
         nBindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     }
+    
     uint32 nMiscFlags = 0;
     if (nUsage & USAGE_AUTOGENMIPS)
     {
@@ -381,6 +390,14 @@ HRESULT CDeviceManager::CreateCubeTexture(const string& textureName, uint32 nSiz
     {
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
+    
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    if (nUsage & USAGE_MEMORYLESS)
+    {
+        nBindFlags |= D3D11_BIND_MEMORYLESS;
+    }
+#endif
+    
     if (nUsage & USAGE_AUTOGENMIPS)
     {
         nMiscFlags |= D3D11_RESOURCE_MISC_GENERATE_MIPS;
@@ -494,6 +511,14 @@ HRESULT CDeviceManager::CreateVolumeTexture(const string& textureName, uint32 nW
     {
         nBindFlags |= D3D11_BIND_RENDER_TARGET;
     }
+    
+#if defined(AZ_PLATFORM_APPLE_IOS)
+    if (nUsage & USAGE_MEMORYLESS)
+    {
+        nBindFlags |= D3D11_BIND_MEMORYLESS;
+    }
+#endif
+    
     if (nUsage & USAGE_UNORDERED_ACCESS)
     {
         nBindFlags |= D3D11_BIND_UNORDERED_ACCESS;

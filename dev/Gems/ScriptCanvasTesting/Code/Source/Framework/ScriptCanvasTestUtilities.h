@@ -11,38 +11,32 @@
 */
 
 #pragma once
-#include "ScriptCanvasTestNodes.h"
-
-#include <AzCore/Component/EntityId.h>
-#include <ScriptCanvas/Core/ScriptCanvasBus.h>
-#include <AzCore/Component/Entity.h>
-#include <AzCore/Debug/TraceMessageBus.h>
-#include <AzCore/RTTI/BehaviorContext.h>
-
-#include <AzFramework/Entity/EntityContextBus.h>
-
-#include <ScriptCanvas/Data/Data.h>
-#include <ScriptCanvas/Core/Core.h>
-#include <ScriptCanvas/Core/Graph.h>
-
-#include <ScriptCanvas/Libraries/Core/Core.h>
-#include <ScriptCanvas/Libraries/Core/BinaryOperator.h>
-#include <ScriptCanvas/Libraries/Core/BehaviorContextObjectNode.h>
-#include <ScriptCanvas/Libraries/Entity/EntityRef.h>
-#include <ScriptCanvas/Libraries/Libraries.h>
-#include <ScriptCanvas/Libraries/Logic/Logic.h>
-#include <ScriptCanvas/Libraries/Math/Math.h>
-#include <ScriptCanvas/Libraries/Comparison/Comparison.h>
-
-#include <ScriptCanvas/Variable/VariableBus.h>
-
-namespace ScriptCanvas
-{
-    class RuntimeAsset;
-}
+#include <Editor/Framework/ScriptCanvasTraceUtilities.h>
+#include <Editor/Framework/ScriptCanvasReporter.h>
+#include <AzTest/AzTest.h>
 
 namespace ScriptCanvasTests
 {
+    extern const char* k_tempCoreAssetDir;
+    extern const char* k_tempCoreAssetName;
+    extern const char* k_tempCoreAssetPath;
+
+    AZStd::string_view GetGraphNameFromPath(AZStd::string_view graphPath);
+
+    void VerifyReporter(const ScriptCanvasEditor::Reporter& reporter);
+
+    void RunUnitTestGraph(AZStd::string_view graphPath, ScriptCanvas::ExecutionMode execution, const ScriptCanvasEditor::DurationSpec& duration);
+
+    void RunUnitTestGraph(AZStd::string_view graphPath, const ScriptCanvasEditor::DurationSpec& duration);
+
+    void RunUnitTestGraph(AZStd::string_view graphPath, ScriptCanvas::ExecutionMode execution);
+
+    void RunUnitTestGraph(AZStd::string_view graphPath);
+
+    void RunUnitTestGraphMixed(AZStd::string_view graphPath, const ScriptCanvasEditor::DurationSpec& duration);
+
+    void RunUnitTestGraphMixed(AZStd::string_view graphPath);
+
     template<typename t_NodeType>
     t_NodeType* GetTestNode(const AZ::EntityId& graphUniqueId, const AZ::EntityId& nodeID)
     {
@@ -65,7 +59,7 @@ namespace ScriptCanvasTests
         SystemRequestBus::Broadcast(&SystemRequests::CreateNodeOnEntity, entityOut, graphUniqueId, azrtti_typeid<t_NodeType>());
         return GetTestNode<t_NodeType>(graphUniqueId, entityOut);
     }
-    
+
     ScriptCanvas::Node* CreateDataNodeByType(const AZ::EntityId& graphUniqueId, const ScriptCanvas::Data::Type& type, AZ::EntityId& nodeIDout);
 
     template<typename t_Value>
@@ -99,7 +93,7 @@ namespace ScriptCanvasTests
     }
 
     ScriptCanvas::Nodes::Core::BehaviorContextObjectNode* CreateTestObjectNode(const AZ::EntityId& graphUniqueId, AZ::EntityId& entityOut, const AZ::Uuid& objectTypeID);
-    AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, const AZStd::string& className, const AZStd::string& methodName);
+    AZ::EntityId CreateClassFunctionNode(const AZ::EntityId& graphUniqueId, AZStd::string_view className, AZStd::string_view methodName);
     const char* SlotTypeToString(ScriptCanvas::SlotType type);
     void DumpSlots(const ScriptCanvas::Node& node);
     bool Connect(ScriptCanvas::Graph& graph, const AZ::EntityId& fromNodeID, const char* fromSlotName, const AZ::EntityId& toNodeID, const char* toSlotName, bool dumpSlotsOnFailure = true);
@@ -110,10 +104,10 @@ namespace ScriptCanvasTests
         : public AZ::EBusTraits
     {
     public:
-        virtual void Failed(const AZStd::string& description) = 0;
-        virtual AZStd::string Result(const AZStd::string& description) = 0;
-        virtual void SideEffect(const AZStd::string& description) = 0;
-        virtual void Succeeded(const AZStd::string& description) = 0;
+        virtual void Failed(AZStd::string_view description) = 0;
+        virtual AZStd::string Result(AZStd::string_view description) = 0;
+        virtual void SideEffect(AZStd::string_view description) = 0;
+        virtual void Succeeded(AZStd::string_view description) = 0;
     };
 
     using UnitTestEventsBus = AZ::EBus<UnitTestEvents>;
@@ -145,7 +139,7 @@ namespace ScriptCanvasTests
             m_results.clear();
         }
 
-        void Failed(const AZStd::string& description)
+        void Failed(AZStd::string_view description)
         {
             auto iter = m_failures.find(description);
             if (iter != m_failures.end())
@@ -158,7 +152,7 @@ namespace ScriptCanvasTests
             }
         }
 
-        int FailureCount(const AZStd::string& description) const
+        int FailureCount(AZStd::string_view description) const
         {
             auto iter = m_failures.find(description);
             return iter != m_failures.end() ? iter->second : 0;
@@ -174,7 +168,7 @@ namespace ScriptCanvasTests
             return !m_successes.empty();
         }
 
-        void SideEffect(const AZStd::string& description)
+        void SideEffect(AZStd::string_view description)
         {
             auto iter = m_sideEffects.find(description);
             if (iter != m_sideEffects.end())
@@ -200,13 +194,13 @@ namespace ScriptCanvasTests
             return count;
         }
 
-        int SideEffectCount(const AZStd::string& description) const
+        int SideEffectCount(AZStd::string_view description) const
         {
             auto iter = m_sideEffects.find(description);
             return iter != m_sideEffects.end() ? iter->second : 0;
         }
 
-        void Succeeded(const AZStd::string& description)
+        void Succeeded(AZStd::string_view description)
         {
             auto iter = m_successes.find(description);
 
@@ -220,13 +214,13 @@ namespace ScriptCanvasTests
             }
         }
 
-        int SuccessCount(const AZStd::string& description) const
+        int SuccessCount(AZStd::string_view description) const
         {
             auto iter = m_successes.find(description);
             return iter != m_successes.end() ? iter->second : 0;
         }
 
-        AZStd::string Result(const AZStd::string& description)
+        AZStd::string Result(AZStd::string_view description)
         {
             auto iter = m_results.find(description);
 
@@ -242,7 +236,7 @@ namespace ScriptCanvasTests
             return description;
         }
 
-        int ResultCount(const AZStd::string& description) const
+        int ResultCount(AZStd::string_view description) const
         {
             auto iter = m_results.find(description);
             return iter != m_results.end() ? iter->second : 0;
@@ -402,7 +396,7 @@ namespace ScriptCanvasTests
     public:
         virtual void Event() = 0;
         virtual int Number(int number) = 0;
-        virtual AZStd::string String(const AZStd::string& string) = 0;
+        virtual AZStd::string String(AZStd::string_view string) = 0;
         virtual TestBehaviorContextObject Object(const TestBehaviorContextObject& vector) = 0;
     };
 
@@ -414,7 +408,7 @@ namespace ScriptCanvasTests
     {
     public:
         AZ_EBUS_BEHAVIOR_BINDER
-            ( EventTestHandler
+        (EventTestHandler
             , "{29E7F7EE-0867-467A-8389-68B07C184109}"
             , AZ::SystemAllocator
             , Event
@@ -451,7 +445,7 @@ namespace ScriptCanvasTests
             return output;
         }
 
-        AZStd::string String(const AZStd::string& input) override
+        AZStd::string String(AZStd::string_view input) override
         {
             AZStd::string output;
             CallResult(output, FN_String, input);
@@ -501,106 +495,6 @@ namespace ScriptCanvasTests
         }
     };
 
-    class TraceSuppression
-        : public AZ::EBusTraits
-    {
-    public:
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
-
-        virtual void SuppressPreAssert(bool suppress) = 0;
-        virtual void SuppressAssert(bool suppress) = 0;
-        virtual void SuppressException(bool suppress) = 0;
-        virtual void SuppressPreError(bool suppress) = 0;
-        virtual void SuppressError(bool suppress) = 0;
-        virtual void SuppressPreWarning(bool suppress) = 0;
-        virtual void SuppressWarning(bool suppress) = 0;
-        virtual void SuppressPrintf(bool suppress) = 0;
-        virtual void SuppressAllOutput(bool suppress) = 0;
-    };
-
-    using TraceSuppressionBus = AZ::EBus<TraceSuppression>;
-
-    class TraceMessageComponent
-        : public AZ::Component
-        , protected AZ::Debug::TraceMessageBus::Handler
-        , protected TraceSuppressionBus::Handler
-    {
-    public:
-        AZ_COMPONENT(TraceMessageComponent, "{E12144CE-809D-4056-9735-4384D7DBCCDC}");
-
-        TraceMessageComponent() = default;
-        ~TraceMessageComponent() override = default;
-
-        void Activate() override
-        {
-            AZ::Debug::TraceMessageBus::Handler::BusConnect();
-            TraceSuppressionBus::Handler::BusConnect();
-        }
-        void Deactivate() override
-        {
-            AZ::Debug::TraceMessageBus::Handler::BusDisconnect();
-            TraceSuppressionBus::Handler::BusDisconnect();
-        }
-
-    private:
-
-        /// \ref ComponentDescriptor::Reflect
-        static void Reflect(AZ::ReflectContext* context)
-        {
-            if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
-            {
-                serializeContext->Class<TraceMessageComponent, AZ::Component>()
-                    ;
-            }
-        }
-
-        bool OnPreAssert(const char*, int, const char*, const char*) { return suppressPreAssert; }
-        bool OnAssert(const char*) { return suppressAssert; }
-        bool OnException(const char*) { return suppressException; }
-        bool OnPreError(const char*, const char*, int, const char*, const char*) { return suppressPreError; }
-        bool OnError(const char*, const char*) { return suppressError; }
-        bool OnPreWarning(const char*, const char*, int, const char*, const char*) { return suppressPreWarning; }
-        bool OnWarning(const char*, const char*) { return suppressWarning; }
-        bool OnPrintf(const char*, const char*) { return suppressPrintf; }
-        bool OnOutput(const char*, const char*) { return suppressAllOutput; }
-
-        void SuppressPreAssert(bool suppress) override { suppressPreAssert = suppress; }
-        void SuppressAssert(bool suppress)override { suppressAssert = suppress; }
-        void SuppressException(bool suppress) override { suppressException = suppress; }
-        void SuppressPreError(bool suppress) override { suppressPreError = suppress; }
-        void SuppressError(bool suppress) override { suppressPreError = suppress; }
-        void SuppressPreWarning(bool suppress) override { suppressPreWarning = suppress; }
-        void SuppressWarning(bool suppress) override { suppressWarning = suppress; }
-        void SuppressPrintf(bool suppress) override { suppressPrintf = suppress; }
-        void SuppressAllOutput(bool suppress) override { suppressAllOutput = suppress; }
-
-        bool suppressPreAssert = false;
-        bool suppressAssert = false;
-        bool suppressException = false;
-        bool suppressPreError = false;
-        bool suppressError = false;
-        bool suppressPreWarning = false;
-        bool suppressWarning = false;
-        bool suppressPrintf = false;
-        bool suppressAllOutput = false;
-    };
-
-    struct ScopedOutputSuppression
-    {
-        ScopedOutputSuppression(bool suppressState = true)
-        {
-            AZ::Debug::TraceMessageBus::BroadcastResult(m_oldSuppression, &AZ::Debug::TraceMessageEvents::OnOutput, "", "");
-            TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressAllOutput, suppressState);
-        }
-
-        ~ScopedOutputSuppression()
-        {
-            TraceSuppressionBus::Broadcast(&TraceSuppression::SuppressAllOutput, m_oldSuppression);
-        }
-    private:
-        bool m_oldSuppression = false;
-    };
-
     class UnitTestEntityContext
         : public AzFramework::EntityIdContextQueryBus::MultiHandler
         , public AzFramework::EntityContextRequestBus::Handler
@@ -618,7 +512,11 @@ namespace ScriptCanvasTests
 
         //// EntityContextRequestBus::Handler
         AZ::SliceComponent* GetRootSlice() override { return {}; }
-        AZ::Data::AssetId CurrentlyInstantiatingSlice() override { return AZ::Data::AssetId(); }
+
+        AZ::Data::AssetId CurrentlyInstantiatingSlice() override {
+            return AZ::Data::AssetId();
+        };
+
         AZ::Entity* CreateEntity(const char* name) override;
 
         void AddEntity(AZ::Entity* entity) override;
@@ -630,6 +528,7 @@ namespace ScriptCanvasTests
         AZ::Entity* CloneEntity(const AZ::Entity& sourceEntity) override;
         const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& GetLoadedEntityIdMap() override { return m_unitTestEntityIdMap; }
         void ResetContext() override;
+        AZ::EntityId FindLoadedEntityIdMapping(const AZ::EntityId& staticId) const;
         ////
 
         void AddEntity(AZ::EntityId entityId);
@@ -686,7 +585,7 @@ namespace ScriptCanvasTests
         }
 
         {
-            ScopedOutputSuppression suppressOutput;
+            ScriptCanvasEditor::ScopedOutputSuppression suppressOutput;
             graph->GetEntity()->Activate();
             EXPECT_EQ(graph->IsInErrorState(), forceGraphError);
         }
@@ -855,24 +754,24 @@ namespace ScriptCanvasTests
             }
         }
 
-        void Failed(const AZStd::string& description) override
+        void Failed(AZStd::string_view description) override
         {
             Call(FN_Failed, description);
         }
 
-        AZStd::string Result(const AZStd::string& description) override
+        AZStd::string Result(AZStd::string_view description) override
         {
             AZStd::string output;
             CallResult(output, FN_Result, description);
             return output;
         }
 
-        void SideEffect(const AZStd::string& description) override
+        void SideEffect(AZStd::string_view description) override
         {
             Call(FN_SideEffect, description);
         }
 
-        void Succeeded(const AZStd::string& description) override
+        void Succeeded(AZStd::string_view description) override
         {
             Call(FN_Succeeded, description);
         }

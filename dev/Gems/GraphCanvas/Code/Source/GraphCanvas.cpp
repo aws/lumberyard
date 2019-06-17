@@ -17,10 +17,12 @@
 
 #include <Components/BookmarkManagerComponent.h>
 #include <Components/BookmarkAnchor/BookmarkAnchorComponent.h>
+#include <Components/BookmarkAnchor/BookmarkAnchorLayerControllerComponent.h>
 #include <Components/BookmarkAnchor/BookmarkAnchorVisualComponent.h>
 #include <Components/GeometryComponent.h>
 #include <Components/GridComponent.h>
 #include <Components/GridVisualComponent.h>
+#include <Components/PersistentIdComponent.h>
 #include <Components/SceneComponent.h>
 #include <Components/SceneMemberComponent.h>
 #include <Components/StylingComponent.h>
@@ -31,11 +33,12 @@
 #include <Components/Connections/DataConnections/DataConnectionVisualComponent.h>
 
 #include <Components/Nodes/NodeComponent.h>
-#include <Components/Nodes/Comment/BlockCommentNodeFrameComponent.h>
-#include <Components/Nodes/Comment/BlockCommentNodeLayoutComponent.h>
 #include <Components/Nodes/Comment/CommentNodeLayoutComponent.h>
 #include <Components/Nodes/General/GeneralNodeLayoutComponent.h>
 #include <Components/Nodes/General/GeneralSlotLayoutComponent.h>
+#include <Components/Nodes/Group/CollapsedNodeGroupComponent.h>
+#include <Components/Nodes/Group/NodeGroupFrameComponent.h>
+#include <Components/Nodes/Group/NodeGroupLayoutComponent.h>
 #include <Components/Nodes/Wrapper/WrapperNodeLayoutComponent.h>
 
 #include <Components/NodePropertyDisplays/BooleanNodePropertyDisplay.h>
@@ -127,6 +130,7 @@ namespace GraphCanvas
             NodeConfiguration::Reflect(serializeContext);
             Styling::SelectorImplementation::Reflect(serializeContext);
             Styling::Selector::Reflect(serializeContext);
+            Styling::NullSelector::Reflect(serializeContext);
             Styling::BasicSelector::Reflect(serializeContext);
             Styling::DefaultSelector::Reflect(serializeContext);
             Styling::CompoundSelector::Reflect(serializeContext);
@@ -164,6 +168,8 @@ namespace GraphCanvas
         entity->CreateComponent<SceneMemberComponent>();
         entity->CreateComponent<GeometryComponent>();
         entity->CreateComponent<StylingComponent>(Styling::Elements::BookmarkAnchor, AZ::EntityId());
+        entity->CreateComponent<PersistentIdComponent>();
+        entity->CreateComponent<BookmarkAnchorLayerControllerComponent>();
 
         return entity;
     }
@@ -193,37 +199,37 @@ namespace GraphCanvas
         return CommentNodeLayoutComponent::CreateCommentNodeEntity();
     }
 
-    AZ::Entity* GraphCanvasSystemComponent::CreateBlockCommentNode() const
-    {
-        return BlockCommentNodeLayoutComponent::CreateBlockCommentNodeEntity();
-    }
-
     AZ::Entity* GraphCanvasSystemComponent::CreateWrapperNode(const char* nodeType) const
     {
         return WrapperNodeLayoutComponent::CreateWrapperNodeEntity(nodeType);
     }
 
-    AZ::Entity* GraphCanvasSystemComponent::CreateDataSlot(const AZ::EntityId& nodeId, const AZ::Uuid& typeId, const SlotConfiguration& slotConfiguration) const
+    AZ::Entity* GraphCanvasSystemComponent::CreateNodeGroup() const
     {
-        const bool isReference = false;
-        return DataSlotComponent::CreateDataSlot(nodeId, typeId, isReference, slotConfiguration);
+        return NodeGroupLayoutComponent::CreateNodeGroupEntity();
     }
 
-    AZ::Entity* GraphCanvasSystemComponent::CreateVariableReferenceSlot(const AZ::EntityId& nodeId, const AZ::Uuid& typeId, const SlotConfiguration& slotConfiguration) const
+    AZ::Entity* GraphCanvasSystemComponent::CreateCollapsedNodeGroup(const CollapsedNodeGroupConfiguration& collapsedNodeGroupConfiguration) const
     {
-        const bool isReference = true;
-        return DataSlotComponent::CreateDataSlot(nodeId, typeId, isReference, slotConfiguration);
+        return CollapsedNodeGroupComponent::CreateCollapsedNodeGroupEntity(collapsedNodeGroupConfiguration);
     }
 
-    AZ::Entity* GraphCanvasSystemComponent::CreateVariableSourceSlot(const AZ::EntityId& nodeId, const AZ::Uuid& typeId, const SlotConfiguration& slotConfiguration) const
+    AZ::Entity* GraphCanvasSystemComponent::CreateSlot(const AZ::EntityId& nodeId, const SlotConfiguration& slotConfiguration) const
     {
-        // For now, to help deal with copying/pasting. Going to assume that the node id is the variable id.
-        // This does put a limit on one variable slot per node though.
-        // Otherwise there is no way of distinguishing them.
-        //
-        // Is fixable(entityId's get remapped on copy/paste), but not until there is a use case.
-        // for multiple variables from a single node.
-        return DataSlotComponent::CreateVariableSlot(nodeId, typeId, nodeId, slotConfiguration);
+        if (const DataSlotConfiguration* dataSlotConfiguration = azrtti_cast<const DataSlotConfiguration*>(&slotConfiguration))
+        {
+            return DataSlotComponent::CreateDataSlot(nodeId, (*dataSlotConfiguration));
+        }
+        else if (const ExecutionSlotConfiguration* executionSlotConfiguration = azrtti_cast<const ExecutionSlotConfiguration*>(&slotConfiguration))
+        {
+            return ExecutionSlotComponent::CreateExecutionSlot(nodeId, (*executionSlotConfiguration));
+        }
+        else
+        {
+            AZ_Error("GraphCanvas", false, "Trying to create using an unknown Slot Configuration");
+        }
+
+        return nullptr;
     }
 
     NodePropertyDisplay* GraphCanvasSystemComponent::CreateBooleanNodePropertyDisplay(BooleanDataInterface* dataInterface) const
@@ -259,11 +265,6 @@ namespace GraphCanvas
     NodePropertyDisplay* GraphCanvasSystemComponent::CreateVectorNodePropertyDisplay(VectorDataInterface* dataInterface) const
     {
         return aznew VectorNodePropertyDisplay(dataInterface);
-    }
-
-    AZ::Entity* GraphCanvasSystemComponent::CreateExecutionSlot(const AZ::EntityId& nodeId, const SlotConfiguration& configuration) const
-    {
-        return ExecutionSlotComponent::CreateExecutionSlot(nodeId, configuration);
     }
 
     AZ::Entity* GraphCanvasSystemComponent::CreatePropertySlot(const AZ::EntityId& nodeId, const AZ::Crc32& propertyId, const SlotConfiguration& configuration) const

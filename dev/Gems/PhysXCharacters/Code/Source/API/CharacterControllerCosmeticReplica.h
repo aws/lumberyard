@@ -70,11 +70,13 @@ namespace PhysXCharacters
         void RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const override;
         AZ::Crc32 GetNativeType() const override;
         void* GetNativePointer() const override;
+        void AddToWorld(Physics::World&) override;
+        void RemoveFromWorld(Physics::World&) override;
 
     private:
-        AZStd::shared_ptr<Physics::RigidBody> m_rigidBody = nullptr;
+        AZStd::unique_ptr<Physics::RigidBody> m_rigidBody = nullptr;
         AZStd::shared_ptr<Physics::Shape> m_shape = nullptr;
-        AZStd::shared_ptr<Physics::RigidBody> m_shadowBody; ///< A kinematic-synchronised rigid body used to store additional colliders.
+        AZStd::unique_ptr<Physics::RigidBody> m_shadowBody; ///< A kinematic-synchronised rigid body used to store additional colliders.
         AZ::Vector3 m_upDirection = AZ::Vector3::CreateAxisZ();
         AZ::Transform m_transform = AZ::Transform::CreateIdentity();
         float m_stepHeight = 0.0f;

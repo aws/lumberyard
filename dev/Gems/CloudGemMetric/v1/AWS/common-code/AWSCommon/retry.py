@@ -9,12 +9,13 @@ def try_with_backoff(context, cmd, **kwargs):
     backoff = context[c.KEY_BACKOFF_BASE_SECONDS] if c.KEY_BACKOFF_BASE_SECONDS in context else 0.1    
     max_seconds = context[c.KEY_BACKOFF_MAX_SECONDS] if c.KEY_BACKOFF_MAX_SECONDS in context else 20.0
     max_retry = context[c.KEY_BACKOFF_MAX_TRYS] if c.KEY_BACKOFF_MAX_TRYS in context else 5
-    count = 1
+    count = 1    
     while True:
         try:            
             response = cmd(**kwargs)
             __check_response(response)
-    
+            util.debug_print("{}\n{}".format(cmd, kwargs))
+            util.debug_print(response)
             return response
         except ClientError as e:
             __print_error(e, cmd, kwargs)

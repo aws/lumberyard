@@ -41,6 +41,11 @@ namespace ScriptCanvas
         //! Remove a ScriptCanvas Connection from the Graph
         virtual bool RemoveConnection(const AZ::EntityId& nodeId) = 0;
 
+        //! Add an asset dependency to the Graph
+        virtual bool AddDependentAsset(AZ::EntityId nodeId, const AZ::TypeId assetType, const AZ::Data::AssetId assetId) = 0;
+        //! Remove an asset dependency from the Graph
+        virtual bool RemoveDependentAsset(AZ::EntityId nodeId) = 0;
+
         virtual AZStd::vector<AZ::EntityId> GetNodes() const = 0;
         virtual AZStd::vector<AZ::EntityId> GetConnections() const = 0;
         virtual AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& firstEndpoint) const = 0;
@@ -57,7 +62,14 @@ namespace ScriptCanvas
         virtual bool Disconnect(const AZ::EntityId& sourceNodeId, const SlotId& sourceSlot, const AZ::EntityId& targetNodeId, const SlotId& targetSlot) = 0;
 
         virtual bool ConnectByEndpoint(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) = 0;
-        virtual AZ::Outcome<void, AZStd::string> CanConnectByEndpoint(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const = 0;
+
+        //! Returns whether or not a new connecion can be created between two connections.
+        //! This will take into account if the endpoints are already connected
+        virtual AZ::Outcome<void, AZStd::string> CanCreateConnectionBetween(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const = 0;
+
+        //! Returns whether or not a connection could exist between the two connections.
+        //! Does not take into account if the endpoints are already connected.
+        virtual AZ::Outcome<void, AZStd::string> CanConnectionExistBetween(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const = 0;
 
         virtual bool DisconnectByEndpoint(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) = 0;
         virtual bool DisconnectById(const AZ::EntityId& connectionId) = 0;
@@ -84,6 +96,10 @@ namespace ScriptCanvas
         virtual bool AddGraphData(const GraphData&) = 0;
         // Removes nodes and connections in the GraphData structure from the graph
         virtual void RemoveGraphData(const GraphData&) = 0;
+
+        // Signals wether or not a batch of graph data is being added and some extra steps are needed
+        // to maintain data integrity for dynamic nodes
+        virtual bool IsBatchAddingGraphData() const = 0;
     };
 
     using GraphRequestBus = AZ::EBus<GraphRequests>;
@@ -105,6 +121,12 @@ namespace ScriptCanvas
 
         //! Notification when a connections is removed
         virtual void OnConnectionRemoved(const AZ::EntityId&) {}
+
+        //! Notification when a batch add for a graph begins
+        virtual void OnBatchAddBegin() {}
+
+        //! Notification when a batch add for a graph completes
+        virtual void OnBatchAddComplete() {};
     };
 
     using GraphNotificationBus = AZ::EBus<GraphNotifications>;

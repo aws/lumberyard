@@ -56,7 +56,6 @@ namespace CommandSystem
         settings.mForceLoading = true;
 
         EMotionFX::SkeletalMotion* optimizedMotion = (EMotionFX::SkeletalMotion*)EMotionFX::GetImporter().LoadSkeletalMotion(motion->GetFileName(), &settings);
-        optimizedMotion->CreateDefaultPlayBackInfo();
 
         // remove the motion from the motion manager if flag is set
         if (removeFromMotionManager)
@@ -147,7 +146,6 @@ namespace CommandSystem
         settings.mForceLoading = true;
 
         MorphMotion* optimizedMotion = new MorphMotion( filename.AsChar() );
-        optimizedMotion->CreateDefaultPlayBackInfo();
 
         // remove the motion from the motion manager if flag is set
         if (removeFromMotionManager)
@@ -375,7 +373,6 @@ namespace CommandSystem
         }
 
         EMotionFX::WaveletSkeletalMotion* optimizedMotion = EMotionFX::WaveletSkeletalMotion::Create(motion->GetFileName());
-        optimizedMotion->CreateDefaultPlayBackInfo();
 
         if (removeFromMotionManager)
         {

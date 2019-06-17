@@ -12,6 +12,7 @@
 
 #include <AzQtComponents/Components/Widgets/PushButton.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 
 #include <QStyleFactory>
 
@@ -61,6 +62,7 @@ bool PushButton::polish(Style* style, QWidget* widget, const PushButton::Config&
 {
     QToolButton* toolButton = qobject_cast<QToolButton*>(widget);
     QPushButton* pushButton = qobject_cast<QPushButton*>(widget);
+
     if ((style->hasClass(widget, g_smallIconClass) && (toolButton != nullptr)) || (style->hasClass(widget, g_attachedButtonClass) && (pushButton != nullptr)))
     {
         widget->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
@@ -120,6 +122,18 @@ QSize PushButton::sizeFromContents(const Style* style, QStyle::ContentsType type
 bool PushButton::drawPushButtonBevel(const Style* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const PushButton::Config& config)
 {
     Q_UNUSED(style);
+
+    const auto* button = qobject_cast<const QPushButton*>(widget);
+    if (!button || button->isFlat())
+    {
+        return false;
+    }
+
+    // Do not draw the bevel for icon buttons
+    if (!button->icon().isNull() && button->text().isEmpty())
+    {
+        return false;
+    }
 
     QRectF r = option->rect.adjusted(0, 0, -1, -1);
 
@@ -182,8 +196,14 @@ bool PushButton::drawIndicatorArrow(const Style* style, const QStyleOption* opti
     return false;
 }
 
-bool PushButton::drawPushButtonFocusRect(const Style* /*style*/, const QStyleOption* /*option*/, QPainter* /*painter*/, const QWidget* /*widget*/, const PushButton::Config& /*config*/)
+bool PushButton::drawPushButtonFocusRect(const Style* /*style*/, const QStyleOption* /*option*/, QPainter* /*painter*/, const QWidget* widget, const PushButton::Config& /*config*/)
 {
+    const auto* button = qobject_cast<const QPushButton*>(widget);
+    if (!button || button->isFlat())
+    {
+        return false;
+    }
+
     // no frame; handled when the bevel is drawn
 
     return true;
@@ -192,44 +212,35 @@ bool PushButton::drawPushButtonFocusRect(const Style* /*style*/, const QStyleOpt
 static void ReadFrame(QSettings& settings, const QString& name, PushButton::Frame& frame)
 {
     settings.beginGroup(name);
-    frame.height = settings.value("Height", frame.height).toInt();
-    frame.radius = settings.value("Radius", frame.radius).toInt();
-    frame.margin = settings.value("Margin", frame.margin).toInt();
+    ConfigHelpers::read<int>(settings, QStringLiteral("Height"), frame.height);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Radius"), frame.radius);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Margin"), frame.margin);
     settings.endGroup();
-}
-
-static void ReadColor(QSettings& settings, const QString& name, QColor& color)
-{
-    // only overwrite the value if it's set; otherwise, it'll stay the default
-    if (settings.contains(name))
-    {
-        color = QColor(settings.value(name).toString());
-    }
 }
 
 static void ReadGradient(QSettings& settings, const QString& name, PushButton::Gradient& gradient)
 {
     settings.beginGroup(name);
-    ReadColor(settings, "Start", gradient.start);
-    ReadColor(settings, "End", gradient.end);
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("Start"), gradient.start);
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("End"), gradient.end);
     settings.endGroup();
 }
 
 static void ReadButtonColorSet(QSettings& settings, const QString& name, PushButton::ColorSet& colorSet)
 {
     settings.beginGroup(name);
-    ReadGradient(settings, "Disabled", colorSet.disabled);
-    ReadGradient(settings, "Sunken", colorSet.sunken);
-    ReadGradient(settings, "Hovered", colorSet.hovered);
-    ReadGradient(settings, "Normal", colorSet.normal);
+    ReadGradient(settings, QStringLiteral("Disabled"), colorSet.disabled);
+    ReadGradient(settings, QStringLiteral("Sunken"), colorSet.sunken);
+    ReadGradient(settings, QStringLiteral("Hovered"), colorSet.hovered);
+    ReadGradient(settings, QStringLiteral("Normal"), colorSet.normal);
     settings.endGroup();
 }
 
 static void ReadBorder(QSettings& settings, const QString& name, PushButton::Border& border)
 {
     settings.beginGroup(name);
-    border.thickness = settings.value("Thickness", border.thickness).toInt();
-    ReadColor(settings, "Color", border.color);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Thickness"), border.thickness);
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("Color"), border.color);
     settings.endGroup();
 }
 
@@ -237,10 +248,10 @@ static void ReadSmallIcon(QSettings& settings, const QString& name, PushButton::
 {
     settings.beginGroup(name);
     ReadFrame(settings, "Frame", smallIcon.frame);
-    ReadColor(settings, "EnabledArrowColor", smallIcon.enabledArrowColor);
-    ReadColor(settings, "DisabledArrowColor", smallIcon.disabledArrowColor);
-    smallIcon.width = settings.value("Width", smallIcon.width).toInt();
-    smallIcon.arrowWidth = settings.value("ArrowWidth", smallIcon.arrowWidth).toInt();
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("EnabledArrowColor"), smallIcon.enabledArrowColor);
+    ConfigHelpers::read<QColor>(settings, QStringLiteral("DisabledArrowColor"), smallIcon.disabledArrowColor);
+    ConfigHelpers::read<int>(settings, QStringLiteral("Width"), smallIcon.width);
+    ConfigHelpers::read<int>(settings, QStringLiteral("ArrowWidth"), smallIcon.arrowWidth);
     settings.endGroup();
 }
 
@@ -248,14 +259,14 @@ PushButton::Config PushButton::loadConfig(QSettings& settings)
 {
     Config config = defaultConfig();
 
-    ReadButtonColorSet(settings, "PrimaryColorSet", config.primary);
-    ReadButtonColorSet(settings, "SecondaryColorSet", config.secondary);
+    ReadButtonColorSet(settings, QStringLiteral("PrimaryColorSet"), config.primary);
+    ReadButtonColorSet(settings, QStringLiteral("SecondaryColorSet"), config.secondary);
 
-    ReadBorder(settings, "Border", config.defaultBorder);
-    ReadBorder(settings, "DisabledBorder", config.disabledBorder);
-    ReadBorder(settings, "FocusedBorder", config.focusedBorder);
-    ReadFrame(settings, "DefaultFrame", config.defaultFrame);
-    ReadSmallIcon(settings, "SmallIcon", config.smallIcon);
+    ReadBorder(settings, QStringLiteral("Border"), config.defaultBorder);
+    ReadBorder(settings, QStringLiteral("DisabledBorder"), config.disabledBorder);
+    ReadBorder(settings, QStringLiteral("FocusedBorder"), config.focusedBorder);
+    ReadFrame(settings, QStringLiteral("DefaultFrame"), config.defaultFrame);
+    ReadSmallIcon(settings, QStringLiteral("SmallIcon"), config.smallIcon);
 
     return config;
 }

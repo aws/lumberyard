@@ -68,6 +68,7 @@ namespace PhysX
         {
             incompatible.push_back(AZ_CRC("PhysXRigidBodyService", 0x1d4c64a8));
             incompatible.push_back(AZ_CRC("PhysicsService", 0xa7350d22));
+            incompatible.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -89,14 +90,16 @@ namespace PhysX
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
         // AzFramework::EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         // TransformBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
     private:
         EditorRigidBodyConfiguration m_config;
-        AZStd::shared_ptr<Physics::RigidBody> m_editorBody;
+        AZStd::unique_ptr<Physics::RigidBody> m_editorBody;
 
         // EditorRigidBodyRequestBus
         void RefreshEditorRigidBody() override;

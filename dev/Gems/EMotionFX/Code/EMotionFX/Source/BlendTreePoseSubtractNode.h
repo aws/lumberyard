@@ -52,7 +52,7 @@ namespace EMotionFX
         bool GetHasOutputPose() const override              { return true; }
         bool GetSupportsDisable() const override            { return true; }
         bool GetSupportsVisualization() const override      { return true; }
-        uint32 GetVisualColor() const override              { return MCore::RGBA(159, 81, 255); }
+        AZ::Color GetVisualColor() const override           { return AZ::Color(0.62f, 0.32f, 1.0f, 1.0f); }
 
         void SetSyncMode(ESyncMode eventMode)               { m_syncMode = eventMode; }
         ESyncMode GetSyncMode() const                       { return m_syncMode; }

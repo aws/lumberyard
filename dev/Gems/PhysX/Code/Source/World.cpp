@@ -23,7 +23,7 @@
 #include <Source/Collision.h>
 #include <Source/Shape.h>
 #include <PhysX/Utils.h>
-
+#include <PhysX/TriggerEventCallback.h>
 
 namespace PhysX
 {
@@ -81,9 +81,9 @@ namespace PhysX
         , m_maxDeltaTime(settings.m_maxTimeStep)
         , m_fixedDeltaTime(settings.m_fixedTimeStep)
     {
-        m_raycastBuffer.resize(settings.m_raycastBufferSize);
-        m_sweepBuffer.resize(settings.m_sweepBufferSize);
-        m_overlapBuffer.resize(settings.m_overlapBufferSize);
+        m_raycastBuffer.resize(static_cast<size_t>(settings.m_raycastBufferSize));
+        m_sweepBuffer.resize(static_cast<size_t>(settings.m_sweepBufferSize));
+        m_overlapBuffer.resize(static_cast<size_t>(settings.m_overlapBufferSize));
 
         Physics::WorldRequestBus::Handler::BusConnect(id);
 
@@ -112,6 +112,16 @@ namespace PhysX
         else
         {
             sceneDesc.flags &= ~physx::PxSceneFlag::eENABLE_PCM;
+        }
+        
+        if (settings.m_kinematicFiltering)
+        {
+            sceneDesc.flags |= physx::PxSceneFlag::eENABLE_KINEMATIC_PAIRS;
+        }
+
+        if (settings.m_kinematicStaticFiltering)
+        {
+            sceneDesc.flags |= sceneDesc.flags |= physx::PxSceneFlag::eENABLE_KINEMATIC_STATIC_PAIRS;
         }
 
         sceneDesc.filterCallback = this;
@@ -344,15 +354,15 @@ namespace PhysX
         return hits;
     }
 
-    physx::PxActor* GetPxActor(const AZStd::shared_ptr<Physics::WorldBody>& worldBody)
+    physx::PxActor* GetPxActor(const Physics::WorldBody& worldBody)
     {
-        if (worldBody->GetNativeType() != NativeTypeIdentifiers::RigidBody &&
-            worldBody->GetNativeType() != NativeTypeIdentifiers::RigidBodyStatic)
+        if (worldBody.GetNativeType() != NativeTypeIdentifiers::RigidBody &&
+            worldBody.GetNativeType() != NativeTypeIdentifiers::RigidBodyStatic)
         {
             return nullptr;
         }
 
-        return static_cast<physx::PxActor*>(worldBody->GetNativePointer());
+        return static_cast<physx::PxActor*>(worldBody.GetNativePointer());
     }
 
     AZStd::unordered_set<World::ActorPair>::iterator World::FindSuppressedPair(const physx::PxActor* actor0, const physx::PxActor* actor1)
@@ -367,8 +377,8 @@ namespace PhysX
         return m_suppressedCollisionPairs.find(AZStd::make_pair(actor1, actor0));
     }
 
-    void World::RegisterSuppressedCollision(const AZStd::shared_ptr<Physics::WorldBody>& body0,
-        const AZStd::shared_ptr<Physics::WorldBody>& body1)
+    void World::RegisterSuppressedCollision(const Physics::WorldBody& body0,
+        const Physics::WorldBody& body1)
     {
         physx::PxActor* actor0 = GetPxActor(body0);
         physx::PxActor* actor1 = GetPxActor(body1);
@@ -381,8 +391,8 @@ namespace PhysX
         }
     }
 
-    void World::UnregisterSuppressedCollision(const AZStd::shared_ptr<Physics::WorldBody>& body0,
-        const AZStd::shared_ptr<Physics::WorldBody>& body1)
+    void World::UnregisterSuppressedCollision(const Physics::WorldBody& body0,
+        const Physics::WorldBody& body1)
     {
         physx::PxActor* actor0 = GetPxActor(body0);
         physx::PxActor* actor1 = GetPxActor(body1);
@@ -398,9 +408,12 @@ namespace PhysX
 
     void World::AddBody(Physics::WorldBody& body)
     {
-        physx::PxRigidActor* rigidActor = static_cast<physx::PxRigidActor*>(body.GetNativePointer());
-        AddBody(rigidActor);
-        body.AddedToWorld();
+        body.AddToWorld(*this);
+    }
+
+    void World::RemoveBody(Physics::WorldBody& body)
+    {
+        body.RemoveFromWorld(*this);
     }
 
     void World::SetSimFunc(std::function<void(void*)> func)
@@ -408,48 +421,17 @@ namespace PhysX
         m_simFunc = func;
     }
 
-    void World::AddBody(physx::PxActor* body)
-    {
-        if (!m_world)
-        {
-            AZ_Error("PhysX World", false, "Tried to add body to invalid world.");
-            return;
-        }
-
-        if (!body)
-        {
-            AZ_Error("PhysX World", false, "Tried to add invalid PhysX body to world.");
-            return;
-        }
-
-        m_world->addActor(*body);
-    }
-
-    void World::RemoveBody(const Physics::WorldBody& body)
-    {
-        physx::PxRigidActor* actor = static_cast<physx::PxRigidActor*>(body.GetNativePointer());
-        if (!m_world)
-        {
-            AZ_Error("PhysX World", false, "Tried to remove body from invalid world.");
-            return;
-        }
-
-        if (!actor)
-        {
-            AZ_Error("PhysX World", false, "Tried to remove invalid PhysX body from world.");
-            return;
-        }
-
-        m_world->removeActor(*actor);
-    }
-
     void World::Update(float deltaTime)
     {
-        
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Physics);
+
         auto simulateFetch = [this](float simDeltaTime, std::function<void(void * activeAct)> activeActorsLambda)
         {
-            m_world->simulate(simDeltaTime);
-            m_world->fetchResults(true);
+            {
+                AZ_PROFILE_SCOPE(AZ::Debug::ProfileCategory::Physics, "World::SimulateFetchResults");
+                m_world->simulate(simDeltaTime);
+                m_world->fetchResults(true);
+            }
             AzFramework::PhysicsComponentNotificationBus::ExecuteQueuedEvents();
 
             if (m_world->getFlags() & physx::PxSceneFlag::eENABLE_ACTIVE_ACTORS)
@@ -487,6 +469,8 @@ namespace PhysX
         {
             simulateFetch(deltaTime, m_simFunc);
         }
+
+        m_deferredDeletions.clear();
     }
 
     AZ::Crc32 World::GetNativeType() const
@@ -501,8 +485,21 @@ namespace PhysX
 
     void World::SetEventHandler(Physics::WorldEventHandler* eventHandler)
     {
-        m_eventHandler = eventHandler;
-        if (m_eventHandler == nullptr)
+         m_eventHandler = eventHandler;
+         if (m_eventHandler == nullptr && m_triggerCallback == nullptr)
+         {
+             m_world->setSimulationEventCallback(nullptr);
+         }
+         else if (m_triggerCallback == nullptr)
+         {
+             m_world->setSimulationEventCallback(this);
+         }
+    }
+
+    void World::SetTriggerEventCallback(Physics::ITriggerEventCallback* callback)
+    {
+        m_triggerCallback = static_cast<IPhysxTriggerEventCallback*>(callback);
+        if (m_triggerCallback == nullptr && m_eventHandler == nullptr )
         {
             m_world->setSimulationEventCallback(nullptr);
         }
@@ -642,7 +639,7 @@ namespace PhysX
 
     void World::onTrigger(physx::PxTriggerPair* pairs, physx::PxU32 count)
     {
-        AZ_Assert(m_eventHandler != nullptr, "Invalid event handler");
+        AZ_Assert( (m_eventHandler != nullptr) || (m_triggerCallback != nullptr), "Invalid event handlers");
 
         for (physx::PxU32 i = 0; i < count; ++i)
         {
@@ -650,6 +647,11 @@ namespace PhysX
 
             if (triggerPair.triggerActor->userData && triggerPair.otherActor->userData)
             {
+                if (m_triggerCallback && m_triggerCallback->OnTriggerCallback(&triggerPair))
+                {
+                    continue;
+                }
+
                 auto triggerBody = Utils::GetUserData(triggerPair.triggerActor)->GetWorldBody();
                 auto triggerShape = static_cast<PhysX::Shape*>(triggerPair.triggerShape->userData);
 
@@ -717,5 +719,9 @@ namespace PhysX
             m_world->setGravity(PxMathConvert(gravity));
         }
     }
-    
+
+    void World::DeferDelete(AZStd::unique_ptr<Physics::WorldBody> worldBody)
+    {
+        m_deferredDeletions.push_back(AZStd::move(worldBody));
+    }
 } // namespace PhysX

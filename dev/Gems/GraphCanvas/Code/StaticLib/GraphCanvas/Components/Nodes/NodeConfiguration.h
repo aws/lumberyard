@@ -12,6 +12,9 @@
 #pragma once
 
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/std/any.h>
+
+#include <GraphCanvas/Editor/EditorTypes.h>
 
 namespace GraphCanvas
 {
@@ -60,5 +63,5 @@ namespace GraphCanvas
         AZStd::string m_tooltip;
 
         bool m_showInOutliner;
-    };    
+    };
 }

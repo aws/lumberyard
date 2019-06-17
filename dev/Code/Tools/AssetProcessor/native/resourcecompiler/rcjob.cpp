@@ -342,12 +342,29 @@ namespace AssetProcessor
 
     void RCJob::ExecuteBuilderCommand(BuilderParams builderParams)
     {
+        // Note: this occurs inside a worker thread.
+
         // listen for the user quitting (CTRL-C or otherwise)
         AssetUtilities::QuitListener listener;
         listener.BusConnect();
         QElapsedTimer ticker;
         ticker.start();
         AssetBuilderSDK::ProcessJobResponse result;
+
+        if (builderParams.m_rcJob->m_jobDetails.m_autoFail)
+        {
+            // if this is an auto-fail job, we should avoid doing any additional work besides the work required to fail the job and 
+            // write the details into its log.  This is because Auto-fail jobs have 'incomplete' job descriptors, and only exist to 
+            // force a job to fail with a reasonable log file stating the reason for failure.  An example of where it is useful to
+            // use auto-fail jobs is when, after compilation was successful, something goes wrong integrating the result into the
+            // cache.  (For example, files collide, or the product file name would be too long).  The job will have at that point
+            // already completed, the thread long gone, so we can 'append' to the log in this manner post-build by creating a new
+            // job that will automatically fail and ingest the old (success) log along with additional fail reasons and then fail.
+            AutoFailJob(builderParams);
+            result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
+            Q_EMIT builderParams.m_rcJob->JobFinished(result);
+            return;
+        }
 
         // We are adding a grace time before we check exclusive lock and validate the fingerprint of the file.
         // This grace time should prevent multiple jobs from getting added to the queue if the source file is still updating.
@@ -397,6 +414,73 @@ namespace AssetProcessor
         Q_EMIT builderParams.m_rcJob->JobFinished(result);
     }
 
+    void RCJob::AutoFailJob(BuilderParams& builderParams)
+    {
+        // force the fail data to be captured to the log file.  
+        // because this is being executed in a thread worker, this won't stomp the main thread's job id.
+        AssetProcessor::SetThreadLocalJobId(builderParams.m_rcJob->GetJobEntry().m_jobRunKey);
+        AssetUtilities::JobLogTraceListener jobLogTraceListener(builderParams.m_rcJob->m_jobDetails.m_jobEntry);
+
+        QString sourceFullPath(builderParams.m_processJobRequest.m_fullPath.c_str());
+        auto failReason = builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::AutoFailReasonKey));
+        if (failReason != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
+        {
+            // you are allowed to have many lines in your fail reason.
+            AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Failed processing %s", sourceFullPath.toUtf8().data());
+            AZStd::vector<AZStd::string> delimited;
+            AzFramework::StringFunc::Tokenize(failReason->second.c_str(), delimited, "\n");
+            for (const AZStd::string& token : delimited)
+            {
+                AZ_Error(AssetBuilderSDK::ErrorWindow, false, "%s", token.c_str());
+            }
+        }
+        else
+        {
+            // since we didn't have a custom auto-fail reason, add a token to the log file that will help with 
+            // forensic debugging to differentiate auto-fails from regular fails (although it should also be 
+            // obvious from the output in other ways)
+            AZ_TracePrintf("Debug", "(auto-failed)\n"); 
+        }
+        auto failLogFile = builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::AutoFailLogFile));
+        if (failLogFile != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
+        {
+            AzToolsFramework::Logging::LogLine::ParseLog(failLogFile->second.c_str(), failLogFile->second.size(),
+                [](AzToolsFramework::Logging::LogLine& target)
+            {
+                switch (target.GetLogType())
+                {
+                case AzToolsFramework::Logging::LogLine::TYPE_DEBUG:
+                    AZ_TracePrintf(target.GetLogWindow().c_str(), "%s", target.GetLogMessage().c_str());
+                    break;
+                case AzToolsFramework::Logging::LogLine::TYPE_MESSAGE:
+                    AZ_TracePrintf(target.GetLogWindow().c_str(), "%s", target.GetLogMessage().c_str());
+                    break;
+                case AzToolsFramework::Logging::LogLine::TYPE_WARNING:
+                    AZ_Warning(target.GetLogWindow().c_str(), false, "%s", target.GetLogMessage().c_str());
+                    break;
+                case AzToolsFramework::Logging::LogLine::TYPE_ERROR:
+                    AZ_Error(target.GetLogWindow().c_str(), false, "%s", target.GetLogMessage().c_str());
+                    break;
+                case AzToolsFramework::Logging::LogLine::TYPE_CONTEXT:
+                    AZ_TracePrintf(target.GetLogWindow().c_str(), " %s", target.GetLogMessage().c_str());
+                    break;
+                }
+            });
+        }
+
+        // note that this line below is printed out to be consistent with the output from a job that normally failed, so 
+        // applications reading log file will find it.
+        AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Builder indicated that the job has failed.\n"); 
+        
+        if (builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::AutoFailOmitFromDatabaseKey)) != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
+        {
+            // we don't add Auto-fail jobs to the database if they have asked to be emitted.
+            builderParams.m_rcJob->m_jobDetails.m_jobEntry.m_addToDatabase = false;
+        }
+
+        AssetProcessor::SetThreadLocalJobId(0);
+    }
+
 
     void RCJob::DoWork(AssetBuilderSDK::ProcessJobResponse& result, BuilderParams& builderParams, AssetUtilities::QuitListener& listener)
     {
@@ -424,64 +508,8 @@ namespace AssetProcessor
             builderParams.m_processJobRequest.m_tempDirPath = AZStd::string(workFolder.toUtf8().data());
 
             QString sourceFullPath(builderParams.m_processJobRequest.m_fullPath.c_str());
-            if (builderParams.m_rcJob->m_jobDetails.m_autoFail)
-            {
-                auto failReason = builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::AutoFailReasonKey));
-                if (failReason != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
-                {
-                    // you are allowed to have many lines in your fail reason.
-                    AZ_Error(AssetBuilderSDK::ErrorWindow, false, "Error processing %s", sourceFullPath.toUtf8().data());
-                    AZStd::vector<AZStd::string> delimited;
-                    AzFramework::StringFunc::Tokenize(failReason->second.c_str(), delimited, "\n");
-                    for (const AZStd::string& token : delimited)
-                    {
-                        AZ_Error(AssetBuilderSDK::ErrorWindow, false, "%s", token.c_str());
-                    }
-                }
-                else
-                {
-                    AZ_Error(AssetBuilderSDK::ErrorWindow, false, "%s failed: auto-failed by builder.\n", sourceFullPath.toUtf8().data());
-                }
-                auto failLogFile = builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::AutoFailLogFile));
-                if (failLogFile != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
-                {
-                    AzToolsFramework::Logging::LogLine::ParseLog(failLogFile->second.c_str(), failLogFile->second.size(),
-                        [](AzToolsFramework::Logging::LogLine& target)
-                    {
-                        switch (target.GetLogType())
-                        {
-                            case AzToolsFramework::Logging::LogLine::TYPE_DEBUG:
-                                AZ_TracePrintf(target.GetLogWindow().c_str(), "%s", target.GetLogMessage().c_str());
-                                break;
-                            case AzToolsFramework::Logging::LogLine::TYPE_MESSAGE:
-                                AZ_TracePrintf(target.GetLogWindow().c_str(), "%s", target.GetLogMessage().c_str());
-                                break;
-                            case AzToolsFramework::Logging::LogLine::TYPE_WARNING:
-                                AZ_Warning(target.GetLogWindow().c_str(), false, "%s", target.GetLogMessage().c_str());
-                                break;
-                            case AzToolsFramework::Logging::LogLine::TYPE_ERROR:
-                                AZ_Error(target.GetLogWindow().c_str(), false, "%s", target.GetLogMessage().c_str());
-                                break;
-                            case AzToolsFramework::Logging::LogLine::TYPE_CONTEXT:
-                                AZ_TracePrintf(target.GetLogWindow().c_str(), " %s", target.GetLogMessage().c_str());
-                                break;
-                        }
-                    });
-                }
-                
-                if (builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.find(AZ_CRC(AssetProcessor::AutoFailOmitFromDatabaseKey)) != builderParams.m_processJobRequest.m_jobDescription.m_jobParameters.end())
-                {
-                    // we don't add Auto-fail jobs to the database if they have asked to be emitted.
-                    builderParams.m_rcJob->m_jobDetails.m_jobEntry.m_addToDatabase = false;
-                }
-                result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;
-            }
-            else if (builderParams.m_rcJob->m_jobDetails.m_autoSucceed)
-            {
-                result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Success;
-                builderParams.m_rcJob->m_jobDetails.m_jobEntry.m_addToDatabase = false;
-            }
-            else if (sourceFullPath.length() >= AP_MAX_PATH_LEN)
+            
+            if (sourceFullPath.length() >= AP_MAX_PATH_LEN)
             {
                 AZ_Warning(AssetBuilderSDK::WarningWindow, false, "Source Asset: %s filepath length %d exceeds the maximum path length (%d) allowed.\n", sourceFullPath.toUtf8().data(), sourceFullPath.length(), AP_MAX_PATH_LEN);
                 result.m_resultCode = AssetBuilderSDK::ProcessJobResult_Failed;

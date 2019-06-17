@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <stdarg.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Component/EntityUtils.h>
@@ -22,7 +20,6 @@
 
 #include <AzFramework/Entity/EntityContextBus.h>
 
-#include <ScriptCanvas/AST/Node.h>
 #include <ScriptCanvas/Core/Connection.h>
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Datum.h>
@@ -30,20 +27,31 @@
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Core/PureData.h>
 #include <ScriptCanvas/Data/BehaviorContextObject.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationIds.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/DataValidation/DataValidationEvents.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ExecutionValidation/ExecutionValidationIds.h>
+#include <ScriptCanvas/Debugger/ValidationEvents/ExecutionValidation/ExecutionValidationEvents.h>
+
 #include <ScriptCanvas/Libraries/Core/UnaryOperator.h>
 #include <ScriptCanvas/Libraries/Core/BinaryOperator.h>
 #include <ScriptCanvas/Libraries/Core/EBusEventHandler.h>
 #include <ScriptCanvas/Libraries/Core/ErrorHandler.h>
 #include <ScriptCanvas/Libraries/Core/Start.h>
+#include <ScriptCanvas/Libraries/Core/SendScriptEvent.h>
+#include <ScriptCanvas/Libraries/Core/ReceiveScriptEvent.h>
+#include <ScriptCanvas/Libraries/Core/ScriptEventBase.h>
+
 #include <ScriptCanvas/Profiler/Driller.h>
 #include <ScriptCanvas/Translation/Translation.h>
-#include <ScriptCanvas/Developer/StatusBus.h>
+#include <ScriptCanvas/Debugger/StatusBus.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
+#include <ScriptCanvas/Variable/VariableData.h>
 
 namespace ScriptCanvas
 {
     Graph::Graph(const AZ::EntityId& uniqueId)
         : m_uniqueId(uniqueId)
+        , m_batchAddingData(false)
     {
     }
 
@@ -58,7 +66,6 @@ namespace ScriptCanvas
     {
         Data::PropertyMetadata::Reflect(context);
         Data::Type::Reflect(context);
-        Node::Reflect(context);
         Nodes::UnaryOperator::Reflect(context);
         Nodes::UnaryExpression::Reflect(context);
         Nodes::BinaryOperator::Reflect(context);
@@ -85,21 +92,6 @@ namespace ScriptCanvas
 
     void Graph::Init()
     {
-        AZ::Outcome<void, StatusErrors> statusOutcome = AZ::Success();
-        StatusRequestBus::BroadcastResult(statusOutcome, &StatusRequests::ValidateGraph, *this);
-        if (!statusOutcome)
-        {
-            for (const AZStd::string& graphError : statusOutcome.GetError().m_graphErrors)
-            {
-                AZ_Error("Script Canvas", false, graphError.data());
-            }
-
-            for (AZ::EntityId connectionId : statusOutcome.GetError().m_invalidConnectionIds)
-            {
-                DisconnectById(connectionId);
-            }
-        }
-
         for (auto& nodeEntity : m_graphData.m_nodes)
         {
             if (nodeEntity)
@@ -128,22 +120,22 @@ namespace ScriptCanvas
             }
         }
 
+        StatusRequestBus::MultiHandler::BusConnect(GetUniqueId());
         GraphRequestBus::MultiHandler::BusConnect(GetUniqueId());
         RuntimeRequestBus::Handler::BusConnect(GetUniqueId());
+        
     }
 
     void Graph::Activate()
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ScriptCanvas);
-
         if (!m_executionContext.Activate(GetUniqueId()))
         {
             return;
         }
 
-        AZ::EntityBus::Handler::BusConnect(GetEntityId());
+        RefreshConnectionValidity(true);
 
-        RefreshDataFlowValidity(true);
+        AZ::EntityBus::Handler::BusConnect(GetEntityId());
 
         // If there are no nodes, there's nothing to do, deactivate the graph's entity.
         if (m_graphData.m_nodes.empty())
@@ -189,6 +181,7 @@ namespace ScriptCanvas
             { GetUniqueId(), GetUniqueId() },
             { AZ::EntityId(), AZ::EntityId() }
         };
+
         editorToRuntimeEntityIdMap.insert(assetToRuntimeInternalMap.begin(), assetToRuntimeInternalMap.end());
         editorToRuntimeEntityIdMap.insert(loadedGameEntityIdMap.begin(), loadedGameEntityIdMap.end());
         // Lambda function remaps any known world map entities to their correct id other wise it DOES NOT remap the entityId.
@@ -220,13 +213,12 @@ namespace ScriptCanvas
                     m_executionContext.AddToExecutionStack(*startNode, SlotId());
                     entryPointFound = true;
                 }
-
-                auto nodes = AZ::EntityUtils::FindDerivedComponents<ScriptCanvas::Node>(nodeEntity);
-                for (auto nodePtr : nodes)
+                else if (!entryPointFound)
                 {
-                    if (!azrtti_cast<PureData*>(nodeEntity))
+                    auto nodes = AZ::EntityUtils::FindDerivedComponents<ScriptCanvas::Node>(nodeEntity);
+                    for (auto iter = nodes.begin(); iter != nodes.end() && !entryPointFound; ++iter)
                     {
-                        entryPointFound = entryPointFound || nodePtr->IsEntryPoint();
+                        entryPointFound = (*iter)->IsEntryPoint();
                     }
                 }
             }
@@ -282,8 +274,6 @@ namespace ScriptCanvas
 
     void Graph::Deactivate()
     {
-        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ScriptCanvas);
-
         m_executionContext.Deactivate();
         AZ::EntityBus::Handler::BusDisconnect(GetEntityId());
 
@@ -350,6 +340,129 @@ namespace ScriptCanvas
         return false;
     }
 
+    void Graph::ValidateGraph(ValidationResults& validationResults)
+    {
+        validationResults.ClearResults();
+
+        for (auto& connectionEntity : m_graphData.m_connections)
+        {
+            auto outcome = ValidateConnection(connectionEntity);
+
+            if (!outcome.IsSuccess())
+            {
+                if (Connection* connection = AZ::EntityUtils::FindFirstDerivedComponent<Connection>(connectionEntity))
+                {
+                    ValidationEvent* validationEvent = nullptr;
+
+                    if (outcome.GetError().m_validationEventId == DataValidationIds::UnknownTargetEndpointCrc)
+                    {
+                        validationEvent = aznew UnknownTargetEndpointEvent(connection->GetTargetEndpoint());
+                    }
+                    else if (outcome.GetError().m_validationEventId == DataValidationIds::UnknownSourceEndpointCrc)
+                    {
+                        validationEvent = aznew UnknownSourceEndpointEvent(connection->GetSourceEndpoint());
+                    }
+                    else if (outcome.GetError().m_validationEventId == DataValidationIds::ScopedDataConnectionCrc)
+                    {
+                        validationEvent = aznew ScopedDataConnectionEvent(connection->GetEntityId());
+                    }
+
+                    if (validationEvent)
+                    {
+                        validationEvent->SetDescription(outcome.GetError().m_errorDescription);
+                        validationResults.m_validationEvents.push_back(validationEvent);
+                    }
+                }
+            }
+        }
+
+        for (auto& nodeEntity : m_graphData.m_nodes)
+        {
+            auto outcome = ValidateNode(nodeEntity);
+
+            if (!outcome.IsSuccess())
+            {
+                if (Node* node = AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity))
+                {
+                    ValidationEvent* validationEvent = nullptr;
+
+                    if (outcome.GetError().m_validationEventId == ExecutionValidationIds::UnusedNodeCrc)
+                    {
+                        validationEvent = aznew UnusedNodeEvent(node->GetEntityId());
+                    }
+
+                    if (validationEvent)
+                    {
+                        validationEvent->SetDescription(outcome.GetError().m_errorDescription);
+                        validationResults.m_validationEvents.push_back(validationEvent);
+                    }
+                }
+            }
+        }
+
+        ValidateVariables(validationResults);
+        ValidateScriptEvents(validationResults);
+    }
+
+    void Graph::ValidateVariables(ValidationResults& validationResults)
+    {
+        const VariableData* variableData = GetVariableData();
+        for (const auto& variable : variableData->GetVariables())
+        {
+            const VariableId& variableId = variable.first;
+            Data::Type variableType = GetVariableType(variableId);
+
+            AZStd::string errorDescription;
+
+            if (variableType.GetType() == Data::eType::BehaviorContextObject)
+            {
+                AZ::BehaviorContext* behaviorContext{};
+                AZ::ComponentApplicationBus::BroadcastResult(behaviorContext, &AZ::ComponentApplicationRequests::GetBehaviorContext);
+
+                if (behaviorContext->m_typeToClassMap.find(variableType.GetAZType()) == behaviorContext->m_typeToClassMap.end())
+                {
+                    errorDescription = AZStd::string::format("Variable %s has an invalid type %s.", GetVariableName(variableId).data(), variableType.GetAZType().ToString<AZStd::string>().c_str());
+                }
+            } 
+            else if (variableType == Data::Type::Invalid())
+            {
+                errorDescription = AZStd::string::format("Variable %s has an invalid type.", GetVariableName(variableId).data());
+            }
+
+            if (!errorDescription.empty())
+            {
+                ValidationEvent* validationEvent = aznew InvalidVariableTypeEvent(variableId);
+                validationEvent->SetDescription(errorDescription);
+                validationResults.m_validationEvents.push_back(validationEvent);
+            }
+        }
+    }
+
+    void Graph::ValidateScriptEvents(ValidationResults& validationResults)
+    {
+        for (auto& nodeEntity : m_graphData.m_nodes)
+        {
+            if (nodeEntity)
+            {
+                ValidationEvent* validationEvent = nullptr;
+                if (auto scriptEventNode = AZ::EntityUtils::FindFirstDerivedComponent<Nodes::Core::Internal::ScriptEventBase>(nodeEntity))
+                {
+                    AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(scriptEventNode->GetAssetId());
+                    if (assetData)
+                    {
+                        ScriptEvents::ScriptEvent& definition = assetData.Get()->m_definition;
+
+                        if (scriptEventNode->GetVersion() != definition.GetVersion())
+                        {
+                            validationEvent = aznew ScriptEventVersionMismatch(scriptEventNode->GetVersion(), scriptEventNode->GetScriptEvent(), nodeEntity->GetId());
+                            validationResults.m_validationEvents.push_back(validationEvent);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     bool Graph::AddNode(const AZ::EntityId& nodeId)
     {
         if (nodeId.IsValid())
@@ -371,6 +484,7 @@ namespace ScriptCanvas
                         GraphNotificationBus::Event(GetUniqueId(), &GraphNotifications::OnNodeAdded, nodeId);
                         return true;
                     }
+
                 }
             }
         }
@@ -386,6 +500,8 @@ namespace ScriptCanvas
             {
                 m_graphData.m_nodes.erase(entry);
                 GraphNotificationBus::Event(GetUniqueId(), &GraphNotifications::OnNodeRemoved, nodeId);
+
+                RemoveDependentAsset(nodeId);
                 return true;
             }
         }
@@ -458,8 +574,30 @@ namespace ScriptCanvas
                 auto connection = *entry ? AZ::EntityUtils::FindFirstDerivedComponent<Connection>(*entry) : nullptr;
                 if (connection)
                 {
-                    m_graphData.m_endpointMap.erase(connection->GetSourceEndpoint());
-                    m_graphData.m_endpointMap.erase(connection->GetTargetEndpoint());
+                    const ScriptCanvas::Endpoint& sourceEndpoint = connection->GetSourceEndpoint();
+                    const ScriptCanvas::Endpoint& targetEndpoint = connection->GetTargetEndpoint();
+
+                    auto sourceRange = m_graphData.m_endpointMap.equal_range(sourceEndpoint);
+
+                    for (auto mapIter = sourceRange.first; mapIter != sourceRange.second; ++mapIter)
+                    {
+                        if (mapIter->second == targetEndpoint)
+                        {
+                            m_graphData.m_endpointMap.erase(mapIter);
+                            break;
+                        }
+                    }
+
+                    auto targetRange = m_graphData.m_endpointMap.equal_range(targetEndpoint);
+
+                    for (auto mapIter = targetRange.first; mapIter != targetRange.second; ++mapIter)
+                    {
+                        if (mapIter->second == sourceEndpoint)
+                        {
+                            m_graphData.m_endpointMap.erase(mapIter);
+                            break;
+                        }
+                    }
                 }
                 m_graphData.m_connections.erase(entry);
                 GraphNotificationBus::Event(GetUniqueId(), &GraphNotifications::OnConnectionRemoved, connectionId);
@@ -501,6 +639,12 @@ namespace ScriptCanvas
         return connectedEndpoints;
     }
 
+    bool Graph::IsEndpointConnected(const Endpoint& endpoint) const
+    {
+        size_t connectionCount = m_graphData.m_endpointMap.count(endpoint);
+        return connectionCount > 0;
+    }
+
     bool Graph::FindConnection(AZ::Entity*& connectionEntity, const Endpoint& firstEndpoint, const Endpoint& otherEndpoint) const
     {
         if (!firstEndpoint.IsValid() || !otherEndpoint.IsValid())
@@ -540,7 +684,7 @@ namespace ScriptCanvas
 
     bool Graph::ConnectByEndpoint(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint)
     {
-        AZ::Outcome<void, AZStd::string> outcome = CanConnectByEndpoint(sourceEndpoint, targetEndpoint);
+        AZ::Outcome<void, AZStd::string> outcome = CanCreateConnectionBetween(sourceEndpoint, targetEndpoint);
 
         if (outcome.IsSuccess())
         {
@@ -578,67 +722,178 @@ namespace ScriptCanvas
         return false;
     }
 
+    bool Graph::AddDependentAsset(AZ::EntityId nodeId, const AZ::TypeId assetType, const AZ::Data::AssetId assetId)
+    {
+        AZ::Entity* nodeEntity = nullptr;
+        AZ::ComponentApplicationBus::BroadcastResult(nodeEntity, &AZ::ComponentApplicationRequests::FindEntity, nodeId);
+        AZ_Assert(nodeEntity, "Failed to add node to Graph, did you initialize the node entity?");
+        if (nodeEntity)
+        {
+            auto node = AZ::EntityUtils::FindFirstDerivedComponent<Node>(nodeEntity);
+            if (node)
+            {
+                if (Nodes::Core::Internal::ScriptEventBase* scriptEventBase = azrtti_cast<Nodes::Core::Internal::ScriptEventBase*>(node))
+                {
+                    if (m_graphData.m_dependentAssets.find(scriptEventBase->GetAssetId()) == m_graphData.m_dependentAssets.end())
+                    {
+                        m_graphData.m_dependentAssets[scriptEventBase->GetAssetId()] = AZStd::make_pair(nodeId, assetType);
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    bool Graph::RemoveDependentAsset(AZ::EntityId nodeId)
+    {
+        for (auto asset : m_graphData.m_dependentAssets)
+        {
+            if (asset.second.first == nodeId)
+            {
+                m_graphData.m_dependentAssets.erase(asset.first);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     bool Graph::IsInDataFlowPath(const Node* sourceNode, const Node* targetNode) const
     {
         return sourceNode && sourceNode->IsTargetInDataFlowPath(targetNode);
     }
 
-    AZ::Outcome<void, AZStd::string> Graph::ValidateDataFlow(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
+    AZ::Outcome<void, Graph::ValidationStruct> Graph::ValidateNode(AZ::Entity* nodeEntity) const
     {
-        auto sourceEntity = AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&sourceEndpoint](const AZ::Entity* node) { return node->GetId() == sourceEndpoint.GetNodeId(); });
-        if (sourceEntity == m_graphData.m_nodes.end())
+        ScriptCanvas::Node* nodeComponent = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Node>(nodeEntity);
+
+        if (nodeComponent == nullptr)
         {
-            return AZ::Failure(AZStd::string::format("The source node with id %s is not a part of this graph, a connection cannot be made", sourceEndpoint.GetNodeId().ToString().data()));
+            return AZ::Failure(ValidationStruct());
         }
 
-        auto targetEntity = AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&targetEndpoint](const AZ::Entity* node) { return node->GetId() == targetEndpoint.GetNodeId(); });
-        if (targetEntity == m_graphData.m_nodes.end())
+        if (!nodeComponent->IsEntryPoint())
         {
-            return AZ::Failure(AZStd::string::format("The target node with id %s is not a part of this graph, a connection cannot be made", targetEndpoint.GetNodeId().ToString().data()));
-        }
-
-        return ValidateDataFlow(**sourceEntity, **targetEntity, sourceEndpoint, targetEndpoint);
-    }
-
-    AZ::Outcome<void, AZStd::string> Graph::ValidateDataFlow(AZ::Entity& sourceNodeEntity, AZ::Entity& targetNodeEntity, const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
-    {
-        Node* sourceNode = AZ::EntityUtils::FindFirstDerivedComponent<Node>(&sourceNodeEntity);
-        Node* targetNode = AZ::EntityUtils::FindFirstDerivedComponent<Node>(&targetNodeEntity);
-        Slot* sourceSlot = sourceNode ? sourceNode->GetSlot(sourceEndpoint.GetSlotId()) : nullptr;
-        Slot* targetSlot = targetNode ? targetNode->GetSlot(targetEndpoint.GetSlotId()) : nullptr;
-
-        if (sourceSlot && targetSlot)
-        {
-            if (CanDataConnect(sourceSlot->GetType(), targetSlot->GetType()))
+            if (nodeComponent->GetConnectedNodesByType(SlotType::ExecutionIn).empty())
             {
-                if (sourceSlot->GetType() == SlotType::DataIn)
-                {
-                    AZStd::swap(sourceNode, targetNode);
-                    AZStd::swap(sourceSlot, targetSlot);
-                }
+                ValidationStruct validationStruct;
+                validationStruct.m_validationEventId = ExecutionValidationIds::UnusedNodeCrc;
+                validationStruct.m_errorDescription = AZStd::string::format("Node (%s) will not be triggered during graph execution", nodeComponent->GetNodeName().c_str());
 
-                if (!IsInDataFlowPath(sourceNode, targetNode))
-                {
-                    return AZ::Failure(AZStd::string::format
-                    ("There is an invalid data connection %s.%s --> %s.%s, the data is not in the execution path between nodes. Either route execution %s --> %s, or store the data in a variable if it is needed."
-                        , sourceNode->GetNodeName().data()
-                        , sourceSlot->GetName().data()
-                        , targetNode->GetNodeName().data()
-                        , targetSlot->GetName().data()
-                        , sourceNode->GetNodeName().data()
-                        , targetNode->GetNodeName().data()));
-                }
+                return AZ::Failure(validationStruct);
             }
-        }
-        else
-        {
-            return AZ::Failure(AZStd::string("Source and Target slot must be present and valid data configurations."));
         }
 
         return AZ::Success();
     }
 
-    AZ::Outcome<void, AZStd::string> Graph::CanConnectByEndpoint(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
+    AZ::Outcome<void, Graph::ValidationStruct> Graph::ValidateConnection(AZ::Entity* connectionEntity) const
+    {
+        ScriptCanvas::Connection* connectionComponent = AZ::EntityUtils::FindFirstDerivedComponent<ScriptCanvas::Connection>(connectionEntity);
+
+        if (connectionComponent == nullptr)
+        {
+            return AZ::Failure(ValidationStruct());
+        }
+
+        Endpoint sourceEndpoint = connectionComponent->GetSourceEndpoint();
+        Endpoint targetEndpoint = connectionComponent->GetTargetEndpoint();
+
+        auto sourceEntity = AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&sourceEndpoint](const AZ::Entity* node) { return node->GetId() == sourceEndpoint.GetNodeId(); });
+        if (sourceEntity == m_graphData.m_nodes.end())
+        {
+            ValidationStruct validationStruct;
+            validationStruct.m_validationEventId = DataValidationIds::UnknownSourceEndpointCrc;
+            validationStruct.m_errorDescription = AZStd::string::format("The source node with id %s is not a part of this graph, a connection cannot be made", sourceEndpoint.GetNodeId().ToString().data());
+
+            return AZ::Failure(validationStruct);
+        }
+
+        auto targetEntity = AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&targetEndpoint](const AZ::Entity* node) { return node->GetId() == targetEndpoint.GetNodeId(); });
+        if (targetEntity == m_graphData.m_nodes.end())
+        {
+            ValidationStruct validationStruct;
+            validationStruct.m_validationEventId = DataValidationIds::UnknownTargetEndpointCrc;
+            validationStruct.m_errorDescription = AZStd::string::format("The target node with id %s is not a part of this graph, a connection cannot be made", targetEndpoint.GetNodeId().ToString().data());
+
+            return AZ::Failure(validationStruct);
+        }
+
+        Node* sourceNode = AZ::EntityUtils::FindFirstDerivedComponent<Node>((*sourceEntity));
+        Node* targetNode = AZ::EntityUtils::FindFirstDerivedComponent<Node>((*targetEntity));
+
+        Slot* sourceSlot = sourceNode ? sourceNode->GetSlot(sourceEndpoint.GetSlotId()) : nullptr;
+        Slot* targetSlot = targetNode ? targetNode->GetSlot(targetEndpoint.GetSlotId()) : nullptr;
+
+        if (sourceSlot == nullptr)
+        {
+            ValidationStruct validationStruct;
+            validationStruct.m_validationEventId = DataValidationIds::UnknownSourceEndpointCrc;
+            validationStruct.m_errorDescription = AZStd::string::format("Source Slot could not be found on Node %s", (*sourceEntity)->GetName().c_str());
+
+            return AZ::Failure(validationStruct);
+        }
+        else if (targetSlot == nullptr)
+        {
+            ValidationStruct validationStruct;
+            validationStruct.m_validationEventId = DataValidationIds::UnknownTargetEndpointCrc;
+            validationStruct.m_errorDescription = AZStd::string::format("Target Slot could not be found on Node %s", (*targetEntity)->GetName().c_str());
+
+            return AZ::Failure(validationStruct);
+        }
+
+        if (ScriptCanvas::SlotUtils::IsData(sourceSlot->GetType()))
+        {
+            return ValidateDataConnection((*sourceNode), (*sourceSlot), (*targetNode), (*targetSlot));
+        }
+        else
+        {
+            return ValidateExecutionConnection((*sourceNode), (*sourceSlot), (*targetNode), (*targetSlot));
+        }
+    }
+
+    AZ::Outcome<void, Graph::ValidationStruct> Graph::ValidateExecutionConnection(const Node& sourceNode, const Slot& sourceSlot, const Node& targetNode, const Slot& targetSlot) const
+    {
+        // Nothing special to validate for Execution Connections yet
+        return AZ::Success();
+    }
+
+    AZ::Outcome<void, Graph::ValidationStruct> Graph::ValidateDataConnection(const Node& sourceNode, const Slot& sourceSlot, const Node& targetNode, const Slot& targetSlot) const
+    {
+        if (SlotUtils::CanDataConnect(sourceSlot.GetType(), targetSlot.GetType()))
+        {
+            bool isInDataFlow = false;
+
+            if (sourceSlot.GetType() == SlotType::DataIn)
+            {
+                isInDataFlow = IsInDataFlowPath(&targetNode, &sourceNode);
+            }
+            else
+            {
+                isInDataFlow = IsInDataFlowPath(&sourceNode, &targetNode);
+            }
+
+            if (!isInDataFlow)
+            {
+                ValidationStruct validationStruct;
+                validationStruct.m_validationEventId = DataValidationIds::ScopedDataConnectionCrc;
+                validationStruct.m_errorDescription = AZStd::string::format("There is an invalid data connection %s.%s --> %s.%s, the data is not in the execution path between nodes. Either route execution %s --> %s, or store the data in a variable if it is needed."
+                                                                            , sourceNode.GetNodeName().data()
+                                                                            , sourceSlot.GetName().data()
+                                                                            , targetNode.GetNodeName().data()
+                                                                            , targetSlot.GetName().data()
+                                                                            , sourceNode.GetNodeName().data()
+                                                                            , targetNode.GetNodeName().data());
+
+                return AZ::Failure(validationStruct);
+            }
+        }
+
+        return AZ::Success();
+    }
+
+    AZ::Outcome<void, AZStd::string> Graph::CanCreateConnectionBetween(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
     {
         AZ::Entity* foundEntity = nullptr;
         if (FindConnection(foundEntity, sourceEndpoint, targetEndpoint))
@@ -648,6 +903,11 @@ namespace ScriptCanvas
                 targetEndpoint.GetNodeId().ToString().data(), targetEndpoint.GetSlotId().m_id.ToString<AZStd::string>().data()));
         }
 
+        return CanConnectionExistBetween(sourceEndpoint, targetEndpoint);
+    }
+
+    AZ::Outcome<void, AZStd::string> Graph::CanConnectionExistBetween(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) const
+    {
         auto entry = AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&sourceEndpoint](const AZ::Entity* node) { return node->GetId() == sourceEndpoint.GetNodeId(); });
         if (entry == m_graphData.m_nodes.end())
         {
@@ -691,35 +951,32 @@ namespace ScriptCanvas
         return false;
     }
 
-    void Graph::RefreshDataFlowValidity(bool warnOnRemoval)
+    void Graph::RefreshConnectionValidity(bool warnOnRemoval)
     {
-        AZStd::vector<Connection*> removableConnections;
+        AZStd::vector<AZ::EntityId> removableConnections;
 
         for (auto& connectionEntity : m_graphData.m_connections)
         {
-            if (auto connection = (connectionEntity ? AZ::EntityUtils::FindFirstDerivedComponent<Connection>(connectionEntity) : nullptr))
-            {
-                auto outcome = ValidateDataFlow(connection->GetSourceEndpoint(), connection->GetTargetEndpoint());
+            auto outcome = ValidateConnection(connectionEntity);
 
-                if (!outcome.IsSuccess())
-                {
-                    AZ_Warning("ScriptCanvas", !warnOnRemoval, outcome.GetError().data());
-                    removableConnections.push_back(connection);
-                }
+            if (!outcome.IsSuccess())
+            {
+                AZ_Warning("ScriptCanvas", !warnOnRemoval, outcome.GetError().m_errorDescription.data());
+                removableConnections.emplace_back(connectionEntity->GetId());
             }
         }
 
-        for (auto connection : removableConnections)
+        for (auto connectionId : removableConnections)
         {
-            DisconnectByEndpoint(connection->GetSourceEndpoint(), connection->GetTargetEndpoint());
+            DisconnectById(connectionId);
         }
 
         if (!removableConnections.empty())
         {
-            RefreshDataFlowValidity(warnOnRemoval);
+            RefreshConnectionValidity(warnOnRemoval);
         }
     }
-
+  
     void Graph::OnEntityActivated(const AZ::EntityId&)
     {
         AZ::EntityBus::Handler::BusDisconnect(GetEntityId());
@@ -729,6 +986,10 @@ namespace ScriptCanvas
     bool Graph::AddGraphData(const GraphData& graphData)
     {
         bool success = true;
+
+        m_batchAddingData = true;
+        GraphNotificationBus::Event(GetEntityId(), &GraphNotifications::OnBatchAddBegin);
+
         for (auto&& nodeItem : graphData.m_nodes)
         {
             success = AddItem(nodeItem) && success;
@@ -739,6 +1000,17 @@ namespace ScriptCanvas
             success = AddItem(nodeItem) && success;
         }
 
+        for (auto&& nodeItem : graphData.m_nodes)
+        {
+            if (auto scriptEventNode = AZ::EntityUtils::FindFirstDerivedComponent<Nodes::Core::Internal::ScriptEventBase>(nodeItem))
+            {
+                AZ::Data::AssetManager::Instance().GetAsset<ScriptEvents::ScriptEventsAsset>(scriptEventNode->GetAssetId(), false);
+            }
+        }
+        
+        m_batchAddingData = false;
+        GraphNotificationBus::Event(GetEntityId(), &GraphNotifications::OnBatchAddComplete);
+
         return success;
     }
 
@@ -746,6 +1018,11 @@ namespace ScriptCanvas
     {
         RemoveItems(graphData.m_connections);
         RemoveItems(graphData.m_nodes);
+    }
+
+    bool Graph::IsBatchAddingGraphData() const
+    {
+        return m_batchAddingData;
     }
 
     AZStd::unordered_set<AZ::Entity*> Graph::CopyItems(const AZStd::unordered_set<AZ::Entity*>& entities)

@@ -281,7 +281,7 @@ void CLightEntity::UpdateGSMLightSourceShadowFrustum(const SRenderingPassInfo& p
     {
         if (ShadowMapFrustum* pFr = m_pShadowMapInfo->pGSM[nLod])
         {
-            pFr->ResetCasterLists(false);
+            pFr->ResetCasterLists();
             pFr->m_eFrustumType = ShadowMapFrustum::e_GsmDynamic;
             SAFE_DELETE(pFr->pShadowCacheData);
         }
@@ -504,7 +504,7 @@ bool CLightEntity::ProcessFrustum(int nLod, float fGSMBoxSize, float fDistanceFr
 
     CalculateShadowBias(pFr, nLod, fGSMBoxSize);
 
-    if (GetCVars()->e_ShadowsFrustums && pFr && pFr->pCastersList && pFr->pCastersList->Count())
+    if (GetCVars()->e_ShadowsFrustums && pFr && !pFr->m_castersList.IsEmpty())
     {
         pFr->DrawFrustum(GetRenderer(), (GetCVars()->e_ShadowsFrustums == 1) ? 1000 : 1);
     }
@@ -1414,17 +1414,6 @@ void CLightEntity::FillFrustumCastersList_SUN(ShadowMapFrustum* pFr, int dwAllow
         MakeShadowCastersHullSun(lstCastersHull, passInfo);
     }
 
-    //  fill casters list
-    if (!pFr->pCastersList)
-    {
-        pFr->pCastersList = new PodArray<IShadowCaster*>;
-    }
-
-    if (!pFr->pJobExecutedCastersList)
-    {
-        pFr->pJobExecutedCastersList = new PodArray<IShadowCaster*>;
-    }
-
     if (pFr->isUpdateRequested(0))
     {
         pFr->ResetCasterLists();
@@ -1505,27 +1494,24 @@ void CLightEntity::FillFrustumCastersList_OMNI(ShadowMapFrustum* pFr, int dwAllo
 void CLightEntity::DetectCastersListChanges(ShadowMapFrustum* pFr, const SRenderingPassInfo& passInfo)
 {
     uint32 uCastersListCheckSum = 0;
-    if (pFr->pCastersList)
+    for (int i = 0; i < pFr->m_castersList.Count(); ++i)
     {
-        for (int i = 0; i < pFr->pCastersList->Count(); i++)
+        IShadowCaster* pNode = pFr->m_castersList.GetAt(i);
+        const AABB entBox = pNode->GetBBoxVirtual();
+        uCastersListCheckSum += uint32((entBox.min.x + entBox.min.y + entBox.min.z) * 10000.f);
+        uCastersListCheckSum += uint32((entBox.max.x + entBox.max.y + entBox.max.z) * 10000.f);
+
+        ICharacterInstance* pChar = pNode->GetEntityCharacter(0);
+
+        if (pChar)
         {
-            IShadowCaster* pNode = pFr->pCastersList->GetAt(i);
-            const AABB entBox = pNode->GetBBoxVirtual();
-            uCastersListCheckSum += uint32((entBox.min.x + entBox.min.y + entBox.min.z) * 10000.f);
-            uCastersListCheckSum += uint32((entBox.max.x + entBox.max.y + entBox.max.z) * 10000.f);
-
-            ICharacterInstance* pChar = pNode->GetEntityCharacter(0);
-
-            if (pChar)
+            ISkeletonAnim* pISkeletonAnim = pChar->GetISkeletonAnim();
+            if (pISkeletonAnim)
             {
-                ISkeletonAnim* pISkeletonAnim = pChar->GetISkeletonAnim();
-                if (pISkeletonAnim)
+                uint32 numAnimsLayer0 = pISkeletonAnim->GetNumAnimsInFIFO(0);
+                if (numAnimsLayer0 != 0)
                 {
-                    uint32 numAnimsLayer0 = pISkeletonAnim->GetNumAnimsInFIFO(0);
-                    if (numAnimsLayer0 != 0)
-                    {
-                        pFr->RequestUpdate();
-                    }
+                    pFr->RequestUpdate();
                 }
             }
         }
@@ -1574,14 +1560,9 @@ void CLightEntity::OnCasterDeleted(IShadowCaster* pCaster)
         ShadowMapFrustum* pFr = m_pShadowMapInfo->pGSM[nGsmId];
         if (pFr)
         {
-            if (pFr->pCastersList)
-            {
-                pFr->pCastersList->Delete(pCaster);
-            }
-            if (pFr->pJobExecutedCastersList)
-            {
-                pFr->pJobExecutedCastersList->Delete(pCaster);
-            }
+            pFr->m_castersList.Delete(pCaster);
+            pFr->m_jobExecutedCastersList.Delete(pCaster);
+
             if (pFr->pShadowCacheData)
             {
                 pFr->pShadowCacheData->mProcessedCasters.erase(pCaster);
@@ -1913,7 +1894,7 @@ void CLightEntity::ProcessPerObjectFrustum(ShadowMapFrustum* pFr, struct SPerObj
 
     pFr->RequestUpdate();
     pFr->ResetCasterLists();
-    pFr->pCastersList->Add(pPerObjectShadow->pCaster);
+    pFr->m_castersList.Add(pPerObjectShadow->pCaster);
 
     // get caster's bounding box and scale
     AABB objectBBox;

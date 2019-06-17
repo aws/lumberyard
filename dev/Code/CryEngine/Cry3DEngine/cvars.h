@@ -243,6 +243,7 @@ struct CVars
     float e_StreamAutoMipFactorMax;
     int e_CoverageBufferAccurateOBBTest;
     int e_ObjQuality;
+    int e_LightQuality;
     int e_RNTmpDataPoolMaxFrames;
     DeclareConstIntCVar(e_DynamicLightsMaxCount, 512);
     int e_StreamCgfPoolSize;
@@ -476,6 +477,7 @@ struct CVars
     DeclareConstFloatCVar(e_LodBoundingBoxDistanceMultiplier);
     float e_ShadowsConstBias;
     float e_ShadowsConstBiasHQ;
+    int e_ShadowsClearShowMaskAtLoad;
     int e_ParticlesObjectCollisions;
     int e_ParticlesSortQuality;
     DeclareConstIntCVar(e_Ropes, 1);
@@ -559,6 +561,13 @@ struct CVars
     float e_MergedMeshesBulletScale;
     float e_MergedMeshesBulletLifetime;
     int e_MergedMeshesOutdoorOnly;
+    int e_MergedMeshesForceSSE2;
+    int e_MergedMeshesUpdateRateLOD0;
+    int e_MergedMeshesUpdateRateLOD1;
+    int e_MergedMeshesUpdateRateLOD2;
+    int e_MergedMeshesUpdateRateLOD3;
+    int e_MergedMeshesUpdateRateLOD4;
+    int e_MergedMeshesUpdateRateLOD5;
     int e_CheckOctreeObjectsBoxSize;
     DeclareConstIntCVar(e_GeomCaches, 1);
     int e_GeomCacheBufferSize;

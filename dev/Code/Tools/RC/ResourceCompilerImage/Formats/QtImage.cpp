@@ -13,6 +13,7 @@
 
 #include "../ImageObject.h"  // ImageToProcess
 
+#include "TGA.h"
 #include "IConfig.h"
 
 #include <stdio.h>
@@ -33,12 +34,48 @@
 
 namespace ImageQImage
 {
-    ImageObject* LoadByUsingQImageLoader(const char* filenameRead, const char* filenameWrite, CImageProperties* pProps, string& res_specialInstructions)
+    void ReportTGAErrors(const char* filenameRead)
+    {
+        // The custom QTga image format plugin that we maintain only supports
+        // true color TGA formats.
+        // Unfortunately, that code isn't easily usable by anything other than Qt
+        // which doesn't report errors in any useful way. It's basically a black box for
+        // image loading.
+        // So we check what image type it is here, and then log the error,
+        // before anything else does, so that the first error in the log is useful for
+        // artists and hopefully telling them exactly what the problem is.
+
+        using namespace ImageTGA;
+        Type tgaType = ReadTgaType(filenameRead);
+        switch (tgaType)
+        {
+            case Type::UncompressedPalettized:
+            case Type::RunLengthEncodedPalettized:
+                RCLogError("Palettized TGA files are not supported. Please convert to a supported image format: a non-palettized, RGB(A) TGA or a non-TGA format.");
+                break;
+
+            case Type::UncompressedGrayscale:
+            case Type::RunLengthEncodedGrayscale:
+                RCLogError("Grayscale TGA files are not supported. Please convert to a supported image format: a non-palettized, RGB(A) TGA or a non-TGA format.");
+                break;
+
+            default:
+                // Don't worry about any other image types. The rest of RC will report errors; we don't know anything more useful if it's not one of the above formats. 
+                break;
+        }
+    }
+
+    ImageObject* LoadByUsingQImageLoader(const char* filenameRead, const char* extension, const char* filenameWrite, CImageProperties* pProps, string& res_specialInstructions)
     {
         //try to open the image
         QImage qimage(filenameRead);
         if (qimage.isNull())
         {
+            if (!azstricmp(extension, "tga"))
+            {
+                ReportTGAErrors(filenameRead);
+            }
+
             return NULL;
         }
 

@@ -25,27 +25,32 @@ namespace AzToolsFramework
         : public AZ::ComponentBus
     {
     public:
-
         /**
-        * Set entity icon by assigning an Entity Icon Asset.
-        */
+         * Set entity icon by assigning an Entity Icon Asset.
+         */
         virtual void SetEntityIconAsset(const AZ::Data::AssetId& assetId) = 0;
 
         /**
-        * Get the entity icon asset id.
-        * If the returned asset id is invalid, an icon of one of the entity's components will be used instead.
-        */
+         * Get the entity icon asset id.
+         * If the returned asset id is invalid, an icon of one of the entity's components will be used instead.
+         */
         virtual AZ::Data::AssetId GetEntityIconAssetId() = 0;
 
         /**
-        * Get the full path of the source icon image associated with the current entity.
-        */
+         * Get the full path of the source icon image associated with the current entity.
+         */
         virtual AZStd::string GetEntityIconPath() = 0;
 
         /**
-        * Get the hide flag for the entity icon in viewport.
-        * @return A boolean denoting whether the entity icon should be hidden in viewport.
-        */
+         * Get the texture id of this entity icon.
+         * The Id is used to lookup the texture in the graphics system.
+         */
+        virtual int GetEntityIconTextureId() = 0;
+
+        /**
+         * Get the hide flag for the entity icon in viewport.
+         * @return A boolean denoting whether the entity icon should be hidden in viewport.
+         */
         virtual bool IsEntityIconHiddenInViewport() = 0;
     };
 

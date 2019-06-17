@@ -48,6 +48,7 @@ namespace LmbrCentral
         AZ::EntityBus::MultiHandler::BusDisconnect();
         CompoundShapeComponentRequestsBus::Handler::BusDisconnect();
         ShapeComponentRequestsBus::Handler::BusDisconnect();
+        ShapeComponentNotificationsBus::MultiHandler::BusDisconnect();
     }
 
     //////////////////////////////////////////////////////////////////////////

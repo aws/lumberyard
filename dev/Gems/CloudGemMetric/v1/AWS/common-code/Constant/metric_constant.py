@@ -53,6 +53,7 @@ KEY_FREQUENCY_TO_CHECK_TO_SPAWN_ANOTHER = "frequency_to_check_to_spawn"
 KEY_FREQUENCY_TO_CHECK_SQS_STATE = "frequency_to_check_sqs_state"
 KEY_HEATMAPS = "heatmaps"
 KEY_SAVE_GLOBAL_COORDINATES = "write_long_lat"
+KEY_WRITE_DETAILED_CLOUDWATCH_EVENTS = "write_detailed_cloudwatch_event"
 
 FILE_PARTIAL_PREFIX = "__partial"
 NEW_LINE = "\n"
@@ -88,6 +89,7 @@ INFO_ROWS = "rows"
 INFO_TOTAL_BYTES = "total_bytes_uncompressed"
 INFO_TOTAL_ROWS = "total_rows"
 INFO_TOTAL_MESSAGES = "total_messages"
+INFO_EVENTS = "events"
 
 #CLOUDWATCH
 CW_ATTR_SAVE_DURATION = "save_duration_seconds"
@@ -100,12 +102,14 @@ CW_METRIC_DIMENSION_ROWS = "Metrics"
 CW_METRIC_NAMESPACE = "CloudCanvas"
 CW_METRIC_NAME_PROCESSED = "Processed"
 CW_METRIC_DIMENSION_NAME_CONSUMER = "Consumer"
+CW_MAX_METRIC_SUBMISSIONS = 20
 
 #SQS
 RATIO_OF_MAX_LAMBDA_TIME = 0.8
 
 #S3 
 SAVE_WINDOW_IN_SECONDS = 45
+
 
 #SQS message maximum is 262144, but Lambda is 131072
 MAXIMUM_MESSAGE_SIZE_IN_BYTES = 262144

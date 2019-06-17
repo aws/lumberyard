@@ -54,10 +54,6 @@ namespace ScriptCanvas
     {
     }
 
-    ScriptCanvasModule::~ScriptCanvasModule()
-    {
-    }
-
     AZ::ComponentTypeList ScriptCanvasModule::GetRequiredSystemComponents() const
     {
         return GetCommonSystemComponents();

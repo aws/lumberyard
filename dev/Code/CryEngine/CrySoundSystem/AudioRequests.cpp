@@ -113,6 +113,7 @@ namespace Audio
                     AO_REQUEST_BLOCK(eAORT_RESET_RTPCS)
                     AO_REQUEST_BLOCK(eAORT_RELEASE_OBJECT)
                     AO_REQUEST_BLOCK(eAORT_EXECUTE_SOURCE_TRIGGER)
+                    AO_REQUEST_BLOCK(eAORT_SET_MULTI_POSITIONS)
                     default:
                     {
                         g_audioLogger.Log(eALT_ERROR, "Unknown audio object request type (%d)", pBase->eType);

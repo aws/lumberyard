@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "StarterGameGem_precompiled.h"
 #include "EditorWaypointsComponent.h"
 
@@ -42,37 +43,37 @@ namespace StarterGameGem
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
     }
 
-	void EditorWaypointsComponent::Reflect(AZ::ReflectContext* reflection)
-	{
-		AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
-		if (serializeContext)
-		{
+    void EditorWaypointsComponent::Reflect(AZ::ReflectContext* reflection)
+    {
+        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflection);
+        if (serializeContext)
+        {
             serializeContext->ClassDeprecate(
                 "WaypointsComponent",
                 "{3259A366-D177-4B5B-B047-2DD3CE93F984}",
                 &ClassConverters::DeprecatePreEditorWaypointsComponent
             );
 
-			serializeContext->Class<EditorWaypointsComponent, AzToolsFramework::Components::EditorComponentBase>()
-				->Version(1)
-				->Field("Config", &EditorWaypointsComponent::m_config)
-			;
+            serializeContext->Class<EditorWaypointsComponent, AzToolsFramework::Components::EditorComponentBase>()
+                ->Version(1)
+                ->Field("Config", &EditorWaypointsComponent::m_config)
+            ;
 
-			AZ::EditContext* editContext = serializeContext->GetEditContext();
-			if (editContext)
-			{
-				editContext->Class<EditorWaypointsComponent>("Waypoints", "Contains a list of waypoints")
-					->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-					->Attribute(AZ::Edit::Attributes::Category, "AI")
-					->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SG_Icon.png")
-					->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SG_Icon.dds")
-					->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
-					->DataElement(0, &EditorWaypointsComponent::m_config, "Config", "Waypoints Configuration")
+            AZ::EditContext* editContext = serializeContext->GetEditContext();
+            if (editContext)
+            {
+                editContext->Class<EditorWaypointsComponent>("Waypoints", "Contains a list of waypoints")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::Category, "AI")
+                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/SG_Icon.png")
+                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/SG_Icon.dds")
+                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"))
+                    ->DataElement(0, &EditorWaypointsComponent::m_config, "Config", "Waypoints Configuration")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ_CRC("PropertyVisibility_ShowChildrenOnly"))
-				;
-			}
-		}
-	}
+                ;
+            }
+        }
+    }
 
     void EditorWaypointsComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
@@ -83,10 +84,10 @@ namespace StarterGameGem
         }
     }
 
-    void EditorWaypointsComponent::DisplayEntity(bool& handled)
+    void EditorWaypointsComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        handled = true;
-
         // Don't draw the waypoints if the CVar either doesn't exist, is set to 0, or the number
         // of waypoints is less than two.
         static ICVar* const cvarDrawWaypoints = gEnv->pConsole->GetCVar("ai_debugDrawWaypoints");
@@ -100,10 +101,7 @@ namespace StarterGameGem
             return;
         }
 
-        AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayContext, "Invalid display context.");
-
-        displayContext->PushMatrix(AZ::Transform::CreateIdentity());
+        debugDisplay.PushMatrix(AZ::Transform::CreateIdentity());
 
         AZ::Vector3 raised = AZ::Vector3(0.0f, 0.0, cvarDrawWaypoints->GetFVal());
         AZ::Vector3* points = new AZ::Vector3[noOfValidWaypoints];
@@ -117,10 +115,10 @@ namespace StarterGameGem
             points[i] = tm.GetTranslation() + raised;
         }
 
-        displayContext->SetColor(s_waypointsDebugLineColourVec);
-        displayContext->DrawPolyLine(points, noOfValidWaypoints);
+        debugDisplay.SetColor(s_waypointsDebugLineColourVec);
+        debugDisplay.DrawPolyLine(points, noOfValidWaypoints);
 
-        displayContext->PopMatrix();
+        debugDisplay.PopMatrix();
     }
 
     namespace ClassConverters
@@ -239,4 +237,4 @@ namespace StarterGameGem
             return result;
         }
     }
-}
+} // namespace StarterGameGem

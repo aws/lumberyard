@@ -44,9 +44,10 @@ namespace StarterGameGem
         void BuildGameEntity(AZ::Entity* gameEntity) override;
         //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
-        void DisplayEntity(bool& handled);
-        //////////////////////////////////////////////////////////////////////////
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
     protected:
         // Required Reflect function.

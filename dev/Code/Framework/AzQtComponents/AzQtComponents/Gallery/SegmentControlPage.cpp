@@ -13,6 +13,7 @@
 #include "SegmentControlPage.h"
 #include <Gallery/ui_SegmentControlPage.h>
 
+#include <AzQtComponents/Components/Widgets/SegmentBar.h>
 #include <AzQtComponents/Components/Widgets/SegmentControl.h>
 
 #include <QColor>
@@ -52,18 +53,30 @@ SegmentControlPage::SegmentControlPage(QWidget* parent)
 , ui(new Ui::SegmentControlPage)
 {
     ui->setupUi(this);
+    ui->segmentBarVertical->setOrientation(Qt::Vertical);
+    ui->segmentControlVertical->setTabOrientation(Qt::Vertical);
+    ui->segmentControlVertical->setTabPosition(AzQtComponents::SegmentControl::West);
 
     // set up a segment bar
-    for (int i = 0; i < 4; i++)
+    const QVector<AzQtComponents::SegmentBar*> bars{ ui->segmentBar,
+                                                     ui->segmentBarVertical };
+    for (AzQtComponents::SegmentBar* sb : bars)
     {
-        ui->segmentBar->addTab(QStringLiteral("Segment Bar %1").arg(i));
+        for (int i = 0; i < 4; i++)
+        {
+            sb->addTab(QStringLiteral("Segment Bar %1").arg(i));
+        }
     }
 
     // set up a segment control
-    ui->segmentControl->clear();
-    ui->segmentControl->addTab(new SampleColorSwatch(QColor("#690000"), ui->segmentControl), "Red");
-    ui->segmentControl->addTab(new SampleColorSwatch(QColor("#006900"), ui->segmentControl), "Green");
-    ui->segmentControl->addTab(new SampleColorSwatch(QColor("#000069"), ui->segmentControl), "Blue");
+    const QVector<AzQtComponents::SegmentControl*> controls{ ui->segmentControl,
+                                                             ui->segmentControlVertical };
+    for (AzQtComponents::SegmentControl* sc : controls)
+    {
+        sc->addTab(new SampleColorSwatch(QColor("#690000"), sc), "Red");
+        sc->addTab(new SampleColorSwatch(QColor("#006900"), sc), "Green");
+        sc->addTab(new SampleColorSwatch(QColor("#000069"), sc), "Blue");
+    }
 
     QString exampleText = R"(
 

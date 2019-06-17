@@ -19,6 +19,7 @@
 #include <PhysX/Utils.h>
 #include <Source/Shape.h>
 #include <Include/PhysX/NativeTypeIdentifiers.h>
+#include <AzFramework/Physics/World.h>
 
 namespace PhysX
 {
@@ -123,5 +124,42 @@ namespace PhysX
     void* RigidBodyStatic::GetNativePointer() const
     {
         return m_staticRigidBody.get();
+    }
+
+    void RigidBodyStatic::AddToWorld(Physics::World& world)
+    {
+        physx::PxScene* scene = static_cast<physx::PxScene*>(world.GetNativePointer());
+
+        if (!scene)
+        {
+            AZ_Error("RigidBodyStatic", false, "Tried to add body to invalid world.");
+            return;
+        }
+
+        if (!m_staticRigidBody)
+        {
+            AZ_Error("RigidBodyStatic", false, "Tried to add invalid PhysX body to world.");
+            return;
+        }
+
+        scene->addActor(*m_staticRigidBody);
+    }
+
+    void RigidBodyStatic::RemoveFromWorld(Physics::World& world)
+    {
+        physx::PxScene* scene = static_cast<physx::PxScene*>(world.GetNativePointer());
+        if (!scene)
+        {
+            AZ_Error("RigidBodyStatic", false, "Tried to remove body from invalid world.");
+            return;
+        }
+
+        if (!m_staticRigidBody)
+        {
+            AZ_Error("RigidBodyStatic", false, "Tried to remove invalid PhysX body from world.");
+            return;
+        }
+
+        scene->removeActor(*m_staticRigidBody);
     }
 }

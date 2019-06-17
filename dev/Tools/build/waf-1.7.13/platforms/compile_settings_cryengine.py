@@ -17,20 +17,7 @@ from waf_branch_spec import LUMBERYARD_COPYRIGHT_YEAR
 
 import os
 
-@conf
-def init_compiler_settings(conf):
-    v = conf.env
-    # Create empty env values to ensure appending always works
-    v['DEFINES'] = []
-    v['INCLUDES'] = []
-    v['CXXFLAGS'] = []
-    v['LIB'] = []
-    v['LIBPATH'] = []
-    v['LINKFLAGS'] = []
-    v['BINDIR'] = ''
-    v['LIBDIR'] = ''
-    v['PREFIX'] = ''
-    
+
 @conf
 def load_cryengine_common_settings(conf):
     """
@@ -38,64 +25,25 @@ def load_cryengine_common_settings(conf):
     """
     v = conf.env
 
-    # Generate CODE_BASE_FOLDER define to allow to create absolute paths in source to use for pragma comment lib 
-    code_node = conf.engine_node.make_node('Code')
-    code_path = code_node.abspath()
-    code_path = code_path.replace('\\', '/')
-    v['DEFINES'] += [ 'CODE_BASE_FOLDER="' + code_path + '/"' ]
     if conf.is_option_true('enable_memory_tracking'):
         append_to_unique_list(v['DEFINES'], 'AZCORE_ENABLE_MEMORY_TRACKING')
     
     # To allow pragma comment (lib, 'SDKs/...) uniformly, pass Code to the libpath
     append_to_unique_list(v['LIBPATH'], conf.CreateRootRelativePath('Code'))
     
-@conf   
-def load_debug_cryengine_settings(conf):
-    """
-    Setup all platform, compiler agnostic settings for the debug configuration
-    """
-    v = conf.env
-    conf.load_cryengine_common_settings()
-    
-    v['DEFINES'] += [ '_DEBUG' ]
-           
-@conf   
-def load_profile_cryengine_settings(conf):
-    """
-    Setup all platform, compiler agnostic settings for the profile configuration
-    """
-    v = conf.env
-    conf.load_cryengine_common_settings()
-    
-    v['DEFINES'] += [ '_PROFILE', 'PROFILE', 'NDEBUG' ]
-        
-@conf   
-def load_performance_cryengine_settings(conf):
-    """
-    Setup all platform, compiler agnostic settings for the performance configuration
-    """
-    v = conf.env
-    conf.load_cryengine_common_settings()
-    
-    v['DEFINES'] += [ '_RELEASE', 'PERFORMANCE_BUILD', 'NDEBUG' ]
-    
-@conf   
-def load_release_cryengine_settings(conf):
-    """
-    Setup all platform, compiler agnostic settings for the release configuration
-    """ 
-    v = conf.env
-    conf.load_cryengine_common_settings()
-    
-    v['DEFINES'] += [ '_RELEASE', 'NDEBUG' ]
-    
-#############################################################################   
-#############################################################################
 
-    
 #############################################################################
 @conf   
 def set_editor_flags(self, kw):
+
+    if 'platforms' not in kw:
+        append_kw_entry(kw, 'platforms', ['win', 'darwin'])
+    if 'configurations' not in kw:
+        append_kw_entry(kw, 'configurations', ['all'])
+    if 'exclude_monolithic' not in kw:
+        kw['exclude_monolithic'] = True
+
+    kw['client_only'] = True
 
     prepend_kw_entry(kw,'includes',['.',
                                     self.CreateRootRelativePath('Code/Sandbox/Editor'),
@@ -156,5 +104,4 @@ def Settings(self, *k, **kw):
         self.fatal("A Settings container must provide a list of verbatim file names, a waf_files file list or an regex")
 
     return kw
-
 

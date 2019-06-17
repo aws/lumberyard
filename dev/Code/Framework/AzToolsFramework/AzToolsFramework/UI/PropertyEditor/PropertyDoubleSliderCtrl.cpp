@@ -10,6 +10,7 @@
 *
 */
 #include "StdAfx.h"
+#include <cmath>
 #include "PropertyDoubleSliderCtrl.hxx"
 #include "DHQSpinbox.hxx"
 #include "DHQSlider.hxx"
@@ -20,6 +21,8 @@
 
 namespace AzToolsFramework
 {
+    static const double DEFAULT_CURVE_MIDPOINT = 0.5;
+
     /*
         Truncate qreal to int without flipping on overflow.
     */
@@ -49,6 +52,7 @@ namespace AzToolsFramework
         , m_softMinimum(0.0)
         , m_softMaximum(0.0)
         , m_offset_accumulated(0.0)
+        , m_curveMidpoint(DEFAULT_CURVE_MIDPOINT)
         , m_tracking(true)
         , m_blocktracking(false)
         , m_pressed(false)
@@ -89,6 +93,7 @@ namespace AzToolsFramework
 
         connect(m_pSlider, SIGNAL(valueChanged(int)), this, SLOT(onChildSliderValueChange(int)));
         connect(m_pSpinBox, SIGNAL(valueChanged(double)), this, SLOT(onChildSpinboxValueChange(double)));
+        connect(m_pSlider, &QSlider::sliderReleased, this, &DHPropertyDoubleSlider::sliderReleased);
     }
 
     DHPropertyDoubleSlider::~DHPropertyDoubleSlider()
@@ -210,6 +215,70 @@ namespace AzToolsFramework
         m_pSpinBox->selectAll();
     }
 
+    double DHPropertyDoubleSlider::ConvertToSliderValue(double value)
+    {
+        return ConvertPowerCurveValue(value, false);
+    }
+
+    double DHPropertyDoubleSlider::ConvertFromSliderValue(double value)
+    {
+        return ConvertPowerCurveValue(value, true);
+    }
+
+    /*!
+        Implement an optional non-linear scale for our slider using a power curve. The midpoint
+        of the curve can be set using the 'SliderCurveMidpoint' attribute. This midpoint value
+        is between 0 and 1. By default, the value is 0.5, which will actually give it linear
+        scale so it ignores the power curve logic. Otherwise, lowering/raising the midpoint
+        value will shift the scale to have higher precision at the lower or higher end, respectively.
+     */
+    double DHPropertyDoubleSlider::ConvertPowerCurveValue(double value, bool fromSlider)
+    {
+        // If the midpoint is set to the default (0.5), then ignore the curve logic
+        // and just return the linear scale value. Also, having a midpoint value
+        // of 0.5 would cause a divide by 0 error in the a/b coefficients.
+        static const double epsilon = .001;
+        if (AZ::IsClose(m_curveMidpoint, DEFAULT_CURVE_MIDPOINT, epsilon))
+        {
+            if (fromSlider)
+            {
+                return value;
+            }
+            else
+            {
+                return value / m_singleStep;
+            }
+        }
+
+        // Calculate the midpoint value of our slider range based on the normalized midpoint curve value
+        int range = m_sliderMax - m_sliderMin;
+        int sliderMidpoint = m_sliderMin + (m_curveMidpoint * range);
+
+        // Power curve variables based on the various slider min, midpoint, and max values
+        double a = ((m_sliderMin * m_sliderMax) - (sliderMidpoint * sliderMidpoint)) / (m_sliderMin - (2 * sliderMidpoint) + m_sliderMax);
+        double b = std::pow(sliderMidpoint - m_sliderMin, 2) / (m_sliderMin - (2 * sliderMidpoint) + m_sliderMax);
+        double c = 2 * std::log((m_sliderMax - sliderMidpoint) / (sliderMidpoint - m_sliderMin));
+
+        // Calculate a new slider value based on the curve given the current slider value
+        // This part is executed when we get a new value from the user dragging the slider
+        if (fromSlider)
+        {
+            double normalizedValue = (double)(value - m_sliderMin) / (double)(range);
+            double newSliderValue = a + b * std::exp(c * normalizedValue);
+            return newSliderValue;
+        }
+        // Calculate a new slider value based on the curve given the current spinbox value
+        // This part is executed when we get a new value from the user entering a value
+        // directly in the spinbox
+        else
+        {
+            double sliderValue = value / m_singleStep;
+            double normalizedValue = std::log((sliderValue - a) / b) / c;
+            double newSliderValue = m_sliderMin + (normalizedValue * (double)(range));
+            return newSliderValue;
+        }
+    }
+
     void DHPropertyDoubleSlider::sliderChange(SliderChange change)
     {
         m_pSlider->blockSignals(true);
@@ -217,7 +286,7 @@ namespace AzToolsFramework
 
         if (change == SliderValueChange)
         {
-            m_sliderCurrent = round(m_value / m_singleStep);
+            m_sliderCurrent = round(ConvertToSliderValue(m_value));
             m_pSlider->setValue(m_sliderCurrent);
             m_pSpinBox->setValue(m_value);
         }
@@ -235,7 +304,7 @@ namespace AzToolsFramework
                 m_sliderMax = static_cast<int>(qMin((m_softMaximum / m_singleStep), (double)std::numeric_limits<int>::max()));
             }
 
-            m_sliderCurrent = round(m_value / m_singleStep);
+            m_sliderCurrent = round(ConvertToSliderValue(m_value));
             m_pSlider->setRange(m_sliderMin, m_sliderMax);
             m_pSlider->setValue(m_sliderCurrent);
             m_pSpinBox->setRange(m_minimum, m_maximum);
@@ -248,8 +317,9 @@ namespace AzToolsFramework
 
     void DHPropertyDoubleSlider::onChildSliderValueChange(int newValue)
     {
-        double val = (newValue * m_singleStep);
-        
+        double sliderValue = ConvertFromSliderValue(newValue);
+        double val = (sliderValue * m_singleStep);
+
         // eliminate floating point inconsistency
         val = AZ::ClampIfCloseMag(val, double(round(val)));
 
@@ -471,6 +541,18 @@ namespace AzToolsFramework
         {
             m_pSpinBox->SetDisplayDecimals(displayDecimals);
         }
+    }
+
+    /*!
+    \property DHPropertyDoubleSlider::setCurveMidpoint
+    \brief Set the midpoint for the power curve representing our slider scale. By default, the midpoint is 0.5, resulting in linear
+    \      scale, which would be the normal use-case. There are some use-cases though that require a non-linear scale slider
+    \      with a higher precision at either the lower or higher end of the slider.
+    */
+    void DHPropertyDoubleSlider::setCurveMidpoint(double midpoint)
+    {
+        m_curveMidpoint = AZStd::clamp<double>(midpoint, 0, 1);
+        refreshUi();
     }
 
     /*!
@@ -981,13 +1063,24 @@ namespace AzToolsFramework
                 AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'DisplayDecimals' attribute from property '%s' into Slider", debugName);
             }
         }
-
-        // Verify that the bounds are within the acceptable range of the int slider.
-        const double max = GUI->maximum() / GUI->effectiveSingleStep();
-        const double min = GUI->minimum() / GUI->effectiveSingleStep();
-        if (max > std::numeric_limits<int>::max() || max < std::numeric_limits<int>::lowest() || min > std::numeric_limits<int>::max() || min < std::numeric_limits<int>::lowest())
+        else if (attrib == AZ::Edit::Attributes::SliderCurveMidpoint)
         {
-            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in double/float Slider exceeds Min/Max values", debugName, attrib);
+            double midpointValue = 0;
+            if (attrValue->Read<double>(midpointValue))
+            {
+                GUI->setCurveMidpoint(midpointValue);
+            }
+            else
+            {
+                // emit a warning!
+                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'SliderCurveMidpoint' attribute from property '%s' into Slider", debugName);
+            }
+        }
+
+        // Verify that the bounds are within the acceptable range of the double/float slider.
+        if (!std::isfinite(GUI->maximum()) || !std::isfinite(GUI->minimum()))
+        {
+            AZ_WarningOnce("AzToolsFramework", false, "Property '%s' : 0x%08x  in double/float Slider has a minimum or maximum that is infinite", debugName, attrib);
         }
         GUI->blockSignals(false);
     }
@@ -1000,6 +1093,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &DHPropertyDoubleSlider::sliderReleased, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:
@@ -1015,6 +1112,10 @@ namespace AzToolsFramework
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
             });
+        connect(newCtrl, &DHPropertyDoubleSlider::sliderReleased, this, [newCtrl]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
+        });
         // note:  Qt automatically disconnects objects from each other when either end is destroyed, no need to worry about delete.
 
         // set defaults:

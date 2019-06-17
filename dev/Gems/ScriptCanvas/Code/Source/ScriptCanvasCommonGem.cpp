@@ -23,7 +23,10 @@
 
 #include <ScriptCanvas/Debugger/Debugger.h>
 #include <ScriptCanvas/Execution/RuntimeComponent.h>
+#include <ScriptCanvas/Libraries/Libraries.h>
+#include <ScriptCanvas/Libraries/Math/MathNodeUtilities.h>
 #include <ScriptCanvas/Variable/GraphVariableManagerComponent.h>
+#include <SystemComponent.h>
 
 namespace ScriptCanvas
 {
@@ -40,9 +43,10 @@ namespace ScriptCanvas
             ScriptCanvas::SystemComponent::CreateDescriptor(),
             
             // Components
-            ScriptCanvas::Debugger::Component::CreateDescriptor(),
-            ScriptCanvas::Graph::CreateDescriptor(),
             ScriptCanvas::Connection::CreateDescriptor(),
+            ScriptCanvas::Node::CreateDescriptor(),
+            ScriptCanvas::Debugger::ServiceComponent::CreateDescriptor(),
+            ScriptCanvas::Graph::CreateDescriptor(),
             ScriptCanvas::PureData::CreateDescriptor(),
             ScriptCanvas::GraphVariableManagerComponent::CreateDescriptor(),
             ScriptCanvas::RuntimeComponent::CreateDescriptor(),
@@ -55,11 +59,13 @@ namespace ScriptCanvas
         AZStd::vector<AZ::ComponentDescriptor*> libraryDescriptors = ScriptCanvas::GetLibraryDescriptors();
         m_descriptors.insert(m_descriptors.end(), libraryDescriptors.begin(), libraryDescriptors.end());
 
+        MathNodeUtilities::RandomEngineInit();
         InitDataRegistry();
     }
 
     ScriptCanvasModuleCommon::~ScriptCanvasModuleCommon()
     {
+        MathNodeUtilities::RandomEngineReset();
         ScriptCanvas::ResetNodeRegistry();
         ResetDataRegistry();
     }
@@ -69,7 +75,7 @@ namespace ScriptCanvas
         return std::initializer_list<AZ::Uuid> {
             azrtti_typeid<ScriptCanvas::SystemComponent>(),
             azrtti_typeid<ScriptCanvas::RuntimeAssetSystemComponent>(),
-            azrtti_typeid<ScriptCanvas::Debugger::Component>(),
+            azrtti_typeid<ScriptCanvas::Debugger::ServiceComponent>(),
         };
     }
 }

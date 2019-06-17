@@ -13,6 +13,7 @@
 #include "RotateTool.h"
 #include "Objects/DisplayContext.h"
 #include "IDisplayViewport.h"
+#include "NullEditTool.h"
 #include "Viewport.h"
 #include "functor.h"
 #include "Settings.h"
@@ -100,6 +101,17 @@ void CRotateTool::Display(DisplayContext& dc)
 {
     if (!m_object)
     {
+        return;
+    }
+
+    const bool visible =
+            !m_object->IsHidden() 
+        &&  !m_object->IsFrozen() 
+        &&  m_object->IsSelected();
+
+    if (!visible)
+    {
+        GetIEditor()->SetEditTool(new NullEditTool());
         return;
     }
 

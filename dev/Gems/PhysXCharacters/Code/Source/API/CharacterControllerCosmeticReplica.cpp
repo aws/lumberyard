@@ -315,6 +315,32 @@ namespace PhysXCharacters
         return nullptr;
     }
 
+    void CharacterControllerCosmeticReplica::AddToWorld(Physics::World& world)
+    {
+        if (m_rigidBody)
+        {
+            m_rigidBody->AddToWorld(world);
+        }
+
+        if (m_shadowBody)
+        {
+            m_shadowBody->AddToWorld(world);
+        }
+    }
+
+    void CharacterControllerCosmeticReplica::RemoveFromWorld(Physics::World& world)
+    {
+        if (m_rigidBody)
+        {
+            m_rigidBody->RemoveFromWorld(world);
+        }
+
+        if (m_shadowBody)
+        {
+            m_shadowBody->RemoveFromWorld(world);
+        }
+    }
+
     void CharacterControllerCosmeticReplica::AttachShape(AZStd::shared_ptr<Physics::Shape> shape)
     {
         if (m_shadowBody)

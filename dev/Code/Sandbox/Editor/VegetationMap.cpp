@@ -28,6 +28,7 @@
 #include <IEntityRenderState.h>
 #include "Material/Material.h"
 #include "GameEngine.h"
+#include <StatObjBus.h>
 
 #include <AzToolsFramework/UI/UICore/WidgetHelpers.h>
 #include <AzToolsFramework/Commands/LegacyCommand.h>
@@ -35,6 +36,8 @@
 #include "../Plugins/EditorCommon/QtViewPane.h"
 
 #include <QMessageBox>
+#include <Vegetation/StaticVegetationBus.h>
+#include <MathConversion.h>
 
 //////////////////////////////////////////////////////////////////////////
 // CVegetationMap implementation.
@@ -487,6 +490,12 @@ CVegetationMap::~CVegetationMap()
 void CVegetationMap::ClearObjects()
 {
     ClearSectors();
+    AZStd::unordered_set<StatInstGroupId> groupIdSet;
+    for (auto object : m_objects)
+    {
+        groupIdSet.insert(static_cast<StatInstGroupId>(object->GetId()));
+    }
+    StatInstGroupEventBus::Broadcast(&StatInstGroupEventBus::Events::ReleaseStatInstGroupIdSet, groupIdSet);
     m_objects.clear();
 }
 
@@ -502,8 +511,6 @@ void CVegetationMap::ClearAll()
         m_sectors = 0;
     }
 
-    m_usedIds.clear();
-
     m_sectors = 0;
     m_sectorSize = 0;
     m_numSectors = 0;
@@ -518,6 +525,11 @@ void CVegetationMap::ClearAll()
 //////////////////////////////////////////////////////////////////////////
 void CVegetationMap::RegisterInstance(CVegetationInstance* obj)
 {
+    if (obj && obj->pRenderNode)
+    {
+        Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::InstanceRemoved, obj->pRenderNode, LyAABBToAZAabb(obj->pRenderNode->GetBBox()));
+    }
+
     // re-create vegetation render node
     SAFE_RELEASE_NODE(obj->pRenderNode);
 
@@ -614,13 +626,13 @@ void CVegetationMap::ClearSectors()
     for (int i = 0; i < m_numSectors * m_numSectors; i++)
     {
         SectorInfo* si = &m_sectors[i];
-        // Iterate on every object in sector.
-        for (CVegetationInstance* obj = si->first; obj; obj = next)
+        // Iterate on every object instance in the sector.
+        for (CVegetationInstance* inst = si->first; inst; inst = next)
         {
-            next = obj->next;
-            obj->pRenderNode = 0;
-            SAFE_RELEASE_NODE(obj->pRenderNodeGroundDecal);
-            obj->Release();
+            next = inst->next;
+            inst->pRenderNode = 0;
+            SAFE_RELEASE_NODE(inst->pRenderNodeGroundDecal);
+            inst->Release();
         }
         si->first = 0;
     }
@@ -976,6 +988,8 @@ void CVegetationMap::DeleteObjInstanceNoUndo(CVegetationInstance* obj, SectorInf
     {
         GetIEditor()->GetGameEngine()->OnAreaModified(obj->pRenderNode->GetBBox());
     }
+
+    Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::InstanceRemoved, obj->pRenderNode, LyAABBToAZAabb(obj->pRenderNode->GetBBox()));
 
     SAFE_RELEASE_NODE(obj->pRenderNode);
     SAFE_RELEASE_NODE(obj->pRenderNodeGroundDecal);
@@ -1665,17 +1679,15 @@ void CVegetationMap::ClearBrush(QRect& rc, bool bCircle, CVegetationObject* pObj
 //////////////////////////////////////////////////////////////////////////
 CVegetationObject* CVegetationMap::CreateObject(CVegetationObject* prev)
 {
-    int id(GenerateVegetationObjectId());
+    StatInstGroupId id = StatInstGroupEvents::s_InvalidStatInstGroupId;
+    StatInstGroupEventBus::BroadcastResult(id, &StatInstGroupEventBus::Events::GenerateStatInstGroupId);
 
-    if (id < 0)
+    if (id == StatInstGroupEvents::s_InvalidStatInstGroupId)
     {
         // Free id not found
         QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Vegetation objects limit is reached."));
-        return 0;
+        return nullptr;
     }
-
-    // Mark id as used.
-    m_usedIds.insert(id);
 
     CVegetationObject* obj = new CVegetationObject(id);
     if (prev)
@@ -1695,17 +1707,15 @@ CVegetationObject* CVegetationMap::CreateObject(CVegetationObject* prev)
 //////////////////////////////////////////////////////////////////////////
 bool CVegetationMap::InsertObject(CVegetationObject* obj)
 {
-    int id(GenerateVegetationObjectId());
+    StatInstGroupId id = StatInstGroupEvents::s_InvalidStatInstGroupId;
+    StatInstGroupEventBus::BroadcastResult(id, &StatInstGroupEventBus::Events::GenerateStatInstGroupId);
 
-    if (id < 0)
+    if (id == StatInstGroupEvents::s_InvalidStatInstGroupId)
     {
-        // Free id not found, created more then 256 objects
+        // Free id not found
         QMessageBox::warning(AzToolsFramework::GetActiveWindow(), QString(), QObject::tr("Vegetation objects limit is reached."));
         return false;
     }
-
-    // Mark id as used.
-    m_usedIds.insert(id);
 
     // Assign the new Id to the vegetation object.
     obj->SetId(id);
@@ -1725,7 +1735,7 @@ bool CVegetationMap::InsertObject(CVegetationObject* obj)
 void CVegetationMap::RemoveObject(CVegetationObject* object)
 {
     // Free id for this object.
-    m_usedIds.erase(object->GetId());
+    StatInstGroupEventBus::Broadcast(&StatInstGroupEventBus::Events::ReleaseStatInstGroupId, static_cast<StatInstGroupId>(object->GetId()));
 
     // First delete instances
     // Undo will be stored in DeleteObjInstance()
@@ -3072,8 +3082,6 @@ void CVegetationMap::GetMemoryUsage(ICrySizer* pSizer)
 {
     pSizer->Add(*this);
 
-    pSizer->Add(m_usedIds);
-
     {
         pSizer->Add(m_objects);
 
@@ -3118,28 +3126,6 @@ void CVegetationMap::SetEngineObjectsParams()
         obj->SetEngineParams();
     }
 }
-
-
-//////////////////////////////////////////////////////////////////////////
-int CVegetationMap::GenerateVegetationObjectId()
-{
-    int id = -1;
-    // Generate New id.
-#ifdef max
-#undef max
-#endif
-    for (int i = 0; i < std::numeric_limits<int>::max(); ++i)
-    {
-        if (m_usedIds.find(i) == m_usedIds.end())
-        {
-            id = i;
-            break;
-        }
-    }
-
-    return id;
-}
-
 
 //////////////////////////////////////////////////////////////////////////
 void CVegetationMap::UpdateConfigSpec()

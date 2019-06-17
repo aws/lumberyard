@@ -14,6 +14,7 @@
 #include <qabstractitemmodel.h>
 
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzCore/RTTI/RTTI.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/functional_basic.h>
 
@@ -39,23 +40,33 @@ namespace GraphCanvas
         friend class GraphCanvasTreeModel;
     public:
         AZ_CLASS_ALLOCATOR(GraphCanvasTreeItem, AZ::SystemAllocator, 0);
+        AZ_RTTI(GraphCanvasTreeItem, "{BB2B829D-64B5-4D33-9390-85056AA0F3AA}");
 
         virtual ~GraphCanvasTreeItem();
 
-        void DetachItem();        
+        // Categorizer Specific Methods
+        void SetAllowPruneOnEmpty(bool allowsEmpty);
+        bool AllowPruneOnEmpty() const;
+        ////
+
+        void DetachItem();
         int GetChildCount() const;
+
+        void ClearChildren();
 
         GraphCanvasTreeItem* FindChildByRow(int row) const;
         int FindRowUnderParent() const;
 
         GraphCanvasTreeItem* GetParent() const;
 
-        void RegisterModel(QAbstractItemModel* itemModel, QModelIndex modelIndex);
+        void RegisterModel(GraphCanvasTreeModel* itemModel);
         
         // Fields that can be customized to manipulate how the tree view behaves.
         virtual int GetColumnCount() const = 0;
         virtual Qt::ItemFlags Flags(const QModelIndex& index) const = 0;
         virtual QVariant Data(const QModelIndex& index, int role) const = 0;
+
+        virtual bool SetData(const QModelIndex& index, const QVariant& value, int role) { return false; }
         virtual GraphCanvasMimeEvent* CreateMimeEvent() const { return nullptr; };
 
         template<class NodeType, class... Params>
@@ -63,6 +74,14 @@ namespace GraphCanvas
         {
             NodeType* nodeType = aznew NodeType(AZStd::forward<Params>(rest)...);
             this->AddChild(nodeType);
+            return nodeType;
+        }
+
+        template<class NodeType, class... Params>
+        NodeType* CreateChildNodeWithoutAddSignal(Params&&... rest)
+        {
+            NodeType* nodeType = aznew NodeType(AZStd::forward<Params>(rest)...);
+            this->AddChild(nodeType, false);
             return nodeType;
         }
 
@@ -74,12 +93,8 @@ namespace GraphCanvas
         
         void RemoveParent(GraphCanvasTreeItem* item);
 
-        void AddChild(GraphCanvasTreeItem* item);        
+        void AddChild(GraphCanvasTreeItem* item, bool signalAdd = true);
         void RemoveChild(GraphCanvasTreeItem* item, bool deleteObject = true);
-        void ClearChildren();
-
-        void BlockSignals();
-        void UnblockSignals();
 
         void SignalLayoutAboutToBeChanged();
         void SignalLayoutChanged();
@@ -88,14 +103,18 @@ namespace GraphCanvas
         // Overrides for various internal bits of operation
         virtual bool LessThan(const GraphCanvasTreeItem* graphItem) const;
         virtual void PreOnChildAdded(GraphCanvasTreeItem* item);
+        virtual void OnChildAdded(GraphCanvasTreeItem* item);
+        virtual void OnChildDataChanged(GraphCanvasTreeItem* item);
         
     private:
-        
-        QPersistentModelIndex   m_startModelIndex;
-        QPersistentModelIndex   m_endModelIndex;
-        QAbstractItemModel*     m_abstractItemModel;
+
+        void ClearModel();
+
+        GraphCanvasTreeModel*   m_abstractItemModel;
         bool m_allowSignals;
         bool m_deleteRemoveChildren;
+
+        bool m_allowPruneOnEmpty;
 
         GraphCanvasTreeItem* m_parent;
         AZStd::vector< GraphCanvasTreeItem* > m_childItems;

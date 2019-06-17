@@ -143,7 +143,8 @@ namespace HierarchyHelpers
         // properly when the Ctrl key or the Shift key is pressed.
 
         // Stop object pick mode when an action explicitly wants to set the hierarchy's selected items
-        EBUS_EVENT(AzToolsFramework::EditorPickModeRequests::Bus, StopObjectPickMode);
+        AzToolsFramework::EditorPickModeRequestBus::Broadcast(
+            &AzToolsFramework::EditorPickModeRequests::StopEntityPickMode);
 
         if ((!list) || list->empty())
         {

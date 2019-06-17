@@ -16,6 +16,7 @@
 #include <AzCore/std/string/string.h>
 
 #include <GraphCanvas/Types/TranslationTypes.h>
+#include <GraphCanvas/Components/StyleBus.h>
 
 class QGraphicsWidget;
 
@@ -61,6 +62,9 @@ namespace GraphCanvas
         //! Sets an override for the palette. This will be saved out.
         virtual void SetPaletteOverride(const AZStd::string& paletteOverride) = 0;
         virtual void SetDataPaletteOverride(const AZ::Uuid& uuid) = 0;
+        virtual void SetColorPaletteOverride(const QColor& color) = 0;
+
+        virtual void ConfigureIconConfiguration(PaletteIconConfiguration& paletteConfiguration) = 0;
 
         virtual void ClearPaletteOverride() = 0;
     };

@@ -18,6 +18,10 @@
 #include "ModuleTestBus.h"
 
 using namespace AZ;
+using ::testing::Return;
+using ::testing::StrEq;
+using ::testing::Matcher;
+using ::testing::_;
 
 namespace UnitTest
 {
@@ -299,4 +303,94 @@ namespace UnitTest
             app.Destroy();
         }
     }
+
+    class TestCalculateBinFolderClass : public ComponentApplication
+    {
+    public:
+        TestCalculateBinFolderClass(const char* testExePath) :
+            ComponentApplication()
+        {
+            azstrcpy(this->m_exeDirectory, testExePath);
+        }
+
+        void TestCalculateBinFolder()
+        {
+            this->CalculateBinFolder();
+        }
+
+        MOCK_CONST_METHOD1(CheckPathForEngineMarker, bool(const char*));
+
+        bool m_bFileExists;
+    };
+
+#if defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_LINUX) || defined (AZ_PLATFORM_APPLE_OSX)
+
+#define TEST_BINFOLDER  "bin64vc140"
+
+
+    TEST(ModuleManager, TestCalculateBinFolder)
+    {
+        // Note: all the paths used in this test has the path separators normalized to forward slashes, since this is
+        // what the ComponentApplication will do automatically when it detects the exe path on initialize
+
+        {   // Standard case (for win/mac) where the bin folder exists based on the build variant and built on the local host
+            TestCalculateBinFolderClass app("c:/lyengine/dev/" TEST_BINFOLDER);
+
+            EXPECT_CALL(app, CheckPathForEngineMarker(StrEq("c:/lyengine/dev")))
+                        .WillRepeatedly(Return(true));
+
+            app.TestCalculateBinFolder();
+
+            EXPECT_STREQ(TEST_BINFOLDER, app.GetBinFolder());
+        }
+        {
+            // Case where executable folder is at the root (c:) along with the engine marker
+            TestCalculateBinFolderClass app("c:");
+
+            EXPECT_CALL(app, CheckPathForEngineMarker(StrEq("")))
+                        .WillRepeatedly(Return(true));
+
+            app.TestCalculateBinFolder();
+
+            EXPECT_STREQ("", app.GetBinFolder());
+        }
+        {
+            // Case where the engine marker cannot be found and we start from the cdrive root
+            TestCalculateBinFolderClass app("c:");
+
+            EXPECT_CALL(app, CheckPathForEngineMarker(Matcher<const char*>(_)))
+                        .WillRepeatedly(Return(false));
+
+            app.TestCalculateBinFolder();
+
+            EXPECT_STREQ("", app.GetBinFolder());
+        }
+        {
+            // Case where the engine marker cannot be found and we start from a valid path
+            TestCalculateBinFolderClass app("c:/lyengine/dev/" TEST_BINFOLDER);
+
+            EXPECT_CALL(app, CheckPathForEngineMarker(Matcher<const char*>(_)))
+                        .WillRepeatedly(Return(false));
+
+            app.TestCalculateBinFolder();
+
+            // This should not happen, but we should see a warning that it could not be found
+            EXPECT_STREQ("", app.GetBinFolder());
+        }
+        {
+            // Case the exe path is one level deeper than the bin64 folder
+            TestCalculateBinFolderClass app("c:/lyengine/dev/" TEST_BINFOLDER "/rc/");
+
+            EXPECT_CALL(app, CheckPathForEngineMarker(StrEq("c:/lyengine/dev/" TEST_BINFOLDER)))
+                        .WillRepeatedly(Return(false));
+            EXPECT_CALL(app, CheckPathForEngineMarker(StrEq("c:/lyengine/dev")))
+                        .WillRepeatedly(Return(true));
+
+            app.TestCalculateBinFolder();
+
+            EXPECT_STREQ(TEST_BINFOLDER, app.GetBinFolder());
+        }
+    }
+#endif // defined (AZ_PLATFORM_WINDOWS) || defined (AZ_PLATFORM_LINUX) || defined (AZ_PLATFORM_APPLE_OSX)
+
 } // namespace UnitTest

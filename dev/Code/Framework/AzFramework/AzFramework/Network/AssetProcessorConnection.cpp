@@ -72,6 +72,7 @@ namespace AzFramework
             m_unitTesting = false;
             m_shouldQueueHandlerChanges = false;
             m_retryAfterDisconnect = false;
+            m_isBusyDisconnecting = false;
 
             m_sendThread.m_desc.m_name = "APConn::SendThread";
             m_sendThread.m_main = AZStd::bind(&AssetProcessorConnection::SendThread, this);
@@ -86,7 +87,6 @@ namespace AzFramework
             m_recvThread.m_desc.m_cpuId = 4;
 
             m_disconnectThread.m_desc.m_name = "APConn::DisconnectThread";
-            m_disconnectThread.m_skipStartingIfRunning = true;
             m_disconnectThread.m_main = [this]()
             {
                 DisconnectThread();
@@ -99,7 +99,6 @@ namespace AzFramework
             m_connectThread.m_main = [this]()
             {
                 ConnectThread();
-                m_connectThread.m_running = false;
             };
 
             int result = AZ::AzSock::Startup();
@@ -107,17 +106,11 @@ namespace AzFramework
             {
                 AZ_Error("AssetProcessorConnection", false, "AZ::AzSock::startup returned an error (%s)", AZ::AzSock::GetStringForError(result));
             }
-
-            BusConnect();
         }
 
         AssetProcessorConnection::~AssetProcessorConnection()
         {
-            //disconnect
-            Disconnect();
-
-            //join the disconnect thread
-            JoinThread(m_disconnectThread);
+            Disconnect(true);
 
             //cleanup
             int result = AZ::AzSock::Cleanup();
@@ -125,8 +118,6 @@ namespace AzFramework
             {
                 DebugMessage("~AssetProcessorConnection cleanup returned an error (%s)", AZ::AzSock::GetStringForError(result));
             }
-
-            BusDisconnect();
         }
 
         void AssetProcessorConnection::DebugMessage(const char* format, ...)
@@ -157,7 +148,8 @@ namespace AzFramework
 #   else
 #       error we do not know how to output on this platform - consider trying one of the above cases.
 #   endif
-            AZ::Debug::Trace::Output("AssetProcessorConnection", buffer);
+            ::OutputDebugString("AssetProcessorConnection:");
+            ::OutputDebugString(buffer);
 #else // ASSETPROCESORCONNECTION_VERBOSE_LOGGING is not defined
             (void)format;
 #endif
@@ -190,7 +182,7 @@ namespace AzFramework
             //stop all the associated threads for that connection and try
             //to connect after that is done
             m_retryAfterDisconnect = true;
-            StartThread(m_disconnectThread);
+            StartDisconnecting();
 
             return true;
         }
@@ -227,7 +219,7 @@ namespace AzFramework
                 {
                     return;
                 }
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -239,7 +231,7 @@ namespace AzFramework
                 {
                     return;
                 }
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -253,7 +245,7 @@ namespace AzFramework
                     return;
                 }
 
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -265,7 +257,7 @@ namespace AzFramework
                 {
                     return;
                 }
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -291,30 +283,53 @@ namespace AzFramework
 
             //we failed start the disconnect thread and try again if retry is set
             DebugMessage("AssetProcessorConnection::ConnectThread - Negotiation with %s:%u, Failed.", m_connectAddr.c_str(), m_port);
-            Disconnect();
+            // when we are the one connecting outbound, a negotiation failure is terminal 
+            // we cannot recover, the thing we're trying to connect to is not an asset processor, so disable automatic retry:
+            m_retryAfterDisconnect = false;
+            StartDisconnecting();
         }
 
         //disconnect is public and can be pounded on by an app, so protect out threads
         bool AssetProcessorConnection::Disconnect(bool completeDisconnect)
         {
-            // the instant we enter this function the user's intention to stop retrying is clear, and we flip this atomic to false before
-            // we end up in any locks or waits.
+            // do not call this function from any of the service threads, or you are certain to deadlock immediately.
+            // instead, call StartDisconnecting.   Disconnect is the API call for outsiders to call on their own threads.
             m_retryAfterDisconnect = false;
-            //kill any current connection and stop retrying
+
+            // now that we have disabled retry, we do an atomic exchange to detect whether the disconnect function is
+            // already running.  m_isBusyDisconnecting is true whenever something is either trying to start the disconnect
+            // thread, or the thread itself has not yet reached the point at which it has finished tearing everything down
+            // and will try to retry (using the above bool).  This means that if we successfully exchange it false to true,
+            // it means we need to wait for the thread to finish and then run it once more to clean up.
+            // otherwise, its already running and will eventually check the above value, so we only need to wait for it.
+
+            bool wasDisconnecting = false;
+            m_isBusyDisconnecting.compare_exchange_strong(wasDisconnecting, true);
+            if (!wasDisconnecting)
             {
-                AZStd::lock_guard<AZStd::mutex> lock(m_disconnectMutex);
-                if (m_disconnectThread.m_running)
+                DebugMessage("Disconnect(...) is in control of performing the disconnection sequence.");
+                AZStd::lock_guard<AZStd::recursive_mutex> lock(m_disconnectThread.m_mutex);
+                JoinThread(m_disconnectThread);
+                m_disconnectThread.m_main();
+            }
+            else
+            {
+                DebugMessage("Disconnect(...) is in not in control of performing the disconnection sequence, waiting");
+                // this ensures that the disconnection thread is at least started by whoever was in control of it
+                // before we continue.  Its vital we do this, since we're about to call join() after this, and until this
+                // flips back to false, its not safe to assume the disconnection thread has started yet.
+                while (m_isBusyDisconnecting.load())
                 {
-                    return true;
+                    AZStd::this_thread::yield();
                 }
             }
-            StartThread(m_disconnectThread);
 
             if (completeDisconnect)
             {
+                DebugMessage("Disconnect(...) waiting for the disconnect thread to join");
                 JoinThread(m_disconnectThread);
             }
-
+            DebugMessage("Disconnect - done");
             return true;
         }
 
@@ -386,15 +401,13 @@ namespace AzFramework
             m_connectionState = EConnectionState::Disconnected;
             EBUS_EVENT(EngineConnectionEvents::Bus, Disconnected, this);
 
-            //A this point all other threads are dead and the disconnect thread is about to die.
-            //m_retryAfterDisconnect is set to true only in one place, the initial kick off
-            //of the connection by a call to ConnectAsync by the app.
-            //m_retryAfterDisconnect is set to false in two places, when the negotiation fails
-            //or a call to Disconnect by the app. It is not set to false due to a socket error.
-
-            //start the listening or connect thread
+            DebugMessage("AssetProcessorConnection::DisconnectThread - crossing the isBusyDisconnecting line");
+            // once we cross this line, we would need to restart the disconnect thread in order to properly disconnect 
+            // since we're about to potentially start other threads if m_retryAfterDisconnect is true.
+            m_isBusyDisconnecting = false;
+            
+            // if necessary, start the listening or connect thread to begin another attempt.
             {
-                AZStd::lock_guard<AZStd::mutex> lock(m_disconnectMutex);
                 DebugMessage("AssetProcessorConnection::DisconnectThread - m_retryAfterDisconnect = %s", m_retryAfterDisconnect ? "True" : "False");
                 if (m_retryAfterDisconnect)
                 {
@@ -414,8 +427,6 @@ namespace AzFramework
                         }
                     }
                 }
-
-                m_disconnectThread.m_running = false;
             }
         }
 
@@ -577,20 +588,15 @@ namespace AzFramework
         {
             // must start recv first
             StartThread(m_recvThread);
-            StartThread(m_sendThread, &m_sendEvent);
+            StartThread(m_sendThread);
         }
 
-        void AssetProcessorConnection::StartThread(ThreadState& thread, AZStd::semaphore* event /* = nullptr */)
+        void AssetProcessorConnection::StartThread(ThreadState& thread)
         {
             AZStd::lock_guard<AZStd::recursive_mutex> locker(thread.m_mutex);
-            if (thread.m_running && thread.m_skipStartingIfRunning)
-            {
-                return;
-            }
-            JoinThread(thread, event);
+            
+            DebugMessage("StartThread: Starting %s", thread.m_desc.m_name);
             thread.m_join = false;
-            DebugMessage("StartWorker: Starting %s", thread.m_desc.m_name);
-            thread.m_running = true;
             thread.m_thread = AZStd::thread(thread.m_main, &thread.m_desc);
         }
 
@@ -618,70 +624,32 @@ namespace AzFramework
             }
         }
 
-        void AssetProcessorConnection::OnThreadEnter(const AZStd::thread::id& id, const AZStd::thread_desc* desc)
+        void AssetProcessorConnection::StartDisconnecting()
         {
-            ThreadState* thread = nullptr;
-            if (id == m_sendThread.m_thread.get_id())
+            // this function is always safe to call from any of the service threads.  Other threads besides the service threads
+            // should just call Disconnect(...) instead.
+            bool priorState = false;
+
+            // only one thread may do this, the others must leave:
+            m_isBusyDisconnecting.compare_exchange_strong(priorState, true);
+            if (priorState)
             {
-                thread = &m_sendThread;
-            }
-            else if (id == m_recvThread.m_thread.get_id())
-            {
-                thread = &m_recvThread;
-            }
-            else if (id == m_listenThread.m_thread.get_id())
-            {
-                thread = &m_listenThread;
-            }
-            else if (id == m_connectThread.m_thread.get_id())
-            {
-                thread = &m_connectThread;
-            }
-            else if (id == m_disconnectThread.m_thread.get_id())
-            {
-                thread = &m_disconnectThread;
+                // if we get here it means that either some other thread is already trying to start the disconnection sequence
+                // or the disconnection sequence is already running and has not yet started any other threads again during retry
+                // so its safe to just return - things are already being taken care of.
+                DebugMessage("StartDisconnecting - someone else is already starting the disconnection sequence.");
+                return; 
             }
 
-            if (thread)
-            {
-                AZ_Assert(thread->m_join == false, "");
-                DebugMessage("OnThreadEnter: %s(%d) started", thread->m_desc.m_name, thread->m_thread.get_id());
-            }
-
-            (void)desc;
+            DebugMessage("StartDisconnecting - this thread is now in control of the disconnection sequence.");
+            // otherwise, if we get here, it means that nobody else is starting the disconnect sequence, or the disconnect sequence
+            // is at a point where it has already crossed the line into starting new threads as part of retry.  In that case, we must
+            // wait for it to shut down, and then start it again to clean up.
+            AZStd::lock_guard<AZStd::recursive_mutex> lock(m_disconnectThread.m_mutex);
+            JoinThread(m_disconnectThread);
+            StartThread(m_disconnectThread);
         }
-
-        void AssetProcessorConnection::OnThreadExit(const AZStd::thread_id& id)
-        {
-            ThreadState* thread = nullptr;
-            if (id == m_sendThread.m_thread.get_id())
-            {
-                thread = &m_sendThread;
-            }
-            else if (id == m_recvThread.m_thread.get_id())
-            {
-                thread = &m_recvThread;
-            }
-            else if (id == m_listenThread.m_thread.get_id())
-            {
-                thread = &m_listenThread;
-            }
-            else if (id == m_connectThread.m_thread.get_id())
-            {
-                thread = &m_connectThread;
-            }
-            else if (id == m_disconnectThread.m_thread.get_id())
-            {
-                thread = &m_disconnectThread;
-            }
-
-            if (thread)
-            {
-                DebugMessage("OnThreadExit: %s(%u) exited", thread->m_desc.m_name, id);
-                thread->m_join = false;
-            }
-        }
-
+               
         void AssetProcessorConnection::Configure(const char* branchToken, const char* platform, const char* identifier)
         {
             m_branchToken = branchToken;
@@ -704,7 +672,7 @@ namespace AzFramework
             //stop all the associated threads for that connection and try
             //to connect after that is done
             m_retryAfterDisconnect = true;
-            StartThread(m_disconnectThread);
+            StartDisconnecting();
 
             return true;
         }
@@ -724,7 +692,7 @@ namespace AzFramework
             if (!GetValidAzSocket(m_socket))
             {
                 DebugMessage("AssetProcessorConnection::ListenThread - No valid socket available to connect");
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -739,7 +707,7 @@ namespace AzFramework
             {
                 // Error binding socket to listen
                 DebugMessage("AssetProcessorConnection::ListenThread - bind returned an error %s", AZ::AzSock::GetStringForError(result));
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -751,7 +719,7 @@ namespace AzFramework
             if (AZ::AzSock::SocketErrorOccured(result))
             {
                 DebugMessage("AssetProcessorConnection::ListenThread - listen returned an error %s", AZ::AzSock::GetStringForError(result));
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -767,7 +735,7 @@ namespace AzFramework
                 {
                     return;
                 }
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -785,7 +753,7 @@ namespace AzFramework
                 {
                     return;
                 }
-                StartThread(m_disconnectThread);
+                StartDisconnecting();
                 return;
             }
 
@@ -824,7 +792,7 @@ namespace AzFramework
 
             // Error negotiating connection
             DebugMessage("AssetProcessorConnection::ListenThread - Negotiation failed. Disconnecting");
-            StartThread(m_disconnectThread);
+            StartDisconnecting();
         }
 
         void AssetProcessorConnection::SendThread()
@@ -859,10 +827,7 @@ namespace AzFramework
                     {
                         // Error sending, abort
                         DebugMessage("AssetProcessorConnection::SendThread - AZ::AzSock::send returned an error %d, skipping this message", sendResult);
-                        if (!m_disconnectThread.m_running)
-                        {
-                            StartThread(m_disconnectThread);
-                        }
+                        StartDisconnecting();
                         return;
                     }
                     bytesSent += sendResult;
@@ -900,10 +865,7 @@ namespace AzFramework
                     {
                         return;
                     }
-                    if (!m_disconnectThread.m_running)
-                    {
-                        StartThread(m_disconnectThread);
-                    }
+                    StartDisconnecting();
                     return;
                 }
 

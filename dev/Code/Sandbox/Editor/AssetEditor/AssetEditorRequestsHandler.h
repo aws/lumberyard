@@ -25,5 +25,6 @@ public:
     //////////////////////////////////////////////////////////////////////////
     // AssetEditorRequests
     //////////////////////////////////////////////////////////////////////////
+    void CreateNewAsset(const AZ::Data::AssetType& assetType) override;
     void OpenAssetEditor(const AZ::Data::Asset<AZ::Data::AssetData>& asset) override;
 };

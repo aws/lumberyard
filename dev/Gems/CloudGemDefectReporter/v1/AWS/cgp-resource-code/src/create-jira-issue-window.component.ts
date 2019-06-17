@@ -2,6 +2,7 @@
 import { LyMetricService } from 'app/shared/service/index';
 import { CloudGemDefectReporterApi } from './index';
 import { ToastsManager } from 'ng2-toastr';
+import { Observable } from 'rxjs/Observable';
 
 @Component({
     selector: 'create-jira-issue-window',
@@ -18,15 +19,28 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
     @Output() validationFailed = new EventEmitter<any>();
 
     private isLoadingJiraFieldMappings = false;
-    private jiraFieldMappings: Object[];
-    private originalJiraFieldMappings: string;
-    private project: string;
-    private issueType: string;
+    private isLoadingIssueTypes = false;
+    private jiraFieldMappings: Object;
+    private originalJiraFieldMappings: string;    
+    private projectDefault: string;    
     private defectMapping: any;
     private grouped: any;
     private searchFields: string[];
+    private defectEvent: any;
+    private projectKeys = [];
+    private issueTypes = [];
 
     constructor(private toastr: ToastsManager, private metric: LyMetricService) {
+
+    }
+
+    ngOnInit() {
+        this.defectEvent = JSON.parse(JSON.stringify(this.defectMapping));
+        this.jiraFieldMappings = {
+            project: "",
+            issuetype: "",
+            fields: []
+        };
     }
 
     @Input()
@@ -39,7 +53,7 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
         }
 
         if (this.jiraFieldMappings !== undefined) {
-            this.jiraFieldMappings = JSON.parse(this.originalJiraFieldMappings).result;
+            this.jiraFieldMappings['fields'] = JSON.parse(this.originalJiraFieldMappings).result;
             this.validateJiraFieldMappings();
         }      
     }
@@ -58,7 +72,7 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
         if (this.jiraFieldMappings === undefined) {            
             this.initializeJiraFieldContent();
         } else {
-            this.jiraFieldMappings = JSON.parse(this.originalJiraFieldMappings).result;
+            this.jiraFieldMappings['fields'] = JSON.parse(this.originalJiraFieldMappings).result;
             this.validateJiraFieldMappings();
         }
     }
@@ -69,14 +83,17 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
     private initializeJiraFieldContent(): void {
         this.isLoadingJiraFieldMappings = true;
         this.defectReporterApiHandler.getJiraIntegrationSettings().subscribe(
-            response => {                
+            response => {
                 let obj = JSON.parse(response.body.text());
-                this.project = obj.result.project;
-                this.issueType = obj.result.issuetype;
-                this.getJiraFieldMappings(this.project, this.issueType);
+                this.projectDefault = obj.result.projectDefault;
+                this.jiraFieldMappings['project'] = obj.result.projectDefault === null || obj.result.projectDefault === undefined ? obj.result.project : this.projectDefault
+                this.jiraFieldMappings['issuetype'] = obj.result.issuetype
+                this.getProjectKeys();
+                this.getIssueTypes(this.jiraFieldMappings['project']);
+                this.getJiraFieldMappings(this.jiraFieldMappings['project'], this.jiraFieldMappings['issuetype']);
             },
             err => {                
-                this.toastr.error(`Failed to get the field mappings. The received error was '${err.message}'`);
+                this.toastr.error(`Failed to get the Jira integration settings. The received error was '${err.message}'`);
                 this.isLoadingJiraFieldMappings = false;
             }
         );
@@ -85,22 +102,55 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
     /**
     * Retrieve the Jira field mappings based on project key and issue type
     **/
-    private getJiraFieldMappings(projectKey, issueType): void {
+    private getJiraFieldMappings(projectKey, issueType): void {        
         this.defectReporterApiHandler.getFieldMappings(projectKey, issueType).subscribe(
             response => {
                 this.originalJiraFieldMappings = response.body.text()                 
-                this.jiraFieldMappings = JSON.parse(this.originalJiraFieldMappings).result;
+                this.jiraFieldMappings['fields'] = JSON.parse(this.originalJiraFieldMappings).result;
                 this.validateJiraFieldMappings();
                 this.isLoadingJiraFieldMappings = false;
             },
-            err => {
-                this.toastr.error(`Failed to get the field mappings. The received error was '${err.message}'`);
+            err => {                
                 this.isLoadingJiraFieldMappings = false;
             }
         );
     }
 
+    /**
+   * Get all the project keys
+   * @returns Observable of the method to subscribe to.
+   **/
+    private getProjectKeys(): Observable<any> {        
+        return this.defectReporterApiHandler.getProjectKeys().subscribe(
+            response => {                
+                this.projectKeys = JSON.parse(response.body.text()).result.projectKeys;                
+            },
+            err => {               
+            });
+    }
+
+    /**
+    * Get all the issue types of the current project
+    * @returns Observable of the method to subscribe to.
+    **/
+    private getIssueTypes(projectKey: string): Observable<any> {        
+        this.issueTypes = [];
+        this.isLoadingIssueTypes = true;
+        return this.defectReporterApiHandler.getIssueTypes(projectKey).subscribe(
+            response => {
+                this.issueTypes = JSON.parse(response.body.text()).result.issueTypes;                
+                this.isLoadingIssueTypes = false;
+            },
+            err => {               
+                this.isLoadingIssueTypes = false;
+            });;
+    }
+
+
     private replaceAllNested(object, defect) {
+        if (Object.keys(defect).length == 0)
+            return object
+
         if (object instanceof Object || object instanceof Array) {
             for (var prop in object) {
                 var result = this.replaceAllNested(object[prop], defect);
@@ -119,16 +169,20 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
         
         var re = /\[\s*\w*\s*\]/gi;
         var m;
+        var result = value;
         while ((m = re.exec(value)) !== null) {
             var found = value.substring(m.index).match(re)[0];         
             var embedded_key = found.substring(1, found.length - 1)
-            var entry = defect[embedded_key];
-            if (entry) {
-                var replace = entry["value"];                
-                value = value.replace(found, replace);
-            }            
+            if (embedded_key in defect) {
+                var entry = defect[embedded_key];
+                if (entry) {
+                    var replace = entry.constructor == Object && 'value' in entry ? entry["value"] : entry;
+                    result = result.replace(found, replace);
+                }
+            }
+            value = value.replace(found, "");            
         }
-        return value
+        return result
     }
 
     /**
@@ -141,8 +195,8 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
             universal_unique_identifier: this.defect['universal_unique_identifier'],
         };
         
-        for (let i = 0; i < this.jiraFieldMappings.length; i++) {
-            let item = this.jiraFieldMappings[i];
+        for (let i = 0; i < this.jiraFieldMappings['fields'].length; i++) {
+            let item = this.jiraFieldMappings['fields'][i];
             let entry = item['mapping'];
             let isArrayType = item['isArrayType'] = item['schema']['type'] == 'array'
             let isArrayOfPrimitives = item['isArrayOfPrimitives'] = isArrayType && item['schema']['items']['type'] !== "object"
@@ -156,7 +210,7 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
                 delete item['schema']['properties']['self']
             }            
 
-            if (entry !== '') {
+            if (entry !== '' && Object.keys(entry).length > 0) {
                 //custom object passed by the client stored as a string
                 if (this.defect[entry]) {
                     if (!this.validateReportDataFormat(item['schema'], this.defect[entry]['value'])) {
@@ -168,24 +222,23 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
 
                     /**Set the 'Summary' field to the first element in the array**/
                     if (item['id'] === 'summary') {
-                        this.jiraFieldMappings.splice(i, 1);
-                        this.jiraFieldMappings.splice(0, 0, item);
+                        this.jiraFieldMappings['fields'].splice(i, 1);
+                        this.jiraFieldMappings['fields'].splice(0, 0, item);
                     }
                 } else {
                     if (!this.grouped)
-                        entry = this.replaceAllNested(entry, this.defect);
+                        entry = this.replaceAllNested(entry, this.defect);                    
                     simplifiedDefect[item["id"]] = {
                         value: entry,
                         valid: true
-                    }
-                    
+                    }                    
                 }
             } else if (item['required']) {                
                 if (isArrayOfObjects || isObjectType) {
 
-                    simplifiedDefect[item["id"]] = { valid: true, value: isArrayType ? [] : {} };                    
+                    simplifiedDefect[item["id"]] = { valid: true, value: isArrayType ? [] : {} };
 
-                    let properties = isArrayOfObjects ? item['schema']['items']['properties'] : item['schema']['properties']                       
+                    let properties = isArrayOfObjects ? item['schema']['items']['properties'] : item['schema']['properties']
                     let obj = {}
                     for (const prop of Object.getOwnPropertyNames(properties)) {
                         if (properties[prop]['type'] == "boolean") {
@@ -200,6 +253,11 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
                     } else {
                         simplifiedDefect[item["id"]]['value'] = obj
                     }
+                } else {
+                    simplifiedDefect[item["id"]] = {
+                        value: entry,
+                        valid: true
+                    }    
                 }
             }
             item["mapping"] = item["id"];
@@ -211,6 +269,8 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
         } else {
             this.defectMapping = simplifiedDefect;            
         }        
+        this.defect['project'] = this.jiraFieldMappings['project'];
+        this.defect['issuetype'] = this.jiraFieldMappings['issuetype'];
         this.defectChange.emit(this.defect);
     }
 
@@ -278,7 +338,7 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
     **/
     private validateJiraFields(): boolean {
         let valid = true;
-        for (let item of this.jiraFieldMappings) {
+        for (let item of this.jiraFieldMappings['fields']) {
             let mapping = item['mapping'];
             if (mapping) {
                 let defect_info = this.defect[mapping]
@@ -329,12 +389,18 @@ export class CloudGemDefectReporterCreateJiraIssueWindowComponent {
     /**
         * Retrieve the actual report data after validation
         **/
-    private retriveReportData(report): any {
+    retriveReportData = (report, source_row=null): any => {
         let result = {}
+        source_row = source_row ? source_row : this.defectEvent;
+        if (!Object.is(report, source_row ) && !this.grouped )
+            report = this.replaceAllNested(report, source_row);    
+
         for (let key of Object.keys(report)) {
             let valueType = typeof report[key]['value'];
             result[key] = (valueType === 'string' || valueType === 'number' || valueType === 'boolean') ? report[key]['value'] : report[key]['value'];
-        }
+        }       
+        result['project'] = report['project'];
+        result['issuetype'] = report['issuetype'];
         return result
     }
 

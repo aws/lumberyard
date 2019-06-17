@@ -4,45 +4,73 @@
     </div>
     <div *ngSwitchCase="false">
         <h2>Jira Integration Settings</h2>
-        <div class="form-group row valign" [class.has-danger]="!jiraIntegrationSettings['submitMode']['valid']">
+        <div class="form-group row valign" [class.has-danger]="!error_object['submitMode']['valid']">
             <ng-template #tooltipContent>Choose how Jira issues are created from defect reports.<br>For both modes, if a report is determined to be duplicate issue, the occurence count will be updated in the existing Jira ticket.</ng-template>
             <label class="field-mapping-name">
                 Submit Mode
                 <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" [ngbTooltip]="tooltipContent"></i>
             </label>
-            <div class="col-6">
+            <div class="col-9">
                 <label class="radio-btn-label">
-                    <input type="radio" value="auto" [(ngModel)]="jiraIntegrationSettings['submitMode']['value']" name="submit-mode"/>
+                    <input type="radio" value="auto" [(ngModel)]="jiraIntegrationSettings['submitMode']['value']" name="submit-mode" (click)="resetErrors()"/>
                     <span></span> Automatic - Generate Jira issues automatically from incoming defect reports
                 </label>
                 <label class="radio-btn-label">
-                    <input type="radio" value="manual" [(ngModel)]="jiraIntegrationSettings['submitMode']['value']" name="submit-mode"/>
+                    <input type="radio" value="manual" [(ngModel)]="jiraIntegrationSettings['submitMode']['value']" name="submit-mode" (click)="resetErrors()"/>
                     <span></span> Manual - Submit defect reports to Jira manually via the Cloud Gem Portal UI
                 </label>
-                <div *ngIf="!jiraIntegrationSettings['submitMode']['valid']" class="form-control-feedback">{{jiraIntegrationSettings['submitMode']['message']}}</div>
+                <div *ngIf="!error_object['submitMode']['valid']" class="form-control-feedback">{{error_object['submitMode']['message']}}</div>
             </div>
         </div>
-        <div class="form-group row valign" [class.has-danger]="!jiraIntegrationSettings['project']['valid']">
+        <div class="form-group row valign" [class.has-danger]="!error_object['project']['valid']">
+            <ng-template #tooltipContentProjectKey>Select a Jira project to see the available issue types that can be configured. </ng-template>
             <label class="field-mapping-name">
                 Project Key
+                <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" [ngbTooltip]="tooltipContentProjectKey"></i>
             </label>
             <div class="col-3">
-                <select class="form-control" [(ngModel)]="jiraIntegrationSettings['project']['value']" (ngModelChange)="getJiraProperty(getIssueTypes(), 'issueTypes', 'issue types', 'isLoadingjiraIntegrationSettings')">
+                <select class="form-control" [(ngModel)]="jiraIntegrationSettings['project']['value']" (ngModelChange)="resetErrors(); jiraIntegrationSettings['issuetype']['value'] = ''; fieldMappings=[]; getJiraProperty(getIssueTypes(), 'issueTypes', 'issue types', 'isLoadingjiraIntegrationSettings')">
                     <option *ngFor="let projectKey of projectKeys" [ngValue]="projectKey">{{projectKey}}</option>
                 </select>
-                <div *ngIf="!jiraIntegrationSettings['project']['valid']" class="form-control-feedback">{{jiraIntegrationSettings['project']['message']}}</div>
+                <div *ngIf="!error_object['project']['valid']" class="form-control-feedback">{{error_object['project']['message']}}</div>
             </div>
-
         </div>
-        <div class="form-group row valign" [class.has-danger]="!jiraIntegrationSettings['issuetype']['valid']">
+        <div class="form-group row valign" [class.has-danger]="!error_object['issuetype']['valid']">
+            <ng-template #tooltipContentIssueType>Select a Jira issue type to configure the Jira ticket mappings. </ng-template>
             <label class="field-mapping-name">
                 Issue Type
+                <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" [ngbTooltip]="tooltipContentIssueType"></i>
             </label>
             <div class="col-3">
-                <select class="form-control" [(ngModel)]="jiraIntegrationSettings['issuetype']['value']" (ngModelChange)="getFieldMappings()">
+                <select class="form-control" [(ngModel)]="jiraIntegrationSettings['issuetype']['value']" (ngModelChange)="resetErrors(); getFieldMappings()">
                     <option *ngFor="let issueType of issueTypes" [ngValue]="issueType">{{issueType}}</option>
                 </select>
-                <div *ngIf="!jiraIntegrationSettings['issuetype']['valid']" class="form-control-feedback">{{jiraIntegrationSettings['issuetype']['message']}}</div>
+                <div *ngIf="!error_object['issuetype']['valid']" class="form-control-feedback">{{error_object['issuetype']['message']}}</div>
+            </div>
+        </div>
+        <div class="form-group row valign" [class.has-danger]="!error_object['projectDefault']['valid']">
+            <ng-template #tooltipContentProjectDefault>Choose a default project to route tickets to when in automatic mode.  This will also become the default selection for manual ticket submissions done through the Cloud Gem Portal. </ng-template>
+            <label class="field-mapping-name">
+                Project Default Key
+                <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" [ngbTooltip]="tooltipContentProjectDefault"></i>
+            </label>
+            <div class="col-3">
+                <select class="form-control" [(ngModel)]="jiraIntegrationSettings['projectDefault']['value']" (ngModelChange)="resetErrors();">
+                    <option *ngFor="let projectKey of projectKeys" [ngValue]="projectKey">{{projectKey}}</option>
+                </select>
+                <div *ngIf="!error_object['projectDefault']['valid']" class="form-control-feedback">{{error_object['projectDefault']['message']}}</div>
+            </div>
+        </div>
+        <div  *ngIf="jiraIntegrationSettings['submitMode'] && jiraIntegrationSettings['submitMode']['value'] == 'auto'" class="form-group row valign">
+            <ng-template #tooltipContent>Choose a defect event attribute coming from the player to use to identify which Jira project to target for the ticket.  Only applicable in "Automatic" submit mode. </ng-template>
+            <label class="field-mapping-name">
+                Project Key Attribute Source
+                <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" [ngbTooltip]="tooltipContent"></i>
+            </label>
+            <div class="col-3">
+                <select class="form-control" [(ngModel)]="jiraIntegrationSettings['projectAttributeSource']['value']">
+                    <option *ngFor="let field of getProjectKeyAttributes(reportFields)" [ngValue]="field">{{field}}</option>
+                </select>                
             </div>
         </div>
         <div *ngIf="jiraIntegrationSettings['project']['value'] !== '' && jiraIntegrationSettings['issuetype']['value'] !== ''">
@@ -58,7 +86,7 @@
                                 Jira FIELD
                                 <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" ngbTooltip="These are specific fields for the Jira issue, defined by the Jira project and issue type selected above."></i>
                             </div>
-                            <div class="col-10">
+                            <div class="col-9">
                                 VALUE
                                 <i class="fa fa-question-circle-o" aria-hidden="true" placement="bottom" ngbTooltip="Enter the literal data type or provide an attribute name from the defect event to map to at a later date. Example: Description: This is my bug titled - [issue]"></i>
                             </div>
@@ -72,7 +100,7 @@
                                     </span>
                                     <i *ngIf="(fieldMapping.isArrayType || fieldMapping.isArrayOfObjects) && isArray(fieldMapping.mapping)" class="fa fa-plus-circle add-array-item" aria-hidden="true" (click)="addNewArrayElement(fieldMapping.mapping, fieldMapping.schema.items.type)"></i>
                                 </label>
-                                <div [ngSwitch]="!fieldMapping.isArrayType" class="col-10 reportData">
+                                <div [ngSwitch]="!fieldMapping.isArrayType" class="col-9 reportData">
                                     <div *ngSwitchCase="true" [ngClass]="{'object-field': fieldMapping?.schema?.properties !== undefined}">
                                         <custom-field-value [uniqueId]="fieldMapping.mapping" [jiraSchema]="fieldMapping.schema" [possibleFields]="reportFields" [(reportValue)]="fieldMapping.mapping" ></custom-field-value>
                                     </div>
@@ -80,7 +108,7 @@
                                         <div [ngSwitch]="fieldMapping.mapping !== null && isArray(fieldMapping.mapping)" class="object-field">
                                             <div *ngSwitchCase="true">
                                                 <div class="row no-gutters" *ngFor="let arrayElement of fieldMapping.mapping; let i = index; trackBy:trackByFn">
-                                                    <div class="col-10">
+                                                    <div class="col-9">
                                                         <custom-field-value [jiraSchema]="fieldMapping.schema.items" [possibleFields]="reportFields" [(reportValue)]="fieldMapping.mapping[i]"></custom-field-value>
                                                     </div>
                                                     <div class="remove-item">

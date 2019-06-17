@@ -95,6 +95,13 @@ namespace GraphCanvas
                 ;
         }
 
+        void Clear()
+        {
+            m_key.clear();
+            m_context.clear();
+            m_fallback.clear();
+        }
+
         void SetFallback(const AZStd::string& fallback)
         {
             m_fallback = fallback;

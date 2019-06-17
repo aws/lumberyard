@@ -19,21 +19,23 @@
 #include <AzCore/std/bind/bind.h>
 
 #include <AzFramework/StringFunc/StringFunc.h>
-
 #define FEATURE_TEST_LISTEN_PORT 12125
-#define WAIT_TIME_IN_MSECS 20
+
 // Enable this define only if you are debugging a deadlock/timing issue etc in the AssetProcessorConnection, which you are unable to reproduce otherwise.
 // enabling this define will result in a lot more number of connections that connect/disconnect with AP and therefore will result in the unit tests taking a lot more time to complete
+// if you do enable this, consider disabling the timeout detection in AssetProcessorTests ("Legacy test deadlocked or timed out.") since it can take a long time to run.
 //#define DEBUG_ASSETPROCESSORCONNECTION
-
 #if defined(DEBUG_ASSETPROCESSORCONNECTION)
-#define NUMBER_OF_CONNECTION 5
-#define NUMBER_OF_ITERATION  100
+#define NUMBER_OF_CONNECTION 16
 #define NUMBER_OF_TRIES 10
+#define NUMBER_OF_ITERATION  100
 #else
-#define NUMBER_OF_CONNECTION 1
-#define NUMBER_OF_ITERATION  10
-#define NUMBER_OF_TRIES 3
+// NUMBER_OF_CONNECTION is how many parallel threads to create that will be starting and killing connections
+#define NUMBER_OF_CONNECTION 4
+// NUMBER_OF_TRIES is how many times each thread tries to disconnect and reconnect before finishing.
+#define NUMBER_OF_TRIES 5
+// NUMBER_OF_ITERATION is how many times the entire test is restarted
+#define NUMBER_OF_ITERATION 2
 #endif
 
 AssetProcessorServerUnitTest::AssetProcessorServerUnitTest()
@@ -98,7 +100,7 @@ void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool fa
             connection.Connect("127.0.0.1", FEATURE_TEST_LISTEN_PORT);
             while (!connection.IsConnected() && !connection.NegotiationFailed())
             {
-                AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(WAIT_TIME_IN_MSECS));
+                AZStd::this_thread::yield();
             }
 
             AZStd::this_thread::sleep_for(AZStd::chrono::milliseconds(numTimeWait + idx));
@@ -109,17 +111,24 @@ void AssetProcessorServerUnitTest::RunAssetProcessorConnectionStressTest(bool fa
     AZStd::vector<AZStd::thread> assetProcessorConnectionList;
     for (int iteration = 0; iteration < NUMBER_OF_ITERATION; ++iteration)
     {
+#if defined(DEBUG_ASSETPROCESSORCONNECTION)
+        printf("Iteration %4i/%4i...\n", iteration, NUMBER_OF_ITERATION);
+#endif
         numberOfConnection = totalConnections;
 
         for (int idx = 0; idx < NUMBER_OF_CONNECTION; ++idx)
         {
-            assetProcessorConnectionList.push_back(AZStd::thread(AZStd::bind(StartConnection, iteration)));
+            // each thread should sleep after each test for a different amount of time so that they 
+            // end up trying all different overlapping parts of the code.
+            int sleepTime = iteration * (idx + 1);
+            assetProcessorConnectionList.push_back(AZStd::thread(AZStd::bind(StartConnection, sleepTime)));
         };
 
         // We need to process all events, since AssetProcessorServer is also on the same thread
         while (numberOfConnection.load())
         {
-            QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents, WAIT_TIME_IN_MSECS);
+            QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
+            QCoreApplication::processEvents();
         }
 
         for (int idx = 0; idx < NUMBER_OF_CONNECTION; ++idx)

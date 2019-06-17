@@ -17,6 +17,7 @@
 #include <GraphCanvas/Components/SceneBus.h>
 
 #include <ScriptCanvas/Core/NodeBus.h>
+#include <ScriptCanvas/GraphCanvas/DynamicSlotBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -24,6 +25,7 @@ namespace ScriptCanvasEditor
         : public AZ::Component
         , public GraphCanvas::SceneMemberNotificationBus::Handler
         , public ScriptCanvas::NodeNotificationsBus::Handler
+        , public DynamicSlotRequestBus::Handler
     {
     public:
         AZ_COMPONENT(DynamicSlotComponent, "{977152B6-1A7D-49A4-8E70-644AFAD1586A}");
@@ -48,7 +50,20 @@ namespace ScriptCanvasEditor
         void OnSlotRemoved(const ScriptCanvas::SlotId& slotId) override;
         ////
 
+        // DynamicSlotRequestBus
+        void OnUserDataChanged() override;
+
+        void StartQueueSlotUpdates() override;
+        void StopQueueSlotUpdates() override;
+        ////
+
     private:
+
+        void HandleSlotAdded(const ScriptCanvas::Endpoint& endpoint);
+
         GraphCanvas::SlotGroup m_slotGroup;
+
+        bool m_queueUpdates;
+        AZStd::unordered_set<ScriptCanvas::Endpoint> m_queuedEndpoints;
     };
 }

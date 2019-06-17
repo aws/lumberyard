@@ -77,7 +77,7 @@ namespace GraphCanvas
 
     void SlotConnectionFilterComponent::Activate()
     {
-        ConnectableObjectRequestBus::Handler::BusConnect(GetEntityId());
+        ConnectionFilterRequestBus::Handler::BusConnect(GetEntityId());
 
         for (ConnectionFilter* filter : m_filters)
         {
@@ -87,7 +87,7 @@ namespace GraphCanvas
 
     void SlotConnectionFilterComponent::Deactivate()
     {
-        ConnectableObjectRequestBus::Handler::BusDisconnect();
+        ConnectionFilterRequestBus::Handler::BusDisconnect();
     }
 
     void SlotConnectionFilterComponent::AddFilter(ConnectionFilter* filter)
@@ -96,43 +96,33 @@ namespace GraphCanvas
         m_filters.emplace_back(filter);
     }
 
-    Connectability SlotConnectionFilterComponent::CanConnectWith(const AZ::EntityId& slotId) const
+    bool SlotConnectionFilterComponent::CanConnectWith(const Endpoint& endpoint) const
     {
-        if (GetEntityId() == slotId)
+        if (GetEntityId() == endpoint.GetSlotId())
         {
-            return{ slotId, Connectability::NotConnectable, "Slot cannot connect to self" };
+            return false;
         }
 
-        AZ::Entity* entity;
-        AZ::ComponentApplicationBus::BroadcastResult(entity, &AZ::ComponentApplicationRequests::FindEntity, slotId);
-
-        if (!entity)
+        if (SlotRequestBus::FindFirstHandler(endpoint.GetSlotId()) == nullptr)
         {
-            return{ GetEntityId(), Connectability::NotConnectable, "Unable to find the other slot's Entity!" };
+            // Unable to find the other slot's entity.
+            return false;
         }
 
-        AZ::EntityId nodeId;
-        SlotRequestBus::EventResult(nodeId, GetEntityId(), &SlotRequests::GetNode);
-        Endpoint endpoint(nodeId, GetEntityId());
+        bool isConnected = false;
+        SlotRequestBus::EventResult(isConnected, GetEntityId(), &SlotRequests::IsConnectedTo, endpoint);
 
-        bool slotAcceptsConnection = false;
-        SlotRequestBus::EventResult(slotAcceptsConnection, slotId, &SlotRequests::CanAcceptConnection, endpoint);
-
-        if (!slotAcceptsConnection)
+        if (isConnected)
         {
-            return { GetEntityId(), Connectability::AlreadyConnected, AZStd::string::format("Connection already exist between this slot %s and connecting slot %s", GetEntityId().ToString().data(), slotId.ToString().data()) };
+            // Already connected
+            return false;
         }
 
-        Connectability connectableInfo(GetEntityId(), Connectability::Connectable);
-
-        for (ConnectionFilter* filter : m_filters)
-        {
-            if (!filter->CanConnectWith(slotId, connectableInfo))
-            {
-                break;
+        return AZStd::all_of(m_filters.begin(), m_filters.end(), 
+            [&](ConnectionFilter* filter) 
+            { 
+                return filter->CanConnectWith(endpoint); 
             }
-        }
-
-        return connectableInfo;
+        );
     }
 }

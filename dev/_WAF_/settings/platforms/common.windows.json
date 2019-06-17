@@ -1,0 +1,19 @@
+{
+    "attributes" : {
+        "default_launcher_name" : "WindowsLauncher"
+    },
+    "env": {
+        "LIB": [
+            "User32",
+            "Advapi32",
+            "PsAPI"
+        ],
+        "WINRC_TGT_F": "/fo",
+        "WINRC_SRC_F": "",
+        "WINRCFLAGS": [
+		    "/l0x0409", # Set default language
+		    "/nologo"	# Hide Logo
+        ]
+    }
+}
+

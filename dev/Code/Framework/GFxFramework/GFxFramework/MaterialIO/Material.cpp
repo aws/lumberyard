@@ -108,11 +108,24 @@ namespace AZ
                  }
                  return false;
              }
+
+             bool ParseIntAttribute(rapidxml::xml_attribute<char>* attribute, AZ::s32& intValue)
+             {
+                 if (attribute)
+                 {
+                     const char* value = attribute->value();
+                     if (azsscanf(value, "%d", &intValue) == 1)
+                     {
+                         return true;
+                     }
+                 }
+                 return false;
+             }
         }
 
         Material::Material() 
             : m_useVertexColor(false)
-            , m_physicsMaterial(false)
+            , m_flags(0)
             , m_diffuseColor(AZ::Vector3::CreateOne())
             , m_specularColor(AZ::Vector3::CreateZero())
             , m_emissiveColor(AZ::Vector3::CreateZero())
@@ -127,8 +140,7 @@ namespace AZ
             if (materialNode)
             {
                 rapidxml::xml_attribute<char>* name = materialNode->first_attribute(MaterialExport::g_nameString);
-                //rapidxml::xml_attribute<char>* mtlFlags = materialNode->first_attribute(MaterialExport::g_mtlFlagString);
-                rapidxml::xml_attribute<char>* shader = materialNode->first_attribute(MaterialExport::g_shaderString);
+                rapidxml::xml_attribute<char>* mtlFlags = materialNode->first_attribute(MaterialExport::g_mtlFlagString);
                 rapidxml::xml_attribute<char>* stringGenMask = materialNode->first_attribute(MaterialExport::g_stringGenMask);
 
                 rapidxml::xml_node<char>* textureNode = materialNode->first_node(MaterialExport::g_texturesString);
@@ -152,17 +164,9 @@ namespace AZ
                 MaterialExport::ParseFloatAttribute(shininess, m_shininess);
                 MaterialExport::ParseUintAttribute(hash, m_dccMaterialHash);
 
-                if (shader)
+                if (mtlFlags)
                 {
-                    if (azstrnicmp(shader->value(), MaterialExport::g_noDrawShaderName,
-                        AZStd::GetMin(strlen(shader->value()), strlen(MaterialExport::g_noDrawShaderName))) == 0)
-                    {
-                        m_physicsMaterial = true;
-                    }
-                    else
-                    {
-                        m_physicsMaterial = false;
-                    }
+                    MaterialExport::ParseIntAttribute(mtlFlags, m_flags);
                 }
 
                 if (stringGenMask)
@@ -267,14 +271,14 @@ namespace AZ
             m_useVertexColor = useVertexColor;
         }
         
-        bool Material::IsPhysicalMaterial() const
+        int Material::GetMaterialFlags() const
         {
-            return m_physicsMaterial;
+            return m_flags;
         }
 
-        void Material::EnablePhysicalMaterial(bool physical)
+        void Material::SetMaterialFlags(int flags)
         {
-            m_physicsMaterial = physical;
+            m_flags = flags;
         }
 
         const AZ::Vector3& Material::GetDiffuseColor() const
@@ -637,14 +641,6 @@ namespace AZ
                 if (flagAttribute)
                 {
                     int flag = atoi(flagAttribute->value());
-                    if (mat.IsPhysicalMaterial())
-                    {
-                        flag = flag | EMaterialFlags::MTL_FLAG_NODRAW;
-                    }
-                    else
-                    {
-                        flag = ((flag & (~EMaterialFlags::MTL_FLAG_NODRAW)) | EMaterialFlags::MTL_64BIT_SHADERGENMASK);
-                    }
                     flagAttribute->value(m_mtlDoc.allocate_string(AZStd::to_string(flag).c_str()));
                 }
             }
@@ -836,10 +832,13 @@ namespace AZ
             rapidxml::xml_attribute<char>* attr = m_mtlDoc.allocate_attribute(MaterialExport::g_nameString, m_mtlDoc.allocate_string(material.GetName().c_str()));
             materialNode->append_attribute(attr);
 
-            if (material.IsPhysicalMaterial())
+            int materialFlags = material.GetMaterialFlags();
+
+            if (materialFlags & (EMaterialFlags::MTL_FLAG_NODRAW | EMaterialFlags::MTL_FLAG_NODRAW_TOUCHBENDING))
             {
+                materialFlags |= EMaterialFlags::MTL_FLAG_PURE_CHILD;
                 attr = m_mtlDoc.allocate_attribute(MaterialExport::g_mtlFlagString,
-                    m_mtlDoc.allocate_string(AZStd::to_string(EMaterialFlags::MTL_FLAG_NODRAW | EMaterialFlags::MTL_FLAG_PURE_CHILD).c_str()));
+                    m_mtlDoc.allocate_string(AZStd::to_string(materialFlags).c_str()));
                 materialNode->append_attribute(attr);
                 attr = m_mtlDoc.allocate_attribute(MaterialExport::g_shaderString, MaterialExport::g_noDrawShaderName);
                 materialNode->append_attribute(attr);
@@ -848,8 +847,9 @@ namespace AZ
             }
             else
             {
+                materialFlags |= (EMaterialFlags::MTL_64BIT_SHADERGENMASK | EMaterialFlags::MTL_FLAG_PURE_CHILD);
                 attr = m_mtlDoc.allocate_attribute(MaterialExport::g_mtlFlagString,
-                    m_mtlDoc.allocate_string(AZStd::to_string(EMaterialFlags::MTL_64BIT_SHADERGENMASK | EMaterialFlags::MTL_FLAG_PURE_CHILD).c_str()));
+                    m_mtlDoc.allocate_string(AZStd::to_string(materialFlags).c_str()));
                 materialNode->append_attribute(attr);
                 attr = m_mtlDoc.allocate_attribute(MaterialExport::g_shaderString, MaterialExport::g_illumShaderName);
                 materialNode->append_attribute(attr);

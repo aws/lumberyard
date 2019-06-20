@@ -43,6 +43,8 @@
             "Editor/CollisionGroupWidget.cpp",
             "Editor/CollisionGroupsWidget.h",
             "Editor/CollisionGroupsWidget.cpp",
+            "Editor/CollisionFilteringWidget.h",
+            "Editor/CollisionFilteringWidget.cpp",
             "Editor/PropertyTypes.h",
             "Editor/PropertyTypes.cpp",
             "Editor/MaterialIdWidget.h",
@@ -51,12 +53,16 @@
             "Editor/EditorClassConverters.h",
             "Editor/PvdWidget.h",
             "Editor/PvdWidget.cpp",
+            "Editor/DocumentationLinkWidget.h",
+            "Editor/DocumentationLinkWidget.cpp",
             "Editor/InertiaPropertyHandler.h",
             "Editor/InertiaPropertyHandler.cpp",
             "Editor/ConfigStringLineEditCtrl.h",
             "Editor/ConfigStringLineEditCtrl.cpp",
             "Editor/UniqueStringContainer.h",
-            "Editor/UniqueStringContainer.cpp"
+            "Editor/UniqueStringContainer.cpp",
+            "Editor/ComboBoxEditButtonPair.h",
+            "Editor/ComboBoxEditButtonPair.cpp"
         ]
     }
 }

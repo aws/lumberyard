@@ -39,7 +39,7 @@ def build(bld):
         configurations   = ['all'],
         disable_pch      = True,
         features         = ['qt5', 'link_running_program', 'crcfix'],
-        autod_uselib     = ['QT5CORE','QT5GUI','QT5WIDGETS','QT5XML', 'QT5WINEXTRAS', 'QT5MACEXTRAS'],
+        uselib           = ['QT5CORE','QT5GUI','QT5WIDGETS','QT5XML', 'QT5WINEXTRAS', 'QT5MACEXTRAS'],
         use              = ['AzFramework'],
         includes         = ['..', '../../AzToolsFramework'],
         export_includes  = ['..'],
@@ -73,7 +73,8 @@ def build(bld):
         target          = 'AmazonStyle',
         file_list       = ['azqtcomponents_style.waf_files'],
         platforms       = ['win', 'darwin'],
-        configurations  = ['debug_all', 'profile_all'],
+        configurations  = ['all'],
+        exclude_monolithic = True,
         vs_filter       = 'AZ Framework/AzQtComponents/Deprecated',
 
         use             = ['AzQtComponents'],
@@ -97,8 +98,8 @@ def build(bld):
             configurations  = ['debug_all', 'profile_all'],
             vs_filter       = 'AZ Framework/AzQtComponents',
 
-            use             = ['AzQtComponents'],
-            includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/Gallery')],
+            use             = ['AzQtComponents', 'AzToolsFramework'],
+            includes        = [bld.Path('Code/Framework/AzQtComponents'), bld.Path('Code/Framework/AzQtComponents/AzQtComponents/Gallery'), bld.Path('Code/Framework/AzToolsFramework')],
 
             features        = ['qt5'],
 

@@ -47,10 +47,10 @@ namespace AzToolsFramework
                 // load the icons.  note that Qt internally refcounts the icon data themselves, so we're really just getting a refcount to the original here.
                 // we do this here because while we are using standardicon here, we might not always do so.
                 // and if we load our custom icons, we certainly don't want to reload them in every log line.
-                s_criticalIcon = new QIcon(QApplication::style()->standardIcon(QStyle::SP_MessageBoxCritical));
-                s_warningIcon = new QIcon(QApplication::style()->standardIcon(QStyle::SP_MessageBoxWarning));
-                s_informationIcon = new QIcon(QApplication::style()->standardIcon(QStyle::SP_MessageBoxInformation));
-                s_debugIcon = new QIcon(QApplication::style()->standardIcon(QStyle::SP_ArrowRight)); // temp for now
+                s_criticalIcon = new QIcon(QStringLiteral(":/stylesheet/img/logging/error.svg"));
+                s_warningIcon = new QIcon(QStringLiteral(":/stylesheet/img/logging/warning.svg"));
+                s_informationIcon = new QIcon(QStringLiteral(":/stylesheet/img/logging/information.svg"));
+                s_debugIcon = new QIcon(QStringLiteral(":/stylesheet/img/logging/debug.svg"));
             }
             setLayout(new QHBoxLayout());
             layout()->setContentsMargins(0, 0, 0, 0);

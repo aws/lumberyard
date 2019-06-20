@@ -51,6 +51,8 @@
             "Component/EntityId.h",
             "Component/EntityUtils.cpp",
             "Component/EntityUtils.h",
+            "Component/NamedEntityId.cpp",
+            "Component/NamedEntityId.h",
             "Component/TickBus.h",
             "Component/TransformBus.h"
         ],
@@ -280,8 +282,7 @@
             "Math/ToString.h",
             "Math/ToString.cpp"
         ],
-        "Memory":
-        [
+      "Memory": [
             "Memory/AllocationRecords.cpp",
             "Memory/AllocationRecords.h",
             "Memory/AllocatorBase.cpp",
@@ -357,9 +358,8 @@
             "RTTI/ReflectionManager.h",
             "RTTI/ReflectionManager.cpp",
             "RTTI/AttributeReader.h",
+            "RTTI/AzStdOnDemandPrettyName.inl",
             "RTTI/AzStdOnDemandReflection.inl",
-            "RTTI/AzStdReflectionComponent.h",
-            "RTTI/AzStdReflectionComponent.cpp",
             "RTTI/BehaviorContext.cpp",
             "RTTI/BehaviorContext.h",
             "RTTI/BehaviorObjectSignals.h"
@@ -385,6 +385,12 @@
             "Script/ScriptPropertyWatcherBus.h",
             "Script/ScriptDebug.cpp",
             "Script/ScriptDebug.h"
+        ],
+        "ScriptCanvas":
+        [
+            "ScriptCanvas/ScriptCanvasAttributes.h",
+            "ScriptCanvas/ScriptCanvasOnDemandNames.cpp",
+            "ScriptCanvas/ScriptCanvasOnDemandNames.h"
         ],
         "Serialization":
         [

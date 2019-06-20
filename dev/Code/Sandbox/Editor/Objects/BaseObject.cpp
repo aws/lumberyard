@@ -2160,11 +2160,6 @@ void CBaseObject::SetFrozen(bool bFrozen)
             ClearFlags(OBJFLAG_FROZEN);
         }
     }
-    if (bFrozen && IsSelected())
-    {
-        // If frozen must be unselected.
-        GetObjectManager()->UnselectObject(this);
-    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2864,6 +2859,8 @@ bool CBaseObject::HitTestRectBounds(HitContext& hc, const AABB& box)
 //////////////////////////////////////////////////////////////////////////
 bool CBaseObject::HitTestRect(HitContext& hc)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
+
     AABB box;
 
     if (hc.bUseSelectionHelpers)
@@ -2899,6 +2896,8 @@ bool CBaseObject::HitHelperTest(HitContext& hc)
 //////////////////////////////////////////////////////////////////////////
 bool CBaseObject::HitHelperAtTest(HitContext& hc, const Vec3& pos)
 {
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::Entity);
+
     bool bResult = false;
 
     if (m_nTextureIcon && (gSettings.viewports.bShowIcons || gSettings.viewports.bShowSizeBasedIcons) && !hc.bUseSelectionHelpers)

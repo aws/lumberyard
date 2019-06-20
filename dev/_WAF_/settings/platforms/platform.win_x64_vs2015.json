@@ -1,0 +1,63 @@
+{
+    "platform"      : "win_x64_vs2015",
+    "display_name"  : "x64 vs2015",
+    "hosts"         : "win32",
+    "aliases"       : "msvc,win",
+    "has_server"    : true,
+    "has_tests"     : true,
+    "enabled"       : true,
+    "needs_java"    : false,
+
+    "modules" : [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_msvc",
+        "platforms/compile_settings_windows",
+        "platforms/platform_settings_win_x64_vs2015"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.msvc.json",
+        "common.windows.json",
+        "common.win_msvc.json"
+    ],
+
+    "attributes"    : {
+        "default_folder_name"   : "Bin64vc140",
+        "legacy_platform_name"  : "win64_vs2015",
+        "compiler"              : "vc140",
+        "msvs": {
+            "msvs_ver"          : "14",
+            "prefix"            : "win",
+            "compat_toolsets"   : ["v140"],
+            "toolset_name"      : "x64"
+        },
+        "sa_capability": {
+            "key"               : "vc140",
+            "description"       : "Visual Studio 2015"
+        },
+        "qt_platform_dir"       : "msvc2015_64",
+        "qtga_subfolders"       : [
+            "win32/vc140/qtga.dll",
+            "win32/vc140/qtgad.dll",
+            "win32/vc140/qtgad.pdb"
+        ]
+    },
+
+    "settings"      : {
+        "Windows Options" :
+        [
+            {
+                "long_form"         : "--win-vs2015-winkit",
+                "attribute"         : "win_vs2015_winkit",
+                "default_value"     : "@get_wsdk_version",
+                "description"       : "The windows kit that vs2015 builds windows targets against"
+            }
+        ]
+    },
+    "env" : {
+        "CFLAGS,CXXFLAGS": [
+            "/FS"            # Fix for issue writing to pdb files
+        ]
+    }
+}

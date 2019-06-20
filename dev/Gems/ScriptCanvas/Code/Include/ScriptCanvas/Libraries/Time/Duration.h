@@ -36,7 +36,10 @@ namespace ScriptCanvas
                 ScriptCanvas_Node(Duration,
                     ScriptCanvas_Node::Uuid("{D93538FF-3553-4C65-AB81-9089C5270214}")
                     ScriptCanvas_Node::Description("Triggers a signal every frame during the specified duration.")
+                    ScriptCanvas_Node::Version(2, DurationNodeVersionConverter)
                 );
+
+                static bool DurationNodeVersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
             public:
 
@@ -48,8 +51,8 @@ namespace ScriptCanvas
                 ScriptCanvas_In(ScriptCanvas_In::Name("Start", "Starts the countdown"));
 
                 // Outputs
-                ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Out", "Signaled every frame while the duration is active."));
-                ScriptCanvas_OutLatent(ScriptCanvas_Out::Name("Done", "Signaled once the duration is complete."));
+                ScriptCanvas_OutLatent(ScriptCanvas_OutLatent::Name("Out", "Signaled every frame while the duration is active."));
+                ScriptCanvas_OutLatent(ScriptCanvas_OutLatent::Name("Done", "Signaled once the duration is complete."));
 
                 // Data
                 ScriptCanvas_Property(float,

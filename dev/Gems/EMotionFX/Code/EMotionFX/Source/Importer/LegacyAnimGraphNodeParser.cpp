@@ -870,7 +870,14 @@ bool LegacyAnimGraphNodeParser::InitializeNodeGeneralData(const char* nodeName, 
 
     node->SetVisualPos(nodeHeader.mVisualPosX, nodeHeader.mVisualPosY);
     node->SetIsCollapsed(nodeHeader.mFlags & FileFormat::ANIMGRAPH_NODEFLAG_COLLAPSED);
-    node->SetVisualizeColor(nodeHeader.mVisualizeColor);
+
+    const AZ::Color color(
+        MCore::ExtractRed(nodeHeader.mVisualizeColor)/255.0f,
+        MCore::ExtractGreen(nodeHeader.mVisualizeColor)/255.0f,
+        MCore::ExtractBlue(nodeHeader.mVisualizeColor)/255.0f,
+        1.0f);
+    node->SetVisualizeColor(color);
+
     if (importParams.mAnimGraphSettings->mDisableNodeVisualization == false)
     {
         node->SetVisualization((nodeHeader.mFlags & FileFormat::ANIMGRAPH_NODEFLAG_VISUALIZED) != 0);

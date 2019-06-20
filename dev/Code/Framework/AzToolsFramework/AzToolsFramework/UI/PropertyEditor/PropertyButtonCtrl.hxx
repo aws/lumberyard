@@ -38,10 +38,10 @@ namespace AzToolsFramework
         QString GetButtonText() const;
 
 Q_SIGNALS:
-
         void buttonPressed();
 
     private:
+        bool eventFilter(QObject* object, QEvent* event) override;
 
         QPushButton* m_button;
     };
@@ -54,6 +54,21 @@ Q_SIGNALS:
         AZ_CLASS_ALLOCATOR(ButtonHandlerCommon, AZ::SystemAllocator, 0);
         QWidget* CreateGUICommon(QWidget* pParent);
         void ConsumeAttributeCommon(PropertyButtonCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName);
+    };
+
+    class ButtonGenericHandler
+        : public ButtonHandlerCommon
+        , public GenericPropertyHandler<PropertyButtonCtrl>
+    {
+        Q_OBJECT
+    public:
+        AZ_CLASS_ALLOCATOR(ButtonGenericHandler, AZ::SystemAllocator, 0);
+
+        QWidget* CreateGUI(QWidget* pParent) override;
+        AZ::u32 GetHandlerName() const override { return AZ::Edit::UIHandlers::Button; }
+        void WriteGUIValuesIntoProperty(size_t index, PropertyButtonCtrl* GUI, void* value, const AZ::Uuid& propertyType) override;
+        bool ReadValueIntoGUI(size_t index, PropertyButtonCtrl* GUI, void* value, const AZ::Uuid& propertyType) override;
+        void ConsumeAttribute(PropertyButtonCtrl* widget, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName) override;
     };
 
     class ButtonBoolHandler

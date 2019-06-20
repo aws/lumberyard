@@ -22,6 +22,7 @@
 
 namespace LmbrCentral
 {
+    /// Common functionality for Editor Component Shapes.
     class EditorBaseShapeComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , public EditorShapeComponentRequestsBus::Handler
@@ -31,51 +32,43 @@ namespace LmbrCentral
     {
     public:
         AZ_RTTI(EditorBaseShapeComponent, "{32B9D7E9-6743-427B-BAFD-1C42CFBE4879}", AzToolsFramework::Components::EditorComponentBase);
+        static void Reflect(AZ::SerializeContext& context);
 
         EditorBaseShapeComponent() = default;
-
-        static void Reflect(AZ::SerializeContext& context);
 
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
-        // AZ::TransformNotificationBus::Handler
+        // AZ::TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& /*world*/) override {}
 
-        // LmbrCentral::EditorShapeComponentRequestsBus
+        // EditorShapeComponentRequestsBus
         void SetShapeColor(const AZ::Color& solidColor) override;
         void SetShapeWireframeColor(const AZ::Color& wireColor) override;
         void SetVisibleInEditor(bool visible) override;
 
-        /**
-         * Should shape be rendered all the time, even when not selected.
-         */
+        /// Should shape be rendered all the time, even when not selected.
         bool CanDraw() const;
 
+        void SetShapeComponentConfig(ShapeComponentConfig* shapeConfig);
+
     protected:
-        // EditorComponentSelectionRequestsBus::Handler
-        AZ::Aabb GetEditorSelectionBounds() override;
-        bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+
+        // EditorComponentSelectionRequestsBus
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
+        bool EditorSelectionIntersectRayViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
         bool SupportsEditorRayIntersect() override { return true; }
         AZ::u32 GetBoundingBoxDisplayType() override { return AzToolsFramework::EditorComponentSelectionRequests::NoBoundingBox; }
 
-        // EditorComponentSelectionNotificationsBus::Handler
+        // EditorComponentSelectionNotificationsBus
         void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override;
-        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-        {
-            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
-        }
-
-        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
-        {
-            incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
-        }
-
-        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
-        {
-            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
-        }
 
         AZ::Color m_shapeColor = AzFramework::ViewportColors::DeselectedColor; ///< Shaded color used for debug visualizations.
         AZ::Color m_shapeWireColor = AzFramework::ViewportColors::WireColor; ///< Wireframe color used for debug visualizations.
@@ -83,5 +76,12 @@ namespace LmbrCentral
         bool m_visibleInEditor = true; ///< Visible in the editor viewport.
         bool m_visibleInGameView = false; ///< Visible in Game View.
         bool m_displayFilled = true; ///< Should shape be displayed filled.
+
+        ShapeComponentConfig* m_shapeConfig = nullptr;
+
+    private:
+
+        void OnShapeColorChanged();
+        void OnDisplayFilledChanged();
     };
 } // namespace LmbrCentral

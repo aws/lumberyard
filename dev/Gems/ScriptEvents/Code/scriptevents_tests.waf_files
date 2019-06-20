@@ -1,0 +1,18 @@
+{
+  "none": {
+    "Tests/Framework": [
+      "Tests/ScriptEventsTest.cpp",
+      "Tests/ScriptEventsTestApplication.h",
+      "Tests/ScriptEventsTestFixture.h",
+      "Tests/ScriptEventsTestFixture.cpp"
+    ],
+    "Tests/Utilities": [
+      "Tests/ScriptEventTestUtilities.cpp",
+      "Tests/ScriptEventTestUtilities.h"
+    ],
+    "Tests/Tests":
+    [
+        "Tests/Tests/ScriptEventsTest_Core.cpp"
+    ]
+  }
+}

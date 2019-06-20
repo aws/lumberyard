@@ -14,12 +14,16 @@
             "Include/Water/WaterVolumeComponentBus.h"
         ],
         "Source": [
-            "Source/WaterModule.cpp",
-            "Source/WaterSystemComponent.cpp",
-            "Source/WaterOceanComponent.cpp",
-            "Source/WaterOceanComponentData.cpp",
-            "Source/WaterVolumeComponent.h",
-            "Source/WaterVolumeComponent.cpp"
+          "Source/WaterModule.cpp",
+          "Source/WaterSystemComponent.cpp",
+          "Source/WaterOceanComponent.cpp",
+          "Source/WaterOceanComponentData.cpp",
+          "Source/WaterVolumeComponent.h",
+          "Source/WaterVolumeComponent.cpp",
+          "Source/OceanSurfaceDataComponent.cpp",
+          "Source/OceanSurfaceDataComponent.h",
+          "Source/WaterVolumeSurfaceDataComponent.cpp",
+          "Source/WaterVolumeSurfaceDataComponent.h"
         ]
     }
 }

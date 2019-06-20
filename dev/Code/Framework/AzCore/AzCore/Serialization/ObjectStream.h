@@ -163,6 +163,12 @@ namespace AZ
 
         virtual bool WriteClass(const void* classPtr, const Uuid& classId, const SerializeContext::ClassData* classData = nullptr) = 0;
 
+        /// Default asset filter obeys the Asset<> holder's load flags.
+        static bool AssetFilterDefault(const Data::Asset<Data::AssetData>& asset);
+
+        /// SlicesOnly filter ignores all asset references except for slices.
+        static bool AssetFilterSlicesOnly(const Data::Asset<Data::AssetData>& asset);
+
         /// returns true if successfully flushed and closed the object stream, false otherwise
         virtual bool Finalize() = 0;
 
@@ -180,6 +186,10 @@ namespace AZ
 
         template<typename T0, typename T1, typename... Args>
         static bool AssetFilterAssetTypesOnly(const Data::Asset<Data::AssetData>& asset);
+
+        /// NoAssetLoading filter ignores all asset references.
+        static bool AssetFilterNoAssetLoading(const Data::Asset<Data::AssetData>& asset);
+
     protected:
         ObjectStream(SerializeContext* sc)
             : m_sc(sc)   { AZ_Assert(m_sc, "Creating an object stream with sc = NULL is pointless!"); }

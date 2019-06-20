@@ -134,6 +134,8 @@ namespace AzToolsFramework
 
             if (!shouldExportResult.GetValue())
             {
+                // If the platform tag requirements aren't met, return a null component that's been flagged as exported,
+                // so that we know not to try and process it any further.
                 return AZ::Success(AZ::ExportedComponent());
             }
 
@@ -152,10 +154,15 @@ namespace AzToolsFramework
 
                         if (reader.Read<AZ::ExportedComponent>(exportedComponent, inputComponent, platformTags))
                         {
-                            // If the callback provided a different component instance, continue to resolve recursively.
-                            if (exportedComponent.m_component != inputComponent)
+                            // If the callback handled the export and provided a different component instance, continue to resolve recursively.
+                            if (exportedComponent.m_componentExportHandled && (exportedComponent.m_component != inputComponent))
                             {
                                 return ResolveExportedComponent(exportedComponent, platformTags, serializeContext);
+                            }
+                            else
+                            {
+                                // It provided the *same* component back (or didn't handle the export at all), so we're done.
+                                return AZ::Success(exportedComponent);
                             }
                         }
                         else
@@ -166,13 +173,7 @@ namespace AzToolsFramework
                 }
             }
 
-            auto* asEditorComponent = azrtti_cast<Components::EditorComponentBase*>(component.m_component);
-            if (asEditorComponent)
-            {
-                // Only export runtime components.
-                return AZ::Success(AZ::ExportedComponent());
-            }
-
+            // If there's no custom export callback, just return what we were given.
             return AZ::Success(component);
         }
 
@@ -277,6 +278,7 @@ namespace AzToolsFramework
      */
     SliceCompilationResult CompileEditorSlice(const AZ::Data::Asset<AZ::SliceAsset>& sourceSliceAsset, const AZ::PlatformTagSet& platformTags, AZ::SerializeContext& serializeContext, const EditorOnlyEntityHandlers& editorOnlyEntityHandlers)
     {
+        AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::AzToolsFramework);
         if (!sourceSliceAsset)
         {
             return AZ::Failure(AZStd::string("Source slice is invalid."));
@@ -335,89 +337,137 @@ namespace AzToolsFramework
                 auto* asEditorComponent =
                     azrtti_cast<Components::EditorComponentBase*>(component);
 
-                if (asEditorComponent)
+                // Call validation callback on source component.  
+                // (Later, we'll call the validation callback on the final exported component as well.)
+                AZ::ComponentValidationResult result = component->ValidateComponentRequirements(immutableSourceEntities);
+                if (!result.IsSuccess())
                 {
-                    // Call validation callback on source editor component.
-                    AZ::ComponentValidationResult result = asEditorComponent->ValidateComponentRequirements(immutableSourceEntities);
-                    if (!result.IsSuccess())
+                    // Try to cast to GenericComponentWrapper, and if we can, get the internal template.
+                    const char* componentName = component->RTTI_GetTypeName();
+                    Components::GenericComponentWrapper* wrapper = azrtti_cast<Components::GenericComponentWrapper*>(asEditorComponent);
+                    if (wrapper && wrapper->GetTemplate())
                     {
-                        // Try to cast to GenericComponentWrapper, and if we can, get the internal template.
-                        const char* componentName = asEditorComponent->RTTI_GetTypeName();
-                        Components::GenericComponentWrapper* wrapper = azrtti_cast<Components::GenericComponentWrapper*>(asEditorComponent);
-                        if (wrapper && wrapper->GetTemplate())
-                        {
-                            componentName = wrapper->GetTemplate()->RTTI_GetTypeName();
-                        }
-
-                        return AZ::Failure(AZStd::string::format("[Entity] \"%s\" [Entity Id] 0x%llu, [Editor Component] \"%s\" could not pass validation for [Slice] \"%s\" [Error] %s",
-                            sourceEntity->GetName().c_str(),
-                            sourceEntity->GetId(),
-                            componentName,
-                            sourceSliceAsset.GetHint().c_str(),
-                            result.GetError().c_str()));
+                        componentName = wrapper->GetTemplate()->RTTI_GetTypeName();
                     }
 
-                    // Resolve the runtime component to export.
-                    const Internal::ExportedComponentResult exportResult = Internal::ResolveExportedComponent(
-                        AZ::ExportedComponent(asEditorComponent, false), 
-                        platformTags, 
-                        serializeContext);
+                    return AZ::Failure(AZStd::string::format("[Entity] \"%s\" [Entity Id] 0x%llu, [Editor Component] \"%s\" could not pass validation for [Slice] \"%s\" [Error] %s",
+                        sourceEntity->GetName().c_str(),
+                        sourceEntity->GetId(),
+                        componentName,
+                        sourceSliceAsset.GetHint().c_str(),
+                        result.GetError().c_str()));
+                }
 
-                    if (!exportResult)
-                    {
-                        return AZ::Failure(AZStd::string::format("Source component \"%s\" could not be exported for Entity \"%s\" [0x%llu] due to export attributes: %s.",
-                            component->RTTI_GetTypeName(),
-                            exportEntity->GetName().c_str(),
-                            static_cast<AZ::u64>(exportEntity->GetId()),
-                            exportResult.GetError().c_str()));
-                    }
+                // Whether or not this is an editor component, the source component might have a custom user export callback,
+                // so try to call it.
+                const Internal::ExportedComponentResult exportResult = Internal::ResolveExportedComponent(
+                    AZ::ExportedComponent(component, false, false), 
+                    platformTags, 
+                    serializeContext);
 
-                    AZ::ExportedComponent exportedComponent = exportResult.GetValue();
+                if (!exportResult)
+                {
+                    return AZ::Failure(AZStd::string::format("Source component \"%s\" could not be exported for Entity \"%s\" [0x%llu] due to export attributes: %s.",
+                        component->RTTI_GetTypeName(),
+                        exportEntity->GetName().c_str(),
+                        static_cast<AZ::u64>(exportEntity->GetId()),
+                        exportResult.GetError().c_str()));
+                }
 
-                    if (exportedComponent.m_component)
-                    {
-                        AZ::Component* runtimeComponent = exportedComponent.m_component;
+                AZ::ExportedComponent exportedComponent = exportResult.GetValue();
 
-                        // If the final component is not owned by us, make our own copy.
-                        if (!exportedComponent.m_deleteAfterExport)
-                        {
-                            runtimeComponent = serializeContext.CloneObject(runtimeComponent);
-                        }
-
-                        // Synchronize to source component Id, and add to the export entity.
-                        runtimeComponent->SetId(asEditorComponent->GetId());
-                        if (!exportEntity->AddComponent(runtimeComponent))
-                        {
-                            return AZ::Failure(AZStd::string::format("Component \"%s\" could not be added to Entity \"%s\" [0x%llu].",
-                                runtimeComponent->RTTI_GetTypeName(),
-                                exportEntity->GetName().c_str(),
-                                static_cast<AZ::u64>(exportEntity->GetId())));
-                        }
-                    }
-                    else // BEGIN BuildGameEntity compatibility path for editor components not using the newer RuntimeExportCallback functionality.
+                // If ResolveExportedComponent didn't handle the component export, then we'll do the following:
+                // - For editor components, fall back on the legacy BuildGameEntity() path for handling component exports.
+                // - For runtime components, provide a default behavior of "clone / add" to export the component.
+                if (!exportedComponent.m_componentExportHandled)
+                {
+                    // Editor components:  Try to use BuildGameEntity()
+                    if (asEditorComponent) // BEGIN BuildGameEntity compatibility path for editor components not using the newer RuntimeExportCallback functionality.
                     {
                         const size_t oldComponentCount = exportEntity->GetComponents().size();
                         asEditorComponent->BuildGameEntity(exportEntity);
                         if (exportEntity->GetComponents().size() > oldComponentCount)
                         {
+                            // The logic below only works if exactly 1 component was added, because it tries to set
+                            // the new component's ID to match the previous one.
+                            AZ_Assert(exportEntity->GetComponents().size() == (oldComponentCount + 1), "BuildGameEntity() unexpectedly added more than one runtime component.");
+
                             AZ::Component* exportComponent = exportEntity->GetComponents().back();
+
+                            // Verify that the result of BuildGameEntity() wasn't an editor component.
+                            auto* exportAsEditorComponent = azrtti_cast<Components::EditorComponentBase*>(exportComponent);
+                            if (exportAsEditorComponent)
+                            {
+                                return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%llu], component \"%s\" exported an editor component from BuildGameEntity() for runtime use.",
+                                    sourceEntity->GetName().c_str(),
+                                    static_cast<AZ::u64>(sourceEntity->GetId()),
+                                    asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str()));
+                            }
 
                             if (asEditorComponent->GetId() == AZ::InvalidComponentId)
                             {
                                 return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%llu], component \"%s\" doesn't have a valid component Id.",
-                                    sourceEntity->GetName().c_str(), 
+                                    sourceEntity->GetName().c_str(),
                                     static_cast<AZ::u64>(sourceEntity->GetId()),
                                     asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str()));
                             }
 
                             exportComponent->SetId(asEditorComponent->GetId());
                         }
+
+                        // Since this is an editor component, we very specifically do *not* want to clone and add it as a runtime
+                        // component by default, so regardless of whether or not the BuildGameEntity() call did anything, 
+                        // null out the editor component and mark it handled.
+                        exportedComponent = AZ::ExportedComponent();
+
                     } // END BuildGameEntity compatibility path for editor components not using the newer RuntimeExportCallback functionality.
+                    else
+                    {
+                        // Nothing else has handled the component export, so fall back on the default behavior 
+                        // for runtime components:  clone and add the runtime component that already exists.
+                        exportedComponent = AZ::ExportedComponent(component, false, true);
+                    }
                 }
-                else // Source component is not an editor component. Simply clone and add.
+
+                // At this point, either ResolveExportedComponent or the default logic above should have set the component export 
+                // as being handled.  If not, there is likely a new code path that requires a default export behavior.
+                AZ_Assert(exportedComponent.m_componentExportHandled, "Component \"%s\" had no export handlers and could not be added to Entity \"%s\" [0x%llu].",
+                    component->RTTI_GetTypeName(),
+                    exportEntity->GetName().c_str(),
+                    static_cast<AZ::u64>(exportEntity->GetId()));
+
+                // If we have an exported component, we add it to the exported entity.  
+                // If we don't (m_component == nullptr), this component chose not to be exported, so we skip it.
+                if (exportedComponent.m_componentExportHandled && exportedComponent.m_component)
                 {
-                    AZ::Component* exportComponent = serializeContext.CloneObject(component);
-                    exportEntity->AddComponent(exportComponent);
+                    AZ::Component* runtimeComponent = exportedComponent.m_component;
+
+                    // Verify that we aren't trying to export an editor component.
+                    auto* exportAsEditorComponent = azrtti_cast<Components::EditorComponentBase*>(runtimeComponent);
+                    if (exportAsEditorComponent)
+                    {
+                        return AZ::Failure(AZStd::string::format("Entity \"%s\" [0x%llu], component \"%s\" is trying to export an Editor component for runtime use.",
+                            sourceEntity->GetName().c_str(),
+                            static_cast<AZ::u64>(sourceEntity->GetId()),
+                            asEditorComponent->RTTI_GetType().ToString<AZStd::string>().c_str()));
+                    }
+
+                    // If the final component is not owned by us, make our own copy.
+                    if (!exportedComponent.m_deleteAfterExport)
+                    {
+                        runtimeComponent = serializeContext.CloneObject(runtimeComponent);
+                    }
+
+                    // Synchronize to source component Id, and add to the export entity.
+                    runtimeComponent->SetId(component->GetId());
+
+                    if (!exportEntity->AddComponent(runtimeComponent))
+                    {
+                        return AZ::Failure(AZStd::string::format("Component \"%s\" could not be added to Entity \"%s\" [0x%llu].",
+                            runtimeComponent->RTTI_GetTypeName(),
+                            exportEntity->GetName().c_str(),
+                            static_cast<AZ::u64>(exportEntity->GetId())));
+                    }
                 }
             }
 
@@ -463,9 +513,9 @@ namespace AzToolsFramework
             SortTransformParentsBeforeChildren(sortedEntities);
 
             // Sort the entities in the slice by removing them, and putting them back in sorted order
+            exportSliceData->RemoveAllEntities(/*deleteEntities*/ false, /*removeEmptyInstances*/ false);
             for (AZ::Entity* entity : sortedEntities)
             {
-                exportSliceData->RemoveEntity(entity, false, false);
                 exportSliceData->AddEntity(entity);
             }
         }

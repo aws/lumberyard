@@ -24,24 +24,7 @@ typedef struct _GUID {
             Data4[it - d4.begin()] = *it;
     }
 
-#ifdef QUUID_H
-    _GUID(const QUuid& guid = QUuid())
-    {
-        *this = guid;
-    }
-    _GUID& operator=(const QUuid& id)
-    {
-        *this = _GUID({id.data1, id.data2, id.data3, {id.data4[0], id.data4[1], id.data4[2], id.data4[3], id.data4[4], id.data4[5], id.data4[6], id.data4[7] }});
-        return *this;
-    }
-    
-    operator QUuid() const
-    {
-        return QUuid(Data1, Data2, Data3, Data4[0], Data4[1], Data4[2], Data4[3], Data4[4], Data4[5], Data4[6], Data4[7]);
-    }
-#else
     _GUID() = default;
-#endif // QUUID_H
 
     uint32_t       Data1;
     unsigned short Data2;

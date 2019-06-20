@@ -13,62 +13,56 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
-#include <AzQtComponents/Components/DockBarButton.h>
-
-#include <QTabBar>
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 
 class QAction;
-class QLabel;
 class QMenu;
 class QMouseEvent;
-class QPropertyAnimation;
 class QToolButton;
+class QStyleOption;
+class QStyleOptionTab;
 
 namespace AzQtComponents
 {
     class DockBar;
+    class EditorProxyStyle;
 
     class AZ_QT_COMPONENTS_API DockTabBar
-        : public QTabBar
+        : public TabBar
     {
         Q_OBJECT
+        Q_PROPERTY(bool singleTabFillsWidth READ singleTabFillsWidth WRITE setSingleTabFillsWidth NOTIFY singleTabFillsWidthChanged)
     public:
+        static int closeButtonOffsetForIndex(const QStyleOptionTab* option);
+        static QSize tabSizeHint(const EditorProxyStyle* style, const QStyleOption* option, const QWidget* widget);
+        static QRect rightButtonRect(const EditorProxyStyle* style, const QStyleOption* option, const QWidget* widget);
+
         explicit DockTabBar(QWidget* parent = nullptr);
-        void mouseMoveEvent(QMouseEvent* event);
-        void mouseReleaseEvent(QMouseEvent* event);
+        using TabBar::mouseMoveEvent;
+        using TabBar::mouseReleaseEvent;
         void contextMenuEvent(QContextMenuEvent* event) override;
         void finishDrag();
         QSize sizeHint() const override;
 
+        bool singleTabFillsWidth() const { return m_singleTabFillsWidth; }
+        void setSingleTabFillsWidth(bool singleTabFillsWidth);
+
     Q_SIGNALS:
         void closeTab(int index);
         void undockTab(int index);
+        void singleTabFillsWidthChanged(bool singleTabFillsWidth);
 
     protected:
-        void mousePressEvent(QMouseEvent* event);
-        void paintEvent(QPaintEvent* event) override;
-        QSize tabSizeHint(int index) const override;
+        void mousePressEvent(QMouseEvent* event) override;
         void tabLayoutChange() override;
+        void tabInserted(int index) override;
 
     protected Q_SLOTS:
-        void handleButtonClicked(const DockBarButton::WindowDecorationButton type);
-        void currentIndexChanged();
-        void updateCloseButtonPosition();
-        void tabPressed(int index);
+        void currentIndexChanged(int current);
         void closeTabGroup();
-        void dragTabAnimationFinished();
-        void displacedTabAnimationFinished();
 
     private:
-        int closeButtonOffsetForIndex(int index) const;
-        void setImageForAnimatedLabel(QLabel* label, const QRect& area);
-        DockBar* m_dockBar;
-        DockBarButton* m_closeTabButton;
         QWidget* m_tabIndicatorUnderlay;
-        QLabel* m_draggingTabImage;
-        QLabel* m_displacedTabImage;
-        QPropertyAnimation* m_dragTabFinishedAnimation;
-        QPropertyAnimation* m_displacedTabAnimation;
         QToolButton* m_leftButton;
         QToolButton* m_rightButton;
         QMenu* m_contextMenu;
@@ -77,9 +71,6 @@ namespace AzQtComponents
         QAction* m_undockTabMenuAction;
         QAction* m_undockTabGroupMenuAction;
         int m_menuActionTabIndex;
-        int m_tabIndexPressed;
-        QPoint m_dragStartPosition;
-        bool m_dragInProgress;
-        int m_displacedTabIndex;
+        bool m_singleTabFillsWidth;
     };
 } // namespace AzQtComponents

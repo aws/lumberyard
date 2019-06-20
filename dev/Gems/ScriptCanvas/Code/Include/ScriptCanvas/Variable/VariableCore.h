@@ -69,6 +69,8 @@ namespace ScriptCanvas
         
         AZ::Uuid m_id{ AZ::Uuid::CreateNull() };
     };
+
+    using NamedVariabledId = NamedId<VariableId>;
 }
 
 namespace AZStd

@@ -17,10 +17,13 @@
 #include <Components/Connections/DataConnections/DataConnectionComponent.h>
 #include <Components/Slots/Data/DataSlotConnectionPin.h>
 #include <Components/Slots/Data/DataSlotLayoutComponent.h>
-#include <GraphCanvas/Components/Connections/ConnectionFilters/ConnectionFilters.h>
-#include <GraphCanvas/Components/Connections/ConnectionFilters/DataConnectionFilters.h>
 #include <Components/Slots/SlotConnectionFilterComponent.h>
 #include <Components/StylingComponent.h>
+
+#include <GraphCanvas/Components/Connections/ConnectionFilters/ConnectionFilters.h>
+#include <GraphCanvas/Components/Connections/ConnectionFilters/DataConnectionFilters.h>
+#include <GraphCanvas/Components/StyleBus.h>
+
 
 namespace GraphCanvas
 {
@@ -34,35 +37,28 @@ namespace GraphCanvas
         if (serializeContext)
         {
             serializeContext->Class<DataSlotComponent, SlotComponent>()
-                ->Version(2)
+                ->Version(3)
                 ->Field("TypeId", &DataSlotComponent::m_dataTypeId)
                 ->Field("DataSlotType", &DataSlotComponent::m_dataSlotType)
                 ->Field("VariableId", &DataSlotComponent::m_variableId)
                 ->Field("FixedType", &DataSlotComponent::m_fixedType)
                 ->Field("CopiedVariableId", &DataSlotComponent::m_copiedVariableId)
+                ->Field("ContainedTypeIds", &DataSlotComponent::m_containedTypeIds)
             ;
         }
     }
 
-    AZ::Entity* DataSlotComponent::CreateDataSlot(const AZ::EntityId& nodeId, const AZ::Uuid& dataTypeId, bool isReference, const SlotConfiguration& slotConfiguration)
+    AZ::Entity* DataSlotComponent::CreateDataSlot(const AZ::EntityId& nodeId, const DataSlotConfiguration& dataSlotConfiguration)
     {
         AZ::Entity* entity = SlotComponent::CreateCoreSlotEntity();
 
-        DataSlotComponent* dataSlot = nullptr;
+        DataSlotComponent* dataSlot = aznew DataSlotComponent(dataSlotConfiguration);
 
-        if (isReference)
+        if (!entity->AddComponent(dataSlot))
         {
-            dataSlot = aznew DataSlotComponent(DataSlotType::Reference, dataTypeId, slotConfiguration);
-
-            if (!entity->AddComponent(dataSlot))
-            {
-                delete entity;
-                return nullptr;
-            }
-        }
-        else
-        {
-            dataSlot = entity->CreateComponent<DataSlotComponent>(dataTypeId, slotConfiguration);
+            delete dataSlot;
+            delete entity;
+            return nullptr;
         }
 
         entity->CreateComponent<DataSlotLayoutComponent>();
@@ -95,44 +91,6 @@ namespace GraphCanvas
 
         return entity;
     }
-
-    AZ::Entity* DataSlotComponent::CreateVariableSlot(const AZ::EntityId& nodeId, const AZ::Uuid& dataTypeId, const AZ::EntityId& variableId, const SlotConfiguration& slotConfiguration)
-    {
-        AZ_Error("Graph Canvas", slotConfiguration.m_connectionType == ConnectionType::CT_Output, "Cannot create variable slot as non-output slot.");
-
-        AZ::Entity* entity = aznew AZ::Entity("Slot");
-
-        DataSlotComponent* dataSlot = aznew DataSlotComponent(DataSlotType::Variable, dataTypeId, slotConfiguration);
-        
-        if (!entity->AddComponent(dataSlot))
-        {
-            delete entity;
-            return nullptr;
-        }
-
-        dataSlot->AssignVariable(variableId);
-        dataSlot->SetNode(nodeId);
-
-        entity->CreateComponent<DataSlotLayoutComponent>();
-
-        entity->CreateComponent<StylingComponent>(Styling::Elements::DataSlot, nodeId, "");
-
-        SlotConnectionFilterComponent* connectionFilter = entity->CreateComponent<SlotConnectionFilterComponent>();
-
-        SlotTypeFilter* slotTypeFilter = aznew SlotTypeFilter(ConnectionFilterType::Include);
-        slotTypeFilter->AddSlotType(SlotTypes::DataSlot);
-
-        connectionFilter->AddFilter(slotTypeFilter);
-
-        ConnectionTypeFilter* connectionTypeFilter = aznew ConnectionTypeFilter(ConnectionFilterType::Include);
-        connectionTypeFilter->AddConnectionType(CT_Input);
-
-        connectionFilter->AddFilter(connectionTypeFilter);
-
-        connectionFilter->AddFilter(aznew DataSlotTypeFilter());
-
-        return entity;
-    }
     
     DataSlotComponent::DataSlotComponent()
         : SlotComponent(SlotTypes::DataSlot)
@@ -146,34 +104,22 @@ namespace GraphCanvas
             m_slotConfiguration.m_slotGroup = SlotGroups::DataGroup;
         }
     }
-    
-    DataSlotComponent::DataSlotComponent(const AZ::Uuid& dataTypeId, const SlotConfiguration& slotConfiguration)
-        : SlotComponent(SlotTypes::DataSlot, slotConfiguration)
-        , m_fixedType(false)
-        , m_dataSlotType(DataSlotType::Value)
-        , m_dataTypeId(dataTypeId)
-        , m_previousDataSlotType(DataSlotType::Unknown)
-    {
-        if (m_slotConfiguration.m_slotGroup == SlotGroups::Invalid)
-        {
-            m_slotConfiguration.m_slotGroup = SlotGroups::DataGroup;
-        }
-    }
 
-    DataSlotComponent::DataSlotComponent(DataSlotType dataSlotType, const AZ::Uuid& dataTypeId, const SlotConfiguration& slotConfiguration)
-        : SlotComponent(SlotTypes::DataSlot, slotConfiguration)        
+    DataSlotComponent::DataSlotComponent(const DataSlotConfiguration& dataSlotConfiguration)
+        : SlotComponent(SlotTypes::DataSlot, dataSlotConfiguration)
         , m_fixedType(true)
-        , m_dataSlotType(dataSlotType)
-        , m_dataTypeId(dataTypeId)
+        , m_dataSlotType(dataSlotConfiguration.m_dataSlotType)
+        , m_dataTypeId(dataSlotConfiguration.m_typeId)
+        , m_containedTypeIds(dataSlotConfiguration.m_containerTypeIds)
         , m_previousDataSlotType(DataSlotType::Unknown)
     {
         if (m_slotConfiguration.m_slotGroup == SlotGroups::Invalid)
         {
-            if (dataSlotType == DataSlotType::Variable)
+            if (m_dataSlotType == DataSlotType::Variable)
             {
                 m_slotConfiguration.m_slotGroup = SlotGroups::VariableSourceGroup;
             }
-            else if (dataSlotType == DataSlotType::Reference)
+            else if (m_dataSlotType == DataSlotType::Reference)
             {
                 m_slotConfiguration.m_slotGroup == SlotGroups::VariableReferenceGroup;
             }
@@ -220,17 +166,9 @@ namespace GraphCanvas
         }
     }
 
-    void DataSlotComponent::OnNodeAboutToSerialize(GraphSerialization&)
+    void DataSlotComponent::OnSceneMemberAboutToSerialize(GraphSerialization&)
     {
         m_copiedVariableId = static_cast<AZ::u64>(m_variableId);
-    }
-    
-    void DataSlotComponent::OnNodeDeserialized(const AZ::EntityId&, const GraphSerialization&)
-    {
-        if (m_dataSlotType == DataSlotType::Reference)
-        {
-            NodeNotificationBus::Handler::BusDisconnect();
-        }
     }
 
     void DataSlotComponent::DisplayProposedConnection(const AZ::EntityId& connectionId, const Endpoint& endpoint)
@@ -267,6 +205,25 @@ namespace GraphCanvas
 
             m_variableId.SetInvalid();
             m_dataSlotType = DataSlotType::Value;
+
+            if (m_previousDataSlotType != m_dataSlotType)
+            {
+                DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
+            }
+
+            NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
+        }
+        else if (slotType == DataSlotType::Container)
+        {
+            m_displayedConnection = connectionId;
+
+            m_connections.emplace_back(m_displayedConnection);
+
+            m_previousDataSlotType = m_dataSlotType;
+            m_cachedVariableId = m_variableId;
+
+            m_variableId.SetInvalid();
+            m_dataSlotType = DataSlotType::Container;
 
             if (m_previousDataSlotType != m_dataSlotType)
             {
@@ -312,13 +269,21 @@ namespace GraphCanvas
     void DataSlotComponent::SetNode(const AZ::EntityId& nodeId)
     {
         SlotComponent::SetNode(nodeId);
+    }
 
-        NodeNotificationBus::Handler::BusDisconnect();
+    SlotConfiguration* DataSlotComponent::CloneSlotConfiguration() const
+    {
+        DataSlotConfiguration* slotConfiguration = aznew DataSlotConfiguration();
 
-        if (nodeId.IsValid())
-        {
-            NodeNotificationBus::Handler::BusConnect(nodeId);
-        }
+        slotConfiguration->m_dataSlotType = GetDataSlotType();
+
+        slotConfiguration->m_typeId = GetDataTypeId();
+
+        slotConfiguration->m_containerTypeIds = m_containedTypeIds;
+
+        PopulateSlotConfiguration((*slotConfiguration));
+
+        return slotConfiguration;
     }
 
     bool DataSlotComponent::AssignVariable(const AZ::EntityId& variableId)
@@ -387,22 +352,11 @@ namespace GraphCanvas
 
             if (updateDisplay)
             {
+                UpdatePropertyDisplayState();
+
                 if (typeChanged)
                 {
-                    if (m_dataSlotType == DataSlotType::Reference)
-                    {
-                        NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, false);
-                    }
-                    else if (m_dataSlotType == DataSlotType::Value)
-                    {
-                        NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
-                    }
-
                     DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDataSlotTypeChanged, m_dataSlotType);
-                }
-                else if (m_dataSlotType == DataSlotType::Value)
-                {
-                    NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
                 }
 
                 UpdateDisplay();
@@ -416,7 +370,16 @@ namespace GraphCanvas
 
     void DataSlotComponent::OnFinalizeDisplay()
     {
-        if (m_dataSlotType == DataSlotType::Value)
+        UpdatePropertyDisplayState();
+    }
+
+    void DataSlotComponent::UpdatePropertyDisplayState()
+    {
+        if (m_dataSlotType == DataSlotType::Reference)
+        {
+            NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, false);
+        }
+        else if (m_dataSlotType == DataSlotType::Value)
         {
             NodePropertyRequestBus::Event(GetEntityId(), &NodePropertyRequests::SetDisabled, HasConnections());
         }
@@ -473,25 +436,71 @@ namespace GraphCanvas
         return m_dataSlotType;
     }
 
-    const AZ::Uuid& DataSlotComponent::GetDataTypeId() const
+    AZ::Uuid DataSlotComponent::GetDataTypeId() const
     {
         return m_dataTypeId;
     }
 
-    QColor DataSlotComponent::GetDataColor() const
+    void DataSlotComponent::SetDataTypeId(AZ::Uuid typeId)
     {
-        QColor retVal;
-
-        const DataSlotConnectionPin* dataPin = nullptr;
-        DataSlotLayoutRequestBus::EventResult(dataPin, GetEntityId(), &DataSlotLayoutRequests::GetConnectionPin);
-
-        if (dataPin)
+        if (m_dataTypeId != typeId)
         {
-            const Styling::StyleHelper& style = dataPin->GetStyle();
-            retVal = style.GetAttribute<QColor>(Styling::Attribute::BorderColor);
+            m_dataTypeId = typeId;
+            UpdateDisplay();
         }
+    }
 
-        return retVal;
+    const Styling::StyleHelper* DataSlotComponent::GetDataColorPalette() const
+    {
+        AZ::EntityId sceneId;
+        SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+        EditorId editorId;
+        SceneRequestBus::EventResult(editorId, sceneId, &SceneRequests::GetEditorId);
+
+        const Styling::StyleHelper* stylingHelper = nullptr;
+        StyleManagerRequestBus::EventResult(stylingHelper, editorId, &StyleManagerRequests::FindDataColorPalette, m_dataTypeId);
+
+        return stylingHelper;
+    }
+
+    size_t DataSlotComponent::GetContainedTypesCount() const
+    {
+        return m_containedTypeIds.size();
+    }
+
+    AZ::Uuid DataSlotComponent::GetContainedTypeId(size_t index) const
+    {
+        return m_containedTypeIds[index];
+    }
+
+    const GraphCanvas::Styling::StyleHelper* DataSlotComponent::GetContainedTypeColorPalette(size_t index) const
+    {
+        AZ::Uuid dataTypeId = m_containedTypeIds[index];
+
+        AZ::EntityId sceneId;
+        SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
+
+        EditorId editorId;
+        SceneRequestBus::EventResult(editorId, sceneId, &SceneRequests::GetEditorId);
+
+        const Styling::StyleHelper* stylingHelper = nullptr;
+        StyleManagerRequestBus::EventResult(stylingHelper, editorId, &StyleManagerRequests::FindDataColorPalette, dataTypeId);
+
+        return stylingHelper;
+    }
+
+    void DataSlotComponent::SetDataAndContainedTypeIds(AZ::Uuid typeId, const AZStd::vector<AZ::Uuid>& typeIds)
+    {
+        if (m_dataTypeId != typeId)
+        {
+            m_dataTypeId = typeId;
+            m_containedTypeIds = typeIds;
+
+            DataSlotNotificationBus::Event(GetEntityId(), &DataSlotNotifications::OnDisplayTypeChanged, m_dataTypeId, m_containedTypeIds);
+            
+            UpdatePropertyDisplayState();
+        }
     }
 
     AZ::Entity* DataSlotComponent::ConstructConnectionEntity(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint, bool createModelConnection) const

@@ -1,0 +1,9 @@
+{
+    "none":
+    {
+        "Root":
+        [
+            "Platform/AssetBuilderApplication_win.cpp"
+        ]
+    }
+}

@@ -17,7 +17,7 @@ def build(bld):
 
     #Create a file list that is needed for the exported symbols in the dylib in a non-monolithic build
     darwinExportedSymbolFileList=[]
-    if not bld.is_monolithic_build():
+    if not bld.is_build_monolithic():
         darwinExportedSymbolFileList.append('SceneData_darwin.waf_files');
 
     kw = dict(
@@ -28,7 +28,8 @@ def build(bld):
         disable_pch                 = True,
         file_list                   = ['SceneData.waf_files'],
         platforms                   = ['win', 'darwin'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        client_only                 = True,
+        exclude_monolithic          = True,
         includes                    = [ bld.Path('Code/Tools') ],
         use                         = ['SceneCore',
                                        'AzCore',

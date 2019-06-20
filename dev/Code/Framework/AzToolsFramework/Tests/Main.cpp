@@ -12,6 +12,9 @@
 
 #include <AzTest/AzTest.h>
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzQtComponents/Utilities/QtPluginPaths.h>
+
+#include <QApplication>
 
 using namespace AZ;
 
@@ -31,5 +34,14 @@ public:
     }
 };
 
-AZ_UNIT_TEST_HOOK(new ToolsFrameworkHook);
-
+AZTEST_EXPORT int AZ_UNIT_TEST_HOOK_NAME(int argc, char** argv)
+{
+    ::testing::InitGoogleMock(&argc, argv);
+    AzQtComponents::PrepareQtPaths();
+    QApplication app(argc, argv);
+    AZ::Test::excludeIntegTests();  
+    AZ::Test::printUnusedParametersWarning(argc, argv);
+    AZ::Test::addTestEnvironments({ new ToolsFrameworkHook });
+    int result = RUN_ALL_TESTS();
+    return result;
+}

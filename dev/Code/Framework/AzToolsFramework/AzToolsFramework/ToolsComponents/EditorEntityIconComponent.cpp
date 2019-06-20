@@ -88,7 +88,7 @@ namespace AzToolsFramework
             if (m_entityIconAssetId != assetId)
             {
                 m_entityIconAssetId = assetId;
-                m_entityIconPathCache = CalculateEntityIconPath(m_firstComponentIdCache);
+                m_entityIconCache.SetEntityIconPath(CalculateEntityIconPath(m_firstComponentIdCache));
                 EditorEntityIconComponentNotificationBus::Event(GetEntityId(), &EditorEntityIconComponentNotificationBus::Events::OnEntityIconChanged, m_entityIconAssetId);
                 SetDirty();
             }
@@ -101,12 +101,18 @@ namespace AzToolsFramework
 
         AZStd::string EditorEntityIconComponent::GetEntityIconPath()
         {
-            if (m_entityIconPathCache.empty())
+            if (m_entityIconCache.Empty())
             {
                 UpdateFirstComponentIdCache();
-                m_entityIconPathCache = CalculateEntityIconPath(m_firstComponentIdCache);
+                m_entityIconCache.SetEntityIconPath(CalculateEntityIconPath(m_firstComponentIdCache));
             }
-            return m_entityIconPathCache;
+
+            return m_entityIconCache.GetEntityIconPath();
+        }
+
+        int EditorEntityIconComponent::GetEntityIconTextureId()
+        {
+            return m_entityIconCache.GetEntityIconTextureId();
         }
 
         bool EditorEntityIconComponent::IsEntityIconHiddenInViewport()
@@ -116,13 +122,13 @@ namespace AzToolsFramework
 
         void EditorEntityIconComponent::OnEntityActivated(const AZ::EntityId&)
         {
-            if (m_entityIconPathCache.empty())
+            if (m_entityIconCache.Empty())
             {
                 /* The case where the entity is activated the first time. */
 
                 UpdatePreferNoViewportIconFlag();
                 UpdateFirstComponentIdCache();
-                m_entityIconPathCache = CalculateEntityIconPath(m_firstComponentIdCache);
+                m_entityIconCache.SetEntityIconPath(CalculateEntityIconPath(m_firstComponentIdCache));
                 EditorEntityIconComponentNotificationBus::Event(GetEntityId(), &EditorEntityIconComponentNotificationBus::Events::OnEntityIconChanged, m_entityIconAssetId);
             }
         }
@@ -131,11 +137,12 @@ namespace AzToolsFramework
         {
             if (!m_entityIconAssetId.IsValid())
             {
-                bool preferNoViewportIconFlagChanged = UpdatePreferNoViewportIconFlag();
-                bool firstComponentIdChanged = UpdateFirstComponentIdCache();
+                const bool preferNoViewportIconFlagChanged = UpdatePreferNoViewportIconFlag();
+                const bool firstComponentIdChanged = UpdateFirstComponentIdCache();
+
                 if (firstComponentIdChanged)
                 {
-                    m_entityIconPathCache = GetDefaultEntityIconPath(m_firstComponentIdCache);
+                    m_entityIconCache.SetEntityIconPath(GetDefaultEntityIconPath(m_firstComponentIdCache));
                     EditorEntityIconComponentNotificationBus::Event(GetEntityId(), &EditorEntityIconComponentNotificationBus::Events::OnEntityIconChanged, m_entityIconAssetId);
                 }
                 else if (preferNoViewportIconFlagChanged)
@@ -300,5 +307,18 @@ namespace AzToolsFramework
 
             return flagChanged;
         }
+
+        int EditorEntityIconComponent::EntityIcon::GetEntityIconTextureId()
+        {
+            // if we do not yet have a valid texture id, request it using the entity icon path
+            if (m_entityIconTextureId == 0)
+            {
+                EditorRequestBus::BroadcastResult(
+                    m_entityIconTextureId, &EditorRequests::GetIconTextureIdFromEntityIconPath, m_entityIconPath);
+            }
+
+            return m_entityIconTextureId;
+        }
+
     } // namespace Components
 } // namespace AzToolsFramework

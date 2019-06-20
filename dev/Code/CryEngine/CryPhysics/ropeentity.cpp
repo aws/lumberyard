@@ -122,6 +122,11 @@ CRopeEntity::CRopeEntity(CPhysicalWorld* pWorld, IGeneralMemoryHeap* pHeap)
     m_noCollDist = 0.5f;
     m_lockAwake = 0;
     m_collisionClass.type |= collision_class_rope;
+
+    //Per bone UDP (User Define Properties) for stiffness, damping and thickness for touch bending vegetation
+    m_pCollDist = nullptr;
+    m_pStiffness = nullptr;
+    m_pDamping = nullptr;
 }
 
 CRopeEntity::~CRopeEntity()
@@ -267,8 +272,9 @@ void CRopeEntity::RecalcBBox()
             m_BBox[0] = min(m_BBox[0], m_segs[i].pt);
             m_BBox[1] = max(m_BBox[1], m_segs[i].pt);
         }
-        m_BBox[0] -= Vec3(m_collDist * 2);
-        m_BBox[1] += Vec3(m_collDist * 2);
+        float collDist = GetSegmentThickness();
+        m_BBox[0] -= Vec3(collDist * 2);
+        m_BBox[1] += Vec3(collDist * 2);
         AtomicAdd(&m_pWorld->m_lockGrid, -m_pWorld->RepositionEntity(this, 1, m_BBox));
     }
 }
@@ -387,6 +393,32 @@ int CRopeEntity::SetParams(const pe_params* _params, int bThreadSafe)
         {
             diff = fabs_tpl(m_stiffnessAnim - params->stiffnessAnim), m_stiffnessAnim = params->stiffnessAnim;
         }
+
+        //Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+        if (!is_unused(params->pThickness))
+        {
+            if (m_pCollDist = params->pThickness)
+            {
+                RecalcBBox();
+            }
+        }
+        if (!is_unused(params->pStiffness))
+        {
+            m_pStiffness = params->pStiffness;
+            if (m_pStiffness)
+            {
+                m_length = 0;
+                for (i = 0; i < params->nSegments; i++)
+                {
+                    diff += fabs_tpl(m_pStiffness[i] - params->pStiffness[i]);
+                }
+            }
+        }
+        if (!is_unused(params->pDamping))
+        {
+            m_pDamping = params->pDamping;
+        }
+
         if (!is_unused(params->stiffnessDecayAnim))
         {
             m_stiffnessDecayAnim = params->stiffnessDecayAnim;
@@ -787,6 +819,9 @@ int CRopeEntity::GetParams(pe_params* _params) const
             params->collisionBBox[1] = m_collBBox[1];
         }
         params->hingeAxis = m_dir0dst;
+        params->pThickness = m_pCollDist;
+        params->pStiffness = m_pStiffness;
+        params->pDamping = m_pDamping;
         return 1;
     }
 
@@ -1180,8 +1215,9 @@ int CRopeEntity::Action(const pe_action* _action, int bThreadSafe)
                     i = j;
                 }
             }
-            if ((m_segs[i].pt - action->point).len2() > sqr(m_collDist * 3) &&
-                (i == 0 || (m_segs[i].pt - m_segs[i - 1].pt ^ action->point - m_segs[i - 1].pt).len2() > sqr(m_collDist) * (m_segs[i].pt - m_segs[i - 1].pt).len2()))
+            float collDist = GetSegmentThickness(i);
+            if ((m_segs[i].pt - action->point).len2() > sqr(collDist * 3) &&
+                (i == 0 || (m_segs[i].pt - m_segs[i - 1].pt ^ action->point - m_segs[i - 1].pt).len2() > sqr(collDist) * (m_segs[i].pt - m_segs[i - 1].pt).len2()))
             {
                 return 0;
             }
@@ -1574,7 +1610,8 @@ void CRopeEntity::FillVtxContactData(rope_vtx* pvtx, int iseg, SRopeCheckPart& c
         pvtx->vel = m_segs[iseg].vel * (1 - t) + m_segs[iseg + 1].vel * t;
     }
     pvtx->ncontact = pcontact->n.normalized();
-    pvtx->pt += pvtx->ncontact * m_collDist;
+    float collDist = GetSegmentThickness(iseg);
+    pvtx->pt += pvtx->ncontact * collDist;
     RigidBody* pbody = cp.pent->GetRigidBody(cp.ipart);
     pvtx->vcontact = pbody->v + (pbody->w ^ pvtx->pt - pbody->pos);
     pvtx->pContactEnt = cp.pent;
@@ -1680,7 +1717,8 @@ RecheckAfterStrain:
     {
         iEnd = m_nSegs;
     }
-    bRopeChanged = isneg(sqr(m_collDist * 0.1f) - max((m_segs[0].pt - m_segs[0].pt0).len2(), (m_segs[m_nSegs].pt - m_segs[m_nSegs].pt0).len2()));
+    float collDist = GetSegmentThickness(iStart);
+    bRopeChanged = isneg(sqr(collDist * 0.1f) - max((m_segs[0].pt - m_segs[0].pt0).len2(), (m_segs[m_nSegs].pt - m_segs[m_nSegs].pt0).len2()));
 
     for (i = iStart; i <= iEnd; i++)
     {
@@ -1697,16 +1735,17 @@ RecheckAfterStrain:
             {
                 aray.m_ray.origin.zero();
                 gwd1.offset = m_segs[i].pt;
-                aray.m_ray.dir = (aray.m_dirn = -m_segs[i].ncontact) * m_collDist * 1.5f;
+                collDist = GetSegmentThickness(iStart);
+                aray.m_ray.dir = (aray.m_dirn = -m_segs[i].ncontact) * collDist * 1.5f;
                 gwd.offset = m_segs[i].pContactEnt->m_pos + m_segs[i].pContactEnt->m_qrot * m_segs[i].pContactEnt->m_parts[m_segs[i].iContactPart].pos;
                 gwd.R = Matrix33(m_segs[i].pContactEnt->m_qrot * m_segs[i].pContactEnt->m_parts[m_segs[i].iContactPart].q);
                 gwd.scale = m_segs[i].pContactEnt->m_parts[m_segs[i].iContactPart].scale;
                 if (!((CGeometry*)m_segs[i].pContactEnt->m_parts[m_segs[i].iContactPart].pPhysGeomProxy->pGeom)->IsAPrimitive() &&
                     m_segs[i].pContactEnt->m_parts[m_segs[i].iContactPart].pPhysGeomProxy->pGeom->Intersect(&aray, &gwd, &gwd1, &ip, pcontact))
                 {
-                    m_segs[i].pt = pcontact->pt + (m_segs[i].ncontact = pcontact->n) * m_collDist;
+                    m_segs[i].pt = pcontact->pt + (m_segs[i].ncontact = pcontact->n) * collDist;
                     m_segs[i].vcontact = dv;
-                    bRopeChanged -= isneg((m_segs[i].pt - m_segs[i].pt0).len2() - sqr(m_collDist * 0.1f));
+                    bRopeChanged -= isneg((m_segs[i].pt - m_segs[i].pt0).len2() - sqr(collDist * 0.1f));
                 }
                 else
                 {
@@ -1737,7 +1776,7 @@ RecheckAfterStrain:
                 {
                     continue;
                 }
-                aray.m_ray.dir += (aray.m_dirn = aray.m_ray.dir.normalized()) * m_collDist;
+                aray.m_ray.dir += (aray.m_dirn = aray.m_ray.dir.normalized()) * collDist;
                 if (box_ray_overlap_check(&checkParts[j].bbox, &aray.m_ray))
                 {
                     gwd.offset.zero();
@@ -1751,7 +1790,7 @@ RecheckAfterStrain:
                         }
                         if (i1 >= 0)
                         {
-                            float gap = min(m_collDist / max(0.3f, -(pcontact[i1].n * aray.m_dirn)), aray.m_ray.dir * aray.m_dirn);
+                            float gap = min(collDist / max(0.3f, -(pcontact[i1].n * aray.m_dirn)), aray.m_ray.dir * aray.m_dirn);
                             m_segs[i].pt = checkParts[j].R * (pcontact[i1].pt - aray.m_dirn * gap) + checkParts[j].offset;
                             m_segs[i].ncontact = checkParts[j].R * pcontact[i1].n;
                             m_segs[i].pContactEnt = checkParts[j].pent;
@@ -1767,9 +1806,9 @@ RecheckAfterStrain:
             {
                 contact acontact;
                 if (checkParts[j].pGeom->UnprojectSphere(((m_segs[i].pt - checkParts[j].offset) * checkParts[j].R) * checkParts[j].rscale,
-                        m_collDist * checkParts[j].rscale, m_collDist * rsep * checkParts[j].rscale, &acontact))
+                    collDist * checkParts[j].rscale, collDist * rsep * checkParts[j].rscale, &acontact))
                 {
-                    m_segs[i].pt = checkParts[j].R * (acontact.pt * checkParts[j].scale + acontact.n * m_collDist) + checkParts[j].offset;
+                    m_segs[i].pt = checkParts[j].R * (acontact.pt * checkParts[j].scale + acontact.n * collDist) + checkParts[j].offset;
                     m_segs[i].ncontact = checkParts[j].R * acontact.n;
                     m_segs[i].pContactEnt = checkParts[j].pent;
                     m_segs[i].iContactPart = checkParts[j].ipart;
@@ -2666,8 +2705,10 @@ void CRopeEntity::ApplyStiffness(float time_interval, int bTargetPoseActive, con
     {
         for (i = 0; i < m_nSegs; i++)
         {
-            dv = (qtv * m_segs[i + 1].ptdst * scaletv + offstv - m_segs[i + 1].pt) * m_stiffnessAnim * (1 - m_stiffnessDecayAnim * (i + 1) * rnSegs);
-            a = max(0.0f, 1 - m_dampingAnim * time_interval);
+            float stiffness = GetSegmentStiffness(i);
+            dv = (qtv * m_segs[i + 1].ptdst * scaletv + offstv - m_segs[i + 1].pt) * stiffness * (1 - m_stiffnessDecayAnim * (i + 1) * rnSegs);
+            float damping = GetSegmentDamping(i);
+            a = max(0.0f, 1 - damping * time_interval);
             m_segs[i + 1].vel = m_segs[i + 1].vel * a + dv * (1 - a);
         }
     }
@@ -2721,9 +2762,11 @@ void CRopeEntity::ApplyStiffness(float time_interval, int bTargetPoseActive, con
                 }
                 dw -= dir0src * (angleDst - angleSrc);
                 // update m_segs[i+1].vel
-                dv = dw * (m_stiffnessAnim * (1 - m_stiffnessDecayAnim * (i + 1) * rnSegs) * time_interval) ^ m_segs[i + 1].pt - m_segs[i].pt;
+                float stiffness = GetSegmentStiffness(i);
+                dv = dw * (stiffness * (1 - m_stiffnessDecayAnim * (i + 1) * rnSegs) * time_interval) ^ m_segs[i + 1].pt - m_segs[i].pt;
                 vrel = m_segs[i + 1].vel - m_segs[i].vel;
-                m_segs[i + 1].vel = m_segs[i].vel + vrel * max(0.0f, 1.0f - m_dampingAnim * time_interval) + dv;
+                float damping = GetSegmentDamping(i);
+                m_segs[i + 1].vel = m_segs[i].vel + vrel * max(0.0f, 1.0f - damping * time_interval) + dv;
             }
         }
         else
@@ -2742,9 +2785,11 @@ void CRopeEntity::CheckCollisions(int iDir, SRopeCheckPart* checkParts, int nChe
     int i, j, iseg, iStart, iEnd, iend, hinge = hingeAxis.len2() > 0;
     Vec3 n, rotax, ptres[2];
     float tfullCheck = 0.1f + hinge * 100.0f;
-    float t, angle, dist2, diff, cost, sint, collDistLine = m_collDist * 0.1f;
+
+    //Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+    float t, angle, dist2, diff, cost, sint;
+
     float unprojLimit = m_unprojLimit + isneg(0.0001f - m_jointLimit) * 100.0f;
-    bool bUseLineUnproj = !m_pOuterEntity || m_collDist < seglen * 0.166f;
     geom_world_data gwd;
     geom_contact* pcontact;
     contact cnt;
@@ -2761,6 +2806,8 @@ void CRopeEntity::CheckCollisions(int iDir, SRopeCheckPart* checkParts, int nChe
     iEnd = m_nSegs & - iDir >> 31;
     for (i = iStart; i != iEnd; i += iDir)
     {
+        float collDist = GetSegmentThickness(i);
+        float collDistLine = collDist * 0.1f;
         iseg = i + (iDir >> 31);
         m_segs[iseg].vreq = 0;
         if (pent = m_segs[iseg].pContactEnt)
@@ -2819,6 +2866,7 @@ void CRopeEntity::CheckCollisions(int iDir, SRopeCheckPart* checkParts, int nChe
                 aray.m_dirn = aray.m_ray.dir = (m_segs[i + iDir].pt - checkParts[j].offset) * checkParts[j].R - aray.m_ray.origin;
                 if (box_ray_overlap_check(&checkParts[j].bbox, &aray.m_ray))
                 {
+                    bool bUseLineUnproj = !m_pOuterEntity || collDist < seglen * 0.166f;
                     gwd.offset.zero();
                     gwd.R.SetIdentity();
                     gwd.scale = checkParts[j].scale;
@@ -2832,7 +2880,7 @@ void CRopeEntity::CheckCollisions(int iDir, SRopeCheckPart* checkParts, int nChe
                         (aray.m_dirn = ip.axisOfRotation ^ dirSeg).NormalizeFast();
                         aray.m_dirn *= sgnnz(aray.m_dirn * (aray.m_ray.origin - checkParts[j].bbox.center));
                         aray.m_ray.dir = aray.m_dirn * (m_length * 0.5f);
-                        aray.m_ray.origin -= aray.m_dirn * (m_collDist * 1.3f);
+                        aray.m_ray.origin -= aray.m_dirn * (collDist * 1.3f);
                         aray.m_iCollPriority = -1;
                         if (checkParts[j].pGeom->Intersect(&aray, &gwd, 0, 0, pcontact) && pcontact->n * aray.m_dirn > 0)
                         {
@@ -2845,7 +2893,7 @@ void CRopeEntity::CheckCollisions(int iDir, SRopeCheckPart* checkParts, int nChe
                         aray.m_dirn = aray.m_ray.dir = dirSeg;
                         aray.m_iCollPriority = 10;
                     }
-                    if (1 - hinge & checkParts[j].bVtxUnproj && checkParts[j].pGeom->UnprojectSphere((aray.m_ray.origin + aray.m_ray.dir) * checkParts[j].rscale, m_collDist, m_collDist, &cnt))
+                    if (1 - hinge & checkParts[j].bVtxUnproj && checkParts[j].pGeom->UnprojectSphere((aray.m_ray.origin + aray.m_ray.dir) * checkParts[j].rscale, collDist, collDist, &cnt))
                     {
 unproj_end_point:
                         m_segs[iseg].pContactEnt = checkParts[j].pent;
@@ -2855,13 +2903,13 @@ unproj_end_point:
                         (m_segs[iseg].ncontact *= angle) += (n = checkParts[j].R * cnt.n);
                         angle = 1.0f;
                         Vec3 ptCnt = checkParts[j].R * cnt.pt * checkParts[j].scale + checkParts[j].offset;
-                        if ((t = (m_segs[i + iDir].pt - ptCnt) * n) < m_collDist)
+                        if ((t = (m_segs[i + iDir].pt - ptCnt) * n) < collDist)
                         {
                             if (t < 0)
                             {
                                 m_segs[i + iDir].pt = ptCnt;
                             }
-                            m_segs[iseg].vreq = max(m_segs[iseg].vreq, (m_collDist - max(t, 0.0f)) * 10.0f);
+                            m_segs[iseg].vreq = max(m_segs[iseg].vreq, (collDist - max(t, 0.0f)) * 10.0f);
                         }
                         m_segs[iseg].iPrim = cnt.iFeature[0];
                         m_segs[iseg].iFeature = 0;
@@ -2954,8 +3002,10 @@ int CRopeEntity::Step(float time_interval)
     int i, j, k, iDir, iEnd, iter, bTargetPoseActive = m_bTargetPoseActive, bGridLocked = 0, bHasContacts = 0, nCheckParts = 0;
     int collTypes = m_collTypes;
     Vec3 pos, gravity, dir, ptend[2], sz, BBox[2], ptnew, dv, dw, vrel, dir0, offstv(ZERO), collBBox[2];
-    float diff, a, b, E, rnSegs = 1.0f / m_nSegs, rcollDist = 0, scaletv = 1.0f, ktimeBack,
-          damping = max(0.0f, 1.0f - (m_damping - m_dampingAnim * (m_bTargetPoseActive - 1 >> 31)) * time_interval);
+
+    //Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+    float diff, a, b, E, rnSegs = 1.0f / m_nSegs, rcollDist = 0, scaletv = 1.0f, ktimeBack;
+
     quaternionf dq, qtv(1, 0, 0, 0), q;
     RigidBody* pbody, rbody;
     pe_params_buoyancy pb[4];
@@ -3168,7 +3218,7 @@ int CRopeEntity::Step(float time_interval)
             {
                 if (rcollDist == 0)
                 {
-                    rcollDist = 1.0f / m_collDist;
+                    rcollDist = 1.0f / GetSegmentThickness(iter);
                 }
                 m_segs[i].vel += (pb[iter].waterFlow - m_segs[i].vel) * min(1.0f, m_waterResistance * time_interval) -
                     gravity * (pb[iter].waterDensity * m_rdensity * min(1.0f, diff * rcollDist) * time_interval);
@@ -3253,7 +3303,7 @@ int CRopeEntity::Step(float time_interval)
 
         BBox[0] = min(m_segs[0].pt, m_segs[m_nSegs].pt);
         BBox[1] = max(m_segs[0].pt, m_segs[m_nSegs].pt);
-        a = max(max(BBox[1].x - BBox[0].x, BBox[1].y - BBox[0].y), BBox[1].z - BBox[0].z) * 0.01f + m_collDist * 2;
+        a = max(max(BBox[1].x - BBox[0].x, BBox[1].y - BBox[0].y), BBox[1].z - BBox[0].z) * 0.01f + GetSegmentThickness() * 2;
         BBox[0] -= Vec3(a, a, a);
         BBox[1] += Vec3(a, a, a);
         if (m_flags & pef_traceable)
@@ -3289,13 +3339,16 @@ int CRopeEntity::Step(float time_interval)
     BBox[0] = BBox[1] = m_segs[0].pt;
     for (i = 0; i <= m_nSegs; i++)
     {
+        //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
+        float damping = max(0.0f, 1.0f - (m_damping - m_pDamping[i] * (m_bTargetPoseActive - 1 >> 31)) * time_interval);
+        //START: Per bone UDP for stiffness, damping and thickness for touch bending vegetation
         (m_segs[i].vel += m_segs[i].vel_ext) *= damping;
         m_segs[i].vel_ext.zero();
         m_segs[i].bRecalcDir = 0;
         BBox[0] = min(BBox[0], m_segs[i].pt);
         BBox[1] = max(BBox[1], m_segs[i].pt);
     }
-    a = max(max(BBox[1].x - BBox[0].x, BBox[1].y - BBox[0].y), BBox[1].z - BBox[0].z) * 0.01f + m_collDist * 2;
+    a = max(max(BBox[1].x - BBox[0].x, BBox[1].y - BBox[0].y), BBox[1].z - BBox[0].z) * 0.01f + GetSegmentThickness() * 2;
     BBox[0] -= Vec3(a, a, a);
     BBox[1] += Vec3(a, a, a);
     collBBox[0] = BBox[0];
@@ -3486,11 +3539,12 @@ int CRopeEntity::Step(float time_interval)
                     {
                         n = (m_segs[iseg = (m_pTiedTo[1] == 0 ? 0 : m_nSegs)].pt - checkParts[nCheckParts].offset) * checkParts[nCheckParts].R;
                         gwd.scale = checkParts[nCheckParts].scale;
+                        float collDist = GetSegmentThickness(iseg);
                         if (ppart->pPhysGeomProxy->pGeom->FindClosestPoint(&gwd, iend, iend, n, n, ptres) >= 0 &&
                             ((a = (ptres[1] - ptres[0]) * (ptres[0] - checkParts[nCheckParts].bbox.center)) < 0 ||
-                             (ptres[0] - ptres[1]).len2() < sqr(m_collDist * 1.2f)))
+                            (ptres[0] - ptres[1]).len2() < sqr(collDist * 1.2f)))
                         {
-                            n = ptres[0] + (ptres[1] - ptres[0]).normalized() * (m_collDist * 1.2f * sgnnz(a));
+                            n = ptres[0] + (ptres[1] - ptres[0]).normalized() * (collDist * 1.2f * sgnnz(a));
                             m_segs[iseg].pt = checkParts[nCheckParts].R * n + checkParts[nCheckParts].offset;
                             //continue;
                         }
@@ -3941,11 +3995,13 @@ int CRopeEntity::RayTrace(SRayTraceRes& rtr)
         nSegs = m_nVtx - 1;
     }
 
+    float collDist = 0.0f;
     for (i = 0; i < nSegs; i++)
     {
+        collDist = GetSegmentThickness(i);
         dp = rtr.pRay->m_ray.origin - vtx[i];
         dir = vtx[i + 1] - vtx[i];
-        if ((dp ^ rtr.pRay->m_dirn).len2() < sqr(m_collDist) && inrange((vtx[i] - rtr.pRay->m_ray.origin) * rtr.pRay->m_dirn, 0.0f, raylen))
+        if ((dp ^ rtr.pRay->m_dirn).len2() < sqr(collDist) && inrange((vtx[i] - rtr.pRay->m_ray.origin) * rtr.pRay->m_dirn, 0.0f, raylen))
         {
             pt = vtx[i];
             break;
@@ -3954,7 +4010,7 @@ int CRopeEntity::RayTrace(SRayTraceRes& rtr)
         llen2 = l.len2();
         t = (dp ^ rtr.pRay->m_dirn) * l;
         t1 = (dp ^ dir) * l;
-        if (sqr(dp * l) < sqr(m_collDist) * llen2 && inrange(t, 0.0f, llen2) && inrange(t1, 0.0f, llen2 * raylen))
+        if (sqr(dp * l) < sqr(collDist) * llen2 && inrange(t, 0.0f, llen2) && inrange(t1, 0.0f, llen2 * raylen))
         {
             pt = vtx[i] + dir * (t / llen2);
             break;
@@ -3965,7 +4021,7 @@ int CRopeEntity::RayTrace(SRayTraceRes& rtr)
     {
         rtr.pcontacts = &g_RopeContact[get_iCaller()];
         rtr.pcontacts->n = (dir ^ (dir ^ rtr.pRay->m_dirn)).normalized();
-        rtr.pcontacts->pt = pt + rtr.pcontacts->n * m_collDist;
+        rtr.pcontacts->pt = pt + rtr.pcontacts->n * collDist;
         rtr.pcontacts->t = (pt - rtr.pRay->m_ray.origin) * rtr.pRay->m_dirn;
         rtr.pcontacts->id[0] = m_surface_idx;
         rtr.pcontacts->iNode[0] = i;
@@ -3983,12 +4039,16 @@ void CRopeEntity::ApplyVolumetricPressure(const Vec3& epicenter, float kr, float
         float dP;
         Vec3 r;
         int bThreadSafe = -(get_iCaller() - MAX_PHYS_THREADS >> 31);
+        float averageThickness = 0.0f;
         for (i = 0, dP = 0; i < m_nSegs; i++)
         {
             r = (m_segs[i].pt + m_segs[i + 1].pt) * 0.5f - epicenter;
             dP += (m_segs[i].dir ^ r).len() / (r.len() * max(r.len2(), rmin * rmin));
+            averageThickness += m_pCollDist[i];
         }
-        if (dP * kr * m_length * m_collDist * 2 > m_maxForce * 0.01f)
+        averageThickness /= m_nSegs;
+
+        if (dP * kr * m_length * averageThickness * 2 > m_maxForce * 0.01f)
         {
             EventPhysJointBroken epjb;
             epjb.idJoint = 0;
@@ -4430,10 +4490,10 @@ void CRopeEntity::DrawHelperInformation(IPhysRenderer* pRenderer, int flags)
         if (flags & 16)
         {
             cylinder cyl;
-            cyl.r = m_collDist;
             CCylinderGeom cylGeom;
             for (i = 0; i < nSegs; i++)
             {
+                cyl.r = GetSegmentThickness(i);
                 cyl.center = (vtx[i] + vtx[i + 1]) * 0.5f;
                 cyl.axis = vtx[i + 1] - vtx[i];
                 cyl.hh = cyl.axis.len();
@@ -4564,6 +4624,21 @@ void CRopeEntity::GetRandomPos(PosNorm& ran, EGeomForm eForm) const
     Vec3 axisx = dir.GetOrthogonal().normalized(), axisy = dir ^ axisx;
     float angle = cry_random(0.0f, 2.0f * gf_PI);
     ran.vNorm = axisx * cos_tpl(angle) + axisy * sin_tpl(angle);
+}
+
+float CRopeEntity::GetSegmentThickness(int segment /*= -1*/)
+{
+    return m_collDist;
+}
+
+float CRopeEntity::GetSegmentStiffness(int segment /*= -1*/)
+{
+    return m_stiffnessAnim;
+}
+
+float CRopeEntity::GetSegmentDamping(int segment /*= -1*/)
+{
+    return m_dampingAnim;
 }
 
 #undef m_bAwake

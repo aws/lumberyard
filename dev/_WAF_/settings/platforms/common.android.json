@@ -1,0 +1,160 @@
+{
+    "attributes"    : {
+        "deployable"                : true,
+        "is_android"                : true,
+        "link_aws_sdk_statically"   : true,
+        "lib_prefix"                : "lib",
+        "sa_capability": {
+            "key"               : "compileandroid",
+            "description"       : "Compile For Android"
+        },
+        "default_launcher_name"     : "AndroidLauncher"
+    },
+    "settings": {
+        "Android Options" :
+        [
+            {
+                "long_form"         : "--android-maven-force-http-requests",
+                "attribute"         : "android_maven_force_http",
+                "default_value"     : "False",
+                "description"       : "Force Android Maven library requests to use HTTP instead of HTTPS"
+            },
+            {
+                "long_form"         : "--android-asset-mode",
+                "attribute"         : "android_asset_mode",
+                "default_value"     : "configuration_default",
+                "description"       : [
+                    "Specify the asset packaging mode.",
+                    "configuration_default: Uses the current build configuration to determine how to package the assets e.g. debug/profile = loose_files, release/performance = project_settings.",
+                    "loose_files: no additional processing will be done on the compiled assets.",
+                    "loose_paks: pak files will be generated from the compiled assets.",
+                    "apk_files: the compile assets will be packaged inside the APK.",
+                    "apk_paks: pak files will be generated and packaged inside the APK.",
+                    "project_settings: uses the use_[main|patch]_obb settings in project.json to determine if paks in the APK or OBBs will be used."
+                ]
+            }
+        ],
+        "Android Project Generator" :
+        [
+            {
+                "long_form"         : "--generate-android-studio-projects-automatically",
+                "attribute"         : "generate_android_studio_projects_automatically",
+                "default_value"     : "True",
+                "description"       : "Automatically generate Android Studio Projects"
+            },
+            {
+                "long_form"         : "--android-studio-project-name",
+                "attribute"         : "android_studio_project_name",
+                "default_value"     : "LumberyardAndroidSDK",
+                "description"       : "Name of the root Android project folder and Android Studio project name"
+            },
+            {
+                "long_form"         : "--android-studio-project-folder",
+                "attribute"         : "android_studio_project_folder",
+                "default_value"     : "Solutions",
+                "description"       : "Name of the folder in which the generate Android Studio project should be stored"
+            }
+        ],
+        "Android Deploy" : 
+        [
+            {
+                "long_form"         : "--deploy-android",
+                "attribute"         : "deploy_android",
+                "default_value"     : "True",
+                "description"       : "Deploy to an android device"
+            },
+            {
+                "long_form"         : "--deploy-android-clean-device",
+                "attribute"         : "deploy_android_clean_device",
+                "default_value"     : "True",
+                "description"       : "Removes any previous assets for the game project that were copied. If the deploy-android-executable option is specified as well then the package specified deploy-android-package-name will also be uninstalled."
+            },
+            {
+                "long_form"         : "--deploy-android-executable",
+                "attribute"         : "deploy_android_executable",
+                "default_value"     : "True",
+                "description"       : "Install the executable, i.e. APK, on the android device"
+            },
+            {
+                "long_form"         : "--deploy-android-replace-apk",
+                "attribute"         : "deploy_android_replace_apk",
+                "default_value"     : "True",
+                "description"       : "When installing the APK to the device use the -r option to force the replacement of the package"
+            },
+            {
+                "long_form"         : "--deploy-android-install-options",
+                "attribute"         : "deploy_android_install_options",
+                "default_value"     : "",
+                "description"       : "Additional options to specify for the install command"
+            },
+            {
+                "long_form"         : "--deploy-android-device-filter",
+                "attribute"         : "deploy_android_device_filter",
+                "default_value"     : "",
+                "description"       : "Comma separated list of Android device IDs to deploy to.  If left empty, the deploy will be to all connected devices."
+            }
+        ]
+    },
+    "env": {
+        "DEFINES": [
+            "_LINUX",
+            "LINUX",
+            "ANDROID",
+            "MOBILE",
+            "_HAS_C9X",
+            "ENABLE_TYPE_INFO",
+            "NDK_REV_MAJOR=@ANDROID_NDK_REV_MAJOR@",
+            "NDK_REV_MINOR=@ANDROID_NDK_REV_MINOR@"
+        ],
+        "CFLAGS" : [
+            "-ffunction-sections",
+            "-fdata-sections"       # Discard unused sections (flag is common to GCC and Clang)
+        ],
+        "LIB": [
+            "android",              # android library
+            "c",                    # c library for android
+            "log",                  # log library for android
+            "dl"                    # dynamic library
+        ],
+        "LINKFLAGS": [
+            "-rdynamic",            # add ALL symbols to the dynamic symbol table
+            "-Wl,--no-undefined",   # tell the gcc linker to fail if it finds undefined references
+            "-Wl,--gc-sections"     # discards unused sections
+        ]
+    },
+    "env/debug": {
+        "CFLAGS,CXXFLAGS": [
+            "-gdwarf-2"            # DWARF 2 debugging information
+        ],
+        "LINKFLAGS": [
+            "-Wl,--build-id"       # Android Studio needs the libraries to have an id in order to match them with what"s running on the device.
+        ],
+        "ANDROID_DEBUG_MODE": "--debug-mode",
+        "JAVACFLAGS": [
+            "-g"        # enable all debugging information
+        ]
+    },
+    "env/profile": {
+        "CFLAGS,CXXFLAGS": [
+            "-g",               # debugging information
+            "-gdwarf-2"         # DWARF 2 debugging information
+        ],
+        "LINKFLAGS": [
+            "-Wl,--build-id"    # Android Studio needs the libraries to have an id in order to match them with what"s running on the device.
+        ],
+        "ANDROID_DEBUG_MODE": "--debug-mode",
+        "JAVACFLAGS": [
+            "-g"                # enable all debugging information
+        ]
+    },
+    "env/performance": {
+        "JAVACFLAGS": [
+            "-g:none"           # disable all debugging information
+        ]
+    },
+    "env/release": {
+        "JAVACFLAGS": [
+            "-g:none"           # disable all debugging information
+        ]
+    }
+}

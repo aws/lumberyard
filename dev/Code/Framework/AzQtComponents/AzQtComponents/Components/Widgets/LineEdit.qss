@@ -34,3 +34,8 @@ QLineEdit:disabled
     background-color: #777777;
     color: #999999;
 }
+
+QAbstractItemView QLineEdit
+{
+    qproperty-frame: true;
+}

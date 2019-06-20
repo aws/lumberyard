@@ -43,6 +43,11 @@ namespace RoadsAndRivers
         }
     }
 
+    void RoadComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(AZ_CRC("RoadService"));
+    }
+
     void RoadComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
         required.push_back(AZ_CRC("SplineService"));

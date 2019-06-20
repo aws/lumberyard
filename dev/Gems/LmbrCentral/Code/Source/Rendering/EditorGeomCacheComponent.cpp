@@ -310,27 +310,24 @@ namespace LmbrCentral
         gameEntity->CreateComponent<GeometryCacheComponent>(&m_common);
     }
 
-    void EditorGeometryCacheComponent::DisplayEntity(bool& handled)
+    void EditorGeometryCacheComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        handled = true;
-
         // Don't draw extra visualization unless selected.
         if (!IsSelected())
         {
             return;
         }
 
-        auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(dc, "Invalid display context.");
-        
-        dc->PushMatrix(m_currentWorldTransform);
+        debugDisplay.PushMatrix(m_currentWorldTransform);
 
-        dc->SetColor(AZ::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        debugDisplay.SetColor(AZ::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
-        dc->DrawWireSphere(AZ::Vector3::CreateZero(), m_common.GetStandInDistance());
-        dc->DrawWireSphere(AZ::Vector3::CreateZero(), m_common.GetStreamInDistance());
+        debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), m_common.GetStandInDistance());
+        debugDisplay.DrawWireSphere(AZ::Vector3::CreateZero(), m_common.GetStreamInDistance());
 
-        dc->PopMatrix();
+        debugDisplay.PopMatrix();
     }
 
     void EditorGeometryCacheComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)

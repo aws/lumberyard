@@ -17,6 +17,7 @@
 
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Asset/AssetCommon.h>
+
 #include <ScriptCanvas/Bus/DocumentContextBus.h>
 
 class QGraphicsView;

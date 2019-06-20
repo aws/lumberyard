@@ -21,7 +21,8 @@ def build(bld):
             uselib     = ['QT5CORE',
                           'QT5GUI',
                           'QT5NETWORK', # this lib depends on EditorLib, which depends on NewsShared, which depends on Qt5Network
-                          'QT5WIDGETS'],
+                          'QT5WIDGETS'
+                        ],
             use        = ['AzQtComponents',
                           'EditorUI_QT',
                           'EditorCommon',

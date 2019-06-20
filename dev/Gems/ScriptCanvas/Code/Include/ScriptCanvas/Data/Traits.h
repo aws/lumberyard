@@ -29,11 +29,11 @@ namespace ScriptCanvas
             explicit TypeErasedTraits(AZStd::integral_constant<eType, scTypeValue>)
             {
                 m_dataTraits = MakeTypeErasedDataTraits<scTypeValue>();
-                m_propertyTraits = MakeTypeErasedPropertyTraits<scTypeValue>();
+                m_propertyTraits = ScriptCanvas::Data::Properties::MakeTypeErasedPropertyTraits<scTypeValue>();
             }
 
             TypeErasedDataTraits m_dataTraits;
-            TypeErasedPropertyTraits m_propertyTraits;
+            ScriptCanvas::Data::Properties::TypeErasedPropertyTraits m_propertyTraits;
         };
 
         template<eType scTypeValue>

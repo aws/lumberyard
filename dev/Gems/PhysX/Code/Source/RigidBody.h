@@ -95,7 +95,8 @@ namespace PhysX
         float GetSleepThreshold() const override;
         void SetSleepThreshold(float threshold) override;
 
-        void AddedToWorld() override;
+        void AddToWorld(Physics::World&) override;
+        void RemoveFromWorld(Physics::World&) override;
 
         void SetName(const AZStd::string& entityName);
         const AZStd::string& GetName() const;

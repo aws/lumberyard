@@ -20,7 +20,7 @@
 
 namespace AzFramework
 {
-    class EntityDebugDisplayRequests;
+    class DebugDisplayRequests;
 }
 
 namespace LmbrCentral
@@ -45,6 +45,7 @@ namespace LmbrCentral
         // ShapeComponentRequestsBus::Handler
         AZ::Crc32 GetShapeType() override { return AZ_CRC("Box", 0x08a9483a); }
         AZ::Aabb GetEncompassingAabb() override;
+        void GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds) override;
         bool IsPointInside(const AZ::Vector3& point) override;
         float DistanceSquaredFromPoint(const AZ::Vector3& point) override;
         AZ::Vector3 GenerateRandomPointInside(AZ::RandomDistributionType randomDistribution) override;
@@ -62,10 +63,15 @@ namespace LmbrCentral
         void SetBoxConfiguration(const BoxShapeConfig& boxShapeConfig) { m_boxShapeConfig = boxShapeConfig; }
         const AZ::Transform& GetCurrentTransform() const { return m_currentTransform; }
 
+        void SetDrawColor(const AZ::Color& color) { m_boxShapeConfig.SetDrawColor(color); }
+
+    protected:
+
+        friend class EditorBoxShapeComponent;        
+        BoxShapeConfig& ModifyConfiguration() { return m_boxShapeConfig; }
+
     private:
-        /**
-         * Runtime data - cache potentially expensive operations.
-         */
+        /// Runtime data - cache potentially expensive operations.
         class BoxIntersectionDataCache
             : public IntersectionTestDataCache<BoxShapeConfig>
         {
@@ -89,6 +95,6 @@ namespace LmbrCentral
 
     void DrawBoxShape(
         const ShapeDrawParams& shapeDrawParams, const BoxShapeConfig& boxShapeConfig,
-        AzFramework::EntityDebugDisplayRequests& displayContext);
+        AzFramework::DebugDisplayRequests& debugDisplay);
 
 } // namespace LmbrCentral

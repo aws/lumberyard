@@ -412,6 +412,19 @@ namespace AssetProcessor
             }
         }
 
+        // resolve any paths here before sending the job info back, in case the AP's %log% is different than whatever is reading
+        // the AssetJobsInfoResponse
+        for (AzToolsFramework::AssetSystem::JobInfo& job : jobList)
+        {
+            char resolvedBuffer[AZ_MAX_PATH_LEN] = { 0 };
+
+            AZ::IO::FileIOBase::GetInstance()->ResolvePath(job.m_firstFailLogFile.c_str(), resolvedBuffer, AZ_MAX_PATH_LEN);
+            job.m_firstFailLogFile = resolvedBuffer;
+
+            AZ::IO::FileIOBase::GetInstance()->ResolvePath(job.m_lastFailLogFile.c_str(), resolvedBuffer, AZ_MAX_PATH_LEN);
+            job.m_lastFailLogFile = resolvedBuffer;
+        }
+
         response = AssetJobsInfoResponse(jobList, true);
     }
 
@@ -2016,7 +2029,8 @@ namespace AssetProcessor
         }
 
         AzToolsFramework::AssetDatabase::SourceDatabaseEntryContainer sources;
-        m_stateData->GetSourcesLikeSourceName(relativePath, AzToolsFramework::AssetDatabase::AssetDatabaseConnection::StartsWith, sources);
+        QString sourceName = scanFolderInfo->GetOutputPrefix().isEmpty() ? relativePath : QDir::cleanPath(scanFolderInfo->GetOutputPrefix() + QDir::separator() + relativePath);
+        m_stateData->GetSourcesLikeSourceName(sourceName, AzToolsFramework::AssetDatabase::AssetDatabaseConnection::StartsWith, sources);
 
         AZ_TracePrintf(AssetProcessor::DebugChannel, "CheckDeletedSourceFolder: %i matching files.\n", sources.size());
 

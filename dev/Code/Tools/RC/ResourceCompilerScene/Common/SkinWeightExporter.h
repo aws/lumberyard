@@ -47,6 +47,7 @@ namespace AZ
 
             SceneAPI::Events::ProcessingResult ResolveRootBoneFromNode(ResolveRootBoneFromNodeContext& context);
             SceneAPI::Events::ProcessingResult ProcessSkinWeights(MeshNodeExportContext& context);
+            SceneAPI::Events::ProcessingResult ProcessTouchBendableSkinWeights(TouchBendableMeshNodeExportContext& context);
 
         protected:
 #if defined(AZ_COMPILER_MSVC) && AZ_COMPILER_MSVC <= 1800

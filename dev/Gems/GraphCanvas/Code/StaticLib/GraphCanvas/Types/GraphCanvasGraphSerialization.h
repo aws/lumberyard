@@ -16,6 +16,7 @@
 #include <AzCore/Math/Vector2.h>
 #include <AzCore/std/containers/unordered_set.h>
 
+#include <GraphCanvas/Editor/EditorTypes.h>
 #include <GraphCanvas/Types/GraphCanvasGraphData.h>
 
 namespace GraphCanvas
@@ -52,6 +53,9 @@ namespace GraphCanvas
         GraphData& GetGraphData();
         const GraphData& GetGraphData() const;
 
+        const AZStd::unordered_multimap<Endpoint, Endpoint>& GetConnectedEndpoints() const;
+        void SetConnectedEndpoints(const AZStd::unordered_multimap< Endpoint, Endpoint >& connectionIds);
+
         AZStd::unordered_map<AZStd::string, AZStd::any>& GetUserDataMapRef();
         const AZStd::unordered_map<AZStd::string, AZStd::any>& GetUserDataMapRef() const;
 
@@ -64,7 +68,8 @@ namespace GraphCanvas
         AZStd::string                                   m_serializationKey;
 
         // The Scene data to be copied.
-        GraphData                                 m_graphData;
+        AZStd::unordered_multimap< Endpoint, Endpoint > m_connectedEndpoints;
+        GraphData                                       m_graphData;
         AZ::Vector2                                     m_averagePosition;
 
         // Custom serializable fields for adding custom user data to the serialization

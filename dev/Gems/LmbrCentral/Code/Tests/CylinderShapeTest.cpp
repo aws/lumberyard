@@ -251,6 +251,36 @@ namespace UnitTest
         EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(-6.5f, -6.5f, 18.75f)));
     }
 
+    TEST_F(CylinderShapeTest, GetTransformAndLocalBounds1)
+    {
+        Entity entity;
+        Transform transformIn = Transform::CreateIdentity();
+        CreateCylinder(transformIn, 5.0f, 1.0f, entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(transformIn));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-5.0f, -5.0f, -0.5f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(5.0f, 5.0f, 0.5f)));
+    }
+
+    TEST_F(CylinderShapeTest, GetTransformAndLocalBounds2)
+    {
+        Entity entity;
+        Transform transformIn = Transform::CreateTranslation(Vector3(-10.0f, -10.0f, 10.0f)) * Transform::CreateScale(Vector3(3.5f));
+        CreateCylinder(transformIn, 5.0f, 5.0f, entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(transformIn));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-5.0f, -5.0f, -2.5f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(5.0f, 5.0f, 2.5f)));
+    }
+
     // point inside scaled
     TEST_F(CylinderShapeTest, IsPointInsideSuccess1)
     {

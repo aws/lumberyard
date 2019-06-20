@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "LmbrCentral_precompiled.h"
 
 #ifdef METRICS_SYSTEM_COMPONENT_ENABLED
@@ -18,13 +19,13 @@
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzCore/std/string/string.h>
+#include <AzFramework/StringFunc/StringFunc.h>
 
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
 
 #include "LyEditorMetricsSystemComponent.h"
 #include "LyScopedMetricsEvent.h"
 #include "ActionMetricsTracker.h"
-
 
 namespace MetricsEventData
 {
@@ -41,6 +42,10 @@ namespace MetricsEventData
     static const char* Clone = "CloneEvent";
     static const char* LegacyEntityCreated = "LegacyEntityCreated";
     static const char* EditorOperationEvent = "EditorOperation";
+    static const char* EnterComponentMode = "EnterComponentModeEvent";
+    static const char* LeaveComponentMode = "LeaveComponentModeEvent";
+    static const char* EnableNewViewportInteractionModel = "EnableNewViewportInteractionModel";
+    static const char* DisableNewViewportInteractionModel = "DisableNewViewportInteractionModel";
 
     // Attribute Keys
     static const char* SliceIdentifier = "SliceId";
@@ -408,6 +413,36 @@ namespace LyEditorMetrics
     {
         const AzToolsFramework::EntityIdList emptyList = AzToolsFramework::EntityIdList();
         AfterEntitySelectionChanged(emptyList, emptyList);
+    }
+
+    void LyEditorMetricsSystemComponent::EnteredComponentMode(
+        const AZStd::vector<AZ::EntityId>& entityIds, const AZStd::vector<AZ::Uuid>& componentTypeIds)
+    {
+        SendNavigationEventIfNeeded();
+
+        SendComponentsMetricsEvent(MetricsEventData::EnterComponentMode, entityIds, componentTypeIds);
+    }
+
+    void LyEditorMetricsSystemComponent::LeftComponentMode(
+        const AZStd::vector<AZ::EntityId>& entityIds, const AZStd::vector<AZ::Uuid>& componentTypeIds)
+    {
+        SendNavigationEventIfNeeded();
+
+        SendComponentsMetricsEvent(MetricsEventData::LeaveComponentMode, entityIds, componentTypeIds);
+    }
+
+    void LyEditorMetricsSystemComponent::EnabledNewViewportInteractionModel()
+    {
+        SendNavigationEventIfNeeded();
+
+        LyMetrics::LyScopedMetricsEvent scopeMetricsEvent(MetricsEventData::EnableNewViewportInteractionModel, {});
+    }
+
+    void LyEditorMetricsSystemComponent::DisabledNewViewportInteractionModel()
+    {
+        SendNavigationEventIfNeeded();
+
+        LyMetrics::LyScopedMetricsEvent scopeMetricsEvent(MetricsEventData::DisableNewViewportInteractionModel, {});
     }
 
     void LyEditorMetricsSystemComponent::BeforeEntitySelectionChanged()
@@ -813,41 +848,40 @@ namespace LyEditorMetrics
             });
     }
 
-    void LyEditorMetricsSystemComponent::SendComponentsMetricsEvent(const char* eventName, const AZ::EntityId& entityId, const AZ::Uuid& componentTypeId)
+    AZStd::string FindComponentName(const AZ::Uuid& componentTypeId)
     {
         // check if we can send the component name as plain text
-
         bool canSendPlainName = false;
-        EBUS_EVENT_RESULT(canSendPlainName, AzFramework::MetricsPlainTextNameRegistrationBus, IsTypeRegisteredForNameSending, componentTypeId);
+        AzFramework::MetricsPlainTextNameRegistrationBus::BroadcastResult(
+            canSendPlainName, &AzFramework::MetricsPlainTextNameRegistrationBusTraits::IsTypeRegisteredForNameSending, componentTypeId);
 
-        char hash[AZ::Uuid::MaxStringBuffer];
-
-        const char* componentName = hash;
         if (canSendPlainName)
         {
-            AZ::SerializeContext* serializeContext = NULL;
-            EBUS_EVENT_RESULT(serializeContext, AZ::ComponentApplicationBus, GetSerializeContext);
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(
+                serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
 
             if (serializeContext != nullptr)
             {
-                const AZ::SerializeContext::ClassData* classData = serializeContext->FindClassData(componentTypeId);
-                if (classData != nullptr)
+                // if we can get find the class data from the id, return the component type name
+                if (const auto classData = serializeContext->FindClassData(componentTypeId))
                 {
-                    componentName = classData->m_name;
-                }
-                else
-                {
-                    canSendPlainName = false;
+                    return AZStd::string(classData->m_name);
                 }
             }
         }
 
-        if (!canSendPlainName)
-        {
-            componentTypeId.ToString(hash, sizeof(hash));
-            componentName = hash;
-        }
+        // if we cannot set the plain name, or trying to find the plain name failed,
+        // set the hash of the UUID for the component as the name
+        char hash[AZ::Uuid::MaxStringBuffer];
+        componentTypeId.ToString(hash, sizeof(hash));
 
+        return AZStd::string(hash);
+    }
+
+    void LyEditorMetricsSystemComponent::SendComponentsMetricsEvent(
+        const char* eventName, const AZ::EntityId& entityId, const AZ::Uuid& componentTypeId)
+    {
         LyMetrics::LyScopedMetricsEvent componentMetricsEvent(eventName,
             {
                 // Entity ID
@@ -857,7 +891,60 @@ namespace LyEditorMetrics
 
                 // Component Name
                 {
-                    MetricsEventData::SelectedComponent, componentName
+                    MetricsEventData::SelectedComponent, FindComponentName(componentTypeId).c_str()
+                },
+
+                // Navigation unique action group id
+                {
+                    MetricsEventData::NavigationActionGroupId, m_actionIdString.c_str()
+                }
+            });
+    }
+
+    template<typename Container>
+    static AZStd::string BuildCommaSeparatedString(
+        const Container& container, AZStd::function<AZStd::string(const typename Container::value_type& type)> toString)
+    {
+        // build a vector of strings
+        AZStd::vector<AZStd::string> names;
+        names.reserve(container.size());
+        for (const auto& type : container)
+        {
+            names.push_back(toString(type));
+        }
+
+        // build a single comma separated string
+        AZStd::string combinedNames;
+        AzFramework::StringFunc::Join(combinedNames, names.begin(), names.end(), ", ");
+
+        return combinedNames;
+    }
+
+    void LyEditorMetricsSystemComponent::SendComponentsMetricsEvent(
+        const char* eventName, const AZStd::vector<AZ::EntityId>& entityIds, const AZStd::vector<AZ::Uuid>& componentTypeIds)
+    {
+        const AZStd::string combinedComponentNames =
+            BuildCommaSeparatedString(componentTypeIds, [](const AZ::Uuid& componentTypeId)
+            {
+                return FindComponentName(componentTypeId);
+            });
+
+        const AZStd::string combinedEntityIdStrings =
+            BuildCommaSeparatedString(entityIds, [](const AZ::EntityId& entityId)
+            {
+                return entityId.ToString();
+            });
+
+        LyMetrics::LyScopedMetricsEvent componentMetricsEvent(eventName,
+            {
+                // Entity Ids
+                {
+                    MetricsEventData::EntityId, combinedEntityIdStrings.c_str()
+                },
+
+                // Component names
+                {
+                    MetricsEventData::SelectedComponent, combinedComponentNames.c_str()
                 },
 
                 // Navigation unique action group id
@@ -902,7 +989,7 @@ namespace LyEditorMetrics
 
         LyMetrics::LyScopedMetricsEvent navigationMetricsEvent(MetricsEventData::Navigation,
             {
-                // Navigation Behaviour
+                // Navigation Behavior
                 {
                     MetricsEventData::NavigationBehaviour, s_navigationTriggerStrings[m_navigationBehaviour]
                 },

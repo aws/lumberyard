@@ -2371,6 +2371,14 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         {
             nUsage |= CDeviceManager::USAGE_RENDER_TARGET;
         }
+        
+#if defined(AZ_PLATFORM_APPLE_IOS)
+        if (m_nFlags & FT_USAGE_MEMORYLESS)
+        {
+            nUsage |= CDeviceManager::USAGE_MEMORYLESS;
+        }
+#endif
+        
         if (m_nFlags & FT_USAGE_DYNAMIC)
         {
             nUsage |= CDeviceManager::USAGE_DYNAMIC;
@@ -2565,6 +2573,14 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         {
             nUsage |= CDeviceManager::USAGE_RENDER_TARGET;
         }
+        
+#if defined(AZ_PLATFORM_APPLE_IOS)
+        if (m_nFlags & FT_USAGE_MEMORYLESS)
+        {
+            nUsage |= CDeviceManager::USAGE_MEMORYLESS;
+        }
+#endif
+        
         if (m_nFlags & FT_USAGE_DYNAMIC)
         {
             nUsage |= CDeviceManager::USAGE_DYNAMIC;
@@ -2783,6 +2799,14 @@ bool CTexture::RT_CreateDeviceTexture(const byte* pData[6])
         {
             nUsage |= CDeviceManager::USAGE_RENDER_TARGET;
         }
+        
+#if defined(AZ_PLATFORM_APPLE_IOS)
+        if (m_nFlags & FT_USAGE_MEMORYLESS)
+        {
+            nUsage |= CDeviceManager::USAGE_MEMORYLESS;
+        }
+#endif
+        
         if (m_nFlags & FT_USAGE_DYNAMIC)
         {
             nUsage |= CDeviceManager::USAGE_DYNAMIC;

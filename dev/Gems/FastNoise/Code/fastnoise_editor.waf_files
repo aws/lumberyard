@@ -1,0 +1,14 @@
+{
+    "none": {
+        "Source": [
+            "Source/FastNoiseEditorModule.cpp",
+            "Source/FastNoiseEditorModule.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/EditorFastNoiseGradientComponent.cpp",
+            "Source/EditorFastNoiseGradientComponent.h"
+        ]
+    }
+}

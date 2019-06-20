@@ -14,30 +14,36 @@
 def build(bld):
 
     enableDetailProfiling = 'GRAPH_CANVAS_ENABLE_DETAILED_PROFILING=0'
-    availableConfigurations = ['debug', 'profile','debug_test', 'profile_test']
 
     # Common GraphCanvas Widgets that are built as a static library for sharing.
     bld.CryEngineStaticLibrary(
 
-        target          = 'GraphCanvasWidgets',
+        target              = 'GraphCanvasWidgets',
 
-        platforms       = ['darwin', 'win'],
-        configurations  = availableConfigurations,
-        file_list       = ['GraphCanvas_widgets.waf_files'],
+        platforms           = ['darwin', 'win'],
+        exclude_monolithic  = True,
+        client_only         = True,
+        file_list       = ['GraphCanvas_staticlib.waf_files'],
 
-        includes        = ['StaticLib'],
-        defines         = ['NOT_USE_CRY_MEMORY_MANAGER', enableDetailProfiling],
-        use             = ['AzCore', 'AzFramework', 'EditorUI_QT','EditorCommon','EditorCore','AzToolsFramework'],            
-        win_features    = ['crcfix'],
-        features        = ['qt5'],
-        vs_filter       = 'Gems',
-        disable_pch     = True,
+        includes            = ['StaticLib'],
+        defines             = [enableDetailProfiling],
+        use                 = ['AzCore',
+                               'AzFramework',
+                               'EditorUI_QT',
+                               'EditorCommon',
+                               'EditorCore',
+                               'AzToolsFramework'],
+        win_features        = ['crcfix'],
+        features            = ['qt5'],
+        vs_filter           = 'Gems',
+        disable_pch         = True,
         
-        autod_uselib    = ['QT5CORE',
-                           'QT5GUI',
-                           'QT5WIDGETS'],
+        uselib              = ['QT5CORE',
+                               'QT5GUI',
+                               'QT5WIDGETS'],
 
-        export_includes = ['.', 'StaticLib'] # the gem's includes
+        export_includes     = ['.',
+                               'StaticLib'] # the gem's includes
 
     )
 
@@ -49,25 +55,24 @@ def build(bld):
         ########################################
         # Editor Gem configuration
         editor = dict(
-            #==============================
-            # Settings
-            #==============================
-            file_list       = 'GraphCanvas.waf_files',
-            pch             = 'precompiled.cpp',
-            win_features    = ['crcfix'],
-            configurations  = availableConfigurations,
-            defines         = ['NOT_USE_CRY_MEMORY_MANAGER', enableDetailProfiling],
+            file_list           = 'GraphCanvas.waf_files',
+            pch                 = 'precompiled.cpp',
+            win_features        = ['crcfix'],
+            exclude_monolithic  = True,
+            client_only         = True,
+            defines         = [enableDetailProfiling],
             
-            use             = ['GraphCanvasWidgets'],
+            use                 = ['GraphCanvasWidgets'],
 
-            includes        = ['.', '..', 'Include', 'Source'],
+            includes            = ['.',
+                                   '..',
+                                   'Include',
+                                   'Source'],
 
-            autod_uselib    = ['QT5CORE',
-                               'QT5GUI',
-                               'QT5WIDGETS'],
-
-            test_all_file_list = ['GraphCanvas_test.waf_files']
+            uselib              = ['QT5CORE',
+                                   'QT5GUI',
+                                   'QT5WIDGETS'],
+            test_all_file_list  = ['GraphCanvas_test.waf_files']
         )
         ########################################
     )
-   

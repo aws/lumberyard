@@ -92,7 +92,7 @@ namespace EMotionFX
         bool GetSupportsDisable() const override            { return true; }
         bool GetSupportsVisualization() const override      { return true; }
         bool GetNeedsNetTimeSync() const override           { return true; }
-        uint32 GetVisualColor() const override              { return MCore::RGBA(96, 61, 231); }
+        AZ::Color GetVisualColor() const override           { return AZ::Color(0.38f, 0.24f, 0.91f, 1.0f); }
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
         void OnActorMotionExtractionNodeChanged() override;

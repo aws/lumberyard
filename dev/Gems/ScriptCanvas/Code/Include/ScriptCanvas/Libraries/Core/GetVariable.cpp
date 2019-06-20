@@ -10,7 +10,6 @@
 *
 */
 
-#include <precompiled.h>
 #include <ScriptCanvas/Core/ScriptCanvasBus.h>
 #include <ScriptCanvas/Libraries/Core/GetVariable.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
@@ -29,6 +28,7 @@ namespace ScriptCanvas
                 {
                     VariableNotificationBus::Handler::BusConnect(m_variableId);
                     RefreshPropertyFunctions();
+                    PopulateNodeType();
                 }
             }
 
@@ -36,14 +36,12 @@ namespace ScriptCanvas
             {
                 if (slotID == GetSlotId("In"))
                 {
-                    const VariableDatum* variableDatum{};
-                    VariableRequestBus::EventResult(variableDatum, m_variableId, &VariableRequests::GetVariableDatumConst);
-                    if (variableDatum)
+                    if (const Datum* inputDatum = GetDatum())
                     {
                         Slot* resultSlot = GetSlot(m_variableDataOutSlotId);
                         if (resultSlot)
                         {
-                            PushOutput(variableDatum->GetData(), *resultSlot);
+                            PushOutput(*inputDatum, *resultSlot);
 
                             // Push the data for each property slot out as well
                             for (auto&& propertyAccount : m_propertyAccounts)
@@ -51,7 +49,7 @@ namespace ScriptCanvas
                                 Slot* propertySlot = GetSlot(propertyAccount.m_propertySlotId);
                                 if (propertySlot && propertyAccount.m_getterFunction)
                                 {
-                                    auto outputOutcome = propertyAccount.m_getterFunction(variableDatum->GetData());
+                                    auto outputOutcome = propertyAccount.m_getterFunction(*inputDatum);
                                     if (!outputOutcome)
                                     {
                                         SCRIPTCANVAS_REPORT_ERROR((*this), outputOutcome.TakeError().data());
@@ -94,6 +92,8 @@ namespace ScriptCanvas
                     }
 
                     VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableIdChanged, oldVariableId, m_variableId);
+
+                    PopulateNodeType();
                 }
             }
 
@@ -123,8 +123,7 @@ namespace ScriptCanvas
                     VariableRequestBus::EventResult(varName, m_variableId, &VariableRequests::GetName);
                     VariableRequestBus::EventResult(varType, m_variableId, &VariableRequests::GetType);
 
-                    const AZStd::string resultSlotName(AZStd::string::format("%s", Data::GetName(varType)));
-                    m_variableDataOutSlotId = AddOutputTypeSlot(resultSlotName, "", varType, OutputStorage::Optional);
+                    m_variableDataOutSlotId = AddOutputTypeSlot(Data::GetName(varType), "", varType, OutputStorage::Optional);
                     AddPropertySlots(varType);
                 }
             }
@@ -140,7 +139,7 @@ namespace ScriptCanvas
                     propertyAccount.m_propertyType = getterWrapper.m_propertyType;
                     propertyAccount.m_propertyName = propertyName;
 
-                    const AZStd::string resultSlotName(AZStd::string::format("%s: %s", propertyName.data(), Data::GetName(getterWrapper.m_propertyType)));
+                    const AZStd::string resultSlotName(AZStd::string::format("%s: %s", propertyName.data(), Data::GetName(getterWrapper.m_propertyType).data()));
                     propertyAccount.m_propertySlotId = AddOutputTypeSlot(resultSlotName, "", getterWrapper.m_propertyType, OutputStorage::Optional);
 
                     propertyAccount.m_getterFunction = getterWrapper.m_getterFunction;
@@ -182,7 +181,7 @@ namespace ScriptCanvas
                         {
                             AZ_Error("Script Canvas", false, "Property (%s : %s) getter method could not be found in Data::PropertyTraits or the property type has changed."
                                 " Output will not be pushed on the property's slot.",
-                                propertyAccount.m_propertyName, Data::GetName(propertyAccount.m_propertyType));
+                                propertyAccount.m_propertyName.c_str(), Data::GetName(propertyAccount.m_propertyType).data());
                         }
                     }
                 }
@@ -225,7 +224,7 @@ namespace ScriptCanvas
 
                             if (variableType == baseType)
                             {
-                                varNameToIdList.emplace_back(variablePair.first, variablePair.second.m_varName);
+                                varNameToIdList.emplace_back(variablePair.first, variablePair.second.GetVariableName());
                             }
                         }
                     }

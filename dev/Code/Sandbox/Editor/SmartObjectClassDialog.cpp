@@ -36,7 +36,11 @@ public:
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
     {
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
         QStyleOptionViewItemV4 opt(option);
+#else
+        QStyleOptionViewItem opt(option);
+#endif
         const bool hasCheckState = index.data(Qt::CheckStateRole).isValid();
         const bool isSelected = option.state & QStyle::State_Selected;
         const bool hasChildren = index.model()->hasChildren(index);

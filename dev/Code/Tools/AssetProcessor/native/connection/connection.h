@@ -77,6 +77,7 @@ class Connection
 
 public:
     explicit Connection(AssetProcessor::PlatformConfiguration* platformConfig = nullptr, qintptr socketDescriptor = -1, QObject* parent = 0);
+    explicit Connection(bool isUserCreatedConnection, AssetProcessor::PlatformConfiguration* platformConfig = nullptr, qintptr socketDescriptor = -1, QObject* parent = 0);
     virtual ~Connection();
 
     enum ConnectionStatus
@@ -100,6 +101,8 @@ public:
     QString Elapsed() const;
 
     bool InitiatedConnection() const;
+
+    bool UserCreatedConnection() const;
 
     void Disconnect();
     unsigned int ConnectionId() const;
@@ -259,6 +262,7 @@ private:
     qint64 m_elapsed;
     QString m_elapsedDisplay;
     bool m_queuedReconnect = false;
+    bool m_userCreatedConnection = false;
 
     AZStd::mutex m_responseHandlerMutex;
     AZStd::unordered_map<AZ::u32, AssetProcessor::ConnectionBusTraits::ResponseCallback> m_responseHandlerMap;

@@ -99,8 +99,11 @@ namespace PhysX
     void TerrainComponent::Activate()
     {
         m_terrainTiles.clear();
-        Physics::TerrainRequestBus::Handler::BusConnect();
+        Physics::TerrainRequestBus::Handler::BusConnect(GetEntityId());
         LoadTerrain();
+        Utils::LogWarningIfMultipleComponents<Physics::TerrainRequestBus>(
+            "TerrainComponent", 
+            "Multiple TerrainComponents found in the scene on these entities:");
     }
 
     void TerrainComponent::Deactivate()
@@ -125,11 +128,11 @@ namespace PhysX
         }
     }
 
-    AZStd::shared_ptr<Physics::RigidBodyStatic> TerrainComponent::GetTerrainTile(float x, float y)
+    Physics::RigidBodyStatic* TerrainComponent::GetTerrainTile(float x, float y)
     {
         if (!m_terrainTiles.empty())
         {
-            return m_terrainTiles[0];
+            return m_terrainTiles[0].get();
         }
         return nullptr;
     }
@@ -140,11 +143,11 @@ namespace PhysX
         Physics::WorldRequestBus::EnumerateHandlers([this](Physics::World* world)
         {
             // Create terrain actor and add to the world
-            AZStd::shared_ptr<Physics::RigidBodyStatic> terrainTile = Utils::CreateTerrain(m_configuration, GetEntityId(), GetEntity()->GetName().c_str());
+            AZStd::unique_ptr<Physics::RigidBodyStatic> terrainTile = Utils::CreateTerrain(m_configuration, GetEntityId(), GetEntity()->GetName().c_str());
             if (terrainTile)
             {
                 world->AddBody(*terrainTile);
-                m_terrainTiles.push_back(terrainTile);
+                m_terrainTiles.push_back(AZStd::move(terrainTile));
             }
             return true;
         });

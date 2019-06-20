@@ -27,7 +27,7 @@ namespace UnitTest
         : public AllocatorsFixture
     {
     public:
-        LockFreeQueue() : AllocatorsFixture(30) {}
+        LockFreeQueue() : AllocatorsFixture() {}
 
     protected:
 #ifdef _DEBUG

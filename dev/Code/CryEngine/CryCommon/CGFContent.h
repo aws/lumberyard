@@ -26,6 +26,12 @@
 #include <StringUtils.h>
 #include <AzCore/Casting/numeric_cast.h>
 
+#include <AzCore/std/containers/unordered_map.h> //Required for LOD support for touch bending vegetation
+#include <AzCore/std/string/string.h> //Required for LOD support for touch bending vegetation
+
+const int CGF_NODE_NAME_LENGTH = 64;
+//END: Add LOD support for touch bending vegetation
+
 struct CMaterialCGF;
 struct IConvertContext;
 
@@ -50,7 +56,9 @@ struct CNodeCGF
     };
 
     ENodeType type;
-    char      name[64];
+    //START: Add LOD support for touch bending vegetation
+    char      name[CGF_NODE_NAME_LENGTH];
+    //END: Add LOD support for touch bending vegetation
     string    properties;
     Matrix34  localTM;      // Local space transformation matrix.
     Matrix34  worldTM;      // World space transformation matrix.
@@ -522,9 +530,23 @@ struct CPhysicalizeInfoCGF
 // Serialized skinnable foliage data
 //////////////////////////////////////////////////////////////////////////
 
+#define NODE_PROPERTY_STIFFNESS "stiffness"
+#define NODE_PROPERTY_DAMPING   "damping"
+#define NODE_PROPERTY_THICKNESS "thickness"
+
 struct SSpineRC
 {
-    SSpineRC() { pVtx = 0; pSegDim = 0; }
+    SSpineRC()
+        : pVtx(nullptr)
+        , pSegDim(nullptr)
+        , nVtx(0)
+        , len(0)
+        , pBoneIDs(nullptr)
+        , parentBoneID(-1)
+        , pStiffness(nullptr)
+        , pDamping(nullptr)
+        , pThickness(nullptr) {}
+
     ~SSpineRC()
     {
         if (pVtx)
@@ -535,13 +557,43 @@ struct SSpineRC
         {
             delete[] pSegDim;
         }
+        if (pBoneIDs)
+        {
+            delete[] pBoneIDs;
+        }
+        if (pStiffness)
+        {
+            delete[] pStiffness;
+        }
+        if (pDamping)
+        {
+            delete[] pDamping;
+        }
+        if (pThickness)
+        {
+            delete[] pThickness;
+        }
     }
+
+    /// Add Skinned Geometry (.CGF) export type (for touch bending vegetation)
+    static float GetDefaultStiffness() { return 0.5f; }
+    static float GetDefaultDamping() { return 0.5f; }
+    static float GetDefaultThickness() { return 0.03f; }
 
     Vec3* pVtx;
     Vec4* pSegDim;
     int nVtx;
     float len;
     Vec3 navg;
+
+    int parentBoneID;
+    int* pBoneIDs;
+
+    //Per Bone parameters.
+    float* pStiffness;
+    float* pDamping;
+    float* pThickness;
+
     int iAttachSpine;
     int iAttachSeg;
 };
@@ -555,20 +607,40 @@ struct SFoliageInfoCGF
         {
             for (int i = 1; i < nSpines; i++) // spines 1..n-1 use the same buffer, so make sure they don't delete it
             {
-                pSpines[i].pVtx = 0, pSpines[i].pSegDim = 0;
+                pSpines[i].pVtx = nullptr;
+                pSpines[i].pSegDim = nullptr;
+                pSpines[i].pBoneIDs = nullptr;
+                pSpines[i].pStiffness = nullptr;
+                pSpines[i].pDamping = nullptr;
+                pSpines[i].pThickness = nullptr;
             }
             delete[] pSpines;
         }
-        if (pBoneMapping)
+
+        SAFE_DELETE_ARRAY(pBoneMapping);
+
+        AZStd::unordered_map<AZStd::string, SMeshBoneMappingInfo_uint8*>::iterator iter = boneMappings.begin();
+        while (iter != boneMappings.end())
         {
-            delete[] pBoneMapping;
+            if (iter->second != nullptr)
+            {
+                SAFE_DELETE_ARRAY(iter->second->pBoneMapping);
+            }
+            iter++;
         }
+
     }
 
     SSpineRC* pSpines;
     int nSpines;
+
+    ///Bone mappings for each LOD level
+    AZStd::unordered_map<AZStd::string, SMeshBoneMappingInfo_uint8*> boneMappings;
+
+    ///Bone mapping for legacy format
     struct SMeshBoneMapping_uint8* pBoneMapping;
     int nSkinnedVtx;
+
     DynArray<uint16> chunkBoneIds;
 };
 
@@ -584,6 +656,9 @@ struct CExportInfoCGF
     bool bNoMesh;
     bool bWantF32Vertices;
     bool b8WeightsPerVertex;
+
+    /// Prevent reprocessing skinning data for skinned CGF
+    bool bSkinnedCGF;
 
     bool bFromColladaXSI;
     bool bFromColladaMAX;
@@ -610,6 +685,7 @@ public:
         m_exportInfo.bUseCustomNormals = false;
         m_exportInfo.bWantF32Vertices = false;
         m_exportInfo.b8WeightsPerVertex = false;
+        m_exportInfo.bSkinnedCGF = false;
         m_pCommonMaterial = 0;
         m_bConsoleFormat = false;
         m_pOwnChunkFile = 0;

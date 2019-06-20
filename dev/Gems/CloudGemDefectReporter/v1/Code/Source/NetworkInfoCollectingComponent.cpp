@@ -25,7 +25,7 @@
 #include <AzCore/Jobs/JobManagerBus.h>
 #include <AzCore/std/string/regex.h>
 
-#include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 #include <iterator>
 #include <sstream>
@@ -163,7 +163,7 @@ namespace CloudGemDefectReporter
         CloudGemDefectReporterRequestBus::BroadcastResult(handlerId, &CloudGemDefectReporterRequestBus::Events::GetHandlerID, reportID);
 
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+        EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
 
         NetworkInfoCollectingJob* job = aznew NetworkInfoCollectingJob(jobContext, m_serverDomainNames, reportID, handlerId);
         job->Start();        

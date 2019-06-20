@@ -1,0 +1,13 @@
+{
+  "none": {
+    "Source": [
+      "Source/precompiled.cpp",
+      "Source/precompiled.h"
+    ]
+  },
+  "auto": {
+    "Source": [
+      "Source/ScriptEventsGem.cpp"
+    ]
+  }
+}

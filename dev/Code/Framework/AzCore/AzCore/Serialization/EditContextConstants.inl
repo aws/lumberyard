@@ -25,6 +25,8 @@ namespace AZ
 
         namespace Attributes
         {
+            const static AZ::Crc32 EnableForAssetEditor = AZ_CRC("EnableInAssetEditor", 0xc4efd0f7);
+
             //! AddableByUser : a bool which determines if the component can be added by the user.
             //! Setting this to false effectively hides the component from views where user can create components.
             const static AZ::Crc32 AddableByUser = AZ_CRC("AddableByUser", 0x181bc2f4);
@@ -32,15 +34,23 @@ namespace AZ
             //! Setting this to false prevents the user from removing this component. Default behavior is removeable by user.
             const static AZ::Crc32 RemoveableByUser = AZ_CRC("RemoveableByUser", 0x32c7fd50);
             const static AZ::Crc32 AppearsInAddComponentMenu = AZ_CRC("AppearsInAddComponentMenu", 0x53790e31);
-            const static AZ::Crc32 AutoExpand = AZ_CRC("AutoExpand", 0x306ff5c0);
+            const static AZ::Crc32 ForceAutoExpand = AZ_CRC("ForceAutoExpand", 0x1a5c79d2); // Ignores expansion state set by user, enforces expansion.
+            const static AZ::Crc32 AutoExpand = AZ_CRC("AutoExpand", 0x306ff5c0); // Expands automatically unless user changes expansion state.
             const static AZ::Crc32 ButtonText = AZ_CRC("ButtonText", 0x79fe5d8b);
             const static AZ::Crc32 Category = AZ_CRC("Category", 0x064c19c1);
             const static AZ::Crc32 Visibility = AZ_CRC("Visibility", 0x518e4300);
+            //! Affects the display order of a node relative to it's parent/children.  Higher values display further down (after) lower values.  Default is 0, negative values are allowed.  Must be applied as an attribute to the EditorData element
+            const static AZ::Crc32 DisplayOrder = AZ_CRC("DisplayOrder", 0x23660ec2);
 
             //! Container attributes
             const static AZ::Crc32 ContainerCanBeModified = AZ_CRC("ContainerCanBeModified", 0xd9948f69);
             const static AZ::Crc32 ShowAsKeyValuePairs = AZ_CRC("ShowAsKeyValuePairs", 0xefb4b240);
             const static AZ::Crc32 StringList = AZ_CRC("StringList", 0xdf80b99c);
+
+            //! GenericComboBox Attributes
+            const static AZ::Crc32 GenericValue = AZ_CRC("GenericValue", 0x7a28c4bc);
+            const static AZ::Crc32 GenericValueList = AZ_CRC("GenericValueList", 0x6847012e);
+            const static AZ::Crc32 PostChangeNotify = AZ_CRC("PostChangeNotify", 0x456e84c8);
 
             const static AZ::Crc32 ValueText = AZ_CRC("ValueText", 0x251534d1);
 
@@ -60,8 +70,8 @@ namespace AZ
             *
             * **Element type to use this with:**   Any type that you reflect using AZ::EditContext::ClassInfo::DataElement().
             *
-            * **Expected value type:**             A function with signature `bool fn(void* newValue, const AZ::TypeId& valueType)`.
-            *                                      If the function returns false, then the new value will not be applied.
+            * **Expected value type:**             A function with signature `AZ::Outcome<void, AZStd::string> fn(void* newValue, const AZ::TypeId& valueType)`.
+            *                                      If the function returns failure, then the new value will not be applied.
             *                                      `newValue` is a void* pointing at the new value being validated.
             *                                      `valueType` is the type ID of the value pointed to by `newValue`.
             *
@@ -162,11 +172,14 @@ namespace AZ
             // Attribute for tagging a System Component for use in certain contexts
             const static AZ::Crc32 SystemComponentTags = AZ_CRC("SystemComponentTags", 0x2d8bebc9);
             
-	    // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
+        // Attribute for providing a custom UI Handler - can be used with Attribute() (or with ElementAttribute() for containers such as vectors, to specify the handler for container elements (i.e. vectors))
             const static AZ::Crc32 Handler = AZ_CRC("Handler", 0x939715cd);
 
             // Attribute for skipping a set amount of descendant elements which are not leaves when calculating property visibility
             const static AZ::Crc32 VisibilitySkipNonLeafDepth = AZ_CRC("VisibilitySkipNonLeafDepth", 0x790293fa);
+
+            //! Attribute for making a slider have non-linear scale. The default is 0.5, which results in linear scale. Value can be shifted lower or higher to control more precision in the power curve at those ends (minimum = 0, maximum = 1)
+            const static AZ::Crc32 SliderCurveMidpoint = AZ_CRC("SliderCurveMidpoint", 0x8c26aea2);
         }
 
 
@@ -239,6 +252,12 @@ namespace AZ
             const static AZ::u32 HideOnChange               = 1 << 6;   ///< When property/field/component class is being changed on an entity, hide from Push Widget display
             const static AZ::u32 HideOnRemove               = 1 << 7;   ///< When property/field/component class is being removed on an entity, hide from Push Widget display
             const static AZ::u32 HideAllTheTime             = 1 << 8;   ///< Hide property/field/component class from Push Widget display all the time
+        }
+
+        namespace UISliceFlags
+        {
+            // IMPORANT: Start at the first bit NOT used by SliceFlags above.
+            const static AZ::u32 PushableEvenIfInvisible = 1 << 3;  ///< Deprecated - Used currently only by UI slices, and will be phased out in the future. Forces display of hidden fields on Push widget.
         }
 
     } // namespace Edit

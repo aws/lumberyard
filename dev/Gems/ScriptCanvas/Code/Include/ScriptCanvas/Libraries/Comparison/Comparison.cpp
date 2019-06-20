@@ -10,11 +10,11 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <Libraries/Libraries.h>
 
 #include "Comparison.h"
+
+#include <ScriptCanvas/Core/Attributes.h>
 
 namespace ScriptCanvas
 {

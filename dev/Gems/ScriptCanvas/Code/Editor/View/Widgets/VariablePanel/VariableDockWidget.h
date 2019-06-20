@@ -65,7 +65,6 @@ namespace ScriptCanvasEditor
         AZ_COMPONENT(VariablePropertiesComponent, "{885F276B-9633-42F7-85BD-10869E606873}", GraphCanvasPropertyComponent);
 
         static void Reflect(AZ::ReflectContext*);
-
         static AZ::Entity* CreateVariablePropertiesEntity();
 
         VariablePropertiesComponent();
@@ -84,6 +83,7 @@ namespace ScriptCanvasEditor
         void OnVariableRenamed(AZStd::string_view variableName) override;
         void OnVariableValueChanged() override;
         void OnVariableExposureChanged() override;
+        void OnVariableExposureGroupChanged() override;
         ////
 
         ScriptCanvas::VariableId m_variableId;
@@ -113,6 +113,9 @@ namespace ScriptCanvasEditor
     public:
         AZ_CLASS_ALLOCATOR(VariableDockWidget, AZ::SystemAllocator, 0);
 
+        static AZStd::string ConstructDefaultVariableName(AZ::u32 variableCounter);
+        static AZStd::string FindDefaultVariableName(const AZ::EntityId& scriptCanvasGraphId);
+
         VariableDockWidget(QWidget* parent = nullptr);
         ~VariableDockWidget();
 
@@ -130,10 +133,20 @@ namespace ScriptCanvasEditor
         void focusOutEvent(QFocusEvent* focusEvent) override;
         ////
 
+        const AZ::EntityId& GetActiveScriptCanvasGraphId() const;
+
     public slots:
         void OnCreateVariable(ScriptCanvas::Data::Type varType);
+        void OnCreateNamedVariable(const AZStd::string& variableName, ScriptCanvas::Data::Type varType);
         void OnSelectionChanged(const AZStd::unordered_set< ScriptCanvas::VariableId>& variableIds);
+        void OnDuplicateVariable(const ScriptCanvas::VariableId& variableId);
         void OnDeleteVariables(const AZStd::unordered_set< ScriptCanvas::VariableId>& variableIds);
+        void OnHighlightVariables(const AZStd::unordered_set< ScriptCanvas::VariableId>& variableIds);
+
+        void OnRemoveUnusedVariables();
+
+    Q_SIGNALS:
+        void OnVariableSelectionChanged(const AZStd::vector<AZ::EntityId>& variableIds);
 
     private:
 

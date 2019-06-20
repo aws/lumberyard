@@ -27,7 +27,7 @@ namespace ScriptCanvasEditor
         , public EBusHandlerNodeDescriptorRequestBus::Handler
         , public GraphCanvas::NodeNotificationBus::Handler
         , public GraphCanvas::WrapperNodeNotificationBus::Handler
-        , public GraphCanvas::GraphCanvasPropertyBus::Handler
+        , public GraphCanvas::GraphCanvasPropertyBusHandler
         , public GraphCanvas::WrapperNodeConfigurationRequestBus::Handler
         , public GraphCanvas::EntitySaveDataRequestBus::Handler
         , public GraphCanvas::SceneMemberNotificationBus::Handler
@@ -49,8 +49,8 @@ namespace ScriptCanvasEditor
 
             void OnDisplayConnectionsChanged();
 
-            bool                           m_displayConnections;
-            AZStd::vector< AZStd::string > m_enabledEvents;
+            bool                            m_displayConnections;
+            AZStd::vector< ScriptCanvas::EBusEventId > m_enabledEvents;
         private:
 
             EBusHandlerNodeDescriptorComponent* m_callback;
@@ -72,11 +72,12 @@ namespace ScriptCanvasEditor
         void OnNodeActivated() override;
 
         void OnAddedToScene(const AZ::EntityId& sceneId) override;
-        void OnNodeDeserialized(const AZ::EntityId& graphId, const GraphCanvas::GraphSerialization&) override;
         ////
 
         // SceneMemberNotifications
-        void OnMemberSetupComplete() override;   
+        void OnMemberSetupComplete() override;
+
+        void OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphCanvas::GraphSerialization&) override;
         ////
 
         // GraphCanvas::EntitySaveDataRequestBus::Handler
@@ -85,15 +86,17 @@ namespace ScriptCanvasEditor
         ////
 
         // EBusNodeDescriptorRequestBus
-        AZStd::string GetBusName() const override;
+        AZStd::string_view GetBusName() const override;
 
-        bool ContainsEvent(const AZStd::string& eventName) const override;
-        GraphCanvas::WrappedNodeConfiguration GetEventConfiguration(const AZStd::string& eventName) const override;
+        bool ContainsEvent(const ScriptCanvas::EBusEventId& eventId) const override;
+        GraphCanvas::WrappedNodeConfiguration GetEventConfiguration(const ScriptCanvas::EBusEventId& eventName) const override;
 
-        AZStd::vector< AZStd::string > GetEventNames() const override;
-        AZ::EntityId FindEventNodeId(const AZStd::string& eventName) const override;
+        AZStd::vector< HandlerEventConfiguration > GetEventConfigurations() const override;
 
-        GraphCanvas::Endpoint FindEventNodeEndpoint(const ScriptCanvas::SlotId& eventName) const override;
+        AZ::EntityId FindEventNodeId(const ScriptCanvas::EBusEventId& eventId) const override;
+        AZ::EntityId FindGraphCanvasNodeIdForSlot(const ScriptCanvas::SlotId& eventName) const override;
+
+        GraphCanvas::Endpoint MapSlotToGraphCanvasEndpoint(const ScriptCanvas::SlotId& eventName) const override;
         ////
 
         // WrapperNodeNotificationBus
@@ -119,7 +122,7 @@ namespace ScriptCanvasEditor
         bool            m_loadingEvents;
 
         AZ::EntityId m_scriptCanvasId;
-        AZStd::unordered_map< AZStd::string, AZ::EntityId > m_eventTypeToId;
-        AZStd::unordered_map< AZ::EntityId, AZStd::string > m_idToEventType;
+        AZStd::unordered_map< ScriptCanvas::EBusEventId, AZ::EntityId > m_eventTypeToId;
+        AZStd::unordered_map< AZ::EntityId, ScriptCanvas::EBusEventId > m_idToEventType;
     };
 }

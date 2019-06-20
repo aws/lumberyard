@@ -17,6 +17,7 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzFramework/Application/Application.h>
 #ifdef LMBR_CENTRAL_EDITOR
+#include <AzToolsFramework/Application/ToolsApplication.h>
 #include "LmbrCentralEditor.h"
 #endif
 
@@ -85,10 +86,10 @@ protected:
 */
 template<class ComponentT>
 class LoadEditorComponentTest
-    : public LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentral::LmbrCentralEditorModule, ComponentT>
+    : public LoadReflectedObjectTest<AzToolsFramework::ToolsApplication, LmbrCentral::LmbrCentralEditorModule, ComponentT>
 {
 public:
-    using LoadReflectedObjectTestBase = LoadReflectedObjectTest<AZ::ComponentApplication, LmbrCentral::LmbrCentralEditorModule, ComponentT>;
+    using LoadReflectedObjectTestBase = LoadReflectedObjectTest<AzToolsFramework::ToolsApplication, LmbrCentral::LmbrCentralEditorModule, ComponentT>;
 
     void SetUp() override;
     void TearDown() override;

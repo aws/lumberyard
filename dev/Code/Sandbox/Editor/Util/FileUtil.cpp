@@ -1978,14 +1978,7 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
         }
     }
 
-#ifdef AZ_PLATFORM_WINDOWS
-    const char* exploreActionName = "Open in Explorer";
-#elif defined(AZ_PLATFORM_APPLE_OSX)
-    const char* exploreActionName = "Open in Finder";
-#else
-    const char* exploreActionName = "Open in file browser";
-#endif
-    action = menu->addAction(QObject::tr(exploreActionName), [=]()
+    action = menu->addAction(AzQtComponents::fileBrowserActionName(), [=]()
     {
         if (nFileAttr & SCC_FILE_ATTRIBUTE_INPAK)
         {
@@ -2054,7 +2047,9 @@ void CFileUtil::PopulateQMenu(QWidget* caller, QMenu* menu, const QString& filen
                     if (!CFileUtil::GetLatestFromSourceControl(fullPath.toUtf8().data(), caller))
                     {
                         QMessageBox::warning(caller, QObject::tr("Error"),
-                            QObject::tr("Source Control failed to get latest.\r\nCheck if Source Control Provider is correctly setup and working directory is correct."));
+                            QObject::tr("Source Control failed to get latest version of file.\r\nCheck if Source Control Provider is setup correctly."
+                            "\r\n\r\nAdditionally, this operation will fail on files that have local changes\r\nthat are not currently checked out, in order to prevent data loss."
+                            "\r\nIn this case, please reconcile offline work directly from Source Control Provider."));
                     }
                 }
             });

@@ -102,6 +102,9 @@ namespace AzQtComponents
         m_host->setFixedSize(size / m_host->devicePixelRatioF());
         m_host->show();
 
+        // move it to the top left
+        m_host->move(0, 0);
+
         HWND hostHandle = reinterpret_cast<HWND>(m_host->effectiveWinId());
 
         // Add the WS_EX_LAYERED extended window style

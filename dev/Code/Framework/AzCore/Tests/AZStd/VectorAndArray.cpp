@@ -18,6 +18,8 @@
 #include <AzCore/std/allocator_static.h>
 #include <AzCore/std/allocator_ref.h>
 
+#include <AzCore/std/smart_ptr/unique_ptr.h>
+
 #include <AzCore/std/utils.h>
 
 using namespace AZStd;
@@ -668,6 +670,27 @@ namespace UnitTest
         AZ_TEST_STOP_ASSERTTEST(1);
 #endif
         // FixedVectorContainerTest-End
+    }
+
+    TEST_F(Arrays, FixedVectorSwapSucceeds)
+    {
+        // Test dealing with fixed_vectors with big sizes.
+        // Have to heap allocated since they wont fit in the stack
+        constexpr int bigFixedVectorSize = 10000000; // enough to make it fail without the fix
+        AZStd::unique_ptr<fixed_vector<char, bigFixedVectorSize>> big_fixed_vector0 = AZStd::make_unique<fixed_vector<char, bigFixedVectorSize>>();
+        AZStd::unique_ptr<fixed_vector<char, bigFixedVectorSize>> big_fixed_vector1 = AZStd::make_unique<fixed_vector<char, bigFixedVectorSize>>();
+
+        big_fixed_vector0->insert(big_fixed_vector0->end(), bigFixedVectorSize, 0);
+        big_fixed_vector1->insert(big_fixed_vector1->end(), bigFixedVectorSize, 1);
+
+        EXPECT_EQ(big_fixed_vector0->at(0), 0);
+        EXPECT_EQ(big_fixed_vector1->at(0), 1);
+
+        // test swap
+        big_fixed_vector0->swap(*big_fixed_vector1);
+
+        EXPECT_EQ(big_fixed_vector0->at(0), 1);
+        EXPECT_EQ(big_fixed_vector1->at(0), 0);
     }
 
 

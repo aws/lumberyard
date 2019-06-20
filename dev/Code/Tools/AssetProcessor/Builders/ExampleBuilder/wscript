@@ -21,7 +21,8 @@ def build(bld):
         vs_filter          = 'Tools/AssetProcessor/Builders/Deprecated',
         file_list          = ['examplebuilder.waf_files'],
         platforms          = ['win', 'darwin'],
-        configurations     = ['debug', 'debug_test', 'profile', 'profile_test'],
+        client_only        = True,
+        exclude_monolithic = True,
         disable_pch        = True,
         test_all_file_list = ['examplebuilder_tests.waf_files'],
     )

@@ -11,13 +11,64 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
+#include <Tests/TestTypes.h>
+#include <Mocks/ISystemMock.h>
+#include <Mocks/IRendererMock.h>
 
 #include "Material.h"
 
-// CMatInfo depends on CrySystem being initialized, so these must be integration tests
-AZ_INTEG_TEST_HOOK();
+class MaterialTest
+    : public UnitTest::AllocatorsTestFixture
+{
+public:
+    void SetUp() override
+    {
+        // capture prior state.
+        m_priorEnv = gEnv;
+        m_priorSystem = Cry3DEngineBase::m_pSystem;
+        m_priorRenderer = Cry3DEngineBase::m_pRenderer;
 
-INTEG_TEST(MaterialTests, SetSubMtl_OutOfRange)
+        UnitTest::AllocatorsTestFixture::SetUp();
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Create();
+
+        m_data = AZStd::make_unique<DataMembers>();
+
+        m_data->m_stubEnv.pSystem = &m_data->m_system;
+        m_data->m_stubEnv.pRenderer = &m_data->m_renderer;
+
+        // override state
+        gEnv = &m_data->m_stubEnv;
+        Cry3DEngineBase::m_pSystem = gEnv->pSystem;
+        Cry3DEngineBase::m_pRenderer = &m_data->m_renderer;
+    }
+
+    void TearDown() override
+    {
+        m_data.reset();
+
+        AZ::AllocatorInstance<AZ::LegacyAllocator>::Destroy();
+        UnitTest::AllocatorsTestFixture::TearDown();
+
+        // restore state.
+        gEnv = m_priorEnv;
+        Cry3DEngineBase::m_pSystem = m_priorSystem;
+        Cry3DEngineBase::m_pRenderer = m_priorRenderer;
+    }
+
+    struct DataMembers
+    {
+        SSystemGlobalEnvironment m_stubEnv;
+        ::testing::NiceMock<SystemMock> m_system;
+        ::testing::NiceMock<IRendererMock> m_renderer;
+    };
+
+    AZStd::unique_ptr<DataMembers> m_data;
+    SSystemGlobalEnvironment* m_priorEnv = nullptr;
+    ISystem* m_priorSystem = nullptr;
+    IRenderer* m_priorRenderer = nullptr;
+};
+
+TEST_F(MaterialTest, CMatInfo_SetSubMtl_OutOfRange)
 {
     _smart_ptr<IMaterial> materialGroup = new CMatInfo();
     _smart_ptr<IMaterial> validSubMaterial = new CMatInfo();
@@ -26,10 +77,12 @@ INTEG_TEST(MaterialTests, SetSubMtl_OutOfRange)
     // Make materialGroup into an actual material group
     materialGroup->SetSubMtlCount(1);
     materialGroup->SetSubMtl(0, validSubMaterial);
-    
+
+    AZ_TEST_START_ASSERTTEST;
     // SetSubMtl should fail because the index is beyond the range of material's vector of sub-materials
     materialGroup->SetSubMtl(2, outOfRangeSubMaterial);
     materialGroup->SetSubMtl(-1, outOfRangeSubMaterial);
+    AZ_TEST_STOP_ASSERTTEST(2);
 
     // Material should still have a 1-size vector of sub-materials, with 'subMaterial' as its only sub-material
     EXPECT_TRUE(materialGroup->IsMaterialGroup());
@@ -38,7 +91,7 @@ INTEG_TEST(MaterialTests, SetSubMtl_OutOfRange)
     EXPECT_EQ(materialGroup->GetSubMtl(1), nullptr);
 }
 
-INTEG_TEST(MaterialTests, SetSubMtl_InvalidSubMaterial)
+TEST_F(MaterialTest, CMatInfo_SetSubMtl_InvalidSubMaterial)
 {
     _smart_ptr<IMaterial> materialGroup = new CMatInfo();
     _smart_ptr<IMaterial> inValidSubMaterial = new CMatInfo();
@@ -53,16 +106,18 @@ INTEG_TEST(MaterialTests, SetSubMtl_InvalidSubMaterial)
     inValidSubMaterial->SetSubMtlCount(2);
     inValidSubMaterial->SetSubMtl(0, validSubMaterial0);
     inValidSubMaterial->SetSubMtl(1, validSubMaterial1);
-    
+
     // SetSubMtl should fail because subMaterial is a material group, and material groups cannot be sub-materials
+    AZ_TEST_START_ASSERTTEST;
     materialGroup->SetSubMtl(1, inValidSubMaterial);
+    AZ_TEST_STOP_ASSERTTEST(1);
 
     // Check that subMaterial is not the material at index 1, since SetSubMtl should have failed
     EXPECT_EQ(materialGroup->GetSubMtl(1), validSubMaterial1);
     EXPECT_NE(materialGroup->GetSubMtl(1), inValidSubMaterial);
 }
 
-INTEG_TEST(MaterialTests, SetSubMtlCount_SetsMaterialGroupFlag)
+TEST_F(MaterialTest, CMatInfo_SetSubMtlCount_SetsMaterialGroupFlag)
 {
     _smart_ptr<IMaterial> material = new CMatInfo();
 

@@ -12,10 +12,12 @@
 
 #include "Visibility_precompiled.h"
 #include "EditorOccluderAreaComponent.h"
+#include "EditorOccluderAreaComponentMode.h"
 
 #include <AzCore/Math/Crc.h>
-#include <AzCore/Math/VectorConversions.h>
+#include <AzCore/Math/IntersectSegment.h>
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzToolsFramework/Viewport/VertexContainerDisplay.h>
 #include <Editor/Objects/BaseObject.h>
 #include <Editor/Objects/VisAreaShapeObject.h>
 #include <Objects/EntityObject.h>
@@ -32,7 +34,9 @@ namespace Visibility
     {
         provides.push_back(AZ_CRC("EditorOccluderAreaService", 0xf943e16a));
         provides.push_back(AZ_CRC("OccluderAreaService", 0x2fefad66));
+        provides.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
     }
+
     void EditorOccluderAreaComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires)
     {
         requires.push_back(AZ_CRC("TransformService", 0x8ee22c50));
@@ -47,11 +51,12 @@ namespace Visibility
     {
         incompatible.push_back(AZ_CRC("EditorOccluderAreaService", 0xf943e16a));
         incompatible.push_back(AZ_CRC("OccluderAreaService", 0x2fefad66));
+        incompatible.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
     }
 
     void EditorOccluderAreaConfiguration::Reflect(AZ::ReflectContext* context)
     {
-        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorOccluderAreaConfiguration, OccluderAreaConfiguration>()
                 ->Version(1);
@@ -65,63 +70,74 @@ namespace Visibility
 
                 editContext->Class<OccluderAreaConfiguration>("OccluderArea Configuration", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_displayFilled, "DisplayFilled", "Display the Occlude Area as a filled quad.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_cullDistRatio, "CullDistRatio", "The range of the culling effect.")
-                    ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
-                    ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_useInIndoors, "UseInIndoors", "Should this occluder work inside VisAreas.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_doubleSide, "DoubleSide", "Should this occlude from both sides.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
-
-                    ->DataElement(
-                        AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_vertices, "Vertices", "Points that make up the Occluder Area.")
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnVerticesChange)
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                ;
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_displayFilled, "DisplayFilled", "Display the Occlude Area as a filled quad.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_cullDistRatio, "CullDistRatio", "The range of the culling effect.")
+                        ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
+                        ->Attribute(AZ::Edit::Attributes::Min, 0.0f)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_useInIndoors, "UseInIndoors", "Should this occluder work inside VisAreas.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_doubleSide, "DoubleSide", "Should this occlude from both sides.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnChange)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &OccluderAreaConfiguration::m_vertices, "Vertices", "Points that make up the OccluderArea.")
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &OccluderAreaConfiguration::OnVerticesChange)
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ;
             }
         }
     }
 
     void EditorOccluderAreaComponent::Reflect(AZ::ReflectContext* context)
     {
-        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorOccluderAreaComponent, AzToolsFramework::Components::EditorComponentBase>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("m_config", &EditorOccluderAreaComponent::m_config)
-            ;
+                ->Field("ComponentMode", &EditorOccluderAreaComponent::m_componentModeDelegate)
+                ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
             {
                 editContext->Class<EditorOccluderAreaComponent>("OccluderArea", "An area that blocks objects behind it from rendering.")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                    ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
-                    ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/OccluderArea.png")
-                    ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                    ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/OccluderArea.png")
-                    ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
-                    ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/occluder-area-component")
+                        ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
+                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/OccluderArea.png")
+                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/OccluderArea.png")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
+                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "http://docs.aws.amazon.com/console/lumberyard/userguide/occluder-area-component")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorOccluderAreaComponent::m_config, "m_config", "No Description")
-                ;
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorOccluderAreaComponent::m_componentModeDelegate, "Component Mode", "OccluderArea Component Mode")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
+                        ;
             }
         }
 
-        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behaviorContext->Class<EditorOccluderAreaComponent>()->RequestBus("OccluderAreaRequestBus");
+            behaviorContext->EBus<EditorOccluderAreaRequestBus>("EditorOccluderAreaRequestBus")
+                ->Event("SetDisplayFilled", &EditorOccluderAreaRequestBus::Events::SetDisplayFilled)
+                ->Event("GetDisplayFilled", &EditorOccluderAreaRequestBus::Events::GetDisplayFilled)
+                ->VirtualProperty("DisplayFilled", "GetDisplayFilled", "SetDisplayFilled")
+
+                ->Event("SetCullDistRatio", &EditorOccluderAreaRequestBus::Events::SetCullDistRatio)
+                ->Event("GetCullDistRatio", &EditorOccluderAreaRequestBus::Events::GetCullDistRatio)
+                ->VirtualProperty("CullDistRatio", "GetCullDistRatio", "SetCullDistRatio")
+
+                ->Event("SetUseInIndoors", &EditorOccluderAreaRequestBus::Events::SetUseInIndoors)
+                ->Event("GetUseInIndoors", &EditorOccluderAreaRequestBus::Events::GetUseInIndoors)
+                ->VirtualProperty("UseInIndoors", "GetUseInIndoors", "SetUseInIndoors")
+
+                ->Event("SetDoubleSide", &EditorOccluderAreaRequestBus::Events::SetDoubleSide)
+                ->Event("GetDoubleSide", &EditorOccluderAreaRequestBus::Events::GetDoubleSide)
+                ->VirtualProperty("DoubleSide", "GetDoubleSide", "SetDoubleSide")
+                ;
+
+            behaviorContext->Class<EditorOccluderAreaComponent>()->RequestBus("EditorOccluderAreaRequestBus");
         }
 
         EditorOccluderAreaConfiguration::Reflect(context);
@@ -129,24 +145,24 @@ namespace Visibility
 
     void EditorOccluderAreaConfiguration::OnChange()
     {
-        m_component->UpdateObject();
+        EditorOccluderAreaRequestBus::Event(m_entityId, &EditorOccluderAreaRequests::UpdateOccluderAreaObject);
     }
 
     void EditorOccluderAreaConfiguration::OnVerticesChange()
     {
-        m_component->UpdateObject();
-        m_component->m_vertexSelection.RefreshLocal();
+        EditorOccluderAreaRequestBus::Event(
+            m_entityId, &EditorOccluderAreaRequests::UpdateOccluderAreaObject);
+        EditorOccluderAreaNotificationBus::Event(
+            m_entityId, &EditorOccluderAreaNotifications::OnVerticesChangedInspector);
     }
 
-    EditorOccluderAreaComponent::EditorOccluderAreaComponent()
+    void EditorOccluderAreaConfiguration::SetEntityId(const AZ::EntityId entityId)
     {
-        m_config.m_component = this;
+        m_entityId = entityId;
     }
 
     EditorOccluderAreaComponent::~EditorOccluderAreaComponent()
     {
-        m_vertexSelection.Destroy();
-
         if (m_area)
         {
             GetIEditor()->Get3DEngine()->DeleteVisArea(m_area);
@@ -156,34 +172,52 @@ namespace Visibility
 
     void EditorOccluderAreaComponent::Activate()
     {
-        // NOTE: We create the visarea here at activated, but destroy it in the destructor.
-        // We have to do this, otherwise the visarea is not saved into the level.
-        // Unfortunately, at this time we cannot create the visareas at game runtime.
-        // This means that dynamic slices cannot effectively contain vis areas until we fix the core rendering system to allow that.
-        const AZ::u64 visGUID = static_cast<AZ::u64>(GetEntityId());
-        m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
-
         Base::Activate();
-        OccluderAreaRequestBus::Handler::BusConnect(GetEntityId());
-        AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
-        EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
 
-        UpdateObject();
+        const AZ::EntityId entityId = GetEntityId();
+        m_config.SetEntityId(entityId);
+
+#ifndef AZ_TESTS_ENABLED
+        // NOTE: We create the vis-area here at activate, but destroy it in the destructor.
+        // We have to do this, otherwise the vis-area is not saved into the level.
+        // Unfortunately, at this time we cannot create the vis-areas at game runtime.
+        // This means that dynamic slices cannot effectively contain vis areas until we fix
+        // the core rendering system to allow that.
+        const auto visGUID = static_cast<AZ::u64>(entityId);
+        m_area = GetIEditor()->Get3DEngine()->CreateVisArea(visGUID);
+#endif
+
+        m_componentModeDelegate.ConnectWithSingleComponentMode<
+            EditorOccluderAreaComponent, EditorOccluderAreaComponentMode>(
+                AZ::EntityComponentIdPair(entityId, GetId()), this);
+
+        EditorOccluderAreaRequestBus::Handler::BusConnect(entityId);
+        AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler::BusConnect(entityId);
+        AZ::TransformNotificationBus::Handler::BusConnect(entityId);
+        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(entityId);
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
+
+        UpdateOccluderAreaObject();
     }
 
     void EditorOccluderAreaComponent::Deactivate()
     {
-        m_vertexSelection.Destroy();
+        m_componentModeDelegate.Disconnect();
 
-        EntitySelectionEvents::Bus::Handler::BusDisconnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
-        AZ::TransformNotificationBus::Handler::BusDisconnect(GetEntityId());
-        OccluderAreaRequestBus::Handler::BusDisconnect(GetEntityId());
+        AZ::TransformNotificationBus::Handler::BusDisconnect();
+        AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler::BusDisconnect();
+        EditorOccluderAreaRequestBus::Handler::BusDisconnect();
+
         Base::Deactivate();
     }
 
-    void EditorOccluderAreaComponent::UpdateObject()
+    /// Update the object runtime after changes to the Configuration.
+    /// Called by the default RequestBus SetXXX implementations,
+    /// and used to initially set up the object the first time the
+    /// Configuration are set.
+    void EditorOccluderAreaComponent::UpdateOccluderAreaObject()
     {
         if (m_area)
         {
@@ -207,90 +241,185 @@ namespace Visibility
             info.bOceanIsVisible = false;
             info.fPortalBlending = -1.0f;
 
-            AZStd::string name = AZStd::string("OcclArea_") + GetEntity()->GetName();
-
+            const AZStd::string name = AZStd::string("OcclArea_") + GetEntity()->GetName();
             GetIEditor()->Get3DEngine()->UpdateVisArea(m_area, &verts[0], verts.size(), name.c_str(), info, false);
         }
     }
 
-    void EditorOccluderAreaComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
+    void EditorOccluderAreaComponent::SetDisplayFilled(const bool value)
     {
-        m_vertexSelection.RefreshSpace(world);
-        UpdateObject();
+        m_config.m_displayFilled = value;
+        UpdateOccluderAreaObject();
     }
 
-    void EditorOccluderAreaComponent::DisplayEntity(bool& handled)
+    bool EditorOccluderAreaComponent::GetDisplayFilled()
     {
-        const AZ::Transform world = GetWorldTM();
+        return m_config.m_displayFilled;
+    }
+
+    void EditorOccluderAreaComponent::SetCullDistRatio(const float value)
+    {
+        m_config.m_cullDistRatio = value;
+        UpdateOccluderAreaObject();
+    }
+
+    float EditorOccluderAreaComponent::GetCullDistRatio()
+    {
+        return m_config.m_cullDistRatio;
+    }
+
+    void EditorOccluderAreaComponent::SetUseInIndoors(const bool value)
+    {
+        m_config.m_useInIndoors = value;
+        UpdateOccluderAreaObject();
+    }
+
+    bool EditorOccluderAreaComponent::GetUseInIndoors()
+    {
+        return m_config.m_useInIndoors;
+    }
+
+    void EditorOccluderAreaComponent::SetDoubleSide(const bool value)
+    {
+        m_config.m_doubleSide = value;
+        UpdateOccluderAreaObject();
+    }
+
+    bool EditorOccluderAreaComponent::GetDoubleSide()
+    {
+        return m_config.m_doubleSide;
+    }
+
+    bool EditorOccluderAreaComponent::GetVertex(const size_t index, AZ::Vector3& vertex) const
+    {
+        if (index < m_config.m_vertices.size())
+        {
+            vertex = m_config.m_vertices[index];
+            return true;
+        }
+
+        return false;
+    }
+
+    bool EditorOccluderAreaComponent::UpdateVertex(const size_t index, const AZ::Vector3& vertex)
+    {
+        if (index < m_config.m_vertices.size())
+        {
+            m_config.m_vertices[index] = vertex;
+            return true;
+        }
+
+        return false;
+    }
+
+    void EditorOccluderAreaComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
+    {
+        UpdateOccluderAreaObject();
+    }
+
+    void EditorOccluderAreaComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
+    {
+        const AZ::Transform worldFromLocal = GetWorldTM();
         const AZ::Vector4 color(0.5f, 0.25f, 0.0f, 1.0f);
         const AZ::Vector4 selectedColor(1.0f, 0.5f, 0.0f, 1.0f);
+        const float previousLineWidth = debugDisplay.GetLineWidth();
 
-        auto displayInterface = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayInterface, "Invalid display context.");
+        debugDisplay.DepthWriteOff();
+        debugDisplay.PushMatrix(worldFromLocal);
+        debugDisplay.SetColor(IsSelected() ? selectedColor : color);
+        debugDisplay.SetLineWidth(5.0f);
+        debugDisplay.SetAlpha(0.8f);
 
-        displayInterface->DepthWriteOff();
-        displayInterface->PushMatrix(world);
-        displayInterface->SetColor(IsSelected() ? selectedColor : color);
-        displayInterface->SetLineWidth(5.0f);
-        displayInterface->SetAlpha(0.8f);
-
-        for (AZ::u8 i = 2; i < 4; i++)
+        for (size_t i = 2; i < 4; i++)
         {
-            //Draw plane
+            // draw the plane
             if (m_config.m_displayFilled)
             {
-                displayInterface->SetAlpha(0.3f);
-                displayInterface->CullOff();
-                displayInterface->DrawTri(m_config.m_vertices[0], m_config.m_vertices[i - 1], m_config.m_vertices[i]);
-                displayInterface->CullOn();
-                displayInterface->SetAlpha(0.8f);
+                debugDisplay.SetAlpha(0.3f);
+                debugDisplay.CullOff();
+                debugDisplay.DrawTri(m_config.m_vertices[0], m_config.m_vertices[i - 1], m_config.m_vertices[i]);
+                debugDisplay.CullOn();
+                debugDisplay.SetAlpha(0.8f);
             }
-            displayInterface->DrawLine(m_config.m_vertices[i - 2], m_config.m_vertices[i - 1]);
-            displayInterface->DrawLine(m_config.m_vertices[i - 1], m_config.m_vertices[i]);
+
+            debugDisplay.DrawLine(m_config.m_vertices[i - 2], m_config.m_vertices[i - 1]);
+            debugDisplay.DrawLine(m_config.m_vertices[i - 1], m_config.m_vertices[i]);
         }
-        //Draw the closing line
-        displayInterface->DrawLine(m_config.m_vertices[3], m_config.m_vertices[0]);
 
-        AzToolsFramework::EditorVertexSelectionUtil::DisplayVertexContainerIndices(*displayInterface, m_vertexSelection, GetWorldTM(), IsSelected());
+        // draw the closing line
+        debugDisplay.DrawLine(m_config.m_vertices[3], m_config.m_vertices[0]);
 
-        displayInterface->DepthWriteOn();
-        displayInterface->PopMatrix();
+        if (m_componentModeDelegate.AddedToComponentMode())
+        {
+            AzToolsFramework::VertexContainerDisplay::DisplayVertexContainerIndices(
+                debugDisplay, AzToolsFramework::FixedVerticesArray<AZ::Vector3, 4>(m_config.m_vertices),
+                GetWorldTM(), IsSelected());
+        }
 
-        handled = true;
+        debugDisplay.DepthWriteOn();
+        debugDisplay.SetLineWidth(previousLineWidth);
+        debugDisplay.PopMatrix();
     }
 
     void EditorOccluderAreaComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
-        OccluderAreaComponent* component = gameEntity->CreateComponent<OccluderAreaComponent>(&m_config);
+        gameEntity->CreateComponent<OccluderAreaComponent>(m_config);
     }
 
-    void EditorOccluderAreaComponent::OnSelected()
+    AZ::Aabb EditorOccluderAreaComponent::GetEditorSelectionBoundsViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/)
     {
-        m_vertexSelection.Destroy();
-        CreateManipulators();
-    }
-
-    void EditorOccluderAreaComponent::OnDeselected()
-    {
-        m_vertexSelection.Destroy();
-    }
-
-    void EditorOccluderAreaComponent::CreateManipulators()
-    {
-        m_vertexSelection.m_hoverSelection = AZStd::make_unique<AzToolsFramework::NullHoverSelection>();
-
-        // create interface wrapping internal AZStd::array for use by vertex selection
-        m_vertexSelection.m_vertices =
-            AZStd::make_unique<AzToolsFramework::FixedVerticesArray<AZ::Vector3, 4>>(m_config.m_vertices);
-
-        m_vertexSelection.Create(GetEntityId(), AzToolsFramework::ManipulatorManagerId(1),
-            AzToolsFramework::TranslationManipulators::Dimensions::Three,
-            AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
-
-        m_vertexSelection.m_onVertexPositionsUpdated = [this]()
+        AZ::Aabb bbox = AZ::Aabb::CreateNull();
+        for (const auto& vertex : m_config.m_vertices)
         {
-            UpdateObject();
-        };
+            bbox.AddPoint(vertex);
+        }
+        bbox.ApplyTransform(GetWorldTM());
+        return bbox;
+    }
+
+    bool EditorOccluderAreaComponent::EditorSelectionIntersectRayViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/, const AZ::Vector3& src,
+        const AZ::Vector3& dir, AZ::VectorFloat& distance)
+    {
+        const AZ::VectorFloat rayLength = AZ::VectorFloat(1000.0f);
+        AZ::Vector3 scaledDir = dir * rayLength;
+        AZ::Vector3 end = src + scaledDir;
+        AZ::VectorFloat t;
+        AZ::VectorFloat intermediateT = FLT_MAX;
+        bool didHit = false;
+
+        // Transform verts to world space for tris test
+        AZStd::array<AZ::Vector3, 4> verts;
+        const AZ::Transform& wtm = GetWorldTM();
+        for (size_t i = 0; i < m_config.m_vertices.size(); ++i)
+        {
+            verts[i] = wtm * m_config.m_vertices[i];
+        }
+
+        AZ::Vector3 normal;
+        for (AZ::u8 i = 2; i < 4; ++i)
+        {
+            if (AZ::Intersect::IntersectSegmentTriangleCCW(src, end, verts[0], verts[i - 1], verts[i], normal, t) > 0)
+            {
+                intermediateT = AZStd::GetMin(t, intermediateT);
+                didHit = true;
+            }
+            //Else if here as we shouldn't successfully ccw and cw intersect at the same time
+            else if (AZ::Intersect::IntersectSegmentTriangle(src, end, verts[0], verts[i - 1], verts[i], normal, t) > 0)
+            {
+                intermediateT = AZStd::GetMin(t, intermediateT);
+                didHit = true;
+            }
+        }
+
+        if (didHit)
+        {
+            distance = AZ::VectorFloat(intermediateT) * rayLength;
+        }
+        return didHit;
     }
 
     AZ::LegacyConversion::LegacyConversionResult OccluderAreaConverter::ConvertEntity(CBaseObject* entityToConvert)
@@ -337,7 +466,7 @@ namespace Visibility
         // inside the CreateConvertedEntity function.
         AZ::Outcome<AZ::Entity*, AZ::LegacyConversion::CreateEntityResult> result(nullptr);
 
-        AZ::ComponentTypeList componentsToAdd {};
+        const AZ::ComponentTypeList componentsToAdd {};
         AZ::LegacyConversion::LegacyConversionRequestBus::BroadcastResult(result, &AZ::LegacyConversion::LegacyConversionRequests::CreateConvertedEntity, entityToConvert, true, componentsToAdd);
 
         if (!result.IsSuccess())
@@ -348,7 +477,7 @@ namespace Visibility
         AZ::Entity* entity = result.GetValue();
         entity->Deactivate();
 
-        EditorOccluderAreaComponent* component = entity->CreateComponent<EditorOccluderAreaComponent>();
+        auto component = entity->CreateComponent<EditorOccluderAreaComponent>();
 
         if (!component)
         {
@@ -366,19 +495,18 @@ namespace Visibility
         //config for this new component.
         bool conversionSuccess = false;
 
-        AZ::EntityId newEntityId = entity->GetId();
+        const AZ::EntityId newEntityId = entity->GetId();
 
-        COccluderAreaObject* occluderEntity = static_cast<COccluderAreaObject *>(entityToConvert);
-
+        const auto* occluderEntity = static_cast<const COccluderAreaObject*>(entityToConvert);
         if (const CVarBlock* varBlock = occluderEntity->GetVarBlock())
         {
             using namespace AZ::LegacyConversion::Util;
 
             conversionSuccess = true;
 
-            conversionSuccess &= ConvertVarBus<OccluderAreaRequestBus, bool>("DisplayFilled", varBlock, &OccluderAreaRequestBus::Events::SetDisplayFilled, newEntityId);
-            conversionSuccess &= ConvertVarBus<OccluderAreaRequestBus, float>("CullDistRatio", varBlock, &OccluderAreaRequestBus::Events::SetCullDistRatio, newEntityId);
-            conversionSuccess &= ConvertVarBus<OccluderAreaRequestBus, bool>("UseInIndoors", varBlock, &OccluderAreaRequestBus::Events::SetUseInIndoors, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorOccluderAreaRequestBus, bool>("DisplayFilled", varBlock, &EditorOccluderAreaRequestBus::Events::SetDisplayFilled, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorOccluderAreaRequestBus, float>("CullDistRatio", varBlock, &EditorOccluderAreaRequestBus::Events::SetCullDistRatio, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorOccluderAreaRequestBus, bool>("UseInIndoors", varBlock, &EditorOccluderAreaRequestBus::Events::SetUseInIndoors, newEntityId);
         }
 
         if (!conversionSuccess)
@@ -387,13 +515,13 @@ namespace Visibility
         }
 
         //Tell the editor component to update vertices, since EBus is connected after the entity is activated.
-        for (size_t i = 0; i < occluderEntity->GetPointCount(); ++i)
+        for (int i = 0; i < occluderEntity->GetPointCount(); ++i)
         {
             component->m_config.m_vertices[i] = LYVec3ToAZVec3(occluderEntity->GetPoint(i));
         }
 
         // Call Update to redraw the shape
-        component->UpdateObject();
+        component->UpdateOccluderAreaObject();
 
         // finally, we can delete the old entity since we handled this completely!
         AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, result.GetValue()->GetId());
@@ -417,10 +545,11 @@ namespace Visibility
             // if we failed due to no parent, we keep processing
             return (result.GetError() == AZ::LegacyConversion::CreateEntityResult::FailedNoParent) ? AZ::LegacyConversion::LegacyConversionResult::Ignored : AZ::LegacyConversion::LegacyConversionResult::Failed;
         }
-        AZ::Entity *entity = result.GetValue();
+
+        AZ::Entity* entity = result.GetValue();
         entity->Deactivate();
 
-        EditorOccluderAreaComponent *component = entity->CreateComponent<EditorOccluderAreaComponent>();
+        auto component = entity->CreateComponent<EditorOccluderAreaComponent>();
 
         if (!component)
         {
@@ -438,10 +567,10 @@ namespace Visibility
         //config for this new component.
         bool conversionSuccess = false;
 
-        AZ::EntityId newEntityId = entity->GetId();
+        const AZ::EntityId newEntityId = entity->GetId();
 
-        COccluderPlaneObject* occluderEntity = static_cast<COccluderPlaneObject *>(entityToConvert);
-        float planeHeight = occluderEntity->GetHeight();
+        const auto* occluderEntity = static_cast<const COccluderPlaneObject*>(entityToConvert);
+        const float planeHeight = occluderEntity->GetHeight();
 
         if (const CVarBlock* varBlock = occluderEntity->GetVarBlock())
         {
@@ -449,10 +578,10 @@ namespace Visibility
 
             conversionSuccess = true;
 
-            conversionSuccess &= ConvertVarBus<OccluderAreaRequestBus, bool>("DisplayFilled", varBlock, &OccluderAreaRequestBus::Events::SetDisplayFilled, newEntityId);
-            conversionSuccess &= ConvertVarBus<OccluderAreaRequestBus, float>("CullDistRatio", varBlock, &OccluderAreaRequestBus::Events::SetCullDistRatio, newEntityId);
-            conversionSuccess &= ConvertVarBus<OccluderAreaRequestBus, bool>("UseInIndoors", varBlock, &OccluderAreaRequestBus::Events::SetUseInIndoors, newEntityId);
-            conversionSuccess &= ConvertVarBus<OccluderAreaRequestBus, bool>("DoubleSide", varBlock, &OccluderAreaRequestBus::Events::SetDoubleSide, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorOccluderAreaRequestBus, bool>("DisplayFilled", varBlock, &EditorOccluderAreaRequestBus::Events::SetDisplayFilled, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorOccluderAreaRequestBus, float>("CullDistRatio", varBlock, &EditorOccluderAreaRequestBus::Events::SetCullDistRatio, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorOccluderAreaRequestBus, bool>("UseInIndoors", varBlock, &EditorOccluderAreaRequestBus::Events::SetUseInIndoors, newEntityId);
+            conversionSuccess &= ConvertVarBus<EditorOccluderAreaRequestBus, bool>("DoubleSide", varBlock, &EditorOccluderAreaRequestBus::Events::SetDoubleSide, newEntityId);
         }
 
         if (!conversionSuccess)
@@ -465,15 +594,13 @@ namespace Visibility
         const int vertexCount = occluderEntity->GetPointCount();
         AZ_Assert(vertexCount == 2, "There Should be 2 points for Occlude Plane");
 
-        /**
-        * The way CryEngine is doing is that using the 2 vertices and add height to these vertices to create the other 2 vertices
-        */
+        /// The way CryEngine is doing is that using the 2 vertices and add height to these vertices to create the other 2 vertices
 
         //The plane has two points but we need 4 for the occluder area
         AZStd::fixed_vector<AZ::Vector3, 4> vertices(4);
         AZ::Transform transform = component->GetLocalTM();
-        AZ::Quaternion originQuat = AZ::Quaternion::CreateFromTransform(transform);
-        for (size_t i = 0; i < vertexCount; i++)
+        const AZ::Quaternion originQuat = AZ::Quaternion::CreateFromTransform(transform);
+        for (int i = 0; i < vertexCount; i++)
         {
             //Get the actual vertex position based on the local rotation
             const AZ::Vector3 point = originQuat * LYVec3ToAZVec3(occluderEntity->GetPoint(i));
@@ -482,7 +609,7 @@ namespace Visibility
             //The legacy plane only has 2 points so we need to generate the other two points in the quad
             // On point 0 we generate point 3
             // On point 1 we generate point 2
-            size_t generatedPointIndex = vertexCount * 2 - 1 - i;
+            const size_t generatedPointIndex = vertexCount * 2 - 1 - i;
 
             //get the generated vertex position based on the plane height
             const AZ::Vector3 generatedPoint = vertices[i] + AZ::Vector3(0, 0, planeHeight);
@@ -499,7 +626,7 @@ namespace Visibility
         AZ::TransformBus::Event(entity->GetId(), &AZ::TransformBus::Events::SetLocalTM, transform);
 
         // Call Update to redraw the shape
-        component->UpdateObject();
+        component->UpdateOccluderAreaObject();
 
         // finally, we can delete the old entity since we handled this completely!
         AzToolsFramework::ToolsApplicationRequestBus::Broadcast(&AzToolsFramework::ToolsApplicationRequests::AddDirtyEntity, result.GetValue()->GetId());

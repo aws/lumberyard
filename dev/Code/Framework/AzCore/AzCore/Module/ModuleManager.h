@@ -149,6 +149,9 @@ namespace AZ
         // To be called by the Component Application when it deserializes an entity
         void AddModuleEntity(ModuleEntity* moduleEntity);
 
+        // Deactivates owned module entities without unloading the module
+        void DeactivateEntities();
+
         // To be called by the Component Application on startup
         void SetSystemComponentTags(AZStd::string_view tags);
 

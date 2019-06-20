@@ -1,0 +1,85 @@
+{
+    "platform"      : "appletv",
+    "display_name"  : "Apple TV",
+    "hosts"         : "darwin",
+    "aliases"       : "clang",
+    "has_server"    : false,
+    "is_monolithic" : true,
+    "enabled"       : true,
+    "needs_java"    : false,
+
+    "modules" : [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_clang",
+        "platforms/platform_settings_appletv"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.clang.json"
+    ],
+
+    "attributes"    : {
+        "is_apple"              : true,
+        "default_folder_name"   : "BinAppleTV",
+        "default_launcher_name" : "AppleTVLauncher"
+    },
+
+    "settings"      : {
+        "Apple TV Options" :
+        [
+            {
+                "long_form"         : "--appletv-paks",
+                "attribute"         : "appletv_paks",
+                "default_value"     : "False",
+                "description"       : "Forces paks to be built in non-release builds"
+            }
+        ],
+        "Apple TV Project Generator" :
+        [
+            {
+                "long_form"         : "--generate-appletv-projects-automatically",
+                "attribute"         : "generate_appletv_projects_automatically",
+                "default_value"     : "True",
+                "description"       : "Automatically generate Apple TV Projects"
+            },
+            {
+                "long_form"         : "--appletv-project-name",
+                "attribute"         : "appletv_project_name",
+                "default_value"     : "LumberyardAppleTVSDK",
+                "description"       : "Name of the generated project"
+            },
+            {
+                "long_form"         : "--appletv-project-folder",
+                "attribute"         : "appletv_project_folder",
+                "default_value"     : "Solutions",
+                "description"       : "Name of the folder in which the generated Apple TV projects should be stored"
+            }
+        ]
+    },
+    "modules" : [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_clang",
+        "platforms/platform_settings_appletv"
+    ],
+    "env": {
+        "DEFINES": [
+            "APPLE",
+            "APPLETV",
+            "MOBILE",
+            "APPLE_BUNDLE"
+        ],
+        "FRAMEWORK": [
+            "Foundation",
+            "UIKit",
+            "QuartzCore",
+            "GameController"
+        ],
+        "CFLAGS, CXXFLAGS": [
+            "-Wno-shorten-64-to-32"
+        ],
+        "LIB": [
+            "pthread"
+        ]
+    }
+}

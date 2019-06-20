@@ -89,5 +89,17 @@ namespace AZ
         {
             return LoadObjectFromFileInPlace(filePath, AzTypeInfo<ObjectType>::Uuid(), &destination, context, filterDesc);
         }
+        
+        bool IsVectorContainerType(const AZ::Uuid& type);
+        bool IsSetContainerType(const AZ::Uuid& type);
+        bool IsMapContainerType(const AZ::Uuid& type);
+        bool IsContainerType(const AZ::Uuid& type);
+        bool IsOutcomeType(const AZ::Uuid& type);
+
+        AZ::TypeId GetGenericContainerType(const AZ::TypeId& type);
+        bool IsGenericContainerType(const AZ::TypeId& type);
+        AZStd::pair<AZ::Uuid, AZ::Uuid> GetOutcomeTypes(const AZ::Uuid& type);
+        AZStd::vector<AZ::Uuid> GetContainedTypes(const AZ::Uuid& type);
+
     } // namespace Utils
 } // namespace AzCore

@@ -20,8 +20,8 @@ Node: filesystem structure, contains lists of nodes
    (:py:class:`waflib.Node.Nod3`, see the :py:class:`waflib.Context.Context` initializer). A reference to the context owning a node is held as self.ctx
 """
 
-import os, re, sys, shutil, hashlib, base64
-from waflib import Utils, Errors
+import os, re, sys, shutil, hashlib
+from waflib import Utils, Errors, Logs
 
 exclude_regs = '''
 **/*~
@@ -830,6 +830,15 @@ class Node(object):
 			pass
 
 		if not self.is_bld() or self.ctx.bldnode is self.ctx.srcnode:
+			self.sig = Utils.h_file(self.abspath())
+		elif not hasattr(self, 'sig') and self.ctx.is_azcodegen_node(self):
+			# This situation should not happen for code gen, since codegen outputted files will already have
+			# the cache_sig precomputed.  However we are seeing an edge case with some shared code gen that is
+			# either wiping out the cache_sig from the az_codegen step or the wrong node is being calculated.
+			# Will was generate a signature here anyways if it is a code-gen source file but present a warning to
+			# track down the root cause.  This will prevent header dependencies from being excluded because the
+			# exception prevents any includes after this problem header file to be included in the dep signature
+			Logs.warn('[WARN] Signature for azcodegen file {} not found.  Regenerating..'.format(self.abspath()))
 			self.sig = Utils.h_file(self.abspath())
 		self.cache_sig = ret = self.sig
 		return ret

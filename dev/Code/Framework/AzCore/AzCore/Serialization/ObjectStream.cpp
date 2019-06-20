@@ -112,6 +112,10 @@ namespace AZ
                 // Assign default asset filter if none was provided by the user.
                 m_scratchSpace.resize(m_scratchSpace.capacity());
                 m_filterDesc = filterDesc;
+                if (!m_filterDesc.m_assetCB)
+                {
+                    m_filterDesc.m_assetCB = &ObjectStreamImpl::AssetFilterDefault;
+                }
             }
 
             /// Starts the operation
@@ -601,6 +605,17 @@ namespace AZ
                             SkipElement();
                         }
                         element.m_dataSize = static_cast<size_t>(element.m_stream->GetCurPos());
+
+                        // If the convertedClassElement could not be found in the parent class
+                        // Set the convertedNode a DefaultDataElementNode so that the ObjectStream
+                        // does not attempt to parse the sub element of the convertedClassElement
+                        // by searching through the parentClassInfo class element container
+                        // which is really the grandparent class of the convertedClassElement sub element nodes
+                        if (convertedNode)
+                        {
+                            *convertedNode = {};
+                        }
+
                         continue;
                     }
                 }
@@ -630,11 +645,7 @@ namespace AZ
                             m_errorLogger.ReportError(error.c_str());
                         }
 
-                        convertedClassElement.m_classData = nullptr;
-                        while (!convertedClassElement.m_subElements.empty())
-                        {
-                            convertedClassElement.RemoveElement(convertedClassElement.GetNumSubElements() - 1);
-                        }
+                        convertedClassElement = {};
                         continue; // go to next element
                     }
                 }
@@ -2001,6 +2012,36 @@ namespace AZ
     {
         (void)jobHandle;
         AZ_Assert(false, "TODO: Cancel ObjectStream");
+        return false;
+    }
+
+    //=========================================================================
+    // AssetFilterDefault
+    //=========================================================================
+    /*static*/ bool ObjectStream::AssetFilterDefault(const Data::Asset<Data::AssetData>& asset)
+    {
+        return (asset.GetAutoLoadBehavior() != AZ::Data::AssetLoadBehavior::NoLoad);
+    }
+
+    //=========================================================================
+    // AssetFilterSlicesOnly
+    //=========================================================================
+    /*static*/ bool ObjectStream::AssetFilterSlicesOnly(const Data::Asset<Data::AssetData>& asset)
+    {
+        // Expand regular slice references (but not dynamic slice references).
+        if (asset.GetType() == AzTypeInfo<SliceAsset>::Uuid())
+        {
+            return AssetFilterDefault(asset);
+        }
+
+        return false;
+    }
+
+    //=========================================================================
+    // AssetFilterNoAssetLoading
+    //=========================================================================
+    /*static*/ bool ObjectStream::AssetFilterNoAssetLoading(const Data::Asset<Data::AssetData>& /*asset*/)
+    {
         return false;
     }
 

@@ -15,35 +15,119 @@
 #include <AzQtComponents/AzQtComponentsAPI.h>
 #include <AzQtComponents/Components/DockBarButton.h>
 #include <AzQtComponents/Components/InteractiveWindowGeometryChanger.h>
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
 
-#include <QWidget>
+#include <QFrame>
 #include <QPoint>
 #include <QPointer>
 #include <QTimer>
+#include <QLabel>
 
 class QMoveEvent;
 class QMouseEvent;
 class QMenu;
 class QDockWidget;
+class QLabel;
+class QHBoxLayout;
+class QSettings;
+class QStyleOption;
+class QPaintEvent;
+class QStackedLayout;
 
 namespace AzQtComponents
 {
-    class DockBar;
+    class Style;
+    class DockTabBar;
 
-    class AZ_QT_COMPONENTS_API TitleBar
-        : public QWidget
+    class AZ_QT_COMPONENTS_API TitleBarLabel : public QLabel
     {
         Q_OBJECT
+
+    public:
+        explicit TitleBarLabel(QWidget* parent = nullptr);
+        ~TitleBarLabel() override;
+        QSize minimumSizeHint() const override;
+    };
+
+    /* TitleBar style is now applied from Qt Style Sheets.
+     *
+     * UI 1.0 Style can be found in Code/Sandbox/Editor/Style/NewEditorStylesheet.qss, with
+     * additional background paint code called from EditorProxyStyle::drawControl.
+     *
+     * UI 2.0 style can be found in Code/Framework/AzQtComponents/AzQtComponents/Components/Widgets/TitleBar.qss
+     */
+    class AZ_QT_COMPONENTS_API TitleBar
+        : public QFrame
+    {
+        Q_OBJECT
+        Q_PROPERTY(bool drawSideBorders READ drawSideBorders WRITE setDrawSideBorders NOTIFY drawSideBordersChanged)
+        Q_PROPERTY(bool drawSimple READ drawSimple WRITE setDrawSimple NOTIFY drawSimpleChanged)
+        Q_PROPERTY(bool forceInactive READ forceInactive WRITE setForceInactive NOTIFY forceInactiveChanged)
+        Q_PROPERTY(bool tearEnabled READ tearEnabled WRITE setTearEnabled NOTIFY tearEnabledChanged)
+        Q_PROPERTY(bool drawAsTabBar READ drawAsTabBar WRITE setDrawAsTabBar NOTIFY drawAsTabBarChanged)
+        Q_PROPERTY(QString windowTitleOverride READ windowTitleOverride WRITE setWindowTitleOverride NOTIFY windowTitleOverrideChanged)
+        /**
+         * Expose the title using a QT property so that test automation can read it
+         */
+        Q_PROPERTY(QString title READ title)
     public:
         typedef QList<DockBarButton::WindowDecorationButton> WindowDecorationButtons;
 
+        struct Config
+        {
+            struct TitleBar
+            {
+                int height = -1;
+                int simpleHeight = -1;
+                bool appearAsTabBar = false;
+            };
+
+            struct Icon
+            {
+                bool visible = false;
+            };
+
+            struct Title
+            {
+                int indent = -1;
+                bool visibleWhenSimple = false;
+            };
+
+            struct Buttons
+            {
+                bool showDividerButtons = false;
+                int spacing = -1;
+            };
+
+            TitleBar titleBar;
+            Icon icon;
+            Title title;
+            Buttons buttons;
+        };
+
+        /*!
+         * Loads the button config data from a settings object.
+         */
+        static Config loadConfig(QSettings& settings);
+
+        /*!
+         * Returns default button config data.
+         */
+        static Config defaultConfig();
+
         explicit TitleBar(QWidget* parent = nullptr);
         ~TitleBar();
+        bool drawSideBorders() const { return m_drawSideBorders; }
         void setDrawSideBorders(bool);
+        bool drawSimple() const { return m_drawSimple; }
         void setDrawSimple(bool);
         void setDragEnabled(bool);
+        bool tearEnabled() const { return m_tearEnabled; }
         void setTearEnabled(bool);
+        bool drawAsTabBar() const { return m_appearAsTabBar; }
+        void setDrawAsTabBar(bool);
         QSize sizeHint() const override;
+        const QString& windowTitleOverride() const { return m_titleOverride; }
         void setWindowTitleOverride(const QString&);
 
         /**
@@ -67,6 +151,7 @@ namespace AzQtComponents
         void handleSizeRequest();
 
         int numButtons() const;
+        bool forceInactive() const { return m_forceInactive; }
         void setForceInactive(bool);
 
         /**
@@ -86,30 +171,39 @@ namespace AzQtComponents
          */
         QRect draggableRect() const;
 
-        /**
-        * Expose the title using a QT property so that test automation can read it
-        */
-        Q_PROPERTY(QString title READ title)
+        bool event(QEvent* event) override;
 
         void disableButton(DockBarButton::WindowDecorationButton buttonType);
         void enableButton(DockBarButton::WindowDecorationButton buttonType);
 
     Q_SIGNALS:
         void undockAction();
+        void drawSideBordersChanged(bool drawSideBorders);
+        void drawSimpleChanged(bool drawSimple);
+        void forceInactiveChanged(bool forceInactive);
+        void tearEnabledChanged(bool tearEnabled);
+        void drawAsTabBarChanged(bool drawAsTabBar);
+        void windowTitleOverrideChanged(const QString& windowTitleOverride);
 
     protected:
-        void paintEvent(QPaintEvent* event) override;
         void mousePressEvent(QMouseEvent* ev) override;
         void mouseReleaseEvent(QMouseEvent* ev) override;
         void mouseMoveEvent(QMouseEvent* ev) override;
         void mouseDoubleClickEvent(QMouseEvent *ev) override;
         void timerEvent(QTimerEvent* ev) override;
         void contextMenuEvent(QContextMenuEvent* ev) override;
+        bool eventFilter(QObject* watched, QEvent* event) override;
 
     protected Q_SLOTS:
         void handleButtonClicked(const DockBarButton::WindowDecorationButton type);
 
     private:
+        friend class Style;
+
+        static bool polish(Style* style, QWidget* widget, const Config& config);
+        static bool unpolish(Style* style, QWidget* widget, const Config& config);
+        static int titleBarHeight(const Style* style, const QStyleOption* option, const QWidget* widget, const Config& config, const TabWidget::Config& tabConfig);
+
         bool usesCustomTopBorderResizing() const;
         void checkEnableMouseTracking();
         QWidget* dockWidget() const;
@@ -121,7 +215,9 @@ namespace AzQtComponents
         void fixEnabled();
         bool isMaximized() const;
         QString title() const;
-        void setupButtons();
+        void updateTitle();
+        void updateTitleBar();
+        void setupButtons(bool useDividerButtons = true);
         bool isDragging() const;
         bool isLeftButtonDown() const;
         bool canDragWindow() const;
@@ -129,10 +225,18 @@ namespace AzQtComponents
         bool isDraggingWindow() const;
         void resizeWindow(const QPoint& globalPos);
         void dragWindow(const QPoint& globalPos);
+        bool isTitleBarForDockWidget() const;
         DockBarButton* findButton(DockBarButton::WindowDecorationButton buttonType) const;
 
-        DockBar* m_dockBar;
+        QStackedLayout* m_stackedLayout = nullptr;
+        DockTabBar* m_tabBar = nullptr;
         QWidget* m_firstButton = nullptr;
+        QLabel* m_icon = nullptr;
+        QLabel* m_label = nullptr;
+        bool m_showLabelWhenSimple = true;
+        bool m_appearAsTabBar = false;
+        QFrame* m_buttonsContainer = nullptr;
+        QHBoxLayout* m_buttonsLayout = nullptr;
         QString m_titleOverride;
         bool m_drawSideBorders = true;
         bool m_drawSimple = false;

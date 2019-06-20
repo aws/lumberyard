@@ -114,6 +114,8 @@ def convert_to_dataset(data):
 def cli(context, args):
     #this import is only available when you execute via cli
     import util
+    util.set_logger(args.verbose)
+
     from resource_manager_common import constant
     credentials = context.aws.load_credentials()
 

@@ -17,6 +17,7 @@
 #include <PxShape.h>
 #include <PhysX/UserDataTypes.h>
 #include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/Collision.h>
 
 namespace Physics
 {
@@ -32,6 +33,9 @@ namespace PhysX
         Physics::Material* GetUserData(const physx::PxMaterial* material);
         Physics::Shape* GetUserData(const physx::PxShape* shape);
         Physics::World* GetUserData(physx::PxScene* scene);
+        void SetLayer(const Physics::CollisionLayer& layer, physx::PxFilterData& filterData);
+        void SetGroup(const Physics::CollisionGroup& group, physx::PxFilterData& filterData);
+        void SetCollisionLayerAndGroup(physx::PxShape* shape, const Physics::CollisionLayer& layer, const Physics::CollisionGroup&  group);
     }
 }
 

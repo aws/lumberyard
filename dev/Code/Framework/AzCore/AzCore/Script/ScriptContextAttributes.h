@@ -37,10 +37,11 @@ namespace AZ
             const static AZ::Crc32 ExcludeFrom = AZ_CRC("ExcludeFrom", 0xa98972fe);
             enum ExcludeFlags : AZ::u64
             {
-                List = 1 << 0,
+                List          = 1 << 0,
                 Documentation = 1 << 1,
-                Preview = 1 << 2,
-                All = static_cast<AZ::u64>(-1)
+                Preview       = 1 << 2,
+                ListOnly      = 1 << 3,
+                All           = (List | Documentation | Preview)
             };
 
             const static AZ::Crc32 Storage = AZ_CRC("ScriptStorage", 0xcd95b44d);

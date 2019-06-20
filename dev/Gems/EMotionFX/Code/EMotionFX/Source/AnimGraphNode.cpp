@@ -54,15 +54,20 @@ namespace EMotionFX
         : AnimGraphObject(nullptr)
         , m_id(AnimGraphNodeId::Create())
         , mNodeIndex(MCORE_INVALIDINDEX32)
+        , mDisabled(false)
         , mParentNode(nullptr)
         , mCustomData(nullptr)
-        , mPosX(0)
-        , mPosY(0)
         , mVisEnabled(false)
         , mIsCollapsed(false)
-        , mDisabled(false)
+        , mPosX(0)
+        , mPosY(0)
     {
-        mVisualizeColor = MCore::GenerateColor();
+        const AZ::u32 col = MCore::GenerateColor();
+        mVisualizeColor = AZ::Color(
+            MCore::ExtractRed(col)/255.0f,
+            MCore::ExtractGreen(col)/255.0f,
+            MCore::ExtractBlue(col)/255.0f,
+            1.0f);
     }
 
 
@@ -757,6 +762,22 @@ namespace EMotionFX
         mInputPorts[inputPortNr].mPortID = portID;
     }
 
+    void AnimGraphNode::SetupInputPortAsBool(const char* name, uint32 inputPortNr, uint32 portID)
+    {
+        // check if we already registered this port ID
+        const uint32 duplicatePort = FindInputPortByID(portID);
+        if (duplicatePort != MCORE_INVALIDINDEX32)
+        {
+            MCore::LogError("EMotionFX::AnimGraphNode::SetInputPortAsBool() - There is already a port with the same ID (portID=%d existingPort='%s' newPort='%s' node='%s')", portID, mInputPorts[duplicatePort].GetName(), name, RTTI_GetTypeName());
+        }
+
+        SetInputPortName(inputPortNr, name);
+        mInputPorts[inputPortNr].Clear();
+        mInputPorts[inputPortNr].mCompatibleTypes[0] = MCore::AttributeBool::TYPE_ID;
+        mInputPorts[inputPortNr].mCompatibleTypes[1] = MCore::AttributeFloat::TYPE_ID;;
+        mInputPorts[inputPortNr].mCompatibleTypes[2] = MCore::AttributeInt32::TYPE_ID;
+        mInputPorts[inputPortNr].mPortID = portID;
+    }
 
     // setup a given input port in a generic way
     void AnimGraphNode::SetupInputPort(const char* name, uint32 inputPortNr, uint32 attributeTypeID, uint32 portID)
@@ -1259,7 +1280,6 @@ namespace EMotionFX
         }
     }
 
-
     void AnimGraphNode::CollectChildNodesOfType(const AZ::TypeId& nodeType, AZStd::vector<AnimGraphNode*>& outNodes) const
     {
         for (AnimGraphNode* childNode : mChildNodes)
@@ -1271,14 +1291,12 @@ namespace EMotionFX
         }
     }
 
-
-    // recursively collect nodes of the given type
-    void AnimGraphNode::RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, MCore::Array<AnimGraphNode*>* outNodes) const
+    void AnimGraphNode::RecursiveCollectNodesOfType(const AZ::TypeId& nodeType, AZStd::vector<AnimGraphNode*>* outNodes) const
     {
         // check the current node type
         if (nodeType == azrtti_typeid(this))
         {
-            outNodes->Add(const_cast<AnimGraphNode*>(this));
+            outNodes->emplace_back(const_cast<AnimGraphNode*>(this));
         }
 
         for (const AnimGraphNode* childNode : mChildNodes)
@@ -1287,8 +1305,6 @@ namespace EMotionFX
         }
     }
 
-
-    // get the transition conditions of a given type, recursively
     void AnimGraphNode::RecursiveCollectTransitionConditionsOfType(const AZ::TypeId& conditionType, MCore::Array<AnimGraphTransitionCondition*>* outConditions) const
     {
         // check if the current node is a state machine
@@ -2454,15 +2470,14 @@ namespace EMotionFX
     }
 
 
-    void AnimGraphNode::SetVisualizeColor(uint32 color)
+    void AnimGraphNode::SetVisualizeColor(const AZ::Color& color)
     {
         mVisualizeColor = color;
-
         SyncVisualObject();
     }
 
 
-    uint32 AnimGraphNode::GetVisualizeColor() const
+    const AZ::Color& AnimGraphNode::GetVisualizeColor() const
     {
         return mVisualizeColor;
     }
@@ -2538,6 +2553,35 @@ namespace EMotionFX
     }
 
 
+    bool AnimGraphNode::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    {
+        const unsigned int version = classElement.GetVersion();
+        if (version < 2)
+        {
+            int vizColorIndex = classElement.FindElement(AZ_CRC("visualizeColor", 0x6d52f421));
+            if (vizColorIndex > 0)
+            {
+                AZ::u32 oldColor;
+                AZ::SerializeContext::DataElementNode& dataElementNode = classElement.GetSubElement(vizColorIndex);
+                const bool result = dataElementNode.GetData<AZ::u32>(oldColor);
+                if (!result)
+                {
+                    return false;
+                }
+                const AZ::Color convertedColor(
+                    MCore::ExtractRed(oldColor)/255.0f,
+                    MCore::ExtractGreen(oldColor)/255.0f,
+                    MCore::ExtractBlue(oldColor)/255.0f,
+                    1.0f
+                );
+                classElement.RemoveElement(vizColorIndex);
+                classElement.AddElementWithData(context, "visualizeColor", convertedColor);
+            }
+        }
+        return true;
+    }
+
+
     void AnimGraphNode::Reflect(AZ::ReflectContext* context)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
@@ -2547,7 +2591,7 @@ namespace EMotionFX
         }
 
         serializeContext->Class<AnimGraphNode, AnimGraphObject>()
-            ->Version(1)
+            ->Version(2, VersionConverter)
             ->PersistentId([](const void* instance) -> AZ::u64 { return static_cast<const AnimGraphNode*>(instance)->GetId(); })
             ->Field("id", &AnimGraphNode::m_id)
             ->Field("name", &AnimGraphNode::m_name)

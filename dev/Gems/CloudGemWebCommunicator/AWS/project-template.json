@@ -131,7 +131,7 @@
                                         "iot:DeletePolicy",
                                         "iot:GetPolicy",
                                         "iot:ListPolicyPrincipals",
-                                        "iot:DetachPrincipalPolicy"
+                                        "iot:DetachPolicy"
                                     ],
                                     "Resource": [
                                         "*"
@@ -194,7 +194,7 @@
                                         "iot:DeletePolicy",
                                         "iot:GetPolicy",
                                         "iot:ListPolicyPrincipals",
-                                        "iot:DetachPrincipalPolicy"
+                                        "iot:DetachPolicy"
                                     ],
                                     "Resource": [
                                         "*"
@@ -257,7 +257,7 @@
                                         "iot:DeletePolicy",
                                         "iot:GetPolicy",
                                         "iot:ListPolicyPrincipals",
-                                        "iot:DetachPrincipalPolicy"
+                                        "iot:DetachPolicy"
                                     ],
                                     "Resource": [
                                         "*"

@@ -39,6 +39,11 @@ void ClickableLabel::showEvent(QShowEvent* event)
 
 void ClickableLabel::enterEvent(QEvent* ev)
 {
+    if (!isEnabled())
+    {
+        return;
+    }
+
     updateFormatting(true);
     QApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor));
     QLabel::enterEvent(ev);
@@ -46,6 +51,11 @@ void ClickableLabel::enterEvent(QEvent* ev)
 
 void ClickableLabel::leaveEvent(QEvent* ev)
 {
+    if (!isEnabled())
+    {
+        return;
+    }
+
     updateFormatting(false);
     QApplication::restoreOverrideCursor();
     QLabel::leaveEvent(ev);
@@ -81,11 +91,15 @@ void ClickableLabel::updateFormatting(bool mouseOver)
 
 bool ClickableLabel::event(QEvent* e)
 {
-    if (e->type() == QEvent::MouseButtonDblClick)
+    if (isEnabled())
     {
-        emit linkActivated(QString());
-        return true; //ignore
+        if (e->type() == QEvent::MouseButtonDblClick)
+        {
+            emit linkActivated(QString());
+            return true; //ignore
+        }
     }
+
     return QLabel::event(e);
 }
 

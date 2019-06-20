@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include "Timer.h"
 
 namespace ScriptCanvas

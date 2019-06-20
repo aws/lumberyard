@@ -124,7 +124,9 @@ namespace AzFramework
         bool DestroyEntityById(AZ::EntityId entityId) override;
         AZ::Entity* CloneEntity(const AZ::Entity& sourceEntity) override;
         void ResetContext() override;
+
         const AZ::SliceComponent::EntityIdToEntityIdMap& GetLoadedEntityIdMap() override;
+        AZ::EntityId FindLoadedEntityIdMapping(const AZ::EntityId& staticId) const override;
         //////////////////////////////////////////////////////////////////////////
 
         static void Reflect(AZ::ReflectContext* context);
@@ -152,6 +154,12 @@ namespace AzFramework
         void CreateRootSlice();
 
         AZ::SliceComponent::SliceInstanceAddress GetOwningSliceForEntity(AZ::EntityId entityId) const;
+
+        /**
+        * A performant way to destroy all entities under the root slice, including both loose entities and entities
+        * in slices. This is useful when resetting the context. 
+        */
+        void DestroyRootSliceEntities();
 
         void HandleEntitiesAdded(const EntityList& entities);
         void HandleEntityRemoved(const AZ::EntityId& id);

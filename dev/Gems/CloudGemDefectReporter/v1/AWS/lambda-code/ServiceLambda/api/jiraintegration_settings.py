@@ -15,4 +15,5 @@ import jira_integration
 
 @service.api
 def get(request):
+    jira_integration.__clear_cache()
     return jira_integration.get_jira_integration_settings()

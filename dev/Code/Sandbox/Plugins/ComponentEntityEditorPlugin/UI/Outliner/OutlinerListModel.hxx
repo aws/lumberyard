@@ -135,8 +135,6 @@ public:
     bool dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) override;
     bool canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const override;
 
-    bool IsSelected(const AZ::EntityId& entityId) const;
-
     QMimeData* mimeData(const QModelIndexList& indexes) const override;
     QStringList mimeTypes() const override;
 
@@ -186,21 +184,6 @@ protected:
     //! Editor entity context notification bus
     void OnEditorEntitiesReplacedBySlicedEntities(const AZStd::unordered_map<AZ::EntityId, AZ::EntityId>& replacedEntitiesMap) override;
     void OnContextReset() override;
-
-    //! Editor component lock interface to enable/disable selection of entity in the viewport.
-    //! Setting the editor lock state on a parent will recursively set the flag on all descendants as well. (to match visibility)
-    void ToggleEditorLockState(const AZ::EntityId& entityId);
-    void SetEditorLockState(const AZ::EntityId& entityId, bool isLocked);
-    void SetEditorLockStateRecursively(const AZ::EntityId& entityId, bool isLocked, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer);
-
-    //! Editor Visibility interface to enable/disable rendering in the viewport.
-    //! Setting the editor visibility on a parent will recursively set the flag on all descendants as well.
-    void ToggleEditorVisibility(const AZ::EntityId& entityId);
-    void SetEditorVisibility(const AZ::EntityId& entityId, bool isVisible);
-    void SetEditorVisibilityStateRecursively(const AZ::EntityId& entityId, bool isVisible, const AZ::EntityId& toggledEntityId, bool toggledEntityWasLayer);
-
-    bool IsEntityVisible(const AZ::EntityId& entityId) const;
-    void SetEntityVisibility(const AZ::EntityId& entityId, bool visibility) const;
 
     void QueueEntityUpdate(AZ::EntityId entityId);
     void QueueAncestorUpdate(AZ::EntityId entityId);
@@ -306,16 +289,30 @@ private:
     const int maskDiameter = 8;  
 };
 
-// Class used to identify the visibility checkbox element for styling purposes
-class OutlinerVisibilityCheckBox : public QCheckBox
+class OutlinerCheckBox : public QCheckBox
 {
-    Q_OBJECT;
+   Q_OBJECT
+
+public:
+    explicit OutlinerCheckBox(QWidget* parent = nullptr);
+
+    void draw(QPainter* painter);
+};
+
+// Class used to identify the visibility checkbox element for styling purposes
+class OutlinerVisibilityCheckBox : public OutlinerCheckBox
+{
+    Q_OBJECT
+public:
+    explicit OutlinerVisibilityCheckBox(QWidget* parent = nullptr);
 };
 
 // Class used to identify the lock checkbox element for styling purposes
-class OutlinerLockCheckBox : public QCheckBox
+class OutlinerLockCheckBox : public OutlinerCheckBox
 {
-    Q_OBJECT;
+    Q_OBJECT
+public:
+    explicit OutlinerLockCheckBox(QWidget* parent = nullptr);
 };
 
 /*!
@@ -335,6 +332,7 @@ public:
     // Qt overrides
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
+
 private:
     // The layer stripe is a continuous line from the layer's color box to the last entity in the layer.
     // Two layer stripes are drawn, one in the color of the layer and other in the border box color.
@@ -362,6 +360,10 @@ private:
 
     const int m_layerDividerLineHeight = 1;
     const int m_lastEntityInLayerDividerLineHeight = 1;
+
+    QColor m_outlinerSelectionColor;
+
+    OutlinerCheckBox* setupCheckBox(const QStyleOptionViewItem& option, const QModelIndex& index, const QColor& backgroundColor, bool isLayerEntity) const;
 };
 
 Q_DECLARE_METATYPE(AZ::ComponentTypeList); // allows type to be stored by QVariable

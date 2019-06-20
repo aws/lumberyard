@@ -126,6 +126,9 @@ namespace AzToolsFramework
 
         void CreateAndAddEntityFromComponentTags(const AZStd::vector<AZ::Crc32>& requiredTags, const char* entityName) override;
 
+        /* LUMBERYARD INTERNAL USE ONLY. */
+        void RunRedoSeparately(UndoSystem::URSequencePoint* redoCommand) override;
+
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

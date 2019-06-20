@@ -582,4 +582,9 @@ int main(int argc, char** argv)
     return result;
 }
 
+
+#if defined(AZ_MONOLITHIC_BUILD)
+#include <StaticModules.inl>
+#endif
+
 // vim:sw=2:ts=2:si

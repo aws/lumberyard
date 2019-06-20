@@ -18,7 +18,7 @@
                         "ComposedLambdaConfiguration"
                     ]
                 },
-                "LambdaTimeout": 300,
+                "LambdaTimeout": 600,
                 "Definitions": {
                     "Custom::SQSScaler": {
                         "ArnFormat": "arn:aws:sqs:{region}:{account_id}:",

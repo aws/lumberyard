@@ -243,6 +243,13 @@ namespace AzQtComponents
             return size;
         }
 
+        void Reset()
+        {
+            m_detailsOptions.clear();
+            m_precalculatedHeights.clear();
+            m_maximumTextHeights.clear();
+        }
+
     protected:
 
         void initStyleOption(QStyleOptionViewItem* option, const QModelIndex& index) const override
@@ -396,6 +403,15 @@ namespace AzQtComponents
                 updateItemSelection(desel);
                 updateItemSelection(sel);
             });
+        }
+    }
+
+    void StyledDetailsTableView::ResetDelegate()
+    {
+        auto delegate = static_cast<StyledDetailsTableDelegate*>(itemDelegate());
+        if (delegate)
+        {
+            delegate->Reset();
         }
     }
 

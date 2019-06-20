@@ -83,28 +83,38 @@ CViewportTitleDlg::CViewportTitleDlg(QWidget* pParent)
     LoadCustomPresets("AspectRatioPresets", "AspectRatioPreset", m_customAspectRatioPresets);
     LoadCustomPresets("ResPresets", "ResPreset", m_customResPresets);
 
+    const bool newViewportInteractionModelEnabled =
+        GetIEditor()->IsNewViewportInteractionModelEnabled();
+
+    m_ui->m_viewportSearch->setEnabled(!newViewportInteractionModelEnabled);
+    m_ui->m_viewportSearch->setVisible(!newViewportInteractionModelEnabled);
+
     OnInitDialog();
-    m_ui->m_viewportSearch->setMenu(InitializeViewportSearchMenu());
-    connect(m_ui->m_viewportSearch, &AzQtComponents::SearchLineEdit::menuEntryClicked, this, &CViewportTitleDlg::OnViewportSearchButtonClicked);
-    connect(m_ui->m_viewportSearch, &AzQtComponents::SearchLineEdit::returnPressed, this, &CViewportTitleDlg::OnSearchTermChange);
+
+    if (!newViewportInteractionModelEnabled)
+    {
+        m_ui->m_viewportSearch->setMenu(InitializeViewportSearchMenu());
+        connect(m_ui->m_viewportSearch, &AzQtComponents::SearchLineEdit::menuEntryClicked, this, &CViewportTitleDlg::OnViewportSearchButtonClicked);
+        connect(m_ui->m_viewportSearch, &AzQtComponents::SearchLineEdit::returnPressed, this, &CViewportTitleDlg::OnSearchTermChange);
+
+        auto clearAction = new QAction(this);
+        clearAction->setIcon(QIcon(":/stylesheet/img/16x16/lineedit-clear.png"));
+        clearAction->setVisible(!m_ui->m_viewportSearch->text().isEmpty());
+        m_ui->m_viewportSearch->addAction(clearAction, QLineEdit::TrailingPosition);
+
+        connect(clearAction, &QAction::triggered, this, &CViewportTitleDlg::OnViewportSearchClear);
+        connect(m_ui->m_viewportSearch, &QLineEdit::textChanged, this, [clearAction, this] {
+            clearAction->setVisible(!m_ui->m_viewportSearch->text().isEmpty());
+        });
+
+        m_ui->m_viewportSearch->setFixedWidth(190);
+    }
 
     connect(m_ui->m_fovLabel, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpFOVMenu);
     connect(m_ui->m_fovStaticCtrl, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpFOVMenu);
     connect(m_ui->m_ratioStaticCtrl, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpAspectMenu);
     connect(m_ui->m_ratioLabel, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpAspectMenu);
     connect(m_ui->m_sizeStaticCtrl, &QWidget::customContextMenuRequested, this, &CViewportTitleDlg::PopUpResolutionMenu);
-
-    auto clearAction = new QAction(this);
-    clearAction->setIcon(QIcon(":/stylesheet/img/16x16/lineedit-clear.png"));
-    clearAction->setVisible(!m_ui->m_viewportSearch->text().isEmpty());
-    m_ui->m_viewportSearch->addAction(clearAction, QLineEdit::TrailingPosition);
-
-    connect(clearAction, &QAction::triggered, this, &CViewportTitleDlg::OnViewportSearchClear);
-    connect(m_ui->m_viewportSearch, &QLineEdit::textChanged, this, [clearAction, this] {
-            clearAction->setVisible(!m_ui->m_viewportSearch->text().isEmpty());
-        });
-
-    m_ui->m_viewportSearch->setFixedWidth(190);
 }
 
 CViewportTitleDlg::~CViewportTitleDlg()
@@ -226,7 +236,11 @@ void CViewportTitleDlg::SetTitle(const QString& title)
 {
     m_title = title;
     m_ui->m_titleBtn->setText(m_title);
-    m_ui->m_viewportSearch->setVisible(title == QLatin1String("Perspective"));
+
+    const bool searchVisible =
+        title == QLatin1String("Perspective") && !GetIEditor()->IsNewViewportInteractionModelEnabled();
+
+    m_ui->m_viewportSearch->setVisible(searchVisible);
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -624,7 +624,7 @@ void TimelineWidget::DrawSecondTicks(QPainter* painter)
             //t = t / pow(10,precision);
             painter->setPen(black);
             painter->drawLine(m_rcTimeline.left() + x, m_rcTimeline.bottom() - 2, m_rcTimeline.left() + x, m_rcTimeline.bottom() - 14);
-            painter->drawStaticText(m_rcTimeline.left() + x + 2, m_rcTimeline.top(), str);
+            painter->drawText(m_rcTimeline.left() + x + 2, m_rcTimeline.top(), str);
         }
     }
 }
@@ -651,7 +651,7 @@ public:
 
                 painter->setPen(Qt::black);
                 painter->drawLine(rect.left() + x, rect.bottom() - 2, rect.left() + x, rect.bottom() - 14);
-                painter->drawStaticText(rect.left() + x + 2, rect.top(), str);
+                painter->drawText(rect.left() + x + 2, rect.top(), str);
             }
         }
     }

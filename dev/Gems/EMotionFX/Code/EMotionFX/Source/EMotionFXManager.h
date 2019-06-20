@@ -37,6 +37,7 @@ namespace EMotionFX
     class Recorder;
     class MotionInstancePool;
     class EventDataFactory;
+    class DebugDraw;
 
     // versions
 #define EMFX_HIGHVERSION 4
@@ -197,6 +198,12 @@ namespace EMotionFX
         MCORE_INLINE WaveletCache* GetWaveletCache() const                          { return mWaveletCache; }
 
         /**
+         * Get the debug drawing class.
+         * @result A pointer to the wavelet cache.
+         */
+        MCORE_INLINE DebugDraw* GetDebugDraw() const                                { return mDebugDraw; }
+
+        /**
          * Set the path of the media root directory.
          * @param path The path of the media root folder.
          */
@@ -332,7 +339,8 @@ namespace EMotionFX
         WaveletCache*               mWaveletCache;          /**< The wavelet cache. */
         AnimGraphManager*           mAnimGraphManager;      /**< The animgraph manager. */
         Recorder*                   mRecorder;              /**< The recorder. */
-        MotionInstancePool*         mMotionInstancePool;    /**< The motion instance pool. */
+        MotionInstancePool*         mMotionInstancePool;    /**< The motion instance pool. */        
+        DebugDraw*                  mDebugDraw;             /**< The debug drawing system. */
         MCore::Array<ThreadData*>   mThreadDatas;           /**< The per thread data. */
         MCore::Distance::EUnitType  mUnitType;              /**< The unit type, on default it is MCore::Distance::UNITTYPE_METERS. */
         float                       mGlobalSimulationSpeed; /**< The global simulation speed, default is 1.0. */
@@ -395,6 +403,12 @@ namespace EMotionFX
          * @param cache The wavelet cache.
          */
         void SetWaveletCache(WaveletCache* cache);
+
+        /**
+         * Set the debug draw object.
+         * @param draw The debug drawing object.
+         */
+        void SetDebugDraw(DebugDraw* draw);
 
         /**
          * Set the motion instance pool.
@@ -486,7 +500,8 @@ namespace EMotionFX
     MCORE_INLINE EventManager&              GetEventManager()           { return *GetEMotionFX().GetEventManager(); }       /**< Get the motion event manager. */
     MCORE_INLINE SoftSkinManager&           GetSoftSkinManager()        { return *GetEMotionFX().GetSoftSkinManager(); }    /**< Get the softskin manager. */
     MCORE_INLINE WaveletCache&              GetWaveletCache()           { return *GetEMotionFX().GetWaveletCache(); }       /**< Get the wavelet cache. */
-    MCORE_INLINE AnimGraphManager&          GetAnimGraphManager()        { return *GetEMotionFX().GetAnimGraphManager(); }  /**< Get the animgraph manager. */
+    MCORE_INLINE AnimGraphManager&          GetAnimGraphManager()       { return *GetEMotionFX().GetAnimGraphManager(); }   /**< Get the animgraph manager. */
     MCORE_INLINE Recorder&                  GetRecorder()               { return *GetEMotionFX().GetRecorder(); }           /**< Get the recorder. */
     MCORE_INLINE MotionInstancePool&        GetMotionInstancePool()     { return *GetEMotionFX().GetMotionInstancePool(); } /**< Get the motion instance pool. */
+    MCORE_INLINE DebugDraw&                 GetDebugDraw()              { return *GetEMotionFX().GetDebugDraw(); }          /**< Get the debug drawing. */
 }   // namespace EMotionFX

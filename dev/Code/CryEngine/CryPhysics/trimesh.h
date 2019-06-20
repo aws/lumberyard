@@ -65,8 +65,8 @@ public:
     virtual int Intersect(IGeometry* pCollider, geom_world_data* pdata1, geom_world_data* pdata2, intersection_params* pparams, geom_contact*& pcontacts);
     virtual int Subtract(IGeometry* pGeom, geom_world_data* pdata1, geom_world_data* pdata2, int bLogUpdates = 1);
     virtual int Slice(const triangle* pcut, float minlen = 0, float minArea = 0);
-    virtual void GetBBox(box* pbox) { ReadLockCond lock(m_lockUpdate, isneg(m_lockUpdate) ^ 1); m_pTree->GetBBox(pbox); }
-    virtual void GetBBox(box* pbox, int bThreadSafe) { ReadLockCond lock(m_lockUpdate, (bThreadSafe | isneg(m_lockUpdate)) ^ 1); m_pTree->GetBBox(pbox); }
+    virtual void GetBBox(box* pbox) { ReadLockCond lock(m_lockUpdate, isneg(m_lockUpdate) ^ 1); if(m_pTree) m_pTree->GetBBox(pbox); }
+    virtual void GetBBox(box* pbox, int bThreadSafe) { ReadLockCond lock(m_lockUpdate, (bThreadSafe | isneg(m_lockUpdate)) ^ 1); if (m_pTree) m_pTree->GetBBox(pbox); }
     virtual int FindClosestPoint(geom_world_data* pgwd, int& iPrim, int& iFeature, const Vec3& ptdst0, const Vec3& ptdst1,
         Vec3* ptres, int nMaxIters = 10);
     virtual int CalcPhysicalProperties(phys_geometry* pgeom);

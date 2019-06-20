@@ -130,12 +130,8 @@ namespace AZ
         AZ_Assert(m_stackPrevEnvironment == reinterpret_cast<EBusEnvironment*>(AZ_INVALID_POINTER), "Environment %p is already active on another thread. This is illegal!", this);
 #endif // AZ_DEBUG_BUILD
 
-#if !defined(AZ_PLATFORM_APPLE) // thread_local not supported prior to iOS9 
         m_stackPrevEnvironment = m_tlsAccessor->m_getter();
         m_tlsAccessor->m_setter(this);
-#else
-        AZ_Error("System", false, "EBus environments are currently NOT support on Apple platforms! This is true until our minimal spec supports thread_local variables!");
-#endif
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -145,11 +141,7 @@ namespace AZ
         AZ_Assert(m_stackPrevEnvironment != reinterpret_cast<EBusEnvironment*>(AZ_INVALID_POINTER), "Environment %p is not active you can't call Deactivate!", this);
 #endif // AZ_DEBUG_BUILD
 
-#if !defined(AZ_PLATFORM_APPLE) // thread_local not supported prior to iOS9 
         m_tlsAccessor->m_setter(m_stackPrevEnvironment);
-#else
-        AZ_Error("System", false, "EBus environments are currently NOT support on Apple platforms! This is true until our minimal spec supports thread_local variables!");
-#endif // 
 
 #ifdef AZ_DEBUG_BUILD
         m_stackPrevEnvironment = reinterpret_cast<EBusEnvironment*>(AZ_INVALID_POINTER);

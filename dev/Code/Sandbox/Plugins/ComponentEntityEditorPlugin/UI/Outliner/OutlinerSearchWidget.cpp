@@ -29,132 +29,29 @@ namespace AzQtComponents
         m_globalIcons[static_cast<int>(OutlinerSearchWidget::GlobalSearchCriteria::Separator)] = QIcon();
     }
 
-    OutlinerSearchTypeSelector::OutlinerSearchTypeSelector(QWidget* parent)
+    OutlinerSearchTypeSelector::OutlinerSearchTypeSelector(QPushButton* parent)
         : SearchTypeSelector(parent)
     {
     }
 
-    void OutlinerSearchTypeSelector::RepopulateDataModel()
+    bool OutlinerSearchTypeSelector::filterItemOut(int unfilteredDataIndex, bool itemMatchesFilter, bool categoryMatchesFilter)
     {
-        const int HEADER_HEIGHT = 34;
+        bool unfilteredIndexInvalid = (unfilteredDataIndex >= static_cast<int>(OutlinerSearchWidget::GlobalSearchCriteria::FirstRealFilter));
+        return SearchTypeSelector::filterItemOut(unfilteredDataIndex, itemMatchesFilter, categoryMatchesFilter) && unfilteredIndexInvalid;
+    }
 
-        m_filteredItemIndices.clear();
-        m_model->clear();
-        m_numRows = 0;
-
-        bool amFiltering = m_filterString.length() > 0;
-
-        QScopedValueRollback<bool> setupGuard(m_settingUp, true);
-        QMap<QString, QStandardItem*> categories;
-
-        if (!m_unfilteredData)
+    void OutlinerSearchTypeSelector::initItem(QStandardItem* item, const SearchTypeFilter& filter, int unfilteredDataIndex)
+    {
+        if (filter.displayName != "--------")
         {
-            return;
+            item->setCheckable(true);
+            item->setCheckState(filter.enabled ? Qt::Checked : Qt::Unchecked);
         }
 
-        for (int unfilteredDataIndex = 0, length = m_unfilteredData->length(); unfilteredDataIndex < length; ++unfilteredDataIndex)
+        if (unfilteredDataIndex < static_cast<int>(OutlinerSearchWidget::GlobalSearchCriteria::FirstRealFilter))
         {
-            const SearchTypeFilter& filter = m_unfilteredData->at(unfilteredDataIndex);
-            bool addItem = true;
-
-            bool itemMatchesFilter = true;
-            bool categoryMatchesFilter = true;
-
-            if (amFiltering)
-            {
-                itemMatchesFilter = filter.displayName.contains(m_filterString, Qt::CaseSensitivity::CaseInsensitive);
-                categoryMatchesFilter = filter.category.contains(m_filterString, Qt::CaseSensitivity::CaseInsensitive);
-            }
-
-            if (!itemMatchesFilter && !categoryMatchesFilter && unfilteredDataIndex >= static_cast<int>(OutlinerSearchWidget::GlobalSearchCriteria::FirstRealFilter))
-            {
-                addItem = false;
-            }
-
-            QStandardItem* categoryItem = nullptr;
-            if (categories.contains(filter.category))
-            {
-                categoryItem = categories[filter.category];
-            }
-            else
-            {
-                categoryItem = new QStandardItem(filter.category);
-                if (categoryMatchesFilter || addItem)
-                {
-                    categories[filter.category] = categoryItem;
-                    m_model->appendRow(categoryItem);
-                    categoryItem->setEditable(false);
-                    ++m_numRows;
-                }
-            }
-
-            if (!addItem)
-            {
-                continue;
-            }
-
-            QStandardItem* item = new QStandardItem(filter.displayName);
-            if (filter.displayName != "--------")
-            {
-                item->setCheckable(true);
-                item->setCheckState(filter.enabled ? Qt::Checked : Qt::Unchecked);
-            }
-            item->setData(unfilteredDataIndex);
-            if (unfilteredDataIndex < static_cast<int>(OutlinerSearchWidget::GlobalSearchCriteria::FirstRealFilter))
-            {
-                item->setIcon(OutlinerIcons::GetInstance().GetIcon(unfilteredDataIndex));
-            }
-            m_filteredItemIndices.append(unfilteredDataIndex);
-            categoryItem->appendRow(item);
-            item->setEditable(false);
-            ++m_numRows;
+            item->setIcon(OutlinerIcons::GetInstance().GetIcon(unfilteredDataIndex));
         }
-
-        m_tree->expandAll();
-
-        // Calculate the maximum size of the tree
-        QFontMetrics fontMetric{ m_tree->font() };
-        int height = HEADER_HEIGHT + fontMetric.height() * m_numRows;
-        // Decide whether the menu should go up or down from current point.
-        QPoint globalPos;
-        if (parentWidget())
-        {
-            globalPos = parentWidget()->mapToGlobal(parentWidget()->rect().bottomRight());
-        }
-        else
-        {
-            globalPos = mapToGlobal(QCursor::pos());
-        }
-        QDesktopWidget* desktop = QApplication::desktop();
-        int mouseScreen = desktop->screenNumber(globalPos);
-        QRect mouseScreenGeometry = desktop->screen(mouseScreen)->geometry();
-        QPoint localPos = globalPos - mouseScreenGeometry.topLeft();
-        int screenHeight;
-        int yPos;
-        if (localPos.y() > mouseScreenGeometry.height() / 2)
-        {
-            screenHeight = localPos.y();
-            yPos = mouseScreenGeometry.y();
-        }
-        else
-        {
-            screenHeight = mouseScreenGeometry.height() - localPos.y();
-            yPos = globalPos.y();
-        }
-        if (height > screenHeight)
-        {
-            height = screenHeight;
-        }
-
-        // Set the size of the menu
-        const QSize menuSize{ 256, height };
-        setMaximumSize(menuSize);
-        setMinimumSize(menuSize);
-
-        QPoint menuPosition{ globalPos.x(), yPos };
-        // Wait until end of frame to move the menu as QMenu will make its own move after the
-        // function
-        QTimer::singleShot(0, [=] { this->move(menuPosition); });
     }
 
     OutlinerCriteriaButton::OutlinerCriteriaButton(QString labelText, QWidget* parent, int index)
@@ -172,9 +69,7 @@ namespace AzQtComponents
     OutlinerSearchWidget::OutlinerSearchWidget(QWidget* parent)
         : FilteredSearchWidget(parent, true)
     {
-        SetupOwnSelector(new OutlinerSearchTypeSelector(this));
-        connect(m_selector, &OutlinerSearchTypeSelector::aboutToShow, this, [this]() {m_selector->Setup(m_typeFilters); });
-        connect(m_selector, &OutlinerSearchTypeSelector::TypeToggled, this, &OutlinerSearchWidget::SetFilterStateByIndex);
+        SetupOwnSelector(new OutlinerSearchTypeSelector(assetTypeSelectorButton()));
 
         const SearchTypeFilterList globalMenu{
             {"Global Settings", "Unlocked"},
@@ -192,59 +87,9 @@ namespace AzQtComponents
         m_selector->GetTree()->setItemDelegate(new OutlinerSearchItemDelegate(m_selector->GetTree()));
     }
 
-    void OutlinerSearchWidget::SetFilterStateByIndex(int index, bool enabled)
+    FilterCriteriaButton* OutlinerSearchWidget::createCriteriaButton(const SearchTypeFilter& filter, int filterIndex)
     {
-        SearchTypeFilter& filter = m_typeFilters[index];
-
-        filter.enabled = enabled;
-        auto buttonIt = m_typeButtons.find(index);
-        if (enabled && buttonIt == m_typeButtons.end())
-        {
-            OutlinerCriteriaButton* button = new OutlinerCriteriaButton(filter.displayName, this, index);
-            connect(button, &FilterCriteriaButton::RequestClose, this,
-                [this, index]() { SetFilterStateByIndex(index, false); });
-            m_flowLayout->addWidget(button);
-            m_typeButtons[index] = button;
-        }
-        else if (!enabled)
-        {
-            if (buttonIt != m_typeButtons.end())
-            {
-                delete buttonIt.value();
-                m_typeButtons.remove(index);
-            }
-        }
-
-        SearchTypeFilterList checkedTypes;
-        for (const SearchTypeFilter& typeFilter : m_typeFilters)
-        {
-            if (typeFilter.enabled)
-            {
-                checkedTypes.append(typeFilter);
-            }
-        }
-
-        SetFilteredParentVisible(!checkedTypes.isEmpty());
-        emit TypeFilterChanged(checkedTypes);
-    }
-
-    void OutlinerSearchWidget::ClearTypeFilter()
-    {
-        for (auto it = m_typeButtons.begin(), end = m_typeButtons.end(); it != end; ++it)
-        {
-            delete it.value();
-        }
-        m_typeButtons.clear();
-
-        for (SearchTypeFilter& filter : m_typeFilters)
-        {
-            filter.enabled = false;
-        }
-
-        SetFilteredParentVisible(false);
-
-        SearchTypeFilterList checkedTypes;
-        emit TypeFilterChanged(checkedTypes);
+        return new OutlinerCriteriaButton(filter.displayName, this, filterIndex);
     }
 
     OutlinerSearchItemDelegate::OutlinerSearchItemDelegate(QWidget* parent) : QStyledItemDelegate(parent)

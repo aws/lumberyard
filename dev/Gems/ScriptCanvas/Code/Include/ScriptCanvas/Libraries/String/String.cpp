@@ -10,10 +10,9 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <ScriptCanvas/Internal/Nodes/StringFormatted.h>
 #include <ScriptCanvas/Libraries/Libraries.h>
+#include <ScriptCanvas/Core/Attributes.h>
 
 #include "String.h"
 

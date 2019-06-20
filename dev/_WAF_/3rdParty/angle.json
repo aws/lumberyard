@@ -1,0 +1,23 @@
+{
+    "name": "ANGLE",
+    "source": "@ROOT@/Tools/Redistributables/ANGLE",
+    "description": "ANGLE (Almost Native Graphics Layer Engine) is an open source, BSD-licensed graphics engine abstraction layer developed by Google.",
+    "lib_required": "True",
+    "platform": {
+        "win_x64_vs2013": {
+            "sharedlibpath": [
+                "win32"
+            ],
+            "shared_debug": [
+                "libEGLd.dll",
+                "libGLESv2d.dll"
+            ],
+            "shared_release": [
+                "libEGL.dll",
+                "libGLESv2.dll"
+            ]
+        },
+        "win_x64_vs2015": "@win_x64_vs2013",
+        "win_x64_vs2017": "@win_x64_vs2013"
+    }
+}

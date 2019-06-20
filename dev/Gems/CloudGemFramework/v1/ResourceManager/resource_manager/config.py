@@ -720,9 +720,8 @@ class ConfigContext(object):
     def set_pending_framework_version(self, new_version):
         self.__framework_version = new_version
 
-
     def save_pending_framework_version(self):
-        self.local_project_settings.framework_version = self.__framework_version
+        self.local_project_settings.set_framework_version(self.__framework_version)
         self.local_project_settings.save()
 
 
@@ -772,9 +771,8 @@ class LocalProjectSettings():
     @property
     def framework_version(self):
         return self.__framework_version
-
-    @framework_version.setter
-    def framework_version(self, value):
+    
+    def set_framework_version(self, value):
         if not isinstance(value, Version):
             value = Version(value)
         self.__framework_version = value
@@ -1625,6 +1623,16 @@ class DeploymentTemplateAggregator(TemplateAggregator):
                 "Type": "AWS::CloudFormation::Stack",
                 "Properties": {
                     "TemplateURL": { "Fn::GetAtt": [configuration_name, "TemplateURL"] },
+                        "Tags": [
+                        {
+                            "Key": "Gem",
+                            "Value": resource_group.name
+                        },
+                        {
+                            "Key": "Deployment",
+                            "Value": {"Ref": "DeploymentName"}
+                        }
+                    ],
                     "Parameters": {
                         "ProjectResourceHandler": { "Ref": "ProjectResourceHandler" },
                         "ConfigurationBucket": { "Fn::GetAtt": [configuration_name, "ConfigurationBucket"] },

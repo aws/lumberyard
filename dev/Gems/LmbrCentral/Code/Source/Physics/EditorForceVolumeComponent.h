@@ -45,8 +45,10 @@ namespace LmbrCentral
             required.push_back(AZ_CRC("ProximityTriggerService", 0x561f262c));
         }
         
-        // EditorComponentBase
-        void DisplayEntity(bool& handled) override;
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         bool m_visibleInEditor = true; ///< Visible in the editor viewport.
         bool m_debugForces = false; ///< Draw debug lines for forces in game

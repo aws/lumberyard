@@ -1,14 +1,26 @@
 {
     "auto":
     {
+        "Include":
+        [
+            "Include/EditorOccluderAreaComponentBus.h",
+            "Include/EditorPortalComponentBus.h",
+            "Include/EditorVisAreaComponentBus.h"
+        ],
         "Source":
         [
             "Source/EditorOccluderAreaComponent.h",
             "Source/EditorOccluderAreaComponent.cpp",
+            "Source/EditorOccluderAreaComponentMode.h",
+            "Source/EditorOccluderAreaComponentMode.cpp",
             "Source/EditorPortalComponent.h",
             "Source/EditorPortalComponent.cpp",
+            "Source/EditorPortalComponentMode.h",
+            "Source/EditorPortalComponentMode.cpp",
             "Source/EditorVisAreaComponent.h",
-            "Source/EditorVisAreaComponent.cpp"
+            "Source/EditorVisAreaComponent.cpp",
+            "Source/EditorVisAreaComponentMode.h",
+            "Source/EditorVisAreaComponentMode.cpp"
         ]
     }
 }

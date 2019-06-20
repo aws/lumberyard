@@ -1,0 +1,70 @@
+
+
+def build(bld):
+
+    # PhysX has global pointers for referencing the PhysX SDK.  If these pointers exist in a single memory
+    # space, Gems can get copies of them.  If they have separate memory spaces per Gem, then the Gem will
+    # need to create its own versions.
+    # Monolithic builds have a single memory space by definition.  The Windows and Linux platforms used
+    # dynamic libraries for PhysX, which causes them to have a single memory space as well.  ALl other
+    # platforms link PhysX in statically, which makes them separated memory spaces.  (See _WAF_/physx.json)
+    physx_single_memory_space_define = 'PHYSX_USES_SINGLE_MEMORY_SPACE=1'
+    physx_separate_memory_space_define = 'PHYSX_USES_SINGLE_MEMORY_SPACE=0'
+    if bld.is_build_monolithic():
+        monolithic_memory_space_define = physx_single_memory_space_define
+    else:
+        monolithic_memory_space_define = physx_separate_memory_space_define
+    
+    bld.DefineGem(
+        # General
+        file_list               = ['touchbending.waf_files'],
+
+        # Testing
+        test_all_file_list      = ['touchbending_tests.waf_files'],
+        test_all_includes       = [bld.Path('Code/Framework/Tests')],
+        test_all_use            = ['AzPhysicsTests'],
+
+        pch                 = "Source/TouchBending_precompiled.cpp",
+        use                 = ['AzFramework'],
+        uselib              = ['PHYSX_SDK'],
+        win_features        = ['crcfix'],
+        use_required_gems   = True,
+
+        debug_export_defines = ['TOUCHBENDING_VISUALIZE_ENABLED'],
+        profile_export_defines = ['TOUCHBENDING_VISUALIZE_ENABLED'],
+
+        # Windows and Linux always have a single memory space, regardless of monolithic builds.
+        # Every other platform only has a single memory space for monolithic builds.
+        defines       = [ monolithic_memory_space_define ],
+        win_defines   = [ physx_single_memory_space_define ],
+        linux_defines = [ physx_single_memory_space_define ],
+
+        # Section to control the editor (things related with asset pipeline, etc) build.
+        Editor = dict(
+            platforms           = ['win', 'darwin'],
+
+            # General
+            file_list           = ['touchbending.waf_files', 'touchbending_editor.waf_files'],
+            
+            #Testing
+            test_all_file_list  = ['touchbending_tests.waf_files'],
+            test_all_includes   = [bld.Path('Code/Framework/Tests')],
+            test_all_use        = ['AzPhysicsTests'],
+
+            # Additional options to override for the editor module, for example,
+            defines             = ["TOUCHBENDING_EDITOR", monolithic_memory_space_define],
+            includes            = [bld.Path('Code/Tools')],
+
+            pch                 = "Source/TouchBending_precompiled.cpp",
+            use                 = ['AzFramework','SceneCore', 'SceneData'],
+            uselib              = ['PHYSX_SDK'],
+            win_features        = ['crcfix'],
+            use_required_gems   = True,
+
+            debug_export_defines = ['TOUCHBENDING_VISUALIZE_ENABLED'],
+            profile_export_defines = ['TOUCHBENDING_VISUALIZE_ENABLED'],
+
+            win_defines   = [ physx_single_memory_space_define ],
+            linux_defines = [ physx_single_memory_space_define ],
+        )
+    )

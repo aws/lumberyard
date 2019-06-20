@@ -1238,6 +1238,10 @@ bool UiCanvasComponent::HandleInputPositionalEvent(const AzFramework::InputChann
             }
             return HandlePrimaryRelease(viewportPos);
         }
+        else if (inputSnapshot.m_state == AzFramework::InputChannel::State::Updated)
+        {
+            return HandlePrimaryUpdate(viewportPos);
+        }
     }
     // ...while all other events from touch devices should be treated as multi-touch
     else if (AzFramework::InputDeviceTouch::IsTouchDevice(inputSnapshot.m_deviceId))
@@ -2720,6 +2724,19 @@ bool UiCanvasComponent::HandlePrimaryPress(AZ::Vector2 point)
 
     // Send a notification to listeners telling them who was just pressed (can be noone)
     EBUS_EVENT_ID(GetEntityId(), UiCanvasInputNotificationBus, OnCanvasPrimaryPressed, interactableEntity);
+
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool UiCanvasComponent::HandlePrimaryUpdate(AZ::Vector2 point)
+{
+    bool result = false;
+
+    if (m_activeInteractable.IsValid())
+    {
+        result = true;
+    }
 
     return result;
 }

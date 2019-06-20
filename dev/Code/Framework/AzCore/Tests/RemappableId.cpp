@@ -25,7 +25,7 @@ namespace UnitTest
     {
     public:
         RemappableIdTest()
-            : AllocatorsFixture(15, false)
+            : AllocatorsFixture()
         {
         }
 

@@ -63,9 +63,37 @@ namespace PhysX
         /// Terrain Utils
         AZStd::unique_ptr<Physics::RigidBodyStatic> CreateTerrain(
             const PhysX::TerrainConfiguration& terrainConfiguration, const AZ::EntityId& entityId, const AZStd::string_view& name);
+
+        
         void GetMaterialList(
             AZStd::vector<physx::PxMaterial*>& pxMaterials, const AZStd::vector<int>& materialIndexMapping,
             const Physics::TerrainMaterialSurfaceIdMap& terrainMaterialsToSurfaceIds);
+        /// Returns all connected busIds of the specified type.
+        template<typename BusT>
+        AZStd::vector<typename BusT::BusIdType> FindConnectedBusIds()
+        {
+            AZStd::vector<typename BusT::BusIdType> busIds;
+            BusT::EnumerateHandlers([&busIds](typename BusT::Events* /*handler*/)
+            {
+                busIds.emplace_back(*BusT::GetCurrentBusId());
+                return true;
+            });
+            return busIds;
+        }
+
+        /// Logs a warning message using the names of the entities provided.
+        void WarnEntityNames(const AZStd::vector<AZ::EntityId>& entityIds, const char* category, const char* message);
+
+        /// Logs a warning if there is more than one connected bus of the particular type.
+        template<typename BusT>
+        void LogWarningIfMultipleComponents(const char* messageCategroy, const char* messageFormat)
+        {
+            const auto entityIds = FindConnectedBusIds<BusT>();
+            if (entityIds.size() > 1)
+            {
+                WarnEntityNames(entityIds, messageCategroy, messageFormat);
+            }
+        }
     }
 
     namespace PxActorFactories

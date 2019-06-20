@@ -25,7 +25,7 @@
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/Jobs/JobManagerBus.h>
 
-#include <CloudGemFramework/CloudGemFrameworkBus.h>
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 namespace CloudGemDefectReporter
 {
@@ -97,7 +97,7 @@ namespace CloudGemDefectReporter
         CloudGemDefectReporterRequestBus::BroadcastResult(handlerId, &CloudGemDefectReporterRequestBus::Events::GetHandlerID, reportID);
 
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+        EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
 
         AZ::Job* job{ nullptr };
         job = AZ::CreateJobFunction([reportID, handlerId, this]()

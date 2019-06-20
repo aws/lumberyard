@@ -8,15 +8,15 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-
 from __future__ import print_function
 
 from copy import deepcopy
 import importlib
 import inspect
 from types import DictionaryType, FunctionType, ListType
-
+from cgf_utils import logging
 from error import ClientError
+import sys
 
 def api(function_to_decorate=None, unlogged_parameters=None, logging_filter=None):
     '''Decorator that allows the dispatcher to call an handler function.'''
@@ -79,6 +79,13 @@ def dispatch(event, context):
 
     '''
 
+    aws_request_id = context.aws_request_id
+    if isinstance(sys.stdout, logging.CloudCanvasLogger):
+        logging.CloudCanvasLogger.override_id(aws_request_id=aws_request_id)
+    else:
+        logging.CloudCanvasLogger.init_instance(
+            aws_request_id=aws_request_id, output=sys.stdout)
+
     module_name = event.get('module', None)
     if not module_name:
         raise ValueError('No "module" property was provided n the event object.')
@@ -87,7 +94,8 @@ def dispatch(event, context):
     if not function_name:
         raise ValueError('No "function" property was provided in the event object.')
 
-    print('request id {} has module {} and function {}'.format(context.aws_request_id, module_name, function_name))
+    print('request id {} has module {} and function {}'.format(
+        aws_request_id, module_name, function_name))
 
     module = importlib.import_module('api.' + module_name)
 
@@ -106,14 +114,18 @@ def dispatch(event, context):
 
     __check_function_parameters(function, parameters)
 
+
     # The request parameters are logged after finding the handler function since that's where the logging filters are defined.
     # Request logging is also after the request validation so that the logging filters don't have to know how to filter unexpected data.
     filtered_parameters = __apply_logging_filter(function, parameters)
-    print('dispatching request id {} function {} with parameters {}'.format(context.aws_request_id, 'api.{}.{}'.format(module_name, function_name), filtered_parameters))
+    print('dispatching function {} with parameters {}'.format('api.{}.{}'.format(module_name, function_name), filtered_parameters))
 
     request = Request(event, context)
 
-    result = function(request, **parameters)
+    try:
+        result = function(request, **parameters)
+    except Exception as e:
+        raise type(e), 'CloudCanvas_request_id : {} -- {}'.format(aws_request_id, str(e)), sys.exc_info()[2]
 
     try:
         result["CloudCanvas_request_id"] = aws_request_id

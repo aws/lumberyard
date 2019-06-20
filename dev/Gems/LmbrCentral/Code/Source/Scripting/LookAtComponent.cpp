@@ -14,9 +14,26 @@
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 
 namespace LmbrCentral
 {
+
+    //////////////////////////////////////////////////////////////////////////
+    class BehaviorLookAtComponentNotificationBusHandler : public LookAtComponentNotificationBus::Handler, public AZ::BehaviorEBusHandler
+    {
+    public:
+        AZ_EBUS_BEHAVIOR_BINDER(BehaviorLookAtComponentNotificationBusHandler, "{2C171B89-CE6A-4C53-A286-0E1236A61FA0}", AZ::SystemAllocator,
+            OnTargetChanged);
+
+        // Sent when the light is turned on.
+        void OnTargetChanged(AZ::EntityId entityId) override
+        {
+            Call(FN_OnTargetChanged, entityId);
+        }
+    };
+
+
     //=========================================================================
     void LookAtComponent::Reflect(AZ::ReflectContext* context)
     {
@@ -28,11 +45,30 @@ namespace LmbrCentral
                 ->Field("ForwardAxis", &LookAtComponent::m_forwardAxis)
                 ;
         }
+
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        {
+            behaviorContext->EBus<LookAtComponentRequestBus>("LookAt", "LookAtRequestBus")
+                ->Attribute(AZ::Script::Attributes::Category, "Gameplay")
+                ->Event("SetTarget", &LookAtComponentRequestBus::Events::SetTarget, "Set Target", { { { "Target", "The entity to look at" } } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Set the entity to look at")
+                ->Event("SetTargetPosition", &LookAtComponentRequestBus::Events::SetTargetPosition, "Set Target Position", { { { "Position", "The position to look at" } } })
+                    ->Attribute(AZ::Script::Attributes::ToolTip, "Sets the target position to look at.")
+                ->Event("SetAxis", &LookAtComponentRequestBus::Events::SetAxis, "Set Axis", { { { "Axis", "The forward axis to use as reference" } } })
+                ->Attribute(AZ::Script::Attributes::ToolTip, "Specify the forward axis to use as reference for the look at")
+                ;
+
+            behaviorContext->EBus<LookAtComponentNotificationBus>("LookAtNotification", "LookAtComponentNotificationBus", "Notifications for the Look At Component")
+                ->Attribute(AZ::Script::Attributes::Category, "Gameplay")
+                ->Handler<BehaviorLookAtComponentNotificationBusHandler>();
+        }
     }
 
     //=========================================================================
     void LookAtComponent::Activate()
     {
+        LookAtComponentRequestBus::Handler::BusConnect(GetEntityId());
+
         if (m_targetId.IsValid())
         {
             AZ::EntityBus::Handler::BusConnect(m_targetId);
@@ -44,6 +80,9 @@ namespace LmbrCentral
     {
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
         AZ::EntityBus::Handler::BusDisconnect();
+
+        LookAtComponentRequestBus::Handler::BusDisconnect();
+
     }
 
     //=========================================================================
@@ -58,6 +97,46 @@ namespace LmbrCentral
     {
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect(GetEntityId());
         AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_targetId);
+    }
+
+    void LookAtComponent::SetTarget(AZ::EntityId targetEntity)
+    {
+        if (m_targetId.IsValid())
+        {
+            AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_targetId);
+        }
+
+        m_targetPosition = AZ::Vector3(0, 0, 0);
+        m_targetId = targetEntity;
+
+        AZ::TransformNotificationBus::MultiHandler::BusConnect(m_targetId);
+
+        RecalculateTransform();
+
+        LookAtComponentNotificationBus::Broadcast(&LookAtComponentNotifications::OnTargetChanged, m_targetId);
+    }
+
+    void LookAtComponent::SetTargetPosition(const AZ::Vector3& targetPosition)
+    {
+        if (m_targetId.IsValid())
+        {
+            AZ::TransformNotificationBus::MultiHandler::BusDisconnect(m_targetId);
+        }
+
+        m_targetId.SetInvalid();
+
+        m_targetPosition = targetPosition;
+
+        RecalculateTransform();
+
+        LookAtComponentNotificationBus::Broadcast(&LookAtComponentNotifications::OnTargetChanged, m_targetId);
+    }
+
+    void LookAtComponent::SetAxis(AZ::Transform::Axis axis)
+    {
+        m_forwardAxis = axis;
+
+        RecalculateTransform();
     }
 
     //=========================================================================
@@ -77,26 +156,30 @@ namespace LmbrCentral
     //=========================================================================
     void LookAtComponent::RecalculateTransform()
     {
+        AZ::Vector3 targetPosition = m_targetPosition;
+
         if (m_targetId.IsValid())
         {
-            AZ::TransformNotificationBus::MultiHandler::BusDisconnect(GetEntityId());
-            {
-                AZ::Transform currentTM = AZ::Transform::CreateIdentity();
-                EBUS_EVENT_ID_RESULT(currentTM, GetEntityId(), AZ::TransformBus, GetWorldTM);
+            AZ::Transform targetTM = AZ::Transform::CreateIdentity();
+            AZ::TransformBus::EventResult(targetTM, m_targetId, &AZ::TransformBus::Events::GetWorldTM);
 
-                AZ::Transform targetTM = AZ::Transform::CreateIdentity();
-                EBUS_EVENT_ID_RESULT(targetTM, m_targetId, AZ::TransformBus, GetWorldTM);
-
-                AZ::Transform lookAtTransform = AZ::Transform::CreateLookAt(
-                    currentTM.GetPosition(),
-                    targetTM.GetPosition(),
-                    m_forwardAxis
-                    );
-
-                EBUS_EVENT_ID(GetEntityId(), AZ::TransformBus, SetWorldTM, lookAtTransform);
-            }
-            AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
+            targetPosition = targetTM.GetPosition();
         }
+
+        AZ::TransformNotificationBus::MultiHandler::BusDisconnect(GetEntityId());
+        {
+            AZ::Transform currentTM = AZ::Transform::CreateIdentity();
+            AZ::TransformBus::EventResult(currentTM, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+
+            AZ::Transform lookAtTransform = AZ::Transform::CreateLookAt(
+                currentTM.GetPosition(),
+                targetPosition,
+                m_forwardAxis
+                );
+
+            AZ::TransformBus::Event(GetEntityId(), &AZ::TransformInterface::SetWorldTM, lookAtTransform);
+        }
+        AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
     }
 
 } // namespace LmbrCentral

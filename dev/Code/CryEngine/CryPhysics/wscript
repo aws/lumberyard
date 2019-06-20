@@ -53,8 +53,8 @@ def build(bld):
         copyright_org      = 'Amazon-CryTek',
         file_list          = 'cryphysics.waf_files',
         platforms          = ['win', 'darwin'],
-        configurations     = ['debug_all',
-                              'profile_all'],
+        configurations     = ['all'],
+        exclude_monolithic = True,
         use                = ['AzCore'],
 
         win_x64_clang_cxxflags = ['-Wno-deprecated-declarations'],

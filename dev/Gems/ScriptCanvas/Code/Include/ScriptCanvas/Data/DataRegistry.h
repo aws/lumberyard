@@ -14,23 +14,35 @@
 
 #include <AzCore/Module/Environment.h>
 #include <ScriptCanvas/Data/Traits.h>
+#include <AzCore/std/utils.h>
+#include <AzCore/RTTI/ReflectContext.h>
 
 namespace ScriptCanvas
 {
+    struct TypeProperties
+    {
+        bool m_isTransient = false;
+    };
+
+    namespace Data
+    {
+        struct TypeErasedTraits;
+    }
+
     struct DataRegistry final
     {
         AZ_TYPE_INFO(DataRegistry, "{41049FA8-EA56-401F-9720-6FE9028A1C01}");
         AZ_CLASS_ALLOCATOR(DataRegistry, AZ::SystemAllocator, 0);
 
-        void RegisterType(const AZ::TypeId& typeId);
+        void RegisterType(const AZ::TypeId& typeId, TypeProperties typeProperties);
         void UnregisterType(const AZ::TypeId& typeId);
 
         AZStd::unordered_map<Data::eType, Data::TypeErasedTraits> m_typeIdTraitMap; // Creates a mapping of the Data::eType TypeId to the trait structure
-        AZStd::unordered_set<Data::Type> m_creatableTypes;
+        AZStd::unordered_map<Data::Type, TypeProperties> m_creatableTypes;
     };
 
     void InitDataRegistry();
     void ResetDataRegistry();
-    AZ::EnvironmentVariable<DataRegistry> GetDataRegistry();
+    extern AZ::EnvironmentVariable<DataRegistry> GetDataRegistry();
     static const char* s_dataRegistryName = "ScriptCanvasDataRegistry";
 }

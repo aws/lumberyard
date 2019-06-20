@@ -26,16 +26,14 @@
 using namespace AudioControls;
 
 #if defined(AZ_PLATFORM_WINDOWS)
-#define WWISE_IMPL_DLL      "EditorAudioControlsEditorWwise.dll"
+#define WWISE_IMPL_DLL      "EditorWwise.dll"
 #define NOSOUND_IMPL_DLL    "EditorNoSound.dll"
 #else
-#define WWISE_IMPL_DLL      "libEditorAudioControlsEditorWwise.dylib"
+#define WWISE_IMPL_DLL      "libEditorWwise.dylib"
 #define NOSOUND_IMPL_DLL    "libEditorNoSound.dylib"
 #endif
 
 static const char* g_sImplementationCVarName = "s_AudioSystemImplementationName";
-
-static const char* g_sMiddlewareDllPath = BINFOLDER_NAME AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "EditorPlugins" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING;
 
 typedef IAudioSystemEditor* (* TPfnGetAudioInterface)(IEditor*);
 
@@ -61,7 +59,12 @@ bool CImplementationManager::LoadImplementation()
         AZ_Assert(engineRoot != nullptr, "Unable to communicate with AzFramework::ApplicationRequests::Bus");
         string sDLLName(engineRoot);
 
-        sDLLName += g_sMiddlewareDllPath;
+        AZStd::string_view binFolderName;
+        AZ::ComponentApplicationBus::BroadcastResult(binFolderName, &AZ::ComponentApplicationRequests::GetBinFolder);
+
+        AZStd::string middlewareDllPath = AZStd::string::format("%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "EditorPlugins" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING, binFolderName.data());
+
+        sDLLName += middlewareDllPath.c_str();
         string middlewareName(pCVar->GetString());
 
         if (middlewareName == "CryAudioImplWwise")

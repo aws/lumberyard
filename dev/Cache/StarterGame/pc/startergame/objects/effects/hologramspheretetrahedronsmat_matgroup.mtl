@@ -1,0 +1,15 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="HologramSphereTetrahedronsMAT" MtlFlags="524420" Shader="Illum" GenMask="4000000020001" StringGenMask="%ALLOW_SILHOUETTE_POM%EMITTANCE_MAP%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="0,0.20155628,0.98225069,1" Specular="0,0,0,1" Emittance="0.066625945,0.38132605,0.97344542,20" Opacity="0.99000001" vertModifType="1" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="engineassets/textures/white.dds"/>
+    <Texture Map="Emittance" File="objects/effects/particleassets/fx_tetrahedron_01.dds"/>
+   </Textures>
+   <VertexDeform Type="1" DividerX="1" DividerY="0.0099999998" NoiseScale="1,1,1">
+    <WaveX Type="1" Amp="0.025" Level="0" Phase="0" Freq="1.2"/>
+   </VertexDeform>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

@@ -60,6 +60,10 @@ namespace LmbrCentral
         //! Used as a callback when a trigger instance is finished.
         static void OnAudioEvent(const Audio::SAudioRequestInfo* const);
 
+        static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+        {
+        }
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             provided.push_back(AZ_CRC("AudioTriggerService", 0xeba17b52));

@@ -13,45 +13,50 @@
 
 def build(bld):
 
-    configBasedDefines=[]
-    platformDefines=[]
+    config_based_defines = []
+    platform_defines=[]
     if bld.env['CONFIGURATION'] == 'profile' or bld.env['CONFIGURATION'] == 'debug':
-        configBasedDefines=['IMGUI_ENABLED']
+        config_based_defines=['IMGUI_ENABLED']
     if bld.env['PLATFORM'] != 'win':
-        platformDefines=['IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS', 'IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS']
+        platform_defines=['IMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS', 'IMGUI_DISABLE_WIN32_DEFAULT_IME_FUNCTIONS']
 
-    bld.CryEngineSharedLibrary(
+    kw_shared_lib = dict(
         target='imguilib',
         vs_filter='Gems/ImguiLib',
-        platforms = ['all'],
-        configurations = ['all'],
-        file_list = ['imgui_lib.waf_files'],
-        defines = configBasedDefines + platformDefines,
+        platforms=['all'],
+        configurations=['all'],
+        file_list=['imgui_lib.waf_files'],
+        defines=list(config_based_defines) + list(platform_defines) + ['IMGUI_INCLUDE_IMGUI_USER_INL'],
         export_includes=[bld.Path('Gems/ImGui/External/ImGui/v1.53')],
-        export_defines=['IMGUI_API_IMPORT']
+        export_defines=['IMGUI_API_IMPORT', 'IMGUI_INCLUDE_IMGUI_USER_H'],
+        restricted_script='update_restricted_parameters'
     )
 
-    bld.DefineGem(
+    bld.CryEngineSharedLibrary(**kw_shared_lib)
+
+    kw_gem = dict(
         includes=[bld.Path('Code/CryEngine/CryAction')],
         use=['imguilib'],
-        test_all_file_list = ['imgui_test.waf_files'],
-        file_list = [ 'imgui_common.waf_files', 'imgui_game.waf_files'],
-        defines     = configBasedDefines,
+        file_list=['imgui_common.waf_files', 'imgui_game.waf_files'],
+        test_all_file_list=['imgui_test.waf_files'],
+        defines=list(config_based_defines),
+        linux_rpath = ['$ORIGIN'],
 
-        ########################################
         # Editor Gem configuration
-        editor = dict(
-            includes=[bld.Path('Code/CryEngine/CryAction'),
-                      bld.Path('Code/Sandbox/Plugins/EditorCommon'),
-                      bld.Path('Code/Sandbox/Editor')],
+        editor=dict(
+            includes=[
+                bld.Path('Code/CryEngine/CryAction'),
+                bld.Path('Code/Sandbox/Plugins/EditorCommon'),
+                bld.Path('Code/Sandbox/Editor')],
             use=['imguilib', 'AzToolsFramework', 'AzQtComponents'],
-            test_all_file_list = ['imgui_test.waf_files'],
-            file_list = [ 'imgui_common.waf_files', 'imgui_editor.waf_files'],
-            defines     = configBasedDefines,
+            file_list=['imgui_common.waf_files', 'imgui_editor.waf_files'],
+            test_all_file_list=['imgui_test.waf_files'],
+            defines=list(config_based_defines),
 
-            uselib=['QT5CORE','QT5GUI','QT5WIDGETS'],
+            uselib=['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
 
             features=['qt5']
         )
-        ########################################
     )
+
+    bld.DefineGem(**kw_gem)

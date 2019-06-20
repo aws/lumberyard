@@ -17,19 +17,19 @@
 
 #include "CloudGemMetricSystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemMetric
 {
     class CloudGemMetricModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemMetricModule, "{EF973D14-A8B5-44E3-A630-8792BC94F638}", CryHooksModule);
+        AZ_RTTI(CloudGemMetricModule, "{EF973D14-A8B5-44E3-A630-8792BC94F638}", AZ::Module);
         AZ_CLASS_ALLOCATOR(CloudGemMetricModule, AZ::SystemAllocator, 0);
 
         CloudGemMetricModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

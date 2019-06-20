@@ -10,9 +10,6 @@
 *
 */
 
-#include "CloudGemDynamicContent_precompiled.h"
-#include <platform_impl.h>
-
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 AZ_DECLARE_MODULE_CLASS(CloudGemDynamicContent_3a3eeef064a04c37b4513c6378f4f56a, AZ::Module)

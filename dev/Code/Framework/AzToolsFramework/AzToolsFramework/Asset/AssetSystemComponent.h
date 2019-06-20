@@ -101,6 +101,8 @@ namespace AzToolsFramework
             //////////////////////////////////////////////////////////////////////////
 
             AzFramework::SocketConnection::TMessageCallbackHandle m_cbHandle = 0;
+            AzFramework::SocketConnection::TMessageCallbackHandle m_showAssetBrowserCBHandle = 0;
+            AzFramework::SocketConnection::TMessageCallbackHandle m_wantShowAssetBrowserCBHandle = 0;
 
             AZStd::unordered_map<AZStd::string, AZStd::string> m_assetSourceRelativePathToFullPathCache;
         };

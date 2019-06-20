@@ -45,6 +45,13 @@ namespace SliceBuilder
 
     void UiSliceBuilderWorker::CreateJobs(const AssetBuilderSDK::CreateJobsRequest& request, AssetBuilderSDK::CreateJobsResponse& response)
     {
+        // Check for shutdown
+        if (m_isShuttingDown)
+        {
+            response.m_result = AssetBuilderSDK::CreateJobsResultCode::ShuttingDown;
+            return;
+        }
+
         TraceDrillerHook traceDrillerHook(true);
 
         AZStd::string fullPath;
@@ -125,6 +132,14 @@ namespace SliceBuilder
         // .uicanvas files are converted as they are copied to the cache
         // a) to flatten all prefab instances
         // b) to replace any editor components with runtime components
+
+        // Check for shutdown
+        if (m_isShuttingDown)
+        {
+            AZ_TracePrintf(AssetBuilderSDK::InfoWindow, "Cancelled job %s because shutdown was requested.\n", request.m_sourceFile.c_str());
+            response.m_resultCode = AssetBuilderSDK::ProcessJobResult_Cancelled;
+            return;
+        }
 
         TraceDrillerHook traceDrillerHook(true);
 

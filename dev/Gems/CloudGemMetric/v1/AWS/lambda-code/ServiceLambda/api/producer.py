@@ -101,6 +101,8 @@ def generate_threads(functionid, threads_count, iterations_per_thread, events_pe
     print "The overall process took {} seconds.".format(time.time() - start)
 
 def cli(context, args):
+    util.set_logger(args.verbose)
+
     from resource_manager_common import constant
     credentials = context.aws.load_credentials()
 

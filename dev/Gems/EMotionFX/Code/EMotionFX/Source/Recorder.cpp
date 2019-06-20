@@ -1371,7 +1371,7 @@ namespace EMotionFX
                     item->mIsTickEvent  = eventInfo.mEvent->GetIsTickEvent();
                     item->mStartTime    = mRecordTime;
                     item->mAnimGraphID  = animGraphInstance->GetAnimGraph()->GetID();
-                    item->mEmitterNodeId = eventInfo.mEmitter->GetId();
+                    item->mEmitterNodeId= eventInfo.mEmitter->GetId();
                     item->mColor        = eventInfo.mEmitter->GetVisualizeColor();
 
                     item->mTrackIndex   = FindFreeEventHistoryItemTrack(actorInstanceData, item);

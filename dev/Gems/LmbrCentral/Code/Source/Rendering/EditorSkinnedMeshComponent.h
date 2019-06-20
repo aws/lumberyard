@@ -18,8 +18,6 @@
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
-
 #include <LmbrCentral/Rendering/RenderNodeBus.h>
 #include <LmbrCentral/Rendering/MaterialOwnerBus.h>
 #include <LmbrCentral/Rendering/RenderBoundsBus.h>
@@ -44,7 +42,6 @@ namespace LmbrCentral
         , private RenderNodeRequestBus::Handler
         , private AZ::TransformNotificationBus::Handler
         , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
-        , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private SkinnedMeshComponentRequestBus::Handler
         , private SkeletalHierarchyRequestBus::Handler
         , public AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
@@ -98,17 +95,15 @@ namespace LmbrCentral
         // TransformBus::Handler
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-        // EditorVisibilityNotificationBus::Handler
+        // EditorVisibilityNotificationBus
         void OnEntityVisibilityChanged(bool visibility) override;
-
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
 
         // EditorComponentBase
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
         // EditorComponentSelectionRequestsBus::Handler
-        AZ::Aabb GetEditorSelectionBounds() override;
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
 
         //! Called when you want to change the game asset through code (like when creating components based on assets).
         void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;

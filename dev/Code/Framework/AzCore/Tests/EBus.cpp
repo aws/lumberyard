@@ -32,7 +32,7 @@ namespace UnitTest
     {
     public:
         EBus()
-            : AllocatorsFixture(128, false)
+            : AllocatorsFixture()
         {
         }
     };

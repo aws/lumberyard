@@ -21,7 +21,7 @@
 #include "PolygonDecomposer.h"
 #include "BrushHelper.h"
 
-#include <QUuid>
+#include <AzCore/Math/Uuid.h>
 
 namespace CD
 {
@@ -134,7 +134,7 @@ namespace CD
         m_Plane.Set(BrushVec3(0, 0, 0), 0);
         m_Vertices.clear();
         m_Edges.clear();
-        m_GUID = QUuid::createUuid();
+        m_GUID = AZ::Uuid::CreateRandom();
     }
 
     void Polygon::InitForCreation(const BrushPlane& plane, int matID)
@@ -152,7 +152,7 @@ namespace CD
         m_Edges.clear();
         m_PrivateFlag = eRPF_Invalid;
 
-        m_GUID = QUuid::createUuid();
+        m_GUID = AZ::Uuid::CreateRandom();
     }
 
     void Polygon::Reset(const std::vector<SVertex>& vertices, const std::vector<SEdge>& edgeList)
@@ -208,7 +208,7 @@ namespace CD
         m_MaterialID = polygon.m_MaterialID;
         m_Flag = polygon.m_Flag;
         m_TexInfo = polygon.m_TexInfo;
-        m_GUID = QUuid::createUuid();
+        m_GUID = AZ::Uuid::CreateRandom();
         SetEdgeList_Basic(polygon.m_Edges);
         m_PrivateFlag = polygon.m_PrivateFlag;
         return *this;

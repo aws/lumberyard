@@ -22,6 +22,9 @@
 #include <Components/Slots/Default/DefaultSlotLayoutComponent.h>
 #include <Components/Slots/SlotConnectionFilterComponent.h>
 #include <GraphCanvas/Components/Connections/ConnectionFilters/ConnectionFilters.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
+#include <GraphCanvas/Utils/GraphUtils.h>
+
 
 namespace GraphCanvas
 {
@@ -173,6 +176,11 @@ namespace GraphCanvas
         }
     }
 
+    Endpoint SlotComponent::GetEndpoint() const
+    {
+        return Endpoint(GetNode(), GetEntityId());
+    }
+
     void SlotComponent::SetName(const AZStd::string& name)
     {
         if (name == m_slotConfiguration.m_name.GetDisplayString())
@@ -301,32 +309,95 @@ namespace GraphCanvas
         SlotNotificationBus::Event(GetEntityId(), &SlotNotificationBus::Events::OnDisconnectedFrom, connectionId, endpoint);
     }
 
-    bool SlotComponent::CanAcceptConnection(const Endpoint& endpoint)
+    void SlotComponent::SetDisplayOrdering(int ordering)
     {
-        bool containsSlotId = false;
-        for (AZ::EntityId& connection : m_connections)
-        {
-            ConnectionRequestBus::EventResult(containsSlotId, connection, &ConnectionRequests::ContainsEndpoint, endpoint);
+        m_displayOrdering = ordering;
+    }
 
-            if (containsSlotId)
+    int SlotComponent::GetDisplayOrdering() const
+    {
+        return m_displayOrdering;
+    }
+
+    bool SlotComponent::IsConnectedTo(const Endpoint& endpoint) const
+    {
+        bool isConnectedTo = false;
+        for (const AZ::EntityId& connection : m_connections)
+        {
+            ConnectionRequestBus::EventResult(isConnectedTo, connection, &ConnectionRequests::ContainsEndpoint, endpoint);
+
+            if (isConnectedTo)
             {
                 break;
             }
         }
 
-        return !containsSlotId;
+        return isConnectedTo;
     }
 
-    AZ::EntityId SlotComponent::CreateConnection() const
+    void SlotComponent::FindConnectionsForEndpoints(const AZStd::unordered_set<Endpoint>& searchEndpoints, AZStd::unordered_set<ConnectionId>& outConnections)
     {
-        Endpoint invalidEndpoint;
-        return CreateConnectionWithEndpoint(invalidEndpoint);
+        for (const AZ::EntityId& connection : m_connections)
+        {
+            GraphCanvas::Endpoint sourceEndpoint;
+            ConnectionRequestBus::EventResult(sourceEndpoint, connection, &ConnectionRequests::GetSourceEndpoint);
+
+            if (searchEndpoints.count(sourceEndpoint) > 0)
+            {
+                outConnections.insert(connection);
+                continue;
+            }
+
+            GraphCanvas::Endpoint targetEndpoint;
+            ConnectionRequestBus::EventResult(targetEndpoint, connection, &ConnectionRequests::GetTargetEndpoint);
+
+            if (searchEndpoints.count(targetEndpoint) > 0)
+            {
+                outConnections.insert(connection);
+                continue;
+            }
+        }
+    }
+
+    bool SlotComponent::CanDisplayConnectionTo(const Endpoint& endpoint) const
+    {
+        bool isConnectable = false;
+        ConnectionFilterRequestBus::EventResult(isConnectable, GetEntityId(), &ConnectionFilterRequests::CanConnectWith, endpoint);
+
+        return isConnectable;
+    }
+
+    bool SlotComponent::CanCreateConnectionTo(const Endpoint& endpoint) const
+    {
+        bool isConnectable = CanDisplayConnectionTo(endpoint);
+
+        if (isConnectable)
+        {
+            GraphId graphId = GetScene();
+
+            if (GetConnectionType() == CT_Input)
+            {
+                isConnectable = GraphUtils::IsValidModelConnection(graphId, endpoint, GetEndpoint());
+            }
+            else if (GetConnectionType() == CT_Output)
+            {
+                isConnectable = GraphUtils::IsValidModelConnection(graphId, GetEndpoint(), endpoint);
+            }
+        }
+
+        return isConnectable;
     }
 
     AZ::EntityId SlotComponent::CreateConnectionWithEndpoint(const Endpoint& otherEndpoint) const
     {
         const bool createConnection = true;
         return CreateConnectionHelper(otherEndpoint, createConnection);
+    }
+
+    AZ::EntityId SlotComponent::DisplayConnection() const
+    {
+        Endpoint invalidEndpoint;
+        return DisplayConnectionWithEndpoint(invalidEndpoint);
     }
 
     AZ::EntityId SlotComponent::DisplayConnectionWithEndpoint(const Endpoint& otherEndpoint) const
@@ -393,6 +464,48 @@ namespace GraphCanvas
         SceneRequestBus::Event(GetScene(), &SceneRequests::Delete, deleteIds);
     }
 
+    SlotConfiguration* SlotComponent::CloneSlotConfiguration() const
+    {
+        SlotConfiguration* slotConfiguration = aznew SlotConfiguration();
+
+        PopulateSlotConfiguration((*slotConfiguration));
+
+        return slotConfiguration;
+    }
+
+    void SlotComponent::RemapSlotForModel(const Endpoint& endpoint)
+    {
+        AZ_Assert(m_modelRedirections.empty(), "Multiple slot redirections is not currently supported with the connection deletion flow in GraphCanvas.");
+
+        auto endpointIter = AZStd::find_if(m_modelRedirections.begin(), m_modelRedirections.end(), [&endpoint](const Endpoint& otherEndpoint) { return endpoint == otherEndpoint; });
+
+        // Want to avoid duplicates in here
+        if (endpointIter == m_modelRedirections.end())
+        {
+            m_modelRedirections.push_back(endpoint);
+        }
+    }
+
+    bool SlotComponent::HasModelRemapping() const
+    {
+        return !m_modelRedirections.empty();
+    }
+
+    AZStd::vector< Endpoint > SlotComponent::GetRemappedModelEndpoints() const
+    {
+        return m_modelRedirections;
+    }
+
+    void SlotComponent::PopulateSlotConfiguration(SlotConfiguration& slotConfiguration) const
+    {
+        slotConfiguration.m_connectionType = GetConnectionType();
+
+        slotConfiguration.m_name = GetTranslationKeyedName();
+        slotConfiguration.m_tooltip = GetTranslationKeyedTooltip();
+
+        slotConfiguration.m_slotGroup = GetSlotGroup();
+    }
+
     AZ::EntityId SlotComponent::CreateConnectionHelper(const Endpoint& otherEndpoint, bool createConnection) const
     {
         Endpoint sourceEndpoint;
@@ -415,7 +528,17 @@ namespace GraphCanvas
 
         if (connectionEntity)
         {
-            SceneRequestBus::Event(GetScene(), &SceneRequests::AddConnection, connectionEntity->GetId());
+            GraphId graphId = GetScene();
+            EditorId editorId;
+
+            SceneRequestBus::EventResult(editorId, graphId, &SceneRequests::GetEditorId);
+
+            AssetEditorRequestBus::Event(editorId, &AssetEditorRequests::CustomizeConnectionEntity, connectionEntity);
+
+            connectionEntity->Init();
+            connectionEntity->Activate();
+
+            SceneRequestBus::Event(graphId, &SceneRequests::AddConnection, connectionEntity->GetId());
             return connectionEntity->GetId();
         }
 

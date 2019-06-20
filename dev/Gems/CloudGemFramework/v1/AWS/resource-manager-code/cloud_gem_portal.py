@@ -16,36 +16,25 @@ import webbrowser
 import base64
 import os
 import update
+import re
+import argparse
+import subprocess
 from resource_manager.errors import HandledError
 from botocore.exceptions import ClientError
 from resource_manager.uploader import ProjectUploader
 from botocore.client import Config
 
-
 def add_cli_commands(cgf_subparsers, addCommonArgs):
 
     subparser = cgf_subparsers.add_parser('open-cloud-gem-portal', aliases=['open-portal', 'cloud-gem-portal'],  help='Generate pre-signed url and launch the default browser with the pre-signed url.')
-    subparser.add_argument('--show-url-only', action='store_true', required=False, help='Display the Cloud Gem Portal pre-signed url.', default=False)
-    subparser.add_argument('--show-configuration', action='store_true', required=False, help='Display the Cloud Gem Portal newly generated passphrase and iv.', default=False)
-    subparser.add_argument('--show-current-configuration', action='store_true', required=False, help='Display the Cloud Gem Portal active passphrase and iv without generating a new encrypted payload.', default=False)
-    subparser.add_argument('--duration-seconds', required=False, help='The number of seconds before the URL and temporary credentials will expire.', type=int, default=constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS)
-    subparser.add_argument('--role', required=False, metavar='ROLE-NAME', help='Specifies an IAM role that will be assumed by the Cloud Gem Portal web site. Can be ProjectOwner, DeploymentOwner, or any other project or deployment access role. The credentials taken from the ~/.aws/credentials file must be able to asssume this role.')
-    subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT-NAME', required=False, help='If ROLE-NAME is a deployment access role, this identifies the actual deployment. If not given, the default deployment for the project is used.')    
-    subparser.add_argument('--cognito-dev', metavar='COGNITO-DEV', required=False, default=None, help='Optional parameter to pass additional the Lumberyard customer cognito identifier to the Cloud Gem Portal.')
-    subparser.add_argument('--cognito-prod', metavar='COGNITO-PROD', required=False, default=None, help='Optional parameter to pass additional the Lumberyard customer cognito identifier to the Cloud Gem Portal.')
-    subparser.add_argument('--cognito-test', metavar='COGNITO-TEST', required=False, default=None, help='Optional parameter to pass additional the Lumberyard customer cognito identifier to the Cloud Gem Portal.')
-    subparser.add_argument('--silent-create-admin', action='store_true', required=False,
-                           help='Create an administrator for the Cloud Gem Portal silently.',
-                           default=False)
+    subparser.add_argument('--show-url-only', action='store_true', required=False, help='Display the Cloud Gem Portal pre-signed url.', default=False)                        
+    subparser.add_argument('--show-bootstrap-configuration', action='store_true', required=False, help='Display the Cloud Gem Portal bootstrap information.', default=False)                        
     addCommonArgs(subparser, no_assume_role = True)
     subparser.set_defaults(func=open_portal)
 
     subparser = cgf_subparsers.add_parser('upload-cloud-gem-portal', aliases=['upload-portal'], help='Upload all cloud gem portal content.')
     subparser.add_argument('--deployment', '-d', metavar='DEPLOYMENT-NAME', required=False, help='Name of the deployment for which portal content will be uploaded. If not specified the default deployment is updated.')
-    subparser.add_argument('--resource-group', '-r', metavar='RESOURCE-GROUP-NAME', required=False, help='Name of the resource group for which portal content will be uploaded. The default is to upload portal content for all resource groups.')
-    subparser.add_argument('--duration-seconds', required=False,
-                           help='The number of seconds before the URL and temporary credentials will expire.', type=int,
-                           default=constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS)
+    subparser.add_argument('--resource-group', '-r', metavar='RESOURCE-GROUP-NAME', required=False, help='Name of the resource group for which portal content will be uploaded. The default is to upload portal content for all resource groups.')    
     subparser.add_argument('--project', action='store_true', required=False, help='Update the project global portal content instead of updating deployment and resource group content.')
     addCommonArgs(subparser)
     subparser.set_defaults(func=upload_portal)
@@ -55,44 +44,30 @@ def add_cli_commands(cgf_subparsers, addCommonArgs):
     addCommonArgs(subparser)
     subparser.set_defaults(func=create_portal_administrator)
 
+    subparser = cgf_subparsers.add_parser('gulp', help='Execute a gulp command from the CloudGemFramework\'s CloudGemPortal folder')
+    subparser.add_argument('arglist', nargs=argparse.REMAINDER)
+    addCommonArgs(subparser)
+    subparser.set_defaults(func=cgp_gulp)
 
 def open_portal(context, args):    
     project_resources = context.config.project_resources
 
     if not project_resources.has_key(constant.PROJECT_CGP_RESOURCE_NAME):
         raise HandledError('You can not open the Cloud Gem Portal without having the Cloud Gem Framework gem installed in your project.')
-
+    
     cgp_s3_resource = project_resources[constant.PROJECT_CGP_RESOURCE_NAME]
     stackid = cgp_s3_resource['StackId']
     bucket_id = cgp_s3_resource['PhysicalResourceId']
-    expiration = args.duration_seconds if args.duration_seconds else constant.PROJECT_CGP_DEFAULT_EXPIRATION_SECONDS # default comes from argparse only on cli, gui call doesn't provide a default expiration
     region = resource_manager.util.get_region_from_arn(stackid)
-    #addressing_style - 
-    #https://docs.aws.amazon.com/cli/latest/topic/s3-config.html
-    #https://boto3.readthedocs.io/en/latest/guide/s3.html
-    s3_client = context.aws.session.client('s3',region, config=Config(region_name=region,signature_version='s3v4', s3={'addressing_style': 'virtual'}))
+    cgp_static_url = update.get_index_url(context, region)
 
-    if args.show_current_configuration:
-        try:
-            context.view._output_message(__get_configuration(s3_client, bucket_id))
-            return
-        except ClientError as e:
-            raise HandledError("Could not read from the key '{}' in the S3 bucket '{}'.".format(constant.PROJECT_CGP_ROOT_SUPPORT_FILE, bucket_id), e)
-
-    result = None
-    if result is None or result['ResponseMetadata']['HTTPStatusCode'] == 200:
-        # generate presigned url
-        index_url = update.get_index_url(s3_client, bucket_id, expiration)
-
-        if args.show_configuration:
-            context.view._output_message(__get_configuration(s3_client, bucket_id))
-
-        if args.show_url_only:
-            context.view._output_message(index_url)
-        else:
-            webbrowser.open_new(index_url)
+    if args.show_url_only:
+        context.view._output_message(cgp_static_url)
+    elif args.show_bootstrap_configuration: 
+        s3_client = context.aws.session.client('s3',region, config=Config(region_name=region,signature_version='s3v4', s3={'addressing_style': 'virtual'}))
+        context.view._output_message(__get_configuration(s3_client, bucket_id))
     else:
-        raise HandledError("The index.html cloud not be set in the S3 bucket '{}'.  This Cloud Gem Portal site will not load.".format(bucket_id))
+        webbrowser.open_new(cgp_static_url)
 
 def __get_configuration(s3_client, bucket_id):
     return update.get_bootstrap(s3_client, bucket_id).replace("<script>", "").replace("</script>", "").replace(update.BOOTSTRAP_VARIABLE_NAME, "")
@@ -134,5 +109,22 @@ def upload_portal(context, args):
             for resource_group in context.resource_groups.values():
                 resource_group.update_cgp_code(deployment_uploader.get_resource_group_uploader(resource_group.name))
 
+def cgp_gulp(context, args):
+    gulpfile = 'gulpfile.js'
+    gulpcmd = 'gulp'
+
+    gulppath = 'Gems/CloudGemFramework/v1/Website/CloudGemPortal/'
+
+    if not os.path.isfile(os.path.join(gulppath, gulpfile)):
+        context.view._output_message('Could not find gulpfile in {}, exiting'.format(gulppath))
+        return
+
+    args.arglist.insert(0, gulpcmd)
+
+    context.view._output_message('executing {} in {}'.format(args.arglist, gulppath))
+
+    gulpproc = subprocess.Popen(args.arglist, cwd=gulppath, shell=True)
+
+    gulpproc.wait()
 
 

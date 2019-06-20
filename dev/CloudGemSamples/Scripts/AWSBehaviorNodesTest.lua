@@ -47,6 +47,9 @@ end
 
 function AWSBehaviorNodesTest:OnAction(entityId, actionName)
     if actionName == "AWSNodesTest" then
+        self.runAllTestsButton = UiCanvasBus.Event.FindElementByName(self.canvasEntityId, "btnAllTests")
+        UiInteractableBus.Event.SetIsHandlingEvents(self.runAllTestsButton, false)
+
         self.isSingleTest = false
         self:InitializeEntityList()
         self:StartNextTest()
@@ -73,6 +76,7 @@ function AWSBehaviorNodesTest:OnEventBegin(message)
             self:StartNextTest()        
         else
             Debug.Log(tostring(entityName).." failed.")
+            UiInteractableBus.Event.SetIsHandlingEvents(self.runAllTestsButton, true)
         end
     end
 end
@@ -81,6 +85,10 @@ function AWSBehaviorNodesTest:StartNextTest()
     if self.count < #self.entities then
         self.count = self.count + 1          
         GameplayNotificationBus.Event.OnEventBegin(GameplayNotificationId(self.entities[self.count], "Run Tests", typeid("")), "")
+
+        if self.count == #self.entities then
+            UiInteractableBus.Event.SetIsHandlingEvents(self.runAllTestsButton, true)
+        end
     else
         if self.tag == "Prerequisite" then
             self.tag = "Test Entity"

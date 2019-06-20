@@ -28,16 +28,22 @@ namespace ScriptCanvas
         {
             return a + b;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Add, "Math/Color", "{0A3B5BA4-81E6-4550-8163-737AA00DC029}", "returns A + B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Add, "Math/Color", "{0A3B5BA4-81E6-4550-8163-737AA00DC029}", "This node is deprecated, use Add (+), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE ColorType DivideByColor(ColorType a, ColorType b)
         {
             return a / b;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByColor, "Math/Color", "{9BB0BF87-A025-4CBA-B57D-9E3187D872CD}", "returns A / B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(DivideByColor, "Math/Color", "{9BB0BF87-A025-4CBA-B57D-9E3187D872CD}", "This node is deprecated, use Divide (/), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE ColorType DivideByNumber(ColorType source, NumberType divisor)
         {
+            if (AZ::IsClose(divisor, Data::NumberType(0), std::numeric_limits<Data::NumberType>::epsilon()))
+            {
+                AZ_Error("Script Canvas", false, "Division by zero");
+                return ColorType::CreateZero();
+            }
+
             return source / ToVectorFloat(divisor);
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Color", "{1B8EBAAF-FEFE-4D1E-896D-4CAFD2D6426B}", "returns Source with each element divided by Divisor", "Source", "Divisor");
@@ -134,7 +140,7 @@ namespace ScriptCanvas
         {
             return a * b;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(MultiplyByColor, "Math/Color", "{1D0268CE-1347-4D3A-8B04-2687937E4686}", "returns A * B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(MultiplyByColor, "Math/Color", "{1D0268CE-1347-4D3A-8B04-2687937E4686}", "This node is deprecated, use Multiply (*), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE ColorType MultiplyByNumber(ColorType source, NumberType multiplier)
         {
@@ -158,7 +164,7 @@ namespace ScriptCanvas
         {
             return a - b;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Subtract, "Math/Color", "{EA72B942-8C4B-4CD6-A9C1-8022F981199C}", "returns A - B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Subtract, "Math/Color", "{EA72B942-8C4B-4CD6-A9C1-8022F981199C}", "This node is deprecated, use Subtract (-), it provides contextual type and slots", "A", "B");
 
         using Registrar = RegistrarGeneric
             < AddNode

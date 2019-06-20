@@ -12,28 +12,25 @@
 
 #pragma once
 
-#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
-#include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include <AzToolsFramework/Manipulators/BoxManipulators.h>
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
-#include <AzFramework/Physics/ShapeConfiguration.h>
-#include <AzFramework/Physics/Shape.h>
-#include <PhysX/MeshColliderComponentBus.h>
-#include <PhysX/MeshAsset.h>
-#include <PhysX/ConfigurationBus.h>
 #include <AzCore/Component/TickBus.h>
 #include <AzCore/Component/TransformBus.h>
 #include <AzCore/Math/Quaternion.h>
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+#include <AzFramework/Physics/Shape.h>
+#include <AzFramework/Physics/ShapeConfiguration.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
+#include <AzToolsFramework/Manipulators/BoxManipulatorRequestBus.h>
+#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
+#include <PhysX/ConfigurationBus.h>
+#include <PhysX/MeshAsset.h>
+#include <PhysX/MeshColliderComponentBus.h>
+#include <AzFramework/Physics/RigidBody.h>
 
-namespace Physics
-{
-    class RigidBodyStatic;
-}
 
 namespace PhysX
 {
     /// Proxy container for only displaying a specific shape configuration depending on the shapeType selected.
-    ///
     struct EditorProxyShapeConfig
     {
         AZ_CLASS_ALLOCATOR(EditorProxyShapeConfig, AZ::SystemAllocator, 0);
@@ -65,7 +62,7 @@ namespace PhysX
         : public AzToolsFramework::Components::EditorComponentBase
         , protected AzFramework::EntityDebugDisplayEventBus::Handler
         , protected AzToolsFramework::EntitySelectionEvents::Bus::Handler
-        , private AzToolsFramework::BoxManipulatorHandler
+        , private AzToolsFramework::BoxManipulatorRequestBus::Handler
         , private AZ::Data::AssetBus::MultiHandler
         , private PhysX::MeshColliderComponentRequestsBus::Handler
         , private AZ::TransformNotificationBus::Handler
@@ -86,14 +83,17 @@ namespace PhysX
             required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
         }
 
-        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
-            // Not compatible with cry engine colliders
-            required.push_back(AZ_CRC("ColliderService", 0x902d4e93));
+            // Not compatible with Legacy Cry Physics services
+            incompatible.push_back(AZ_CRC("ColliderService", 0x902d4e93));
+            incompatible.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         EditorColliderComponent() = default;
-        EditorColliderComponent(const Physics::ColliderConfiguration& colliderConfiguration, const Physics::ShapeConfiguration& shapeConfiguration);
+        EditorColliderComponent(
+            const Physics::ColliderConfiguration& colliderConfiguration,
+            const Physics::ShapeConfiguration& shapeConfiguration);
 
         // these functions are made virtual because we call them from other modules
         virtual const EditorProxyShapeConfig& GetShapeConfiguration() const;
@@ -114,8 +114,11 @@ namespace PhysX
         void OnDeselected() override;
 
         // AzFramework::EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
-        void Display(AzFramework::EntityDebugDisplayRequests& displayContext);
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
+
+        void Display(AzFramework::DebugDisplayRequests& debugDisplay);
 
         // AZ::Data::AssetBus::Handler
         void OnAssetReady(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
@@ -128,7 +131,6 @@ namespace PhysX
         void SetMeshAsset(const AZ::Data::AssetId& id) override;
         void SetMaterialAsset(const AZ::Data::AssetId& id) override;
         void SetMaterialId(const Physics::MaterialId& id) override;
-
         void UpdateMaterialSlotsFromMeshAsset();
 
         // TickBus::Handler
@@ -136,6 +138,12 @@ namespace PhysX
 
         // TransformBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
+        // AzToolsFramework::BoxManipulatorRequestBus
+        AZ::Vector3 GetDimensions() override;
+        void SetDimensions(const AZ::Vector3& dimensions) override;
+        AZ::Transform GetCurrentTransform() override;
+        AZ::Vector3 GetBoxScale() override;
 
         // PhysX::ConfigurationNotificationBus
         virtual void OnConfigurationRefreshed(const Configuration& configuration) override;
@@ -150,18 +158,24 @@ namespace PhysX
         AZ::u32 OnConfigurationChanged();
         void UpdateShapeConfigurationScale();
 
-        void DrawSphere(AzFramework::EntityDebugDisplayRequests& displayContext, const Physics::SphereShapeConfiguration& config);
-        void DrawBox(AzFramework::EntityDebugDisplayRequests& displayContext, const Physics::BoxShapeConfiguration& config);
-        void DrawCapsule(AzFramework::EntityDebugDisplayRequests& displayContext, const Physics::CapsuleShapeConfiguration& config);
-        void DrawMesh(AzFramework::EntityDebugDisplayRequests& displayContext);
+        void DrawSphere(AzFramework::DebugDisplayRequests& debugDisplay, const Physics::SphereShapeConfiguration& config);
+        void DrawBox(AzFramework::DebugDisplayRequests& debugDisplay, const Physics::BoxShapeConfiguration& config);
+        void DrawCapsule(AzFramework::DebugDisplayRequests& debugDisplay, const Physics::CapsuleShapeConfiguration& config);
+        void DrawMesh(AzFramework::DebugDisplayRequests& debugDisplay);
 
         // Mesh collider
-        void DrawTriangleMesh(AzFramework::EntityDebugDisplayRequests& displayContext, physx::PxBase* meshData) const;
-        void DrawConvexMesh(AzFramework::EntityDebugDisplayRequests& displayContext, physx::PxBase* meshData) const;
+        void DrawTriangleMesh(AzFramework::DebugDisplayRequests& debugDisplay, physx::PxBase* meshData) const;
+        void DrawConvexMesh(AzFramework::DebugDisplayRequests& debugDisplay, physx::PxBase* meshData) const;
         void UpdateColliderMeshColor(AZ::Color& baseColor, AZ::u32 triangleCount) const;
         bool IsAssetConfig() const;
         void UpdateMeshAsset();
         void CreateStaticEditorCollider();
+
+        AZ::Crc32 ShouldShowBoxComponentModeButton() const;
+
+        using ComponentModeDelegate = AzToolsFramework::ComponentModeFramework::ComponentModeDelegate;
+        ComponentModeDelegate m_componentModeDelegate; ///< Responsible for detecting ComponentMode activation
+                                                       ///< and creating a concrete ComponentMode.
 
         AZ::Data::Asset<Pipeline::MeshAsset> m_meshColliderAsset;
         mutable AZStd::vector<AZ::Vector3> m_verts;
@@ -183,15 +197,9 @@ namespace PhysX
 
         double m_time = 0.0f;
 
-        // Box collider
-        AZ::Vector3 GetDimensions() override;
-        void SetDimensions(const AZ::Vector3& dimensions) override;
-        AZ::Transform GetCurrentTransform() override;
-        AzToolsFramework::BoxManipulator m_boxManipulator; ///< Manipulator for editing box dimensions.
-
         // Capsule collider
         AZ::Vector3 GetCapsuleScale();
 
-        AZStd::shared_ptr<Physics::RigidBodyStatic> m_editorBody;
+        AZStd::unique_ptr<Physics::RigidBodyStatic> m_editorBody;
     };
-}
+} // namespace PhysX

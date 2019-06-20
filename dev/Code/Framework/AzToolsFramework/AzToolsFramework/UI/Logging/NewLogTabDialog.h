@@ -15,9 +15,12 @@
 
 #pragma once
 
-#include <AzCore/Memory/SystemAllocator.h>
-#include <UI/Logging/ui_NewLogTabDialog.h>
 #include <QDialog>
+
+namespace Ui
+{
+    class newLogDialog;
+}
 
 namespace AzToolsFramework
 {
@@ -30,6 +33,7 @@ namespace AzToolsFramework
             Q_OBJECT;
         public:
             NewLogTabDialog(QWidget* pParent = 0);
+            ~NewLogTabDialog();
 
             QString m_windowName;
             QString m_textFilter;
@@ -41,7 +45,7 @@ namespace AzToolsFramework
 
 
         private:
-            Ui::newLogDialog uiManager;
+            QScopedPointer<Ui::newLogDialog> uiManager;
 
         private Q_SLOTS:
 

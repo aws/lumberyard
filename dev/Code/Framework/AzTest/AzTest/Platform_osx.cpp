@@ -13,6 +13,10 @@
 #include <iostream>
 #include "Platform.h"
 
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/sysctl.h>
+
 class ModuleHandle
     : public AZ::Test::IModuleHandle
 {
@@ -114,7 +118,7 @@ namespace AZ
 
         bool Platform::SupportsWaitForDebugger()
         {
-            return false;
+            return true;
         }
 
         std::shared_ptr<IModuleHandle> Platform::GetModule(const std::string& lib)
@@ -124,7 +128,31 @@ namespace AZ
 
         void Platform::WaitForDebugger()
         {
-            std::cerr << "Platform does not support waiting for debugger." << std::endl;
+            bool debuggerAttached = false;
+            // Apple Technical Q&A QA1361
+            // https://developer.apple.com/library/content/qa/qa1361/_index.html
+            while (!debuggerAttached)
+            {
+                const int managementInformationBaseNameLength = 4;
+                int managementInformationBaseName[managementInformationBaseNameLength];
+                struct kinfo_proc kernelInfo;
+                size_t kernelInfoSize = sizeof(kernelInfo);
+                
+                // Initialize the flags as they are only set if sysctl succeeds.
+                kernelInfo.kp_proc.p_flag = 0;
+                
+                // Initialize managementInformationBaseName, which tells sysctl the info we want,
+                // in this case we're looking for information about a specific process ID.
+                managementInformationBaseName[0] = CTL_KERN;
+                managementInformationBaseName[1] = KERN_PROC;
+                managementInformationBaseName[2] = KERN_PROC_PID;
+                managementInformationBaseName[3] = getpid();
+
+                sysctl(managementInformationBaseName, managementInformationBaseNameLength, &kernelInfo, &kernelInfoSize, nullptr, 0);
+                
+                // We're being debugged if the P_TRACED flag is set.
+                debuggerAttached = ((kernelInfo.kp_proc.p_flag & P_TRACED) != 0);
+            }
         }
 
         void Platform::SuppressPopupWindows()

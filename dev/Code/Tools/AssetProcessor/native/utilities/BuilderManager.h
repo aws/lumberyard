@@ -133,7 +133,8 @@ namespace AssetProcessor
         ~BuilderRef();
 
         // Disable copy
-        AZ_DISABLE_COPY(BuilderRef);
+        BuilderRef(const BuilderRef&) = delete;
+        BuilderRef& operator=(const BuilderRef&) = delete;
 
         // Allow move
         BuilderRef(BuilderRef&&);

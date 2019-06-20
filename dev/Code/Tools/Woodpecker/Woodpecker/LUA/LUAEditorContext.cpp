@@ -1260,7 +1260,12 @@ namespace LUAEditor
         --m_numOutstandingOperations;
         // you got a callback from the perforce API, this is guaranteed to be on the main thread.
         DocumentInfoMap::iterator actualDocument = m_documentInfoMap.find(assetId);
-        AZ_Assert(actualDocument != m_documentInfoMap.end(), "Invalid assetId lookup.");
+
+        if (actualDocument == m_documentInfoMap.end())
+        {
+            return;
+        }
+        
         DocumentInfo& doc = actualDocument->second;
 
         //this operation is considered done

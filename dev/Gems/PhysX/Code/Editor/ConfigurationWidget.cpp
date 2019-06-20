@@ -16,8 +16,7 @@
 #include <QBoxLayout>
 #include <Editor/ConfigurationWidget.h>
 #include <Editor/SettingsWidget.h>
-#include <Editor/CollisionLayersWidget.h>
-#include <Editor/CollisionGroupsWidget.h>
+#include <Editor/CollisionFilteringWidget.h>
 #include <Editor/PvdWidget.h>
 
 namespace PhysX
@@ -34,13 +33,11 @@ namespace PhysX
             m_tabs = new QTabWidget(this);
 
             m_settings = new SettingsWidget();
-            m_collisionLayers = new CollisionLayersWidget();
-            m_collisionGroups = new CollisionGroupsWidget();
+            m_collisionFiltering = new CollisionFilteringWidget();
             m_pvd = new PvdWidget();
 
             m_tabs->addTab(m_settings, "Global Configuration");
-            m_tabs->addTab(m_collisionLayers, "Layers");
-            m_tabs->addTab(m_collisionGroups, "Collision Groups");
+            m_tabs->addTab(m_collisionFiltering, "Collision Filtering");
             m_tabs->addTab(m_pvd, "Debugger");
 
             verticalLayout->addWidget(m_tabs);
@@ -54,17 +51,10 @@ namespace PhysX
                 emit onConfigurationChanged(m_configuration);
             });
 
-            connect(m_collisionLayers, &CollisionLayersWidget::onValueChanged,
-                this, [this](const Physics::CollisionLayers& layers)
+            connect(m_collisionFiltering, &CollisionFilteringWidget::onConfigurationChanged,
+                this, [this](const Physics::CollisionLayers& layers, const Physics::CollisionGroups& groups)
             {
                 m_configuration.m_collisionLayers = layers;
-                m_collisionGroups->SetValue(m_configuration.m_collisionGroups, m_configuration.m_collisionLayers);
-                emit onConfigurationChanged(m_configuration);
-            });
-
-            connect(m_collisionGroups, &CollisionGroupsWidget::onValueChanged,
-                this, [this](const Physics::CollisionGroups& groups)
-            {
                 m_configuration.m_collisionGroups = groups;
                 emit onConfigurationChanged(m_configuration);
             });
@@ -75,6 +65,13 @@ namespace PhysX
                 m_configuration.m_settings = settings;
                 emit onConfigurationChanged(m_configuration);
             });
+
+            ConfigurationWindowRequestBus::Handler::BusConnect();
+        }
+
+        ConfigurationWidget::~ConfigurationWidget()
+        {
+            ConfigurationWindowRequestBus::Handler::BusDisconnect();
         }
 
         void ConfigurationWidget::SetConfiguration(const PhysX::Configuration& configuration)
@@ -82,8 +79,7 @@ namespace PhysX
             m_configuration = configuration;
             m_settings->SetValue(m_configuration.m_settings, m_configuration.m_worldConfiguration,
                 m_configuration.m_editorConfiguration);
-            m_collisionLayers->SetValue(m_configuration.m_collisionLayers);
-            m_collisionGroups->SetValue(m_configuration.m_collisionGroups, m_configuration.m_collisionLayers);
+            m_collisionFiltering->SetConfiguration(configuration.m_collisionLayers, configuration.m_collisionGroups);
             m_pvd->SetValue(m_configuration.m_settings);
         }
 
@@ -91,6 +87,21 @@ namespace PhysX
         {
             return m_configuration;
         }
+
+        void ConfigurationWidget::ShowCollisionLayersTab()
+        {
+            int index = m_tabs->indexOf(m_collisionFiltering);
+            m_tabs->setCurrentIndex(index);
+            m_collisionFiltering->ShowLayersTab();
+        }
+
+        void ConfigurationWidget::ShowCollisionGroupsTab()
+        {
+            int index = m_tabs->indexOf(m_collisionFiltering);
+            m_tabs->setCurrentIndex(index);
+            m_collisionFiltering->ShowGroupsTab();
+        }
+
     } // namespace PhysXConfigurationWidget
 } // namespace AzToolsFramework
 

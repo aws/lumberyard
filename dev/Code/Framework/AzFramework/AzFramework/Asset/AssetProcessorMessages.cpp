@@ -519,6 +519,30 @@ namespace AzFramework
         }
 
         //---------------------------------------------------------------------
+
+        unsigned int ShowAssetInAssetProcessorRequest::MessageType()
+        {
+            static unsigned int messageType = AZ_CRC("AssetSystem::ShowAssetInAssetProcessor", 0x3c9d1be0);
+            return messageType;
+        }
+
+        unsigned int ShowAssetInAssetProcessorRequest::GetMessageType() const
+        {
+            return MessageType();
+        }
+
+        void ShowAssetInAssetProcessorRequest::Reflect(AZ::ReflectContext* context)
+        {
+            auto serialize = azrtti_cast<AZ::SerializeContext*>(context);
+            if (serialize)
+            {
+                serialize->Class<ShowAssetInAssetProcessorRequest>()
+                    ->Version(1)
+                    ->Field("AssetPath", &ShowAssetInAssetProcessorRequest::m_assetPath);
+            }
+        }
+
+        //---------------------------------------------------------------------
         FileOpenRequest::FileOpenRequest(const char* filePath, AZ::u32 mode)
             : m_filePath(filePath)
             , m_mode(mode)

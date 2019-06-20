@@ -38,7 +38,6 @@
 #include <AzCore/Script/ScriptSystemComponent.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Asset/AssetManagerComponent.h>
-#include <AzCore/RTTI/AzStdReflectionComponent.h>
 
 namespace UnitTest
 {
@@ -689,8 +688,8 @@ namespace UnitTest
             // EBus
             const AZStd::string_view defaultStringViewValue = "DEFAULT!!!!";
             AZStd::string expectedDefaultValueAndStringResult = AZStd::string::format("Default Value: %s", defaultStringViewValue.data());
-            BehaviorDefaultValue* defaultStringViewBehaviorValue = aznew BehaviorDefaultValue(defaultStringViewValue);
-            BehaviorDefaultValue* superDefaultStringViewBehaviorValue = aznew BehaviorDefaultValue(AZStd::string_view("SUPER DEFAULT!!!!"));
+            BehaviorDefaultValuePtr defaultStringViewBehaviorValue = aznew BehaviorDefaultValue(defaultStringViewValue);
+            BehaviorDefaultValuePtr superDefaultStringViewBehaviorValue = aznew BehaviorDefaultValue(AZStd::string_view("SUPER DEFAULT!!!!"));
 
             behaviorContext.EBus<BehaviorTestBus>("TestBus")
                     ->Attribute("EBusAttr", 40)
@@ -947,8 +946,6 @@ namespace UnitTest
 
             BehaviorTestBus::ExecuteQueuedEvents();
 
-            delete superDefaultStringViewBehaviorValue;
-            delete defaultStringViewBehaviorValue;
             delete testBusHandler;
             delete genericTestBusHandler;
 
@@ -3789,9 +3786,10 @@ namespace UnitTest
 
         void TearDown() override
         {
-            AllocatorsFixture::TearDown();
             delete m_scriptContext;
             delete m_behaviorContext;
+
+            AllocatorsFixture::TearDown();
         }
 
         ScriptContext* m_scriptContext;
@@ -4005,7 +4003,6 @@ ramenShop.handler:Connect(4);
             s_wasCalled = false;
 
             m_behavior = aznew BehaviorContext();
-            AzStdReflectionComponent::Reflect(m_behavior);
 
             m_behavior->Class<DataContainer>("DataContainer")
                 ->Constructor<int>()
@@ -4032,7 +4029,7 @@ ramenShop.handler:Connect(4);
     };
     bool AnyScriptBindTest::s_wasCalled = false;
 
-    TEST_F(AnyScriptBindTest, ScriptContextAny_AnyToLua)
+    TEST_F(AnyScriptBindTest, ScriptContextAny_AnyFromLua)
     {
         m_script->Execute("TestThatDataIs10(DataContainer(10))");
         EXPECT_TRUE(s_wasCalled);

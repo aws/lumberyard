@@ -39,9 +39,14 @@ AssetEditorWindow::~AssetEditorWindow()
     BusDisconnect();
 }
 
-void AssetEditorWindow::SetAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset) const
+void AssetEditorWindow::CreateAsset(const AZ::Data::AssetType& assetType)
 {
-    m_ui->m_assetEditorWidget->SetAsset(asset);
+    m_ui->m_assetEditorWidget->CreateAsset(assetType);
+}
+
+void AssetEditorWindow::OpenAsset(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
+{
+    m_ui->m_assetEditorWidget->OpenAsset(asset);
 }
 
 void AssetEditorWindow::RegisterViewClass()

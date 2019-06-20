@@ -39,6 +39,7 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::Icon, "Editor/Icons/Components/LookAt.png")
                         ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Editor/Icons/Components/Viewport/LookAt.png")
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game", 0x232b318c))
 
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorLookAtComponent::m_targetId, "Target", "The entity to look at")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorLookAtComponent::OnTargetChanged)

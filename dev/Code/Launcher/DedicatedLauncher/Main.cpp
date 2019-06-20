@@ -342,3 +342,9 @@ STRUCT_INFO_T_INSTANTIATE(Matrix33_tpl, <float>)
 STRUCT_INFO_T_INSTANTIATE(Color_tpl, <float>)
 STRUCT_INFO_T_INSTANTIATE(Color_tpl, <uint8>)
 #endif // AZ_MONOLITHIC_BUILD
+
+
+
+#if defined(AZ_MONOLITHIC_BUILD)
+#include <StaticModules.inl>
+#endif

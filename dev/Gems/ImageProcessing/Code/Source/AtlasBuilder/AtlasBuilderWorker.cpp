@@ -1,12 +1,12 @@
 /*
-* All or portions of this file Copyright(c) Amazon.com, Inc.or its affiliates or
+* All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
 * For complete copyright and license terms please see the LICENSE at the root of this
-* distribution(the "License").All use of this software is governed by the License,
-*or, if provided, by the license below or the license accompanying this file.Do not
-* remove or modify any license notices.This file is distributed on an "AS IS" BASIS,
-*WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* distribution (the "License"). All use of this software is governed by the License,
+* or, if provided, by the license below or the license accompanying this file. Do not
+* remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
 
@@ -18,6 +18,7 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/sort.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/std/string/regex.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/IO/LocalFileIO.h>
@@ -111,6 +112,48 @@ namespace TextureAtlasBuilder
         return (pathLength > 0 && (path.at(pathLength - 1) == '/' || path.at(pathLength - 1) == '\\'));
     }
 
+    bool GetCanonicalPathFromFullPath(const AZStd::string& fullPath, AZStd::string& canonicalPathOut)
+    {
+        AZStd::string curPath = fullPath;
+
+        // We avoid using LocalFileIO::ConvertToAbsolutePath for this because it does not behave consistently across platforms.
+        // On non-Windows platforms, LocalFileIO::ConvertToAbsolutePath requires that the path exist, otherwise the path
+        // remains unchanged. This won't work for paths that include wildcards.
+        // Also, on non-Windows platforms, if the path is already a full path, it will remain unchanged even if it contains
+        // "./" or "../" somewhere other than the beginning of the path
+
+        // Normalize path
+        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, curPath);
+
+        const AZStd::string slash("/");
+
+        // Replace "/./" occurrances with "/"
+        const AZStd::string slashDotSlash("/./");
+        bool replaced = false;
+        do
+        {
+            // Replace first occurrance
+            replaced = AzFramework::StringFunc::Replace(curPath, slashDotSlash.c_str(), slash.c_str(), false, true, false);
+        } while (replaced);
+
+        // Replace "/xxx/../" with "/"
+        const AZStd::regex slashDotDotSlash("\\/[^/.]*\\/\\.\\.\\/");
+        AZStd::string prevPath;
+        while (prevPath != curPath)
+        {
+            prevPath = curPath;
+            curPath = AZStd::regex_replace(prevPath, slashDotDotSlash, slash, AZStd::regex_constants::match_flag_type::format_first_only);
+        }
+
+        if ((curPath.find("..") != AZStd::string::npos) || (curPath.find("./") != AZStd::string::npos) || (curPath.find("/.") != AZStd::string::npos))
+        {
+            return false;
+        }
+
+        canonicalPathOut = curPath;
+        return true;
+    }
+
     bool ResolveRelativePath(const AZStd::string& relativePath, const AZStd::string& watchDirectory, AZStd::string& resolvedFullPathOut)
     {
         bool resolved = false;
@@ -120,26 +163,26 @@ namespace TextureAtlasBuilder
         fullPath.append("/");
         fullPath.append(relativePath);
 
-        // Resolve to absolute path (resolve "./" and "../")
-        char resolvedFullPath[AZ_MAX_PATH_LEN];
-        AZ::IO::LocalFileIO localFileIO;
-        resolved = localFileIO.ConvertToAbsolutePath(fullPath.c_str(), resolvedFullPath, sizeof(resolvedFullPath));
-
-        if (resolved)
-        {
-            resolvedFullPathOut = resolvedFullPath;
-
-            // Add back any trailing slash that ConvertToAbsolutePath may have stripped
-            if (HasTrailingSlash(relativePath) && !HasTrailingSlash(resolvedFullPathOut))
-            {
-                resolvedFullPathOut += '/';
-            }
-            
-            // Normalize path
-            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, resolvedFullPathOut);
-        }
+        // Resolve to canonical path (remove "./" and "../") 
+        resolved = GetCanonicalPathFromFullPath(fullPath, resolvedFullPathOut);
 
         return resolved;
+    }
+
+    bool GetAbsoluteSourcePathFromRelativePath(const AZStd::string& relativeSourcePath, AZStd::string& absoluteSourcePathOut)
+    {
+        bool result = false;
+        AZ::Data::AssetInfo info;
+        AZStd::string watchFolder;
+        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(result, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, relativeSourcePath.c_str(), info, watchFolder);
+        if (result)
+        {
+            absoluteSourcePathOut = AZStd::string::format("%s/%s", watchFolder.c_str(), info.m_relativePath.c_str());
+
+            // Normalize path
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, absoluteSourcePathOut);
+        }
+        return result;
     }
 
     const ImageProcessing::PresetSettings* GetImageProcessPresetSettings(const AZStd::string& presetName, const AZStd::string& platformIdentifier)
@@ -337,20 +380,14 @@ namespace TextureAtlasBuilder
                 }
                 else
                 {
-                    // Get the full path to the source image from the relative product path
+                    // Get the full path to the source image from the relative source path
                     AZStd::string fullSourceAssetPathName;
-                    bool fullPathFound = false;
-                    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(fullPathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, remove, fullSourceAssetPathName);
+                    bool fullPathFound = GetAbsoluteSourcePathFromRelativePath(remove, fullSourceAssetPathName);
 
                     if (!fullPathFound)
                     {
                         // Try to resolve relative path as it might be using "./" or "../"
                         fullPathFound = ResolveRelativePath(remove, directory, fullSourceAssetPathName);
-                    }
-                    else
-                    {
-                        // Normalize the full path found (GetFullSourcePathFromRelativeProductPath does not normalize)
-                        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, fullSourceAssetPathName);
                     }
 
                     if (fullPathFound)
@@ -366,7 +403,7 @@ namespace TextureAtlasBuilder
                     else
                     {
                         valid = false;
-                        AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable get source asset path for image: %s", remove.c_str()).c_str());
+                        AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable to get source asset path for image: %s", remove.c_str()).c_str());
                     }
                 }
             }
@@ -405,22 +442,16 @@ namespace TextureAtlasBuilder
                 }
                 else
                 {
-                    // Get the full path to the source image from the relative product path
+                    // Get the full path to the source image from the relative source path
                     AZStd::string fullSourceAssetPathName;
-                    bool fullPathFound = false;
-                    AzToolsFramework::AssetSystemRequestBus::BroadcastResult(fullPathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, line, fullSourceAssetPathName);
-                    
+                    bool fullPathFound = GetAbsoluteSourcePathFromRelativePath(line, fullSourceAssetPathName);
+
                     if (!fullPathFound)
                     {
                         // Try to resolve relative path as it might be using "./" or "../"
                         fullPathFound = ResolveRelativePath(line, directory, fullSourceAssetPathName);
                     }
-                    else
-                    {
-                        // Normalize the full path found (GetFullSourcePathFromRelativeProductPath does not normalize)
-                        AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, fullSourceAssetPathName);
-                    }
-                    
+
                     if (fullPathFound)
                     {
                         // Prevent duplicates
@@ -436,26 +467,9 @@ namespace TextureAtlasBuilder
                     else
                     {
                         valid = false;
-                        AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable get source asset path for image: %s", line.c_str()).c_str());
+                        AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable to get source asset path for image: %s", line.c_str()).c_str());
                     }
                 }
-            }
-        }
-
-        // Convert the final list of image file pathnames to relative product pathnames
-        for (auto& filePath : data.m_filePaths)
-        {
-            bool foundRelativeProductPath = false;
-            AZStd::string assetIdPathname;
-            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(foundRelativeProductPath, &AzToolsFramework::AssetSystem::AssetSystemRequest::GetRelativeProductPathFromFullSourceOrProductPath, filePath, assetIdPathname);
-            if (foundRelativeProductPath)
-            {
-                filePath = assetIdPathname;
-            }
-            else
-            {
-                valid = false;
-                AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable get relative product path for image file: %s", filePath.c_str()).c_str());
             }
         }
 
@@ -470,7 +484,7 @@ namespace TextureAtlasBuilder
         AZStd::string fixedPath = fullPath.substr(0, fullPath.find('*'));
         fixedPath = fixedPath.substr(0, fixedPath.find_last_of('/'));
         candidates.push_back(fixedPath);
-        
+
         AZStd::vector<AZStd::string> wildPath;
         AzFramework::StringFunc::Tokenize(fullPath.substr(fixedPath.length()).c_str(), wildPath, "/");
 
@@ -607,7 +621,7 @@ namespace TextureAtlasBuilder
     {
         QDir inputFolder(insert.c_str());
 
-        if(inputFolder.exists())
+        if (inputFolder.exists())
         {
             QFileInfoList entries = inputFolder.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Files);
             for (const QFileInfo& entry : entries)
@@ -667,7 +681,7 @@ namespace TextureAtlasBuilder
         AZStd::string ext;
         AzFramework::StringFunc::Path::GetExtension(request.m_sourceFile.c_str(), ext, false);
         AZStd::to_upper(ext.begin(), ext.end());
-        
+
         // Read in settings/filepaths to set dependencies
         AZStd::string fullPath;
         AzFramework::StringFunc::Path::Join(
@@ -717,7 +731,7 @@ namespace TextureAtlasBuilder
         {
             response.m_result = AssetBuilderSDK::CreateJobsResultCode::Success;
         }
-        
+
         return;
     }
 
@@ -770,7 +784,7 @@ namespace TextureAtlasBuilder
         if (input.m_presetName.empty())
         {
             // Default to the TextureAtlas preset which is currently set to use compression for all platforms except for iOS.
-            // Currently the only fully supported compression for iOS is PVRTC which requires the texture to be square and a power of 2. 
+            // Currently the only fully supported compression for iOS is PVRTC which requires the texture to be square and a power of 2.
             // Due to this limitation, we default to using no compression for iOS until ASTC is fully supported
             const AZStd::string defaultPresetName = "TextureAtlas";
             input.m_presetName = defaultPresetName;
@@ -803,17 +817,7 @@ namespace TextureAtlasBuilder
         bool sizeFailure = false;
         for (int i = 0; i < input.m_filePaths.size() && !jobCancelListener.IsCancelled(); ++i)
         {
-            // Get the path to the source image from the relative product path
-            AZStd::string sourceAssetPathName;
-            bool fullPathFound = false;
-            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(fullPathFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetFullSourcePathFromRelativeProductPath, input.m_filePaths[i], sourceAssetPathName);
-            if (!fullPathFound)
-            {
-                AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable get source file path for image: %s", input.m_filePaths[i].c_str()).c_str());
-                return;
-            }
-
-            ImageProcessing::IImageObject* inputImage = ImageProcessing::LoadImageFromFile(sourceAssetPathName);
+            ImageProcessing::IImageObject* inputImage = ImageProcessing::LoadImageFromFile(input.m_filePaths[i]);
             // Check if we were able to load the image
             if (inputImage)
             {
@@ -823,7 +827,7 @@ namespace TextureAtlasBuilder
             }
             else
             {
-                AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable to load file: %s", sourceAssetPathName.c_str()).c_str());
+                AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable to load file: %s", input.m_filePaths[i].c_str()).c_str());
                 return;
             }
             if (maxArea < totalArea)
@@ -841,6 +845,27 @@ namespace TextureAtlasBuilder
         {
             AZ_Error("AtlasBuilder", false, AZStd::string::format("Total image area exceeds maximum alotted area. %llu > %d", totalArea, maxArea).c_str());
             return;
+        }
+
+        // Convert all image paths to their output format referenced at runtime
+        for (auto& filePath : input.m_filePaths)
+        {
+            // Get path relative to the watch folder
+            bool result = false;
+            AZ::Data::AssetInfo info;
+            AZStd::string watchFolder;
+            AzToolsFramework::AssetSystemRequestBus::BroadcastResult(result, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, filePath.c_str(), info, watchFolder);
+            if (!result)
+            {
+                AZ_Error("AtlasBuilder", false, AZStd::string::format("Atlas Builder unable to get relative source path for image: %s", filePath.c_str()).c_str());
+                return;
+            }
+
+            // Remove extension
+            filePath = info.m_relativePath.substr(0, info.m_relativePath.find_last_of('.'));
+
+            // Normalize path
+            AzFramework::ApplicationRequests::Bus::Broadcast(&AzFramework::ApplicationRequests::NormalizePath, filePath);
         }
 
         // Add white texture if we need to
@@ -900,15 +925,16 @@ namespace TextureAtlasBuilder
             map.push_back(AtlasCoordinates(paddedMap[i].GetLeft(), paddedMap[i].GetLeft() + images[data[i].first]->GetWidth(0), paddedMap[i].GetTop(), paddedMap[i].GetTop() + images[data[i].first]->GetHeight(0)));
             resultHeight = resultHeight > map[i].GetBottom() ? resultHeight : map[i].GetBottom();
             resultWidth = resultWidth > map[i].GetRight() ? resultWidth : map[i].GetRight();
-            AZStd::string filePath = input.m_filePaths[data[i].first].substr(0, input.m_filePaths[data[i].first].find_last_of('.'));
-            output.push_back(AZStd::pair<AZStd::string, AtlasCoordinates>(filePath, map[i]));
+
+            const AZStd::string& outputFilePath = input.m_filePaths[data[i].first];
+            output.push_back(AZStd::pair<AZStd::string, AtlasCoordinates>(outputFilePath, map[i]));
         }
         if (input.m_forcePowerOf2)
         {
             resultWidth = pow(2, 1 + IntegerLog2(static_cast<uint32>(resultWidth - 1)));
             resultHeight = pow(2, 1 + IntegerLog2(static_cast<uint32>(resultHeight - 1)));
         }
-        else 
+        else
         {
             resultWidth = (resultWidth + (cellSize - 1)) / cellSize * cellSize;
             resultHeight = (resultHeight + (cellSize - 1)) / cellSize * cellSize;
@@ -919,7 +945,7 @@ namespace TextureAtlasBuilder
             {
                 resultHeight = resultWidth;
             }
-            else 
+            else
             {
                 resultWidth = resultHeight;
             }
@@ -951,25 +977,25 @@ namespace TextureAtlasBuilder
             {
                 rightPadding = resultWidth - map[i].GetRight();
             }
-            rightPadding  *= bytesPerPixel;
+            rightPadding *= bytesPerPixel;
             int bottomPadding = (paddedMap[i].GetBottom() - map[i].GetBottom() - input.m_padding);
             if (map[i].GetBottom() + bottomPadding > resultHeight)
             {
                 bottomPadding = resultHeight - map[i].GetBottom();
             }
-            
+
             int leftPadding = 0;
             if (map[i].GetLeft() - input.m_padding >= 0)
             {
                 leftPadding = input.m_padding * bytesPerPixel;
             }
-            
+
             int topPadding = 0;
             if (map[i].GetTop() - input.m_padding >= 0)
             {
                 topPadding = input.m_padding;
             }
-            
+
             for (j = 0; j < map[i].GetHeight(); ++j)
             {
                 // When we multiply `map[i].GetLeft()` by 4, we are changing the measure from atlas space, to byte array
@@ -1081,7 +1107,7 @@ namespace TextureAtlasBuilder
                 response.m_outputProducts.clear();
                 return;
             }
-            
+
             if (productFilepaths.size() > 0)
             {
                 response.m_outputProducts.push_back(AssetBuilderSDK::JobProduct(productFilepaths[0]));
@@ -1374,7 +1400,7 @@ namespace TextureAtlasBuilder
         // This uses a standard binary search to find the smallest width that can pack everything
         AZ::u32 lower = minWidth;
         AZ::u32 upper = maxDimensionRounded;
-        AZ::u32 width = 0; 
+        AZ::u32 width = 0;
         while (lower <= upper)
         {
             AZ::u32 testWidth = (lower + upper) / 2;    // must be divisible by cellSize because lower and upper are
@@ -1583,7 +1609,7 @@ namespace TextureAtlasBuilder
         return slot.GetRight() >= right && slot.GetBottom() >= bot;
     }
 
-    // Adds the necessary padding to an Atlas Coordinate 
+    // Adds the necessary padding to an Atlas Coordinate
     void AddPadding(AtlasCoordinates& slot, int padding, int farRight, int farBot)
     {
         // Add padding for my right border
@@ -1599,7 +1625,7 @@ namespace TextureAtlasBuilder
         bot = (bot + (cellSize - 1)) / cellSize * cellSize;
         // Add padding for an adjacent unit's left border
         bot += padding;
-        
+
         slot.SetRight(right);
         slot.SetBottom(bot);
     }

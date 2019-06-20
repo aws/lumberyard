@@ -13,6 +13,7 @@
 
 #include <ScriptCanvas/Core/Contract.h>
 
+
 namespace ScriptCanvas
 {
     class SlotTypeContract

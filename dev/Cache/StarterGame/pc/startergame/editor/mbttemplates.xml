@@ -1,0 +1,327 @@
+<Templates>
+	<MbtLoggingFunctions>
+		<_startlog type="string" value=""/>
+		<_endlog type="string" value=""/>
+		<_failurelog type="string" value=""/>
+	</MbtLoggingFunctions>
+	
+	<Case class="TreeNode">
+		<condition type="string" value=""/>
+	</Case>
+	
+	<BehaviorTree class="TreeNode">
+	</BehaviorTree>
+	
+	<Priority class="TreeNode">
+	</Priority>
+	
+	<Sequence class="TreeNode">
+	</Sequence>
+	
+	<Parallel class="TreeNode">
+	</Parallel>
+	
+	<LuaBehavior class="TreeNode">
+		<name type="string" value="" />
+	</LuaBehavior>
+	
+	<LuaWrapper class="TreeNode">
+		<onEnter type="string" value="" />
+		<onExit type="string" value="" />
+	</LuaWrapper>
+	
+	<SmartObjectStatesWrapper class="TreeNode">
+		<onEnter type="string" value="" />
+		<onExit type="string" value="" />
+	</SmartObjectStatesWrapper>
+	
+	<Communicate class="TreeNode">
+		<name type="string" value="" />
+		<channel type="string" value="" />
+		<WaitUntilFinished type="bool" value="0" />
+		<timeout type="float" value="0.0" />
+		<expiry type="float" value="0.0" />
+		<minSilence type="float" value="0.0" />
+		<ignoreSound type="bool" value="0" />
+		<ignoreAnim type="bool" value="0" />
+	</Communicate>
+	
+	<State class="StateNode">
+		<name type="string" value="" />
+	</State>
+	
+	<WaitForEvent class="TreeNode">
+		<name type="string" value="" />
+	</WaitForEvent>
+	
+	<IfCondition class="TreeNode">
+		<condition type="string" value="" />
+	</IfCondition>
+	
+	<AdjustCoverStance class="TreeNode">
+		<duration type="float" value="0.0" />
+		<variation type="float" value="0.0" />
+	</AdjustCoverStance>
+	
+	<Signal class="TreeNode">
+		<name type="string" value="" />
+	</Signal>
+	
+	<AssertLua class="TreeNode">
+		<name type="string" value="" />
+	</AssertLua>
+	
+	<Stance class="TreeNode">
+		<name type="string" value="" />
+		<stanceToUseIfSlopeIsTooSteep type="string" value="" />
+		<allowedSlopeNormalDeviationFromUpInDegrees type="float" value="0.0" />
+	</Stance>
+	
+	<Animate class="TreeNode">
+		<name type="string" value="" />
+		<urgent type="bool" value="0" />
+		<loop type="bool" value="0" />
+		<setBodyDirectionTowardsAttentionTarget type="bool" value="0" />
+	</Animate>
+	
+	<StateMachine class="StateMachineNode">
+	</StateMachine>
+	
+	<Selector class="TreeNode">
+	</Selector>
+	
+	<Root class="TreeNode">
+	</Root>
+	
+	<Loop class="TreeNode">
+		<count type="int" value="1" />
+	</Loop>
+	
+	<LoopUntilSuccess class="TreeNode">
+		<attemptCount type="int" value="1" />
+	</LoopUntilSuccess>
+	
+	<Halt class="TreeNode">
+	</Halt>	
+	
+	<Priority class="TreeNode">
+	</Priority>	
+	
+	<SuppressFailure class="TreeNode">
+	</SuppressFailure>	
+	
+	<Log class="TreeNode">
+		<Message type="string" value="" />
+	</Log>
+	
+	<SetAlertness class="TreeNode">
+		<value type="int" value="0" />
+	</SetAlertness>
+	
+	<AimAroundWhileUsingAMachingGun class="TreeNode">
+		<maxAngle type="int" value="0" />
+		<minSecondsBeweenUpdates type="float" value="0.0" />
+		<useReferencePointForInitialDirectionAndPivotPosition type="bool" value="0" />
+	</AimAroundWhileUsingAMachingGun>
+	
+	<ExecuteLua class="TreeNode">
+		<code type="string" value=""/>
+	</ExecuteLua>
+	
+	<LuaGate class="TreeNode">
+		<code type="string" value=""/>
+	</LuaGate>
+	
+	<RandomGate class="TreeNode">
+		<opensWithChance type="float" value="0.0"/>
+	</RandomGate>
+	
+	<SendTransitionSignal class="TreeNode">
+		<name type="string" value=""/>
+	</SendTransitionSignal>
+	
+	<Look class="TreeNode">
+		<at type="string" value=""/>
+	</Look>
+	
+	<Timeout class="TreeNode">
+		<duration type="float" value="0.0"/>
+	</Timeout>
+	
+	<Move class="TreeNode">
+		<to type="string" value="" />
+		<speed type="string" value="" />
+		<stance type="string" value="" />
+		<avoidDangers type="bool" value="0" />
+		<stopWithinDistance type="float" value="0.0" />
+		<stopDistanceVariation type="float" value="0.0" />
+		<strafe type="bool" value ="0" />
+		<glanceInMovementDirection type="bool" value ="0" />
+		<avoidDangers type="bool" value ="1" />
+		<avoidGroupMates type="bool" value ="1" />
+		<considerActorsAsPathObstacles type="bool" value ="0" />
+		<lengthToTrimFromThePathEnd type="float" value="0.0" />
+	</Move>
+	
+	<Shoot class="TreeNode">
+		<at type="string" value="" />
+		<fireMode type="string" value="" />
+		<stance type="string" value="" />
+		<duration type="float" value="0.0" />
+		<stanceToUseIfSlopeIsTooSteep type="string" value="" />
+		<allowedSlopeNormalDeviationFromUpInDegrees type="float" value="" />
+		<aimObstructedTimeout type="float" value="" />
+	</Shoot>
+	
+	<Wait class="TreeNode">
+		<duration type="float" value="0.0"/>
+		<variation type="float" value="0.0"/>
+	</Wait>
+	
+	<StopMovement class="TreeNode">
+		<waitUntilStopped type="bool" value="0"/>
+		<waitUntilIdleAnimation type="bool" value="0"/>
+	</StopMovement>
+	
+	<Bubble class="TreeNode">
+		<message type="string" value=""/>
+		<variation type="string" value=""/>
+		<balloon type="bool" value="1"/>
+		<log type="bool" value="1"/>
+	</Bubble>
+	
+	<QueryTPS class="TreeNode">
+		<name type="float" value="0.0"/>
+		<register type="string" value=""/>
+	</QueryTPS>
+	
+	<ThrowGrenade class="TreeNode">
+		<timeout type="float" value="0.0"/>
+		<type type="string" value=""/>
+	</ThrowGrenade>
+	
+	<IfTime class="TreeNode">
+		<since type="string" value=""/>
+		<isMoreThan type="float" value="0.0"/>
+		<isLessThan type="float" value="0.0"/>
+		<orNeverBeenSet type="bool" value="0"/>
+	</IfTime>	
+	
+	<MonitorCondition class="TreeNode">
+		<condition type="string" value=""/>
+	</MonitorCondition>
+	
+	<GoalPipe class="TreeNode">
+		<name type="string" value=""/>
+	</GoalPipe>
+	
+	<FireCmd class="TreeNode">
+		<mode type="string" value=""/>
+	</FireCmd>
+	
+	<Locate class="TreeNode">
+		<name type="string" value=""/>
+	</Locate>
+	
+	<AdjustAim class="TreeNode">
+		<timeout type="float" value="0.0"/>
+		<useLastOpResultAsBackup type="bool" value=""/>
+	</AdjustAim>
+	
+	<Aim class="TreeNode">
+		<at type="string" value=""/>
+		<angleThreshold type="int" value="0"/>
+		<durationOnceWithinThreshold type="float" value="0.0"/>
+	</Aim>
+	
+	<AssertCondition class="TreeNode">
+		<condition type="string" value=""/>
+	</AssertCondition>
+	
+	<AnimationTagWrapper class="TreeNode">
+		<name type="string" value=""/>
+	</AnimationTagWrapper>
+	
+	<PullDownThreatLevel class="TreeNode">
+		<to type="string" value=""/>
+	</PullDownThreatLevel>
+	
+	<AnimateFragment class="TreeNode">
+		<name type="string" value=""/>
+	</AnimateFragment>
+	
+	<HoldFormation class="TreeNode">
+		<name type="string" value=""/>
+	</HoldFormation>
+	
+	<JoinFormation class="TreeNode">
+		<name type="string" value=""/>
+	</JoinFormation>
+	
+	<SendSquadEvent class="TreeNode">
+		<name type="string" value=""/>
+	</SendSquadEvent>
+	
+	<IfSquadCount class="TreeNode">
+		<isGreaterThan type="float" value=""/>
+		<isLesserThan type="float" value=""/>
+		<equals type="float" value=""/>
+	</IfSquadCount>
+	
+	<SuppressHitReactions class="TreeNode">
+	</SuppressHitReactions>
+	
+	<KeepTargetAtADistance class="TreeNode">
+		<distance type="float" value=""/>
+		<impulsePower type="float" value=""/>
+	</KeepTargetAtADistance>
+	
+	<Melee class="TreeNode">
+		<target type="string" value=""/>
+		<cylinderRadius type="float" value=""/>
+		<hitType type="string" value=""/>
+		<failIfTargetNotInNavigationMesh type="bool" value=""/>
+		<materialEffect type="string" value=""/>
+	</Melee>
+	
+	<ShootFromCover class="TreeNode">
+		<duration type="float" value="0.0"/>
+		<fireMode type="string" value=""/>
+		<aimObstructedTimeout type="float" value="0.0"/>
+	</ShootFromCover>
+	
+	<SquadScope class="TreeNode">
+		<name type="string" value="" />
+		<allowedConcurrentUsers type="int" value="1" />
+	</SquadScope>
+	
+	<WaitUntilTime class="TreeNode">
+		<since type="string" value="" />
+		<isMoreThan type="float" value="0.0" />
+		<isLessThan type="float" value="0.0" />
+		<succeedIfNeverBeenSet type="bool" value="0" />
+	</WaitUntilTime>
+	
+	<AssertTime class="TreeNode">
+		<since type="string" value="" />
+		<isMoreThan type="float" value="0.0" />
+		<isLessThan type="float" value="0.0" />
+		<orNeverBeenSet type="bool" value="0" />
+	</AssertTime>
+	
+	<GroupScope class="TreeNode" >
+		<name type="string" value="" />
+		<allowedConcurrentUsers type="int" value="0" />
+	</GroupScope>
+	
+	<TurnBody class="TreeNode">
+		<towards type="string" value="" />
+		<alignWith type="int" value="0" />
+		<stopWithinAngle type="int" value="0" />
+		<randomMinAngle type="int" value="0" />
+		<randomMaxAngle type="int" value="0" />
+		<randomTurnRightChance type="float" value="0.0" />
+	</TurnBody>
+	
+	<Fail class="TreeNode" />
+</Templates>

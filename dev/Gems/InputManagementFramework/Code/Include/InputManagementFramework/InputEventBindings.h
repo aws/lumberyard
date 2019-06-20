@@ -94,6 +94,7 @@ namespace Input
             if (serialize)
             {
                 serialize->Class<InputEventBindingsAsset>()
+                    ->Attribute(AZ::Edit::Attributes::EnableForAssetEditor, true)
                     ->Field("Bindings", &InputEventBindingsAsset::m_bindings)
                 ;
 

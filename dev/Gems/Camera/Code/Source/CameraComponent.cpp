@@ -127,6 +127,7 @@ namespace Camera
             behaviorContext->Class<CameraComponent>()->RequestBus("CameraRequestBus");
 
             behaviorContext->EBus<CameraSystemRequestBus>("CameraSystemRequestBus")
+                ->Attribute(AZ::Script::Attributes::Category, "Camera")
                 ->Event("GetActiveCamera", &CameraSystemRequestBus::Events::GetActiveCamera)
                 ;
         }

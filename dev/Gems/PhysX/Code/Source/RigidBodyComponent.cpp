@@ -14,6 +14,7 @@
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Math/Transform.h>
 #include <AzFramework/Physics/World.h>
+#include <AzFramework/Physics/Utils.h>
 #include <AzFramework/Entity/GameEntityContextBus.h>
 #include <PhysX/ColliderComponentBus.h>
 #include <PhysX/MathConversion.h>
@@ -124,6 +125,7 @@ namespace PhysX
             return;
         }
 
+
         AzFramework::EntityContextId gameContextId = AzFramework::EntityContextId::CreateNull();
         AzFramework::GameEntityContextRequestBus::BroadcastResult(gameContextId, &AzFramework::GameEntityContextRequestBus::Events::GetGameEntityContextId);
 
@@ -144,10 +146,11 @@ namespace PhysX
         }
         else
         {
+            // Create and setup rigid body & associated bus handlers
+            CreatePhysics();
+            // Add to world
             EnablePhysics();
         }
-
-        Physics::RigidBodyRequestBus::Handler::BusConnect(GetEntityId());
     }
 
     void RigidBodyComponent::Deactivate()
@@ -157,9 +160,12 @@ namespace PhysX
             return;
         }
 
-        Physics::RigidBodyRequestBus::Handler::BusDisconnect();
+        Physics::Utils::DeferDelete(AZStd::move(m_rigidBody));
 
-        DisablePhysics();
+        Physics::RigidBodyRequestBus::Handler::BusDisconnect();
+        AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
+        Physics::SystemNotificationBus::Handler::BusDisconnect();
+        AZ::TickBus::Handler::BusDisconnect();
     }
 
     void RigidBodyComponent::OnTick(float deltaTime, AZ::ScriptTimePoint /*currentTime*/)
@@ -223,6 +229,29 @@ namespace PhysX
         }
     }
 
+    void RigidBodyComponent::CreatePhysics()
+    {
+        // Create rigid body
+        SetupConfiguration();
+        Physics::SystemRequestBus::BroadcastResult(m_rigidBody, &Physics::SystemRequests::CreateRigidBody, m_configuration);
+        m_rigidBody->SetKinematic(m_configuration.m_kinematic);
+
+        // Add shapes
+        ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [this](ColliderComponentRequests* handler)
+        {
+            m_rigidBody->AddShape(handler->GetShape());
+            return true;
+        });
+        m_rigidBody->UpdateCenterOfMassAndInertia(m_configuration.m_computeCenterOfMass, m_configuration.m_centerOfMassOffset,
+            m_configuration.m_computeInertiaTensor, m_configuration.m_inertiaTensor);
+
+        // Listen to the PhysX system for events concerning this entity.
+        Physics::SystemNotificationBus::Handler::BusConnect();
+        AZ::TickBus::Handler::BusConnect();
+        AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
+        Physics::RigidBodyRequestBus::Handler::BusConnect(GetEntityId());
+    }
+
     void RigidBodyComponent::EnablePhysics()
     {
         if (IsPhysicsEnabled())
@@ -230,33 +259,11 @@ namespace PhysX
             return;
         }
 
-        SetupConfiguration();
-
-        AZStd::shared_ptr<Physics::RigidBody> createdRigidBody;
-        Physics::SystemRequestBus::BroadcastResult(createdRigidBody, &Physics::SystemRequests::CreateRigidBody, m_configuration);
-        m_rigidBody = AZStd::static_pointer_cast<RigidBody>(createdRigidBody);
-
         // Add actor to scene
         AZStd::shared_ptr<Physics::World> world = nullptr;
         Physics::DefaultWorldBus::BroadcastResult(world, &Physics::DefaultWorldRequests::GetDefaultWorld);
         m_world = world.get();
-
-        ColliderComponentRequestBus::EnumerateHandlersId(GetEntityId(), [this](ColliderComponentRequests* handler)
-        {
-            m_rigidBody->AddShape(handler->GetShape());
-            return true;
-        });
-
-        m_rigidBody->SetKinematic(m_configuration.m_kinematic);
-
         world->AddBody(*m_rigidBody);
-
-        m_interpolator = std::make_unique<TransformForwardTimeInterpolator>();
-
-        // Listen to the PhysX system for events concerning this entity.
-        Physics::SystemNotificationBus::Handler::BusConnect();
-        AZ::TickBus::Handler::BusConnect();
-        AZ::TransformNotificationBus::MultiHandler::BusConnect(GetEntityId());
 
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(transform, GetEntityId(), &AZ::TransformInterface::GetWorldTM);
@@ -264,29 +271,27 @@ namespace PhysX
         AZ::Quaternion rotation = AZ::Quaternion::CreateIdentity();
         AZ::TransformBus::EventResult(rotation, GetEntityId(), &AZ::TransformInterface::GetWorldRotationQuaternion);
 
+        m_interpolator = std::make_unique<TransformForwardTimeInterpolator>();
         m_interpolator->Reset(transform.GetPosition(), rotation);
 
         m_initialScale = transform.ExtractScaleExact();
-
-        m_rigidBody->UpdateCenterOfMassAndInertia(m_configuration.m_computeCenterOfMass, m_configuration.m_centerOfMassOffset, m_configuration.m_computeInertiaTensor, m_configuration.m_inertiaTensor);
 
         Physics::RigidBodyNotificationBus::Event(GetEntityId(), &Physics::RigidBodyNotificationBus::Events::OnPhysicsEnabled);
     }
 
     void RigidBodyComponent::DisablePhysics()
     {
-        m_rigidBody->ReleasePhysXActor();
-        m_world = nullptr;
+        if (Physics::World* world = m_rigidBody->GetWorld())
+        {
+            world->RemoveBody(*m_rigidBody);
+        }
 
         Physics::RigidBodyNotificationBus::Event(GetEntityId(), &Physics::RigidBodyNotificationBus::Events::OnPhysicsDisabled);
-        AZ::TransformNotificationBus::MultiHandler::BusDisconnect();
-        Physics::SystemNotificationBus::Handler::BusDisconnect();
-        AZ::TickBus::Handler::BusDisconnect();
     }
 
     bool RigidBodyComponent::IsPhysicsEnabled() const
     {
-        return m_rigidBody != nullptr && m_rigidBody->GetNativePointer() != nullptr;
+        return m_rigidBody != nullptr && m_rigidBody->GetWorld() != nullptr;
     }
 
     void RigidBodyComponent::ApplyLinearImpulse(const AZ::Vector3& impulse)
@@ -451,6 +456,7 @@ namespace PhysX
 
     void RigidBodyComponent::OnSliceInstantiated(const AZ::Data::AssetId&, const AZ::SliceComponent::SliceInstanceAddress&)
     {
+        CreatePhysics();
         EnablePhysics();
         AzFramework::EntityContextEventBus::Handler::BusDisconnect();
     }
@@ -459,9 +465,11 @@ namespace PhysX
     {
         // Enable physics even in the case of instantiation failure. If we've made it this far, the
         // entity is valid and should be activated normally.
+        CreatePhysics();
         EnablePhysics();
         AzFramework::EntityContextEventBus::Handler::BusDisconnect();
     }
+
 
     void TransformForwardTimeInterpolator::Reset(const AZ::Vector3& position, const AZ::Quaternion& rotation)
     {

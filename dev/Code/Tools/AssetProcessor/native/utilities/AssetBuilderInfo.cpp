@@ -59,20 +59,22 @@ namespace AssetProcessor
     {
         AZ_Error(AssetProcessor::ConsoleChannel, IsLoaded(), "External module %s not loaded.", GetName().toUtf8().data());
 
-        m_initializeModuleFunction(AZ::Environment::GetInstance());
+        if (IsAssetBuilder() == ASSET_BUILDER_TYPE::VALID)
+        {
+            m_initializeModuleFunction(AZ::Environment::GetInstance());
+            m_moduleRegisterDescriptorsFunction();
 
-        m_moduleRegisterDescriptorsFunction();
+            AZStd::string entityName = AZStd::string::format("%s Entity", GetName().toUtf8().data());
+            m_entity = aznew AZ::Entity(entityName.c_str());
 
-        AZStd::string entityName = AZStd::string::format("%s Entity", GetName().toUtf8().data());
-        m_entity = aznew AZ::Entity(entityName.c_str());
+            m_moduleAddComponentsFunction(m_entity);
 
-        m_moduleAddComponentsFunction(m_entity);
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Init Entity %s", GetName().toUtf8().data());
+            m_entity->Init();
 
-        AZ_TracePrintf(AssetProcessor::DebugChannel, "Init Entity %s", GetName().toUtf8().data());
-        m_entity->Init();
-
-        //Activate all the components
-        m_entity->Activate();
+            //Activate all the components
+            m_entity->Activate();
+        }
     }
 
 
@@ -109,20 +111,8 @@ namespace AssetProcessor
         }
     }
 
-    bool ExternalModuleAssetBuilderInfo::Load()
+    ASSET_BUILDER_TYPE ExternalModuleAssetBuilderInfo::IsAssetBuilder()
     {
-        if (IsLoaded())
-        {
-            AZ_Warning(AssetProcessor::ConsoleChannel, false, "External module %s already.", GetName().toUtf8().data());
-            return true;
-        }
-
-        if (!m_library.load())
-        {
-            AZ_TracePrintf(AssetProcessor::DebugChannel, "Unable to load builder : %s\n", GetName().toUtf8().data());
-            return false;
-        }
-
         QStringList missingFunctionsList;
         QFunctionPointer isAssetBuilderAddress = ResolveModuleFunction<QFunctionPointer>("IsAssetBuilder", missingFunctionsList);
         InitializeModuleFunction initializeModuleAddress = ResolveModuleFunction<InitializeModuleFunction>("InitializeModule", missingFunctionsList);
@@ -137,16 +127,38 @@ namespace AssetProcessor
             m_moduleRegisterDescriptorsFunction = moduleRegisterDescriptorsAddress;
             m_moduleAddComponentsFunction = moduleAddComponentsAddress;
             m_uninitializeModuleFunction = uninitializeModuleAddress;
-            return true;
+            return VALID;
+        }
+        else if (missingFunctionsList.size() > 0 && missingFunctionsList.contains("IsAssetBuilder"))
+        {
+            // This DLL is not a builder and should be ignored.
+            return NONE;
         }
         else
         {
-            // Not a valid builder module
+            // This is supposed to be a builder but is invalid
             QString errorMessage = QString("Builder library %1 is missing one or more exported functions: %2").arg(QString(GetName()), missingFunctionsList.join(','));
             AZ_TracePrintf(AssetBuilderSDK::ErrorWindow, "One or more builder functions is missing in the library: %s\n", errorMessage.toUtf8().data());
-            m_library.unload();
+            return INVALID;
+        }
+    }
+
+    bool ExternalModuleAssetBuilderInfo::Load()
+    {
+        if (IsLoaded())
+        {
+            AZ_Warning(AssetProcessor::ConsoleChannel, false, "External module %s already loaded.", GetName().toUtf8().data());
+            return true;
+        }
+
+        if (!m_library.load())
+        {
+            AZ_TracePrintf(AssetProcessor::DebugChannel, "Unable to load builder : %s\n", GetName().toUtf8().data());
             return false;
         }
+
+        ASSET_BUILDER_TYPE assetBuilderType = IsAssetBuilder();
+        return (assetBuilderType == ASSET_BUILDER_TYPE::VALID || assetBuilderType == ASSET_BUILDER_TYPE::NONE) ? true : false;
     }
 
     void ExternalModuleAssetBuilderInfo::RegisterBuilderDesc(const AZ::Uuid& builderDescID)

@@ -65,6 +65,10 @@ namespace ScriptCanvasEditor
       
         static const char* GetFileExtension() { return "scriptcanvas"; }
         static const char* GetFileFilter() { return "*.scriptcanvas"; }
+        static const char* GetGroup() { return "ScriptCanvas"; }
+
+        AZStd::string GetPath();
+        void SetPath(const AZStd::string& path);
         
         AZ::Entity* GetScriptCanvasEntity() const;
         void SetScriptCanvasEntity(AZ::Entity* scriptCanvasEntity);

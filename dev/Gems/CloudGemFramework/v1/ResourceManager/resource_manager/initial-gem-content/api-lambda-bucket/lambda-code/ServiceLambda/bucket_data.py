@@ -5,12 +5,12 @@ import uuid
 
 import boto3
 import botocore.exceptions
-
+from botocore.client import Config
 import CloudCanvas
 
 bucket_name = CloudCanvas.get_setting('Bucket')
 
-s3 = boto3.resource('s3')
+s3 = boto3.resource('s3', config=Config(signature_version='s3v4'))
 bucket = s3.Bucket(bucket_name)
 
 

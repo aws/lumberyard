@@ -120,6 +120,7 @@ namespace AzToolsFramework
 
             //! Get child by index
             const AssetBrowserEntry* GetChild(int index) const;
+            AssetBrowserEntry* GetChild(int index);
             //! Get number of children
             int GetChildCount() const;
             //! Get immediate parent

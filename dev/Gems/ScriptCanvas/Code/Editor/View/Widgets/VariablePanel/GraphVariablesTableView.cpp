@@ -13,22 +13,27 @@
 
 #include <qaction.h>
 #include <qapplication.h>
+#include <qclipboard.h>
 #include <qheaderview.h>
 
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Components/StyleBus.h>
+#include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 
 #include <Editor/Include/ScriptCanvas/Bus/RequestBus.h>
 
 #include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
 #include <Editor/View/Widgets/VariablePanel/GraphVariablesTableView.h>
 
+#include <Editor/Settings.h>
 #include <Editor/Translation/TranslationHelper.h>
 #include <Editor/QtMetaTypes.h>
 
 #include <Editor/View/Widgets/ScriptCanvasNodePaletteDockWidget.h>
 #include <Editor/View/Widgets/NodePalette/VariableNodePaletteTreeItemTypes.h>
 #include <ScriptCanvas/Bus/RequestBus.h>
+#include <ScriptCanvas/Bus/EditorScriptCanvasBus.h>
 
 namespace ScriptCanvasEditor
 {
@@ -83,7 +88,7 @@ namespace ScriptCanvasEditor
                 ScriptCanvas::VariableNameValuePair* varPair = nullptr;
                 ScriptCanvas::GraphVariableManagerRequestBus::EventResult(varPair, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, varId);
 
-                if (varPair && IsEditabletype(varType))
+                if (varPair && IsEditableType(varType))
                 {
                     if (varType.IS_A(ScriptCanvas::Data::Type::String()))
                     {
@@ -102,6 +107,14 @@ namespace ScriptCanvasEditor
                         const ScriptCanvas::Data::BooleanType* booleanValue = varPair->m_varDatum.GetData().GetAs<ScriptCanvas::Data::BooleanType>();
 
                         return QVariant((*booleanValue));
+                    }
+                    else if (varType.IS_A(ScriptCanvas::Data::Type::CRC()))
+                    {
+                        const ScriptCanvas::Data::CRCType* crcValue = varPair->m_varDatum.GetData().GetAs<ScriptCanvas::Data::CRCType>();
+
+                        AZStd::string crcString;
+                        EditorGraphRequestBus::EventResult(crcString, GetScriptCanvasGraphId(), &EditorGraphRequests::DecodeCrc, (*crcValue));
+                        return QVariant(crcString.c_str());
                     }
                     else
                     {
@@ -144,7 +157,7 @@ namespace ScriptCanvasEditor
                 ScriptCanvas::VariableNameValuePair* varPair = nullptr;
                 ScriptCanvas::GraphVariableManagerRequestBus::EventResult(varPair, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, varId);
 
-                if (varPair && IsEditabletype(varType))
+                if (varPair && IsEditableType(varType))
                 {
                     if (varType.IS_A(ScriptCanvas::Data::Type::String()))
                     {
@@ -157,6 +170,22 @@ namespace ScriptCanvasEditor
                         else
                         {
                             return QVariant(stringValue->c_str());
+                        }
+                    }
+                    else if (varType.IS_A(ScriptCanvas::Data::Type::CRC()))
+                    {
+                        const ScriptCanvas::Data::CRCType* crcValue = varPair->m_varDatum.GetData().GetAs<ScriptCanvas::Data::CRCType>();
+
+                        AZStd::string crcString;
+                        EditorGraphRequestBus::EventResult(crcString, GetScriptCanvasGraphId(), &EditorGraphRequests::DecodeCrc, (*crcValue));
+
+                        if (!crcString.empty())
+                        {
+                            return QVariant(crcString.c_str());
+                        }
+                        else
+                        {
+                            return QString("<Empty>");
                         }
                     }
                     else if (varType.IS_A(ScriptCanvas::Data::Type::Number()))
@@ -253,10 +282,28 @@ namespace ScriptCanvasEditor
 
                 if (varPair)
                 {
-                    AZ::Uuid type = ScriptCanvas::Data::ToAZType(varPair->m_varDatum.GetData().GetType());
-
                     const QPixmap* icon = nullptr;
-                    GraphCanvas::StyleManagerRequestBus::EventResult(icon, ScriptCanvasEditor::AssetEditorId, &GraphCanvas::StyleManagerRequests::GetDataTypeIcon, type);
+
+                    ScriptCanvas::Data::Type varType = varPair->m_varDatum.GetData().GetType();
+
+                    if (ScriptCanvas::Data::IsContainerType(varType))
+                    {
+                        AZStd::vector<ScriptCanvas::Data::Type > dataTypes = ScriptCanvas::Data::GetContainedTypes(varType);
+
+                        AZStd::vector< AZ::Uuid> azTypes;
+                        azTypes.reserve(dataTypes.size());
+
+                        for (const ScriptCanvas::Data::Type& dataType : dataTypes)
+                        {
+                            azTypes.push_back(ScriptCanvas::Data::ToAZType(dataType));
+                        }
+
+                        GraphCanvas::StyleManagerRequestBus::EventResult(icon, ScriptCanvasEditor::AssetEditorId, &GraphCanvas::StyleManagerRequests::GetMultiDataTypeIcon, azTypes);
+                    }
+                    else
+                    {
+                        GraphCanvas::StyleManagerRequestBus::EventResult(icon, ScriptCanvasEditor::AssetEditorId, &GraphCanvas::StyleManagerRequests::GetDataTypeIcon, ScriptCanvas::Data::ToAZType(varType));
+                    }
 
                     if (icon)
                     {
@@ -359,16 +406,30 @@ namespace ScriptCanvasEditor
                 ScriptCanvas::VariableNameValuePair* varPair = nullptr;
                 ScriptCanvas::GraphVariableManagerRequestBus::EventResult(varPair, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, varId);
 
-                if (varPair && IsEditabletype(varType))
+                if (varPair && IsEditableType(varType))
                 {
                     if (varType.IS_A(ScriptCanvas::Data::Type::String()))
                     {
                         modifiedData = varPair->m_varDatum.SetValueAs<ScriptCanvas::Data::StringType>(ScriptCanvas::Data::StringType(value.toString().toUtf8().data()));
-
                     }
                     else if (varType.IS_A(ScriptCanvas::Data::Type::Number()))
                     {
                         modifiedData = varPair->m_varDatum.SetValueAs<ScriptCanvas::Data::NumberType>(value.toDouble());
+                    }
+                    else if (varType.IS_A(ScriptCanvas::Data::Type::CRC()))
+                    {
+                        AZStd::string newStringValue = value.toString().toUtf8().data();
+                        AZ::Crc32 newCrcValue = AZ::Crc32(newStringValue.c_str());
+
+                        const ScriptCanvas::Data::CRCType* oldCrcValue = varPair->m_varDatum.GetData().GetAs<ScriptCanvas::Data::CRCType>();
+
+                        if (newCrcValue != (*oldCrcValue))
+                        {
+                            EditorGraphRequestBus::Event(GetScriptCanvasGraphId(), &EditorGraphRequests::RemoveCrcCache, (*oldCrcValue));
+                            EditorGraphRequestBus::Event(GetScriptCanvasGraphId(), &EditorGraphRequests::AddCrcCache, newCrcValue, newStringValue);
+
+                            modifiedData = varPair->m_varDatum.SetValueAs<ScriptCanvas::Data::CRCType>(newCrcValue);
+                        }
                     }
                 }
             }
@@ -403,7 +464,7 @@ namespace ScriptCanvasEditor
             ScriptCanvas::Data::Type varType;
             ScriptCanvas::VariableRequestBus::EventResult(varType, varId, &ScriptCanvas::VariableRequests::GetType);
 
-            if (IsEditabletype(varType))
+            if (IsEditableType(varType))
             {
                 if (varType.IS_A(ScriptCanvas::Data::Type::Boolean()))
                 {
@@ -504,11 +565,12 @@ namespace ScriptCanvasEditor
         return m_scriptCanvasGraphId;
     }
 
-    bool GraphVariablesModel::IsEditabletype(ScriptCanvas::Data::Type scriptCanvasDataType) const
+    bool GraphVariablesModel::IsEditableType(ScriptCanvas::Data::Type scriptCanvasDataType) const
     {
         return scriptCanvasDataType.IS_A(ScriptCanvas::Data::Type::String())
             || scriptCanvasDataType.IS_A(ScriptCanvas::Data::Type::Number())
-            || scriptCanvasDataType.IS_A(ScriptCanvas::Data::Type::Boolean());
+            || scriptCanvasDataType.IS_A(ScriptCanvas::Data::Type::Boolean())
+            || scriptCanvasDataType.IS_A(ScriptCanvas::Data::Type::CRC());
     }
 
     void GraphVariablesModel::PopulateSceneVariables()
@@ -654,35 +716,140 @@ namespace ScriptCanvasEditor
     // GraphVariablesTableView
     ////////////////////////////
 
+    bool GraphVariablesTableView::HasCopyVariableData()
+    {
+
+        return QApplication::clipboard()->mimeData() && QApplication::clipboard()->mimeData()->hasFormat(ScriptCanvas::CopiedVariableData::k_variableKey);
+    }
+
+    void GraphVariablesTableView::CopyVariableToClipboard(const AZ::EntityId& scriptCanvasGraphId, const ScriptCanvas::VariableId& variableId)
+    {
+        ScriptCanvas::VariableNameValuePair* valuePair = nullptr;
+        ScriptCanvas::GraphVariableManagerRequestBus::EventResult(valuePair, scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, variableId);
+
+        if (valuePair == nullptr)
+        {
+            return;
+        }
+
+        ScriptCanvas::CopiedVariableData copiedVariableData;
+        copiedVariableData.m_variableMapping[variableId] = (*valuePair);
+
+        AZStd::vector<char> buffer;
+        AZ::SerializeContext* serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();        
+
+        AZ::IO::ByteContainerStream<AZStd::vector<char>> stream(&buffer);
+        AZ::Utils::SaveObjectToStream(stream, AZ::DataStream::ST_BINARY, &copiedVariableData, serializeContext);
+
+        QMimeData* mime = new QMimeData();
+        mime->setData(ScriptCanvas::CopiedVariableData::k_variableKey, QByteArray(buffer.cbegin(), static_cast<int>(buffer.size())));
+
+        QClipboard* clipboard = QApplication::clipboard();
+        clipboard->setMimeData(mime);
+    }
+
+    void GraphVariablesTableView::HandleVariablePaste(const AZ::EntityId& scriptCanvasGraphId)
+    {
+        QClipboard* clipboard = QApplication::clipboard();
+
+        // Trying to paste unknown data into our scene.
+        if (!HasCopyVariableData())
+        {            
+            return;
+        }
+
+        ScriptCanvas::CopiedVariableData copiedVariableData;
+
+        QByteArray byteArray = clipboard->mimeData()->data(ScriptCanvas::CopiedVariableData::k_variableKey);
+
+        AZ::SerializeContext* serializeContext = AZ::EntityUtils::GetApplicationSerializeContext();
+        AZ::Utils::LoadObjectFromBufferInPlace(byteArray.constData(), static_cast<AZStd::size_t>(byteArray.size()), copiedVariableData, serializeContext);
+
+        for (auto variableMapData : copiedVariableData.m_variableMapping)
+        {
+            ScriptCanvas::GraphVariableManagerRequestBus::Event(scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::CloneVariable, variableMapData.second);
+        }
+    }
+
     GraphVariablesTableView::GraphVariablesTableView(QWidget* parent)
         : QTableView(parent)
+        , m_nextInstanceAction(nullptr)
+        , m_previousInstanceAction(nullptr)
     {
         m_model = aznew GraphVariablesModel(this);
         m_proxyModel = aznew GraphVariablesModelSortFilterProxyModel(this);
 
         m_proxyModel->setSourceModel(m_model);
         m_proxyModel->setSortCaseSensitivity(Qt::CaseInsensitive);
-        m_proxyModel->sort(GraphVariablesModel::ColumnIndex::Name);
 
         setModel(m_proxyModel);
 
+        ApplyPreferenceSort();
         setItemDelegateForColumn(GraphVariablesModel::Name, aznew GraphCanvas::IconDecoratedNameDelegate(this));
 
-        horizontalHeader()->setSectionResizeMode(GraphVariablesModel::Type, QHeaderView::ResizeMode::ResizeToContents);
-
+        horizontalHeader()->setStretchLastSection(false);
+        horizontalHeader()->setSectionResizeMode(GraphVariablesModel::Type, QHeaderView::ResizeMode::Fixed);
         horizontalHeader()->setSectionResizeMode(GraphVariablesModel::Name, QHeaderView::ResizeMode::Stretch);
-        horizontalHeader()->setSectionResizeMode(GraphVariablesModel::DefaultValue, QHeaderView::ResizeMode::Stretch);
+        horizontalHeader()->setSectionResizeMode(GraphVariablesModel::DefaultValue, QHeaderView::ResizeMode::Fixed);
 
-        QAction* deleteAction = new QAction(this);
-        deleteAction->setShortcut(QKeySequence(Qt::Key_Delete));
+        {
+            QAction* deleteAction = new QAction(this);
+            deleteAction->setShortcut(QKeySequence(Qt::Key_Delete));
 
-        QObject::connect(deleteAction, &QAction::triggered, this, &GraphVariablesTableView::OnDeleteSelected);
+            QObject::connect(deleteAction, &QAction::triggered, this, &GraphVariablesTableView::OnDeleteSelected);
 
-        addAction(deleteAction);
+            addAction(deleteAction);
+        }
+
+        {
+            QAction* copyAction = new QAction(this);
+            copyAction->setShortcut(QKeySequence::Copy);
+
+            QObject::connect(copyAction, &QAction::triggered, this, &GraphVariablesTableView::OnCopySelected);
+
+            addAction(copyAction);
+        }
+
+        {
+            QAction* pasteAction = new QAction(this);
+            pasteAction->setShortcut(QKeySequence::Paste);
+
+            QObject::connect(pasteAction, &QAction::triggered, this, &GraphVariablesTableView::OnPaste);
+
+            addAction(pasteAction);
+        }
+
+        {
+            QAction* duplicateAction = new QAction(this);
+            duplicateAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_D));
+
+            QObject::connect(duplicateAction, &QAction::triggered, this, &GraphVariablesTableView::OnDuplicate);
+
+            addAction(duplicateAction);
+        }
+
+        {
+            m_nextInstanceAction = new QAction(this);
+            m_nextInstanceAction->setShortcut(QKeySequence(Qt::Key_F8));
+
+            QObject::connect(m_nextInstanceAction, &QAction::triggered, this, &GraphVariablesTableView::CycleToNextVariableNode);
+
+            addAction(m_nextInstanceAction);
+        }
+
+        {
+            m_previousInstanceAction = new QAction(this);
+            m_previousInstanceAction->setShortcut(QKeySequence(Qt::Key_F7));
+
+            QObject::connect(m_previousInstanceAction, &QAction::triggered, this, &GraphVariablesTableView::CycleToPreviousVariableNode);
+
+            addAction(m_previousInstanceAction);
+        }
 
         QObject::connect(m_model, &GraphVariablesModel::VariableAdded, this, &GraphVariablesTableView::OnVariableAdded);
 
         setMinimumSize(0, 0);
+        ResizeColumns();
     }
 
     void GraphVariablesTableView::SetActiveScene(const AZ::EntityId& scriptCanvasGraphId)
@@ -690,8 +857,12 @@ namespace ScriptCanvasEditor
         clearSelection();
         m_model->SetActiveScene(scriptCanvasGraphId);
 
+        m_scriptCanvasGraphId = scriptCanvasGraphId;
+
         m_graphCanvasGraphId.SetInvalid();
         GeneralRequestBus::BroadcastResult(m_graphCanvasGraphId, &GeneralRequests::GetGraphCanvasGraphId, scriptCanvasGraphId);
+
+        m_cyclingHelper.SetActiveGraph(m_graphCanvasGraphId);
     }
 
     void GraphVariablesTableView::SetFilter(const QString& filterString)
@@ -700,12 +871,30 @@ namespace ScriptCanvasEditor
         m_proxyModel->SetFilter(filterString);
     }
 
+    void GraphVariablesTableView::EditVariableName(ScriptCanvas::VariableId variableId)
+    {
+        int row = m_model->FindRowForVariableId(variableId);
+
+        QModelIndex sourceIndex = m_model->index(row, GraphVariablesModel::ColumnIndex::Name);
+        QModelIndex proxyIndex = m_proxyModel->mapFromSource(sourceIndex);
+
+        setCurrentIndex(proxyIndex);
+        edit(proxyIndex);
+    }
+
     void GraphVariablesTableView::hideEvent(QHideEvent* event)
     {
         QTableView::hideEvent(event);
 
-        clearSelection();
+        clearSelection();        
         m_proxyModel->SetFilter("");
+    }
+
+    void GraphVariablesTableView::resizeEvent(QResizeEvent* resizeEvent)
+    {
+        QTableView::resizeEvent(resizeEvent);
+
+        ResizeColumns();
     }
 
     void GraphVariablesTableView::selectionChanged(const QItemSelection& selected, const QItemSelection& deselected)
@@ -725,6 +914,15 @@ namespace ScriptCanvasEditor
             variableSet.insert(m_model->FindVariableIdForIndex(sourceIndex));
         }
 
+        if (variableSet.size() == 1)
+        {
+            SetCycleTarget((*variableSet.begin()));
+        }
+        else
+        {
+            SetCycleTarget(ScriptCanvas::VariableId());
+        }
+
         emit SelectionChanged(variableSet);
 
         if (!selected.isEmpty())
@@ -735,18 +933,33 @@ namespace ScriptCanvasEditor
 
     void GraphVariablesTableView::OnSelectionChanged()
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         clearSelection();
+    }
+
+    void GraphVariablesTableView::ApplyPreferenceSort()
+    {
+        AZStd::intrusive_ptr<EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
+        m_proxyModel->sort(settings->m_variablePanelSorting);
     }
 
     void GraphVariablesTableView::OnVariableAdded(QModelIndex modelIndex)
     {
-        clearSelection();
-        m_proxyModel->SetFilter("");
+        bool isUndo = false;
+        GeneralRequestBus::BroadcastResult(isUndo, &GeneralRequests::IsActiveInUndoRedo);
 
-        QModelIndex proxyIndex = m_proxyModel->mapFromSource(modelIndex);
+        if (!isUndo)
+        {
+            clearSelection();
+            m_proxyModel->SetFilter("");
 
-        scrollTo(proxyIndex);
-        selectionModel()->select(QItemSelection(proxyIndex, proxyIndex), QItemSelectionModel::Select | QItemSelectionModel::Rows);
+            QModelIndex proxyIndex = m_proxyModel->mapFromSource(modelIndex);
+
+            scrollTo(proxyIndex);
+            selectionModel()->select(QItemSelection(proxyIndex, proxyIndex), QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        }
+
+        ResizeColumns();
     }
 
     void GraphVariablesTableView::OnDeleteSelected()
@@ -763,7 +976,116 @@ namespace ScriptCanvasEditor
         }
 
         emit DeleteVariables(variableSet);
+
+        ResizeColumns();
     }
+
+    void GraphVariablesTableView::ResizeColumns()
+    {
+        int availableWidth = width();
+
+        int typeLength = static_cast<int>(availableWidth * 0.30f);
+
+        int maxTypeLength = sizeHintForColumn(GraphVariablesModel::Type) + 10;
+
+        if (typeLength >= maxTypeLength)
+        {
+            typeLength = maxTypeLength;
+        }
+
+        int defaultValueLength = static_cast<int>(availableWidth * 0.20f);
+
+        horizontalHeader()->resizeSection(GraphVariablesModel::Type, typeLength);
+
+        horizontalHeader()->resizeSection(GraphVariablesModel::DefaultValue, defaultValueLength);
+    }
+
+    void GraphVariablesTableView::OnCopySelected()
+    {
+        QModelIndexList indexList = selectedIndexes();
+
+        if (!indexList.empty())
+        {
+            QModelIndex sourceIndex = m_proxyModel->mapToSource(indexList.front());
+
+            ScriptCanvas::VariableId variableId = m_model->FindVariableIdForIndex(sourceIndex);
+            CopyVariableToClipboard(m_scriptCanvasGraphId, variableId);
+        }
+    }
+
+    void GraphVariablesTableView::OnPaste()
+    {
+        HandleVariablePaste(m_scriptCanvasGraphId);
+    }
+
+    void GraphVariablesTableView::SetCycleTarget(ScriptCanvas::VariableId variableId)
+    {
+        m_cyclingHelper.Clear();
+        m_cyclingVariableId = variableId;
+
+        if (m_nextInstanceAction)
+        {
+            m_nextInstanceAction->setEnabled(m_cyclingVariableId.IsValid());
+            m_previousInstanceAction->setEnabled(m_cyclingVariableId.IsValid());
+        }
+    }
+
+    void GraphVariablesTableView::OnDuplicate()
+    {
+        QModelIndexList indexList = selectedIndexes();
+
+        if (!indexList.empty())
+        {
+            QModelIndex sourceIndex = m_proxyModel->mapToSource(indexList.front());
+
+            ScriptCanvas::VariableId variableId = m_model->FindVariableIdForIndex(sourceIndex);
+
+            ScriptCanvas::VariableNameValuePair* valuePair = nullptr;
+            ScriptCanvas::GraphVariableManagerRequestBus::EventResult(valuePair, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::FindVariableById, variableId);
+
+            if (valuePair == nullptr)
+            {
+                return;
+            }
+
+            ScriptCanvas::GraphVariableManagerRequestBus::Event(m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::CloneVariable, (*valuePair));
+        }
+    }
+
+    void GraphVariablesTableView::CycleToNextVariableNode()
+    {
+        ConfigureHelper();
+
+        m_cyclingHelper.CycleToNextNode();
+    }
+
+    void GraphVariablesTableView::CycleToPreviousVariableNode()
+    {
+        ConfigureHelper();
+
+        m_cyclingHelper.CycleToPreviousNode();
+    }
+
+    void GraphVariablesTableView::ConfigureHelper()
+    {
+        if (!m_cyclingHelper.IsConfigured() && m_cyclingVariableId.IsValid())
+        {
+            AZStd::vector< NodeIdPair > nodeIds;
+            EditorGraphRequestBus::EventResult(nodeIds, m_scriptCanvasGraphId, &EditorGraphRequests::GetVariableNodes, m_cyclingVariableId);
+
+            AZStd::vector< GraphCanvas::NodeId > canvasNodes;
+            canvasNodes.reserve(nodeIds.size());
+
+            for (const auto& nodeIdPair : nodeIds)
+            {
+                canvasNodes.emplace_back(nodeIdPair.m_graphCanvasId);
+            }
+
+            m_cyclingHelper.SetNodes(canvasNodes);
+        }
+    }
+
+
 
 #include <Editor/View/Widgets/VariablePanel/GraphVariablesTableView.moc>
 }

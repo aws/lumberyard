@@ -26,12 +26,14 @@
 #include <AzCore/std/smart_ptr/intrusive_ptr.h>
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzCore/std/containers/unordered_map.h>
+#include <AzCore/std/containers/stack.h>
 
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzFramework/Entity/EntityContextBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
 #include <AzFramework/API/ApplicationAPI.h>
 #include <AzFramework/Entity/EntityContext.h>
+#include <AzFramework/IO/FileOperations.h>
 
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
 #include <AzToolsFramework/ToolsComponents/GenericComponentWrapper.h>
@@ -275,9 +277,9 @@ namespace AzToolsFramework
             /**
             * \brief Add the "Detach slice entity" action to the detach menu.
             * \param detachMenu The detach menu to add to.
-            * \param selectedEntities The selected entities.
+            * \param selectedTransformHierarchyEntities The selected entities and all of their children.
             */
-            void addDetachSliceEntityAction(QMenu* detachMenu, const AzToolsFramework::EntityIdList& selectedEntities);
+            void addDetachSliceEntityAction(QMenu* detachMenu, const AzToolsFramework::EntityIdSet& selectedTransformHierarchyEntities);
 
             /**
             * \brief Add the "Detach slice instance" action to the detach menu.
@@ -295,6 +297,12 @@ namespace AzToolsFramework
             */
             void GetEntitiesInSlices(const AzToolsFramework::EntityIdList& selectedEntities, AZ::u32& entitiesInSlices, AZ::SliceComponent::SliceInstanceAddressSet& sliceInstances);
 
+            /**
+            * Resaves the slice entity to the slice file on disk.
+            * \param sliceEntity the slice entity to save.
+            * \param fullFilePath the path to save the slice entity to.
+            */
+            void ResaveSlice(AZStd::shared_ptr<AZ::Entity> sliceEntity, const AZStd::string& fullFilePath);
         } // namespace Internal
 
         //=========================================================================
@@ -1857,7 +1865,7 @@ namespace AzToolsFramework
         }
 
         //=========================================================================
-        void PopulateDetachMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AZStd::string& headerText)
+        void PopulateDetachMenu(QMenu& outerMenu, const AzToolsFramework::EntityIdList& selectedEntities, const AzToolsFramework::EntityIdSet& selectedTransformHierarchyEntities, const AZStd::string& headerText)
         {
             AZ::u32 entitiesInSlices;
             AZ::SliceComponent::SliceInstanceAddressSet sliceInstances;
@@ -1872,7 +1880,7 @@ namespace AzToolsFramework
             detachMenu->setTitle(QObject::tr(headerText.c_str()));
             detachMenu->setToolTipsVisible(true);
 
-            Internal::addDetachSliceEntityAction(detachMenu, selectedEntities);
+            Internal::addDetachSliceEntityAction(detachMenu, selectedTransformHierarchyEntities);
             Internal::addDetachSliceInstanceAction(detachMenu, selectedEntities, sliceInstances);
             outerMenu.addMenu(detachMenu);
 
@@ -2727,7 +2735,8 @@ namespace AzToolsFramework
             AZStd::unordered_map<AZ::EntityId, AZ::SliceComponent::EntityAncestorList> sliceAncestryMapping;
             AZStd::vector<AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>> newChildEntityIdAncestorPairs;
             AZStd::unordered_set<AZ::EntityId> pushableNewChildEntityIds = GetPushableNewChildEntityIds(inputEntities, unpushableEntityIds, sliceAncestryMapping, newChildEntityIdAncestorPairs);
-            for (const AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>& newChildEntityIdAncestorPair: newChildEntityIdAncestorPairs)
+
+            for (const AZStd::pair<AZ::EntityId, AZ::SliceComponent::EntityAncestorList>& newChildEntityIdAncestorPair : newChildEntityIdAncestorPairs)
             {
                 entitiesToAdd.insert(newChildEntityIdAncestorPair.first);
             }
@@ -2797,6 +2806,7 @@ namespace AzToolsFramework
                 }
             }
 
+
             bool pushableChangesAvailable = Internal::CalculatePushableChangesPerAsset(
                 pushableChangesPerAsset,
                 *serializeContext,
@@ -2806,6 +2816,49 @@ namespace AzToolsFramework
                 fieldAddress);
 
             return pushableChangesAvailable;
+        }
+
+        void CreateSliceAssetContextMenu(QMenu* menu, const AZStd::string& fullFilePath)
+        {
+            if (!menu)
+            {
+                return;
+            }
+            // For slices, we provide the option to toggle the dynamic flag.
+            QString sliceOptions[] = { QObject::tr("Set Dynamic Slice"), QObject::tr("Unset Dynamic Slice") };
+            AZStd::shared_ptr<AZ::Entity> sliceEntity(AZ::Utils::LoadObjectFromFile<AZ::Entity>(fullFilePath, nullptr,
+                AZ::ObjectStream::FilterDescriptor(&AZ::Data::AssetFilterNoAssetLoading)));
+            AZ::SliceComponent* sliceAsset = sliceEntity ? sliceEntity->FindComponent<AZ::SliceComponent>() : nullptr;
+            if (sliceAsset)
+            {
+                if (sliceAsset->IsDynamic())
+                {
+                    menu->addAction(sliceOptions[1], [sliceEntity, fullFilePath]()
+                    {
+                        /*Unset dynamic slice*/
+                        AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
+                        AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
+                        sliceAsset->SetIsDynamic(false);
+                        Internal::ResaveSlice(sliceEntity, fullFilePath);
+                    });
+                }
+                else
+                {
+                    menu->addAction(sliceOptions[0], [sliceEntity, fullFilePath]()
+                    {
+                        /*Set dynamic slice*/
+                        AZ::SliceComponent* sliceAsset = sliceEntity->FindComponent<AZ::SliceComponent>();
+                        AZ_Assert(sliceAsset, "SliceComponent no longer present on component.");
+                        sliceAsset->SetIsDynamic(true);
+                        Internal::ResaveSlice(sliceEntity, fullFilePath);
+                    });
+                }
+            }
+        }
+
+        AZ::DataStream::StreamType GetSliceStreamFormat()
+        {
+            return AZ::DataStream::ST_XML;
         }
 
         namespace Internal
@@ -3024,7 +3077,7 @@ namespace AzToolsFramework
                     const AZ::u32 maxSliceNumber = 1000;
                     for (AZ::u32 sliceNumber = 1; sliceNumber < maxSliceNumber; ++sliceNumber)
                     {
-                        possiblePath = AZStd::string::format("%s%s_%3.3u.slice", suggestedFullPath.c_str(), sliceNameFiltered.c_str(), sliceNumber);
+                        possiblePath = AZStd::string::format("%s%s_%3.3u%s", suggestedFullPath.c_str(), sliceNameFiltered.c_str(), sliceNumber, GetSliceFileExtension().c_str());
                         if (!fileIO || !fileIO->Exists(possiblePath.c_str()))
                         {
                             suggestedFullPath = possiblePath;
@@ -3035,7 +3088,7 @@ namespace AzToolsFramework
                 else
                 {
                     // use the entity name as the file name regardless of it already existing, the OS will ask the user to overwrite the file in that case.
-                    suggestedFullPath = AZStd::string::format("%s%s.slice", suggestedFullPath.c_str(), sliceNameFiltered.c_str());
+                    suggestedFullPath = AZStd::string::format("%s%s%s", suggestedFullPath.c_str(), sliceNameFiltered.c_str(), GetSliceFileExtension().c_str());
                 }
             }
 
@@ -3818,6 +3871,7 @@ namespace AzToolsFramework
                 const size_t& numRelevantEntitiesInSlices,
                 const InstanceDataNode::Address* fieldAddress)
             {
+
                 const AZ::u32 kMaxEntitiesForOverrideCalculation = 5;    // Max # of entities for which we'll do a full hierarchy comparison (to preview # of overrides).
 
                 // Track and return if any pushable changes are available. The quick push menu
@@ -3894,12 +3948,9 @@ namespace AzToolsFramework
                 selCommand->SetParent(cloneSubSliceInstanceUndoBatch.GetUndoBatch());
             }
 
-            void addDetachSliceEntityAction(QMenu* detachMenu, const AzToolsFramework::EntityIdList& selectedEntities)
+            void addDetachSliceEntityAction(QMenu* detachMenu, const AzToolsFramework::EntityIdSet& selectedTransformHierarchyEntities)
             {
                 // Detach entities action currently acts on entities and all descendants, so include those as part of the selection
-                AzToolsFramework::EntityIdSet selectedTransformHierarchyEntities;
-                AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(selectedTransformHierarchyEntities, &AzToolsFramework::ToolsApplicationRequestBus::Events::GatherEntitiesAndAllDescendents, selectedEntities);
-
                 AzToolsFramework::EntityIdList selectedDetachEntities(selectedTransformHierarchyEntities.begin(), selectedTransformHierarchyEntities.end());
 
                 // A selection in Lumberyard is usually singular, but a selection can have more than one entity.
@@ -3965,6 +4016,51 @@ namespace AzToolsFramework
                 }
             }
 
+            void ResaveSlice(AZStd::shared_ptr<AZ::Entity> sliceEntity, const AZStd::string& fullFilePath)
+            {
+                AZStd::string tmpFileName;
+                bool tmpFilesaved = false;
+                // here we are saving the slice to a temp file instead of the original file and then copying the temp file to the original file.
+                // This ensures that AP will not a get a file change notification on an incomplete slice file causing it to fail processing. Temp files are ignored by AP.
+                if (AZ::IO::CreateTempFileName(fullFilePath.c_str(), tmpFileName))
+                {
+                    AZ::IO::FileIOStream fileStream(tmpFileName.c_str(), AZ::IO::OpenMode::ModeWrite | AZ::IO::OpenMode::ModeBinary);
+
+                    if (fileStream.IsOpen())
+                    {
+                        tmpFilesaved = AZ::Utils::SaveObjectToStream<AZ::Entity>(fileStream, GetSliceStreamFormat(), sliceEntity.get());
+                    }
+
+                    using SCCommandBus = AzToolsFramework::SourceControlCommandBus;
+                    SCCommandBus::Broadcast(&SCCommandBus::Events::RequestEdit, fullFilePath.c_str(), true,
+                        [sliceEntity, fullFilePath, tmpFileName, tmpFilesaved](bool /*success*/, const AzToolsFramework::SourceControlFileInfo& info)
+                    {
+                        if (!info.IsReadOnly())
+                        {
+                            if (tmpFilesaved && AZ::IO::SmartMove(tmpFileName.c_str(), fullFilePath.c_str()))
+                            {
+                                // Bump the slice asset up in the asset processor's queue.
+                                AzFramework::AssetSystemRequestBus::Broadcast(&AzFramework::AssetSystem::AssetSystemRequests::GetAssetStatus_FlushIO, fullFilePath);
+                            }
+                        }
+                        else
+                        {
+                            QWidget* mainWindow = nullptr;
+                            AzToolsFramework::EditorRequests::Bus::BroadcastResult(mainWindow, &AzToolsFramework::EditorRequests::GetMainWindow);
+                            QMessageBox::warning(mainWindow, QObject::tr("Unable to Modify Slice"),
+                                QObject::tr("File is not writable."), QMessageBox::Ok, QMessageBox::Ok);
+                        }
+                    });
+                }
+                else
+                {
+                    QWidget* mainWindow = nullptr;
+                    AzToolsFramework::EditorRequests::Bus::BroadcastResult(mainWindow, &AzToolsFramework::EditorRequests::GetMainWindow);
+                    QMessageBox::warning(mainWindow, QObject::tr("Unable to Modify Slice"),
+                        QObject::tr("Unable to Modify Slice (%1). Cannot create a temporary file for writing data in the same folder.").arg(fullFilePath.c_str()),
+                        QMessageBox::Ok, QMessageBox::Ok);
+                }
+            }
         } // namespace Internal
 
         void SliceUserSettings::Reflect(AZ::ReflectContext* context)
@@ -4008,5 +4104,6 @@ namespace AzToolsFramework
 
         int GetSliceSelectFontSize() { return 10; }
 
+        AZStd::string GetSliceFileExtension() { return ".slice"; }
     } // namespace SliceUtilities
 } // AzToolsFramework

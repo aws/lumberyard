@@ -587,6 +587,10 @@ class ProjectInfo(StackInfo):
                 print 'WARNING: could not read project-settings.json from the project configuration bucket.'
                 self.__project_settings = {}
         return self.__project_settings
+    
+    @property
+    def project_uuid(self):
+        return "{}-{}".format(self.stack_name, self.configuration_bucket.split('-')[-1])
 
     @property
     def parent_stack(self):

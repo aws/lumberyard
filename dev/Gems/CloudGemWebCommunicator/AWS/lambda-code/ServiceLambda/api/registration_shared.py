@@ -13,17 +13,19 @@ import importlib
 import boto3
 import CloudCanvas
 import service
+from cgf_utils import custom_resource_utils
 from datetime import datetime
+import web_communicator_iot
 
-client_registry_table_name = CloudCanvas.get_setting('ClientRegistry')
-listener_policy = CloudCanvas.get_setting('IotPlayerPolicy')
-cgp_listener_policy = CloudCanvas.get_setting('IotCgpPolicy')   
-device_policy = CloudCanvas.get_setting('IotDevicePolicy')
+client_registry_table_name = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('ClientRegistry'))
+listener_policy = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('IotPlayerPolicy'))
+cgp_listener_policy = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('IotCgpPolicy'))
+device_policy = custom_resource_utils.get_embedded_physical_id(CloudCanvas.get_setting('IotDevicePolicy'))
 
 client_registry_table = boto3.resource('dynamodb').Table(client_registry_table_name)
  
-iot_client = boto3.client('iot')
-iot_data = boto3.client('iot-data')
+iot_client = web_communicator_iot.get_iot_client()
+iot_data = web_communicator_iot.get_iot_client()
 
 default_connection_type = 'OPENSSL'
 
@@ -82,12 +84,12 @@ def check_add_policy(cognitoId, policyname):
     for thisPolicy in policyList:
         if(thisPolicy.get('policyName') == policyname):
             print 'Policy {} Already on principal {}, removing and re-adding'.format(policyname, cognitoId)
-            iot_client.detach_principal_policy(policyName=policyname,principal=cognitoId)
-            response = iot_client.attach_principal_policy(policyName=policyname,principal=cognitoId)
+            iot_client.detach_policy(policyName=policyname,target=cognitoId)
+            response = iot_client.attach_policy(policyName=policyname,target=cognitoId)
             print 'Readding policy returns {}'.format(response)
             return
     
-    response = iot_client.attach_principal_policy(policyName=policyname,principal=cognitoId)
+    response = iot_client.attach_policy(policyName=policyname,target=cognitoId)
     
     print 'Policy {} not found on principal {} - Adding returned {}'.format(policyname, cognitoId,response)
         
@@ -99,7 +101,7 @@ def clear_principal_policies(cognitoId):
     print 'Policies on principal {} : {}'.format(cognitoId, policyList)
     
     for thisPolicy in policyList:
-        iot_client.detach_principal_policy(policyName=thisPolicy.get('policyName'),principal=cognitoId)
+        iot_client.detach_policy(policyName=thisPolicy.get('policyName'),target=cognitoId)
         print 'Detached {} from {}'.format(thisPolicy.get('policyName'), cognitoId)
 
 

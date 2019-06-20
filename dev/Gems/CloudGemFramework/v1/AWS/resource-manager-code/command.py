@@ -28,7 +28,7 @@ import swagger_processor
 import cloud_gem_portal
 
 def add_cli_commands(hook, subparsers, add_common_args, **kwargs):
-    subparser = subparsers.add_parser("cloud-gem-framework", help="Commands to manage CloudGems and CloudGem Portal")
+    subparser = subparsers.add_parser("cloud-gem-framework", help="Commands to manage CloudGems and CloudGem Portal", aliases=['cgf'])
     subparser.register('action', 'parsers', resource_manager.cli.AliasedSubParsersAction)
     cgf_subparsers = subparser.add_subparsers(dest = 'subparser_name', metavar='COMMAND')
 

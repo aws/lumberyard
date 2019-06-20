@@ -165,6 +165,7 @@ namespace AzToolsFramework
         auto requestWriteCall = [newCtrl](AZ::u32)
         {
             EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
         };
 
         QObject::connect(newCtrl, &PropertyCRCCtrl::valueChanged, this, requestWriteCall);

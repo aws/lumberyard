@@ -11,6 +11,7 @@
 */
 
 #include <AzQtComponents/Components/Widgets/BreadCrumbs.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
 
 #include <QToolButton>
@@ -208,7 +209,11 @@ namespace AzQtComponents
         };
 
         // last section is not clickable
-        plainTextPath = m_truncatedPaths.takeLast();
+        if (!m_truncatedPaths.isEmpty())
+        {
+            plainTextPath = m_truncatedPaths.takeLast();
+        }
+
         htmlString.prepend(plainTextPath);
 
         while (!m_truncatedPaths.isEmpty())
@@ -271,17 +276,8 @@ namespace AzQtComponents
     {
         Config config = defaultConfig();
 
-        const QString linkColorKey = QStringLiteral("LinkColor");
-        if (settings.contains(linkColorKey))
-        {
-            config.linkColor = settings.value(linkColorKey).toString();
-        }
-
-        const QString optimalPathWidthKey = QStringLiteral("OptimalPathWidth");
-        if (settings.contains(optimalPathWidthKey))
-        {
-            config.optimalPathWidth = settings.value(optimalPathWidthKey).toFloat();
-        }
+        ConfigHelpers::read<QString>(settings, QStringLiteral("LinkColor"), config.linkColor);
+        ConfigHelpers::read<float>(settings, QStringLiteral("OptimalPathWidth"), config.optimalPathWidth);
 
         return config;
     }

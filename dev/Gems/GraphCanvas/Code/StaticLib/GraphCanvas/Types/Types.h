@@ -11,10 +11,15 @@
 */
 #pragma once
 
+#include <qcolor.h>
 #include <qfont.h>
 #include <qfontinfo.h>
 
 #include <AzCore/Math/Color.h>
+#include <AzCore/std/string/string.h>
+#include <AzCore/std/containers/vector.h>
+
+#include <GraphCanvas/Editor/EditorTypes.h>
 
 namespace GraphCanvas
 {
@@ -28,6 +33,50 @@ namespace GraphCanvas
         Inspection,
         InspectionTransparent,
         Deletion
+    };
+    
+    class CandyStripeConfiguration
+    {
+    public:
+        int m_maximumSize = 5;
+        int m_minStripes = 1;
+        
+        // How much to offset the stripe from vertical
+        int m_stripeAngle = 10;
+
+        QColor m_stripeColor;
+
+        // Control field for improving visuals and just offsetting the initial drawing point
+        int m_initialOffset;
+    };
+
+    class PatternFillConfiguration
+    {
+    public:
+        // Controls the minimum number of tile repetitions to fit into the fill area
+        // Horizontally
+        int m_minimumTileRepetitions = 1;
+
+        // Offset to even rows specified in percent of tile width
+        float m_evenRowOffsetPercent = 0.0f;
+
+        // Offset to odd rows specified in percent of tile width
+        float m_oddRowOffsetPercent = 0.0f;
+    };
+
+    class PatternedFillGenerator
+    {
+    public:
+        // Editor Target
+        EditorId m_editorId;
+
+        /// Icon Information
+        AZStd::string m_id;
+        AZStd::vector< AZStd::string > m_palettes;
+        AZStd::vector< QColor > m_colors;
+
+        // Pattern Information
+        PatternFillConfiguration m_configuration;
     };
 
     class FontConfiguration

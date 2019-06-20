@@ -14,6 +14,7 @@
 #include <AzCore/Asset/AssetManagerComponent.h>
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
+#include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Slice/SliceAssetHandler.h>
 #include <AzCore/Slice/SliceComponent.h>
@@ -116,6 +117,11 @@ namespace AZ
                         ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("System", 0xc94d118b))
                     ;
             }
+        }
+
+        if (BehaviorContext* behaviorContext = azrtti_cast<BehaviorContext*>(context))
+        {
+            behaviorContext->Class<Data::AssetId>();
         }
     }
 }

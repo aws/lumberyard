@@ -86,6 +86,10 @@ class ResourceGroupController(object):
         self.__move_attributes()        
         self.__context.view.version_update_complete('1.1.3', json.dumps(self.__context.config.local_project_settings.raw_dict()))        
 
+    def before_update_framework_version_to_1_1_4(self, from_version):                
+        self.__context.view.version_update(from_version, json.dumps(self.__context.config.local_project_settings.raw_dict()), '1.1.4')                
+        self.__context.view.version_update_complete('1.1.4', json.dumps(self.__context.config.local_project_settings.raw_dict()))     
+
     def __convert_enabled_list_to_disabled_list(self):
 
         # Converts the EnabledResourceGroups property from local_project_settings.json into

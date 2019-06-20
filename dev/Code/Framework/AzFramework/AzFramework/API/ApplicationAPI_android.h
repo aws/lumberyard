@@ -14,7 +14,6 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/std/string/string.h>
 
-struct android_app;
 
 namespace AzFramework
 {
@@ -49,6 +48,14 @@ namespace AzFramework
         virtual void OnWindowRedrawNeeded() {} // Application window needs to be redrawn. This is called after a window resize occurs as well. So, we can(reliably) use this for handling orientation changes.
     };
 
+    class AndroidEventDispatcher
+    {
+    public:
+        virtual ~AndroidEventDispatcher() = default;
+
+        virtual void PumpAllEvents() = 0;
+        virtual void PumpEventLoopOnce() = 0;
+    };
 
     class AndroidAppRequests
         : public AZ::EBusTraits
@@ -62,8 +69,8 @@ namespace AzFramework
 
         virtual ~AndroidAppRequests() {}
 
-        //! Sets the Android application state required to pumping the event loop
-        virtual void SetAppState(android_app* appState) = 0;
+        //! Sets the Android event dispatcher required to pumping the event loop
+        virtual void SetEventDispatcher(AndroidEventDispatcher* eventDispatcher) = 0;
 
         //! Requests permissions at runtime
         virtual bool RequestPermission(const AZStd::string& permission, const AZStd::string& rationale) = 0;

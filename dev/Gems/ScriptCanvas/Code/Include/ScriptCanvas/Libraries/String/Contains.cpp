@@ -10,7 +10,6 @@
 *
 */
 
-#include "precompiled.h"
 #include "Contains.h"
 
 #include <AzFramework/StringFunc/StringFunc.h>

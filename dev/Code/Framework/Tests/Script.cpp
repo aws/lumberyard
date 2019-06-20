@@ -208,6 +208,11 @@ namespace UnitTest
 
                     // trigger reload
                     Data::AssetManager::Instance().ReloadAssetFromData(scriptAsset2);
+                    
+                    // ReloadAssetFromData is (now) a queued event
+                    // Need to tick subsystems here to receive reload event.
+                    app.Tick();
+                    app.TickSystem();
 
                     // test value with the reloaded value
                     EXPECT_EQ(5, myReloadValue);

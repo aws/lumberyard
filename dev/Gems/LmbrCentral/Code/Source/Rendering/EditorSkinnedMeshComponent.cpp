@@ -149,7 +149,6 @@ namespace LmbrCentral
         RenderNodeRequestBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusConnect(GetEntityId());
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
         SkinnedMeshComponentRequestBus::Handler::BusConnect(GetEntityId());
         SkeletalHierarchyRequestBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
@@ -181,7 +180,6 @@ namespace LmbrCentral
         RenderNodeRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorVisibilityNotificationBus::Handler::BusDisconnect();
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
 
         DestroyEditorPhysics();
@@ -291,16 +289,6 @@ namespace LmbrCentral
         m_mesh.RefreshRenderState();
     }
 
-    void EditorSkinnedMeshComponent::DisplayEntity(bool& handled)
-    {
-        if (m_mesh.HasMesh())
-        {
-            // Only allow Sandbox to draw the default sphere if we don't have a
-            // visible mesh.
-            handled = true;
-        }
-    }
-
     void EditorSkinnedMeshComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
         if (SkinnedMeshComponent* meshComponent = gameEntity->CreateComponent<SkinnedMeshComponent>())
@@ -309,7 +297,8 @@ namespace LmbrCentral
         }
     }
 
-    AZ::Aabb EditorSkinnedMeshComponent::GetEditorSelectionBounds()
+    AZ::Aabb EditorSkinnedMeshComponent::GetEditorSelectionBoundsViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/)
     {
         return GetWorldBounds();
     }

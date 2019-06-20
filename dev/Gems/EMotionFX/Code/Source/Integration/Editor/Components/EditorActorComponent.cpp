@@ -572,7 +572,7 @@ namespace EMotionFX
 
             if (m_actorInstance)
             {
-                const AZ::Quaternion entityOrientation = AZ::Quaternion::CreateFromTransform(world);
+                const AZ::Quaternion entityOrientation = AZ::Quaternion::CreateRotationFromScaledTransform(world);
                 const AZ::Vector3 entityPosition = world.GetTranslation();
                 const AZ::Transform worldTransformNoScale = AZ::Transform::CreateFromQuaternionAndTranslation(entityOrientation, entityPosition);
                 m_actorInstance->SetLocalSpaceTransform(MCore::AzTransformToEmfxTransform(worldTransformNoScale));

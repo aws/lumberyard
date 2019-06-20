@@ -311,22 +311,39 @@ void PostAAPass::Execute()
 
     uint64 nSaveFlagsShader_RT = gRenDev->m_RP.m_FlagsShader_RT;
     gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3]);
-
+    
     CTexture* inOutBuffer = CTexture::s_ptexSceneSpecular;
 
+    static ICVar* DolbyCvar = gEnv->pConsole->GetCVar("r_HDRDolby");
+    const int DolbyCvarValue = DolbyCvar ? DolbyCvar->GetIVal() : eDVM_Disabled;
+    const bool bDolbyHDRMode = DolbyCvarValue > eDVM_Disabled;
+    
+    CTexture* currentRT = gcpRendD3D->FX_GetCurrentRenderTarget(0);
+    if (currentRT == SPostEffectsUtils::AcquireFinalCompositeTarget(bDolbyHDRMode) && CRenderer::CV_r_SkipNativeUpscale)
+    {
+        gcpRendD3D->FX_PopRenderTarget(0);
+        gcpRendD3D->RT_SetViewport(0, 0, gcpRendD3D->GetNativeWidth(), gcpRendD3D->GetNativeHeight());
+        gcpRendD3D->FX_SetRenderTarget(0, gcpRendD3D->GetBackBuffer(), nullptr);
+        gcpRendD3D->FX_SetActiveRenderTargets();
+    }
+
+    bool useCurrentRTForAAOutput = (CRenderer::CV_r_SkipRenderComposites == 1);
     switch (CRenderer::CV_r_AntialiasingMode)
     {
     case eAT_SMAA1TX:
-        RenderSMAA(inOutBuffer, &inOutBuffer);
+        RenderSMAA(inOutBuffer, &inOutBuffer, useCurrentRTForAAOutput);
         break;
     case eAT_FXAA:
-        RenderFXAA(inOutBuffer, &inOutBuffer);        
+        RenderFXAA(inOutBuffer, &inOutBuffer, useCurrentRTForAAOutput);
         break;
     case eAT_NOAA:
         break;
     }
-
-    RenderComposites(inOutBuffer);
+    
+    if (!CRenderer::CV_r_SkipRenderComposites)
+    {
+        RenderComposites(inOutBuffer);
+    }
 
     gcpRendD3D->m_RP.m_PersFlags2 |= RBPF2_NOPOSTAA;
     CTexture::s_ptexBackBuffer->SetResolved(true);
@@ -334,7 +351,7 @@ void PostAAPass::Execute()
     gRenDev->m_RP.m_FlagsShader_RT = nSaveFlagsShader_RT;
 }
 
-void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
+void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT)
 {
     CTexture* pEdgesTex = CTexture::s_ptexSceneNormalsMap; // Reusing esram resident target
     CTexture* pBlendTex = CTexture::s_ptexSceneDiffuse;    // Reusing esram resident target (note that we access this FP16 RT using point filtering - full rate on GCN)
@@ -432,7 +449,14 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
             CTexture* currentTarget = GetUtils().GetTemporalCurrentTarget();
             CTexture* historyTarget = GetUtils().GetTemporalHistoryTarget();
 
-            gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
+            if (useCurrentRT)
+            {
+                currentTarget = gcpRendD3D->FX_GetCurrentRenderTarget(0);
+            }
+            else
+            {
+                gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
+            }
 
             static CCryNameTSCRC TechNameTAA("SMAA_TAA");
             GetUtils().ShBeginPass(pShader, TechNameTAA, FEF_DONTSETTEXTURES | FEF_DONTSETSTATES);
@@ -473,18 +497,28 @@ void PostAAPass::RenderSMAA(CTexture* sourceTexture, CTexture** outputTexture)
 
             GetUtils().ShEndPass();
 
-            gcpRendD3D->FX_PopRenderTarget(0);
+            if (!useCurrentRT)
+            {
+                gcpRendD3D->FX_PopRenderTarget(0);
+            }
 
             *outputTexture = currentTarget;
         }
     }
 }
 
-void PostAAPass::RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture)
+void PostAAPass::RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture, bool useCurrentRT)
 {
     PROFILE_LABEL_SCOPE("FXAA");
     CTexture* currentTarget = CTexture::s_ptexSceneNormalsMap;
-    gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
+    if (useCurrentRT)
+    {
+        currentTarget = gcpRendD3D->FX_GetCurrentRenderTarget(0);
+    }
+    else
+    {
+        gcpRendD3D->FX_PushRenderTarget(0, currentTarget, nullptr);
+    }
 
     CShader* pShader = CShaderMan::s_shPostAA;
     const f32 fWidthRcp = 1.0f / (float)gcpRendD3D->GetWidth();
@@ -506,7 +540,10 @@ void PostAAPass::RenderFXAA(CTexture* sourceTexture, CTexture** outputTexture)
     gcpRendD3D->FX_Commit();
 
     GetUtils().ShEndPass();
-    gcpRendD3D->FX_PopRenderTarget(0);
+    if (!useCurrentRT)
+    {
+        gcpRendD3D->FX_PopRenderTarget(0);
+    }
     *outputTexture = currentTarget;
 }
 
@@ -514,6 +551,21 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
 {
     PROFILE_LABEL_SCOPE("FLARES, GRAIN");
 
+    CD3D9Renderer* rd = gcpRendD3D;
+    
+    rd->FX_SetStencilDontCareActions(0, true, true);
+    bool bEmpty = SRendItem::IsListEmpty(EFSLIST_AFTER_POSTPROCESS, rd->m_RP.m_nProcessThreadID, rd->m_RP.m_pRLD);
+    //We may need to preserve the depth buffer in case there is something to render in the EFSLIST_AFTER_POSTPROCESS bucket.
+    //It could be UI in the 3d world. If the bucket is empty ignore the depth buffer as it is not needed.
+    if (bEmpty)
+    {
+        rd->FX_SetDepthDontCareActions(0, true, true);
+    }
+    else
+    {
+        rd->FX_SetDepthDontCareActions(0, false, false);
+    }
+    
     gRenDev->m_RP.m_FlagsShader_RT &= ~(g_HWSR_MaskBit[HWSR_SAMPLE0] | g_HWSR_MaskBit[HWSR_SAMPLE1] | g_HWSR_MaskBit[HWSR_SAMPLE2] | g_HWSR_MaskBit[HWSR_SAMPLE3] | g_HWSR_MaskBit[HWSR_SAMPLE5]);
 
     // enable sharpening controlled by r_AntialiasingNonTAASharpening here 
@@ -665,6 +717,11 @@ void PostAAPass::RenderComposites(CTexture* sourceTexture)
     gcpRendD3D->FX_PopWireframeMode();
 
     GetUtils().ShEndPass();
+    
+    //UI should be coming in next. Since its in a gem we cant set loadactions in lyshine.
+    //Hence we are setting it here. Stencil is setup as DoCare as it gets cleared at the start of UI rendering
+    rd->FX_SetDepthDontCareActions(0, true, true); //We set this again here as all the actions get reset to conservative settings (do care) after the draw call
+    rd->FX_SetStencilDontCareActions(0, false, true);
 }
 
 void PostAAPass::RenderFinalComposite(CTexture* sourceTexture)

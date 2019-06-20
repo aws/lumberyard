@@ -55,6 +55,13 @@ namespace LmbrCentral
         }
     }
 
+    void EditorCylinderShapeComponent::Init()
+    {
+        EditorBaseShapeComponent::Init();
+
+        SetShapeComponentConfig(&m_cylinderShape.ModifyConfiguration());
+    }
+
     void EditorCylinderShapeComponent::Activate()
     {
         EditorBaseShapeComponent::Activate();
@@ -69,15 +76,17 @@ namespace LmbrCentral
         EditorBaseShapeComponent::Deactivate();
     }
 
-    void EditorCylinderShapeComponent::DisplayEntity(bool& handled)
+    void EditorCylinderShapeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        DisplayShape(handled,
-            [this]() { return CanDraw(); },
-            [this](AzFramework::EntityDebugDisplayRequests* displayContext)
+        DisplayShape(
+            debugDisplay, [this]() { return CanDraw(); },
+            [this](AzFramework::DebugDisplayRequests& debugDisplay)
             {
                 DrawCylinderShape(
                     { m_shapeColor, m_shapeWireColor, m_displayFilled },
-                    m_cylinderShape.GetCylinderConfiguration(), *displayContext);
+                    m_cylinderShape.GetCylinderConfiguration(), debugDisplay);
             },
             m_cylinderShape.GetCurrentTransform());
     }

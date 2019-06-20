@@ -121,6 +121,14 @@ namespace LmbrCentral
         return baseAabb;
     }
 
+    void CapsuleShape::GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds)
+    {
+        float halfHeight = AZ::GetMax(m_capsuleShapeConfig.m_height * 0.5f, m_capsuleShapeConfig.m_radius);
+        const AZ::Vector3 extent(m_capsuleShapeConfig.m_radius, m_capsuleShapeConfig.m_radius, halfHeight);
+        bounds = AZ::Aabb::CreateFromMinMax(-extent, extent);
+        transform = m_currentTransform;
+    }
+
     bool CapsuleShape::IsPointInside(const AZ::Vector3& point)
     {
         m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_capsuleShapeConfig);

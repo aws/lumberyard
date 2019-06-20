@@ -91,6 +91,9 @@ namespace GraphCanvas
         QRectF m_magnifierBoxInWindowCoordinates;
 
         bool m_blockNotificationsFromMainView = false;
+        bool m_updateSceneContentNeeded = false;
+        bool m_ApplyMainViewToMagnifierNeeded = false;
+
         AZ::EntityId m_sceneId;
         ViewId m_mainViewId;
         QTimer m_miniMapDragUpdateTimer;

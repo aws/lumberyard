@@ -15,18 +15,18 @@
 
 #include "CloudGemPlayerAccountSystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemPlayerAccount
 {
     class CloudGemPlayerAccountModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemPlayerAccountModule, "{2007F458-16CB-4C8D-A68C-75E1885FEDA5}", CryHooksModule);
+        AZ_RTTI(CloudGemPlayerAccountModule, "{2007F458-16CB-4C8D-A68C-75E1885FEDA5}", AZ::Module);
 
         CloudGemPlayerAccountModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

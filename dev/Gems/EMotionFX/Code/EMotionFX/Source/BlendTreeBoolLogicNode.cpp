@@ -189,9 +189,9 @@ namespace EMotionFX
         return m_functionEnum;
     }
 
-    uint32 BlendTreeBoolLogicNode::GetVisualColor() const
+    AZ::Color BlendTreeBoolLogicNode::GetVisualColor() const
     {
-        return MCore::RGBA(50, 255, 50);
+        return AZ::Color(0.2f, 1.0f, 0.2f, 1.0f);
     }
 
 

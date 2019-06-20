@@ -22,6 +22,9 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/std/hash.h>
 #include <AzCore/Component/EntityUtils.h>
+#include <AzCore/Component/NamedEntityId.h>
+
+#include <Core/NamedId.h>
 
 // #define EXPRESSION_TEMPLATES_ENABLED
 
@@ -44,6 +47,12 @@ namespace ScriptCanvas
     using NodePtrList = AZStd::vector<Node*>;
     using NodePtrConstList = AZStd::vector<const Node*>;
     
+    enum class ExecutionMode : AZ::u8
+    {
+        Interpreted,
+        Native,
+    };
+
     struct SlotId
     {
         AZ_TYPE_INFO(SlotId, "{14C629F6-467B-46FE-8B63-48FDFCA42175}");
@@ -86,6 +95,14 @@ namespace ScriptCanvas
         }
 
     };
+
+    using NamedActiveEntityId = AZ::NamedEntityId;    
+    using NamedNodeId = NamedId<AZ::EntityId>;
+    using NamedSlotId = NamedId<SlotId>;
+
+    using NodeTypeIdentifier = AZStd::size_t;
+    using EBusEventId = AZ::Crc32;
+    using EBusBusId = AZ::Crc32;
 }
 
 namespace AZStd

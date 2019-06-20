@@ -14,6 +14,7 @@
 #include "OccluderAreaComponent.h"
 
 #include <AzCore/RTTI/BehaviorContext.h>
+#include <AzCore/Serialization/SerializeContext.h>
 #include <MathConversion.h>
 
 namespace Visibility
@@ -29,8 +30,7 @@ namespace Visibility
 
     void OccluderAreaConfiguration::Reflect(AZ::ReflectContext* context)
     {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<OccluderAreaConfiguration>()
                 ->Version(1)
@@ -39,29 +39,24 @@ namespace Visibility
                 ->Field("UseInIndoors", &OccluderAreaConfiguration::m_useInIndoors)
                 ->Field("DoubleSide", &OccluderAreaConfiguration::m_doubleSide)
                 ->Field("vertices", &OccluderAreaConfiguration::m_vertices)
-            ;
+                ;
         }
 
-        if (AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
+        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
         {
             behaviorContext->EBus<OccluderAreaRequestBus>("OccluderAreaRequestBus")
-                
-                ->Event("SetDisplayFilled", &OccluderAreaRequestBus::Events::SetDisplayFilled)
                 ->Event("GetDisplayFilled", &OccluderAreaRequestBus::Events::GetDisplayFilled)
-                ->VirtualProperty("DisplayFilled", "GetDisplayFilled", "SetDisplayFilled")
+                ->VirtualProperty("DisplayFilled", "GetDisplayFilled", nullptr)
 
-                ->Event("SetCullDistRatio", &OccluderAreaRequestBus::Events::SetCullDistRatio)
                 ->Event("GetCullDistRatio", &OccluderAreaRequestBus::Events::GetCullDistRatio)
-                ->VirtualProperty("CullDistRatio", "GetCullDistRatio", "SetCullDistRatio")
+                ->VirtualProperty("CullDistRatio", "GetCullDistRatio", nullptr)
 
-                ->Event("SetUseInIndoors", &OccluderAreaRequestBus::Events::SetUseInIndoors)
                 ->Event("GetUseInIndoors", &OccluderAreaRequestBus::Events::GetUseInIndoors)
-                ->VirtualProperty("UseInIndoors", "GetUseInIndoors", "SetUseInIndoors")
+                ->VirtualProperty("UseInIndoors", "GetUseInIndoors", nullptr)
 
-                ->Event("SetDoubleSide", &OccluderAreaRequestBus::Events::SetDoubleSide)
                 ->Event("GetDoubleSide", &OccluderAreaRequestBus::Events::GetDoubleSide)
-                ->VirtualProperty("DoubleSide", "GetDoubleSide", "SetDoubleSide")
-            ;
+                ->VirtualProperty("DoubleSide", "GetDoubleSide", nullptr)
+                ;
 
             behaviorContext->Class<OccluderAreaComponent>()->RequestBus("OccluderAreaRequestBus");
         }
@@ -69,21 +64,24 @@ namespace Visibility
 
     void OccluderAreaComponent::Reflect(AZ::ReflectContext* context)
     {
-        AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context);
-        if (serializeContext)
+        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<OccluderAreaComponent, AZ::Component>()
                 ->Version(1)
                 ->Field("m_config", &OccluderAreaComponent::m_config)
-            ;
+                ;
         }
 
         OccluderAreaConfiguration::Reflect(context);
     }
 
+    OccluderAreaComponent::OccluderAreaComponent(const OccluderAreaConfiguration& params)
+        : m_config(params)
+    {
+    }
+
     void OccluderAreaComponent::Activate()
     {
-        Update();
         OccluderAreaRequestBus::Handler::BusConnect(GetEntityId());
         AZ::TransformNotificationBus::Handler::BusConnect(GetEntityId());
     }
@@ -94,47 +92,24 @@ namespace Visibility
         OccluderAreaRequestBus::Handler::BusDisconnect(GetEntityId());
     }
 
-    void OccluderAreaComponent::SetDisplayFilled(const bool value)
-    {
-        m_config.m_displayFilled = value;
-        Update();
-    }
     bool OccluderAreaComponent::GetDisplayFilled()
     {
         return m_config.m_displayFilled;
     }
 
-    void OccluderAreaComponent::SetCullDistRatio(const float value)
-    {
-        m_config.m_cullDistRatio = value;
-        Update();
-    }
     float OccluderAreaComponent::GetCullDistRatio()
     {
         return m_config.m_cullDistRatio;
     }
 
-    void OccluderAreaComponent::SetUseInIndoors(const bool value)
-    {
-        m_config.m_useInIndoors = value;
-        Update();
-    }
     bool OccluderAreaComponent::GetUseInIndoors()
     {
         return m_config.m_useInIndoors;
     }
 
-    void OccluderAreaComponent::SetDoubleSide(const bool value)
-    {
-        m_config.m_doubleSide = value;
-        Update();
-    }
     bool OccluderAreaComponent::GetDoubleSide()
     {
         return m_config.m_doubleSide;
     }
 
-    void OccluderAreaComponent::Update()
-    {
-    }
 } //namespace Visibility

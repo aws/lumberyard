@@ -25,17 +25,19 @@
 #include <AzCore/Component/ComponentApplication.h>
 #include <AzCore/std/string/string_view.h>
 
+#include <AzFramework/StringFunc/StringFunc.h>
+
 #include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
 #include <GraphCanvas/Styling/Style.h>
 #include <GraphCanvas/Styling/PseudoElement.h>
+#include <GraphCanvas/Types/Types.h>
 #include <GraphCanvas/Types/QtMetaTypes.h>
 
 namespace GraphCanvas
 {
     namespace Styling
     {
-
         //! Convenience wrapper for a styled entity that resolves its style and then provides easy ways to get common
         //! Qt values out of the style for it.
         class StyleHelper
@@ -382,7 +384,7 @@ namespace GraphCanvas
 
                 if (insertResult.second && m_styledEntity.IsValid())
                 {
-                    StyledEntityRequestBus::Event(m_styledEntity, &StyledEntityRequests::AddSelectorState, selector.to_string().c_str());
+                    StyledEntityRequestBus::Event(m_styledEntity, &StyledEntityRequests::AddSelectorState, selector.data());
 
                     UpdateStyle();
                 }
@@ -394,9 +396,124 @@ namespace GraphCanvas
 
                 if (elements > 0)
                 {
-                    StyledEntityRequestBus::Event(m_styledEntity, &StyledEntityRequests::RemoveSelectorState, selector.to_string().c_str());
+                    StyledEntityRequestBus::Event(m_styledEntity, &StyledEntityRequests::RemoveSelectorState, selector.data());
 
                     UpdateStyle();
+                }
+            }
+
+            CandyStripeConfiguration GetCandyStripeConfiguration() const
+            {
+                CandyStripeConfiguration config;
+
+                config.m_initialOffset = GetAttribute(Styling::Attribute::StripeOffset, 0);
+                config.m_maximumSize = GetAttribute(Styling::Attribute::MaximumStripeSize, 10);
+
+                if (config.m_maximumSize <= 0)
+                {
+                    config.m_maximumSize = 1;
+                }
+
+                config.m_minStripes = GetAttribute(Styling::Attribute::MinimumStripes, 2);
+
+                if (config.m_minStripes <= 0)
+                {
+                    config.m_minStripes = 1;
+                }
+
+                config.m_stripeAngle = GetAttribute(Styling::Attribute::StripeAngle, 60);
+
+                if (config.m_stripeAngle > 90)
+                {
+                    config.m_stripeAngle = 89;
+                }
+                else if (config.m_stripeAngle < -90)
+                {
+                    config.m_stripeAngle = -89;
+                }
+
+                if (!HasAttribute(Styling::Attribute::StripeColor))
+                {
+                    QColor backgroundColor = GetAttribute(Styling::Attribute::BackgroundColor, QColor(0,0,0));
+
+                    config.m_stripeColor = backgroundColor.dark();
+
+                    int totalDifference = 0;
+
+                    totalDifference += backgroundColor.red() - config.m_stripeColor.red();
+                    totalDifference += backgroundColor.green() - config.m_stripeColor.green();
+                    totalDifference += backgroundColor.blue() - config.m_stripeColor.blue();
+
+                    if (totalDifference < 150)
+                    {
+                        config.m_stripeColor = backgroundColor.light();
+                    }
+                }
+                else
+                {
+                    config.m_stripeColor = GetAttribute(Styling::Attribute::StripeColor, QColor(0, 0, 0));
+                }
+
+                return config;
+            }
+
+            PatternedFillGenerator GetPatternedFillGenerator() const
+            {
+                PatternedFillGenerator generator;
+                generator.m_editorId = m_editorId;
+
+                generator.m_id = GetAttribute(Styling::Attribute::PatternTemplate, QString()).toUtf8().data();
+
+                if (HasAttribute(Styling::Attribute::PatternPalettes))
+                {
+                    AZStd::string paletteStrings = GetAttribute(Styling::Attribute::PatternPalettes, QString()).toUtf8().data();
+
+                    AzFramework::StringFunc::Tokenize(paletteStrings.c_str(), generator.m_palettes, ',');
+                }
+                else
+                {
+                    QColor backgroundColor = GetAttribute(Styling::Attribute::BackgroundColor, QColor(0, 0, 0));
+
+                    QColor patternColor = backgroundColor.dark();
+
+                    int totalDifference = 0;
+
+                    totalDifference += backgroundColor.red() - patternColor.red();
+                    totalDifference += backgroundColor.green() - patternColor.green();
+                    totalDifference += backgroundColor.blue() - patternColor.blue();
+
+                    if (totalDifference < 150)
+                    {
+                        patternColor = backgroundColor.light();
+                    }
+
+                    generator.m_colors.push_back(patternColor);
+                }
+
+                generator.m_configuration = GetPatternFillConfiguration();
+
+                return generator;
+            }
+
+            PatternFillConfiguration GetPatternFillConfiguration() const
+            {
+                PatternFillConfiguration configuration;
+
+                configuration.m_minimumTileRepetitions = GetAttribute(Styling::Attribute::MinimumRepetitions, 1);
+                configuration.m_evenRowOffsetPercent = GetAttribute(Styling::Attribute::EvenOffsetPercent, 0.0);
+                configuration.m_oddRowOffsetPercent = GetAttribute(Styling::Attribute::OddOffsetPercent, 0.0);
+
+                return configuration;
+            }
+
+            void PopulatePaletteConfiguration(PaletteIconConfiguration& configuration) const
+            {
+                AZStd::string stylePalette;
+                StyledEntityRequestBus::EventResult(stylePalette, m_styledEntity, &StyledEntityRequests::GetFullStyleElement);
+
+                if (!stylePalette.empty())
+                {
+                    configuration.SetColorPalette(stylePalette);
                 }
             }
 

@@ -1,0 +1,13 @@
+{
+    "env": {
+        "CFLAGS,CXXFLAGS" : [
+             "-femulated-tls"       # All accesses to TLS variables are converted to calls to __emutls_get_address in the runtime library
+        ],
+        "CXXFLAGS": [
+            "-fms-extensions"       # Allow MSVC language extensions
+        ],
+        "@ANDROID_IS_NDK_19_PLUS@:LINKFLAGS,CXXFLAGS": [
+            "-stdlib=libc++"
+        ]
+    }
+}

@@ -19,28 +19,59 @@ namespace GraphCanvas
     /////////////////////////////////////
     // IconDecoratedNodePaletteTreeItem
     /////////////////////////////////////
-    IconDecoratedNodePaletteTreeItem::IconDecoratedNodePaletteTreeItem(const QString& name, EditorId editorId)
+    IconDecoratedNodePaletteTreeItem::IconDecoratedNodePaletteTreeItem(AZStd::string_view name, EditorId editorId)
         : NodePaletteTreeItem(name, editorId)
     {
-        SetTitlePalette("DefaultNodeTitlePalette");
+        m_paletteConfiguration.m_iconPalette = "NodePaletteTypeIcon";
+        SetTitlePalette(NodePaletteTreeItem::DefaultNodeTitlePalette);
+
+        StyleManagerNotificationBus::Handler::BusConnect(editorId);
+
+        // We want anything with icons on it to be group together(since in theory, the non-icon versions will be folders)
+        SetItemOrdering(k_defaultItemOrdering - 1);
+    }
+
+    void IconDecoratedNodePaletteTreeItem::AddIconColorPalette(const AZStd::string& colorPalette)
+    {
+        m_paletteConfiguration.AddColorPalette(colorPalette);
+        StyleManagerRequestBus::EventResult(m_iconPixmap, GetEditorId(), &StyleManagerRequests::GetConfiguredPaletteIcon, m_paletteConfiguration);
+    }
+
+    void IconDecoratedNodePaletteTreeItem::OnStylesUnloaded()
+    {
+        m_iconPixmap = nullptr;
+    }
+
+    void IconDecoratedNodePaletteTreeItem::OnStylesLoaded()
+    {
+        StyleManagerRequestBus::EventResult(m_iconPixmap, GetEditorId(), &StyleManagerRequests::GetConfiguredPaletteIcon, m_paletteConfiguration);
     }
 
     QVariant IconDecoratedNodePaletteTreeItem::OnData(const QModelIndex& index, int role) const
     {
-        switch (role)
+        if (index.column() == NodePaletteTreeItem::Column::Name)
         {
-        case Qt::DecorationRole:
-            if (m_iconPixmap != nullptr)
+            switch (role)
             {
-                return (*m_iconPixmap);
+            case Qt::DecorationRole:
+                if (m_iconPixmap != nullptr)
+                {
+                    return (*m_iconPixmap);
+                }
+            default:
+                return QVariant();
             }
-        default:
-            return QVariant();
+        }
+        else
+        {
+            return NodePaletteTreeItem::OnData(index, role);
         }
     }
 
     void IconDecoratedNodePaletteTreeItem::OnTitlePaletteChanged()
     {
-        StyleManagerRequestBus::EventResult(m_iconPixmap, GetEditorId(), &StyleManagerRequests::GetPaletteIcon, "NodePaletteTypeIcon", GetTitlePalette());
+        // Need to come up with a better way of dealing with the multi-state title palettes
+        m_paletteConfiguration.SetColorPalette(GetTitlePalette());
+        StyleManagerRequestBus::EventResult(m_iconPixmap, GetEditorId(), &StyleManagerRequests::GetConfiguredPaletteIcon, m_paletteConfiguration);
     }
 }

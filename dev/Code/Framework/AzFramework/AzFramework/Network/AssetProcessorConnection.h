@@ -50,7 +50,6 @@ namespace AzFramework
         */
         class AssetProcessorConnection
             : public SocketConnection
-            , public AZStd::ThreadEventBus::Handler
         {
             struct ThreadState
             {
@@ -59,13 +58,10 @@ namespace AzFramework
                 AZStd::thread m_thread;
                 AZStd::atomic_bool m_join;
                 AZStd::recursive_mutex m_mutex;
-                AZStd::atomic_bool m_running;// Indicates whether the thread is either starting or running
-                bool m_skipStartingIfRunning = false; // Indicates whether we should skip joining and starting the thread if it is already running
 
                 ThreadState()
                 {
                     m_join = false;
-                    m_running = false;
                 }
             };
 
@@ -80,27 +76,30 @@ namespace AzFramework
 
             //////////////////////////////////////////////////////////////////////////
             // AzFramework::SocketConnection overrides
-            bool Connect(const char* address, AZ::u16 port) override; //disconnects any current connection and starts to reconnect to the input params
-            // (Async) disconnects any current connection and stop any retrying to connect.
-            // if completeDisconnect is true, will wait until the connection has been terminated before returning.
+
+            //! disconnects any current connection and starts to reconnect
+            bool Connect(const char* address, AZ::u16 port) override; 
+
+            //! disconnects any current connection and stop any retrying to connect.
+            //! @param completeDisconnect if true, guarantees that by the time Disconnect returns, we have disconnected and all threads are stopped.
             bool Disconnect(bool completeDisconnect = false) override; 
-            bool Listen(AZ::u16 port) override; //disconnects any current connection and starts to listen for a connection
+
+            //! disconnects any current connection and starts to listen for a connection
+            bool Listen(AZ::u16 port) override;
+
             EConnectionState GetConnectionState() const override;
             bool IsConnected() const override;
             bool SendMsg(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength) override;
             bool SendMsg(AZ::u32 typeId, AZ::u32 serial, const void* dataBuffer, AZ::u32 dataLength) override;
             bool SendRequest(AZ::u32 typeId, const void* dataBuffer, AZ::u32 dataLength, TMessageCallback handler) override;
+
+            //! Will call callback whenever a message of type typeId arrives.
+            //! @return returns a value that can be passed to /ref RemoveMessageHandler .
             SocketConnection::TMessageCallbackHandle AddMessageHandler(AZ::u32 typeId, TMessageCallback callback) override;
             void RemoveMessageHandler(AZ::u32 typeId, TMessageCallbackHandle callbackHandle) override;
             //////////////////////////////////////////////////////////////////////////
 
             bool NegotiationFailed() { return m_negotiationFailed; } //hold whether the last connection attempt failed negotiation or not
-
-            // Called when we enter a thread, optional thread_desc is provided when the user provides one.
-            virtual void OnThreadEnter(const AZStd::thread::id& id, const AZStd::thread_desc* desc);
-
-            // Called when we exit a thread.
-            virtual void OnThreadExit(const AZStd::thread::id& id);
 
             // Setup Connection Options
             void Configure(const char* branchToken, const char* platform, const char* identifier);
@@ -113,7 +112,7 @@ namespace AzFramework
             bool NegotiateWithClient(); //note: Calls StartSendRecvThreads() internally
 
             //thread helpers
-            void StartThread(ThreadState& thread, AZStd::semaphore* event = nullptr); // the event is used to stop it
+            void StartThread(ThreadState& thread);
             void JoinThread(ThreadState& thread, AZStd::semaphore* event = nullptr);
             
             //Send/Recv threads
@@ -152,7 +151,6 @@ namespace AzFramework
             AZSOCKET m_socket;//the socket for our connection
             AZStd::mutex m_sendQueueMutex;
             AZStd::mutex m_responseHandlerMutex;
-            AZStd::mutex m_disconnectMutex; // protects from multiple disconnection threads
             AZStd::atomic<EConnectionState> m_connectionState;
             AZStd::atomic_uint m_requestSerial;
             AZStd::atomic<SocketConnection::TMessageCallbackHandle> m_nextHandlerId;
@@ -181,12 +179,39 @@ namespace AzFramework
             SendQueueType m_sendQueue;
             AZStd::semaphore m_sendEvent;
 
+            // In general, this class operates by starting a cleanup thread (called the disconnect thread) to begin with.
+            // this disconnect thread's job is to stop every other thread and clean all other state variables into some sane initial state, with no other threads active.
+            // Then, the disconnect thread starts the connect/listen thread (the disconnect thread then exits)
+            // the connect/listen thread waits to connect or for an incoming connection, and then starts a send/recv thread once connection is established (the connect/listen thread
+            // then exits).
+            // if any socket error or other problem happens, any of the service threads will start the disconnect/cleanup thread, which will shut everything down
+            // and wait for all other threads to join, before it then restarts the entire sequence again.
+            // This system thus has no need to 'pump' a main thread or have a long-lived management thread be active at any time, only ever having the thread(s) active that it requires to actually
+            // be waiting on reads/writes/connects/listens.
             ThreadState m_sendThread;
             ThreadState m_recvThread;
             ThreadState m_listenThread;
             ThreadState m_connectThread;
+
+            // the send, recv, listen, and connect threads should all call this if they need to terminate and retry.  It is safe to call from any
+            // of these service threads at any time.
+            void StartDisconnecting();
+
+            // disconnect thread is special in that its the "tear down thread" for the entire system and is not
+            // a persistent thread like send or recv.  Its job is to clean up all resources and then restart connection/listen
+            // once everything has been reset into a zeroed out state and no other threads are running.
+            // Thus, any time any thread encounters any error and the system needs to start over (such as a socket error),
+            // they all start the disconnect thread and then exit, leaving it up to the disconnect thread to actually clean everything up.
+            // Because ONLY the disconnect thread can start the connect/listen thread, and ONLY the connect/listen thread can start
+            // the recv/send thread, the disconnect thread is the only thread that actually needs to protect itself from being started
+            // twice or running in parallel. 
             ThreadState m_disconnectThread;
 
+            // Whenever this value is True, it is not necessary to start another disconnection sequence, because one is already running and
+            // has yet to finish cleaning everything up.
+            AZStd::atomic_bool m_isBusyDisconnecting;
+
+            
         };
 
         typedef AZStd::vector<AZ::u8, AZ::OSStdAllocator> MessageBuffer;

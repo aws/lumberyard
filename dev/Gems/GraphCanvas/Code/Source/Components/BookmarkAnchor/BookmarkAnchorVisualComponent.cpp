@@ -54,6 +54,11 @@ namespace GraphCanvas
         update();
     }
 
+    QPainterPath BookmarkAnchorVisualGraphicsWidget::GetOutline() const
+    {
+        return m_outline;
+    }
+
     QRectF BookmarkAnchorVisualGraphicsWidget::GetBoundingRect() const
     {
         return boundingRect();
@@ -136,8 +141,6 @@ namespace GraphCanvas
     {
         m_style.SetStyle(GetEntityId());
 
-        setZValue(m_style.GetAttribute(Styling::Attribute::ZValue, 0));
-
         update();
     }
 
@@ -203,15 +206,15 @@ namespace GraphCanvas
         QPointF bottomPoint(drawRect.left() + drawRect.width() * 0.5f, drawRect.bottom());
 
         {
-            QPainterPath path;
-            path.moveTo(leftPoint);
-            path.lineTo(topPoint);
-            path.lineTo(rightPoint);
-            path.lineTo(bottomPoint);
-            path.lineTo(leftPoint);
-            path.closeSubpath();
+            m_outline = QPainterPath();
+            m_outline.moveTo(leftPoint);
+            m_outline.lineTo(topPoint);
+            m_outline.lineTo(rightPoint);
+            m_outline.lineTo(bottomPoint);
+            m_outline.lineTo(leftPoint);
+            m_outline.closeSubpath();
 
-            painter->drawPath(path);
+            painter->drawPath(m_outline);
         }
 
         leftPoint = drawRect.center();
@@ -318,6 +321,21 @@ namespace GraphCanvas
     bool BookmarkAnchorVisualComponent::IsSelected() const
     {
         return m_graphicsWidget->isSelected();
+    }
+
+    QPainterPath BookmarkAnchorVisualComponent::GetOutline() const
+    {
+        return m_graphicsWidget->GetOutline();
+    }
+
+    void BookmarkAnchorVisualComponent::SetZValue(int zValue)
+    {
+        m_graphicsWidget->setZValue(zValue);
+    }
+
+    int BookmarkAnchorVisualComponent::GetZValue() const
+    {
+        return m_graphicsWidget->zValue();
     }
 
     void BookmarkAnchorVisualComponent::OnSceneSet(const AZ::EntityId& graphId)

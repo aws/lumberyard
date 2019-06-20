@@ -144,8 +144,8 @@ namespace GraphCanvas
         // NodeNotificationBus
         void OnNodeActivated() override;
 
-        void OnSlotAdded(const AZ::EntityId& slot) override;        
-        void OnSlotRemoved(const AZ::EntityId& slot) override;
+        void OnSlotAddedToNode(const AZ::EntityId& slot) override;        
+        void OnSlotRemovedFromNode(const AZ::EntityId& slot) override;
         ////
 
         // NodeSlotsRequestBus
@@ -159,6 +159,7 @@ namespace GraphCanvas
         // SlotLayoutRequestBus
         void SetDividersEnabled(bool enabled) override;
         void ConfigureSlotGroup(SlotGroup group, SlotGroupConfiguration configuration) override;
+        int GetSlotGroupDisplayOrder(SlotGroup group) const override;
 
         bool IsSlotGroupVisible(SlotGroup group) const override;
         void SetSlotGroupVisible(SlotGroup group, bool visible) override;

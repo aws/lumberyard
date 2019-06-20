@@ -16,62 +16,119 @@
 #include <ScriptCanvas/Core/Core.h>
 #include <AzCore/EBus/EBus.h>
 
+#include "APIArguments.h"
+
 namespace ScriptCanvas
 {
     namespace Debugger
     {
-        class ConnectionRequests
-            : public AZ::EBusTraits
+        class ServiceNotifications : public AZ::EBusTraits
         {
         public:
-            //////////////////////////////////////////////////////////////////////////
-            // Bus configuration
-            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
-            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-            //////////////////////////////////////////////////////////////////////////
+            virtual ~ServiceNotifications() = default;
 
-            virtual void Attach(const AZ::EntityId& graphId) = 0;
-            virtual void Detach(const AZ::EntityId& graphId) = 0;
-            virtual void DetachAll() = 0;
+            // Target Management Methods
+            virtual void BecameUnavailable(const Target&) {}
+            virtual void BecameAvailable(const Target&) {}
 
-        };
-
-        using ConnectionRequestBus = AZ::EBus<ConnectionRequests>;
-
-        class Requests
-            : public AZ::EBusTraits
-        {
-        public:
-            //////////////////////////////////////////////////////////////////////////
-            // Bus configuration
-            using BusIdType = AZ::EntityId;
-            static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
-            static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Multiple;
-            //////////////////////////////////////////////////////////////////////////
-
-            virtual void SetBreakpoint(const AZ::EntityId& graphId, const AZ::EntityId& nodeId, const SlotId& slot) = 0;
-            virtual void RemoveBreakpoint(const AZ::EntityId& graphId, const AZ::EntityId& nodeId, const SlotId& slot) = 0;
+            virtual void Connected(const Target&) {}
+            virtual void ConnectionRefused(const Target&) {}
+            virtual void Disconnected() {}
             
-            virtual void StepOver() = 0;
-            virtual void StepIn() = 0;
-            virtual void StepOut() = 0;
-            virtual void Stop() = 0;
-            virtual void Continue() = 0;
+            // Logging Notifications
+            virtual void GraphActivated(const GraphActivation&) {}
+            virtual void GraphDeactivated(const GraphDeactivation&) {}
 
-            virtual void NodeStateUpdate(Node* /*node*/, const AZ::EntityId& /*graphId*/) {}
+            virtual void ExecutionThreadEnded(const ExecutionThreadEnd&) {}
+            virtual void ExecutionThreadBegun(const ExecutionThreadBeginning&) {}
+
+            virtual void NodeStateChanged(const NodeStateChange&) {}
+            virtual void SignaledInput(const InputSignal&) {}
+            virtual void SignaledOutput(const OutputSignal&) {}
+            virtual void SignaledDataOutput(const OutputDataSignal&) {}
+            virtual void AnnotateNode(const AnnotateNodeSignal&) {}
+            virtual void VariableChanged(const VariableChange&) {}
+
+            // Result Methods
+            virtual void GetAvailableScriptTargetResult(const ActiveEntitiesAndGraphs&) {}
+            virtual void GetActiveEntitiesResult(const ActiveEntityStatusMap&) {}
+            virtual void GetActiveGraphsResult(const ActiveGraphStatusMap&) {}
+            virtual void GetVariableValueResult(const DatumValue&) {}
+
+            // Control Methods
+            virtual void BreakPointAdded(const Breakpoint&) {}
+            virtual void BreakPointHit(const Breakpoint&) {}
+            virtual void BreakPointRemoved(const Breakpoint&) {}
+
+            virtual void Continued(const Target&) {}
+
+            virtual void VariableChangeBreakpointAdded(const VariableChangeBreakpoint&) {}
+            virtual void VariableChangeBreakpointHit(const VariableChangeBreakpoint&) {}
+            virtual void VariableChangeBreakpointRemoved(const VariableChangeBreakpoint&) {}
         };
+        using ServiceNotificationsBus = AZ::EBus<ServiceNotifications>;
 
-        using RequestBus = AZ::EBus<Requests>;
-
-        class Notifications
-            : public AZ::EBusTraits
+        class ClientRequests : public AZ::EBusTraits
         {
         public:
-            virtual void OnAttach(const AZ::EntityId& /*graphId*/) {}
-            virtual void OnDetach(const AZ::EntityId& /*graphId*/) {}
+            virtual ~ClientRequests() = default;
 
-            virtual void OnNodeEntry(Node* /*node*/, const AZ::EntityId& /*graphId*/) {}
+            // Target Management Methods
+            virtual AzFramework::TargetContainer EnumerateAvailableNetworkTargets() { return AzFramework::TargetContainer(); }
+
+            virtual bool HasValidConnection() const { return false; }
+            virtual bool IsConnected(const AzFramework::TargetInfo&) const { return false; }
+            virtual bool IsConnectedToSelf() const { return false; }
+            virtual AzFramework::TargetInfo GetNetworkTarget() { return AzFramework::TargetInfo(); }
+
+            // Control Methods
+            virtual void AddBreakpoint(const Breakpoint&) {}
+            virtual void AddVariableChangeBreakpoint(const VariableChangeBreakpoint&) {}
+            virtual void Break() {} // break on next execution signal of any kind
+            virtual void Continue() {} // turns OFF unspecified data changes
+            virtual void RemoveBreakpoint(const Breakpoint&) {}
+            virtual void RemoveVariableChangeBreakpoint(const VariableChangeBreakpoint&) {}
+
+            virtual void SetVariableValue() {}
+            // virtual void StepInto() {}
+            // virtual void StepOut() {}
+            virtual void StepOver() {}
+
+            // Data Requests
+            virtual void GetAvailableScriptTargets() {}
+            virtual void GetActiveEntities() {}
+            virtual void GetActiveGraphs() {}
+            virtual void GetVariableValue( /*need a variable argument here*/ ) {}
         };
-        using NotificationBus = AZ::EBus<Notifications>;
+
+        using ClientRequestsBus = AZ::EBus<ClientRequests>;
+
+        class ClientUIRequests : public AZ::EBusTraits
+        {
+        public:
+
+            virtual void StartEditorSession() = 0;
+            virtual void StopEditorSession() = 0;
+
+            virtual void StartLogging(ScriptTarget& initialTargets) = 0;
+            virtual void StopLogging() = 0;
+
+            virtual void AddEntityLoggingTarget(const AZ::EntityId& entityId, const ScriptCanvas::GraphIdentifier& graphIdentifier) = 0;
+            virtual void RemoveEntityLoggingTarget(const AZ::EntityId& entityId, const ScriptCanvas::GraphIdentifier& graphIdentifier) = 0;
+
+            virtual void AddGraphLoggingTarget(const AZ::Data::AssetId& assetId) = 0;
+            virtual void RemoveGraphLoggingTarget(const AZ::Data::AssetId& assetId) = 0;
+        };
+
+        using ClientUIRequestBus = AZ::EBus<ClientUIRequests>;
+
+        class ClientUINotifications : public AZ::EBusTraits
+        {
+        public:
+
+            virtual void OnCurrentTargetChanged() {}
+        };
+
+        using ClientUINotificationBus = AZ::EBus<ClientUINotifications>;
     }
 }

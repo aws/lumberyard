@@ -31,6 +31,16 @@ namespace LmbrCentral
     public:
 
         /**
+        * Returns the axis aligned bounding box in world coordinates
+        */
+        virtual AZ::Aabb GetWorldBounds() = 0;
+
+        /**
+        * Returns the axis aligned bounding box in model coordinates
+        */
+        virtual AZ::Aabb GetLocalBounds() = 0;
+
+        /**
         * Sets the mesh asset for this component
         */
         virtual void SetMeshAsset(const AZ::Data::AssetId& id) = 0;
@@ -133,6 +143,8 @@ namespace LmbrCentral
          * Notifies listeners that the mesh instance has been destroyed.
         */
         virtual void OnMeshDestroyed() {}
+
+        virtual void OnBoundsReset() {};
 
         /**
          * When connecting to this bus if the asset is ready you will immediately get an OnMeshCreated event

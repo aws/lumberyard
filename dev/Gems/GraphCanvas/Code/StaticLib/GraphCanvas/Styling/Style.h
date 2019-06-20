@@ -76,8 +76,8 @@ namespace GraphCanvas
 
         class ComputedStyle
             : public AZ::Component
-            , protected StyleRequestBus::Handler
-            , protected StyleManagerNotificationBus::Handler
+            , protected GraphCanvas::StyleRequestBus::Handler
+            , protected GraphCanvas::StyleManagerNotificationBus::Handler
         {
         public:
             AZ_COMPONENT(ComputedStyle, "{695DEBB5-45A1-4CD5-B6B7-D9F7EF801194}");
@@ -98,7 +98,7 @@ namespace GraphCanvas
             QVariant GetAttribute(AZ::u32 attribute) const override;
             ////
 
-            // StyleSheetNotificationBus
+            // StyleManagerNotificationBus
             void OnStylesUnloaded() override;
             ////
 

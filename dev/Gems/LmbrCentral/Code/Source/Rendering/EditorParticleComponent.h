@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #pragma once
 
 #include <AzCore/Asset/AssetCommon.h>
@@ -16,7 +17,6 @@
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/ToolsComponents/EditorVisibilityBus.h>
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyAudioCtrlTypes.h>
 
@@ -35,7 +35,6 @@ namespace LmbrCentral
         , public RenderNodeRequestBus::Handler
         , public EditorParticleComponentRequestBus::Handler
         , private AzToolsFramework::EditorVisibilityNotificationBus::Handler
-        , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private AZ::Data::AssetBus::Handler
         , private AzFramework::AssetCatalogEventBus::Handler
     {
@@ -64,11 +63,6 @@ namespace LmbrCentral
         //////////////////////////////////////////////////////////////////////////
         // AzToolsFramework::EditorVisibilityNotificationBus interface implementation
         void OnEntityVisibilityChanged(bool visibility) override;
-        //////////////////////////////////////////////////////////////////////////
-
-        //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
         //////////////////////////////////////////////////////////////////////////
 
         //////////////////////////////////////////////////////////////////////////

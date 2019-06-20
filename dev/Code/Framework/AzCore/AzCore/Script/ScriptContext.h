@@ -23,11 +23,13 @@
 #include <AzCore/std/typetraits/is_enum.h>
 #include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/utils.h>
+#include <AzCore/std/any.h>
 
 #include <AzCore/std/string/string.h>
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/allocator_static.h>
+#include <AzCore/std/parallel/thread.h>
 
 #ifndef AZ_USE_CUSTOM_SCRIPT_BIND
 struct lua_State;
@@ -574,6 +576,22 @@ namespace AZ
         static void* StackRead(lua_State* l, int stackIndex);
     };
 
+    template<>
+    struct ScriptValue<AZStd::any>
+    {
+        static const bool isNativeValueType = false;  // We use native type for internal representation
+        static void StackPush(lua_State* l, const AZStd::any& value);
+        static AZStd::any StackRead(lua_State* lua, int stackIndex);
+    };
+
+    template<>
+    struct ScriptValue<const AZStd::any&>
+        : public ScriptValue<AZStd::any> {};
+
+    template<>
+    struct ScriptValue<const AZStd::any>
+        : public ScriptValue<AZStd::any> {};
+
     template<class Element, class Traits, class Allocator>
     struct ScriptValue<const AZStd::basic_string< Element, Traits, Allocator> >
     {
@@ -868,6 +886,19 @@ namespace AZ
         void EnableDebug();   ///< Creates debug context (you can obtain vie GetDebugContext()). Depending on the implementation this can require more memory.
         void DisableDebug();  ///< Destroys debug context
         ScriptContextDebug* GetDebugContext();
+
+        /**
+         * Make sure that the Lua EBus handlers are not called from background threads.
+         * By default the thread that creates the script context is the owner.
+         * This method allows to override this default behaviour.                                                                      
+        */        
+        void DebugSetOwnerThread(AZStd::thread::id ownerThreadId); 
+        
+        /**
+         * Make sure that the Lua EBus handlers are not called from background threads.
+         * Use this to make sure the calling thread is the thread that owns the script context.
+        */        
+        bool DebugIsCallingThreadTheOwner() const;                 
 
         void SetErrorHook(ErrorHook cb);
         ErrorHook GetErrorHook() const;

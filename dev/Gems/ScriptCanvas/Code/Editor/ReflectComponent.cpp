@@ -22,7 +22,9 @@
 #include <Editor/Assets/ScriptCanvasAssetInstance.h>
 #include <Editor/Nodes/EditorLibrary.h>
 #include <Editor/View/Dialogs/Settings.h>
+#include <Editor/View/Widgets/LoggingPanel/LiveWindowSession/LiveLoggingWindowSession.h>
 #include <Editor/View/Widgets/NodePalette/CreateNodeMimeEvent.h>
+#include <Editor/View/Widgets/NodePalette/ScriptEventsNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/EBusNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/GeneralNodePaletteTreeItemTypes.h>
 #include <Editor/View/Widgets/NodePalette/SpecializedNodePaletteTreeItemTypes.h>
@@ -37,18 +39,20 @@ namespace ScriptCanvasEditor
         ScriptCanvasAssetReference::Reflect(context);
         ScriptCanvasAssetInstance::Reflect(context);
         ScriptCanvasAssetHolder::Reflect(context);
-        EditorSettings::WindowSavedState::Reflect(context);
-        EditorSettings::ScriptCanvasEditorSettings::Reflect(context);
+        EditorSettings::WindowSavedState::Reflect(context);        
+        EditorSettings::ScriptCanvasEditorSettings::Reflect(context);        
         Library::Editor::Reflect(context);
+        LiveLoggingUserSettings::Reflect(context);
         UndoData::Reflect(context);
 
         // Base Mime Event
         CreateNodeMimeEvent::Reflect(context);
         SpecializedCreateNodeMimeEvent::Reflect(context);
+        MultiCreateNodeMimeEvent::Reflect(context);
 
         // Specific Mime Event Implementations
         CreateClassMethodMimeEvent::Reflect(context);
-        CreateBlockCommentNodeMimeEvent::Reflect(context);
+        CreateNodeGroupMimeEvent::Reflect(context);
         CreateCommentNodeMimeEvent::Reflect(context);
         CreateCustomNodeMimeEvent::Reflect(context);
         CreateEBusHandlerMimeEvent::Reflect(context);
@@ -59,6 +63,12 @@ namespace ScriptCanvasEditor
         CreateSetVariableNodeMimeEvent::Reflect(context);
         CreateGetOrSetVariableNodeMimeEvent::Reflect(context);
 
+        // Script Events
+        CreateScriptEventsHandlerMimeEvent::Reflect(context);
+        CreateScriptEventsReceiverMimeEvent::Reflect(context);
+        CreateScriptEventsSenderMimeEvent::Reflect(context);
+        CreateSendOrReceiveScriptEventsMimeEvent::Reflect(context);
+        
         if (auto serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<ReflectComponent, AZ::Component>()

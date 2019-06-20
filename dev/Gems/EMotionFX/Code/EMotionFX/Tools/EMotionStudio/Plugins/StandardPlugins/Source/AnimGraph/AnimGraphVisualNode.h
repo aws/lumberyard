@@ -50,6 +50,8 @@ namespace EMStudio
         bool GetHasError() const override;
 
     protected:
+        QColor AzColorToQColor(const AZ::Color& col) const;
+    
         EMotionFX::AnimGraphNode*  mEMFXNode;
         EMotionFX::AnimGraphPose   mPose;
         AnimGraphPlugin*           mPlugin;

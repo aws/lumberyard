@@ -11,10 +11,39 @@
 */
 #pragma once
 
-#include <AzCore/Component/ComponentApplication.h>
+#include <Editor/Framework/ScriptCanvasGraphUtilities.h>
+#include "EntityRefTests.h"
+
+#include <Asset/EditorAssetSystemComponent.h>
+#include <AzFramework/Application/Application.h>
+#include <ScriptCanvas/SystemComponent.h>
 
 namespace ScriptCanvasTests
 {
-    using Application = AZ::ComponentApplication;
+    class Application
+        : public AzFramework::Application
+    {
+    public:
+        AZ::ComponentTypeList GetRequiredSystemComponents() const override
+        {
+            AZ::ComponentTypeList components = AzFramework::Application::GetRequiredSystemComponents();
+             components.insert(components.end(),
+             {
+                 azrtti_typeid<ScriptCanvas::SystemComponent>(),
+                 azrtti_typeid<ScriptCanvasTests::TestComponent>(),
+                 azrtti_typeid<ScriptCanvasEditor::TraceMessageComponent>(),
+             });
+
+            return components;
+        }
+
+        void CreateReflectionManager() override
+        {
+            AzFramework::Application::CreateReflectionManager();
+            RegisterComponentDescriptor(ScriptCanvas::SystemComponent::CreateDescriptor());
+            RegisterComponentDescriptor(ScriptCanvasTests::TestComponent::CreateDescriptor());
+            RegisterComponentDescriptor(ScriptCanvasEditor::TraceMessageComponent::CreateDescriptor());
+        }
+    };
 }
 

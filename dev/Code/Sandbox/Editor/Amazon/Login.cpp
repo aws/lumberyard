@@ -194,7 +194,7 @@ namespace Amazon {
 
     void sendUserEvent(const char* eventName, const char* directedId)
     {
-        std::shared_ptr<Aws::Http::HttpClient> httpClient = Aws::Http::CreateHttpClient(Aws::Client::ClientConfiguration());
+        std::shared_ptr<Aws::Http::HttpClient> httpClient =  Aws::Http::CreateHttpClient(Aws::Client::ClientConfiguration());
 
         Aws::String eventsUrl = "https://sfzuat1qh2.execute-api.us-east-1.amazonaws.com/prod/events";
         auto httpRequest(Aws::Http::CreateHttpRequest(eventsUrl, Aws::Http::HttpMethod::HTTP_POST, Aws::Utils::Stream::DefaultResponseStreamFactoryMethod));

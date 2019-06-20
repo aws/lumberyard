@@ -23,12 +23,6 @@
         "CryRenderD3D12",
         "CryRenderMetal",
         "CryRenderNULL"
-    ],
-
-    "appletv_modules" :
-    [
-        "CryAudioImplWwise",
-        "CryRenderMetal"
     ]
 }
 

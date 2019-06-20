@@ -90,6 +90,8 @@ namespace PhysXCharacters
         void RayCast(const Physics::RayCastRequest& request, Physics::RayCastResult& result) const override;
         AZ::Crc32 GetNativeType() const override;
         void* GetNativePointer() const override;
+        void AddToWorld(Physics::World&) override;
+        void RemoveFromWorld(Physics::World&) override;
 
         // CharacterController specific
         void Resize(float height);
@@ -116,7 +118,7 @@ namespace PhysXCharacters
         physx::PxControllerFilters m_pxControllerFilters; ///< Controls which objects the controller interacts with when moving.
         AZStd::shared_ptr<Physics::Material> m_material; ///< The generic physics API material for the controller.
         AZStd::shared_ptr<Physics::Shape> m_shape; ///< The generic physics API shape associated with the controller.
-        AZStd::shared_ptr<Physics::RigidBody> m_shadowBody; ///< A kinematic-synchronised rigid body used to store additional colliders.
+        AZStd::unique_ptr<Physics::RigidBody> m_shadowBody; ///< A kinematic-synchronised rigid body used to store additional colliders.
         AZStd::string m_name = "Character Controller"; ///< Name to set on the PhysX actor associated with the controller.
     };
 } // namespace PhysXCharacters

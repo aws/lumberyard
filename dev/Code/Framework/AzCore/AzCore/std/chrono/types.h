@@ -15,6 +15,7 @@
 #include <AzCore/std/base.h>
 #include <AzCore/std/ratio.h>
 #include <AzCore/std/utils.h>
+#include <AzCore/std/typetraits/common_type.h>
 #include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/typetraits/is_floating_point.h>
 
@@ -71,57 +72,6 @@ namespace AZStd
         namespace Internal
         {
             //////////////////////////////////////////////////////////////////////////
-            // Common type hack
-            /**
-             * We need compiler features to implement proper common type,
-             * so we will just cover the types we use for chrono
-             */
-            template <class T, class U = void, class V = void>
-            struct common_type
-            {
-            public:
-                typedef typename common_type<typename common_type<T, U>::type, V>::type type;
-            };
-
-            template <class T>
-            struct common_type<T, void, void>
-            {
-            public:
-                typedef T type;
-            };
-
-            template <>
-            struct common_type<AZStd::sys_time_t, AZStd::sys_time_t, void>
-            {
-                typedef AZStd::sys_time_t type;
-            };
-            template <class T>
-            struct common_type<float, T, void>
-            {
-                typedef float type;
-            };
-            template <class T>
-            struct common_type<T, float, void>
-            {
-                typedef float type;
-            };
-            template <class T>
-            struct common_type<double, T, void>
-            {
-                typedef double type;
-            };
-            template <class T>
-            struct common_type<T, double, void>
-            {
-                typedef double type;
-            };
-
-            template <class Rep1, class Period1, class Rep2, class Period2>
-            struct common_type<duration<Rep1, Period1>, duration<Rep2, Period2> >;
-
-            template <class Clock, class Duration1, class Duration2>
-            struct common_type<time_point<Clock, Duration1>, time_point<Clock, Duration2> >;
-            //////////////////////////////////////////////////////////////////////////
 
             //////////////////////////////////////////////////////////////////////////
             //
@@ -131,9 +81,9 @@ namespace AZStd
             template<>
             struct duration_value<AZStd::sys_time_t>
             {
-                static AZStd::sys_time_t zero() { return 0; }
-                static AZStd::sys_time_t min()  { return 0; }
-                static AZStd::sys_time_t max()
+                static constexpr AZStd::sys_time_t zero() { return 0; }
+                static constexpr AZStd::sys_time_t min() { return 0; }
+                static constexpr AZStd::sys_time_t max()
                 {
                     return std::numeric_limits<AZStd::sys_time_t>::max();
                 }
@@ -142,9 +92,9 @@ namespace AZStd
             template<>
             struct duration_value<float>
             {
-                static float zero() { return 0.0f; }
-                static float min()  { return FLT_MAX; }
-                static float max()  { return -FLT_MAX; }
+                static constexpr float zero() { return 0.0f; }
+                static constexpr float min() { return FLT_MAX; }
+                static constexpr float max() { return -FLT_MAX; }
             };
             //////////////////////////////////////////////////////////////////////////
 
@@ -154,7 +104,7 @@ namespace AZStd
 
             template <class Rep, class Period>
             struct is_duration<duration<Rep, Period> >
-                : AZStd::true_type  {};
+                : AZStd::true_type {};
 
             // duration_cast
 
@@ -169,7 +119,7 @@ namespace AZStd
             //   representation is used.
             template <class FromDuration, class ToDuration,
                 class Period = typename ratio_divide<typename FromDuration::period, typename ToDuration::period>::type, bool = (Period::num == 1), bool = (Period::den == 1)>
-            struct duration_cast;
+                struct duration_cast;
 
             // When the two periods are the same, all that is left to do is static_cast from
             //   the source representation to the target representation (which may be a no-op).
@@ -178,7 +128,7 @@ namespace AZStd
             template <class FromDuration, class ToDuration, class Period>
             struct duration_cast<FromDuration, ToDuration, Period, true, true>
             {
-                static ToDuration cast(const FromDuration& fd)
+                static constexpr ToDuration cast(const FromDuration& fd)
                 {
                     return ToDuration(static_cast<typename ToDuration::rep>(fd.count()));
                 }
@@ -193,9 +143,9 @@ namespace AZStd
             template <class FromDuration, class ToDuration, class Period>
             struct duration_cast<FromDuration, ToDuration, Period, true, false>
             {
-                static ToDuration cast(const FromDuration& fd)
+                static constexpr ToDuration cast(const FromDuration& fd)
                 {
-                    typedef typename common_type<typename ToDuration::rep, typename FromDuration::rep, AZStd::sys_time_t>::type C;
+                    using C = common_type_t<typename ToDuration::rep, typename FromDuration::rep, AZStd::sys_time_t>;
                     return ToDuration(static_cast<typename ToDuration::rep>(static_cast<C>(fd.count()) / static_cast<C>(Period::den)));
                 }
             };
@@ -208,7 +158,7 @@ namespace AZStd
             template <class FromDuration, class ToDuration, class Period>
             struct duration_cast<FromDuration, ToDuration, Period, false, true>
             {
-                static ToDuration cast(const FromDuration& fd)
+                static constexpr ToDuration cast(const FromDuration& fd)
                 {
                     typedef typename common_type<typename ToDuration::rep, typename FromDuration::rep, AZStd::sys_time_t>::type C;
                     return ToDuration(static_cast<typename ToDuration::rep>(static_cast<C>(fd.count()) * static_cast<C>(Period::num)));
@@ -224,7 +174,7 @@ namespace AZStd
             template <class FromDuration, class ToDuration, class Period>
             struct duration_cast<FromDuration, ToDuration, Period, false, false>
             {
-                static ToDuration cast(const FromDuration& fd)
+                static constexpr ToDuration cast(const FromDuration& fd)
                 {
                     typedef typename common_type<typename ToDuration::rep, typename FromDuration::rep, AZStd::sys_time_t>::type C;
                     return ToDuration(static_cast<typename ToDuration::rep>(static_cast<C>(fd.count()) * static_cast<C>(Period::num) / static_cast<C>(Period::den)));
@@ -247,12 +197,18 @@ namespace AZStd
         //----------------------------------------------------------------------------//
         // Compile-time select the most efficient algorithm for the conversion...
         template <class ToDuration, class Rep, class Period>
-        inline ToDuration duration_cast(const duration<Rep, Period>& fd)
+        inline constexpr ToDuration duration_cast(const duration<Rep, Period>& fd)
         {
             return Internal::duration_cast<duration<Rep, Period>, ToDuration>::cast(fd);
         }
 
         //////////////////////////////////////////////////////////////////////////
+        // VS2015 adds an implicit const to constant expressions so it cannot use constexpr on non-const member functions
+#if !defined(AZ_COMPILER_MSVC) || AZ_COMPILER_MSVC > 1900
+#define AZSTD_CHRONO_CONSTEXPR constexpr
+#else
+#define AZSTD_CHRONO_CONSTEXPR
+#endif
         // Duration
         template <class Rep, class Period >
         class duration
@@ -263,33 +219,35 @@ namespace AZStd
 
         public:
             // 20.9.3.1, construct/copy/destroy:
-            AZ_FORCE_INLINE duration() {}
+            constexpr duration() = default;
             template <class Rep2>
-            explicit AZ_FORCE_INLINE duration(const Rep2& r)
+            explicit constexpr duration(const Rep2& r)
                 : m_rep(r) {}
             template <class Rep2, class Period2>
-            duration(const duration<Rep2, Period2>& d)
+            constexpr duration(const duration<Rep2, Period2>& d)
                 : m_rep(duration_cast<duration>(d).count())
             {}
 
             // 20.9.3.2, observer:
-            rep count() const           { return m_rep; }
+            constexpr rep count() const { return m_rep; }
             // 20.9.3.3, arithmetic:
-            duration operator+() const  { *this; }
-            duration operator-() const  { return duration(-m_rep); }
-            duration& operator++()      { ++m_rep; return *this; }
-            duration operator++(int)    { return duration(m_rep++); }
-            duration& operator--()      { --m_rep; return *this; }
-            duration operator--(int)    { return duration(m_rep--); }
-            duration& operator+=(const duration& d) { m_rep += d.count(); return *this; }
-            duration& operator-=(const duration& d) { m_rep -= d.count(); return *this; }
-            duration& operator*=(const rep& rhs)    { m_rep *= rhs; return *this; }
-            duration  operator/(const rep& rhs)     { return duration(m_rep / rhs); }
-            duration& operator/=(const rep& rhs)    { m_rep /= rhs; return *this; }
+            constexpr duration operator+() const { *this; }
+            constexpr duration operator-() const { return duration(-m_rep); }
+            AZSTD_CHRONO_CONSTEXPR duration& operator++() { ++m_rep; return *this; }
+            AZSTD_CHRONO_CONSTEXPR duration operator++(int) { return duration(m_rep++); }
+            AZSTD_CHRONO_CONSTEXPR duration& operator--() { --m_rep; return *this; }
+            AZSTD_CHRONO_CONSTEXPR duration operator--(int) { return duration(m_rep--); }
+            AZSTD_CHRONO_CONSTEXPR duration& operator+=(const duration& d) { m_rep += d.count(); return *this; }
+            AZSTD_CHRONO_CONSTEXPR duration& operator-=(const duration& d) { m_rep -= d.count(); return *this; }
+            AZSTD_CHRONO_CONSTEXPR duration& operator*=(const rep& rhs) { m_rep *= rhs; return *this; }
+            AZSTD_CHRONO_CONSTEXPR duration  operator/(const rep& rhs) { return duration(m_rep / rhs); }
+            AZSTD_CHRONO_CONSTEXPR duration& operator/=(const rep& rhs) { m_rep /= rhs; return *this; }
+            AZSTD_CHRONO_CONSTEXPR duration& operator%=(const rep& rhs) { m_rep %= rhs; return *this; }
+            AZSTD_CHRONO_CONSTEXPR duration& operator%=(const duration& rhs) { m_rep %= rhs.count(); return *this; }
             // 20.9.3.4, special values:
-            static const duration zero()            { return duration(Internal::duration_value<rep>::zero()); }
-            static const duration min()             { return duration(Internal::duration_value<rep>::min()); }
-            static const duration max()             { return duration(Internal::duration_value<rep>::max()); }
+            static constexpr duration zero() { return duration(Internal::duration_value<rep>::zero()); }
+            static constexpr duration min() { return duration(Internal::duration_value<rep>::min()); }
+            static constexpr duration max() { return duration(Internal::duration_value<rep>::max()); }
         private:
             rep         m_rep; // exposition only
         };
@@ -308,49 +266,37 @@ namespace AZStd
         //----------------------------------------------------------------------------//
         // Duration +
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE typename Internal::common_type< duration<Rep1, Period1>, duration<Rep2, Period2> >::type
-        operator+(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
+        inline constexpr common_type_t< duration<Rep1, Period1>, duration<Rep2, Period2> >
+            operator+(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
         {
-            typename Internal::common_type<duration<Rep1, Period1>, duration<Rep2, Period2> >::type result = lhs;
-            result += rhs;
-            return result;
+            using CD = common_type_t<duration<Rep1, Period1>, duration<Rep2, Period2> >;
+            return CD(CD(lhs).count() + CD(rhs).count());
         }
 
         // Duration -
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE typename Internal::common_type<duration<Rep1, Period1>, duration<Rep2, Period2> >::type
-        operator-(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
+        inline constexpr common_type_t<duration<Rep1, Period1>, duration<Rep2, Period2> >
+            operator-(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
         {
-            typename Internal::common_type<duration<Rep1, Period1>, duration<Rep2, Period2> >::type result = lhs;
-            result -= rhs;
-            return result;
+            using CD = common_type_t<duration<Rep1, Period1>, duration<Rep2, Period2> >;
+            return CD(CD(lhs).count() - CD(rhs).count());
         }
 
         // Duration *
         template <class Rep1, class Period, class Rep2>
-        AZ_FORCE_INLINE typename AZStd::Utils::enable_if_c
-        <
-            AZStd::is_convertible<Rep1, typename Internal::common_type<Rep1, Rep2>::type>::value
-            && AZStd::is_convertible<Rep2, typename Internal::common_type<Rep1, Rep2>::type>::value,
-            duration<typename Internal::common_type<Rep1, Rep2>::type, Period>
-        >::type
-        operator*(const duration<Rep1, Period>& d, const Rep2& s)
+        inline constexpr
+            duration<common_type_t<Rep1, Rep2>, Period>
+            operator*(const duration<Rep1, Period>& d, const Rep2& s)
         {
-            typedef typename Internal::common_type<Rep1, Rep2>::type CR;
-            duration<CR, Period> r = d;
-            r *= static_cast<CR>(s);
-            return r;
+            using CR = common_type_t<Rep1, Rep2>;
+            using CD = duration<CR, Period>;
+            return CD(CD(d).count() * static_cast<CR>(s));
         }
 
         template <class Rep1, class Period, class Rep2>
-        AZ_FORCE_INLINE
-        typename AZStd::Utils::enable_if_c
-        <
-            AZStd::is_convertible<Rep1, typename Internal::common_type<Rep1, Rep2>::type>::value
-            && AZStd::is_convertible<Rep2, typename Internal::common_type<Rep1, Rep2>::type>::value,
-            duration<typename Internal::common_type<Rep1, Rep2>::type, Period>
-        >::type
-        operator*(const Rep1& s, const duration<Rep2, Period>& d)
+        inline constexpr
+            duration<common_type_t<Rep1, Rep2>, Period>
+            operator*(const Rep1& s, const duration<Rep2, Period>& d)
         {
             return d * s;
         }
@@ -363,15 +309,15 @@ namespace AZStd
             {};
 
             template <class Duration, class Rep2,
-                bool = (AZStd::is_convertible<typename Duration::rep, typename common_type<typename Duration::rep, Rep2>::type>::value
-                        && AZStd::is_convertible<Rep2, typename common_type<typename Duration::rep, Rep2>::type>::value) >
-            struct duration_divide_imp
+                bool = (AZStd::is_convertible<typename Duration::rep, common_type_t<typename Duration::rep, Rep2>>::value
+                    && AZStd::is_convertible<Rep2, common_type_t<typename Duration::rep, Rep2>>::value) >
+                struct duration_divide_imp
             {};
 
             template <class Rep1, class Period, class Rep2>
             struct duration_divide_imp<duration<Rep1, Period>, Rep2, true>
             {
-                typedef duration<typename common_type<Rep1, Rep2>::type, Period> type;
+                typedef duration<common_type_t<Rep1, Rep2>, Period> type;
             };
 
             template <class Rep1, class Period, class Rep2>
@@ -381,21 +327,37 @@ namespace AZStd
         }
 
         template <class Rep1, class Period, class Rep2>
-        AZ_FORCE_INLINE typename Internal::duration_divide_result<duration<Rep1, Period>, Rep2>::type
-        operator/(const duration<Rep1, Period>& d, const Rep2& s)
+        inline constexpr typename Internal::duration_divide_result<duration<Rep1, Period>, Rep2>::type
+            operator/(const duration<Rep1, Period>& d, const Rep2& s)
         {
-            typedef typename Internal::common_type<Rep1, Rep2>::type CR;
-            duration<CR, Period> r = d;
-            r /= static_cast<CR>(s);
-            return r;
+            using CR = common_type_t<Rep1, Rep2>;
+            using CD = typename Internal::duration_divide_result<duration<Rep1, Period>, Rep2>::type;
+            return CD(CD(d).count() / static_cast<CR>(s));
         }
 
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE typename Internal::common_type<Rep1, Rep2>::type
-        operator/(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
+        inline constexpr common_type_t<Rep1, Rep2>
+            operator/(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
         {
-            typedef typename Internal::common_type<duration<Rep1, Period1>, duration<Rep2, Period2> >::type CD;
+            using CD = common_type_t<duration<Rep1, Period1>, duration<Rep2, Period2> >;
             return CD(lhs).count() / CD(rhs).count();
+        }
+
+        template <class Rep1, class Period, class Rep2>
+        inline constexpr typename Internal::duration_divide_result<duration<Rep1, Period>, Rep2>::type
+            operator%(const duration<Rep1, Period>& d, const Rep2& s)
+        {
+            using CR = common_type_t<Rep1, Rep2>;
+            using CD = typename Internal::duration_divide_result<duration<Rep1, Period>, Rep2>::type;
+            return CD(CD(d).count() % static_cast<CR>(s));
+        }
+
+        template <class Rep1, class Period1, class Rep2, class Period2>
+        inline constexpr auto
+            operator%(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs) -> common_type_t<duration<Rep1, Period1>, duration<Rep2, Period2>>
+        {
+            using CD = common_type_t<duration<Rep1, Period1>, duration<Rep2, Period2> >;
+            return CD(CD(lhs).count() % CD(rhs).count());
         }
 
         //----------------------------------------------------------------------------//
@@ -406,9 +368,9 @@ namespace AZStd
             template <class LhsDuration, class RhsDuration>
             struct duration_eq
             {
-                bool operator()(const LhsDuration& lhs, const RhsDuration& rhs)
+                constexpr bool operator()(const LhsDuration& lhs, const RhsDuration& rhs) const
                 {
-                    typedef typename common_type<LhsDuration, RhsDuration>::type CD;
+                    using CD = common_type_t<LhsDuration, RhsDuration>;
                     return CD(lhs).count() == CD(rhs).count();
                 }
             };
@@ -416,16 +378,18 @@ namespace AZStd
             template <class LhsDuration>
             struct duration_eq<LhsDuration, LhsDuration>
             {
-                bool operator()(const LhsDuration& lhs, const LhsDuration& rhs)
-                {return lhs.count() == rhs.count(); }
+                constexpr bool operator()(const LhsDuration& lhs, const LhsDuration& rhs) const
+                {
+                    return lhs.count() == rhs.count();
+                }
             };
 
             template <class LhsDuration, class RhsDuration>
             struct duration_lt
             {
-                bool operator()(const LhsDuration& lhs, const RhsDuration& rhs)
+                constexpr bool operator()(const LhsDuration& lhs, const RhsDuration& rhs) const
                 {
-                    typedef typename common_type<LhsDuration, RhsDuration>::type CD;
+                    using CD = common_type_t<LhsDuration, RhsDuration>;
                     return CD(lhs).count() < CD(rhs).count();
                 }
             };
@@ -433,46 +397,48 @@ namespace AZStd
             template <class LhsDuration>
             struct duration_lt<LhsDuration, LhsDuration>
             {
-                bool operator()(const LhsDuration& lhs, const LhsDuration& rhs)
-                {return lhs.count() < rhs.count(); }
+                constexpr bool operator()(const LhsDuration& lhs, const LhsDuration& rhs) const
+                {
+                    return lhs.count() < rhs.count();
+                }
             };
         }
 
         // Duration ==
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE bool
-        operator==(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
+        inline constexpr bool
+            operator==(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
         {
             return Internal::duration_eq<duration<Rep1, Period1>, duration<Rep2, Period2> >()(lhs, rhs);
         }
 
         // Duration !=
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE bool
-        operator!=(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)      { return !(lhs == rhs); }
+        inline constexpr bool
+            operator!=(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs) { return !(lhs == rhs); }
 
         // Duration <
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE bool
-        operator< (const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
+        inline constexpr bool
+            operator< (const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)
         {
             return Internal::duration_lt<duration<Rep1, Period1>, duration<Rep2, Period2> >()(lhs, rhs);
         }
 
         // Duration >
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE bool
-        operator> (const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)      { return rhs < lhs; }
+        inline constexpr bool
+            operator> (const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs) { return rhs < lhs; }
 
         // Duration <=
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE bool
-        operator<=(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)      { return !(rhs < lhs); }
+        inline constexpr bool
+            operator<=(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs) { return !(rhs < lhs); }
 
         // Duration >=
         template <class Rep1, class Period1, class Rep2, class Period2>
-        AZ_FORCE_INLINE bool
-        operator>=(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs)      {   return !(lhs < rhs); }
+        inline constexpr bool
+            operator>=(const duration<Rep1, Period1>& lhs, const duration<Rep2, Period2>& rhs) { return !(lhs < rhs); }
 
         //////////////////////////////////////////////////////////////////////////
         // Time point
@@ -491,73 +457,71 @@ namespace AZStd
 
         public:
             // 20.9.4.1, construct
-            time_point()
+            constexpr time_point()
                 : m_d(duration::zero()) {}          // has value epoch
-            explicit time_point(const duration& d)
+            constexpr explicit time_point(const duration& d)
                 : m_d(d) {}
             template <class Duration2>
-            time_point(const time_point<clock, Duration2>& t)
+            constexpr time_point(const time_point<clock, Duration2>& t)
                 : m_d(t.time_since_epoch()) {}
             // 20.9.4.2, observer:
-            duration time_since_epoch() const   { return m_d; }
+            constexpr duration time_since_epoch() const { return m_d; }
             // 20.9.4.3, arithmetic:
-            time_point& operator+=(const duration& d) { m_d += d; return *this; }
-            time_point& operator-=(const duration& d) { m_d -= d; return *this; }
+            AZSTD_CHRONO_CONSTEXPR time_point& operator+=(const duration& d) { m_d += d; return *this; }
+            AZSTD_CHRONO_CONSTEXPR time_point& operator-=(const duration& d) { m_d -= d; return *this; }
             // 20.9.4.4, special values:
-            static const time_point min()         { return time_point(duration::min()); }
-            static const time_point max()         { return time_point(duration::max()); }
+            static constexpr time_point min() { return time_point(duration::min()); }
+            static constexpr time_point max() { return time_point(duration::max()); }
         private:
             duration m_d;
         };
         //////////////////////////////////////////////////////////////////////////
+    } // namespace chrono
 
-        //----------------------------------------------------------------------------//
-        //      20.9.2.3 Specializations of common_type [time.traits.specializations] //
-        //----------------------------------------------------------------------------//
-        namespace Internal
-        {
-            template <class Rep1, class Period1, class Rep2, class Period2>
-            struct common_type< duration<Rep1, Period1>, duration<Rep2, Period2> >
-            {
-                typedef duration<typename common_type<Rep1, Rep2>::type, typename AZStd::Internal::ratio_gcd<Period1, Period2>::type> type;
-            };
+    //----------------------------------------------------------------------------//
+    //      20.9.2.3 Specializations of common_type [time.traits.specializations] //
+    //----------------------------------------------------------------------------//
+    template <class Rep1, class Period1, class Rep2, class Period2>
+    struct common_type< chrono::duration<Rep1, Period1>, chrono::duration<Rep2, Period2> >
+    {
+        typedef chrono::duration<common_type_t<Rep1, Rep2>, typename AZStd::Internal::ratio_gcd<Period1, Period2>::type> type;
+    };
 
-            template <class Clock, class Duration1, class Duration2>
-            struct common_type<time_point<Clock, Duration1>, time_point<Clock, Duration2> >
-            {
-                typedef time_point<Clock, typename common_type<Duration1, Duration2>::type> type;
-            };
-        }
+    template <class Clock, class Duration1, class Duration2>
+    struct common_type<chrono::time_point<Clock, Duration1>, chrono::time_point<Clock, Duration2> >
+    {
+        typedef chrono::time_point<Clock, common_type_t<Duration1, Duration2>> type;
+    };
 
+    namespace chrono
+    {
         //----------------------------------------------------------------------------//
         //      20.9.4.5 time_point non-member arithmetic [time.point.nonmember]      //
         //----------------------------------------------------------------------------//
         // time_point operator+(time_point x, duration y);
 
         template <class Clock, class Duration1, class Rep2, class Period2>
-        AZ_FORCE_INLINE time_point<Clock, typename Internal::common_type<Duration1, duration<Rep2, Period2> >::type>
+        inline constexpr time_point<Clock, common_type_t<Duration1, duration<Rep2, Period2> >>
         operator+(const time_point<Clock, Duration1>& lhs, const duration<Rep2, Period2>& rhs)
         {
-            typedef time_point<Clock, typename Internal::common_type<Duration1, duration<Rep2, Period2> >::type> TimeResult;
-            TimeResult r(lhs);
-            r += rhs;
-            return r;
+            using TimeResult = time_point<Clock, common_type_t<Duration1, duration<Rep2, Period2> >>;
+            return TimeResult(lhs.time_since_epoch() + rhs);
         }
 
         // time_point operator+(duration x, time_point y);
 
         template <class Rep1, class Period1, class Clock, class Duration2>
-        AZ_FORCE_INLINE time_point<Clock, typename Internal::common_type<duration<Rep1, Period1>, Duration2>::type>
+        inline constexpr time_point<Clock, common_type_t<duration<Rep1, Period1>, Duration2>>
         operator+(const duration<Rep1, Period1>& lhs, const time_point<Clock, Duration2>& rhs)  { return rhs + lhs; }
 
         // time_point operator-(time_point x, duration y);
         template <class Clock, class Duration1, class Rep2, class Period2>
-        AZ_FORCE_INLINE time_point<Clock, typename Internal::common_type<Duration1, duration<Rep2, Period2> >::type>
+        inline constexpr time_point<Clock, common_type_t<Duration1, duration<Rep2, Period2> >>
         operator-(const time_point<Clock, Duration1>& lhs, const duration<Rep2, Period2>& rhs)  { return lhs + (-rhs); }
 
         // duration operator-(time_point x, time_point y);
         template <class Clock, class Duration1, class Duration2>
-        AZ_FORCE_INLINE typename Internal::common_type<Duration1, Duration2>::type
+        inline constexpr common_type_t<Duration1, Duration2>
         operator-(const time_point<Clock, Duration1>& lhs, const time_point<Clock, Duration2>& rhs) { return lhs.time_since_epoch() - rhs.time_since_epoch(); }
 
         //----------------------------------------------------------------------------//
@@ -565,7 +529,7 @@ namespace AZStd
         //----------------------------------------------------------------------------//
         // time_point ==
         template <class Clock, class Duration1, class Duration2>
-        AZ_FORCE_INLINE bool
+        inline constexpr bool
         operator==(const time_point<Clock, Duration1>& lhs, const time_point<Clock, Duration2>& rhs)
         {
             return lhs.time_since_epoch() == rhs.time_since_epoch();
@@ -573,12 +537,12 @@ namespace AZStd
 
         // time_point !=
         template <class Clock, class Duration1, class Duration2>
-        AZ_FORCE_INLINE bool
+        inline constexpr bool
         operator!=(const time_point<Clock, Duration1>& lhs, const time_point<Clock, Duration2>& rhs)    { return !(lhs == rhs); }
 
         // time_point <
         template <class Clock, class Duration1, class Duration2>
-        AZ_FORCE_INLINE bool
+        inline constexpr bool
         operator<(const time_point<Clock, Duration1>& lhs, const time_point<Clock, Duration2>& rhs)
         {
             return lhs.time_since_epoch() < rhs.time_since_epoch();
@@ -586,24 +550,24 @@ namespace AZStd
 
         // time_point >
         template <class Clock, class Duration1, class Duration2>
-        AZ_FORCE_INLINE bool
+        inline constexpr bool
         operator>(const time_point<Clock, Duration1>& lhs, const time_point<Clock, Duration2>& rhs)     { return rhs < lhs; }
 
         // time_point <=
         template <class Clock, class Duration1, class Duration2>
-        AZ_FORCE_INLINE bool
+        inline constexpr bool
         operator<=(const time_point<Clock, Duration1>& lhs, const time_point<Clock, Duration2>& rhs)    { return !(rhs < lhs);  }
 
         // time_point >=
         template <class Clock, class Duration1, class Duration2>
-        AZ_FORCE_INLINE bool
+        inline constexpr bool
         operator>=(const time_point<Clock, Duration1>& lhs, const time_point<Clock, Duration2>& rhs)    { return !(lhs < rhs);  }
 
         //----------------------------------------------------------------------------//
         //      20.9.4.7 time_point_cast [time.point.cast]                            //
         //----------------------------------------------------------------------------//
         template <class ToDuration, class Clock, class Duration>
-        inline time_point<Clock, ToDuration> time_point_cast(const time_point<Clock, Duration>& t)
+        inline constexpr time_point<Clock, ToDuration> time_point_cast(const time_point<Clock, Duration>& t)
         {
             return time_point<Clock, ToDuration>(duration_cast<ToDuration>(t.time_since_epoch()));
         }

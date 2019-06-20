@@ -208,6 +208,8 @@
 #include <AzCore/Module/Environment.h>
 #include <AzCore/Component/ComponentApplication.h>
 
+#include <AzFramework/Entity/EntityDebugDisplayBus.h>
+
 #include "Prefabs/PrefabManager.h"
 #include "Prefabs/ScriptBind_PrefabManager.h"
 #include <Graphics/ColorGradientManager.h>
@@ -1963,6 +1965,9 @@ bool CCryAction::PostUpdate(bool haveFocus, unsigned int updateFlags)
     gEnv->p3DEngine->PrepareOcclusion(m_pSystem->GetViewCamera());
 
     CALL_FRAMEWORK_LISTENERS(OnPreRender());
+
+    // Also broadcast for anyone else that needs to draw global debug to do so now
+    AzFramework::DebugDisplayEventBus::Broadcast(&AzFramework::DebugDisplayEvents::DrawGlobalDebugInfo);
 
     m_pSystem->Render();
 

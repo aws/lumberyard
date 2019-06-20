@@ -18,7 +18,8 @@ def build(bld):
         vs_filter       = 'Tools/AssetProcessor',
         file_list       = 'asset_builder.waf_files',
         platforms       = ['win', 'darwin'],
-        configurations  = ['debug_all', 'profile_all'],
+        configurations  = ['all'],
+        exclude_monolithic = True,
         use             = ['AssetBuilderSDK'],
         uselib          = ['QT5CORE',
                            'QT5GUI',
@@ -28,7 +29,10 @@ def build(bld):
                            '@executable_path/../Frameworks',
                            '@executable_path'],
         win_features    = ['crcfix'],
-        features        = ['link_running_program']
+        features        = ['link_running_program'],
+
+        win_file_list   = ['asset_builder_win.waf_files'],
+        darwin_file_list = ['asset_builder_darwin.waf_files']
     )
 
 

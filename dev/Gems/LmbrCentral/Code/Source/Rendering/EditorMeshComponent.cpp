@@ -169,6 +169,7 @@ namespace LmbrCentral
         CryPhysicsComponentRequestBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorLocalBoundsRequestBus::Handler::BusConnect(GetEntityId());
 
         m_mesh.m_renderOptions.m_changeCallback =
             [this]()
@@ -194,6 +195,7 @@ namespace LmbrCentral
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
         AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorLocalBoundsRequestBus::Handler::BusDisconnect();
 
         DestroyEditorPhysics();
 
@@ -376,7 +378,9 @@ namespace LmbrCentral
         }
     }
 
-    void EditorMeshComponent::DisplayEntity(bool& handled)
+    void EditorMeshComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& /*debugDisplay*/)
     {
         const bool mouseHovered = m_accentType == AzToolsFramework::EntityAccentType::Hover;
 
@@ -405,13 +409,6 @@ namespace LmbrCentral
             {
                 geometry->DebugDraw(dd);
             }
-        }
-
-        if (m_mesh.HasMesh())
-        {
-            // Only allow Sandbox to draw the default sphere if we don't have a
-            // visible mesh.
-            handled = true;
         }
     }
 
@@ -537,12 +534,19 @@ namespace LmbrCentral
         CreateEditorPhysics();
     }
 
-    AZ::Aabb EditorMeshComponent::GetEditorSelectionBounds()
+    AZ::Aabb EditorMeshComponent::GetEditorSelectionBoundsViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/)
     {
         return GetWorldBounds();
     }
 
-    bool EditorMeshComponent::EditorSelectionIntersectRay(
+    AZ::Aabb EditorMeshComponent::GetEditorLocalBounds()
+    {
+        return GetLocalBounds();
+    }
+
+    bool EditorMeshComponent::EditorSelectionIntersectRayViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/,
         const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
     {
         if (IStatObj* geometry = GetStatObj())

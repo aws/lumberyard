@@ -95,6 +95,8 @@ namespace RoadsAndRivers
         void SetWaterStreamSpeed(float waterStreamSpeed) override;
         float GetWaterStreamSpeed() override;
 
+        AZ::Plane GetWaterSurfacePlane() override;
+
         /**
          * Triggers full rebuild of the river object, including geometry and render node generation
          */
@@ -143,6 +145,7 @@ namespace RoadsAndRivers
         void RenderingPropertyModified() override;
 
         void MaterialChanged();
+        void WaterVolumeDepthModified();
         void PhysicsPropertyModified();
         void TilingPropertyModified();
 

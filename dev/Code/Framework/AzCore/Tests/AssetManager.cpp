@@ -1531,9 +1531,8 @@ namespace UnitTest
         public:
             AZ_CLASS_ALLOCATOR(AssetHandlerAndCatalog, AZ::SystemAllocator, 0);
             AssetHandlerAndCatalog() = default;
-
-            AZ::u32 m_numCreations = 0;
-            AZ::u32 m_numDestructions = 0;
+            AZStd::atomic<int> m_numCreations = { 0 };
+            AZStd::atomic<int> m_numDestructions = { 0 };
             AZ::SerializeContext* m_context = nullptr;
 #if defined(USE_LOCAL_STORAGE)
             template <class T>
@@ -2168,6 +2167,117 @@ namespace UnitTest
 
             AssetManager::Destroy();
         }
+
+        void ParallelGetAndReleaseAsset()
+        {
+            SerializeContext context;
+            Asset1Prime::Reflect(context);
+
+            const size_t numThreads = 4;
+
+            AssetManager::Descriptor desc;
+            desc.m_maxWorkerThreads = 2;
+            AssetManager::Create(desc);
+
+            auto& db = AssetManager::Instance();
+
+            AssetHandlerAndCatalog* assetHandlerAndCatalog = aznew AssetHandlerAndCatalog;
+            assetHandlerAndCatalog->m_context = &context;
+            AZStd::vector<AssetType> types;
+            assetHandlerAndCatalog->GetHandledAssetTypes(types);
+            for (const auto& type : types)
+            {
+                db.RegisterHandler(assetHandlerAndCatalog, type);
+                db.RegisterCatalog(assetHandlerAndCatalog, type);
+            }
+
+            AZStd::vector<AZ::Uuid> assetUuids = {
+                AZ::Uuid(MYASSET1_ID),
+                AZ::Uuid(MYASSET2_ID),
+            };
+            AZStd::vector<AZStd::thread> threads;
+            AZStd::atomic<int> threadCount(numThreads);
+            AZStd::atomic_bool keepDispatching(true);
+
+            auto dispatch = [&keepDispatching]()
+            {
+                while (keepDispatching)
+                {
+                    AssetManager::Instance().DispatchEvents();
+                }
+            };
+
+            AZStd::atomic_bool wait(true);
+            AZStd::atomic_bool keepRunning(true);
+            AZStd::atomic<int> threadsRunning(0);
+            AZStd::atomic<int> dummy(0);
+
+            AZStd::thread dispatchThread(dispatch);
+
+            auto getAssetFunc = [&db, &threadCount, assetUuids, &wait, &threadsRunning, &dummy, &keepRunning](int index)
+            {
+                threadsRunning++;
+                while (wait)
+                {
+                    AZStd::this_thread::yield();
+                }
+
+                while (keepRunning)
+                {
+                    for (int innerIdx = index* 7; innerIdx > 0; innerIdx--)
+                    {
+                        // this inner loop is just to burn some time which will be different
+                        // per thread. Adding a dummy statement to ensure that the compiler does not optimize this loop.
+                        dummy = innerIdx;
+                    }
+
+                    int assetIndex = (int)(index % assetUuids.size());
+                    Data::Asset<Asset1Prime> asset1 = db.GetAsset(assetUuids[assetIndex], azrtti_typeid<Asset1Prime>(), false, nullptr);
+                    
+                    // There should be at least 1 ref here in this scope
+                    EXPECT_GE(asset1.Get()->GetUseCount(), 1);
+                };
+
+                threadCount--;
+            };
+
+            for (int idx = 0; idx < numThreads; idx++)
+            {
+                threads.emplace_back(AZStd::bind(getAssetFunc, idx));
+            }
+
+            while (threadsRunning < numThreads)
+            {
+                AZStd::this_thread::yield();
+            }
+
+            // We have ensured that all the threads have started at this point and we can let them start hammering at the AssetManager
+            wait = false;
+
+            AZStd::chrono::system_clock::time_point start = AZStd::chrono::system_clock::now();
+            while (AZStd::chrono::duration_cast<AZStd::chrono::milliseconds>(AZStd::chrono::system_clock::now() - start) < AZStd::chrono::seconds(2))
+            {
+                AZStd::this_thread::yield();
+            }
+
+            keepRunning = false;
+
+            for (auto& thread : threads)
+            {
+                thread.join();
+            }
+
+            EXPECT_EQ(threadCount, 0);
+
+            EXPECT_EQ(assetHandlerAndCatalog->m_numCreations, assetHandlerAndCatalog->m_numDestructions);
+            EXPECT_FALSE(db.FindAsset(assetUuids[0]));
+            EXPECT_FALSE(db.FindAsset(assetUuids[1]));
+
+            keepDispatching = false;
+            dispatchThread.join();
+
+            AssetManager::Destroy();
+        }
     };
 
     TEST_F(AssetJobsMultithreadedTest, ParallelCreateAndDestroy)
@@ -2175,6 +2285,14 @@ namespace UnitTest
         // This test will hang on apple platforms.  Disable it for those platforms for now until we can fix it, but keep it enabled for the other platforms
 #if !defined(AZ_PLATFORM_APPLE)
         ParallelCreateAndDestroy();
+#endif
+    }
+
+    TEST_F(AssetJobsMultithreadedTest, ParallelGetAndReleaseAsset)
+    {
+        // This test will hang on apple platforms.  Disable it for those platforms for now until we can fix it, but keep it enabled for the other platforms
+#if !defined(AZ_PLATFORM_APPLE)
+        ParallelGetAndReleaseAsset();
 #endif
     }
 

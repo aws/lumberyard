@@ -41,7 +41,8 @@ def build(bld):
                                'LZSS',
                                'LZ4',
                                'AMD_SHARED',
-                               'NVAPI'],
+                               'NVAPI',
+                               'GLAD'],
         includes            = [ '..', '../..',
                                 bld.Path('Code/Tools/HLSLCrossCompiler/include'),
                                 bld.Path('Code/CryEngine/RenderDll/Common'),
@@ -67,7 +68,7 @@ def build(bld):
                                 '-Wno-enum-compare-switch'],
 
         # Platform Specific
-        win_file_list       = ['opengl_mesh_baker.waf_files', 'opengl_loader_gl.waf_files', 'opengl_loader_wgl.waf_files'],
+        win_file_list       = ['opengl_mesh_baker.waf_files'],
         win_includes        = ['.',
                                bld.Path('Code/Tools/HLSLCrossCompiler/include'),
                                bld.ThirdPartyPath('squish')],
@@ -84,7 +85,7 @@ def build(bld):
         android_includes    = [ bld.Path('Code/Tools/HLSLCrossCompiler/include') ],
         android_lib         = [ 'GLESv2', 'EGL' ],
 
-        android_file_list   = ['opengl_mesh_baker.waf_files', 'opengl_loader_gles.waf_files', 'opengl_loader_egl.waf_files'],
+        android_file_list   = ['opengl_mesh_baker.waf_files'],
         
         # Testing
         test_all_file_list  = ['opengl_test.waf_files'],

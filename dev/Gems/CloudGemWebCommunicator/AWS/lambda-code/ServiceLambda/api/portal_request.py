@@ -78,7 +78,7 @@ def _register_user(clientId):
 
     #Cognito Users' policies are attached to CognitoID, Certificate Permissions are attached to CertificateARN
     principalId = client_info.get('CertificateARN',clientId)
-    iot_client.attach_principal_policy(principal=principalId, policyName=policy_name)
+    iot_client.attach_policy(target=principalId, policyName=policy_name)
 
 def _ban_user(clientId):
     print 'Banning user {}'.format(clientId)
@@ -97,7 +97,7 @@ def _ban_user(clientId):
 
     #Cognito Users' policies are attached to CognitoID, Certificate Permissions are attached to CertificateARN
     principalId = client_info.get('CertificateARN',clientId)
-    iot_client.detach_principal_policy(principal=principalId, policyName=policy_name)
+    iot_client.detach_policy(target=principalId, policyName=policy_name)
 
     iot_request.force_disconnect(clientId)
 

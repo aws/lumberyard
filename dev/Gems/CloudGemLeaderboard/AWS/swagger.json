@@ -23,12 +23,12 @@
                 "interface": "CloudGemLeaderboard_LoadTest_1_0_0"
             }
         },
-        "/score": {
+        "/score/dedicated": {
             "x-amazon-cloud-canvas-lambda-dispatch": {
-                "module": "submit_score"
+                "module": "submit_score_dedicated"
             },
             "post" : {
-                "description": "submit a new high score",
+                "description": "submit a new high score from a dedicated server",
                 "parameters": [
                     {
                         "name": "score_entry",

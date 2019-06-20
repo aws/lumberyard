@@ -1,0 +1,19 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="AM_Rock_Cliff_01_mat" MtlFlags="524416" Shader="Illum" GenMask="1000002A000083" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%DETAIL_MAPPING%NORMAL_MAP%OFFSET_BUMP_MAPPING%PARALLAX_OCCLUSION_MAPPING%SUBSURFACE_SCATTERING" SurfaceType="mat_rock" Diffuse="1,1,1,1" Specular="0.03954624,0.03954624,0.03954624,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="textures/natural/terrain/am_mud3_diff.dds"/>
+    <Texture Map="Bumpmap" File="textures/natural/terrain/am_mud3_ddna.dds"/>
+    <Texture Map="Detail" File="objects/natural/rocks/rock03_detail.dds">
+     <TexMod TexMod_RotateType="0" TexMod_TexGenType="0" TexMod_bTexGenProjected="0" RotateU="32.997437" TileU="2" RotateV="32.997437" TileV="2"/>
+    </Texture>
+    <Texture Map="Heightmap" File="textures/natural/terrain/am_mud3_displ.dds"/>
+    <Texture Map="Smoothness" File="textures/natural/terrain/am_mud3_ddna.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" PomDisplacement="0.029999999" DetailDiffuseScale="0.5" SSSIndex="0" DetailBumpScale="0.5" SelfShadowStrength="3" ObmDisplacement="0.0099999998" HeightBias="1" DetailGlossScale="0.5" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="AM_Rock_Cliff_01_Proxy_mat" MtlFlags="558208" Shader="Nodraw" GenMask="0" StringGenMask="" SurfaceType="mat_rock" Diffuse="0.5,0.5,0.5,1" Specular="0,0,0,0.039215688" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures />
+  </Material>
+ </SubMaterials>
+</Material>

@@ -18,12 +18,14 @@
 
 namespace ScriptCanvas
 {
-    class TypeContract
+    class RestrictedTypeContract
         : public Contract
     {
     public:
-        AZ_CLASS_ALLOCATOR(TypeContract, AZ::SystemAllocator, 0);
-        AZ_RTTI(TypeContract, "{92343025-F306-4457-B646-1E0989521D2C}", Contract);
+        AZ_CLASS_ALLOCATOR(RestrictedTypeContract, AZ::SystemAllocator, 0);
+        AZ_RTTI(RestrictedTypeContract, "{92343025-F306-4457-B646-1E0989521D2C}", Contract);
+
+        static void Reflect(AZ::ReflectContext* reflection);
 
         enum Flags : int
         {
@@ -31,24 +33,30 @@ namespace ScriptCanvas
             Exclusive, //> Contract may satisfy any endpoint except to those types in the contract.
         };
 
-        TypeContract(Flags flags = Inclusive) : m_flags(flags) {}
-        TypeContract(std::initializer_list<Data::Type> types, Flags flags = Inclusive)
-            : TypeContract(types.begin(), types.end(), flags)
+        RestrictedTypeContract(Flags flags = Inclusive)
+            : m_flags(flags)
+        {
+        }
+
+        RestrictedTypeContract(std::initializer_list<Data::Type> types, Flags flags = Inclusive)
+            : RestrictedTypeContract(types.begin(), types.end(), flags)
         {}
+
         template<typename Container>
-        TypeContract(const Container& types, Flags flags = Inclusive)
-            : TypeContract(types.begin(), types.end(), flags)
+        RestrictedTypeContract(const Container& types, Flags flags = Inclusive)
+            : RestrictedTypeContract(types.begin(), types.end(), flags)
         {}
+
         template<typename InputIterator>
-        TypeContract(InputIterator first, InputIterator last, Flags flags = Inclusive)
+        RestrictedTypeContract(InputIterator first, InputIterator last, Flags flags = Inclusive)
             : m_types(first, last)
             , m_flags(flags)
         {}
-        ~TypeContract() override = default;
 
-        static void Reflect(AZ::ReflectContext* reflection);
+        ~RestrictedTypeContract() override = default;
 
         void AddType(Data::Type&& type) { m_types.emplace_back(AZStd::move(type)); }
+
     protected:
         Flags m_flags;
         AZStd::vector<Data::Type> m_types;

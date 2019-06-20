@@ -76,6 +76,7 @@ namespace AzFramework
             AssetStatus CompileAssetSync_FlushIO(const AZStd::string& assetPath) override;
             AssetStatus GetAssetStatus_FlushIO(const AZStd::string& assetPath) override;
             void ShowAssetProcessor() override;
+            void ShowInAssetProcessor(const AZStd::string& assetPath) override;
             float GetAssetProcessorPingTimeMilliseconds() override;
             void SetAssetProcessorPort(AZ::u16 port) override;
             void SetBranchToken(const AZStd::string branchtoken) override;

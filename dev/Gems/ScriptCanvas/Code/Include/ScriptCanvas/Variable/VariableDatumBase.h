@@ -25,9 +25,10 @@ namespace ScriptCanvas
         static void Reflect(AZ::ReflectContext* context);
 
         VariableDatumBase() = default;
-        VariableDatumBase(const Datum& variableData);
-        VariableDatumBase(Datum&& variableData);
-
+        explicit VariableDatumBase(const Datum& variableData);
+        explicit VariableDatumBase(Datum&& variableData);
+        VariableDatumBase(const Datum& value, VariableId id);
+        
         bool operator==(const VariableDatumBase& rhs) const;
         bool operator!=(const VariableDatumBase& rhs) const;
 

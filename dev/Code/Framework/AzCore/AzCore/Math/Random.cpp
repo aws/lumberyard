@@ -40,7 +40,7 @@ using namespace AZ;
 BetterPseudoRandom::BetterPseudoRandom()
 { 
 #if defined(AZ_PLATFORM_WINDOWS)
-    if (!::CryptAcquireContext(&m_generatorHandle, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
+    if (!CryptAcquireContext(&m_generatorHandle, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
     {
         AZ_Warning("System", false, "CryptAcquireContext failed with 0x%08x\n", GetLastError());
         m_generatorHandle = 0;
@@ -80,7 +80,7 @@ bool BetterPseudoRandom::GetRandom(void* data, size_t dataSize)
     {
         return false;
     }
-    if (!::CryptGenRandom(m_generatorHandle, static_cast<DWORD>(dataSize), static_cast<PBYTE>(data)))
+    if (!CryptGenRandom(m_generatorHandle, static_cast<DWORD>(dataSize), static_cast<PBYTE>(data)))
     {
         AZ_TracePrintf("System", "Failed to call CryptGenRandom!");
         return false;

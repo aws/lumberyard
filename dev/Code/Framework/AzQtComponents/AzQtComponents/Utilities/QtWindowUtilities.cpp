@@ -11,6 +11,7 @@
 */
 
 #include <AzQtComponents/Utilities/QtWindowUtilities.h>
+#include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QMainWindow>
@@ -18,6 +19,12 @@
 #include <QDockWidget>
 #include <QCursor>
 #include <QScreen>
+#include <QTimer>
+#include <QWindow>
+
+#ifdef Q_OS_WIN
+#include <Windows.h>
+#endif // #ifdef Q_OS_WIN
 
 namespace AzQtComponents
 {
@@ -114,5 +121,56 @@ namespace AzQtComponents
         SetCursorPos(QPoint(x, y));
     }
 
+    void bringWindowToTop(QWidget* widget)
+    {
+        auto window = widget->window();
+
+        bool wasMaximized = window->isMaximized();
+
+        // this will un-maximize a window that's previously been maximized...
+        window->setWindowState(Qt::WindowActive);
+
+        if (wasMaximized)
+        {
+            // re-maximize it now
+            window->showMaximized();
+        }
+        else if (WindowDecorationWrapper* wrapper = qobject_cast<WindowDecorationWrapper*>(window))
+        {
+            // otherwise, restore this from any saved settings if we can
+            wrapper->showFromSettings();
+        }
+        else
+        {
+            window->show();
+        }
+
+        window->raise();
+
+        // activateWindow only works if the window is shown, so let's include
+        // a slight delay to make sure the events for showing the window
+        // have been processed.
+        QTimer::singleShot(0, widget, [widget] {
+            widget->activateWindow();
+            if (QWindow* window = widget->window()->windowHandle())
+            {
+                window->requestActivate();
+            }
+
+            // The Windows OS has all kinds of issues with bringing a window to the front
+            // from another application.
+            // For the moment, we assume that any other application calling this
+            // has called AllowSetForegroundWindow(), otherwise, the code below
+            // won't work.
+#ifdef Q_OS_WIN
+            HWND hwnd = reinterpret_cast<HWND>(widget->winId());
+            SetForegroundWindow(hwnd);
+
+            // Hack to get this to show up for sure
+            ::SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            ::SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+#endif // Q_OS_WIN
+        });
+    }
 } // namespace AzQtComponents
 

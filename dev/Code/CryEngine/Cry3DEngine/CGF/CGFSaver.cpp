@@ -336,10 +336,10 @@ int CSaverCGF::SaveBoneMesh(bool bSwapEndian, PhysicalProxy& proxy)
     SAFE_DELETE_ARRAY(faces);
 
     int nMeshChunkId = m_pChunkFile->AddChunk(
-            ChunkType_BoneMesh,
-            MESH_CHUNK_DESC_0745::VERSION,
-            eEndianness_Native,
-            chunkData.data, chunkData.size);
+        ChunkType_BoneMesh,
+        MESH_CHUNK_DESC_0745::VERSION,
+        eEndianness_Native,
+        chunkData.data, chunkData.size);
 
     return nMeshChunkId;
 }
@@ -428,15 +428,15 @@ int CSaverCGF::SaveNode(
 
     // Set matrix to node chunk.
     float* pMat = (float*)&chunk.tm;
-    pMat[ 0] = pNode->localTM(0, 0);
-    pMat[ 1] = pNode->localTM(1, 0);
-    pMat[ 2] = pNode->localTM(2, 0);
-    pMat[ 4] = pNode->localTM(0, 1);
-    pMat[ 5] = pNode->localTM(1, 1);
-    pMat[ 6] = pNode->localTM(2, 1);
-    pMat[ 8] = pNode->localTM(0, 2);
-    pMat[ 9] = pNode->localTM(1, 2);
-    pMat[10] =  pNode->localTM(2, 2);
+    pMat[0] = pNode->localTM(0, 0);
+    pMat[1] = pNode->localTM(1, 0);
+    pMat[2] = pNode->localTM(2, 0);
+    pMat[4] = pNode->localTM(0, 1);
+    pMat[5] = pNode->localTM(1, 1);
+    pMat[6] = pNode->localTM(2, 1);
+    pMat[8] = pNode->localTM(0, 2);
+    pMat[9] = pNode->localTM(1, 2);
+    pMat[10] = pNode->localTM(2, 2);
     pMat[12] = pNode->localTM.GetTranslation().x * SCALE_TO_CGF;
     pMat[13] = pNode->localTM.GetTranslation().y * SCALE_TO_CGF;
     pMat[14] = pNode->localTM.GetTranslation().z * SCALE_TO_CGF;
@@ -528,10 +528,10 @@ int CSaverCGF::SaveNode(
     chunkData.AddData(pNode->properties.c_str(), PropLen);
 
     pNode->nChunkId = m_pChunkFile->AddChunk(
-            ChunkType_Node,
-            NODE_CHUNK_DESC_0824::VERSION,
-            (bSwapEndian ? eEndianness_NonNative : eEndianness_Native),
-            chunkData.data, chunkData.size);
+        ChunkType_Node,
+        NODE_CHUNK_DESC_0824::VERSION,
+        (bSwapEndian ? eEndianness_NonNative : eEndianness_Native),
+        chunkData.data, chunkData.size);
 
 #if defined(RESOURCE_COMPILER)
     if (pSkinningInfo)
@@ -637,10 +637,10 @@ int CSaverCGF::SaveUncompiledNode(CNodeCGF* pNode)
     chunkData.AddData(pNode->properties.c_str(), chunk.PropStrLen);
 
     pNode->nChunkId = m_pChunkFile->AddChunk(
-            ChunkType_Node,
-            NODE_CHUNK_DESC_0824::VERSION,
-            eEndianness_Native,
-            chunkData.data, chunkData.size);
+        ChunkType_Node,
+        NODE_CHUNK_DESC_0824::VERSION,
+        eEndianness_Native,
+        chunkData.data, chunkData.size);
 
     return pNode->nChunkId;
 }
@@ -941,10 +941,10 @@ int CSaverCGF::SaveNodeMesh(
     SwapEndian(chunk, bSwapEndian);
 
     const int nMeshChunkId = m_pChunkFile->AddChunk(
-            ChunkType_Mesh,
-            MESH_CHUNK_DESC_0802::VERSION,
-            (bSwapEndian ? eEndianness_NonNative : eEndianness_Native),
-            &chunk, sizeof(chunk));
+        ChunkType_Mesh,
+        MESH_CHUNK_DESC_0802::VERSION,
+        (bSwapEndian ? eEndianness_NonNative : eEndianness_Native),
+        &chunk, sizeof(chunk));
 
     m_mapMeshToChunk[pNode->pMesh] = nMeshChunkId;
 
@@ -1190,10 +1190,10 @@ int CSaverCGF::SaveUncompiledNodeMesh(CNodeCGF* pNode)
     }
 
     int nMeshChunkId = m_pChunkFile->AddChunk(
-            ChunkType_Mesh,
-            MESH_CHUNK_DESC_0745::VERSION,
-            eEndianness_Native,
-            chunkData.data, chunkData.size);
+        ChunkType_Mesh,
+        MESH_CHUNK_DESC_0745::VERSION,
+        eEndianness_Native,
+        chunkData.data, chunkData.size);
 
     m_mapMeshToChunk[pNode->pMesh] = nMeshChunkId;
 
@@ -1423,6 +1423,10 @@ int CSaverCGF::SaveExportFlags(bool bSwapEndian)
     {
         chunk.flags |= EXPORT_FLAGS_CHUNK_DESC::EIGHT_WEIGHTS_PER_VERTEX;
     }
+    if (pExpInfo->bSkinnedCGF)
+    {
+        chunk.flags |= EXPORT_FLAGS_CHUNK_DESC::SKINNED_CGF;
+    }
 
     if (pExpInfo->bFromColladaXSI)
     {
@@ -1535,10 +1539,10 @@ int CSaverCGF::SaveMaterial(CMaterialCGF* pMtl, bool bSwapEndian)
     }
 
     pMtl->nChunkId = m_pChunkFile->AddChunk(
-            ChunkType_MtlName,
-            MTL_NAME_CHUNK_DESC_0802::VERSION,
-            (bSwapEndian ? eEndianness_NonNative : eEndianness_Native),
-            chunkData.data, chunkData.size);
+        ChunkType_MtlName,
+        MTL_NAME_CHUNK_DESC_0802::VERSION,
+        (bSwapEndian ? eEndianness_NonNative : eEndianness_Native),
+        chunkData.data, chunkData.size);
 
     return pMtl->nChunkId;
 }
@@ -1576,6 +1580,8 @@ int CSaverCGF::SaveFoliage()
     FOLIAGE_INFO_CHUNK_DESC chunk;
     ZeroStruct(chunk);
 
+    bool isSkinned = m_pCGF->GetExportInfo()->bSkinnedCGF;
+
     SFoliageInfoCGF& fi = *m_pCGF->GetFoliageInfo();
 
     if (fi.nSpines > 0)
@@ -1594,6 +1600,9 @@ int CSaverCGF::SaveFoliage()
         FOLIAGE_SPINE_SUB_CHUNK* const pSpineBuf = new FOLIAGE_SPINE_SUB_CHUNK[fi.nSpines];
         Vec3* const pSpineVtx = new Vec3[chunk.nSpineVtx];
         Vec4* const pSpineSegDim = new Vec4[chunk.nSpineVtx];
+        float* const pStiffness = new float[chunk.nSpineVtx];
+        float* const pDamping = new float[chunk.nSpineVtx];
+        float* const pThickness = new float[chunk.nSpineVtx];
 
         memset(pSpineBuf, 0, sizeof(pSpineBuf[0]) * fi.nSpines);
 
@@ -1606,6 +1615,9 @@ int CSaverCGF::SaveFoliage()
             pSpineBuf[i].iAttachSeg = fi.pSpines[i].iAttachSeg + 1;
             memcpy(pSpineVtx + j, fi.pSpines[i].pVtx, fi.pSpines[i].nVtx * sizeof(Vec3));
             memcpy(pSpineSegDim + j, fi.pSpines[i].pSegDim, fi.pSpines[i].nVtx * sizeof(Vec4));
+            memcpy(pStiffness + j, fi.pSpines[i].pStiffness, fi.pSpines[i].nVtx * sizeof(float));
+            memcpy(pDamping + j, fi.pSpines[i].pDamping, fi.pSpines[i].nVtx * sizeof(float));
+            memcpy(pThickness + j, fi.pSpines[i].pThickness, fi.pSpines[i].nVtx * sizeof(float));
         }
 
         CChunkData chunkData;
@@ -1613,16 +1625,40 @@ int CSaverCGF::SaveFoliage()
         chunkData.AddData(pSpineBuf, sizeof(pSpineBuf[0]) * fi.nSpines);
         chunkData.AddData(pSpineVtx, sizeof(pSpineVtx[0]) * chunk.nSpineVtx);
         chunkData.AddData(pSpineSegDim, sizeof(pSpineSegDim[0]) * chunk.nSpineVtx);
-        chunkData.AddData(fi.pBoneMapping, sizeof(fi.pBoneMapping[0]) * fi.nSkinnedVtx);
-        chunkData.AddData(&fi.chunkBoneIds[0], sizeof(fi.chunkBoneIds[0]) * fi.chunkBoneIds.size());
+        chunkData.AddData(pStiffness, sizeof(pStiffness[0]) * chunk.nSpineVtx);
+        chunkData.AddData(pDamping, sizeof(pDamping[0]) * chunk.nSpineVtx);
+        chunkData.AddData(pThickness, sizeof(pThickness[0]) * chunk.nSpineVtx);
+        //Add bone mapping(s)
+        if (isSkinned && chunk.nBoneIds == 0)
+        {
+            int numBoneMapping = fi.boneMappings.size();
+            chunkData.AddData(&numBoneMapping, sizeof(numBoneMapping));
 
+            AZStd::unordered_map<AZStd::string, SMeshBoneMappingInfo_uint8*>::iterator iter = fi.boneMappings.begin();
+            while (iter != fi.boneMappings.end())
+            {
+                const SMeshBoneMappingInfo_uint8* pBoneMappingEntry = iter->second;
+                chunkData.AddData(iter->first.c_str(), CGF_NODE_NAME_LENGTH);
+                chunkData.AddData(&pBoneMappingEntry->nVertexCount, sizeof(int));
+                chunkData.AddData(pBoneMappingEntry->pBoneMapping, sizeof(pBoneMappingEntry->pBoneMapping[0]) * pBoneMappingEntry->nVertexCount);
+                iter++;
+            }
+        }
+        else
+        {
+            chunkData.AddData(fi.pBoneMapping, sizeof(fi.pBoneMapping[0]) * fi.nSkinnedVtx);
+            chunkData.AddData(&fi.chunkBoneIds[0], sizeof(fi.chunkBoneIds[0]) * fi.chunkBoneIds.size());
+        }
         delete[] pSpineSegDim;
         delete[] pSpineVtx;
         delete[] pSpineBuf;
+        delete[] pStiffness;
+        delete[] pDamping;
+        delete[] pThickness;
 
         return m_pChunkFile->AddChunk(
             ChunkType_FoliageInfo,
-            FOLIAGE_INFO_CHUNK_DESC::VERSION,
+            FOLIAGE_INFO_CHUNK_DESC::VERSION2,
             eEndianness_Native,
             chunkData.data, chunkData.size);
     }

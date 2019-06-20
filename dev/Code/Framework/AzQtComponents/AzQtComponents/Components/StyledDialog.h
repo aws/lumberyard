@@ -17,6 +17,8 @@
 
 namespace AzQtComponents
 {
+    class WindowDecorationWrapper;
+
     class AZ_QT_COMPONENTS_API StyledDialog
         : public QDialog
     {
@@ -24,6 +26,9 @@ namespace AzQtComponents
 
     public:
         explicit StyledDialog(QWidget* parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
+
+        void enableSaveRestoreGeometry(const QString& key);
+        bool restoreGeometryFromSettings();
     };
 } // namespace AzQtComponents
 

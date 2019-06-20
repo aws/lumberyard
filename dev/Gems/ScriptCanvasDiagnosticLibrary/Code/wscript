@@ -46,20 +46,12 @@ def build(bld):
                             bld.Path('Code/Sandbox/Editor'),
                             bld.Path('Code/Sandbox/Editor/Include'),
                             bld.Path('Code/Sandbox/Plugins/EditorCommon'),
-                            bld.Path('Code/Sandbox'),                            
+                            bld.Path('Code/Sandbox'),
                             bld.Path('Code/CryEngine') ],
         export_includes = ['.'],
+
         file_list = ['scriptcanvasdiagnosticlibrary_common.waf_files'],
         test_all_file_list = ['scriptcanvasdiagnosticlibrary_tests.waf_files'],
-        
-        android_file_list = ['scriptcanvasdiagnosticlibrary_game.waf_files'],
-        appletv_file_list = ['scriptcanvasdiagnosticlibrary_game.waf_files'],
-
-        ios_file_list = ['scriptcanvasdiagnosticlibrary_game.waf_files'],
-        linux_file_list = ['scriptcanvasdiagnosticlibrary_game.waf_files'],
-
-        darwin_file_list = ['scriptcanvasdiagnosticlibrary_editor.waf_files'],
-        win_file_list = ['scriptcanvasdiagnosticlibrary_editor.waf_files'],
 
         # Suppressing level 1 warning C4351 on windows
         # new behavior: elements of array 'array' will be default initialized
@@ -68,34 +60,6 @@ def build(bld):
 
         az_code_gen = AZ_CODEGEN_ARGS,
 
-         # Editor Gem configuration
-        editor = dict(
-            configurations  = ['debug', 'profile'],
-            defines         = ['SCRIPTCANVASDIAGNOSTICSLIBRARY_EDITOR'],
-            win_defines     = ['SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR'],
-            darwin_defines  = ['SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR'],
-            features        = ['qt5', 'az_code_gen'],
-            az_code_gen     = AZ_CODEGEN_ARGS,
-            vs_filter       = 'Gems/ScriptCanvas',
-            win_file_list       = ['scriptcanvasdiagnosticlibrary_common.waf_files', 'scriptcanvasdiagnosticlibrary_editor.waf_files'],
-            win_use             = ['AzQtComponents','CryCommon','ScriptCanvas'],
-            uselib          = ['QT5CORE',
-                               'QT5QUICK',
-                               'QT5QML',
-                               'QT5GUI',
-                               'QT5WIDGETS'],
-            includes        = [ '.',
-                                '..',
-                                'Include',
-                                'Source',
-                                bld.Path('Code/CryEngine')
-                                ],
-            export_includes = ['.'],
-
-        )
     )
 
-    for p0, p1, p2, p3 in bld.env['RESTRICTED_PLATFORMS']:
-        kw['{}_file_list'.format(p3)] = ['scriptcanvasdiagnosticlibrary_game.waf_files']
-    
     bld.DefineGem(**kw)

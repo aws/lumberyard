@@ -9,8 +9,17 @@
             "native/FileServer/fileServer.h"
         ],
         
-        
+        "style": [
+            "native/ui/style/AssetProcessor.qrc",
+            "native/ui/style/AssetProcessor.qss",
+            "native/ui/style/AssetProcessorConfig.ini",
+            "native/ui/style/AssetsTab.qss",
+            "native/ui/style/LogsTab.qss"
+        ],
+
         "ui": [
+            "native/ui/ConnectionEditDialog.h",
+            "native/ui/ConnectionEditDialog.cpp",
             "native/ui/MainWindow.h",
             "native/ui/MainWindow.cpp",
             "native/ui/MainWindow.ui"

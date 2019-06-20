@@ -23,10 +23,10 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/TickBus.h>
 
-#include <PresignedURL/PresignedURLBus.h>
 #include <FileTransferSupport/FileTransferSupport.h>
 
 #include <DynamicContent/DynamicContentBus.h>
+#include <PresignedURL/PresignedURLBus.h>
 
 #include <chrono>
 
@@ -130,7 +130,7 @@ namespace CloudCanvas
         protected:
             //////////////////////////////////////////////////////////////////////////
             // TickBus
-            void	OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
+            void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
             //////////////////////////////////////////////////////////////////////////
 
         private:

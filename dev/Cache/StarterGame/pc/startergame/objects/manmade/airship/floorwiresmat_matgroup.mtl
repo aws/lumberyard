@@ -1,0 +1,11 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="FloorWiresMAT" MtlFlags="524416" Shader="Illum" GenMask="4000000000001" StringGenMask="%ALLOW_SILHOUETTE_POM%SUBSURFACE_SCATTERING" SurfaceType="mat_metal" Diffuse="0.03189604,0.03954624,0.057805438,1" Specular="0.04518621,0.04518621,0.04518621,1" Emittance="0,0,0,0" Opacity="1" Shininess="90" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="engineassets/textures/white.dds"/>
+   </Textures>
+   <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

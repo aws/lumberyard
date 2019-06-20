@@ -24,14 +24,17 @@
 #include <AzFramework/Asset/AssetSystemBus.h>
 #include <AzToolsFramework/API/EditorAssetSystemAPI.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
+#include <AzToolsFramework/Undo/UndoSystem.h>
+#include <Editor/EditorClassConverters.h>
 
 #include <IEditor.h>
 #include <I3DEngine.h>
 
 namespace PhysX
 {
-    static const float MaxCryTerrainHeight = 1024.f;
-    static const float MaxPhysxTerrainHeight = 32767.0f;
+    static const float s_maxCryTerrainHeight = 1024.f;
+    static const float s_maxPhysxTerrainHeight = 32767.0f;
+    static const AZStd::string s_modifyTerrainCommand = "Modify Terrain";
 
     namespace TerrainUtils
     {
@@ -111,9 +114,9 @@ namespace PhysX
             AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
 
             // Scale back up the height when instancing the heightfield into the world
-            float heightScale = MaxCryTerrainHeight / MaxPhysxTerrainHeight;
-            float rowScale = editor->Get3DEngine()->GetHeightMapUnitSize();
-            float colScale = editor->Get3DEngine()->GetHeightMapUnitSize();
+            const float heightScale = s_maxCryTerrainHeight / s_maxPhysxTerrainHeight;
+            const float rowScale = editor->Get3DEngine()->GetHeightMapUnitSize();
+            const float colScale = editor->Get3DEngine()->GetHeightMapUnitSize();
             return AZ::Vector3(rowScale, colScale, heightScale);
         }
     }
@@ -123,12 +126,11 @@ namespace PhysX
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorTerrainComponent, EditorComponentBase>()
-                ->Version(1)
+                ->Version(2, &ClassConverters::EditorTerrainComponentConverter)
                 ->Field("Configuration", &EditorTerrainComponent::m_configuration)
                 ->Field("ExportedAssetPath", &EditorTerrainComponent::m_exportAssetPath)
-                ->Field("ExportOnSave", &EditorTerrainComponent::m_exportOnSave)
                 ->Field("TerrainInEditor", &EditorTerrainComponent::m_createTerrainInEditor)
-            ;
+                ;
 
             if (auto editContext = serializeContext->GetEditContext())
             {
@@ -143,11 +145,9 @@ namespace PhysX
                     ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorTerrainComponent::m_configuration, "Configuration", "Terrain configuration")
                     ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorTerrainComponent::UpdateHeightFieldAsset)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorTerrainComponent::m_exportOnSave, "Export On Save", "Cry terrain will be exported to an asset when the level is saved")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorTerrainComponent::m_createTerrainInEditor, "Terrain In Editor", "If true, terrain will be added to the editor world")
                     ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorTerrainComponent::CreateEditorTerrain)
-                ;
+                    ;
             }
         }
     }
@@ -155,27 +155,36 @@ namespace PhysX
     void EditorTerrainComponent::Activate()
     {
         AzToolsFramework::Components::EditorComponentBase::Activate();
-        PhysX::EditorTerrainComponentRequestsBus::Handler::BusConnect(GetEntityId());
-
-        Physics::EditorTerrainMaterialRequestsBus::Handler::BusConnect();
+        Physics::EditorTerrainComponentRequestsBus::Handler::BusConnect(GetEntityId());
+        Physics::EditorTerrainMaterialRequestsBus::Handler::BusConnect(GetEntityId());
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusConnect();
+        PhysX::Utils::LogWarningIfMultipleComponents<Physics::EditorTerrainComponentRequestsBus>(
+            "EditorTerrainComponent", 
+            "Multiple EditorTerrainComponents found in the editor scene on these entities:");
 
         // If this component is newly created, it won't have an asset id assigned yet, so export immediately.
         if (!m_configuration.m_heightFieldAsset.GetId().IsValid())
         {
-            ExportTerrain();
+            m_configuration.m_heightFieldAsset = CreateHeightFieldAsset();
+            UpdateHeightFieldAsset();
+            SaveHeightFieldAsset();
+        }
+        else
+        {
+            LoadHeightFieldAsset();
         }
 
-        UpdateHeightFieldAsset();
         RegisterForEditorEvents();
-        CreateEditorTerrain();
     }
 
     void EditorTerrainComponent::Deactivate()
     {
         AzToolsFramework::EntitySelectionEvents::Bus::Handler::BusDisconnect();
-        PhysX::EditorTerrainComponentRequestsBus::Handler::BusDisconnect();
+        Physics::EditorTerrainComponentRequestsBus::Handler::BusDisconnect();
         Physics::EditorTerrainMaterialRequestsBus::Handler::BusDisconnect();
+        AZ::Data::AssetBus::Handler::BusDisconnect(m_configuration.m_heightFieldAsset.GetId());
+        AzToolsFramework::ToolsApplicationNotificationBus::Handler::BusDisconnect();
 
         UnregisterForEditorEvents();
         AzToolsFramework::Components::EditorComponentBase::Deactivate();
@@ -185,6 +194,32 @@ namespace PhysX
     void EditorTerrainComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
         gameEntity->CreateComponent<TerrainComponent>(m_configuration);
+    }
+
+    void EditorTerrainComponent::AfterUndoRedo()
+    {
+        AzToolsFramework::UndoSystem::UndoStack* stack = nullptr;
+        AzToolsFramework::ToolsApplicationRequests::Bus::BroadcastResult(
+            stack, &AzToolsFramework::ToolsApplicationRequests::GetUndoStack);
+        if (stack)
+        {
+            // Here we check for when a terrain command was undone/redone (on ctrl-z)
+            // and then update the in-memory asset.
+            if (s_modifyTerrainCommand == stack->GetUndoName() ||
+                s_modifyTerrainCommand == stack->GetRedoName())
+            {
+                UpdateHeightFieldAsset();
+            }
+        }
+    }
+
+    void EditorTerrainComponent::OnEndUndo(const char* label, bool changed)
+    {
+        // This gets fired at the end of a terrain modification (on mouse up)
+        if (s_modifyTerrainCommand == label && changed)
+        {
+            UpdateHeightFieldAsset();
+        }
     }
 
     void EditorTerrainComponent::RegisterForEditorEvents()
@@ -206,29 +241,32 @@ namespace PhysX
         switch (editorEvent)
         {
         case eNotify_OnEndSceneSave:
-            if (m_exportOnSave)
+            if(m_heightFieldDirty)
             {
-                ExportTerrain();
-                CreateEditorTerrain();
+                SaveHeightFieldAsset();
             }
             break;
         }
     }
 
-    void EditorTerrainComponent::ExportTerrain()
+    AZ::Data::Asset<Pipeline::HeightFieldAsset> EditorTerrainComponent::CreateHeightFieldAsset()
     {
-        AZStd::string exportPath = GetExportPath();
+        AZ::Data::AssetId generatedAssetId;
+        AZ::Data::AssetCatalogRequestBus::BroadcastResult(generatedAssetId, &AZ::Data::AssetCatalogRequests::GenerateAssetIdTEMP, GetExportPath().c_str());
 
-        if (!TerrainUtils::CreateTargetDirectory(exportPath))
+        AZ::Data::Asset<Pipeline::HeightFieldAsset> asset = AZ::Data::AssetManager::Instance().FindAsset(generatedAssetId);
+        if (asset.GetId().IsValid())
         {
-            AZ_Warning("EditorTerrainComponent", false, "Failed to export terrain at: %s", exportPath.c_str())
-            return;
+            return asset;
         }
-
-        m_configuration.m_heightFieldAsset = ExportHeightFieldAsset(exportPath);
+        else
+        {
+            AZ::Data::Asset<PhysX::Pipeline::HeightFieldAsset> heightFieldAsset(AZ::Data::AssetManager::Instance().CreateAsset<PhysX::Pipeline::HeightFieldAsset>(generatedAssetId));
+            return heightFieldAsset;
+        }
     }
 
-    void EditorTerrainComponent::UpdateHeightFieldAsset()
+    void EditorTerrainComponent::LoadHeightFieldAsset()
     {
         if (m_configuration.m_heightFieldAsset.GetId().IsValid())
         {
@@ -259,94 +297,123 @@ namespace PhysX
         }
     }
 
+    void EditorTerrainComponent::OnAssetError(AZ::Data::Asset<AZ::Data::AssetData> asset)
+    {
+        if (asset == m_configuration.m_heightFieldAsset)
+        {
+            UpdateHeightFieldAsset();
+        }
+    }
+
     AZStd::string EditorTerrainComponent::GetExportPath()
     {
         AZStd::string levelDataFolder = TerrainUtils::GetLevelFolder();
-
-        AZStd::string fullPath;
-        AzFramework::StringFunc::Path::Join("@devassets@", levelDataFolder.c_str(), fullPath);
-        AzFramework::StringFunc::Path::Join(fullPath.c_str(), m_exportAssetPath.c_str(), fullPath);
-        return fullPath;
+        AZStd::string levelRelativePath;
+        AzFramework::StringFunc::Path::Join(levelDataFolder.c_str(), m_exportAssetPath.c_str(), levelRelativePath);
+        return levelRelativePath;
     }
 
-    AZ::Data::Asset<Pipeline::HeightFieldAsset> EditorTerrainComponent::ExportHeightFieldAsset(const AZStd::string& relativePath)
+    void EditorTerrainComponent::SaveHeightFieldAsset()
     {
-        char path[AZ_MAX_PATH_LEN];
-        path[0] = '\0';
-        AZ::IO::FileIOBase::GetInstance()->ResolvePath(relativePath.c_str(), path, AZ_MAX_PATH_LEN);
+        AZ_Printf("EditorTerrainComponent", "Saving physics heightfield...%s", m_configuration.m_heightFieldAsset.GetId().ToString<AZStd::string>().c_str());
+        AZStd::string exportPath = GetExportPath();
+        AzFramework::StringFunc::Path::Join("@devassets@", exportPath.c_str(), exportPath);
+
+        if (!TerrainUtils::CreateTargetDirectory(exportPath))
+        {
+            AZ_Warning("EditorTerrainComponent", false, "Failed to save terrain at: %s", exportPath.c_str());
+            return;
+        }
+        
+        auto assetType = AZ::AzTypeInfo<PhysX::Pipeline::HeightFieldAsset>::Uuid();
+        auto assetHandler = const_cast<AZ::Data::AssetHandler*>(AZ::Data::AssetManager::Instance().GetHandler(assetType));
+        if (assetHandler)
+        {
+            AZ::IO::FileIOStream fileStream(exportPath.c_str(), AZ::IO::OpenMode::ModeWrite);
+            if (fileStream.IsOpen())
+            {
+                if (assetHandler->SaveAssetData(m_configuration.m_heightFieldAsset, &fileStream))
+                {
+                    m_heightFieldDirty = false;
+                }
+            }
+        }
+    }
+
+    void EditorTerrainComponent::UpdateHeightFieldAsset()
+    {
+        AZ_Printf("EditorTerrainComponent", "Updating heightfield...");
 
         IEditor* editor = nullptr;
         AzToolsFramework::EditorRequests::Bus::BroadcastResult(editor, &AzToolsFramework::EditorRequests::GetEditor);
 
+        // Size of each tile in meters.
+        int32_t tileSize = editor->Get3DEngine()->GetHeightMapUnitSize();
+
+        // The number of tiles (terrain is always square).
+        int32_t numTiles = (editor->Get3DEngine()->GetTerrainSize() / tileSize );
+
         // Cry adds on an extra col and row at the edge of the terrain.
         // So for a terrain size of 1024, we actually need 1025 samples.
-        int32_t terrainSize = editor->Get3DEngine()->GetTerrainSize() + 1;
-        AZStd::vector<physx::PxHeightFieldSample> pxSamples(terrainSize * terrainSize);
+        numTiles += 1;
+        
+        AZStd::vector<physx::PxHeightFieldSample> pxSamples(numTiles * numTiles);
 
         m_configuration.m_terrainSurfaceIdIndexMapping.clear();
         m_configuration.m_terrainSurfaceIdIndexMapping.reserve(50);
 
-        for (int32_t y = 0; y < terrainSize; ++y)
+        for (int32_t y = 0; y < numTiles; ++y)
         {
-            for (int32_t x = 0; x < terrainSize; ++x)
+            for (int32_t x = 0; x < numTiles; ++x)
             {
                 // At the edge of the terrain, we need to query the adjacent
                 // row/col. As Cry will return 0 if it's outside the terrain size bounds.
-                int cryIndexX = AZStd::clamp(x, 0, terrainSize - 2);
-                int cryIndexY = AZStd::clamp(y, 0, terrainSize - 2);
+                int cryIndexX = AZStd::clamp(x, 0, numTiles - 2) * tileSize;
+                int cryIndexY = AZStd::clamp(y, 0, numTiles - 2) * tileSize;
 
                 float terrainHeight = editor->Get3DEngine()->GetTerrainZ(cryIndexX, cryIndexY);
                 int surfaceId = editor->Get3DEngine()->GetTerrainSurfaceId(cryIndexX, cryIndexY);
 
                 int materialIndex = TerrainUtils::GetMaterialIndexForSurfaceId(surfaceId, m_configuration.m_terrainSurfaceIdIndexMapping);
 
-                int32_t samplesIndex = y * terrainSize + x;
+                int32_t samplesIndex = y * numTiles + x;
                 physx::PxHeightFieldSample& pxSample = pxSamples[samplesIndex];
 
-                AZ_Warning("EditorTerrainComponent", terrainHeight <= MaxCryTerrainHeight, "Terrain height exceeds max values, there will be physics artifacts");
+                AZ_Warning("EditorTerrainComponent", terrainHeight <= s_maxCryTerrainHeight, "Terrain height exceeds max values, there will be physics artifacts");
 
                 // Scale down the height into a 16bit value
-                pxSample.height = (physx::PxI16)(MaxPhysxTerrainHeight / MaxCryTerrainHeight * terrainHeight);
-                pxSample.materialIndex0 = physx::PxBitAndByte(materialIndex, false);
-                pxSample.materialIndex1 = physx::PxBitAndByte(materialIndex, false);
+                pxSample.height = (physx::PxI16)(s_maxPhysxTerrainHeight / s_maxCryTerrainHeight * terrainHeight);
+
+                bool isHole = editor->Get3DEngine()->GetTerrainHole(cryIndexX, cryIndexY);
+                if (isHole)
+                {
+                    pxSample.materialIndex0 = physx::PxHeightFieldMaterial::eHOLE;
+                    pxSample.materialIndex1 = physx::PxHeightFieldMaterial::eHOLE;
+                }
+                else
+                {
+                    pxSample.materialIndex0 = physx::PxBitAndByte(materialIndex, false);
+                    pxSample.materialIndex1 = physx::PxBitAndByte(materialIndex, false);
+                }
             }
         }
-
+        
         physx::PxHeightFieldDesc pxHeightFieldDesc;
         pxHeightFieldDesc.format = physx::PxHeightFieldFormat::eS16_TM;
-        pxHeightFieldDesc.nbColumns = terrainSize;
-        pxHeightFieldDesc.nbRows = terrainSize;
+        pxHeightFieldDesc.nbColumns = numTiles;
+        pxHeightFieldDesc.nbRows = numTiles;
         pxHeightFieldDesc.samples.data = pxSamples.data();
         pxHeightFieldDesc.samples.stride = sizeof(physx::PxHeightFieldSample);
-
-        physx::PxDefaultMemoryOutputStream outputStream;
-
+        
         physx::PxCooking* cooking = nullptr;
         SystemRequestsBus::BroadcastResult(cooking, &SystemRequests::GetCooking);
-        bool success = cooking->cookHeightField(pxHeightFieldDesc, outputStream);
-        if (success)
-        {
-            PhysX::Pipeline::HeightFieldAssetHeader header;
-            header.m_assetVersion = 1;
-            header.m_assetDataSize = outputStream.getSize();
 
-            physx::PxDefaultFileOutputStream file(path);
-            file.write(&header, sizeof(header));
-            file.write(outputStream.getData(), outputStream.getSize());
-        }
+        physx::PxHeightField* heightField = cooking->createHeightField(pxHeightFieldDesc, PxGetPhysics().getPhysicsInsertionCallback());
 
-        // Force io sync with asset processor
-        AzFramework::AssetSystem::AssetStatus status;
-        AzFramework::AssetSystemRequestBus::BroadcastResult(status, &AzFramework::AssetSystem::AssetSystemRequests::GetAssetStatus, path);
+        m_configuration.m_heightFieldAsset.Get()->SetHeightField(heightField);
+        m_heightFieldDirty = true;
 
-        // Find asset id
-        bool sourceInfoFound = false;
-        AZ::Data::AssetInfo assetInfo;
-        AZStd::string watchFolder;
-        AzToolsFramework::AssetSystemRequestBus::BroadcastResult(sourceInfoFound, &AzToolsFramework::AssetSystemRequestBus::Events::GetSourceInfoBySourcePath, path, assetInfo, watchFolder);
-
-        // Get asset
-        return AZ::Data::AssetManager::Instance().GetAsset<PhysX::Pipeline::HeightFieldAsset>(assetInfo.m_assetId, true, nullptr, false);
+        CreateEditorTerrain();
     }
 
     void EditorTerrainComponent::CreateEditorTerrain()
@@ -368,6 +435,7 @@ namespace PhysX
         if (editorWorld)
         {
             m_configuration.m_scale = TerrainUtils::GetScale();
+            m_editorTerrain = nullptr;
             m_editorTerrain = Utils::CreateTerrain(m_configuration, GetEntityId(), GetEntity()->GetName().c_str());
             if (m_editorTerrain)
             {

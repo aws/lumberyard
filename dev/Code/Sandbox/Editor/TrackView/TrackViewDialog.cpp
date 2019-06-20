@@ -100,12 +100,15 @@ namespace
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::RegisterViewClass()
 {
-    AzToolsFramework::ViewPaneOptions opts;
-    opts.shortcut = QKeySequence(Qt::Key_T);
-    opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
+    if (!GetIEditor()->IsNewViewportInteractionModelEnabled())
+    {
+        AzToolsFramework::ViewPaneOptions opts;
+        opts.shortcut = QKeySequence(Qt::Key_T);
+        opts.sendViewPaneNameBackToAmazonAnalyticsServers = true;
 
-    AzToolsFramework::RegisterViewPane<CTrackViewDialog>(LyViewPane::TrackView, LyViewPane::CategoryTools, opts);
-    GetIEditor()->GetSettingsManager()->AddToolName(s_kTrackViewLayoutSection, LyViewPane::TrackView);
+        AzToolsFramework::RegisterViewPane<CTrackViewDialog>(LyViewPane::TrackView, LyViewPane::CategoryTools, opts);
+        GetIEditor()->GetSettingsManager()->AddToolName(s_kTrackViewLayoutSection, LyViewPane::TrackView);
+    }
 }
 
 const GUID& CTrackViewDialog::GetClassID()
@@ -281,7 +284,7 @@ BOOL CTrackViewDialog::OnInitDialog()
 //////////////////////////////////////////////////////////////////////////
 void CTrackViewDialog::FillAddSelectedEntityMenu()
 {
-    QMenu* menu = qobject_cast<QMenu*>(sender());    
+    QMenu* menu = qobject_cast<QMenu*>(sender());
     menu->clear();
 
     AZStd::vector<AnimParamType> allTracks = {
@@ -534,16 +537,16 @@ void CTrackViewDialog::InitToolbar()
     qaction->setData(ID_UNDO);
     m_actions[ID_UNDO] = qaction;
     connect(qaction, &QAction::triggered, this, []()
-        {
-		GetIEditor()->Undo();
-	});
+    {
+        GetIEditor()->Undo();
+    });
     qaction = m_playToolBar->addAction(QIcon(":/Trackview/play/tvplay-10.png"), "Redo");
     qaction->setData(ID_REDO);
     m_actions[ID_REDO] = qaction;
     connect(qaction, &QAction::triggered, this, []()
-        {
-		GetIEditor()->Redo();
-	});
+    {
+        GetIEditor()->Redo();
+    });
 
     addToolBarBreak(Qt::TopToolBarArea);
 
@@ -734,7 +737,7 @@ void CTrackViewDialog::UpdateActions()
         m_actions[ID_VIEW_TICKINFRAMES]->setChecked(false);
     }
 
-    m_actions[ID_TV_DEL_SEQUENCE]->setEnabled(m_bEditLock ? false : true);    
+    m_actions[ID_TV_DEL_SEQUENCE]->setEnabled(m_bEditLock ? false : true);
 
     CTrackViewSequence* sequence = GetIEditor()->GetAnimation()->GetSequence();
     if (sequence)
@@ -2239,8 +2242,12 @@ void CTrackViewDialog::OnEntityDestruction(const AZ::EntityId& entityId)
 {
     if (m_currentSequenceEntityId == entityId)
     {
-        // Refresh the records in m_wndNodesCtrl, if the sequence is not selected in Track View
-        // then the current sequence will be nullptr and the records will be cleared preventing
+        // The currently selected sequence is about to be deleted, make sure to clear the selection right now.
+        // Clearing it here will make sure it is clear in slice work flow edge cases.
+        GetIEditor()->GetAnimation()->SetSequence(nullptr, false, false);
+
+        // Refresh the records in m_wndNodesCtrl, the sequence will not be selected in Track View
+        // so the current sequence will be nullptr and the records will be cleared preventing
         // dangling pointers.
         m_wndNodesCtrl->OnSequenceChanged();
     }

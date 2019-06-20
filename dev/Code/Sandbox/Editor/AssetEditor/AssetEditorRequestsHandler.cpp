@@ -11,6 +11,8 @@
 */
 #include "StdAfx.h"
 
+#include <AzCore/Asset/AssetManager.h>
+
 #include <Editor/AssetEditor/AssetEditorRequestsHandler.h>
 
 AssetEditorRequestsHandler::AssetEditorRequestsHandler()
@@ -23,10 +25,18 @@ AssetEditorRequestsHandler::~AssetEditorRequestsHandler()
     BusDisconnect();
 }
 
+void AssetEditorRequestsHandler::CreateNewAsset(const AZ::Data::AssetType& assetType)
+{
+    using namespace AzToolsFramework::AssetEditor;
+    AzToolsFramework::OpenViewPane(LyViewPane::AssetEditor);
+
+    AssetEditorWidgetRequestsBus::Broadcast(&AssetEditorWidgetRequests::CreateAsset, assetType);
+}
+
 void AssetEditorRequestsHandler::OpenAssetEditor(const AZ::Data::Asset<AZ::Data::AssetData>& asset)
 {
     using namespace AzToolsFramework::AssetEditor;
 
     AzToolsFramework::OpenViewPane(LyViewPane::AssetEditor);
-    AssetEditorWidgetRequestsBus::Broadcast(&AssetEditorWidgetRequests::SetAsset, asset);
+    AssetEditorWidgetRequestsBus::Broadcast(&AssetEditorWidgetRequests::OpenAsset, asset);
 }

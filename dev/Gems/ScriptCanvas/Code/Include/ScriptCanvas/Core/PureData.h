@@ -46,6 +46,8 @@ namespace ScriptCanvas
 
         const AZStd::unordered_map<AZStd::string, AZStd::pair<SlotId, SlotId>>& GetPropertyNameSlotMap() const;
 
+        ~PureData() override;
+
     protected:
         void AddInputAndOutputTypeSlot(const Data::Type& type, const void* defaultValue = nullptr);
         template<typename DatumType>

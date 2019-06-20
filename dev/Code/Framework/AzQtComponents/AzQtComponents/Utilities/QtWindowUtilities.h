@@ -41,5 +41,6 @@ namespace AzQtComponents
 
     MappedPoint AZ_QT_COMPONENTS_API MappedCursorPosition();
 
+    AZ_QT_COMPONENTS_API void bringWindowToTop(QWidget* widget);
 } // namespace AzQtComponents
 

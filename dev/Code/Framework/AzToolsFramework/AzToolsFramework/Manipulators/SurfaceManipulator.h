@@ -15,50 +15,57 @@
 #include "BaseManipulator.h"
 
 #include <AzCore/Memory/SystemAllocator.h>
+#include <AzToolsFramework/Viewport/ViewportMessages.h>
 
 namespace AzToolsFramework
 {
     class ManipulatorView;
 
-    /**
-     * Surface manipulator will ensure the point(s) it controls snap precisely to the xy grid
-     * while also staying aligned exactly to the height of the terrain.
-     */
+    /// Surface manipulator will ensure the point(s) it controls snap precisely to the xy grid
+    /// while also staying aligned exactly to the height of the terrain.
     class SurfaceManipulator
         : public BaseManipulator
     {
+        /// Private constructor.
+        explicit SurfaceManipulator(const AZ::Transform& worldFromLocal);
+
     public:
         AZ_RTTI(SurfaceManipulator, "{75B8EF42-A5F0-48EB-893E-84BED1BC8BAF}", BaseManipulator)
         AZ_CLASS_ALLOCATOR(SurfaceManipulator, AZ::SystemAllocator, 0)
 
-        SurfaceManipulator(AZ::EntityId entityId, const AZ::Transform& worldFromLocal);
+        SurfaceManipulator() = delete;
+        SurfaceManipulator(const SurfaceManipulator&) = delete;
+        SurfaceManipulator& operator=(const SurfaceManipulator&) = delete;
+
         ~SurfaceManipulator() = default;
 
-        /**
-         * The state of the manipulator at the start of an interaction.
-         */
+        /// A Manipulator must only be created and managed through a shared_ptr.
+        static AZStd::shared_ptr<SurfaceManipulator> MakeShared(const AZ::Transform& worldFromLocal)
+        {
+            return AZStd::shared_ptr<SurfaceManipulator>(aznew SurfaceManipulator(worldFromLocal));
+        }
+
+        /// The state of the manipulator at the start of an interaction.
         struct Start
         {
             AZ::Vector3 m_localPosition; ///< The current position of the manipulator in local space.
             AZ::Vector3 m_snapOffset; ///< The snap offset amount to ensure manipulator is aligned to the grid.
         };
 
-        /**
-         * The state of the manipulator during an interaction.
-         */
+        /// The state of the manipulator during an interaction.
         struct Current
         {
             AZ::Vector3 m_localOffset; ///< The current offset of the manipulator from its starting position in local space.
         };
 
-        /**
-         * Mouse action data used by MouseActionCallback (wraps Start and Current manipulator state).
-         */
+        /// Mouse action data used by MouseActionCallback (wraps Start and Current manipulator state).
         struct Action
         {
             Start m_start;
             Current m_current;
+            ViewportInteraction::KeyboardModifiers m_modifiers;
             AZ::Vector3 LocalPosition() const { return m_start.m_localPosition + m_current.m_localOffset; }
+            AZ::Vector3 LocalPositionOffset() const { return m_current.m_localOffset; }
         };
 
         using MouseActionCallback = AZStd::function<void(const Action&)>;
@@ -69,8 +76,8 @@ namespace AzToolsFramework
 
         void Draw(
             const ManipulatorManagerState& managerState,
-            AzFramework::EntityDebugDisplayRequests& display,
-            const ViewportInteraction::CameraState& cameraState,
+            AzFramework::DebugDisplayRequests& debugDisplay,
+            const AzFramework::CameraState& cameraState,
             const ViewportInteraction::MouseInteraction& mouseInteraction) override;
 
         void SetPosition(const AZ::Vector3& position) { m_position = position; }
@@ -81,8 +88,6 @@ namespace AzToolsFramework
         void SetView(AZStd::unique_ptr<ManipulatorView>&& view);
 
     private:
-        AZ_DISABLE_COPY_MOVE(SurfaceManipulator)
-
         void OnLeftMouseDownImpl(
             const ViewportInteraction::MouseInteraction& interaction, float rayIntersectionDistance) override;
         void OnLeftMouseUpImpl(
@@ -93,9 +98,7 @@ namespace AzToolsFramework
         void InvalidateImpl() override;
         void SetBoundsDirtyImpl() override;
 
-        /**
-         * Initial data recorderd when a press first happens with a surface manipulator.
-         */
+        /// Initial data recorded when a press first happens with a surface manipulator.
         struct StartInternal
         {
             AZ::Vector3 m_localPosition; ///< The current position of the manipulator in local space.
@@ -106,7 +109,7 @@ namespace AzToolsFramework
         AZ::Vector3 m_position = AZ::Vector3::CreateZero(); ///< Position in local space.
         AZ::Transform m_worldFromLocal = AZ::Transform::CreateIdentity(); ///< Space the manipulator is in (identity is world space).
         
-        StartInternal m_startInternal; ///< Internal intitial state recorded/created in OnMouseDown.
+        StartInternal m_startInternal; ///< Internal initial state recorded/created in OnMouseDown.
 
         AZStd::unique_ptr<ManipulatorView> m_manipulatorView = nullptr; ///< Look of manipulator.
 
@@ -120,6 +123,7 @@ namespace AzToolsFramework
 
         static Action CalculateManipulationDataAction(
             const StartInternal& startInternal, const AZ::Transform& worldFromLocal, 
-            const AZ::Vector3& worldSurfacePosition, bool snapping, float gridSize, int viewportId);
+            const AZ::Vector3& worldSurfacePosition, bool snapping, float gridSize,
+            ViewportInteraction::KeyboardModifiers keyboardModifiers, int viewportId);
     };
 } // namespace AzToolsFramework

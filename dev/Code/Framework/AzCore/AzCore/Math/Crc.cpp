@@ -97,6 +97,18 @@ namespace AZ
         }
     }
 
+    Crc32::Crc32(AZStd::string_view view)
+    {
+        if (!view.empty())
+        {
+            Set(view.data(), view.length(), true);
+        }
+        else
+        {
+            m_value = 0;
+        }
+    }
+
     //=========================================================================
     //
     // Crc32 constructor

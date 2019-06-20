@@ -1601,7 +1601,7 @@ void CTerrainTextureDialog::ImportSplatMaps()
         splatMaps[layerIds.size()].RotateOrt(splat, ImageRotationDegrees::Rotate270);
 
         // Remember this layer because it is real
-        layerIds.push_back(aznumeric_caster(i));
+        layerIds.push_back(aznumeric_caster(layer->GetOrRequestLayerId()));
     }
 
     // Now build the weight map using the masked layers

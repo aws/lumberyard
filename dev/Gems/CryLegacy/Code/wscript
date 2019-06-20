@@ -44,8 +44,8 @@ def build(bld):
 
         use                 = ['CryAction_AutoFlowNode','AzFramework'],
 
-        win_x64_lib         = [ 'Ws2_32', 'Shell32', 'mswsock', 'gdi32', 'wininet', 'Ole32' ],
-        win_x64_linkflags   = '/NODEFAULTLIB:libcmt.lib',
+        win_lib             = [ 'Ws2_32', 'Shell32', 'mswsock', 'gdi32', 'wininet', 'Ole32' ],
+        win_linkflags       = '/NODEFAULTLIB:libcmt.lib',
 
         darwin_lib          = ['curl'],
         appletv_framework   = ['security'],

@@ -1,0 +1,29 @@
+<Material MtlFlags="524544" vertModifType="0">
+ <SubMaterials>
+  <Material Name="A_Dark_Metal" MtlFlags="524416" Shader="Illum" GenMask="4000100000001" StringGenMask="%ALLOW_SILHOUETTE_POM%PHONG_TESSELLATION%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="1,1,1,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_strut_01_diff.dds"/>
+   </Textures>
+   <PublicParams TessellationFaceCull="0.75" EmittanceMapGamma="1" TessellationFactor="1" SSSIndex="0" TessellationFactorMax="32" TessellationFactorMin="1" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="A_Red_Tile" MtlFlags="524416" Shader="Illum" GenMask="4000100000001" StringGenMask="%ALLOW_SILHOUETTE_POM%PHONG_TESSELLATION%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="1,1,1,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_tiles_02_diff.dds"/>
+   </Textures>
+   <PublicParams TessellationFaceCull="0.75" EmittanceMapGamma="1" TessellationFactor="1" SSSIndex="0" TessellationFactorMax="32" TessellationFactorMin="1" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="A_White" MtlFlags="524416" Shader="Illum" GenMask="4000100000001" StringGenMask="%ALLOW_SILHOUETTE_POM%PHONG_TESSELLATION%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="1,1,1,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_tiles_01_diff.dds"/>
+   </Textures>
+   <PublicParams TessellationFaceCull="0.75" EmittanceMapGamma="1" TessellationFactor="1" SSSIndex="0" TessellationFactorMax="32" TessellationFactorMin="1" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+  <Material Name="A_pod" MtlFlags="524416" Shader="Illum" GenMask="4000100000001" StringGenMask="%ALLOW_SILHOUETTE_POM%PHONG_TESSELLATION%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="1,1,1,1" Specular="0,0,0,1" Opacity="1" Shininess="10" vertModifType="0" LayerAct="1">
+   <Textures>
+    <Texture Map="Diffuse" File="objects/manmade/airship/airship_wall_01_diff.dds"/>
+   </Textures>
+   <PublicParams TessellationFaceCull="0.75" EmittanceMapGamma="1" TessellationFactor="1" SSSIndex="0" TessellationFactorMax="32" TessellationFactorMin="1" IndirectColor="0.25,0.25,0.25"/>
+  </Material>
+ </SubMaterials>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

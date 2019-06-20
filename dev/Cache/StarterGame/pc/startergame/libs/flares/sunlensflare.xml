@@ -1,0 +1,58 @@
+<LensFlareLibrary Name="SunLensFlare">
+ <FlareItem Name="LensFlares.ChromaticRing" Type="Root" Enable="1" Id="{e956c694-552a-4afe-9fe6-aa42ca15147f}" Library="SunLensFlare">
+  <Params>
+   <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="1" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+   <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+   <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+   <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+   <GlobalSettings EnableOcclusion="1" OcclusionSize="0.02,0.02" Flarefadetime="0.2" Shaftfadetime="1" Affectedbylightcolor="0" Affectedbylightradius="0" AffectedbylightFOV="1" MultiplyColor="1"/>
+   <Sensor CustomSensorVariationMap="0" EffectiveSensorSize="0.8"/>
+  </Params>
+  <FlareItem Name="Chromatic Ring" Type="ChromaticRing" Enable="1">
+   <Params>
+    <Common Size="0.9" Perspectivefactor="0" DistanceFadingfactor="1" Brightness="1.4" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="0"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="1.1,1.1" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <ChromaticRing Locktolight="0" Thickness="0.6" Polygoncomplexity="160" GradientTexture="EngineAssets/Textures/flares/spectrum_full.dds" EnableGradientTexture="0" Noiseseed="-555819298" Noisestrength="0" Completionfading="45" Completionspanangle="180" Completionrotation="180"/>
+   </Params>
+  </FlareItem>
+  <FlareItem Name="ChromaticRing.multi ghost" Type="Multi Ghost" Enable="1">
+   <Params>
+    <Common Size="0.2" Perspectivefactor="0.2" DistanceFadingfactor="1" Brightness="0.3" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <MultiGhost Texture="" Count="15" RandomSeed="0" Scatteringrange="0.1,0.8" positionfactor="1,1" positionoffset="0,0" X-axisnoise="0" Y-axisnoise="0" SizeVariation="0.8" BrightnessVariation="0.3" ColorVariation="0.7"/>
+   </Params>
+  </FlareItem>
+ </FlareItem>
+ <FlareItem Name="LensFlares.SunFlare" Type="Root" Enable="1" Id="{11e9590b-db2d-4031-8a06-7bc3cb1bf59b}" Library="SunLensFlare">
+  <Params>
+   <Common Size="1" Perspectivefactor="1" DistanceFadingfactor="0" Brightness="1" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+   <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+   <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+   <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+   <GlobalSettings EnableOcclusion="1" OcclusionSize="0.02,0.02" Flarefadetime="0.2" Shaftfadetime="1" Affectedbylightcolor="0" Affectedbylightradius="0" AffectedbylightFOV="1" MultiplyColor="1"/>
+   <Sensor CustomSensorVariationMap="0" EffectiveSensorSize="0.8"/>
+  </Params>
+  <FlareItem Name="SunFlare.Chromatic Ring" Type="ChromaticRing" Enable="1">
+   <Params>
+    <Common Size="0.9" Perspectivefactor="0" DistanceFadingfactor="1" Brightness="1.4" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="0"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="1.1,1.1" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <ChromaticRing Locktolight="0" Thickness="0.6" Polygoncomplexity="160" GradientTexture="EngineAssets/Textures/flares/spectrum_full.dds" EnableGradientTexture="0" Noiseseed="-555819298" Noisestrength="0" Completionfading="45" Completionspanangle="180" Completionrotation="180"/>
+   </Params>
+  </FlareItem>
+  <FlareItem Name="SunFlare.multi ghost" Type="Multi Ghost" Enable="1">
+   <Params>
+    <Common Size="0.2" Perspectivefactor="0.2" DistanceFadingfactor="1" Brightness="0.3" Position="1,1" Tint="1,1,1" Tint.alpha="51" Orbitangle="0" OcclusionInteraction="0" AutoRotation="1" CorrectAspectRatio="1"/>
+    <Sensor Sensorimagesizevariationfactor="0" Sensorimagebrightnessvariationfactor="0"/>
+    <Transformation Scale="1,1" Translation="0,0" Rotation="0"/>
+    <Dynamics Enable="0" TriggerInvert="0" TriggerOffset="0,0" TriggerRange="1" TriggerFalloff="1"/>
+    <MultiGhost Texture="" Count="15" RandomSeed="0" Scatteringrange="0.1,0.8" positionfactor="1,1" positionoffset="0,0" X-axisnoise="0" Y-axisnoise="0" SizeVariation="0.8" BrightnessVariation="0.3" ColorVariation="0.7"/>
+   </Params>
+  </FlareItem>
+ </FlareItem>
+</LensFlareLibrary>

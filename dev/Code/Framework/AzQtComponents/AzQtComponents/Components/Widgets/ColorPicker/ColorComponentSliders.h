@@ -30,10 +30,14 @@ namespace AzQtComponents
         ~ColorComponentEdit() override;
 
         void setColorFunction(GradientSlider::ColorFunction colorFunction);
+        void setToolTipFunction(GradientSlider::ToolTipFunction toolTipFunction);
 
         qreal value() const;
+        int decimals() const { return m_slider->decimals(); }
+        int maximum() const { return m_slider->maximum(); }
 
         void setValue(qreal value);
+        QColor colorAt(qreal position) const;
 
     public Q_SLOTS:
         void updateGradient();
@@ -79,12 +83,14 @@ namespace AzQtComponents
         qreal hue() const;
         qreal saturation() const;
         qreal lightness() const;
+        qreal defaultLForHsMode() const;
 
     public Q_SLOTS:
         void setMode(Mode mode);
         void setHue(qreal hue);
         void setSaturation(qreal saturation);
         void setLightness(qreal lightness);
+        void setDefaultLForHsMode(qreal value);
 
     Q_SIGNALS:
         void valueChangeBegan();
@@ -95,10 +101,12 @@ namespace AzQtComponents
         void valueChangeEnded();
 
     private:
-        Mode m_mode;
+        Mode m_mode = Mode::Hsl;
         ColorComponentEdit* m_hueSlider;
         ColorComponentEdit* m_saturationSlider;
         ColorComponentEdit* m_lightnessSlider;
+
+        qreal m_defaultLForHsMode;
     };
 
     class AZ_QT_COMPONENTS_API HSVSliders
@@ -110,28 +118,44 @@ namespace AzQtComponents
         Q_PROPERTY(qreal value READ value WRITE setValue NOTIFY valueChanged);
 
     public:
+        enum class Mode
+        {
+            Hsv,
+            Hs
+        };
+        Q_ENUM(Mode)
+
         explicit HSVSliders(QWidget* parent = nullptr);
+
+        Mode mode() const;
 
         qreal hue() const;
         qreal saturation() const;
         qreal value() const;
+        qreal defaultVForHsMode() const;
 
     public Q_SLOTS:
+        void setMode(Mode mode);
         void setHue(qreal hue);
         void setSaturation(qreal saturation);
         void setValue(qreal value);
+        void setDefaultVForHsMode(qreal value);
 
     Q_SIGNALS:
         void valueChangeBegan();
+        void modeChanged(Mode mode);
         void hueChanged(qreal hue);
         void saturationChanged(qreal saturation);
         void valueChanged(qreal value);
         void valueChangeEnded();
 
     private:
+        Mode m_mode = Mode::Hsv;
         ColorComponentEdit* m_hueSlider;
         ColorComponentEdit* m_saturationSlider;
         ColorComponentEdit* m_valueSlider;
+
+        qreal m_defaultVForHsMode;
     };
 
     class AZ_QT_COMPONENTS_API RGBSliders

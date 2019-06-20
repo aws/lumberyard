@@ -13,7 +13,7 @@ from az_code_gen.base import *
 class StaticModulesDriver(TemplateDriver):
     
     def render_templates(self, input_file, **template_kwargs):
-        self.render_template_to_file("StaticModules.tpl", template_kwargs, 'StaticModules.cpp', True)
+        self.render_template_to_file("StaticModules.tpl", template_kwargs, 'StaticModules.inl', False)
     
 # Factory function - called from launcher
 def create_drivers(env):

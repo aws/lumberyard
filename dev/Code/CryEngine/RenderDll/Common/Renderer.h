@@ -2581,6 +2581,7 @@ public:
     static float CV_r_FurMaxViewDist;
     
     static int CV_r_SkipNativeUpscale;
+    static int CV_r_SkipRenderComposites;
 
     static float CV_r_minConsoleFontSize;
     static float CV_r_maxConsoleFontSize;

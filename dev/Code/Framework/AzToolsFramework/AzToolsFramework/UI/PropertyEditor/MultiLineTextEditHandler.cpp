@@ -18,9 +18,13 @@ namespace AzToolsFramework
     QWidget* MultiLineTextEditHandler::CreateGUI(QWidget* parent)
     {
         GrowTextEdit* textEdit = aznew GrowTextEdit(parent);
-        connect(textEdit, &GrowTextEdit::EditCompleted, this,[textEdit]()
+        connect(textEdit, &GrowTextEdit::textChanged, this, [textEdit]()
         {
             EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, textEdit);
+        });
+        connect(textEdit, &GrowTextEdit::EditCompleted, this, [textEdit]()
+        {
+            AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, textEdit);
         });
 
         return textEdit;

@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <AzCore/std/containers/map.h>
 #include <AzCore/std/parallel/mutex.h>
 #include <ScriptCanvas/Core/Graph.h>
 #include <ScriptCanvas/Core/Node.h>
@@ -24,7 +25,7 @@ namespace AZ
 namespace ScriptCanvas
 {
     using Namespaces = AZStd::vector<AZStd::string>;
-    
+
     AZ::Outcome<void, AZStd::string> IsExposable(const AZ::BehaviorMethod& method);
 
     namespace Nodes
@@ -45,15 +46,22 @@ namespace ScriptCanvas
                 AZ_COMPONENT(Method, "{E42861BD-1956-45AE-8DD7-CCFC1E3E5ACF}", Node);
 
                 static void Reflect(AZ::ReflectContext* reflectContext);
-                
+
                 Method() = default;
-                
+
                 ~Method() = default;
-                                
-                AZ_INLINE const AZStd::string& GetName() const { return m_methodName; } 
-                AZ_INLINE const AZStd::string& GetMethodClassName() const { return m_className; }
+
+                AZ_INLINE AZStd::string GetNodeName() const override { return GetName(); }
+
+                AZ_INLINE const AZStd::string& GetName() const { return m_methodName; }
+                AZ_INLINE const AZStd::string& GetRawMethodClassName() const { return m_className; }
+
+                AZ_INLINE const AZStd::string& GetMethodClassName() const { return m_classNamePretty; }
                 AZ_INLINE MethodType GetMethodType() const { return m_methodType; }
-                
+
+                bool IsObjectClass(AZStd::string_view objectClass) const { return objectClass.compare(m_className) == 0; }
+                bool IsMethod(AZStd::string_view methodName) const { return methodName.compare(m_methodName) == 0; }
+
                 void InitializeClass(const Namespaces& namespaces, const AZStd::string& className, const AZStd::string& methodName);
 
                 void InitializeClassOrBus(const Namespaces& namespaces, const AZStd::string& className, const AZStd::string& methodName);
@@ -61,7 +69,7 @@ namespace ScriptCanvas
                 void InitializeEvent(const Namespaces& namespaces, const AZStd::string& busName, const AZStd::string& eventName);
 
                 void InitializeFree(const Namespaces& namespaces, const AZStd::string& methodName);
-           
+
                 AZ_INLINE bool IsValid() const { return m_method != nullptr; }
 
                 bool HasBusID() const { return (m_method == nullptr) ? false : m_method->HasBusId(); }
@@ -80,28 +88,34 @@ namespace ScriptCanvas
 
                 bool FindClass(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view className, AZStd::string_view methodName);
                 bool FindEvent(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view busName, AZStd::string_view eventName);
-                bool FindFree (AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view methodName);
+                bool FindFree(AZ::BehaviorMethod*& outMethod, const Namespaces& namespaces, AZStd::string_view methodName);
 
                 void InitializeLookUp(const Namespaces& namespaces, const AZStd::string& className, const AZStd::string& methodName, const MethodType methodType, const AZStd::string* nameOverride = nullptr);
-                
+
                 AZ_INLINE bool IsConfigured() const { return m_method != nullptr; }
-                
-                AZ_INLINE bool IsExpectingResult() const { return m_resultSlotID.IsValid(); }
+
+                bool IsExpectingResult() const;
 
                 void OnInputSignal(const SlotId&) override;
-                
+
             private:
-                Method(const Method&) = delete;
+                friend struct ScriptCanvas::BehaviorContextMethodHelper;
+
                 MethodType m_methodType = MethodType::Count;
+                bool m_isOutcomeOutputMethod = false;
+                AZStd::map<size_t, AZ::BehaviorMethod*> m_tupleGetMethods;
                 AZStd::string m_name;
                 AZStd::string m_methodName;
                 AZStd::string m_className;
+                AZStd::string m_classNamePretty;
                 Namespaces m_namespaces;
                 AZ::BehaviorMethod* m_method = nullptr;
-                SlotId m_resultSlotID;
+                AZStd::vector<SlotId> m_resultSlotIDs;
                 AZStd::recursive_mutex m_mutex; // post-serialization
+
+                Method(const Method&) = delete;
             };
 
         } // namespace Core
     } // namespace Nodes
-} // namespace Dra
+} // namespace ScriptCanvas

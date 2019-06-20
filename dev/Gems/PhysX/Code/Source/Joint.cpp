@@ -18,20 +18,20 @@
 
 namespace PhysX
 {
-    const AZStd::shared_ptr<Physics::WorldBody>& Joint::GetParentBody() const
+    Physics::WorldBody* Joint::GetParentBody() const
     {
         return m_parentBody;
     }
 
-    const AZStd::shared_ptr<Physics::WorldBody>& Joint::GetChildBody() const
+    Physics::WorldBody* Joint::GetChildBody() const
     {
         return m_childBody;
     }
 
-    bool IsAtLeastOneDynamic(const AZStd::shared_ptr<Physics::WorldBody>& body0,
-        const AZStd::shared_ptr<Physics::WorldBody>& body1)
+    bool IsAtLeastOneDynamic(Physics::WorldBody* body0,
+        Physics::WorldBody* body1)
     {
-        for (const Physics::WorldBody* body : { body0.get(), body1.get() })
+        for (const Physics::WorldBody* body : { body0, body1 })
         {
             if (body)
             {
@@ -45,7 +45,7 @@ namespace PhysX
         return false;
     }
 
-    physx::PxRigidActor* GetPxRigidActor(const AZStd::shared_ptr<Physics::WorldBody>& worldBody)
+    physx::PxRigidActor* GetPxRigidActor(Physics::WorldBody* worldBody)
     {
         if (worldBody && static_cast<physx::PxBase*>(worldBody->GetNativePointer())->is<physx::PxRigidActor>())
         {
@@ -61,8 +61,8 @@ namespace PhysX
         joint->release();
     }
 
-    Joint::Joint(physx::PxJoint* pxJoint, const AZStd::shared_ptr<Physics::WorldBody>& parentBody,
-        const AZStd::shared_ptr<Physics::WorldBody>& childBody)
+    Joint::Joint(physx::PxJoint* pxJoint, Physics::WorldBody* parentBody,
+        Physics::WorldBody* childBody)
         : m_parentBody(parentBody)
         , m_childBody(childBody)
     {
@@ -83,7 +83,7 @@ namespace PhysX
         return true;
     }
 
-    void Joint::SetParentBody(const AZStd::shared_ptr<Physics::WorldBody>& parentBody)
+    void Joint::SetParentBody(Physics::WorldBody* parentBody)
     {
         if (IsAtLeastOneDynamic(parentBody, m_childBody))
         {
@@ -97,7 +97,7 @@ namespace PhysX
         }
     }
 
-    void Joint::SetChildBody(const AZStd::shared_ptr<Physics::WorldBody>& childBody)
+    void Joint::SetChildBody(Physics::WorldBody* childBody)
     {
         if (IsAtLeastOneDynamic(m_parentBody, childBody))
         {
@@ -187,7 +187,7 @@ namespace PhysX
     }
 
     AZStd::shared_ptr<Physics::Joint> JointUtils::CreateJoint(const AZStd::shared_ptr<Physics::JointLimitConfiguration>& configuration,
-        const AZStd::shared_ptr<Physics::WorldBody>& parentBody, const AZStd::shared_ptr<Physics::WorldBody>& childBody)
+        Physics::WorldBody* parentBody, Physics::WorldBody* childBody)
     {
         if (!configuration)
         {

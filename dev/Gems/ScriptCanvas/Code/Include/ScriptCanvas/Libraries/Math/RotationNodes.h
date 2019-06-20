@@ -28,7 +28,7 @@ namespace ScriptCanvas
         {
             return a + b;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Add, "Math/Quaternion", "{D20FAD3C-39CD-4369-BA0D-32AD5E6E23EB}", "returns A + B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Add, "Math/Quaternion", "{D20FAD3C-39CD-4369-BA0D-32AD5E6E23EB}", "This node is deprecated, use Add (+), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE QuaternionType Conjugate(QuaternionType source)
         {
@@ -38,6 +38,12 @@ namespace ScriptCanvas
 
         AZ_INLINE QuaternionType DivideByNumber(QuaternionType source, NumberType divisor)
         {
+            if (AZ::IsClose(divisor, Data::NumberType(0), std::numeric_limits<Data::NumberType>::epsilon()))
+            {
+                AZ_Error("Script Canvas", false, "Division by zero");
+                return QuaternionType::CreateIdentity();
+            }
+
             return source / ToVectorFloat(divisor);
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Quaternion", "{94C8A813-C20E-4194-98B6-8618CE872BAA}", "returns the Numerator with each element divided by Divisor", "Numerator", "Divisor");
@@ -143,7 +149,7 @@ namespace ScriptCanvas
         {
             return source.GetLength();
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Length, "Math/Quaternion", "{61025A32-F17E-4945-95AC-6F12C1A77B7F}", "returns the length of Source", "Source");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Length, "Math/Quaternion", "{61025A32-F17E-4945-95AC-6F12C1A77B7F}", "This node is deprecated, use the Length node, it provides contextual type and slot configurations", "Source");
 
         AZ_INLINE NumberType LengthReciprocal(QuaternionType source)
         {
@@ -201,7 +207,7 @@ namespace ScriptCanvas
         {
             return A * B;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(MultiplyByRotation, "Math/Quaternion", "{F4E19446-CBC1-46BF-AEC3-17FCC3FA9DEE}", "returns A * B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(MultiplyByRotation, "Math/Quaternion", "{F4E19446-CBC1-46BF-AEC3-17FCC3FA9DEE}", "This node is deprecated, use Multiply (*), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE QuaternionType Negate(QuaternionType source)
         {
@@ -262,7 +268,7 @@ namespace ScriptCanvas
         {
             return a - b;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Subtract, "Math/Quaternion", "{238538F8-D8C9-4348-89CC-E35F5DF11358}", "returns the rotation A - B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Subtract, "Math/Quaternion", "{238538F8-D8C9-4348-89CC-E35F5DF11358}", "This node is deprecated, use Subtract (-), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE NumberType ToAngleDegrees(QuaternionType source)
         {
@@ -275,6 +281,14 @@ namespace ScriptCanvas
             return source.GetImaginary();
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ToImaginary, "Math/Quaternion", "{86754CA3-ADBA-4D5C-AAB6-C4AA6B079CFD}", "returns the imaginary portion of Source, that is (x, y, z)", "Source");
+
+        AZ_INLINE QuaternionType CreateFromEulerAngles(NumberType yaw, NumberType roll, NumberType pitch)
+        {
+            AZ::Vector3 eulerDegress = AZ::Vector3(static_cast<float>(yaw), static_cast<float>(roll), static_cast<float>(pitch));
+            return AZ::ConvertEulerDegreesToQuaternion(eulerDegress);
+        }
+
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(CreateFromEulerAngles, "Math/Quaternion", "{33974124-2882-499D-9FBE-A37EB687B30C}", "Returns a new Quaternion initialized with the specified Angles", "Yaw", "Pitch", "Roll");
 
         using Registrar = RegistrarGeneric
             < AddNode
@@ -337,6 +351,8 @@ namespace ScriptCanvas
 #if ENABLE_EXTENDED_MATH_SUPPORT
             , ToImaginaryNode
 #endif
+
+            , CreateFromEulerAnglesNode
             > ;
 
     } // namespace QuaternionNodes

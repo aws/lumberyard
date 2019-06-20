@@ -216,6 +216,7 @@ struct SShaderParam
     UParamVal m_Value;
     EParamType m_Type;
     uint8 m_eSemantic;
+    uint8 m_Pad[3] = { 0 };
 
     inline void Construct()
     {
@@ -1368,51 +1369,28 @@ struct STexState
     bool m_bComparison;
     bool m_bSRGBLookup;
     byte m_bPAD;
+    // NOTE: There are 4 more pad bytes that exist here because m_pDeviceState is a 64-bit pointer.
+    uint32 m_PadBytes;
 
     STexState ()
     {
-        m_nMinFilter = 0;
-        m_nMagFilter = 0;
-        m_nMipFilter = 0;
-        m_nAnisotropy = 0;
-        m_nAddressU = 0;
-        m_nAddressV = 0;
-        m_nAddressW = 0;
-        m_dwBorderColor = 0;
-        m_MipBias = 0.0f;
-        padding = 0;
-        m_bSRGBLookup = false;
-        m_bActive = false;
-        m_bComparison = false;
-        m_pDeviceState = NULL;
-        m_bPAD = 0;
+        // Make sure we clear everything, including "invisible" pad bytes.
+        memset(this, 0, sizeof(*this));
     }
     STexState(int nFilter, bool bClamp)
     {
-        m_pDeviceState = NULL;
+        memset(this, 0, sizeof(*this));
         int nAddress = bClamp ? TADDR_CLAMP : TADDR_WRAP;
         SetFilterMode(nFilter);
         SetClampMode(nAddress, nAddress, nAddress);
         SetBorderColor(0);
-        m_MipBias = 0.0f;
-        m_bSRGBLookup = false;
-        m_bActive = false;
-        m_bComparison = false;
-        padding = 0;
-        m_bPAD = 0;
     }
     STexState(int nFilter, int nAddressU, int nAddressV, int nAddressW, unsigned int borderColor)
     {
-        m_pDeviceState = NULL;
+        memset(this, 0, sizeof(*this));
         SetFilterMode(nFilter);
         SetClampMode(nAddressU, nAddressV, nAddressW);
         SetBorderColor(borderColor);
-        m_MipBias = 0.0f;
-        m_bSRGBLookup = false;
-        m_bActive = false;
-        m_bComparison = false;
-        padding = 0;
-        m_bPAD = 0;
     }
 
     void Destroy();

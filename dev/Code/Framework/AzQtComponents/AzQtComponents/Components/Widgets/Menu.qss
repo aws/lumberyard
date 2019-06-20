@@ -48,6 +48,12 @@ QMenu::item:disabled
 
 QMenu::separator
 {
-    height: 1px;
-    background: #444444;
+    height: 0px;
+    margin: 2px 0 2px 0;
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: #303030;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: #4E4E4E;
 }

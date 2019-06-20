@@ -41,8 +41,8 @@ namespace AZ
             bool UseVertexColor() const override;
             void EnableUseVertexColor(bool useVertexColor) override;
             
-            bool IsPhysicalMaterial() const override;
-            void EnablePhysicalMaterial(bool physical) override;
+            int GetMaterialFlags() const override;
+            void SetMaterialFlags(int flags) override;
 
             const AZ::Vector3& GetDiffuseColor() const override;
             const AZ::Vector3& GetSpecularColor() const override;
@@ -65,8 +65,9 @@ namespace AZ
             AZStd::string m_specularMap;
             AZStd::string m_normalMap;
             AZStd::string m_empty;//dummy place holder string to kill warning
+            int m_flags;
             bool m_useVertexColor;
-            bool m_physicsMaterial;
+
 
             AZ::Vector3 m_diffuseColor;
             AZ::Vector3 m_specularColor;

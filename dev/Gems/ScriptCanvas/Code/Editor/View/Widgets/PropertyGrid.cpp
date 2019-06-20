@@ -36,6 +36,7 @@
 #include <GraphCanvas/Components/Nodes/NodeTitleBus.h>
 #include <GraphCanvas/Components/GraphCanvasPropertyBus.h>
 #include <GraphCanvas/Components/SceneBus.h>
+#include <GraphCanvas/Editor/GraphCanvasProfiler.h>
 
 #include <ScriptCanvas/Core/Endpoint.h>
 #include <GraphCanvas/Components/Slots/SlotBus.h>
@@ -81,8 +82,10 @@ namespace
         AZStd::unordered_map<AZ::TypeId, AZ::Component*>& firstOfTypeMap,
         AZStd::unordered_set<AZ::EntityId>& entitySet)
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         for (auto& instance : instanceList)
         {
+            GRAPH_CANVAS_DETAILED_PROFILE_SCOPE("AddInstanceToComponentEditor::InnerLoop");
             // non-first instances are aggregated under the first instance
             AZ::Component* aggregateInstance = nullptr;
             if (firstOfTypeMap.count(instance->RTTI_GetType()) > 0)
@@ -155,6 +158,7 @@ namespace
     // Returns a set of unique display component instances
     AZStd::list<AZ::Component*> GetVisibleGcInstances(const AZ::EntityId& entityId)
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         AZStd::list<AZ::Component*> result;
 
         GraphCanvas::GraphCanvasPropertyBus::EnumerateHandlersId(entityId,
@@ -176,6 +180,7 @@ namespace
     // Returns a set of unique display component instances
     AZStd::list<AZ::Component*> GetVisibleScInstances(const AZ::EntityId& entityId)
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         // GraphCanvas entityId -> scriptCanvasEntity
         AZStd::any* userData {};
         GraphCanvas::NodeRequestBus::EventResult(userData, entityId, &GraphCanvas::NodeRequests::GetUserData);
@@ -211,6 +216,7 @@ namespace
         AZStd::list<AZ::Component*>& scInstances,
         StringToInstanceMap& instancesToDisplay)
     {
+        GRAPH_CANVAS_PROFILE_FUNCTION();
         if (position.empty() ||
             (gcInstances.empty() && scInstances.empty()))
         {
@@ -238,6 +244,7 @@ namespace
         const AZStd::list<AZ::Component*>& gcInstances,
         const AZStd::list<AZ::Component*>& scInstances)
     {
+        GRAPH_CANVAS_PROFILE_FUNCTION();
         AZStd::string result;
 
         if (!scInstances.empty())
@@ -270,8 +277,10 @@ namespace
     void GetInstancesToDisplay(const AZStd::vector<AZ::EntityId>& selectedEntityIds,
         StringToInstanceMap& instancesToDisplay)
     {
+        GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
         for (auto& entityId : selectedEntityIds)
         {
+            GRAPH_CANVAS_DETAILED_PROFILE_SCOPE("GetInstancesToDisplay::InnerLoop");
             AZStd::list<AZ::Component*> gcInstances = GetVisibleGcInstances(entityId);
             AZStd::list<AZ::Component*> scInstances = GetVisibleScInstances(entityId);
 
@@ -322,6 +331,7 @@ namespace ScriptCanvasEditor
 
         void PropertyGrid::ClearSelection()
         {
+            GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
             for (auto& componentEditor : m_componentEditors)
             {
                 // Component editor deletion needs to be deferred until the next frame
@@ -344,6 +354,7 @@ namespace ScriptCanvasEditor
 
         void PropertyGrid::DisplayInstances(const InstancesToDisplay& instances)
         {
+            GRAPH_CANVAS_PROFILE_FUNCTION();
             if (instances.m_gcInstances.empty() &&
                 instances.m_scInstances.empty())
             {
@@ -374,10 +385,14 @@ namespace ScriptCanvasEditor
 
             componentEditor->GetHeader()->SetTitle(title.c_str());
 
-            // Refresh editor
-            componentEditor->AddNotifications();
-            componentEditor->SetExpanded(true);
-            componentEditor->InvalidateAll();
+            {
+                GRAPH_CANVAS_DETAILED_PROFILE_SCOPE("PropertyGrid::DisplayInstance::RefreshEditor");
+
+                // Refresh editor
+                componentEditor->AddNotifications();
+                componentEditor->SetExpanded(true);
+                componentEditor->InvalidateAll();
+            }
 
             // hiding the icon on the header for Preview
             componentEditor->GetHeader()->SetIcon(QIcon());
@@ -387,34 +402,48 @@ namespace ScriptCanvasEditor
 
         AzToolsFramework::ComponentEditor* PropertyGrid::CreateComponentEditor()
         {
+            GRAPH_CANVAS_PROFILE_FUNCTION();
             AZ::SerializeContext* serializeContext = nullptr;
             AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
             AZ_Assert(serializeContext, "Failed to acquire application serialize context.");
 
-            m_componentEditors.push_back(AZStd::make_unique<AzToolsFramework::ComponentEditor>(serializeContext, this, this));
+            {
+                GRAPH_CANVAS_DETAILED_PROFILE_SCOPE("CreateComponentEditor::ComponentConstruction");
+                m_componentEditors.push_back(AZStd::make_unique<AzToolsFramework::ComponentEditor>(serializeContext, this, this));
+            }
+
             AzToolsFramework::ComponentEditor* componentEditor = m_componentEditors.back().get();
 
-            componentEditor->GetHeader()->SetHasContextMenu(false);
-            componentEditor->GetPropertyEditor()->SetHideRootProperties(false);
-            componentEditor->GetPropertyEditor()->SetAutoResizeLabels(true);
+            {
+                GRAPH_CANVAS_DETAILED_PROFILE_SCOPE("CreateComponentEditor::ComponentConfiguration");
 
-            connect(componentEditor, &AzToolsFramework::ComponentEditor::OnExpansionContractionDone, this, [this]()
+                componentEditor->GetHeader()->SetHasContextMenu(false);
+                componentEditor->GetPropertyEditor()->SetHideRootProperties(false);
+                componentEditor->GetPropertyEditor()->SetAutoResizeLabels(true);
+
+                connect(componentEditor, &AzToolsFramework::ComponentEditor::OnExpansionContractionDone, this, [this]()
                 {
                     m_host->layout()->update();
                     m_host->layout()->activate();
                 });
+            }
 
-            //move spacer to bottom of editors
-            m_host->layout()->removeItem(m_spacer);
-            m_host->layout()->addWidget(componentEditor);
-            m_host->layout()->addItem(m_spacer);
-            m_host->layout()->update();
+            {
+                GRAPH_CANVAS_DETAILED_PROFILE_SCOPE("CreateComponentEditor::SpacerUpdates");
+                //move spacer to bottom of editors
+                m_host->layout()->removeItem(m_spacer);
+                m_host->layout()->addWidget(componentEditor);
+                m_host->layout()->addItem(m_spacer);
+                m_host->layout()->update();
+
+            }
 
             return componentEditor;
         }
 
         void PropertyGrid::SetSelection(const AZStd::vector<AZ::EntityId>& selectedEntityIds)
         {
+            GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
             ClearSelection();
             UpdateContents(selectedEntityIds);
             RefreshPropertyGrid();
@@ -464,11 +493,14 @@ namespace ScriptCanvasEditor
                     else
                     {
                         AZ::EntityId graphCanvasGraphId;
+                        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetActiveScriptCanvasGraphId);
 
-                        // GraphCanvas Node
-                        GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, componentInstance->GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
-
-                        GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+                        if (!scriptCanvasGraphId.IsValid())
+                        {
+                            // GraphCanvas Node
+                            GraphCanvas::SceneMemberRequestBus::EventResult(graphCanvasGraphId, componentInstance->GetEntityId(), &GraphCanvas::SceneMemberRequests::GetScene);
+                            GeneralRequestBus::BroadcastResult(scriptCanvasGraphId, &GeneralRequests::GetScriptCanvasGraphId, graphCanvasGraphId);
+                        }
                     }
 
                     GeneralRequestBus::Broadcast(&GeneralRequests::PostUndoPoint, scriptCanvasGraphId);
@@ -495,6 +527,7 @@ namespace ScriptCanvasEditor
 
         void PropertyGrid::RefreshPropertyGrid()
         {
+            GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
             for (auto& componentEditor : m_componentEditors)
             {
                 if (componentEditor->isVisible())
@@ -525,6 +558,8 @@ namespace ScriptCanvasEditor
 
         void PropertyGrid::SetVisibility(const AZStd::vector<AZ::EntityId>& selectedEntityIds)
         {
+            GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
+
             // Set the visibility and connect for changes.
             for (auto& gcNodeEntityId : selectedEntityIds)
             {
@@ -579,6 +614,7 @@ namespace ScriptCanvasEditor
 
         void PropertyGrid::UpdateContents(const AZStd::vector<AZ::EntityId>& selectedEntityIds)
         {
+            GRAPH_CANVAS_DETAILED_PROFILE_FUNCTION();
             if (!selectedEntityIds.empty())
             {
                 // Build up components to display
@@ -589,6 +625,7 @@ namespace ScriptCanvasEditor
 
                 for (auto& pair : instanceMap)
                 {
+                    GRAPH_CANVAS_DETAILED_PROFILE_SCOPE("PropertyGrid::UpdateContents::InstanceMapLoop");
                     DisplayInstances(pair.second);
                 }
             }
@@ -605,8 +642,6 @@ namespace ScriptCanvasEditor
             {
                 datum->SetVisibility(AZ::Edit::PropertyVisibility::Hide);
             }
-
-            RefreshPropertyGrid();
         }
 
         void PropertyGrid::OnEndpointDisconnected(const ScriptCanvas::Endpoint& targetEndpoint)
@@ -620,8 +655,6 @@ namespace ScriptCanvasEditor
             {
                 datum->SetVisibility(AZ::Edit::PropertyVisibility::ShowChildrenOnly);
             }
-
-            RefreshPropertyGrid();
         }
 
 #include <Editor/View/Widgets/PropertyGrid.moc>

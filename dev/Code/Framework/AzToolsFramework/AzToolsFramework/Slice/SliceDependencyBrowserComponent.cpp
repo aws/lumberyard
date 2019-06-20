@@ -18,6 +18,7 @@
 
 #include <AzCore/std/smart_ptr/make_shared.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzToolsFramework/Slice/SliceUtilities.h>
 
 
 namespace AzToolsFramework
@@ -60,7 +61,7 @@ namespace AzToolsFramework
             AZStd::vector<AZStd::string> dependencies;
             AZStd::string relativePath(GetRelativeAssetPathByGuid(assetId.m_guid));
 
-            if(AzFramework::StringFunc::Path::IsExtension(relativePath.c_str(), ".slice", false))
+            if(AzFramework::StringFunc::Path::IsExtension(relativePath.c_str(), AzToolsFramework::SliceUtilities::GetSliceFileExtension().c_str(), false))
             {
                 GetSliceDependenciesByRelativeAssetPath(relativePath, dependencies);
 

@@ -1,0 +1,26 @@
+{
+    "msvc:debug": {
+        "defines": [
+            "_MT",
+            "_DLL"
+        ],
+        "cflags": [
+            "/MDd"
+        ],
+        "cxxflags": [
+            "/MDd"
+        ]
+    },
+    "msvc:!debug": {
+        "defines": [
+            "_MT",
+            "_DLL"
+        ],
+        "cflags": [
+            "/MD"
+        ],
+        "cxxflags": [
+            "/MD"
+        ]
+    }
+}

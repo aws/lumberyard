@@ -130,6 +130,11 @@ namespace ScriptCanvasEditor
         SetToolTip(tooltip.c_str());
     }
 
+    const ScriptCanvas::VariableId& GetVariableNodePaletteTreeItem::GetVariableId() const
+    {
+        return m_variableId;
+    }
+
     GraphCanvas::GraphCanvasMimeEvent* GetVariableNodePaletteTreeItem::CreateMimeEvent() const
     {
         return aznew CreateGetVariableNodeMimeEvent(m_variableId);
@@ -221,6 +226,11 @@ namespace ScriptCanvasEditor
 
         AZStd::string tooltip = AZStd::string::format("This node changes %s's values according to the data connected to the input slots", variableName.data());
         SetToolTip(tooltip.c_str());
+    }
+
+    const ScriptCanvas::VariableId& SetVariableNodePaletteTreeItem::GetVariableId() const
+    {
+        return m_variableId;
     }
 
     GraphCanvas::GraphCanvasMimeEvent* SetVariableNodePaletteTreeItem::CreateMimeEvent() const
@@ -321,11 +331,21 @@ namespace ScriptCanvasEditor
         return nodeIdPair;
     }
 
+    AZStd::vector< GraphCanvas::GraphCanvasMimeEvent* > CreateGetOrSetVariableNodeMimeEvent::CreateMimeEvents() const
+    {
+        AZStd::vector< GraphCanvas::GraphCanvasMimeEvent* > mimeEvents;
+
+        mimeEvents.push_back(aznew CreateGetVariableNodeMimeEvent(m_variableId));
+        mimeEvents.push_back(aznew CreateSetVariableNodeMimeEvent(m_variableId));
+
+        return mimeEvents;
+    }
+
     ////////////////////////////////////////
     // VariableCategoryNodePaletteTreeItem
     ////////////////////////////////////////
 
-    VariableCategoryNodePaletteTreeItem::VariableCategoryNodePaletteTreeItem(const QString& displayName)
+    VariableCategoryNodePaletteTreeItem::VariableCategoryNodePaletteTreeItem(AZStd::string_view displayName)
         : NodePaletteTreeItem(displayName, ScriptCanvasEditor::AssetEditorId)
     {
     }
@@ -340,10 +360,12 @@ namespace ScriptCanvasEditor
     // LocalVariablesListNodePaletteTreeItem
     //////////////////////////////////////////
 
-    LocalVariablesListNodePaletteTreeItem::LocalVariablesListNodePaletteTreeItem(const QString& displayName)
+    LocalVariablesListNodePaletteTreeItem::LocalVariablesListNodePaletteTreeItem(AZStd::string_view displayName)
         : NodePaletteTreeItem(displayName, ScriptCanvasEditor::AssetEditorId)
     {
         GraphCanvas::AssetEditorNotificationBus::Handler::BusConnect(ScriptCanvasEditor::AssetEditorId);
+
+        SetAllowPruneOnEmpty(false);
     }
 
     void LocalVariablesListNodePaletteTreeItem::OnActiveGraphChanged(const AZ::EntityId& graphCanvasGraphId)
@@ -399,9 +421,6 @@ namespace ScriptCanvasEditor
         // Need to let the child clear signal out
         ClearChildren();
 
-        SignalLayoutAboutToBeChanged();
-        BlockSignals();
-
         const ScriptCanvas::GraphVariableMapping* variableMapping = nullptr;
         ScriptCanvas::GraphVariableManagerRequestBus::EventResult(variableMapping, m_scriptCanvasGraphId, &ScriptCanvas::GraphVariableManagerRequests::GetVariables);
 
@@ -413,9 +432,6 @@ namespace ScriptCanvasEditor
                 rootItem->PopulateChildren();
             }
         }
-
-        UnblockSignals();
-        SignalLayoutChanged();
     }
 
     /////////////////////////////////////
@@ -443,12 +459,8 @@ namespace ScriptCanvasEditor
     {
         if (GetChildCount() == 0)
         {
-            SignalLayoutAboutToBeChanged();
-            BlockSignals();
             CreateChildNode<GetVariableNodePaletteTreeItem>(GetVariableId(), m_scriptCanvasGraphId);
             CreateChildNode<SetVariableNodePaletteTreeItem>(GetVariableId(), m_scriptCanvasGraphId);
-            UnblockSignals();
-            SignalLayoutChanged();
         }
     }
 

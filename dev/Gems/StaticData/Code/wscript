@@ -26,8 +26,9 @@ def build(bld):
 
         editor = dict(
 
-            platforms = ['win', 'darwin'],
-            configurations = ['debug', 'debug_test', 'profile', 'profile_test'],
+            platforms           = ['win', 'darwin'],
+            exclude_monolithic  = True,
+            client_only         = True,
             file_list    = file_list + ['staticdata_editor.waf_files'],
             #==============================
             # Settings

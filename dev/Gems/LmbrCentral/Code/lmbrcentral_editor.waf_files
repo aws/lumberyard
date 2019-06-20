@@ -14,6 +14,16 @@
             "include/LmbrCentral/Rendering/EditorCameraCorrectionBus.h",
             "include/LmbrCentral/Rendering/EditorLightComponentBus.h"
         ],
+        "Include/Shape": [
+            "include/LmbrCentral/Shape/EditorPolygonPrismShapeComponentBus.h",
+            "include/LmbrCentral/Shape/EditorSplineComponentBus.h",
+            "include/LmbrCentral/Shape/EditorTubeShapeComponentBus.h"
+        ],
+        "Include/Component": 
+        [
+            "include/LmbrCentral/Component/EditorWrappedComponentBase.h",
+            "include/LmbrCentral/Component/EditorWrappedComponentBase.inl"
+        ],
         "Source/Animation": 
         [
             "Source/Animation/EditorAttachmentComponent.h",
@@ -33,6 +43,8 @@
             "Source/Audio/EditorAudioEnvironmentComponent.cpp",
             "Source/Audio/EditorAudioListenerComponent.h",
             "Source/Audio/EditorAudioListenerComponent.cpp",
+            "Source/Audio/EditorAudioMultiPositionComponent.h",
+            "Source/Audio/EditorAudioMultiPositionComponent.cpp",
             "Source/Audio/EditorAudioPreloadComponent.h",
             "Source/Audio/EditorAudioPreloadComponent.cpp",
             "Source/Audio/EditorAudioRtpcComponent.h",
@@ -124,10 +136,16 @@
             "Source/Shape/EditorCompoundShapeComponent.cpp",
             "Source/Shape/EditorSplineComponent.h",
             "Source/Shape/EditorSplineComponent.cpp",
+            "Source/Shape/EditorSplineComponentMode.h",
+            "Source/Shape/EditorSplineComponentMode.cpp",
             "Source/Shape/EditorTubeShapeComponent.h",
             "Source/Shape/EditorTubeShapeComponent.cpp",
+            "Source/Shape/EditorTubeShapeComponentMode.h",
+            "Source/Shape/EditorTubeShapeComponentMode.cpp",
             "Source/Shape/EditorPolygonPrismShapeComponent.h",
             "Source/Shape/EditorPolygonPrismShapeComponent.cpp",
+            "Source/Shape/EditorPolygonPrismShapeComponentMode.h",
+            "Source/Shape/EditorPolygonPrismShapeComponentMode.cpp",
             "Source/Shape/EditorShapeComponentConverters.h",
             "Source/Shape/EditorShapeComponentConverters.cpp"
         ],

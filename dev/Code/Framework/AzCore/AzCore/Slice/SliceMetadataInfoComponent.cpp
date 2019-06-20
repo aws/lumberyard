@@ -180,8 +180,26 @@ namespace AZ
                 Field("ParentId", &SliceMetadataInfoComponent::m_parent)->
                 Field("ChildrenIds", &SliceMetadataInfoComponent::m_children)->
                 Field("PersistenceFlag", &SliceMetadataInfoComponent::m_persistent);
+
+            AZ::EditContext* editContext = serializeContext->GetEditContext();
+            if (editContext)
+            {
+                editContext->Class<SliceMetadataInfoComponent>(
+                    "Slice Metadata Info", "The Slice Metadata Info Component maintains a list of all of the entities that are associated with a slice metadata entity.")
+                    ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
+                    ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::Hide)
+                    ->Attribute(AZ::Edit::Attributes::RuntimeExportCallback, &SliceMetadataInfoComponent::ExportComponent)
+                    ;
+            }
         }
     }
+
+    AZ::ExportedComponent SliceMetadataInfoComponent::ExportComponent(AZ::Component* /*thisComponent*/, const AZ::PlatformTagSet& /*platformTags*/)
+    {
+        // SliceMetadataInfoComponent should only exist in the Editor, so we return a null component on exports.
+        return AZ::ExportedComponent();
+    }
+
 
     void SliceMetadataInfoComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {

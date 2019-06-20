@@ -76,6 +76,30 @@ namespace GraphCanvas
         }
     }
 
+    AZStd::string CommentNodeTextComponent::CommentNodeTextComponentSaveData::GetLabel() const
+    {
+        if (m_callback)
+        {
+            switch (m_callback->GetCommentMode())
+            {
+                case CommentMode::BlockComment:
+                {
+                    return "Group Name";
+                }
+                case CommentMode::Comment:
+                {
+                    return "Comment";
+                }
+                default:
+                {
+                    break;
+                }
+            }
+        }
+
+        return "Title";
+    }
+
     /////////////////////////////
     // CommentNodeTextComponent
     /////////////////////////////
@@ -144,8 +168,9 @@ namespace GraphCanvas
                 editContext->Class < CommentNodeTextComponentSaveData >("SaveData", "The save information regarding a comment node")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "Properties")
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
-                    ->DataElement(AZ::Edit::UIHandlers::Default, &CommentNodeTextComponentSaveData::m_comment, "Comment", "The comment to display on this node")
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &CommentNodeTextComponentSaveData::m_comment, "Title", "The comment to display on this node")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &CommentNodeTextComponentSaveData::OnCommentChanged)
+                        ->Attribute(AZ::Edit::Attributes::NameLabelOverride, &CommentNodeTextComponentSaveData::GetLabel)
                     ->DataElement(AZ::Edit::UIHandlers::Default, &CommentNodeTextComponentSaveData::m_fontConfiguration, "Font Settings", "The font settings used to render the font in the comment.")
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &CommentNodeTextComponentSaveData::UpdateStyleOverrides)
                 ;
@@ -161,6 +186,7 @@ namespace GraphCanvas
                     ->DataElement(AZ::Edit::UIHandlers::Default, &FontConfiguration::m_fontFamily, "Font Family", "The font family to use when rendering this comment.")
                     ->DataElement(AZ::Edit::UIHandlers::Default, &FontConfiguration::m_pixelSize, "Pixel Size", "The size of the font(in pixels)")
                         ->Attribute(AZ::Edit::Attributes::Min, 1)
+                        ->Attribute(AZ::Edit::Attributes::Max, 200)
                     ->DataElement(AZ::Edit::UIHandlers::ComboBox, &FontConfiguration::m_weight, "Weight", "The weight of the font")
                         ->EnumAttribute(QFont::Thin, "Thin")
                         ->EnumAttribute(QFont::ExtraLight, "Extra Light")
@@ -190,7 +216,14 @@ namespace GraphCanvas
     CommentNodeTextComponent::CommentNodeTextComponent()
         : m_saveData(this)
         , m_commentTextWidget(nullptr)
+        , m_commentMode(CommentMode::Comment)
     {
+    }
+
+    CommentNodeTextComponent::CommentNodeTextComponent(AZStd::string_view initialText)
+        : CommentNodeTextComponent()
+    {
+        m_saveData.m_comment = initialText;
     }
 
     void CommentNodeTextComponent::Init()
@@ -217,8 +250,6 @@ namespace GraphCanvas
         NodeNotificationBus::Handler::BusConnect(GetEntityId());
         
         m_commentTextWidget->Activate();
-
-        UpdateStyleOverrides();
     }
 
     void CommentNodeTextComponent::Deactivate()
@@ -252,6 +283,7 @@ namespace GraphCanvas
         NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::SetGrid, grid);        
 
         m_commentTextWidget->OnAddedToScene();
+        UpdateStyleOverrides();
         OnCommentChanged();
 
         m_saveData.RegisterIds(GetEntityId(), sceneId);
@@ -275,6 +307,7 @@ namespace GraphCanvas
     {
         NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::SetSnapToGrid, true);
         m_commentTextWidget->SetCommentMode(commentMode);
+        m_commentMode = commentMode;
 
         if (m_commentTextWidget->GetCommentMode() == CommentMode::Comment)
         {
@@ -284,6 +317,11 @@ namespace GraphCanvas
         {
             NodeUIRequestBus::Event(GetEntityId(), &NodeUIRequests::SetResizeToGrid, true);
         }
+    }
+
+    CommentMode CommentNodeTextComponent::GetCommentMode() const
+    {
+        return m_commentMode;
     }
 
     const AZStd::string& CommentNodeTextComponent::GetComment() const

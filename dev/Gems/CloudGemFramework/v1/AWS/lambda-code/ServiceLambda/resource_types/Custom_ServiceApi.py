@@ -56,14 +56,14 @@ PROPERTY_SCHEMA = {
                 schema={
                     '*': properties.Object( default={}, # method, can be *
                         schema={
-                            'CacheDataEncrypted': properties.Boolean( default = False ),
-                            'CacheTtlInSeconds': properties.Integer( default = 60 ),
-                            'CachingEnable': properties.Boolean( default = False ),
-                            'DataTraceEnabled': properties.Boolean( default = False ),
-                            'LoggingLevel': properties.String( default='OFF' ),
-                            'MetricsEnabled': properties.Boolean( default = False ),
-                            'ThrottlingBurstLimit': properties.Integer( default = 2000 ),
-                            'ThrottlingRateLimit': properties.Integer( default = 1000 ),
+                            'cacheDataEncrypted': properties.Boolean( default = False ),
+                            'cacheTtlInSeconds': properties.Integer( default = 300 ),
+                            'cachingEnabled': properties.Boolean( default = False ),
+                            'dataTraceEnabled': properties.Boolean( default = False ),
+                            'loggingLevel': properties.String( default='OFF' ),
+                            'metricsEnabled': properties.Boolean( default = False ),
+                            'throttlingBurstLimit': properties.Integer( default = 500 ),
+                            'throttlingRateLimit': properties.Integer( default = 1000 ),
                         }
                     )
                 }
@@ -96,6 +96,7 @@ def handler(event, context):
     logical_role_name = logical_resource_id
     stack_manager = stack_info.StackInfoManager()
     stack = stack_manager.get_stack_info(event['StackId'])
+
     rest_api_resource_name = stack.stack_name + '-' + logical_resource_id
     id_data = aws_utils.get_data_from_custom_physical_resource_id(event.get('PhysicalResourceId', None))
 
@@ -108,7 +109,9 @@ def handler(event, context):
         swagger_content = get_configured_swagger_content(stack, props, role_arn, rest_api_resource_name)
         rest_api_id = create_api_gateway(rest_api_resource_name, props, swagger_content)
         service_url = get_service_url(rest_api_id, stack.region)
+
         register_service_interfaces(stack, service_url, swagger_content)
+        update_api_gateway_tags(rest_api_id, event);
 
         response_data['Url'] = service_url
         id_data['RestApiId'] = rest_api_id
@@ -125,6 +128,8 @@ def handler(event, context):
         update_api_gateway(rest_api_id, props, swagger_content)
         service_url = get_service_url(rest_api_id, stack.region)
         register_service_interfaces(stack, service_url, swagger_content)
+
+        update_api_gateway_tags(rest_api_id, event)
 
         response_data['Url'] = service_url
 
@@ -243,7 +248,6 @@ def create_api_gateway(rest_api_resource_name, props, swagger_content):
 
     return rest_api_id
 
-
 def update_api_gateway(rest_api_id, props, swagger_content):
     rest_api_deployment_id = get_rest_api_deployment_id(rest_api_id)
     new_swagger_digest = detect_swagger_changes(rest_api_id, rest_api_deployment_id, swagger_content)
@@ -277,17 +281,17 @@ def create_documentation_version(rest_api_id, attempt=0):
             'stageName': STAGE_NAME,
             'documentationVersion': version
         }
-       
+
         try:
             res = api_gateway.create_documentation_version(**kwargs)
-        except ClientError as error:                        
+        except ClientError as error:
             if attempt < 3 and (hasattr(error, 'response') and error.response and error.response['Error']['Code'] != 'ConflictException'):
                 print "Version conflict, incrementing the version and trying again.  This is attempt {}".format(attempt)
                 attempt = attempt + 1
                 self.create_documentation_version(rest_api_id, attempt)
             else:
                 raise error
-            
+
 
 def get_documentation_version(rest_api_id):
 
@@ -435,18 +439,53 @@ def get_rest_api_stage_update_patch_operations(current_stage, props):
 
     builder.diff('/variables/', current_stage.get('variables', {}), props.StageVariables)
 
-    # TODO: support MethodSettings. https://issues.labcollab.net/browse/LMBR-32185
-    #
-    # See https://docs.aws.amazon.com/apigateway/api-reference/resource/stage/#methodSettings
-    # for the paths needed to update these values. Note that the paths for these values have
-    # the form /a~1b~1c/GET (slashes in the resource path replaced by ~1, and GET is any HTTP
-    # verb).
-    #
-    # We can't remove individual values, we can only replace them with default values if they
-    # aren't specified. However, if a path/method exists in current_stage but not in props, then
-    # all the settings should be removed using a path like /a~1b~1c/GET.
-    #
-    # The wildcards may need some special handling.
+    # MethodSettings modifications - Set in your resource-template.json's ServiceApi Definition as:
+    # "Properties": {
+    #       "MethodSettings": {
+    #           "/client/content": {
+    #               "POST": {
+    #                   "throttlingBurstLimit": 177
+    #               }
+    #           }
+    #       }
+    #   }
+    #}
+    settingsObj = current_stage.get('methodSettings',{})
+    existing_paths = [curPath for curPath, curSettings in settingsObj.iteritems()]
+
+    propsSettings = props.MethodSettings
+
+    for pathStr in dir(propsSettings):
+        pathInfo = getattr(propsSettings, pathStr)
+        if not isinstance(pathInfo, properties._Properties):
+            continue
+
+        for requestVerb in dir(pathInfo):
+            settings_path = pathStr.replace('/', '~1') + '/' + requestVerb
+
+            if settings_path in existing_paths:
+                existing_paths.remove(settings_path)
+
+            update_path = '/' + settings_path
+            pathSettings = getattr(pathInfo, requestVerb)
+            if not isinstance(pathSettings, properties._Properties):
+                continue
+            for methodbase, methodUpdate in [('throttlingBurstLimit', '/throttling/burstLimit'),
+                                             ('throttlingRateLimit', '/throttling/rateLimit'),
+                                             ('cacheDataEncrypted', '/caching/dataEncrypted'),
+                                             ('cacheTtlInSeconds', '/caching/ttlInSeconds'),
+                                             ('cachingEnabled', '/caching/enabled'),
+                                             ('dataTraceEnabled', '/logging/dataTrace'),
+                                             ('loggingLevel', '/logging/loglevel'),
+                                             ('metricsEnabled', '/metrics/enabled')]:
+                cur_settings = settingsObj.get(settings_path, {})
+                curValue = cur_settings.get(methodbase, '')
+                propValue = getattr(pathSettings, methodbase)
+                if curValue != propValue:
+                    builder.replace(update_path + methodUpdate, str(propValue))
+
+    for thisPath in existing_paths:
+        builder.remove('/' + thisPath)
 
     return builder.get()
 
@@ -553,3 +592,22 @@ def get_service_directory(stack):
         raise RuntimeError('Cannot register or unregister service interfaces because there is no project service url.')
 
     return ServiceDirectory(configuration_bucket_name)
+
+def update_api_gateway_tags(rest_api_id, event):
+    resourceProps = event.get('ResourceProperties')
+    settings = resourceProps.get('SwaggerSettings')
+    region = settings.get('Region')
+    resourceArn = "arn:aws:apigateway:{region}::/restapis/{rest_api_id}/stages/{stageName}".format(
+        region=region,
+        rest_api_id=rest_api_id,
+        stageName=STAGE_NAME
+    )
+    kwargs = {
+        'resourceArn': resourceArn,
+        'tags': {
+            "Deployment": settings['DeploymentName'],
+            "Gem": settings['ResourceGroupName']
+        }
+    }
+    api_gateway.tag_resource(**kwargs);
+

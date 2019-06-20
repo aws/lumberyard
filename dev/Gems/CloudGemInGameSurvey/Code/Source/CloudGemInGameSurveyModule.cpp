@@ -15,18 +15,18 @@
 
 #include "CloudGemInGameSurveySystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemInGameSurvey
 {
     class CloudGemInGameSurveyModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemInGameSurveyModule, "{0C0ECA81-00BB-4139-9A98-FEEAE2C64983}", CryHooksModule);
+        AZ_RTTI(CloudGemInGameSurveyModule, "{0C0ECA81-00BB-4139-9A98-FEEAE2C64983}", AZ::Module);
 
         CloudGemInGameSurveyModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

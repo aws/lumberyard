@@ -32,6 +32,7 @@ namespace LyViewPane
     static const char* const EntityOutliner = "Entity Outliner";
     static const char* const EntityInspector = "Entity Inspector";
     static const char* const EntityInspectorPinned = "Pinned Entity Inspector";
+    static const char* const LevelInspector = "Level Inspector";
     static const char* const DeploymentTool = "Deployment Tool";
     static const char* const ProjectSettingsTool = "Project Settings Tool";
     static const char* const ErrorReport = "Error Report";
@@ -51,8 +52,10 @@ namespace LyViewPane
     static const char* const AudioControlsEditor = "Audio Controls Editor";
     static const char* const SubstanceEditor = "Substance Editor";
     static const char* const VegetationEditor = "Vegetation Editor";
+    static const char* const LandscapeCanvas = "Landscape Canvas";
     static const char* const AnimationEditor = "EMotion FX Animation Editor (PREVIEW)";
     static const char* const PhysXConfigurationEditor = "PhysX Configuration (PREVIEW)";
+    static const char* const PhysXVehiclesConfigurationEditor = "PhysX Vehicles Configuration (PREVIEW)";
 
     static const char* const LegacyAssetBrowser = "Asset Browser (LEGACY)";
     static const char* const LegacyFlowGraph = "Flow Graph (LEGACY)";

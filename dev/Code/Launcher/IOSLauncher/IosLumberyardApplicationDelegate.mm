@@ -30,7 +30,7 @@
 @implementation IosLumberyardApplicationDelegate
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-- (void)launchLumberyardApplication
+- (int)runLumberyardApplication
 {
     // Unlike Mac where we have unrestricted access to the filesystem, iOS apps are sandboxed such
     // that you can only access a pre-defined set of directories. The most appropriate of these to
@@ -39,14 +39,26 @@
     char pathToApplicationPersistentStorage[AZ_MAX_PATH_LEN] = { 0 };
     SystemUtilsApple::GetPathToUserApplicationSupportDirectory(pathToApplicationPersistentStorage, AZ_MAX_PATH_LEN);
 
-    const int exitCode = AppleLauncher::Launch("", pathToApplicationPersistentStorage);
+    return AppleLauncher::Launch("", pathToApplicationPersistentStorage);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+- (void)launchLumberyardApplication
+{
+    const int exitCode = [self runLumberyardApplication];
     exit(exitCode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 - (BOOL)application:(UIApplication*)application didFinishLaunchingWithOptions:(NSDictionary*)launchOptions
 {
-    [self performSelector:@selector(launchLumberyardApplication) withObject:nil afterDelay:0.0];
+    // prevent the lumberyard runtime from running when launched in a xctest environment, otherwise the
+    // testing framework will kill the "app" due to the lengthy bootstrap process
+    if ([[NSProcessInfo processInfo] environment][@"XCTestConfigurationFilePath"] == nil)
+    {
+        [self performSelector:@selector(launchLumberyardApplication) withObject:nil afterDelay:0.0];
+    }
     return YES;
 }
 

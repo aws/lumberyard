@@ -221,9 +221,9 @@ namespace EMotionFX
     }
 
 
-    uint32 BlendTreeParameterNode::GetVisualColor() const
+    AZ::Color BlendTreeParameterNode::GetVisualColor() const
     {
-        return MCore::RGBA(150, 150, 150);
+        return AZ::Color(0.59f, 0.59f, 0.59f, 1.0f);
     }
 
 
@@ -404,22 +404,22 @@ namespace EMotionFX
     {
         AZ_UNUSED(newParameterIndex);
 
-        // The only scenario where this node's port will get affected by adding a new parameter is if we are listing all parameters
+        AZStd::vector<AZStd::string> newOutputPorts;
+        const ValueParameterVector& valueParameters = GetAnimGraph()->RecursivelyGetValueParameters();
+        for (const ValueParameter* valueParameter : valueParameters)
+        {
+            newOutputPorts.emplace_back(valueParameter->GetName());
+        }
+
         if (m_parameterNames.empty())
         {
-            AZStd::vector<AZStd::string> newOutputPorts;
-            const ValueParameterVector& valueParameters = GetAnimGraph()->RecursivelyGetValueParameters();
-            for (const ValueParameter* valueParameter : valueParameters)
-            {
-                newOutputPorts.emplace_back(valueParameter->GetName());
-            }
-            // Keep the member variable as it is (thats why we pass m_parameterNames)
-            GetEventManager().OnOutputPortsChanged(this, newOutputPorts, sParameterNamesMember, newOutputPorts);
+            // We don't use the parameter mask and show all of them. Pass an empty vector as serialized member value
+            // so that the parameter mask won't be adjusted in the callbacks.
+            GetEventManager().OnOutputPortsChanged(this, newOutputPorts, sParameterNamesMember, AZStd::vector<AZStd::string>());
         }
         else
         {
-            // otherwise just compute the indices
-            Reinit();
+            GetEventManager().OnOutputPortsChanged(this, newOutputPorts, sParameterNamesMember, newOutputPorts);
         }
     }
 

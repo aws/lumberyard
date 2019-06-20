@@ -101,6 +101,8 @@ namespace EMStudio
 
         void UpdateParameterValues();
 
+        void ClearParameters(bool showConfirmationDialog = true);
+
         // AnimGraphNotificationBus
         void OnParameterActionTriggered(const EMotionFX::ValueParameter* valueParameter) override;
 
@@ -113,7 +115,7 @@ namespace EMStudio
         void OnAddParameter();
         void OnEditButton();
         void OnRemoveButton();
-        void OnClearButton();
+        void OnClearButton() { ClearParameters(); }
 
         void OnGroupCollapsed(QTreeWidgetItem* item);
         void OnGroupExpanded(QTreeWidgetItem* item);

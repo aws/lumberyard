@@ -173,7 +173,7 @@ void CGridSettingsDialog::UpdateValues()
     pGrid->translation.y = ui->m_translationY->value();
     pGrid->translation.z = ui->m_translationZ->value();
 
-    pGrid->bAngleSnapEnabled = ui->m_snapToGrid->isChecked();
+    pGrid->bAngleSnapEnabled = ui->m_angleSnap->isChecked();
     pGrid->angleSnap = ui->m_angleSnapScale->value();
 
     gSettings.snap.constructPlaneDisplay = ui->m_displayCP->isChecked();
@@ -182,6 +182,8 @@ void CGridSettingsDialog::UpdateValues()
     gSettings.snap.markerDisplay = ui->m_displaySnapMarker->isChecked();
     gSettings.snap.markerSize = ui->m_snapMarkerSize->value();
     gSettings.snap.markerColor = ui->m_snapMarkerColor->Color();
+
+    NotificationBus::Broadcast(&Notifications::OnGridValuesUpdated);
 }
 
 

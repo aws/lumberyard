@@ -20,6 +20,7 @@
 #include <Components/CharacterControllerComponent.h>
 #include <PhysXCharacters/SystemBus.h>
 #include <PhysX/ColliderComponentBus.h>
+#include <AzFramework/Physics/Utils.h>
 
 namespace PhysXCharacters
 {
@@ -147,7 +148,7 @@ namespace PhysXCharacters
         CharacterControllerRequestBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
         Physics::CharacterRequestBus::Handler::BusDisconnect();
-        m_controller = nullptr;
+        Physics::Utils::DeferDelete(AZStd::move(m_controller));
     }
 
     // helper functions
@@ -169,7 +170,7 @@ namespace PhysXCharacters
     }
 
     template<class T>
-    static T CheckValidAndReturn(const AZStd::shared_ptr<Physics::Character>& controller, T result)
+    static T CheckValidAndReturn(const AZStd::unique_ptr<Physics::Character>& controller, T result)
     {
         if (!controller)
         {

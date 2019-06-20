@@ -28,7 +28,7 @@ namespace ScriptCanvas
     {
     public:
 
-        AZ_COMPONENT(Connection, "{64CA5016-E803-4AC4-9A36-BDA2C890C6EB}");
+        AZ_COMPONENT(Connection, "{64CA5016-E803-4AC4-9A36-BDA2C890C6EB}", AZ::Component);
 
         Connection() = default;
 

@@ -789,7 +789,7 @@ void SplineWidget::DrawGrid(QPainter* painter)
             if ((v >= m_valueRange.start && v <= m_valueRange.end) || fabs(v - m_valueRange.start) < 0.01f || fabs(v - m_valueRange.end) < 0.01f)
             {
                 painter->setPen(Qt::black);
-                painter->drawStaticText(m_rcClient.left() + 2, py - 8, QString::number(v));
+                painter->drawText(m_rcClient.left() + 2, py - 8, QString::number(v));
             }
         }
     }

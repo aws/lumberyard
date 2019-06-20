@@ -629,6 +629,23 @@ struct SMeshBoneMapping_uint8
     AUTO_STRUCT_INFO
 };
 
+//START: Add LOD support for touch bending vegetation
+struct SMeshBoneMappingInfo_uint8
+{
+    SMeshBoneMappingInfo_uint8(int vertexCount)
+    {
+        //Will be deleted by ~SFoliageInfoCGF()
+        pBoneMapping = new SMeshBoneMapping_uint8[vertexCount];
+        nVertexCount = vertexCount;
+    }
+
+    int nVertexCount;
+    struct SMeshBoneMapping_uint8* pBoneMapping;
+
+    AUTO_STRUCT_INFO
+};
+//END: Add LOD support for touch bending vegetation
+
 // Subset of mesh is a continuous range of vertices and indices that share same material.
 struct SMeshSubset
 {

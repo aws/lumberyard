@@ -60,12 +60,12 @@ def build(bld):
             includes                    = includes,
             defines                     = defines,
 
-            autod_uselib                = ['QT5CORE',
-                                            'QT5GUI',
-                                            'QT5WIDGETS',
-                                            'TIFF',
-                                            'PVR_TEX_TOOL',
-                                            'ETC2COMP'],
+            uselib                      = ['QT5CORE',
+                                           'QT5GUI',
+                                           'QT5WIDGETS',
+                                           'TIFF',
+                                           'PVR_TEX_TOOL',
+                                           'ETC2COMP'],
             
             platforms                   = ['win', 'darwin'],
 

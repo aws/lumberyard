@@ -13,6 +13,8 @@
 
 #include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 #include <QApplication>
 #include <QDoubleSpinBox>
@@ -34,6 +36,10 @@ static const char* g_hoveredPropertyName = "hovered";
 static const char* g_spinBoxUpPressedPropertyName = "SpinBoxUpButtonPressed";
 static const char* g_spinBoxDownPressedPropertyName = "SpinBoxDownButtonPressed";
 
+// Decimal precision parameters
+static const int g_decimalPrecisonDefault = 7;
+static const int g_decimalDisplayPrecisionDefault = 3;
+
 class SpinBoxWatcher : public QObject
 {
 public:
@@ -43,6 +49,8 @@ public:
 
     bool eventFilter(QObject* watched, QEvent* event) override;
 
+    bool isEditing(const QAbstractSpinBox* spinBox) const { return m_spinBoxChanging == spinBox; }
+
 private:
     enum State
     {
@@ -51,7 +59,7 @@ private:
         ProcessingArrowButtons
     };
     int m_xPos = 0;
-    bool m_emittedChangeBegun = false;
+    QPointer<QAbstractSpinBox> m_spinBoxChanging;
     State m_state = Inactive;
 
     bool filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* event);
@@ -201,7 +209,7 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
         case QEvent::KeyRelease:
         {
             auto keyEvent = static_cast<QKeyEvent*>(event);
-            if (m_emittedChangeBegun && !keyEvent->isAutoRepeat())
+            if (!m_spinBoxChanging.isNull() && !keyEvent->isAutoRepeat())
             {
                 switch (keyEvent->key())
                 {
@@ -271,7 +279,7 @@ bool SpinBoxWatcher::filterSpinBoxEvents(QAbstractSpinBox* spinBox, QEvent* even
             }
 
             const auto angleDelta = wheelEvent->angleDelta();
-            if (angleDelta.isNull() || m_emittedChangeBegun)
+            if (angleDelta.isNull() || !m_spinBoxChanging.isNull())
             {
                 break;
             }
@@ -493,26 +501,27 @@ QAbstractSpinBox::StepEnabled SpinBoxWatcher::stepEnabled(QAbstractSpinBox* spin
 
 void SpinBoxWatcher::emitValueChangeBegan(QAbstractSpinBox* spinBox)
 {
-    if (m_emittedChangeBegun)
+    if (!m_spinBoxChanging.isNull())
     {
+        Q_ASSERT(m_spinBoxChanging == spinBox);
         return;
     }
 
     if (auto azSpinBox = qobject_cast<SpinBox*>(spinBox))
     {
-        m_emittedChangeBegun = true;
+        m_spinBoxChanging = spinBox;
         emit azSpinBox->valueChangeBegan();
     }
     else if (auto azDoubleSpinBox = qobject_cast<DoubleSpinBox*>(spinBox))
     {
-        m_emittedChangeBegun = true;
+        m_spinBoxChanging = spinBox;
         emit azDoubleSpinBox->valueChangeBegan();
     }
 }
 
 void SpinBoxWatcher::emitValueChangeEnded(QAbstractSpinBox* spinBox)
 {
-    if (!m_emittedChangeBegun)
+    if (m_spinBoxChanging.isNull())
     {
         return;
     }
@@ -520,12 +529,12 @@ void SpinBoxWatcher::emitValueChangeEnded(QAbstractSpinBox* spinBox)
     if (auto azSpinBox = qobject_cast<SpinBox*>(spinBox))
     {
         emit azSpinBox->valueChangeEnded();
-        m_emittedChangeBegun = false;
+        m_spinBoxChanging.clear();
     }
     else if (auto azDoubleSpinBox = qobject_cast<DoubleSpinBox*>(spinBox))
     {
         emit azDoubleSpinBox->valueChangeEnded();
-        m_emittedChangeBegun = false;
+        m_spinBoxChanging.clear();
     }
 }
 
@@ -554,14 +563,9 @@ void SpinBoxWatcher::resetCursor(QAbstractSpinBox* spinBox)
 SpinBox::Config SpinBox::loadConfig(QSettings& settings)
 {
     Config config = defaultConfig();
-    config.pixelsPerStep = settings.value(QStringLiteral("PixelsPerStep"), config.pixelsPerStep).toInt();
 
-    const auto cursorPath = settings.value(QStringLiteral("ScrollCursor")).toString();
-    const QPixmap cursorIcon(cursorPath);
-    if (!cursorIcon.isNull())
-    {
-        config.scrollCursor = QCursor(cursorIcon);
-    }
+    ConfigHelpers::read<int>(settings, QStringLiteral("PixelsPerStep"), config.pixelsPerStep);
+    ConfigHelpers::read<QCursor>(settings, QStringLiteral("ScrollCursor"), config.scrollCursor);
 
     return config;
 }
@@ -574,32 +578,32 @@ SpinBox::Config SpinBox::defaultConfig()
     return config;
 }
 
-static int s_watcherReferenceCount = 0;
-QPointer<SpinBoxWatcher> SpinBox::m_spinBoxWatcher = nullptr;
+QPointer<SpinBoxWatcher> SpinBox::s_spinBoxWatcher = nullptr;
+unsigned int SpinBox::s_watcherReferenceCount = 0;
 
 void SpinBox::initializeWatcher()
 {
-    if (!m_spinBoxWatcher)
+    if (!s_spinBoxWatcher)
     {
         Q_ASSERT(s_watcherReferenceCount == 0);
-    m_spinBoxWatcher = new SpinBoxWatcher;
-}
+        s_spinBoxWatcher = new SpinBoxWatcher;
+    }
 
-    s_watcherReferenceCount++;
+    ++s_watcherReferenceCount;
 }
 
 void SpinBox::uninitializeWatcher()
 {
-    Q_ASSERT(!m_spinBoxWatcher.isNull());
+    Q_ASSERT(!s_spinBoxWatcher.isNull());
     Q_ASSERT(s_watcherReferenceCount > 0);
 
-    s_watcherReferenceCount--;
+    --s_watcherReferenceCount;
 
     if (s_watcherReferenceCount == 0)
     {
-    delete m_spinBoxWatcher;
-        m_spinBoxWatcher = nullptr;
-}
+        delete s_spinBoxWatcher;
+        s_spinBoxWatcher = nullptr;
+    }
 }
 
 bool SpinBox::drawSpinBox(const QProxyStyle* style, const QStyleOption* option, QPainter* painter, const QWidget* widget, const SpinBox::Config& config)
@@ -656,7 +660,7 @@ bool SpinBox::polish(QProxyStyle* style, QWidget* widget, const SpinBox::Config&
 {
     Q_UNUSED(style);
     Q_UNUSED(config);
-    Q_ASSERT(!m_spinBoxWatcher.isNull());
+    Q_ASSERT(!s_spinBoxWatcher.isNull());
 
     if (!qobject_cast<QSpinBox*>(widget) && !qobject_cast<QDoubleSpinBox*>(widget))
     {
@@ -672,12 +676,12 @@ bool SpinBox::polish(QProxyStyle* style, QWidget* widget, const SpinBox::Config&
             newStyle->repolishOnSettingsChange(spinBox);
         }
 
-        m_spinBoxWatcher->m_config = config;
-        spinBox->installEventFilter(m_spinBoxWatcher);
+        s_spinBoxWatcher->m_config = config;
+        spinBox->installEventFilter(s_spinBoxWatcher);
 
         if (auto lineEdit = spinBox->findChild<QLineEdit*>(QString(), Qt::FindDirectChildrenOnly))
         {
-            lineEdit->installEventFilter(m_spinBoxWatcher);
+            lineEdit->installEventFilter(s_spinBoxWatcher);
         }
         return true;
     }
@@ -689,15 +693,15 @@ bool SpinBox::unpolish(QProxyStyle* style, QWidget* widget, const SpinBox::Confi
     Q_UNUSED(style);
     Q_UNUSED(config);
 
-    Q_ASSERT(!m_spinBoxWatcher.isNull());
+    Q_ASSERT(!s_spinBoxWatcher.isNull());
 
     if (auto spinBox = qobject_cast<QAbstractSpinBox*>(widget))
     {
-        spinBox->removeEventFilter(m_spinBoxWatcher);
+        spinBox->removeEventFilter(s_spinBoxWatcher);
 
         if (auto lineEdit = spinBox->findChild<QLineEdit*>(QString(), Qt::FindDirectChildrenOnly))
         {
-            lineEdit->removeEventFilter(m_spinBoxWatcher);
+            lineEdit->removeEventFilter(s_spinBoxWatcher);
         }
         return true;
     }
@@ -707,7 +711,9 @@ bool SpinBox::unpolish(QProxyStyle* style, QWidget* widget, const SpinBox::Confi
 SpinBox::SpinBox(QWidget* parent)
     : QSpinBox(parent)
 {
+#if QT_VERSION < QT_VERSION_CHECK(5,11,1)
     setShiftIncreasesStepRate(true);
+#endif
     m_lineEdit = new internal::SpinBoxLineEdit(this);
     connect(m_lineEdit, &internal::SpinBoxLineEdit::globalUndoTriggered, this, &SpinBox::globalUndoTriggered);
     connect(m_lineEdit, &internal::SpinBoxLineEdit::globalRedoTriggered, this, &SpinBox::globalRedoTriggered);
@@ -729,7 +735,11 @@ bool SpinBox::isRedoAvailable() const
 void SpinBox::focusInEvent(QFocusEvent* event)
 {
     QSpinBox::focusInEvent(event);
-    lineEdit()->deselect();
+
+    if (event->reason() == Qt::MouseFocusReason)
+    {
+        lineEdit()->deselect();
+    }
 }
 
 static QAction* findAction(QList<QAction*>& actions, const QString& actionText)
@@ -749,7 +759,7 @@ static QAction* findAction(QList<QAction*>& actions, const QString& actionText)
 }
 
 template <typename SpinBoxType>
-void spinBoxContextMenuEvent(QContextMenuEvent* ev, SpinBoxType* spinBox, QLineEdit* lineEdit, uint stepEnabled)
+void spinBoxContextMenuEvent(QContextMenuEvent* ev, SpinBoxType* spinBox, QLineEdit* lineEdit, uint stepEnabled, bool overrideUndoRedo)
 {
     // We want to override the context menu's undo/redo in the case that the lineEdit control does not currently have any undo/redo available
     // but the QAbstractSpinBox doesn't really expose any way to do that nicely.
@@ -761,25 +771,18 @@ void spinBoxContextMenuEvent(QContextMenuEvent* ev, SpinBoxType* spinBox, QLineE
         auto menuActions = menu->actions();
 
         QAction* undoAction = findAction(menuActions, QObject::tr("&Undo"));
-        if (undoAction)
+        if (undoAction && overrideUndoRedo)
         {
             QObject::disconnect(undoAction, &QAction::triggered, nullptr, nullptr);
             QObject::connect(undoAction, &QAction::triggered, spinBox, &SpinBoxType::globalUndoTriggered);
-
-            // need a way for this to be overridden globally to know if there's any undo/redo available globally
         }
 
         QAction* redoAction = findAction(menuActions, QObject::tr("&Redo"));
-        if (redoAction)
+        if (redoAction && overrideUndoRedo)
         {
             QObject::disconnect(redoAction, &QAction::triggered, nullptr, nullptr);
             QObject::connect(redoAction, &QAction::triggered, spinBox, &SpinBoxType::globalRedoTriggered);
-
-            // need a way for this to be overridden globally to know if there's any undo/redo available globally
-
         }
-
-        Q_EMIT spinBox->contextMenuAboutToShow(undoAction, redoAction);
 
         QAction* selectAllAction = findAction(menuActions, QObject::tr("Select All"));
         if (selectAllAction)
@@ -802,7 +805,7 @@ void spinBoxContextMenuEvent(QContextMenuEvent* ev, SpinBoxType* spinBox, QLineE
             spinBox->stepBy(-1);
         });
 
-        menu->addSeparator();
+        Q_EMIT spinBox->contextMenuAboutToShow(menu, undoAction, redoAction);
 
         const QPoint pos = (ev->reason() == QContextMenuEvent::Mouse)
             ? ev->globalPos() : spinBox->mapToGlobal(QPoint(ev->pos().x(), 0)) + QPoint(spinBox->width() / 2, spinBox->height() / 2);
@@ -816,26 +819,28 @@ void spinBoxContextMenuEvent(QContextMenuEvent* ev, SpinBoxType* spinBox, QLineE
 
 void SpinBox::contextMenuEvent(QContextMenuEvent* ev)
 {
-    if (m_lineEdit->overrideUndoRedo())
-    {
-        spinBoxContextMenuEvent(ev, this, lineEdit(), stepEnabled());
-    }
-    else
-    {
-        return QSpinBox::contextMenuEvent(ev);
-    }
+    spinBoxContextMenuEvent(ev, this, lineEdit(), stepEnabled(), m_lineEdit->overrideUndoRedo());
 }
 
 DoubleSpinBox::DoubleSpinBox(QWidget* parent)
     : QDoubleSpinBox(parent)
+    , m_displayDecimals(g_decimalDisplayPrecisionDefault)
 {
+#if QT_VERSION < QT_VERSION_CHECK(5,11,1)
     setShiftIncreasesStepRate(true);
+#endif
     m_lineEdit = new internal::SpinBoxLineEdit(this);
     connect(m_lineEdit, &internal::SpinBoxLineEdit::globalUndoTriggered, this, &DoubleSpinBox::globalUndoTriggered);
     connect(m_lineEdit, &internal::SpinBoxLineEdit::globalRedoTriggered, this, &DoubleSpinBox::globalRedoTriggered);
     setLineEdit(m_lineEdit);
 
     setRange(0, 100);
+    setDecimals(g_decimalPrecisonDefault);
+
+    // Our tooltip will be the full decimal value, so keep it updated
+    // whenever our value changes
+    QObject::connect(this, static_cast<void(DoubleSpinBox::*)(double)>(&DoubleSpinBox::valueChanged), this, &DoubleSpinBox::updateToolTip);
+    updateToolTip(value());
 }
 
 bool DoubleSpinBox::isUndoAvailable() const
@@ -848,40 +853,60 @@ bool DoubleSpinBox::isRedoAvailable() const
     return lineEdit()->isRedoAvailable();
 }
 
+bool DoubleSpinBox::isEditing() const
+{
+    return SpinBox::s_spinBoxWatcher->isEditing(this);
+}
+
 void DoubleSpinBox::contextMenuEvent(QContextMenuEvent* ev)
 {
-    if (m_lineEdit->overrideUndoRedo())
+    spinBoxContextMenuEvent(ev, this, lineEdit(), stepEnabled(), m_lineEdit->overrideUndoRedo());
+}
+
+QString DoubleSpinBox::stringValue(double value, bool truncated) const
+{
+    // Determine which decimal precision to use for displaying the value
+    int numDecimals = decimals();
+    if (truncated && m_displayDecimals < numDecimals)
     {
-        spinBoxContextMenuEvent(ev, this, lineEdit(), stepEnabled());
+        numDecimals = m_displayDecimals;
     }
-    else
+    else if (value == std::floor(value) && (!m_options.testFlag(SHOW_ONE_DECIMAL_PLACE_ALWAYS)))
     {
-        return QDoubleSpinBox::contextMenuEvent(ev);
+        numDecimals = 0;
     }
+
+    return toString(value, numDecimals, locale(), isGroupSeparatorShown());
+}
+
+void DoubleSpinBox::updateToolTip(double value)
+{
+    // Set our tooltip to the full decimal value
+    setToolTip(stringValue(value));
 }
 
 QString DoubleSpinBox::textFromValue(double value) const
 {
-    // If user only enters a whole number, don't show empty decimal places.
-    int precision = decimals();
-    if (value == std::floor(value))
-    {
-        precision = 0;
-    }
-
-    QString str = locale().toString(value, 'f', precision);
-    if (!isGroupSeparatorShown() && (qAbs(value) >= 1000.0))
-    {
-        str.remove(locale().groupSeparator());
-    }
-
-    return str;
+    // If our widget is focused, then show the full decimal value, otherwise
+    // show the truncated value
+    return stringValue(value, !hasFocus());
 }
 
 void DoubleSpinBox::focusInEvent(QFocusEvent* event)
 {
+    // We need to set the special value text to an empty string, which
+    // effectively makes no change, but actually triggers the line edit
+    // display value to be updated so that when we receive focus to
+    // begin editing, we display the full decimal precision instead of
+    // the truncated display value
+    setSpecialValueText(QString());
+
     QDoubleSpinBox::focusInEvent(event);
-    lineEdit()->deselect();
+
+    if (event->reason() == Qt::MouseFocusReason)
+    {
+        lineEdit()->deselect();
+    }
 }
 
 
@@ -897,12 +922,12 @@ namespace internal
     {
         switch (ev->type())
         {
-        case QEvent::FocusOut:
-        {
-            // Explicitly set the text again on focusOut, so that the undo/redo queue for the line edit clears and the global undo/redo can kick in
-            setText(text());
-        }
-        break;
+            case QEvent::FocusOut:
+            {
+                // Explicitly set the text again on focusOut, so that the undo/redo queue for the line edit clears and the global undo/redo can kick in
+                setText(text());
+            }
+            break;
         }
 
         return QLineEdit::event(ev);

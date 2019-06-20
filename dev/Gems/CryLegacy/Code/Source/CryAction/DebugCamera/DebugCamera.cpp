@@ -30,6 +30,10 @@ const float g_boostMultiplier = 10.0f;
 const float g_minRotationSpeed = 15.0f;
 const float g_maxRotationSpeed = 70.0f;
 
+const float g_cameraAutoRotationSpeed = 40;
+const float g_cameraAutoTranslationSpeed = 4;
+const char* g_cameraAutoFilename = "Move_generated.cfg";
+
 void ToggleDebugCamera(IConsoleCmdArgs* pArgs)
 {
 #if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
@@ -48,6 +52,37 @@ void ToggleDebugCamera(IConsoleCmdArgs* pArgs)
 #endif
 }
 
+void ToggleDebugCameraLoadPath(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    DebugCamera* debugCamera = CCryAction::GetCryAction()->GetDebugCamera();
+    if (debugCamera)
+    {
+        debugCamera->OnTogglePathLoading();
+    }
+#endif
+}
+
+void ToggleDebugCameraSavePath(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    DebugCamera* debugCamera = CCryAction::GetCryAction()->GetDebugCamera();
+    if (debugCamera)
+    {
+        debugCamera->OnTogglePathSaving();
+    }
+#endif
+}
+void ToggleDebugCameraRecordPath(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    DebugCamera* debugCamera = CCryAction::GetCryAction()->GetDebugCamera();
+    if (debugCamera)
+    {
+        debugCamera->OnTogglePathRecording();
+    }
+#endif
+}
 void ToggleDebugCameraInvertY(IConsoleCmdArgs* pArgs)
 {
 #if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
@@ -55,6 +90,16 @@ void ToggleDebugCameraInvertY(IConsoleCmdArgs* pArgs)
     if (debugCamera)
     {
         debugCamera->OnInvertY();
+    }
+#endif
+}
+void ToggleDebugCameraTakeScreenshot(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    DebugCamera* debugCamera = CCryAction::GetCryAction()->GetDebugCamera();
+    if (debugCamera)
+    {
+        debugCamera->OnToggleTakeScreenshot();
     }
 #endif
 }
@@ -79,7 +124,30 @@ void DebugCameraMove(IConsoleCmdArgs* pArgs)
     }
 #endif
 }
+void DebugCameraMoveTo(IConsoleCmdArgs* pArgs)
+{
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
 
+    // Arguments are : name_of_command x y z pitch yaw  = 6 arguments.
+    if (pArgs->GetArgCount() != 6)
+    {
+        CryLogAlways("debugCameraMoveTo requires 5 args, not %d.", pArgs->GetArgCount() - 1);
+        return;
+    }
+    DebugCamera* debugCamera = CCryAction::GetCryAction()->GetDebugCamera();
+    if (debugCamera && debugCamera->IsFree())
+    {
+        Vec3::value_type x = azlossy_cast<float>(atof(pArgs->GetArg(1)));
+        Vec3::value_type y = azlossy_cast<float>(atof(pArgs->GetArg(2)));
+        Vec3::value_type z = azlossy_cast<float>(atof(pArgs->GetArg(3)));
+        Vec3 newPos(x, y, z);
+        Vec3::value_type pitch = azlossy_cast<float>(atof(pArgs->GetArg(4)));
+        Vec3::value_type yaw = azlossy_cast<float>(atof(pArgs->GetArg(5)));
+        Vec3 newRotations(pitch, yaw, 0);
+        debugCamera->MovePositionTo(newPos, newRotations);
+    }
+#endif
+}
 ///////////////////////////////////////////////////////////////////////////////
 DebugCamera::DebugCamera()
     : m_mouseMoveMode(0)
@@ -95,17 +163,32 @@ DebugCamera::DebugCamera()
     , m_position(ZERO)
     , m_view(IDENTITY)
     , m_displayInfoCVar(gEnv->pConsole->GetCVar("r_DisplayInfo"))
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    , m_recordPath(false)
+    , m_savePath(false)
+    , m_runPath(false)
+    , m_loadRunPath(false)
+    , m_takeScreenshot(false)
+    , m_recordingTimer(0.0f)
+    , m_currentIndex(-1)
+#endif // #if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
 {
     if (gEnv->pSystem->GetIInput())
     {
         gEnv->pSystem->GetIInput()->AddEventListener(this);
     }
-
+    REGISTER_COMMAND("debugCameraSavePath", ToggleDebugCameraSavePath, VF_DEV_ONLY, "Write the recorded path.\n");
+    REGISTER_COMMAND("debugCameraLoadPath", ToggleDebugCameraLoadPath, VF_DEV_ONLY, "Read the recorded path.\n");
+    REGISTER_COMMAND("debugCameraRecordPathToggle", ToggleDebugCameraRecordPath, VF_DEV_ONLY, "Toggle the debug camera mode to record a path.\n");
     REGISTER_COMMAND("debugCameraToggle", ToggleDebugCamera, VF_DEV_ONLY, "Toggle the debug camera.\n");
     REGISTER_COMMAND("debugCameraInvertY", ToggleDebugCameraInvertY, VF_DEV_ONLY, "Toggle debug camera Y-axis inversion.\n");
     REGISTER_COMMAND("debugCameraMove", DebugCameraMove, VF_DEV_ONLY, "Move the debug camera the specified distance (x y z).\n");
+    REGISTER_COMMAND("debugCameraMoveTo", DebugCameraMoveTo, VF_DEV_ONLY, "Move the debug camera to the specified position (x y z pitch yaw).\n");
+    REGISTER_COMMAND("debugCameraTakeScreenshotToggle", ToggleDebugCameraTakeScreenshot, VF_DEV_ONLY, "TakeScreen shot when running on a path .\n");
+
     gEnv->pConsole->CreateKeyBind("ctrl_keyboard_key_punctuation_backslash", "debugCameraToggle");
     gEnv->pConsole->CreateKeyBind("alt_keyboard_key_punctuation_backslash", "debugCameraInvertY");
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -118,7 +201,28 @@ DebugCamera::~DebugCamera()
 
     m_displayInfoCVar = nullptr;
 }
-
+///////////////////////////////////////////////////////////////////////////////
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+void DebugCamera::OnTogglePathRecording()
+{
+    m_recordPath = !m_recordPath;
+}
+///////////////////////////////////////////////////////////////////////////////
+void DebugCamera::OnTogglePathSaving()
+{
+    m_savePath = !m_savePath;
+}
+///////////////////////////////////////////////////////////////////////////////
+void DebugCamera::OnTogglePathLoading()
+{
+    m_loadRunPath = !m_loadRunPath;
+}
+///////////////////////////////////////////////////////////////////////////////
+void DebugCamera::OnToggleTakeScreenshot()
+{
+    m_takeScreenshot = !m_takeScreenshot;
+}
+#endif // #if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
 ///////////////////////////////////////////////////////////////////////////////
 void DebugCamera::OnEnable()
 {
@@ -164,10 +268,156 @@ void DebugCamera::OnNextMode()
         OnDisable();
     }
 }
+///////////////////////////////////////////////////////////////////////////////
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+void DebugCamera::RunPath()
+{
+    // If we reached the position, then target next position.
+    uint numPositions = m_path.size();
+    if (numPositions == 0)
+    {
+        return;
+    }
 
+    Vec3 nextPos = m_path[(m_currentIndex + 1) % numPositions];
+    Vec3 direction = nextPos - m_currentPosition;
+    if (direction.GetLengthSquared() < 0.01)
+    {
+        m_currentIndex++;
+        m_currentPosition = nextPos;
+
+        if (m_takeScreenshot && m_currentIndex % 10 == 0)
+        {
+            gEnv->pConsole->ExecuteString("screenshot path.tga");
+        }
+     }
+    else
+    {
+        // if more than a certain distance (like 10m), then accelerate the transition;
+        float largeDistanceFactor = direction.GetLengthSquared() > 100 ? direction.GetLengthSquared():1;
+        m_currentPosition += direction.normalize() * gEnv->pTimer->GetFrameTime() * g_cameraAutoTranslationSpeed * largeDistanceFactor;
+    }
+ 
+    // Rotate constantly the camera in order to catch more shader variations.
+    m_angle += gEnv->pTimer->GetFrameTime() * g_cameraAutoRotationSpeed;
+    if (m_angle >= 360)
+    {
+        m_angle -= 360;
+    }
+ 
+    MovePositionTo(m_currentPosition, Vec3(0, m_angle,0));
+}
+///////////////////////////////////////////////////////////////////////////////
+void DebugCamera::SavePath()
+{
+    FILE* file = nullptr;
+    azfopen(&file, g_cameraAutoFilename, "w");
+    if (!file)
+    {
+        CryLog("%s not found!", g_cameraAutoFilename);
+    }
+    for(auto &pos : m_path)
+    {
+        fprintf(file, "%f %f %f \n", pos.x, pos.y, pos.z);
+    }
+    fclose(file);
+}
+///////////////////////////////////////////////////////////////////////////////
+void DebugCamera::RecordPath()
+{
+    m_recordingTimer += gEnv->pTimer->GetFrameTime();
+    if (m_recordingTimer > 1)
+    {
+        m_recordingTimer = 0;
+        const Vec3 currentCameraPosition = gEnv->p3DEngine->GetRenderingCamera().GetPosition();
+        m_path.push_back(currentCameraPosition);
+        CryLogAlways("Record position %f %f %f \n", currentCameraPosition.x, currentCameraPosition.y, currentCameraPosition.z);
+    }
+}
+///////////////////////////////////////////////////////////////////////////////
+void DebugCamera::LoadPath()
+{
+
+    // Open the file that contains positions data.
+    string filename = g_cameraAutoFilename;
+  
+    if (filename[0] != '@') // console config files are actually by default in @root@ instead of @assets@
+    {
+        filename = PathUtil::Make("@root@", PathUtil::GetFile(filename));
+    }
+
+    string sfn = PathUtil::GetFile(filename);
+    CCryFile file;
+    if (!file.Open(filename, "rb", ICryPak::FOPEN_HINT_QUIET | ICryPak::FOPEN_ONDISK))
+    {
+        CryLog("%s not found!", filename.c_str());
+        return;
+    }
+    CryLog("%s found in %s ...", PathUtil::GetFile(filename.c_str()), PathUtil::GetPath(filename).c_str());
+
+    // Retrieve position data from text data.
+    m_path.clear();
+    int nLen = file.GetLength();
+    if (nLen)
+    {
+        char* sAllText = new char[nLen + 16];
+        file.ReadRaw(sAllText, nLen);
+        sAllText[nLen] = '\0';
+
+        char* strLast = sAllText + nLen;
+        char* str = sAllText;
+        while (str < strLast)
+        {
+            char* s = str;
+            while (str < strLast && *str != '\n' && *str != '\r')
+            {
+                str++;
+            }
+            *str = '\0';
+            str++;
+            while (str < strLast && (*str == '\n' || *str == '\r'))
+            {
+                str++;
+            }
+
+            Vec3 pos;
+            azsscanf(s, "%f %f %f", &pos.x, &pos.y, &pos.z);
+            m_path.push_back(pos);
+        }
+        delete[] sAllText;
+    }
+}
+#endif // #if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
 ///////////////////////////////////////////////////////////////////////////////
 void DebugCamera::Update()
 {
+#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
+    if (m_recordPath)
+    {
+        RecordPath();
+    }
+
+    if (m_savePath)
+    {
+        SavePath();
+        m_savePath = false;
+    }
+
+    if (m_loadRunPath)
+    {
+        OnEnable();
+        LoadPath();
+        m_runPath = true;
+        m_loadRunPath = false;
+        m_currentPosition = m_path[0];
+        m_currentIndex = 0;
+    }
+
+    if (m_runPath)
+    {
+        RunPath();
+    }
+#endif //#if !defined(_RELEASE) && !defined(DEDICATED_SERVER)
     if (m_cameraMode == DebugCamera::ModeOff)
     {
         return;
@@ -453,4 +703,13 @@ void DebugCamera::MovePosition(const Vec3& offset)
     m_position += m_view.GetColumn0() * offset.x;
     m_position += m_view.GetColumn1() * offset.y;
     m_position += m_view.GetColumn2() * offset.z;
+}
+
+void DebugCamera::MovePositionTo(const Vec3& offset, const Vec3& rotations)
+{
+    m_position.x = offset.x;
+    m_position.y = offset.y;
+    m_position.z = offset.z;
+    m_cameraPitch = rotations.x;
+    m_cameraYaw = rotations.y;
 }

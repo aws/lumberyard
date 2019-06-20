@@ -11,10 +11,13 @@
 */
 
 #include <AzQtComponents/Components/Widgets/ColorPicker/ColorGrid.h>
+#include <AzQtComponents/Components/Widgets/ColorPicker/ColorController.h>
+#include <AzQtComponents/Utilities/Conversions.h>
 
 #include <AzCore/Math/MathUtils.h>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QToolTip>
 #include <QStyleOptionFrame>
 
 namespace AzQtComponents
@@ -31,8 +34,11 @@ ColorGrid::ColorGrid(QWidget* parent)
     , m_hue(0.0)
     , m_saturation(0.0)
     , m_value(0.0)
+    , m_defaultVForHsMode(0.85)
 {
+    setFocusPolicy(Qt::ClickFocus);
     setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+    setMouseTracking(true);
 }
 
 ColorGrid::~ColorGrid()
@@ -95,6 +101,16 @@ void ColorGrid::setValue(qreal value)
     {
         update();
     }
+}
+
+qreal ColorGrid::defaultVForHsMode() const
+{
+    return m_defaultVForHsMode;
+}
+
+void ColorGrid::setDefaultVForHsMode(qreal value)
+{
+    m_defaultVForHsMode = value;
 }
 
 QPoint ColorGrid::cursorCenter() const
@@ -176,6 +192,20 @@ void ColorGrid::mouseMoveEvent(QMouseEvent* e)
     {
         handleLeftButtonEvent(e->pos());
     }
+
+    if (e->buttons() == Qt::MouseButtons())
+    {
+        QPoint globalPosition = QCursor::pos();
+        QPoint position = mapFromGlobal(globalPosition);
+
+        auto hsv = positionToColor(position);
+        QPoint toolTipPosition = mapToGlobal(QPoint(position.x(), height()));
+
+        QColor rgb = toQColor(Internal::ColorController::fromHsv(hsv.hue, hsv.saturation, hsv.value));
+
+        QString text = QStringLiteral("HSV: %1, %2, %3\nRGB: %4, %5, %6").arg(static_cast<int>(hsv.hue * 360.0)).arg(static_cast<int>(hsv.saturation * 100.0)).arg(static_cast<int>(hsv.value * 100.0)).arg(rgb.red()).arg(rgb.green()).arg(rgb.blue());
+        QToolTip::showText(toolTipPosition, text, this);
+    }
 }
 
 void ColorGrid::mouseReleaseEvent(QMouseEvent* e)
@@ -251,7 +281,7 @@ void ColorGrid::initPixmap()
             for (int c = 0; c < w; ++c)
             {
                 const qreal x = static_cast<qreal>(c)/(w - 1);
-                *pixel++ = QColor::fromHsvF(x, y, 0.85).rgb();
+                *pixel++ = QColor::fromHsvF(x, y, m_defaultVForHsMode).rgb();
             }
         }
     }

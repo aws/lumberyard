@@ -28,9 +28,7 @@
 
 namespace LmbrCentral
 {
-    /**
-     * Generates solid polygon prism mesh.
-     */
+    /// Generates solid polygon prism mesh.
     static void GenerateSolidPolygonPrismMesh(
         const AZStd::vector<AZ::Vector2>& vertices,
         const float height,
@@ -156,8 +154,28 @@ namespace LmbrCentral
     PolygonPrismShape::PolygonPrismShape()
         : m_polygonPrism(AZStd::make_shared<AZ::PolygonPrism>()) {}
 
+    PolygonPrismShape::PolygonPrismShape(const PolygonPrismShape& other)
+        : m_polygonPrism(other.m_polygonPrism)
+        , m_intersectionDataCache(other.m_intersectionDataCache)
+        , m_currentTransform(other.m_currentTransform)
+        , m_entityId(other.m_entityId)
+    {
+
+    }
+    
+    PolygonPrismShape& PolygonPrismShape::operator=(const PolygonPrismShape& other)
+    {
+        m_polygonPrism = other.m_polygonPrism;
+        m_intersectionDataCache = other.m_intersectionDataCache;
+        m_currentTransform = other.m_currentTransform;
+        m_entityId = other.m_entityId;
+        return *this;
+    }
+
     void PolygonPrismShape::Reflect(AZ::ReflectContext* context)
     {
+        PolygonPrismShapeConfig::Reflect(context);
+
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<PolygonPrismShape>()
@@ -191,6 +209,8 @@ namespace LmbrCentral
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
         ShapeComponentRequestsBus::Handler::BusConnect(entityId);
         PolygonPrismShapeComponentRequestBus::Handler::BusConnect(entityId);
+        AZ::VariableVerticesRequestBus<AZ::Vector2>::Handler::BusConnect(entityId);
+        AZ::FixedVerticesRequestBus<AZ::Vector2>::Handler::BusConnect(entityId);
 
         const auto polygonPrismChanged = [this]()
         {
@@ -206,6 +226,8 @@ namespace LmbrCentral
     void PolygonPrismShape::Deactivate()
     {
         PolygonPrismShapeComponentRequestBus::Handler::BusDisconnect();
+        AZ::FixedVerticesRequestBus<AZ::Vector2>::Handler::BusDisconnect();
+        AZ::VariableVerticesRequestBus<AZ::Vector2>::Handler::BusDisconnect();
         ShapeComponentRequestsBus::Handler::BusDisconnect();
         AZ::TransformNotificationBus::Handler::BusDisconnect();
     }
@@ -297,11 +319,9 @@ namespace LmbrCentral
         return m_intersectionDataCache.m_aabb;
     }
 
-    /**
-     * Return if the point is inside of the polygon prism volume or not.
-     * Use 'Crossings Test' to determine if point lies in or out of the polygon.
-     * @param point Position in world space to test against.
-     */
+    /// Return if the point is inside of the polygon prism volume or not.
+    /// Use 'Crossings Test' to determine if point lies in or out of the polygon.
+    /// @param point Position in world space to test against.
     bool PolygonPrismShape::IsPointInside(const AZ::Vector3& point)
     {
         m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, *m_polygonPrism);
@@ -341,7 +361,7 @@ namespace LmbrCentral
 
     void DrawPolygonPrismShape(
         const ShapeDrawParams& shapeDrawParams, const PolygonPrismMesh& polygonPrismMesh,
-        AzFramework::EntityDebugDisplayRequests& displayContext)
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         auto geomRenderer = gEnv->pRenderer->GetIRenderAuxGeom();
 
@@ -360,7 +380,7 @@ namespace LmbrCentral
         {
             if (!polygonPrismMesh.m_triangles.empty())
             {
-                displayContext.DrawTriangles(polygonPrismMesh.m_triangles, shapeDrawParams.m_shapeColor);
+                debugDisplay.DrawTriangles(polygonPrismMesh.m_triangles, shapeDrawParams.m_shapeColor);
             }
         }
 
@@ -368,7 +388,7 @@ namespace LmbrCentral
 
         if (!polygonPrismMesh.m_lines.empty())
         {
-            displayContext.DrawLines(polygonPrismMesh.m_lines, shapeDrawParams.m_wireColor);
+            debugDisplay.DrawLines(polygonPrismMesh.m_lines, shapeDrawParams.m_wireColor);
         }
     }
 

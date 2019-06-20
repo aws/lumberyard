@@ -74,10 +74,6 @@ public:
     //! @param prev Source object to clone from.
     CVegetationObject* CreateObject(CVegetationObject* prev = 0);
 
-    // Generates a vegetation object id, when available.
-    // If no vegetation object id is available, returns -1.
-    int GenerateVegetationObjectId();
-
     // Inserts an object, assigning a new ID to it.
     // Should be used only with objects which ID is not registered.
     // One such case, is while Undo.
@@ -286,9 +282,6 @@ private:
 
     typedef std::vector<TSmartPtr<CVegetationObject> > Objects;
     Objects m_objects;
-
-    //! Taken group ids.
-    std::set<int> m_usedIds;
 
     int m_numInstances;
     int m_nSID;

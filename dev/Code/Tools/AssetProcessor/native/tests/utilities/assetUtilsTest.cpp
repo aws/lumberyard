@@ -17,6 +17,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QDateTime>
+#include <native/utilities/AssetUtilEBusHelper.h>
 
 using namespace AssetUtilities;
 
@@ -196,100 +197,207 @@ TEST_F(AssetUtilitiesTest, GenerateFingerprint_BasicTest)
     EXPECT_NE(result1, result2);
 }
 
-
-// there was a case (when CRC32 was used) where a chain of files which had similar modtimes would
-// cause the CRC32 algorithm to fail.  This test verifies that it is not the case with the current hash algorithm:
-TEST_F(AssetUtilitiesTest, GenerateFingerprint_ChainCollisionTest)
+TEST_F(AssetUtilitiesTest, GenerateFingerprint_Empty_Asserts)
 {
-    // strategy:  
-    // Create 'filesToTest' number of dummy files each named basicFileN.txt, where N is their index.
-    // Interleaving their mod time so that even numbered files have the same mod time as other even numbered files
-    // and odd numbered files have the same mod time as other odd numbered files, but the evens and odds do not have
-    // the same mod time as each other (basically create at least 2 groups of files in terms of unique mod times).
+    AssetProcessor::JobDetails jobDetail;
+    AZ::u32 fingerprint = AssetUtilities::GenerateFingerprint(jobDetail);
+    
+    EXPECT_EQ(m_errorAbsorber->m_numAssertsAbsorbed, 1);
+    m_errorAbsorber->Clear();
+}
 
-    // Once created, we will throw these files into the fingerprint function in groups.
-    // the group will range from a single file, to up to filesToGroupTogether files, in a sliding window which
-    // covers the entire filesToTest Range with wrap around.
-    // So, for example if there are 4 filesToTest, and filesToGroupTogether is 3, you would see the following groups
-    // sent to the fingerprinting function (in terms of file indices)
-    // [0], [0, 1], [0, 1, 2]
-    // [1], [1, 2], [1, 2, 3]
-    // [2], [2, 3], [2, 3, 0]  // wraparound here
-    // [3], [3, 0], [3, 0, 1]
-    // note that the above grouping ensures that the same exact set of files is never sent to the fingerprinting
-    // function, and thus all fingerprints generated should be unique.
-
-    const int filesToTest = 200; // make it an even number, this is total files to create
-    const int filesToGroupTogether = 25; 
+TEST_F(AssetUtilitiesTest, GenerateFingerprint_MissingFile_NotSameAsZeroByteFile)
+{
     QTemporaryDir dir;
     QDir tempPath(dir.path());
     QString canonicalTempDirPath = AssetUtilities::NormalizeDirectoryPath(tempPath.canonicalPath());
     UnitTestUtils::ScopedDir changeDir(canonicalTempDirPath);
     tempPath = QDir(canonicalTempDirPath);
-
-    // note that we create two sets of files, attempting to make duplicate modtimes, interleaved odd and even.
-    // first, we make evens as fast as possible - the goal is to make modtimes be the same for as many of these
-    // files as possible:
-    for (int fileIdx = 0; fileIdx < filesToTest / 2; ++fileIdx)
-    {
-        QString absoluteFilePath = tempPath.absoluteFilePath(QString("basicFile%1.txt").arg(fileIdx * 2));
-        EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteFilePath, "contents"));
-    }
+    QString absoluteTestFilePath1 = tempPath.absoluteFilePath("basicfile.txt");
+    QString absoluteTestFilePath2 = tempPath.absoluteFilePath("basicfile2.txt");
     
-    // we wait for at a little bit of time to pass:
-    UnitTestUtils::SleepForMinimumFileSystemTime();
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFilePath1, "")); // empty file
+    // note:  basicfile1 exists but is empty, whereas basicfile2, 3 are missing entirely.
 
-    // now make odds as fast as possible.
-    for (int fileIdx = 0; fileIdx < filesToTest / 2; ++fileIdx)
-    {
-        QString absoluteFilePath = tempPath.absoluteFilePath(QString("basicFile%1.txt").arg((fileIdx * 2) + 1));
-        EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteFilePath, "contents"));
-    }
+    AssetProcessor::JobDetails jobDetail;
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile.txt").toUtf8().constData(), "basicfile.txt"));
+    AZ::u32 fingerprint1 = AssetUtilities::GenerateFingerprint(jobDetail);
 
-    // its very likely that some of the above files have the same modtime.  But verify that its true:
-    AZStd::unordered_map<AZ::s64, int> modTimes;  // map of [modtime] -> [how many files had that same modtime]
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile2.txt").toUtf8().constData(), "basicfile2.txt"));
+    AZ::u32 fingerprint2 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    EXPECT_NE(fingerprint1, fingerprint2);
+}
+
+TEST_F(AssetUtilitiesTest, GenerateFingerprint_MissingFile_NotSameAsOtherMissingFile)
+{
+    QTemporaryDir dir;
+    QDir tempPath(dir.path());
+    QString canonicalTempDirPath = AssetUtilities::NormalizeDirectoryPath(tempPath.canonicalPath());
+    UnitTestUtils::ScopedDir changeDir(canonicalTempDirPath);
+    tempPath = QDir(canonicalTempDirPath);
+    QString absoluteTestFilePath1 = tempPath.absoluteFilePath("basicfile.txt");
+    QString absoluteTestFilePath2 = tempPath.absoluteFilePath("basicfile2.txt");
+
+    // we create no files on disk.
+
+    AssetProcessor::JobDetails jobDetail;
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile.txt").toUtf8().constData(), "basicfile.txt"));
+    AZ::u32 fingerprint1 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile2.txt").toUtf8().constData(), "basicfile2.txt"));
+    AZ::u32 fingerprint2 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    EXPECT_NE(fingerprint1, fingerprint2);
+}
+
+TEST_F(AssetUtilitiesTest, GenerateFingerprint_OneFile_Differs)
+{
+    // this test makes sure that changing each part of jobDetail relevant to fingerprints causes the resulting fingerprint to change.
+    QTemporaryDir dir;
+    QDir tempPath(dir.path());
+    QString canonicalTempDirPath = AssetUtilities::NormalizeDirectoryPath(tempPath.canonicalPath());
+    UnitTestUtils::ScopedDir changeDir(canonicalTempDirPath);
+    tempPath = QDir(canonicalTempDirPath);
+    QString absoluteTestFilePath1 = tempPath.absoluteFilePath("basicfile.txt");
+    QString absoluteTestFilePath2 = tempPath.absoluteFilePath("basicfile2.txt");
+    QString absoluteTestFilePath3 = tempPath.absoluteFilePath("basicfile3.txt");
+
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFilePath1, "contents"));
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFilePath2, "contents")); // same contents
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFilePath3, "contents2")); // different contents
+
+    AssetProcessor::JobDetails jobDetail;
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile.txt").toUtf8().constData(), "basicfile.txt"));
+
+    AZ::u32 fingerprint1 = AssetUtilities::GenerateFingerprint(jobDetail);
     
-    for (int idx = 0; idx < filesToTest; ++idx)
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile2.txt").toUtf8().constData(), "basicfile2.txt"));
+    AZ::u32 fingerprint2 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile3.txt").toUtf8().constData(), "basicfile3.txt"));
+    AZ::u32 fingerprint3 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile.txt").toUtf8().constData(), "basicfile.txt"));
+    EXPECT_EQ(AssetUtilities::GenerateFingerprint(jobDetail), fingerprint1);
+
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile2.txt").toUtf8().constData(), "basicfile2.txt"));
+    EXPECT_EQ(AssetUtilities::GenerateFingerprint(jobDetail), fingerprint2);
+
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile3.txt").toUtf8().constData(), "basicfile3.txt"));
+    EXPECT_EQ(AssetUtilities::GenerateFingerprint(jobDetail), fingerprint3);
+
+    EXPECT_NE(fingerprint1, fingerprint2);
+    EXPECT_NE(fingerprint2, fingerprint3);
+    EXPECT_NE(fingerprint3, fingerprint1);
+}
+
+TEST_F(AssetUtilitiesTest, GenerateFingerprint_MultipleFile_Differs)
+{
+    // given multiple files, make sure that the fingerprint for multiple files differs from the one file (that each file is taken into account)
+    QTemporaryDir dir;
+    QDir tempPath(dir.path());
+    QString canonicalTempDirPath = AssetUtilities::NormalizeDirectoryPath(tempPath.canonicalPath());
+    UnitTestUtils::ScopedDir changeDir(canonicalTempDirPath);
+    tempPath = QDir(canonicalTempDirPath);
+    QString absoluteTestFilePath1 = tempPath.absoluteFilePath("basicfile.txt");
+    QString absoluteTestFilePath2 = tempPath.absoluteFilePath("basicfile2.txt");
+    QString absoluteTestFilePath3 = tempPath.absoluteFilePath("basicfile3.txt");
+
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFilePath1, "contents"));
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFilePath2, "contents")); // same contents
+    EXPECT_TRUE(UnitTestUtils::CreateDummyFile(absoluteTestFilePath3, "contents2")); // different contents
+
+    AssetProcessor::JobDetails jobDetail;
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile.txt").toUtf8().constData(), "basicfile.txt"));
+    AZ::u32 fingerprint1 = AssetUtilities::GenerateFingerprint(jobDetail);
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile2.txt").toUtf8().constData(), "basicfile2.txt"));
+    AZ::u32 fingerprint2 = AssetUtilities::GenerateFingerprint(jobDetail);
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile3.txt").toUtf8().constData(), "basicfile3.txt"));
+    AZ::u32 fingerprint3 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    EXPECT_NE(fingerprint1, fingerprint2);
+    EXPECT_NE(fingerprint2, fingerprint3);
+    EXPECT_NE(fingerprint3, fingerprint1);
+
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile.txt").toUtf8().constData(), "basicfile.txt"));
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile2.txt").toUtf8().constData(), "basicfile2.txt"));
+    fingerprint1 = AssetUtilities::GenerateFingerprint(jobDetail);
+    
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile2.txt").toUtf8().constData(), "basicfile2.txt"));
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile3.txt").toUtf8().constData(), "basicfile3.txt"));
+    fingerprint2 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    jobDetail.m_fingerprintFiles.clear();
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile1.txt").toUtf8().constData(), "basicfile1.txt"));
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile3.txt").toUtf8().constData(), "basicfile3.txt"));
+    fingerprint3 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    EXPECT_NE(fingerprint1, fingerprint2);
+    EXPECT_NE(fingerprint2, fingerprint3);
+    EXPECT_NE(fingerprint3, fingerprint1);
+}
+
+namespace AssetUtilsTest
+{
+    class MockJobDependencyResponder : public AssetProcessor::ProcessingJobInfoBus::Handler
     {
-        QString relPath = QString("basicFile%1.txt").arg(idx);
-        QString absoluteFilePath = tempPath.absoluteFilePath(relPath);
+    public:
+        MOCK_METHOD1(GetJobFingerprint, AZ::u32(const AssetProcessor::JobIndentifier&));
+    };
+}
 
-        QFileInfo fi(absoluteFilePath);
-        EXPECT_TRUE(fi.exists());
-        AZ::s64 msecs = fi.lastModified().toMSecsSinceEpoch();
+TEST_F(AssetUtilitiesTest, GenerateFingerprint_GivenJobDependencies_AffectsOutcome)
+{
+    using namespace testing;
+    using ::testing::NiceMock;
 
-        // count how many files have the same modtime:
-        modTimes[msecs] = modTimes[msecs] + 1;
-    }
+    NiceMock<AssetUtilsTest::MockJobDependencyResponder> responder;
 
-    EXPECT_GT(modTimes.size(), 1); // at least two groups of different modtimes
-    EXPECT_LT(modTimes.size(), filesToTest); // at least SOME duplicate modtimes.
+    responder.BusConnect();
 
-    AZStd::unordered_set<AZ::u32> fingerprintsSoFar;
+    QTemporaryDir dir;
+    QDir tempPath(dir.path());
+    QString canonicalTempDirPath = AssetUtilities::NormalizeDirectoryPath(tempPath.canonicalPath());
+    UnitTestUtils::ScopedDir changeDir(canonicalTempDirPath);
+    tempPath = QDir(canonicalTempDirPath);
+    QString absoluteTestFilePath1 = tempPath.absoluteFilePath("basicfile.txt");
 
-    // the strategy here is to use a sliding window of the above 200 files
-    // as the window slices from 0 to 200, we build a list of n files starting
-    // at that position, with wrap-around.
-    for (int slidingWindow = 0; slidingWindow < filesToTest; ++slidingWindow)
-    {
-        for (int numFilesToAddToList = 1; numFilesToAddToList < filesToGroupTogether; ++numFilesToAddToList)
-        {
-            int startFileIndex = slidingWindow;
-            int endFileIndex = slidingWindow + numFilesToAddToList;
+    AssetProcessor::JobDetails jobDetail;
+    jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(tempPath.absoluteFilePath("basicfile.txt").toUtf8().constData(), "basicfile.txt"));
+    AZ::u32 fingerprint1 = AssetUtilities::GenerateFingerprint(jobDetail);
 
-            AssetProcessor::JobDetails jobDetail;
-            for (int fileIdx = startFileIndex; fileIdx < endFileIndex; ++fileIdx)
-            {
-                QString relPath = QString("basicFile%1.txt").arg(fileIdx % filesToTest); // wrap-around
-                QString absoluteFilePath = tempPath.absoluteFilePath(relPath);
-                jobDetail.m_fingerprintFiles.insert(AZStd::make_pair(absoluteFilePath.toUtf8().constData(), relPath.toUtf8().constData()));
-            }
+    // add a job dependency - it should alter the fingerprint, even if the file does not exist.
+    AssetBuilderSDK::JobDependency jobDep("thing", "pc", AssetBuilderSDK::JobDependencyType::Order, AssetBuilderSDK::SourceFileDependency("basicfile2.txt", AZ::Uuid::CreateNull()));
+    AssetProcessor::JobDependencyInternal internalJobDep(jobDep);
+    internalJobDep.m_builderUuidList.insert(AZ::Uuid::CreateRandom());
+    jobDetail.m_jobDependencyList.push_back(internalJobDep);
 
-            // pair_iter_bool should always be true, meaning it is a new fingerprint not seen before.
-            auto inserter = fingerprintsSoFar.insert(AssetUtilities::GenerateFingerprint(jobDetail));
-            EXPECT_TRUE(inserter.second);
-        }
-    }
+    EXPECT_CALL(responder, GetJobFingerprint(_))
+        .WillOnce( 
+            Return(0x12341234));
+
+    AZ::u32 fingerprint2 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    // different job fingerprint -> different result
+    EXPECT_CALL(responder, GetJobFingerprint(_))
+        .WillOnce( 
+            Return(0x11111111));
+
+    AZ::u32 fingerprint3 = AssetUtilities::GenerateFingerprint(jobDetail);
+
+    EXPECT_NE(fingerprint1, fingerprint2);
+    EXPECT_NE(fingerprint2, fingerprint3);
+    EXPECT_NE(fingerprint3, fingerprint1);
 }
 
 TEST_F(AssetUtilitiesTest, GetFileFingerprint_BasicTest)

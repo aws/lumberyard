@@ -692,6 +692,21 @@ namespace Audio
         const TAudioSourceId m_sourceId;
     };
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    template<>
+    struct SAudioObjectRequestDataInternal<eAORT_SET_MULTI_POSITIONS>
+        : public SAudioObjectRequestDataInternalBase
+    {
+        explicit SAudioObjectRequestDataInternal(const SAudioObjectRequestData<eAORT_SET_MULTI_POSITIONS>* const pAORData)
+            : SAudioObjectRequestDataInternalBase(pAORData->eType)
+            , m_params(pAORData->m_params)
+        {}
+
+        ~SAudioObjectRequestDataInternal<eAORT_SET_MULTI_POSITIONS>() override {}
+
+        MultiPositionParams m_params;
+    };
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     // Audio Listener Requests (Internal)

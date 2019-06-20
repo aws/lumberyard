@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <Asset/RuntimeAssetRegistry.h>
 #include <AzCore/Asset/AssetManager.h>
 

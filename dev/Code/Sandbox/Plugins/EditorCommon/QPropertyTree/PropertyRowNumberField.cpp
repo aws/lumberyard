@@ -47,7 +47,14 @@ void PropertyRowNumberField::redraw(const PropertyDrawContext& context)
         QRect rt = context.widgetRect;
         rt.adjust(0, 0, 0, -1);
 
+#if (QT_VERSION < QT_VERSION_CHECK(5, 11, 0))
         QStyleOptionFrameV2 option;
+        option.features = QStyleOptionFrameV2::None;
+#else
+        QStyleOptionFrame option;
+        option.features = QStyleOptionFrame::None;
+#endif
+
         option.state = QStyle::State_Sunken;
 
         // We require a widget to use as context, so that the style sheet can work.
@@ -55,7 +62,6 @@ void PropertyRowNumberField::redraw(const PropertyDrawContext& context)
         option.lineWidth = tree->style()->pixelMetric(QStyle::PM_DefaultFrameWidth, &option, &widgetForContext);
         
         option.midLineWidth = 0;
-        option.features = QStyleOptionFrameV2::None;
 
         if (context.captured) {
             option.state |= QStyle::State_HasFocus;

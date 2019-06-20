@@ -36,12 +36,14 @@ namespace ScriptCanvasDiagnostics
 
     void SystemComponent::Activate()
     {
+        SystemRequestBus::Handler::BusConnect();
         CrySystemEventBus::Handler::BusConnect();
     }
 
     void SystemComponent::Deactivate()
     {
         CrySystemEventBus::Handler::BusDisconnect();
+        SystemRequestBus::Handler::BusDisconnect();
     }
 
     void SystemComponent::OnDebugDraw()
@@ -60,6 +62,11 @@ namespace ScriptCanvasDiagnostics
         AZ_Assert(m_system->GetIRenderer(), "ScriptCanvasDiagnostics requires IRenderer");
 
         m_system->GetIRenderer()->AddRenderDebugListener(this);
+    }
+
+    bool SystemComponent::IsEditor()
+    {
+        return m_system && m_system->GetGlobalEnvironment() && m_system->GetGlobalEnvironment()->IsEditor();
     }
 
     void SystemComponent::Reflect(AZ::ReflectContext* context)

@@ -69,6 +69,7 @@ namespace AzQtComponents
 
         CardNotification* addNotification(QString message);
         void clearNotifications();
+        int getNotificationCount() const;
 
         void setExpanded(bool expand);
         bool isExpanded() const;

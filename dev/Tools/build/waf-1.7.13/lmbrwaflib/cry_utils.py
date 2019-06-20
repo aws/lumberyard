@@ -12,19 +12,16 @@
 #
 import sys, subprocess
 from waflib import Configure, Logs, Utils, Options, ConfigSet
-from waflib.Configure import conf
+from waflib.Configure import conf, deprecated
 from waflib import Logs, Node, Errors
 from waflib.Scripting import _is_option_true
 from waflib.TaskGen import after_method, before_method, feature, extension, taskgen_method
 from waflib.Task import Task, RUN_ME, SKIP_ME
-from waflib.Errors import BuildError, WafError
-from waf_branch_spec import BINTEMP_FOLDER
+from waf_branch_spec import BINTEMP_FOLDER, WAF_FILE_GLOB_WARNING_THRESHOLD
+
 import utils
-import json, os
-import shutil
-import stat
-import glob
-import time
+import json
+import os
 import re
 
 winreg_available = True
@@ -123,11 +120,14 @@ def clean_duplicates_in_list(input_list,debug_list_name):
     clean_list = []
     distinct_set = set()
     for item in input_list:
-        if item not in distinct_set:
-            clean_list.append(item)
-            distinct_set.add(item)
-        else:
-            Logs.debug('lumberyard: Duplicate item {} detected in \'{}\''.format(item,debug_list_name))
+        try:
+            if item not in distinct_set:
+                clean_list.append(item)
+                distinct_set.add(item)
+            else:
+                Logs.debug('lumberyard: Duplicate item {} detected in \'{}\''.format(item,debug_list_name))
+        except TypeError as type_error:
+            Logs.error("Invalid item '{}' in '{}'. May be caused by incorrect trailing comma in wscript.".format(item, debug_list_name))
     return clean_list
 
 
@@ -160,13 +160,23 @@ def is_option_true(ctx, option_name):
     """ Util function to better intrepret all flavors of true/false """
     return _is_option_true(ctx.options, option_name)
 
+
+@conf
+def is_boolean_option(ctx, option_name):
+    try:
+        _is_option_true(ctx.options, option_name)
+        return True
+    except Errors.WafError:
+        return False
+
+    
 #############################################################################
 #############################################################################
 # Helper functions to handle error and warning output
 @conf
 def cry_error(conf, msg):
-    conf.fatal("error: %s" % msg)
-
+    conf.fatal("error: %s" % msg) 
+    
 @conf
 def cry_file_error(conf, msg, filePath, lineNum = 0 ):
     if isinstance(filePath, Node.Node):
@@ -289,82 +299,8 @@ def apply_version_info(self):
     self.env.append_value('DEFINES', 'EXE_VERSION_INFO_2=' + version_parts[2])
     self.env.append_value('DEFINES', 'EXE_VERSION_INFO_3=' + version_parts[3])
 
-
-###############################################################################
-def get_output_folder_name(self, platform, configuration):
-
-    def _optional_folder_ext(extension_value):
-        if len(extension_value)>0:
-            return '.' + extension_value
-        else:
-            return ''
-
-    # Find the path for the current platform based on build options
-    if platform == 'win_x86':
-        path = self.options.out_folder_win32
-    elif platform == 'win_x64_clang':
-        path = self.options.out_folder_win64_clang
-    elif platform == 'win_x64_vs2017':
-        path = self.options.out_folder_win64_vs2017
-    elif platform == 'win_x64_vs2015':
-        path = self.options.out_folder_win64_vs2015
-    elif platform == 'win_x64_vs2013':
-        path = self.options.out_folder_win64_vs2013
-    elif platform == 'win_x64_vs2012':
-        path = self.options.out_folder_win64_vs2012
-    elif platform == 'win_x64_vs2010':
-        path = self.options.out_folder_win64_vs2010
-    elif platform == 'linux_x64':
-        path = self.options.out_folder_linux64
-    elif platform == 'darwin_x64':
-        path = self.options.out_folder_mac64
-    elif platform == 'ios':
-        path = self.options.out_folder_ios
-    elif platform == 'appletv':
-        path = self.options.out_folder_appletv
-    elif platform == 'android_armv7_clang':
-        path = self.options.out_folder_android_armv7_clang
-    elif platform == 'android_armv8_clang':
-        path = self.options.out_folder_android_armv8_clang
-    else:
-        path = 'BinUnknown'
-        Logs.warn('[WARNING] No output folder for platform (%s), defaulting to (%s)' % (platform, path))
-
-    # Add any custom folder name extensions based on the configuration
-    if 'debug' in configuration.lower():
-        path += _optional_folder_ext(self.options.output_folder_ext_debug)
-    elif 'profile' in configuration.lower():
-        path += _optional_folder_ext(self.options.output_folder_ext_profile)
-    elif 'performance' in configuration.lower():
-        path += _optional_folder_ext(self.options.output_folder_ext_performance)
-    elif 'release' in configuration.lower():
-        path += _optional_folder_ext(self.options.output_folder_ext_release)
-
-    if 'test' in configuration.lower():
-        path += '.Test'
-    if 'dedicated' in configuration.lower():
-        path += '.Dedicated'
-
-    return path
-
-
-###############################################################################
-@conf
-def get_binfolder_defines(self):
-    platform, configuration = self.get_platform_and_configuration()
-    if self.env['PLATFORM'] == 'project_generator':
-        # Right now, project_generator is building the solution for visual studio, so we will set the BINFOLDER value
-        # based on the win64 output folder.  In the future, if we are generating project files for other platforms
-        # we need to select the appropriate out_folder_xxxx for that platform
-        bin_folder_name = 'BINFOLDER_NAME="{}"'.format(self.options.out_folder_win64_vs2013)
-    else:
-        bin_folder_name = 'BINFOLDER_NAME="{}"'.format(get_output_folder_name(self, platform, configuration))
-
-    return [bin_folder_name]
-
-###############################################################################
-
 lmbr_override_target_map = {'SetupAssistant', 'SetupAssistantBatch'}
+
 
 @conf
 def get_output_folders(self, platform, configuration, ctx=None, target=None):
@@ -388,7 +324,7 @@ def get_output_folders(self, platform, configuration, ctx=None, target=None):
                 output_paths = [output_paths]
         # otherwise use default path generation rule
         else:
-            output_paths = [get_output_folder_name(self, platform, configuration)]
+            output_paths = [self.get_output_target_folder(platform, configuration)]
 
     output_nodes = []
     for path in output_paths:
@@ -397,7 +333,7 @@ def get_output_folders(self, platform, configuration, ctx=None, target=None):
             output_nodes.append(self.root.make_node(path))
         else:
             # For relative path, prefix binary output folder with game project folder
-            output_nodes.append(self.path.make_node(path))
+            output_nodes.append(self.launch_node().make_node(path))
 
     return output_nodes
 
@@ -413,15 +349,23 @@ def get_standard_host_output_folders(self):
     output_nodes = []
     launch_node = self.launch_node()
 
-    host_targets = self.get_platform_alias(host)
-    if host_targets:
-        for target in host_targets:
-            if target not in self.get_supported_platforms():
-                continue
+    host_targets = self.get_platform_aliases(host)
+    current_platform = self.env['PLATFORM']
 
-            output_folder = get_output_folder_name(self, target, 'profile')
-            node = launch_node.make_node(output_folder)
-            output_nodes.append(node)
+    # prefer the current target if it is a host
+    if current_platform in host_targets:
+        host_targets = [current_platform]
+
+    # filter down to like visual studio versions
+    elif 'vs20' in current_platform:
+        vs_version = current_platform.split('_')[-1]
+        host_targets = [host for host in host_targets if vs_version in host]
+
+    for target in host_targets:
+        if not self.is_target_platform_enabled(target):
+            continue
+
+        output_nodes.extend(self.get_output_folders(target, 'profile'))
 
     return output_nodes
 
@@ -440,15 +384,6 @@ def read_file_list(bld, file):
     if not os.path.isfile(os.path.join(bld.path.abspath(), file)):
         raise Errors.WafError("Invalid waf file list file: {}.  File not found.".format(file))
 
-    def _invalid_alias_callback(alias_key):
-        error_message = "Invalid alias '{}' specified in {}".format(alias_key, file)
-        raise Errors.WafError(error_message)
-
-    def _alias_not_enabled_callback(alias_key, roles):
-        error_message = "3rd Party alias '{}' specified in {} is not enabled. Make sure that at least one of the " \
-                        "following roles is enabled: [{}]".format(alias_key, file, ', '.join(roles))
-        raise Errors.WafError(error_message)
-
     # Manage duplicate files and glob hits
     dup_set = set()
     glob_hits = 0
@@ -460,14 +395,26 @@ def read_file_list(bld, file):
     if not os.path.exists(waf_file_node_abs):
         raise Errors.WafError('Invalid WAF file list: {}'.format(waf_file_node_abs))
 
+    def _invalid_alias_callback(alias_key):
+        error_message = "Invalid alias '{}' specified in {}".format(alias_key, file)
+        raise Errors.WafError(error_message)
+
+    def _alias_not_enabled_callback(alias_key, roles):
+        required_checks = utils.convert_roles_to_setup_assistant_description(roles)
+        error_message = "3rd Party alias '{}' specified in {} is not enabled. Make sure that at least one of the " \
+                        "following items are checked in SetupAssistant: [{}]".format(alias_key, file, ', '.join(required_checks))
+        raise Errors.WafError(error_message)
+
     def _determine_vs_filter(input_rel_folder_path, input_filter_name, input_filter_pattern):
         """
         Calculate the vvs filter based on the resulting relative path, the input filter name,
         and the pattern used to derive the input relative path
         """
         vs_filter = input_filter_name
+
         if len(input_rel_folder_path) > 0:
             # If the resulting relative path has a subfolder, the base the filter on the following conditions
+
             if input_filter_name.lower()=='root':
                 # This is the root folder, use the relative folder subpath as the filter
                 vs_filter = input_rel_folder_path
@@ -560,16 +507,6 @@ def read_file_list(bld, file):
                     if '*' in filter_content or '?' in filter_content:
                         # If this is a raw glob pattern, stuff it into the expected glob dictionary
                         _process_glob_entry(dict(pattern=filter_content), filter_name, processed_uber_dict)
-                    elif filter_content.startswith('@ENGINE@'):
-                        file_path = os.path.normpath(filter_content.replace('@ENGINE@', bld.engine_path))
-                        if not os.path.exists(file_path):
-                            Logs.warn("[WARN] File '{}' specified in '{}' does not exist.  It will be ignored"
-                                      .format(file_path, waf_file_node_abs))
-                        else:
-                            if filter_name not in processed_uber_dict:
-                                processed_uber_dict[filter_name] = []
-                            processed_uber_dict[filter_name].append(filter_content)
-                            dup_set.add(file_path)
                     else:
                         # This is a straight up file reference.
                         # Do any processing on an aliased reference
@@ -608,12 +545,19 @@ def read_file_list(bld, file):
         """
         Calculate the location of the cached waf_files path
         """
-        bintemp_path = os.path.join(bld.srcnode.abspath(), BINTEMP_FOLDER)
-        src_relative_path = file_node.path_from(bld.srcnode)
-        cached_waf_files_abs_path = os.path.join(bintemp_path, src_relative_path)
-        return cached_waf_files_abs_path
+        bld_node = file_node.get_bld()
+        return bld_node.abspath()
 
     file_node = bld.path.make_node(file)
+
+    if not bld.is_option_true('enable_dynamic_file_globbing'):
+        # Unless this is a configuration context (where we want to always calculate any potential glob patterns in the
+        # waf_file list) check if the file list exists from any previous waf configure.  If the waf_files had changed
+        # in between builds, auto-configure will pick up that change and force a re-write of the waf_files list
+        processed_waf_files_path = _get_cached_file_list()
+        if os.path.exists(processed_waf_files_path) and not isinstance(bld, Configure.ConfigurationContext):
+            processed_file_list = utils.parse_json_file(processed_waf_files_path)
+            return processed_file_list
 
     # Read the source waf_file list
     source_file_list = bld.parse_json_file(file_node)
@@ -625,7 +569,21 @@ def read_file_list(bld, file):
         processed_file_list[uber_file_entry] = _process_uber_dict(uber_file_entry, uber_file_dict)
         pass
 
+    if glob_hits > WAF_FILE_GLOB_WARNING_THRESHOLD:
+        Logs.warn('[WARN] Source file globbing for waf file {} resulted in over {} files.  If this is expected, '
+                  'consider increasing the warning limit value WAF_FILE_GLOB_WARNING_THRESHOLD in waf_branch_spec.py'
+                  .format(file_node.abspath(), WAF_FILE_GLOB_WARNING_THRESHOLD))
+
+    if not bld.is_option_true('enable_dynamic_file_globbing') and isinstance(bld, Configure.ConfigurationContext):
+        # If dynamic file globbing is off, then store the cached file list during every configure command
+        processed_waf_files_path = _get_cached_file_list()
+        processed_waf_files_dir = os.path.dirname(processed_waf_files_path)
+        if not os.path.exists(processed_waf_files_dir):
+            os.makedirs(processed_waf_files_dir)
+        utils.write_json_file(processed_file_list, processed_waf_files_path)
+
     return processed_file_list
+
 
 @conf
 def get_platform_and_configuration(bld):
@@ -677,6 +635,47 @@ def target_clean(self):
     to_delete = list(set(to_delete))
     for file_to_delete in to_delete:
         file_to_delete.delete()
+
+###############################################################################
+@conf
+def modules_clean(self, modules):
+
+    tmp_modules = modules[:]
+    to_delete = []
+    # Sort of recursive algorithm, find all outputs of supplied modules
+    # Repeat if new targets were added due to use directives
+    while len(tmp_modules) > 0:
+        new_targets = []
+
+        for tgen in self.get_all_task_gen():
+            tgen.post()
+            if not tgen.target in tmp_modules:
+                continue
+
+            for task in tgen.tasks:
+                # Collect outputs
+                for task_output in task.outputs:
+                    if task_output.is_child_of(self.bldnode):
+                        to_delete.append(task_output)
+
+            # Check against codegen tasks so that their outputs are accounted for (if known)
+            for azcg_task in tgen.bld.get_group('az_code_gen_group'):
+                if azcg_task.generator == tgen:
+                    outputs = azcg_task.azcg_get('AZCG_OUTPUTS', [])
+                    for azcg_output in outputs:
+                        if azcg_output.is_child_of(self.bldnode):
+                            to_delete.append(azcg_output)
+
+            # Check for use flag
+            if hasattr(tgen, 'use'):
+                new_targets.append(tgen.use)
+        # Copy new targets
+        tmp_modules = new_targets[:]
+
+    # Final File list to delete
+    to_delete = list(set(to_delete))
+    for file_to_delete in to_delete:
+            file_to_delete.delete()
 
 ###############################################################################
 @conf
@@ -767,27 +766,6 @@ def clean_output_targets(self):
                 file.delete()
             except:
                 Logs.warn("Unable to delete {0}".format(file.abspath()))
-
-###############################################################################
-# Copy pasted from MSVS..
-def convert_vs_configuration_to_waf_configuration(configuration):
-    dedicated = ''
-    test = ''
-    if '_dedicated' in configuration:
-        dedicated = '_dedicated'
-    if '_test' in configuration:
-        test = '_test'
-
-    if 'Debug' in configuration:
-        return 'debug' + test + dedicated
-    if 'Profile' in configuration:
-        return 'profile' + test + dedicated
-    if 'Release' in configuration:
-        return 'release' + test + dedicated
-    if 'Performance' in configuration:
-        return 'performance' + test + dedicated
-
-    return ''
 
 
 @feature('link_to_output_folder')
@@ -1156,7 +1134,7 @@ def get_waf_host_platform(conf):
 
 
 @conf
-def cached_does_path_exist(ctx, path):
+def cached_does_path_exist(ctx, path, reset=False):
     """
     Check if a path exists or not, but cache the result to reduce multiple calls to the OS for the same path.  This
     should only be used when we know for certain paths/files wont be created during processing.
@@ -1179,13 +1157,11 @@ def cached_does_path_exist(ctx, path):
         path_cache = ctx.cached_path_check = {}
 
     path_to_check = os.path.normcase(path)
-    if not path_to_check in path_cache:
+    if not path_to_check in path_cache or reset:
         path_exists = os.path.exists(path_to_check)
         path_cache[path_to_check] = path_exists
     else:
         path_exists = path_cache[path_to_check]
     return path_exists
-
-
 
 

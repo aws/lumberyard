@@ -302,7 +302,7 @@ namespace AzQtComponents
         // The magic +1/-1 bellow is because of QTBUG-58590, shape isn't set otherwise for modal windows
 
         if (((s & LeftSide) && (s & TopSide)) ||
-            (s & BottomSide) && (s & RightSide)) // Corner
+            ((s & BottomSide) && (s & RightSide))) // Corner
         {
             qApp->setOverrideCursor(Qt::SizeFDiagCursor);
             newPos.setX((s & LeftSide) ? (x + 1) : (x + width - 1));

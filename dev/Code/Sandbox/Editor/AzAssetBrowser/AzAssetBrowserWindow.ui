@@ -65,9 +65,6 @@
            </property>
           </widget>
          </item>
-         <item>
-          <widget class="AzToolsFramework::AssetBrowser::SearchParametersWidget" name="m_searchParametersWidget" native="true"/>
-         </item>
         </layout>
        </item>
        <item>
@@ -170,12 +167,6 @@
    <class>PreviewWidget</class>
    <extends>QWidget</extends>
    <header location="global">AzAssetBrowser/Preview/PreviewWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>AzToolsFramework::AssetBrowser::SearchParametersWidget</class>
-   <extends>QWidget</extends>
-   <header>AzToolsFramework/AssetBrowser/Search/SearchParametersWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

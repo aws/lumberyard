@@ -295,7 +295,7 @@ namespace LmbrCentral
         AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
     }
 
-    AZStd::shared_ptr<Physics::Ragdoll> RagdollComponent::GetRagdoll()
+    Physics::Ragdoll* RagdollComponent::GetRagdoll()
     {
         AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
         return nullptr;
@@ -321,7 +321,7 @@ namespace LmbrCentral
         AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
     }
 
-    AZStd::shared_ptr<Physics::RagdollNode> RagdollComponent::GetNode(size_t nodeIndex) const
+    Physics::RagdollNode* RagdollComponent::GetNode(size_t nodeIndex) const
     {
         AZ_WarningOnce("Ragdoll Component", false, "Not supported by Cry ragdoll system");
         return nullptr;

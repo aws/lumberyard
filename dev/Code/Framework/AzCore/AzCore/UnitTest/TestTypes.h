@@ -37,81 +37,45 @@
 
 namespace UnitTest
 {
-    static const bool EnableLeakTracking = false;
-
     /**
     * Base class to share common allocator code between fixture types.
     */
     class AllocatorsBase
     {
-        void* m_fixedMemBlock;
         AZ::Debug::DrillerManager* m_drillerManager;
-        bool m_useMemoryDriller = true;
-        unsigned int m_heapSizeMB = 15;
     public:
-
-        AllocatorsBase(unsigned int heapSizeMB = 15, bool isMemoryDriller = true)
-            : m_fixedMemBlock(nullptr)
-            , m_heapSizeMB(heapSizeMB)
-            , m_useMemoryDriller(isMemoryDriller)
-        {
-        }
-
-        virtual ~AllocatorsBase()
-        {
-            // The allocator & memory block itself can't be destroyed in TearDown, because GTest hasn't actually destructed
-            // the test class yet. This can leave containers and other structures pointing to garbage memory, resulting in
-            // crashes. We have to free memory last, after absolutely everything else.
-            if (m_fixedMemBlock)
-            {
-                AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
-                DebugAlignFree(m_fixedMemBlock);
-            }
-        }
-
         void SetupAllocator()
         {
-            if (m_useMemoryDriller)
-            {
-                m_drillerManager = AZ::Debug::DrillerManager::Create();
-                m_drillerManager->Register(aznew AZ::Debug::MemoryDriller);
-            }
-            else
-            {
-                m_drillerManager = nullptr;
-            }
+            m_drillerManager = AZ::Debug::DrillerManager::Create();
+            m_drillerManager->Register(aznew AZ::Debug::MemoryDriller);
 
-            AZ::SystemAllocator::Descriptor desc;
-            desc.m_heap.m_numFixedMemoryBlocks = 1;
-            desc.m_heap.m_fixedMemoryBlocksByteSize[0] = m_heapSizeMB * 1024 * 1024;
-            m_fixedMemBlock = DebugAlignAlloc(desc.m_heap.m_fixedMemoryBlocksByteSize[0], desc.m_heap.m_memoryBlockAlignment);
-            desc.m_heap.m_fixedMemoryBlocks[0] = m_fixedMemBlock;
-
-            if (EnableLeakTracking)
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Create();
+            AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
+            if (records)
             {
-                desc.m_allocationRecords = true;
-                desc.m_stackRecordLevels = 5;
-            }
-
-            AZ::AllocatorInstance<AZ::SystemAllocator>::Create(desc);
-
-            if (EnableLeakTracking)
-            {
-                AZ::Debug::AllocationRecords* records = AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetRecords();
-                if (records)
-                {
-                    records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
-                }
+                records->SetMode(AZ::Debug::AllocationRecords::RECORD_FULL);
             }
         }
 
         void TeardownAllocator()
         {
-            if (m_drillerManager)
-            {
-                AZ::Debug::DrillerManager::Destroy(m_drillerManager);
-            }
+            AZ::AllocatorInstance<AZ::SystemAllocator>::Destroy();
+            AZ::Debug::DrillerManager::Destroy(m_drillerManager);
         }
+    };
+
+    /**
+    * RAII wrapper of AllocatorBase.
+    * The benefit of using this wrapper instead of AllocatorsTestFixture is that SetUp/TearDown of the allocator is managed
+    * on construction/destruction, allowing member variables of derived classes to exist as value (and do heap allocation).
+    */
+    class ScopedAllocatorSetupFixture 
+        : public ::testing::Test
+        , AllocatorsBase
+    {
+    public:
+        ScopedAllocatorSetupFixture() { SetupAllocator(); }
+        ~ScopedAllocatorSetupFixture() { TeardownAllocator(); }
     };
 
     /**
@@ -127,15 +91,6 @@ namespace UnitTest
         , public AllocatorsBase
     {
     public:
-        AllocatorsTestFixture(unsigned int heapSizeMB = 15, bool isMemoryDriller = true)
-            :AllocatorsBase(heapSizeMB, isMemoryDriller)
-        {
-        }
-
-        virtual ~AllocatorsTestFixture()
-        {
-        }
-
         //GTest interface
         void SetUp() override
         {
@@ -165,15 +120,6 @@ namespace UnitTest
         , public AllocatorsBase
     {
     public:
-        AllocatorsBenchmarkFixture(unsigned int heapSizeMB = 15, bool isMemoryDriller = false)
-            :AllocatorsBase(heapSizeMB, isMemoryDriller)
-        {
-        }
-
-        virtual ~AllocatorsBenchmarkFixture()
-        {
-        }
-
         //Benchmark interface
         void SetUp(::benchmark::State& st) override
         {

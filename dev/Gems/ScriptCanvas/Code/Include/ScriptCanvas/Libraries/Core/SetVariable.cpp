@@ -10,11 +10,11 @@
 *
 */
 
-#include <precompiled.h>
 #include <ScriptCanvas/Core/ScriptCanvasBus.h>
 #include <ScriptCanvas/Libraries/Core/SetVariable.h>
 #include <ScriptCanvas/Variable/VariableBus.h>
 #include <Libraries/Core/MethodUtility.h>
+#include <Core/ExecutionNotificationsBus.h>
 
 namespace ScriptCanvas
 {
@@ -28,6 +28,8 @@ namespace ScriptCanvas
                 if (m_variableId.IsValid())
                 {
                     VariableNotificationBus::Handler::BusConnect(m_variableId);
+                    RefreshPropertyFunctions();
+                    PopulateNodeType();
                 }
             }
 
@@ -36,11 +38,35 @@ namespace ScriptCanvas
                 if (slotID == GetSlotId(GetInputSlotName()))
                 {
                     const Datum* sourceDatum = GetInput(m_variableDataInSlotId);
-                    Datum* variableDatum = ModDatum();
+                    VariableDatumBase* variableDatum = ModVariable();
                     if (sourceDatum && variableDatum)
                     {
-                        *variableDatum = *sourceDatum;
+                        variableDatum->GetData() = *sourceDatum;
+                        SC_EXECUTION_TRACE_VARIABLE_CHANGE((*this), (variableDatum->GetId()), (CreateVariableChange(*variableDatum)));
                     }
+                    
+                    Slot* resultSlot = GetSlot(m_variableDataOutSlotId);
+                    if (resultSlot && variableDatum)
+                    {
+                        PushOutput(variableDatum->GetData(), *resultSlot);
+
+                        // Push the data for each property slot out as well
+                        for (auto&& propertyAccount : m_propertyAccounts)
+                        {
+                            Slot* propertySlot = GetSlot(propertyAccount.m_propertySlotId);
+                            if (propertySlot && propertyAccount.m_getterFunction)
+                            {
+                                auto outputOutcome = propertyAccount.m_getterFunction(variableDatum->GetData());
+                                if (!outputOutcome)
+                                {
+                                    SCRIPTCANVAS_REPORT_ERROR((*this), outputOutcome.TakeError().data());
+                                    return;
+                                }
+                                PushOutput(outputOutcome.TakeValue(), *propertySlot);
+                            }
+                        }
+                    }
+
                     SignalOutput(GetSlotId(GetOutputSlotName()));
                 }
             }
@@ -63,8 +89,8 @@ namespace ScriptCanvas
                     if (oldType != newType)
                     {
                         ScopedBatchOperation scopedBatchOperation(AZ_CRC("SetVariableIdChanged", 0xc072e633));
-                        RemoveInputSlot();
-                        AddInputSlot();
+                        RemoveSlots();
+                        AddSlots();
                     }
 
                     if (m_variableId.IsValid())
@@ -73,6 +99,8 @@ namespace ScriptCanvas
                     }
 
                     VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableIdChanged, oldVariableId, m_variableId);
+
+                    PopulateNodeType();
                 }
             }
 
@@ -86,19 +114,26 @@ namespace ScriptCanvas
                 return m_variableDataInSlotId;
             }
 
-            const Datum* SetVariableNode::GetDatum() const
+            const SlotId& SetVariableNode::GetDataOutSlotId() const
             {
-                return ModDatum();
+                return m_variableDataOutSlotId;
             }
 
-            Datum* SetVariableNode::ModDatum() const
+            const Datum* SetVariableNode::GetDatum() const
             {
-                VariableDatum* variableDatum{};
-                VariableRequestBus::EventResult(variableDatum, m_variableId, &VariableRequests::GetVariableDatum);
+                auto variableDatum = ModVariable();
                 return variableDatum ? &variableDatum->GetData() : nullptr;
             }
 
-            void SetVariableNode::AddInputSlot()
+            VariableDatumBase* SetVariableNode::ModVariable() const
+            {
+                VariableDatum* variableDatum{};
+                VariableRequestBus::EventResult(variableDatum, m_variableId, &VariableRequests::GetVariableDatum);
+                AZ_Warning("ScriptCanvas", !variableDatum || variableDatum->GetId() == m_variableId, "Mismatch in SetVariableNode: m_variableId: %s but found variable id: %s", m_variableId.ToString().data(), variableDatum->GetId().ToString().data());
+                return variableDatum;
+            }
+
+            void SetVariableNode::AddSlots()
             {
                 if (m_variableId.IsValid())
                 {
@@ -107,16 +142,23 @@ namespace ScriptCanvas
                     VariableRequestBus::EventResult(varName, m_variableId, &VariableRequests::GetName);
                     VariableRequestBus::EventResult(varType, m_variableId, &VariableRequests::GetType);
 
-                    const AZStd::string sourceSlotName(AZStd::string::format("%s", Data::GetName(varType)));
-                    m_variableDataInSlotId = AddInputDatumSlot(sourceSlotName, "", varType, Datum::eOriginality::Copy);
+                    m_variableDataInSlotId = AddInputDatumSlot(Data::GetName(varType), "", varType, Datum::eOriginality::Copy);
+                    m_variableDataOutSlotId = AddOutputTypeSlot(Data::GetName(varType), "", varType, OutputStorage::Optional);
+                    AddPropertySlots(varType);
                 }
             }
 
-            void SetVariableNode::RemoveInputSlot()
+            void SetVariableNode::RemoveSlots()
             {
+                ClearPropertySlots();
+
                 SlotId oldVariableDataInSlotId;
                 AZStd::swap(oldVariableDataInSlotId, m_variableDataInSlotId);
                 RemoveSlot(oldVariableDataInSlotId);
+
+                SlotId oldVariableDataOutSlotId;
+                AZStd::swap(oldVariableDataOutSlotId, m_variableDataOutSlotId);
+                RemoveSlot(oldVariableDataOutSlotId);
             }
 
             void SetVariableNode::OnIdChanged(const VariableId& oldVariableId)
@@ -148,7 +190,7 @@ namespace ScriptCanvas
 
                             if (variableType == baseType)
                             {
-                                varNameToIdList.emplace_back(variablePair.first, variablePair.second.m_varName);
+                                varNameToIdList.emplace_back(variablePair.first, variablePair.second.GetVariableName());
                             }
                         }
                     }
@@ -164,10 +206,70 @@ namespace ScriptCanvas
                 AZStd::swap(removedVariableId, m_variableId);
                 {
                     ScopedBatchOperation scopedBatchOperation(AZ_CRC("SetVariableRemoved", 0xd7da59f5));
-                    RemoveInputSlot();
+                    RemoveSlots();
                 }
                 VariableNodeNotificationBus::Event(GetEntityId(), &VariableNodeNotifications::OnVariableRemovedFromNode, removedVariableId);
             }
+
+            void SetVariableNode::AddPropertySlots(const Data::Type& type)
+            {
+                Data::GetterContainer getterFunctions = Data::ExplodeToGetters(type);
+                for (const auto& getterWrapperPair : getterFunctions)
+                {
+                    const AZStd::string& propertyName = getterWrapperPair.first;
+                    const Data::GetterWrapper& getterWrapper = getterWrapperPair.second;
+                    Data::PropertyMetadata propertyAccount;
+                    propertyAccount.m_propertyType = getterWrapper.m_propertyType;
+                    propertyAccount.m_propertyName = propertyName;
+
+                    const AZStd::string resultSlotName(AZStd::string::format("%s: %s", propertyName.data(), Data::GetName(getterWrapper.m_propertyType).data()));
+                    propertyAccount.m_propertySlotId = AddOutputTypeSlot(resultSlotName, "", getterWrapper.m_propertyType, OutputStorage::Optional);
+
+                    propertyAccount.m_getterFunction = getterWrapper.m_getterFunction;
+                    m_propertyAccounts.push_back(propertyAccount);
+                }
+            }
+
+            void SetVariableNode::ClearPropertySlots()
+            {
+                auto oldPropertyAccounts = AZStd::move(m_propertyAccounts);
+                m_propertyAccounts.clear();
+                for (auto&& propertyAccount : oldPropertyAccounts)
+                {
+                    RemoveSlot(propertyAccount.m_propertySlotId);
+                }
+            }
+
+            void SetVariableNode::RefreshPropertyFunctions()
+            {
+                Data::Type sourceType;
+                VariableRequestBus::EventResult(sourceType, m_variableId, &VariableRequests::GetType);
+                if (!sourceType.IsValid())
+                {
+                    return;
+                }
+
+                auto getterWrapperMap = Data::ExplodeToGetters(sourceType);
+
+                for (auto&& propertyAccount : m_propertyAccounts)
+                {
+                    if (!propertyAccount.m_getterFunction)
+                    {
+                        auto foundPropIt = getterWrapperMap.find(propertyAccount.m_propertyName);
+                        if (foundPropIt != getterWrapperMap.end() && propertyAccount.m_propertyType.IS_A(foundPropIt->second.m_propertyType))
+                        {
+                            propertyAccount.m_getterFunction = foundPropIt->second.m_getterFunction;
+                        }
+                        else
+                        {
+                            AZ_Error("Script Canvas", false, "Property (%s : %s) getter method could not be found in Data::PropertyTraits or the property type has changed."
+                                " Output will not be pushed on the property's slot.",
+                                propertyAccount.m_propertyName.c_str(), Data::GetName(propertyAccount.m_propertyType).data());
+                        }
+                    }
+                }
+            }
+
         }
     }
 }

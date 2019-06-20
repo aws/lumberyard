@@ -29,6 +29,8 @@
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/std/string/conversions.h>
 
+#define BIN_FOLDER_NAME_MAX_SIZE    128
+
 namespace AZ
 {
     class BehaviorContext;
@@ -181,9 +183,13 @@ namespace AZ
         BehaviorContext* GetBehaviorContext() override;
         /// Returns the working root folder that has been registered with the app, if there is one.
         /// It's expected that derived applications will implement an application root.
-        const char*  GetAppRoot() override { return ""; }
+        const char* GetAppRoot() override { return ""; }
         /// Returns the path to the folder the executable is in.
         const char* GetExecutableFolder() const override { return m_exeDirectory; }
+        /// Returns the bin folder name where the application is running from. The folder is relative to the engine root.
+        const char* GetBinFolder() const override { return m_binFolder; }
+
+
         /// Returns pointer to the driller manager if it's enabled, otherwise NULL.
         Debug::DrillerManager* GetDrillerManager() override { return m_drillerManager; }
         //////////////////////////////////////////////////////////////////////////
@@ -283,8 +289,20 @@ namespace AZ
         /// Calculates the directory the application executable comes from.
         void CalculateExecutablePath();
 
+        /// Calculates the Bin folder name where the application is running from (off of the engine root folder)
+        void CalculateBinFolder();
+
         /// Adjusts an input descriptor path to the app's root path.
         AZ::OSString GetFullPathForDescriptor(const char* descriptorPath);
+
+        /**
+         * Check/verify a given path for the engine marker (file) so that we can identify that
+         * a given path is the engine root. This is only valid for target platforms that are built
+         * for the host platform and not deployable (ie windows, mac). 
+         * @param fullPath The full path to look for the engine marker
+         * @return true if the input path contains the engine marker file, false if not
+         */
+        virtual bool CheckPathForEngineMarker(const char* fullPath) const;
 
         template<typename Iterator>
         static void NormalizePath(Iterator begin, Iterator end, bool doLowercase = true)
@@ -308,6 +326,8 @@ namespace AZ
         IAllocatorAllocate*                         m_osAllocator;
         EntitySetType                               m_entities;
         char                                        m_exeDirectory[AZ_MAX_PATH_LEN];
+        char                                        m_binFolder[BIN_FOLDER_NAME_MAX_SIZE];
+
         Debug::DrillerManager*                      m_drillerManager;
 
         StartupParameters                           m_startupParameters;

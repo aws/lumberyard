@@ -34,6 +34,11 @@
 #include <aws/core/utils/Outcome.h>
 #include <aws/cognito-identity/model/GetIdRequest.h>
 #include <aws/identity-management/auth/PersistentCognitoIdentityProvider.h>
+#include <aws/core/Aws.h>
+#include <aws/sts/STSClient.h>
+#include <aws/sts/model/AssumeRoleRequest.h>
+#include <aws/sts/model/AssumeRoleResult.h>
+#include <aws/sts/model/Credentials.h>
 #pragma warning(pop)
 
 #include <CloudGemFramework/AwsApiJob.h>
@@ -194,10 +199,10 @@ namespace CloudGemFramework
             AZ_Warning("CloudCanvas", false, "Unable to retrieve region from %s", identityPoolId.c_str());
             return false;
         }
-        AZStd::string regionStr{ identityPoolId.substr(0, regionend) };
-        AZStd::string endpointStr{ AZStd::string::format("s3.%s.amazonaws.com", regionStr.c_str()).c_str() };
+        AZStd::string regionStr { identityPoolId.substr(0, regionend) };
+        AZStd::string endpointStr { AZStd::string::format("s3.%s.amazonaws.com", regionStr.c_str()).c_str() };
 
-        int responseCode{ 0 };
+        int responseCode { 0 };
         EBUS_EVENT_RESULT(responseCode, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetEndpointHttpResponseCode, endpointStr);
 
         if (responseCode == 200)
@@ -207,28 +212,25 @@ namespace CloudGemFramework
         }
         else
         {
-            AZ_Warning("CloudCanvas", false, "HTTPS test for identity pool %s endpoint %s returns response code %d", identityPoolId.c_str(),endpointStr.c_str(), responseCode);
+            AZ_Warning("CloudCanvas", false, "HTTPS test for identity pool %s endpoint %s returns response code %d", identityPoolId.c_str(), endpointStr.c_str(), responseCode);
             return false;
         }
     }
 
-
     /** This next bit is a little tricky. Here's how it works.
-    * If resource management is configured to use the player access functionality, the mappings will contain cognito identity pools.
-    * There will be 2. The first is for calling a lambda that knows how to exchange open id and oAuth tokens for refresh tokens and longterm tokens.
-    * This lambda will be called by the authenticated identity pool provider to get logins to use for auth on cognito's side. Once that happens, the player has successfully
-    * logged in and we can use the new cognito provider as the main credentials provider for the game. If for whatever reason, we can't setup the authenticated pool as
-    * the credentials provider, then we will fall back to the anonymous pool. This should at least allow some functionality for the game until the user can configure their
-    * login information with the game.
-    *
-    *  As far as getting the credentials for facebook, google, or amazon for player login, we first check the identity provider persistence layer itself, since this information is cached on disk
-    *  after being used the first time ( @user@/.identities ). If we don't find them in the cache, then we will look and see if the token was passed to the auth_token cvar.
-    *  If we can't find it in either of these places then we setup the anonymous pool and the user has to login somehow through the game (it is now the game's responsibility to handle this).
-    *  This last step will actually be the way games will want to do this for steam, origin, consoles, etc.... since you can easily get auth tokens via their apis at game startup time.
-    *  For those platforms, you should just call Login() the first time you launch the game and don't worry about the cvar stuff.
-    */
-
-
+   * If resource management is configured to use the player access functionality, the mappings will contain cognito identity pools.
+   * There will be 2. The first is for calling a lambda that knows how to exchange open id and oAuth tokens for refresh tokens and longterm tokens.
+   * This lambda will be called by the authenticated identity pool provider to get logins to use for auth on cognito's side. Once that happens, the player has successfully
+   * logged in and we can use the new cognito provider as the main credentials provider for the game. If for whatever reason, we can't setup the authenticated pool as
+   * the credentials provider, then we will fall back to the anonymous pool. This should at least allow some functionality for the game until the user can configure their
+   * login information with the game.
+   *
+   *  As far as getting the credentials for facebook, google, or amazon for player login, we first check the identity provider persistence layer itself, since this information is cached on disk
+   *  after being used the first time ( @user@/.identities ). If we don't find them in the cache, then we will look and see if the token was passed to the auth_token cvar.
+   *  If we can't find it in either of these places then we setup the anonymous pool and the user has to login somehow through the game (it is now the game's responsibility to handle this).
+   *  This last step will actually be the way games will want to do this for steam, origin, consoles, etc.... since you can easily get auth tokens via their apis at game startup time.
+   *  For those platforms, you should just call Login() the first time you launch the game and don't worry about the cvar stuff.
+   */
     bool CloudCanvasPlayerIdentityComponent::ResetPlayerIdentity()
     {
         if (!BeginResetIdentity())
@@ -241,11 +243,17 @@ namespace CloudGemFramework
         AZStd::string anonymousIdentityPoolId;
         EBUS_EVENT_RESULT(anonymousIdentityPoolId, CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, PLAYER_ANON_LOGIN_POOL_NAME);
 
-        if (!anonymousIdentityPoolId.empty())
-        {
-            AZStd::string accountId;
-            EBUS_EVENT_RESULT(accountId, CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "account_id");
+        AZStd::string accountId;
+        EBUS_EVENT_RESULT(accountId, CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "account_id");
 
+        // If this is a dedicated server assume the IAM server role
+        SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+        if (pEnv->IsDedicated())
+        {
+            GetServerIdentity();
+        }
+        else if (!anonymousIdentityPoolId.empty())
+        {
             AZ_TracePrintf("Found resource management based identity pool %s.", anonymousIdentityPoolId.c_str());
 
             AZStd::string identitiesFilePath;
@@ -256,7 +264,7 @@ namespace CloudGemFramework
             }
             auto anonymousIdentityStorage = Aws::MakeShared<Aws::Auth::DefaultPersistentCognitoIdentityProvider>(ALLOC_TAG, anonymousIdentityPoolId.c_str(), accountId.c_str(), identitiesFilePath.c_str());
 
-            AwsApiJob::Config* defaultClientSettings{ nullptr };
+            AwsApiJob::Config* defaultClientSettings { nullptr };
             EBUS_EVENT_RESULT(defaultClientSettings, CloudGemFrameworkRequestBus, GetDefaultConfig);
 
             m_cognitoIdentityClientAnonymous = Aws::MakeShared<Aws::CognitoIdentity::CognitoIdentityClient>(ALLOC_TAG, Aws::Auth::AWSCredentials("", ""), defaultClientSettings->GetClientConfiguration());
@@ -292,8 +300,8 @@ namespace CloudGemFramework
                             LoginAccessTokens loginAccessTokens;
                             loginAccessTokens.accessToken = authToken.code;
                             m_authIdentityProvider->PersistLogins(Aws::Map<Aws::String, LoginAccessTokens>({
-                                { authToken.provider, loginAccessTokens }
-                            }));
+                                        { authToken.provider, loginAccessTokens }
+                                    }));
                         }
                         else
                         {
@@ -318,11 +326,11 @@ namespace CloudGemFramework
                 {
                     if (!m_authIdentityProvider->HasLogins())
                     {
-                        AZ_TracePrintf("CloudCanvas","Anonymous Credentials pulled successfully for identity pool %s. ", authIdentityPoolId.c_str());
+                        AZ_TracePrintf("CloudCanvas", "Anonymous Credentials pulled successfully for identity pool %s. ", authIdentityPoolId.c_str());
                     }
                     else
                     {
-                        AZ_TracePrintf("CloudCanvas","Authenticated Credentials pulled successfully for identity pool %s. Tokens were cached.", authIdentityPoolId.c_str());
+                        AZ_TracePrintf("CloudCanvas", "Authenticated Credentials pulled successfully for identity pool %s. Tokens were cached.", authIdentityPoolId.c_str());
                     }
 
                     defaultClientSettings->credentialsProvider = m_authCredsProvider;
@@ -363,7 +371,7 @@ namespace CloudGemFramework
     void CloudCanvasPlayerIdentityComponent::EndResetIdentity()
     {
         // Cleared before calling OnAfterIdentityUpdate - if changes in credentialed status (Something has expired) require further adjustments to identity
-        // it is the caller's responsibility to make sure the logic doesn't result in an infinite loop.  
+        // it is the caller's responsibility to make sure the logic doesn't result in an infinite loop.
         m_resettingIdentity = false;
         EBUS_EVENT(CloudCanvasPlayerIdentityNotificationBus, OnAfterIdentityUpdate);
     }
@@ -401,8 +409,8 @@ namespace CloudGemFramework
                     loginAccessTokens.longTermTokenExpiry = tokenExpiration;
                 }
                 m_authIdentityProvider->PersistLogins(Aws::Map<Aws::String, Aws::Auth::LoginAccessTokens>({
-                    { authProvider, loginAccessTokens }
-                }));
+                            { authProvider, loginAccessTokens }
+                        }));
 
                 auto credsWarmup = m_authCredsProvider->GetAWSCredentials();
                 if (!credsWarmup.GetAWSAccessKeyId().empty())
@@ -475,6 +483,48 @@ namespace CloudGemFramework
         return false;
     }
 
+    bool CloudCanvasPlayerIdentityComponent::GetServerIdentity()
+    {
+        AZStd::string serverArn;
+        EBUS_EVENT_RESULT(serverArn, CloudCanvasMappingsBus, GetLogicalToPhysicalResourceMapping, "server_role_arn");
+
+        if (serverArn.empty())
+        {
+            AZ_Error("CloudCanvas", "Server Role was unexpectedly empty.  Verify that the IAM Server Role ARN is available in the server mappings", serverArn.c_str());
+            return false;
+        }
+
+        AZStd::string roleSessionName = "LY-Dedicated";
+
+        AwsApiJob::Config* defaultClientSettings { nullptr };
+        EBUS_EVENT_RESULT(defaultClientSettings, CloudGemFrameworkRequestBus, GetDefaultConfig);
+        auto sts = Aws::MakeShared<Aws::STS::STSClient>(ALLOC_TAG, defaultClientSettings->GetClientConfiguration());
+
+        // Assume the server role
+        auto sts_req = Aws::MakeShared<Aws::STS::Model::AssumeRoleRequest>(ALLOC_TAG);
+        sts_req->SetRoleArn(serverArn.c_str());
+        sts_req->SetRoleSessionName(roleSessionName.c_str());
+
+        auto response = Aws::MakeShared<Aws::STS::Model::AssumeRoleOutcome>(ALLOC_TAG, sts->AssumeRole(*sts_req));
+
+        if (!response->IsSuccess())
+        {
+            AZ_Error("CloudCanvas", false, "Unable to assume dedicated server role (%s) \n", response->GetError().GetMessage());
+            return false;
+        }
+        AZ_Printf("CloudCanvas", "Assumed server role ARN: %s", response->GetResult().GetAssumedRoleUser().GetArn().c_str());
+
+        auto result = Aws::MakeShared<Aws::STS::Model::AssumeRoleResult>(ALLOC_TAG, response->GetResult());
+        auto creds = Aws::MakeShared<Aws::STS::Model::Credentials>(ALLOC_TAG, result->GetCredentials());
+        auto authCredsProvider = Aws::MakeShared<Aws::Auth::SimpleAWSCredentialsProvider>(ALLOC_TAG, creds->GetAccessKeyId(), creds->GetSecretAccessKey(), creds->GetSessionToken());
+        defaultClientSettings->credentialsProvider = authCredsProvider;
+        SetPlayerCredentialsProvider(authCredsProvider);
+
+        EBUS_EVENT(CloudCanvasPlayerIdentityNotificationBus, OnIdentityReceived);
+        return true;
+    }
+
+
     AZStd::string CloudCanvasPlayerIdentityComponent::GetIdentityId()
     {
         if (m_authIdentityProvider)
@@ -486,19 +536,19 @@ namespace CloudGemFramework
 
     std::shared_ptr<Aws::Auth::AWSCredentialsProvider> CloudCanvasPlayerIdentityComponent::GetPlayerCredentialsProvider()
     {
-        AZStd::lock_guard<AZStd::mutex> credentialsLock{ m_credentialsMutex };
+        AZStd::lock_guard<AZStd::mutex> credentialsLock { m_credentialsMutex };
         return m_credsProvider;
     }
 
     void CloudCanvasPlayerIdentityComponent::SetPlayerCredentialsProvider(std::shared_ptr<Aws::Auth::AWSCredentialsProvider> credsProvider)
     {
-        AZStd::lock_guard<AZStd::mutex> credentialsLock{ m_credentialsMutex };
+        AZStd::lock_guard<AZStd::mutex> credentialsLock { m_credentialsMutex };
         m_credsProvider = credsProvider;
     }
 
     bool CloudCanvasPlayerIdentityComponent::ApplyConfiguration()
     {
-        bool editorHandled{ false };
+        bool editorHandled { false };
         EBUS_EVENT_RESULT(editorHandled, CloudCanvas::CloudCanvasEditorRequestBus, ApplyConfiguration);
 
         if (!editorHandled)

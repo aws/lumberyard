@@ -11,27 +11,37 @@
 *
 */
 
+QScrollBar:vertical,
+QScrollBar:horizontal
+{
+    border: 4px solid rgba(50, 50, 50, 100%);
+    background-color: rgba(50, 50, 50, 100%);
+    margin: 0px;
+}
+
 QScrollBar:vertical
 {
-    border: 4px solid rgba(85, 85, 85, 65%);
     width: 16px;
-    background-color: rgba(85, 85, 85, 65%);
-    margin: 0px;
 }
 
 QScrollBar:horizontal
 {
-    border: 4px solid rgba(85, 85, 85, 65%);
     height: 16px;
-    background-color: rgba(85, 85, 85, 65%);
-    margin: 0px;
 }
 
 QScrollBar::handle
 {
     border: 0px solid #000000;
     border-radius: 4px;
-    background: #000000;
+    background-color: rgb(85, 85, 85);
+}
+
+QScrollBar::handle:vertical {
+    min-height: 32px;
+}
+
+QScrollBar::handle:horizontal {
+    min-width: 32px;
 }
 
 QScrollBar::add-line,
@@ -40,4 +50,16 @@ QScrollBar::sub-line
      border: none;
      background: none;
      color: none;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal
+{
+     width: 0px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical
+{
+     height: 0px;
 }

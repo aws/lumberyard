@@ -22,6 +22,8 @@ namespace PhysX
 {
     namespace Editor
     {
+        class DocumentationLinkWidget;
+
         class SettingsWidget
             : public QWidget
             , private AzToolsFramework::IPropertyEditorNotify
@@ -50,6 +52,7 @@ namespace PhysX
             void SealUndoStack() override;
 
             AzToolsFramework::ReflectedPropertyEditor* m_propertyEditor;
+            DocumentationLinkWidget* m_documentationLinkWidget;
             PhysX::Settings m_settings;
             Physics::WorldConfiguration m_worldConfiguration;
             PhysX::EditorConfiguration m_editorConfiguration;

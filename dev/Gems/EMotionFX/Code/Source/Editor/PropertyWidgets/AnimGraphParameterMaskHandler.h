@@ -20,12 +20,11 @@
 namespace EMotionFX
 {
     // Handler to pick paramaters and get input/outputs in a node affected. The node has to implement IParameterPickerRule
-    //
     class AnimGraphParameterMaskHandler
         : public QObject
         , public AzToolsFramework::PropertyHandler<AZStd::vector<AZStd::string>, AnimGraphParameterPicker>
     {
-        Q_OBJECT
+        Q_OBJECT // AUTOMOC
 
     public:
         AZ_CLASS_ALLOCATOR_DECL

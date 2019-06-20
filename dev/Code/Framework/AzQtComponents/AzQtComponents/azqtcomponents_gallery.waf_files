@@ -4,6 +4,11 @@
     },
     "auto": {
         "Gallery": [
+            "Gallery/AssetBrowserFolderPage.ui",
+            "Gallery/AssetBrowserFolderPage.cpp",
+            "Gallery/AssetBrowserFolderPage.h",
+            "Gallery/AssetBrowserFolderPage.qrc",
+
             "Gallery/BreadCrumbsPage.ui",
             "Gallery/BreadCrumbsPage.cpp",
             "Gallery/BreadCrumbsPage.h",
@@ -36,6 +41,12 @@
             "Gallery/ComponentDemoWidget.cpp",
             "Gallery/ComponentDemoWidget.h",
 
+            "Gallery/ExampleWidget.qss",
+
+            "Gallery/FilteredSearchWidgetPage.ui",
+            "Gallery/FilteredSearchWidgetPage.cpp",
+            "Gallery/FilteredSearchWidgetPage.h",
+
             "Gallery/GradientSliderPage.ui",
             "Gallery/GradientSliderPage.cpp",
             "Gallery/GradientSliderPage.h",
@@ -54,6 +65,8 @@
             "Gallery/RadioButtonPage.cpp",
             "Gallery/RadioButtonPage.h",
 
+            "Gallery/resources.qrc",
+
             "Gallery/SegmentControlPage.ui",
             "Gallery/SegmentControlPage.cpp",
             "Gallery/SegmentControlPage.h",
@@ -66,9 +79,34 @@
             "Gallery/SpinBoxPage.cpp",
             "Gallery/SpinBoxPage.h",
 
+            "Gallery/StyledDockWidgetPage.ui",
+            "Gallery/StyledDockWidgetPage.cpp",
+            "Gallery/StyledDockWidgetPage.h",
+
+            "Gallery/StyleSheetLabel.qss",
+
+            "Gallery/StyleSheetPage.ui",
+            "Gallery/StyleSheetPage.cpp",
+            "Gallery/StyleSheetPage.h",
+            "Gallery/StyleSheetPage.qss",
+
+            "Gallery/StyleSheetView.qss",
+
             "Gallery/SvgLabelPage.ui",
             "Gallery/SvgLabelPage.cpp",
             "Gallery/SvgLabelPage.h",
+
+            "Gallery/TableViewPage.ui",
+            "Gallery/TableViewPage.cpp",
+            "Gallery/TableViewPage.h",
+
+            "Gallery/TabWidgetPage.ui",
+            "Gallery/TabWidgetPage.cpp",
+            "Gallery/TabWidgetPage.h",
+
+            "Gallery/TitleBarPage.ui",
+            "Gallery/TitleBarPage.cpp",
+            "Gallery/TitleBarPage.h",
 
             "Gallery/ToggleSwitchPage.ui",
             "Gallery/ToggleSwitchPage.cpp",

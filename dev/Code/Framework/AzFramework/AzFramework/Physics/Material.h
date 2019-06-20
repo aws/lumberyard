@@ -16,6 +16,7 @@
 #include <AzCore/std/containers/list.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/IO/FileIO.h>
+#include <AzCore/Component/ComponentBus.h>
 #include <AzFramework/Asset/GenericAssetHandler.h>
 
 namespace AZ
@@ -260,7 +261,8 @@ namespace Physics
         Physics::MaterialId GetMaterialId(int slotIndex = 0) const;
 
     private:
-        AZ::Data::Asset<Physics::MaterialLibraryAsset> m_materialLibrary = AZ::Data::AssetLoadBehavior::NoLoad;
+        AZ::Data::Asset<Physics::MaterialLibraryAsset> m_materialLibrary { AZ::Data::AssetLoadBehavior::NoLoad };
+
         AZStd::vector<Physics::MaterialId> m_materialIdsAssignedToSlots;
         SlotsArray m_materialSlots;
 
@@ -280,10 +282,9 @@ namespace Physics
     /// Used by Terrain Layer Editor window to save material selection for a specific Terrain Layer. \n
     /// Must be used before cooking the terrain, in-game usage won't have any effect.
     class EditorTerrainMaterialRequests
-        : public AZ::EBusTraits
+        : public AZ::ComponentBus
     {
     public:
-        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
 
         virtual void SetMaterialSelectionForSurfaceId(int surfaceId, const MaterialSelection& selection) = 0;
         virtual bool GetMaterialSelectionForSurfaceId(int surfaceId, MaterialSelection& selection) = 0;

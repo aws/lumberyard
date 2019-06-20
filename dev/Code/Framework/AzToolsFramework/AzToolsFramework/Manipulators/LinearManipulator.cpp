@@ -14,43 +14,27 @@
 
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/Manipulators/ManipulatorSnapping.h>
+#include <AzToolsFramework/Maths/TransformUtils.h>
 #include <AzToolsFramework/Viewport/ViewportMessages.h>
+#include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
 
 namespace AzToolsFramework
 {
-    AZ::Quaternion LocalRotationForSpace(
-        const ManipulatorSpace manipulatorSpace, const AZ::Transform& localTransform)
-    {
-        // local rotation will depend on if the manipulator space is local or world,
-        // if space is world then disregard local rotation
-        switch (manipulatorSpace)
-        {
-        case ManipulatorSpace::Local:
-            return AZ::Quaternion::CreateFromTransform(
-                TransformNormalizedScale(localTransform));
-        case ManipulatorSpace::World:
-            // fallthrough
-        default:
-            return AZ::Quaternion::CreateIdentity();
-        }
-    }
-
     LinearManipulator::StartInternal LinearManipulator::CalculateManipulationDataStart(
         const Fixed& fixed, const AZ::Transform& worldFromLocal, const AZ::Transform& localTransform,
         const bool snapping, const float gridSize, const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
-        const ManipulatorSpace manipulatorSpace)
+        const AzFramework::CameraState& cameraState)
     {
         AZ::Transform worldFromLocalNormalized = worldFromLocal;
         const AZ::VectorFloat scale = worldFromLocalNormalized.ExtractScale().GetMaxElement();
         const AZ::VectorFloat scaleRecip = Round3(scale.GetReciprocal());
 
-        const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
+        const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFull();
         const AZ::Vector3 localRayOrigin = localFromWorldNormalized * rayOrigin;
         const AZ::Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(rayDirection);
-        const AZ::Quaternion localRotation = LocalRotationForSpace(manipulatorSpace, localTransform);
+        const AZ::Quaternion localRotation = QuaternionFromTransformNoScaling(localTransform);
 
-        const AZ::Vector3 axis = Internal::TransformAxisForSpace(
-            manipulatorSpace, localFromWorldNormalized, localRotation, fixed.m_axis);
+        const AZ::Vector3 axis = localRotation * fixed.m_axis;
         const AZ::Vector3 rayCrossAxis = localRayDirection.Cross(axis);
 
         StartInternal startInternal;
@@ -60,14 +44,14 @@ namespace AzToolsFramework
             localRayOrigin, localRayDirection, localTransform.GetTranslation(),
             startInternal.m_localNormal, startInternal.m_localHitPosition);
 
-        // calculate position amount to snap to align with grid
+        // calculate position amount to snap, to align with grid
         const AZ::Vector3 positionSnapOffset = snapping
             ? CalculateSnappedOffset(localTransform.GetTranslation(), axis, gridSize * scaleRecip)
             : AZ::Vector3::CreateZero();
 
-        // calculate scale amount to snap to align to round scale value
+        // calculate scale amount to snap, to align to round scale value
         const AZ::Vector3 scaleSnapOffset = snapping
-            ? localRotation.GetInverseFast() * CalculateSnappedOffset(
+            ? localRotation.GetInverseFull() * CalculateSnappedOffset(
                 localRotation * localTransform.RetrieveScale(), axis, gridSize * scaleRecip)
             : AZ::Vector3::CreateZero();
 
@@ -75,6 +59,9 @@ namespace AzToolsFramework
         startInternal.m_scaleSnapOffset = scaleSnapOffset;
         startInternal.m_localPosition = localTransform.GetTranslation() + positionSnapOffset;
         startInternal.m_localScale = localTransform.RetrieveScale() + scaleSnapOffset;
+        startInternal.m_screenToWorldScale =
+            AZ::VectorFloat::CreateOne() /
+                CalculateScreenToWorldMultiplier((worldFromLocal * localTransform).GetTranslation(), cameraState);
 
         return startInternal;
     }
@@ -82,23 +69,26 @@ namespace AzToolsFramework
     LinearManipulator::Action LinearManipulator::CalculateManipulationDataAction(
         const Fixed& fixed, const StartInternal& startInternal, const AZ::Transform& worldFromLocal,
         const AZ::Transform& localTransform, const bool snapping, const float gridSize,
-        const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection, const ManipulatorSpace manipulatorSpace)
+        const AZ::Vector3& rayOrigin, const AZ::Vector3& rayDirection,
+        const ViewportInteraction::KeyboardModifiers keyboardModifiers)
     {
         AZ::Transform worldFromLocalNormalized = worldFromLocal;
         const AZ::VectorFloat scale = worldFromLocalNormalized.ExtractScale().GetMaxElement();
         const AZ::VectorFloat scaleRecip = Round3(scale.GetReciprocal());
 
-        const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFast();
+        const AZ::Transform localFromWorldNormalized = worldFromLocalNormalized.GetInverseFull();
         const AZ::Vector3 localRayOrigin = localFromWorldNormalized * rayOrigin;
         const AZ::Vector3 localRayDirection = localFromWorldNormalized.Multiply3x3(rayDirection);
-        const AZ::Quaternion localRotation = LocalRotationForSpace(manipulatorSpace, localTransform);
+        const AZ::Quaternion localRotation = QuaternionFromTransformNoScaling(localTransform);
 
-        AZ::Vector3 localHitPosition;
+        // as CalculateRayPlaneIntersectingPoint may fail, ensure localHitPosition is initialized with 
+        // the starting hit position so the manipulator returns to the original location it was pressed
+        // if an invalid ray intersection is attempted
+        AZ::Vector3 localHitPosition = startInternal.m_localHitPosition;
         Internal::CalculateRayPlaneIntersectingPoint(localRayOrigin, localRayDirection,
             startInternal.m_localPosition, startInternal.m_localNormal, localHitPosition);
 
-        const AZ::Vector3 axis = Internal::TransformAxisForSpace(
-            manipulatorSpace, localFromWorldNormalized, localRotation, fixed.m_axis);
+        const AZ::Vector3 axis = localRotation * fixed.m_axis;
         const AZ::Vector3 hitDelta = (localHitPosition - startInternal.m_localHitPosition) * scaleRecip;
         const AZ::Vector3 unsnappedOffset = axis * axis.Dot(hitDelta);
 
@@ -117,45 +107,23 @@ namespace AzToolsFramework
         action.m_start.m_sign =
             (startInternal.m_localHitPosition - localTransform.GetTranslation()).Dot(axis).GetSign();
 
+        const AZ::Vector3 scaledUnsnappedOffset = unsnappedOffset * startInternal.m_screenToWorldScale;
         // how much to adjust the scale based on movement
-        const AZ::Quaternion invLocalRotation = localRotation.GetInverseFast();
+        const AZ::Quaternion invLocalRotation = localRotation.GetInverseFull();
         action.m_current.m_localScaleOffset = snapping
-            ? invLocalRotation * (unsnappedOffset + CalculateSnappedOffset(unsnappedOffset, axis, gridSize * scaleRecip))
-            : invLocalRotation * unsnappedOffset;
+            ? invLocalRotation * (scaledUnsnappedOffset + CalculateSnappedOffset(scaledUnsnappedOffset, axis, gridSize * scaleRecip))
+            : invLocalRotation * scaledUnsnappedOffset;
 
-        // in world space, no matter which axis you use, the shape will always scale uniformily
-        if (manipulatorSpace == ManipulatorSpace::World)
-        {
-            // it is only possible to modify one axis at a time - here we add them all up
-            // (will be two zero values and one non-zero value) - set all components
-            // with that value to update scale uniformily
-            AZ::VectorFloat scaleOffset = AZ::VectorFloat::CreateZero();
-            for (size_t i = 0; i < 3; ++i)
-            {
-                scaleOffset += action.m_current.m_localScaleOffset.GetElement(static_cast<int>(i));
-            }
-
-            action.m_current.m_localScaleOffset = AZ::Vector3(scaleOffset);
-        }
+        // record what modifier keys are held during this action
+        action.m_modifiers = keyboardModifiers;
 
         return action;
     }
 
-    LinearManipulator::LinearManipulator(const AZ::EntityId entityId, const AZ::Transform& worldFromLocal)
-        : BaseManipulator(entityId)
-        , m_worldFromLocal(worldFromLocal)
+    LinearManipulator::LinearManipulator(const AZ::Transform& worldFromLocal)
+        : m_worldFromLocal(worldFromLocal)
     {
         AttachLeftMouseDownImpl();
-
-        // default to normal manipulator manager space
-        m_interactiveManipulatorSpace = [this]()
-        {
-            return GetManipulatorSpace(GetManipulatorManagerId());
-        };
-
-        // later we may want to override the visual manipulator space (e.g. have the
-        // manipulator drawn in local space, but affect world space)
-        m_visualManipulatorSpace = m_interactiveManipulatorSpace;
     }
 
     void LinearManipulator::InstallLeftMouseDownCallback(const MouseActionCallback& onMouseDownCallback)
@@ -182,19 +150,23 @@ namespace AzToolsFramework
             GridSnapping(interaction.m_interactionId.m_viewportId);
         const float gridSize =
             GridSize(interaction.m_interactionId.m_viewportId);
-        const ManipulatorSpace manipulatorSpace = m_interactiveManipulatorSpace();
+
+        AzFramework::CameraState cameraState;
+        ViewportInteraction::ViewportInteractionRequestBus::EventResult(
+            cameraState, interaction.m_interactionId.m_viewportId,
+            &ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
 
         m_startInternal = CalculateManipulationDataStart(
             m_fixed, worldFromLocalUniformScale, m_localTransform, snapping, gridSize,
             interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
-            manipulatorSpace);
+            cameraState);
 
         if (m_onLeftMouseDownCallback)
         {
             m_onLeftMouseDownCallback(CalculateManipulationDataAction(
                 m_fixed, m_startInternal, worldFromLocalUniformScale, m_localTransform, snapping, gridSize,
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
-                manipulatorSpace));
+                interaction.m_keyboardModifiers));
         }
     }
 
@@ -207,7 +179,7 @@ namespace AzToolsFramework
                 GridSnapping(interaction.m_interactionId.m_viewportId),
                 GridSize(interaction.m_interactionId.m_viewportId),
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
-                m_interactiveManipulatorSpace()));
+                interaction.m_keyboardModifiers));
         }
     }
 
@@ -220,28 +192,57 @@ namespace AzToolsFramework
                 GridSnapping(interaction.m_interactionId.m_viewportId),
                 GridSize(interaction.m_interactionId.m_viewportId),
                 interaction.m_mousePick.m_rayOrigin, interaction.m_mousePick.m_rayDirection,
-                m_interactiveManipulatorSpace()));
+                interaction.m_keyboardModifiers));
         }
     }
 
     void LinearManipulator::Draw(
         const ManipulatorManagerState& managerState,
-        AzFramework::EntityDebugDisplayRequests& display,
-        const ViewportInteraction::CameraState& cameraState,
+        AzFramework::DebugDisplayRequests& debugDisplay,
+        const AzFramework::CameraState& cameraState,
         const ViewportInteraction::MouseInteraction& mouseInteraction)
     {
-        const ManipulatorSpace manipulatorSpace = m_visualManipulatorSpace();
+        const AZ::Transform localTransform = m_useVisualsOverride
+            ? AZ::Transform::CreateFromQuaternionAndTranslation(
+                m_visualOrientationOverride, m_localTransform.GetTranslation())
+            : m_localTransform;
 
         for (auto& view : m_manipulatorViews)
         {
             view->Draw(
                 GetManipulatorManagerId(), managerState,
                 GetManipulatorId(), {
-                    TransformUniformScale(m_worldFromLocal) * TransformNormalizedScale(m_localTransform),
+                    m_worldFromLocal * localTransform,
                     AZ::Vector3::CreateZero(), MouseOver()
                 },
-                display, cameraState, mouseInteraction, manipulatorSpace);
+                debugDisplay, cameraState, mouseInteraction);
         }
+    }
+
+    void LinearManipulator::SetAxis(const AZ::Vector3& axis)
+    {
+        m_fixed.m_axis = axis;
+    }
+
+    void LinearManipulator::SetSpace(const AZ::Transform& worldFromLocal)
+    {
+        m_worldFromLocal = worldFromLocal;
+    }
+
+    void LinearManipulator::SetLocalTransform(const AZ::Transform& localTransform)
+    {
+        m_localTransform = localTransform;
+    }
+
+    void LinearManipulator::SetLocalPosition(const AZ::Vector3& localPosition)
+    {
+        m_localTransform.SetPosition(localPosition);
+    }
+
+    void LinearManipulator::SetLocalOrientation(const AZ::Quaternion& localOrientation)
+    {
+        m_localTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            localOrientation, m_localTransform.GetTranslation());
     }
 
     void LinearManipulator::SetViews(ManipulatorViews&& views)
@@ -265,15 +266,4 @@ namespace AzToolsFramework
         }
     }
 
-    void LinearManipulator::OverrideInteractiveManipulatorSpace(
-        const AZStd::function<ManipulatorSpace()>& interactiveManipulatorFunction)
-    {
-        m_interactiveManipulatorSpace = interactiveManipulatorFunction;
-    }
-
-    void LinearManipulator::OverrideVisualManipulatorSpace(
-        const AZStd::function<ManipulatorSpace()>& visualManipulatorFunction)
-    {
-        m_visualManipulatorSpace = visualManipulatorFunction;
-    }
-}
+} // namespace AzToolsFramework

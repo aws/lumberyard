@@ -310,55 +310,43 @@ namespace LmbrCentral
         EBUS_EVENT(AzToolsFramework::ToolsApplicationRequests::Bus, AddDirtyEntity, GetEntityId());
     }
 
-    void EditorDecalComponent::DisplayEntity(bool& handled)
+    void EditorDecalComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        auto* dc = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(dc, "Invalid display context.");
-
         // Displays a small grid over the area where the decal will be applied.
-        if (dc)
+        if (!IsSelected())
         {
-            if (!IsSelected())
-            {
-                handled = true;
-                return;
-            }
-            else
-            {
-                AZ::Transform transform = AZ::Transform::CreateIdentity();
-                EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
-
-                AZ::Vector3 x1 = transform * AZ::Vector3(-1, 0, 0);
-                AZ::Vector3 x2 = transform * AZ::Vector3(1, 0, 0);
-                AZ::Vector3 y1 = transform * AZ::Vector3(0, -1, 0);
-                AZ::Vector3 y2 = transform * AZ::Vector3(0, 1, 0);
-                AZ::Vector3 p = transform * AZ::Vector3(0, 0, 0);
-                AZ::Vector3 n = transform * AZ::Vector3(0, 0, 1);
-
-                dc->SetColor(AZ::Vector4(1, 0, 0, 1));
-
-                dc->DrawLine(p, n);
-                dc->DrawLine(x1, x2);
-                dc->DrawLine(y1, y2);
-
-                AZ::Vector3 p0 = transform * AZ::Vector3(-1, -1, 0);
-                AZ::Vector3 p1 = transform * AZ::Vector3(-1, 1, 0);
-                AZ::Vector3 p2 = transform * AZ::Vector3(1, 1, 0);
-                AZ::Vector3 p3 = transform * AZ::Vector3(1, -1, 0);
-
-                dc->DrawLine(p0, p1);
-                dc->DrawLine(p1, p2);
-                dc->DrawLine(p2, p3);
-                dc->DrawLine(p3, p0);
-                dc->DrawLine(p0, p2);
-                dc->DrawLine(p1, p3);
-            }
+            return;
         }
 
-        if (m_decalRenderNode && !m_configuration.m_material.GetAssetPath().empty())
-        {
-            handled = true;
-        }
+        AZ::Transform transform = AZ::Transform::CreateIdentity();
+        EBUS_EVENT_ID_RESULT(transform, GetEntityId(), AZ::TransformBus, GetWorldTM);
+
+        AZ::Vector3 x1 = transform * AZ::Vector3(-1, 0, 0);
+        AZ::Vector3 x2 = transform * AZ::Vector3(1, 0, 0);
+        AZ::Vector3 y1 = transform * AZ::Vector3(0, -1, 0);
+        AZ::Vector3 y2 = transform * AZ::Vector3(0, 1, 0);
+        AZ::Vector3 p = transform * AZ::Vector3(0, 0, 0);
+        AZ::Vector3 n = transform * AZ::Vector3(0, 0, 1);
+
+        debugDisplay.SetColor(AZ::Vector4(1, 0, 0, 1));
+
+        debugDisplay.DrawLine(p, n);
+        debugDisplay.DrawLine(x1, x2);
+        debugDisplay.DrawLine(y1, y2);
+
+        AZ::Vector3 p0 = transform * AZ::Vector3(-1, -1, 0);
+        AZ::Vector3 p1 = transform * AZ::Vector3(-1, 1, 0);
+        AZ::Vector3 p2 = transform * AZ::Vector3(1, 1, 0);
+        AZ::Vector3 p3 = transform * AZ::Vector3(1, -1, 0);
+
+        debugDisplay.DrawLine(p0, p1);
+        debugDisplay.DrawLine(p1, p2);
+        debugDisplay.DrawLine(p2, p3);
+        debugDisplay.DrawLine(p3, p0);
+        debugDisplay.DrawLine(p0, p2);
+        debugDisplay.DrawLine(p1, p3);
     }
 
     void EditorDecalComponent::OnEntityVisibilityChanged(bool /*visibility*/)

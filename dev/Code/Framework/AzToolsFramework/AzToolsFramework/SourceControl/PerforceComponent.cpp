@@ -622,6 +622,12 @@ namespace AzToolsFramework
             return true;
         }
 
+        if (AZ::IO::SystemFile::IsWritable(filePath) && !s_perforceConn->m_command.IsOpenByCurrentUser())
+        {
+            AZ_TracePrintf(SCC_WINDOW, "Perforce - Unable to get latest on file '%s' (File is not checked out but has changes locally.  Please reconcile offline work!)\n", filePath);
+            return false;
+        }
+
         if (s_perforceConn->m_command.GetHeadRevision() == s_perforceConn->m_command.GetHaveRevision())
         {
             return true;

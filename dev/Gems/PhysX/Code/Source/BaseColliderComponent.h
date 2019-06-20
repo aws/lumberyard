@@ -16,6 +16,7 @@
 #include <AzCore/Component/EntityBus.h>
 #include <PhysX/ColliderComponentBus.h>
 #include <Source/Shape.h>
+#include <Source/RigidBodyStatic.h>
 
 namespace PhysX
 {
@@ -40,7 +41,7 @@ namespace PhysX
         virtual AZStd::shared_ptr<Physics::Shape> GetShape() override;
         virtual void* GetNativePointer() override;
         bool IsStaticRigidBody() override;
-        AZStd::shared_ptr<PhysX::RigidBodyStatic> GetStaticRigidBody() override;
+        PhysX::RigidBodyStatic* GetStaticRigidBody() override;
 
     protected:
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
@@ -79,7 +80,7 @@ namespace PhysX
         void InitStaticRigidBody();
         void InitShape();
 
-        AZStd::shared_ptr<PhysX::RigidBodyStatic> m_staticRigidBody;
+        AZStd::unique_ptr<PhysX::RigidBodyStatic> m_staticRigidBody;
         AZStd::shared_ptr<PhysX::Shape> m_shape;
 
     };

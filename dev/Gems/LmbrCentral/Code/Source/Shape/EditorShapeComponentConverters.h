@@ -17,34 +17,24 @@ namespace LmbrCentral
 {
     namespace ClassConverters
     {
-        /**
-         * EditorSphereShapeComponent converters
-         */
+        /// EditorSphereShapeComponent converters
         bool DeprecateEditorSphereColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         bool UpgradeEditorSphereShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
-        /**
-         * EditorBoxShapeComponent converters
-         */
+        /// EditorBoxShapeComponent converters
         bool DeprecateEditorBoxColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         bool UpgradeEditorBoxShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         bool UpgradeBoxShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
-        /**
-         * EditorCylinderShapeComponent converters
-         */
+        /// EditorCylinderShapeComponent converters
         bool DeprecateEditorCylinderColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         bool UpgradeEditorCylinderShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
-        /**
-         * EditorCapsuleShapeComponent converters
-         */
+        /// EditorCapsuleShapeComponent converters
         bool DeprecateEditorCapsuleColliderComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
         bool UpgradeEditorCapsuleShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
-        /**
-         * EditorPolygonPrismShapeComponent converters
-         */
+        /// EditorPolygonPrismShapeComponent converters
         bool UpgradeEditorPolygonPrismShapeComponent(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
     } // namespace ClassConverters
 } // namespace LmbrCentral

@@ -17,8 +17,7 @@ def build(bld):
         target           = 'MacLauncher',
         file_list        = 'maclauncher.waf_files',
         platforms        = ['darwin'],
-        configurations   = ['debug', 'debug_test', 'profile', 'profile_test', 'performance', 'release'],
-        mac_launcher     = True,
+        client_only      = True,
         includes         = [bld.Path('Code/CryEngine/CrySystem'),
                             bld.Path('Code/Launcher')],
         use              = ['AzGameFramework',
@@ -33,10 +32,8 @@ def build(bld):
 def package(pkg):
     build(pkg) # Need to execute this to generate our task_generator...
     pkg.package_game(
-        target                      = '{}Launcher'.format(pkg.project),
-        task_gen_name               = '{}MacLauncher'.format(pkg.project),
-        platforms                   = ['darwin'],
-        configurations              = ['debug', 'profile', 'performance', 'release'],
-        include_assets              = True,
-        include_spec_dependencies   = True,
+        target          = '{}Launcher'.format(pkg.project),
+        task_gen_name   = '{}MacLauncher'.format(pkg.project),
+        platforms       = ['darwin'],
+        client_only     = True,
     )

@@ -13,10 +13,7 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
-#include <AzCore/Jobs/JobManager.h>
-#include <AzCore/Jobs/JobContext.h>
-#include <AzCore/Jobs/JobCancelGroup.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
 #include <CloudGemFramework/CloudGemFrameworkBus.h>
 #include <CloudCanvasCommon/CloudCanvasCommonBus.h>
@@ -45,7 +42,7 @@ namespace CloudGemFramework
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
-
+        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
     protected:
         ////////////////////////////////////////////////////////////////////////
         // CloudGemFrameworkRequestBus interface implementation
@@ -76,16 +73,6 @@ namespace CloudGemFramework
         CloudGemFrameworkSystemComponent(const CloudGemFrameworkSystemComponent &) = delete;
 #endif
 
-        int m_threadCount{2};
-        int m_firstThreadCPU{-1};
-        int m_threadPriority{0};
-        int m_threadStackSize{-1};
-
-        // Order here is of importance. To be correct, JobContext needs to 
-        // destruct before the JobManager and the JobCancelGroup.
-        AZStd::unique_ptr<AZ::JobCancelGroup> m_jobCancelGroup{nullptr};
-        AZStd::unique_ptr<AZ::JobManager> m_jobManager{nullptr};
-        AZStd::unique_ptr<AZ::JobContext> m_jobContext{nullptr};
 
     };
 }

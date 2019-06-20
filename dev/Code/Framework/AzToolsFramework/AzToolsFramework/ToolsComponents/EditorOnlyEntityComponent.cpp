@@ -11,6 +11,7 @@
 */
 #include "stdafx.h"
 #include <AzToolsFramework/ToolsComponents/EditorOnlyEntityComponent.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
 
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -94,9 +95,10 @@ namespace AzToolsFramework
         {
             if (isEditorOnly != m_isEditorOnly)
             {
+                AzToolsFramework::ScopedUndoBatch undo("Set IsEditorOnly");
                 m_isEditorOnly = isEditorOnly;
                 EditorOnlyEntityComponentNotificationBus::Broadcast(&EditorOnlyEntityComponentNotificationBus::Events::OnEditorOnlyChanged, GetEntityId(), m_isEditorOnly);
-                SetDirty();
+                undo.MarkEntityDirty(GetEntityId());
             }
         }
 

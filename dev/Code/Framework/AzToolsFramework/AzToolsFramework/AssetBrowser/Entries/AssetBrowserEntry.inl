@@ -20,9 +20,9 @@ namespace AzToolsFramework
             entries.reserve(entries.size() + m_children.size());
             for (auto child : m_children)
             {
-                if (azrtti_istypeof<EntryType*>(child))
+                if (auto newEntry = azrtti_cast<const EntryType*>(child))
                 {
-                    entries.push_back(azrtti_cast<const EntryType*>(child));
+                    entries.push_back(newEntry);
                 }
             }
         }
@@ -30,10 +30,11 @@ namespace AzToolsFramework
         template<typename EntryType>
         void AssetBrowserEntry::GetChildrenRecursively(AZStd::vector<const EntryType*>& entries) const
         {
-            if (azrtti_istypeof<EntryType*>(this))
+            if (auto newEntry = azrtti_cast<const EntryType*>(this))
             {
-                entries.push_back(azrtti_cast<const EntryType*>(this));
+                entries.push_back(newEntry);
             }
+
             for (auto child : m_children)
             {
                 child->GetChildrenRecursively<EntryType>(entries);

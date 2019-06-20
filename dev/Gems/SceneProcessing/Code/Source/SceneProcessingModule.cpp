@@ -17,7 +17,6 @@
 #include <SceneBuilder/SceneSerializationHandler.h>
 #include <Config/Components/SceneProcessingConfigSystemComponent.h>
 #include <Config/Components/SoftNameBehavior.h>
-#include <Config/Widgets/GraphTypeSelector.h>
 #include <Exporting/Components/TangentGenerateComponent.h>
 #include <Exporting/Components/TangentPreExportComponent.h>
 
@@ -52,8 +51,6 @@ namespace AZ
                     AZ::SceneExportingComponents::TangentGenerateComponent::CreateDescriptor()
                 });
 
-                SceneProcessingConfig::GraphTypeSelector::Register();
-
                 // This is an internal Amazon gem, so register it's components for metrics tracking, otherwise the name of the component won't get sent back.
                 // IF YOU ARE A THIRDPARTY WRITING A GEM, DO NOT REGISTER YOUR COMPONENTS WITH EditorMetricsComponentRegistrationBus
                 AZStd::vector<AZ::Uuid> typeIds;
@@ -67,8 +64,6 @@ namespace AZ
 
             ~SceneProcessingModule()
             {
-                SceneProcessingConfig::GraphTypeSelector::Unregister();
-
                 UnloadModule(s_fbxSceneBuilderModule);
                 UnloadModule(s_sceneDataModule);
                 UnloadModule(s_sceneCoreModule);

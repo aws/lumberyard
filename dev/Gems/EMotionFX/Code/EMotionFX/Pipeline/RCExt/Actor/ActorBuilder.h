@@ -128,7 +128,7 @@ namespace EMotionFX
             bool GetMaterialInfoForActorGroup(const ActorBuilderContext& context);
             void SetupMaterialDataForMesh(const ActorBuilderContext& context, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& meshNodeIndex);
 
-            void GetNodeIndicesOfSelectedMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const;
+            void GetNodeIndicesOfSelectedBaseMeshes(ActorBuilderContext& context, NodeIndexSet& meshNodeIndexSet) const;
             bool GetIsMorphed(const AZ::SceneAPI::Containers::SceneGraph& graph, const AZ::SceneAPI::Containers::SceneGraph::NodeIndex& nodeIndex, const AZ::SceneAPI::DataTypes::IBlendShapeRule* morphTargetRule) const;
 
             AZStd::string_view RemoveLODSuffix(const AZStd::string_view& lodName);

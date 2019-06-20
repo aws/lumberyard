@@ -101,10 +101,10 @@ namespace LmbrCentral
         void BuildGameEntity(AZ::Entity* gameEntity) override;
         //////////////////////////////////////////////////////////////////////////
 
-        //////////////////////////////////////////////////////////////////////////
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
-        //////////////////////////////////////////////////////////////////////////
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         //////////////////////////////////////////////////////////////////////////
         // static methods

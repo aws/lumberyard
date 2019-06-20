@@ -1,0 +1,28 @@
+{
+    "configurations": {
+        "debug": {
+            "is_monolithic": false,
+            "has_test": true,
+            "third_party_config": "debug",
+            "default_output_ext": "Debug"
+        },
+        "profile": {
+            "is_monolithic": false,
+            "has_test": true,
+            "third_party_config": "release",
+            "default_output_ext": ""
+        },
+        "performance": {
+            "is_monolithic": true,
+            "has_test": false,
+            "third_party_config": "release",
+            "default_output_ext": "Performance"
+        },
+        "release": {
+            "is_monolithic": true,
+            "has_test": false,
+            "third_party_config": "release",
+            "default_output_ext": "Release"
+        }
+    }
+}

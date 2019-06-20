@@ -13,6 +13,7 @@
 #include <AzQtComponents/Components/Widgets/Card.h>
 #include <AzQtComponents/Components/Widgets/CardHeader.h>
 #include <AzQtComponents/Components/Widgets/CardNotification.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Style.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h> // for the QMargins metatype declarations
 #include <QDesktopWidget>
@@ -154,6 +155,12 @@ namespace AzQtComponents
         m_notifications.clear();
     }
 
+    int Card::getNotificationCount() const
+    {
+        return m_notifications.size();
+    }
+
+
     void Card::setExpanded(bool expand)
     {
         setUpdatesEnabled(false);
@@ -285,8 +292,8 @@ namespace AzQtComponents
     {
         Config config = defaultConfig();
 
-        config.headerIconSizeInPixels = settings.value("HeaderIconSizeInPixels", config.headerIconSizeInPixels).toInt();
-        config.toolTipPaddingInPixels = settings.value("ToolTipPaddingInPixels", config.toolTipPaddingInPixels).toInt();
+        ConfigHelpers::read<int>(settings, QStringLiteral("HeaderIconSizeInPixels"), config.headerIconSizeInPixels);
+        ConfigHelpers::read<int>(settings, QStringLiteral("ToolTipPaddingInPixels"), config.toolTipPaddingInPixels);
 
         return config;
     }

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <QGraphicsScene>
+#include <QRect>
 #include <QTimer>
 
 #include <AzCore/Component/Component.h>
@@ -29,8 +30,12 @@
 #include <GraphCanvas/Components/StyleBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/Components/VisualBus.h>
+#include <GraphCanvas/Editor/AssetEditorBus.h>
+#include <GraphCanvas/GraphicsItems/GlowOutlineGraphicsItem.h>
 #include <GraphCanvas/Types/EntitySaveData.h>
 #include <GraphCanvas/Utils/StateControllers/StateController.h>
+#include <GraphCanvas/Utils/GraphUtils.h>
+#include <GraphCanvas/Utils/NodeNudgingController.h>
 
 class QAction;
 class QMimeData;
@@ -46,21 +51,45 @@ namespace GraphCanvas
 {
     class GraphCanvasGraphicsScene;
 
-    //! Separate class just to avoid over-cluttering the scene.
-    class SceneMimeDelegate
-        : protected SceneMimeDelegateHandlerRequestBus::Handler
+    class SceneHelper        
     {
     public:
-        AZ_CLASS_ALLOCATOR(SceneMimeDelegate, AZ::SystemAllocator, 0);
-        SceneMimeDelegate() = default;
-        ~SceneMimeDelegate() = default;
+        AZ_CLASS_ALLOCATOR(SceneHelper, AZ::SystemAllocator, 0);
+        SceneHelper() = default;
+        virtual ~SceneHelper() = default;
+
+        void SetSceneId(const AZ::EntityId& sceneId);
+        const AZ::EntityId& GetSceneId() const;
+
+        void SetEditorId(const EditorId& editorId);
+        const EditorId& GetEditorId() const;
+
+    protected:
+        virtual void OnEditorIdSet();
+
+    private:        
+        AZ::EntityId m_sceneId;
+        EditorId     m_editorId;
+    };
+
+    //! Separate class just to avoid over-cluttering the scene.
+    //
+    // Handles the creation process for nodes
+    class MimeDelegateSceneHelper
+        : public SceneHelper
+        , public SceneMimeDelegateHandlerRequestBus::Handler
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(MimeDelegateSceneHelper, AZ::SystemAllocator, 0);
+        MimeDelegateSceneHelper() = default;
+        ~MimeDelegateSceneHelper() = default;
 
         void Activate();
         void Deactivate();
 
-        void SetSceneId(const AZ::EntityId& sceneId);
-        void SetEditorId(const EditorId& editorId);
         void SetMimeType(const char* mimeType);
+        const QString& GetMimeType() const;
+        bool HasMimeType() const;
 
         // SceneMimeDelegateHandlerRequestBus
         bool IsInterestedInMimeData(const AZ::EntityId& sceneId, const QMimeData* dragEnterEvent) override;
@@ -77,11 +106,11 @@ namespace GraphCanvas
         void PushUndoBlock();
         void PopUndoBlock();
 
-        QTimer m_spliceTimer;
-
         QString m_mimeType;
-        AZ::EntityId m_sceneId;
-        EditorId     m_editorId;
+
+        NodeNudgingController m_nudgingController;
+
+        QTimer m_spliceTimer;        
 
         AZ::EntityId m_targetConnection;
 
@@ -96,10 +125,74 @@ namespace GraphCanvas
 
         Endpoint m_spliceSource;
         Endpoint m_spliceTarget;
+        AZStd::vector< ConnectionEndpoints > m_opportunisticSpliceRemovals;
 
         bool m_pushedUndoBlock;
         
         StateSetter<RootGraphicsItemDisplayState> m_displayStateStateSetter;
+    };
+
+    // Handles identifying Gestures for the Scene.
+    // Helper class just to avoid overcomplicating the actual scene class
+    class GestureSceneHelper
+        : public SceneHelper
+        , public GeometryNotificationBus::Handler
+        , public SceneNotificationBus::Handler
+        , public AssetEditorSettingsNotificationBus::Handler
+        , public AZ::SystemTickBus::Handler
+    {
+    public:
+        AZ_CLASS_ALLOCATOR(GestureSceneHelper, AZ::SystemAllocator, 0);
+        GestureSceneHelper() = default;
+        ~GestureSceneHelper() = default;
+
+        void Activate();
+        void Deactivate();
+
+        void TrackElement(const AZ::EntityId& elementId);
+        void ResetTracker();
+        void StopTrack();
+
+        // GeometryNotificationBus
+        void OnPositionChanged(const AZ::EntityId& itemId, const AZ::Vector2& position) override;
+        ////
+
+        // AssetEditorNotificationBus
+        void OnSettingsChanged() override;
+        ////
+
+        // SystemTickBus
+        void OnSystemTick() override;
+        ////
+
+    protected:
+
+        void OnEditorIdSet() override;
+
+    private:
+
+        void HandleDesplice();
+
+        QTimer m_timer;
+
+        bool m_handleShakeAction = false;
+        bool m_trackShake = false;
+        AZ::EntityId m_trackingTarget;
+
+        float m_movementTolerance = 0.0f;
+        float m_minimumDistance = 0.0f;
+
+        float m_straightnessPercent = 0.0f;
+        
+        int m_shakeThreshold = 0;
+        int m_shakeCounter = 0;
+
+        QPointF m_currentAnchor;
+        QPointF m_lastPoint;
+
+        AZ::Vector2 m_lastDirection;
+
+        bool m_hasDirection = false;
     };
 
     struct SceneMemberBuckets
@@ -132,20 +225,36 @@ namespace GraphCanvas
         struct GraphCanvasConstructSaveData
         {
             AZ_CLASS_ALLOCATOR(GraphCanvasConstructSaveData, AZ::SystemAllocator, 0);
-            AZ_RTTI(GraphCanvasConstructSaveData, "{C074944F-8218-4753-94EE-1C5CC02DE8E4}")
-                enum class GraphCanvasConstructType
+            AZ_RTTI(GraphCanvasConstructSaveData, "{C074944F-8218-4753-94EE-1C5CC02DE8E4}");
+
+            static bool VersionConverter(AZ::SerializeContext& serializeContext, AZ::SerializeContext::DataElementNode& classElement);
+
+            // Put the invalid thing at the end of the list, instead of the start.
+            // Cannot actually add new elements to this list.
+            //
+            // Going to make a new enum rather then try to salvage this.
+            enum class GraphCanvasConstructType
             {
                 CommentNode,
                 BlockCommentNode,
                 BookmarkAnchor,
 
-                Unknown
+                Unknown,
+            };
+
+            enum class ConstructType
+            {
+                Unknown,
+                CommentNode,
+                BookmarkAnchor,
+                NodeGroup
             };
 
             virtual ~GraphCanvasConstructSaveData() = default;
 
-            GraphCanvasConstructType m_constructType = GraphCanvasConstructType::Unknown;
+            ConstructType m_constructType = ConstructType::Unknown;
             EntitySaveDataContainer m_saveDataContainer;
+            AZ::EntityId m_persistentId;
         };
 
         class SceneComponentSaveData
@@ -160,7 +269,10 @@ namespace GraphCanvas
             {
             }
 
-            ~SceneComponentSaveData() = default;
+            ~SceneComponentSaveData()
+            {
+                ClearConstructData();
+            }
 
             void ClearConstructData()
             {
@@ -232,10 +344,20 @@ namespace GraphCanvas
 
         AZ::EntityId GetGrid() const override;
 
-        AZ::EntityId CreatePulse(const AnimatedPulseConfiguration& pulseConfiguration) override;
-        AZ::EntityId CreatePulseAroundSceneMember(const AZ::EntityId& memberId, int gridSteps, AnimatedPulseConfiguration configuration) override;
-        AZ::EntityId CreateCircularPulse(const AZ::Vector2& centerPoint, float initialRadius, float finalRadius, AnimatedPulseConfiguration configuration) override;
-        void CancelPulse(const AZ::EntityId& pulseId) override;
+        GraphicsEffectId CreatePulse(const AnimatedPulseConfiguration& pulseConfiguration) override;
+        GraphicsEffectId CreatePulseAroundArea(const QRectF& area, int gridSteps, AnimatedPulseConfiguration& pulseConfiguration) override;
+        GraphicsEffectId CreatePulseAroundSceneMember(const AZ::EntityId& memberId, int gridSteps, AnimatedPulseConfiguration configuration) override;
+        GraphicsEffectId CreateCircularPulse(const AZ::Vector2& centerPoint, float initialRadius, float finalRadius, AnimatedPulseConfiguration configuration) override;
+
+        GraphicsEffectId CreateOccluder(const OccluderConfiguration& occluderConfiguration) override;
+
+        GraphicsEffectId CreateGlow(const FixedGlowOutlineConfiguration& configuration) override;
+        GraphicsEffectId CreateGlowOnSceneMember(const SceneMemberGlowOutlineConfiguration& configuration) override;
+
+        GraphicsEffectId CreateParticle(const ParticleConfiguration& configuration) override;
+        AZStd::vector< GraphicsEffectId > ExplodeSceneMember(const AZ::EntityId& memberId, float fillPercent) override;
+
+        void CancelGraphicsEffect(const GraphicsEffectId& effectId) override;
 
         bool AddNode(const AZ::EntityId& nodeId, const AZ::Vector2& position) override;
         void AddNodes(const AZStd::vector<AZ::EntityId>& nodeIds) override;
@@ -245,12 +367,7 @@ namespace GraphCanvas
 
         AZStd::vector<AZ::EntityId> GetSelectedNodes() const override;
 
-        bool TrySpliceNodeOntoConnection(const AZ::EntityId& node, const AZ::EntityId& connectionId) override;
-        bool TrySpliceNodeTreeOntoConnection(const AZStd::unordered_set< NodeId >& entryNodes, const AZStd::unordered_set< NodeId >& exitNodes, const ConnectionId& connectionId) override;
-
         void DeleteNodeAndStitchConnections(const AZ::EntityId& node) override;
-
-        bool TryCreateConnectionsBetween(const AZStd::vector< Endpoint >& endpoints, const AZ::EntityId& targetNode) override;
 
         AZ::EntityId CreateConnectionBetween(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) override;
         bool AddConnection(const AZ::EntityId& connectionId) override;
@@ -264,7 +381,8 @@ namespace GraphCanvas
         bool IsEndpointConnected(const Endpoint& endpoint) const override;
         AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& firstEndpoint) const override;
 
-        bool Connect(const Endpoint&, const Endpoint&) override;
+        bool CreateConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) override;
+        bool DisplayConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) override;
         bool Disconnect(const Endpoint&, const Endpoint&) override;
         bool DisconnectById(const AZ::EntityId& connectionId) override;
         bool FindConnection(AZ::Entity*& connectionEntity, const Endpoint& firstEndpoint, const Endpoint& otherEndpoint) const override;
@@ -275,11 +393,18 @@ namespace GraphCanvas
         bool Add(const AZ::EntityId& entity) override;
         bool Remove(const AZ::EntityId& entity) override;
 
+        bool Show(const AZ::EntityId& graphMemeber) override;
+        bool Hide(const AZ::EntityId& graphMemeber) override;
+
         void ClearSelection() override;
 
         void SetSelectedArea(const AZ::Vector2& topLeft, const AZ::Vector2& topRight) override;
+        void SelectAll() override;
+        void SelectAllRelative(ConnectionType connectionType) override;
+        void SelectConnectedNodes() override;
 
         bool HasSelectedItems() const override;
+        bool HasMultipleSelection() const override;
         bool HasCopiableSelection() const override;
 
         bool HasEntitiesAt(const AZ::Vector2& scenePoint) const override;
@@ -308,6 +433,8 @@ namespace GraphCanvas
         void DeleteSelection() override;
         void Delete(const AZStd::unordered_set<AZ::EntityId>& itemIds) override;
         void DeleteGraphData(const GraphData& graphData) override;
+        
+        void ClearScene() override;
 
         void SuppressNextContextMenu() override;
 
@@ -332,6 +459,24 @@ namespace GraphCanvas
 
         void SignalDragSelectStart() override;
         void SignalDragSelectEnd() override;
+
+        void SignalConnectionDragBegin() override;
+        void SignalConnectionDragEnd() override;
+
+        void SignalDesplice() override;
+
+        QRectF GetSelectedSceneBoundingArea() const override;
+        QRectF GetSceneBoundingArea() const override;
+
+        void SignalLoadStart() override;
+        void SignalLoadEnd() override;
+        bool IsLoading() const override;
+        bool IsPasting() const override;
+
+        void RemoveUnusedNodes() override;
+        void RemoveUnusedElements() override;
+
+        void HandleProposalDaisyChain(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint) override;
         ////
 
         // VisualNotificationBus
@@ -369,11 +514,6 @@ namespace GraphCanvas
 
         bool HasActiveMimeDelegates() const;
 
-        bool IsConnectableNode(const AZ::EntityId& entityId);
-        bool IsNodeOrWrapperSelected(const NodeId& entityId);
-        bool IsSpliceableConnection(const AZ::EntityId& entityId);
-        bool ParseSceneMembersIntoTree(const AZStd::vector<AZ::EntityId>& sourceSceneMembers, AZStd::unordered_set<NodeId>& entryNodes, AZStd::unordered_set<ConnectionId>& entryConnections, AZStd::unordered_set<NodeId>& exitNodes, AZStd::unordered_set<ConnectionId>& exitConnections, AZStd::unordered_set<NodeId>& internalNodes, AZStd::unordered_set<ConnectionId>& internalConnections);
-
     private:
         SceneComponent(const SceneComponent&) = delete;
 
@@ -398,11 +538,6 @@ namespace GraphCanvas
 
         void AddSceneMember(const AZ::EntityId& item, bool positionItem = false, const AZ::Vector2& position = AZ::Vector2());
 
-        AZStd::unordered_set<AZ::EntityId> FindConnections(const AZStd::unordered_set<AZ::EntityId>& nodeIds, bool internalConnectionsOnly = false) const override;
-
-        //! Validates that the node ids in the connection can be found in the supplied node set
-        bool ValidateConnectionEndpoints(AZ::Entity* connectionRef, const AZStd::unordered_set<AZ::Entity*>& nodeRefs);
-
         //! Seives a set of entity id's into a node, connection and group entityId set based on if they are in the scene
         void SieveSceneMembers(const AZStd::unordered_set<AZ::EntityId>& itemIds, SceneMemberBuckets& buckets) const;
 
@@ -426,15 +561,18 @@ namespace GraphCanvas
         ViewId m_viewId;
         ViewParams m_viewParams;
 
-        SceneMimeDelegate m_mimeDelegate;
+        MimeDelegateSceneHelper m_mimeDelegateSceneHelper;
+        GestureSceneHelper m_gestureSceneHelper;        
 
+        AZStd::unordered_set< QGraphicsItem* > m_hiddenElements;
         GraphData m_graphData;
 
         AZStd::unordered_set<AZ::EntityId> m_delegates;
         AZStd::unordered_set<AZ::EntityId> m_activeDelegates;
         AZStd::unordered_set<AZ::EntityId> m_interestedDelegates;
 
-        bool m_addingGraphData;
+        bool m_isLoading;
+        bool m_isPasting;
 
         AZStd::unique_ptr<GraphCanvasGraphicsScene> m_graphicsSceneUi;
 
@@ -443,6 +581,11 @@ namespace GraphCanvas
         bool m_activateScene;
         bool m_isDragSelecting;
 
+        AZ::EntityId m_inputCouplingTarget;
+        AZ::EntityId m_outputCouplingTarget;
+
+        AZ::EntityId m_couplingTarget;
+        
         AZ::EntityId m_pressedEntity;
         AZ::Vector2  m_originalPosition;
 
@@ -458,14 +601,15 @@ namespace GraphCanvas
 
         bool m_enableNodeChainDragConnectionSpliceTracking;
 
-        AZStd::unordered_set< NodeId > m_treeSpliceEntryNodes;
-        AZStd::unordered_set< NodeId > m_treeSpliceExitNodes;
-        AZStd::unordered_set< NodeId > m_treeSpliceInternalNodes;
-
+        NodeNudgingController m_nudgingController;
+        
         AZ::EntityId m_spliceTarget;
+
+        GraphSubGraph m_selectedSubGraph;
 
         StateSetter<RootGraphicsItemDisplayState> m_spliceTargetDisplayStateStateSetter;
         StateSetter<RootGraphicsItemDisplayState> m_pressedEntityDisplayStateStateSetter;
+        StateSetter<RootGraphicsItemDisplayState> m_couplingEntityDisplayStateStateSetter;
         ////
 
         AZ::u32 m_bookmarkCounter;
@@ -500,7 +644,6 @@ namespace GraphCanvas
         void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
         void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
         void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
-        void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) override;
 
         void dragEnterEvent(QGraphicsSceneDragDropEvent * event) override;
         void dragLeaveEvent(QGraphicsSceneDragDropEvent* event) override;

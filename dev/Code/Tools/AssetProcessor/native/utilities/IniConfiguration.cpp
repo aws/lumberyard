@@ -25,12 +25,14 @@ IniConfiguration::IniConfiguration(QObject* pParent)
     : QObject(pParent)
     , m_listeningPort(0)
 {
-    Q_ASSERT(s_singleton == nullptr);
+    AZ_Assert(s_singleton == nullptr, "Duplicate singleton installation detected.");
     s_singleton = this;
 }
 
 IniConfiguration::~IniConfiguration()
 {
+    AZ_Assert(s_singleton == this, "There should always be a single singleton!");
+    s_singleton = nullptr;
 }
 
 const IniConfiguration* IniConfiguration::Get()
@@ -54,12 +56,12 @@ void IniConfiguration::parseCommandLine(QStringList args)
 void IniConfiguration::readINIConfigFile(QDir dir)
 {
     m_userConfigFilePath = dir.filePath("AssetProcessorConfiguration.ini");
-	// if AssetProcessorProxyInformation.ini file exists then delete it
-	// we used to store proxy info in this file
-	if (QFile::exists(m_userConfigFilePath))
-	{
-		QFile::remove(m_userConfigFilePath);
-	}
+    // if AssetProcessorProxyInformation.ini file exists then delete it
+    // we used to store proxy info in this file
+    if (QFile::exists(m_userConfigFilePath))
+    {
+        QFile::remove(m_userConfigFilePath);
+    }
     
     m_listeningPort = AssetUtilities::ReadListeningPortFromBootstrap();
 }

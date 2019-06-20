@@ -13,8 +13,6 @@
 #
 ########################################################################################
 
-from waflib.Build import BuildContext
-
 
 SUBFOLDERS = [
     'Framework',
@@ -31,6 +29,3 @@ def build(bld):
     # do not add game projects here.  They will be added automatically based on what
     # game projects you have enabled in your user settings, from the list defined in projects.json
     bld.recurse(SUBFOLDERS, mandatory=False)
-
-
-

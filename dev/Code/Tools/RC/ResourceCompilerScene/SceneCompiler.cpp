@@ -57,6 +57,7 @@
 #include <RC/ResourceCompilerScene/Common/SkinWeightExporter.h>
 #include <RC/ResourceCompilerScene/Common/AnimationExporter.h>
 #include <RC/ResourceCompilerScene/Common/BlendShapeExporter.h>
+#include <RC/ResourceCompilerScene/Common/TouchBendingExporter.h>
 #include <RC/ResourceCompilerScene/SceneSerializationHandler.h>
 
 #include <SceneAPI/SceneCore/Components/ExportingComponent.h>
@@ -94,6 +95,7 @@ namespace AZ
             RegisterComponentDescriptor(SkinWeightExporter::CreateDescriptor());
             RegisterComponentDescriptor(UVStreamExporter::CreateDescriptor());
             RegisterComponentDescriptor(WorldMatrixExporter::CreateDescriptor());
+            RegisterComponentDescriptor(TouchBendingExporter::CreateDescriptor());
         }
 
         void RCToolApplication::AddSystemComponents(AZ::Entity* systemEntity)
@@ -144,7 +146,7 @@ namespace AZ
             AZ_TracePrintf(SceneAPI::Utilities::LogWindow, "Starting scene processing.\n");
             AssetBuilderSDK::ProcessJobResponse response;
 
-            const char* gameFolder = m_context.pRC->GetSystemEnvironment()->pFileIO->GetAlias("@devassets@");
+            const char* gameFolder = AZ::IO::FileIOBase::GetInstance()->GetAlias("@devassets@");
             AZStd::string configPath = AZStd::string::format("%s/Config/Editor.xml", gameFolder);
             AZ_TraceContext("Gem config file", configPath);
 

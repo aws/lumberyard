@@ -82,11 +82,12 @@ namespace EMotionFX
             {
                 AZ_TYPE_INFO(Configuration, "{F5A93340-60CD-4A16-BEF3-1014D762B217}")
 
-                    Configuration();
+                Configuration();
 
                 AZ::Data::Asset<AnimGraphAsset>     m_animGraphAsset;           ///< Selected anim graph.
                 AZ::Data::Asset<MotionSetAsset>     m_motionSetAsset;           ///< Selected motion set asset.
                 AZStd::string                       m_activeMotionSetName;      ///< Selected motion set.
+                bool                                m_visualize = false;        ///< Debug visualization.
                 ParameterDefaults                   m_parameterDefaults;        ///< Defaults for parameter values.
 
                 static void Reflect(AZ::ReflectContext* context);
@@ -121,6 +122,7 @@ namespace EMotionFX
             void SetNamedParameterVector3(const char* parameterName, const AZ::Vector3& value) override;
             void SetNamedParameterRotationEuler(const char* parameterName, const AZ::Vector3& value) override;
             void SetNamedParameterRotation(const char* parameterName, const AZ::Quaternion& value) override;
+            void SetVisualizeEnabled(bool enabled) override;
             float GetParameterFloat(AZ::u32 parameterIndex) override;
             bool GetParameterBool(AZ::u32 parameterIndex) override;
             AZStd::string GetParameterString(AZ::u32 parameterIndex) override;
@@ -135,6 +137,7 @@ namespace EMotionFX
             AZ::Vector3 GetNamedParameterVector3(const char* parameterName) override;
             AZ::Vector3 GetNamedParameterRotationEuler(const char* parameterName) override;
             AZ::Quaternion GetNamedParameterRotation(const char* parameterName) override;
+            bool GetVisualizeEnabled() override;
             void SyncAnimGraph(AZ::EntityId masterEntityId) override;
             void DesyncAnimGraph(AZ::EntityId masterEntityId) override;
             //////////////////////////////////////////////////////////////////////////

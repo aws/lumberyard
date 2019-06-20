@@ -125,6 +125,14 @@ inline bool IsModPath(const char* originalPath)
 
 namespace CryPakInternal
 {
+    // Explanation of this function:  it is like a 'find and  replace' for paths
+    // if the source path starts with 'aliasToLookFor' it will replace it with 'aliasToReplaceWith'
+    // else it will leave it untouched.
+    // the only caveat here is that it will perform this replacement if the source path either begins
+    // with the literal alias to look for, or begins with the actual absolute path that the alias to
+    // look for represents.  It is a way of redirecting all @devassets@ to @assets@ regardless of whether
+    // you input a string that literally starts with @devassets@ or one that starts with the absolute path to the
+    // folder that @devassets@ aliases.
     AZ::Outcome<string, AZStd::string> ConvertAbsolutePathToAliasedPath(const char* sourcePath, const char* aliasToLookFor, const char* aliasToReplaceWith)
     {
         if (sourcePath != nullptr && strlen(sourcePath) >= AZ_MAX_PATH_LEN)
@@ -147,8 +155,15 @@ namespace CryPakInternal
                     {
                         return AZ::Success<string>(unaliasedPath);
                     }
-
-                    azstrcat(unaliasedPath, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength, sourcePath + (strlen(alias) + strlen(CRY_NATIVE_PATH_SEPSTR)));
+                    // do we have to add a path seperator?
+                    size_t startingOffset = strlen(alias);
+                    char probedSeparator = sourcePath[startingOffset];
+                    if ((probedSeparator == DOS_PATH_SEP_CHR)||(probedSeparator == UNIX_PATH_SEP_CHR))
+                    {
+                        ++startingOffset;
+                    }
+                    
+                    azstrcat(unaliasedPath, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength, sourcePath + startingOffset);
                     return AZ::Success<string>(unaliasedPath);
                 }
             }
@@ -162,7 +177,15 @@ namespace CryPakInternal
                     return AZ::Success<string>(unaliasedPath);
                 }
 
-                azstrcat(unaliasedPath, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength, sourcePath + (strlen(aliasToLookFor) + strlen(CRY_NATIVE_PATH_SEPSTR)));
+                // do we have to add a path seperator?
+                size_t startingOffset = strlen(aliasToLookFor);
+                char probedSeparator = sourcePath[startingOffset];
+                if ((probedSeparator == DOS_PATH_SEP_CHR)||(probedSeparator == UNIX_PATH_SEP_CHR))
+                {
+                    ++startingOffset;
+                }
+
+                azstrcat(unaliasedPath, AZ_MAX_PATH_LEN + PathUtil::maxAliasLength, sourcePath + startingOffset);
                 return AZ::Success<string>(unaliasedPath);
             }
         }

@@ -1,0 +1,5 @@
+<Entity
+ Name="LivingEntity"
+ Script="Scripts/Entities/Physics/LivingEntity.lua"
+
+/>

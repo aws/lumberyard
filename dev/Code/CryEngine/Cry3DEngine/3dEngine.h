@@ -19,6 +19,7 @@
 #include <AzCore/std/parallel/mutex.h>
 #include <AzCore/Casting/numeric_cast.h>
 #include <AzCore/IO/SystemFile.h>
+#include <AzCore/Math/Aabb.h>
 
 #ifdef DrawText
 #undef DrawText
@@ -433,6 +434,8 @@ struct SPerObjectShadow
 
 #define LV_DLF_LIGHTVOLUMES_MASK (DLF_DISABLED | DLF_FAKE | DLF_AMBIENT | DLF_DEFERRED_CUBEMAPS)
 
+#define TERRAIN_AABB_PADDING 0.5f
+
 class CLightVolumesMgr
     : public Cry3DEngineBase
 {
@@ -703,6 +706,7 @@ public:
     virtual bool GetTerrainHole(int x, int y);
     virtual int GetHeightMapUnitSize();
     virtual int GetTerrainSize();
+    virtual const AZ::Aabb& GetTerrainAabb() const;
     virtual void SetSunDir(const Vec3& newSunOffset);
     virtual Vec3 GetSunDir() const;
     virtual Vec3 GetSunDirNormalized() const;
@@ -823,6 +827,7 @@ public:
     virtual void CompleteObjectsGeometry();
     virtual void LockCGFResources();
     virtual void UnlockCGFResources();
+    virtual void FreeUnusedCGFResources();
 
     virtual void SerializeState(TSerialize ser);
     virtual void PostSerialize(bool bReading);
@@ -912,6 +917,8 @@ public:
     {
         return CONFIG_VERYHIGH_SPEC; // very high spec.
     }
+
+    bool CheckMinSpec(uint32 nMinSpec) override;
 
     void UpdateRenderingCamera(const char* szCallerName, const SRenderingPassInfo& passInfo);
     virtual void PrepareOcclusion(const CCamera& rCamera);
@@ -1087,6 +1094,8 @@ public:
     Vec3 m_volFogHeightDensity;
     Vec3 m_volFogHeightDensity2;
     Vec3 m_volFogGradientCtrl;
+
+    AZ::Aabb m_terrainAabb;
 
 private:
     float m_oceanWindDirection;

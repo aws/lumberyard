@@ -44,7 +44,6 @@ def main(event, request):
 
         if sanitizer.validate(key):
             sanitizer.move_to_target(key, sanitized_bucket)
-
     if sanitizer.rejected_files:
         print("[REJECTED FILES]")
         for status in sanitizer.rejected_files:
@@ -63,6 +62,11 @@ def __validate_record(record):
 
     if 'eventVersion' not in record:
         raise RuntimeError('Malformed event recieved. (eventVersion)')
+
+    versionValue = float(record['eventVersion'])
+    if versionValue < constants.S3_EVENT_VERSION_MIN or versionValue > constants.S3_EVENT_VERSION_MAX:
+        print('Unexpected event version - Received {} support min {} max {}'.format(
+              versionValue, constants.S3_EVENT_VERSION_MIN, constants.S3_EVENT_VERSION_MAX))
 
     if 's3' not in record:
         raise RuntimeError('Malformed event received. (s3)')

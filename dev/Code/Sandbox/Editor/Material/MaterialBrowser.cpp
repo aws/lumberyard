@@ -1000,6 +1000,10 @@ void MaterialBrowserWidget::SetImageListCtrl(CMaterialImageListCtrl* pCtrl)
     {
         connect(m_pMaterialImageListCtrl->selectionModel(), &QItemSelectionModel::currentChanged,
             this, &MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane);
+
+        connect(m_pMaterialImageListCtrl, &QAbstractItemView::clicked,
+            this, &MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane);
+
         m_pMaterialImageListCtrl->SetMaterialBrowserWidget(this);
     }
 }
@@ -1658,19 +1662,19 @@ void MaterialBrowserWidget::OnRefreshSelection()
 
 void MaterialBrowserWidget::OnMaterialAdded()
 {
-    if (m_delayedSelection)
-    {
-        SetSelectedItem(m_delayedSelection, nullptr, true);
+	if (m_delayedSelection)
+	{
+		SetSelectedItem(m_delayedSelection, nullptr, true);
 
-        // Force update the material dialog
-        if (m_pListener)
-        {
-            m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
-        }
-    }
+		// Force update the material dialog
+		if (m_pListener)
+		{
+			m_pListener->OnBrowserSelectItem(GetCurrentMaterial(), true);
+		}
+	}
 }
 
-void MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane(const QModelIndex& current, const QModelIndex& previous)
+void MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane(const QModelIndex& current)
 {
     if (!m_pMaterialImageListCtrl)
     {
@@ -1680,7 +1684,6 @@ void MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane(const QModelIndex
     QMaterialImageListModel* materialModel =
         qobject_cast<QMaterialImageListModel*>(m_pMaterialImageListCtrl->model());
     Q_ASSERT(materialModel);
-
 
     int nSlot = (INT_PTR)materialModel->UserDataFromIndex(current);
     if (nSlot < 0)
@@ -1703,6 +1706,12 @@ void MaterialBrowserWidget::OnSubMaterialSelectedInPreviewPane(const QModelIndex
     {
         return;
     }
+
+    if (nSlot == m_selectedSubMaterialIndex)
+    {
+        return;
+    }
+
     m_selectedSubMaterialIndex = nSlot;
 
     SetSelectedItem(record.m_material, nullptr, false);

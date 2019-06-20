@@ -58,11 +58,14 @@ namespace AzFramework
         // target management api
         void EnumTargetInfos(TargetContainer& infos) override;
         void SetDesiredTarget(AZ::u32 desiredTargetID) override;
+        void SetDesiredTargetInfo(const TargetInfo& targetInfo) override;
         TargetInfo GetDesiredTarget() override;
         TargetInfo GetTargetInfo(AZ::u32 desiredTargetID) override;
         bool IsTargetOnline(AZ::u32 desiredTargetID) override;
+        bool IsDesiredTargetOnline() override;
         void SetMyPersistentName(const char* name) override;
         const char* GetMyPersistentName() override;
+        TargetInfo GetMyTargetInfo() const override;
         void SetNeighborhood(const char* name) override;
         const char* GetNeighborhood() override;
         void SendTmMessage(const TargetInfo& target, const TmMsg& msg) override;

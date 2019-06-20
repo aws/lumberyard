@@ -16,18 +16,18 @@
 #include "CloudGemSpeechRecognitionSystemComponent.h"
 #include "VoiceRecorderSystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemSpeechRecognition
 {
     class CloudGemSpeechRecognitionModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemSpeechRecognitionModule, "{B5F7B7ED-07B3-41C9-9E67-5CDBC6B7DF7B}", CryHooksModule);
+        AZ_RTTI(CloudGemSpeechRecognitionModule, "{B5F7B7ED-07B3-41C9-9E67-5CDBC6B7DF7B}", AZ::Module);
 
         CloudGemSpeechRecognitionModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

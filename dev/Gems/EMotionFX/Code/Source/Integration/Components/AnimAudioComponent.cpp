@@ -503,6 +503,7 @@ namespace EMotionFX
             {
                 behaviorContext->EBus<EMotionFX::Integration::AnimAudioComponentRequestBus>("AnimAudioComponentRequestBus")
                     ->Attribute(AZ::Script::Attributes::ExcludeFrom, AZ::Script::Attributes::ExcludeFlags::Preview)
+                    ->Attribute(AZ::Script::Attributes::Category, "Animation")
                     ->Event("AddTriggerEvent", &AnimAudioComponentRequestBus::Events::AddTriggerEvent)
                     ->Event("ClearTriggerEvents", &AnimAudioComponentRequestBus::Events::ClearTriggerEvents)
                     ->Event("RemoveTriggerEvent", &AnimAudioComponentRequestBus::Events::RemoveTriggerEvent);

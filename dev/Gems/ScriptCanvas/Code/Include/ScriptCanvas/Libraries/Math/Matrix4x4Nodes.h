@@ -191,7 +191,7 @@ namespace ScriptCanvas
         {
             return lhs * rhs;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(MultiplyByMatrix, "Math/Matrix4x4", "{72A041D0-BEB3-415B-9771-E869797B293B}", "returns result of multiplying both matrices (A * B)", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(MultiplyByMatrix, "Math/Matrix4x4", "{72A041D0-BEB3-415B-9771-E869797B293B}", "This node is deprecated, use Multiply (*), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE Data::Vector4Type MultiplyByVector(const Data::Matrix4x4Type& lhs, const Data::Vector4Type& rhs)
         {

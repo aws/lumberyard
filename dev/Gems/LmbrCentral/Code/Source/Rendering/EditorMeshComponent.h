@@ -50,6 +50,7 @@ namespace LmbrCentral
         , private AzFramework::EntityDebugDisplayEventBus::Handler
         , private LegacyMeshComponentRequestBus::Handler
         , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
+        , private AzToolsFramework::EditorLocalBoundsRequestBus::Handler
         , private AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler
     {
     public:
@@ -103,8 +104,10 @@ namespace LmbrCentral
         // EditorVisibilityNotificationBus
         void OnEntityVisibilityChanged(bool visibility) override;
 
-        // EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         //! Called when you want to change the game asset through code (like when creating components based on assets).
         void SetPrimaryAsset(const AZ::Data::AssetId& assetId) override;
@@ -119,9 +122,16 @@ namespace LmbrCentral
         void OnAssetReloaded(AZ::Data::Asset<AZ::Data::AssetData> asset) override;
 
         // EditorComponentSelectionRequestsBus
-        AZ::Aabb GetEditorSelectionBounds() override;
-        bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
-        bool SupportsEditorRayIntersect() override { return true; };
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
+        bool EditorSelectionIntersectRayViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        bool SupportsEditorRayIntersect() override { return true; }
+        AZ::u32 GetBoundingBoxDisplayType() override { return NoBoundingBox; }
+
+        // EditorLocalBoundsRequestBus
+        AZ::Aabb GetEditorLocalBounds() override;
 
         // EditorComponentSelectionNotificationsBus
         void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override;

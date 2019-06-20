@@ -214,6 +214,7 @@ namespace AzToolsFramework
             static_cast<Derived*>(this)->connect(newCtrl, &PropertyEnumComboBoxCtrl::valueChanged, static_cast<Derived*>(this), [newCtrl]()
             {
                 EBUS_EVENT(PropertyEditorGUIMessages::Bus, RequestWrite, newCtrl);
+                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&PropertyEditorGUIMessages::Bus::Handler::OnEditingFinished, newCtrl);
             });
             return newCtrl;
         }

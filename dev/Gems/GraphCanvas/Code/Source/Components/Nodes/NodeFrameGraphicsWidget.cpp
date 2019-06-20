@@ -85,6 +85,16 @@ namespace GraphCanvas
         return isSelected();
     }
 
+    void NodeFrameGraphicsWidget::SetZValue(int zValue)
+    {
+        setZValue(zValue);
+    }
+
+    int NodeFrameGraphicsWidget::GetZValue() const
+    {
+        return zValue();
+    }
+
     void NodeFrameGraphicsWidget::OnPositionChanged(const AZ::EntityId& entityId, const AZ::Vector2& position)
     {
         setPos(QPointF(position.GetX(), position.GetY()));
@@ -94,35 +104,10 @@ namespace GraphCanvas
     {
         m_style.SetStyle(GetEntityId());
 
-        setZValue(m_style.GetAttribute(Styling::Attribute::ZValue, 0));
         setOpacity(m_style.GetAttribute(Styling::Attribute::Opacity, 1.0f));
 
         OnRefreshStyle();
         update();
-    }
-
-    void NodeFrameGraphicsWidget::contextMenuEvent(QGraphicsSceneContextMenuEvent* contextMenuEvent)
-    {
-        contextMenuEvent->ignore();
-
-        AZ::EntityId sceneId;
-        SceneMemberRequestBus::EventResult(sceneId, GetEntityId(), &SceneMemberRequests::GetScene);
-
-        bool isCurrentIdAlreadySelected = IsSelected();
-        bool shouldAppendSelection = contextMenuEvent->modifiers().testFlag(Qt::ControlModifier);
-
-        // clear the current selection if you are not multi selecting and clicking on an unselected node
-        if (!isCurrentIdAlreadySelected && !shouldAppendSelection)
-        {
-            GraphCanvas::SceneRequestBus::Event(sceneId, &GraphCanvas::SceneRequests::ClearSelection);
-        }
-
-        if (!isCurrentIdAlreadySelected)
-        {
-            SetSelected(true);
-        }
-
-        SceneUIRequestBus::Event(sceneId, &SceneUIRequests::OnNodeContextMenuEvent, GetEntityId(), contextMenuEvent);
     }
 
     QSizeF NodeFrameGraphicsWidget::sizeHint(Qt::SizeHint which, const QSizeF& constraint) const
@@ -141,6 +126,13 @@ namespace GraphCanvas
         }
 
         return retVal;
+    }
+
+    void NodeFrameGraphicsWidget::resizeEvent(QGraphicsSceneResizeEvent* resizeEvent)
+    {
+        QGraphicsWidget::resizeEvent(resizeEvent);
+
+        GeometryRequestBus::Event(GetEntityId(), &GeometryRequests::SignalBoundsChanged);
     }
     
     void NodeFrameGraphicsWidget::OnDeleteItem()

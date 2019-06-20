@@ -92,6 +92,7 @@ namespace AzToolsFramework
         double m_pressValue;
         double m_singleStep;
         double m_offset_accumulated;
+        double m_curveMidpoint;
         bool  m_tracking;
         bool  m_blocktracking;
         bool  m_pressed;
@@ -186,6 +187,8 @@ namespace AzToolsFramework
         void setDecimals(int decimals);
         void setDisplayDecimals(int displayDecimals);
 
+        void setCurveMidpoint(double midpoint);
+
         void setSliderDown(bool);
         bool isSliderDown() const { return m_pressed; }
 
@@ -240,6 +243,10 @@ namespace AzToolsFramework
         void wheelEvent(QWheelEvent* e);
 #endif
         void changeEvent(QEvent* e);
+
+        double ConvertToSliderValue(double value);
+        double ConvertFromSliderValue(double value);
+        double ConvertPowerCurveValue(double value, bool fromSlider);
 
 #ifdef QT3_SUPPORT
     public:

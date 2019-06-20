@@ -5322,12 +5322,6 @@ namespace UnitTest
 
     TEST_F(MATH_SfmtTest, TestParallel32)
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
-        // This test blocks the execution on Mac, forcing to fail until it gets properly fixed.
-        EXPECT_TRUE(false);
-        return;
-#endif
-
         Sfmt sfmt;
         auto threadFunc = [&sfmt]()
             {
@@ -5350,12 +5344,6 @@ namespace UnitTest
 
     TEST_F(MATH_SfmtTest, TestParallel64)
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
-        // This test blocks the execution on Mac, forcing to fail until it gets properly fixed.
-        EXPECT_TRUE(false);
-        return;
-#endif
-
         Sfmt sfmt;
         auto threadFunc = [&sfmt]()
             {
@@ -5378,12 +5366,6 @@ namespace UnitTest
 
     TEST_F(MATH_SfmtTest, TestParallelInterleaved)
     {
-#if defined(AZ_PLATFORM_APPLE_OSX)
-        // This test blocks the execution on Mac, forcing to fail until it gets properly fixed.
-        EXPECT_TRUE(false);
-        return;
-#endif
-
         Sfmt sfmt;
         auto threadFunc = [&sfmt]()
             {

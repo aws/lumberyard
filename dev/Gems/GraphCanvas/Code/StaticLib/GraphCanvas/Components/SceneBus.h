@@ -23,8 +23,13 @@
 
 #include <GraphCanvas/Components/ViewBus.h>
 #include <GraphCanvas/GraphicsItems/AnimatedPulse.h>
+#include <GraphCanvas/GraphicsItems/GlowOutlineGraphicsItem.h>
+#include <GraphCanvas/GraphicsItems/ParticleGraphicsItem.h>
+#include <GraphCanvas/GraphicsItems/Occluder.h>
 #include <GraphCanvas/Types/GraphCanvasGraphData.h>
 #include <GraphCanvas/Types/GraphCanvasGraphSerialization.h>
+
+#include <GraphCanvas/Utils/GraphUtils.h>
 
 QT_FORWARD_DECLARE_CLASS(QKeyEvent);
 QT_FORWARD_DECLARE_CLASS(QGraphicsScene);
@@ -58,12 +63,25 @@ namespace GraphCanvas
         //! Get the grid entity (for setting grid pitch)
         virtual AZ::EntityId GetGrid() const = 0;
 
-        virtual AZ::EntityId CreatePulse(const AnimatedPulseConfiguration& pulseConfiguration) = 0;
+        virtual GraphicsEffectId CreatePulse(const AnimatedPulseConfiguration& pulseConfiguration) = 0;
+        virtual GraphicsEffectId CreatePulseAroundArea(const QRectF& area, int gridSteps, AnimatedPulseConfiguration& pulseConfiguration) = 0;
+        virtual GraphicsEffectId CreatePulseAroundSceneMember(const AZ::EntityId& memberId, int gridSteps, AnimatedPulseConfiguration pulseConfiguration) = 0;
+        virtual GraphicsEffectId CreateCircularPulse(const AZ::Vector2& centerPoint, float initialRadius, float finalRadius, AnimatedPulseConfiguration pulseConfiguration) = 0;
 
-        virtual AZ::EntityId CreatePulseAroundSceneMember(const AZ::EntityId& memberId, int gridSteps, AnimatedPulseConfiguration pulseConfiguration) = 0;
-        virtual AZ::EntityId CreateCircularPulse(const AZ::Vector2& centerPoint, float initialRadius, float finalRadius, AnimatedPulseConfiguration pulseConfiguration) = 0;
+        virtual GraphicsEffectId CreateOccluder(const OccluderConfiguration& occluderConfiguration) = 0;
 
-        virtual void CancelPulse(const AZ::EntityId& pulseId) = 0;
+        virtual GraphicsEffectId CreateGlow(const FixedGlowOutlineConfiguration& configuration) = 0;
+        virtual GraphicsEffectId CreateGlowOnSceneMember(const SceneMemberGlowOutlineConfiguration& configuration) = 0;
+
+        virtual GraphicsEffectId CreateParticle(const ParticleConfiguration& configuration) = 0;
+        virtual AZStd::vector< GraphicsEffectId > ExplodeSceneMember(const AZ::EntityId& memberId, float fillPercent) = 0;
+
+        AZ_DEPRECATED(void CancelPulse(const AZ::EntityId& pulseId), "CancelPulse renamed to CancelGraphicsEffect")
+        {
+            CancelGraphicsEffect(pulseId);
+        }
+
+        virtual void CancelGraphicsEffect(const GraphicsEffectId& effectId) = 0;
 
         //! Add a node to the scene.
         //! Nodes are owned by the scene and will follow the scene's entity life-cycle and be destroyed along with it.
@@ -97,19 +115,40 @@ namespace GraphCanvas
 
         //! Will attempt to splice the node onto the given connection.
         //! Will fully connect all valid connections that can be made.
-        virtual bool TrySpliceNodeOntoConnection(const AZ::EntityId& node, const AZ::EntityId& connectionId) = 0;
+        // Deprecated in v 1.xx
+        AZ_DEPRECATED(bool TrySpliceNodeOntoConnection(const AZ::EntityId& node, const AZ::EntityId& connectionId), "Function moved to GraphUtils and renamed to SpliceNodeOntoConnection.")
+        {
+            ConnectionSpliceConfig spliceConfig;
+            spliceConfig.m_allowOpportunisticConnections = false;
+
+            return GraphUtils::SpliceNodeOntoConnection(node, connectionId, spliceConfig);
+        }
 
         //! Will attempt to splice the node onto the given connection.
         //! Will fully connect all valid connections that can be made.
-        virtual bool TrySpliceNodeTreeOntoConnection(const AZStd::unordered_set< NodeId >& entryNodes, const AZStd::unordered_set< NodeId >& exitNodes, const ConnectionId& connectionId) = 0;
+        // Deprecated in v 1.xx
+        AZ_DEPRECATED(bool TrySpliceNodeTreeOntoConnection(const AZStd::unordered_set< NodeId >& entryNodes, const AZStd::unordered_set< NodeId >& exitNodes, const ConnectionId& connectionId), "Function moved to GraphUtils and renamed to SpliceSubGraphOntoConnection. Method signature now expects a GraphSubGraph instead of disparrate parts")
+        {
+            GraphSubGraph subGraph;
+
+            subGraph.m_entryNodes = entryNodes;
+            subGraph.m_exitNodes = exitNodes;
+
+            return GraphUtils::SpliceSubGraphOntoConnection(subGraph, connectionId);
+        }
 
         //! Will remove a node from the graph, and attempt to stitch together as many
         //! connections were severed as is possible. Any ambiguous connections will be thrown out.
         virtual void DeleteNodeAndStitchConnections(const AZ::EntityId& node) = 0;
-
+        
         //! Will attempt to create as many connections between the specified endpoints and the target node as possible.
         // Returns whether or not a connection was made.
-        virtual bool TryCreateConnectionsBetween(const AZStd::vector< Endpoint >& endpoints, const AZ::EntityId& targetNode) = 0;
+        // Deprecated in v 1.xx
+        AZ_DEPRECATED(bool TryCreateConnectionsBetween(const AZStd::vector< Endpoint >& endpoints, const AZ::EntityId& targetNode), "Function moved to GraphUtils and renamed to CreateConnectionsBetween")
+        {
+            CreateConnectionsBetweenConfig config;            
+            return GraphUtils::CreateConnectionsBetween(endpoints, targetNode, config);
+        }
 
         //! Create a default connection (between two endpoints).
         //! The connection will link the specified endpoints and have a default visual. It will be styled.
@@ -146,11 +185,23 @@ namespace GraphCanvas
         virtual AZStd::vector<Endpoint> GetConnectedEndpoints(const Endpoint& endpoint) const = 0;
 
         //! Creates a connection using both endpoints
-        virtual bool Connect(const Endpoint&, const Endpoint&) = 0;
+        AZ_DEPRECATED(bool Connect(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint), "Connect renamed to CreateConnection for Lexical Consistency")
+        {
+            return CreateConnection(sourceEndpoint, targetEndpoint);
+        }
+
+        //! Creates a connection between two endpoints. Will also create a connection with the underlying model.
+        virtual bool CreateConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) = 0;
+
+        //! Display a connection visually on the graph. Will not interact with the underlying model.
+        virtual bool DisplayConnection(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) = 0;
+
         //! Destroys a connection using both endpoints to look up the connection
-        virtual bool Disconnect(const Endpoint&, const Endpoint&) = 0;
+        virtual bool Disconnect(const Endpoint& sourceEndpoint, const Endpoint& targetEndpoint) = 0;
+
         //! Destroys a connection using the supplied connection Id
         virtual bool DisconnectById(const AZ::EntityId& connectionId) = 0;
+
         //! Finds a connection using the specified endpoints
         //! A reference to the found connection is returned in the connectionEntity parameter
         virtual bool FindConnection(AZ::Entity*& connectionEntity, const Endpoint& firstEndpoint, const Endpoint& otherEndpoint) const = 0;
@@ -159,7 +210,10 @@ namespace GraphCanvas
         //! \param nodeIds Entity Ids of nodes to find within the supplied connection set
         //! \param internalConnectionsOnly If true only connections between nodes in the node set will be considered when searching. 
         //! otherwise a node will only need to be in one of two endpoints of a connection in order for the connection to be considered found.
-        virtual AZStd::unordered_set<AZ::EntityId> FindConnections(const AZStd::unordered_set<AZ::EntityId>& nodeIds, bool internalConnectionsOnly = false) const = 0;
+        AZ_DEPRECATED(AZStd::unordered_set<AZ::EntityId> FindConnections(const AZStd::unordered_set<AZ::EntityId>& nodeIds, bool internalConnectionsOnly = false) const, "FindConnections moved from SceneBus to GraphUtils and renamed to FindConnectionsForNodes.")
+        {
+            return GraphUtils::FindConnectionsForNodes(nodeIds, internalConnectionsOnly);
+        }
 
         //! Adds a Bookmark Anchor
         virtual bool AddBookmarkAnchor(const AZ::EntityId& bookmarkAnchorId, const AZ::Vector2& position) = 0;
@@ -173,6 +227,12 @@ namespace GraphCanvas
         //! Remove an entity of any valid type from the scene.
         virtual bool Remove(const AZ::EntityId&) = 0;
 
+        //! Shows a hidden entity in the scene
+        virtual bool Show(const AZ::EntityId& graphMemeber) = 0;
+
+        //! Hides the specified graph member from the scene.
+        virtual bool Hide(const AZ::EntityId& graphMember) = 0;
+
         //! Clears the selection in the scene.
         virtual void ClearSelection() = 0;
 
@@ -181,8 +241,20 @@ namespace GraphCanvas
         //! \ref GetSelectedItems
         virtual void SetSelectedArea(const AZ::Vector2&, const AZ::Vector2&) = 0;
 
+        //! Selects all items in the scene
+        virtual void SelectAll() = 0;
+
+        //! Selects all the items connected to the specified node
+        virtual void SelectConnectedNodes() = 0;
+
+        //! Selects node by following the specified input direciton
+        virtual void SelectAllRelative(ConnectionType relativeDirection) = 0;
+
         //! Whether or not there are selected items in the scene.
         virtual bool HasSelectedItems() const = 0;
+
+        //! Whether or not there are multiple selected items in the scene.
+        virtual bool HasMultipleSelection() const = 0;
 
         //! Returns whether or not there are items selected that should be copied.
         virtual bool HasCopiableSelection() const = 0;
@@ -255,6 +327,8 @@ namespace GraphCanvas
         //! \param itemIds Set of ids to delete
         virtual void Delete(const AZStd::unordered_set<AZ::EntityId>&) = 0;
 
+        virtual void ClearScene() = 0;
+
         //! Stops the scene from allowing the next context menu's from being created.
         //! \param suppressed Whether or not context menu's should be allowed.
         virtual void SuppressNextContextMenu() = 0;
@@ -309,6 +383,24 @@ namespace GraphCanvas
 
         virtual void SignalDragSelectStart() = 0;
         virtual void SignalDragSelectEnd() = 0;
+
+        virtual void SignalConnectionDragBegin() = 0;
+        virtual void SignalConnectionDragEnd() = 0;
+
+        virtual void SignalDesplice() = 0;
+
+        virtual QRectF GetSelectedSceneBoundingArea() const = 0;
+        virtual QRectF GetSceneBoundingArea() const = 0;
+
+        virtual void SignalLoadStart() = 0;
+        virtual void SignalLoadEnd() = 0;
+        virtual bool IsLoading() const = 0;
+        virtual bool IsPasting() const = 0;
+
+        virtual void RemoveUnusedNodes() = 0;
+        virtual void RemoveUnusedElements() = 0;
+
+        virtual void HandleProposalDaisyChain(const NodeId& startNode, SlotType slotType, ConnectionType connectionType, const QPoint& screenPoint, const QPointF& focusPoint) = 0;
     };
 
     using SceneRequestBus = AZ::EBus<SceneRequests>;
@@ -376,6 +468,12 @@ namespace GraphCanvas
         //! The userData map contains any custom data serialized in from a copy operation.
         virtual void OnEntitiesDeserialized(const GraphSerialization&) {}
 
+        //! Signalled once everything that was deserialized in a batch is complete
+        virtual void OnEntitiesDeserializationComplete() {}
+
+        //! Signalled when a paste event is received, and it does not contain the CopyMimeType.
+        virtual void OnUnknownPaste(const QPointF& scenePos) {}
+
         //! Sent when a duplicate command begins
         virtual void OnDuplicateBegin() {}
 
@@ -417,8 +515,17 @@ namespace GraphCanvas
         //! Signals that a drag selection has ended
         virtual void OnDragSelectEnd() {}
 
+        //! Signals that a connection drag has begun
+        virtual void OnConnectionDragBegin() {}
+
+        //! Signals that a conneciton drag has ended
+        virtual void OnConnectionDragEnd() {}
+
         //! Signals that the scene registered a graphics view
         virtual void OnViewRegistered() {}
+
+        virtual void OnGraphLoadBegin() {}
+        virtual void OnGraphLoadComplete() {}
     };
 
     using SceneNotificationBus = AZ::EBus<SceneNotifications>;
@@ -431,25 +538,6 @@ namespace GraphCanvas
     public:
         static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
         using BusIdType = AZ::EntityId;
-
-        //! Hook into the QGraphicsScene context menu event.
-        //! This event is only sent when none of the QGraphicsItem on the QGraphicScene accepts this event
-        virtual void OnSceneContextMenuEvent(const AZ::EntityId& sceneId, QGraphicsSceneContextMenuEvent* /*event*/) = 0;
-
-        //! Hook into the QGraphicsScene double click menu event.
-        virtual void OnSceneDoubleClickEvent(const AZ::EntityId& sceneId, QGraphicsSceneMouseEvent* /*event*/) = 0;
-
-        //! Hook into the GraphicsItem context menu event
-        //! Specifically this is sent when a Node receives the context menu event
-        virtual void OnNodeContextMenuEvent(const AZ::EntityId& nodeId, QGraphicsSceneContextMenuEvent* /*event*/) = 0;
-
-        //! Hook into the GraphicsItem context menu event
-        //! Specifically this is sent when a Slot receives the context menu event
-        virtual void OnSlotContextMenuEvent(const AZ::EntityId& slotId, QGraphicsSceneContextMenuEvent* /*event*/) = 0;
-
-        //! Hook into the GraphicsItem context menu event
-        //! Specifically this is sent when a Connection receives the context menu event
-        virtual void OnConnectionContextMenuEvent(const AZ::EntityId& connectionId, QGraphicsSceneContextMenuEvent* /*event*/) = 0;
 
         //! This is sent when a Connection has no target.
         //! Returns the EntityId of the node create, if any.
@@ -508,7 +596,12 @@ namespace GraphCanvas
 
         //! When the entity is removed from a scene, this event is emitted.
         //! Includes the previously-set scene ID.
-        virtual void OnSceneCleared(const AZ::EntityId& /*sceneId*/) {}
+        AZ_DEPRECATED(virtual void OnSceneCleared(const AZ::EntityId& sceneId), "OnSceneCleared renamed to OnRemovedFromScene.")
+        {
+            OnRemovedFromScene(sceneId);
+        }
+        
+        virtual void OnRemovedFromScene(const AZ::EntityId& /*sceneId*/) {}
 
         //! Signal sent once the scene is fully configured and ready to be displayed.
         virtual void OnSceneReady() {}
@@ -516,10 +609,20 @@ namespace GraphCanvas
         //! Signals that a SceneMember is fully and handled by the SceneComponent.
         virtual void OnMemberSetupComplete() {}
 
+        virtual void OnSceneMemberHidden() {}
+        
+        virtual void OnSceneMemberShown() {}
+
+        virtual void OnSceneMemberExpandedFromGroup(const AZ::EntityId& groupId) {}
+
+        virtual void OnSceneMemberCollapsedInGroup(const AZ::EntityId& groupId) {}
+        
+        virtual void OnSceneMemberAboutToSerialize(GraphSerialization& serializationTarget) {}
+
         //! Signals that a SceneMember was deserialized into a particular graph.
         //! Note: The graphId is being passed in order to ask questions about the graph.
         //!       and is not a signal that the element has been added to the particular graph yet.
-        virtual void OnSceneMemberDeserializedForGraph(const AZ::EntityId& graphId) {}
+        virtual void OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphSerialization& serializationTarget) {}
     };
 
     using SceneMemberNotificationBus = AZ::EBus<SceneMemberNotifications>;    

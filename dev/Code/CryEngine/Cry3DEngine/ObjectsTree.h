@@ -528,7 +528,6 @@ private:
     COctreeNode* m_arrChilds[8];
     TDoublyLinkedList<IRenderNode> m_arrObjects[eRNListType_ListsNum];
     PodArray<SCasterInfo> m_lstCasters;
-    PodArray<IRenderNode*> m_lstVegetationsForRendering;
     Vec3 m_vNodeCenter;
     Vec3 m_vNodeAxisRadius;
     COctreeNode* m_pParent;

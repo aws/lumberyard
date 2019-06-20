@@ -47,6 +47,7 @@
 #include <AzFramework/Script/ScriptRemoteDebugging.h>
 #include <AzFramework/Script/ScriptComponent.h>
 #include <AzFramework/TargetManagement/TargetManagementComponent.h>
+#include <AzFramework/Viewport/CameraState.h>
 #include <AzFramework/Driller/RemoteDrillerInterface.h>
 #include <AzFramework/Network/NetworkContext.h>
 #include <AzFramework/Metrics/MetricsPlainTextNameRegistration.h>
@@ -202,13 +203,16 @@ namespace AzFramework
 
     void Application::ResolveModulePath(AZ::OSString& modulePath)
     {
+        // Calculate the subfolder
         const char* modulePathStr = modulePath.c_str();
+        const char* binSubfolder = this->GetBinFolder();
         if (AzFramework::StringFunc::Path::IsRelative(modulePathStr))
         {
             const char* searchPaths[] = { m_appRoot , m_engineRoot };
             for (const char* searchPath : searchPaths)
             {
-                AZStd::string testPath = AZStd::string::format("%s" BINFOLDER_NAME AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING AZ_DYNAMIC_LIBRARY_PREFIX "%s", searchPath, modulePathStr);
+                AZStd::string testPath = AZStd::string::format("%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING "%s" AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING AZ_DYNAMIC_LIBRARY_PREFIX "%s", searchPath, binSubfolder, modulePathStr);
+                AzFramework::StringFunc::Path::Normalize(testPath);
                 AZStd::string testPathWithPrefixAndExt = AZStd::string::format("%s" AZ_DYNAMIC_LIBRARY_EXTENSION, testPath.c_str(), modulePathStr);
                 if (AZ::IO::SystemFile::Exists(testPathWithPrefixAndExt.c_str()))
                 {
@@ -358,7 +362,37 @@ namespace AzFramework
             {
                 // Initialize the engine root to the value of the external engine path key in the json file if it exists
                 auto engineExternalPathString = externalEnginePath->value.GetString();
-                SetRootPath(RootPathType::EngineRoot, engineExternalPathString);
+
+                AZStd::string normalizedEngineExternalPathString = engineExternalPathString;
+                AzFramework::StringFunc::TrimWhiteSpace(normalizedEngineExternalPathString, true, true);
+
+                if (normalizedEngineExternalPathString.empty())
+                {
+                    // If the external engine path is empty, then the engine path is the app path
+                    SetRootPath(RootPathType::EngineRoot, m_appRoot);
+                }
+                else
+                {
+                    // Make sure that the external engine path represents a path
+                    AzFramework::StringFunc::Path::Normalize(normalizedEngineExternalPathString);
+                    if (normalizedEngineExternalPathString.at(normalizedEngineExternalPathString.length() - 1) != AZ_CORRECT_FILESYSTEM_SEPARATOR)
+                    {
+                        normalizedEngineExternalPathString.append(AZ_CORRECT_FILESYSTEM_SEPARATOR_STRING);
+                    }
+
+                    // Check if the path is absolute or relative
+                    bool isRelativePath = AzFramework::StringFunc::RelativePath::IsValid(normalizedEngineExternalPathString.c_str());
+                    if (isRelativePath)
+                    {
+                        AZStd::string enginePath;
+                        AzFramework::StringFunc::Path::Join(m_appRoot, engineExternalPathString, enginePath);
+                        SetRootPath(RootPathType::EngineRoot, enginePath.c_str());
+                    }
+                    else
+                    {
+                        SetRootPath(RootPathType::EngineRoot, engineExternalPathString);
+                    }
+                }
             }
             else
             {
@@ -366,7 +400,7 @@ namespace AzFramework
                 // as the app root
                 SetRootPath(RootPathType::EngineRoot, m_appRoot);
             }
-            AZ_TracePrintf(s_azFrameworkWarningWindow, "Engine Path: %s", m_engineRoot);
+            AZ_TracePrintf(s_azFrameworkWarningWindow, "Engine Path: %s\n", m_engineRoot);
         }
         else
         {
@@ -467,10 +501,12 @@ namespace AzFramework
         AzFramework::EntityContext::Reflect(context);
         AzFramework::SimpleAssetReferenceBase::Reflect(context);
         AzFramework::ConsoleRequests::Reflect(context);
+        AzFramework::ConsoleNotifications::Reflect(context);
 
         if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             AzFramework::AssetRegistry::ReflectSerialize(serializeContext);
+            CameraState::Reflect(*serializeContext);
         }
     }
 

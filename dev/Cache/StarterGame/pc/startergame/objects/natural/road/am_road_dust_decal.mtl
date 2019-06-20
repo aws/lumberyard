@@ -1,0 +1,8 @@
+<Material MtlFlags="524288" Shader="Illum" GenMask="4002012000801" StringGenMask="%ALLOW_SILHOUETTE_POM%DECAL%NORMAL_MAP%OFFSET_BUMP_MAPPING%SUBSURFACE_SCATTERING%VERTCOLORS" SurfaceType="mat_rock_dusty" Diffuse="1,1,1,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="0.99000001" Shininess="49" AlphaTest="0.34999999" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="objects/natural/road/am_road_dust_decal_diff.dds"/>
+  <Texture Map="Bumpmap" File="objects/natural/road/am_road_dust_ddna.dds"/>
+  <Texture Map="Heightmap" File="objects/natural/road/am_road_dust_displ.dds"/>
+ </Textures>
+ <PublicParams EmittanceMapGamma="1" DecalDiffuseOpacity="1" DecalFalloff="0.30000001" SelfShadowStrength="3.1989999" ObmDisplacement="0.025" HeightBias="1" DecalAlphaMult="3" IndirectColor="0.25,0.25,0.25"/>
+</Material>

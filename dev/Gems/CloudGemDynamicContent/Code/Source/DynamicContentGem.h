@@ -12,30 +12,20 @@
 
 #pragma once
 
-#include <AzCore/std/smart_ptr/shared_ptr.h>
-// This is a temporary workaround for the fact that we don't have NativeSDK on all platforms yet
-#if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-#include <PresignedURL/PresignedURL.h>
-#endif
+#include <AzCore/Module/Module.h>
 
 namespace DynamicContent
 {
-    class DynamicContentGem : public CryHooksModule
+    class DynamicContentGem : public AZ::Module
     {
     public:
-        AZ_RTTI(DynamicContentGem, "{A5268487-BF49-4191-BF31-0D083C9A19D6}", CryHooksModule);
+        AZ_RTTI(DynamicContentGem, "{A5268487-BF49-4191-BF31-0D083C9A19D6}", AZ::Module);
 
         DynamicContentGem();
 
-        ~DynamicContentGem() override = default;
-
-        void OnSystemEvent(ESystemEvent event, UINT_PTR wparam, UINT_PTR lparam) override;
+        ~DynamicContentGem() = default;
         
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
 
-    private:
-#if defined(PLATFORM_SUPPORTS_AWS_NATIVE_SDK)
-        AZStd::shared_ptr<CloudCanvas::PresignedURLManager> m_presignedManager;
-#endif
     };
 } // namespace DynamicContent

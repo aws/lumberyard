@@ -13,24 +13,19 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
-#include <QWidget>
-#include <QPixmap>
+#include <QFrame>
 
 class QPainter;
 
 namespace AzQtComponents
 {
     class AZ_QT_COMPONENTS_API ButtonDivider
-        : public QWidget
+        : public QFrame
     {
         Q_OBJECT
 
     public:
         explicit ButtonDivider(QWidget* parent = nullptr);
-        void paintEvent(QPaintEvent*) override;
-
-    private:
-        QPixmap m_dividerButton;
     };
 } // namespace AzQtComponents
 

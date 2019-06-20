@@ -49,15 +49,17 @@ namespace ScriptCanvas
                 }
             }
 
+            ~NativeDatumNode() override = default;
+
         protected:
-            void ConfigureSetters()
+            virtual void ConfigureSetters()
             {
                 Data::SetterContainer setterWrappers = Data::ExplodeToSetters(Data::FromAZType(Data::Traits<t_Datum>::GetAZType()));
                 for (const auto& setterWrapperPair : setterWrappers)
                 {
                     SlotId setterSlotId;
                     const Data::SetterWrapper& setterWrapper = setterWrapperPair.second;
-                    const AZStd::string argName = AZStd::string::format("%s: %s", Data::GetName(setterWrapper.m_propertyType), setterWrapper.m_propertyName.data());
+                    const AZStd::string argName = AZStd::string::format("%s: %s", Data::GetName(setterWrapper.m_propertyType).data(), setterWrapper.m_propertyName.data());
                     AZStd::string_view argumentTooltip;
                     // Add the slot if it doesn't exist
                     if (!SlotExists(argName, SlotType::DataIn, setterSlotId))
@@ -73,7 +75,7 @@ namespace ScriptCanvas
                 }
             }
 
-            void ConfigureGetters()
+            virtual void ConfigureGetters()
             {
                 Data::GetterContainer getterWrappers = Data::ExplodeToGetters(Data::FromAZType(Data::Traits<t_Datum>::GetAZType()));
                 for (const auto& getterWrapperPair : getterWrappers)
@@ -81,7 +83,7 @@ namespace ScriptCanvas
                     SlotId getterSlotId;
 
                     const Data::GetterWrapper& getterWrapper = getterWrapperPair.second;
-                    const AZStd::string resultSlotName(AZStd::string::format("%s: %s", getterWrapper.m_propertyName.data(), Data::GetName(getterWrapper.m_propertyType)));
+                    const AZStd::string resultSlotName(AZStd::string::format("%s: %s", getterWrapper.m_propertyName.data(), Data::GetName(getterWrapper.m_propertyType).data()));
                     // Add the slot if it doesn't exist
                     if (!SlotExists(resultSlotName, SlotType::DataOut, getterSlotId))
                     {

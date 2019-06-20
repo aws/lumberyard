@@ -53,7 +53,8 @@
             "DataTypes/Rules/IOriginRule.h",
             "DataTypes/Rules/IMaterialRule.h",
             "DataTypes/Rules/IPhysicsRule.h",
-            "DataTypes/Rules/ISkeletonProxyRule.h"
+            "DataTypes/Rules/ISkeletonProxyRule.h",
+            "DataTypes/Rules/ITouchBendingRule.h"
         ],
         "Components":
         [

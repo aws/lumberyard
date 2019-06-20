@@ -73,6 +73,9 @@ namespace AzToolsFramework
             EntityList m_layerEntities;
             AZ::SliceComponent::SliceAssetToSliceInstancePtrs m_sliceAssetsToSliceInstances;
             LayerProperties m_layerProperties;
+
+            // Makes it easier to recover a lost layer if the layer's entity ID was known.
+            AZ::EntityId m_layerEntityId;
         };
 
         /// This editor component marks an entity as a layer entity.
@@ -154,7 +157,48 @@ namespace AzToolsFramework
             // The Layer entities need to be added to the before they are cleaned up.
             void CleanupLoadedLayer();
 
+            // Sets the layer to the passed in color.
             void SetLayerColor(AZ::Color newColor) { m_editableLayerProperties.m_color = newColor; }
+
+            /**
+            * Creates the right click context menu for layers in the asset browser.
+            * \param menu The menu to parent this to.
+            * \param fullFilePath The full file path of the slice.
+            * \param levelPath The path to the level file.
+            */
+            static void CreateLayerAssetContextMenu(QMenu* menu, const AZStd::string& fullFilePath, QString levelPath);
+
+            /**
+            * Attempts to recover the passed in layer file. This is used when content creators
+            * accidentally step on each other's toes, and a layer entity gets deleted in a scene.
+            * \param fullFilePath The full path to the layer to attempt to recover.
+            */
+            static void RecoverLayer(const AZStd::string& fullFilePath);
+
+            /**
+            * Attempts to recover the passed in EditorLayer object. Most call sites should use the RecoverLayer
+            * that takes in a path to the layer file.
+            * \param editorLayer The layer object to recover.
+            * \param newLayerName The name to give the layer entity when it's recovered.
+            * \param layerParentId The parent for the new layer. Passed in the invalid entity ID for loose layers with no parents.
+            * \return A success if the layer was recovered, an error if it was not.
+            */
+            static LayerResult RecoverEditorLayer(
+                const AZStd::shared_ptr<Layers::EditorLayer> editorLayer,
+                const AZStd::string& newLayerName,
+                const AZ::EntityId& layerParentId);
+
+            // Returns the file extension (without a .) used by the layer system.
+            static const char* GetLayerExtension() { return "layer"; }
+
+            // Returns the file extension (with a .) used by the layer system.
+            static AZStd::string GetLayerExtensionWithDot() { return AZStd::string::format(".%s", GetLayerExtension()); }
+
+            /**
+            * Creates a layer entity with the given name, and returns the pointer to the layer entity.
+            * \param name Name to use for the new layer.
+            */
+            static AZ::Entity* CreateLayerEntity(const AZStd::string& name, const AZ::Color& layerColor, const AZ::EntityId& optionalEntityId=AZ::EntityId());
         protected:
             ////////////////////////////////////////////////////////////////////
             // AZ::Entity
@@ -186,11 +230,54 @@ namespace AzToolsFramework
 
             QString GetLayerDirectory() const { return "Layers"; }
             QString GetLayerTempDirectory() const { return "Layers_Temp"; }
-            QString GetLayerExtension() const { return "layer"; }
             QString GetLayerTempExtension() const { return "layer_temp"; }
 
             // Try writing a temp file a few times, in case the initial temp file isn't writeable for some reason.
             int GetMaxTempFileWriteAttempts() const { return 5; }
+
+            /**
+            * Verifies that the passed in layer path is safe to begin a recovery attempt.
+            * If so, also populates necessary info to recover this layer.
+            * Also retrieves the name of the layer to use when creating the entity.
+            * Checks if the ancestry of the layer is available. If not, prompts the user
+            * if they want it created, or if they want to bail out of the operation.
+            * \param fullFilePath The full path to the layer file.
+            * \param newLayerName An output paramater that will be populated with the entity name for this layer.
+            * \param layerParentId An output parameter that will be populated with the ID of the parent of the layer, if it has one.
+            */
+            static bool CanAttemptToRecoverLayerAndGetLayerInfo(
+                const AZStd::string& fullFilePath,
+                AZStd::string& newLayerName,
+                AZ::EntityId& layerParentId);
+
+            /**
+            * Returns true if the passed in layer is safe to spawn in the scene, false if not.
+            * This checks for duplicate entity IDs.
+            * \param loadedLayer The layer to validate.
+            * \param rootSlice The root slice for the level.
+            * \return A success if the layer is safe to recover, otherwise an error with a message if not.
+            */
+            static LayerResult IsLayerDataSafeToRecover(const AZStd::shared_ptr<Layers::EditorLayer>  loadedLayer, AZ::SliceComponent& rootSlice);
+
+            /**
+            * Creates a layer entity with the given ancestor name.
+            * This is not parsed for deeper ancestry, if you give this "Grandparent.Parent" and have an entity
+            * in your scene already named "Grandparent", this won't create "Parent" as a child of "Grandparent".
+            * \param nearestLayerAncestorName the full ancestor name.
+            * \return The entity ID fo the missing ancestor.
+            */
+            static AZ::EntityId CreateMissingLayerAncestors(const AZStd::string& nearestLayerAcenstorName);
+
+            /**
+            * Checks if the given entity ID was already discovered. Updates the discovery list with the passed in ID.
+            * Reports an error if the entity ID was already found. Returns true if it was, false if not.
+            * This is used when recovering layers, to search for potential entity ID collisions, and cancel the recovery
+            * if there is a collision.
+            * \param discoveredIds A list of entity already found.
+            * \param newEntity The entity to update the list with, and report an error if it was already found.
+            * \return A success if the entity ID is safe to recover, a failure if not.
+            */
+            static LayerResult UpdateListOfDiscoveredEntityIds(AZStd::unordered_set<AZ::EntityId> &discoveredIds, const AZ::EntityId& newEntity);
 
             // Layer file names generated on each save.
             LayerResult GenerateLayerFileName();
@@ -208,6 +295,11 @@ namespace AzToolsFramework
                 AzToolsFramework::Components::TransformComponent& transformComponent) const;
 
             void SetUnsavedChanges(bool unsavedChanges);
+
+            // Gets the marker used to include ancestry in layer files created on disk.
+            // Given a layer hierarchy Grandparent, Parent, and Child, and a separator ".", the separator
+            // will be used to generate a file named "Grandparent.Parent.Child".
+            static AZStd::string GetLayerSeparator() { return "."; }
 
             EditorLayer* m_loadedLayer = nullptr;
             AZStd::string m_layerFileName;

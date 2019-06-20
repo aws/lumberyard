@@ -74,6 +74,9 @@ namespace AzToolsFramework
         // This check allows the outliner to detect if this entity was specifically locked,
         // so it can render that state. Everywhere else should use the IsLocked check, which checks entities.
         virtual bool IsJustThisEntityLocked() const = 0;
+
+        virtual bool IsComponentExpanded(AZ::ComponentId id) const = 0;
+        virtual void SetComponentExpanded(AZ::ComponentId id, bool expanded) = 0;
     };
     using EditorEntityInfoRequestBus = AZ::EBus<EditorEntityInfoRequests>;
 

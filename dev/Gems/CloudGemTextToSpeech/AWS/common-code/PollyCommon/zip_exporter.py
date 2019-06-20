@@ -22,6 +22,7 @@ import uuid
 import csv
 
 from errors import ClientError
+from botocore.client import Config
 
 import text_to_speech_s3
 
@@ -205,7 +206,7 @@ def __create_speech_definitions_file(zip_file_name, speech_line_definitions, spe
         zf.close()
 
 def __upload_zip_file(file_name, key):
-    s3 = boto3.resource('s3')
+    s3 = boto3.resource('s3', config=Config(signature_version='s3v4'))
     try:
         s3.meta.client.upload_file(file_name, CloudCanvas.get_setting(PACKAGEDVOICELINES), key)
     except:

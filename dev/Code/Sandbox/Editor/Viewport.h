@@ -22,10 +22,11 @@
 #include "Include/SandboxAPI.h"
 
 #include <QMenu>
-#include <QUuid>
 #if defined(Q_OS_WIN)
 #include <QtWinExtras/qwinfunctions.h>
 #endif
+
+#include <AzCore/Math/Uuid.h>
 
 namespace AzQtComponents
 {
@@ -318,7 +319,7 @@ public:
     static const GUID& GetClassID()
     {
         static GUID guid = [] {
-            return QUuid::createUuid();
+            return AZ::Uuid::CreateRandom();
         } ();
         return guid;
     }

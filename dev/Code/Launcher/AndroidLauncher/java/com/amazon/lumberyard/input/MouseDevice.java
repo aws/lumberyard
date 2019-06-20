@@ -98,7 +98,12 @@ public class MouseDevice
     private boolean IsMouseDevice(int deviceId)
     {
         InputDevice device = m_inputManager.getInputDevice(deviceId);
-        return (device != null) && ((device.getSources() & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE);
+        if (device == null)
+        {
+            return false;
+        }
+        int sources = device.getSources();
+        return (sources == InputDevice.SOURCE_MOUSE);
     }
 
 

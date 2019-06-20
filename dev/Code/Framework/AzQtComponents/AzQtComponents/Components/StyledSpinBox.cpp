@@ -22,7 +22,6 @@
 namespace AzQtComponents
 {
     // Slider parameters
-    const int sliderMarginToSpinBox = 4;
     const int sliderDefaultHeight = 35;
     const int sliderDefaultWidth = 192;
 

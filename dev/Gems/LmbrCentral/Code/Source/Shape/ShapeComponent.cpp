@@ -50,4 +50,16 @@ namespace LmbrCentral
                 ;
         }
     }
+
+    void ShapeComponentConfig::Reflect(AZ::ReflectContext* context)
+    {
+        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serializeContext->Class<ShapeComponentConfig>()
+                ->Version(1)
+                ->Field("DrawColor", &ShapeComponentConfig::m_drawColor)
+                ->Field("IsFilled", &ShapeComponentConfig::m_filled)
+            ;
+        }
+    }
 } // namespace LmbrCentral

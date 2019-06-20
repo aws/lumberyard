@@ -29,11 +29,12 @@ namespace GraphCanvas
         }
 
         serializeContext->Class<GraphSerialization>()
-            ->Version(1)
+            ->Version(2)
             ->Field("UserData", &GraphSerialization::m_userFields)
             ->Field("SceneData", &GraphSerialization::m_graphData)
             ->Field("Key", &GraphSerialization::m_serializationKey)
             ->Field("AveragePosition", &GraphSerialization::m_averagePosition)
+            ->Field("ConnectedEndpoints", &GraphSerialization::m_connectedEndpoints)
         ;
     }
 
@@ -97,6 +98,16 @@ namespace GraphCanvas
     const GraphData& GraphSerialization::GetGraphData() const
     {
         return m_graphData;
+    }
+
+    const AZStd::unordered_multimap< Endpoint, Endpoint >& GraphSerialization::GetConnectedEndpoints() const
+    {
+        return m_connectedEndpoints;
+    }
+
+    void GraphSerialization::SetConnectedEndpoints(const AZStd::unordered_multimap< Endpoint, Endpoint >& endpoints)
+    {
+        m_connectedEndpoints = endpoints;
     }
 
     AZStd::unordered_map<AZStd::string, AZStd::any>& GraphSerialization::GetUserDataMapRef()

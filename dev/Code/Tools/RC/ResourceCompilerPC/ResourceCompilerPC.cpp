@@ -104,8 +104,6 @@ ICryXML* LoadICryXML()
 
 extern "C" DLL_EXPORT void __stdcall RegisterConvertors(IResourceCompiler* const pRC)
 {
-    gEnv = pRC->GetSystemEnvironment();
-
     SetRCLog(pRC->GetIRCLog());
 
     pRC->RegisterConvertor("StatCGFCompiler", new CStatCGFCompiler());

@@ -103,6 +103,13 @@ namespace LmbrCentral
         return m_intersectionDataCache.m_aabb;
     }
 
+    void BoxShape::GetTransformAndLocalBounds(AZ::Transform& transform, AZ::Aabb& bounds)
+    {
+        const AZ::Vector3 extent(m_boxShapeConfig.m_dimensions * 0.5f);
+        bounds = AZ::Aabb::CreateFromMinMax(-extent, extent);
+        transform = m_currentTransform;
+    }
+
     bool BoxShape::IsPointInside(const AZ::Vector3& point)
     {
         m_intersectionDataCache.UpdateIntersectionParams(m_currentTransform, m_boxShapeConfig);
@@ -179,8 +186,9 @@ namespace LmbrCentral
         AZ::Vector3 boxMin = m_intersectionDataCache.m_dimensions * -half;
         AZ::Vector3 boxMax = m_intersectionDataCache.m_dimensions * half;
 
-		// As std:normal_distribution requires a std:random_engine to be passed in, create one using a random seed that is guaranteed to be properly
-		// random each time it is called
+        // As std:normal_distribution requires a std:random_engine to be passed in,
+        // As std:normal_distribution requires a std:random_engine to be passed in, create one using a random seed that is guaranteed to be properly
+        // random each time it is called
         time_t seedVal;
 #ifdef AZ_OS32
         seedVal = AZ::Sfmt::GetInstance().Rand32();
@@ -308,18 +316,18 @@ namespace LmbrCentral
 
     void DrawBoxShape(
         const ShapeDrawParams& shapeDrawParams, const BoxShapeConfig& boxShapeConfig,
-        AzFramework::EntityDebugDisplayRequests& displayContext)
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         const AZ::Vector3 boxMin = boxShapeConfig.m_dimensions * -0.5f;
         const AZ::Vector3 boxMax = boxShapeConfig.m_dimensions * 0.5f;
 
         if (shapeDrawParams.m_filled)
         {
-            displayContext.SetColor(shapeDrawParams.m_shapeColor.GetAsVector4());
-            displayContext.DrawSolidBox(boxMin, boxMax);
+            debugDisplay.SetColor(shapeDrawParams.m_shapeColor.GetAsVector4());
+            debugDisplay.DrawSolidBox(boxMin, boxMax);
         }
 
-        displayContext.SetColor(shapeDrawParams.m_wireColor.GetAsVector4());
-        displayContext.DrawWireBox(boxMin, boxMax);
+        debugDisplay.SetColor(shapeDrawParams.m_wireColor.GetAsVector4());
+        debugDisplay.DrawWireBox(boxMin, boxMax);
     }
 } // namespace LmbrCentral

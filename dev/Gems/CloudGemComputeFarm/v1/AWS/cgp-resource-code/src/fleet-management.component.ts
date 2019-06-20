@@ -195,7 +195,6 @@ export class FleetManagementComponent {
             if (obj.result.status === 'SUCCEED') {
                 this.toastr.success("The fleet " + fleet.autoScalingGroupName + " was updated.");
                 this.currentFleet = JSON.parse(JSON.stringify(fleet));
-                this.saveCurrentFleetConfiguration();
             }
             else {
                 this.toastr.error("Failed to update the fleet. " + obj.result.status);

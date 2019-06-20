@@ -1006,6 +1006,29 @@ namespace Audio
 
                         break;
                     }
+                    case eAORT_SET_MULTI_POSITIONS:
+                    {
+                        if (pObject->HasPosition())
+                        {
+                            auto const pRequestData = static_cast<const SAudioObjectRequestDataInternal<eAORT_SET_MULTI_POSITIONS>*>(pPassedRequestData);
+
+                            auto const pPositionedObject = static_cast<CATLAudioObject*>(pObject);
+
+                            AudioSystemImplementationRequestBus::BroadcastResult(eResult, &AudioSystemImplementationRequestBus::Events::SetMultiplePositions,
+                                pPositionedObject->GetImplDataPtr(),
+                                pRequestData->m_params);
+
+                            if (eResult == eARS_SUCCESS)
+                            {
+                                pPositionedObject->SetPosition(SATLWorldPosition());
+                            }
+                        }
+                        else
+                        {
+                            g_audioLogger.Log(eALT_WARNING, "ATL received a request to set multiple positions on a global object");
+                        }
+                        break;
+                    }
                     case eAORT_NONE:
                     {
                         eResult = eARS_SUCCESS;

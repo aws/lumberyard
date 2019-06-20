@@ -46,17 +46,19 @@ namespace Physics
         AZ::Crc32 GetCollisionLayerVisibility() const;
         AZ::Crc32 GetMaterialSelectionVisibility() const;
 
-        Physics::CollisionLayer m_collisionLayer; ///< Which collision layer is this collider on
-        Physics::CollisionGroups::Id m_collisionGroupId; ///< Which layers does this collider collide with
-        bool m_isTrigger = false; ///< Should this shape act as a trigger shape
+        Physics::CollisionLayer m_collisionLayer; ///< Which collision layer is this collider on.
+        Physics::CollisionGroups::Id m_collisionGroupId; ///< Which layers does this collider collide with.
+        bool m_isTrigger = false; ///< Should this shape act as a trigger shape.
         bool m_isExclusive = true; ///< Can this collider be shared between multiple bodies?
-        AZ::Vector3 m_position = AZ::Vector3::CreateZero(); /// Shape offset relative to the connected rigid body
-        AZ::Quaternion m_rotation = AZ::Quaternion::CreateIdentity(); ///< Shape rotation relative to the connected rigid body
-        Physics::MaterialSelection m_materialSelection; ///< Materials for the collider
-        AZ::u8 m_propertyVisibilityFlags = (std::numeric_limits<AZ::u8>::max)();
-
+        AZ::Vector3 m_position = AZ::Vector3::CreateZero(); /// Shape offset relative to the connected rigid body.
+        AZ::Quaternion m_rotation = AZ::Quaternion::CreateIdentity(); ///< Shape rotation relative to the connected rigid body.
+        Physics::MaterialSelection m_materialSelection; ///< Materials for the collider.
+        AZ::u8 m_propertyVisibilityFlags = (std::numeric_limits<AZ::u8>::max)(); ///< Visibility flags for collider.
+                                                                                 ///< Note: added parenthesis for std::numeric_limits is
+                                                                                 ///< to avoid collision with `max` macro in uber builds.
         bool m_visible = false; ///< Display the collider in editor view.
     };
+
     using ShapeConfigurationPair = AZStd::pair<AZStd::shared_ptr<ColliderConfiguration>, AZStd::shared_ptr<ShapeConfiguration>>;
     using ShapeConfigurationList = AZStd::vector<ShapeConfigurationPair>;
 

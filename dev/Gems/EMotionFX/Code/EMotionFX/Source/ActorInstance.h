@@ -15,6 +15,7 @@
 #include <AzCore/Component/Entity.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
+#include <AzCore/Math/Color.h>
 #include <AzCore/RTTI/TypeInfo.h>
 #include "EMotionFXConfig.h"
 #include <MCore/Source/Vector.h>
@@ -769,7 +770,7 @@ namespace EMotionFX
          */
         Node* IntersectsMesh(uint32 lodLevel, const MCore::Ray& ray, AZ::Vector3* outIntersect, AZ::Vector3* outNormal = nullptr, AZ::Vector2* outUV = nullptr, float* outBaryU = nullptr, float* outBaryV = nullptr, uint32* outStartIndex = nullptr) const;
 
-        void SetRagdoll(const AZStd::shared_ptr<Physics::Ragdoll>& ragdoll);
+        void SetRagdoll(Physics::Ragdoll* ragdoll);
         RagdollInstance* GetRagdollInstance() const;
 
         void SetParentWorldSpaceTransform(const Transform& transform);
@@ -850,7 +851,7 @@ namespace EMotionFX
         uint32 GetThreadIndex() const;
         void SetThreadIndex(uint32 index);
 
-        void DrawSkeleton(Pose& pose, uint32 color);
+        void DrawSkeleton(Pose& pose, const AZ::Color& color);
         void ApplyMotionExtractionDelta(const Transform& trajectoryDelta);
         void ApplyMotionExtractionDelta();
         void MotionExtractionCompensate(EMotionExtractionFlags motionExtractionFlags = (EMotionExtractionFlags)0);
@@ -908,6 +909,7 @@ namespace EMotionFX
         float                   mMotionSamplingTimer;   /**< The time passed since the last time we sampled motions/anim graphs. */
         float                   mVisualizeScale;        /**< Some visualization scale factor when rendering for example normals, to be at a nice size, relative to the character. */
         uint32                  mLODLevel;              /**< The current LOD level, where 0 is the highest detail. */
+        uint32                  m_requestedLODLevel;    /**< Requested LOD level. The actual LOD level will be updated as soon as all transforms for the requested LOD level are ready. */
         uint32                  mBoundsUpdateItemFreq;  /**< The bounds update item counter step size. A value of 1 means every vertex/node, a value of 2 means every second vertex/node, etc. */
         uint32                  mID;                    /**< The unique identification number for the actor instance. */
         uint32                  mThreadIndex;           /**< The thread index. This specifies the thread number this actor instance is being processed in. */
@@ -1016,5 +1018,13 @@ namespace EMotionFX
          * @param level The skeletal detail LOD level. Values higher than 31 will be automatically clamped to 31.
          */
         void SetSkeletalLODLevelNodeFlags(uint32 level);
+
+        /*
+         * Update the LOD level in case a change was requested.
+         * This function should only be called from within UpdateTransformations() as we should not change the LOD level while not all transforms used
+         * by the LOD are ready. When switching from a lower LOD (less joints used) to a more detailed version of the skeleton, transforms from the
+         * newly enabled joints (the ones that were not present and thus also not updated in the lower LOD level)will contain incorrect data.
+         */
+        void UpdateLODLevel();
     };
 }   // namespace EMotionFX

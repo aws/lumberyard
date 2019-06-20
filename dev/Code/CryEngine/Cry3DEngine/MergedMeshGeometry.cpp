@@ -16,6 +16,9 @@
 #include "Cry_GeoIntersect.h"
 #include "MergedMeshGeometry.h"
 #include "VMath.hpp"
+#include <AzCore/Math/Transform.h>
+#include <MathConversion.h>
+#include <Vegetation/StaticVegetationBus.h>
 
 #if MMRM_ENABLE_PROFILER
 # define MMRM_PROFILE_FUNCTION(x, y) FUNCTION_PROFILER_LEGACYONLY(x, y)
@@ -125,121 +128,116 @@ static inline Quat mat33_to_quat(const Matrix33& m)
     return q;
 }
 
+class SSE2Conversion
+{
+
 #if MMRM_USE_VECTORIZED_SSE_INSTRUCTIONS
-static inline __m128i float_to_half_SSE2(__m128 f)
+
+    private:
+
+        static inline __m128i approx_float_to_half_SSE2(__m128 f)
+        {
+            #if defined(__GNUC__)
+            #define DECL_CONST4(name, val) static const uint __attribute__((aligned(16))) name[4] = { (val), (val), (val), (val) }
+            #else
+            #define DECL_CONST4(name, val) static const __declspec(align(16)) uint name[4] = { (val), (val), (val), (val) }
+            #endif
+            #define GET_CONSTF(name) *(const __m128*)&name
+
+            DECL_CONST4(mask_fabs, 0x7fffffffu);
+            DECL_CONST4(c_f32infty, (255 << 23));
+            DECL_CONST4(c_expinf, (255 ^ 31) << 23);
+            DECL_CONST4(c_f16max, (127 + 16) << 23);
+            DECL_CONST4(c_magic, 15 << 23);
+
+            __m128 mabs = GET_CONSTF(mask_fabs);
+            __m128 fabs = _mm_and_ps(mabs, f);
+            __m128 justsign = _mm_xor_ps(f, fabs);
+
+            __m128 f16max = GET_CONSTF(c_f16max);
+            __m128 expinf = GET_CONSTF(c_expinf);
+            __m128 infnancase = _mm_xor_ps(expinf, fabs);
+            __m128 clamped = _mm_min_ps(f16max, fabs);
+            __m128 b_notnormal = _mm_cmpnlt_ps(fabs, GET_CONSTF(c_f32infty));
+            __m128 scaled = _mm_mul_ps(clamped, GET_CONSTF(c_magic));
+
+            __m128 merge1 = _mm_and_ps(infnancase, b_notnormal);
+            __m128 merge2 = _mm_andnot_ps(b_notnormal, scaled);
+            __m128 merged = _mm_or_ps(merge1, merge2);
+
+            __m128i shifted = _mm_srli_epi32(_mm_castps_si128(merged), 13);
+            __m128i signshifted = _mm_srli_epi32(_mm_castps_si128(justsign), 16);
+            __m128i final = _mm_or_si128(shifted, signshifted);
+
+            // ~15 SSE2 ops
+            return final;
+
+            #undef DECL_CONST4
+            #undef GET_CONSTF
+        }
+
+    public:
+
+        static inline void CvtToHalf(Vec3f16& v, const Vec3& value)
+        {
+            __m128 val128 = _mm_set_ps(0.f, value.z, value.y, value.x);
+            __m128i result = approx_float_to_half_SSE2(val128);
+            v.x = (reinterpret_cast<int*>(&result))[0];
+            v.y = (reinterpret_cast<int*>(&result))[1];
+            v.z = (reinterpret_cast<int*>(&result))[2];
+        }
+
+        static inline void CvtToHalf(Vec2f16& v, const Vec2& value)
+        {
+            __m128 val128 = _mm_set_ps(0.f, 0.f, value.y, value.x);
+            __m128i result = approx_float_to_half_SSE2(val128);
+            v.x = (reinterpret_cast<int*>(&result))[0];
+            v.y = (reinterpret_cast<int*>(&result))[1];
+        }
+
+#endif //MMRM_USE_VECTORIZED_SSE_INSTRUCTIONS
+
+};
+
+class F16CConversion
 {
-#if defined(__GNUC__)
-#define DECL_CONST4(name, val) static const uint __attribute__((aligned(16))) name[4] = { (val), (val), (val), (val) }
+
+#if MMRM_USE_VECTORIZED_SSE_INSTRUCTIONS
+
+    private: 
+
+        static inline __m128i approx_float_to_half_F16C(__m128 f)
+        {
+#ifdef AZ_COMPILER_MSVC
+            // on MSVS, the flag _MM_FROUND_NO_EXC emits a warning: warning C4556: value of intrinsic immediate argument '8' is out of range '0 - 7'
+            return  _mm_cvtps_ph(f, _MM_FROUND_TO_NEAREST_INT); 
 #else
-#define DECL_CONST4(name, val) static const __declspec(align(16)) uint name[4] = { (val), (val), (val), (val) }
+            return  _mm_cvtps_ph(f, (_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC));
 #endif
-#define GET_CONSTI(name) *(const __m128i*)&name
-#define GET_CONSTF(name) *(const __m128*)&name
+        }
 
-    DECL_CONST4(mask_sign, 0x80000000u);
-    DECL_CONST4(mask_round, ~0xfffu);
-    DECL_CONST4(c_f32infty, 255 << 23);
-    DECL_CONST4(c_magic, 15 << 23);
-    DECL_CONST4(c_nanbit, 0x200);
-    DECL_CONST4(c_infty_as_fp16, 0x7c00);
-    DECL_CONST4(c_clamp, (31 << 23) - 0x1000);
+    public:
 
-    __m128 msign = GET_CONSTF(mask_sign);
-    __m128 justsign = _mm_and_ps(msign, f);
-    __m128i f32infty = GET_CONSTI(c_f32infty);
-    __m128 absf = _mm_xor_ps(f, justsign);
-    __m128 mround = GET_CONSTF(mask_round);
-    __m128i absf_int = _mm_castps_si128(absf); // pseudo-op, but val needs to be copied once so count as mov
-    __m128i b_isnan = _mm_cmpgt_epi32(absf_int, f32infty);
-    __m128i b_isnormal = _mm_cmpgt_epi32(f32infty, _mm_castps_si128(absf));
-    __m128i nanbit = _mm_and_si128(b_isnan, GET_CONSTI(c_nanbit));
-    __m128i inf_or_nan = _mm_or_si128(nanbit, GET_CONSTI(c_infty_as_fp16));
+        static inline void CvtToHalf(Vec3f16& v, const Vec3& value)
+        {
+            __m128 val128 = _mm_set_ps(0.f, value.z, value.y, value.x);
+            __m128i result = approx_float_to_half_F16C(val128);
+            v.x = (reinterpret_cast<uint16*>(&result))[0];
+            v.y = (reinterpret_cast<uint16*>(&result))[1];
+            v.z = (reinterpret_cast<uint16*>(&result))[2];
+        }
 
-    __m128 fnosticky = _mm_and_ps(absf, mround);
-    __m128 scaled = _mm_mul_ps(fnosticky, GET_CONSTF(c_magic));
-    __m128 clamped = _mm_min_ps(scaled, GET_CONSTF(c_clamp)); // logically, we want PMINSD on "biased", but this should gen better code
-    __m128i biased = _mm_sub_epi32(_mm_castps_si128(clamped), _mm_castps_si128(mround));
-    __m128i shifted = _mm_srli_epi32(biased, 13);
-    __m128i normal = _mm_and_si128(shifted, b_isnormal);
-    __m128i not_normal = _mm_andnot_si128(b_isnormal, inf_or_nan);
-    __m128i joined = _mm_or_si128(normal, not_normal);
+        static inline void CvtToHalf(Vec2f16& v, const Vec2& value)
+        {
+            __m128 val128 = _mm_set_ps(0.f, 0.f, value.y, value.x);
+            __m128i result = approx_float_to_half_F16C(val128);
+            v.x = (reinterpret_cast<uint16*>(&result))[0];
+            v.y = (reinterpret_cast<uint16*>(&result))[1];
+        }
 
-    __m128i sign_shift = _mm_srli_epi32(_mm_castps_si128(justsign), 16);
-    __m128i final = _mm_or_si128(joined, sign_shift);
+#endif //MMRM_USE_VECTORIZED_SSE_INSTRUCTIONS
 
-    // ~20 SSE2 ops
-    return final;
-
-    #undef DECL_CONST4
-    #undef GET_CONSTI
-    #undef GET_CONSTF
-}
-static inline __m128i approx_float_to_half_SSE2(__m128 f)
-{
-    #if defined(__GNUC__)
-    #define DECL_CONST4(name, val) static const uint __attribute__((aligned(16))) name[4] = { (val), (val), (val), (val) }
-    #else
-    #define DECL_CONST4(name, val) static const __declspec(align(16)) uint name[4] = { (val), (val), (val), (val) }
-    #endif
-    #define GET_CONSTF(name) *(const __m128*)&name
-
-    DECL_CONST4(mask_fabs, 0x7fffffffu);
-    DECL_CONST4(c_f32infty, (255 << 23));
-    DECL_CONST4(c_expinf, (255 ^ 31) << 23);
-    DECL_CONST4(c_f16max, (127 + 16) << 23);
-    DECL_CONST4(c_magic, 15 << 23);
-
-    __m128 mabs = GET_CONSTF(mask_fabs);
-    __m128 fabs = _mm_and_ps(mabs, f);
-    __m128 justsign = _mm_xor_ps(f, fabs);
-
-    __m128 f16max = GET_CONSTF(c_f16max);
-    __m128 expinf = GET_CONSTF(c_expinf);
-    __m128 infnancase = _mm_xor_ps(expinf, fabs);
-    __m128 clamped = _mm_min_ps(f16max, fabs);
-    __m128 b_notnormal = _mm_cmpnlt_ps(fabs, GET_CONSTF(c_f32infty));
-    __m128 scaled = _mm_mul_ps(clamped, GET_CONSTF(c_magic));
-
-    __m128 merge1 = _mm_and_ps(infnancase, b_notnormal);
-    __m128 merge2 = _mm_andnot_ps(b_notnormal, scaled);
-    __m128 merged = _mm_or_ps(merge1, merge2);
-
-    __m128i shifted = _mm_srli_epi32(_mm_castps_si128(merged), 13);
-    __m128i signshifted = _mm_srli_epi32(_mm_castps_si128(justsign), 16);
-    __m128i final = _mm_or_si128(shifted, signshifted);
-
-    // ~15 SSE2 ops
-    return final;
-
-    #undef DECL_CONST4
-    #undef GET_CONSTF
-}
-
-static inline void CvtToHalf(Vec3f16& v, __m128 value)
-{
-    __m128i result = approx_float_to_half_SSE2(value);
-    v.x = (reinterpret_cast<int*>(&result))[0];
-    v.y = (reinterpret_cast<int*>(&result))[1];
-    v.z = (reinterpret_cast<int*>(&result))[2];
-}
-
-static inline void CvtToHalf(Vec3f16& v, const Vec3& value)
-{
-    __m128 val128 = _mm_set_ps(0.f, value.z, value.y, value.x);
-    __m128i result = approx_float_to_half_SSE2(val128);
-    v.x = (reinterpret_cast<int*>(&result))[0];
-    v.y = (reinterpret_cast<int*>(&result))[1];
-    v.z = (reinterpret_cast<int*>(&result))[2];
-}
-
-static inline void CvtToHalf(Vec2f16& v, const Vec2& value)
-{
-    __m128 val128 = _mm_set_ps(0.f, 0.f, value.y, value.x);
-    __m128i result = approx_float_to_half_SSE2(val128);
-    v.x = (reinterpret_cast<int*>(&result))[0];
-    v.y = (reinterpret_cast<int*>(&result))[1];
-}
-#endif
+};
 
 
 #define MMRM_USE_OPTIMIZED_LINESEG_SPHERE 1
@@ -442,11 +440,16 @@ static inline size_t CullInstanceList(
         // the maximum movement radius a simulated instance can make.
         const Sphere sampleSphere(sample_pos, diameter);
         const float distanceSq = (camPos - sample_pos).len2() - diameterSq;
+        // If this sector is LOD 4 or 5, automatically remove every other instance
         if (j & sampleReduction)
         {
             sample.lastLod = -1;
             continue;
         }
+        // If the sector is LOD 0-3, but this specific instance is still further away than maxViewDist, cull every other instance.
+        // NOTE:  MaxViewDistSq = instGroup.fVegRadius * instGroup.fMaxViewDistRatio * e_MergedMeshesViewDistRatio; (see CMergedMeshRenderNode::AddInstance)
+        // This means that the decision to cull every other instance is tied to the same CVar that affects overall max view distance
+        // (e_MergedMeshesViewDistRatio), but can still be tuned by adjusting the per-group maxViewDistRatio.
         if (cullDistance && distanceSq > maxViewDistSq * sampleOffset * sampleOffset)
         {
             // Only cull completely if sample reduction is on. Otherwise eliminate every other sample as if it were on.
@@ -462,8 +465,31 @@ static inline size_t CullInstanceList(
             sample.lastLod = -1;
             continue;
         }
+
+        // Basically, we use the sector's LOD ("forceLod") when rendering instanced sectors, and a calculated
+        // per-instance LOD ("nLodTmp") when rendering dynamic sectors.
+        // Some important notes about the LOD selection here:
+        // 1. The group's lodRatioSq is in the numerator for this LOD calculation, but the merged mesh system's
+        // e_MergedMeshesLodRatio appears in the denominator in the sector LOD calculation in CMergedMeshRenderNode::Render.
+        // (This means tuning it at the group level is flipped from how you tune it at the system level)
+        // 2. It's using the squared *diameter* of the bounding box of the *mesh*, not the squared *radius* of the bounding box of the *sector*.
+        // 3. It does *not* take per-instance scaling into account.
+        // 4. This operates in squared distance space, not linear distance space.
+        // So, in practical terms, here's what this all means for an lodRatio of 1 and a mesh bounding box of 1/2 x 1/2 x 1/2 m. 
+        //     lodRatioSq = 1
+        //     diameterSq = (1/2)*(1/2) + (1/2)*(1/2) + (1/2)*(1/2) = 0.75
+        //    LOD 0:  sqrt(0*20*20*0.75) to sqrt(1*20*20*0.75) m =  0.0 - 17.3 m
+        //    LOD 1:  sqrt(1*20*20*0.75) to sqrt(2*20*20*0.75) m = 17.3 - 24.5 m
+        //    LOD 2:  sqrt(2*20*20*0.75) to sqrt(3*20*20*0.75) m = 24.5 - 30.0 m
+        //    LOD 3:  sqrt(3*20*20*0.75) to sqrt(4*20*20*0.75) m = 30.0 - 34.6 m
+        //    LOD 4:  sqrt(4*20*20*0.75) to sqrt(5*20*20*0.75) m = 34.6 - 38.7 m
+        //    LOD 5:  sqrt(5*20*20*0.75) to sqrt(6*20*20*0.75) m = 38.7 - 42.4 m
+        // Because of the squared space, the distance range on each LOD is a different size.
+        // The group's lodRatio works in squared space as well, so setting it to 1/4 will double those ranges.
         int nLodTmp = (int)(distanceSq * lodRatioSq / (max(20.0f * 20.f * diameterSq, 0.001f)));
-        size_t nLod = (size_t) isel(-cullLod, nLodTmp, forceLod);
+        size_t nLod = (size_t)isel(-cullLod, nLodTmp, forceLod);
+
+        // Once we've selected an LOD, look from that LOD downwards to select the highest one that actually exists in the model. 
         PREFAST_SUPPRESS_WARNING(6385)
         for (nLod = min(nLod, size_t(MAX_STATOBJ_LODS_NUM - 1)); nLod >= 0 && !(chunks = context.geom->pChunks[nLod]); --nLod)
         {
@@ -1142,19 +1168,19 @@ static inline void UpdateTangents(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -1285,19 +1311,19 @@ static inline void UpdateTangents(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -1424,6 +1450,7 @@ static inline void UpdateTangents(SPipTangents* out,  SPipQTangents* in,  const 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Update a set of general, tangents and normals
+template <typename T>
 static inline void UpdateGeneralTangents(
     SVF_P3S_C4B_T2S* out_general
     , SPipTangents* out_packed_tangents
@@ -1528,21 +1555,21 @@ static inline void UpdateGeneralTangents(
         _mm_store_ps((float*)&wq[3].nq, _mm_mul_ps(_wq[3 * 2 + 0], nq_len[3]));
         _mm_store_ps((float*)&wq[3].dq, _mm_mul_ps(_wq[3 * 2 + 1], nq_len[3]));
 
-        CvtToHalf(out_general[i + 0].xyz, wq[0] * (in_general[i + 0].xyz * fScale));
+        T::CvtToHalf(out_general[i + 0].xyz, wq[0] * (in_general[i + 0].xyz * fScale));
         out_general[i + 0].color = in_general[i + 0].color;
-        CvtToHalf(out_general[i + 0].st, in_general[i + 0].st);
+        T::CvtToHalf(out_general[i + 0].st, in_general[i + 0].st);
 
-        CvtToHalf(out_general[i + 1].xyz, wq[1] * (in_general[i + 1].xyz * fScale));
+        T::CvtToHalf(out_general[i + 1].xyz, wq[1] * (in_general[i + 1].xyz * fScale));
         out_general[i + 1].color = in_general[i + 1].color;
-        CvtToHalf(out_general[i + 1].st, in_general[i + 1].st);
+        T::CvtToHalf(out_general[i + 1].st, in_general[i + 1].st);
 
-        CvtToHalf(out_general[i + 2].xyz, wq[2] * (in_general[i + 2].xyz * fScale));
+        T::CvtToHalf(out_general[i + 2].xyz, wq[2] * (in_general[i + 2].xyz * fScale));
         out_general[i + 2].color = in_general[i + 2].color;
-        CvtToHalf(out_general[i + 2].st, in_general[i + 2].st);
+        T::CvtToHalf(out_general[i + 2].st, in_general[i + 2].st);
 
-        CvtToHalf(out_general[i + 3].xyz, wq[3] * (in_general[i + 3].xyz * fScale));
+        T::CvtToHalf(out_general[i + 3].xyz, wq[3] * (in_general[i + 3].xyz * fScale));
         out_general[i + 3].color = in_general[i + 3].color;
-        CvtToHalf(out_general[i + 3].st, in_general[i + 3].st);
+        T::CvtToHalf(out_general[i + 3].st, in_general[i + 3].st);
 
         out_tangents[0] = (wq[0].nq * in_tangents[0]);
         out_tangents[1] = (wq[1].nq * in_tangents[1]);
@@ -1551,19 +1578,19 @@ static inline void UpdateGeneralTangents(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -1623,9 +1650,9 @@ static inline void UpdateGeneralTangents(
         nq_len[0] = _mm_rsqrt_ps(_mm_dp_ps(_wq[0 * 2 + 0], _wq[0 * 2 + 0], 0xff));
         _mm_store_ps((float*)&wq[0].nq, _mm_mul_ps(_wq[0 * 2 + 0], nq_len[0]));
         _mm_store_ps((float*)&wq[0].dq, _mm_mul_ps(_wq[0 * 2 + 1], nq_len[0]));
-        CvtToHalf(out_general[i + 0].xyz, wq[0] * (in_general[i + 0].xyz * fScale));
+        T::CvtToHalf(out_general[i + 0].xyz, wq[0] * (in_general[i + 0].xyz * fScale));
         out_general[i + 0].color = in_general[i + 0].color;
-        CvtToHalf(out_general[i + 0].st, in_general[i + 0].st);
+        T::CvtToHalf(out_general[i + 0].st, in_general[i + 0].st);
         out_tangents[0] = (wq[0].nq * in_tangents[0]);
         if (out_tangents[0].w < 0.f)
         {
@@ -1718,19 +1745,19 @@ static inline void UpdateGeneralTangents(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -1798,6 +1825,7 @@ static inline void UpdateGeneralTangents(
 #endif
 }
 
+template <typename T>
 static inline void UpdateGeneralTangentsNormals(
     SVF_P3S_C4B_T2S* out_general
     , SPipTangents* out_packed_tangents
@@ -1906,21 +1934,21 @@ static inline void UpdateGeneralTangentsNormals(
         _mm_store_ps((float*)&wq[3].nq, _mm_mul_ps(_wq[3 * 2 + 0], nq_len[3]));
         _mm_store_ps((float*)&wq[3].dq, _mm_mul_ps(_wq[3 * 2 + 1], nq_len[3]));
 
-        CvtToHalf(out_general[i + 0].xyz, wq[0] * (in_general[i + 0].xyz * fScale));
+        T::CvtToHalf(out_general[i + 0].xyz, wq[0] * (in_general[i + 0].xyz * fScale));
         out_general[i + 0].color = in_general[i + 0].color;
-        CvtToHalf(out_general[i + 0].st, in_general[i + 0].st);
+        T::CvtToHalf(out_general[i + 0].st, in_general[i + 0].st);
 
-        CvtToHalf(out_general[i + 1].xyz, wq[1] * (in_general[i + 1].xyz * fScale));
+        T::CvtToHalf(out_general[i + 1].xyz, wq[1] * (in_general[i + 1].xyz * fScale));
         out_general[i + 1].color = in_general[i + 1].color;
-        CvtToHalf(out_general[i + 1].st, in_general[i + 1].st);
+        T::CvtToHalf(out_general[i + 1].st, in_general[i + 1].st);
 
-        CvtToHalf(out_general[i + 2].xyz, wq[2] * (in_general[i + 2].xyz * fScale));
+        T::CvtToHalf(out_general[i + 2].xyz, wq[2] * (in_general[i + 2].xyz * fScale));
         out_general[i + 2].color = in_general[i + 2].color;
-        CvtToHalf(out_general[i + 2].st, in_general[i + 2].st);
+        T::CvtToHalf(out_general[i + 2].st, in_general[i + 2].st);
 
-        CvtToHalf(out_general[i + 3].xyz, wq[3] * (in_general[i + 3].xyz * fScale));
+        T::CvtToHalf(out_general[i + 3].xyz, wq[3] * (in_general[i + 3].xyz * fScale));
         out_general[i + 3].color = in_general[i + 3].color;
-        CvtToHalf(out_general[i + 3].st, in_general[i + 3].st);
+        T::CvtToHalf(out_general[i + 3].st, in_general[i + 3].st);
 
         out_tangents[0] = (wq[0].nq * in_tangents[0]);
         out_tangents[1] = (wq[1].nq * in_tangents[1]);
@@ -1929,19 +1957,19 @@ static inline void UpdateGeneralTangentsNormals(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -1971,10 +1999,10 @@ static inline void UpdateGeneralTangentsNormals(
         out_packed_tangents[i + 2] = SPipTangents(out_tangents[2], flip[2]);
         out_packed_tangents[i + 3] = SPipTangents(out_tangents[3], flip[3]);
 
-        CvtToHalf(out_normals[i + 0], wq[0].nq * in_normals[i + 0]);
-        CvtToHalf(out_normals[i + 1], wq[0].nq * in_normals[i + 1]);
-        CvtToHalf(out_normals[i + 2], wq[0].nq * in_normals[i + 2]);
-        CvtToHalf(out_normals[i + 3], wq[0].nq * in_normals[i + 3]);
+        T::CvtToHalf(out_normals[i + 0], wq[0].nq * in_normals[i + 0]);
+        T::CvtToHalf(out_normals[i + 1], wq[0].nq * in_normals[i + 1]);
+        T::CvtToHalf(out_normals[i + 2], wq[0].nq * in_normals[i + 2]);
+        T::CvtToHalf(out_normals[i + 3], wq[0].nq * in_normals[i + 3]);
     }
     for (size_t i = (count & ~3); i < count; ++i)
 # else // MMRM_UNROLL_GEOMETRY_BAKING_LOOPS
@@ -2006,9 +2034,9 @@ static inline void UpdateGeneralTangentsNormals(
         nq_len[0] = _mm_rsqrt_ps(_mm_dp_ps(_wq[0 * 2 + 0], _wq[0 * 2 + 0], 0xff));
         _mm_store_ps((float*)&wq[0].nq, _mm_mul_ps(_wq[0 * 2 + 0], nq_len[0]));
         _mm_store_ps((float*)&wq[0].dq, _mm_mul_ps(_wq[0 * 2 + 1], nq_len[0]));
-        CvtToHalf(out_general[i + 0].xyz, wq[0] * (in_general[i + 0].xyz * fScale));
+        T::CvtToHalf(out_general[i + 0].xyz, wq[0] * (in_general[i + 0].xyz * fScale));
         out_general[i + 0].color = in_general[i + 0].color;
-        CvtToHalf(out_general[i + 0].st, in_general[i + 0].st);
+        T::CvtToHalf(out_general[i + 0].st, in_general[i + 0].st);
         out_tangents[0] = (wq[0].nq * in_tangents[0]);
 
         if (out_tangents[0].w < 0.f)
@@ -2022,7 +2050,7 @@ static inline void UpdateGeneralTangentsNormals(
         }
         out_packed_tangents[i + 0] = SPipTangents(out_tangents[0], flip[0]);
 
-        CvtToHalf(out_normals[i + 0], wq[0].nq * in_normals[i + 0]);
+        T::CvtToHalf(out_normals[i + 0], wq[0].nq * in_normals[i + 0]);
     }
 #else
     float l[4];
@@ -2104,19 +2132,19 @@ static inline void UpdateGeneralTangentsNormals(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -2192,6 +2220,7 @@ static inline void UpdateGeneralTangentsNormals(
 
 ////////////////////////////////////////////////////////////////////////////////
 // Update a set of general, tangents and normals
+template <typename T>
 static inline void UpdateGeneralTangents(
     SVF_P3S_C4B_T2S* out_general
     , SPipTangents* out_packed_tangents
@@ -2296,21 +2325,21 @@ static inline void UpdateGeneralTangents(
         _mm_store_ps((float*)&wq[3].nq, _mm_mul_ps(_wq[3 * 2 + 0], nq_len[3]));
         _mm_store_ps((float*)&wq[3].dq, _mm_mul_ps(_wq[3 * 2 + 1], nq_len[3]));
 
-        CvtToHalf(out_general[i + 0].xyz, wq[0] * (in[i + 0].pos * fScale));
+        T::CvtToHalf(out_general[i + 0].xyz, wq[0] * (in[i + 0].pos * fScale));
         out_general[i + 0].color = in[i + 0].colour;
-        CvtToHalf(out_general[i + 0].st, in[i + 0].uv);
+        T::CvtToHalf(out_general[i + 0].st, in[i + 0].uv);
 
-        CvtToHalf(out_general[i + 1].xyz, wq[1] * (in[i + 1].pos * fScale));
+        T::CvtToHalf(out_general[i + 1].xyz, wq[1] * (in[i + 1].pos * fScale));
         out_general[i + 1].color = in[i + 1].colour;
-        CvtToHalf(out_general[i + 1].st, in[i + 1].uv);
+        T::CvtToHalf(out_general[i + 1].st, in[i + 1].uv);
 
-        CvtToHalf(out_general[i + 2].xyz, wq[2] * (in[i + 2].pos * fScale));
+        T::CvtToHalf(out_general[i + 2].xyz, wq[2] * (in[i + 2].pos * fScale));
         out_general[i + 2].color = in[i + 2].colour;
-        CvtToHalf(out_general[i + 2].st, in[i + 2].uv);
+        T::CvtToHalf(out_general[i + 2].st, in[i + 2].uv);
 
-        CvtToHalf(out_general[i + 3].xyz, wq[3] * (in[i + 3].pos * fScale));
+        T::CvtToHalf(out_general[i + 3].xyz, wq[3] * (in[i + 3].pos * fScale));
         out_general[i + 3].color = in[i + 3].colour;
-        CvtToHalf(out_general[i + 3].st, in[i + 3].uv);
+        T::CvtToHalf(out_general[i + 3].st, in[i + 3].uv);
 
         out_tangents[0] = (wq[0].nq * in_tangents[0]);
         out_tangents[1] = (wq[1].nq * in_tangents[1]);
@@ -2319,19 +2348,19 @@ static inline void UpdateGeneralTangents(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -2392,9 +2421,9 @@ static inline void UpdateGeneralTangents(
         nq_len[0] = _mm_rsqrt_ps(_mm_dp_ps(_wq[0 * 2 + 0], _wq[0 * 2 + 0], 0xff));
         _mm_store_ps((float*)&wq[0].nq, _mm_mul_ps(_wq[0 * 2 + 0], nq_len[0]));
         _mm_store_ps((float*)&wq[0].dq, _mm_mul_ps(_wq[0 * 2 + 1], nq_len[0]));
-        CvtToHalf(out_general[i + 0].xyz, wq[0] * (in[i + 0].pos * fScale));
+        T::CvtToHalf(out_general[i + 0].xyz, wq[0] * (in[i + 0].pos * fScale));
         out_general[i + 0].color = in[i + 0].colour;
-        CvtToHalf(out_general[i + 0].st, in[i + 0].uv);
+        T::CvtToHalf(out_general[i + 0].st, in[i + 0].uv);
         out_tangents[0] = (wq[0].nq * in_tangents[0]);
 
         if (out_tangents[0].w < 0.f)
@@ -2488,19 +2517,19 @@ static inline void UpdateGeneralTangents(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -2568,6 +2597,7 @@ static inline void UpdateGeneralTangents(
 # endif
 }
 
+template <typename T>
 static inline void UpdateGeneralTangentsNormals(
     SVF_P3S_C4B_T2S* out_general
     , SPipTangents* out_packed_tangents
@@ -2677,21 +2707,21 @@ static inline void UpdateGeneralTangentsNormals(
         _mm_store_ps((float*)&wq[3].nq, _mm_mul_ps(_wq[3 * 2 + 0], nq_len[3]));
         _mm_store_ps((float*)&wq[3].dq, _mm_mul_ps(_wq[3 * 2 + 1], nq_len[3]));
 
-        CvtToHalf(out_general[i + 0].xyz, wq[0] * (in[i + 0].pos * fScale));
+        T::CvtToHalf(out_general[i + 0].xyz, wq[0] * (in[i + 0].pos * fScale));
         out_general[i + 0].color = in[i + 0].colour;
-        CvtToHalf(out_general[i + 0].st, in[i + 0].uv);
+        T::CvtToHalf(out_general[i + 0].st, in[i + 0].uv);
 
-        CvtToHalf(out_general[i + 1].xyz, wq[1] * (in[i + 1].pos * fScale));
+        T::CvtToHalf(out_general[i + 1].xyz, wq[1] * (in[i + 1].pos * fScale));
         out_general[i + 1].color = in[i + 1].colour;
-        CvtToHalf(out_general[i + 1].st, in[i + 1].uv);
+        T::CvtToHalf(out_general[i + 1].st, in[i + 1].uv);
 
-        CvtToHalf(out_general[i + 2].xyz, wq[2] * (in[i + 2].pos * fScale));
+        T::CvtToHalf(out_general[i + 2].xyz, wq[2] * (in[i + 2].pos * fScale));
         out_general[i + 2].color = in[i + 2].colour;
-        CvtToHalf(out_general[i + 2].st, in[i + 2].uv);
+        T::CvtToHalf(out_general[i + 2].st, in[i + 2].uv);
 
-        CvtToHalf(out_general[i + 3].xyz, wq[3] * (in[i + 3].pos * fScale));
+        T::CvtToHalf(out_general[i + 3].xyz, wq[3] * (in[i + 3].pos * fScale));
         out_general[i + 3].color = in[i + 3].colour;
-        CvtToHalf(out_general[i + 3].st, in[i + 3].uv);
+        T::CvtToHalf(out_general[i + 3].st, in[i + 3].uv);
 
         out_tangents[0] = (wq[0].nq * in_tangents[0]);
         out_tangents[1] = (wq[1].nq * in_tangents[1]);
@@ -2700,19 +2730,19 @@ static inline void UpdateGeneralTangentsNormals(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -2742,10 +2772,10 @@ static inline void UpdateGeneralTangentsNormals(
         out_packed_tangents[i + 2] = SPipTangents(out_tangents[2], flip[2]);
         out_packed_tangents[i + 3] = SPipTangents(out_tangents[3], flip[3]);
 
-        CvtToHalf(out_normals[i + 0], wq[0].nq * in[i + 0].normal);
-        CvtToHalf(out_normals[i + 1], wq[0].nq * in[i + 1].normal);
-        CvtToHalf(out_normals[i + 2], wq[0].nq * in[i + 2].normal);
-        CvtToHalf(out_normals[i + 3], wq[0].nq * in[i + 3].normal);
+        T::CvtToHalf(out_normals[i + 0], wq[0].nq * in[i + 0].normal);
+        T::CvtToHalf(out_normals[i + 1], wq[0].nq * in[i + 1].normal);
+        T::CvtToHalf(out_normals[i + 2], wq[0].nq * in[i + 2].normal);
+        T::CvtToHalf(out_normals[i + 3], wq[0].nq * in[i + 3].normal);
     }
     for (size_t i = (count & ~3); i < count; ++i)
 # else // MMRM_UNROLL_GEOMETRY_BAKING_LOOPS
@@ -2778,9 +2808,9 @@ static inline void UpdateGeneralTangentsNormals(
         nq_len[0] = _mm_rsqrt_ps(_mm_dp_ps(_wq[0 * 2 + 0], _wq[0 * 2 + 0], 0xff));
         _mm_store_ps((float*)&wq[0].nq, _mm_mul_ps(_wq[0 * 2 + 0], nq_len[0]));
         _mm_store_ps((float*)&wq[0].dq, _mm_mul_ps(_wq[0 * 2 + 1], nq_len[0]));
-        CvtToHalf(out_general[i + 0].xyz, wq[0] * (in[i + 0].pos * fScale));
+        T::CvtToHalf(out_general[i + 0].xyz, wq[0] * (in[i + 0].pos * fScale));
         out_general[i + 0].color = in[i + 0].colour;
-        CvtToHalf(out_general[i + 0].st, in[i + 0].uv);
+        T::CvtToHalf(out_general[i + 0].st, in[i + 0].uv);
         out_tangents[0] = (wq[0].nq * in_tangents[0]);
 
         if (out_tangents[0].w < 0.f)
@@ -2794,7 +2824,7 @@ static inline void UpdateGeneralTangentsNormals(
         }
         out_packed_tangents[i + 0] = SPipTangents(out_tangents[0], flip[0]);
 
-        CvtToHalf(out_normals[i + 0], wq[0].nq * in[i + 0].normal);
+        T::CvtToHalf(out_normals[i + 0], wq[0].nq * in[i + 0].normal);
     }
 #else
     float l[4];
@@ -2876,19 +2906,19 @@ static inline void UpdateGeneralTangentsNormals(
 
         if (out_tangents[0].w < 0.f)
         {
-            out_tangents[0] = -out_tangents[0];
+            out_tangents[0].Invert();
         }
         if (out_tangents[1].w < 0.f)
         {
-            out_tangents[1] = -out_tangents[1];
+            out_tangents[1].Invert();
         }
         if (out_tangents[2].w < 0.f)
         {
-            out_tangents[2] = -out_tangents[2];
+            out_tangents[2].Invert();
         }
         if (out_tangents[3].w < 0.f)
         {
-            out_tangents[3] = -out_tangents[3];
+            out_tangents[3].Invert();
         }
 
         flip[0] = in_tangents[0].w < 0.f ? -1 : 1;
@@ -3525,6 +3555,7 @@ static void TraceWindSample(const Vec3& offs, const Vec3& dw, const SMMRMInstanc
 
 ////////////////////////////////////////////////////////////////////////////////
 // Merge instance geometry into a list of buffers
+template <typename T>
 static void MergeInstanceList(SMMRMInstanceContext& context)
 {
     AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
@@ -3681,7 +3712,7 @@ static void MergeInstanceList(SMMRMInstanceContext& context)
         const vec4 vWZ = _mm_load_ps((float*)((char*)&wmat + sizeof(__m128) * 2));
 #   endif
         // Spine based simulation performed here
-        if (spines)
+        if (spines && bones)
         {
             MMRM_FRAME_PROFILER("PVRN SPINES", GetISystem(), PROFILE_3DENGINE);
             bones[0] = wq;
@@ -4218,7 +4249,7 @@ static void MergeInstanceList(SMMRMInstanceContext& context)
                 {
                     if (chunk.normals)
                     {
-                        UpdateGeneralTangentsNormals(
+                        UpdateGeneralTangentsNormals<T>(
                             general + iv
                             , tangents + iv
                             , normals + iv
@@ -4230,7 +4261,7 @@ static void MergeInstanceList(SMMRMInstanceContext& context)
                     }
                     else
                     {
-                        UpdateGeneralTangents(
+                        UpdateGeneralTangents<T>(
                             general + iv
                             , tangents + iv
                             , chunk.skin_vertices
@@ -4600,7 +4631,14 @@ void SMMRMUpdateContext::MergeInstanceMeshesSpines(
         ctx.spines = spines && ctx.use_spines ? spines : NULL;
 
         // Perform the actual buffering
-        MergeInstanceList(ctx);
+        if ((Cry3DEngineBase::GetCVars()->e_MergedMeshesForceSSE2 == 0) && (Cry3DEngineBase::m_CpuFlags & CPUF_F16C))
+        {
+            MergeInstanceList<F16CConversion>(ctx);
+        }
+        else
+        {
+            MergeInstanceList<SSE2Conversion>(ctx);
+        }
         j += ctx.amount;
     } while (j < nsamples);
 
@@ -4758,7 +4796,7 @@ void CMergedMeshesManager::SortActiveInstances_Async(const SRenderingPassInfo pa
         for (size_t i = 0; i < nActiveNodes; ++i)
         {
             CMergedMeshRenderNode* node = m_ActiveNodes[i];
-            node->m_DistanceSQ = (vPos - node->m_internalAABB.GetCenter()).len2();
+            node->m_DistanceSQ = (vPos - node->m_pos).len2();
             if (node->m_LastDrawFrame == frameId && node->IsInVisibleSet() == 0)
             {
                 node->SetInVisibleSet(1);
@@ -4838,18 +4876,7 @@ void CMergedMeshRenderNode::CalculateDensity()
     {
         SMMRMGroupHeader* header = &m_groups[i];
         SMMRMGeometry* geom = header->procGeom;
-        StatInstGroup& instGroup = GetObjManager()->GetListStaticTypes()[0][geom->srcGroupId];
-
-        // Hopefully correctly extract the surface type of the material
-        _smart_ptr<IMaterial> material = NULL;
-        if (instGroup.pMaterial)
-        {
-            material = instGroup.pMaterial;
-        }
-        else
-        {
-            material = instGroup.pStatObj->GetMaterial();
-        }
+        _smart_ptr<IMaterial> material = geom->srcMaterial;
         if (material == NULL)
         {
             continue;
@@ -4959,42 +4986,78 @@ void CMergedMeshRenderNode::InitializeSamples(float fExtents, const uint8* pBuff
             SwapEndian(pSampleChunk->rot[2], eLittleEndian);
             SwapEndian(pSampleChunk->rot[3], eLittleEndian);
 
-            header->instances[j].pos_x = pSampleChunk->pos_x;
-            header->instances[j].pos_y = pSampleChunk->pos_y;
-            header->instances[j].pos_z = pSampleChunk->pos_z;
-            header->instances[j].qx = pSampleChunk->rot[0];
-            header->instances[j].qy = pSampleChunk->rot[1];
-            header->instances[j].qz = pSampleChunk->rot[2];
-            header->instances[j].qw = pSampleChunk->rot[3];
-            header->instances[j].scale = pSampleChunk->scale;
-            header->instances[j].lastLod = -2;
+            SMMRMInstance& instance = header->instances[j];
+
+            instance.pos_x = pSampleChunk->pos_x;
+            instance.pos_y = pSampleChunk->pos_y;
+            instance.pos_z = pSampleChunk->pos_z;
+            instance.qx = pSampleChunk->rot[0];
+            instance.qy = pSampleChunk->rot[1];
+            instance.qz = pSampleChunk->rot[2];
+            instance.qw = pSampleChunk->rot[3];
+            instance.scale = pSampleChunk->scale;
+            instance.lastLod = -2;
+
+            AZ::Aabb aabb = LyAABBToAZAabb(header->procGeom->aabb);
+
+            const float extents = c_MergedMeshesExtent;
+            uint16 pos[3] = { aznumeric_caster(header->instances[j].pos_x), aznumeric_caster(header->instances[j].pos_y), aznumeric_caster(header->instances[j].pos_z) };
+            AZ::Vector3 instancePos = LYVec3ToAZVec3(ConvertInstanceAbsolute(pos, vInternalAABBMin, m_pos, m_zRotation, extents));
+            const float scale = (1.f / VEGETATION_CONV_FACTOR) * instance.scale;
+            Quat quaternion;
+            DecompressQuat(quaternion, instance);
+
+            AZ::Transform transform = AZ::Transform::CreateFromQuaternion(LYQuaternionToAZQuaternion(quaternion)) * AZ::Transform::CreateScale(AZ::Vector3(scale));
+            transform.SetTranslation(instancePos);
+
+            aabb.ApplyTransform(transform);
+
+            Vegetation::StaticVegetationNotificationBus::Broadcast(&Vegetation::StaticVegetationNotificationBus::Events::InstanceAdded, &instance, aabb);
         }
     }
 
     CalculateDensity();
 }
 
-void CMergedMeshRenderNode::InitializeSpines()
+// Initialize the spine / deformation data for a single group
+void CMergedMeshRenderNode::InitializeSpineAndDeformationData(SMMRMGroupHeader* header)
 {
-    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+    // If we don't have a valid header, instance data, or procGeom data, do nothing.
+    if (!header || !(header->instances) || !(header->procGeom))
+    {
+        return;
+    }
+
+    // If this geometry doesn't support this spec, do nothing.
+    if (header->specMismatch)
+    {
+        return;
+    }
+
+    bool hasSpineData = (header->procGeom->numSpines) && (header->procGeom->numSpineVtx);
+    bool hasDeformationData = (header->procGeom->deform) && (header->procGeom->deform->nvertices);
+
+    // If we don't have spine or deformation data, do nothing.
+    if (!hasSpineData && !hasDeformationData)
+    {
+        return;
+    }
+
+    // Everything checks out, so initialize the spine and/or deformation data.
 
     const float fExtents = c_MergedMeshesExtent;
     Vec3 vInternalAABBMin = m_internalAABB.min;
     Quat q;
-    for (size_t i = 0; i < m_nGroups; ++i)
+
+    for (size_t j = 0, base = 0; j < header->numSamples; ++j)
     {
-        SMMRMGroupHeader* header = &m_groups[i];
-        if (m_groups[i].specMismatch)
+        uint16 pos[3] = { aznumeric_caster(header->instances[j].pos_x), aznumeric_caster(header->instances[j].pos_y), aznumeric_caster(header->instances[j].pos_z) };
+        const float fScale = (1.f / VEGETATION_CONV_FACTOR) * header->instances[j].scale;
+        DecompressQuat(q, header->instances[j]);
+        Matrix34 wmat = CreateRotationQ(q, ConvertInstanceAbsolute(pos, vInternalAABBMin, m_pos, m_zRotation, fExtents)) * Matrix34::CreateScale(Vec3(fScale, fScale, fScale));
+        if (hasSpineData)
         {
-            continue;
-        }
-        for (size_t j = 0, base = 0; j < header->numSamples; ++j)
-        {
-            uint16 pos[3] = { aznumeric_caster(header->instances[j].pos_x), aznumeric_caster(header->instances[j].pos_y), aznumeric_caster(header->instances[j].pos_z) };
-            const float fScale = (1.f / VEGETATION_CONV_FACTOR) * header->instances[j].scale;
-            DecompressQuat(q, header->instances[j]);
-            Matrix34 wmat = CreateRotationQ(q, ConvertInstanceAbsolute(pos, vInternalAABBMin, m_pos, m_zRotation, fExtents)) * Matrix34::CreateScale(Vec3(fScale, fScale, fScale));
-            for (size_t k = 0; header->procGeom->numSpines && k < header->procGeom->numSpineVtx; ++k, ++base)
+            for (size_t k = 0; k < header->procGeom->numSpineVtx; ++k, ++base)
             {
 #       if MMRM_SIMULATION_USES_FP32
                 header->spines[base].pt = wmat * header->procGeom->pSpineVtx[k].pt;
@@ -5004,12 +5067,37 @@ void CMergedMeshRenderNode::InitializeSpines()
                 header->spines[base].vel = Vec3(0, 0, 0);
 #       endif
             }
-            for (size_t k = 0; header->procGeom->deform && k < header->procGeom->deform->nvertices; ++k, ++base)
+        }
+        if (hasDeformationData)
+        {
+            for (size_t k = 0; k < header->procGeom->deform->nvertices; ++k, ++base)
             {
                 header->deform_vertices[base].pos[0] = header->deform_vertices[base].pos[1] = header->deform_vertices[base].posPrev = wmat * header->procGeom->deform->initial[k];
                 header->deform_vertices[base].vel = Vec3(0, 0, 0);
             }
         }
+
+        // We assume that m_SpinesExist has been initialized to false prior to calling this.  We set it to true here
+        // because if we've made it this far, we have some amount of spine and/or deformation data.
+        m_SpinesExist = true;
     }
-    m_SpinesActive = true;
+}
+
+
+
+void CMergedMeshRenderNode::InitializeSpines()
+{
+    AZ_PROFILE_FUNCTION(AZ::Debug::ProfileCategory::ThreeDEngine);
+
+    m_SpinesInitialized = false;
+    // NOTE: This will get set to true inside of InitializeSpineAndDeformationData if any data is found to exist.
+    m_SpinesExist = false;
+
+    for (size_t i = 0; i < m_nGroups; ++i)
+    {
+        SMMRMGroupHeader* header = &m_groups[i];
+        InitializeSpineAndDeformationData(header);
+    }
+
+    m_SpinesInitialized = true;
 }

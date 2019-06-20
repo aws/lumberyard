@@ -11,3 +11,20 @@
 *
 */
 
+AzQtComponents--SliderDouble,
+AzQtComponents--GradientSlider
+{
+    qproperty-decimals: 7;
+}
+
+AzQtComponents--Slider.HorizontalSlider
+{
+    qproperty-toolTipOffsetX: -8;
+    qproperty-toolTipOffsetY: -16;
+}
+
+AzQtComponents--Slider.VerticalSlider
+{
+    qproperty-toolTipOffsetX: 8;
+    qproperty-toolTipOffsetY: -24;
+}

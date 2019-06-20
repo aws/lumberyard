@@ -9,7 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
-// Original file Copyright Crytek GMBH or its affiliates, used under license.
+// Original file Copyright Crytek GMBH or its affiliates, used under license. 
 
 //  Description : 3dengine interface
 
@@ -21,7 +21,7 @@
 #define MMRM_MAX_SURFACE_TYPES 16
 
 // !!! Do not add any headers here !!!
-#include "CryEngineDecalInfo.h"
+#include "CryEngineDecalInfo.h" 
 #include <IStatObj.h> // <> required for Interfuscator
 #include "IRenderer.h"
 #include <IProcess.h> // <> required for Interfuscator
@@ -61,6 +61,11 @@ struct MacroTextureConfiguration;
 namespace ChunkFile
 {
     struct IChunkFileWriter;
+}
+
+namespace AZ
+{
+    class Aabb;
 }
 
 enum E3DEngineParameter
@@ -181,7 +186,7 @@ struct SGeometryDebugDrawInfo
     Matrix34 tm;        // Transformation Matrix
     ColorB   color;     // Optional color of the lines.
     ColorB   lineColor; // Optional color of the lines.
-
+    
     // Optional flags controlling how to render debug draw information.
     uint32   bNoCull  : 1;
     uint32   bNoLines : 1;
@@ -211,34 +216,28 @@ struct SFrameLodInfo
         nMaxLod = 6;
     }
 };
-
 struct SMeshLodInfo
 {
     static const int s_nMaxLodCount = 5;
-
     float fGeometricMean;
     uint nFaceCount;
     uint32 nFrameLodID;
-
     SMeshLodInfo()
     {
         Clear();
     }
-
     void Clear()
     {
         fGeometricMean = 0.f;
         nFaceCount = 0;
         nFrameLodID = 0;
     }
-
     void Merge(const SMeshLodInfo& lodInfo)
     {
         uint nTotalCount = nFaceCount + lodInfo.nFaceCount;
         if (nTotalCount > 0)
         {
             float fGeometricMeanTotal = 0.f;
-
             if (fGeometricMean > 0.f)
             {
                 fGeometricMeanTotal += logf(fGeometricMean) * nFaceCount;
@@ -247,13 +246,11 @@ struct SMeshLodInfo
             {
                 fGeometricMeanTotal += logf(lodInfo.fGeometricMean) * lodInfo.nFaceCount;
             }
-
             fGeometricMean = expf(fGeometricMeanTotal / (float)nTotalCount);
             nFaceCount = nTotalCount;
         }
     }
 };
-
 // Summary:
 //     Physics material enumerator, allows for 3dengine to get material id from game code.
 struct IPhysMaterialEnumerator
@@ -348,18 +345,18 @@ struct IStatInstGroup
 
     _smart_ptr<IStatObj> pStatObj;
     char  szFileName[256];
-    bool    bHideability;
-    bool    bHideabilitySecondary;
+    bool  bHideability;
+    bool  bHideabilitySecondary;
     float fBending;
-    uint8   nCastShadowMinSpec;
-    bool    bRecvShadow;
-    bool    bDynamicDistanceShadows;
-    bool    bUseAlphaBlending;
+    uint8 nCastShadowMinSpec;
+    bool  bRecvShadow;
+    bool  bDynamicDistanceShadows;
+    bool  bUseAlphaBlending;
     float fSpriteDistRatio;
     float fLodDistRatio;
     float fShadowDistRatio;
     float fMaxViewDistRatio;
-    float   fBrightness;
+    float fBrightness;
     bool  bRandomRotation;
     int32 nRotationRangeToTerrainNormal;
     float fAlignToTerrainCoefficient;
@@ -423,7 +420,7 @@ struct IWaterVolume
     //DOC-IGNORE-END
 
     // Description:
-    //     Used to change the water level. Will assign a new Z value to all
+    //     Used to change the water level. Will assign a new Z value to all 
     //     vertices of the water geometry.
     // Arguments:
     //     vNewOffset - Position of the new water level
@@ -476,15 +473,15 @@ struct IVisArea
     virtual int GetVisFrameId() = 0;
 
     // Description:
-    //     Gets a list of all the VisAreas which are connected to the current one.
+    //     Gets a list of all the VisAreas which are connected to the current one. 
     // Arguments:
     //     pAreas               - Pointer to an array of IVisArea*
     //     nMaxConnNum          - The maximum of IVisArea to write in pAreas
     //     bSkipDisabledPortals - Ignore portals which are disabled
     // Return Value:
-    //     An integer which hold the amount of VisArea found to be connected. If
-    //     the return is equal to nMaxConnNum, it's possible that not all
-    //     connected VisAreas were returned due to the restriction imposed by the
+    //     An integer which hold the amount of VisArea found to be connected. If 
+    //     the return is equal to nMaxConnNum, it's possible that not all 
+    //     connected VisAreas were returned due to the restriction imposed by the 
     //     argument.
     // Summary:
     //     Gets all the areas which are connected to the current one.
@@ -522,27 +519,27 @@ struct IVisArea
     //     True if the VisArea is a portal, or false in the opposite case.
     virtual bool IsPortal() const = 0;
 
-    // Description:
-    //     Searches for a specified VisArea to see if it's connected to the current
+    // Description: 
+    //     Searches for a specified VisArea to see if it's connected to the current 
     //     VisArea.
     // Arguments:
     //     pAnotherArea         - A specified VisArea to find
     //     nMaxRecursion        - The maximum number of recursion to do while searching
     //     bSkipDisabledPortals - Will avoid searching disabled VisAreas
-    //       pVisitedAreas              - if not NULL - will get list of all visited areas
+    //         pVisitedAreas                - if not NULL - will get list of all visited areas
     // Return Value:
     //     True if the VisArea was found.
     // Summary:
     //     Searches for a specified VisArea.
     virtual bool FindVisArea(IVisArea* pAnotherArea, int nMaxRecursion, bool bSkipDisabledPortals) = 0;
 
-    // Description:
-    //     Searches for the surrounding VisAreas which connected to the current
+    // Description: 
+    //     Searches for the surrounding VisAreas which connected to the current 
     //     VisArea.
     // Arguments:
     //     nMaxRecursion        - The maximum number of recursion to do while searching
     //     bSkipDisabledPortals - Will avoid searching disabled VisAreas
-    //     pVisitedAreas        - if not NULL - will get list of all visited areas
+    //       pVisitedAreas        - if not NULL - will get list of all visited areas
     // Return Value:
     //     None.
     // Summary:
@@ -568,7 +565,7 @@ struct IVisArea
     // Return Value:
     //     Whether geom was clipped.
     virtual bool ClipToVisArea(bool bInside, Sphere& sphere, Vec3 const& vNormal) = 0;
-
+    
     // Summary:
     //     Gives back the axis aligned bounding box of VisArea.
     // Return Value:
@@ -596,9 +593,9 @@ struct IVisArea
 
 #include "OceanConstants.h"
 
-// float m_SortId       : offseted by +WATER_LEVEL_SORTID_OFFSET if the camera object line is crossing the water surface
+// float m_SortId        : offseted by +WATER_LEVEL_SORTID_OFFSET if the camera object line is crossing the water surface
 // : otherwise offseted by -WATER_LEVEL_SORTID_OFFSET
-#define WATER_LEVEL_SORTID_OFFSET           10000000
+#define WATER_LEVEL_SORTID_OFFSET            10000000
 
 #define DEFAULT_SID 0
 
@@ -627,22 +624,22 @@ enum EVoxelEditTarget
 enum EVoxelEditOperation
 {
     eveoNone = 0,
-    eveoPaintHeightPos,
-    eveoPaintHeightNeg,
+  eveoPaintHeightPos,
+  eveoPaintHeightNeg,
     eveoCreate,
     eveoSubstract,
     eveoMaterial,
-    eveoBaseColor,
+  eveoBaseColor,
     eveoBlurPos,
-    eveoBlurNeg,
+  eveoBlurNeg,
     eveoCopyTerrainPos,
-    eveoCopyTerrainNeg,
-    eveoPickHeight,
-    eveoIntegrateMeshPos,
-    eveoIntegrateMeshNeg,
-    eveoForceDepth,
-    eveoLimitLod,
-    eveoLast,
+  eveoCopyTerrainNeg,
+  eveoPickHeight,
+  eveoIntegrateMeshPos,
+  eveoIntegrateMeshNeg,
+  eveoForceDepth,
+  eveoLimitLod,
+  eveoLast,
 };
 
 #define COMPILED_VISAREA_MAP_FILE_NAME         "terrain\\indoor.dat"
@@ -663,11 +660,11 @@ enum EVoxelEditOperation
 
 struct SVisAreaManChunkHeader
 {
-    int8 nVersion;
-    int8 nDummy;
-    int8 nFlags;
-    int8 nFlags2;
-    int nChunkSize;
+  int8 nVersion;
+  int8 nDummy;
+  int8 nFlags;
+  int8 nFlags2;
+  int nChunkSize;
     int nVisAreasNum;
     int nPortalsNum;
     int nOcclAreasNum;
@@ -677,32 +674,32 @@ struct SVisAreaManChunkHeader
 
 struct SOcTreeNodeChunk
 {
-    int16 nChunkVersion;
-    int16 ucChildsMask;
-    AABB  nodeBox;
-    int32 nObjectsBlockSize;
+  int16    nChunkVersion;
+  int16 ucChildsMask;
+  AABB    nodeBox;
+  int32 nObjectsBlockSize;
 
-    AUTO_STRUCT_INFO
+  AUTO_STRUCT_INFO
 };
 
 struct SHotUpdateInfo
 {
-    SHotUpdateInfo()
-    {
-        nHeigtmap = 1;
-        nObjTypeMask = ~0;
-        pVisibleLayerMask = NULL;
-        pLayerIdTranslation = NULL;
-        areaBox.Reset();
-    }
+  SHotUpdateInfo()
+  {
+    nHeigtmap = 1;
+    nObjTypeMask = ~0;
+    pVisibleLayerMask = NULL;
+    pLayerIdTranslation = NULL;
+    areaBox.Reset();
+  }
 
-    uint32 nHeigtmap;
-    uint32 nObjTypeMask;
-    const uint8* pVisibleLayerMask;
-    const uint16* pLayerIdTranslation;
-    AABB areaBox;
+  uint32 nHeigtmap;
+  uint32 nObjTypeMask;
+  const uint8* pVisibleLayerMask;
+  const uint16* pLayerIdTranslation;
+  AABB areaBox;
 
-    AUTO_STRUCT_INFO
+  AUTO_STRUCT_INFO
 };
 
 struct IVisAreaCallback
@@ -730,11 +727,11 @@ struct IVisAreaManager
     virtual int GetCompiledDataSize(SHotUpdateInfo* pExportInfo = NULL) = 0;
 
     // Summary:
-    //   Returns the accumulated number of visareas and portals.
+    //     Returns the accumulated number of visareas and portals.
     virtual int GetNumberOfVisArea() const = 0;
 
     // Summary:
-    //   Returns the visarea interface based on the id (0..GetNumberOfVisArea()) it can be a visarea or a portal.
+    //     Returns the visarea interface based on the id (0..GetNumberOfVisArea()) it can be a visarea or a portal.
     virtual IVisArea* GetVisAreaById(int nID) const = 0;
 
     virtual void AddListener(IVisAreaCallback* pListener) = 0;
@@ -767,8 +764,8 @@ struct IVisAreaManager
 
 
 // Summary:
-//   Manages simple pre-merged mesh instances into pre-baked sectors
-//
+//     Manages simple pre-merged mesh instances into pre-baked sectors
+// 
 struct IMergedMeshesManager
 {
     enum CLUSTER_FLAGS
@@ -776,29 +773,37 @@ struct IMergedMeshesManager
         // Uses the samples themselves to calculate the bounds of the areacluster
         // If not set, it will use the bounds of the patches to calculate the cluster
         CLUSTER_BOUNDARY_FROM_SAMPLES = 1 << 0,
-        // Create the cluster-area boundary by computing the convex hull of either
+        // Create the cluster-area boundary by computing the convex hull of either 
         // the samples or the bounds of the patches via graham scan
         CLUSTER_CONVEXHULL_GRAHAMSCAN = 1 << 1,
-        // Create the cluster-area boundary by computing the convex hull of either
-        // the samples or the bounds of the patches via giftwrapping (also knows as
-        // Jarvis march).
-        // Note: this might not be as stable as the graham scan method above,
-        // especially in terms of collinear points or otherwise degenerate data.
+        // Create the cluster-area boundary by computing the convex hull of either 
+        // the samples or the bounds of the patches via giftwrapping (also knows as 
+        // Jarvis march). 
+        // Note: this might not be as stable as the graham scan method above, 
+        // especially in terms of collinear points or otherwise degenerate data. 
         CLUSTER_CONVEXHULL_GIFTWRAP = 1 << 2,
-    };
+    }; 
 
-    struct SInstanceSector
+    struct SInstanceSector 
     {
-        DynArray<uint8> data;   // memory stream of internally compiled data
-        string id;                          // unique identifier string identifing this sector
+        DynArray<uint8> data;   // memory stream of internally compiled data 
+        string id;                            // unique identifier string identifing this sector
     };
 
-    struct SMeshAreaCluster
+    struct SMeshAreaCluster 
     {
         // The extents (in worldspace) of the cluster
-        AABB extents;
-        // The vertices of the boundary points (in the xy-plane, worldspace) of this
+        AABB extents; 
+        // The vertices of the boundary points (in the xy-plane, worldspace) of this 
         DynArray<Vec2> boundary_points;
+    };
+
+    struct SInstanceSample
+    {
+        Vec3  pos;
+        Quat  q;
+        uint32 instGroupId;
+        uint8 scale;
     };
 
     // <interfuscator:shuffle>
@@ -807,66 +812,66 @@ struct IMergedMeshesManager
     ///////////////////////////////////////////////////////////////////////////////////////
     // Compilation
     // Summary:
-    //   Returns the compiled instance sectors as a null-terminated pointer array. Returns false on error.
+    //     Returns the compiled instance sectors as a null-terminated pointer array. Returns false on error.
     // Note:
-    //      The caller is responsible for freeing the allocated memory (both the array and the sectors)
+    //        The caller is responsible for freeing the allocated memory (both the array and the sectors)
     virtual bool CompileSectors(DynArray<SInstanceSector>& pSectors, std::vector<struct IStatInstGroup*>* pVegGroupTable) = 0;
 
     ///////////////////////////////////////////////////////////////////////////////////////
     // Compilation
     // Summary:
-    //   Returns a list of cluster hulls
+    //     Returns a list of cluster hulls 
     // Note:
-    //      The caller is responsible for freeing the allocated memory (both the cluster array and the contents)
+    //        The caller is responsible for freeing the allocated memory (both the cluster array and the contents)
     virtual bool CompileAreas(DynArray<SMeshAreaCluster>& clusters, int flags) = 0;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////
     // Compilation
     // Summary:
-    //  Query the sample density grid. Returns the number of surface types filled into the surface types list
+    //    Query the sample density grid. Returns the number of surface types filled into the surface types list
     virtual size_t QueryDensity(const Vec3 &pos, ISurfaceType * (&surfaceTypes)[MMRM_MAX_SURFACE_TYPES], float (&density)[MMRM_MAX_SURFACE_TYPES]) = 0;
 
     ///////////////////////////////////////////////////////////////////////////////////////
     // Compilation
     // Summary:
-    //  Fill in the density values
+    //    Fill in the density values 
     virtual void CalculateDensity() = 0;
 
     ///////////////////////////////////////////////////////////////////////////////////////
     // Compilation
     // Summary:
-    //   Returns the list of merged mesh geometry currently active. Returns false on error.
+    //     Returns the list of merged mesh geometry currently active. Returns false on error.
     virtual bool GetUsedMeshes(DynArray<string>& pMeshNames) = 0;
 
     ///////////////////////////////////////////////////////////////////////////////////////
     // Statistics
     // Summary:
-    //   Returns the current memory footprint in vram (accumulated vertex and indexbuffer size in bytes)
-    virtual size_t CurrentSizeInVram() const = 0;
+    //     Returns the current memory footprint in vram (accumulated vertex and indexbuffer size in bytes)
+    virtual size_t CurrentSizeInVram() const = 0; 
 
     // Summary:
-    //   Returns the current memory footprint in main memory (the accumulated footprint of all merged instances)
+    //     Returns the current memory footprint in main memory (the accumulated footprint of all merged instances)
     virtual size_t CurrentSizeInMainMem() const = 0;
 
     // Summary:
-    //   Returns the memory footprint of the prebaked geometry in bytes
+    //     Returns the memory footprint of the prebaked geometry in bytes
     virtual size_t GeomSizeInMainMem() const = 0;
 
     // Summary:
-    //   Returns the size of the instance map in bytes
+    //     Returns the size of the instance map in bytes
     virtual size_t InstanceSize() const = 0;
 
     // Summary:
-    //   Returns the size of animated instances if they have spines
+    //     Returns the size of animated instances if they have spines
     virtual size_t SpineSize() const = 0;
 
     // Summary:
-    //   The instance count
-    virtual size_t InstanceCount() const = 0;
+    //     The instance count 
+    virtual size_t InstanceCount() const = 0; 
 
     // Summary:
-    //   The number of visible instances last frame
+    //     The number of visible instances last frame
     virtual size_t VisibleInstances() const = 0;
     // </interfuscator:shuffle>
 
@@ -877,6 +882,8 @@ struct IMergedMeshesManager
     virtual int GetCompiledDataSize(uint32 index) = 0;
 
     virtual bool GetCompiledData(uint32 index, byte* pData, int nSize, string* pName, std::vector<struct IStatInstGroup*>** ppStatInstGroupTable) = 0;
+
+    virtual IRenderNode* AddDynamicInstance(const SInstanceSample&, IRenderNode** ppNode, bool bRegister) = 0;
 };
 
 struct IFoliage
@@ -964,15 +971,15 @@ struct SSkyLightRenderParams
 
 struct SVisAreaInfo
 {
-    float fHeight;
-    Vec3 vAmbientColor;
-    bool bAffectedByOutLights;
-    bool bIgnoreSkyColor;
-    bool bSkyOnly;
-    float fViewDistRatio;
-    bool bDoubleSide;
-    bool bUseDeepness;
-    bool bUseInIndoors;
+  float fHeight;
+  Vec3 vAmbientColor;
+  bool bAffectedByOutLights;
+  bool bIgnoreSkyColor;
+  bool bSkyOnly;
+  float fViewDistRatio;
+  bool bDoubleSide;
+  bool bUseDeepness;
+  bool bUseInIndoors;
     bool bOceanIsVisible;
     bool bIgnoreGI;
     bool bIgnoreOutdoorAO;
@@ -992,8 +999,6 @@ struct SDebugFPSInfo
     float fMaxFPS;
 };
 
-// Summary:
-//   Common scene rain parameters shared across engine and editor
 struct SRainParams
 {
     SRainParams()
@@ -1012,9 +1017,9 @@ struct SRainParams
     {
     }
 
-    Matrix44    matOccTrans;                // Transformation matrix for rendering into a new occ map
-    Matrix44    matOccTransRender;  // Transformation matrix for rendering occluded rain using current occ map
-    Quat            qRainRotation;          // Quaternion for the scene's rain entity rotation
+    Matrix44        matOccTrans;          // Transformation matrix for rendering into a new occ map    
+    Matrix44        matOccTransRender;    // Transformation matrix for rendering occluded rain using current occ map
+    Quat            qRainRotation;        // Quaternion for the scene's rain entity rotation
     AABB            areaAABB;
 
     Vec3            vWorldPos;
@@ -1024,34 +1029,37 @@ struct SRainParams
     float           fCurrentAmount;
     float           fRadius;
 
-    float           fFakeGlossiness;
-    float           fFakeReflectionAmount;
+    // Deferred rain params
+    float           fFakeGlossiness; // unused
+    float           fFakeReflectionAmount; // unused
     float           fDiffuseDarkening;
-
     float           fRainDropsAmount;
     float           fRainDropsSpeed;
     float           fRainDropsLighting;
-
     float           fMistAmount;
     float           fMistHeight;
-
     float           fPuddlesAmount;
     float           fPuddlesMaskAmount;
     float           fPuddlesRippleAmount;
-    float           fSplashesAmount;
+    float            fSplashesAmount;
 
     int             nUpdateFrameID;
+
     bool            bApplyOcclusion;
     bool            bIgnoreVisareas;
     bool            bDisableOcclusion;
 
+// Summary:
+//     Common scene rain parameters shared across engine and editor
     bool            bApplySkyColor;
     float           fSkyColorWeight;
+
+    // Bus ID to listen to
 };
 
-struct SSnowParams
+struct SSnowParams 
 {
-    SSnowParams()
+    SSnowParams() 
         : m_vWorldPos(0, 0, 0)
         , m_fRadius(0.0)
         , m_fSnowAmount(0.0)
@@ -1075,6 +1083,7 @@ struct SSnowParams
     float m_fFrostAmount;
     float m_fSurfaceFreezing;
 
+    
     // Snowfall params.
     int m_nSnowFlakeCount;
     float m_fSnowFlakeSize;
@@ -1082,7 +1091,7 @@ struct SSnowParams
     float m_fSnowFallGravityScale;
     float m_fSnowFallWindScale;
     float m_fSnowFallTurbulence;
-    float m_fSnowFallTurbulenceFreq;
+    float m_fSnowFallTurbulenceFreq; 
 };
 
 
@@ -1170,11 +1179,12 @@ struct SLightVolume
 
 #pragma pack(pop)
 
+
 // Summary:
 //     Interface to the 3d Engine.
 struct I3DEngine
     : public IProcess
-{
+{    
     struct SObjectsStreamingStatus
     {
         int nReady;
@@ -1184,6 +1194,7 @@ struct I3DEngine
         int nAllocatedBytes;
         int nMemRequired;
         int nMeshPoolSize; // in MB
+
     };
 
     struct OceanAnimationData
@@ -1236,6 +1247,7 @@ struct I3DEngine
         float intensity = 0.0f;
     };
 
+
     // <interfuscator:shuffle>
     // Summary:
     //     Initializes the 3D Engine.
@@ -1245,6 +1257,7 @@ struct I3DEngine
     //     Only call once, after creating the instance.
     virtual bool Init() = 0;
 
+
     // Summary:
     //     Sets the path used to load levels.
     // See Also:
@@ -1253,10 +1266,12 @@ struct I3DEngine
     //     szFolderName - Should contains the folder to be used
     virtual void SetLevelPath(const char* szFolderName) = 0;
 
+    virtual bool CheckMinSpec(uint32 nMinSpec) = 0;
+
     virtual void PrepareOcclusion(const CCamera& rCamera) = 0;
     virtual void EndOcclusion() = 0;
     // Description:
-    //     Will load a level from the folder specified with SetLevelPath. If a
+    //     Will load a level from the folder specified with SetLevelPath. If a 
     //     level is already loaded, the resources will be deleted before.
     // See Also:
     //     SetLevelPath
@@ -1264,7 +1279,7 @@ struct I3DEngine
     //     szFolderName - Name of the subfolder to load
     //     szMissionName - Name of the mission
     // Return Value:
-    //     A boolean which indicate the result of the function; true is
+    //     A boolean which indicate the result of the function; true is 
     //     succeed, or false if failed.
     // Summary:
     //     Load a level.
@@ -1283,7 +1298,7 @@ struct I3DEngine
     // See Also:
     //    LoadLevel
     // Summary:
-    //    Pre-caches some resources need for rendering.
+    //      Pre-caches some resources need for rendering.
     virtual void PostLoadLevel() = 0;
 
     // Description:
@@ -1402,7 +1417,7 @@ struct I3DEngine
     // Return Value:
     //     A pointer to an object derived from IStatObj.
     virtual IStatObj* FindStatObjectByFilename(const char* filename) = 0;
-
+    
     //Summary:
     //      Creates a deformable render node
     //See Also:
@@ -1451,10 +1466,10 @@ struct I3DEngine
     virtual void GetObjectsStreamingStatus(SObjectsStreamingStatus& outStatus) = 0;
 
     // Summary:
-    //      Gets stats on the streaming bandwidth requests from subsystems
+    //        Gets stats on the streaming bandwidth requests from subsystems
     // Arguments:
-    //      subsystem - the streaming subsystem we want bandwidth data for
-    //      outData - structure containing the bandwidth data for the subsystem requested
+    //        subsystem - the streaming subsystem we want bandwidth data for
+    //        outData - structure containing the bandwidth data for the subsystem requested
     virtual void GetStreamingSubsystemData(int subsystem, SStremaingBandwidthData& outData) = 0;
 
     // Summary:
@@ -1477,6 +1492,7 @@ struct I3DEngine
     // End Confetti//////////////////////////////
     //////////////////////////////////////////////
 
+
 #ifndef _RELEASE
     enum EDebugDrawListAssetTypes
     {
@@ -1493,12 +1509,12 @@ struct I3DEngine
         const char* pClassName;
         const char* pFileName;
         IRenderNode* pRenderNode;
-        uint32  numTris;
-        uint32  numVerts;
-        uint32  texMemory;
-        uint32  meshMemory;
+        uint32    numTris;
+        uint32    numVerts;
+        uint32    texMemory;
+        uint32    meshMemory;
         EDebugDrawListAssetTypes type;
-        const AABB*         pBox;
+        const AABB*            pBox;
         const Matrix34* pMat;
     };
 
@@ -1514,11 +1530,11 @@ struct I3DEngine
     virtual void UnRegisterEntityDirect(IRenderNode* pEntity) = 0;
     virtual void UnRegisterEntityAsJob(IRenderNode* pEnt) = 0;
     // Summary:
-    //     Returns whether a world pos is under water.
+    //       Returns whether a world pos is under water.
     virtual bool IsUnderWater(const Vec3& vPos) const = 0;
-
+  
     // Summary:
-    //     Returns whether ocean volume is visible or not.
+    //       Returns whether ocean volume is visible or not.
     virtual void SetOceanRenderFlags(uint8 nFlags) = 0;
     virtual uint8 GetOceanRenderFlags() const = 0;
     virtual uint32 GetOceanVisiblePixelsCount() const = 0;
@@ -1546,29 +1562,29 @@ struct I3DEngine
     // Notes:
     //     This function will take into account just the global water level.
     // Return Value:
-    //     A float value which indicate the water level. In case no water was
-    //     found at the specified location, the value WATER_LEVEL_UNKNOWN will
+    //     A float value which indicate the water level. In case no water was 
+    //     found at the specified location, the value WATER_LEVEL_UNKNOWN will 
     //     be returned.
     virtual float GetWaterLevel() = 0;
 
     // Summary:
     //     Gets the closest walkable bottom z straight beneath the given reference position.
-    //              - Use with caution the accurate query - SLOW
-    // Notes:
+    //                - Use with caution the accurate query - SLOW
+    // Notes:    
     //     This function will take into account both the global water level and any water volume present.
     //     Function is provided twice for performance with diff. arguments.
     // Arguments:
     //     pvPos - Desired position to inspect the water level
     //     pent - Pointer to return the physical entity to test against (optional)
     // Return Value:
-    //     A float value which indicate the water level. In case no water was
-    //     found at the specified location, the value WATER_LEVEL_UNKNOWN will
+    //     A float value which indicate the water level. In case no water was 
+    //     found at the specified location, the value WATER_LEVEL_UNKNOWN will 
     //     be returned.
     virtual float GetWaterLevel(const Vec3* pvPos, IPhysicalEntity* pent = NULL, bool bAccurate = false) = 0;
 
     // Summary:
     //     Gets the ocean water level for a specified position.
-    //              - Use with caution the accurate query - SLOW
+    //                - Use with caution the accurate query - SLOW
     // Notes:
     //     This function only takes into account ocean water.
     // Arguments:
@@ -1579,11 +1595,8 @@ struct I3DEngine
 
     // Summary:
     //     Gets caustics parameters.
-    // Return Value:
-    //     A Vec4 value which constains:
-    //     x = unused, y = distance attenuation, z = caustics multiplier, w = caustics darkening multiplier
     virtual CausticsParams GetCausticsParams() const = 0;
-
+    
     // Summary:
     //     Gets ocean animation parameters.
     virtual OceanAnimationData GetOceanAnimationParams() const = 0;
@@ -1591,7 +1604,7 @@ struct I3DEngine
     // Summary:
     //     Gets HDR setup parameters.
     // Return Value:
-    virtual void GetHDRSetupParams  (Vec4 pParams[5]) const = 0;
+    virtual void GetHDRSetupParams    (Vec4 pParams[5]) const = 0; 
 
     // Summary:
     //     Removes all particles and decals from the world.
@@ -1614,12 +1627,13 @@ struct I3DEngine
     //     Sets the current sun base color.
     virtual void SetSunColor(Vec3 vColor) = 0;
 
+    // BEGIN JAVELIN FORK: https://jira.agscollab.com/browse/JAV-12177
     // Summary:
     //     Gets the current sun animated color.
     virtual Vec3 GetSunAnimColor() = 0;
 
     // Summary:
-    //     Sets the current sun animated color.
+    //     Sets the current sky brightening multiplier.
     virtual void SetSunAnimColor(const Vec3& color) = 0;
 
     // Summary:
@@ -1627,13 +1641,11 @@ struct I3DEngine
     virtual float GetSunAnimSpeed() = 0;
 
     // Summary:
-    //     Sets the current sun animation speed.
     virtual void SetSunAnimSpeed(float sunAnimSpeed) = 0;
 
     // Summary:
     //     Gets the current sun animation phase.
     virtual AZ::u8 GetSunAnimPhase() = 0;
-
     // Summary:
     //     Sets the current sun animation phase.
     virtual void SetSunAnimPhase(AZ::u8 sunAnimPhase) = 0;
@@ -1655,28 +1667,28 @@ struct I3DEngine
     virtual bool GetRainParams(SRainParams& rainParams) = 0;
 
     // Summary:
-    //      Sets current snow surface parameters.
+    //        Sets current snow surface parameters.
     virtual void SetSnowSurfaceParams(const Vec3& vCenter, float fRadius, float fSnowAmount, float fFrostAmount, float fSurfaceFreezing) = 0;
 
     // Summary:
-    //      Gets current snow surface parameters.
+    //        Gets current snow surface parameters.
     virtual bool GetSnowSurfaceParams(Vec3& vCenter, float& fRadius, float& fSnowAmount, float& fFrostAmount, float& fSurfaceFreezing) = 0;
 
     // Summary:
-    //      Sets current snow parameters.
+    //        Sets current snow parameters.
     virtual void SetSnowFallParams(int nSnowFlakeCount, float fSnowFlakeSize, float fSnowFallBrightness, float fSnowFallGravityScale, float fSnowFallWindScale, float fSnowFallTurbulence, float fSnowFallTurbulenceFreq) = 0;
 
     // Summary:
-    //      Gets current snow parameters.
+    //        Gets current snow parameters.
     virtual bool GetSnowFallParams(int& nSnowFlakeCount, float& fSnowFlakeSize, float& fSnowFallBrightness, float& fSnowFallGravityScale, float& fSnowFallWindScale, float& fSnowFallTurbulence, float& fSnowFallTurbulenceFreq) = 0;
 
     // Summary:
     //     Sets the view distance scale.
     // Arguments:
     //     fScale - may be between 0 and 1, 1.f = Unmodified view distance set by level designer, value of 0.5 will reduce it twice
-    // Notes:
-    //     This value will be reset automatically to 1 on next level loading.
-    virtual void SetMaxViewDistanceScale(float fScale) = 0;
+  // Notes:
+  //     This value will be reset automatically to 1 on next level loading.
+  virtual void SetMaxViewDistanceScale(float fScale) = 0;
 
     // Summary:
     //     Gets the view distance.
@@ -1724,7 +1736,7 @@ struct I3DEngine
     virtual void GetPrecacheRoundIds(int pRoundIds[MAX_STREAM_PREDICTION_ZONES]) = 0;
 
     virtual void TraceFogVolumes(const Vec3& vPos, const AABB& objBBox, SFogVolumeData& fogVolData, const SRenderingPassInfo& passInfo, bool fogVolumeShadingQuality) = 0;
-
+    
     // Attempts to import a macro texture file at filepath, and fills out the provided configuration with data from the file. Returns true if successful.
     virtual bool ReadMacroTextureFile(const char* filepath, MacroTextureConfiguration& configuration) const = 0;
 
@@ -1750,7 +1762,7 @@ struct I3DEngine
     //     A float which indicate the elevation level.
     virtual float GetTerrainZ(int x, int y) = 0;
 
-    // Summary:
+  // Summary:
     //     Gets the terrain surfaceid.
     // Notes:
     //     Only values between 0 and WORLD_SIZE.
@@ -1762,25 +1774,30 @@ struct I3DEngine
     virtual int GetTerrainSurfaceId(int x, int y) = 0;
 
     // Summary:
-    //     Gets the terrain hole flag for a specified location.
-    // Notes:
-    //     Only values between 0 and WORLD_SIZE.
-    // Arguments:
-    //     x - X coordinate of the location
-    //     y - Y coordinate of the location
-    // Return Value:
-    //     A bool which indicate is there hole or not.
-    virtual bool GetTerrainHole(int x, int y) = 0;
+  //     Gets the terrain hole flag for a specified location.
+  // Notes:
+  //     Only values between 0 and WORLD_SIZE.
+  // Arguments:
+  //     x - X coordinate of the location
+  //     y - Y coordinate of the location
+  // Return Value:
+  //     A bool which indicate is there hole or not.
+  virtual bool GetTerrainHole(int x, int y) = 0;
 
-    // Summary:
-    //     Gets the terrain surface normal for a specified location.
-    // Arguments:
-    //     vPos.x - X coordinate of the location
-    //     vPos.y - Y coordinate of the location
-    //     vPos.z - ignored
-    // Return Value:
-    //     A terrain surface normal.
-    virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos) = 0;
+  // Summary:
+  //     Gets the terrain surface normal for a specified location.
+  // Arguments:
+  //     vPos.x - X coordinate of the location
+  //     vPos.y - Y coordinate of the location
+  //     vPos.z - ignored
+  // Return Value:
+  //     A terrain surface normal.
+  virtual Vec3 GetTerrainSurfaceNormal(Vec3 vPos) = 0;
+
+
+  // returns the AZ::Aabb enclosing the terrain
+  virtual const AZ::Aabb& GetTerrainAabb() const = 0;
+
 
     // Summary:
     //     Gets the unit size of the terrain
@@ -1811,34 +1828,35 @@ struct I3DEngine
     // Internal functions, mostly used by the editor, which won't be documented for now
 
     // Summary:
-    //      Removes all static objects on the map (for editor)
+    //        Removes all static objects on the map (for editor)
     virtual void RemoveAllStaticObjects(int nSID = DEFAULT_SID) = 0;
 
     // Summary:
-    //      Sets terrain sector texture id, and disable streaming on this sector
+    //        Sets terrain sector texture id, and disable streaming on this sector
     virtual void SetTerrainSectorTexture(const int nTexSectorX, const int nTexSectorY, unsigned int textureId) = 0;
 
     // Summary:
-    //      Returns size of smallest terrain texture node (last leaf) in meters
+    //        Returns size of smallest terrain texture node (last leaf) in meters
     virtual int GetTerrainTextureNodeSizeMeters() = 0;
 
     //Summary:
     //      Returns boolean indicating if the terrain surface is being shown.
     virtual bool GetShowTerrainSurface() = 0; 
     // Summary:
-    //      Sets group parameters
+    //        Sets group parameters
     virtual bool SetStatInstGroup(int nGroupId, const IStatInstGroup& siGroup, int nSID = 0) = 0;
 
     // Summary:
-    //      Gets group parameters
+    //        Gets group parameters
     virtual bool GetStatInstGroup(int nGroupId, IStatInstGroup& siGroup, int nSID = 0) = 0;
 
-    // Summary:
-    //      Sets burbed out flag
-    virtual void SetTerrainBurnedOut(int x, int y, bool bBurnedOut) = 0;
 
     // Summary:
-    //      Gets burbed out flag
+    //        Sets burbed out flag
+    virtual void SetTerrainBurnedOut(int x, int y, bool bBurnedOut) = 0;
+    
+    // Summary:
+    //        Gets burbed out flag
     virtual bool IsTerrainBurnedOut(int x, int y) = 0;
 
     //DOC-IGNORE-END
@@ -1867,19 +1885,19 @@ struct I3DEngine
 
     //DOC-IGNORE-BEGIN
     //Internal functions
-
+    
     // Summary:
-    //   Allows to enable fog in editor
+    //     Allows to enable fog in editor
     virtual void SetupDistanceFog() = 0;
 
     // Summary:
-    //   Loads environment settings for specified mission
+    //     Loads environment settings for specified mission
     virtual void LoadMissionDataFromXMLNode(const char* szMissionName) = 0;
 
     virtual void LoadEnvironmentSettingsFromXML(XmlNodeRef pInputNode, int nSID = DEFAULT_SID) = 0;
 
     // Summary:
-    //   Loads detail texture and detail object settings from XML doc (load from current LevelData.xml if pDoc is 0)
+    //     Loads detail texture and detail object settings from XML doc (load from current LevelData.xml if pDoc is 0)
     virtual void    LoadTerrainSurfacesFromXML(XmlNodeRef pDoc, bool bUpdateTerrain, int nSID = DEFAULT_SID) = 0;
 
     //DOC-IGNORE-END
@@ -1889,15 +1907,15 @@ struct I3DEngine
     //  virtual void SetSunDir( const Vec3& vNewSunDir ) = 0;
 
     // Summary:
-    //      Return non-normalized direction to the sun
+    //        Return non-normalized direction to the sun
     virtual Vec3 GetSunDir()  const = 0;
 
     // Summary:
-    //      Return normalized direction to the sun
+    //        Return normalized direction to the sun
     virtual Vec3 GetSunDirNormalized()  const = 0;
 
     // Summary:
-    //      Return realtime (updated every frame with real sun position) normalized direction to the scene
+    //        Return realtime (updated every frame with real sun position) normalized direction to the scene
     virtual Vec3 GetRealtimeSunDirNormalized()  const = 0;
 
     //Internal function used by 3d engine and renderer
@@ -1927,9 +1945,8 @@ struct I3DEngine
     // Return Value:
     //   scalar value
     virtual float GetSSAOContrast() const = 0;
-
     // Summary:
-    //   Frees entity render info.
+    //     Frees entity render info.
     virtual void FreeRenderNodeState(IRenderNode* pEntity) = 0;
 
     // Summary:
@@ -1950,7 +1967,7 @@ struct I3DEngine
     virtual void DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStepY, const bool bEnhanced) = 0;
 
     // Summary:
-    //   Draws text right aligned at the y pixel precision.
+    //     Draws text right aligned at the y pixel precision.
     virtual void DrawTextRightAligned(const float x, const float y, const char* format, ...) PRINTF_PARAMS(4, 5) = 0;
     virtual void DrawTextRightAligned(const float x, const float y, const float scale, const ColorF& color, const char* format, ...) PRINTF_PARAMS(6, 7) = 0;
 
@@ -1964,17 +1981,17 @@ struct I3DEngine
 
     //DOC-IGNORE-BEGIN
     // Summary:
-    //   Counts memory usage
+    //     Counts memory usage
     virtual void GetMemoryUsage(ICrySizer* pSizer) const = 0;
 
     // Summary:
-    //   Counts resource memory usage
+    //     Counts resource memory usage
     // Arguments:
-    //      cstAABB - Use the whole level AABB if you want to grab the resources
-    //              from the whole level.  For height level, use something BIG
-    //                          (ie: +-FLT_MAX)
+    //        cstAABB - Use the whole level AABB if you want to grab the resources
+    //              from the whole level.  For height level, use something BIG 
+    //                            (ie: +-FLT_MAX)
     // See also:
-    //      ITerrain::GetTerrainSize().
+    //        ITerrain::GetTerrainSize().
     virtual void GetResourceMemoryUsage(ICrySizer* pSizer, const AABB& cstAABB) = 0;
     //DOC-IGNORE-END
 
@@ -1996,11 +2013,11 @@ struct I3DEngine
     //   Updates the VisArea
     // Arguments:
     //   pArea -
-    //   pPoints -
+    //   pPoints - 
     //   nCount -
     //   szName -
-    //   info   -
-    //   bReregisterObjects -
+    //     info    -
+    //     bReregisterObjects -
     virtual void UpdateVisArea(IVisArea* pArea, const Vec3* pPoints, int nCount, const char* szName, const SVisAreaInfo& info, bool bReregisterObjects) = 0;
 
     // Summary:
@@ -2021,7 +2038,7 @@ struct I3DEngine
     // Return Value:
     //   A pointer to a newly created ClipVolume object
     virtual IClipVolume* CreateClipVolume() = 0;
-
+        
     // Summary:
     //   Deletes a ClipVolume.
     // Arguments:
@@ -2044,33 +2061,33 @@ struct I3DEngine
     virtual IRenderNode* CreateRenderNode(EERType type) = 0;
 
     // Summary:
-    //   Delete RenderNode object.
+    //     Delete RenderNode object.
     virtual void DeleteRenderNode(IRenderNode* pRenderNode) = 0;
 
     // Summary:
-    //   Set global wind vector.
+    //     Set global wind vector.
     virtual void SetWind(const Vec3& vWind) = 0;
 
     // Summary:
-    //   Gets wind direction and force, averaged within a box.
+    //     Gets wind direction and force, averaged within a box.
     virtual Vec3 GetWind(const AABB& box, bool bIndoors) const = 0;
 
     // Summary:
-    //   Gets the global wind vector.
+    //     Gets the global wind vector.
     virtual Vec3 GetGlobalWind(bool bIndoors) const = 0;
 
     // Summary:
-    //   Gets wind direction and forace at the sample points provided.
-    // Note: the positions defining the samples will be overwritten
+    //     Gets wind direction and forace at the sample points provided. 
+    // Note: the positions defining the samples will be overwritten 
     // with the accumulated wind influences.
     virtual bool SampleWind(Vec3* pSamples, int nSamples, const AABB& volume, bool bIndoors) const = 0;
 
     // Description:
     //   Gets the VisArea which is present at a specified point.
     // Arguments:
-    //   vPos:
+    //     vPos: 
     // Return Value:
-    //   VisArea containing point, if any. 0 otherwise.
+    //     VisArea containing point, if any. 0 otherwise.
     virtual IVisArea* GetVisAreaFromPos(const Vec3& vPos) = 0;
 
     // Description:
@@ -2079,19 +2096,19 @@ struct I3DEngine
     //   box: Volume to test for intersection.
     //   pNodeCache (out, optional): Set to a cached pointer, for quicker calls to ClipToVisAreas.
     // Return Value:
-    //   Whether box intersects any vis areas.
-    virtual bool IntersectsVisAreas(const AABB& box, void** pNodeCache = 0) = 0;
+    //     Whether box intersects any vis areas.
+    virtual    bool IntersectsVisAreas(const AABB& box, void** pNodeCache = 0) = 0;    
 
     // Description:
     //   Clips geometry against the boundaries of VisAreas.
     // Arguments:
     //   pInside: Vis Area to clip inside of. If 0, clip outside all Vis Areas.
-    //   sphere -
-    //   vNormal -
-    //   pNodeChache -
+    //     sphere -
+    //     vNormal -
+    //     pNodeChache -
     // Return Value:
-    //   Whether it was clipped
-    virtual bool ClipToVisAreas(IVisArea* pInside, Sphere& sphere, Vec3 const& vNormal, void* pNodeCache = 0) = 0;
+    //     Whether it was clipped
+    virtual    bool ClipToVisAreas(IVisArea* pInside, Sphere& sphere, Vec3 const& vNormal, void* pNodeCache = 0) = 0;    
 
     // Summary:
     //   Enables or disables ocean rendering.
@@ -2100,15 +2117,15 @@ struct I3DEngine
     virtual void EnableOceanRendering(bool bOcean) = 0;
 
     // Description:
-    //    Register a texture load handler
+    //      Register a texture load handler
     virtual void AddTextureLoadHandler(ITextureLoadHandler* pHandler) = 0;
 
     // Description
-    //    Unregister a texture load handler
+    //      Unregister a texture load handler
     virtual void RemoveTextureLoadHandler(ITextureLoadHandler* pHandler) = 0;
 
     // Description:
-    //    Get a texture load handler for a given extension
+    //      Get a texture load handler for a given extension
     virtual ITextureLoadHandler* GetTextureLoadHandlerForImage(const char* ext) = 0;
     // Summary:
     //   Creates a new light source.
@@ -2139,18 +2156,18 @@ struct I3DEngine
     // Description:
     //   Reloading the heightmap will resets all decals and particles.
     // Notes:
-    //   In future will restore deleted vegetations
+    //     In future will restore deleted vegetations
     // Returns:
     //   success
     virtual bool RestoreTerrainFromDisk(int nSID = 0) = 0;
 
     //DOC-IGNORE-BEGIN
-    // tmp
+  // tmp
     virtual const char* GetFilePath(const char* szFileName) { return GetLevelFilePath(szFileName); }
     //DOC-IGNORE-END
 
     // Summary:
-    //   Post processing effects interfaces.
+    //     Post processing effects interfaces.
     virtual class IPostEffectGroupManager* GetPostEffectGroups() const = 0;
     virtual class IPostEffectGroup* GetPostEffectBaseGroup() const = 0;
 
@@ -2174,31 +2191,33 @@ struct I3DEngine
     virtual void SetRecomputeCachedShadows(uint nUpdateStrategy = 0) = 0;
 
     // Summary:
-    //   In debug mode check memory heap and makes assert, do nothing in release
+    //     In debug mode check memory heap and makes assert, do nothing in release
     virtual void CheckMemoryHeap() = 0;
 
     // Summary:
-    //   Closes terrain texture file handle and allows to replace/update it.
+    //     Closes terrain texture file handle and allows to replace/update it.
     virtual void CloseTerrainTextureFile(int nSID = DEFAULT_SID) = 0;
-
+    
     // Summary:
-    //   Removes all decals attached to specified entity.
+    //     Removes all decals attached to specified entity.
     virtual void DeleteEntityDecals(IRenderNode* pEntity) = 0;
 
     // Summary:
-    //   Finishes objects geometery generation/loading.
     virtual void CompleteObjectsGeometry() = 0;
-
-    // Summary:
-    //   Disables CGFs unloading.
+    //     Disables CGFs unloading.
     virtual void LockCGFResources() = 0;
 
     // Summary:
-    //   Enables CGFs unloading (this is default state), this function will also release all not used CGF's.
+    //     Enables CGFs unloading (this is default state), this function will also release all not used CGF's.
     virtual void UnlockCGFResources() = 0;
 
     // Summary:
-    //   Creates static object containing empty IndexedMesh.
+    //     Release all unused CGFs.
+    virtual void FreeUnusedCGFResources() = 0;
+
+
+    // Summary:
+    //     Creates static object containing empty IndexedMesh.
     virtual IStatObj* CreateStatObj() = 0;
     virtual IStatObj* CreateStatObjOptionalIndexedMesh(bool createIndexedMesh) = 0;
 
@@ -2213,11 +2232,11 @@ struct I3DEngine
     virtual IStatObj* UpdateDeformableStatObj(IGeometry* pPhysGeom, bop_meshupdate* pLastUpdate = 0, IFoliage* pSrcFoliage = 0) = 0;
 
     // Summary:
-    //   Saves/loads state of engine objects.
+    //     Saves/loads state of engine objects.
     virtual void SerializeState(TSerialize ser) = 0;
-
+    
     // Summary:
-    //   Cleanups after save/load.
+    //     Cleanups after save/load.    
     virtual void PostSerialize(bool bReading) = 0;
 
     // Description:
@@ -2235,23 +2254,23 @@ struct I3DEngine
     //////////////////////////////////////////////////////////////////////////
     // CGF Loader.
     //////////////////////////////////////////////////////////////////////////
-    // Description:
+  // Description:
     // Creates a chunkfile content instance
-    // Returns 'NULL' if the memory for the instance could not be allocated
+  // Returns 'NULL' if the memory for the instance could not be allocated
     virtual CContentCGF* CreateChunkfileContent(const char* filename) = 0;
 
-    // Description:
+  // Description:
     // Deletes the chunkfile content instance
     virtual void ReleaseChunkfileContent(CContentCGF*) = 0;
 
-    // Description:
-    // Loads the contents of a chunkfile into the given CContentCGF.
-    // Returns 'false' on error.
+  // Description:
+    // Loads the contents of a chunkfile into the given CContentCGF. 
+  // Returns 'false' on error.
     virtual bool LoadChunkFileContent(CContentCGF* pCGF, const char* filename, bool bNoWarningMode = false, bool bCopyChunkFile = true) = 0;
 
-    // Description:
-    // Loads the contents of a chunkfile into the given CContentCGF.
-    // Returns 'false' on error.
+  // Description:
+    // Loads the contents of a chunkfile into the given CContentCGF. 
+  // Returns 'false' on error.
     virtual bool LoadChunkFileContentFromMem(CContentCGF* pCGF, const void* pData, size_t nDataLen, uint32 nLoadingFlags, bool bNoWarningMode = false, bool bCopyChunkFile = true) = 0;
 
     // Description:
@@ -2265,49 +2284,50 @@ struct I3DEngine
     {
         eChunkFileFormat_0x745,
         eChunkFileFormat_0x746,
-    };
+    };    
     virtual ChunkFile::IChunkFileWriter* CreateChunkFileWriter(EChunkFileFormat eFormat, ICryPak* pPak, const char* filename) const = 0;
     virtual void ReleaseChunkFileWriter(ChunkFile::IChunkFileWriter* p) const = 0;
 
-    //////////////////////////////////////////////////////////////////////////
-
+    
     // Description:
-    //    Returns interface to terrain engine
+    //      Returns interface to terrain engine
     virtual ITerrain* GetITerrain() = 0;
 
     // Description:
-    //    Creates terrain engine
+    //      Creates terrain engine
     virtual ITerrain* CreateTerrain(const STerrainInfo& TerrainInfo) = 0;
 
     // Description:
-    //    Deletes terrain
+    //      Deletes terrain
     virtual void DeleteTerrain() = 0;
 
     // Description:
-    //    Returns interface to visarea manager.
+    //      Returns interface to visarea manager.
     virtual IVisAreaManager* GetIVisAreaManager() = 0;
 
     // Description:
-    //    Returns interface to the mergedmeshes subsystem
+    //      Returns interface to the mergedmeshes subsystem
     virtual IMergedMeshesManager* GetIMergedMeshesManager() = 0;
 
     // Description:
-    //    Places camera into every visarea or every manually set pre-cache points and render the scenes.
+    //      Places camera into every visarea or every manually set pre-cache points and render the scenes.
     virtual void PrecacheLevel(bool bPrecacheAllVisAreas, Vec3* pPrecachePoints, int nPrecachePointsNum) = 0;
 
     // Description:
-    //    Proposes 3dengine to load on next frame all shaders and textures synchronously.
+    //      Proposes 3dengine to load on next frame all shaders and textures synchronously.
     virtual void ProposeContentPrecache() = 0;
+    
+
 
     // Description:
-    //    Returns TOD interface.
+    //      Returns TOD interface.
     virtual ITimeOfDay* GetTimeOfDay() = 0;
 
     // Description:
     //    Updates the sky material paths.  LoadSkyMaterial will handle loading these materials.
     virtual void SetSkyMaterialPath(const string& skyMaterialPath) = 0;
     virtual void SetSkyLowSpecMaterialPath(const string& skyMaterialPath) = 0;
-
+    
     // Description:
     //    Loads the sky material for the level.  e_SkyType will determine if we load the low spec sky material or the regular sky material.
     virtual void LoadSkyMaterial() = 0;
@@ -2338,27 +2358,27 @@ struct I3DEngine
     virtual void GetCustomShadowMapFrustums(struct ShadowMapFrustum*& arrFrustums, int& nFrustumCount) = 0;
 
     // Description:
-    //      Saves pStatObj to a stream.
+    //        Saves pStatObj to a stream. 
     // Notes:
-    //      Full mesh for generated ones, path/geom otherwise
+    //        Full mesh for generated ones, path/geom otherwise
     virtual int SaveStatObj(IStatObj* pStatObj, TSerialize ser) = 0;
     // Description:
-    //      Loads statobj from a stream
+    //        Loads statobj from a stream
     virtual IStatObj* LoadStatObj(TSerialize ser) = 0;
 
     // Description:
-    //      Returns true if input line segment intersect clouds sprites.
+    //        Returns true if input line segment intersect clouds sprites.
     virtual bool CheckIntersectClouds(const Vec3& p1, const Vec3& p2) = 0;
 
     // Description:
-    //      Removes references to RenderMesh
+    //        Removes references to RenderMesh
     virtual void OnRenderMeshDeleted(IRenderMesh* pRenderMesh) = 0;
 
-    //   Used to highlight an object under the reticule
+    //     Used to highlight an object under the reticule
     virtual void DebugDraw_UpdateDebugNode() = 0;
 
     // Description:
-    //   Used by editor during AO computations
+    //     Used by editor during AO computations
     virtual bool RayObjectsIntersection2D(Vec3 vStart, Vec3 vEnd, Vec3& vHitPoint, EERType eERType) = 0;
 
 
@@ -2368,11 +2388,11 @@ struct I3DEngine
 
 
     // Description:
-    //   Frees lod transition state
+    //     Frees lod transition state
     virtual void FreeRNTmpData(CRNTmpData** ppInfo) = 0;
 
     // Description:
-    //   Call function 2 times (first to get the size then to fill in the data)
+    //     Call function 2 times (first to get the size then to fill in the data)
     // Arguments:
     //   pObjects - 0 if only the count is required
     // Return Value:
@@ -2399,7 +2419,7 @@ struct I3DEngine
     virtual IOpticsManager* GetOpticsManager() = 0;
 
     // Description:
-    //      Syncs and performs outstanding operations for the Asyncrhon ProcessStreaming Update
+    //        Syncs and performs outstanding operations for the Asyncrhon ProcessStreaming Update
     virtual void SyncProcessStreamingUpdate() = 0;
 
     // Set Callback for Editor to store additional information in Minimap tool
@@ -2504,6 +2524,8 @@ struct I3DEngine
     //     szBinaryStream - decoded stream + size
     virtual IStatObj* LoadDesignerObject(int nVersion, const char* szBinaryStream, int size) = 0;
 
+
+
     // </interfuscator:shuffle>
 };
 
@@ -2553,7 +2575,7 @@ struct SRenderingPassInfo
         DEFAULT_FLAGS = SHADOWS | BRUSHES | VEGETATION | ENTITIES | TERRAIN | WATEROCEAN | PARTICLES | DECALS | TERRAIN_DETAIL_MATERIALS | MERGED_MESHES | ROADS | WATER_VOLUMES | CLOUDS | GEOM_CACHES,
         DEFAULT_RECURSIVE_FLAGS = BRUSHES | VEGETATION | ENTITIES | TERRAIN | WATEROCEAN | PARTICLES | DECALS | TERRAIN_DETAIL_MATERIALS | MERGED_MESHES | ROADS | WATER_VOLUMES | CLOUDS | GEOM_CACHES
     };
-
+    
     // creating function for RenderingPassInfo, the create functions will fetch all other necessary
     // information like thread id/frame id, etc
     static SRenderingPassInfo CreateGeneralPassRenderingInfo(const CCamera& rCamera, uint32 nRenderingFlags = DEFAULT_FLAGS, bool bAuxWindow = false);
@@ -2561,8 +2583,8 @@ struct SRenderingPassInfo
     static SRenderingPassInfo CreateShadowPassRenderingInfo(const CCamera& rCamera, int nLightFlags, int nShadowMapLod, bool bExtendedLod, bool bIsMGPUCopy, uint32* pShadowGenMask, uint32 nSide, uint32 nShadowFrustumID, uint32 nRenderingFlags = DEFAULT_FLAGS);
     static SRenderingPassInfo CreateTempRenderingInfo(const CCamera& rCamera, const SRenderingPassInfo& rPassInfo);
     static SRenderingPassInfo CreateTempRenderingInfo(uint32 nRenderingFlags, const SRenderingPassInfo& rPassInfo);
-
-    // state getter
+    
+    // state getter    
     bool IsGeneralPass() const;
 
     bool IsRecursivePass() const;
@@ -2681,20 +2703,20 @@ inline bool SRenderingPassInfo::IsGeneralPass() const
 
 ///////////////////////////////////////////////////////////////////////////////
 inline bool SRenderingPassInfo::IsRecursivePass() const
-{
-    return m_nRenderStackLevel > 0;
+{ 
+    return m_nRenderStackLevel > 0; 
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-inline uint32 SRenderingPassInfo::GetRecursiveLevel() const
-{
-    return m_nRenderStackLevel;
+inline uint32 SRenderingPassInfo::GetRecursiveLevel() const 
+{ 
+    return m_nRenderStackLevel; 
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-inline bool SRenderingPassInfo::IsShadowPass() const
-{
-    return static_cast<EShadowMapType>(m_eShadowMapRendering) != SHADOW_MAP_NONE;
+inline bool SRenderingPassInfo::IsShadowPass() const 
+{ 
+    return static_cast<EShadowMapType>(m_eShadowMapRendering) != SHADOW_MAP_NONE; 
 }
 
 inline bool SRenderingPassInfo::IsGPUParticleCubemapPass() const
@@ -2713,25 +2735,25 @@ inline bool SRenderingPassInfo::IsRenderSceneToTexturePass() const
 ///////////////////////////////////////////////////////////////////////////////
 inline bool SRenderingPassInfo::IsCachedShadowPass() const
 {
-    return IsShadowPass() &&
-           (GetShadowMapType() == SRenderingPassInfo::SHADOW_MAP_CACHED ||
-            GetShadowMapType() == SRenderingPassInfo::SHADOW_MAP_CACHED_MGPU_COPY);
+    return IsShadowPass() && 
+        (GetShadowMapType() == SRenderingPassInfo::SHADOW_MAP_CACHED || 
+         GetShadowMapType() == SRenderingPassInfo::SHADOW_MAP_CACHED_MGPU_COPY);
 }
 ///////////////////////////////////////////////////////////////////////////////
-inline SRenderingPassInfo::EShadowMapType SRenderingPassInfo::GetShadowMapType() const
+inline SRenderingPassInfo::EShadowMapType SRenderingPassInfo::GetShadowMapType() const 
 {
     assert(IsShadowPass());
-    return static_cast<EShadowMapType>(m_eShadowMapRendering);
+    return static_cast<EShadowMapType>(m_eShadowMapRendering); 
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-inline bool SRenderingPassInfo::IsAuxWindow() const
-{
+inline bool SRenderingPassInfo::IsAuxWindow() const 
+{ 
     return m_bAuxWindow != 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-inline threadID SRenderingPassInfo::ThreadID() const
+inline threadID SRenderingPassInfo::ThreadID() const 
 {
     return m_nThreadID;
 }
@@ -2749,12 +2771,12 @@ inline uint32 SRenderingPassInfo::GetMainFrameID() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-inline const CCamera& SRenderingPassInfo::GetCamera() const
-{
+inline const CCamera& SRenderingPassInfo::GetCamera() const 
+{ 
     assert(m_pCamera != NULL);
-    return *m_pCamera;
+    return *m_pCamera; 
 }
-
+    
 ///////////////////////////////////////////////////////////////////////////////
 inline bool SRenderingPassInfo::IsCameraUnderWater() const
 {
@@ -2980,7 +3002,7 @@ inline void SRenderingPassInfo::InitRenderingFlags(uint32 nRenderingFlags)
     {
         m_nRenderingFlags &= ~SRenderingPassInfo::MERGED_MESHES;
     }
-
+    
     if (pDefaultMaterial->GetIVal() != 0 || pDetailMaterial->GetIVal() == 0)
     {
         m_nRenderingFlags &= ~SRenderingPassInfo::TERRAIN_DETAIL_MATERIALS;
@@ -3014,7 +3036,7 @@ inline SRenderingPassInfo SRenderingPassInfo::CreateGeneralPassRenderingInfo(con
 inline SRenderingPassInfo SRenderingPassInfo::CreateRecursivePassRenderingInfo(const CCamera& rCamera, uint32 nRenderingFlags)
 {
     static ICVar* pRecursionViewDistRatio = gEnv->pConsole->GetCVar("e_RecursionViewDistRatio");
-
+    
     SRenderingPassInfo passInfo;
     passInfo.m_nRenderStackLevel = 1;
     passInfo.SetCamera(rCamera);
@@ -3094,7 +3116,7 @@ struct SRendItemSorter
     // Deferred PreProcess needs a special ordering, use these to prefix the values
     // to ensure the deferred shading pass is after all LPV objects
     enum EDeferredPreprocess
-    {
+    {        
         eLPVPass = 0,
         eDeferredShadingPass = BIT(30)
     };
@@ -3107,12 +3129,12 @@ struct SRendItemSorter
 
     void IncreaseOctreeCounter()    { nValue += eOctreeNodeCounter; }
     void IncreaseObjectCounter()    { nValue += eObjectCounter; }
-    void IncreaseGroupCounter()     { nValue += eGroupCounter; }
+    void IncreaseGroupCounter()        { nValue += eGroupCounter; }
+    
+    void IncreaseParticleCounter()    { nValue += eParticleCounter; }    
+    uint32 ParticleCounter() const    { return nValue & ~eRecursivePassMask; }
 
-    void IncreaseParticleCounter()  { nValue += eParticleCounter; }
-    uint32 ParticleCounter() const  { return nValue & ~eRecursivePassMask; }
-
-    uint32 ShadowFrustumID() const  { return nValue  & ~eRecursivePassMask; }
+    uint32 ShadowFrustumID() const    { return nValue  & ~eRecursivePassMask; }
 
     uint32 GetValue() const { return nValue; }
 
@@ -3170,7 +3192,7 @@ inline SRendItemSorter SRendItemSorter::CreateRendItemSorter(const SRenderingPas
 ///////////////////////////////////////////////////////////////////////////////
 inline SRendItemSorter SRendItemSorter::CreateShadowPassRendItemSorter(const SRenderingPassInfo& passInfo)
 {
-    SRendItemSorter rendItemSorter;
+    SRendItemSorter rendItemSorter;    
     rendItemSorter.nValue = passInfo.ShadowFrustumID();
     rendItemSorter.nValue |= passInfo.IsRecursivePass() ? eRecursivePassMask : 0;
     return rendItemSorter;
@@ -3181,7 +3203,7 @@ inline SRendItemSorter SRendItemSorter::CreateParticleRendItemSorter(const SRend
 {
     SRendItemSorter rendItemSorter;
     rendItemSorter.nValue = 0;
-    rendItemSorter.nValue |= passInfo.IsRecursivePass() ? eRecursivePassMask : 0;
+    rendItemSorter.nValue |= passInfo.IsRecursivePass() ? eRecursivePassMask : 0;    
     return rendItemSorter;
 }
 
@@ -3190,7 +3212,7 @@ inline SRendItemSorter SRendItemSorter::CreateDeferredPreProcessRendItemSorter(c
 {
     SRendItemSorter rendItemSorter;
     rendItemSorter.nValue = 0;
-    rendItemSorter.nValue |= passInfo.IsRecursivePass() ? eRecursivePassMask : 0;
+    rendItemSorter.nValue |= passInfo.IsRecursivePass() ? eRecursivePassMask : 0;    
     rendItemSorter.nValue |= deferredPrerocessType;
     return rendItemSorter;
 }

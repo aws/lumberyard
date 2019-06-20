@@ -12,6 +12,7 @@
 #pragma once
 
 #include <AzCore/Component/ComponentBus.h>
+#include <AzFramework/Entity/EntityContext.h>
 
 namespace AzToolsFramework
 {
@@ -37,7 +38,7 @@ namespace AzToolsFramework
      * Notifications about whether an Entity is locked in the Editor.
      * See \ref EditorLockRequests.
      */
-    class EditorLockComponentNotifications
+    class EditorEntityLockComponentNotifications
         : public AZ::ComponentBus
     {
     public:
@@ -45,6 +46,36 @@ namespace AzToolsFramework
         virtual void OnEntityLockChanged(bool /*locked*/) {}
     };
 
-    /// \ref EditorVisibilityNotifications
-    using EditorLockComponentNotificationBus = AZ::EBus<EditorLockComponentNotifications>;
+    /// \ref EditorEntityLockComponentNotifications
+    using EditorEntityLockComponentNotificationBus = AZ::EBus<EditorEntityLockComponentNotifications>;
+
+    /// Alias for EditorEntityLockComponentNotifications - prefer EditorEntityLockComponentNotifications,
+    /// EditorLockComponentNotifications is deprecated.
+    using EditorLockComponentNotifications = EditorEntityLockComponentNotifications;
+    /// Alias for EditorEntityLockComponentNotificationBus - prefer EditorEntityLockComponentNotificationBus,
+    /// EditorLockComponentNotificationBus is deprecated.
+    using EditorLockComponentNotificationBus = EditorEntityLockComponentNotificationBus;
+
+    /**
+     * Notifications about whether an Entity is locked in the Editor.
+     * \see EditorLockRequests.
+     */
+    class EditorContextLockComponentNotifications
+        : public AZ::EBusTraits
+    {
+    public:
+        using BusIdType = AzFramework::EntityContextId;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::ById;
+
+        /// The entity's current lock state has changed.
+        virtual void OnEntityLockChanged(AZ::EntityId /*entityId*/, bool /*locked*/) {}
+    
+    protected:
+        /// Non-virtual protected destructor.
+        /// Types implementing this interface should not be deleted through it.
+        ~EditorContextLockComponentNotifications() = default;
+    };
+
+    /// \ref EditorEntityLockComponentNotifications
+    using EditorContextLockComponentNotificationBus = AZ::EBus<EditorContextLockComponentNotifications>;
 }

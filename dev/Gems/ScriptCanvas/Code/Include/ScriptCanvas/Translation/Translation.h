@@ -12,20 +12,20 @@
 
 #pragma once
 
-#include <ScriptCanvas/AST/AST.h>
-#include <ScriptCanvas/AST/Node.h>
+#include <AzCore/Outcome/Outcome.h>
+#include <AzCore/std/string/string.h>
 
 namespace ScriptCanvas
 {
     class Graph;
 
-    namespace AST
-    {
-        class Node;
-    }
-
     namespace Translation
     {
-        AST::NodePtrConst Translate(const Graph& graph);
-    }
-}
+        AZ::Outcome<void, AZStd::string> ToCPlusPlusAndLua(const Graph& graph, const AZStd::string& name, const AZStd::string& path);
+        
+        AZ::Outcome<void, AZStd::string> ToCPlusPlus(const Graph& graph, const AZStd::string& name, const AZStd::string& path);
+        
+        AZ::Outcome<void, AZStd::string> ToLua(const Graph& graph, const AZStd::string& name, const AZStd::string& path);
+    } // namespace Translation
+
+} // namespace ScriptCanvas

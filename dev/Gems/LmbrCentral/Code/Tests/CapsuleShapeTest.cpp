@@ -238,6 +238,57 @@ namespace UnitTest
         EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(7.5f, 22.5f, 6.25f)));
     }
 
+    TEST_F(CapsuleShapeTest, GetTransformAndLocalBounds1)
+    {
+        Entity entity;
+        Transform transformIn = Transform::CreateIdentity();
+        CreateCapsule(transformIn, 5.0f, 2.0f, entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(transformIn));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-5.0f, -5.0f, -5.0f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(5.0f, 5.0f, 5.0f)));
+    }
+
+    TEST_F(CapsuleShapeTest, GetTransformAndLocalBounds2)
+    {
+        Entity entity;
+        Transform transformIn = Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi) *
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisY(), Constants::QuarterPi), Vector3(-10.0f, -10.0f, 0.0f));
+        transformIn.MultiplyByScale(Vector3(3.0f));
+        CreateCapsule(transformIn, 5.0f, 2.0f, entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(transformIn));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-5.0f, -5.0f, -5.0f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(5.0f, 5.0f, 5.0f)));
+    }
+
+    TEST_F(CapsuleShapeTest, GetTransformAndLocalBounds3)
+    {
+        Entity entity;
+        Transform transformIn = Transform::CreateFromQuaternionAndTranslation(
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisX(), Constants::HalfPi) *
+            Quaternion::CreateFromAxisAngle(Vector3::CreateAxisY(), Constants::QuarterPi), Vector3(-10.0f, -10.0f, 0.0f));
+        transformIn.MultiplyByScale(Vector3(3.0f));
+        CreateCapsule(transformIn, 2.0f, 5.0f, entity);
+
+        Transform transformOut;
+        Aabb aabb;
+        ShapeComponentRequestsBus::Event(entity.GetId(), &ShapeComponentRequests::GetTransformAndLocalBounds, transformOut, aabb);
+
+        EXPECT_TRUE(transformOut.IsClose(transformIn));
+        EXPECT_TRUE(aabb.GetMin().IsClose(AZ::Vector3(-2.0f, -2.0f, -2.5f)));
+        EXPECT_TRUE(aabb.GetMax().IsClose(AZ::Vector3(2.0f, 2.0f, 2.5f)));
+    }
+
     // point inside scaled
     TEST_F(CapsuleShapeTest, IsPointInsideSuccess1)
     {

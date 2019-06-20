@@ -17,14 +17,24 @@ def build(bld):
         target           = 'IOSLauncher',
         file_list        = 'ioslauncher.waf_files',
         platforms        = ['ios'],
-        configurations   = ['debug', 'profile', 'performance', 'release'],
-        ios_launcher     = True,
-        use              = ['AzGameFramework'],
+        exclude_test     = True,
+        client_only      = True,
+        use              = ['AzGameFramework',
+                            'FREETYPE2',
+                            'TOMCRYPT',
+                            'TOMMATH'],
+        includes        = [bld.Path('Code/CryEngine/CrySystem'),
+                            bld.Path('Code/Launcher')],
+        cxxflags        = ['-x', 'objective-c++'],
+    )
 
-        # Common
-        includes        = [ bld.Path('Code/CryEngine/CrySystem'),
-                            bld.Path('Code/Launcher') ],
-        uselib          = [ 'TOMMATH', 'TOMCRYPT', 'FREETYPE2'],
 
-        cxxflags        = [ '-x', 'objective-c++' ],
+def package(pkg):
+    build(pkg) # Need to execute this to generate our task_generator...
+    pkg.package_game(
+        target          = '{}Launcher'.format(pkg.project),
+        task_gen_name   = '{}IOSLauncher'.format(pkg.project),
+        platforms       = ['ios'],
+        exclude_test    = True,
+        client_only     = True,
     )

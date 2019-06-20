@@ -26,12 +26,13 @@
 #endif
 
 /// Cpu Features
-#define CFI_FPUEMULATION 1
-#define CFI_MMX   2
-#define CFI_3DNOW 4
-#define CFI_SSE   8
+#define CFI_FPUEMULATION 0x01
+#define CFI_MMX   0x02
+#define CFI_3DNOW 0x04
+#define CFI_SSE   0x08
 #define CFI_SSE2  0x10
 #define CFI_SSE3  0x20
+#define CFI_F16C  0x40
 
 /// Type of Cpu Vendor.
 enum ECpuVendor
@@ -149,6 +150,7 @@ public:
     bool hasSSE3() { return (m_Cpu[0].mFeatures & CFI_SSE3) != 0; }
     bool has3DNow() { return (m_Cpu[0].mFeatures & CFI_3DNOW) != 0; }
     bool hasMMX() { return (m_Cpu[0].mFeatures & CFI_MMX) != 0; }
+    bool hasF16C() { return (m_Cpu[0].mFeatures & CFI_F16C) != 0; }
 
     unsigned int GetLogicalCPUCount() { return m_NumLogicalProcessors; }
     unsigned int GetPhysCPUCount() { return m_NumPhysicsProcessors; }

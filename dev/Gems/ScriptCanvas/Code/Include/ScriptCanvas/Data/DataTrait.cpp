@@ -10,7 +10,6 @@
 *
 */
 
-#include <precompiled.h>
 #include <ScriptCanvas/Data/DataTrait.h>
 #include <ScriptCanvas/Data/BehaviorContextObject.h>
 

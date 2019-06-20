@@ -1,0 +1,7 @@
+{
+    "ARCHS" : "arm64",
+    "CODE_SIGN_IDENTITY" : "iPhone Developer",
+    "COMBINE_HIDPI_IMAGES" : "Yes",
+    "DEVELOPMENT_TEAM" : "CF9TGN983S",
+    "VALID_ARCHS" : ["arm64"]
+}

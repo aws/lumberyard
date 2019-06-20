@@ -1,7 +1,8 @@
 {
     "auto": {
         "Include": [
-            "Include/ImGuiBus.h"
+            "Include/ImGuiBus.h",
+            "Include/ImGuiLYCurveEditorBus.h"
         ],
         "Implementation": [
             "Source/ImGuiGem.cpp"
@@ -15,7 +16,9 @@
             "Source/LYCommonMenu/ImGuiLYCommonMenu.h",
             "Source/LYCommonMenu/ImGuiLYCommonMenu.cpp",
             "Source/LYCommonMenu/ImGuiLYEntityOutliner.h",
-            "Source/LYCommonMenu/ImGuiLYEntityOutliner.cpp"
+            "Source/LYCommonMenu/ImGuiLYEntityOutliner.cpp",
+            "Source/LYCommonMenu/ImGuiLYCurveEditor.h",
+            "Source/LYCommonMenu/ImGuiLYCurveEditor.cpp"
         ]
     }
 }

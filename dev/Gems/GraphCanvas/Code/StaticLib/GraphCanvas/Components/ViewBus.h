@@ -11,12 +11,15 @@
 */
 #pragma once
 
+#include <QRect>
+
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/Math/Vector2.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
 
+class QImage;
 class QResizeEvent;
 class QWheelEvent;
 
@@ -32,7 +35,13 @@ namespace GraphCanvas
         float m_anchorPointY = 0.0f;
     };
 
-    typedef AZ::EntityId ViewId;
+    struct ViewLimits
+    {
+        static constexpr qreal ZOOM_MIN = 0.1;
+        static constexpr qreal ZOOM_MAX = 2.0;
+        static constexpr qreal ZOOM_RANGE = ZOOM_MAX - ZOOM_MIN;
+        static_assert(ZOOM_RANGE != 0, "Zoom Range must be non-zero value.");
+    };
 
     class GraphCanvasGraphicsView;
 
@@ -89,6 +98,21 @@ namespace GraphCanvas
 
         //! Get the view as a CanvasGraphicsView.
         virtual GraphCanvasGraphicsView* AsGraphicsView() = 0;
+
+        //! Renders out the entire graph into a newly created QPixmap.
+        virtual QImage* CreateImageOfGraph() = 0;
+
+        //! Renders out the specified area of the graph into a newly created QPixmap.
+        virtual QImage* CreateImageOfGraphArea(QRectF area) = 0;
+
+        //! Returns the 'zoom' aka scale of the GraphCanvasGraphicsView object
+        virtual qreal GetZoomLevel() const = 0;
+
+        //! Pans the displayed scene by the specific amount in the specified time.
+        virtual void PanSceneBy(QPointF repositioning, AZStd::chrono::milliseconds duration) = 0;
+
+        //! Pans the display scene to the specificed point in the specified time.
+        virtual void PanSceneTo(QPointF scenePoint, AZStd::chrono::milliseconds duration) = 0;
     };
 
     using ViewRequestBus = AZ::EBus<ViewRequests>;
@@ -111,6 +135,9 @@ namespace GraphCanvas
 
         //! The view was centered on an area using CenterOnArea()
         virtual void OnViewCenteredOnArea() {}
+
+        //! The view was zoomed
+        virtual void OnZoomChanged(qreal zoomLevel) {};
     };
 
     using ViewNotificationBus = AZ::EBus<ViewNotifications>;

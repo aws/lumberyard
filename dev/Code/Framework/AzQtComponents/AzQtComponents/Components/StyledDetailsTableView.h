@@ -30,6 +30,7 @@ namespace AzQtComponents
         explicit StyledDetailsTableView(QWidget* parent = nullptr);
 
         void setModel(QAbstractItemModel* model) override;
+        void ResetDelegate();
 
     protected:
         void paintEvent(QPaintEvent* ev) override;

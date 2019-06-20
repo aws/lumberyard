@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <AzCore/Asset/AssetManager.h>
 #include <AzCore/Serialization/SerializeContext.h>
 

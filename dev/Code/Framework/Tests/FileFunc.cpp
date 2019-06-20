@@ -26,20 +26,8 @@ namespace AzFramework
 }
 
 using namespace UnitTest;
-class FileFuncTest
-    : public AllocatorsFixture
-{
-public:
-    FileFuncTest()
-        : AllocatorsFixture(15, false)
-    {
-    }
 
-    ~FileFuncTest()
-    {
-    }
-};
-
+using FileFuncTest = AllocatorsFixture;
 
 TEST_F(FileFuncTest, UpdateCfgContents_InValidInput_Fail)
 {

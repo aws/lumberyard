@@ -45,5 +45,5 @@ namespace AZStd
     typedef int nullptr_t;
 #endif
 
-    typedef AZ::u64 sys_time_t;
+    using sys_time_t = AZ::s64;
 }

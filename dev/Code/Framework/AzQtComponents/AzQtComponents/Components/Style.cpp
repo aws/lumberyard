@@ -12,6 +12,7 @@
 #include <QtGlobal>
 
 #include <AzQtComponents/Components/Style.h>
+#include <AzQtComponents/Components/ConfigHelpers.h>
 #include <AzQtComponents/Components/Widgets/PushButton.h>
 #include <AzQtComponents/Components/Widgets/CheckBox.h>
 #include <AzQtComponents/Components/Widgets/RadioButton.h>
@@ -27,6 +28,11 @@
 #include <AzQtComponents/Components/Widgets/BreadCrumbs.h>
 #include <AzQtComponents/Components/Widgets/SpinBox.h>
 #include <AzQtComponents/Components/Widgets/ScrollBar.h>
+#include <AzQtComponents/Components/Widgets/TabWidget.h>
+#include <AzQtComponents/Components/Widgets/TableView.h>
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
+#include <AzQtComponents/Components/Widgets/AssetFolderThumbnailView.h>
+#include <AzQtComponents/Components/Titlebar.h>
 #include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
 #include <AzQtComponents/Utilities/TextUtilities.h>
 
@@ -46,10 +52,21 @@
 #include <QScopedValueRollback>
 #include <QSet>
 #include <QLineEdit>
+#include <QHeaderView>
+#include <QComboBox>
 #include <QDebug>
+#include <QKeyEvent>
+#include <QTextEdit>
+#include <QKeySequenceEdit>
+
+#include <QtWidgets/private/qstylesheetstyle_p.h>
 
 namespace AzQtComponents
 {
+    // Add this css class to QTreeView's if you want to have absolute control of styling
+    // in stylesheets. If you don't add this class, the expand arrows will ALWAYS paint.
+    // See ::drawPrimitive below for more info.
+    static QString g_treeViewDisableDefaultArrorPainting = QStringLiteral("DisableArrowPainting");
 
     static const char g_removeAllStylingProperty[] = {"RemoveAllStyling"};
 
@@ -72,6 +89,11 @@ namespace AzQtComponents
         BreadCrumbs::Config breadCrumbsConfig;
         SpinBox::Config spinBoxConfig;
         ScrollBar::Config scrollBarConfig;
+        TabWidget::Config tabWidgetConfig;
+        TableView::Config tableViewConfig;
+        FilteredSearchWidget::Config filteredSearchWidgetConfig;
+        AssetFolderThumbnailView::Config assetFolderThumbnailViewConfig;
+        TitleBar::Config titleBarConfig;
 
         QFileSystemWatcher watcher;
 
@@ -83,28 +105,24 @@ namespace AzQtComponents
     void loadConfig(Style* style, QFileSystemWatcher* watcher, ConfigType* config, const QString& path)
     {
         QString fullPath = QStringLiteral("AzQtComponentWidgets:%1").arg(path);
-        if (QFile::exists(fullPath))
+        ConfigHelpers::loadConfig<ConfigType, WidgetType>(watcher, config, fullPath, style, std::bind(&Style::settingsReloaded, style));
+    }
+
+    Style::DrawWidgetSentinel::DrawWidgetSentinel(const QWidget* widgetAboutToDraw)
+        : m_style(qobject_cast<const Style*>(widgetAboutToDraw->style()))
+        , m_lastDrawWidget(m_style ? m_style->m_drawControlWidget : nullptr)
+    {
+        if (m_style)
         {
-            // add to the file watcher
-            watcher->addPath(fullPath);
-
-            // connect the relead slot()
-            QObject::connect(watcher, &QFileSystemWatcher::fileChanged, style, [style, fullPath, config](const QString& changedPath) {
-                if (changedPath == fullPath)
-                {
-                    QSettings settings(fullPath, QSettings::IniFormat);
-                    *config = WidgetType::loadConfig(settings);
-
-                    Q_EMIT style->settingsReloaded();
-                }
-            });
-
-            QSettings settings(fullPath, QSettings::IniFormat);
-            *config = WidgetType::loadConfig(settings);
+            m_style->m_drawControlWidget = widgetAboutToDraw;
         }
-        else
+    }
+
+    Style::DrawWidgetSentinel::~DrawWidgetSentinel()
+    {
+        if (m_style)
         {
-            *config = WidgetType::defaultConfig();
+            m_style->m_drawControlWidget = m_lastDrawWidget.data();
         }
     }
 
@@ -116,7 +134,7 @@ namespace AzQtComponents
         LineEdit::initializeWatcher();
         ScrollBar::initializeWatcher();
 
-        // set up the push button settings watcher
+        // set up settings watchers
         loadConfig<PushButton::Config, PushButton>(this, &m_data->watcher, &m_data->pushButtonConfig, "PushButtonConfig.ini");
         loadConfig<RadioButton::Config, RadioButton>(this, &m_data->watcher, &m_data->radioButtonConfig, "RadioButtonConfig.ini");
         loadConfig<CheckBox::Config, CheckBox>(this, &m_data->watcher, &m_data->checkBoxConfig, "CheckBoxConfig.ini");
@@ -132,6 +150,11 @@ namespace AzQtComponents
         loadConfig<BreadCrumbs::Config, BreadCrumbs>(this, &m_data->watcher, &m_data->breadCrumbsConfig, "BreadCrumbsConfig.ini");
         loadConfig<SpinBox::Config, SpinBox>(this, &m_data->watcher, &m_data->spinBoxConfig, "SpinBoxConfig.ini");
         loadConfig<ScrollBar::Config, ScrollBar>(this, &m_data->watcher, &m_data->scrollBarConfig, "ScrollBarConfig.ini");
+        loadConfig<TabWidget::Config, TabWidget>(this, &m_data->watcher, &m_data->tabWidgetConfig, "TabWidgetConfig.ini");
+        loadConfig<TableView::Config, TableView>(this, &m_data->watcher, &m_data->tableViewConfig, "TableViewConfig.ini");
+        loadConfig<FilteredSearchWidget::Config, FilteredSearchWidget>(this, &m_data->watcher, &m_data->filteredSearchWidgetConfig, "FilteredSearchWidgetConfig.ini");
+        loadConfig<AssetFolderThumbnailView::Config, AssetFolderThumbnailView>(this, &m_data->watcher, &m_data->assetFolderThumbnailViewConfig, "AssetFolderThumbnailViewConfig.ini");
+        loadConfig<TitleBar::Config, TitleBar>(this, &m_data->watcher, &m_data->titleBarConfig, "TitleBarConfig.ini");
     }
 
     Style::~Style()
@@ -177,6 +200,23 @@ namespace AzQtComponents
                     return ProgressBar::sizeFromContents(this, type, option, size, widget, m_data->progressBarConfig);
                 }
                 break;
+            case QStyle::CT_ComboBox:
+            {
+                if (qobject_cast<const QComboBox*>(widget))
+                {
+                    return ComboBox::sizeFromContents(this, type, option, size, widget, m_data->comboBoxConfig);
+                }
+                break;
+            }
+            case QStyle::CT_TabBarTab:
+            {
+                const auto tabSize = TabBar::sizeFromContents(this, type, option, size, widget, m_data->tabWidgetConfig);
+                if (tabSize.isValid())
+                {
+                    return tabSize;
+                }
+                break;
+            }
         }
 
         return QProxyStyle::sizeFromContents(type, option, size, widget);
@@ -184,6 +224,8 @@ namespace AzQtComponents
 
     void Style::drawControl(QStyle::ControlElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const
     {
+        QScopedValueRollback<const QWidget*> rollbackDrawControl(m_drawControlWidget, widget);
+
         if (!hasStyle(widget))
         {
             QProxyStyle::drawControl(element, option, painter, widget);
@@ -261,6 +303,48 @@ namespace AzQtComponents
                 }
             }
             break;
+
+            case CE_TabBarTabLabel:
+            {
+                if (qobject_cast<const QTabBar*>(widget))
+                {
+                    // Qt lacks a textAlignment variable in QStyleOptionTab, which is used for drawing QTabWidget and QTabBar.
+                    // Text alignment for tab labels is hardcoded to horizontal center. For this reason, there is no way to customize
+                    // text alignment if not creating a new member variable for QStyleOptionTab (or to subclass QStyleOptionTab) on Qt
+                    // side. To avoid doing either, we set a new variable to be used from Style::drawItemText, with a scope limited to
+                    // the drawing of this specific control element (the tab label).
+                    QScopedValueRollback<QVariant> rollbackTabBarTabLabel(m_drawItemTextAlignmentOverride, {(int)(Qt::AlignLeft | Qt::AlignVCenter)});
+                    if (TabBar::drawTabBarTabLabel(this, option, painter, widget, m_data->tabWidgetConfig))
+                    {
+                        return;
+                    }
+                }
+            }
+            break;
+
+            case CE_Header:
+            {
+                if (qobject_cast<const QHeaderView*>(widget))
+                {
+                    if (TableView::drawHeader(this, option, painter, widget, m_data->tableViewConfig))
+                    {
+                        return;
+                    }
+                }
+            }
+            break;
+
+            case CE_ComboBoxLabel:
+            {
+                if (qobject_cast<const QComboBox*>(widget))
+                {
+                    if (ComboBox::drawComboBoxLabel(this, option, painter, widget, m_data->comboBoxConfig))
+                    {
+                        return;
+                    }
+                }
+            }
+            break;
         }
 
         return QProxyStyle::drawControl(element, option, painter, widget);
@@ -268,6 +352,32 @@ namespace AzQtComponents
 
     void Style::drawPrimitive(QStyle::PrimitiveElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const
     {
+        if (element == PE_IndicatorDockWidgetResizeHandle)
+        {
+            // There is a bug in Qt where the option state Horizontal flag is
+            // being set/unset incorrectly for some cases, particularly when you
+            // have multiple dock widgets docked on the absolute edges, so we
+            // can rely instead on the width/height relationship to determine
+            // if the resize handle should be horizontal or vertical.
+
+            // Here we just patch the QStyleOption and forward the drawing to its normal route
+            if (auto optionHacked = const_cast<QStyleOption*>(option))
+            {
+                const bool isHorizontal = option->rect.width() > option->rect.height();
+                // TODO for Qt >= 5.7: Simply replace with: optionHacked->state.setFlag(QStyle::State_Horizontal, isHorizontal);
+                if (isHorizontal)
+                {
+                    optionHacked->state |= QStyle::State_Horizontal;
+                }
+                else
+                {
+                    optionHacked->state &= ~QStyle::State_Horizontal;
+                }
+            }
+
+            return QProxyStyle::drawPrimitive(element, option, painter, widget);
+        }
+
         if (!hasStyle(widget))
         {
             QProxyStyle::drawPrimitive(element, option, painter, widget);
@@ -309,7 +419,11 @@ namespace AzQtComponents
 
             case PE_IndicatorArrowDown:
             {
-                if (PushButton::drawIndicatorArrow(this, option, painter, widget, m_data->pushButtonConfig))
+                if (qobject_cast<const QComboBox*>(widget) && ComboBox::drawIndicatorArrow(this, option, painter, widget, m_data->comboBoxConfig))
+                {
+                    return;
+                }
+                else if (PushButton::drawIndicatorArrow(this, option, painter, widget, m_data->pushButtonConfig))
                 {
                     return;
                 }
@@ -321,6 +435,33 @@ namespace AzQtComponents
                 if (PaletteView::drawDropIndicator(this, option, painter, widget, m_data->paletteViewConfig))
                 {
                     return;
+                }
+            }
+            break;
+
+            case PE_IndicatorBranch:
+            {
+                // With how we setup our styles, Style::drawPrimitive gets first crack at the treeview branch indicator.
+                // Since it doesn't care to do anything, it delegates to the base style, which is a QStyleSheetStyle.
+                // If there is a css rule in the loaded stylesheet, the QStyleSheetStyle will follow those rules -
+                // and NOT draw the indicator arrow.
+                // So below, we let the QStyleSheetStyle do its thing, then we manually call into the Fusion style
+                // to draw the arrows.
+                // If you really don't want this, add the g_treeViewDisableDefaultArrorPainting class to your object.
+                // I.e. Style::addClass(aQTreeView, g_treeViewDisableDefaultArrorPainting);
+                if (qobject_cast<const QTreeView*>(widget) && !hasClass(widget, g_treeViewDisableDefaultArrorPainting))
+                {
+                    QStyleSheetStyle* styleSheetStyle = qobject_cast<QStyleSheetStyle*>(baseStyle());
+                    if (styleSheetStyle)
+                    {
+                        QStyle* fusionStyle = styleSheetStyle->baseStyle();
+                        if (fusionStyle && (fusionStyle != this) && (fusionStyle != styleSheetStyle))
+                        {
+                            QProxyStyle::drawPrimitive(element, option, painter, widget);
+
+                            return fusionStyle->drawPrimitive(element, option, painter, widget);
+                        }
+                    }
                 }
             }
             break;
@@ -364,9 +505,35 @@ namespace AzQtComponents
                     return;
                 }
                 break;
+
+            case CC_ComboBox:
+                if (ComboBox::drawComboBox(this, option, painter, widget, m_data->comboBoxConfig))
+                {
+                    return;
+                }
+                break;
         }
 
         return QProxyStyle::drawComplexControl(element, option, painter, widget);
+    }
+
+    void Style::drawItemText(QPainter* painter, const QRect& rectangle, int alignment, const QPalette& palette, bool enabled, const QString& text, QPalette::ColorRole textRole) const
+    {
+        if (m_drawItemTextAlignmentOverride.isValid())
+        {
+            alignment = m_drawItemTextAlignmentOverride.value<Qt::Alignment>();
+        }
+        return QProxyStyle::drawItemText(painter, rectangle, alignment, palette, enabled, text, textRole);
+    }
+
+    QPixmap Style::generatedIconPixmap(QIcon::Mode iconMode, const QPixmap& pixmap, const QStyleOption* option) const
+    {
+        if (qobject_cast<const TableView*>(m_drawControlWidget) && iconMode == QIcon::Mode::Selected)
+        {
+            return QProxyStyle::generatedIconPixmap(QIcon::Mode::Active, pixmap, option);
+        }
+
+        return QProxyStyle::generatedIconPixmap(iconMode, pixmap, option);
     }
 
     QRect Style::subControlRect(ComplexControl control, const QStyleOptionComplex* option, SubControl subControl, const QWidget* widget) const
@@ -433,6 +600,34 @@ namespace AzQtComponents
         }
 
         return QProxyStyle::subControlRect(control, option, subControl, widget);
+    }
+
+    QRect Style::subElementRect(SubElement element, const QStyleOption* option, const QWidget* widget) const
+    {
+        if (!hasStyle(widget))
+        {
+            return QProxyStyle::subElementRect(element, option, widget);
+        }
+
+        switch (element)
+        {
+            case SE_ItemViewItemText:       // intentional fall-through
+            case SE_ItemViewItemDecoration: // intentional fall-through
+            case SE_ItemViewItemFocusRect:
+                auto optionItemView = qstyleoption_cast<const QStyleOptionViewItem*>(option);
+                if (qobject_cast<const TableView*>(widget) && optionItemView)
+                {
+                    QRect r = TableView::itemViewItemRect(this, element, optionItemView, widget, m_data->tableViewConfig);
+                    if (!r.isNull())
+                    {
+                        return r;
+                    }
+                }
+
+                break;
+        }
+
+        return QProxyStyle::subElementRect(element, option, widget);
     }
 
     int Style::pixelMetric(QStyle::PixelMetric metric, const QStyleOption* option,
@@ -515,6 +710,23 @@ namespace AzQtComponents
                 break;
             }
 
+            case QStyle::PM_TitleBarHeight:
+            {
+                const int height = TitleBar::titleBarHeight(this, option, widget, m_data->titleBarConfig, m_data->tabWidgetConfig);
+                if (height != -1)
+                {
+                    return height;
+                }
+                break;
+            }
+
+            case QStyle::PM_TabCloseIndicatorWidth:
+            case QStyle::PM_TabCloseIndicatorHeight:
+            {
+                return TabBar::closeButtonSize(this, option, widget, m_data->tabWidgetConfig);
+                break;
+            }
+
             default:
                 break;
         }
@@ -537,6 +749,7 @@ namespace AzQtComponents
         if (hasStyle(widget))
         {
             bool polishedAlready = false;
+
             polishedAlready = polishedAlready || PushButton::polish(this, widget, m_data->pushButtonConfig);
             polishedAlready = polishedAlready || CheckBox::polish(this, widget, m_data->checkBoxConfig);
             polishedAlready = polishedAlready || RadioButton::polish(this, widget, m_data->radioButtonConfig);
@@ -548,8 +761,18 @@ namespace AzQtComponents
             polishedAlready = polishedAlready || PaletteView::polish(this, widget, m_data->paletteViewConfig);
             polishedAlready = polishedAlready || SpinBox::polish(this, widget, m_data->spinBoxConfig);
             polishedAlready = polishedAlready || LineEdit::polish(this, widget, m_data->lineEditConfig);
-            polishedAlready = polishedAlready || ScrollBar::polish(this, widget, m_data->scrollBarConfig);
             polishedAlready = polishedAlready || ComboBox::polish(this, widget, m_data->comboBoxConfig);
+            polishedAlready = polishedAlready || AssetFolderThumbnailView::polish(this, widget, m_data->scrollBarConfig, m_data->assetFolderThumbnailViewConfig);
+            polishedAlready = polishedAlready || FilteredSearchWidget::polish(this, widget, m_data->filteredSearchWidgetConfig);
+            polishedAlready = polishedAlready || TableView::polish(this, widget, m_data->scrollBarConfig, m_data->tableViewConfig);
+            polishedAlready = polishedAlready || TitleBar::polish(this, widget, m_data->titleBarConfig);
+            polishedAlready = polishedAlready || TabBar::polish(this, widget, m_data->tabWidgetConfig);
+
+            // A number of classes derive from QAbstractScrollArea. If one of these classes requires
+            // polishing ensure that their polish function calls ScrollBar::polish.
+            // ScrollBar::polish must be done last otherwise it will trap the event before it gets
+            // to derived classes.
+            polishedAlready = polishedAlready || ScrollBar::polish(this, widget, m_data->scrollBarConfig);
         }
 
         QProxyStyle::polish(widget);
@@ -571,8 +794,16 @@ namespace AzQtComponents
 
             unpolishedAlready = unpolishedAlready || SpinBox::unpolish(this, widget, m_data->spinBoxConfig);
             unpolishedAlready = unpolishedAlready || LineEdit::unpolish(this, widget, m_data->lineEditConfig);
-            unpolishedAlready = unpolishedAlready || ScrollBar::unpolish(this, widget, m_data->scrollBarConfig);
             unpolishedAlready = unpolishedAlready || ComboBox::unpolish(this, widget, m_data->comboBoxConfig);
+            unpolishedAlready = unpolishedAlready || FilteredSearchWidget::unpolish(this, widget, m_data->filteredSearchWidgetConfig);
+            unpolishedAlready = unpolishedAlready || TableView::unpolish(this, widget, m_data->scrollBarConfig, m_data->tableViewConfig);
+            unpolishedAlready = unpolishedAlready || TitleBar::unpolish(this, widget, m_data->titleBarConfig);
+
+            // A number of classes derive from QAbstractScrollArea. If one of these classes requires
+            // unpolishing ensure that their unpolish function calls ScrollBar::polish.
+            // ScrollBar::unpolish must be done last otherwise it will trap the event before it gets
+            // to derived classes.
+            unpolishedAlready = unpolishedAlready || ScrollBar::unpolish(this, widget, m_data->scrollBarConfig);
         }
 
         QProxyStyle::unpolish(widget);
@@ -610,6 +841,14 @@ namespace AzQtComponents
 
     int Style::styleHint(QStyle::StyleHint hint, const QStyleOption* option, const QWidget* widget, QStyleHintReturn* returnData) const
     {
+#if QT_VERSION >= QT_VERSION_CHECK(5,11,1)
+        if (hint == QStyle::SH_SpinBox_StepModifier)
+        {
+            // This was introduced in 5.12 but we backported it to 5.11
+            return Qt::ShiftModifier;
+        }
+#endif
+
         if (!hasStyle(widget))
         {
             return QProxyStyle::styleHint(hint, option, widget, returnData);
@@ -758,6 +997,31 @@ namespace AzQtComponents
         button->style()->polish(button);
     }
 
+    void Style::removeClass(QWidget* button, const QString& className)
+    {
+        QVariant buttonClassVariant = button->property("class");
+        if (!buttonClassVariant.isNull())
+        {
+            const QString classText = buttonClassVariant.toString();
+            QStringList classList = classText.split(QRegularExpression("\\s+"));
+            bool changed = false;
+            for (int i = classList.count() -1; i >= 0; --i)
+            {
+                if (classList[i].compare(className, Qt::CaseInsensitive) == 0)
+                {
+                    classList.removeAt(i);
+                    changed = true;
+                }
+            }
+            if (changed)
+            {
+                button->setProperty("class", classList.join(QLatin1Char(' ')));
+                button->style()->unpolish(button);
+                button->style()->polish(button);
+            }
+        }
+    }
+
     QPixmap Style::cachedPixmap(const QString& name)
     {
         QPixmap pixmap;
@@ -781,9 +1045,14 @@ namespace AzQtComponents
         painter->restore();
     }
 
-    void Style::doNotStyle(QWidget* widget)
+    void Style::flagToIgnore(QWidget* widget)
     {
         widget->setProperty(g_removeAllStylingProperty, true);
+    }
+
+    void Style::removeFlagToIgnore(QWidget* widget)
+    {
+        widget->setProperty(g_removeAllStylingProperty, QVariant());
     }
 
     bool Style::hasStyle(const QWidget* widget) const
@@ -804,12 +1073,13 @@ namespace AzQtComponents
     void Style::fixProxyStyle(QProxyStyle* proxyStyle, QStyle* baseStyle)
     {
         QStyle* applicationStyle = qApp->style();
+        QObject* oldParent = applicationStyle->parent();
         proxyStyle->setBaseStyle(baseStyle);
         if (baseStyle == applicationStyle)
         {
             // WORKAROUND: A QProxyStyle over qApp->style() is bad practice as both classes want the ownership over the base style, leading to possible crashes
             // Ideally all this custom styling should be moved to Style.cpp, as a new "style class"
-            applicationStyle->setParent(qApp); // Restore damage done by QProxyStyle
+            applicationStyle->setParent(oldParent); // Restore damage done by QProxyStyle
         }
     }
 

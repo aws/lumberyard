@@ -187,15 +187,13 @@ namespace AzToolsFramework
             return AZ::Success();
         }
 
-        void GenericComponentWrapper::DisplayEntity(bool& handled)
+        void GenericComponentWrapper::DisplayEntityViewport(
+            const AzFramework::ViewportInfo& /*viewportInfo*/,
+            AzFramework::DebugDisplayRequests& debugDisplay)
         {
             if (m_templateEvents)
             {
-                auto* displayInterface = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-                if (displayInterface)
-                {
-                    m_templateEvents->EditorDisplay(GetEntityId(), *displayInterface, GetWorldTM(), handled);
-                }
+                m_templateEvents->EditorDisplay(GetEntityId(), debugDisplay, GetWorldTM());
             }
         }
 

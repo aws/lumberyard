@@ -16,6 +16,11 @@
 #include <QObject>
 #include <QString>
 #include <QSharedPointer>
+#include <QString>
+
+#include <AzCore/Asset/AssetTypeInfoBus.h>
+#include <AzCore/std/containers/vector.h>
+#include <AzCore/std/algorithm.h>
 
 namespace AzToolsFramework
 {
@@ -265,5 +270,52 @@ namespace AzToolsFramework
         private:
             FilterConstType m_filter;
         };
+
+
+        template<class T>
+        struct EBusAggregateUniqueResults
+        {
+            AZStd::vector<T> values;
+            void operator=(const T& rhs)
+            {
+                if (AZStd::find(values.begin(), values.end(), rhs) == values.end())
+                {
+                    values.push_back(rhs);
+                }
+            }
+        };
+
+        struct EBusAggregateAssetTypesIfBelongsToGroup
+        {
+            EBusAggregateAssetTypesIfBelongsToGroup(const QString& group)
+                : m_group(group)
+            {
+            }
+
+            EBusAggregateAssetTypesIfBelongsToGroup(const EBusAggregateAssetTypesIfBelongsToGroup&) = delete;
+            EBusAggregateAssetTypesIfBelongsToGroup& operator=(const EBusAggregateAssetTypesIfBelongsToGroup&) = delete;
+
+            AZStd::vector<AZ::Data::AssetType> values;
+
+            void operator=(const AZ::Data::AssetType& assetType)
+            {
+                if (BelongsToGroup(assetType))
+                {
+                    values.push_back(assetType);
+                }
+            }
+
+        private:
+            const QString& m_group;
+
+            bool BelongsToGroup(const AZ::Data::AssetType& assetType)
+            {
+                QString group;
+                AZ::AssetTypeInfoBus::EventResult(group, assetType, &AZ::AssetTypeInfo::GetGroup);
+                return !group.compare(m_group, Qt::CaseInsensitive);
+            }
+        };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework
+
+Q_DECLARE_METATYPE(AzToolsFramework::AssetBrowser::FilterConstType)

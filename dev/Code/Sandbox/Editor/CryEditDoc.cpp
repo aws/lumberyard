@@ -107,7 +107,7 @@ static const char* kLevelPathForSliceEditing = "EngineAssets/LevelForSliceEditin
 
 static bool IsSliceFile(const QString& filePath)
 {
-    return filePath.endsWith(".slice", Qt::CaseInsensitive);
+    return filePath.endsWith(AzToolsFramework::SliceUtilities::GetSliceFileExtension().c_str(), Qt::CaseInsensitive);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -272,6 +272,9 @@ void CCryEditDoc::DeleteContents()
     GetIEditor()->Notify(eNotify_OnCloseScene);
 
     EBUS_EVENT(AzToolsFramework::EditorEntityContextRequestBus, ResetEditorContext);
+
+    // [LY-90904] move this to the EditorVegetationManager component
+    InstanceStatObjEventBus::Broadcast(&InstanceStatObjEventBus::Events::ReleaseData);
 
     GetIEditor()->SetEditTool(0); // Turn off any active edit tools.
     GetIEditor()->SetEditMode(eEditModeSelect);
@@ -2553,7 +2556,7 @@ void CCryEditDoc::RepositionVegetation()
 
 //////////////////////////////////////////////////////////////////////////
 // AzToolsFramework::EditorEntityContextNotificationBus interface implementation
-void CCryEditDoc::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& /*ticket*/)
+void CCryEditDoc::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& /*ticket*/)
 {
     if (m_envProbeSliceAssetId == sliceAssetId)
     {
@@ -2575,6 +2578,8 @@ void CCryEditDoc::OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, con
         }
         //Detach instantiated env probe entities from engine slice
         AzToolsFramework::EditorEntityContextRequestBus::Broadcast(&AzToolsFramework::EditorEntityContextRequests::DetachSliceEntities, entityIds);
+        sliceAddress.SetInstance(nullptr);
+        sliceAddress.SetReference(nullptr);
         SetModifiedFlag(true);
         SetModifiedModules(eModifiedEntities);
         

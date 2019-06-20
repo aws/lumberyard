@@ -201,7 +201,10 @@ namespace AZ
 #   define azwcsicmp        _wcsicmp
 #   define azwcsnicmp       _wcsnicmp
 #   define azmemicmp        _memicmp
+
+// note: for cross-platform compatibility, do not use the return value of azfopen. On Windows, it's an errno_t and 0 indicates success. On other platforms, the return value is a FILE*, and a 0 value indicates failure.
 #   define azfopen          fopen_s
+
 #   define azsprintf(_buffer, ...)      sprintf_s(_buffer, AZ_ARRAY_SIZE(_buffer), __VA_ARGS__)
 #   define azstrlwr         _strlwr_s
 #   define azvsprintf       vsprintf_s
@@ -235,7 +238,10 @@ namespace AZ
 #   define azwcsicmp        wcsicmp
 #   define azwcsnicmp       wcsnicmp
 #   define azmemicmp        memicmp
+
+// note: for cross-platform compatibility, do not use the return value of azfopen. On Windows, it's an errno_t and 0 indicates success. On other platforms, the return value is a FILE*, and a 0 value indicates failure.
 #   define azfopen(_fp, _filename, _attrib) *(_fp) = fopen(_filename, _attrib)
+
 #   define azsprintf       sprintf
 #   define azstrlwr(_buffer, _size)             strlwr(_buffer)
 #   define azvsprintf       vsprintf
@@ -446,9 +452,23 @@ namespace AZ
 #define azalias_cast AZ::AliasCast
 
 // Macros to disable the auto-generated copy/move constructors and assignment operators for a class
-#define AZ_DISABLE_COPY(_Class) _Class(const _Class&) = delete; _Class& operator=(const _Class&) = delete;
-#define AZ_DISABLE_MOVE(_Class) _Class(const _Class&&) = delete; _Class& operator=(const _Class&&) = delete;
-#define AZ_DISABLE_COPY_MOVE(_Class) AZ_DISABLE_COPY(_Class) AZ_DISABLE_MOVE(_Class)
+// Note: AZ_DISABLE_COPY must also set the move constructor and move assignment operator
+// to `=default`, otherwise they will be implicitly disabled by the compiler.
+// If you wish to implement your own move constructor and assignment operator, you must
+// explicitly delete the copy and assignment operator without the use of this macro.
+#define AZ_DISABLE_COPY(_Class) \
+    _Class(const _Class&) = delete; _Class& operator=(const _Class&) = delete; \
+    _Class(_Class&&) = default; _Class& operator=(_Class&&) = default;
+// Note: AZ_DISABLE_MOVE is DEPRECATED and will be removed.
+// The preferred approach to use if a type is to be copy only is to simply provide copy and
+// assignment operators (either `=default` or user provided), moves will be implicitly disabled.
+#define AZ_DISABLE_MOVE(_Class) \
+    _Class(_Class&&) = delete; _Class& operator=(_Class&&) = delete;
+// Note: Setting the move constructor and move assignment operator to `=delete` here is not
+// strictly necessary (as they will be implicitly disabled when the copy/assignment operators
+// are declared) but is done to be explicit that this is the intention.
+#define AZ_DISABLE_COPY_MOVE(_Class) \
+    _Class(const _Class&) = delete; _Class& operator=(const _Class&) = delete; AZ_DISABLE_MOVE(_Class)
 
 // Macros to default the auto-generated copy/move constructors and assignment operators for a class
 #define AZ_DEFAULT_COPY(_Class) _Class(const _Class&) = default; _Class& operator=(const _Class&) = default;

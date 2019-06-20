@@ -3,7 +3,7 @@
     "Uuid": "6fc787a982184217a5a553ca24676cfa",
     "Name": "CloudGemFramework",
     "DisplayName": "Cloud Gem Framework",
-    "Version": "1.1.3",
+    "Version": "1.1.4",
     "LinkType": "Dynamic",
     "Summary": "This Gem is the foundation and is automatically enabled when selecting any of the Cloud Gems. It provides the Framework, the Tools and APIs to build AWS connected Gems.",
     "Tags": ["AWS", "API", "Cloud", "CloudCanvas", "Connected", "Tool", "API Gateway", "Cloud Formation", "Cognito", "IAM", "Lambda", "S3" ],

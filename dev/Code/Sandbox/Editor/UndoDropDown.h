@@ -26,6 +26,7 @@ class QAction;
 class QListView;
 class UndoDropDownListModel;
 class QAbstractItemView;
+class QContextMenuEvent;
 
 enum class UndoRedoDirection
 {
@@ -97,6 +98,7 @@ public slots:
 protected:
     void OnUndoButton();
     void OnUndoClear();
+    void contextMenuEvent(QContextMenuEvent*) override;
 
     UndoRedoDirection m_direction;
     UndoDropDownListModel* m_model;

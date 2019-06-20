@@ -22,6 +22,23 @@
 
 namespace LmbrCentral
 {
+    void CapsuleShapeComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+        provided.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
+    }
+
+    void CapsuleShapeComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+    {
+        incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
+        incompatible.push_back(AZ_CRC("CapsuleShapeService", 0x9bc1122c));
+    }
+
+    void CapsuleShapeComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
+    }
+
     void CapsuleShapeDebugDisplayComponent::Reflect(AZ::ReflectContext* context)
     {
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
@@ -46,9 +63,9 @@ namespace LmbrCentral
         EntityDebugDisplayComponent::Deactivate();
     }
 
-    void CapsuleShapeDebugDisplayComponent::Draw(AzFramework::EntityDebugDisplayRequests* displayContext)
+    void CapsuleShapeDebugDisplayComponent::Draw(AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        DrawShape(displayContext, g_defaultShapeDrawParams, m_capsuleShapeMesh);
+        DrawShape(debugDisplay, m_capsuleShapeConfig.GetDrawParams(), m_capsuleShapeMesh);
     }
 
     bool CapsuleShapeDebugDisplayComponent::ReadInConfig(const AZ::ComponentConfig* baseConfig)
@@ -111,8 +128,8 @@ namespace LmbrCentral
                 &ClassConverters::DeprecateCapsuleColliderConfiguration)
                 ;
 
-            serializeContext->Class<CapsuleShapeConfig>()
-                ->Version(1)
+            serializeContext->Class<CapsuleShapeConfig, ShapeComponentConfig>()
+                ->Version(2)
                 ->Field("Height", &CapsuleShapeConfig::m_height)
                 ->Field("Radius", &CapsuleShapeConfig::m_radius)
                 ;

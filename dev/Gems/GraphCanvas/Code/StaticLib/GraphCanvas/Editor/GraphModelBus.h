@@ -11,14 +11,20 @@
 */
 #pragma once
 
+#include <QMimeData>
+
 #include <AzCore/Component/EntityId.h>
 #include <AzCore/EBus/EBus.h>
 
 #include <GraphCanvas/Editor/EditorTypes.h>
+#include <GraphCanvas/Types/Endpoint.h>
+
+class QMimeData;
 
 namespace GraphCanvas
 {    
     class NodePropertyDisplay;
+    struct Endpoint;
     
     class GraphSettingsRequests
         : public AZ::EBusTraits
@@ -48,6 +54,12 @@ namespace GraphCanvas
         //! Callback for requesting the decrementation of the value of the ignore undo point tracker
         virtual void RequestPopPreventUndoStateUpdate() = 0;
 
+        //! Request to trigger an undo
+        virtual void TriggerUndo() = 0;
+
+        //! Request to trigger a redo
+        virtual void TriggerRedo() = 0;
+
         //! Request to create a NodePropertyDisplay class for a particular DataSlot.
         virtual NodePropertyDisplay* CreateDataSlotPropertyDisplay(const AZ::Uuid& dataType, const NodeId& nodeId, const SlotId& slotId) const { return nullptr; }
         virtual NodePropertyDisplay* CreateDataSlotVariablePropertyDisplay(const AZ::Uuid& dataType, const NodeId& nodeId, const SlotId& slotId) const { return nullptr; }
@@ -71,18 +83,35 @@ namespace GraphCanvas
         // Signals out that the specified elements save data is dirty.
         virtual void OnSaveDataDirtied(const AZ::EntityId& savedElement) = 0;
 
+        // Signals out that the graph was signeld to clean itself up.
+        virtual void OnRemoveUnusedNodes() = 0;
+        virtual void OnRemoveUnusedElements() = 0;
+        
+        //////////////////////////////////////
+        // Node Wrapper Optional Overrides
+
         // Returns whether or not the specified wrapper node should accept the given drop
         virtual bool ShouldWrapperAcceptDrop(const NodeId& wrapperNode, const QMimeData* mimeData) const
         {
             AZ_UNUSED(wrapperNode); AZ_UNUSED(mimeData);
+            AZ_Error("GraphCanvas", false, "Trying to use Node Wrappers without providing model information. Please implement 'ShouldWrapperAcceptDrop' on the GraphModelRequestBus.");
             return false;
         }
 
         // Signals out that we want to drop onto the specified wrapper node
-        virtual void AddWrapperDropTarget(const NodeId& wrapperNode) { AZ_UNUSED(wrapperNode);  };
+        virtual void AddWrapperDropTarget(const NodeId& wrapperNode)
+        {
+            AZ_UNUSED(wrapperNode);
+            AZ_Error("GraphCanvas", false, "Trying to use Node Wrappers without providing model information. Please implement 'AddWrapperDropTarget' on the GraphModelRequestBus.");
+        };
 
         // Signals out that we no longer wish to drop onto the specified wrapper node
-        virtual void RemoveWrapperDropTarget(const NodeId& wrapperNode) { AZ_UNUSED(wrapperNode); }
+        virtual void RemoveWrapperDropTarget(const NodeId& wrapperNode)
+        {
+            AZ_UNUSED(wrapperNode);
+            AZ_Error("GraphCanvas", false, "Trying to use Node Wrappers without providing model information. Please implement 'RemoveWrapperDropTarget' on the GraphModelRequestBus.");
+        }
+        //////////////////////////////////////
     };
 
     using GraphModelRequestBus = AZ::EBus<GraphModelRequests>;

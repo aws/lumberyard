@@ -34,7 +34,10 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <AzQtComponents/Utilities/QtPluginPaths.h>
-#include <AzQtComponents/Components/StylesheetPreprocessor.h>
+#include <AzQtComponents/Components/StyleManager.h>
+#include <AzQtComponents/Components/StyleSheetCache.h>
+#include <AzQtComponents/Components/TitleBarOverdrawHandler.h>
+#include <AzQtComponents/Components/WindowDecorationWrapper.h>
 #include <AzCore/base.h>
 #include <AzCore/Debug/Trace.h>
 #include <AzToolsFramework/Asset/AssetProcessorMessages.h>
@@ -52,10 +55,6 @@
 #include "MacDockIconHandler.h"
 #endif
 #include <AzCore/std/chrono/clocks.h>
-
-#define STYLE_SHEET_VARIABLES_PATH_DARK "Editor/Styles/AssetProcessorGlobalStyleSheetVariables.json"
-#define GLOBAL_STYLE_SHEET_PATH "Editor/Styles/AssetProcessorGlobalStyleSheet.qss"
-#define ASSET_PROCESSOR_STYLE_SHEET_PATH "Editor/Styles/AssetProcessor.qss"
 
 using namespace AssetProcessor;
 
@@ -85,25 +84,6 @@ namespace
         {
             binaryDir.remove(tempFile);
         }
-    }
-    QString LoadStyleSheet(QDir rootDir, QString styleSheetPath)
-    {
-        QFile styleSheetVariablesFile;
-        styleSheetVariablesFile.setFileName(rootDir.filePath(STYLE_SHEET_VARIABLES_PATH_DARK));
-
-        AzQtComponents::StylesheetPreprocessor styleSheetProcessor(nullptr);
-        if (styleSheetVariablesFile.open(QFile::ReadOnly))
-        {
-            styleSheetProcessor.ReadVariables(styleSheetVariablesFile.readAll());
-        }
-
-        QFile styleSheetFile(rootDir.filePath(styleSheetPath));
-        if (styleSheetFile.open(QFile::ReadOnly))
-        {
-            return styleSheetProcessor.ProcessStyleSheet(styleSheetFile.readAll());
-        }
-
-        return QString();
     }
 }
 
@@ -173,6 +153,12 @@ ApplicationManager::BeforeRunStatus GUIApplicationManager::BeforeRun()
 
 void GUIApplicationManager::Destroy()
 {
+    if (m_mainWindow)
+    {
+        delete m_mainWindow;
+        m_mainWindow = nullptr;
+    }
+
     AssetProcessor::MessageInfoBus::Handler::BusDisconnect();
     BatchApplicationManager::Destroy();
 
@@ -188,23 +174,42 @@ bool GUIApplicationManager::Run()
     qRegisterMetaType<AZ::u32>("AZ::u32");
     qRegisterMetaType<AZ::Uuid>("AZ::Uuid");
 
-    QDir systemRoot;
-    AssetUtilities::ComputeEngineRoot(systemRoot);
+    AzQtComponents::StyleManager* styleManager = new AzQtComponents::StyleManager(qApp);
+    const bool useLegacyStyle = false;
+    styleManager->Initialize(qApp, useLegacyStyle);
 
-    QDir::addSearchPath("STYLESHEETIMAGES", systemRoot.filePath("Editor/Styles/StyleSheetImages"));
+    QDir engineRoot;
+    AssetUtilities::ComputeEngineRoot(engineRoot);
+    AzQtComponents::StyleManager::addSearchPaths(
+        QStringLiteral("style"),
+        engineRoot.filePath(QStringLiteral("Code/Tools/AssetProcessor/native/ui/style")),
+        QStringLiteral(":/AssetProcessor/style"));
 
-    QApplication::setStyle(QStyleFactory::create("Fusion"));
     m_mainWindow = new MainWindow(this);
-    
-    auto refreshStyleSheets = [systemRoot, this]()
-    {
-        QString appStyleSheet = LoadStyleSheet(systemRoot, GLOBAL_STYLE_SHEET_PATH);
-        qApp->setStyleSheet(appStyleSheet);
+    auto wrapper = new AzQtComponents::WindowDecorationWrapper(
+#if defined(AZ_PLATFORM_WINDOWS)
+        // On windows we do want our custom title bar
+        AzQtComponents::WindowDecorationWrapper::OptionAutoAttach
+#else
+        // On others platforms we don't want our custom title bar (ie, use native title bars).
+        AzQtComponents::WindowDecorationWrapper::OptionDisabled
+#endif
+    );
+    wrapper->setGuest(m_mainWindow);
 
-        QString windowStyleSheet = LoadStyleSheet(systemRoot, ASSET_PROCESSOR_STYLE_SHEET_PATH);
-        m_mainWindow->setStyleSheet(windowStyleSheet);
+    // Use this variant of the enableSaveRestoreGeometry because the global QCoreApplication::setOrganization and setApplicationName
+    // are called in ApplicationManager::Activate, which happens much later on in this function.
+    // ApplicationManager::Activate is shared between the Batch version of the AP and the GUI version,
+    // and there are thing
+    const bool restoreOnFirstShow = true;
+    wrapper->enableSaveRestoreGeometry(GetOrganizationName(), GetApplicationName(), "MainWindow", restoreOnFirstShow);
+
+    AzQtComponents::StyleManager::setStyleSheet(m_mainWindow, QStringLiteral("style:AssetProcessor.qss"));
+    
+    auto refreshStyleSheets = [styleManager]()
+    {
+        styleManager->Refresh(qApp);
     };
-    refreshStyleSheets();
 
     // CheckForRegistryProblems can pop up a dialog, so we need to check after
     // we initialize the stylesheet
@@ -219,23 +224,23 @@ bool GUIApplicationManager::Run()
 
         return false;
     }
-    
+
     bool startHidden = QApplication::arguments().contains("--start-hidden", Qt::CaseInsensitive);
 
     if (!startHidden)
     {
-        m_mainWindow->show();
+        wrapper->show();
     }
     else
     {
 #ifdef AZ_PLATFORM_WINDOWS
         // Qt / Windows has issues if the main window isn't shown once
         // so we show it then hide it
-        m_mainWindow->show();
+        wrapper->show();
 
         // Have a delay on the hide, to make sure that the show is entirely processed
         // first
-        QTimer::singleShot(0, m_mainWindow, &QWidget::hide);
+        QTimer::singleShot(0, wrapper, &QWidget::hide);
 #endif
     }
 
@@ -260,9 +265,9 @@ bool GUIApplicationManager::Run()
     if (QSystemTrayIcon::isSystemTrayAvailable())
     {
         QAction* showAction = new QAction(QObject::tr("Show"), m_mainWindow);
-        QObject::connect(showAction, SIGNAL(triggered()), m_mainWindow, SLOT(ShowWindow()));
+        QObject::connect(showAction, &QAction::triggered, m_mainWindow, &MainWindow::ShowWindow);
         QAction* hideAction = new QAction(QObject::tr("Hide"), m_mainWindow);
-        QObject::connect(hideAction, SIGNAL(triggered()), m_mainWindow, SLOT(hide()));
+        QObject::connect(hideAction, &QAction::triggered, wrapper, &AzQtComponents::WindowDecorationWrapper::hide);
 
         QMenu* trayIconMenu = new QMenu();
         trayIconMenu->addAction(showAction);
@@ -283,13 +288,13 @@ bool GUIApplicationManager::Run()
         m_trayIcon->setToolTip(QObject::tr("Asset Processor"));
         m_trayIcon->setIcon(QIcon(":/AssetProcessor.png"));
         m_trayIcon->show();
-        QObject::connect(m_trayIcon, &QSystemTrayIcon::activated, m_mainWindow, [&](QSystemTrayIcon::ActivationReason reason)
+        QObject::connect(m_trayIcon, &QSystemTrayIcon::activated, m_mainWindow, [&, wrapper](QSystemTrayIcon::ActivationReason reason)
             {
                 if (reason == QSystemTrayIcon::DoubleClick)
                 {
-                    if (m_mainWindow->isVisible())
+                    if (wrapper->isVisible())
                     {
-                        m_mainWindow->setVisible(false);
+                        wrapper->hide();
                     }
                     else
                     {
@@ -298,7 +303,7 @@ bool GUIApplicationManager::Run()
                 }
             });
 
-        QObject::connect(m_trayIcon, &QSystemTrayIcon::messageClicked, m_mainWindow, &MainWindow::showNormal);
+        QObject::connect(m_trayIcon, &QSystemTrayIcon::messageClicked, m_mainWindow, &MainWindow::ShowWindow);
 
         if (startHidden)
         {
@@ -360,6 +365,10 @@ bool GUIApplicationManager::Run()
 
     m_mainWindow->SaveLogPanelState();
 
+    // mainWindow indirectly uses some UserSettings so clean it up before we clean those up
+    delete m_mainWindow;
+    m_mainWindow = nullptr;
+
     AZ::SerializeContext* context;
     EBUS_EVENT_RESULT(context, AZ::ComponentApplicationBus, GetSerializeContext);
     AZ_Assert(context, "No serialize context");
@@ -376,8 +385,6 @@ bool GUIApplicationManager::Run()
             return false;
         }
     }
-
-    delete m_mainWindow;
 
     Destroy();
 
@@ -402,7 +409,7 @@ void GUIApplicationManager::ShowMessageBox(QString title,  QString msg, bool isC
     {
         // Only show the message box if it is not visible
         m_messageBoxIsVisible = true;
-        QMessageBox msgBox;
+        QMessageBox msgBox(m_mainWindow);
         msgBox.setWindowTitle(title);
         msgBox.setText(msg);
         msgBox.setStandardButtons(QMessageBox::Ok);
@@ -709,6 +716,21 @@ void GUIApplicationManager::InitConnectionManager()
         std::bind([this](unsigned int /*connId*/, unsigned int /*type*/, unsigned int /*serial*/, QByteArray /*payload*/)
     {
         Q_EMIT ShowWindow();
+    }, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)
+    );
+
+    m_connectionManager->RegisterService(ShowAssetInAssetProcessorRequest::MessageType(),
+        std::bind([this](unsigned int /*connId*/, unsigned int /*type*/, unsigned int /*serial*/, QByteArray payload)
+    {
+        ShowAssetInAssetProcessorRequest request;
+        bool readFromStream = AZ::Utils::LoadObjectFromBufferInPlace(payload.data(), payload.size(), request);
+        AZ_Assert(readFromStream, "GUIApplicationManager::ShowAssetInAssetProcessorRequest: Could not deserialize from stream");
+        if (readFromStream)
+        {
+            m_mainWindow->HighlightAsset(request.m_assetPath.c_str());
+
+            Q_EMIT ShowWindow();
+        }
     }, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4)
     );
 }

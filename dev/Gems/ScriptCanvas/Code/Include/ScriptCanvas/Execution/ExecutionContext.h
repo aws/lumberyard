@@ -1,4 +1,4 @@
-/*
+﻿/*
 * All or portions of this file Copyright (c) Amazon.com, Inc. or its affiliates or
 * its licensors.
 *
@@ -32,6 +32,7 @@ namespace ScriptCanvas
         , protected ErrorReporterBus::Handler
     {
     public:
+        
         AZ_TYPE_INFO(ExecutionContext, "{2C137581-19F4-42EB-8BF3-14DBFBC02D8D}");
 
         ExecutionContext();
@@ -63,6 +64,7 @@ namespace ScriptCanvas
         ** to properly function.
         **/
         void Execute() override;
+        void ExecuteUntilNodeIsTopOfStack(Node& node) override;
         ////
 
     protected:

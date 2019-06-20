@@ -11,11 +11,13 @@
 */
 
 #include <PhysX_precompiled.h>
-#include <AzFramework/Physics/PropertyTypes.h>
-#include <PhysX/ConfigurationBus.h>
-#include <Editor/CollisionLayerWidget.h>
 
-#include <QEvent>
+#include <Editor/CollisionLayerWidget.h>
+#include <Editor/ConfigurationWindowBus.h>
+#include <PhysX/ConfigurationBus.h>
+#include <AzFramework/Physics/PropertyTypes.h>
+#include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <LyViewPaneNames.h>
 
 namespace PhysX
 {
@@ -28,24 +30,18 @@ namespace PhysX
 
         QWidget* CollisionLayerWidget::CreateGUI(QWidget* parent)
         {
-            QComboBox* picker = new QComboBox(parent);
-            picker->installEventFilter(this);
+            widget_t* picker = new widget_t(parent);
 
-            connect(picker, &QComboBox::currentTextChanged, this, [picker]()
+            picker->GetEditButton()->setToolTip("Edit Collision Layers");
+
+            connect(picker->GetComboBox(), &QComboBox::currentTextChanged, this, [picker]()
             {
-                AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestWrite, picker);
+                EBUS_EVENT(AzToolsFramework::PropertyEditorGUIMessages::Bus, RequestWrite, picker);
             });
 
-            return picker;
-        }
+            connect(picker->GetEditButton(), &QPushButton::clicked, this, &CollisionLayerWidget::OnEditButtonClicked);
 
-        bool CollisionLayerWidget::eventFilter(QObject* /*object*/, QEvent* event)
-        {
-            if (event->type() == QEvent::Wheel)
-            {
-                return true;
-            }
-            return false;
+            return picker;
         }
 
         bool CollisionLayerWidget::IsDefaultHandler() const
@@ -67,28 +63,38 @@ namespace PhysX
 
         void CollisionLayerWidget::WriteGUIValuesIntoProperty(size_t index, widget_t* GUI, property_t& instance, AzToolsFramework::InstanceDataNode* node)
         {
-            instance = GetLayerFromName(GUI->currentText().toUtf8().data());
+            instance = GetLayerFromName(GUI->GetComboBox()->currentText().toUtf8().data());
         }
 
         bool CollisionLayerWidget::ReadValuesIntoGUI(size_t index, widget_t* GUI, const property_t& instance, AzToolsFramework::InstanceDataNode* node)
         {
-            QSignalBlocker signalBlocker(GUI);
-            GUI->clear();
+            QSignalBlocker signalBlocker(GUI->GetComboBox());
+            GUI->GetComboBox()->clear();
 
             auto layerNames = GetLayerNames();
             for (auto& layerName : layerNames)
             {
-                GUI->addItem(layerName.c_str());
+                GUI->GetComboBox()->addItem(layerName.c_str());
             }
             
             auto layerName = GetNameFromLayer(instance);
-            GUI->setCurrentText(layerName.c_str());
+            GUI->GetComboBox()->setCurrentText(layerName.c_str());
             
             return true;
         }
 
+        void CollisionLayerWidget::OnEditButtonClicked()
+        {
+            // Open configuration window
+            AzToolsFramework::EditorRequestBus::Broadcast(&AzToolsFramework::EditorRequests::OpenViewPane, LyViewPane::PhysXConfigurationEditor);
+
+            // Set to collision layers tab
+            ConfigurationWindowRequestBus::Broadcast(&ConfigurationWindowRequests::ShowCollisionLayersTab);
+        }
+
         Physics::CollisionLayer CollisionLayerWidget::GetLayerFromName(const AZStd::string& layerName)
         {
+            
             PhysX::Configuration configuration;
             PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
             return configuration.m_collisionLayers.GetLayer(layerName);

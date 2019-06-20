@@ -288,6 +288,7 @@ namespace UnitTest
         MOCK_METHOD1(AddSystemComponents, void (AZ::Entity*));
         MOCK_METHOD0(ReflectSerialize, void ());
         MOCK_METHOD1(Reflect, void (AZ::ReflectContext*));
+        MOCK_CONST_METHOD0(GetBinFolder, const char* ());
     };
 
     class MockBindingComponent

@@ -22,6 +22,7 @@
 #include <API/CharacterController.h>
 #include <API/CharacterControllerCosmeticReplica.h>
 #include <AzFramework/Physics/CollisionBus.h>
+#include <AzFramework/Physics/World.h>
 
 namespace PhysXCharacters
 {
@@ -372,6 +373,30 @@ namespace PhysXCharacters
     {
         return m_pxController;
     }
+
+    void CharacterController::AddToWorld(Physics::World& world)
+    {
+        if (m_shadowBody)
+        {
+            m_shadowBody->AddToWorld(world);
+        }
+    }
+
+    void CharacterController::RemoveFromWorld(Physics::World& world)
+    {
+        physx::PxScene* scene = static_cast<physx::PxScene*>(world.GetNativePointer());
+
+        if (scene)
+        {
+            scene->removeActor(*m_pxController->getActor());
+        }
+
+        if (m_shadowBody)
+        {
+            m_shadowBody->RemoveFromWorld(world);
+        }
+    }
+
     void CharacterController::AttachShape(AZStd::shared_ptr<Physics::Shape> shape)
     {
         if (m_shadowBody)

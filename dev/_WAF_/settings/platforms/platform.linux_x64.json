@@ -1,0 +1,62 @@
+{
+    "platform"      : "linux_x64",
+    "display_name"  : "Linux x64",
+    "hosts"         : "linux",
+    "aliases"       : "clang,linux",
+    "has_server"    : true,
+    "has_tests"     : true,
+    "enabled"       : true,
+    "needs_java"    : false,
+
+    "modules" : [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_clang",
+        "platforms/platform_impl_linux",
+        "platforms/platform_settings_linux_x64"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.clang.json"
+    ],
+
+    "attributes": {
+        "is_linux"                : true,
+        "link_aws_sdk_statically" : true,
+        "default_folder_name"     : "BinLinux64",
+        "lib_prefix"              : "lib",
+        "qt_supported"            : true,
+        "qt_platform_dir"         : "gcc_64",
+        "qtga_subfolders"         : [],
+        "default_launcher_name"   : "LinuxLauncher"
+    },
+
+    "settings": {
+
+    },
+
+    "env" : {
+        "DEFINES": [
+            "LINUX",
+            "__linux__",
+            "LINUX64"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "-m64",
+            "-fPIC",
+            "-msse2"
+        ],
+        "CXXFLAGS": [
+            "-stdlib=libc++"
+        ],
+        "LINKFLAGS": [
+            "-stdlib=libc++"
+        ],
+        "LIB": [
+            "pthread", 
+            "dl", 
+            "c++abi"
+        ]
+    }
+}
+

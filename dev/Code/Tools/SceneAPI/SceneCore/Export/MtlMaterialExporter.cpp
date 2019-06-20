@@ -36,6 +36,7 @@
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshVertexColorData.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/ISceneNodeGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMeshAdvancedRule.h>
+#include <SceneAPI/SceneCore/DataTypes/Rules/ITouchBendingRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IPhysicsRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/ILodRule.h>
@@ -281,25 +282,36 @@ namespace AZ
                 const Containers::SceneGraph& sceneGraph = scene.GetGraph();
                 const AZ::SceneAPI::Containers::RuleContainer& rules = sceneNodeGroup.GetRuleContainerConst();
 
+                int physicsMaterialFlags = 0;
+                AZStd::vector<AZStd::string> targetNodes;
+                AZStd::shared_ptr<const DataTypes::ITouchBendingRule> touchBendingRule = rules.FindFirstByType<DataTypes::ITouchBendingRule>();
                 AZStd::shared_ptr<const DataTypes::IPhysicsRule> physicsRule = rules.FindFirstByType<DataTypes::IPhysicsRule>();
+                AZ_Assert(!(touchBendingRule && physicsRule), "TouchBending and Physics Rules Are Mutually Exclusive.");
+                if (touchBendingRule)
+                {
+                    targetNodes = Utilities::SceneGraphSelector::GenerateTargetNodes(sceneGraph,
+                        touchBendingRule->GetSceneNodeSelectionList(), Utilities::SceneGraphSelector::IsMesh);
+                    physicsMaterialFlags = AZ::GFxFramework::EMaterialFlags::MTL_FLAG_NODRAW_TOUCHBENDING;
+                }
                 if (physicsRule)
                 {
-                    AZStd::vector<AZStd::string> physTargetNodes = Utilities::SceneGraphSelector::GenerateTargetNodes(sceneGraph, 
+                    targetNodes = Utilities::SceneGraphSelector::GenerateTargetNodes(sceneGraph,
                         physicsRule->GetSceneNodeSelectionList(), Utilities::SceneGraphSelector::IsMesh);
-                    for (auto& nodeName : physTargetNodes)
+                    physicsMaterialFlags = AZ::GFxFramework::EMaterialFlags::MTL_FLAG_NODRAW;
+                }
+                for (auto& nodeName : targetNodes)
+                {
+                    auto index = sceneGraph.Find(nodeName);
+                    //if we find any valid nodes add a MaterialInfo and stop.
+                    if (index.IsValid())
                     {
-                        auto index = sceneGraph.Find(nodeName);
-                        //if we find any valid nodes add a physics rule and stop.
-                        if (index.IsValid())
-                        {
-                            MaterialInfo info;
-                            info.m_name = GFxFramework::MaterialExport::g_stringPhysicsNoDraw;
-                            info.m_materialData = nullptr;
-                            info.m_usesVertexColoring = false;
-                            info.m_physicalize = true;
-                            m_materialGroup.m_materials.push_back(info);
-                            break;
-                        }
+                        MaterialInfo info;
+                        info.m_name = GFxFramework::MaterialExport::g_stringPhysicsNoDraw;
+                        info.m_materialData = nullptr;
+                        info.m_usesVertexColoring = false;
+                        info.m_physicsMaterialFlags = physicsMaterialFlags;
+                        m_materialGroup.m_materials.push_back(info);
+                        break;
                     }
                 }
 
@@ -334,7 +346,7 @@ namespace AZ
                                         info.m_name = nodeName;
                                         info.m_materialData = azrtti_cast<const DataTypes::IMaterialData*>(*it);
                                         info.m_usesVertexColoring = UsesVertexColoring(sceneNodeGroup, scene, it.GetHierarchyIterator());
-                                        info.m_physicalize = false;
+                                        info.m_physicsMaterialFlags = 0;
                                         m_materialGroup.m_materials.push_back(info);
                                     }
                                 }
@@ -384,7 +396,7 @@ namespace AZ
                                             info.m_name = nodeName;
                                             info.m_materialData = azrtti_cast<const DataTypes::IMaterialData*>(*it);
                                             info.m_usesVertexColoring = UsesVertexColoring(sceneNodeGroup, scene, it.GetHierarchyIterator());
-                                            info.m_physicalize = false;
+                                            info.m_physicsMaterialFlags = 0;
                                             m_materialGroup.m_materials.push_back(info);
                                         }
                                     }
@@ -463,8 +475,10 @@ namespace AZ
                 {
                     AZStd::shared_ptr<AZ::GFxFramework::IMaterial> mat = AZStd::make_shared<AZ::GFxFramework::Material>();
                     mat->EnableUseVertexColor(material.m_usesVertexColoring);
-                    mat->EnablePhysicalMaterial(material.m_physicalize);
-                    hasPhysicalMaterial |= material.m_physicalize;
+                    mat->SetMaterialFlags(material.m_physicsMaterialFlags);
+                    //Done this way to avoid too long of a line.
+                    hasPhysicalMaterial |= ((material.m_physicsMaterialFlags & AZ::GFxFramework::EMaterialFlags::MTL_FLAG_NODRAW) != 0);
+                    hasPhysicalMaterial |= ((material.m_physicsMaterialFlags & AZ::GFxFramework::EMaterialFlags::MTL_FLAG_NODRAW_TOUCHBENDING) != 0);
                     mat->SetName(material.m_name);
                     if (material.m_materialData)
                     {
@@ -498,7 +512,7 @@ namespace AZ
                         AZStd::shared_ptr<GFxFramework::IMaterial> origMat = matGroup.GetMaterial(matIndex);
                         origMat->SetName(mat->GetName());
                         origMat->EnableUseVertexColor(mat->UseVertexColor());
-                        origMat->EnablePhysicalMaterial(mat->IsPhysicalMaterial());
+                        origMat->SetMaterialFlags(mat->GetMaterialFlags());
                         origMat->SetTexture(GFxFramework::TextureMapType::Diffuse, mat->GetTexture(GFxFramework::TextureMapType::Diffuse));
                         origMat->SetTexture(GFxFramework::TextureMapType::Specular, mat->GetTexture(GFxFramework::TextureMapType::Specular));
                         origMat->SetTexture(GFxFramework::TextureMapType::Bump, mat->GetTexture(GFxFramework::TextureMapType::Bump));

@@ -798,6 +798,7 @@ AllocateConstIntCVar(CRenderer, CV_r_MetalShadersFastMath);
 int CRenderer::CV_r_CubeDepthMapResolution;
 
 int CRenderer::CV_r_SkipNativeUpscale;
+int CRenderer::CV_r_SkipRenderComposites;
 
 // Confetti David Srour: Global VisArea/Portals blend weight for GMEM path
 float CRenderer::CV_r_GMEMVisAreasBlendWeight;
@@ -1261,6 +1262,14 @@ static void OnChange_CV_r_CubeDepthMapResolution(ICVar* pCVar)
 #endif
 }
 
+static void OnChange_CV_r_SkipRenderComposites(ICVar* pCVar)
+{
+    int value = pCVar->GetIVal();
+
+    AZ_Warning("Rendering", value == 0 || (value == 1 && CRenderer::CV_r_flares == 0), "r_SkipRenderComposites was set to 1 while r_Flares was enabled, setting r_Flares to 0.");
+    CRenderer::CV_r_flares = 0;
+}
+
 static void OnChange_CV_r_DebugLightLayers(ICVar* pCVar)
 {
     int value = pCVar->GetIVal();
@@ -1436,6 +1445,11 @@ static void OnChange_CV_r_ShadersAllowCompiliation(ICVar* pCVar)
     // before this.
     CRenderer::CV_r_shadersasyncactivation = 0;
     CryWarning(VALIDATOR_MODULE_RENDERER, VALIDATOR_ERROR, "Changing r_ShadersAllowCompilation at runtime can cause problems. Please set it in your system.cfg or user.cfg instead.");
+}
+
+static void OnChange_CV_r_flares(ICVar* pCVar)
+{
+    AZ_Warning("Rendering", pCVar->GetIVal() == 0 || (pCVar->GetIVal() == 1 && CRenderer::CV_r_SkipRenderComposites == 0), "r_SkipRenderComposites is set to 1, r_flares will have no effect.");
 }
 
 static void OnChange_CV_r_FlaresTessellationRatio(ICVar* pCVar)
@@ -2561,19 +2575,19 @@ void CRenderer::InitRenderer()
         "Disables anisotropic filtering on alpha-tested geometry like vegetation.\n");
     DefineConstIntCVar3("r_TexLog", CV_r_texlog, 0, VF_NULL,
         "Configures texture information logging.\n"
-        "Usage:	r_TexLog #\n"
+        "Usage:\tr_TexLog #\n"
         "where # represents:\n"
-        "	0: Texture logging off\n"
-        "	1: Texture information logged to screen\n"
-        "	2: All loaded textures logged to 'UsedTextures.txt'\n"
-        "	3: Missing textures logged to 'MissingTextures.txt");
+        "\t0: Texture logging off\n"
+        "\t1: Texture information logged to screen\n"
+        "\t2: All loaded textures logged to 'UsedTextures.txt'\n"
+        "\t3: Missing textures logged to 'MissingTextures.txt");
     DefineConstIntCVar3("r_TexNoLoad", CV_r_texnoload, 0, VF_NULL,
         "Disables loading of textures.\n"
-        "Usage:	r_TexNoLoad [0/1]\n"
+        "Usage:\tr_TexNoLoad [0/1]\n"
         "When 1 texture loading is disabled.");
     DefineConstIntCVar3("r_TexBlockOnLoad", CV_r_texBlockOnLoad, 0, VF_NULL,
         "When loading a texture, block until resource compiler has finished compiling it.\n"
-        "Usage:	r_TexBlockOnLoad [0/1]\n"
+        "Usage:\tr_TexBlockOnLoad [0/1]\n"
         "When 1 renderer will block and wait on the resource compiler.");
 
     REGISTER_CVAR3("r_RenderTargetPoolSize", CV_r_rendertargetpoolsize, 0, VF_NULL,
@@ -2776,8 +2790,8 @@ void CRenderer::InitRenderer()
     DefineConstIntCVar3("r_ShowTimeGraph", CV_r_showtimegraph, 0, VF_NULL,
         "Configures graphic display of frame-times.\n"
         "Usage: r_ShowTimeGraph [0/1/2]\n"
-        "	1: Graph displayed as points."
-        "	2: Graph displayed as lines."
+        "\t1: Graph displayed as points."
+        "\t2: Graph displayed as lines."
         "Default is 0 (off).");
 #ifndef EXCLUDE_DOCUMENTATION_PURPOSE
     DefineConstIntCVar3("r_DebugFontRendering", CV_r_DebugFontRendering, 0, VF_CHEAT,
@@ -2786,8 +2800,8 @@ void CRenderer::InitRenderer()
     DefineConstIntCVar3("profileStreaming", CV_profileStreaming, 0, VF_NULL,
         "Profiles streaming of different assets.\n"
         "Usage: profileStreaming [0/1/2]\n"
-        "	1: Graph displayed as points."
-        "	2: Graph displayed as lines."
+        "\t1: Graph displayed as points."
+        "\t2: Graph displayed as lines."
         "Default is 0 (off).");
     DefineConstIntCVar3("r_GraphStyle", CV_r_graphstyle, 0, VF_NULL, "");
     DefineConstIntCVar3("r_ShowBufferUsage", CV_r_showbufferusage, 0, VF_NULL,
@@ -2955,19 +2969,19 @@ void CRenderer::InitRenderer()
         "Sets resolution for target environment cubemap, in pixels.\n"
         "Usage: r_EnvCMResolution #\n"
         "where # represents:\n"
-        "	0: 64\n"
-        "	1: 128\n"
-        "	2: 256\n"
+        "\t0: 64\n"
+        "\t1: 128\n"
+        "\t2: 256\n"
         "Default is 2 (256 by 256 pixels).");
 
     REGISTER_CVAR3("r_EnvTexResolution", CV_r_envtexresolution, ENVTEXRES_DEFAULT_VAL, VF_DUMPTODISK,
         "Sets resolution for 2d target environment texture, in pixels.\n"
         "Usage: r_EnvTexResolution #\n"
         "where # represents:\n"
-        "	0: 64\n"
-        "	1: 128\n"
-        "	2: 256\n"
-        "	3: 512\n"
+        "\t0: 64\n"
+        "\t1: 128\n"
+        "\t2: 256\n"
+        "\t3: 512\n"
         "Default is 3 (512 by 512 pixels).");
 
     REGISTER_CVAR3("r_WaterUpdateDistance", CV_r_waterupdateDistance, 2.0f, VF_NULL, "");
@@ -3113,10 +3127,11 @@ void CRenderer::InitRenderer()
         "Usage: r_DrawNearFoV [n]\n"
         "Default is 60.");
 
-    REGISTER_CVAR3("r_Flares", CV_r_flares, FLARES_DEFAULT_VAL, VF_DUMPTODISK,
+    REGISTER_CVAR3_CB("r_Flares", CV_r_flares, FLARES_DEFAULT_VAL, VF_DUMPTODISK,
         "Toggles lens flare effect.\n"
         "Usage: r_Flares [0/1]\n"
-        "Default is 1 (on).");
+        "Default is 1 (on).",
+        OnChange_CV_r_flares);
 
     DefineConstIntCVar3("r_FlareHqShafts", CV_r_flareHqShafts, FLARES_HQSHAFTS_DEFAULT_VAL, VF_DUMPTODISK,
         "Toggles high quality mode for point light shafts.\n"
@@ -3178,11 +3193,11 @@ void CRenderer::InitRenderer()
         "Logs rendering information to Direct3DLog.txt.\n"
         "Use negative values to log a single frame.\n"
         "Usage: r_Log +/-[0/1/2/3/4]\n"
-        "	1: Logs a list of all shaders without profile info.\n"
-        "	2: Log contains a list of all shaders with profile info.\n"
-        "	3: Logs all API function calls.\n"
-        "	4: Highly detailed pipeline log, including all passes,\n"
-        "			states, lights and pixel/vertex shaders.\n"
+        "\t1: Logs a list of all shaders without profile info.\n"
+        "\t2: Log contains a list of all shaders with profile info.\n"
+        "\t3: Logs all API function calls.\n"
+        "\t4: Highly detailed pipeline log, including all passes,\n"
+        "\t\t\tstates, lights and pixel/vertex shaders.\n"
         "Default is 0 (off). Use this function carefully, because\n"
         "log files grow very quickly.");
 
@@ -3701,6 +3716,13 @@ void CRenderer::InitRenderer()
         "0: Does not skip native upscale. \n"
         "1: Skips native upscale."
         );
+    
+    REGISTER_CVAR3_CB("r_SkipRenderComposites", CV_r_SkipRenderComposites, 0, VF_NULL,
+        "Skips the RenderComposites call for rendering Flares and Grain. Can be used as an\n"
+        "optimization to avoid a full screen render when these effects are not being used."
+        "0: Does not skip RenderComposites. \n"
+        "1: Skips RenderComposites",
+        OnChange_CV_r_SkipRenderComposites);
 
     REGISTER_CVAR3("r_minConsoleFontSize", CV_r_minConsoleFontSize, 19.0f, VF_NULL,
         "Minimum size used for scaling the font when rendering the console"
@@ -4314,7 +4336,7 @@ void CRenderer::RenderTextMessages(CTextMessages& messages)
             }
 
             ProjectToScreen(vPos.x, vPos.y, vPos.z, &sx, &sy, &sz);
-			
+
             if (!b800x600)
             {
                 // ProjectToScreen() returns virtual screen values in range [0-100], while the Draw2dTextWithDepth() method expects screen coords.
@@ -6973,7 +6995,7 @@ bool CRenderer::EF_PrecacheResource(IRenderMesh* _pPB, _smart_ptr<IMaterial> pMa
         pSR->m_fMinMipFactorLoad = fMipFactor;
         for (auto& iter : pSR->m_TexturesResourcesMap )
         {
-            SEfResTexture*  	pTexture = &(iter.second);
+            SEfResTexture*      pTexture = &(iter.second);
             CTexture*           tp = static_cast<CTexture*> (pTexture->m_Sampler.m_pITex);
             if (!tp)
             {
@@ -8396,7 +8418,7 @@ void CRenderer::ClearShaderItem(SShaderItem* pShaderItem)
 
         for (int i = 0; i < EFTT_MAX; ++i)
         {
-            SEfResTexture*  	pTexture = shaderResources->GetTextureResource(i);
+            SEfResTexture*      pTexture = shaderResources->GetTextureResource(i);
             if (gRenDev->m_RP.m_ShaderTexResources[i] == pTexture)
             {
                 gRenDev->m_RP.m_ShaderTexResources[i] = nullptr;
@@ -8405,7 +8427,7 @@ void CRenderer::ClearShaderItem(SShaderItem* pShaderItem)
 /* @barled - adibugbug - put back in place!!!
         for (auto iter = shaderResources->m_TexturesResourcesMap.begin(); iter != shaderResources->m_TexturesResourcesMap.end(); ++iter)
         {
-            SEfResTexture*  	pTexture = &iter->second;
+            SEfResTexture*      pTexture = &iter->second;
             uint16              nSlot = iter->first;
             if (gRenDev->m_RP.m_ShaderTexResources[nSlot] == pTexture)
             {   // Notice the usage of pointer for the comparison - should be revisited?

@@ -13,9 +13,7 @@
 #include "precompiled.h"
 #include <Debug.h>
 #include "Log.h"
-#if defined(SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR)
 #include "DrawText.h"
-#endif
 #include <ScriptCanvas/Libraries/Libraries.h>
 
 namespace ScriptCanvas
@@ -44,18 +42,14 @@ namespace ScriptCanvas
 
         void Debug::InitNodeRegistry(NodeRegistry& nodeRegistry)
         {
-#if defined(SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR)
             Library::AddNodeToRegistry<Debug, Nodes::Debug::DrawTextNode>(nodeRegistry);
-#endif
             Library::AddNodeToRegistry<Debug, Nodes::Debug::Log>(nodeRegistry);
         }
 
         AZStd::vector<AZ::ComponentDescriptor*> Debug::GetComponentDescriptors()
         {
             return AZStd::vector<AZ::ComponentDescriptor*>({
-#if defined(SCRIPTCANVAS_DIAGNOSTICS_CORE_EDITOR)
                 Nodes::Debug::DrawTextNode::CreateDescriptor(),
-#endif
                 Nodes::Debug::Log::CreateDescriptor(),
             });
         }

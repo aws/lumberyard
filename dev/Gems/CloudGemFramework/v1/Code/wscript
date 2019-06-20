@@ -23,7 +23,7 @@ def build(bld):
     is_project_gen = (bld.env['PLATFORM'] == 'project_generator')
 
     static_lib_file_list = []
-    static_lib_use = ['rapidjson', 'AzCore', 'AzTest']
+    static_lib_use = ['RAPIDJSON', 'AzCore', 'AzTest']
     static_lib_features = []
     static_lib_uselib = []
     static_lib_darwin_lib = []

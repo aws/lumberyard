@@ -48,28 +48,53 @@ namespace GraphCanvas
         Selector::Selector(SelectorImplementation * actual)
             : m_actual(actual)
         {
+            if (m_actual == nullptr)
+            {
+                MakeNull();
+            }
         }
 
         Selector::Selector(const Selector& other)
             : m_actual(other.m_actual ? other.m_actual->Clone() : nullptr)
         {
+            if (m_actual == nullptr)
+            {
+                MakeNull();
+            }
         }
 
         Selector& Selector::operator=(const Selector& other)
         {
             m_actual.reset(other.m_actual ? other.m_actual->Clone() : nullptr);
+
+            if (m_actual == nullptr)
+            {
+                MakeNull();
+            }
+
             return *this;
         }
 
         Selector & Selector::operator=(Selector && other)
         {
             m_actual = AZStd::move(other.m_actual);
+
+            if (m_actual == nullptr)
+            {
+                MakeNull();
+            }
+
             return *this;
         }
 
         void Selector::MakeDefault()
         {
             m_actual.reset(aznew DefaultSelector(m_actual.release()));
+        }
+
+        void Selector::MakeNull()
+        {
+            m_actual.reset(aznew NullSelector());
         }
 
         void SelectorImplementation::Reflect(AZ::ReflectContext * context)

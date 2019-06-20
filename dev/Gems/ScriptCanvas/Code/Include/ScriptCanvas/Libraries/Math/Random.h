@@ -32,9 +32,10 @@ namespace ScriptCanvas
             public:
 
                 ScriptCanvas_Node(Random,
-                    ScriptCanvas_Node::Deprecated("This node has been deprecated, please use the RandomNumber node instead")
+                    ScriptCanvas_Node::Deprecated("This node has been deprecated, please use one of the nodes in the Random category instead")
                     ScriptCanvas_Node::EditAttributes(AZ::Script::Attributes::ExcludeFrom(AZ::Script::Attributes::ExcludeFlags::All))
                     ScriptCanvas_Node::Name("Random")
+                    ScriptCanvas_Node::Category("Math/Random/Deprecated")
                     ScriptCanvas_Node::Uuid("{7884F790-EA26-49AE-9168-D4C415C0D9C3}")
                     ScriptCanvas_Node::Description("Provides a random number in the range specified")
                 );

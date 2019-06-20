@@ -25,6 +25,7 @@
             "Module.cpp",
             "ModuleTestBus.h",
             "Outcome.cpp",
+            "Patching.cpp",
             "Performance.cpp",
             "RemappableId.cpp",
             "Rtti.cpp",
@@ -43,12 +44,17 @@
         "AzCore/Math": [
             "Math/QuaternionTests.cpp"
         ],
+        "AzCore/Memory": [
+            "Memory/HphaSchemaErrorDetection.cpp",
+            "Memory/LeakDetection.cpp"
+        ],
         "AZStd": [
             "AZStd/Algorithms.cpp",
             "AZStd/Allocators.cpp",
             "AZStd/Atomics.cpp",
             "AZStd/Any.cpp",
             "AZStd/CreateDestroy.cpp",
+            "AZStd/ConcurrentAllocators.cpp",
             "AZStd/ConcurrentContainers.cpp",
             "AZStd/DequeAndSimilar.cpp",
             "AZStd/Examples.cpp",

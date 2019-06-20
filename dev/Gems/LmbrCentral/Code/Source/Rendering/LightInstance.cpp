@@ -408,7 +408,7 @@ namespace LmbrCentral
             return;
         }
 
-        ICVar* cvarSysSpecLight = gEnv->pConsole->GetCVar("sys_spec_light");
+        ICVar* cvarSysSpecLight = gEnv->pConsole->GetCVar("e_LightQuality");
         const int configSpec = cvarSysSpecLight ? cvarSysSpecLight->GetIVal() : gEnv->pSystem->GetConfigSpec(true);
 
         if (static_cast<AZ::u32>(configSpec) < static_cast<AZ::u32>(configuration.m_minSpec))

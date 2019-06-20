@@ -27,6 +27,7 @@
 #include "CZBufferCuller.h"
 #include "PoolAllocator.h"
 #include "CCullThread.h"
+#include <StatObjBus.h>
 
 #include <map>
 #include <vector>
@@ -42,6 +43,7 @@ struct ISystem;
 struct IDecalRenderNode;
 struct SCheckOcclusionJobData;
 struct SCheckOcclusionOutput;
+struct CVisArea;
 
 class CVegetation;
 
@@ -344,6 +346,7 @@ struct IObjManager
 class CObjManager
     : public Cry3DEngineBase
     , public IObjManager
+    , private StatInstGroupEventBus::Handler
 {
 public:
     enum
@@ -454,6 +457,8 @@ private:
 
     virtual IStatObj* LoadFromCacheNoRef(IStatObj* pObject, bool bUseStreaming, unsigned long nLoadingFlags, const char* geomName, IStatObj::SSubObject** ppSubObject) override;
 
+    PodArray<PodArray<StatInstGroup> > m_lstStaticTypes;
+
 public:
 
     void GetLoadedStatObjArray(IStatObj** pObjectsArray, int& nCount);
@@ -463,7 +468,6 @@ public:
     virtual bool InternalDeleteObject(IStatObj* pObject) override;
 
     virtual PodArray<PodArray<StatInstGroup> >& GetListStaticTypes() override { return m_lstStaticTypes; }
-    PodArray<PodArray<StatInstGroup> > m_lstStaticTypes;
 
     void MakeShadowCastersList(CVisArea* pReceiverArea, const AABB& aabbReceiver,
         int dwAllowedTypes, int32 nRenderNodeFlags, Vec3 vLightPos, CDLight* pLight, ShadowMapFrustum* pFr, PodArray<struct SPlaneObject>* pShadowHull, const SRenderingPassInfo& passInfo);
@@ -783,6 +787,14 @@ private:
     // Always take this lock after m_loadLock if taking both
     AZStd::recursive_mutex m_garbageMutex;
     AZStd::vector<IStatObj*> m_checkForGarbage;
+
+private:
+    // StatInstGroupEventBus
+    AZStd::unordered_set<StatInstGroupId> m_usedIds;
+    StatInstGroupId GenerateStatInstGroupId() override;
+    void ReleaseStatInstGroupId(StatInstGroupId statInstGroupId) override;
+    void ReleaseStatInstGroupIdSet(const AZStd::unordered_set<StatInstGroupId>& statInstGroupIdSet) override;
+    void ReserveStatInstGroupIdRange(StatInstGroupId from, StatInstGroupId to) override;
 };
 
 

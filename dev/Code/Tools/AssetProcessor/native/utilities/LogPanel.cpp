@@ -17,20 +17,20 @@
 namespace AssetProcessor
 {
 
-    LogPanel::LogPanel(QWidget* pParent /* = nullptr */)
-        : AzToolsFramework::LogPanel::TracePrintFLogPanel(pParent)
+    LogPanel::LogPanel(QWidget* parent)
+        : AzToolsFramework::LogPanel::StyledTracePrintFLogPanel(parent)
     {
     }
 
     QWidget* LogPanel::CreateTab(const AzToolsFramework::LogPanel::TabSettings& settings)
     {
-        LogTab* logTab = aznew LogTab(this, settings);
+        LogTab* logTab = aznew LogTab(settings, this);
         logTab->AddInitialLogMessage();
         return logTab;
     }
 
-    LogTab::LogTab(QWidget* pParent, const AzToolsFramework::LogPanel::TabSettings& in_settings)
-        : AzToolsFramework::LogPanel::AZTracePrintFLogTab(pParent, in_settings)
+    LogTab::LogTab(const AzToolsFramework::LogPanel::TabSettings& settings, QWidget* parent)
+        : AzToolsFramework::LogPanel::StyledTracePrintFLogTab(settings, parent)
     {
     }
 
@@ -46,7 +46,7 @@ namespace AssetProcessor
             return false; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnAssert(message);
+        return AzToolsFramework::LogPanel::StyledTracePrintFLogTab::OnAssert(message);
     }
     bool LogTab::OnException(const char* message)
     {
@@ -55,7 +55,7 @@ namespace AssetProcessor
             return false; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnException(message);
+        return AzToolsFramework::LogPanel::StyledTracePrintFLogTab::OnException(message);
     }
 
     bool LogTab::OnPrintf(const char* window, const char* message)
@@ -65,7 +65,7 @@ namespace AssetProcessor
             return false; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnPrintf(window, message);
+        return AzToolsFramework::LogPanel::StyledTracePrintFLogTab::OnPrintf(window, message);
     }
 
     bool LogTab::OnError(const char* window, const char* message)
@@ -75,7 +75,7 @@ namespace AssetProcessor
             return false; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnError(window, message);
+        return AzToolsFramework::LogPanel::StyledTracePrintFLogTab::OnError(window, message);
     }
 
     bool LogTab::OnWarning(const char* window, const char* message)
@@ -85,7 +85,7 @@ namespace AssetProcessor
             return false; // we are in a job thread
         }
 
-        return AzToolsFramework::LogPanel::AZTracePrintFLogTab::OnWarning(window, message);
+        return AzToolsFramework::LogPanel::StyledTracePrintFLogTab::OnWarning(window, message);
     }
 
 }

@@ -62,6 +62,7 @@ namespace Audio
 #define DEFAULT_AUDIO_PROXY_ID (static_cast<Audio::TAudioProxyID>(1))
 #define INVALID_AUDIO_SOURCE_ID (static_cast<Audio::TAudioSourceId>(0))
 
+
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     struct SATLWorldPosition
     {
@@ -199,6 +200,23 @@ namespace Audio
         Unsupported,    // Unsupported type
         Int,            // Integer type, probably don't need to differentiate signed vs unsigned
         Float,          // Floating poitn type
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    enum class MultiPositionBehaviorType
+    {
+        Separate,       // Sound positions are treated separately as individual point sources, i.e. like torches along a wall.
+        Blended,        // Sound positions are blended together as a 'spread out' sound, i.e. like a river.
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    using MultiPositionVec = AZStd::vector<AZ::Vector3>;
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    struct MultiPositionParams
+    {
+        MultiPositionVec m_positions;
+        MultiPositionBehaviorType m_type;
     };
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -442,6 +460,7 @@ namespace Audio
 
 namespace AZ
 {
+    AZ_TYPE_INFO_SPECIALIZE(Audio::MultiPositionBehaviorType, "{96851568-74F9-4EEC-9195-82DCF701EEEF}");
     AZ_TYPE_INFO_SPECIALIZE(Audio::ObstructionType, "{8C056768-40E2-4B2D-AF01-9F7A6817BAAA}");
 } // namespace AZ
 

@@ -15,6 +15,7 @@ import service
 import errors
 import json
 from botocore.exceptions import ClientError
+from botocore.client import Config
 import cgf_lambda_settings
 import cgf_service_client
 from datetime import datetime
@@ -30,7 +31,7 @@ def _get_content_bucket():
         print 'Bucket name is {}'.format(content_bucket_name)
     
         print 'attempting to get S3 resource from local region'
-        bucketResource = boto3.resource('s3')
+        bucketResource = boto3.resource('s3', config=Config(signature_version='s3v4'))
         _get_content_bucket.content_bucket = bucketResource.Bucket(content_bucket_name)
     
         if _get_content_bucket.content_bucket is None:
@@ -86,7 +87,7 @@ def delete_all_content(request):
     
 def _get_bucket_content_list():
     print 'Getting bucket content list'
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
     content_bucket_name = CloudCanvas.get_setting('StagingBucket') 
     nextMarker = 0
     contentsList = []

@@ -35,8 +35,7 @@ namespace LmbrCentral
         virtual AZ::Aabb GetLocalBounds() = 0;
     };
 
-    //using RenderBoundsRequestBus = AZ::EBus<RenderBoundsRequests>;
-    class RenderBoundsRequestBus : public AZ::EBus<RenderBoundsRequests> {  };
+    using RenderBoundsRequestBus = AZ::EBus<RenderBoundsRequests>;
 
     /*!
      * RenderBoundsNotifications

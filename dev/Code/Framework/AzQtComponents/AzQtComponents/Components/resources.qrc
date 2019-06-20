@@ -2,13 +2,17 @@
 <qresource prefix="/stylesheet">
     <file>img/in_progress.gif</file>
     <file>img/WindowShadow.png</file>
+    <file>img/close.svg</file>
     <file>img/double_triangles.png</file>
     <file>img/dockWidgetSeparatorDots_horiz.png</file>
     <file>img/dockWidgetSeparatorDots_vert.png</file>
+    <file>img/filter.svg</file>
     <file>img/filter.png</file>
     <file>img/filter_selected.png</file>
     <file>img/menu.png</file>
     <file>img/menu_selected.png</file>
+    <file>img/indicator-arrow-down.svg</file>
+    <file>img/indicator-arrow-up.svg</file>
     <file>img/radio-hover.png</file>
     <file>img/radio-selected.png</file>
     <file>img/radio-unselected.png</file>
@@ -16,7 +20,9 @@
     <file>img/combo-checked.png</file>
     <file>img/combo-tristate.png</file>
     <file>img/ly_application_icon.png</file>
+    <file>img/search.svg</file>
     <file>img/search.png</file>
+    <file>img/search-dark.svg</file>
     <file>img/separator.png</file>
     <file>img/separator_horiz.png</file>
     <file>img/slider-handle.png</file>
@@ -25,6 +31,7 @@
     <file>img/table_error.png</file>
     <file>img/table_warning.png</file>
     <file>img/table_success.png</file>
+    <file>img/table_debug.png</file>
     <file>img/titlebar_divider.png</file>
     <file>img/titlebar_maximize.png</file>
     <file>img/titlebar_minimize.png</file>
@@ -256,6 +263,8 @@
     <file>img/round_button_small.png</file>
     <file>img/round_button_small_hover.png</file>
     <file>img/round_button_small_press.png</file>
+    <file>img/column-resize.png</file>
+    <file>img/help.svg</file>
     <file>img/dropdowns/big_arrow_down.png</file>
     <file>img/dropdowns/big_arrow_left.png</file>
     <file>img/dropdowns/double_arrows.png</file>
@@ -281,7 +290,6 @@
     <file>img/titlebar/titlebar_minimize_dark.png</file>
     <file>img/titlebar/titlebar_minimize_press_dark.png</file>
     <file>img/titlebar/titlebar_minimize_hover_dark.png</file>
-
     <file>img/titlebarmenu/close.png</file>
     <file>img/titlebarmenu/restore.png</file>
     <file>img/titlebarmenu/minimize.png</file>
@@ -298,6 +306,18 @@
     <file>img/titlebarmenu/restore_disabled@2x.png</file>
     <file>img/titlebarmenu/minimize_disabled@2x.png</file>
     <file>img/titlebarmenu/maximize_disabled@2x.png</file>
+    <file>img/logging/debug.svg</file>
+    <file>img/logging/error.svg</file>
+    <file>img/logging/information.svg</file>
+    <file>img/logging/pending.svg</file>
+    <file>img/logging/processing.svg</file>
+    <file>img/logging/valid.svg</file>
+    <file>img/logging/warning.svg</file>
+    <file>img/logging/copy.svg</file>
+    <file>img/logging/reset.svg</file>
+    <file>img/logging/add-filter.svg</file>
+    <file>img/branch_open.png</file>
+    <file>img/branch_closed.png</file>
 </qresource>
 <qresource prefix="/docking">
     <file alias="tabs_icon.png">img/docking/tabs_icon.png</file>
@@ -363,8 +383,14 @@
     <file>Widgets/SegmentControl.qss</file>
     <file>Widgets/Slider.qss</file>
     <file>Widgets/SliderConfig.ini</file>
+    <file>Widgets/StyledDockWidget.qss</file>
+    <file>Widgets/TabWidget.qss</file>
+    <file>Widgets/TabWidgetConfig.ini</file>
     <file>Widgets/Text.qss</file>
+    <file>Widgets/TitleBar.qss</file>
+    <file>Widgets/TitleBarConfig.ini</file>
     <file>Widgets/ToolTip.qss</file>
+    <file>Widgets/WindowDecorationWrapper.qss</file>
 </qresource>
 <qresource prefix="/stylesheet">
     <file>img/UI20/combo-checked.png</file>
@@ -378,6 +404,9 @@
     <file>img/UI20/radio-unchecked.png</file>
     <file>img/UI20/radio-unchecked-disabled.png</file>
     <file>img/UI20/radio-unchecked-focus.png</file>
+    <file>img/UI20/tear.svg</file>
+    <file>img/UI20/titlebar-maximize.svg</file>
+    <file>img/UI20/titlebar-minimize.svg</file>
     <file>img/UI20/toggle-checked.png</file>
     <file>img/UI20/toggle-checked-disabled.png</file>
     <file>img/UI20/toggle-checked-focus.png</file>

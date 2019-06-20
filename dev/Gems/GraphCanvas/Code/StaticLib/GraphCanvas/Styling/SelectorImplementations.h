@@ -23,6 +23,35 @@ namespace GraphCanvas
 {
     namespace Styling
     {
+        class NullSelector
+            : public SelectorImplementation
+        {
+        public:
+            AZ_RTTI(NullSelector, "{25C8D8CB-98B3-4A15-8A49-7668A587C613}", SelectorImplementation);
+            AZ_CLASS_ALLOCATOR(NullSelector, AZ::SystemAllocator, 0);
+
+            static void Reflect(AZ::ReflectContext* context);
+
+            int GetComplexity() const override
+            {
+                return 0;
+            }
+
+            bool Matches(const AZ::EntityId& object) const
+            {
+                return false;
+            }
+
+            bool operator==(const SelectorImplementation& other) const override
+            {
+                return false;
+            }
+
+            SelectorImplementation* Clone() const override
+            {
+                return aznew NullSelector();
+            }
+        };
 
         class BasicSelector
             : public SelectorImplementation

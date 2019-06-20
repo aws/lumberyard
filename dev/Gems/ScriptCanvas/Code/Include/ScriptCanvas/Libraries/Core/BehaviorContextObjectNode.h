@@ -47,7 +47,7 @@ namespace ScriptCanvas
 
                 BehaviorContextObjectNode() = default;
 
-                ~BehaviorContextObjectNode() = default;
+                ~BehaviorContextObjectNode() override = default;
 
                 AZStd::string GetDebugName() const override;            
                 
@@ -65,8 +65,8 @@ namespace ScriptCanvas
                 void InitializeObject(const AZ::BehaviorClass& behaviorClass);
                 void OnInit() override;
 
-                void ConfigureSetters(const AZ::BehaviorClass& behaviorClass);
-                void ConfigureGetters(const AZ::BehaviorClass& behaviorClass);
+                virtual void ConfigureSetters(const AZ::BehaviorClass& behaviorClass);
+                virtual void ConfigureGetters(const AZ::BehaviorClass& behaviorClass);
                 void ConfigureProperties(const AZ::BehaviorClass& behaviorClass);
                 
             private:                

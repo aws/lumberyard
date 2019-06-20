@@ -44,7 +44,7 @@ namespace EMotionFX
         bool InitAfterLoading(AnimGraph* animGraph) override;
         void Reinit() override;
 
-        uint32 GetVisualColor() const override;
+        AZ::Color GetVisualColor() const override;
         bool GetSupportsDisable() const override;
 
         const char* GetPaletteName() const override;

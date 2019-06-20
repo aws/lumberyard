@@ -21,12 +21,18 @@ namespace ScriptCanvas
     {
         AZ_INLINE Data::Matrix3x3Type Add(const Data::Matrix3x3Type& lhs, const Data::Matrix3x3Type& rhs)
         {
-            return lhs + rhs;
+            return lhs + rhs; 
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Add, "Math/Matrix3x3", "{B4F65ADE-9F4D-4134-BB8B-CDBFB75C9E42}", "returns the sum of matrix A and matrix B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Add, "Math/Matrix3x3", "{B4F65ADE-9F4D-4134-BB8B-CDBFB75C9E42}", "This node is deprecated, use Add (+), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE Data::Matrix3x3Type DivideByNumber(const Data::Matrix3x3Type& source, Data::NumberType divisor)
         {
+            if (AZ::IsClose(divisor, Data::NumberType(0), std::numeric_limits<Data::NumberType>::epsilon()))
+            {
+                AZ_Error("Script Canvas", false, "Division by zero");
+                return Data::Matrix3x3Type::CreateIdentity();
+            }
+
             return source / Data::ToVectorFloat(divisor);
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Matrix3x3", "{8B696031-B2C6-463C-A051-B875464859DC}", "returns matrix created from multiply the source matrix by 1/Divisor", "Source", "Divisor");
@@ -77,7 +83,7 @@ namespace ScriptCanvas
         {
             return Data::Matrix3x3Type::CreateRotationZ(AZ::DegToRad(aznumeric_cast<float>(angle)));
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromRotationZDegrees, "Math/Matrix3x3", "{4E2E0AF5-4853-4315-B5FE-5973722BDE97}", "returns a rotation matrix representing a rotation in degrees around Z-axis", "Degrees");        
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(FromRotationZDegrees, "Math/Matrix3x3", "{4E2E0AF5-4853-4315-B5FE-5973722BDE97}", "returns a rotation matrix representing a rotation in degrees around Z-axis", "Degrees");
 
         AZ_INLINE Data::Matrix3x3Type FromRows(const Data::Vector3Type& row0, const Data::Vector3Type& row1, const Data::Vector3Type& row2)
         {
@@ -154,7 +160,7 @@ namespace ScriptCanvas
         {
             return lhs.IsClose(rhs, Data::ToVectorFloat(tolerance));
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(IsClose, MathNodeUtilities::DefaultToleranceSIMD<2>, "Math/Matrix3x3", "{020C2517-F02F-4D7E-9FE9-B6E91E0D6D3F}", 
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(IsClose, MathNodeUtilities::DefaultToleranceSIMD<2>, "Math/Matrix3x3", "{020C2517-F02F-4D7E-9FE9-B6E91E0D6D3F}",
             "returns true if each element of both Matrix are equal within some tolerance", "A", "B", "Tolerance");
 
         AZ_INLINE Data::BooleanType IsFinite(const Data::Matrix3x3Type& source)
@@ -179,7 +185,7 @@ namespace ScriptCanvas
         {
             return lhs * rhs;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(MultiplyByMatrix, "Math/Matrix3x3", "{B5DAE90C-7F12-4454-AF7F-36A288E8CB8F}", "returns result of multiplying both matrices (A * B)", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(MultiplyByMatrix, "Math/Matrix3x3", "{B5DAE90C-7F12-4454-AF7F-36A288E8CB8F}", "This node is deprecated, use Multiply (*), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE Data::Vector3Type MultiplyByVector(const Data::Matrix3x3Type& lhs, const Data::Vector3Type& rhs)
         {
@@ -197,7 +203,7 @@ namespace ScriptCanvas
         {
             return lhs - rhs;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Subtract, "Math/Matrix3x3", "{42FF001E-81CE-45CE-B47A-862A50AE4F0A}", "returns the subtraction of matrix A and matrix B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Subtract, "Math/Matrix3x3", "{42FF001E-81CE-45CE-B47A-862A50AE4F0A}", "This node is deprecated, use Subtract (-), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE Data::Matrix3x3Type ToAdjugate(const Data::Matrix3x3Type& source)
         {

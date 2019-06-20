@@ -14,23 +14,26 @@
 #include <GraphCanvas.h>
 
 #include <Components/BookmarkAnchor/BookmarkAnchorComponent.h>
+#include <Components/BookmarkAnchor/BookmarkAnchorLayerControllerComponent.h>
 #include <Components/BookmarkAnchor/BookmarkAnchorVisualComponent.h>
 #include <Components/BookmarkManagerComponent.h>
 #include <Components/GeometryComponent.h>
 #include <Components/GridComponent.h>
 #include <Components/GridVisualComponent.h>
+#include <Components/PersistentIdComponent.h>
 #include <Components/SceneComponent.h>
 #include <Components/SceneMemberComponent.h>
 #include <Components/StylingComponent.h>
 
 #include <Components/Connections/ConnectionComponent.h>
+#include <Components/Connections/ConnectionLayerControllerComponent.h>
 #include <Components/Connections/ConnectionVisualComponent.h>
 #include <Components/Connections/DataConnections/DataConnectionComponent.h>
 #include <Components/Connections/DataConnections/DataConnectionVisualComponent.h>
 
 #include <Components/Nodes/NodeComponent.h>
-#include <Components/Nodes/Comment/BlockCommentNodeLayoutComponent.h>
-#include <Components/Nodes/Comment/BlockCommentNodeFrameComponent.h>
+#include <Components/Nodes/NodeLayerControllerComponent.h>
+#include <Components/Nodes/Comment/CommentLayerControllerComponent.h>
 #include <Components/Nodes/Comment/CommentNodeFrameComponent.h>
 #include <Components/Nodes/Comment/CommentNodeLayoutComponent.h>
 #include <Components/Nodes/Comment/CommentNodeTextComponent.h>
@@ -38,6 +41,10 @@
 #include <Components/Nodes/General/GeneralNodeLayoutComponent.h>
 #include <Components/Nodes/General/GeneralNodeTitleComponent.h>
 #include <Components/Nodes/General/GeneralSlotLayoutComponent.h>
+#include <Components/Nodes/Group/CollapsedNodeGroupComponent.h>
+#include <Components/Nodes/Group/NodeGroupLayoutComponent.h>
+#include <Components/Nodes/Group/NodeGroupLayerControllerComponent.h>
+#include <Components/Nodes/Group/NodeGroupFrameComponent.h>
 #include <Components/Nodes/Wrapper/WrapperNodeLayoutComponent.h>
 
 #include <Components/Slots/SlotComponent.h>
@@ -65,12 +72,14 @@ namespace GraphCanvas
     {
         m_descriptors.insert(m_descriptors.end(), {
 
-            // Components            
+            // Components
             BookmarkManagerComponent::CreateDescriptor(),
-            GraphCanvasSystemComponent::CreateDescriptor(),
-            SceneComponent::CreateDescriptor(),
-            SceneMemberComponent::CreateDescriptor(),
             GraphCanvasPropertyComponent::CreateDescriptor(),
+            GraphCanvasSystemComponent::CreateDescriptor(),
+            LayerControllerComponent::CreateDescriptor(),
+            PersistentIdComponent::CreateDescriptor(),
+            SceneComponent::CreateDescriptor(),
+            SceneMemberComponent::CreateDescriptor(),            
 
             // Background Grid
             GridComponent::CreateDescriptor(),
@@ -78,13 +87,15 @@ namespace GraphCanvas
 
             // BookmarkAnchor
             BookmarkAnchorComponent::CreateDescriptor(),
+            BookmarkAnchorLayerControllerComponent::CreateDescriptor(),
             BookmarkAnchorVisualComponent::CreateDescriptor(),
 
             // General
-            GeometryComponent::CreateDescriptor(),            
+            GeometryComponent::CreateDescriptor(),
 
             // Connections
             ConnectionComponent::CreateDescriptor(),
+            ConnectionLayerControllerComponent::CreateDescriptor(),
             ConnectionVisualComponent::CreateDescriptor(),
 
             // Connections::DataConnections
@@ -93,13 +104,11 @@ namespace GraphCanvas
 
             // Nodes
             NodeComponent::CreateDescriptor(),
+            NodeLayerControllerComponent::CreateDescriptor(),
             NodeLayoutComponent::CreateDescriptor(),
 
-            // BlockCommentNode
-            BlockCommentNodeLayoutComponent::CreateDescriptor(),
-            BlockCommentNodeFrameComponent::CreateDescriptor(),
-
             // CommentNode
+            CommentLayerControllerComponent::CreateDescriptor(),
             CommentNodeFrameComponent::CreateDescriptor(),
             CommentNodeLayoutComponent::CreateDescriptor(),
             CommentNodeTextComponent::CreateDescriptor(),
@@ -109,6 +118,12 @@ namespace GraphCanvas
             GeneralSlotLayoutComponent::CreateDescriptor(),
             GeneralNodeFrameComponent::CreateDescriptor(),
             GeneralNodeLayoutComponent::CreateDescriptor(),
+
+            // NodeGroup
+            CollapsedNodeGroupComponent::CreateDescriptor(),
+            NodeGroupLayerControllerComponent::CreateDescriptor(),
+            NodeGroupLayoutComponent::CreateDescriptor(),
+            NodeGroupFrameComponent::CreateDescriptor(),
 
             // Wrapper Node
             WrapperNodeLayoutComponent::CreateDescriptor(),
@@ -133,7 +148,7 @@ namespace GraphCanvas
             // Styling
             StylingComponent::CreateDescriptor(),
 
-            Styling::ComputedStyle::CreateDescriptor(),            
+            Styling::ComputedStyle::CreateDescriptor(),
             Styling::VirtualChildElement::CreateDescriptor(),
 
             // Deprecated Components

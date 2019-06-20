@@ -16,6 +16,7 @@
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/std/chrono/chrono.h>
 
 #include <GraphCanvas/Components/Connections/ConnectionBus.h>
 #include <GraphCanvas/Components/ViewBus.h>
@@ -86,8 +87,13 @@ namespace GraphCanvas
         QGraphicsItem* GetRootGraphicsItem() override;
         QGraphicsLayoutItem* GetRootGraphicsLayoutItem() override;
 
-        void SetSelected(bool selected);
-        bool IsSelected() const;
+        void SetSelected(bool selected) override;
+        bool IsSelected() const override;
+
+        QPainterPath GetOutline() const override;
+
+        void SetZValue(int zValue) override;
+        int GetZValue() const override;
         ////
 
     protected:
@@ -110,6 +116,7 @@ namespace GraphCanvas
         , public VisualNotificationBus::MultiHandler
         , public StyleNotificationBus::Handler
         , public AZ::SystemTickBus::Handler
+        , public SceneMemberNotificationBus::Handler
     {
     public:
         AZ_CLASS_ALLOCATOR(ConnectionGraphicsItem, AZ::SystemAllocator, 0);
@@ -156,6 +163,11 @@ namespace GraphCanvas
         void UpdateConnectionPath() override;
         ////
 
+        // SceneMemberNotifications
+        void OnSceneMemberHidden() override;
+        void OnSceneMemberShown() override;
+        ////
+
     protected:
 
         const AZ::EntityId& GetConnectionEntityId() const;
@@ -170,7 +182,6 @@ namespace GraphCanvas
         
         // QGraphicsItem
         QPainterPath shape() const override;
-        void contextMenuEvent(QGraphicsSceneContextMenuEvent* contextMenuEvent) override;
 
         void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
         void mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
@@ -191,8 +202,11 @@ namespace GraphCanvas
         Styling::StyleHelper m_style;
         QPen m_pen;
 
+        AZStd::chrono::milliseconds m_lastUpdate;
         double m_offset;
 
         AZ::EntityId m_connectionEntityId;
+
+        
     };
 }

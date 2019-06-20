@@ -46,6 +46,7 @@ namespace AzToolsFramework
 
     signals:
         void valueChanged(double newValue);
+        void editingFinished();
 
     public slots:
         void setValue(double val);

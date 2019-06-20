@@ -12,6 +12,7 @@
 #pragma once
 
 #include <PhysX/ConfigurationBus.h>
+#include <Editor/ConfigurationWindowBus.h>
 #include <QTabWidget>
 
 namespace PhysX
@@ -19,14 +20,14 @@ namespace PhysX
     namespace Editor
     {
         class SettingsWidget;
-        class CollisionLayersWidget;
-        class CollisionGroupsWidget;
+        class CollisionFilteringWidget;
         class PvdWidget;
 
         /// Widget for editing physx configuration and settings.
         ///
         class ConfigurationWidget
             : public QWidget
+            , public ConfigurationWindowRequestBus::Handler
         {
             Q_OBJECT
 
@@ -34,10 +35,14 @@ namespace PhysX
             AZ_CLASS_ALLOCATOR(ConfigurationWidget, AZ::SystemAllocator, 0);
 
             explicit ConfigurationWidget(QWidget* parent = nullptr);
-            ~ConfigurationWidget() override = default;
+            ~ConfigurationWidget() override;
 
             void SetConfiguration(const PhysX::Configuration& configuration);
             const PhysX::Configuration& GetConfiguration() const;
+
+            // ConfigurationWindowRequestBus
+            void ShowCollisionLayersTab() override;
+            void ShowCollisionGroupsTab() override;
 
         signals:
             void onConfigurationChanged(const PhysX::Configuration&);
@@ -47,8 +52,7 @@ namespace PhysX
 
             QTabWidget* m_tabs;
             SettingsWidget* m_settings;
-            CollisionLayersWidget* m_collisionLayers;
-            CollisionGroupsWidget* m_collisionGroups;
+            CollisionFilteringWidget* m_collisionFiltering;
             PvdWidget* m_pvd;
         };
     } // namespace Editor

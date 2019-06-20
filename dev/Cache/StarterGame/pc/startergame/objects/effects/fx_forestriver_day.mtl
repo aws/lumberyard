@@ -1,0 +1,6 @@
+<Material MtlFlags="526336" DccMaterialHash="0" Shader="Watervolume" GenMask="4B" StringGenMask="" SurfaceType="mat_water" Diffuse="1,1,1,1" Specular="0.21952623,0.21952623,0.21952623,1" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Environment" File="textures/cubemaps/StarterGame/environmentprobedayriver_cm.dds"/>
+ </Textures>
+ <PublicParams NormalsScale="0.40000001" SoftIntersectionFactor="0.47" Tilling="5" FoamAmount="4" DetailNormalsScale="0.2" EnvCubeReflMul="1.2" VertexWaveScale="0.0099999998" DetailTilling="2" EnvCubeScale="16" RealtimeReflMul="0.5" FoamSoftIntersectionFactor="0.99400002" FoamTilling="0.89999998" RainTilling="1" WaterFlowSpeed="-1"/>
+</Material>

@@ -328,8 +328,7 @@ void CSequencerDopeSheetBase::DrawTimeLineInFrames(QPainter* painter, const QRec
         {
             painter->setPen(black);
             painter->drawLine(x, rc.bottom() - 2, x, rc.bottom() - 14);
-            const QStaticText str = QString::number(fFrame, 'g');
-            painter->drawStaticText(x + 2, rc.top(), str);
+            painter->drawText(x + 2, rc.top(), QString::number(fFrame, 'g'));
             painter->setPen(ltgray);
         }
         else
@@ -375,8 +374,7 @@ void CSequencerDopeSheetBase::DrawTimeLineInSeconds(QPainter* painter, const QRe
         {
             painter->setPen(black);
             painter->drawLine(x, rc.bottom() - 2, x, rc.bottom() - 14);
-            const QStaticText str = QString::number(st, 'g');
-            painter->drawStaticText(x + 2, rc.top(), str);
+            painter->drawText(x + 2, rc.top(), QString::number(st, 'g'));
             painter->setPen(ltgray);
         }
         else

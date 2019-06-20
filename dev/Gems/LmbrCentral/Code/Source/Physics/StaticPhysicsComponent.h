@@ -24,11 +24,12 @@ namespace LmbrCentral
     public:
         AZ_COMPONENT(StaticPhysicsComponent, AzFramework::StaticPhysicsComponentTypeId, PhysicsComponent);
         static void Reflect(AZ::ReflectContext* context);
-        
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
         {
             PhysicsComponent::GetProvidedServices(provided);
             provided.push_back(AZ_CRC("StaticPhysicsService", 0x20ca6e80));
+            provided.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         StaticPhysicsComponent() = default;

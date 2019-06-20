@@ -15,7 +15,8 @@
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/Component.h>
 #include <AzCore/Component/TransformBus.h>
-#include <OccluderAreaComponentBus.h>
+
+#include "OccluderAreaComponentBus.h"
 
 namespace Visibility
 {
@@ -34,12 +35,12 @@ namespace Visibility
         bool m_useInIndoors = false;
         bool m_doubleSide = true;
 
-        AZStd::array<AZ::Vector3, 4> m_vertices = 
+        AZStd::array<AZ::Vector3, 4> m_vertices =
         AZStd::array<AZ::Vector3, 4> { {
             AZ::Vector3(-1.0f, -1.0f, 0.0f),
             AZ::Vector3( 1.0f, -1.0f, 0.0f),
             AZ::Vector3( 1.0f,  1.0f, 0.0f),
-            AZ::Vector3(-1.0f,  1.0f, 0.0f) 
+            AZ::Vector3(-1.0f,  1.0f, 0.0f)
         } };
 
         virtual void OnChange() {}
@@ -53,34 +54,26 @@ namespace Visibility
     {
     public:
         AZ_COMPONENT(OccluderAreaComponent, "{B3C90C5F-0F9B-5D4F-ABAE-6D16CB45CB5A}", AZ::Component);
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires);
         static void Reflect(AZ::ReflectContext* context);
 
         OccluderAreaComponent() = default;
-        explicit OccluderAreaComponent(OccluderAreaConfiguration *params) {
-            m_config = *params;
-        }
+        explicit OccluderAreaComponent(const OccluderAreaConfiguration& params);
 
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
         // OccluderAreaRequestBus
-        void SetDisplayFilled(const bool value) override;
         bool GetDisplayFilled() override;
-        void SetCullDistRatio(const float value) override;
         float GetCullDistRatio() override;
-        void SetUseInIndoors(const bool value) override;
         bool GetUseInIndoors() override;
-        void SetDoubleSide(const bool value) override;
         bool GetDoubleSide() override;
 
     protected:
         // Reflected Data
         OccluderAreaConfiguration m_config;
-
-    private:
-        void Update();
     };
 } // namespace Visibility

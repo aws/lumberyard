@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <stdarg.h>
 #include <AzCore/Debug/Profiler.h>
 #include <AzCore/Serialization/EditContext.h>
@@ -24,6 +22,7 @@
 #include <ScriptCanvas/Core/Core.h>
 #include <ScriptCanvas/Core/Node.h>
 #include <ScriptCanvas/Execution/ExecutionContext.h>
+
 
 namespace ScriptCanvas
 {
@@ -65,7 +64,7 @@ namespace ScriptCanvas
             m_isInErrorState = true;
             m_isRecoverable = false;
             m_isFinalErrorReported = true;
-            AZ_Warning("ScriptCanvas", false, "ERROR! Node: %s, Description: %s\n\n", m_errorReporter ? m_errorReporter->GetDebugName().c_str() : "unknown", m_errorDescription.c_str());
+            AZ_Warning("ScriptCanvas", false, "ERROR! Node: %s, Description: %s\n\n", m_errorReporter ? m_errorReporter->GetNodeName().c_str() : "unknown", m_errorDescription.c_str());
             ExecutionStack().swap(m_executionStack);
             // dump error report(callStackTop, m_errorReporter, m_error, graph name, entity ID)
             Deactivate();
@@ -109,7 +108,7 @@ namespace ScriptCanvas
                 UnwindStack(callStackTop);
                 SlotId errorHandlerOutSlotId;
                 NodeRequestBus::EventResult(errorHandlerOutSlotId, errorHandlerNodeId, &NodeRequests::GetSlotId, "Out");
-                SignalBus::Event(errorHandlerNodeId, &SignalInterface::SignalOutput, errorHandlerOutSlotId);
+                SignalBus::Event(errorHandlerNodeId, &SignalInterface::SignalOutput, errorHandlerOutSlotId, ExecuteMode::Normal);
                 m_errorReporter = nullptr;
                 m_errorDescription.clear();
             }
@@ -170,7 +169,7 @@ namespace ScriptCanvas
         {
             m_isExecuting = true;
             AZ::u32 executionCount(0);
-
+            
             while (!m_executionStack.empty())
             {
                 auto nodeAndSlot = m_executionStack.back();
@@ -186,8 +185,46 @@ namespace ScriptCanvas
                     ErrorIrrecoverably();
                 }
             }
-
+                        
             m_isExecuting = false;
+            SC_EXECUTION_TRACE_THREAD_ENDED(CreateGraphInfo(m_runtimeId));
+        }
+    }
+
+    void ExecutionContext::ExecuteUntilNodeIsTopOfStack(Node& node)
+    {
+        if (!IsInErrorState())
+        {
+            m_isExecuting = true;
+            AZ::u32 executionCount(0);
+
+            while (!m_executionStack.empty())
+            {
+                auto nodeAndSlot = m_executionStack.back();
+                m_executionStack.pop();
+                
+                if (nodeAndSlot.first == &node && !nodeAndSlot.second.IsValid())
+                {
+                    m_isExecuting = !m_executionStack.empty();
+                    //SC_EXECUTION_TRACE_THREAD_ENDED();
+                    return;
+                }
+
+                m_preExecutedStackSize = m_executionStack.size();
+                SignalBus::Event(nodeAndSlot.first->GetEntityId(), &SignalInterface::SignalInput, nodeAndSlot.second);
+
+                ++executionCount;
+
+                if (executionCount == SCRIPT_CANVAS_INFINITE_LOOP_DETECTION_COUNT)
+                {
+                    ReportError(*nodeAndSlot.first, "Infinite loop detected");
+                    ErrorIrrecoverably();
+                }
+            }
+
+            ReportError(node, "Invalid ScriptCanvas stack found. Execution stack was empty when at least one node should remain");
+            ErrorIrrecoverably();
+            //SC_EXECUTION_TRACE_THREAD_ENDED();
         }
     }
 

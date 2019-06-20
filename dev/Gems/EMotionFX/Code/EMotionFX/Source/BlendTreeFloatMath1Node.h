@@ -80,7 +80,7 @@ namespace EMotionFX
 
         void SetMathFunction(EMathFunction func);
 
-        uint32 GetVisualColor() const override;
+        AZ::Color GetVisualColor() const override;
         bool GetSupportsDisable() const override;
 
         const char* GetPaletteName() const override;

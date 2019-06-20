@@ -8,24 +8,38 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
+import argparse
+import sys
 
 import pytest_runner
 from aztest.common import DEFAULT_OUTPUT_PATH
 
+DEFAULT_TIMEOUT = 3600  # one hour of seconds
+
 
 def aztest_add_subparsers(subparsers):
     pytest_subparser = subparsers.add_parser(
-        "pytest", description="runs only python tests through py.test, forwarding all arguments except --output-path"
-                              "& --module-timeout to pytest",
-        help='runs only python tests through py.test',  # help for parent parser
+        "pytest", description="Run only python tests through py.test, forwarding any additional arguments to pytest",
+        help='run only python tests through py.test',  # help for parent parser
         add_help=False,  # suppress subparser-targeted help to pass help argument on to pytest
-        usage="%(prog)s [--output-path PATH] <pytest-args ...>"  # help for --output-path errors
+        usage="%(prog)s [-h] [--module-timeout TIMEOUT] [--output-path PATH] <pytest-args ...>"
+    )
+
+    class CustomHelpCallback(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            pytest_subparser.print_help()
+            sys.exit(0)
+    pytest_subparser.add_argument(
+        '-h', nargs=0, action=CustomHelpCallback,
+        help="Show this show this help message and exit. Note that argument '--help' is passed on to pytest, "
+             "and will show its internal help"
     )
     pytest_subparser.add_argument(
-        '--output-path', required=False, default=DEFAULT_OUTPUT_PATH
+        '--output-path', default=DEFAULT_OUTPUT_PATH,
+        help="sets the path for result output"
     )
     pytest_subparser.add_argument(
-        '--module-timeout', type=int, required=False, default=300,
-        help='Duration in seconds before aborting and marking a test module as a failure'
+        '--module-timeout', type=int, default=DEFAULT_TIMEOUT,
+        help='Duration in seconds before aborting and marking the entire test run as a failure'
     )
     pytest_subparser.set_defaults(func=pytest_runner.run_pytest)

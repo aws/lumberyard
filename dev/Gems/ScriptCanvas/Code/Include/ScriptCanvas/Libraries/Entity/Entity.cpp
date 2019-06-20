@@ -10,8 +10,6 @@
 *
 */
 
-#include "precompiled.h"
-
 #include <Libraries/Libraries.h>
 
 #include "Entity.h"

@@ -1347,6 +1347,11 @@ void CShaderMan::mfInitGlobal (void)
                 g_HWSR_MaskBit[HWSR_SAMPLE5] = gb->m_Mask;
             }
             else
+            if (gb->m_ParamName == "%_RT_FOG_VOLUME_HIGH_QUALITY_SHADER")
+            {
+                g_HWSR_MaskBit[HWSR_FOG_VOLUME_HIGH_QUALITY_SHADER] = gb->m_Mask;
+            }
+            else
             if (gb->m_ParamName == "%_RT_APPLY_SSDO")
             {
                 g_HWSR_MaskBit[HWSR_APPLY_SSDO] = gb->m_Mask;

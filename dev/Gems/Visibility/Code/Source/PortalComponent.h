@@ -14,8 +14,9 @@
 
 #include <AzCore/EBus/EBus.h>
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/TransformBus.h>
-#include <PortalComponentBus.h>
+#include <AzCore/Serialization/SerializeContext.h>
+
+#include "PortalComponentBus.h"
 
 namespace Visibility
 {
@@ -28,7 +29,8 @@ namespace Visibility
         virtual ~PortalConfiguration() = default;
 
         static void Reflect(AZ::ReflectContext* context);
-        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+        static bool VersionConverter(
+            AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
         float m_height = 1.0f;
         bool m_displayFilled = false;
@@ -56,51 +58,35 @@ namespace Visibility
     class PortalComponent
         : public AZ::Component
         , private PortalRequestBus::Handler
-        , public AZ::TransformNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(PortalComponent, "{89F1DD88-4445-5A9D-9223-6D4D8D44E6AC}", AZ::Component);
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires);
         static void Reflect(AZ::ReflectContext* context);    
 
-        // Constructors / Destructor
         PortalComponent() = default;
-        explicit PortalComponent(PortalConfiguration *params) {
-            m_config = *params;
-        }
+        explicit PortalComponent(const PortalConfiguration& params);
 
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
         // PortalRequestBus
-        void SetHeight(const float value) override;
         float GetHeight() override;
-        void SetDisplayFilled(const bool value) override;
         bool GetDisplayFilled() override;
-        void SetAffectedBySun(const bool value) override;
         bool GetAffectedBySun() override;
-        void SetViewDistRatio(const float value) override;
         float GetViewDistRatio() override;
-        void SetSkyOnly(const bool value) override;
         bool GetSkyOnly() override;
-        void SetOceanIsVisible(const bool value) override;
         bool GetOceanIsVisible() override;
-        void SetUseDeepness(const bool value) override;
         bool GetUseDeepness() override;
-        void SetDoubleSide(const bool value) override;
         bool GetDoubleSide() override;
-        void SetLightBlending(const bool value) override;
         bool GetLightBlending() override;
-        void SetLightBlendValue(const float value) override;
         float GetLightBlendValue() override;
 
     protected:
         // Reflected Data
         PortalConfiguration m_config;
-
-    private:
-        void Update();
     };
 } // namespace Visibility

@@ -12,20 +12,98 @@
 #pragma once
 
 #include <AzQtComponents/AzQtComponentsAPI.h>
-#include <QTabWidget>
-#include <QTabBar>
+
+#include <QFrame>
+
+class QBoxLayout;
+class QStackedLayout;
 
 namespace AzQtComponents
 {
+    class SegmentBar;
 
-    /**
-     * Some using here to handle different naming conventions between various teams.
-     *
-     * Styling is done in SegmentControl.qss
-     *
-     */
+    class AZ_QT_COMPONENTS_API SegmentControl : public QFrame
+    {
+        Q_OBJECT //AUTOMOC
 
-    using SegmentControl = QTabWidget;
-    using SegmentBar = QTabBar;
+        Q_PROPERTY(Qt::Orientation tabOrientation READ tabOrientation WRITE setTabOrientation)
+        Q_PROPERTY(SegmentControl::TabPosition tabPosition READ tabPosition WRITE setTabPosition)
+        Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY currentChanged)
+        Q_PROPERTY(int count READ count)
+        Q_PROPERTY(QSize iconSize READ iconSize WRITE setIconSize)
 
-} // namespace AzQtComponents
+    public:
+        enum TabPosition { North,
+                           South,
+                           West,
+                           East };
+        Q_ENUM(TabPosition)
+
+        explicit SegmentControl(SegmentControl::TabPosition position, QWidget* parent = nullptr);
+        explicit SegmentControl(SegmentBar* bar, SegmentControl::TabPosition position, QWidget* parent = nullptr);
+        explicit SegmentControl(QWidget* parent = nullptr);
+
+        Qt::Orientation tabOrientation() const;
+        void setTabOrientation(Qt::Orientation orientation);
+
+        SegmentControl::TabPosition tabPosition() const;
+        void setTabPosition(SegmentControl::TabPosition position);
+
+        QSize iconSize() const;
+        void setIconSize(const QSize& size);
+
+        int addTab(QWidget* widget, const QString& text);
+        int addTab(QWidget* widget, const QIcon& icon, const QString& text);
+
+        int insertTab(int index, QWidget* widget, const QString& text);
+        int insertTab(int index, QWidget* widget, const QIcon& icon, const QString& text);
+
+        void removeTab(int index);
+        void moveTab(int from, int to);
+
+        bool isTabEnabled(int index) const;
+        void setTabEnabled(int index, bool enabled);
+
+        QString tabText(int index) const;
+        void setTabText(int index, const QString& text);
+
+        QIcon tabIcon(int index) const;
+        void setTabIcon(int index, const QIcon& icon);
+
+#ifndef QT_NO_TOOLTIP
+        void setTabToolTip(int index, const QString& tip);
+        QString tabToolTip(int index) const;
+#endif
+
+#ifndef QT_NO_WHATSTHIS
+        void setTabWhatsThis(int index, const QString& text);
+        QString tabWhatsThis(int index) const;
+#endif
+
+        int currentIndex() const;
+        QWidget* currentWidget() const;
+        QWidget* widget(int index) const;
+        int indexOf(QWidget* widget) const;
+        int count() const;
+
+        void clear();
+
+        SegmentBar* tabBar() const;
+
+    public Q_SLOTS:
+        void setCurrentIndex(int index);
+        void setCurrentWidget(QWidget* widget);
+
+    Q_SIGNALS:
+        void currentChanged(int index);
+        void tabBarClicked(int index);
+
+    private:
+        QBoxLayout* m_layout;
+        SegmentBar* m_segmentBar;
+        QStackedLayout* m_widgets;
+
+        void initialize(Qt::Orientation tabOrientation, SegmentControl::TabPosition position);
+        void initialize(SegmentBar* bar, SegmentControl::TabPosition position);
+    };
+}

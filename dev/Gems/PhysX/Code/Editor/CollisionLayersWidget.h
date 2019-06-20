@@ -10,11 +10,17 @@
 *
 */
 
+#pragma once
+
 #include <AzFramework/Physics/Collision.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI_Internals.h>
+#include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 #include <QWidget>
 
-#pragma once
+namespace AzToolsFramework
+{
+    class ReflectedPropertyEditor;
+}
 
 namespace PhysX
 {

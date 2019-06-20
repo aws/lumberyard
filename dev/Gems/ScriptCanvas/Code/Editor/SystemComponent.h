@@ -14,10 +14,12 @@
 
 #include <Core/GraphBus.h>
 #include <ScriptCanvas/Bus/ScriptCanvasBus.h>
+#include <ScriptCanvas/Bus/ScriptCanvasExecutionBus.h>
 #include <ScriptCanvas/Assets/ScriptCanvasDocumentContext.h>
 
 #include <AzCore/Component/Component.h>
 #include <AzCore/std/smart_ptr/unique_ptr.h>
+#include <AzCore/UserSettings/UserSettingsProvider.h>
 
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserBus.h>
@@ -29,6 +31,8 @@ namespace ScriptCanvasEditor
         , private SystemRequestBus::Handler
         , private AzToolsFramework::EditorEvents::Bus::Handler
         , private AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler
+        , private ScriptCanvasExecutionBus::Handler
+        , private AZ::UserSettingsNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(SystemComponent, "{1DE7A120-4371-4009-82B5-8140CB1D7B31}");
@@ -62,12 +66,22 @@ namespace ScriptCanvasEditor
         void PopulateEditorGlobalContextMenu(QMenu* menu, const AZ::Vector2& point, int flags) override;
         void NotifyRegisterViews() override;
         ////////////////////////////////////////////////////////////////////////
-        
+
+        ////////////////////////////////////////////////////////////////////////
+        // ScriptCanvasExecutionBus::Handler
+        Reporter RunGraph(AZStd::string_view path) override;
+        ////////////////////////////////////////////////////////////////////////
+
         ////////////////////////////////////////////////////////////////////////
         //  AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus overrides
         AzToolsFramework::AssetBrowser::SourceFileDetails GetSourceFileDetails(const char* fullSourceFileName) override;
         ////////////////////////////////////////////////////////////////////////
-        
+
+        ////////////////////////////////////////////////////////////////////////
+        // AZ::UserSettingsNotificationBus::Handler
+        void OnUserSettingsActivated();
+        ////////////////////////////////////////////////////////////////////////
+
     private:
         SystemComponent(const SystemComponent&) = delete;
 

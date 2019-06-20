@@ -1,0 +1,6 @@
+<Material MtlFlags="526336" Shader="Watervolume" GenMask="8000004B" StringGenMask="" SurfaceType="mat_water" Diffuse="0,0,0" Specular="0.43134022,0.43134022,0.43134022" Opacity="1" Shininess="255" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Environment" File="Textures/cubemaps/StarterGame/environmentprobeday2_cm.dds"/>
+ </Textures>
+ <PublicParams NormalsScale="0.36399999" SoftIntersectionFactor="1" Tilling="2" FoamAmount="4" DetailNormalsScale="0.71700001" EnvCubeReflMul="0.5" VertexWaveScale="0.1" DetailTilling="1.78" EnvCubeScale="2" RealtimeReflMul="0.81999999" FoamSoftIntersectionFactor="0.99400002" FoamTilling="1.45" RainTilling="0.5" WaterFlowSpeed="0.1"/>
+</Material>

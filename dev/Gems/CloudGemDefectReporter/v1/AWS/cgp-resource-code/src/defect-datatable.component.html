@@ -160,8 +160,8 @@
        [onClose]="dismissModal"
        [submitButtonText]="(selectedReportIndex === (reportsToSubmit.length - 1) || group) ? 'Create' : 'Next'"
        (modalSubmitted)="(selectedReportIndex === (reportsToSubmit.length - 1) || group) ? submitCreationRequest() : updateSelectedReportIndex()">
-    <div class="modal-body create-jira-issue-window-container">
-        <div *ngIf="reportsToSubmit.length > 1" class="form-group row">
+    <div class="modal-body create-jira-issue-window-container">        
+        <div *ngIf="numberOfDefectsInGroup > 1" class="form-group row">
             <ng-template #tooltipContent>Grouped defect reports will generate all the Jira issues using one Jira mapping.<br>Individual reports will generate an issue for each defect report using its own Jira mapping.</ng-template>
             <label class="col-3">
                 Report Grouping
@@ -178,7 +178,7 @@
                 </label>
             </div>
         </div>
-        <div *ngIf="fillingError" class="alert alert-danger">{{fillingError}}</div>
+        <div *ngIf="fillingError['message'] " class="alert alert-danger">{{fillingError['message']}}</div>
         <create-jira-issue-window #CreateJiraIssueWindow
             [defectReporterApiHandler]="defectReporterApiHandler"
             [(defectReport)]="currentReport"

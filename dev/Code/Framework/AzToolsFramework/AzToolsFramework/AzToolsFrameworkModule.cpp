@@ -41,6 +41,7 @@
 #include <AzToolsFramework/Thumbnails/ThumbnailerComponent.h>
 #include <AzToolsFramework/AssetBrowser/AssetBrowserComponent.h>
 #include <AzToolsFramework/MaterialBrowser/MaterialBrowserComponent.h>
+#include <AzToolsFramework/ViewportSelection/EditorInteractionSystemComponent.h>
 
 namespace AzToolsFramework
 {
@@ -75,6 +76,7 @@ namespace AzToolsFramework
             AzToolsFramework::Thumbnailer::ThumbnailerComponent::CreateDescriptor(),
             AzToolsFramework::AssetBrowser::AssetBrowserComponent::CreateDescriptor(),
             AzToolsFramework::MaterialBrowser::MaterialBrowserComponent::CreateDescriptor(),
+            AzToolsFramework::EditorInteractionSystemComponent::CreateDescriptor(),
         });
     }
 }

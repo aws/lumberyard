@@ -31,6 +31,7 @@
 #include <EMotionFX/Source/ConstraintTransformRotationAngles.h>
 #include <EMotionFX/Source/Parameter/ParameterFactory.h>
 #include <EMotionFX/Source/TwoStringEventData.h>
+#include <EMotionFX/Source/EventDataFootIK.h>
 
 #include <EMotionFX/Source/PhysicsSetup.h>
 #include <MCore/Source/Command.h>
@@ -319,6 +320,7 @@ namespace EMotionFX
             EMotionFX::EventData::Reflect(context);
             EMotionFX::EventDataSyncable::Reflect(context);
             EMotionFX::TwoStringEventData::Reflect(context);
+            EMotionFX::EventDataFootIK::Reflect(context);
 
             MCore::Command::Reflect(context);
             CommandSystem::MotionIdCommandMixin::Reflect(context);
@@ -479,7 +481,7 @@ namespace EMotionFX
             AZ::TickBus::Handler::BusConnect();
             CrySystemEventBus::Handler::BusConnect();
             EMotionFXRequestBus::Handler::BusConnect();
-            RaycastRequestBus::Handler::BusConnect();
+            EnableRayRequests();
 
 #if defined (EMOTIONFXANIMATION_EDITOR)
             AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
@@ -522,7 +524,7 @@ namespace EMotionFX
             AZ::TickBus::Handler::BusDisconnect();
             CrySystemEventBus::Handler::BusDisconnect();
             EMotionFXRequestBus::Handler::BusDisconnect();
-            RaycastRequestBus::Handler::BusDisconnect();
+            DisableRayRequests();
 
             if (SystemRequestBus::Handler::BusIsConnected())
             {
@@ -538,6 +540,17 @@ namespace EMotionFX
             AZ::AllocatorInstance<EMotionFXAllocator>::Destroy();
         }
 
+        //////////////////////////////////////////////////////////////////////////
+        void SystemComponent::EnableRayRequests()
+        {
+            RaycastRequestBus::Handler::BusDisconnect();
+            RaycastRequestBus::Handler::BusConnect();
+        }
+
+        void SystemComponent::DisableRayRequests()
+        {
+            RaycastRequestBus::Handler::BusDisconnect();
+        }
         //////////////////////////////////////////////////////////////////////////
         void SystemComponent::OnCrySystemInitialized(ISystem& system, const SSystemInitParams&)
         {
@@ -617,7 +630,7 @@ namespace EMotionFX
 
             // Update all the animation editor plugins (redraw viewports, timeline, and graph windows etc).
             // But only update this when the main window is visible.
-            if (EMStudio::GetManager() && EMStudio::HasMainWindow() && !EMStudio::GetMainWindow()->visibleRegion().isEmpty())
+            if (EMotionFX::GetEMotionFX().GetIsInEditorMode() && EMStudio::GetManager() && EMStudio::HasMainWindow() && !EMStudio::GetMainWindow()->visibleRegion().isEmpty())
             {
                 UpdateAnimationEditorPlugins(realDelta);
             }
@@ -748,7 +761,7 @@ namespace EMotionFX
 
             // Cast the ray in the physics system.
             Physics::RayCastHit physicsRayResult;
-            Physics::WorldRequestBus::BroadcastResult(physicsRayResult, &Physics::WorldRequests::RayCast, physicsRayRequest);
+            Physics::WorldRequestBus::EventResult(physicsRayResult, AZ_CRC("AZPhysicalWorld", 0x18f33e24), &Physics::WorldRequests::RayCast, physicsRayRequest);
             if (physicsRayResult) // We intersected.
             {
                 rayResult.m_position    = physicsRayResult.m_position;

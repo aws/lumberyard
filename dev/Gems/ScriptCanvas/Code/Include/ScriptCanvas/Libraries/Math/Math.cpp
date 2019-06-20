@@ -10,105 +10,12 @@
 *
 */
 
-#include "precompiled.h"
 #include "Math.h"
-
-#include <AzCore/Math/MathUtils.h>
-#include <AzCore/Math/Random.h>
-#include <AzCore/std/smart_ptr/unique_ptr.h>
-#include <Libraries/Libraries.h>
-#include <algorithm>
-#include <random>
 
 #pragma warning (disable:4503) // decorated name length exceeded, name was truncated
 
 namespace ScriptCanvas
 {
-    namespace MathRandom
-    {
-        struct RandomDetails
-        {
-            AZ_CLASS_ALLOCATOR(RandomDetails, AZ::SystemAllocator, 0);
-
-            std::random_device m_randomDevice;
-            std::mt19937 m_randomEngine;
-
-            RandomDetails()
-            {
-                m_randomEngine = std::mt19937(m_randomDevice());
-            }
-        };
-
-        static RandomDetails* s_RandomDetails = nullptr;
-
-        void DeleteRandomDetails()
-        {
-            if (s_RandomDetails)
-            {
-                delete s_RandomDetails;
-                s_RandomDetails = nullptr;
-            }
-        }
-
-        std::mt19937& GetRandomEngine()
-        {
-            if (s_RandomDetails == nullptr)
-            {
-                s_RandomDetails = aznew RandomDetails;
-            }
-            return s_RandomDetails->m_randomEngine;
-        }
-
-        template<>
-        AZ::s8 GetRandomIntegral<AZ::s8>(AZ::s8 leftNumber, AZ::s8 rightNumber)
-        {
-            AZ::s32 randVal = GetRandomIntegral(static_cast<AZ::s32>(leftNumber), static_cast<AZ::s32>(rightNumber));
-            return static_cast<AZ::s8>(randVal);
-        }
-
-        template<>
-        AZ::u8 GetRandomIntegral<AZ::u8>(AZ::u8 leftNumber, AZ::u8 rightNumber)
-        {
-            AZ::u32 randVal = GetRandomIntegral(static_cast<AZ::u32>(leftNumber), static_cast<AZ::u32>(rightNumber));
-            return static_cast<AZ::u8>(randVal);
-        }
-
-        template<>
-        char GetRandomIntegral<char>(char leftNumber, char rightNumber)
-        {
-            AZ::s32 randVal = GetRandomIntegral(static_cast<AZ::s32>(leftNumber), static_cast<AZ::s32>(rightNumber));
-            return static_cast<char>(randVal);
-        }
-
-        template<typename NumberType>
-        NumberType GetRandomReal(NumberType leftNumber, NumberType rightNumber)
-        {
-            if (AZ::IsClose(leftNumber, rightNumber, std::numeric_limits<NumberType>::epsilon()))
-            {
-                return leftNumber;
-            }
-            if (s_RandomDetails == nullptr)
-            {
-                s_RandomDetails = aznew RandomDetails;
-            }
-            NumberType min = AZ::GetMin(leftNumber, rightNumber);
-            NumberType max = AZ::GetMax(leftNumber, rightNumber);
-            std::uniform_real_distribution<> dis(min, max);
-            return static_cast<NumberType>(dis(s_RandomDetails->m_randomEngine));
-        }
-    }
-
-    namespace Nodes
-	{
-        namespace Math
-        {
-            Data::NumberType GetRandom(Data::NumberType lhs, Data::NumberType rhs)
-            {
-                return MathRandom::GetRandomReal(lhs, rhs);
-            }
-        }
-    }
-	
     namespace Library
     {
         void Math::Reflect(AZ::ReflectContext* reflection)

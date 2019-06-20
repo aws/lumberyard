@@ -17,65 +17,28 @@
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
-#include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
-#include <AzToolsFramework/Manipulators/HoverSelection.h>
-#include <AzToolsFramework/Manipulators/SplineSelectionManipulator.h>
 #include <LmbrCentral/Shape/SplineComponentBus.h>
-
-namespace AzToolsFramework
-{
-    class SplineSelectionManipulator;
-}
 
 namespace LmbrCentral
 {
-    /**
-     * SplineHoverSelection is a concrete implementation of HoverSelection wrapping a Spline and
-     * SplineManipulator. The underlying manipulators are used to control selection.
-     */
-    class SplineHoverSelection
-        : public AzToolsFramework::HoverSelection
-    {
-    public:
-        SplineHoverSelection();
-        ~SplineHoverSelection();
-
-        void Create(AZ::EntityId entityId, AzToolsFramework::ManipulatorManagerId managerId) override;
-        void Destroy() override;
-        void Register(AzToolsFramework::ManipulatorManagerId managerId) override;
-        void Unregister() override;
-        void SetBoundsDirty() override;
-        void Refresh() override;
-
-        AZStd::weak_ptr<AZ::Spline> m_spline;
-
-    private:
-        AZ_DISABLE_COPY_MOVE(SplineHoverSelection)
-
-        AZStd::shared_ptr<AzToolsFramework::SplineSelectionManipulator> m_splineSelectionManipulator = nullptr; ///< Manipulator for adding points to spline.
-    };
-
-    /**
-     * Editor representation of SplineComponent.
-     */
+    /// Editor representation of SplineComponent.
     class EditorSplineComponent
         : public AzToolsFramework::Components::EditorComponentBase
         , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
         , private AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler
-        , private SplineComponentRequestBus::Handler
-        , private SplineComponentNotificationBus::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
-        , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , private AZ::TransformNotificationBus::Handler
-        , private AzToolsFramework::ToolsApplicationEvents::Bus::Handler
+        , private SplineComponentRequestBus::Handler
+        , private AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler
+        , private AZ::VariableVerticesRequestBus<AZ::Vector3>::Handler
     {
     public:
         AZ_EDITOR_COMPONENT(EditorSplineComponent, "{5B29D788-4885-4D56-BD9B-C0C45BE08EC1}", EditorComponentBase);
         static void Reflect(AZ::ReflectContext* context);
 
         EditorSplineComponent() = default;
-        ~EditorSplineComponent();
 
         // AZ::Component
         void Activate() override;
@@ -87,29 +50,21 @@ namespace LmbrCentral
     private:
         AZ_DISABLE_COPY_MOVE(EditorSplineComponent)
 
-        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
-        {
-            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
-        }
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
 
-        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-        {
-            provided.push_back(AZ_CRC("SplineService", 0x2b674d3c));
-            provided.push_back(AZ_CRC("VertexContainerService", 0x22cf8e10));
-        }
-
-        /// AzToolsFramework::EntitySelectionEvents::Bus::Handler
-        void OnSelected() override;
-        void OnDeselected() override;
-
-        // EditorComponentSelectionRequestsBus::Handler
-        AZ::Aabb GetEditorSelectionBounds() override;
-        bool EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        // EditorComponentSelectionRequestsBus
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
+        bool EditorSelectionIntersectRayViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
         bool SupportsEditorRayIntersect() override { return true; };
-        AZ::u32 GetBoundingBoxDisplayType() override { return AzToolsFramework::EditorComponentSelectionRequests::NoBoundingBox; }
+        AZ::u32 GetBoundingBoxDisplayType() override { return NoBoundingBox; }
 
         // EditorComponentSelectionNotificationsBus::Handler
-        void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override { m_accentType = accent; };
+        void OnAccentTypeChanged(AzToolsFramework::EntityAccentType accent) override { m_accentType = accent; }
 
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
@@ -130,24 +85,21 @@ namespace LmbrCentral
         size_t Size() const override;
         bool Empty() const override;
 
-        // Manipulator handling
-        void CreateManipulators();
-
         // AzFramework::EntityDebugDisplayEventBus
-        void DisplayEntity(bool& handled) override;
-
-        // AzToolsFramework::ToolsApplicationEvents
-        void AfterUndoRedo() override;
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
         void OnChangeSplineType();
-
         void SplineChanged() const;
 
-        AzToolsFramework::EditorVertexSelectionVariable<AZ::Vector3> m_vertexSelection; ///< Handles all manipulator interactions with vertices (inserting and translating).
+        using ComponentModeDelegate = AzToolsFramework::ComponentModeFramework::ComponentModeDelegate;
+        ComponentModeDelegate m_componentModeDelegate; ///< Responsible for detecting ComponentMode activation 
+                                                       ///< and creating a concrete ComponentMode.
 
         SplineCommon m_splineCommon; ///< Stores common spline functionality and properties.
 
-        AZ::Transform m_currentTransform; ///< Stores the current transform of the component.
+        AZ::Transform m_cachedUniformScaleTransform; ///< Stores the current transform of the component with uniform scale.
 
         AzToolsFramework::EntityAccentType m_accentType = AzToolsFramework::EntityAccentType::None; ///< State of the entity selection in the viewport.
         bool m_visibleInEditor = true; ///< Visible in the editor viewport.

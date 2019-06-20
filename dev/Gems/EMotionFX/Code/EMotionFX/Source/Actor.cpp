@@ -33,6 +33,7 @@
 #include "Skeleton.h"
 #include "SoftSkinDeformer.h"
 #include "DualQuatSkinDeformer.h"
+#include "DebugDraw.h"
 
 #include <MCore/Source/IDGenerator.h>
 #include <MCore/Source/Compare.h>
@@ -1405,21 +1406,6 @@ namespace EMotionFX
     }
 
 
-    // debug render a skeleton
-    void Actor::RenderSkeleton(const Transform* worldSpaceTransforms, uint32 color)
-    {
-        const uint32 numNodes = mSkeleton->GetNumNodes();
-        for (uint32 i = 0; i < numNodes; ++i)
-        {
-            const uint32 parentIndex = mSkeleton->GetNode(i)->GetParentIndex();
-            if (parentIndex != MCORE_INVALIDINDEX32)
-            {
-                GetEventManager().OnDrawLine(worldSpaceTransforms[i].mPosition, worldSpaceTransforms[parentIndex].mPosition, color);
-            }
-        }
-    }
-
-
     // reinitialize all mesh deformers for all LOD levels
     void Actor::ReinitializeMeshDeformers()
     {
@@ -2079,6 +2065,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime = isOwnedByRuntime;
+#else
+        AZ_UNUSED(isOwnedByRuntime);
 #endif
     }
 

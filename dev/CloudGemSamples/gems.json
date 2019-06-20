@@ -44,6 +44,12 @@
             "_comment": "CloudGemWebCommunicator"
         },
         {
+            "Path": "Gems/ScriptEvents",
+            "Uuid": "32d8ba21703e4bbbb08487366e48dd69",
+            "Version": "0.1.0",
+            "_comment": "ScriptEvents"
+        },
+        {
             "Path": "Gems/CryLegacy",
             "Uuid": "352fef7706634c92814c587e84d7165a",
             "Version": "0.1.0",
@@ -100,7 +106,7 @@
         {
             "Path": "Gems/CloudGemFramework/v1",
             "Uuid": "6fc787a982184217a5a553ca24676cfa",
-            "Version": "1.1.3",
+            "Version": "1.1.4",
             "_comment": "CloudGemFramework"
         },
         {
@@ -188,12 +194,6 @@
             "_comment": "CloudGemAWSScriptBehaviors"
         },
         {
-            "Path": "Gems/ScriptCanvasDeveloper",
-            "Uuid": "f905c05883b94fd6bddc91052c3c5a86",
-            "Version": "0.1.0",
-            "_comment": "ScriptCanvasDeveloperGem"
-        },
-        {
             "Path": "Gems/ImageProcessing",
             "Uuid": "eeffbd9211cf4ce0b5cc73696b427cbe",
             "Version": "0.1.0",
@@ -208,8 +208,7 @@
         {
             "Path": "CloudGemSamples/Gem",
             "Uuid": "fcbd8e2e64af487fb1faecd2a133a0ce",
-            "Version": "0.1.0",
-            "_comment": "CloudGemSamples"
+            "Version": "0.1.0"
         },
         {
             "Path": "Gems/CloudGemPlayerAccount",

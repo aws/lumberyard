@@ -17,6 +17,7 @@
 #include <AzCore/std/containers/fixed_vector.h>
 #include <AzCore/std/allocator_static.h>
 #include <AzCore/std/allocator_ref.h>
+#include <AzCore/std/parallel/allocator_concurrent_static.h>
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/parallel/mutex.h>
 
@@ -160,9 +161,7 @@ namespace AZStd
             typedef concurrent_hash_table_storage<Traits, false> this_type;
 
         public:
-            //TODO: must use a thread-safe allocator here!
-            //typedef static_pool_concurrent_allocator<typename Internal::list_node<typename Traits::value_type>,Traits::fixed_num_elements> element_allocator_type;
-            typedef static_pool_allocator<typename Internal::list_node<typename Traits::value_type>, Traits::fixed_num_elements> element_allocator_type;
+            typedef static_pool_concurrent_allocator<typename Internal::list_node<typename Traits::value_type>,Traits::fixed_num_elements> element_allocator_type;
 
             typedef typename Traits::allocator_type allocator_type;
             typedef AZStd::list<typename Traits::value_type, allocator_ref<element_allocator_type> > list_type;

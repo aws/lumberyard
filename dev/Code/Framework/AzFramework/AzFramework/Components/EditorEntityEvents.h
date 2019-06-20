@@ -17,7 +17,7 @@
 
 namespace AzFramework
 {
-    class EntityDebugDisplayRequests;
+    class DebugDisplayRequests;
 
     /**
      * Inherit the EditorEntityEvents interface to receive editor-time events on a non-editor
@@ -39,7 +39,8 @@ namespace AzFramework
         virtual void EditorInit(AZ::EntityId /*entityId*/) {}
         virtual void EditorActivate(AZ::EntityId /*entityId*/) {}
         virtual void EditorDeactivate(AZ::EntityId /*entityId*/) {}
-        virtual void EditorDisplay(AZ::EntityId /*entityId*/, EntityDebugDisplayRequests& /*displayInterface*/, const AZ::Transform& /*world*/, bool& /*handled*/) {}
+        virtual void EditorDisplay(
+            AZ::EntityId /*entityId*/, DebugDisplayRequests& /*displayInterface*/, const AZ::Transform& /*world*/) {}
 
         /**
         * This API allows a component associated with a primary asset to participate in drag and drop asset events without an editor counterpart

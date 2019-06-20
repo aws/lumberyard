@@ -1154,14 +1154,14 @@ struct SSystemGlobalEnvironment
         bToolMode = bNewToolMode;
     }
 
-    ILINE void SetDynamicMergedMeshGenerationEnable(bool mmgenEnable)
+    ILINE void SetDynamicMergedMeshGenerationEnabled(bool mmgenEnable)
     {
-        m_bDynamicMergedMeshGenerationEnable = mmgenEnable;
+        m_bDynamicMergedMeshGenerationEnabled = mmgenEnable;
     }
 
-    ILINE const bool IsDynamicMergedMeshGenerationEnable() const
+    ILINE const bool IsDynamicMergedMeshGenerationEnabled() const
     {
-        return m_bDynamicMergedMeshGenerationEnable;
+        return m_bDynamicMergedMeshGenerationEnabled;
     }
 
 #if !defined(CONSOLE)
@@ -1175,14 +1175,14 @@ private:
 
     bool m_isFMVPlaying;
     bool m_isCutscenePlaying;
-    bool m_bDynamicMergedMeshGenerationEnable;
+    bool m_bDynamicMergedMeshGenerationEnabled;
 
 public:
     SSystemGlobalEnvironment()
         : pSystemScheduler(nullptr)
         , szCmdLine("")
         , bToolMode(false)
-        , m_bDynamicMergedMeshGenerationEnable(false)
+        , m_bDynamicMergedMeshGenerationEnabled(false)
     {
     };
 };

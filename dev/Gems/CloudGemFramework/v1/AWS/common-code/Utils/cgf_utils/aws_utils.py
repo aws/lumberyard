@@ -29,6 +29,8 @@ from botocore.exceptions import IncompleteReadError
 from botocore.exceptions import ConnectionError
 from botocore.exceptions import BotoCoreError
 from botocore.exceptions import UnknownEndpointError
+from botocore.client import Config
+
 
 current_region = os.environ.get('AWS_REGION')
 
@@ -64,11 +66,11 @@ class ClientWrapper(object):
                 sleep_seconds = self.BACKOFF_BASE_SECONDS
                 backoff_base = self.BACKOFF_BASE_SECONDS
                 backoff_max = self.BACKOFF_MAX_SECONDS
-                
+
                 if 'baseBackoff' in kwargs:
                     backoff_base = kwargs['baseBackoff']
                     del kwargs['baseBackoff']
-                
+
                 if 'maxBackoff' in kwargs:
                     backoff_max = kwargs['maxBackoff']
                     del kwargs['maxBackoff']
@@ -82,11 +84,11 @@ class ClientWrapper(object):
                         return result
                     except (ClientError, EndpointConnectionError, IncompleteReadError, ConnectionError, UnknownEndpointError) as e:
 
-                        # Do not catch BotoCoreError here!!! That error is the base for all kinds of errors 
-                        # that should not be retried. For example: ParamValidationError. Errors like this 
-                        # will never succeed, but the backoff takes a very long time. In the case of 
+                        # Do not catch BotoCoreError here!!! That error is the base for all kinds of errors
+                        # that should not be retried. For example: ParamValidationError. Errors like this
+                        # will never succeed, but the backoff takes a very long time. In the case of
                         # custom resource handlers this can cause the lambda to timeout, which causes cloud
-                        # formation to retry quite a few times before giving up. This can effectivly hang 
+                        # formation to retry quite a few times before giving up. This can effectivly hang
                         # stack update/create for hours.
 
                         self.__log_failure(attr, e)
@@ -285,7 +287,8 @@ def get_resource_arn(type_definitions, stack_arn, resource_type, physical_id, op
                     'ResourceType': resource_type,
                     'Region': get_region_from_stack_arn(stack_arn),
                     'AccountId': get_account_id_from_stack_arn(stack_arn),
-                    'ResourceName': physical_id
+                    'ResourceName': physical_id,
+                    'StackId': stack_arn
                 }
             )
         )
@@ -320,3 +323,21 @@ def get_role_name_from_role_arn(arn):
     # Role ARN format: arn:aws:iam::{account_id}:role/{resource_name}
     if arn is None: return None
     return arn[arn.rfind('/')+1:]
+
+
+def get_cognito_pool_from_file(configuration_bucket, configuration_key, logical_name, stack):
+    s3 = ClientWrapper(boto3.client('s3', current_region, config=Config(
+        region_name=current_region, signature_version='s3v4', s3={'addressing_style': 'virtual'})))
+    s3_key = configuration_key + '/cognito-pools.json'
+    try:
+        res = s3.get_object(Bucket=configuration_bucket, Key=s3_key)
+        content = json.loads(res['Body'].read())
+    except Exception as e:
+        return ""
+    key = ""
+    if stack.is_deployment_access_stack:
+        key = "DeploymentAccess"
+    if stack.is_project_stack:
+        key = "Project"
+
+    return content.get(key, {}).get(logical_name, "")

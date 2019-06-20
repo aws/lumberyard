@@ -209,7 +209,7 @@ namespace AzToolsFramework
     template <class T>
     bool InstanceDataNode::ReadAttribute(AZ::Edit::AttributeId nameCrc, T& value, bool readChildAttributes) const
     {
-        AZ::Edit::Attribute* attribute = FindAttribute(nameCrc);
+        AZ::Edit::Attribute* attribute = InstanceDataNode::FindAttribute(nameCrc);
         if (readChildAttributes)
         {
             if (attribute && !attribute->m_describesChildren)
@@ -431,6 +431,7 @@ namespace AzToolsFramework
         InstanceDataNode*                                       m_curParentNode;
         bool                                                    m_isMerging;
         bool                                                    m_nodeDiscarded;
+        int                                                     m_childIndexOverride = -1;
         InstanceDataArray                                       m_rootInstances;            ///< Array with aggregated root instances.
         SupplementalElementDataContainer                        m_supplementalElementData;  ///< List of additional element data generated during traversal for elements.
         SupplementalEditDataContainer                           m_supplementalEditData;     ///< List of additional edit data generated during traversal for elements.

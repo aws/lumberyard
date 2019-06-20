@@ -1,0 +1,120 @@
+{
+    "platform"      : "win_x64_clang",
+    "display_name"  : "x64 vs2017",
+    "hosts"         : "win32",
+    "aliases"       : "clang,win",
+    "has_server"    : true,
+    "enabled"       : true,
+
+    "modules"       : [
+        "platforms/compile_settings_cryengine",
+        "platforms/compile_settings_msvc",
+        "platforms/compile_settings_windows",
+        "platforms/platform_impl_win_x64_clang",
+        "platforms/platform_settings_win_x64_clang"
+    ],
+
+    "includes": [
+        "common.json",
+        "common.clang.json",
+        "common.windows.json"
+    ],
+
+    "attributes": {
+        "is_windows"            : true,
+        "default_folder_name"   : "Bin64clang",
+        "legacy_platform_name"  : "win64_clang",
+        "compiler"              : "clang",
+        "sa_capability": {
+            "key"               : "vc140",
+            "description"       : "Clang"
+        },
+        "qt_supported"          : true,
+        "qt_platform_dir"       : "msvc2015_64",
+        "qtga_subfolders"       : [
+            "win32/vc140/qtga.dll",
+            "win32/vc140/qtgad.dll",
+            "win32/vc140/qtgad.pdb"
+        ],
+        "third_party_alias_platform": "win_x64_vs2015"
+    },
+
+    "settings"      : {
+        "Windows Options" :
+        [
+            {
+                "long_form"         : "--win-enable-clang-for-windows",
+                "attribute"         : "win_enable_clang_for_windows",
+                "default_value"     : "False",
+                "description"       : "Enables building and configuring with Clang for Windows"
+            }
+        ]
+    },
+
+    "env": {
+        "DEFINES": [
+            "_CRT_SECURE_NO_WARNINGS",
+            "_CRT_NONSTDC_NO_WARNINGS",
+            "NOMINMAX",
+            "_WIN32",
+            "_WIN64"
+        ],
+        "CFLAGS,CXXFLAGS": [
+            "-mcx16",
+            "-msse3",
+            "-Wno-macro-redefined",
+            "-Wno-microsoft-cast",
+            "-Wno-ignored-pragma-intrinsic"    # Clang doens"t need #pragma intrinsic anyway, so don"t whine when one isn"t recognized
+        ],
+        "LINKFLAGS": [
+            "/MACHINE:x64",
+            "/MANIFEST",            # Create a manifest file
+            "/OPT:REF", "/OPT:ICF", # Always optimize for size, theres no reason not to
+            "/LARGEADDRESSAWARE"    # tell the linker that the application can handle addresses larger than 2 gigabytes.
+        ]
+    },
+    "env/debug": {
+        "CXXFLAGS": [
+            "-O0",
+            "-gcodeview",
+            "-gno-column-info",
+            "-mllvm", 
+            "-emit-codeview-ghash-section"
+        ],
+        "LINKFLAGS": [
+            "/debug:GHASH"
+        ]
+    },
+    "env/profile": {
+        "CXXFLAGS": [
+            "-O3",
+            "-gcodeview",
+            "-gno-column-info",
+            "-mllvm", 
+            "-emit-codeview-ghash-section"
+        ],
+        "LINKFLAGS": [
+            "/debug:GHASH"
+        ]
+    },
+    "env/performance": {
+        "CXXFLAGS": [
+            "-O3",
+            "-gcodeview",
+            "-gno-column-info",
+            "-mllvm", 
+            "-emit-codeview-ghash-section"
+        ],
+        "LINKFLAGS": [
+            "/debug:GHASH"
+        ]
+    },
+    "env/release": {
+        "CXXFLAGS": [
+            "-O3",
+            "-gline-tables-only"
+        ]
+    }
+}
+
+

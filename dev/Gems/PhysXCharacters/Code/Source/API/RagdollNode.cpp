@@ -29,8 +29,8 @@ namespace PhysXCharacters
         }
     }
 
-    RagdollNode::RagdollNode(AZStd::shared_ptr<Physics::RigidBody> rigidBody)
-        : m_rigidBody(rigidBody)
+    RagdollNode::RagdollNode(AZStd::unique_ptr<Physics::RigidBody> rigidBody)
+        : m_rigidBody(AZStd::move(rigidBody))
     {
         physx::PxRigidDynamic* pxRigidDynamic = static_cast<physx::PxRigidDynamic*>(m_rigidBody->GetNativePointer());
         m_actorUserData = PhysX::ActorData(pxRigidDynamic);
@@ -44,9 +44,9 @@ namespace PhysXCharacters
     }
 
     // Physics::RagdollNode
-    AZStd::shared_ptr<Physics::RigidBody>& RagdollNode::GetRigidBody()
+    Physics::RigidBody& RagdollNode::GetRigidBody()
     {
-        return m_rigidBody;
+        return *m_rigidBody;
     }
 
     const AZStd::shared_ptr<Physics::Joint>& RagdollNode::GetJoint() const
@@ -107,5 +107,15 @@ namespace PhysXCharacters
     void* RagdollNode::GetNativePointer() const
     {
         return m_rigidBody ? m_rigidBody->GetNativePointer() : nullptr;
+    }
+
+    void RagdollNode::AddToWorld(Physics::World&)
+    {
+        AZ_WarningOnce("RagdollNode", false, "Not allowed to add individual ragdoll nodes to a world");
+    }
+
+    void RagdollNode::RemoveFromWorld(Physics::World&)
+    {
+        AZ_WarningOnce("RagdollNode", false, "Not allowed to remove individual ragdoll nodes to a world");
     }
 } // namespace PhysXCharacters

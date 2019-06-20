@@ -532,6 +532,7 @@
             ]
         }, 
         "win_x64_vs2017": "@win_x64_vs2015", 
+        "win_x64_clang": "@win_x64_vs2015", 
         "darwin_x64": {
             "libpath_debug": [
                 "lib/mac/Debug"

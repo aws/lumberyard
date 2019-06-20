@@ -49,7 +49,7 @@ struct ShadowMapFrustum
     bool    bUseAdditiveBlending;
     bool    bIncrementalUpdate;
 
-    // if set to true - pCastersList contains all casters in light radius
+    // if set to true - m_castersList contains all casters in light radius
     // and all other members related only to single frustum projection case are undefined
     bool    bOmniDirectionalShadow;
     uint8   nOmniFrustumMask;
@@ -76,8 +76,8 @@ struct ShadowMapFrustum
 
     //texture in pool
     bool bUseShadowsPool;
-    struct ShadowMapFrustum* pPrevFrustum;
-    struct ShadowMapFrustum* pFrustumOwner;
+    struct ShadowMapFrustum* pPrevFrustum = nullptr;
+    struct ShadowMapFrustum* pFrustumOwner = nullptr;
     class CTexture* pDepthTex;
 
     //3d engine parameters
@@ -106,8 +106,8 @@ struct ShadowMapFrustum
     float fDepthTestBias;
     float fDepthConstBias;
     float fDepthSlopeBias;
-    PodArray<struct IShadowCaster*>* pCastersList;
-    PodArray<struct IShadowCaster*>* pJobExecutedCastersList;
+    PodArray<struct IShadowCaster*> m_castersList;
+    PodArray<struct IShadowCaster*> m_jobExecutedCastersList;
 
     CCamera FrustumPlanes[OMNI_SIDES_NUM];
     uint32 nShadowGenID[RT_COMMAND_BUF_COUNT][OMNI_SIDES_NUM];
@@ -116,7 +116,7 @@ struct ShadowMapFrustum
     Vec3 vProjTranslation; // dst position
     float fRadius;
     int nUpdateFrameId;
-    IRenderNode* pLightOwner;
+    IRenderNode* pLightOwner = nullptr;
     uint32 uCastersListCheckSum;
     int nShadowMapLod;          // currently use as GSMLod, can be used as cubemap side, -1 means this variable is not used
 
@@ -159,7 +159,7 @@ struct ShadowMapFrustum
 
         VectorSet<struct IShadowCaster*> mProcessedCasters;
         VectorSet<uint64> mProcessedTerrainCasters;
-    }* pShadowCacheData;
+    }* pShadowCacheData = nullptr;
 
 
     ShadowMapFrustum()
@@ -175,8 +175,13 @@ struct ShadowMapFrustum
 
         nUpdateFrameId = -1000;
 
-        pPrevFrustum = NULL;
+        pPrevFrustum = nullptr;
         aabbCasters.Reset();
+    }
+
+    ShadowMapFrustum(const ShadowMapFrustum& rOther)
+    {
+        (*this) = rOther;
     }
 
     ~ShadowMapFrustum()
@@ -186,8 +191,6 @@ struct ShadowMapFrustum
         gEnv->pRenderer->EF_Query(EFQ_RenderThreadList, nThreadID);
         gEnv->pRenderer->GetFinalizeShadowRendItemJobExecutor(nThreadID)->WaitForCompletion();
 
-        delete pCastersList;
-        delete pJobExecutedCastersList;
         SAFE_DELETE(pShadowCacheData);
     }
 
@@ -250,23 +253,8 @@ struct ShadowMapFrustum
         fDepthConstBias = rOther.fDepthConstBias;
         fDepthSlopeBias = rOther.fDepthSlopeBias;
 
-        if (pCastersList == NULL)
-        {
-            pCastersList = new PodArray<struct IShadowCaster*>();
-        }
-        if (pJobExecutedCastersList == NULL)
-        {
-            pJobExecutedCastersList = new PodArray<struct IShadowCaster*>();
-        }
-
-        if (rOther.pCastersList)
-        {
-            pCastersList->operator=(* rOther.pCastersList);
-        }
-        if (rOther.pJobExecutedCastersList)
-        {
-            pJobExecutedCastersList->operator=(* rOther.pJobExecutedCastersList);
-        }
+        m_castersList = rOther.m_castersList;
+        m_jobExecutedCastersList = rOther.m_jobExecutedCastersList;
 
         memcpy(FrustumPlanes, rOther.FrustumPlanes, sizeof(FrustumPlanes));
         memcpy(nShadowGenID, rOther.nShadowGenID, sizeof(nShadowGenID));
@@ -282,7 +270,18 @@ struct ShadowMapFrustum
         m_Flags = rOther.m_Flags;
 
         bIsMGPUCopy = rOther.bIsMGPUCopy;
-        * pShadowCacheData = *rOther.pShadowCacheData;
+        if (rOther.pShadowCacheData != nullptr)
+        {
+            if (pShadowCacheData == nullptr)
+            {
+                pShadowCacheData = new ShadowCacheData();
+            }
+            *pShadowCacheData = *rOther.pShadowCacheData;
+        }
+        else
+        {
+            SAFE_DELETE(pShadowCacheData);
+        }
 
         return *this;
     }
@@ -507,20 +506,10 @@ struct ShadowMapFrustum
         }
     }
 
-    void ResetCasterLists(bool bAllowCreate = true)
+    void ResetCasterLists()
     {
-        if (!pCastersList && bAllowCreate)
-        {
-            pCastersList = new PodArray<struct IShadowCaster*>();
-        }
-
-        if (!pJobExecutedCastersList && bAllowCreate)
-        {
-            pJobExecutedCastersList = new PodArray<struct IShadowCaster*>();
-        }
-
-        pCastersList->Clear();
-        pJobExecutedCastersList->Clear();
+        m_castersList.Clear();
+        m_jobExecutedCastersList.Clear();
     }
 
     void GetMemoryUsage(ICrySizer* pSizer) const;
@@ -571,26 +560,17 @@ struct ShadowFrustumMGPUCache
         for (int i = 0; i < m_pStaticShadowMapFrustums.size(); ++i)
         {
             ShadowMapFrustum* pFr = m_pStaticShadowMapFrustums[i];
-            if (pFr && pFr->pCastersList)
+            if (pFr)
             {
-                pFr->pCastersList->Delete(pCaster);
-            }
-            if (pFr && pFr->pJobExecutedCastersList)
-            {
-                pFr->pJobExecutedCastersList->Delete(pCaster);
+                pFr->m_castersList.Delete(pCaster);
+                pFr->m_jobExecutedCastersList.Delete(pCaster);
             }
         }
 
         if (m_pHeightMapAOFrustum)
         {
-            if (m_pHeightMapAOFrustum->pCastersList)
-            {
-                m_pHeightMapAOFrustum->pCastersList->Delete(pCaster);
-            }
-            if (m_pHeightMapAOFrustum->pJobExecutedCastersList)
-            {
-                m_pHeightMapAOFrustum->pJobExecutedCastersList->Delete(pCaster);
-            }
+            m_pHeightMapAOFrustum->m_castersList.Delete(pCaster);
+            m_pHeightMapAOFrustum->m_jobExecutedCastersList.Delete(pCaster);
         }
     }
 

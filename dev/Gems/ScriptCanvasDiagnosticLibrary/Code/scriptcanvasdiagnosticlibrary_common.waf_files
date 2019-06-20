@@ -5,21 +5,27 @@
             "Source/precompiled.h"
         ]
     },
-     "auto": {
-        "Include": [
-            "Include/ScriptCanvasDiagnosticLibrary/ScriptCanvasDiagnosticLibraryGem.h"
-        ],
-        "Source": [
-            "Source/ScriptCanvasDiagnosticSystemComponent.h",
-            "Source/ScriptCanvasDiagnosticLibraryGem.cpp"
-        ],
-        "Source/Library": [
-            "Source/Debug.h",
-            "Source/Debug.cpp"
-        ],
-        "Source/Logging": [
-            "Source/Log.h",
-            "Source/Log.cpp"
-        ]
-    }
+    "auto": {
+      "Include": [
+          "Include/ScriptCanvasDiagnosticLibrary/ScriptCanvasDiagnosticLibraryGem.h",
+          "Include/ScriptCanvasDiagnosticLibrary/DebugDrawBus.h"
+      ],
+      "Source": [
+        "Source/ScriptCanvasDiagnosticSystemComponent.h",
+        "Source/ScriptCanvasDiagnosticSystemComponent.cpp",
+        "Source/ScriptCanvasDiagnosticLibraryGem.cpp"
+      ],
+      "Source/Library": [
+        "Source/Debug.h",
+        "Source/Debug.cpp"
+      ],
+      "Source/Logging": [
+        "Source/Log.h",
+        "Source/Log.cpp"
+      ],
+      "Source/DebugDraw": [
+        "Source/DrawText.h",
+        "Source/DrawText.cpp"
+      ]
+  }
 }

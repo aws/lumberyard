@@ -21,6 +21,10 @@
 #include <AzCore/Component/ComponentApplicationBus.h>
 #include <AzToolsFramework/UI/PropertyEditor/ReflectedPropertyEditor.hxx>
 
+#include <GraphCanvas/Editor/AssetEditorBus.h>
+
+#include <Editor/GraphCanvas/GraphCanvasEditorNotificationBusId.h>
+
 #include "Editor/View/Dialogs/ui_Settings.h"
 
 namespace ScriptCanvasEditor
@@ -77,7 +81,8 @@ namespace ScriptCanvasEditor
     void SettingsDialog::OnOK()
     {
         m_revertOnClose = false;
-        AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::Save);
+        AZ::UserSettingsOwnerRequestBus::Event(AZ::UserSettings::CT_LOCAL, &AZ::UserSettingsOwnerRequests::SaveSettings);
+        GraphCanvas::AssetEditorSettingsNotificationBus::Event(ScriptCanvasEditor::AssetEditorId, &GraphCanvas::AssetEditorSettingsNotifications::OnSettingsChanged);
         accept();
     }
 

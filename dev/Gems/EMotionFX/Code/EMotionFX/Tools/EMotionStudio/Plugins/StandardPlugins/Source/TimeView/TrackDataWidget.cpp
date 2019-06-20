@@ -368,8 +368,9 @@ namespace EMStudio
                 continue;
             }
 
-            const uint32 colorCode = (useNodeColors) ? curItem->mTypeColor : curItem->mColor;
-            QColor color(MCore::ExtractRed(colorCode), MCore::ExtractGreen(colorCode), MCore::ExtractBlue(colorCode));
+            const AZ::Color colorCode = (useNodeColors) ? curItem->mTypeColor : curItem->mColor;
+            QColor color;
+            color.setRgbF(colorCode.GetR(), colorCode.GetG(), colorCode.GetB(), colorCode.GetA());
 
             if (mPlugin->mNodeHistoryItem != curItem || mIsScrolling || mPlugin->mIsAnimating)
             {
@@ -476,8 +477,10 @@ namespace EMStudio
                 mTempString = AZStd::string::format("%.4f", mActiveItems[i].mValue);
             }
 
-            const uint32 colorCode = (useNodeColors) ? mActiveItems[i].mNodeHistoryItem->mTypeColor : mActiveItems[i].mNodeHistoryItem->mColor;
-            QColor color(MCore::ExtractRed(colorCode), MCore::ExtractGreen(colorCode), MCore::ExtractBlue(colorCode));
+            const AZ::Color colorCode = (useNodeColors) ? mActiveItems[i].mNodeHistoryItem->mTypeColor : mActiveItems[i].mNodeHistoryItem->mColor;
+            QColor color;
+            color.setRgbF(colorCode.GetR(), colorCode.GetG(), colorCode.GetB(), colorCode.GetA());
+
             painter.setPen(color);
             painter.setBrush(Qt::NoBrush);
             painter.setFont(mDataFont);
@@ -526,11 +529,10 @@ namespace EMStudio
 
             // try to locate the node based on its unique ID
             QColor borderColor(30, 30, 30);
-            const uint32 colorCode = curItem->mColor;
+            const AZ::Color& colorCode = curItem->mColor;
             QColor color;
-
-            color = QColor(MCore::ExtractRed(colorCode), MCore::ExtractGreen(colorCode), MCore::ExtractBlue(colorCode), MCore::ExtractAlpha(colorCode));
-
+            color.setRgbF(colorCode.GetR(), colorCode.GetG(), colorCode.GetB(), colorCode.GetA());
+            
             if (mIsScrolling == false && mPlugin->mIsAnimating == false)
             {
                 if (mPlugin->mNodeHistoryItem && mPlugin->mNodeHistoryItem->mNodeId == curItem->mEmitterNodeId)
@@ -641,8 +643,9 @@ namespace EMStudio
                 continue;
             }
 
-            const uint32 colorCode = (useNodeColors) ? curItem->mTypeColor : curItem->mColor;
-            QColor color(MCore::ExtractRed(colorCode), MCore::ExtractGreen(colorCode), MCore::ExtractBlue(colorCode));
+            const AZ::Color colorCode = (useNodeColors) ? curItem->mTypeColor : curItem->mColor;
+            QColor color;
+            color.setRgbF(colorCode.GetR(), colorCode.GetG(), colorCode.GetB(), colorCode.GetA());
 
             bool matchesEvent = false;
             if (mIsScrolling == false && mPlugin->mIsAnimating == false)

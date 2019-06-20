@@ -16,11 +16,15 @@
 #include <AzToolsFramework/UI/PropertyEditor/InstanceDataHierarchy.h>
 #include <QBoxLayout>
 #include <Editor/PvdWidget.h>
+#include <Editor/DocumentationLinkWidget.h>
 
 namespace PhysX
 {
     namespace Editor
     {
+        static const char* const s_pvdDocumentationLink = "Learn more about the <a href=%0>PhysX Visual Debugger (PVD).</a>";
+        static const char* const s_pvdDocumentationAddress = "https://docs-aws.amazon.com/console/lumberyard/physx/configuration/debugger";
+
         PvdWidget::PvdWidget(QWidget* parent)
             : QWidget(parent)
         {
@@ -44,6 +48,8 @@ namespace PhysX
             verticalLayout->setContentsMargins(0, 0, 0, 0);
             verticalLayout->setSpacing(0);
 
+            m_documentationLinkWidget = new DocumentationLinkWidget(s_pvdDocumentationLink, s_pvdDocumentationAddress);
+
             AZ::SerializeContext* m_serializeContext;
             AZ::ComponentApplicationBus::BroadcastResult(m_serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
             AZ_Assert(m_serializeContext, "Failed to retrieve serialize context.");
@@ -54,6 +60,7 @@ namespace PhysX
             m_propertyEditor->show();
             m_propertyEditor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
+            verticalLayout->addWidget(m_documentationLinkWidget);
             verticalLayout->addWidget(m_propertyEditor);
         }
 

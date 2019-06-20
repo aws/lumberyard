@@ -50,7 +50,6 @@ def _create_parser():
     parser.add_argument('-dependencies', action='store_true',help='Skip fetching and unpacking, only install dependencies')
     parser.add_argument('-noheaders', action='store_true',help='Skip installing headers')
     parser.add_argument('-skiprestricted', action='store_true',help='Skip restricted platforms')
-
     return parser
 
 def get_third_party_name():

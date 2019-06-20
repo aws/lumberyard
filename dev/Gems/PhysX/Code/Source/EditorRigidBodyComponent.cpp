@@ -174,7 +174,9 @@ namespace PhysX
         gameEntity->CreateComponent<RigidBodyComponent>(m_config);
     }
 
-    void EditorRigidBodyComponent::DisplayEntity(bool& handled)
+    void EditorRigidBodyComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (!m_editorBody)
         {
@@ -184,17 +186,13 @@ namespace PhysX
         {
             if (m_config.m_centerOfMassDebugDraw)
             {
-                AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-                AZ_Assert(displayContext, "Invalid display context.");
-
                 PhysX::Configuration configuration;
                 PhysX::ConfigurationRequestBus::BroadcastResult(configuration, &PhysX::ConfigurationRequests::GetConfiguration);
 
-                displayContext->DepthTestOff();
-                displayContext->SetColor(configuration.m_editorConfiguration.m_centerOfMassDebugColor);
-                displayContext->DrawBall(m_editorBody->GetCenterOfMassWorld(), configuration.m_editorConfiguration.m_centerOfMassDebugSize);
-                displayContext->DepthTestOn();
-                handled = true;
+                debugDisplay.DepthTestOff();
+                debugDisplay.SetColor(configuration.m_editorConfiguration.m_centerOfMassDebugColor);
+                debugDisplay.DrawBall(m_editorBody->GetCenterOfMassWorld(), configuration.m_editorConfiguration.m_centerOfMassDebugSize);
+                debugDisplay.DepthTestOn();
             }
         }
     }

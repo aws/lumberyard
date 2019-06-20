@@ -55,7 +55,7 @@ public:
 
     virtual bool IsKeySelected(int key) const
     {
-        assert(key >= 0 && key < (int)m_keys.size());
+        AZ_Assert(key >= 0 && key < (int)m_keys.size(), "Key index is out of range");
         if (m_keys[key].flags & AKEY_SELECTED)
         {
             return true;
@@ -65,7 +65,7 @@ public:
 
     virtual void SelectKey(int key, bool select)
     {
-        assert(key >= 0 && key < (int)m_keys.size());
+        AZ_Assert(key >= 0 && key < (int)m_keys.size(), "Key index is out of range");
         if (select)
         {
             m_keys[key].flags |= AKEY_SELECTED;
@@ -325,7 +325,7 @@ inline TAnimTrack<KeyType>::TAnimTrack()
 template <class KeyType>
 inline void TAnimTrack<KeyType>::RemoveKey(int index)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys.erase(m_keys.begin() + index);
     Invalidate();
 }
@@ -334,8 +334,8 @@ inline void TAnimTrack<KeyType>::RemoveKey(int index)
 template <class KeyType>
 inline void TAnimTrack<KeyType>::GetKey(int index, IKey* key) const
 {
-    assert(index >= 0 && index < (int)m_keys.size());
-    assert(key != 0);
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
+    AZ_Assert(key != 0, "Key cannot be null!");
     *(KeyType*)key = m_keys[index];
 }
 
@@ -343,8 +343,8 @@ inline void TAnimTrack<KeyType>::GetKey(int index, IKey* key) const
 template <class KeyType>
 inline void TAnimTrack<KeyType>::SetKey(int index, IKey* key)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
-    assert(key != 0);
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
+    AZ_Assert(key != 0, "Key cannot be null!");
     m_keys[index] = *(KeyType*)key;
     Invalidate();
 }
@@ -353,7 +353,7 @@ inline void TAnimTrack<KeyType>::SetKey(int index, IKey* key)
 template <class KeyType>
 inline float TAnimTrack<KeyType>::GetKeyTime(int index) const
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     return m_keys[index].time;
 }
 
@@ -361,7 +361,7 @@ inline float TAnimTrack<KeyType>::GetKeyTime(int index) const
 template <class KeyType>
 inline void TAnimTrack<KeyType>::SetKeyTime(int index, float time)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys[index].time = time;
     Invalidate();
 }
@@ -384,7 +384,7 @@ inline int TAnimTrack<KeyType>::FindKey(float time)
 template <class KeyType>
 inline int TAnimTrack<KeyType>::GetKeyFlags(int index)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     return m_keys[index].flags;
 }
 
@@ -392,7 +392,7 @@ inline int TAnimTrack<KeyType>::GetKeyFlags(int index)
 template <class KeyType>
 inline void TAnimTrack<KeyType>::SetKeyFlags(int index, int flags)
 {
-    assert(index >= 0 && index < (int)m_keys.size());
+    AZ_Assert(index >= 0 && index < (int)m_keys.size(), "Key index is out of range");
     m_keys[index].flags = flags;
     Invalidate();
 }

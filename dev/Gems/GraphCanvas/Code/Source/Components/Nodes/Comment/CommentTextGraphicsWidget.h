@@ -41,6 +41,7 @@ namespace GraphCanvas
         public:
             AZ_CLASS_ALLOCATOR(FocusableTextEdit, AZ::SystemAllocator, 0);
             FocusableTextEdit()
+                : m_eatEnterKey(false)
             {
                 setContextMenuPolicy(Qt::ContextMenuPolicy::PreventContextMenu);
             }
@@ -51,19 +52,53 @@ namespace GraphCanvas
             void OnFocusIn();
             void OnFocusOut();
 
+            void EnterPressed();
+
         private:
 
-            void focusInEvent(QFocusEvent* focusEvent)
+            void focusInEvent(QFocusEvent* focusEvent) override
             {
                 QTextEdit::focusInEvent(focusEvent);
                 emit OnFocusIn();
             }
 
-            void focusOutEvent(QFocusEvent* focusEvent)
+            void focusOutEvent(QFocusEvent* focusEvent) override
             {
                 QTextEdit::focusOutEvent(focusEvent);
                 emit OnFocusOut();
             }
+
+            void keyPressEvent(QKeyEvent* keyEvent) override
+            {
+                if (keyEvent->key() == Qt::Key_Enter
+                    || keyEvent->key() == Qt::Key_Return)
+                {
+                    if (keyEvent->modifiers() == Qt::KeyboardModifier::NoModifier)
+                    {
+                        m_eatEnterKey = true;
+                        return;
+                    }
+                }
+
+                QTextEdit::keyPressEvent(keyEvent);
+            }
+
+            void keyReleaseEvent(QKeyEvent* keyEvent) override
+            {
+                if (keyEvent->key() == Qt::Key_Enter
+                    || keyEvent->key() == Qt::Key_Return)
+                {
+                    if (m_eatEnterKey)
+                    {
+                        emit EnterPressed();
+                        m_eatEnterKey = false;
+                    }
+                }
+
+                QTextEdit::keyReleaseEvent(keyEvent);
+            }
+
+            bool m_eatEnterKey;
         };
     }
 

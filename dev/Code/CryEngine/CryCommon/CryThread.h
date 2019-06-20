@@ -620,6 +620,9 @@ namespace CryMT
 
         void Push(const T& rObj);
         void Pop(T* pResult);
+        uint32 Size() { return (m_nProducerIndex - m_nComsumerIndex); }
+        uint32 BufferSize() { return m_nBufferSize;  }
+        uint32 FreeCount() { return (m_nBufferSize - (m_nProducerIndex - m_nComsumerIndex)); }
 
     private:
         T* m_arrBuffer;
@@ -703,6 +706,10 @@ namespace CryMT
         // to correctly track when the queue is empty(and no new jobs will be added), refcount the producer
         void AddProducer();
         void RemoveProducer();
+
+        uint32 Size() { return (m_nProducerIndex - m_nComsumerIndex); }
+        uint32 BufferSize() { return m_nBufferSize; }
+        uint32 FreeCount() { return (m_nBufferSize - (m_nProducerIndex - m_nComsumerIndex)); }
 
     private:
         T*                              m_arrBuffer;

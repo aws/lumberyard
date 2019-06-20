@@ -13,17 +13,20 @@
 
 #include <AzCore/Math/Color.h>
 #include <AzCore/Component/TransformBus.h>
-#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
 #include <AzToolsFramework/API/ToolsApplicationAPI.h>
+#include <AzToolsFramework/ComponentMode/ComponentModeDelegate.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
 #include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 #include <AzToolsFramework/Manipulators/EditorVertexSelection.h>
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 
 #include <LegacyEntityConversion/LegacyEntityConversionBus.h>
 
+#include "EditorVisAreaComponentBus.h"
 #include "VisAreaComponent.h"
 
-namespace Visibility 
+namespace Visibility
 {
     class VisAreaConverter;
     class EditorVisAreaComponent;
@@ -44,16 +47,21 @@ namespace Visibility
         void ChangeOceanIsVisible() override;
         void ChangeVertexContainer() override;
 
-        EditorVisAreaComponent* m_component = nullptr;
+        void SetEntityId(AZ::EntityId entityId);
+
+    private:
+        AZ::EntityId m_entityId;
     };
 
     class EditorVisAreaComponent
         : public AzToolsFramework::Components::EditorComponentBase
-        , private VisAreaComponentRequestBus::Handler
+        , private EditorVisAreaComponentRequestBus::Handler
+        , private AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler
+        , private AZ::VariableVerticesRequestBus<AZ::Vector3>::Handler
         , private AzFramework::EntityDebugDisplayEventBus::Handler
-        , private AzToolsFramework::EntitySelectionEvents::Bus::Handler
         , private AzToolsFramework::EditorEntityInfoNotificationBus::Handler
-        , public AZ::TransformNotificationBus::Handler
+        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
+        , private AZ::TransformNotificationBus::Handler
     {
         friend class VisAreaConverter;
         friend class EditorVisAreaConfiguration; //So that the config can set m_vertices when the vertex container changes
@@ -62,113 +70,77 @@ namespace Visibility
 
     public:
         AZ_COMPONENT(EditorVisAreaComponent, "{F4EC32D8-D4DD-54F7-97A8-D195497D5F2C}", AzToolsFramework::Components::EditorComponentBase);
-        
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+
         static void Reflect(AZ::ReflectContext* context);
 
-        EditorVisAreaComponent();
+        EditorVisAreaComponent() = default;
+        EditorVisAreaComponent(const EditorVisAreaComponent&) = delete;
+        EditorVisAreaComponent& operator=(const EditorVisAreaComponent&) = delete;
         virtual ~EditorVisAreaComponent();
 
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
+        void BuildGameEntity(AZ::Entity* gameEntity) override;
 
         // TransformNotificationBus
         void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
 
-        /// Apply the component's settings to the underlying vis area
-        void UpdateVisArea();
+        // EditorComponentSelectionRequestsBus
+        AZ::Aabb GetEditorSelectionBoundsViewport(
+            const AzFramework::ViewportInfo& viewportInfo) override;
+        bool EditorSelectionIntersectRayViewport(
+            const AzFramework::ViewportInfo& viewportInfo, const AZ::Vector3& src,
+            const AZ::Vector3& dir, AZ::VectorFloat& distance) override;
+        bool SupportsEditorRayIntersect() override { return true; }
 
-        void SetHeight(const float value) override
-        {
-            m_config.m_Height = value;
-            UpdateVisArea();
-        }
-        float GetHeight() override
-        {
-            return m_config.m_Height;
-        }
+        // VisAreaComponentRequestBus
+        void SetHeight(float height) override;
+        float GetHeight() override;
+        void SetDisplayFilled(bool filled) override;
+        bool GetDisplayFilled() override;
+        void SetAffectedBySun(bool affectedBySun) override;
+        bool GetAffectedBySun() override;
+        void SetViewDistRatio(float viewDistRatio) override;
+        float GetViewDistRatio() override;
+        void SetOceanIsVisible(bool oceanVisible) override;
+        bool GetOceanIsVisible() override;
+        bool GetVertex(size_t index, AZ::Vector3& vertex) const override;
+        void AddVertex(const AZ::Vector3& vertex) override;
+        bool UpdateVertex(size_t index, const AZ::Vector3& vertex) override;
+        bool InsertVertex(size_t index, const AZ::Vector3& vertex) override;
+        bool RemoveVertex(size_t index) override;
+        void SetVertices(const AZStd::vector<AZ::Vector3>& vertices) override;
+        void ClearVertices() override;
+        size_t Size() const override;
+        bool Empty() const override;
+        void UpdateVisAreaObject() override;
 
-        void SetDisplayFilled(const bool value) override
-        {
-            m_config.m_DisplayFilled = value;
-            UpdateVisArea();
-        }
-        bool GetDisplayFilled() override
-        {
-            return m_config.m_DisplayFilled;
-        }
-
-        void SetAffectedBySun(const bool value) override
-        {
-            m_config.m_AffectedBySun = value;
-            UpdateVisArea();
-        }
-        bool GetAffectedBySun() override
-        {
-            return m_config.m_AffectedBySun;
-        }
-
-        void SetViewDistRatio(const float value) override
-        {
-            m_config.m_ViewDistRatio = value;
-            UpdateVisArea();
-        }
-        float GetViewDistRatio() override
-        {
-            return m_config.m_ViewDistRatio;
-        }
-
-        void SetOceanIsVisible(const bool value) override
-        {
-            m_config.m_OceanIsVisible = value;
-            UpdateVisArea();
-        }
-        bool GetOceanIsVisible() override
-        {
-            return m_config.m_OceanIsVisible;
-        }
-        
-        void SetVertices(const AZStd::vector<AZ::Vector3>& value) override
-        {
-            m_config.m_vertexContainer.SetVertices(value);
-            UpdateVisArea();
-        }
-        const AZStd::vector<AZ::Vector3>& GetVertices() override
-        {
-            return m_config.m_vertexContainer.GetVertices();
-        }
-
-        void DisplayEntity(bool& handled) override;
-
-        void BuildGameEntity(AZ::Entity* gameEntity) override;
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
 
     private:
-		AZ_DISABLE_COPY_MOVE(EditorVisAreaComponent)
-
-        // EntitySelectionEventsBus
-        void OnSelected() override;
-        void OnDeselected() override;
-
-        // Manipulator handling
-        void CreateManipulators();
-
         // Reflected members
-        EditorVisAreaConfiguration m_config; ///< Reflected configuration
+        EditorVisAreaConfiguration m_config;
 
-        // Statics
-        static AZ::Color s_visAreaColor; ///< The orange color that all visareas draw with
+        using ComponentModeDelegate = AzToolsFramework::ComponentModeFramework::ComponentModeDelegate;
+        ComponentModeDelegate m_componentModeDelegate; ///< Responsible for detecting ComponentMode activation
+                                                       ///< and creating a concrete ComponentMode.
 
         // Unreflected members
-        IVisArea* m_area;
-
-        AzToolsFramework::EditorVertexSelectionVariable<AZ::Vector3> m_vertexSelection; ///< Handles all manipulator interactions with vertices (inserting and translating).
-        
         AZ::Transform m_currentWorldTransform;
+        IVisArea* m_area = nullptr;
+
+        static AZ::Color s_visAreaColor; ///< The orange color that all vis-areas draw with.
     };
 
-    class VisAreaConverter 
+    class VisAreaConverter
         : public AZ::LegacyConversion::LegacyConversionEventBus::Handler
     {
     public:
@@ -183,5 +155,4 @@ namespace Visibility
         bool AfterConversionEnds() override;
         // END ----------------LegacyConversionEventBus::Handler ------------------------------
     };
-   
 } // namespace Visibility

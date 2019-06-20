@@ -9,12 +9,12 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "StdAfx.h"
 #include <AzCore/Memory/SystemAllocator.h>
 #include <AzCore/Math/Spline.h>
 #include <AzCore/Math/IntersectSegment.h>
 #include <AzCore/Component/TransformBus.h>
-
 #include <AzFramework/Entity/EntityDebugDisplayBus.h>
 #include <LmbrCentral/Shape/SplineComponentBus.h>
 
@@ -187,33 +187,33 @@ namespace RoadsAndRivers
         }
     }
 
-    void SplineGeometry::DrawGeometry(const AZ::Color& meshColor)
+    void SplineGeometry::DrawGeometry(
+        AzFramework::DebugDisplayRequests& debugDisplay, const AZ::Color& meshColor)
     {
         AZ_Assert(m_entityId.IsValid(), "[SplineGeometry::DrawGeometry()] Entity id is invalid");
-        AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayContext, "[SplineGeometry::DrawGeometry()] Invalid display context");
+        
 
-        displayContext->SetColor(meshColor);
+        debugDisplay.SetColor(meshColor);
 
         AZ::Transform transform = AZ::Transform::CreateIdentity();
         AZ::TransformBus::EventResult(transform, m_entityId, &AZ::TransformBus::Events::GetWorldTM);
-        displayContext->PushMatrix(transform);
+        debugDisplay.PushMatrix(transform);
 
         for (auto& sector : m_roadSectors)
         {
-            displayContext->DrawLine(sector.points[0], sector.points[1]);
+            debugDisplay.DrawLine(sector.points[0], sector.points[1]);
             for (size_t k = 0; k < sector.points.size(); k += 2)
             {
                 if (k + 3 < sector.points.size())
                 {
-                    displayContext->DrawLine(sector.points[k + 1], sector.points[k + 3]);
-                    displayContext->DrawLine(sector.points[k + 3], sector.points[k + 2]);
-                    displayContext->DrawLine(sector.points[k + 2], sector.points[k]);
+                    debugDisplay.DrawLine(sector.points[k + 1], sector.points[k + 3]);
+                    debugDisplay.DrawLine(sector.points[k + 3], sector.points[k + 2]);
+                    debugDisplay.DrawLine(sector.points[k + 2], sector.points[k]);
                 }
             }
         }
 
-        displayContext->PopMatrix();
+        debugDisplay.PopMatrix();
     }
 
     void SplineGeometry::Clear()
@@ -230,8 +230,7 @@ namespace RoadsAndRivers
     void SplineGeometry::SetVariableWidth(AZ::u32 index, float width)
     {
         m_widthModifiers.SetWidthAtIndex(index, width);
-        m_widthModifiers.SetDirty();
-        WidthPropertyModified();
+        WidthPropertyModifiedInternal();
     }
 
     float SplineGeometry::GetVariableWidth(AZ::u32 index)
@@ -242,7 +241,7 @@ namespace RoadsAndRivers
     void SplineGeometry::SetGlobalWidth(float width)
     {
         m_widthModifiers.m_globalWidth = width;
-        WidthPropertyModified();
+        WidthPropertyModifiedInternal();
     }
 
     float SplineGeometry::GetGlobalWidth()
@@ -253,7 +252,7 @@ namespace RoadsAndRivers
     void SplineGeometry::SetTileLength(float tileLength)
     {
         m_tileLength = tileLength;
-        GeneralPropertyModified();
+        TileLengthModifiedInternal();
     }
 
     float SplineGeometry::GetTileLength()
@@ -264,7 +263,7 @@ namespace RoadsAndRivers
     void SplineGeometry::SetSegmentLength(float segmentLength)
     {
         m_segmentLength = AZ::GetClamp(segmentLength, SegmentLengthRange.GetX(), SegmentLengthRange.GetY());
-        GeneralPropertyModified();
+        SegmentLengthModifiedInternal();
     }
 
     float SplineGeometry::GetSegmentLength()
@@ -272,11 +271,38 @@ namespace RoadsAndRivers
         return m_segmentLength;
     }
 
+    AZStd::vector<AZ::Vector3> SplineGeometry::GetQuadVertices() const
+    {
+        AZStd::vector<AZ::Vector3> vertices;
+        vertices.reserve(m_roadSectors.size() * 4);
+        for (auto& sector : m_roadSectors)
+        {
+            vertices.push_back(sector.points[0]);
+            vertices.push_back(sector.points[1]);
+            vertices.push_back(sector.points[2]);
+            vertices.push_back(sector.points[3]);
+        }
+        return vertices;
+    }
+
     AZ::u32 SplineGeometry::WidthPropertyModifiedInternal()
     {
         m_widthModifiers.SetDirty();
         WidthPropertyModified();
+        RoadsAndRiversGeometryNotificationBus::Event(GetEntityId(), &RoadsAndRiversGeometryNotificationBus::Events::OnWidthChanged);
         return AZ::Edit::PropertyRefreshLevels::AttributesAndValues;
+    }
+
+    void SplineGeometry::SegmentLengthModifiedInternal()
+    {
+        GeneralPropertyModified();
+        RoadsAndRiversGeometryNotificationBus::Event(GetEntityId(), &RoadsAndRiversGeometryNotificationBus::Events::OnSegmentLengthChanged, m_segmentLength);
+    }
+
+    void SplineGeometry::TileLengthModifiedInternal()
+    {
+        GeneralPropertyModified();
+        RoadsAndRiversGeometryNotificationBus::Event(GetEntityId(), &RoadsAndRiversGeometryNotificationBus::Events::OnTileLengthChanged, m_tileLength);
     }
 
     AZ::Aabb SplineGeometry::GetAabb()
@@ -371,13 +397,13 @@ namespace RoadsAndRivers
                         ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Rendering")
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &SplineGeometry::m_segmentLength, "Segment length", "The length of a segment in meters")
-                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SplineGeometry::GeneralPropertyModified)
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SplineGeometry::SegmentLengthModifiedInternal)
                             ->Attribute(AZ::Edit::Attributes::Min, SegmentLengthRange.GetX())
                             ->Attribute(AZ::Edit::Attributes::Max, SegmentLengthRange.GetY())
                             ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
                             ->Attribute(AZ::Edit::Attributes::Suffix, " m")
                         ->DataElement(AZ::Edit::UIHandlers::Slider, &SplineGeometry::m_tileLength, "Tile length", "The distance in meters at which the texture will repeat")
-                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SplineGeometry::GeneralPropertyModified)
+                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &SplineGeometry::TileLengthModifiedInternal)
                             ->Attribute(AZ::Edit::Attributes::Min, 0.5f)
                             ->Attribute(AZ::Edit::Attributes::Max, 100.0f)
                             ->Attribute(AZ::Edit::Attributes::Step, 0.1f)
@@ -486,4 +512,5 @@ namespace RoadsAndRivers
 
     AZ_CLASS_ALLOCATOR_IMPL(SplineGeometryWidthModifier, AZ::SystemAllocator, 0);
     AZ_CLASS_ALLOCATOR_IMPL(SplineGeometry, AZ::SystemAllocator, 0);
-}
+
+} // namespace RoadsAndRivers

@@ -65,6 +65,7 @@ namespace AzToolsFramework
         void onChildSpinboxValueChange(int val);
     signals:
         void valueChanged(AZ::s64 val);
+        void sliderReleased();
 
     private:
         AZ::s64 m_multiplier;

@@ -35,8 +35,8 @@ namespace RoadsAndRivers
 
         return *this;
     }
-	
-	bool Road::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
+    
+    bool Road::VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement)
     {
         // conversion from version 1 to version 2:
         // splines created with v1 should set m_addOverlapBetweenSectors to true
@@ -67,7 +67,7 @@ namespace RoadsAndRivers
                             ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::MaterialPropertyChanged)
                         ->DataElement(AZ::Edit::UIHandlers::Default, &Road::m_ignoreTerrainHoles, "Ignore terrain holes", "")
-                            ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::RenderingPropertyModified)
+                        ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::IgnoreTerrainHolesModified)
                     ->ClassElement(AZ::Edit::ClassElements::Group, "Rendering")
                         ->DataElement(AZ::Edit::UIHandlers::CheckBox, &Road::m_addOverlapBetweenSectors, "Add Overlap Between Sectors", "Adds overlap between sectors when the spline geometry is split into multiple meshes. Can be used to cover small gaps between sectors, but typically results in other artifacts caused by the overlap, so disabled by default.")
                             ->Attribute(AZ::Edit::Attributes::ChangeNotify, &Road::GeneralPropertyModified)
@@ -146,12 +146,17 @@ namespace RoadsAndRivers
     void Road::SetIgnoreTerrainHoles(bool ignoreTerrainHoles)
     {
         m_ignoreTerrainHoles = ignoreTerrainHoles;
-        RenderingPropertyModified();
     }
 
     bool Road::GetIgnoreTerrainHoles()
     {
         return m_ignoreTerrainHoles;
+    }
+
+    void Road::IgnoreTerrainHolesModified()
+    {
+        RenderingPropertyModified();
+        RoadNotificationBus::Event(GetEntityId(), &RoadNotificationBus::Events::OnIgnoreTerrainHolesChanged, m_ignoreTerrainHoles);
     }
 
     void Road::Rebuild()

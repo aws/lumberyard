@@ -12,14 +12,24 @@
 #pragma once
 
 #include <AzCore/Component/Component.h>
+#include <SurfaceData/SurfaceDataTagProviderRequestBus.h>
 
 namespace Water
 {
+    namespace Constants
+    {
+        static const char* s_waterVolumeTagName = "waterVolume";
+        static const char* s_underWaterTagName = "underWater";
+        static const char* s_waterTagName = "water";
+        static const char* s_oceanTagName = "ocean";
+    }
+
     /**
     * The system component for water component management
     */
     class WaterSystemComponent
         : public AZ::Component
+        , private SurfaceData::SurfaceDataTagProviderRequestBus::Handler
     {
     public:
         AZ_COMPONENT(WaterSystemComponent, "{E77EF0DB-92C1-4490-BABA-DE2894FDEB27}");
@@ -28,6 +38,10 @@ namespace Water
 
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+
+        ////////////////////////////////////////////////////////////////////////
+        // SurfaceDataTagProviderRequestBus
+        void GetRegisteredSurfaceTagNames(SurfaceData::SurfaceTagNameSet& names) const override;
 
     protected:
         ////////////////////////////////////////////////////////////////////////

@@ -3436,7 +3436,7 @@ void C3DEngine::DisplayInfo(float& fTextPosX, float& fTextPosY, float& fTextStep
                 }
 
                 char* pstr = szText + strlen(szText);
-                sprintf_s(pstr, sizeof(szText) - (pstr - szText), "%d", pLsource->pCastersList->Count());
+                sprintf_s(pstr, sizeof(szText) - (pstr - szText), "%d", pLsource->m_castersList.Count());
             }
 
             DrawTextRightAligned(fTextPosX, fTextPosY += fTextStepY, szText);

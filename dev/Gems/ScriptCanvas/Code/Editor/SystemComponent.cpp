@@ -16,16 +16,16 @@
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Jobs/JobFunction.h>
 #include <AzCore/EBus/Results.h>
-#include <AzCore/UserSettings/UserSettingsProvider.h>
 #include <AzCore/std/string/wildcard.h>
 
 #include <AzFramework/Entity/EntityContextBus.h>
 
 #include <AzToolsFramework/API/ViewPaneOptions.h>
+#include <AzToolsFramework/UI/PropertyEditor/GenericComboBoxCtrl.h>
 
 #include <GraphCanvas/GraphCanvasBus.h>
 
-#include "SystemComponent.h"
+#include <Editor/SystemComponent.h>
 
 #include <Editor/View/Windows/MainWindow.h>
 #include <Editor/View/Dialogs/NewGraphDialog.h>
@@ -45,8 +45,8 @@
 
 #include <QMenu>
 
-#include <ScriptCanvas/View/EditCtrls/GenericComboBoxCtrl.h>
 #include <ScriptCanvas/View/EditCtrls/GenericLineEditCtrl.h>
+#include <Editor/Framework/ScriptCanvasGraphUtilities.h>
 
 namespace ScriptCanvasEditor
 {
@@ -124,9 +124,10 @@ namespace ScriptCanvasEditor
 
         PopulateEditorCreatableTypes();
 
-        m_propertyHandlers.emplace_back(RegisterGenericComboBoxHandler<ScriptCanvas::VariableId>());
-        m_propertyHandlers.emplace_back(RegisterGenericComboBoxHandler<AZ::Crc32>());
+        m_propertyHandlers.emplace_back(AzToolsFramework::RegisterGenericComboBoxHandler<ScriptCanvas::VariableId>());
+        m_propertyHandlers.emplace_back(AzToolsFramework::RegisterGenericComboBoxHandler<AZ::Crc32>());
         SystemRequestBus::Handler::BusConnect();
+        ScriptCanvasExecutionBus::Handler::BusConnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusConnect();
         m_documentContext.Activate();
@@ -149,6 +150,7 @@ namespace ScriptCanvasEditor
 
         AzToolsFramework::AssetBrowser::AssetBrowserInteractionNotificationBus::Handler::BusDisconnect();
         AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
+        ScriptCanvasExecutionBus::Handler::BusDisconnect();
         SystemRequestBus::Handler::BusDisconnect();
 
         for (auto&& propertyHandler : m_propertyHandlers)
@@ -156,6 +158,9 @@ namespace ScriptCanvasEditor
             AzToolsFramework::PropertyTypeRegistrationMessages::Bus::Broadcast(&AzToolsFramework::PropertyTypeRegistrationMessages::UnregisterPropertyType, propertyHandler.get());
         }
         m_propertyHandlers.clear();
+
+        m_jobContext.reset();
+        m_jobManager.reset();
     }
 
     void SystemComponent::AddAsyncJob(AZStd::function<void()>&& jobFunc)
@@ -281,6 +286,11 @@ namespace ScriptCanvasEditor
         return AzToolsFramework::AssetBrowser::SourceFileDetails();
     }
 
+    void SystemComponent::OnUserSettingsActivated()
+    {
+        PopulateEditorCreatableTypes();
+    }
+
     void SystemComponent::PopulateEditorCreatableTypes()
     {
         AZ::BehaviorContext* behaviorContext{};
@@ -288,19 +298,26 @@ namespace ScriptCanvasEditor
         AZ_Assert(behaviorContext, "Behavior Context should not be missing at this point");
 
         bool showExcludedPreviewNodes = false;
+
         // Local User Settings are not registered in an asset builders
         if (AZ::UserSettingsBus::GetNumOfEventHandlers(AZ::UserSettings::CT_LOCAL) > 0)
         {
             AZStd::intrusive_ptr<ScriptCanvasEditor::EditorSettings::ScriptCanvasEditorSettings> settings = AZ::UserSettings::CreateFind<ScriptCanvasEditor::EditorSettings::ScriptCanvasEditorSettings>(AZ_CRC("ScriptCanvasPreviewSettings", 0x1c5a2965), AZ::UserSettings::CT_LOCAL);
             showExcludedPreviewNodes = settings ? settings->m_showExcludedNodes : false;
         }
+        else
+        {
+            // If we don't have any user settings, hook up to the notification bus to redo this work again once we have the user settings so
+            // we an manage the exclude flags correctly
+            AZ::UserSettingsNotificationBus::Handler::BusConnect(AZ::UserSettings::CT_LOCAL);
+        }
 
         auto dataRegistry = ScriptCanvas::GetDataRegistry();
         for (const auto& scType : dataRegistry->m_creatableTypes)
         {
-            if (!showExcludedPreviewNodes && scType.GetType() == ScriptCanvas::Data::eType::BehaviorContextObject)
+            if (!showExcludedPreviewNodes && scType.first.GetType() == ScriptCanvas::Data::eType::BehaviorContextObject)
             {
-                if (const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(behaviorContext, ScriptCanvas::Data::ToAZType(scType)))
+                if (const AZ::BehaviorClass* behaviorClass = AZ::BehaviorContextHelper::GetClass(behaviorContext, ScriptCanvas::Data::ToAZType(scType.first)))
                 {
                     // BehaviorContext classes with the ExcludeFrom attribute with a value of the ExcludeFlags::Preview are not added to the list of 
                     // types that can be created in the editor
@@ -313,7 +330,15 @@ namespace ScriptCanvasEditor
                 }
             }
 
-            m_creatableTypes.insert(scType);
+            m_creatableTypes.insert(scType.first);
         }
     }
+
+    Reporter SystemComponent::RunGraph(AZStd::string_view path)
+    {
+        Reporter reporter;
+        ScriptCanvasEditor::RunGraph(path, ExecutionMode::Interpreted, DurationSpec(), reporter);
+        return reporter;
+    }
+
 }

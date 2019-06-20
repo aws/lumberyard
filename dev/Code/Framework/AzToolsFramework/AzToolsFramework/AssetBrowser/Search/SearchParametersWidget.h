@@ -11,6 +11,10 @@
 */
 #pragma once
 
+/*********************************************************************************************
+ * SearchParametersWidget has been deprecated, use AzQtComponents::FilteredSearchWidget instead.
+ *********************************************************************************************/
+
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
 
 #include <AzCore/Memory/SystemAllocator.h>

@@ -39,7 +39,7 @@ namespace EMotionFX
         m_velocityEvaluator = AZStd::unique_ptr<RagdollVelocityEvaluator>(aznew RunningAverageVelocityEvaluator());
     }
 
-    RagdollInstance::RagdollInstance(const AZStd::shared_ptr<Physics::Ragdoll>& ragdoll, ActorInstance* actorInstance)
+    RagdollInstance::RagdollInstance(Physics::Ragdoll* ragdoll, ActorInstance* actorInstance)
         : RagdollInstance()
     {
         m_ragdoll = ragdoll;
@@ -249,7 +249,7 @@ namespace EMotionFX
 
     Physics::Ragdoll* RagdollInstance::GetRagdoll() const
     {
-        return m_ragdoll.get();
+        return m_ragdoll;
     }
 
     Physics::World* RagdollInstance::GetRagdollWorld() const

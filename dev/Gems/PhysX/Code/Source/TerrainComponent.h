@@ -54,6 +54,7 @@ namespace PhysX
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
         TerrainComponent() = default;
+        TerrainComponent(const TerrainComponent&) = delete;
         explicit TerrainComponent(const TerrainConfiguration& configuration);
 
         // AZ::Component interface implementation
@@ -62,13 +63,12 @@ namespace PhysX
 
         // TerrainRequestBus
         float GetHeight(float x, float y) override;
-        AZStd::shared_ptr<Physics::RigidBodyStatic> GetTerrainTile(float x, float y) override;
+        Physics::RigidBodyStatic* GetTerrainTile(float x, float y) override;
 
     private:
         void LoadTerrain();
-        void UpdateHeightFieldAsset();
 
-        AZStd::vector<AZStd::shared_ptr<Physics::RigidBodyStatic>> m_terrainTiles; ///< Terrain tile bodies.
+        AZStd::vector<AZStd::unique_ptr<Physics::RigidBodyStatic>> m_terrainTiles; ///< Terrain tile bodies.
         TerrainConfiguration m_configuration; ///< Terrain configuration.
     };
 }

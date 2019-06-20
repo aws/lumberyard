@@ -1516,8 +1516,7 @@ namespace AzToolsFramework
 
         AZ::SliceComponent* rootSlice;
         AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
-            rootSlice,
-            &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+            rootSlice, &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
         EXPECT_NE(rootSlice, nullptr);
         
         // First, verify the the instance is in the root slice.
@@ -1678,5 +1677,411 @@ namespace AzToolsFramework
         EXPECT_EQ(uniqueEntities.begin()->first, childEntity->GetId());
         EXPECT_NE(uniqueEntities.begin()->second, nullptr);
         EXPECT_EQ(uniqueEntities.begin()->second->GetId(), childEntity->GetId());
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_RestoreNullLayer_FailsToRestore)
+    {
+        AZ::EntityId invalidParentId;
+        Layers::LayerResult recoveryResult = AzToolsFramework::Layers::EditorLayerComponent::RecoverEditorLayer(nullptr, "RecoveredLayerName", invalidParentId);
+        EXPECT_FALSE(recoveryResult.IsSuccess());
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_RestoreEmptyLayer_RestoresCorrectly)
+    {
+        AZ::EntityId layerEntityId = m_layerEntity.m_entity->GetId();
+        // Check that the layer is in the scene.
+        AZ::SliceComponent* rootSlice;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            rootSlice,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+        EXPECT_NE(rootSlice, nullptr);
+        const EntityList& looseEntities(rootSlice->GetNewEntities());
+        EXPECT_EQ(looseEntities.size(), 1);
+        EXPECT_EQ(looseEntities[0]->GetId(), layerEntityId);
+
+        // Next, save that layer to a stream.
+        AZStd::vector<char> entitySaveBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > entitySaveStream(&entitySaveBuffer);
+        AZStd::vector<AZ::Entity*> savedEntities;
+        AZ::SliceComponent::SliceReferenceToInstancePtrs savedInstances;
+        Layers::EditorLayer layer;
+        Layers::LayerResult saveResult = SaveMainLayer(layer, entitySaveStream, savedEntities, savedInstances);
+        EXPECT_TRUE(saveResult.IsSuccess());
+
+        // Delete the layer from the scene.
+        bool layerDeleted = false;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            layerDeleted,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity,
+            m_layerEntity.m_entity->GetId());
+        EXPECT_TRUE(layerDeleted);
+        m_layerEntity.m_entity = nullptr;
+        // Verify that the layer is gone.
+        EXPECT_EQ(looseEntities.size(), 0);
+
+        // Load the layer object from the stream it was saved to.
+        AZStd::shared_ptr<Layers::EditorLayer> loadedFromStream(AZ::Utils::LoadObjectFromStream<Layers::EditorLayer>(entitySaveStream));
+        EXPECT_NE(loadedFromStream, nullptr);
+
+        // Attempt to recover the empty layer, which should succeed.
+        AZ::EntityId invalidParentId;
+        Layers::LayerResult recoveryResult = AzToolsFramework::Layers::EditorLayerComponent::RecoverEditorLayer(loadedFromStream, "RecoveredLayerName", invalidParentId);
+        EXPECT_TRUE(recoveryResult.IsSuccess());
+
+        // Verify the layer was restored.
+        EXPECT_EQ(looseEntities.size(), 1);
+        EXPECT_EQ(looseEntities[0]->GetId(), layerEntityId);
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_RestoreLayerButLayerStillInScene_FailsToRestore)
+    {
+        AZ::EntityId layerEntityId = m_layerEntity.m_entity->GetId();
+        // Check that the layer is in the scene.
+        AZ::SliceComponent* rootSlice;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            rootSlice,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+        EXPECT_NE(rootSlice, nullptr);
+        const EntityList& looseEntities(rootSlice->GetNewEntities());
+        EXPECT_EQ(looseEntities.size(), 1);
+        EXPECT_EQ(looseEntities[0]->GetId(), layerEntityId);
+
+        AzToolsFramework::ToolsApplicationRequests::Bus::Broadcast(
+            &AzToolsFramework::ToolsApplicationRequests::Bus::Events::AddDirtyEntity,
+            layerEntityId);
+
+        // Next, save that layer to a stream.
+        AZStd::vector<char> entitySaveBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > entitySaveStream(&entitySaveBuffer);
+        AZStd::vector<AZ::Entity*> savedEntities;
+        AZ::SliceComponent::SliceReferenceToInstancePtrs savedInstances;
+        Layers::EditorLayer layer;
+        Layers::LayerResult saveResult = SaveMainLayer(layer, entitySaveStream, savedEntities, savedInstances);
+        EXPECT_TRUE(saveResult.IsSuccess());
+
+        // Load the layer object from the stream it was saved to.
+        AZStd::shared_ptr<Layers::EditorLayer> loadedFromStream(AZ::Utils::LoadObjectFromStream<Layers::EditorLayer>(entitySaveStream));
+        EXPECT_NE(loadedFromStream, nullptr);
+
+        // Attempt to recover the layer, which should fail because it's still in the scene.
+        AZ::EntityId invalidParentId;
+        Layers::LayerResult recoveryResult = AzToolsFramework::Layers::EditorLayerComponent::RecoverEditorLayer(loadedFromStream, "RecoveredLayerName", invalidParentId);
+        EXPECT_FALSE(recoveryResult.IsSuccess());
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_RestoreLayerWithEntityChild_RestoresCorrectly)
+    {
+        const AZ::EntityId layerEntityId = m_layerEntity.m_entity->GetId();
+
+        AZ::Entity* childEntity = CreateEditorReadyEntity("ChildEntity");
+        const AZ::EntityId childEntityId = childEntity->GetId();
+        AZ::TransformBus::Event(
+            childEntityId,
+            &AZ::TransformBus::Events::SetParent,
+            layerEntityId);
+
+        // Check that the layer and the child entity are in the scene.
+        AZ::SliceComponent* rootSlice;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            rootSlice,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+        EXPECT_NE(rootSlice, nullptr);
+        const EntityList& looseEntities(rootSlice->GetNewEntities());
+        EXPECT_EQ(looseEntities.size(), 2);
+        bool foundLayer = false;
+        bool foundChild = false;
+        for (const auto& entity : looseEntities)
+        {
+            if (entity->GetId() == layerEntityId)
+            {
+                foundLayer = true;
+            }
+            else if (entity->GetId() == childEntityId)
+            {
+                foundChild = true;
+            }
+        }
+        EXPECT_TRUE(foundLayer);
+        EXPECT_TRUE(foundChild);
+
+        // Next, save that layer to a stream.
+        AZStd::vector<char> entitySaveBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > entitySaveStream(&entitySaveBuffer);
+        AZStd::vector<AZ::Entity*> savedEntities;
+        AZ::SliceComponent::SliceReferenceToInstancePtrs savedInstances;
+        Layers::EditorLayer layer;
+        Layers::LayerResult saveResult = SaveMainLayer(layer, entitySaveStream, savedEntities, savedInstances);
+        EXPECT_TRUE(saveResult.IsSuccess());
+
+        // Delete the child from the scene.
+        bool childDeleted = false;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            childDeleted,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity,
+            childEntityId);
+        EXPECT_TRUE(childDeleted);
+        childEntity = nullptr;
+
+        // Delete the layer from the scene.
+        bool layerDeleted = false;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            layerDeleted,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity,
+            layerEntityId);
+        EXPECT_TRUE(layerDeleted);
+        m_layerEntity.m_entity = nullptr;
+
+        // Verify that the layer is gone.
+        EXPECT_EQ(looseEntities.size(), 0);
+
+        // Load the layer object from the stream it was saved to.
+        AZStd::shared_ptr<Layers::EditorLayer> loadedFromStream(AZ::Utils::LoadObjectFromStream<Layers::EditorLayer>(entitySaveStream));
+        EXPECT_NE(loadedFromStream, nullptr);
+
+        // Recover the layer.
+        AZ::EntityId invalidParentId;
+        Layers::LayerResult recoveryResult = AzToolsFramework::Layers::EditorLayerComponent::RecoverEditorLayer(loadedFromStream, "RecoveredLayerName", invalidParentId);
+        EXPECT_TRUE(recoveryResult.IsSuccess());
+
+        // Verify the layer and child were restored.
+        EXPECT_EQ(looseEntities.size(), 2);
+        foundLayer = false;
+        foundChild = false;
+        for (const auto& entity : looseEntities)
+        {
+            if (entity->GetId() == layerEntityId)
+            {
+                foundLayer = true;
+            }
+            else if (entity->GetId() == childEntityId)
+            {
+                foundChild = true;
+            }
+        }
+        EXPECT_TRUE(foundLayer);
+        EXPECT_TRUE(foundChild);
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_RestoreLayerWithEntityChildStillInScene_FailsToRestore)
+    {
+        const AZ::EntityId layerEntityId = m_layerEntity.m_entity->GetId();
+
+        AZ::Entity* childEntity = CreateEditorReadyEntity("ChildEntity");
+        const AZ::EntityId childEntityId = childEntity->GetId();
+        AZ::TransformBus::Event(
+            childEntityId,
+            &AZ::TransformBus::Events::SetParent,
+            layerEntityId);
+
+        // Check that the layer and the child entity are in the scene.
+        AZ::SliceComponent* rootSlice;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            rootSlice,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+        EXPECT_NE(rootSlice, nullptr);
+        const EntityList& looseEntities(rootSlice->GetNewEntities());
+        EXPECT_EQ(looseEntities.size(), 2);
+        bool foundLayer = false;
+        bool foundChild = false;
+        for (const auto& entity : looseEntities)
+        {
+            if (entity->GetId() == layerEntityId)
+            {
+                foundLayer = true;
+            }
+            else if (entity->GetId() == childEntityId)
+            {
+                foundChild = true;
+            }
+        }
+        EXPECT_TRUE(foundLayer);
+        EXPECT_TRUE(foundChild);
+
+        // Next, save that layer to a stream.
+        AZStd::vector<char> entitySaveBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > entitySaveStream(&entitySaveBuffer);
+        AZStd::vector<AZ::Entity*> savedEntities;
+        AZ::SliceComponent::SliceReferenceToInstancePtrs savedInstances;
+        Layers::EditorLayer layer;
+        Layers::LayerResult saveResult = SaveMainLayer(layer, entitySaveStream, savedEntities, savedInstances);
+        EXPECT_TRUE(saveResult.IsSuccess());
+
+        // Set the child's parent to invalid, so it sticks around after the layer is deleted
+        AZ::TransformBus::Event(
+            childEntityId,
+            &AZ::TransformBus::Events::SetParent,
+            AZ::EntityId());
+
+        // Delete the layer from the scene.
+        bool layerDeleted = false;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            layerDeleted,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity,
+            layerEntityId);
+        EXPECT_TRUE(layerDeleted);
+        m_layerEntity.m_entity = nullptr;
+
+        // Verify that the layer is gone, but the child is still in the scene.
+        EXPECT_EQ(looseEntities.size(), 1);
+        EXPECT_EQ(looseEntities[0]->GetId(), childEntityId);
+
+        // Load the layer object from the stream it was saved to.
+        AZStd::shared_ptr<Layers::EditorLayer> loadedFromStream(AZ::Utils::LoadObjectFromStream<Layers::EditorLayer>(entitySaveStream));
+        EXPECT_NE(loadedFromStream, nullptr);
+
+        // Attempt to recover the layer, which should fail because the child is still in the scene.
+        AZ::EntityId invalidParentId;
+        Layers::LayerResult recoveryResult = AzToolsFramework::Layers::EditorLayerComponent::RecoverEditorLayer(loadedFromStream, "RecoveredLayerName", invalidParentId);
+        EXPECT_FALSE(recoveryResult.IsSuccess());
+
+        // Verify the layer was not restored.
+        EXPECT_EQ(looseEntities.size(), 1);
+        EXPECT_EQ(looseEntities[0]->GetId(), childEntityId);
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_RestoreLayerWithSliceInstance_RestoresCorrectly)
+    {
+        const AZ::EntityId layerEntityId = m_layerEntity.m_entity->GetId();
+        // First, set up a layer with a slice instance in it.
+        AZ::SliceComponent::SliceInstanceAddress instantiatedSlice = CreateSliceInstance();
+        AZ::Data::Asset<AZ::SliceAsset> loadedSliceAsset = instantiatedSlice.first->GetSliceAsset();
+        AZ::Entity* childEntity = GetEntityFromSliceInstance(instantiatedSlice);
+        AZ::TransformBus::Event(
+            childEntity->GetId(),
+            &AZ::TransformBus::Events::SetParent,
+            layerEntityId);
+
+        // Check that the layer is in the scene.
+        AZ::SliceComponent* rootSlice;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            rootSlice,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+        EXPECT_NE(rootSlice, nullptr);
+        const EntityList& looseEntities(rootSlice->GetNewEntities());
+        EXPECT_EQ(looseEntities.size(), 1);
+        EXPECT_EQ(looseEntities[0]->GetId(), layerEntityId);
+
+        // Next, save that layer to a stream.
+        AZStd::vector<char> entitySaveBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > entitySaveStream(&entitySaveBuffer);
+        AZStd::vector<AZ::Entity*> savedEntities;
+        AZ::SliceComponent::SliceReferenceToInstancePtrs savedInstances;
+        Layers::EditorLayer layer;
+        Layers::LayerResult saveResult = SaveMainLayer(layer, entitySaveStream, savedEntities, savedInstances);
+        EXPECT_TRUE(saveResult.IsSuccess());
+
+        // Clear out the scene, delete the instance and the layer.
+        DeleteSliceInstance(instantiatedSlice);
+
+        bool layerDeleted = false;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            layerDeleted,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity,
+            layerEntityId);
+        EXPECT_TRUE(layerDeleted);
+        m_layerEntity.m_entity = nullptr;
+
+        // Verify the slice instance and layer have been removed from the scene.
+        AZStd::list<AZ::SliceComponent::SliceReference>& sliceList = rootSlice->GetSlices();
+        EXPECT_EQ(sliceList.size(), 0);
+        // Verify the layer is gone.
+        EXPECT_EQ(looseEntities.size(), 0);
+
+        // Load the layer object from the stream it was saved to.
+        AZStd::shared_ptr<Layers::EditorLayer> loadedFromStream(AZ::Utils::LoadObjectFromStream<Layers::EditorLayer>(entitySaveStream));
+        EXPECT_NE(loadedFromStream, nullptr);
+
+        // Recover the layer. It has no parent, so use an invalid ID.
+        AZ::EntityId invalidParentId;
+        Layers::LayerResult recoveryResult = AzToolsFramework::Layers::EditorLayerComponent::RecoverEditorLayer(loadedFromStream, "RecoveredLayerName", invalidParentId);
+        EXPECT_TRUE(recoveryResult.IsSuccess());
+
+        // Verify the slice instance is now in the scene.
+        EXPECT_EQ(sliceList.size(), 1);
+        EXPECT_EQ(sliceList.front().GetSliceAsset(), loadedSliceAsset);
+        AZStd::unordered_set<AZ::SliceComponent::SliceInstance>& sliceInstances = sliceList.front().GetInstances();
+        EXPECT_EQ(sliceInstances.size(), 1);
+
+        // Verify the layer is now in the scene.
+        EXPECT_EQ(looseEntities.size(), 1);
+        EXPECT_EQ(looseEntities[0]->GetId(), layerEntityId);
+
+        // Clean up the slice instance.
+
+        // There's only one instance, so no need to loop to clear it out.
+        // Convert the instance from an iterator to a pointer, to remove it.
+        rootSlice->RemoveSliceInstance(&(*sliceInstances.begin()));
+    }
+
+    TEST_F(EditorLayerComponentTest, LayerTests_RestoreLayerWithSliceInstanceStillInScene_FailsToRestore)
+    {
+        const AZ::EntityId layerEntityId = m_layerEntity.m_entity->GetId();
+        // First, set up a layer with a slice instance in it.
+        AZ::SliceComponent::SliceInstanceAddress instantiatedSlice = CreateSliceInstance();
+        AZ::Data::Asset<AZ::SliceAsset> loadedSliceAsset = instantiatedSlice.first->GetSliceAsset();
+        AZ::Entity* childEntity = GetEntityFromSliceInstance(instantiatedSlice);
+        AZ::TransformBus::Event(
+            childEntity->GetId(),
+            &AZ::TransformBus::Events::SetParent,
+            layerEntityId);
+
+        // Check that the layer is in the scene.
+        AZ::SliceComponent* rootSlice;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            rootSlice,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::GetEditorRootSlice);
+        EXPECT_NE(rootSlice, nullptr);
+        const EntityList& looseEntities(rootSlice->GetNewEntities());
+        EXPECT_EQ(looseEntities.size(), 1);
+        EXPECT_EQ(looseEntities[0]->GetId(), layerEntityId);
+
+        // Next, save that layer to a stream.
+        AZStd::vector<char> entitySaveBuffer;
+        AZ::IO::ByteContainerStream<AZStd::vector<char> > entitySaveStream(&entitySaveBuffer);
+        AZStd::vector<AZ::Entity*> savedEntities;
+        AZ::SliceComponent::SliceReferenceToInstancePtrs savedInstances;
+        Layers::EditorLayer layer;
+        Layers::LayerResult saveResult = SaveMainLayer(layer, entitySaveStream, savedEntities, savedInstances);
+        EXPECT_TRUE(saveResult.IsSuccess());
+
+        // Move the slice instance out of the layer, so the entity ID remains active and conflicts with the layer.
+        AZ::TransformBus::Event(
+            childEntity->GetId(),
+            &AZ::TransformBus::Events::SetParent,
+            AZ::EntityId());
+
+        bool layerDeleted = false;
+        AzToolsFramework::EditorEntityContextRequestBus::BroadcastResult(
+            layerDeleted,
+            &AzToolsFramework::EditorEntityContextRequestBus::Events::DestroyEditorEntity,
+            layerEntityId);
+        EXPECT_TRUE(layerDeleted);
+        m_layerEntity.m_entity = nullptr;
+
+        // Verify the layer is gone.
+        EXPECT_EQ(looseEntities.size(), 0);
+
+        // Load the layer object from the stream it was saved to.
+        AZStd::shared_ptr<Layers::EditorLayer> loadedFromStream(AZ::Utils::LoadObjectFromStream<Layers::EditorLayer>(entitySaveStream));
+        EXPECT_NE(loadedFromStream, nullptr);
+
+        // Attempt to recover the layer. It has no parent, so use an invalid ID.
+        AZ::EntityId invalidParentId;
+        Layers::LayerResult recoveryResult = AzToolsFramework::Layers::EditorLayerComponent::RecoverEditorLayer(loadedFromStream, "RecoveredLayerName", invalidParentId);
+        // Verify it failed to recover.
+        EXPECT_FALSE(recoveryResult.IsSuccess());
+
+        // Verify the slice instance is now in the scene.
+        AZStd::list<AZ::SliceComponent::SliceReference>& sliceList = rootSlice->GetSlices();
+        EXPECT_EQ(sliceList.size(), 1);
+        EXPECT_EQ(sliceList.front().GetSliceAsset(), loadedSliceAsset);
+        AZStd::unordered_set<AZ::SliceComponent::SliceInstance>& sliceInstances = sliceList.front().GetInstances();
+        EXPECT_EQ(sliceInstances.size(), 1);
+
+        // Verify the layer is not in the scene. If it failed, it shouldn't create the layer.
+        EXPECT_EQ(looseEntities.size(), 0);
+
+        // Clean up the slice instance.
+        DeleteSliceInstance(instantiatedSlice);
     }
 }

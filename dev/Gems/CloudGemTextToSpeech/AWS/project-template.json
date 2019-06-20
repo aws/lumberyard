@@ -40,27 +40,7 @@
                                 "polly:DescribeVoices"
                             ]
                         }
-                    },
-                    "Custom::BucketClearer": {
-                        "ArnFormat": "*",
-                        "HandlerFunction": {
-                            "Function": "Custom_BucketClear.handler",
-                            "PolicyStatement": [
-                                {
-                                    "Sid": "ListBucket",
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "s3:ListBucketVersions",
-                                        "s3:DeleteObjectVersion"
-                                    ],
-                                    "Resource": [ "*" ]
-                                }
-                            ]
-                        },
-                        "PermissionMetadata": {
-                            "RestrictActions": []
-                        }
-                    }
+                    }                   
                 }
             }
         },

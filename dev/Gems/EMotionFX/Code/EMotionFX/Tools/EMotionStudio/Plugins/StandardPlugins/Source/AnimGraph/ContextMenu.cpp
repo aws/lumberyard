@@ -100,15 +100,16 @@ namespace EMStudio
 
 
     void BlendGraphWidget::OnContextMenuEvent(QWidget* parentWidget, QPoint localMousePos, QPoint globalMousePos, AnimGraphPlugin* plugin,
-        const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedNodes, bool graphWidgetOnlyMenusEnabled)
+        const AZStd::vector<EMotionFX::AnimGraphNode*>& selectedNodes, bool graphWidgetOnlyMenusEnabled, bool selectingAnyReferenceNodeFromNavigation)
     {
-        BlendGraphWidget*       blendGraphWidget= plugin->GetGraphWidget();
-        BlendGraphViewWidget*   viewWidget      = plugin->GetViewWidget();
-        NodeGraph*              nodeGraph       = blendGraphWidget->GetActiveGraph();
-        AnimGraphActionManager& actionManager   = plugin->GetActionManager();
+        BlendGraphWidget*       blendGraphWidget = plugin->GetGraphWidget();
+        BlendGraphViewWidget*   viewWidget       = plugin->GetViewWidget();
+        NodeGraph*              nodeGraph        = blendGraphWidget->GetActiveGraph();
+        AnimGraphActionManager& actionManager    = plugin->GetActionManager();
+        const bool              inReferenceGraph = nodeGraph->IsInReferencedGraph() || selectingAnyReferenceNodeFromNavigation;
 
         // only show the paste and the create node menu entries in case the function got called from the graph widget
-        if (!nodeGraph->IsInReferencedGraph() && graphWidgetOnlyMenusEnabled)
+        if (!inReferenceGraph && graphWidgetOnlyMenusEnabled)
         {
             // check if we have actually clicked a node and if it is selected, only show the menu if both cases are true
             GraphNode* graphNode = nodeGraph->FindNode(localMousePos);
@@ -209,7 +210,7 @@ namespace EMStudio
                     activateNodeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/AnimGraphPlugin/Run.png"));
                     connect(activateNodeAction, &QAction::triggered, viewWidget, &BlendGraphViewWidget::OnActivateState);
 
-                    if (!nodeGraph->IsInReferencedGraph())
+                    if (!inReferenceGraph)
                     {
                         EMotionFX::AnimGraphStateMachine* stateMachine = (EMotionFX::AnimGraphStateMachine*)animGraphNode->GetParentNode();
                         if (stateMachine->GetEntryState() != animGraphNode)
@@ -312,7 +313,7 @@ namespace EMStudio
 
             if (animGraphNode->GetIsDeletable())
             {
-                if (!nodeGraph->IsInReferencedGraph())
+                if (!inReferenceGraph)
                 {
                     // cut and copy actions
                     QAction* cutAction = menu.addAction("Cut");
@@ -325,7 +326,7 @@ namespace EMStudio
                 connect(ccopyAction, &QAction::triggered, &actionManager, &AnimGraphActionManager::Copy);
                 menu.addSeparator();
 
-                if (!nodeGraph->IsInReferencedGraph())
+                if (!inReferenceGraph)
                 {
                     QAction* removeNodeAction = menu.addAction("Delete Node");
                     removeNodeAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Remove.png"));
@@ -335,7 +336,7 @@ namespace EMStudio
             }
 
             // add the node group sub menu
-            if (!nodeGraph->IsInReferencedGraph() && animGraphNode->GetParentNode())
+            if (!inReferenceGraph && animGraphNode->GetParentNode())
             {
                 AddNodeGroupSubmenu(&menu, animGraphNode->GetAnimGraph(), selectedNodes);
             }
@@ -353,7 +354,7 @@ namespace EMStudio
             // create the context menu
             QMenu menu(parentWidget);
 
-            if (!nodeGraph->IsInReferencedGraph())
+            if (!inReferenceGraph)
             {
                 QAction* alignLeftAction = menu.addAction("Align Left");
                 QAction* alignRightAction = menu.addAction("Align Right");
@@ -445,7 +446,7 @@ namespace EMStudio
             {
                 menu.addSeparator();
 
-                if (!nodeGraph->IsInReferencedGraph())
+                if (!inReferenceGraph)
                 {
                     QAction* cutAction = menu.addAction("Cut");
                     cutAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Cut.png"));
@@ -458,7 +459,7 @@ namespace EMStudio
 
                 menu.addSeparator();
 
-                if (!nodeGraph->IsInReferencedGraph())
+                if (!inReferenceGraph)
                 {
                     QAction* removeNodesAction = menu.addAction("Delete Nodes");
                     removeNodesAction->setIcon(MysticQt::GetMysticQt()->FindIcon("Images/Icons/Remove.png"));
@@ -468,7 +469,7 @@ namespace EMStudio
                 }
             }
 
-            if (!nodeGraph->IsInReferencedGraph())
+            if (!inReferenceGraph)
             {
                 AddNodeGroupSubmenu(&menu, selectedNodes[0]->GetAnimGraph(), selectedNodes);
             }

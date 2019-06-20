@@ -262,16 +262,19 @@ def wrap_compiled_task(classname):
                         # normcase will change '/' to '\\' and lowercase everything, use sparingly
                         # normpath is safer, but we really want to ignore all permutations of these roots
                         norm_path = os.path.normpath(inc_path)
+                        norm_path_len = len(norm_path)
                         # The bld node may be embedded under the source node, eg dev/BinTemp/flavor.
                         # check if the path is in the src node first, and bld node second, allowing for this overlap
-                        if norm_path[:srcnode_abspath_lower_len].lower() == srcnode_abspath_lower:
-                            subpath = norm_path[srcnode_abspath_lower_len + 1:]
-                            self.src_deps_paths.add(subpath)
-                            continue
-                        if norm_path[:bldnode_abspath_lower_len].lower() == bldnode_abspath_lower:
-                            subpath = norm_path[bldnode_abspath_lower_len + 1:]
-                            self.bld_deps_paths.add(subpath)
-                            continue
+                        if (srcnode_abspath_lower_len + 1) < norm_path_len:
+                            if norm_path[srcnode_abspath_lower_len] == os.sep and norm_path[:srcnode_abspath_lower_len].lower() == srcnode_abspath_lower:
+                                subpath = norm_path[srcnode_abspath_lower_len + 1:]
+                                self.src_deps_paths.add(subpath)
+                                continue
+                        if (bldnode_abspath_lower_len + 1) < norm_path_len:
+                            if norm_path[bldnode_abspath_lower_len] == os.sep and norm_path[:bldnode_abspath_lower_len].lower() == bldnode_abspath_lower:
+                                subpath = norm_path[bldnode_abspath_lower_len + 1:]
+                                self.bld_deps_paths.add(subpath)
+                                continue
                         # System library
                         if Logs.verbose:
                             Logs.debug('msvcdeps: Ignoring system include %r' % inc_path)

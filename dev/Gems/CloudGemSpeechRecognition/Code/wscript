@@ -32,7 +32,7 @@ def build(bld):
             bld.Path('Code/CryEngine/CryAction')
         ],
         uselib = ['AWS_CPP_SDK_CORE', 'AWS_CPP_SDK_LAMBDA'],
-        use = ['CloudGemFrameworkStaticLibrary', 'Microphone'],
+        use = ['CloudGemFramework.StaticLibrary', 'Microphone'],
 
         darwin_framework    = ['AVFoundation'],
         ios_framework  = ['AVFoundation']

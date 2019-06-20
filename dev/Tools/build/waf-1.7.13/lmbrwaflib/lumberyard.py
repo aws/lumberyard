@@ -11,22 +11,25 @@
 import os
 import sys
 import argparse
+import inspect
 import random
 import zlib
 import json
-
 import re
 import traceback
 
-from waflib import Logs, Options, Utils, Configure, ConfigSet, Errors
+from waflib import Logs, Options, Utils, Configure, ConfigSet, Node, Errors
 from waflib.TaskGen import taskgen_method
-from waflib.Configure import conf, ConfigurationContext
+from waflib.Configure import conf, conf_event, ConfigurationContext, deprecated
 from waflib.Build import BuildContext, CleanContext, Context
-from waflib import Node
-from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, PLATFORM_CONFIGURATION_FILTER, PLATFORMS, CONFIGURATIONS, LUMBERYARD_ENGINE_PATH
-from utils import parse_json_file
+
+from waf_branch_spec import SUBFOLDERS, VERSION_NUMBER_PATTERN, BINTEMP_MODULE_DEF, \
+                            LUMBERYARD_ENGINE_PATH, ADDITIONAL_WAF_MODULES, BINTEMP_FOLDER, \
+                            AVAILABLE_LAUNCHERS
+from cryengine_modules import SANITIZE_INPUTS
+from cry_utils import append_kw_entry, append_to_unique_list
+from utils import parse_json_file, convert_roles_to_setup_assistant_description, write_json_file
 from third_party import ThirdPartySettings
-from branch_spec import get_supported_configurations
 
 UNSUPPORTED_PLATFORM_CONFIGURATIONS = set()
 
@@ -37,13 +40,6 @@ CURRENT_WAF_EXECUTABLE = '"{}" "{}"'.format(sys.executable, WAF_BASE_SCRIPT)
 WAF_TOOL_ROOT_DIR = os.path.join(LUMBERYARD_ENGINE_PATH, "Tools", "build","waf-1.7.13")
 LMBR_WAF_TOOL_DIR = os.path.join(WAF_TOOL_ROOT_DIR, "lmbrwaflib")
 GENERAL_WAF_TOOL_DIR = os.path.join(WAF_TOOL_ROOT_DIR, "waflib")
-
-# some files write a corresponding .timestamp files in BinTemp/ as part of the configuration process
-if LUMBERYARD_ENGINE_PATH=='.':
-    TIMESTAMP_CHECK_FILES = ['SetupAssistantConfig.json']
-else:
-    TIMESTAMP_CHECK_FILES = [os.path.join(LUMBERYARD_ENGINE_PATH, "SetupAssistantConfig.json"),'bootstrap.cfg']
-ANDROID_TIMESTAMP_CHECK_FILES = ['_WAF_/android/android_settings.json', '_WAF_/environment.json']
 
 # successful configure generates these timestamps
 CONFIGURE_TIMESTAMP_FILES = ['bootstrap.timestamp','SetupAssistantConfig.timestamp', 'android_settings.timestamp', 'environment.timestamp']
@@ -68,12 +64,6 @@ NON_BUILD_COMMANDS = [
 
 REGEX_PATH_ALIAS = re.compile('@(.+)@')
 
-# list of platforms that have a deploy command registered
-DEPLOYABLE_PLATFORMS = [
-    'android_armv7_clang',
-    'android_armv8_clang'
-]
-
 # Table of lmbr waf modules that need to be loaded by the root waf script, grouped by tooldir where the modules need to be loaded from.
 # The module can be restricted to an un-versioned system platform value (win32, darwin, linux) by adding a ':' + the un-versioned system platform value.
 # The '.' key represents the default waf tooldir (Code/Tools/waf-1.7.13/waflib)
@@ -87,6 +77,7 @@ LMBR_WAFLIB_MODULES = [
         'winres:win32'
     ] ) ,
     ( LMBR_WAF_TOOL_DIR , [
+        'settings_manager',
         # Put the deps modules first as they wrap/intercept c/cxx calls to
         # capture dependency information being written out to stderr. If
         # another module declares a subclass of a c/cxx feature, like qt5 does,
@@ -99,17 +90,21 @@ LMBR_WAFLIB_MODULES = [
 
         'cry_utils',
         'project_settings',
+        'build_configurations',
         'branch_spec',
         'copy_tasks',
         'lumberyard_sdks',
+        'lumberyard_modules',
         'gems',
         'az_code_generator',
         'crcfix',
         'doxygen',
+
+        'lmbr_install_context',
         'packaging',
+        'deploy',
 
         'generate_uber_files',          # Load support for Uber Files
-        'generate_module_def_files',    # Load support for Module Definition Files
         'generate_module_dependency_files',  # Load support for Module Dependency Files (Used by ly_integration_toolkit_utils.py)
 
         # Visual Studio support
@@ -119,10 +114,6 @@ LMBR_WAFLIB_MODULES = [
 
         'xcode:darwin',
         'eclipse:linux',
-
-        'android',
-        'android_library',
-        'android_studio',
 
         'gui_tasks:win32',
         'gui_tasks:darwin',
@@ -147,24 +138,6 @@ LMBR_WAFLIB_DATA_DRIVEN_MODULES = [
     ])
 ]
 
-# List of all compile settings configuration modules
-PLATFORM_COMPILE_SETTINGS = [
-    'compile_settings_cryengine',
-    'compile_settings_msvc',
-    'compile_settings_clang',
-    'compile_settings_windows',
-    'compile_settings_linux',
-    'compile_settings_linux_x64',
-    'compile_settings_darwin',
-    'compile_settings_dedicated',
-    'compile_settings_test',
-    'compile_settings_android',
-    'compile_settings_android_armv7',
-    'compile_settings_android_armv8',
-    'compile_settings_android_clang',
-    'compile_settings_ios',
-    'compile_settings_appletv',
-]
 
 LAST_ENGINE_BUILD_VERSION_TAG_FILE = "engine.version"
 def load_lmbr_waf_modules(conf, module_table):
@@ -195,7 +168,7 @@ def load_lmbr_waf_modules(conf, module_table):
             except SyntaxError as syntax_err:
                 conf.fatal("[Error] Unable to load required module '{}.py: {} (Line:{}, Offset:{})'".format(module, syntax_err.msg, syntax_err.lineno, syntax_err.offset))
             except Exception as e:
-                conf.fatal("[Error] Unable to load required module '{}.py: {}'".format(module, e.message or e.msg))
+                conf.fatal("[Error] Unable to load required module '{}.py: {}'".format(module, e))
 
 
 @conf
@@ -206,6 +179,7 @@ def load_lmbr_general_modules(conf):
     """
     load_lmbr_waf_modules(conf, LMBR_WAFLIB_MODULES)
 
+    load_lmbr_waf_modules(conf, ADDITIONAL_WAF_MODULES)
 
 @conf
 def load_lmbr_data_driven_modules(conf):
@@ -214,6 +188,80 @@ def load_lmbr_data_driven_modules(conf):
     :param conf:    Configuration Context
     """
     load_lmbr_waf_modules(conf, LMBR_WAFLIB_DATA_DRIVEN_MODULES)
+
+    # Inspect all of the valid/enabled platforms and load the additional modules if needed
+    additional_modules_to_load = []
+    additional_java_modules_to_load = []
+    platforms_that_need_java = []
+    all_platform_names = conf.get_all_platform_names()
+    needs_java = False
+    for platform_name in all_platform_names:
+        platform_settings = conf.get_platform_settings(platform_name)
+        if platform_settings.enabled and platform_settings.additional_modules:
+
+            # Make sure the module is valid
+            for additional_module in platform_settings.additional_modules:
+                if not os.path.isfile(os.path.join(WAF_TOOL_ROOT_DIR, '{}.py'.format(additional_module))):
+                    raise Errors.WafError("Invalid module '{}' specified in platform settings for platform '{}'".format(additional_module, platform_name))
+
+            # Add the listed modules
+            append_to_unique_list(additional_modules_to_load, platform_settings.additional_modules)
+            # Check if this particular platform 'needs' java
+            if platform_settings.needs_java:
+                platforms_that_need_java.append(platform_name)
+                needs_java = True
+                # Tag the modules that 'needs' java so we can determine if we need to abort their loading if we
+                # have issues loading the javaw module
+                append_to_unique_list(additional_java_modules_to_load, platform_settings.additional_modules)
+
+    java_loaded = False
+    if needs_java and hasattr(conf, 'env'):
+        # We need to validate the JDK path from SetupAssistant before loading the javaw tool.
+        # This way we don't introduce a dependency on lmbrwaflib in the core waflib.
+        jdk_home = conf.get_env_file_var('LY_JDK', required=True, silent=True)
+        if not jdk_home:
+            # Disable all of the java required platforms
+            for disable_java_required_platform in platforms_that_need_java:
+                conf.disable_target_platform(disable_java_required_platform)
+            
+            conf.warn_once('Missing JDK path from Setup Assistant detected. '
+                           'Target platforms that require java will be disabled. '
+                           'Please re-run Setup Assistant with "Compile For Android" '
+                           'enabled and run the configure command again.')
+        else:
+            conf.env['JAVA_HOME'] = jdk_home
+            conf.load('javaw')
+            java_loaded = True
+            
+    setattr(conf, 'javaw_loaded', java_loaded)
+
+    for additional_module_to_load in additional_modules_to_load:
+        if not java_loaded and needs_java and hasattr(conf, 'env') and additional_module_to_load in additional_java_modules_to_load:
+            # If we were not able to load java when needed, skip all modules that were tagged as needing java (only for non-Option passes)
+            continue
+
+        # Do not load android module if ENABLE_ANDROID is false in environment.json
+        enable_android = conf.get_env_file_var('ENABLE_ANDROID', required=True, silent=True)
+        if enable_android == 'False' and 'android' in additional_module_to_load.lower():
+            continue
+
+        if '/' in additional_module_to_load:
+            base_dir = os.path.dirname(additional_module_to_load)
+            module_name = os.path.basename(additional_module_to_load)
+            tool_dir = os.path.normpath(os.path.join(WAF_TOOL_ROOT_DIR, base_dir))
+            conf.load(module_name, tooldir=tool_dir)
+        else:
+            conf.load(additional_module_to_load)
+        
+    # Once all the modules are loaded, we can report any settings overrides as needed
+    if isinstance(conf, BuildContext):
+        platform, configuration = conf.get_platform_and_configuration()
+        if platform:
+            conf.register_output_folder_settings_reporter(platform)
+    
+    conf.report_settings_overrides()
+
+
 
 @conf
 def check_module_load_options(conf):
@@ -230,61 +278,6 @@ def check_module_load_options(conf):
         if os.path.exists(crash_reporter_path):
             conf.load(crash_reporter_file, tooldir=[LMBR_WAF_TOOL_DIR])
 
-def configure_general_compile_settings(conf):
-    """
-    Perform all the necessary configurations
-    :param conf:        Configuration context
-    """
-    # Load general compile settings
-    load_setting_count = 0
-    absolute_lmbr_waf_tool_path = LMBR_WAF_TOOL_DIR if os.path.isabs(LMBR_WAF_TOOL_DIR) else conf.path.make_node(LMBR_WAF_TOOL_DIR).abspath()
-
-    for compile_settings in PLATFORM_COMPILE_SETTINGS:
-        t_path = os.path.join(absolute_lmbr_waf_tool_path, "{}.py".format(compile_settings))
-        if os.path.exists(os.path.join(absolute_lmbr_waf_tool_path, "{}.py".format(compile_settings))):
-            conf.load(compile_settings, tooldir=[LMBR_WAF_TOOL_DIR])
-            load_setting_count += 1
-    if load_setting_count == 0:
-        conf.fatal('[ERROR] Unable to load any general compile settings modules')
-
-    available_platforms = conf.get_available_platforms()
-    if len(available_platforms)==0:
-        raise Errors.WafError('[ERROR] No available platforms detected.  Make sure you enable at least one platform in Setup Assistant.')
-
-    # load the android specific tools, if enabled
-    if any(platform for platform in available_platforms if platform.startswith('android')):
-        # We need to validate the JDK path from SetupAssistant before loading the javaw tool.
-        # This way we don't introduce a dependency on lmbrwaflib in the core waflib.
-        jdk_home = conf.get_env_file_var('LY_JDK', required = True)
-        if not jdk_home:
-            conf.fatal('[ERROR] Missing JDK path from Setup Assistant detected.  Please re-run Setup Assistant with "Compile For Android" enabled and run the configure command again.')
-
-        conf.env['JAVA_HOME'] = jdk_home
-
-        conf.load('javaw')
-        conf.load('android', tooldir=[LMBR_WAF_TOOL_DIR])
-
-
-def load_compile_rules_for_host(conf, waf_host_platform):
-    """
-    Load host specific compile rules
-
-    :param conf:                Configuration context
-    :param waf_host_platform:   The current waf host platform
-    :return:                    The host function name to call for initialization
-    """
-    host_module_file = 'compile_rules_{}_host'.format(waf_host_platform)
-    try:
-        conf.load(host_module_file, tooldir=[LMBR_WAF_TOOL_DIR])
-    except:
-        conf.fatal("[ERROR] Unable to load compile rules module file '{}'".format(host_module_file))
-
-    host_function_name = 'load_{}_host_settings'.format(waf_host_platform)
-    if not hasattr(conf, host_function_name):
-        conf.fatal('[ERROR] Required Configuration Function \'{}\' not found in configuration file {}'.format(host_function_name, host_module_file))
-
-    return host_function_name
-
 
 @conf
 def add_lmbr_waf_options(opt, az_test_supported):
@@ -298,6 +291,7 @@ def add_lmbr_waf_options(opt, az_test_supported):
     # Add custom cryengine options
     opt.add_option('-p', '--project-spec', dest='project_spec', action='store', default='', help='Spec to use when building the project')
     opt.add_option('--profile-execution', dest='profile_execution', action='store', default='', help='!INTERNAL ONLY! DONT USE')
+    opt.add_option('--profile-output', dest='profile_output', action='store', default='', help='!INTERNAL ONLY! DONT USE')
     opt.add_option('--task-filter', dest='task_filter', action='store', default='', help='!INTERNAL ONLY! DONT USE')
     opt.add_option('--update-settings', dest='update_user_settings', action='store', default='False',
                    help='Option to update the user_settings.options file with any values that are modified from the command line')
@@ -331,246 +325,19 @@ def add_lmbr_waf_options(opt, az_test_supported):
 
 
 @conf
-def configure_settings(conf):
-    """
-    Perform all the necessary configurations
-
-    :param conf:        Configuration context
-    """
-    configure_general_compile_settings(conf)
-
-
-@conf
 def run_bootstrap(conf):
     """
     Execute the bootstrap process
 
     :param conf:                Configuration context
     """
+    # Deprecated
+
     # Bootstrap is only ran within the engine folder
     if not conf.is_engine_local():
         return
 
     conf.run_linkless_bootstrap()
-
-@conf
-def load_compile_rules_for_supported_platforms(conf, platform_configuration_filter):
-    """
-    Load the compile rules for all the supported target platforms for the current host platform
-
-    :param conf:                            Configuration context
-    :param platform_configuration_filter:   List of target platforms to filter out
-    """
-
-    host_platform = conf.get_waf_host_platform()
-
-    absolute_lmbr_waf_tool_path = LMBR_WAF_TOOL_DIR if os.path.isabs(LMBR_WAF_TOOL_DIR) else conf.path.make_node(LMBR_WAF_TOOL_DIR).abspath()
-
-    vanilla_conf = conf.env.derive()  # grab a snapshot of conf before you pollute it.
-
-    host_function_name = load_compile_rules_for_host(conf, host_platform)
-
-    installed_platforms = []
-
-    for platform in conf.get_available_platforms():
-
-        platform_spec_vanilla_conf = vanilla_conf.derive()
-        platform_spec_vanilla_conf.detach()
-
-        platform_spec_vanilla_conf['PLATFORM'] = platform
-
-        # Determine the compile rules module file and remove it and its support if it does not exist
-        compile_rule_script = 'compile_rules_' + host_platform + '_' + platform
-        if not os.path.exists(os.path.join(absolute_lmbr_waf_tool_path, compile_rule_script + '.py')):
-            conf.remove_platform_from_available_platforms(platform)
-            continue
-
-        Logs.info('[INFO] Configure "%s - [%s]"' % (platform, ', '.join(get_supported_configurations(platform))))
-        conf.load(compile_rule_script, tooldir=[LMBR_WAF_TOOL_DIR])
-
-        conf.tp.validate_local(platform)
-
-        # platform installed
-        installed_platforms.append(platform)
-
-        # Keep track of uselib's that we found in the 3rd party config files
-        third_party_uselib_map = conf.read_and_mark_3rd_party_libs()
-        conf.env['THIRD_PARTY_USELIBS'] = [uselib_name for uselib_name in third_party_uselib_map]
-
-        # Save off configuration values from the uselib which are necessary during build for modules built with the uselib
-        configuration_settings_map = {}
-        for uselib_name in third_party_uselib_map:
-            configuration_values = conf.get_configuration_settings(uselib_name)
-            if configuration_values:
-                configuration_settings_map[uselib_name] = configuration_values
-        conf.env['THIRD_PARTY_USELIB_SETTINGS'] = configuration_settings_map
-
-        if not hasattr(conf,'InvalidUselibs'):
-            setattr(conf,'InvalidUselibs',set())
-
-        for supported_configuration in get_supported_configurations():
-            # if the platform isn't going to generate a build command, don't require that the configuration exists either
-            if platform in platform_configuration_filter:
-                if supported_configuration not in platform_configuration_filter[platform]:
-                    continue
-
-            conf.setenv(platform + '_' + supported_configuration, platform_spec_vanilla_conf.derive())
-            conf.init_compiler_settings()
-
-            # add the host settings into the current env
-            getattr(conf, host_function_name)()
-
-            # make a copy of the config for certain variant loading redirection (e.g. test, dedicated)
-            # this way we can pass the raw configuration to the third pary reader to properly configure
-            # each library
-            config_redirect = supported_configuration
-
-            # Use the normal configurations as a base for dedicated server
-            is_dedicated = False
-            if config_redirect.endswith('_dedicated'):
-                config_redirect = config_redirect.replace('_dedicated', '')
-                is_dedicated = True
-
-            # Use the normal configurations as a base for test
-            is_test = False
-            if '_test' in config_redirect:
-                config_redirect = config_redirect.replace('_test', '')
-                is_test = True
-
-            # Use the specialized function to load platform specifics
-            function_name = 'load_%s_%s_%s_settings' % ( config_redirect, host_platform, platform )
-            if not hasattr(conf, function_name):
-                conf.fatal('[ERROR] Required Configuration Function \'%s\' not found' % function_name)
-
-            # Try to load the function
-            getattr(conf, function_name)()
-
-            # Apply specific dedicated server settings
-            if is_dedicated:
-                getattr(conf, 'load_dedicated_settings')()
-
-            # Apply specific test settings
-            if is_test:
-                getattr(conf, 'load_test_settings')()
-
-            if platform in conf.get_supported_platforms():
-                # If the platform is still supported (it will be removed if the load settings function fails), then
-                # continue to attempt to load the 3rd party uselib defs for the platform
-
-                for uselib_info in third_party_uselib_map:
-
-                    third_party_config_file = third_party_uselib_map[uselib_info][0]
-                    path_alias_map = third_party_uselib_map[uselib_info][1]
-
-                    is_valid, uselib_names = conf.read_3rd_party_config(third_party_config_file, platform, supported_configuration, path_alias_map)
-
-                    if not is_valid:
-                        conf.warn_once('Invalid local paths defined in file {} detected.  The following uselibs will not be valid:{}'.format(third_party_config_file, ','.join(uselib_names)))
-                        for uselib_name in uselib_names:
-                            conf.InvalidUselibs.add(uselib_name)
-
-
-@conf
-def process_custom_configure_commands(conf):
-    """
-    Add any additional custom commands that need to be run during the configure phase
-
-    :param conf:                Configuration context
-    """
-
-    host = Utils.unversioned_sys_platform()
-
-    if host == 'win32':
-        # Win32 platform optional commands
-
-        # Generate the visual studio projects & solution if specified
-        if conf.is_option_true('generate_vs_projects_automatically'):
-            Options.commands.insert(0, 'msvs')
-
-    elif host == 'darwin':
-
-        # Darwin/Mac platform optional commands
-
-        # Create Xcode-iOS-Projects automatically during configure when running on mac
-        if conf.is_option_true('generate_ios_projects_automatically'):
-            # Workflow improvement: for all builds generate projects after the build
-            # except when using the default build target 'utilities' then do it before
-            if 'build' in Options.commands:
-                build_cmd_idx = Options.commands.index('build')
-                Options.commands.insert(build_cmd_idx, 'xcode_ios')
-            else:
-                Options.commands.append('xcode_ios')
-
-        # Create Xcode-AppleTV-Projects automatically during configure when running on mac
-        if conf.is_option_true('generate_appletv_projects_automatically'):
-            # Workflow improvement: for all builds generate projects after the build
-            # except when using the default build target 'utilities' then do it before
-            if 'build' in Options.commands:
-                build_cmd_idx = Options.commands.index('build')
-                Options.commands.insert(build_cmd_idx, 'xcode_appletv')
-            else:
-                Options.commands.append('xcode_appletv')
-
-        # Create Xcode-darwin-Projects automatically during configure when running on mac
-        if conf.is_option_true('generate_mac_projects_automatically'):
-            # Workflow improvement: for all builds generate projects after the build
-            # except when using the default build target 'utilities' then do it before
-            if 'build' in Options.commands:
-                build_cmd_idx = Options.commands.index('build')
-                Options.commands.insert(build_cmd_idx, 'xcode_mac')
-            else:
-                Options.commands.append('xcode_mac')
-
-    # Android target platform commands
-    if any(platform for platform in conf.get_supported_platforms() if platform.startswith('android')):
-
-        # build the base Android projects required for generating their respective APKs
-        android_builder_func = getattr(conf, 'create_base_android_projects', None)
-        if not android_builder_func:
-            conf.fatal('[ERROR] Failed to find required Android builder function - create_base_android_projects')
-
-        if not android_builder_func():
-            conf.fatal('[ERROR] Failed to generate the base projects required to build Android')
-
-        # rebuild the project if invoked from android studio or specifically requested to do so
-        if conf.options.from_android_studio or conf.is_option_true('generate_android_studio_projects_automatically'):
-            if 'build' in Options.commands:
-                build_cmd_idx = Options.commands.index('build')
-                Options.commands.insert(build_cmd_idx, 'android_studio')
-            else:
-                Options.commands.append('android_studio')
-
-    # Make sure the intermediate files are generated and updated
-    if len(Options.commands) == 0:
-        Options.commands.insert(0, 'generate_uber_files')
-        Options.commands.insert(1, 'generate_module_def_files')
-    else:
-        has_generate_uber_files = 'generate_uber_files' in Options.commands
-        has_generate_module_def_files = 'generate_module_def_files' in Options.commands
-        if not has_generate_uber_files:
-            Options.commands.insert(0, 'generate_uber_files')
-        if not has_generate_module_def_files:
-            Options.commands.insert(1, 'generate_module_def_files')
-
-
-@conf
-def configure_game_projects(conf):
-    """
-    Perform the configuration processing for any enabled game project
-
-    :param conf:
-    """
-    # Load Game Specific parts
-    for project in conf.get_enabled_game_project_list():
-        conf.game_project = project
-
-        # If the project contains the 'code_folder', then assume that it is a legacy project loads a game-specific dll
-        legacy_game_code_folder = conf.legacy_game_code_folder(project)
-        if legacy_game_code_folder is not None:
-            conf.recurse(legacy_game_code_folder)
-        else:
-            # Perform a validation of the gems.json configuration to make sure
-            conf.game_gem(project)
 
 
 @conf
@@ -632,7 +399,7 @@ def validate_build_command(bld):
     if bld.cmd not in NON_BUILD_COMMANDS:
 
         # project spec is a mandatory parameter for build commands that perform monolithic builds
-        if bld.is_cmd_monolithic():
+        if bld.is_build_monolithic():
             Logs.debug('lumberyard: Processing monolithic build command ')
             # For monolithic builds, the project spec is required
             if bld.options.project_spec == '':
@@ -698,52 +465,64 @@ def prepare_build_environment(bld):
             bld.fatal("[ERROR] Invalid build variant.  Please use a valid build configuration. "
                       "Type in '{} --help' for more information".format(CURRENT_WAF_EXECUTABLE))
 
-        (platform, configuration) = bld.get_platform_and_configuration()
+        platform, configuration = bld.get_platform_and_configuration()
         bld.env['PLATFORM'] = platform
         bld.env['CONFIGURATION'] = configuration
 
-        if platform in PLATFORM_CONFIGURATION_FILTER:
-            if configuration not in PLATFORM_CONFIGURATION_FILTER[platform]:
-                bld.fatal('[ERROR] Configuration ({}) for platform ({}) currently not supported'.format(configuration, platform))
-
-        if not platform in bld.get_supported_platforms():
-            bld.fatal('[ERROR] Target platform "%s" not supported. [on host platform: %s]' % (platform, Utils.unversioned_sys_platform()))
-
+        # Inspect the details of the current platform
+        if not bld.is_target_platform_enabled(platform):
+            bld.fatal("[ERROR] Target platform '{}' not supported. [on host platform: {}]".format(platform, Utils.unversioned_sys_platform()))
+            
         # make sure the android launchers are included in the build
-        if bld.is_android_platform(bld.env['PLATFORM']):
+        if bld.check_platform_explicit_boolean_attribute(platform, 'is_android'):
             android_path = os.path.join(bld.path.abspath(), bld.get_android_project_relative_path(), 'wscript')
             if not os.path.exists(android_path):
                 bld.fatal('[ERROR] Android launchers not correctly configured. Run \'configure\' again')
             SUBFOLDERS.append(bld.get_android_project_absolute_path())
 
         # If a spec was supplied, check for platform limitations
-        if bld.options.project_spec != '':
-            validated_platforms = bld.preprocess_platform_list(bld.spec_platforms(), True)
+        if bld.options.project_spec:
+            validated_platforms = bld.preprocess_target_platforms(bld.spec_platforms(), True)
             if platform not in validated_platforms:
                 bld.fatal('[ERROR] Target platform "{}" not supported for spec {}'.format(platform, bld.options.project_spec))
-            validated_configurations = bld.preprocess_configuration_list(None, platform, bld.spec_configurations(), True)
+            validated_configurations = bld.preprocess_target_configuration_list(None, platform, bld.spec_configurations(), True)
             if configuration not in validated_configurations:
                 bld.fatal('[ERROR] Target configuration "{}" not supported for spec {}'.format(configuration, bld.options.project_spec))
 
-        if bld.is_cmd_monolithic():
-            if len(bld.spec_modules()) == 0:
-                bld.fatal('[ERROR] no available modules to build for that spec "%s" in "%s|%s"' % (bld.options.project_spec, platform, configuration))
-
-            # Ensure that, if specified, target is supported in this spec
-            if bld.options.targets:
-                for target in bld.options.targets.split(','):
-                    if not target in bld.spec_modules():
-                        bld.fatal('[ERROR] Module "%s" is not configured to build in spec "%s" in "%s|%s"' % (target, bld.options.project_spec, platform, configuration))
-
         # command chaining for packaging and deployment
-        if bld.cmd.startswith('build') and (getattr(bld.options, 'project_spec', '') != '3rd_party'):
-            package_cmd = 'package_{}_{}'.format(platform, configuration)
-            if bld.is_option_true('package_projects_automatically') and (package_cmd not in Options.commands):
-                Options.commands.append(package_cmd)
+        if (getattr(bld.options, 'project_spec', '') != '3rd_party'):
+            
+            if bld.cmd.startswith('build'):
+                package_cmd = 'package_{}_{}'.format(platform, configuration)
+                if bld.is_option_true('package_projects_automatically') and (package_cmd not in Options.commands):
+                    Options.commands.append(package_cmd)
 
-            deploy_cmd = 'deploy_{}_{}'.format(platform, configuration)
-            if (platform in DEPLOYABLE_PLATFORMS) and (deploy_cmd not in Options.commands):
-                Options.commands.append(deploy_cmd)
+            elif bld.cmd.startswith('package'):
+                deploy_option = 'deploy_{}'.format(bld.platform_to_platform_alias(platform))
+                if hasattr(bld.options, deploy_option):
+                    deploy_cmd = 'deploy_{}_{}'.format(platform, configuration)
+                    if bld.is_option_true(deploy_option) and (deploy_cmd not in Options.commands):
+                        Options.commands.append(deploy_cmd)
+
+
+@conf
+def configure_game_projects(conf):
+
+    for project in conf.game_projects():
+        legacy_game_code_folder = conf.legacy_game_code_folder(project)
+        # If there exists a code_folder attribute in the project configuration, then see if it can be included in the build
+        if legacy_game_code_folder is not None:
+            must_exist = project in conf.get_enabled_game_project_list()
+            # projects that are not currently enabled don't actually cause an error if their code folder is missing - we just don't compile them!
+            try:
+                conf.recurse(legacy_game_code_folder, mandatory=True)
+            except TypeError:
+                raise
+            except Exception as err:
+                if must_exist:
+                    conf.fatal(
+                        '[ERROR] Project "%s" is enabled, but failed to execute its wscript at (%s) - consider disabling it in your _WAF_/user_settings.options file.\nException: %s' % (
+                            project, legacy_game_code_folder, err))
 
 
 @conf
@@ -818,7 +597,11 @@ def calculate_engine_path(ctx):
         engine_json = parse_json_file(engine_json_file_path)
         ctx.engine_root_version = engine_json.get('LumberyardVersion',ctx.engine_root_version)
         if 'ExternalEnginePath' in engine_json:
-            engine_root_abs = engine_json['ExternalEnginePath']
+            external_engine_path = engine_json['ExternalEnginePath']
+            if os.path.isabs(external_engine_path):
+                engine_root_abs = external_engine_path
+            else:
+                engine_root_abs = os.path.normpath(os.path.join(ctx.path.abspath(),external_engine_path))
             if not os.path.exists(engine_root_abs):
                 ctx.fatal('[ERROR] Invalid external engine path in engine.json : {}'.format(engine_root_abs))
             if os.path.normcase(engine_root_abs)!=os.path.normcase(ctx.engine_path):
@@ -834,6 +617,8 @@ def calculate_engine_path(ctx):
                 Logs.warn('[WARN] The current engine version ({}) does not match the last version {} that this project was built against'.format(ctx.engine_root_version,last_built_version))
                 last_build_engine_version_node.write(ctx.engine_root_version)
 
+    ctx.register_script_env_var("LUMBERYARD_BUILD", ctx.get_lumberyard_build())
+
 @conf
 def is_engine_local(conf):
     """
@@ -844,132 +629,6 @@ def is_engine_local(conf):
     current_dir = os.path.normcase(os.path.abspath(os.path.curdir))
     engine_dir = os.path.normcase(os.path.abspath(conf.engine_path))
     return current_dir == engine_dir
-
-
-# Create Build Context Commands for multiple platforms/configurations
-for platform in PLATFORMS[Utils.unversioned_sys_platform()]:
-    for configuration in CONFIGURATIONS:
-        platform_config_key = platform + '_' + configuration
-        # for platform/for configuration generates invalid configurations
-        # if a filter exists, don't generate all combinations
-        if platform in PLATFORM_CONFIGURATION_FILTER:
-            if configuration not in PLATFORM_CONFIGURATION_FILTER[platform]:
-                # Dont add the command but track it to report that this platform + configuration is explicitly not supported (yet)
-                UNSUPPORTED_PLATFORM_CONFIGURATIONS.add(platform_config_key)
-                continue
-        # Create new class to execute clean with variant
-        name = CleanContext.__name__.replace('Context','').lower()
-        class tmp_clean(CleanContext):
-            cmd = name + '_' + platform_config_key
-            variant = platform_config_key
-
-            def __init__(self, **kw):
-                super(CleanContext, self).__init__(**kw)
-                self.top_dir = kw.get('top_dir', Context.top_dir)
-
-            def execute(self):
-                if Configure.autoconfig:
-                    env = ConfigSet.ConfigSet()
-
-                    do_config = False
-                    try:
-                        env.load(os.path.join(Context.lock_dir, Options.lockfile))
-                    except Exception:
-                        Logs.warn('Configuring the project')
-                        do_config = True
-                    else:
-                        if env.run_dir != Context.run_dir:
-                            do_config = True
-                        else:
-                            h = 0
-                            for f in env['files']:
-                                try:
-                                    h = hash((h, Utils.readf(f, 'rb')))
-                                except (IOError, EOFError):
-                                    pass # ignore missing files (will cause a rerun cause of the changed hash)
-                            do_config = h != env.hash
-
-                    if do_config:
-                        Options.commands.insert(0, self.cmd)
-                        Options.commands.insert(0, 'configure')
-                        return
-
-                # Execute custom clear command
-                self.restore()
-                if not self.all_envs:
-                    self.load_envs()
-                self.recurse([self.run_dir])
-
-                if self.options.targets:
-                    self.target_clean()
-                else:
-                    try:
-                        self.clean_output_targets()
-                        self.clean()
-                    finally:
-                        self.store()
-
-
-        # Create new class to execute build with variant
-        name = BuildContext.__name__.replace('Context','').lower()
-        class tmp_build(BuildContext):
-            cmd = name + '_' + platform_config_key
-            variant = platform_config_key
-
-            def compare_timestamp_file_modified(self, path):
-                modified = False
-
-                # create a src node
-                src_path = path if os.path.isabs(path) else self.path.make_node(path).abspath()
-                timestamp_file = os.path.splitext(os.path.split(path)[1])[0] + '.timestamp'
-                timestamp_node = self.get_bintemp_folder_node().make_node(timestamp_file)
-                timestamp_stat = 0
-                try:
-                    timestamp_stat = os.stat(timestamp_node.abspath())
-                except OSError:
-                    Logs.info('%s timestamp file not found.' % timestamp_node.abspath())
-                    modified = True
-                else:
-                    try:
-                        src_file_stat = os.stat(src_path)
-                    except OSError:
-                        Logs.warn('%s not found' % src_path)
-                    else:
-                        if src_file_stat.st_mtime > timestamp_stat.st_mtime:
-                            modified = True
-
-                return modified
-
-            def add_configure_command(self):
-                Options.commands.insert(0, self.cmd)
-                Options.commands.insert(0, 'configure')
-                self.skip_finish_message = True
-
-            def do_auto_configure(self):
-                timestamp_check_files = TIMESTAMP_CHECK_FILES
-                if 'android' in platform:
-                    timestamp_check_files += ANDROID_TIMESTAMP_CHECK_FILES
-
-                for timestamp_check_file in timestamp_check_files:
-                    if self.compare_timestamp_file_modified(timestamp_check_file):
-                        self.add_configure_command()
-                        return True
-                return False
-
-        # Create derived build class to execute host tools build for host + profile only
-        host = Utils.unversioned_sys_platform()
-        if platform in ["win_x64", "linux_x64", "darwin_x64"] and configuration == 'profile':
-            class tmp_build_host_tools(tmp_build):
-                cmd = 'build_host_tools'
-                variant = platform + '_' + configuration
-                def execute(self):
-                    original_project_spec = self.options.project_spec
-                    original_targets = self.targets
-                    self.options.project_spec = 'host_tools'
-                    self.targets = []
-                    super(tmp_build_host_tools, self).execute()
-                    self.options.project_spec = original_project_spec
-                    self.targets = original_targets
 
 
 @conf
@@ -991,17 +650,17 @@ def get_enabled_capabilities(ctx):
         capability_parser = argparse.ArgumentParser()
         capability_parser.add_argument('--enablecapability', '-e', action='append')
         params = [token.strip() for token in raw_capability_string.split()]
-        parsed_params = capability_parser.parse_args(params)
-        parsed_capabilities = getattr(parsed_params,'enablecapability',[])
+        parsed_params = capability_parser.parse_known_args(params)[0]
+        parsed_capabilities = getattr(parsed_params, 'enablecapability', [])
     else:
         host_platform = Utils.unversioned_sys_platform()
 
         # If bootstrap-tool-param is not set, that means setup assistant needs to be ran or we use default values
         # if the source for setup assistant is available but setup assistant has not been built yet
 
-        base_lmbr_setup_path = os.path.join(ctx.path.abspath(), 'Tools', 'LmbrSetup')
-        setup_assistant_code_path = os.path.join(ctx.path.abspath(), 'Code', 'Tools', 'AZInstaller')
-        setup_assistant_spec_path = os.path.join(ctx.path.abspath(), '_WAF_', 'specs', 'lmbr_setup_tools.json')
+        base_lmbr_setup_path = os.path.join(ctx.engine_path, 'Tools', 'LmbrSetup')
+        setup_assistant_code_path = os.path.join(ctx.engine_path, 'Code', 'Tools', 'AZInstaller')
+        setup_assistant_spec_path = os.path.join(ctx.engine_path, '_WAF_', 'specs', 'lmbr_setup_tools.json')
 
         # Use the defaults if this hasnt been set yet
         parsed_capabilities = ['compilegame', 'compileengine', 'compilesandbox']
@@ -1051,12 +710,6 @@ def get_enabled_capabilities(ctx):
     setattr(ctx, 'parsed_capabilities', parsed_capabilities)
 
     return parsed_capabilities
-
-@conf
-def initialize_third_party_settings(conf):
-    if not hasattr(conf,"tp"):
-        conf.tp = ThirdPartySettings(conf)
-        conf.tp.initialize()
 
 
 ###############################################################################
@@ -1150,35 +803,13 @@ def validate_override_target_uid(target_name, override_target_uid):
 
 
 @conf
-def update_target_uid_map(ctx):
-    """
-    Update the cached target uid map
-    """
-    global UID_MAP_TO_TARGET
-    target_uid_cache_file = ctx.bldnode.make_node('target_uid.json')
-    uid_map_to_target_json = json.dumps(UID_MAP_TO_TARGET, indent=1, sort_keys=True)
-    target_uid_cache_file.write(uid_map_to_target_json)
-
-
-@conf
-def assign_target_uid(ctx, kw):
-    target = kw['target']
-    # Assign a deterministic UID to this target initially based on the CRC32 value of the target name
-    if 'target_uid' not in kw:
-        kw['target_uid'] = derive_target_uid(target)
-    else:
-        # If there is one overridden already, validate it against the known uuids
-        validate_override_target_uid(kw['target_uid'])
-
-
-
-@conf
 def process_additional_code_folders(ctx):
     additional_code_folders = ctx.get_additional_code_folders_from_spec()
     if len(additional_code_folders)>0:
         ctx.recurse(additional_code_folders)
-
-    if any(platform for platform in ctx.get_supported_platforms() if platform.startswith('android')):
+    
+    supported_platforms = ctx.get_current_platform_list(include_alias=False)
+    if any(platform for platform in supported_platforms if ctx.is_android_platform(platform)):
 
         process_android_func = getattr(ctx, 'process_android_projects', None)
         if not process_android_func:
@@ -1220,6 +851,7 @@ def Path(ctx, path):
         return processed_path
     else:
         return CreateRootRelativePath(ctx, processed_path)
+
 
 @conf
 def PreprocessFilePath(ctx, input, alias_invalid_callback, alias_not_enabled_callback):
@@ -1264,7 +896,8 @@ def PreprocessFilePath(ctx, input, alias_invalid_callback, alias_not_enabled_cal
 
             # If the path was resolved, we still need to make sure the 3rd party is enabled based on the roles
             if not enabled and not optional:
-                alias_not_enabled_callback(alias_key, roles)
+                sdk_roles = ctx.get_sdk_setup_assistant_roles_for_sdk(third_party_identifier)
+                alias_not_enabled_callback(alias_key, sdk_roles)
 
             processed_path = os.path.normpath(input_path.replace('@{}@'.format(alias_key), resolved_path))
             return processed_path
@@ -1298,42 +931,464 @@ def ThirdPartyPath(ctx, third_party_identifier, path=''):
 
     # If the path was resolved, we still need to make sure the 3rd party is enabled based on the roles
     if not enabled and not optional:
-        error_file, error_line, error_function = _get_source_file_and_function()
-        warning_message = "3rd Party alias '{}' specified in {}:{} ({}) is not enabled. Make sure that at least one of the " \
-                          "following roles is enabled: [{}]".format(third_party_identifier, error_file, error_line, error_function,
-                                                                    ', '.join(roles))
-        ctx.warn_once(warning_message)
 
-    processed_path = os.path.normpath(os.path.join(resolved_path, path))
+        try:
+            sdk_roles = ctx.get_sdk_setup_assistant_roles_for_sdk(third_party_identifier)
+            required_checks = convert_roles_to_setup_assistant_description(sdk_roles)
+            error_file, error_line, error_function = _get_source_file_and_function()
+
+            if len(required_checks) > 0:
+                warning_message = "3rd Party alias '{}' specified in {}:{} ({}) is not enabled. This may cause build errors.  Make sure that at least one of the " \
+                                  "following options are checked in setup assistant: [{}]".format(third_party_identifier, error_file, error_line, error_function,
+                                                                        ', '.join(required_checks))
+            else:
+                warning_message = "3rd Party alias '{}' specified in {}:{} ({}) is not enabled"
+
+            ctx.warn_once(warning_message)
+        except AttributeError as e:
+            raise Errors.WafError('Invalid setup assistant config file:{}'.format(e.msg or e.message))
+
+    path_trimmed = path.strip()
+    if len(path_trimmed)>0 and path_trimmed != '/' and path_trimmed != '\\':
+        processed_path = os.path.normpath(os.path.join(resolved_path, path_trimmed))
+    else:
+        processed_path = os.path.normpath(resolved_path)
+
     return processed_path
 
 
-@taskgen_method
-def get_validated_resource_compiler_subfolder(tg, rc_platform, rc_configuration, sanity_check_files=['rc.exe']):
-    """
-    Determine the relative bin folder for the resource compiler relative to the current engine root directory
-    
-    :param tg:                  The current taskgen object
-    :param rc_platform:         The expected target platform used to build rc.exe
-    :param rc_configuration:    The expected target configuration used to build rc.exe
-    :param sanity_check_files:  List of files to do a sanity check on the path
-    :return:    The folder name, relative to the dev/ root
-    """
-    
-    output_folder = tg.bld.get_output_folders(rc_platform, rc_configuration)[0]
-    rc_bin_subfolder_node = output_folder.make_node('rc')
-    rc_bin_subfolder_abs = rc_bin_subfolder_node.abspath()
+#
+# Unique Target ID Management
+#
+UID_MAP_TO_TARGET = {}
 
-    if not os.path.isdir(rc_bin_subfolder_abs):
-        raise Errors.WafError("Unable to locate '{0}'. Make sure that you have built rc.exe using the build_{1}_{2} and the 'all' spec: "
-                              "'lmbr_waf build_{1}_{2} -p all'".format(rc_bin_subfolder_abs, rc_platform, rc_configuration))
+# Start the UID from a minimum value to prevent collision with the previously used 'idx' values in the generated
+# names
+MIN_UID_VALUE = 1024
+
+# Constant value to cap the upper limit of the target uid.  The target uid will become part of intermediate constructed
+# files Increase this number if there are more chances of collisions with target names.  Reduce if we start getting
+# issues related to path lengths caused by the appending of the number
+MAX_UID_VALUE = 9999999
+
+
+def apply_target_uid_range(uid):
+    """
+    Apply the uid range restrictions rule based on the min and max uid values
+    :param uid:     The raw uid to apply to
+    :return:    The applied range on the input uid
+    """
+    return ((uid & 0xffffffff) + MIN_UID_VALUE) % MAX_UID_VALUE
+
+
+def find_unique_target_uid():
+    """
+    Simple function to find a unique number for the target uid
+    """
+    global UID_MAP_TO_TARGET
+    random_retry = 1024
+    random_unique_id = apply_target_uid_range(random.randint(MIN_UID_VALUE, MAX_UID_VALUE))
+    while random_retry > 0 and random_unique_id in UID_MAP_TO_TARGET:
+        random_unique_id = random.randint(MIN_UID_VALUE, MAX_UID_VALUE)
+        random_retry -= 1
+
+    if random_retry == 0:
+        raise Errors.WafError("Unable to generate a unique target id.  Current ids are : {}".format(
+            ",".join(UID_MAP_TO_TARGET.keys())))
+    return random_unique_id
+
+
+def derive_target_uid(target_name):
+    """
+    Derive a target uid based on the target name if possible.  If a collision occurs, raise a WAF Error
+    indicating the collision and suggest a unique id that doesnt collide
+    :param target_name: The target name to derive the target uid from
+    :return: The derived target uid based on the name if possible.
+    """
+    global UID_MAP_TO_TARGET
+
+    # Calculate a deterministic UID to this target initially based on the CRC32 value of the target name
+    uid = apply_target_uid_range(zlib.crc32(target_name))
+    if uid in UID_MAP_TO_TARGET and UID_MAP_TO_TARGET[uid] != target_name:
+        raise Errors.WafError(
+            "[ERROR] Unable to generate a unique target id for target '{}' due to collision with target '{}'. "
+            "Please update the target definition for target '{}' to include an override target_uid keyword (ex: {}) )"
+            "Or consider increasing the MAX_UID_VALUE defined in {}"
+            .format(target_name, UID_MAP_TO_TARGET[uid], target_name, find_unique_target_uid(), __file__))
+    UID_MAP_TO_TARGET[uid] = target_name
+    return uid
+
+
+def validate_override_target_uid(target_name, override_target_uid):
+    """
+    If an override target_uid is provided in the kw list, then valid it doesnt collide with a different target.
+    Otherwise add it to the management structures
+    :param target_name:         The target name to validate
+    :param override_target_uid: The overrride uid to validate
+    """
+    global UID_MAP_TO_TARGET
+    if override_target_uid in UID_MAP_TO_TARGET:
+        if UID_MAP_TO_TARGET[override_target_uid] != target_name:
+            raise Errors.WafError(
+                "Keyword 'target_uid' defined for target '{}' conflicts with another target module '{}'. "
+                "Please update this value to a unique value (i.e. {})"
+                .format(target_name, UID_MAP_TO_TARGET[override_target_uid], find_unique_target_uid()))
+    else:
+        UID_MAP_TO_TARGET[override_target_uid] = target_name
+
+
+@conf_event(after_methods=['clear_waf_timestamp_files'])
+def update_target_uid_map(ctx):
+    """
+    Update the cached target uid map
+    """
+    global UID_MAP_TO_TARGET
+    target_uid_cache_file = ctx.bldnode.make_node('target_uid.json')
+    uid_map_to_target_json = json.dumps(UID_MAP_TO_TARGET, indent=1, sort_keys=True)
+    target_uid_cache_file.write(uid_map_to_target_json)
+
+
+@conf
+def assign_target_uid(ctx, kw):
+    target = kw['target']
+    # Assign a deterministic UID to this target initially based on the CRC32 value of the target name
+    if 'target_uid' not in kw:
+        kw['target_uid'] = derive_target_uid(target)
+    else:
+        # If there is one overridden already, validate it against the known uuids
+        validate_override_target_uid(kw['target_uid'])
+
+
+@conf
+def initialize_third_party_settings(conf):
+    try:
+        third_party_config = conf.tp
+    except AttributeError:
+        third_party_config = conf.tp = ThirdPartySettings(conf)
+
+    third_party_config.initialize()
+
+
+def _get_module_def_filename(target):
+    return '{}_module_def.json'.format(target)
+
+
+PLATFORM_KEYWORDS = None
+
+@conf
+def update_module_definition(ctx, module_type, build_type, kw):
+    """
+    Update the module definition file for the current module
+
+    :param ctx:             Configuration context
+    :param module_type:     The module type (from cryengine_modules)
+    :param build_type:      The WAF type (shlib, stlib, program)
+    :param kw:              The keyword dictionary for the current module
+    """
+
+    def _to_set(input):
+
+        if isinstance(input, list):
+            return set(input)
+        else:
+            return set([input])
+
+    target = kw.get('target', '')
+    if len(target) == 0:
+        raise Errors.WafError("Missing/invalid 'target' keyword in {}/".format(ctx.path.abspath()))
+
+    platforms = list(_to_set(kw.get('platforms',['all'])))
+    configurations = list(_to_set(kw.get('configurations',['all'])))
+    use = _to_set(kw.get('use',[]))
+    uselib = _to_set(kw.get('uselib', []))
+    uses = list(use | uselib)
+    path = ctx.path.path_from(ctx.engine_node)
+
+    module_def = {
+        'target': target,
+        'type': build_type,
+        'module_type': module_type,
+        'path': path,
+        'platforms': sorted(platforms),
+        'configurations': sorted(configurations),
+        'uses': sorted(uses)
+    }
+    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
+    if not ctx.cached_does_path_exist(module_def_folder):
+        os.makedirs(module_def_folder)
+        ctx.cached_does_path_exist(module_def_folder, True)
+
+    module_def_file = os.path.join(module_def_folder, _get_module_def_filename(target))
+    write_json_file(module_def, module_def_file)
+
+
+def _get_module_def_map(ctx):
+    try:
+        return ctx.module_def_by_target
+    except AttributeError:
+        ctx.module_def_by_target = {}
+        return ctx.module_def_by_target
+
+
+def _has_module_def(ctx, target):
+    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
+    module_def_file = os.path.join(module_def_folder, _get_module_def_filename(target))
+    return os.path.isfile(module_def_file)
+
+
+def _read_module_def_file(ctx, target):
+
+    module_def_folder = os.path.join(ctx.engine_path, BINTEMP_FOLDER, BINTEMP_MODULE_DEF)
+    module_def_file = os.path.join(module_def_folder, _get_module_def_filename(target))
+    if not os.path.exists(module_def_file):
+        raise Errors.WafError("Invalid target '{}'. Missing module definition file. Make sure that the target exists".format(target))
+
+    module_def = parse_json_file(module_def_file)
+    return module_def
+
+
+def _get_module_def(ctx, target):
+    module_def_map = _get_module_def_map(ctx)
+    try:
+        module_def = module_def_map[target]
+    except KeyError:
+        module_def = _read_module_def_file(ctx, target)
+        module_def_map[target] = module_def
+    return module_def
+
+
+@conf
+def get_module_platforms(ctx, target, pre_process_results=True):
+    """
+    Quickly look up the supported platforms for a target
+
+    :param ctx:                 Context
+    :param target:              Name of the target to lookup
+    :param pre_process_results: Pre-process the result (i.e. apply any aliased platforms)
+    :return: The list of supported platforms for a module
+    """
+    if not _has_module_def(ctx, target):
+        # If this target does not have a module dep, return an empty list of platforms
+        return []
+    module_def_map = _get_module_def(ctx, target)
+    platforms = module_def_map.get('platforms')[:]
+    return ctx.preprocess_target_platforms(platforms) if pre_process_results else platforms
+
+
+@conf
+def get_module_configurations(ctx, target, restricted_platform=None, pre_process_results=True):
+    """
+    Quickly look up the supported platforms for a target
+
+    :param ctx:                 Context
+    :param target:              Name of the target to lookup
+    :param restricted_platform: Optional platform to restrict the list of possible configurations
+    :param pre_process_results: Pre-process the result (i.e. apply any aliased configurations)
+    :return: The list of supported configurations for a module
+    """
+
+    module_def_map = _get_module_def(ctx, target)
+    configurations = module_def_map.get('configurations')[:]
+    return ctx.preprocess_target_configuration_list(target, restricted_platform, configurations) if pre_process_results else configurations
+
+
+@conf
+def is_valid_module(ctx, target):
+    """
+    Perform a check if a target is a valid, declared target.  The target will either be invalid, or if was somehow missed during
+    the module def generation during the configure command.
+
+    :param ctx:     Context
+    :param target:  The target name to check
+    :return: True if the module is valid, False if not
+    """
+    try:
+        _get_module_def(ctx, target)
+        return True
+    except Errors.WafError:
+        return False
+
+
+@conf
+def get_export_internal_3rd_party_lib(ctx, target):
+    """
+    Determine if a module has the 'export_internal_3rd_party_lib' flag set to True
+
+    :param ctx:     Context
+    :param target:  Name of the module
+    :param parent_spec: Name of the parent spec
+    :return:    True if 'export_internal_3rd_party_lib' ios set to True, default to False if not specified
+    """
+    if not ctx.is_valid_module(target):
+        return False
+
+    module_def = _get_module_def(ctx, target)
+    if not module_def:
+        return False
+    return module_def.get('export_internal_3rd_party_lib', False)
+
+
+@conf
+def get_module_uses(ctx, target, parent_spec):
+    """
+    Get all the module uses for a particular module (from the generated module def file)
+    :param ctx:     Context
+    :param target:  Name of the module
+    :param parent_spec: Name of the parent spec
+    :return:        Set of all modules that this module is dependent on
+    """
+
+    visited_modules = set()
+
+    def _get_module_use(ctx, target_name):
+        """
+        Determine all of the uses for a module recursivel
+        :param ctx:          Context
+        :param target_name:  Name of the module
+        :return:        Set of all modules that this module is dependent on
+        """
+        module_def_map = _get_module_def(ctx, target_name)
+        declared_uses = module_def_map.get('uses')[:]
+        visited_modules.add(target_name)
+
+        module_uses = []
+        for module_use in declared_uses:
+
+            if module_use not in module_uses:
+                module_uses.append(module_use)
+
+            if ctx.is_third_party_uselib_configured(module_use):
+                # This is a third party uselib, there are no dependencies, so skip
+                continue
+            elif module_use in visited_modules:
+                # This module has been visited, skip
+                continue
+            elif not ctx.is_valid_module(module_use):
+                # This use dependency is an invalid module.  Warn and continue
+                
+                # Special case for 'RAD_TELEMETRY'. This module is only available when both the Gem is enabled and the machine has a valid
+                # RAD Telemetry license, otherwise references to it should be #ifdef'd out of the code. So if the invalid module is
+                # RAD Telemetry, we can suppress the warning
+                if module_use != 'RAD_TELEMETRY':
+                    ctx.warn_once("Module use dependency '{}' for target '{}' refers to an invalid module".format(module_use, target_name))
+                continue
+            elif module_use == target:
+                raise Errors.WafError("Cyclic use-dependency discovered for target '{}'".format(target_name))
+            else:
+                child_uses = _get_module_use(ctx, module_use)
+                for child_use in child_uses:
+                    module_uses.append(child_use)
+
+        return module_uses
+    return _get_module_use(ctx, target)
+
+
+
+CACHED_SPEC_MODULE_USE_MAP = {}
+
+
+@conf
+def get_all_module_uses(ctx, input_spec_name=None, input_platform=None, input_configuration=None):
+    """
+    Get all of the module uses for a spec
+    :param ctx:             Context
+    :param input_spec_name:       name of the spec (or None, use the current spec)
+    :param input_platform:        the platform (or None, use the current platform)
+    :param input_configuration:   the configuration (or None, use the current configuration)
+    :return: List of all modules that are referenced for a spec (and platform/configuration)
+    """
+
+    # Get the spec name, fall back to command line specified spec if none was given
+    spec_name = input_spec_name if input_spec_name else ctx.options.project_spec
+
+    # Get the platform/configuration for the composite key, falling back on 'none'
+    platform = input_platform if input_platform else ctx.env['PLATFORM']
+    configuration = input_configuration if input_configuration else ctx.env['CONFIGURATION']
+    composite_key = '{}_{}_{}'.format(spec_name, platform, configuration)
+
+    global CACHED_SPEC_MODULE_USE_MAP
+    try:
+        return CACHED_SPEC_MODULE_USE_MAP[composite_key]
+    except KeyError:
+        pass
+
+    all_modules = set()
+    spec_modules = ctx.spec_modules(spec_name,platform,configuration)
+
+    for spec_module in spec_modules:
+        all_spec_module_uses = ctx.get_module_uses(spec_module,spec_name)
+        for i in all_spec_module_uses:
+            all_modules.add(i)
+
+    CACHED_SPEC_MODULE_USE_MAP[composite_key] = all_modules
+    return all_modules
+
+
+EXEMPT_USE_MODULES = set()
+
+
+EXEMPT_SPEC_MODULES = set()
+
+
+@conf
+def mark_module_exempt(ctx, target):
+    EXEMPT_USE_MODULES.add(target)
+
+
+@conf
+def is_module_exempt(ctx, target):
+    # Ignore the Exempt modules that are not part of the spec system
+    if target in EXEMPT_USE_MODULES:
+        return True
+
+    # Ignore any available launcher derived uses
+    if target in AVAILABLE_LAUNCHERS.get('modules', []):
+        return True
+
+    return False
+
+
+def deprecated(reason=None):
+    """
+    Special deprecated decorator to tag functions that are marked as deprecated. These functions will be outputted to the debug log
+    :param reason:  Optional reason/message to display in the debug log
+    :return: deprecated decorator
+    """
+    def deprecated_decorator(func):
+        callstack = inspect.stack()
+        func_module = callstack[1][1]
+        func_name = '{}:{}'.format(func_module,func.__name__)
+        deprecated_message = "[WARN] Function '{}' is deprecated".format(func_name)
+        if reason:
+            deprecated_message += ": {}".format(reason)
+        Logs.debug(deprecated_message)
+    return deprecated_decorator
+
+
+class ProjectGenerator(BuildContext):
+    pass
+
+
+@conf
+def validate_monolithic_specified_targets(bld):
+    """
+    Check monolithic builds for situations where explicit targets (in the case of building in Visual Studio)
+    are valid taget names.
     
-    for sanity_check_file in sanity_check_files:
-        sanity_check_file_abs = os.path.join(rc_bin_subfolder_abs, sanity_check_file)
-        if not os.path.isfile(sanity_check_file_abs):
-            raise Errors.WafError("Unable to locate '{0}'. Make sure that you have built rc.exe using the build_{1}_{2} "
-                                  "and the 'all' spec: 'lmbr_waf build_{1}_{2} -p all'".format(sanity_check_file_abs, rc_platform, rc_configuration))
-    subfolder = rc_bin_subfolder_node.path_from(tg.bld.path)
-    return subfolder
+    :param bld: The build context
+    """
     
+    platform, configuration = bld.get_platform_and_configuration()
+    
+    if bld.is_build_monolithic():
+        if len(bld.spec_modules()) == 0:
+            bld.fatal('[ERROR] no available modules to build for that spec "%s" in "%s|%s"' % (
+            bld.options.project_spec, platform, configuration))
+        
+        # Ensure that, if specified, target is supported in this spec
+        if bld.options.targets:
+            for target in bld.options.targets.split(','):
+                if not target in bld.spec_modules():
+                    bld.fatal('[ERROR] Module "%s" is not configured to build in spec "%s" in "%s|%s"' % (
+                    target, bld.options.project_spec, platform, configuration))
 

@@ -1,0 +1,4 @@
+<Entity
+ Name="CameraSource"
+ Script="Scripts/Entities/Others/CameraSource.lua"
+/>

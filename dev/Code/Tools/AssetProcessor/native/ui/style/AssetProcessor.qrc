@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/AssetProcessor/style">
+        <file>AssetProcessor.qss</file>
+        <file>AssetProcessorConfig.ini</file>
+        <file>AssetsTab.qss</file>
+        <file>LogsTab.qss</file>
+        <file alias="NewLogTabDialog.qss">../../../../../Framework/AzToolsFramework/AzToolsFramework/UI/Logging/NewLogTabDialog.qss</file>
+    </qresource>
+</RCC>

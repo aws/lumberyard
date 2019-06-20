@@ -114,13 +114,15 @@ namespace LmbrCentral
 
         void BuildGameEntity(AZ::Entity* gameEntity) override;
 
-        // AzFramework::EntityDebugDisplayEventBus interface implementation
-        void DisplayEntity(bool& handled) override;
-
-        // Transform notification bus handler
-        void OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world) override;
-
     private:
+        // AzFramework::EntityDebugDisplayEventBus
+        void DisplayEntityViewport(
+            const AzFramework::ViewportInfo& viewportInfo,
+            AzFramework::DebugDisplayRequests& debugDisplay) override;
+
+        // AZ::TransformNotificationBus
+        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
+
         //Reflected members
         EditorGeometryCacheCommon m_common;
 

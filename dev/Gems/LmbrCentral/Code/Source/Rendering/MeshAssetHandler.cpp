@@ -12,11 +12,11 @@
 
 #include "LmbrCentral_precompiled.h"
 
-#include <AzCore/std/parallel/conditional_variable.h>
 #include <AzCore/IO/GenericStreams.h>
 #include <AzFramework/Asset/SimpleAsset.h>
 #include <AzFramework/Asset/AssetCatalogBus.h>
 #include <AzFramework/StringFunc/StringFunc.h>
+#include <AzCore/std/parallel/binary_semaphore.h>
 
 #include <LmbrCentral/Rendering/MeshAsset.h>
 #include "MeshAssetHandler.h"
@@ -56,7 +56,7 @@ namespace LmbrCentral
     // Static Mesh Asset Handler
     //////////////////////////////////////////////////////////////////////////
 
-    void AsyncStatObjLoadCallback(const AZ::Data::Asset<MeshAsset>& asset, AZStd::condition_variable* loadVariable, _smart_ptr<IStatObj> statObj)
+    void AsyncStatObjLoadCallback(const AZ::Data::Asset<MeshAsset>& asset, _smart_ptr<IStatObj> statObj)
     {
         if (statObj)
         {
@@ -69,11 +69,6 @@ namespace LmbrCentral
             AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetDescription, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetPathById, asset.GetId());
             AZ_Error("MeshAssetHandler", false, "Failed to load mesh asset %s", assetDescription.c_str());
 #endif // AZ_ENABLE_TRACING
-        }
-
-        if (loadVariable != nullptr)
-        {
-            loadVariable->notify_one();
         }
     }
 
@@ -115,23 +110,20 @@ namespace LmbrCentral
             {
                 if (gEnv->mMainThreadId != CryGetCurrentThreadId())
                 {
-                    AZStd::mutex loadMutex;
-                    AZStd::condition_variable loadVariable;
+                    AZStd::binary_semaphore signaller;
 
-                    auto callback = [&asset, &loadVariable](IStatObj* obj)
+                    auto callback = [&asset, &signaller](IStatObj* obj)
                     {
-                        AsyncStatObjLoadCallback(asset, &loadVariable, obj);
+                        AsyncStatObjLoadCallback(asset, obj);
+                        signaller.release();
                     };
 
-                    AZStd::unique_lock<AZStd::mutex> loadLock(loadMutex);
                     gEnv->p3DEngine->LoadStatObjAsync(callback, assetPath);
-
-                    // Block the job thread on a signal variable until notified of completion (by the main thread).
-                    loadVariable.wait(loadLock);
+                    signaller.acquire();
                 }
                 else
                 {
-                    AsyncStatObjLoadCallback(asset, nullptr, gEnv->p3DEngine->LoadStatObjAutoRef(assetPath));
+                    AsyncStatObjLoadCallback(asset, gEnv->p3DEngine->LoadStatObjAutoRef(assetPath));
                 }
             }
             else
@@ -224,7 +216,7 @@ namespace LmbrCentral
     // Skinned Mesh Asset Handler
     //////////////////////////////////////////////////////////////////////////
     
-    void AsyncCharacterInstanceLoadCallback(const AZ::Data::Asset<CharacterDefinitionAsset>& asset, AZStd::condition_variable* loadVariable, ICharacterInstance* instance)
+    void AsyncCharacterInstanceLoadCallback(const AZ::Data::Asset<CharacterDefinitionAsset>& asset, ICharacterInstance* instance)
     {
         if (instance)
         {
@@ -237,11 +229,6 @@ namespace LmbrCentral
             AZ::Data::AssetCatalogRequestBus::BroadcastResult(assetDescription, &AZ::Data::AssetCatalogRequestBus::Events::GetAssetPathById, asset.GetId());
             AZ_Error("MeshAssetHandler", false, "Failed to load character instance asset %s", asset.GetId().ToString<AZStd::string>().c_str());
 #endif // AZ_ENABLE_TRACING
-        }
-
-        if (loadVariable != nullptr)
-        {
-            loadVariable->notify_one();
         }
     }
 
@@ -284,24 +271,21 @@ namespace LmbrCentral
                 // only queue this if we're not on the main thread
                 if (gEnv->mMainThreadId != CryGetCurrentThreadId())
                 {
-                    AZStd::mutex loadMutex;
-                    AZStd::condition_variable loadVariable;
+                    AZStd::binary_semaphore signaller;
 
-                    auto callback = [&asset, &loadVariable](ICharacterInstance* instance)
+                    auto callback = [&asset, &signaller](ICharacterInstance* instance)
                     {
-                        AsyncCharacterInstanceLoadCallback(asset, &loadVariable, instance);
+                        AsyncCharacterInstanceLoadCallback(asset, instance);
+                        signaller.release();
                     };
 
-                    AZStd::unique_lock<AZStd::mutex> loadLock(loadMutex);
+                    
                     gEnv->pCharacterManager->CreateInstanceAsync(callback, assetPath);
-
-                    // Block the job thread on a signal variable until notified of completion (by the main thread).
-                    loadVariable.wait(loadLock);
+                    signaller.acquire();
                 }
                 else
                 {
-                    AZStd::condition_variable* nullConditionVariable = nullptr;
-                    AsyncCharacterInstanceLoadCallback(asset, nullConditionVariable, gEnv->pCharacterManager->CreateInstance(assetPath));
+                    AsyncCharacterInstanceLoadCallback(asset, gEnv->pCharacterManager->CreateInstance(assetPath));
                 }
             }
             else

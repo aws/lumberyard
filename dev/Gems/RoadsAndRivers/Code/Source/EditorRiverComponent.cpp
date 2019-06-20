@@ -9,6 +9,7 @@
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 *
 */
+
 #include "StdAfx.h"
 
 #include <AzCore/Serialization/SerializeContext.h>
@@ -138,15 +139,17 @@ namespace RoadsAndRivers
         }
     }
 
-    void EditorRiverComponent::DisplayEntity(bool & handled)
+    void EditorRiverComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (IsSelected())
         {
-            m_river.DrawGeometry(AzFramework::ViewportColors::SelectedColor);
+            m_river.DrawGeometry(debugDisplay, AzFramework::ViewportColors::SelectedColor);
         }
         else if (m_accentType == AzToolsFramework::EntityAccentType::Hover)
         {
-            m_river.DrawGeometry(AzFramework::ViewportColors::HoverColor);
+            m_river.DrawGeometry(debugDisplay, AzFramework::ViewportColors::HoverColor);
         }
     }
 
@@ -172,12 +175,15 @@ namespace RoadsAndRivers
         return -0.5f * m_river.GetWidthModifiers().GetMaximumWidth();
     }
 
-    AZ::Aabb EditorRiverComponent::GetEditorSelectionBounds()
+    AZ::Aabb EditorRiverComponent::GetEditorSelectionBoundsViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/)
     {
         return m_river.GetAabb();
     }
 
-    bool EditorRiverComponent::EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
+    bool EditorRiverComponent::EditorSelectionIntersectRayViewport(
+        const AzFramework::ViewportInfo& /*viewportInfo*/,
+        const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
     {
         return m_river.IntersectRay(src, dir, distance);
     }
@@ -211,4 +217,4 @@ namespace RoadsAndRivers
     {
         m_river.Rebuild();
     }
-}
+} // namespace RoadsAndRivers

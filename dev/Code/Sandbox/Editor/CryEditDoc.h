@@ -201,7 +201,7 @@ protected:
 
     //////////////////////////////////////////////////////////////////////////
     // EditorEntityContextNotificationBus::Handler
-    void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, const AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
+    void OnSliceInstantiated(const AZ::Data::AssetId& sliceAssetId, AZ::SliceComponent::SliceInstanceAddress& sliceAddress, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
     void OnSliceInstantiationFailed(const AZ::Data::AssetId& sliceAssetId, const AzFramework::SliceInstantiationTicket& /*ticket*/) override;
     //////////////////////////////////////////////////////////////////////////
 

@@ -1,0 +1,20 @@
+{
+    "none": {
+        "Source": [
+            "Source/SurfaceDataEditorModule.cpp",
+            "Source/SurfaceDataEditorModule.h"
+        ]
+    },
+    "auto": {
+        "Source/Editor" : [
+            "Source/Editor/EditorSurfaceTagListAsset.cpp",
+            "Source/Editor/EditorSurfaceTagListAsset.h",
+            "Source/Editor/EditorSurfaceDataSystemComponent.cpp",
+            "Source/Editor/EditorSurfaceDataSystemComponent.h",
+            "Source/Editor/EditorSurfaceDataMeshComponent.cpp",
+            "Source/Editor/EditorSurfaceDataMeshComponent.h",
+            "Source/Editor/EditorSurfaceDataShapeComponent.cpp",
+            "Source/Editor/EditorSurfaceDataShapeComponent.h"
+        ]
+    }
+}

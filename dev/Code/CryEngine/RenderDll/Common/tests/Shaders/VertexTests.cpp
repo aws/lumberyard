@@ -11,6 +11,7 @@
 */
 #include "StdAfx.h"
 #include <AzTest/AzTest.h>
+#include <Tests/TestTypes.h>
 #include "Common/Shaders/Vertex.h"
 #include "DriverD3D.h"
 // General vertex stream stride
@@ -319,7 +320,18 @@ bool DeclarationsAreEqual(AZStd::vector<D3D11_INPUT_ELEMENT_DESC>& declarationA,
 
 class VertexFormatTest
     : public ::testing::TestWithParam < int >
+    , public UnitTest::AllocatorsBase
 {
+public:
+    void SetUp() override
+    {
+        UnitTest::AllocatorsBase::SetupAllocator();
+    }
+
+    void TearDown() override
+    {
+        UnitTest::AllocatorsBase::TeardownAllocator();
+    }
 };
 
 TEST_P(VertexFormatTest, GetStride_MatchesExpected)
@@ -378,7 +390,7 @@ TEST_P(VertexFormatTest, CalculateOffset_MatchesExpected)
     }
 }
 
-TEST(VertexFormatTest, CalculateOffsetMultipleUVs_MatchesExpected)
+TEST_F(VertexFormatTest, CalculateOffsetMultipleUVs_MatchesExpected)
 {
     AZ::Vertex::Format vertexFormat(eVF_P3F_T2F_T3F);
     uint offset = 0;
@@ -424,7 +436,18 @@ INSTANTIATE_TEST_CASE_P(EVertexFormatValues, VertexFormatTest, ::testing::Range<
 //Tests to check 4 byte alignment padding
 class VertexFormat4ByteAlignedTest
     : public ::testing::TestWithParam < int >
+    , public UnitTest::AllocatorsBase
 {
+    public:
+        void SetUp() override
+        {
+            UnitTest::AllocatorsBase::SetupAllocator();
+        }
+
+        void TearDown() override
+        {
+            UnitTest::AllocatorsBase::TeardownAllocator();
+        }
 };
 
 TEST_P(VertexFormat4ByteAlignedTest, GetStride_4ByteAligned)

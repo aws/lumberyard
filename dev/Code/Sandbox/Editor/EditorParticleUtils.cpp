@@ -423,11 +423,11 @@ public:
                     QXmlStreamAttributes att = stream.attributes();
                     for (QXmlStreamAttribute attr : att)
                     {
-                        if (attr.name().compare("path", Qt::CaseInsensitive) == 0)
+                        if (attr.name().compare(QLatin1String("path"), Qt::CaseInsensitive) == 0)
                         {
                             key.first = attr.value().toString();
                         }
-                        if (attr.name().compare("sequence", Qt::CaseInsensitive) == 0)
+                        if (attr.name().compare(QLatin1String("sequence"), Qt::CaseInsensitive) == 0)
                         {
                             key.second = attr.value().toString();
                         }

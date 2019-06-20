@@ -13,7 +13,7 @@
 #pragma once
 
 #include <AzCore/Math/Vector4.h>
-#include <AzFramework/Math/MathUtils.h>
+#include <AzCore/Math/MathUtils.h>
 #include <ScriptCanvas/Core/NodeFunctionGeneric.h>
 #include <ScriptCanvas/Data/Data.h>
 #include <ScriptCanvas/Data/NumericData.h>
@@ -29,7 +29,7 @@ namespace ScriptCanvas
         template<int t_Index>
         AZ_INLINE void DefaultScale(Node& node) { Node::SetDefaultValuesByIndex<t_Index>::_(node, Data::One()); }
 
-        AZ_INLINE Vector3Type GetRight(AZ::EntityId entityId, NumberType scale)
+        AZ_INLINE Vector3Type GetEntityRight(AZ::EntityId entityId, NumberType scale)
         {
             AZ::Transform worldTransform = {};
             AZ::TransformBus::EventResult(worldTransform, entityId, &AZ::TransformInterface::GetWorldTM);
@@ -38,9 +38,9 @@ namespace ScriptCanvas
             vector.SetLength(aznumeric_cast<float>(scale));
             return vector;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetRight, DefaultScale<1>, "Entity/Transform", "{C12282BE-29D2-497D-8C22-75B940E254E2}", "returns the right direction vector from the specified entity's world transform, scaled by a given value (Lumberyard uses Z up, right handed)", "EntityId", "Scale");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetEntityRight, DefaultScale<1>, "Entity/Transform", "{C12282BE-29D2-497D-8C22-75B940E254E2}", "returns the right direction vector from the specified entity's world transform, scaled by a given value (Lumberyard uses Z up, right handed)", "EntityId", "Scale");
 
-        AZ_INLINE Vector3Type GetForward(AZ::EntityId entityId, NumberType scale)
+        AZ_INLINE Vector3Type GetEntityForward(AZ::EntityId entityId, NumberType scale)
         {
             AZ::Transform worldTransform = {};
             AZ::TransformBus::EventResult(worldTransform, entityId, &AZ::TransformInterface::GetWorldTM);
@@ -49,9 +49,9 @@ namespace ScriptCanvas
             vector.SetLength(aznumeric_cast<float>(scale));
             return vector;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetForward, DefaultScale<1>, "Entity/Transform", "{719D9F76-84D4-4B0F-BCEB-26D5D097C7D6}", "returns the forward direction vector from the specified entity' world transform, scaled by a given value (Lumberyard uses Z up, right handed)", "EntityId", "Scale");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetEntityForward, DefaultScale<1>, "Entity/Transform", "{719D9F76-84D4-4B0F-BCEB-26D5D097C7D6}", "returns the forward direction vector from the specified entity' world transform, scaled by a given value (Lumberyard uses Z up, right handed)", "EntityId", "Scale");
 
-        AZ_INLINE Vector3Type GetUp(AZ::EntityId entityId, NumberType scale)
+        AZ_INLINE Vector3Type GetEntityUp(AZ::EntityId entityId, NumberType scale)
         {
             AZ::Transform worldTransform = {};
             AZ::TransformBus::EventResult(worldTransform, entityId, &AZ::TransformInterface::GetWorldTM);
@@ -60,13 +60,13 @@ namespace ScriptCanvas
             vector.SetLength(aznumeric_cast<float>(scale));
             return vector;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetUp, DefaultScale<1>, "Entity/Transform", "{96B86F3F-F022-4611-9AEA-175EA952C562}", "returns the up direction vector from the specified entity's world transform, scaled by a given value (Lumberyard uses Z up, right handed)", "EntityId", "Scale");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_WITH_DEFAULTS(GetEntityUp, DefaultScale<1>, "Entity/Transform", "{96B86F3F-F022-4611-9AEA-175EA952C562}", "returns the up direction vector from the specified entity's world transform, scaled by a given value (Lumberyard uses Z up, right handed)", "EntityId", "Scale");
 
         using Registrar = RegistrarGeneric
             <
-            GetRightNode,
-            GetForwardNode,
-            GetUpNode
+            GetEntityRightNode,
+            GetEntityForwardNode,
+            GetEntityUpNode
             >;
     }
 }

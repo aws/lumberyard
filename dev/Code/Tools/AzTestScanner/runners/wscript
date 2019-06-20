@@ -23,7 +23,8 @@ def build(bld):
         vs_filter           = 'Tools/AzTestRunner',
         file_list           = 'aztestscanner.waf_files',
         platforms           = ['win', 'linux_x64', 'darwin_x64'],
-        configurations      = ['test_all'],
+        configurations      = ['all'],
+        test_only           = True,
         use                 = ['AzTest'],
         uselib              = ['GMOCK'],
 

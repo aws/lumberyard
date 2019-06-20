@@ -137,13 +137,12 @@ namespace PhysXCharacters
     }
 
     // AzFramework::EntityDebugDisplayEventBus
-    void EditorCharacterControllerComponent::DisplayEntity(bool& handled)
+    void EditorCharacterControllerComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (IsSelected())
         {
-            AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-            AZ_Assert(displayContext, "Invalid display context.");
-
             const AZ::Vector3 upDirectionNormalized = m_configuration.m_upDirection.IsZero()
                 ? AZ::Vector3::CreateAxisZ()
                 : m_configuration.m_upDirection.GetNormalized();
@@ -162,7 +161,7 @@ namespace PhysXCharacters
                 const AZ::Transform controllerTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
                     upDirectionQuat, GetWorldTM().GetPosition() + heightOffset * upDirectionNormalized);
 
-                displayContext->PushMatrix(controllerTransform);
+                debugDisplay.PushMatrix(controllerTransform);
 
                 // draw the actual shape
                 LmbrCentral::CapsuleGeometrySystemRequestBus::Broadcast(
@@ -175,9 +174,9 @@ namespace PhysXCharacters
                     m_lineBuffer
                 );
 
-                displayContext->SetLineWidth(2.0f);
-                displayContext->DrawTrianglesIndexed(m_vertexBuffer, m_indexBuffer, AzFramework::ViewportColors::SelectedColor);
-                displayContext->DrawLines(m_lineBuffer, AzFramework::ViewportColors::WireColor);
+                debugDisplay.SetLineWidth(2.0f);
+                debugDisplay.DrawTrianglesIndexed(m_vertexBuffer, m_indexBuffer, AzFramework::ViewportColors::SelectedColor);
+                debugDisplay.DrawLines(m_lineBuffer, AzFramework::ViewportColors::WireColor);
 
                 // draw the shape inflated by the contact offset
                 LmbrCentral::CapsuleGeometrySystemRequestBus::Broadcast(
@@ -190,8 +189,8 @@ namespace PhysXCharacters
                     m_lineBuffer
                 );
 
-                displayContext->DrawLines(m_lineBuffer, AzFramework::ViewportColors::WireColor);
-                displayContext->PopMatrix();
+                debugDisplay.DrawLines(m_lineBuffer, AzFramework::ViewportColors::WireColor);
+                debugDisplay.PopMatrix();
             }
 
             if (m_proxyShapeConfiguration.IsBoxConfig())
@@ -205,21 +204,19 @@ namespace PhysXCharacters
                 const AZ::Vector3 boxHalfExtentsScaledWithContactOffset = boxHalfExtentsScaled +
                     m_configuration.m_contactOffset * AZ::Vector3::CreateOne();
 
-                displayContext->PushMatrix(controllerTransform);
+                debugDisplay.PushMatrix(controllerTransform);
 
                 // draw the actual shape
-                displayContext->SetLineWidth(2.0f);
-                displayContext->SetColor(AzFramework::ViewportColors::SelectedColor);
-                displayContext->DrawSolidBox(-boxHalfExtentsScaled, boxHalfExtentsScaled);
-                displayContext->SetColor(AzFramework::ViewportColors::WireColor);
-                displayContext->DrawWireBox(-boxHalfExtentsScaled, boxHalfExtentsScaled);
+                debugDisplay.SetLineWidth(2.0f);
+                debugDisplay.SetColor(AzFramework::ViewportColors::SelectedColor);
+                debugDisplay.DrawSolidBox(-boxHalfExtentsScaled, boxHalfExtentsScaled);
+                debugDisplay.SetColor(AzFramework::ViewportColors::WireColor);
+                debugDisplay.DrawWireBox(-boxHalfExtentsScaled, boxHalfExtentsScaled);
 
                 // draw the shape inflated by the contact offset
-                displayContext->DrawWireBox(-boxHalfExtentsScaledWithContactOffset, boxHalfExtentsScaledWithContactOffset);
-                displayContext->PopMatrix();
+                debugDisplay.DrawWireBox(-boxHalfExtentsScaledWithContactOffset, boxHalfExtentsScaledWithContactOffset);
+                debugDisplay.PopMatrix();
             }
-
-            handled = true;
         }
     }
 

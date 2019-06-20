@@ -19,7 +19,8 @@ def build(bld):
         file_list                   = ['woodpecker.waf_files','lua_ide.waf_files'],
         win_file_list               = 'lua_ide_win.waf_files',
         platforms                   = ['win', 'darwin'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        exclude_monolithic          = True,
+        client_only                 = True,
         disable_pch                 = True,
         features                    = ['qt5','generate_rc_file', 'ExternalLyIdentity', 'ExternalLyMetrics'],
         includes                    = ['./Woodpecker/Editor', './Woodpecker/LUA'],
@@ -37,10 +38,10 @@ def build(bld):
                                        'QT5NETWORK',
                                        'QT5SVG',
                                        'QT5WIDGETS',
-                                       'CRASHPAD'
+                                       'CRASHPAD',
+                                       'D3D_COMPILER_47'
                                        ],
         defines                     = [ 'UNICODE', 'WOODPECKER_ENABLE_LUA_IDE' ],
-        copy_dependent_files        = [ 'Bin64/d3dcompiler_47.dll'],
         # Platform Specific
         msvc_cxxflags           = [
             '/W4', # warning level
@@ -53,7 +54,7 @@ def build(bld):
                                     'AWS_CPP_SDK_IDENTITY_MANAGEMENT' ],
 
         darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
-        darwin_frameworkpath    = [bld.ThirdPartyPath('qt','lib')],
+        darwin_frameworkpath    = [bld.ThirdPartyPath('qt', 'clang_64/lib')],
         clang_cxxflags          = [
             '-Wno-writable-strings',
         ]
@@ -67,9 +68,9 @@ def build(bld):
         file_list                   = ['woodpecker.waf_files','profiler.waf_files'],
         win_file_list               = 'profiler_win.waf_files',
         platforms                   = ['win', 'darwin'],
-        configurations              = ['debug', 'debug_test', 'profile', 'profile_test'],
+        exclude_monolithic          = True,
+        client_only                 = True,
         disable_pch                 = True,
-        copy_dependent_files        = [ bld.Path('Bin64/d3dcompiler_47.dll')],
         features                    = ['qt5','generate_rc_file', 'ExternalLyIdentity', 'ExternalLyMetrics'],
         includes                    = ['./Woodpecker/Editor',
                                        './Woodpecker/Driller',
@@ -87,7 +88,8 @@ def build(bld):
                                        'QT5OPENGL',
                                        'QT5NETWORK',
                                        'QT5SVG',
-                                       'QT5WIDGETS'],
+                                       'QT5WIDGETS',
+                                       'D3D_COMPILER_47'],
 
         defines                 = [ 'UNICODE', 'WOODPECKER_ENABLE_PROFILER' ],
 
@@ -101,7 +103,7 @@ def build(bld):
                                     'AWS_CPP_SDK_MOBILEANALYTICS',
                                     'AWS_CPP_SDK_IDENTITY_MANAGEMENT' ],
         darwin_rpath    =         ['@executable_path', '@executable_path/qtlibs/lib'],
-        darwin_frameworkpath    = [bld.ThirdPartyPath('qt','lib')],
+        darwin_frameworkpath    = [bld.ThirdPartyPath('qt', 'clang_64/lib')],
         clang_cxxflags          = [
             '-Wno-writable-strings',
             ],

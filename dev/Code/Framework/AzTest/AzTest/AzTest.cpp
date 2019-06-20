@@ -12,6 +12,7 @@
 
 #include <AzTest/AzTest.h>
 #include <AzTest/Platform.h>
+#include <AzCore/UnitTest/UnitTest.h>
 
 namespace AZ
 {
@@ -26,9 +27,22 @@ namespace AZ
         //! Add a list of test environments to the framework
         void addTestEnvironments(std::vector<ITestEnvironment*> envs)
         {
-            for (auto env : envs)
+            //! If nothing is supplied, add the default hook
+            if (envs.empty())
             {
-                addTestEnvironment(env);
+                addTestEnvironment(new UnitTest::TraceBusHook());
+            }
+
+            else
+            {
+                for (auto env : envs)
+                {
+                    //! Skip over nullptr to allow callers to avoid the default hook
+                    if (env != nullptr)
+                    {
+                        addTestEnvironment(env);
+                    }
+                }
             }
         }
 

@@ -33,6 +33,8 @@ namespace AzQtComponents
     ColorWarning::ColorWarning(ColorWarning::Mode mode, const AZ::Color& color, const QString& message, QWidget* parent /* = nullptr */)
         : QWidget(parent)
     {
+        setFocusPolicy(Qt::ClickFocus);
+
         QHBoxLayout* layout = new QHBoxLayout(this);
         layout->setMargin(0);
 

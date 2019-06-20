@@ -23,9 +23,7 @@ namespace AzFramework
 {
     namespace AssetSystem
     {
-
-        // Do this here because including Windows.h causes problems with SetPort being a define
-        void AssetSystemComponent::ShowAssetProcessor()
+        void AllowAssetProcessorToForeground()
         {
 #if defined(AZ_PLATFORM_WINDOWS)
             // Make sure that all of the asset processors can bring their window to the front
@@ -68,8 +66,23 @@ namespace AzFramework
                 }
             }
 #endif // #if defined(AZ_PLATFORM_WINDOWS)
+        }
+
+        // Do this here because including Windows.h causes problems with SetPort being a define
+        void AssetSystemComponent::ShowAssetProcessor()
+        {
+            AllowAssetProcessorToForeground();
 
             ShowAssetProcessorRequest request;
+            SendRequest(request);
+        }
+
+        void AssetSystemComponent::ShowInAssetProcessor(const AZStd::string& assetPath)
+        {
+            AllowAssetProcessorToForeground();
+
+            ShowAssetInAssetProcessorRequest request;
+            request.m_assetPath = assetPath;
             SendRequest(request);
         }
     }

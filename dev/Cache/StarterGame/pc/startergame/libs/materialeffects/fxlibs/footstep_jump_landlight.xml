@@ -1,0 +1,81 @@
+<FXLib>
+
+	<Effect name="default">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="default" />
+		</Audio>
+	</Effect>
+	
+	<Effect name="metal">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="metal" />
+		</Audio>
+		<Particle>
+			<Name>CharacterFX.FootSteps.Metal</Name>
+		</Particle>
+	</Effect>
+	
+	<Effect name="soil">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="soil" />
+		</Audio>
+		<Particle>
+			<Name>CharacterFX.FootSteps.Soil</Name>
+		</Particle>
+	</Effect>
+	
+	<Effect name="grass">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="grass" />
+		</Audio>
+		<Particle>
+			<Name>CharacterFX.FootSteps.Grass</Name>
+		</Particle>
+	</Effect>
+	
+	<Effect name="grit">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="grit" />
+		</Audio>
+	</Effect>
+	
+	<Effect name="rock_dusty">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="rock_dusty" />
+		</Audio>
+		<Particle>
+			<Name>CharacterFX.FootSteps.Dust</Name>
+		</Particle>
+	</Effect>
+	
+	<Effect name="rock">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="rock" />
+		</Audio>
+		<Particle>
+			<Name>CharacterFX.FootSteps.Dust</Name>
+		</Particle>
+	</Effect>
+	
+	<Effect name="water">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="water" />
+		</Audio>
+	</Effect>
+	
+	<Effect name="water_shallow">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="water" />
+		</Audio>
+	</Effect>
+	
+	<Effect name="wood">
+		<Audio trigger="Play_pla_fstp_jump_landlight">
+			<Switch name="SurfaceType" state="wood" />
+		</Audio>
+		<Particle>
+			<Name>CharacterFX.FootSteps.Wood</Name>
+		</Particle>
+	</Effect>
+
+</FXLib>

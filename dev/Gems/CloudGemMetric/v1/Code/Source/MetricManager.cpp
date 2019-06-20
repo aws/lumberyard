@@ -32,6 +32,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
+#include <CloudCanvasCommon/CloudCanvasCommonBus.h>
 
 namespace CloudGemMetric
 {   
@@ -292,7 +293,7 @@ namespace CloudGemMetric
     AZ::Job* MetricManager::CreateFlushMetricsToFileJob(AZStd::shared_ptr<MetricsQueue> metricsToFlush, const MetricsSettings::Settings& settings, SendMetricsMode sendMetricsMode)
     {
         AZ::JobContext* jobContext{ nullptr };
-        EBUS_EVENT_RESULT(jobContext, CloudGemFramework::CloudGemFrameworkRequestBus, GetDefaultJobContext);
+        EBUS_EVENT_RESULT(jobContext, CloudCanvasCommon::CloudCanvasCommonRequestBus, GetDefaultJobContext);
 
         AZ::Job* job{ nullptr };
 

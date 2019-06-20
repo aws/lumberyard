@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>795</width>
+    <width>809</width>
     <height>747</height>
    </rect>
   </property>
@@ -48,7 +48,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>795</width>
+     <width>809</width>
      <height>21</height>
     </rect>
    </property>
@@ -70,12 +70,16 @@
      <property name="title">
       <string>Settings</string>
      </property>
-     <property name="icon">
-      <iconset resource="ScriptCanvasEditorResources.qrc">
-       <normaloff>:/ScriptCanvasEditorResources/Resources/settings_icon.png</normaloff>:/ScriptCanvasEditorResources/Resources/settings_icon.png</iconset>
-     </property>
      <addaction name="action_GlobalPreferences"/>
      <addaction name="action_GraphPreferences"/>
+    </widget>
+    <widget class="QMenu" name="menuRemove_Unused">
+     <property name="title">
+      <string>Remove Unused</string>
+     </property>
+     <addaction name="action_RemoveUnusedVariables"/>
+     <addaction name="action_RemoveUnusedNodes"/>
+     <addaction name="action_RemoveUnusedElements"/>
     </widget>
     <addaction name="action_Undo"/>
     <addaction name="action_Redo"/>
@@ -85,6 +89,8 @@
     <addaction name="action_Paste"/>
     <addaction name="action_Duplicate"/>
     <addaction name="action_Delete"/>
+    <addaction name="separator"/>
+    <addaction name="menuRemove_Unused"/>
     <addaction name="separator"/>
     <addaction name="menuSettings"/>
     <addaction name="separator"/>
@@ -103,6 +109,11 @@
     <addaction name="action_ViewBookmarks"/>
     <addaction name="action_ViewMiniMap"/>
     <addaction name="action_ViewVariableManager"/>
+    <addaction name="action_GraphValidation"/>
+    <addaction name="action_ViewUnitTestManager"/>
+    <addaction name="action_Debugging"/>
+    <addaction name="separator"/>
+    <addaction name="action_NodeStatistics"/>
     <addaction name="separator"/>
     <addaction name="action_ViewRestoreDefaultLayout"/>
    </widget>
@@ -199,6 +210,20 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+O</string>
+   </property>
+  </action>
+  <action name="action_ViewDynamicEBusAssets">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Dynamic EBus</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+E</string>
    </property>
   </action>
   <action name="action_ViewProperties">
@@ -387,9 +412,95 @@
    <property name="text">
     <string>Variable Manager</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+V</string>
+   </property>
+  </action>
+  <action name="action_ViewLogWindow">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Log</string>
+   </property>
+  </action>
+  <action name="action_GraphValidation">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Graph Validation</string>
+   </property>
+  </action>
+  <action name="action_ViewUnitTestManager">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Test Manager</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+T</string>
+   </property>
+  </action>
+  <action name="action_Debugging">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Debugging</string>
+   </property>
+  </action>
+  <action name="action_NodeStatistics">
+   <property name="text">
+    <string>Statistics</string>
+   </property>
+  </action>
+  <action name="action_RemoveUnusedNodes">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Nodes</string>
+   </property>
+   <property name="toolTip">
+    <string>Removes all unused nodes from the active graph</string>
+   </property>
+  </action>
+  <action name="action_RemoveUnusedVariables">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Variables</string>
+   </property>
+   <property name="toolTip">
+    <string>Removes all unused variables from the active graph</string>
+   </property>
+  </action>
+  <action name="action_RemoveUnusedElements">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>All</string>
+   </property>
+   <property name="toolTip">
+    <string>Removes all unused elements from the active graph</string>
+   </property>
   </action>
   <addaction name="action_ViewNodePalette"/>
   <addaction name="action_ViewOutline"/>
+  <addaction name="action_ViewDynamicEBusAssets"/>
   <addaction name="action_ViewProperties"/>
   <addaction name="action_ViewDebugger"/>
   <addaction name="action_ViewCommandLine"/>

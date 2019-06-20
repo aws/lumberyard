@@ -129,10 +129,8 @@ namespace AZ
             }
 
             void* loadedInstance = nullptr;
-            AZ::Uuid loadedClassID = AZ::Uuid::CreateNull();
-
             bool success = ObjectStream::LoadBlocking(&stream, *context,
-                    [&loadedInstance, &loadedClassID, targetClassId](void* classPtr, const Uuid& classId, const SerializeContext* serializeContext)
+                    [&loadedInstance, targetClassId](void* classPtr, const Uuid& classId, const SerializeContext* serializeContext)
                     {
                         if (targetClassId)
                         {
@@ -143,7 +141,6 @@ namespace AZ
                             {
                                 AZ_Assert(!loadedInstance, "loadedInstance must be NULL, otherwise we are being invoked with multiple valid objects");
                                 loadedInstance = instance;
-                                loadedClassID = classId;
                                 return;
                             }
                         }
@@ -152,7 +149,6 @@ namespace AZ
                             if (!loadedInstance)
                             {
                                 loadedInstance = classPtr;
-                                loadedClassID = classId;
                                 return;
                             }
                         }
@@ -169,15 +165,6 @@ namespace AZ
 
             if (!success)
             {
-                // if serialization failed, clean up by destroying the instance that was loaded.
-                if (loadedInstance)
-                {
-                    const AZ::SerializeContext::ClassData* classData = context->FindClassData(loadedClassID);
-                    if (classData && classData->m_factory)
-                    {
-                        classData->m_factory->Destroy(loadedInstance);
-                    }
-                }
                 return nullptr;
             }
 
@@ -314,6 +301,167 @@ namespace AZ
                 }
             }
         }
+
+        bool IsVectorContainerType(const AZ::Uuid& type)
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
+            {
+                AZ::TypeId containerTypeId = type;
+
+                if (GenericClassInfo* classInfo = serializeContext->FindGenericClassInfo(type))
+                {
+                    // This type is a container
+                    containerTypeId = classInfo->GetGenericTypeId();
+                }
+
+                if (containerTypeId == AZ::GetGenericClassInfoVectorTypeId()
+                    || containerTypeId == AZ::GetGenericClassInfoFixedVectorTypeId()
+                    || containerTypeId == AZ::GetGenericClassInfoArrayTypeId()
+                    )
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool IsSetContainerType(const AZ::Uuid& type)
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
+            {
+                AZ::TypeId containerTypeId = type;
+
+                if (GenericClassInfo* classInfo = serializeContext->FindGenericClassInfo(type))
+                {
+                    // This type is a container
+                    containerTypeId = classInfo->GetGenericTypeId();
+                }
+
+                if (containerTypeId == AZ::GetGenericClassSetTypeId()
+                    || containerTypeId == AZ::GetGenericClassUnorderedSetTypeId()
+                    )
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
+        bool IsMapContainerType(const AZ::Uuid& type)
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
+            {
+                AZ::Uuid containerTypeId = type;
+
+                if (GenericClassInfo* classInfo = serializeContext->FindGenericClassInfo(type))
+                {
+                    containerTypeId = classInfo->GetGenericTypeId();
+                }
+                
+                if (containerTypeId == AZ::GetGenericClassMapTypeId()
+                    || containerTypeId == AZ::GetGenericClassUnorderedMapTypeId()
+                    )
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        bool IsContainerType(const AZ::Uuid& type)
+        {
+            return IsVectorContainerType(type) || IsSetContainerType(type) || IsMapContainerType(type);
+        }
+
+        AZStd::vector<AZ::Uuid> GetContainedTypes(const AZ::Uuid& type)
+        {
+            AZStd::vector<AZ::Uuid> types;
+
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
+            {
+                if (GenericClassInfo* classInfo = serializeContext->FindGenericClassInfo(type))
+                {
+                    for (int i = 0; i < classInfo->GetNumTemplatedArguments(); ++i)
+                    {
+                        types.push_back(classInfo->GetTemplatedTypeId(i));
+                    }
+                }
+            }
+
+            return types;
+        }
+
+        bool IsOutcomeType(const AZ::Uuid& type)
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
+            {
+                GenericClassInfo* classInfo = serializeContext->FindGenericClassInfo(type);
+                return classInfo && classInfo->GetGenericTypeId() == AZ::GetGenericOutcomeTypeId();
+            }
+
+            return false;
+        }
+
+        AZ::TypeId GetGenericContainerType(const AZ::TypeId& type)
+        {
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
+            {
+                if (GenericClassInfo* classInfo = serializeContext->FindGenericClassInfo(type))
+                {
+                    // This type is a container
+                    return classInfo->GetGenericTypeId();
+                }
+            }
+
+            return azrtti_typeid<void>();
+        }
+
+        bool IsGenericContainerType(const AZ::TypeId& type)
+        {
+            return IsContainerType(type) && GetGenericContainerType(type) == azrtti_typeid<void>();
+        }
+
+        AZStd::pair<AZ::Uuid, AZ::Uuid> GetOutcomeTypes(const AZ::Uuid& type)
+        {
+            AZStd::vector<AZ::Uuid> types;
+
+            AZ::SerializeContext* serializeContext = nullptr;
+            AZ::ComponentApplicationBus::BroadcastResult(serializeContext, &AZ::ComponentApplicationRequests::GetSerializeContext);
+
+            if (serializeContext)
+            {
+                if (GenericClassInfo* classInfo = serializeContext->FindGenericClassInfo(type))
+                {
+                    AZ_Assert(classInfo->GetNumTemplatedArguments() == 2, "Outcome template arguments must be 2, even if void, void");
+                    return AZStd::make_pair(classInfo->GetTemplatedTypeId(0), classInfo->GetTemplatedTypeId(1));
+                }
+            }
+
+            return AZStd::make_pair(azrtti_typeid<void>(), azrtti_typeid<void>());
+        }
+
     } // namespace Utils
 } // namespace AZ
 

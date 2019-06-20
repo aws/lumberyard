@@ -11,21 +11,13 @@
 */
 
 #include <AzQtComponents/Components/ButtonDivider.h>
-#include <QPainter>
 
 namespace AzQtComponents
 {
     ButtonDivider::ButtonDivider(QWidget* parent)
-        : QWidget(parent)
-        , m_dividerButton(QLatin1String(":/stylesheet/img/titlebar_divider.png"))
+        : QFrame(parent)
     {
-        setFixedSize(m_dividerButton.size());
-    }
 
-    void ButtonDivider::paintEvent(QPaintEvent*)
-    {
-        QPainter p(this);
-        p.drawPixmap(rect(), m_dividerButton, m_dividerButton.rect());
     }
 
 #include <Components/ButtonDivider.moc>

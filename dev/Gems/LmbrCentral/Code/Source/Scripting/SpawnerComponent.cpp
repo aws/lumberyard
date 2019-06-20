@@ -32,7 +32,7 @@ namespace LmbrCentral
     {
     public:
         AZ_EBUS_BEHAVIOR_BINDER(BehaviorSpawnerComponentNotificationBusHandler, "{AC202871-2522-48A6-9B62-5FDAABB302CD}", AZ::SystemAllocator,
-            OnSpawnBegin, OnSpawnEnd, OnEntitySpawned, OnSpawnedSliceDestroyed);
+            OnSpawnBegin, OnSpawnEnd, OnEntitySpawned, OnSpawnedSliceDestroyed, OnEntitiesSpawned);
 
         void OnSpawnBegin(const AzFramework::SliceInstantiationTicket& ticket) override
         {
@@ -53,6 +53,13 @@ namespace LmbrCentral
         {
             Call(FN_OnSpawnedSliceDestroyed, ticket);
         }
+
+        //! Single event notification for an entire slice spawn, providing a list of all resulting entity Ids.
+        void OnEntitiesSpawned(const AzFramework::SliceInstantiationTicket& ticket, const AZStd::vector<AZ::EntityId>& spawnedEntities) override
+        {
+            Call(FN_OnEntitiesSpawned, ticket, spawnedEntities);
+        }
+
     };
 
     // Convert any instances of the old SampleComponent data into the appropriate

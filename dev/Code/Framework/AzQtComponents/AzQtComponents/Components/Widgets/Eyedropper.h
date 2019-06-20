@@ -59,11 +59,11 @@ namespace AzQtComponents
         static bool polish(Style* style, QWidget* widget, const Config& config);
 
     Q_SIGNALS:
-        void colorHovered(QColor color) const;
-        void colorSelected(QColor color) const;
+        void colorHovered(const QColor& color);
+        void colorSelected(const QColor& color);
 
     protected:
-        void showEvent(QShowEvent *event) override;
+        void showEvent(QShowEvent* event) override;
         void paintEvent(QPaintEvent* event) override;
 
     private:

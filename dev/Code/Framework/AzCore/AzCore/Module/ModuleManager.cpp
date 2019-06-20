@@ -219,15 +219,12 @@ namespace AZ
         Internal::ModuleManagerInternalRequestBus::Handler::BusDisconnect();
     }
 
-    //=========================================================================
-    // UnloadModules
-    //=========================================================================
-    void ModuleManager::UnloadModules()
+    void ModuleManager::DeactivateEntities()
     {
         // For all modules that we created an entity for, set them to "Deactivating"
         for (auto& moduleData : m_ownedModules)
         {
-            if (moduleData->m_moduleEntity)
+            if (moduleData->m_moduleEntity && moduleData->m_lastCompletedStep == ModuleInitializationSteps::ActivateEntity)
             {
                 moduleData->m_moduleEntity->SetState(Entity::ES_DEACTIVATING);
             }
@@ -242,12 +239,23 @@ namespace AZ
         // For all modules that we created an entity for, set them to "Init" (meaning not Activated)
         for (auto& moduleData : m_ownedModules)
         {
-            if (moduleData->m_moduleEntity)
+            if (moduleData->m_moduleEntity && moduleData->m_lastCompletedStep == ModuleInitializationSteps::ActivateEntity)
             {
                 moduleData->m_moduleEntity->SetState(Entity::ES_INIT);
+                moduleData->m_lastCompletedStep = ModuleInitializationSteps::RegisterComponentDescriptors;
             }
         }
 
+        // Since the system components have been deactivated clear out the vector.
+        m_systemComponents.clear();
+    }
+
+    //=========================================================================
+    // UnloadModules
+    //=========================================================================
+    void ModuleManager::UnloadModules()
+    {
+        DeactivateEntities();
         // Because everything is unique_ptr, we don't need to explicitly delete anything
         // Shutdown in reverse order of initialization, just in case the order matters.
         while (!m_ownedModules.empty())

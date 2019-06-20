@@ -69,20 +69,18 @@ namespace LmbrCentral
         gameEntity->CreateComponent<ForceVolumeComponent>(m_forceVolume, m_debugForces);
     }
 
-    void EditorForceVolumeComponent::DisplayEntity(bool& handled)
+    void EditorForceVolumeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         if (!IsSelected() && !m_visibleInEditor)
         {
             return;
         }
 
-        handled = true;
+        debugDisplay.SetColor(AZ::Vector4(1.f, 0.f, 0.f, 1.0f));
 
-        AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayContext, "Invalid display context.");
-        displayContext->SetColor(AZ::Vector4(1.f, 0.f, 0.f, 1.0f));
-
-        m_forceVolume.Display(*displayContext);
+        m_forceVolume.Display(debugDisplay);
     }
 
 } // namespace LmbrCentral

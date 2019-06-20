@@ -152,7 +152,7 @@ void ColorRGBAEdit::setReadOnly(bool readOnly)
 
 void ColorRGBAEdit::setRed(qreal red)
 {
-    if (qFuzzyCompare(red, m_red))
+    if (qFuzzyCompare(red, m_red) || m_redSpin->isEditing())
     {
         return;
     }
@@ -165,7 +165,7 @@ void ColorRGBAEdit::setRed(qreal red)
 
 void ColorRGBAEdit::setGreen(qreal green)
 {
-    if (qFuzzyCompare(green, m_green))
+    if (qFuzzyCompare(green, m_green) || m_greenSpin->isEditing())
     {
         return;
     }
@@ -177,7 +177,7 @@ void ColorRGBAEdit::setGreen(qreal green)
 
 void ColorRGBAEdit::setBlue(qreal blue)
 {
-    if (qFuzzyCompare(blue, m_blue))
+    if (qFuzzyCompare(blue, m_blue) || m_blueSpin->isEditing())
     {
         return;
     }
@@ -189,7 +189,7 @@ void ColorRGBAEdit::setBlue(qreal blue)
 
 void ColorRGBAEdit::setAlpha(qreal alpha)
 {
-    if (qFuzzyCompare(alpha, m_alpha))
+    if (qFuzzyCompare(alpha, m_alpha) || m_alphaSpin->isEditing())
     {
         return;
     }
@@ -204,9 +204,11 @@ DoubleSpinBox* ColorRGBAEdit::createComponentSpinBox()
     auto spinBox = new DoubleSpinBox(this);
     spinBox->setRange(0.0, 12.5);
     spinBox->setSingleStep(1.0 / 255.0);
-    spinBox->setDecimals(3);
-    spinBox->setFixedWidth(40);
+    spinBox->setDecimals(8);
+    spinBox->setDisplayDecimals(3);
+    spinBox->setFixedWidth(42);
     spinBox->setAlignment(Qt::AlignHCenter);
+    spinBox->setOptions(DoubleSpinBox::SHOW_ONE_DECIMAL_PLACE_ALWAYS);
     return spinBox;
 }
 

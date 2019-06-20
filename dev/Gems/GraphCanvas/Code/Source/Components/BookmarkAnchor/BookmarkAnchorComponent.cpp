@@ -195,13 +195,13 @@ namespace GraphCanvas
         }
     }
 
-    void BookmarkAnchorComponent::OnSceneCleared(const AZ::EntityId& sceneId)
+    void BookmarkAnchorComponent::OnRemovedFromScene(const AZ::EntityId& sceneId)
     {
         SceneBookmarkRequestBus::Handler::BusDisconnect(sceneId);
         BookmarkManagerRequestBus::Event(sceneId, &BookmarkManagerRequests::UnregisterBookmark, GetEntityId());
     }
 
-    void BookmarkAnchorComponent::OnSceneMemberDeserializedForGraph(const AZ::EntityId& graphId)
+    void BookmarkAnchorComponent::OnSceneMemberDeserialized(const AZ::EntityId& graphId, const GraphSerialization&)
     {
         AZ::EntityId conflictId;
         BookmarkManagerRequestBus::EventResult(conflictId, graphId, &BookmarkManagerRequests::FindBookmarkForShortcut, m_saveData.m_shortcut);

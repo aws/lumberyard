@@ -12,23 +12,24 @@
 
 #include "ScaleManipulators.h"
 
+#include <AzToolsFramework/Maths/TransformUtils.h>
+
 namespace AzToolsFramework
 {
-    ScaleManipulators::ScaleManipulators(AZ::EntityId entityId, const AZ::Transform& worldFromLocal)
+    ScaleManipulators::ScaleManipulators(const AZ::Transform& worldFromLocal)
     {
-        m_axisScaleManipulators.reserve(3);
-        for (size_t i = 0; i < 3; ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_axisScaleManipulators.size(); ++manipulatorIndex)
         {
-            m_axisScaleManipulators.emplace_back(AZStd::make_unique<LinearManipulator>(entityId, worldFromLocal));
+            m_axisScaleManipulators[manipulatorIndex] = LinearManipulator::MakeShared(worldFromLocal);
         }
 
-        m_uniformScaleManipulator = AZStd::make_unique<LinearManipulator>(entityId, worldFromLocal);
+        m_uniformScaleManipulator = LinearManipulator::MakeShared(worldFromLocal);
     }
 
     void ScaleManipulators::InstallAxisLeftMouseDownCallback(
         const LinearManipulator::MouseActionCallback& onMouseDownCallback)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
         {
             manipulator->InstallLeftMouseDownCallback(onMouseDownCallback);
         }
@@ -37,7 +38,7 @@ namespace AzToolsFramework
     void ScaleManipulators::InstallAxisMouseMoveCallback(
         const LinearManipulator::MouseActionCallback& onMouseMoveCallback)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
         {
             manipulator->InstallMouseMoveCallback(onMouseMoveCallback);
         }
@@ -46,7 +47,7 @@ namespace AzToolsFramework
     void ScaleManipulators::InstallAxisLeftMouseUpCallback(
         const LinearManipulator::MouseActionCallback& onMouseUpCallback)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
         {
             manipulator->InstallLeftMouseUpCallback(onMouseUpCallback);
         }
@@ -72,17 +73,46 @@ namespace AzToolsFramework
 
     void ScaleManipulators::SetLocalTransform(const AZ::Transform& localTransform)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
         {
             manipulator->SetLocalTransform(localTransform);
         }
 
-        m_uniformScaleManipulator->SetLocalTransform(localTransform);
+        m_uniformScaleManipulator->SetVisualOrientationOverride(
+            QuaternionFromTransformNoScaling(localTransform));
+        m_uniformScaleManipulator->SetLocalTransform(
+            AZ::Transform::CreateTranslation(localTransform.GetTranslation()) *
+            AZ::Transform::CreateScale(localTransform.RetrieveScale()));
+
+        m_localTransform = localTransform;
+    }
+
+    void ScaleManipulators::SetLocalPosition(const AZ::Vector3& localPosition)
+    {
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
+        {
+            manipulator->SetLocalPosition(localPosition);
+        }
+
+        m_uniformScaleManipulator->SetLocalPosition(localPosition);
+
+        m_localTransform.SetTranslation(localPosition);
+    }
+
+    void ScaleManipulators::SetLocalOrientation(const AZ::Quaternion& localOrientation)
+    {
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
+        {
+            manipulator->SetLocalOrientation(localOrientation);
+        }
+
+        m_localTransform = AZ::Transform::CreateFromQuaternionAndTranslation(
+            localOrientation, m_localTransform.GetTranslation());
     }
 
     void ScaleManipulators::SetSpace(const AZ::Transform& worldFromLocal)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
         {
             manipulator->SetSpace(worldFromLocal);
         }
@@ -95,14 +125,14 @@ namespace AzToolsFramework
     {
          AZ::Vector3 axes[] = { axis1, axis2, axis3 };
 
-        for (size_t i = 0; i < m_axisScaleManipulators.size(); ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_axisScaleManipulators.size(); ++manipulatorIndex)
         {
-           m_axisScaleManipulators[i]->SetAxis(axes[i]);
+           m_axisScaleManipulators[manipulatorIndex]->SetAxis(axes[manipulatorIndex]);
         }
 
         // uniform scale manipulator uses Z axis for scaling (always in world space)
         m_uniformScaleManipulator->SetAxis(AZ::Vector3::CreateAxisZ());
-        m_uniformScaleManipulator->OverrideInteractiveManipulatorSpace([](){ return ManipulatorSpace::World; });
+        m_uniformScaleManipulator->UseVisualOrientationOverride(true);
     }
 
     void ScaleManipulators::ConfigureView(
@@ -116,16 +146,16 @@ namespace AzToolsFramework
             axis1Color, axis2Color, axis3Color
         };
 
-        for (size_t i = 0; i < m_axisScaleManipulators.size(); ++i)
+        for (size_t manipulatorIndex = 0; manipulatorIndex < m_axisScaleManipulators.size(); ++manipulatorIndex)
         {
             ManipulatorViews views;
             views.emplace_back(CreateManipulatorViewLine(
-                *m_axisScaleManipulators[i], colors[i], axisLength, lineWidth));
+                *m_axisScaleManipulators[manipulatorIndex], colors[manipulatorIndex], axisLength, lineWidth));
             views.emplace_back(CreateManipulatorViewBox(
-                AZ::Transform::CreateIdentity(), colors[i],
-                m_axisScaleManipulators[i]->GetAxis() * (axisLength - boxSize),
+                AZ::Transform::CreateIdentity(), colors[manipulatorIndex],
+                m_axisScaleManipulators[manipulatorIndex]->GetAxis() * (axisLength - boxSize),
                 AZ::Vector3(boxSize)));
-            m_axisScaleManipulators[i]->SetViews(AZStd::move(views));
+            m_axisScaleManipulators[manipulatorIndex]->SetViews(AZStd::move(views));
         }
 
         ManipulatorViews views;
@@ -137,7 +167,7 @@ namespace AzToolsFramework
 
     void ScaleManipulators::ProcessManipulators(const AZStd::function<void(BaseManipulator*)>& manipulatorFn)
     {
-        for (AZStd::unique_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
+        for (AZStd::shared_ptr<LinearManipulator>& manipulator : m_axisScaleManipulators)
         {
             manipulatorFn(manipulator.get());
         }

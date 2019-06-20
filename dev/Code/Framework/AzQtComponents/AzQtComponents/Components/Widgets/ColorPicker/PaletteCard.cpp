@@ -17,15 +17,15 @@
 #include <AzQtComponents/Components/Style.h>
 #include <QVBoxLayout>
 #include <QMenu>
+#include <QPushButton>
 
 namespace AzQtComponents
 {
 
-PaletteCard::PaletteCard(QSharedPointer<Palette> palette, Internal::ColorController* controller, QUndoStack* undoStack, QWidget* parent)
+PaletteCardBase::PaletteCardBase(QSharedPointer<Palette> palette, Internal::ColorController* controller, QUndoStack* undoStack, QWidget* parent)
     : QWidget(parent)
-    , m_modified(false)
-    , m_header(new CardHeader(this))
     , m_palette(palette)
+    , m_header(new CardHeader(this))
     , m_paletteView(new PaletteView(palette.data(), controller, undoStack, this))
 {
     auto mainLayout = new QVBoxLayout(this);
@@ -35,10 +35,6 @@ PaletteCard::PaletteCard(QSharedPointer<Palette> palette, Internal::ColorControl
     m_header->setHasContextMenu(true);
     mainLayout->addWidget(m_header);
 
-    connect(m_paletteView->model(), &QAbstractItemModel::rowsInserted, this, &PaletteCard::handleModelChanged);
-    connect(m_paletteView->model(), &QAbstractItemModel::rowsRemoved, this, &PaletteCard::handleModelChanged);
-    connect(m_paletteView->model(), &QAbstractItemModel::dataChanged, this, &PaletteCard::handleModelChanged);
-
     connect(m_paletteView, &PaletteView::selectedColorsChanged, this, [controller](const QVector<AZ::Color>& selectedColors) {
         if (selectedColors.size() == 1)
         {
@@ -46,18 +42,34 @@ PaletteCard::PaletteCard(QSharedPointer<Palette> palette, Internal::ColorControl
         }
     });
 
-    auto paletteLayout = new QHBoxLayout();
-    paletteLayout->setContentsMargins(QMargins{ 16, 0, 0, 0 });
-    paletteLayout->addWidget(m_paletteView);
-    mainLayout->addLayout(paletteLayout);
+    m_contentsLayout = new QHBoxLayout();
+
+    // NOTE: this is the default set. The actual, user-configurable margins should be
+    // set by setContentsMargin() by whatever contains the PaletteCardBase
+    const int defaultContentsLeftMargin = 16;
+    m_contentsLayout->setContentsMargins(QMargins{ defaultContentsLeftMargin, 0, 0, 0 });
+
+    m_contentsLayout->addWidget(m_paletteView);
+    mainLayout->addLayout(m_contentsLayout);
 
     connect(m_header, &CardHeader::expanderChanged, m_paletteView, &QWidget::setVisible);
-    connect(m_header, &CardHeader::contextMenuRequested, this, [this](const QPoint& point) {
-        QMenu menu;
-        menu.addAction(tr("Save color library..."), this, &PaletteCard::saveClicked);
-        menu.addAction(tr("Close color library"), this, &PaletteCard::removeClicked);
-        menu.exec(point);
-    });
+    connect(m_header, &CardHeader::contextMenuRequested, this, &PaletteCardBase::contextMenuRequested);
+    connect(m_paletteView, &PaletteView::unselectedContextMenuRequested, this, &PaletteCard::contextMenuRequested);
+}
+
+void PaletteCardBase::setContentsMargins(const QMargins& margins)
+{
+    m_contentsLayout->setContentsMargins(margins);
+}
+
+PaletteCard::PaletteCard(QSharedPointer<Palette> palette, Internal::ColorController* controller, QUndoStack* undoStack, QWidget* parent)
+    : PaletteCardBase(palette, controller, undoStack, parent)
+{
+    connect(m_paletteView->model(), &QAbstractItemModel::rowsInserted, this, &PaletteCard::handleModelChanged);
+    connect(m_paletteView->model(), &QAbstractItemModel::rowsRemoved, this, &PaletteCard::handleModelChanged);
+    connect(m_paletteView->model(), &QAbstractItemModel::dataChanged, this, &PaletteCard::handleModelChanged);
+
+    setFocusPolicy(Qt::NoFocus);
 }
 
 PaletteCard::~PaletteCard()
@@ -104,7 +116,17 @@ void PaletteCard::setModified(bool modified)
     m_header->setStyleSheet(m_header->styleSheet());
 }
 
-QSharedPointer<Palette> PaletteCard::palette() const
+void PaletteCard::setExpanded(bool expanded)
+{
+    m_header->setExpanded(expanded);
+}
+
+bool PaletteCard::isExpanded() const
+{
+    return m_header->isExpanded();
+}
+
+QSharedPointer<Palette> PaletteCardBase::palette() const
 {
     return m_palette;
 }
@@ -129,19 +151,39 @@ void PaletteCard::updateHeader()
     m_header->setTitle(headerText);
 }
 
-void PaletteCard::setSwatchSize(const QSize& size)
+void PaletteCardBase::setSwatchSize(const QSize& size)
 {
     m_paletteView->setItemSize(size);
 }
 
-void PaletteCard::setGammaEnabled(bool enabled)
+void PaletteCardBase::setGammaEnabled(bool enabled)
 {
     m_paletteView->setGammaEnabled(enabled);
 }
 
-void PaletteCard::setGamma(qreal gamma)
+void PaletteCardBase::setGamma(qreal gamma)
 {
     m_paletteView->setGamma(gamma);
+}
+
+void PaletteCardBase::tryAdd(const AZ::Color& color)
+{
+    m_paletteView->tryAddColor(color);
+}
+
+bool PaletteCardBase::contains(const AZ::Color& color) const
+{
+    return m_paletteView->contains(color);
+}
+
+QuickPaletteCard::QuickPaletteCard(QSharedPointer<Palette> palette, Internal::ColorController* controller, QUndoStack* undoStack, QWidget* parent)
+    : PaletteCardBase(palette, controller, undoStack, parent)
+{
+    m_paletteView->addDefaultRGBColors();
+    
+    m_header->setTitle("Quick Palette");
+
+    connect(m_paletteView, &PaletteView::selectedColorsChanged, this, &QuickPaletteCard::selectedColorsChanged);
 }
 
 } // namespace AzQtComponents

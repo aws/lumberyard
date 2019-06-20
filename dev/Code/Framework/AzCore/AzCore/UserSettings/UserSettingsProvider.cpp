@@ -45,6 +45,8 @@ namespace AZ
     void UserSettingsProvider::Activate(u32 bindToProviderId)
     {
         UserSettingsBus::Handler::BusConnect(bindToProviderId);
+
+        UserSettingsNotificationBus::Event(bindToProviderId, &UserSettingsNotifications::OnUserSettingsActivated);
     }
     //-----------------------------------------------------------------------------
     void UserSettingsProvider::Deactivate()

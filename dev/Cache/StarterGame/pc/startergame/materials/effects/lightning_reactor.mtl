@@ -1,0 +1,7 @@
+<Material MtlFlags="524326" Shader="Illum" GenMask="80000001" StringGenMask="%ALLOW_SILHOUETTE_POM%SUBSURFACE_SCATTERING" SurfaceType="" Diffuse="0.69408053,0.13609855,0.015175238" Specular="0,0,0" Emittance="1,1,1,200" Opacity="0.99000001" Shininess="10" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Diffuse" File="textures/sprites/lightning/lightning_tiled.tif"/>
+  <Texture Map="Emittance" File="textures/sprites/lightning/lightning_tiled.tif"/>
+ </Textures>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

@@ -12,91 +12,38 @@
 
 #include "LmbrCentral_precompiled.h"
 #include "EditorSplineComponent.h"
+#include "EditorSplineComponentMode.h"
 
 #include <AzCore/Serialization/EditContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
-#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
-#include <AzToolsFramework/Manipulators/ManipulatorView.h>
+#include <AzFramework/Viewport/CameraState.h>
 #include <AzFramework/Viewport/ViewportColors.h>
+#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
+#include <AzToolsFramework/Viewport/VertexContainerDisplay.h>
+#include <AzToolsFramework/ViewportSelection/EditorSelectionUtil.h>
+
 #include "MathConversion.h"
 
 namespace LmbrCentral
 {
-    static const float s_selectionTolerance = 0.5f;
+    static const float s_lineWidth = 0.1f; ///< The 'virtual' width of the line (for selection)
 
-    SplineHoverSelection::SplineHoverSelection() {}
-
-    SplineHoverSelection::~SplineHoverSelection() {}
-
-    void SplineHoverSelection::Create(AZ::EntityId entityId, AzToolsFramework::ManipulatorManagerId managerId)
+    void EditorSplineComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
     {
-        m_splineSelectionManipulator = AZStd::make_shared<AzToolsFramework::SplineSelectionManipulator>(entityId);
-        m_splineSelectionManipulator->Register(managerId);
-
-        if (const AZStd::shared_ptr<const AZ::Spline> spline = m_spline.lock())
-        {
-            const float splineWidth = 0.05f;
-            m_splineSelectionManipulator->SetSpline(spline);
-            m_splineSelectionManipulator->SetView(CreateManipulatorViewSplineSelect(
-                *m_splineSelectionManipulator, AZ::Color(0.0f, 1.0f, 0.0f, 1.0f), splineWidth));
-        }
-
-        m_splineSelectionManipulator->InstallLeftMouseUpCallback([this](
-            const AzToolsFramework::SplineSelectionManipulator::Action& action)
-        {
-            if (AZStd::shared_ptr<AZ::Spline> spline = m_spline.lock())
-            {
-                // wrap vertex container in variable vertices interface
-                AzToolsFramework::VariableVerticesVertexContainer<AZ::Vector3> vertices(spline->m_vertexContainer);
-                AzToolsFramework::InsertVertex(vertices,
-                    action.m_splineAddress.m_segmentIndex,
-                    action.m_localSplineHitPosition);
-            }
-        });
+        required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
     }
 
-    void SplineHoverSelection::Destroy()
+    void EditorSplineComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
-        if (m_splineSelectionManipulator)
-        {
-            m_splineSelectionManipulator->Unregister();
-            m_splineSelectionManipulator.reset();
-        }
+        provided.push_back(AZ_CRC("SplineService", 0x2b674d3c));
+        provided.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
+        provided.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
     }
 
-    void SplineHoverSelection::Register(AzToolsFramework::ManipulatorManagerId managerId)
+    void EditorSplineComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
     {
-        if (m_splineSelectionManipulator)
-        {
-            m_splineSelectionManipulator->Register(managerId);
-        }
-    }
-
-    void SplineHoverSelection::Unregister()
-    {
-        if (m_splineSelectionManipulator)
-        {
-            m_splineSelectionManipulator->Unregister();
-        }
-    }
-
-    void SplineHoverSelection::SetBoundsDirty()
-    {
-        if (m_splineSelectionManipulator)
-        {
-            m_splineSelectionManipulator->SetBoundsDirty();
-        }
-    }
-
-    void SplineHoverSelection::Refresh()
-    {
-        SetBoundsDirty();
-    }
-
-    static const float s_controlPointSize = 0.1f;
-
-    EditorSplineComponent::~EditorSplineComponent()
-    {
+        incompatible.push_back(AZ_CRC("VariableVertexContainerService", 0x70c58740));
+        incompatible.push_back(AZ_CRC("FixedVertexContainerService", 0x83f1bbf2));
     }
 
     void EditorSplineComponent::Reflect(AZ::ReflectContext* context)
@@ -107,6 +54,7 @@ namespace LmbrCentral
                 ->Version(2)
                 ->Field("Visible", &EditorSplineComponent::m_visibleInEditor)
                 ->Field("Configuration", &EditorSplineComponent::m_splineCommon)
+                ->Field("ComponentMode", &EditorSplineComponent::m_componentModeDelegate)
                 ;
 
             if (AZ::EditContext* editContext = serializeContext->GetEditContext())
@@ -124,6 +72,8 @@ namespace LmbrCentral
                     ->DataElement(AZ::Edit::UIHandlers::Default, &EditorSplineComponent::m_splineCommon, "Configuration", "Spline Configuration")
                         //->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly) // disabled - prevents ChangeNotify attribute firing correctly
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorSplineComponent::SplineChanged)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorSplineComponent::m_componentModeDelegate, "Component Mode", "Spline Component Mode")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
             }
         }
@@ -136,19 +86,20 @@ namespace LmbrCentral
         const AZ::EntityId entityId = GetEntityId();
 
         AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(entityId);
-        AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusConnect(GetEntityId());
+        AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusConnect(entityId);
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(entityId);
-        EntitySelectionEvents::Bus::Handler::BusConnect(entityId);
         SplineComponentRequestBus::Handler::BusConnect(entityId);
+        AZ::VariableVerticesRequestBus<AZ::Vector3>::Handler::BusConnect(entityId);
+        AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler::BusConnect(entityId);
         AZ::TransformNotificationBus::Handler::BusConnect(entityId);
-        ToolsApplicationEvents::Bus::Handler::BusConnect();
 
-        m_currentTransform = AZ::Transform::CreateIdentity();
-        AZ::TransformBus::EventResult(m_currentTransform, GetEntityId(), &AZ::TransformBus::Events::GetWorldTM);
+        m_cachedUniformScaleTransform = AZ::Transform::CreateIdentity();
+        AZ::TransformBus::EventResult(m_cachedUniformScaleTransform, entityId, &AZ::TransformBus::Events::GetWorldTM);
+        m_cachedUniformScaleTransform = AzToolsFramework::TransformUniformScale(m_cachedUniformScaleTransform);
 
         bool selected = false;
         AzToolsFramework::EditorEntityInfoRequestBus::EventResult(
-            selected, GetEntityId(), &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
+            selected, entityId, &AzToolsFramework::EditorEntityInfoRequestBus::Events::IsSelected);
 
         // placeholder - create initial spline if empty
         AZ::VertexContainer<AZ::Vector3>& vertexContainer = m_splineCommon.m_spline->m_vertexContainer;
@@ -158,55 +109,55 @@ namespace LmbrCentral
             vertexContainer.AddVertex(AZ::Vector3(-1.0f, 0.0f, 0.0f));
             vertexContainer.AddVertex(AZ::Vector3(1.0f, 0.0f, 0.0f));
             vertexContainer.AddVertex(AZ::Vector3(3.0f, 0.0f, 0.0f));
-
-            CreateManipulators();
         }
 
-        const auto containerChanged = [this]()
+        const auto vertexAdded = [this](size_t vertIndex)
         {
-            // destroy and recreate manipulators when container is modified (vertices are added or removed)
-            m_vertexSelection.Destroy();
-            CreateManipulators();
-            SplineChanged();
-        };
-
-        const auto vertexAdded = [this, containerChanged](size_t index)
-        {
-            containerChanged();
-            SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnVertexAdded, index);
-            AzToolsFramework::ManipulatorManagerId managerId = AzToolsFramework::ManipulatorManagerId(1);
-            m_vertexSelection.CreateTranslationManipulator(GetEntityId(), managerId,
-                AzToolsFramework::TranslationManipulators::Dimensions::Three,
-                m_splineCommon.m_spline->m_vertexContainer.GetVertices()[index], index,
-                AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
-        };
-
-        const auto vertexRemoved = [this, containerChanged](size_t index)
-        {
-            containerChanged();
-            SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnVertexRemoved, index);
-        };
-
-        const auto vertexUpdated = [this]()
-        {
-            SplineChanged();
-            m_vertexSelection.RefreshLocal();
-        };
-
-        const auto verticesSet = [this, containerChanged]()
-        {
-            containerChanged();
             SplineComponentNotificationBus::Event(
-                GetEntityId(),
-                &SplineComponentNotificationBus::Events::OnVerticesSet,
-                m_splineCommon.m_spline->GetVertices()
-            );
+                GetEntityId(), &SplineComponentNotificationBus::Events::OnVertexAdded, vertIndex);
+
+            SplineChanged();
         };
 
-        const auto verticesCleared = [this, containerChanged]()
+        const auto vertexRemoved = [this](size_t vertIndex)
         {
-            containerChanged();
-            SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnVerticesCleared);
+            SplineComponentNotificationBus::Event(
+                GetEntityId(), &SplineComponentNotificationBus::Events::OnVertexRemoved, vertIndex);
+
+            SplineChanged();
+        };
+
+        const auto vertexUpdated = [this](size_t vertIndex)
+        {
+            SplineComponentNotificationBus::Event(
+                GetEntityId(), &SplineComponentNotificationBus::Events::OnVertexUpdated, vertIndex);
+
+            SplineChanged();
+        };
+
+        const auto verticesSet = [this]()
+        {
+            SplineComponentNotificationBus::Event(
+                GetEntityId(), &SplineComponentNotificationBus::Events::OnVerticesSet,
+                m_splineCommon.m_spline->GetVertices());
+
+            SplineChanged();
+        };
+
+        const auto verticesCleared = [this]()
+        {
+            SplineComponentNotificationBus::Event(
+                GetEntityId(), &SplineComponentNotificationBus::Events::OnVerticesCleared);
+
+            SplineChanged();
+        };
+
+        const auto openCloseChanged = [this](const bool closed)
+        {
+            SplineComponentNotificationBus::Event(
+                GetEntityId(), &SplineComponentNotificationBus::Events::OnOpenCloseChanged, closed);
+
+            SplineChanged();
         };
 
         m_splineCommon.SetCallbacks(
@@ -215,27 +166,31 @@ namespace LmbrCentral
             vertexUpdated,
             verticesSet,
             verticesCleared,
-            [this]() { OnChangeSplineType(); });
+            [this]() { OnChangeSplineType(); },
+            openCloseChanged);
+
+        m_componentModeDelegate.ConnectWithSingleComponentMode<
+            EditorSplineComponent, EditorSplineComponentMode>(
+                AZ::EntityComponentIdPair(GetEntityId(), GetId()), this);
     }
 
     void EditorSplineComponent::Deactivate()
     {
-        m_splineCommon.SetCallbacks(
-            nullptr, nullptr, nullptr,
-            nullptr, nullptr, nullptr);
-
-        m_vertexSelection.Destroy();
-
         EditorComponentBase::Deactivate();
 
-        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
-        AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusDisconnect();
+        m_splineCommon.SetCallbacks(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr);
 
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
-        EntitySelectionEvents::Bus::Handler::BusDisconnect();
-        SplineComponentRequestBus::Handler::BusDisconnect();
+        m_componentModeDelegate.Disconnect();
+
         AZ::TransformNotificationBus::Handler::BusDisconnect();
-        ToolsApplicationEvents::Bus::Handler::BusDisconnect();
+        AZ::FixedVerticesRequestBus<AZ::Vector3>::Handler::BusDisconnect();
+        AZ::VariableVerticesRequestBus<AZ::Vector3>::Handler::BusDisconnect();
+        SplineComponentRequestBus::Handler::BusDisconnect();
+        AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorComponentSelectionNotificationsBus::Handler::BusDisconnect();
+        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
     }
 
     void EditorSplineComponent::BuildGameEntity(AZ::Entity* gameEntity)
@@ -246,23 +201,41 @@ namespace LmbrCentral
         }
     }
 
-    static void DrawSpline(const AZ::Spline& spline, size_t begin, size_t end, AzFramework::EntityDebugDisplayRequests* displayContext)
+    static void DrawSpline(
+        const AZ::Spline& spline, const size_t begin, const size_t end,
+        const AZ::Transform& worldFromLocal, AzFramework::DebugDisplayRequests& debugDisplay)
     {
         const size_t granularity = spline.GetSegmentGranularity();
 
-        for (size_t i = begin; i < end; ++i)
+        for (size_t vertIndex = begin; vertIndex < end; ++vertIndex)
         {
-            AZ::Vector3 p1 = spline.GetVertex(i - 1);
-            for (size_t j = 1; j <= granularity; ++j)
+            AZ::Vector3 p1 = worldFromLocal * spline.GetVertex(vertIndex - 1);
+            for (size_t granularityStep = 1; granularityStep <= granularity; ++granularityStep)
             {
-                AZ::Vector3 p2 = spline.GetPosition(AZ::SplineAddress(i - 1, j / static_cast<float>(granularity)));
-                displayContext->DrawLine(p1, p2);
+                const AZ::Vector3 p2 = worldFromLocal * spline.GetPosition(
+                    AZ::SplineAddress(vertIndex - 1, granularityStep / static_cast<float>(granularity)));
+                debugDisplay.DrawLine(p1, p2);
                 p1 = p2;
             }
         }
     }
 
-    void EditorSplineComponent::DisplayEntity(bool& handled)
+    static void DrawVertices(
+        const AZ::Spline& spline, const AZ::Transform& worldFromLocal,
+        const AzFramework::CameraState& cameraState,
+        const size_t begin, const size_t end, AzFramework::DebugDisplayRequests& debugDisplay)
+    {
+        for (size_t vertIndex = begin; vertIndex < end; ++vertIndex)
+        {
+            const AZ::Vector3& worldPosition = worldFromLocal * spline.GetVertex(vertIndex);
+            debugDisplay.DrawBall(
+                worldPosition, 0.075f * AzToolsFramework::CalculateScreenToWorldMultiplier(worldPosition, cameraState));
+        }
+    }
+
+    void EditorSplineComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
         const bool mouseHovered = m_accentType == AzToolsFramework::EntityAccentType::Hover;
         if (!IsSelected() && !m_visibleInEditor && !mouseHovered)
@@ -270,10 +243,10 @@ namespace LmbrCentral
             return;
         }
 
-        handled = true;
-
-        AzFramework::EntityDebugDisplayRequests* displayContext = AzFramework::EntityDebugDisplayRequestBus::FindFirstHandler();
-        AZ_Assert(displayContext, "Invalid display context.");
+        AzFramework::CameraState cameraState;
+        AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::EventResult(
+            cameraState, viewportInfo.m_viewportId,
+            &AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
 
         const AZ::Spline* spline = m_splineCommon.m_spline.get();
         const size_t vertexCount = spline->GetVertexCount();
@@ -282,72 +255,86 @@ namespace LmbrCentral
             return;
         }
 
-        displayContext->PushMatrix(GetWorldTM());
-
         // Set color
         if (IsSelected())
         {
-            displayContext->SetColor(AzFramework::ViewportColors::SelectedColor);
+            debugDisplay.SetColor(AzFramework::ViewportColors::SelectedColor);
         }
         else if(mouseHovered)
         {
-            displayContext->SetColor(AzFramework::ViewportColors::HoverColor);
+            debugDisplay.SetColor(AzFramework::ViewportColors::HoverColor);
         }
         else
         {
-            displayContext->SetColor(AzFramework::ViewportColors::DeselectedColor);
+            debugDisplay.SetColor(AzFramework::ViewportColors::DeselectedColor);
         }
+
+        const bool inComponentMode = m_componentModeDelegate.AddedToComponentMode();
 
         // render spline
         if (spline->RTTI_IsTypeOf(AZ::LinearSpline::RTTI_Type()) || spline->RTTI_IsTypeOf(AZ::BezierSpline::RTTI_Type()))
         {
-            DrawSpline(*spline, 1, spline->IsClosed() ? vertexCount + 1 : vertexCount, displayContext);
+            DrawSpline(
+                *spline, 1, spline->IsClosed() ? vertexCount + 1 : vertexCount,
+                m_cachedUniformScaleTransform, debugDisplay);
+
+            if (!inComponentMode)
+            {
+                DrawVertices(*spline, m_cachedUniformScaleTransform, cameraState, 0, vertexCount, debugDisplay);
+            }
         }
         else if (spline->RTTI_IsTypeOf(AZ::CatmullRomSpline::RTTI_Type()))
         {
-            // catmull-rom splines use the first and last points as control points only, omit those for display
-            DrawSpline(*spline, spline->IsClosed() ? 1 : 2, spline->IsClosed() ? vertexCount + 1 : vertexCount - 1, displayContext);
+            // Catmull-Rom splines use the first and last points as control points only, omit those for display
+            DrawSpline(
+                *spline, spline->IsClosed() ? 1 : 2, spline->IsClosed() ? vertexCount + 1 : vertexCount - 1,
+                m_cachedUniformScaleTransform, debugDisplay);
+
+            if (!inComponentMode)
+            {
+                DrawVertices(*spline, m_cachedUniformScaleTransform, cameraState, 1, vertexCount - 1, debugDisplay);
+            }
         }
 
-        AzToolsFramework::EditorVertexSelectionUtil::DisplayVertexContainerIndices(*displayContext, m_vertexSelection, GetWorldTM(), IsSelected());
-
-        displayContext->PopMatrix();
+        if (inComponentMode)
+        {
+            AzToolsFramework::VertexContainerDisplay::DisplayVertexContainerIndices(
+                debugDisplay, AzToolsFramework::VariableVerticesVertexContainer<AZ::Vector3>(
+                    m_splineCommon.m_spline->m_vertexContainer), m_cachedUniformScaleTransform, IsSelected());
+        }
     }
 
-    void EditorSplineComponent::OnSelected()
-    {
-        // ensure any maniulators are destroyed before recreated - (for undo/redo)
-        m_vertexSelection.Destroy();
-        CreateManipulators();
-    }
-
-    void EditorSplineComponent::OnDeselected()
-    {
-        m_vertexSelection.Destroy();
-    }
-
-    AZ::Aabb EditorSplineComponent::GetEditorSelectionBounds()
+    AZ::Aabb EditorSplineComponent::GetEditorSelectionBoundsViewport(
+        const AzFramework::ViewportInfo& viewportInfo)
     {
         AZ::Aabb aabb = AZ::Aabb::CreateNull();
-        m_splineCommon.m_spline->GetAabb(aabb, m_currentTransform);
+        m_splineCommon.m_spline->GetAabb(aabb, m_cachedUniformScaleTransform);
 
-        const AZ::VectorFloat selectionTolerance = AZ::VectorFloat(s_selectionTolerance);
+        AzFramework::CameraState cameraState;
+        AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::EventResult(
+            cameraState, viewportInfo.m_viewportId,
+            &AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
+
+        const float screenToWorldScale = AzToolsFramework::CalculateScreenToWorldMultiplier(
+            m_cachedUniformScaleTransform.GetTranslation(), cameraState);
+
+        const AZ::VectorFloat lineWidth = AZ::VectorFloat(s_lineWidth * screenToWorldScale);
         AZ::Vector3 expandExtents = AZ::Vector3::CreateZero();
         const AZ::Vector3 extents = aabb.GetExtents();
 
-        if (extents.GetX().IsLessThan(s_selectionTolerance))
+        if (extents.GetX().IsLessThan(lineWidth))
         {
-            expandExtents.SetX(selectionTolerance);
+            expandExtents.SetX(lineWidth);
         }
 
-        if (extents.GetY().IsLessThan(s_selectionTolerance))
+        if (extents.GetY().IsLessThan(lineWidth))
         {
-            expandExtents.SetY(selectionTolerance);
+            expandExtents.SetY(lineWidth);
         }
 
-        if (extents.GetZ().IsLessThan(s_selectionTolerance))
+        if (extents.GetZ().IsLessThan(lineWidth))
         {
-            expandExtents.SetY(selectionTolerance);
+            expandExtents.SetZ(lineWidth);
         }
 
         aabb.Expand(expandExtents);
@@ -355,75 +342,41 @@ namespace LmbrCentral
         return aabb;
     }
 
-    bool EditorSplineComponent::EditorSelectionIntersectRay(const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
+    bool EditorSplineComponent::EditorSelectionIntersectRayViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        const AZ::Vector3& src, const AZ::Vector3& dir, AZ::VectorFloat& distance)
     {
-        const auto rayIntersectData = IntersectSpline(m_currentTransform, src, dir, *m_splineCommon.m_spline);
-        distance = rayIntersectData.m_rayDistance * m_currentTransform.RetrieveScale().GetMaxElement();
+        const auto rayIntersectData = IntersectSpline(m_cachedUniformScaleTransform, src, dir, *m_splineCommon.m_spline);
+        distance = rayIntersectData.m_rayDistance * m_cachedUniformScaleTransform.RetrieveScale().GetMaxElement();
 
-        return static_cast<float>(rayIntersectData.m_distanceSq) < powf(s_selectionTolerance, 2.0f);
+        AzFramework::CameraState cameraState;
+        AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::EventResult(
+            cameraState, viewportInfo.m_viewportId,
+            &AzToolsFramework::ViewportInteraction::ViewportInteractionRequestBus::Events::GetCameraState);
+
+        const float screenToWorldScale = AzToolsFramework::CalculateScreenToWorldMultiplier(
+            m_cachedUniformScaleTransform.GetTranslation(), cameraState);
+
+        return (static_cast<float>(rayIntersectData.m_distanceSq) < powf(s_lineWidth * screenToWorldScale, 2.0f));
     }
 
     void EditorSplineComponent::OnTransformChanged(const AZ::Transform& /*local*/, const AZ::Transform& world)
     {
-        m_currentTransform = world;
-        // update the space manipulators are in after the entity has moved
-        m_vertexSelection.RefreshSpace(world);
-    }
-
-    void EditorSplineComponent::CreateManipulators()
-    {
-        bool selected = false;
-        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
-            selected, &AzToolsFramework::ToolsApplicationRequests::IsSelected, GetEntityId());
-
-        if (!selected)
-        {
-            return;
-        }
-
-        // if we have no vertices, do not attempt to create any manipulators
-        if (m_splineCommon.m_spline->m_vertexContainer.Empty())
-        {
-            return;
-        }
-
-        AZStd::unique_ptr<SplineHoverSelection> splineHoverSelection =
-            AZStd::make_unique<SplineHoverSelection>();
-        splineHoverSelection->m_spline = m_splineCommon.m_spline;
-        m_vertexSelection.m_hoverSelection = AZStd::move(splineHoverSelection);
-
-        // create interface wrapping internal vertex container for use by vertex selection
-        m_vertexSelection.m_vertices =
-            AZStd::make_unique<AzToolsFramework::VariableVerticesVertexContainer<AZ::Vector3>>(
-                m_splineCommon.m_spline->m_vertexContainer);
-
-        m_vertexSelection.Create(GetEntityId(), AzToolsFramework::ManipulatorManagerId(1),
-            AzToolsFramework::TranslationManipulators::Dimensions::Three,
-            AzToolsFramework::ConfigureTranslationManipulatorAppearance3d);
-    }
-
-    void EditorSplineComponent::AfterUndoRedo()
-    {
-        bool selected;
-        AzToolsFramework::ToolsApplicationRequestBus::BroadcastResult(
-            selected, &AzToolsFramework::ToolsApplicationRequests::IsSelected, GetEntityId());
-        if (selected)
-        {
-            m_vertexSelection.Destroy();
-            CreateManipulators();
-        }
+        m_cachedUniformScaleTransform = AzToolsFramework::TransformUniformScale(world);
     }
 
     void EditorSplineComponent::OnChangeSplineType()
     {
-        m_vertexSelection.Destroy();
-        CreateManipulators();
+        EditorSplineComponentNotificationBus::Event(
+            GetEntityId(), &EditorSplineComponentNotifications::OnSplineTypeChanged);
+
         SplineChanged();
     }
 
     void EditorSplineComponent::SplineChanged() const
     {
-        SplineComponentNotificationBus::Event(GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
+        SplineComponentNotificationBus::Event(
+            GetEntityId(), &SplineComponentNotificationBus::Events::OnSplineChanged);
     }
 
     AZ::SplinePtr EditorSplineComponent::GetSpline()
@@ -431,25 +384,25 @@ namespace LmbrCentral
         return m_splineCommon.m_spline;
     }
 
-    void EditorSplineComponent::ChangeSplineType(AZ::u64 splineType)
+    void EditorSplineComponent::ChangeSplineType(const AZ::u64 splineType)
     {
         m_splineCommon.ChangeSplineType(splineType);
     }
 
-    void EditorSplineComponent::SetClosed(bool closed)
+    void EditorSplineComponent::SetClosed(const bool closed)
     {
         m_splineCommon.m_spline->SetClosed(closed);
         SplineChanged();
     }
 
-    bool EditorSplineComponent::GetVertex(size_t index, AZ::Vector3& vertex) const
+    bool EditorSplineComponent::GetVertex(const size_t vertIndex, AZ::Vector3& vertex) const
     {
-        return m_splineCommon.m_spline->m_vertexContainer.GetVertex(index, vertex);
+        return m_splineCommon.m_spline->m_vertexContainer.GetVertex(vertIndex, vertex);
     }
 
-    bool EditorSplineComponent::UpdateVertex(size_t index, const AZ::Vector3& vertex)
+    bool EditorSplineComponent::UpdateVertex(const size_t vertIndex, const AZ::Vector3& vertex)
     {
-        if (m_splineCommon.m_spline->m_vertexContainer.UpdateVertex(index, vertex))
+        if (m_splineCommon.m_spline->m_vertexContainer.UpdateVertex(vertIndex, vertex))
         {
             SplineChanged();
             return true;
@@ -464,9 +417,9 @@ namespace LmbrCentral
         SplineChanged();
     }
 
-    bool EditorSplineComponent::InsertVertex(size_t index, const AZ::Vector3& vertex)
+    bool EditorSplineComponent::InsertVertex(const size_t vertIndex, const AZ::Vector3& vertex)
     {
-        if (m_splineCommon.m_spline->m_vertexContainer.InsertVertex(index, vertex))
+        if (m_splineCommon.m_spline->m_vertexContainer.InsertVertex(vertIndex, vertex))
         {
             SplineChanged();
             return true;
@@ -475,9 +428,9 @@ namespace LmbrCentral
         return false;
     }
 
-    bool EditorSplineComponent::RemoveVertex(size_t index)
+    bool EditorSplineComponent::RemoveVertex(const size_t vertIndex)
     {
-        if (m_splineCommon.m_spline->m_vertexContainer.RemoveVertex(index))
+        if (m_splineCommon.m_spline->m_vertexContainer.RemoveVertex(vertIndex))
         {
             SplineChanged();
             return true;

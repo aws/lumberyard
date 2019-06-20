@@ -69,12 +69,16 @@ namespace AZ
                 //! Note that updates to the target may change what modifiers can be accepted. For instance
                 //! if a group only accepts a single rule of a particular type, calling this function a second time
                 //! will not include the uuid of that rule.
+                //! This method is called when the "Add Modifier" button is pressed in the FBX Settings Editor.
                 SCENE_CORE_API virtual void GetAvailableModifiers(ModifiersList& modifiers, const Containers::Scene& scene, 
                     const DataTypes::IManifestObject& target);
 
                 //! Initialized the given manifest object based on the scene. Depending on what other entries have been added
                 //! to the manifest, an implementation of this function may decided that certain values should or shouldn't
                 //! be added, such as not adding meshes to a group that already belong to another group.
+                //! This method is always called each time a Group type of object is created in memory (e.g. When the user
+                //! clicks the "Add another Mesh" or "Add another Actor" in the FBX Settings Editor). Overriders of this method
+                //! should check the type of the \p target to decide to take action (e.g. add a Modifier) or do nothing.
                 SCENE_CORE_API virtual void InitializeObject(const Containers::Scene& scene, DataTypes::IManifestObject& target);
 
                 //! Called when an existing object is updated. This is not called when an object is initialized, which is handled,

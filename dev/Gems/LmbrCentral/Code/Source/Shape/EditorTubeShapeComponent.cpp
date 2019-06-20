@@ -13,6 +13,10 @@
 #include "LmbrCentral_precompiled.h"
 #include "EditorTubeShapeComponent.h"
 
+#include "EditorSplineComponent.h"
+#include "EditorSplineComponentMode.h"
+#include "EditorTubeShapeComponentMode.h"
+
 #include <AzCore/Serialization/EditContext.h>
 #include <AzToolsFramework/UI/PropertyEditor/PropertyEditorAPI.h>
 #include <LmbrCentral/Shape/ShapeComponentBus.h>
@@ -27,8 +31,10 @@ namespace LmbrCentral
         if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serializeContext->Class<EditorTubeShapeComponent, EditorBaseShapeComponent>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("TubeShape", &EditorTubeShapeComponent::m_tubeShape)
+                ->Field("TubeShapeMeshConfig", &EditorTubeShapeComponent::m_tubeShapeMeshConfig)
+                ->Field("ComponentMode", &EditorTubeShapeComponent::m_componentModeDelegate)
                 ;
 
             if (auto editContext = serializeContext->GetEditContext())
@@ -46,9 +52,18 @@ namespace LmbrCentral
                         ->Attribute(AZ::Edit::Attributes::ChangeNotify, &EditorTubeShapeComponent::ConfigurationChanged)
                         //->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly) // disabled - prevents ChangeNotify attribute firing correctly
                         ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
+                    ->DataElement(AZ::Edit::UIHandlers::Default, &EditorTubeShapeComponent::m_componentModeDelegate, "Component Mode", "Tube Component Mode")
+                        ->Attribute(AZ::Edit::Attributes::Visibility, AZ::Edit::PropertyVisibility::ShowChildrenOnly)
                         ;
             }
         }
+    }
+
+    void EditorTubeShapeComponent::Init()
+    {
+        EditorBaseShapeComponent::Init();
+
+        SetShapeComponentConfig(&m_tubeShapeMeshConfig.m_shapeComponentConfig);
     }
 
     void EditorTubeShapeComponent::Activate()
@@ -58,12 +73,44 @@ namespace LmbrCentral
         SplineAttributeNotificationBus::Handler::BusConnect(GetEntityId());
         m_tubeShape.Activate(GetEntityId());
         AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
+        EditorTubeShapeComponentRequestBus::Handler::BusConnect(GetEntityId());
+
+        // connect the ComponentMode delegate to this entity/component id pair
+        m_componentModeDelegate.Connect<EditorTubeShapeComponent>(AZ::EntityComponentIdPair(GetEntityId(), GetId()), this);
+        // setup the ComponentMode(s) to add for the editing of this Component (in this case Spline and Tube ComponentModes)
+        m_componentModeDelegate.SetAddComponentModeCallback([this](const AZ::EntityComponentIdPair& entityComponentIdPair)
+        {
+            using namespace AzToolsFramework::ComponentModeFramework;
+
+            // builder for TubeComponentMode
+            const auto tubeComponentModeBuilder =
+                CreateComponentModeBuilder<EditorTubeShapeComponent, EditorTubeShapeComponentMode>(
+                    entityComponentIdPair);
+
+            // must have a Spline to have a Tube - create builder for Spline as well
+            const auto splineComponentId = GetEntity()->FindComponent<EditorSplineComponent>()->GetId();
+            const auto splineComponentModeBuilder =
+                CreateComponentModeBuilder<EditorSplineComponent, EditorSplineComponentMode>(
+                    AZ::EntityComponentIdPair(GetEntityId(), splineComponentId));
+
+            // aggregate builders
+            const auto entityAndComponentModeBuilder =
+                EntityAndComponentModeBuilders(
+                    GetEntityId(), { tubeComponentModeBuilder, splineComponentModeBuilder });
+
+            // updates modes to add when entering ComponentMode
+            ComponentModeSystemRequestBus::Broadcast(
+                &ComponentModeSystemRequests::AddComponentModes, entityAndComponentModeBuilder);
+        });
 
         GenerateVertices();
     }
 
     void EditorTubeShapeComponent::Deactivate()
     {
+        m_componentModeDelegate.Disconnect();
+
+        EditorTubeShapeComponentRequestBus::Handler::BusDisconnect();
         AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         m_tubeShape.Deactivate();
         SplineAttributeNotificationBus::Handler::BusDisconnect();
@@ -87,13 +134,15 @@ namespace LmbrCentral
             m_tubeShapeMesh.m_indexBuffer, m_tubeShapeMesh.m_lineBuffer);
     }
 
-    void EditorTubeShapeComponent::DisplayEntity(bool& handled)
+    void EditorTubeShapeComponent::DisplayEntityViewport(
+        const AzFramework::ViewportInfo& viewportInfo,
+        AzFramework::DebugDisplayRequests& debugDisplay)
     {
-        DisplayShape(handled,
-            [this]() { return CanDraw(); },
-            [this](AzFramework::EntityDebugDisplayRequests* displayContext)
+        DisplayShape(
+            debugDisplay, [this]() { return CanDraw(); },
+            [this](AzFramework::DebugDisplayRequests& debugDisplay)
             {
-                DrawShape(displayContext, { m_shapeColor, m_shapeWireColor, m_displayFilled }, m_tubeShapeMesh);
+                DrawShape(debugDisplay, { m_shapeColor, m_shapeWireColor, m_displayFilled }, m_tubeShapeMesh);
             },
             m_tubeShape.GetCurrentTransform());
     }
@@ -101,7 +150,9 @@ namespace LmbrCentral
     void EditorTubeShapeComponent::ConfigurationChanged()
     {
         GenerateVertices();
-        ShapeComponentNotificationsBus::Event(GetEntityId(), &ShapeComponentNotificationsBus::Events::OnShapeChanged, ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
+        ShapeComponentNotificationsBus::Event(
+            GetEntityId(), &ShapeComponentNotificationsBus::Events::OnShapeChanged,
+            ShapeComponentNotifications::ShapeChangeReasons::ShapeChanged);
     }
 
     void EditorTubeShapeComponent::OnSplineChanged()
@@ -111,31 +162,50 @@ namespace LmbrCentral
 
     void EditorTubeShapeComponent::OnAttributeAdded(size_t index)
     {
-        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
+        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+            &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
+            AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
     }
 
     void EditorTubeShapeComponent::OnAttributeRemoved(size_t index)
     {
-        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
+        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+            &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
+            AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
     }
 
     void EditorTubeShapeComponent::OnAttributesSet(size_t size)
     {
-        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
+        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+            &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
+            AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
     }
 
     void EditorTubeShapeComponent::OnAttributesCleared()
     {
-        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(&AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh, AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
+        AzToolsFramework::PropertyEditorGUIMessages::Bus::Broadcast(
+            &AzToolsFramework::PropertyEditorGUIMessages::RequestRefresh,
+            AzToolsFramework::PropertyModificationRefreshLevel::Refresh_EntireTree);
     }
 
     void EditorTubeShapeComponent::BuildGameEntity(AZ::Entity* gameEntity)
     {
+        const bool isActive = GetEntity() ? (GetEntity()->GetState() == AZ::Entity::ES_ACTIVE) : false;
+        if (isActive)
+        {
+            m_tubeShape.Deactivate();
+        }
+
         gameEntity->CreateComponent<TubeShapeComponent>(m_tubeShape);
 
         if (m_visibleInGameView)
         {
             gameEntity->CreateComponent<TubeShapeDebugDisplayComponent>(m_tubeShapeMeshConfig);
+        }
+
+        if (isActive)
+        {
+            m_tubeShape.Activate(GetEntityId());
         }
     }
 } // namespace LmbrCentral

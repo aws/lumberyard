@@ -12,31 +12,26 @@
 
 #pragma once
 
-#include <AzCore/EBus/EBus.h>
-#include <AzFramework/Asset/SimpleAsset.h>
-#include <LmbrCentral/Rendering/MeshAsset.h>
-#include <LmbrCentral/Rendering/MaterialAsset.h>
+#include <AzCore/Component/ComponentBus.h>
+#include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/VertexContainerInterface.h>
 
 namespace Visibility
 {
-    // Request bus for the component
+    /// Request bus for the OccluderAreaComponent.
     class OccluderAreaRequests
-        : public AZ::ComponentBus
     {
-        public:
-            
-            virtual ~OccluderAreaRequests() {}
+    public:
+        virtual bool GetDisplayFilled() = 0;
+        virtual float GetCullDistRatio() = 0;
+        virtual bool GetUseInIndoors() = 0;
+        virtual bool GetDoubleSide() = 0;
 
-            virtual void SetDisplayFilled(const bool value) = 0;
-            virtual bool GetDisplayFilled() = 0;
-            virtual void SetCullDistRatio(const float value) = 0;
-            virtual float GetCullDistRatio() = 0;
-            virtual void SetUseInIndoors(const bool value) = 0;
-            virtual bool GetUseInIndoors() = 0;
-            virtual void SetDoubleSide(const bool value) = 0;
-            virtual bool GetDoubleSide() = 0;
+    protected:
+        ~OccluderAreaRequests() = default;
     };
 
-    using OccluderAreaRequestBus = AZ::EBus<OccluderAreaRequests>;
+    /// Type to inherit to implement OccluderAreaRequests.
+    using OccluderAreaRequestBus = AZ::EBus<OccluderAreaRequests, AZ::ComponentBus>;
 
 } // namespace Visibility

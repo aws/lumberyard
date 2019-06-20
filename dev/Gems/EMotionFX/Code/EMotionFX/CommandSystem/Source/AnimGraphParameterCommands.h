@@ -79,6 +79,8 @@ namespace CommandSystem
         uint32  mParameterNameID;
     };
 
+    COMMANDSYSTEM_API void RemoveConnectionsForParameter(EMotionFX::AnimGraph* animGraph, const char* parameterName, MCore::CommandGroup& commandGroup);
+    COMMANDSYSTEM_API void RemoveConnectionsForParameters(EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& parameterNames, MCore::CommandGroup& commandGroup);
     COMMANDSYSTEM_API bool BuildRemoveParametersCommandGroup(EMotionFX::AnimGraph* animGraph, const AZStd::vector<AZStd::string>& parameterNamesToRemove, MCore::CommandGroup* commandGroup = nullptr);
     COMMANDSYSTEM_API void ClearParametersCommand(EMotionFX::AnimGraph* animGraph, MCore::CommandGroup* commandGroup = nullptr);
 

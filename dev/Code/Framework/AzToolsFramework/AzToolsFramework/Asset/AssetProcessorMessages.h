@@ -303,5 +303,51 @@ namespace AzToolsFramework
             unsigned int GetMessageType() const override;
             int m_numberOfPendingJobs = -1;
         };
+
+        // WantAssetBrowserShowRequest
+        class WantAssetBrowserShowRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(WantAssetBrowserShowRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(WantAssetBrowserShowRequest, "{C66852BF-1A8C-47AC-9CFF-183CC4241075}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            WantAssetBrowserShowRequest() = default;
+            unsigned int GetMessageType() const override;
+        };
+
+        // WantAssetBrowserShowResponse
+        class WantAssetBrowserShowResponse
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(WantAssetBrowserShowResponse, AZ::OSAllocator, 0);
+            AZ_RTTI(WantAssetBrowserShowResponse, "{B3015EF2-A91F-4E7D-932A-DA6043EDB678}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            WantAssetBrowserShowResponse() = default;
+            unsigned int GetMessageType() const override;
+
+            unsigned int m_processId = 0;
+        };
+
+        // AssetBrowserShowRequest
+        class AssetBrowserShowRequest
+            : public AzFramework::AssetSystem::BaseAssetProcessorMessage
+        {
+        public:
+            AZ_CLASS_ALLOCATOR(AssetBrowserShowRequest, AZ::OSAllocator, 0);
+            AZ_RTTI(AssetBrowserShowRequest, "{D44903DD-45D8-4CBA-8A9D-C9D5E7FFB0A6}", BaseAssetProcessorMessage);
+            static void Reflect(AZ::ReflectContext* context);
+            static unsigned int MessageType();
+
+            AssetBrowserShowRequest() = default;
+            unsigned int GetMessageType() const override;
+
+            AZ::OSString m_filePath;
+        };
     } // namespace AssetSystem
 } // namespace AzToolsFramework

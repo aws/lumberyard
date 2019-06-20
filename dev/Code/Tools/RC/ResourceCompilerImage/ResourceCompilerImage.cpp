@@ -58,8 +58,6 @@ BOOL APIENTRY DllMain(
 
 extern "C" DLL_EXPORT void __stdcall RegisterConvertors(IResourceCompiler* pRC)
 {
-    gEnv = pRC->GetSystemEnvironment();
-
     SetRCLog(pRC->GetIRCLog());
 
     // image formats

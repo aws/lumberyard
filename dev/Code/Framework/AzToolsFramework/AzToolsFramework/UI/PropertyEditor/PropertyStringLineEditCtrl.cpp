@@ -119,15 +119,19 @@ namespace AzToolsFramework
 
     void StringPropertyLineEditHandler::ConsumeAttribute(PropertyStringLineEditCtrl* GUI, AZ::u32 attrib, PropertyAttributeReader* attrValue, const char* debugName)
     {
-        Q_UNUSED(debugName);
+         Q_UNUSED(debugName);
 
         GUI->blockSignals(true);
-        int value;
         if (attrib == AZ::Edit::Attributes::MaxLength)
         {
+            AZ::s64 value;
             if (attrValue->Read<int>(value))
             {
                 GUI->setMaxLen(value);
+            }
+            else
+            {
+                AZ_WarningOnce("AzToolsFramework", false, "Failed to read 'MaxLength' attribute from property '%s' into text field", debugName);
             }
         }
         GUI->blockSignals(false);

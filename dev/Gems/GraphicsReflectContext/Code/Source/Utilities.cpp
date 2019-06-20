@@ -33,10 +33,10 @@ namespace GraphicsReflectContext
 
             string localizedToast;
             wstring wideToast;
-            gEnv->pSystem->GetLocalizationManager()->LocalizeString(localizedClipName.to_string().c_str(), localizedToast);
+            gEnv->pSystem->GetLocalizationManager()->LocalizeString(localizedClipName.data(), localizedToast);
             Unicode::Convert(wideToast, localizedToast);
 
-            IPlatformOS::IClipCaptureOS::SClipTextInfo clipTextInfo(clipName.to_string().c_str(), wideToast.c_str(), metadata.to_string().c_str());
+            IPlatformOS::IClipCaptureOS::SClipTextInfo clipTextInfo(clipName.data(), wideToast.c_str(), metadata.data());
 
             success = pClipCapture->RecordClip(clipTextInfo, span);
         }

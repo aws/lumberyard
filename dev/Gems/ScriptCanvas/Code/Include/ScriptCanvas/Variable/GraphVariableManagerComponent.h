@@ -54,9 +54,12 @@ namespace ScriptCanvas
         AZ::Outcome<void, AZStd::string> RenameVariable(AZStd::string_view newVarName) override;
 
         /// GraphVariableManagerRequestBus
+        AZ::Outcome<VariableId, AZStd::string> CloneVariable(const VariableNameValuePair& variableConfiguration) override;
         AZ::Outcome<VariableId, AZStd::string> RemapVariable(const VariableNameValuePair& variableConfiguration) override;
         AZ::Outcome<VariableId, AZStd::string> AddVariable(AZStd::string_view name, const Datum& value) override;
         AZ::Outcome<VariableId, AZStd::string> AddVariablePair(const AZStd::pair<AZStd::string_view, Datum>& nameValuePair) override;
+
+        bool IsNameAvailable(AZStd::string_view key) override;
 
         bool RemoveVariable(const VariableId& variableId) override;
         AZStd::size_t RemoveVariableByName(AZStd::string_view variableName) override;

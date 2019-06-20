@@ -1,0 +1,13 @@
+<Material MtlFlags="2621440" Shader="Illum" GenMask="503000080003" StringGenMask="%ALLOW_SILHOUETTE_POM%ALLOW_SPECULAR_ANTIALIASING%EMITTANCE_MAP%NORMAL_MAP%SPECULAR_MAP%SUBSURFACE_SCATTERING%VERTCOLORS" SurfaceType="mat_default" Diffuse="1,1,1,1" Specular="0.021219011,0.021219011,0.021219011,1" Opacity="1" Shininess="49.000008" AlphaTest="0.079999998" vertModifType="0" LayerAct="1">
+ <Textures>
+  <Texture Map="Heightmap" File="textures/road/am_road_dust_displ.dds"/>
+  <Texture Map="Emittance" File="textures/road/am_road_dust_diff.dds" Filter="0" IsTileU="0" IsTileV="0" TexType="0"/>
+  <Texture Map="Smoothness" File="textures/road/am_road_dust_ddna.dds"/>
+  <Texture Map="Opacity" File="textures/road/am_road_dust_displ.dds" Filter="0" IsTileU="0" IsTileV="0" TexType="0"/>
+  <Texture Map="Environment" File="nearest_cubemap" TexType="7"/>
+  <Texture Map="Specular" File="engineassets/textures/water_gloss.dds" Filter="7"/>
+  <Texture Map="Bumpmap" File="textures/road/am_road_dust_ddna.dds"/>
+  <Texture Map="Diffuse" File="textures/road/am_road_dust_diff.dds"/>
+ </Textures>
+ <PublicParams EmittanceMapGamma="1" SSSIndex="0" IndirectColor="0.25,0.25,0.25"/>
+</Material>

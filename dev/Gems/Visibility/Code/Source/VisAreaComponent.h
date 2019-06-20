@@ -12,15 +12,12 @@
 
 #pragma once
 
-#include <AzCore/EBus/EBus.h>
-
 #include <AzCore/Component/Component.h>
-#include <AzCore/Component/TransformBus.h>
-
-#include <AzCore/Math/VertexContainer.h>
+#include <AzCore/EBus/EBus.h>
 #include <AzCore/Math/Vector3.h>
+#include <AzCore/Math/VertexContainer.h>
 
-#include <VisAreaComponentBus.h>
+#include "VisAreaComponentBus.h"
 
 namespace Visibility
 {
@@ -33,13 +30,14 @@ namespace Visibility
         virtual ~VisAreaConfiguration() = default;
 
         static void Reflect(AZ::ReflectContext* context);
-        static bool VersionConverter(AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
+        static bool VersionConverter(
+            AZ::SerializeContext& context, AZ::SerializeContext::DataElementNode& classElement);
 
-        float m_Height = 5.0f;
-        bool m_DisplayFilled = false;
-        bool m_AffectedBySun = false;
-        float m_ViewDistRatio = 100.0f;
-        bool m_OceanIsVisible = false;
+        float m_height = 5.0f;
+        bool m_displayFilled = false;
+        bool m_affectedBySun = false;
+        float m_viewDistRatio = 100.0f;
+        bool m_oceanIsVisible = false;
         AZ::VertexContainer<AZ::Vector3> m_vertexContainer;
 
         virtual void ChangeHeight() {}
@@ -53,41 +51,29 @@ namespace Visibility
     class VisAreaComponent
         : public AZ::Component
         , private VisAreaComponentRequestBus::Handler
-        , public AZ::TransformNotificationBus::Handler
     {
     public:
         AZ_COMPONENT(VisAreaComponent, "{ACAB60F8-100E-5EAF-BE2B-D60F79312404}", AZ::Component);
+
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provides);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& requires);
         static void Reflect(AZ::ReflectContext* context);
 
         VisAreaComponent() = default;
-        explicit VisAreaComponent(VisAreaConfiguration *params) {
-            m_config = *params;
-        }
-        
+        explicit VisAreaComponent(const VisAreaConfiguration& params);
+
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
-        // TransformNotificationBus
-        void OnTransformChanged(const AZ::Transform& local, const AZ::Transform& world) override;
-
         // VisAreaComponentRequestBus
-        void SetHeight(const float value) override;
         float GetHeight() override;
-        void SetDisplayFilled(const bool value) override;
         bool GetDisplayFilled() override;
-        void SetAffectedBySun(const bool value) override;
         bool GetAffectedBySun() override;
-        void SetViewDistRatio(const float value) override;
         float GetViewDistRatio() override;
-        void SetOceanIsVisible(const bool value) override;
         bool GetOceanIsVisible() override;
-        void SetVertices(const AZStd::vector<AZ::Vector3>& value) override;
-        const AZStd::vector<AZ::Vector3>& GetVertices() override;
 
-    protected:
-        VisAreaConfiguration m_config; ///< Reflected configuration
+    private:
+        VisAreaConfiguration m_config; ///< Reflected configuration.
     };
 } // namespace Visibility

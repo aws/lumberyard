@@ -38,12 +38,15 @@ namespace ScriptCanvas
 
         void BuildEndpointMap();
         void Clear(bool deleteData = false);
+        void LoadDependentAssets();
 
         using NodeContainer = AZStd::unordered_set<AZ::Entity*>;
         using ConnectionContainer = AZStd::vector<AZ::Entity*>;
+        using DependentAssets = AZStd::unordered_map<AZ::Data::AssetId, AZStd::pair<AZ::EntityId, AZ::Data::AssetType>>;
 
         NodeContainer m_nodes;
         ConnectionContainer m_connections;
+        DependentAssets m_dependentAssets;
 
         // An endpoint(NodeId, SlotId Pair) is represents one end of a potential connection
         // The endpoint map is lookup table for all endpoints connected on the opposite end of the key value endpoint

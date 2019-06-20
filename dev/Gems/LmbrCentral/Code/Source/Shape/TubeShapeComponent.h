@@ -18,6 +18,7 @@
 
 namespace LmbrCentral
 {
+    /// Provide a Component interface for TubeShape functionality.
     class TubeShapeComponent
         : public AZ::Component
     {
@@ -32,64 +33,46 @@ namespace LmbrCentral
         void Activate() override;
         void Deactivate() override;
 
-    protected:
-        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-        {
-            provided.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
-            provided.push_back(AZ_CRC("TubeShapeService", 0x3fe791b4));
-        }
-
-        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
-        {
-            incompatible.push_back(AZ_CRC("ShapeService", 0xe86aa5fe));
-            incompatible.push_back(AZ_CRC("TubeShapeService", 0x3fe791b4));
-        }
-
-        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
-        {
-            required.push_back(AZ_CRC("TransformService", 0x8ee22c50));
-            required.push_back(AZ_CRC("SplineService", 0x2b674d3c));
-        }
-
     private:
+        static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
+        static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
+        static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
+
         TubeShape m_tubeShape;
     };
 
-    /**
-     * Concrete EntityDebugDisplay implementation for TubeShape.
-     */
+    /// Concrete EntityDebugDisplay implementation for TubeShape.
     class TubeShapeDebugDisplayComponent
         : public EntityDebugDisplayComponent
         , public ShapeComponentNotificationsBus::Handler
     {
     public:
         AZ_COMPONENT(TubeShapeDebugDisplayComponent, "{FC8D0C5A-FEED-4C79-A4C6-E18A966EE8CE}", EntityDebugDisplayComponent)
+        static void Reflect(AZ::ReflectContext* context);
 
         TubeShapeDebugDisplayComponent() = default;
         explicit TubeShapeDebugDisplayComponent(const TubeShapeMeshConfig& tubeShapeMeshConfig)
             : m_tubeShapeMeshConfig(tubeShapeMeshConfig) {}
-
-        static void Reflect(AZ::ReflectContext* context);
 
         // AZ::Component
         void Activate() override;
         void Deactivate() override;
 
         // EntityDebugDisplayComponent
-        void Draw(AzFramework::EntityDebugDisplayRequests* displayContext) override;
-
-        // ShapeComponentNotificationsBus
-        void OnShapeChanged(ShapeChangeReasons changeReason) override;
+        void Draw(AzFramework::DebugDisplayRequests& debugDisplay) override;
 
     private:
         AZ_DISABLE_COPY_MOVE(TubeShapeDebugDisplayComponent)
 
+        // ShapeComponentNotificationsBus
+        void OnShapeChanged(ShapeChangeReasons changeReason) override;
+
         void GenerateVertices();
 
-        ShapeMesh m_tubeShapeMesh; ///< Buffer to hold index and vertex data for TubeShape when drawing.
+        ShapeMesh m_tubeShapeMesh; ///< Buffer to hold index and vertex data for the TubeShape when drawing.
         TubeShapeMeshConfig m_tubeShapeMeshConfig; ///< Configuration to control how the TubeShape should look.
-        AZ::SplinePtr m_spline = nullptr; ///< Reference to Spline.
+        AZ::SplinePtr m_spline = nullptr; ///< Reference to the Spline.
         SplineAttribute<float> m_radiusAttribute; ///< Radius Attribute.
-        float m_radius = 0.0f; ///< Global radius for Tube.
+        float m_radius = 0.0f; ///< Global radius for the Tube.
     };
 } // namespace LmbrCentral

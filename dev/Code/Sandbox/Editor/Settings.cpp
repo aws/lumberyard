@@ -550,6 +550,7 @@ void SEditorSettings::Save()
 
     SaveValue("Settings", "EnableSceneInspector", enableSceneInspector);
     SaveValue("Settings", "EnableLegacyUI", enableLegacyUI);
+    SaveValue("Settings", "ViewportInteractionModel", newViewportInteractionModel);
     
     //////////////////////////////////////////////////////////////////////////
     // Viewport settings.
@@ -844,6 +845,7 @@ void SEditorSettings::Load()
 
     LoadValue("Settings", "EnableSceneInspector", enableSceneInspector);
     LoadValue("Settings", "EnableLegacyUI", enableLegacyUI);
+    LoadValue("Settings", "ViewportInteractionModel", newViewportInteractionModel);
     
     //////////////////////////////////////////////////////////////////////////
     // Viewport Settings.

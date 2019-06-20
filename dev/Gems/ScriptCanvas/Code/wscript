@@ -25,29 +25,80 @@ def build(bld):
     USE = USE + bld.make_aws_library_task_list(['LyMetricsProducer', 'LyMetricsShared', 'LyIdentity'])
 
     COMMON_DEFINES = ['SCRIPTCANVAS', 'SCRIPTCANVAS_ERRORS_ENABLED', 'AZCORE_ENABLE_MEMORY_TRACKING', 'ENABLE_EXTENDED_MATH_SUPPORT=0']
+########################################################################################
+    EXECUTION_NOTIFICATION_DEFINES = [
+			'SC_EXECUTION_TRACE_ENABLED' # this is REQUIRED for debugging/execution logging
+		]
+    DEBUG_DEBUGGER_DEFINES = []
+#        'SCRIPT_CANVAS_DEBUGGER_IS_ALWAYS_OBSERVING', # for aggressive logging that ignores filtering (probably only for debug/development purposes)
+#        'SCRIPT_CANVAS_DEBUGGER_CONNECT_TO_ANYTHING_BUT_SELF', # connect to the first target that is not self
+#        'SCRIPT_CANVAS_DEBUG_DEBUGGER' # to debug the ScriptCanvas Debugging systems themselves
+#		]    
+
+########################################################################################
+
 
     CODEGEN_FILE_LIST = [
             'Include/ScriptCanvas/Internal/Nodes/StringFormatted.h',
             'Include/ScriptCanvas/Libraries/Core/EBusEventHandler.h',
+            'Include/ScriptCanvas/Libraries/Core/ExtractProperty.h',
+            'Include/ScriptCanvas/Libraries/Core/ForEach.h',
+            'Include/ScriptCanvas/Libraries/Core/GetVariable.h',
+            'Include/ScriptCanvas/Libraries/Core/SetVariable.h',
+            'Include/ScriptCanvas/Libraries/Core/ScriptEventBase.h',
+            'Include/ScriptCanvas/Libraries/Core/SendScriptEvent.h',
+            'Include/ScriptCanvas/Libraries/Core/ReceiveScriptEvent.h',
             'Include/ScriptCanvas/Libraries/Core/Start.h',
+            'Include/ScriptCanvas/Libraries/Logic/Any.h',
             'Include/ScriptCanvas/Libraries/Logic/Gate.h',
             'Include/ScriptCanvas/Libraries/Logic/Indexer.h',
             'Include/ScriptCanvas/Libraries/Logic/IsNull.h',
             'Include/ScriptCanvas/Libraries/Logic/Multiplexer.h',
             'Include/ScriptCanvas/Libraries/Logic/Once.h',
             'Include/ScriptCanvas/Libraries/Logic/Sequencer.h',
+            'Include/ScriptCanvas/Libraries/Logic/WeightedRandomSequencer.h',
             'Include/ScriptCanvas/Libraries/Math/Random.h',
+            'Include/ScriptCanvas/Libraries/String/Format.h',
+            'Include/ScriptCanvas/Libraries/String/Print.h',
             'Include/ScriptCanvas/Libraries/String/Replace.h',
             'Include/ScriptCanvas/Libraries/String/Contains.h',
             'Include/ScriptCanvas/Libraries/String/Utilities.h',
             'Include/ScriptCanvas/Libraries/Time/Countdown.h',
             'Include/ScriptCanvas/Libraries/Time/Duration.h',
             'Include/ScriptCanvas/Libraries/Time/Timer.h',
-            'Include/ScriptCanvas/Libraries/Core/ExtractProperty.h',
-            'Include/ScriptCanvas/Libraries/Core/GetVariable.h',
-            'Include/ScriptCanvas/Libraries/Core/SetVariable.h',
-            'Include/ScriptCanvas/Libraries/String/Print.h',
-            'Include/ScriptCanvas/Libraries/String/Format.h'
+            'Include/ScriptCanvas/Libraries/UnitTesting/AddFailure.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/AddSuccess.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/Checkpoint.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/ExpectEqual.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/ExpectFalse.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/ExpectGreaterThan.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/ExpectGreaterThanEqual.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/ExpectLessThan.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/ExpectLessThanEqual.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/ExpectNotEqual.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/ExpectTrue.h',
+            'Include/ScriptCanvas/Libraries/UnitTesting/MarkComplete.h',
+            'Include/ScriptCanvas/Libraries/Operators/Operator.h',
+            
+            # Containers
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorAt.h',
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorBack.h',
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorClear.h',
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorEmpty.h',
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorErase.h',
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorFront.h',
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorInsert.h',
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorSize.h',
+            'Include/ScriptCanvas/Libraries/Operators/Containers/OperatorPushBack.h',
+            
+            # Math
+            'Include/ScriptCanvas/Libraries/Operators/Math/OperatorArithmetic.h',
+            'Include/ScriptCanvas/Libraries/Operators/Math/OperatorAdd.h',
+            'Include/ScriptCanvas/Libraries/Operators/Math/OperatorSub.h',
+            'Include/ScriptCanvas/Libraries/Operators/Math/OperatorMul.h',
+            'Include/ScriptCanvas/Libraries/Operators/Math/OperatorDiv.h',
+            'Include/ScriptCanvas/Libraries/Operators/Math/OperatorLength.h',
+            'Include/ScriptCanvas/Libraries/Operators/Math/OperatorLerp.h',
         ]
 
     # ScriptCanvas core execution engine is built as a static library.
@@ -58,16 +109,22 @@ def build(bld):
         platforms       = ['all'],
         configurations  = ['all'],
         file_list       = ['scriptcanvasgem_common.waf_files', 'scriptcanvasgem_runtime_asset.waf_files'],
-        defines         = COMMON_DEFINES,
+        defines         = COMMON_DEFINES, 
+        export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
+        profile_defines             = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+        profile_dedicated_defines   = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+        debug_defines               = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+        debug_dedicated_defines     = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+        test_all_defines            = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
 
         includes        = ['Include', 'Include/ScriptCanvas'],
-        use             = ['AzCore', 'AzFramework'],
+        use             = ['AzCore', 'AzFramework', 'ScriptEventsStatic','ScriptCanvasDebugger'],
         features        = ['az_code_gen'],
         win_features    = ['crcfix'],
         vs_filter       = 'Gems/ScriptCanvas',
         disable_pch     = True,
 
-        export_includes = ['.', 'Include'], # the gem's includes
+        export_includes = ['.', 'Include', 'Include/ScriptCanvas'], # the gem's includes
 
         az_code_gen = [
             {
@@ -77,23 +134,48 @@ def build(bld):
         ],
     )
 
+    bld.CryEngineStaticLibrary(
+
+        target          = 'ScriptCanvasDebugger',
+
+        platforms       = ['all'],
+        configurations  = ['all'],
+        file_list       = ['scriptcanvasgem_debugger.waf_files'],
+        defines         = COMMON_DEFINES, 
+        export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
+        profile_defines             = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+        profile_dedicated_defines   = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+        debug_defines               = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+        debug_dedicated_defines     = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+        test_all_defines            = list(DEBUG_DEBUGGER_DEFINES + EXECUTION_NOTIFICATION_DEFINES),
+
+        includes        = ['Include', 'Include/ScriptCanvas'],
+        use             = ['AzCore', 'AzFramework'],
+        win_features    = ['crcfix'],
+        vs_filter       = 'Gems/ScriptCanvas',
+        disable_pch     = True,
+
+        export_includes = ['.', 'Include', 'Include/ScriptCanvas'], # the gem's includes
+    )
+
     # ScriptCanvas editor engine is built as a static library. Contains class that need to be complete in order to run across dll boundaries.
     bld.CryEngineStaticLibrary(
 
         target          = 'ScriptCanvasEditor',
 
         platforms       = ['win', 'darwin'],
-        configurations  = ['debug', 'profile'],
+        configurations  = ['debug', 'profile','debug_test', 'profile_test'],
         file_list       = ['scriptcanvasgem_editor_static.waf_files'],
         defines         = ['SCRIPTCANVAS_EDITOR'] + COMMON_DEFINES,
+        export_defines  = ['SCRIPTCANVAS_ERRORS_ENABLED'],
 
         includes        = [ 'Editor/Static/Include', 'Editor/Static/Source' ],
         export_includes = [ 'Editor/Static/Include' ],
         use             = list(USE) + ['ScriptCanvas'],
-
+        uselib          = ['QT5CORE', 'QT5GUI', 'QT5WIDGETS'],
+    
         features        = ['qt5','az_code_gen'],
         win_features    = ['crcfix'],
-        autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
         vs_filter       = 'Gems/ScriptCanvas',
         disable_pch     = True
     )
@@ -107,32 +189,36 @@ def build(bld):
         export_includes     = [ '.', 'Include/ScriptCanvas', 'Editor/Include' ],
 
         defines             = COMMON_DEFINES,
+        export_defines      = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
 
         platforms           = ['all'],
         configurations      = ['all'],
 
-        use                 = ['ScriptCanvas'],
+        use                 = ['ScriptCanvas','ScriptEvents'],
 
         pch                 = 'Source/precompiled.cpp',
         win_features        = ['crcfix'],
 
         file_list           = ['scriptcanvasgem_game.waf_files' ],
-        test_all_file_list  = ['scriptcanvasgem_tests.waf_files'],
+        test_all_file_list = ['scriptcanvasgem_tests.waf_files'],
         vs_filter           = 'Gems/ScriptCanvas',
 
         ########################################
         # Editor Gem configuration
         editor = dict(
             defines         = ['SCRIPTCANVAS_EDITOR'] + COMMON_DEFINES,
+            export_defines  = [ 'SCRIPTCANVAS_ERRORS_ENABLED'],
 
             features        = ['qt5','az_code_gen'],
             platforms       = ['win', 'darwin'],
-            configurations  = ['debug', 'profile'],
+            exclude_monolithic = True,
+            client_only     = True,
 
-            autod_uselib    = ['QT5CORE','QT5GUI','QT5WIDGETS'],
+            uselib          = ['QT5CORE','QT5GUI','QT5WIDGETS'],
             vs_filter       = 'Gems/ScriptCanvas',
 
             file_list   = ['scriptcanvasgem_editor.waf_files', 'scriptcanvasgem_editor_asset.waf_files', 'scriptcanvasgem_editor_builder.waf_files'],
+            test_all_file_list = ['scriptcanvasgem_tests.waf_files'],
             includes        = [ 'Include',
                                 'Include/ScriptCanvas',
                                 'Editor/Include',

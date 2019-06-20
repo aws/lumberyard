@@ -17,12 +17,16 @@ namespace GraphCanvas
     // NodePaletteTreeItem
     ////////////////////////
 
-    NodePaletteTreeItem::NodePaletteTreeItem(const QString& name, EditorId editorId)
-        : GraphCanvas::GraphCanvasTreeItem()        
+    const int NodePaletteTreeItem::k_defaultItemOrdering = 100;
+
+    NodePaletteTreeItem::NodePaletteTreeItem(AZStd::string_view name, EditorId editorId)
+        : GraphCanvas::GraphCanvasTreeItem()
         , m_editorId(editorId)
-        , m_name(name)
+        , m_name(QString::fromUtf8(name.data(), static_cast<int>(name.size())))
+        , m_selected(false)
+        , m_hovered(false)
         , m_highlight(-1, 0)
-        , m_ordering(0)
+        , m_ordering(k_defaultItemOrdering)
     {
     }
 
@@ -33,26 +37,29 @@ namespace GraphCanvas
 
     int NodePaletteTreeItem::GetColumnCount() const
     {
-        return 1;
+        return Column::Count;
     }
 
     QVariant NodePaletteTreeItem::Data(const QModelIndex& index, int role) const
     {
-        switch (role)
+        if (index.column() == Column::Name)
         {
-        case Qt::DisplayRole:
-            return GetName();
-        case Qt::ToolTipRole:
-            // If we have a tooltip. Use it
-            // Otherwise fall through to use our name.
-            if (!m_toolTip.isEmpty())
-            {
-                return m_toolTip;
+            switch (role)
+            {            
+            case Qt::ToolTipRole:
+                // If we have a tooltip. Use it
+                // Otherwise fall through to use our name.
+                if (!m_toolTip.isEmpty())
+                {
+                    return m_toolTip;
+                }
+            case Qt::DisplayRole:
+                return GetName();
+            case Qt::EditRole:
+                return GetName();
+            default:
+                break;
             }
-        case Qt::EditRole:
-            return GetName();
-        default:
-            break;
         }
 
         return OnData(index, role);
@@ -98,9 +105,9 @@ namespace GraphCanvas
         return m_styleOverride;
     }
 
-    void NodePaletteTreeItem::SetTitlePalette(const AZStd::string& palette)
+    void NodePaletteTreeItem::SetTitlePalette(const AZStd::string& palette, bool force)
     {
-        if (m_palette.empty() || m_palette.compare("DefaultNodeTitlePalette") == 0)
+        if (force || m_palette.empty() || m_palette.compare(DefaultNodeTitlePalette) == 0)
         {
             m_palette = palette;
 
@@ -123,6 +130,34 @@ namespace GraphCanvas
         return m_palette;
     }
 
+    void NodePaletteTreeItem::SetHovered(bool hovered)
+    {
+        if (m_hovered != hovered)
+        {
+            m_hovered = hovered;
+            OnHoverStateChanged();
+        }
+    }
+
+    bool NodePaletteTreeItem::IsHovered() const
+    {
+        return m_hovered;
+    }
+
+    void NodePaletteTreeItem::SetSelected(bool selected)
+    {
+        if (m_selected != selected)
+        {
+            m_selected = selected;
+            OnSelectionStateChanged();
+        }
+    }
+
+    bool NodePaletteTreeItem::IsSelected() const
+    {
+        return m_selected;
+    }
+
     void NodePaletteTreeItem::SetHighlight(const AZStd::pair<int, int>& highlight)
     {
         m_highlight = highlight;
@@ -142,6 +177,11 @@ namespace GraphCanvas
     {
         m_highlight.first = -1;
         m_highlight.second = 0;
+    }
+
+    void NodePaletteTreeItem::SignalClicked(int row)
+    {
+        OnClicked(row);
     }
 
     void NodePaletteTreeItem::PreOnChildAdded(GraphCanvasTreeItem* item)
@@ -197,5 +237,20 @@ namespace GraphCanvas
 
     void NodePaletteTreeItem::OnTitlePaletteChanged()
     {
+    }
+
+    void NodePaletteTreeItem::OnHoverStateChanged()
+    {
+
+    }
+
+    void NodePaletteTreeItem::OnSelectionStateChanged()
+    {
+
+    }
+
+    void NodePaletteTreeItem::OnClicked(int row)
+    {
+        AZ_UNUSED(row);
     }
 }

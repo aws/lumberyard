@@ -12,6 +12,8 @@
 
 #include <AzQtComponents/Components/Widgets/ScrollBar.h>
 #include <AzQtComponents/Components/Style.h>
+#include <AzCore/std/functional.h>
+#include <AzCore/std/function/invoke.h>
 
 #include <QObject>
 #include <QAbstractScrollArea>
@@ -48,8 +50,11 @@ namespace AzQtComponents
                     scrollArea->setAttribute(Qt::WA_Hover);
                     scrollArea->installEventFilter(this);
                     m_widgets.insert(widget, data);
+
                     return true;
                 }
+
+                connect(scrollArea, &QObject::destroyed, this, &ScrollBarWatcher::scrollAreaDestroyed);
             }
             return false;
         }
@@ -59,7 +64,10 @@ namespace AzQtComponents
             auto scrollArea = qobject_cast<QAbstractScrollArea*>(widget);
             if (scrollArea && m_widgets.contains(widget))
             {
+                disconnect(scrollArea, &QObject::destroyed, this, &ScrollBarWatcher::scrollAreaDestroyed);
+
                 ScrollAreaData data = m_widgets.take(widget);
+                scrollArea->removeEventFilter(this);
                 scrollArea->setAttribute(Qt::WA_Hover, data.hoverWasEnabled);
                 return true;
             }
@@ -71,17 +79,17 @@ namespace AzQtComponents
             switch (event->type())
             {
                 case QEvent::HoverEnter:
-                    for (auto scrollBar : m_widgets.value(obj).scrollBars)
-                    {
-                        scrollBar->show();
-                    }
+                {
+                    perScrollBar(obj, &QScrollBar::show);
                     break;
+                }
+
                 case QEvent::HoverLeave:
-                    for (auto scrollBar : m_widgets.value(obj).scrollBars)
-                    {
-                        scrollBar->hide();
-                    }
+                {
+                    perScrollBar(obj, &QScrollBar::hide);
                     break;
+                }
+
                 default:
                     break;
             }
@@ -92,12 +100,35 @@ namespace AzQtComponents
         struct ScrollAreaData
         {
             bool hoverWasEnabled;
-            QList<QScrollBar*> scrollBars;
+
+            // Store QPointers so that if the scrollbars are cleaned up before the scroll area, we don't continue to reference it
+            QList<QPointer<QScrollBar>> scrollBars;
         };
         QMap<QObject*, ScrollAreaData> m_widgets;
+
+        void perScrollBar(QObject* scrollArea, void (QScrollBar::*callback)(void))
+        {
+            auto iterator = m_widgets.find(scrollArea);
+            if (iterator != m_widgets.end())
+            {
+                for (auto& scrollBar : iterator.value().scrollBars)
+                {
+                    if (scrollBar)
+                    {
+                        AZStd::invoke(callback, scrollBar.data());
+                    }
+                }
+            }
+        }
+
+        void scrollAreaDestroyed(QObject* scrollArea)
+        {
+            m_widgets.remove(scrollArea);
+        }
     };
 
-    QPointer<ScrollBarWatcher> ScrollBar::m_scrollBarWatcher;
+    QPointer<ScrollBarWatcher> ScrollBar::s_scrollBarWatcher = nullptr;
+    unsigned int ScrollBar::s_watcherReferenceCount = 0;
 
     ScrollBar::Config ScrollBar::loadConfig(QSettings& settings)
     {
@@ -112,13 +143,27 @@ namespace AzQtComponents
 
     void ScrollBar::initializeWatcher()
     {
-        Q_ASSERT(m_scrollBarWatcher.isNull());
-        m_scrollBarWatcher = new ScrollBarWatcher;
+        if (!s_scrollBarWatcher)
+        {
+            Q_ASSERT(s_watcherReferenceCount == 0);
+            s_scrollBarWatcher = new ScrollBarWatcher;
+        }
+
+        ++s_watcherReferenceCount;
     }
 
     void ScrollBar::uninitializeWatcher()
     {
-        delete m_scrollBarWatcher;
+        Q_ASSERT(!s_scrollBarWatcher.isNull());
+        Q_ASSERT(s_watcherReferenceCount > 0);
+
+        --s_watcherReferenceCount;
+
+        if (s_watcherReferenceCount == 0)
+        {
+            delete s_scrollBarWatcher;
+            s_scrollBarWatcher = nullptr;
+        }
     }
 
     bool ScrollBar::polish(Style* style, QWidget* widget, const ScrollBar::Config& config)
@@ -126,7 +171,7 @@ namespace AzQtComponents
         Q_UNUSED(style);
         Q_UNUSED(config);
 
-        return m_scrollBarWatcher->install(widget);
+        return s_scrollBarWatcher->install(widget);
     }
 
     bool ScrollBar::unpolish(Style* style, QWidget* widget, const ScrollBar::Config& config)
@@ -134,7 +179,7 @@ namespace AzQtComponents
         Q_UNUSED(style);
         Q_UNUSED(config);
 
-        return m_scrollBarWatcher->uninstall(widget);
+        return s_scrollBarWatcher->uninstall(widget);
     }
 
 } // namespace AzQtComponents

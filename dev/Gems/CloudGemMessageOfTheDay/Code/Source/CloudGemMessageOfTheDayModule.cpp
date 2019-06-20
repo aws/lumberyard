@@ -15,18 +15,18 @@
 
 #include "CloudGemMessageOfTheDaySystemComponent.h"
 
-#include <IGem.h>
+#include <AzCore/Module/Module.h>
 
 namespace CloudGemMessageOfTheDay
 {
     class CloudGemMessageOfTheDayModule
-        : public CryHooksModule
+        : public AZ::Module
     {
     public:
-        AZ_RTTI(CloudGemMessageOfTheDayModule, "{797853F3-03BB-4571-A6BD-6616D89BB5E1}", CryHooksModule);
+        AZ_RTTI(CloudGemMessageOfTheDayModule, "{797853F3-03BB-4571-A6BD-6616D89BB5E1}", AZ::Module);
 
         CloudGemMessageOfTheDayModule()
-            : CryHooksModule()
+            : AZ::Module()
         {
             // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
             m_descriptors.insert(m_descriptors.end(), {

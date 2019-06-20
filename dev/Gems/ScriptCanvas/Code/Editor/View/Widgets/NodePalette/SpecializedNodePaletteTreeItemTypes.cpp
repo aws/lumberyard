@@ -66,7 +66,7 @@ namespace ScriptCanvasEditor
     // EntityRefNodePaletteTreeItem
     /////////////////////////////////
 
-    EntityRefNodePaletteTreeItem::EntityRefNodePaletteTreeItem(const QString& nodeName, const QString& iconPath)
+    EntityRefNodePaletteTreeItem::EntityRefNodePaletteTreeItem(AZStd::string_view nodeName, const QString& iconPath)
         : DraggableNodePaletteTreeItem(nodeName, ScriptCanvasEditor::AssetEditorId)
     {
     }
@@ -135,10 +135,12 @@ namespace ScriptCanvasEditor
     // CommentNodePaletteTreeItem
     ///////////////////////////////
 
-    CommentNodePaletteTreeItem::CommentNodePaletteTreeItem(const QString& nodeName, const QString& iconPath)
+    CommentNodePaletteTreeItem::CommentNodePaletteTreeItem(AZStd::string_view nodeName, const QString& iconPath)
         : DraggableNodePaletteTreeItem(nodeName, ScriptCanvasEditor::AssetEditorId)
     {
         SetToolTip("Comment box for notes. Does not affect script execution or data.");
+
+        SetTitlePalette("CommentNodeTitlePalette");
     }
 
     GraphCanvas::GraphCanvasMimeEvent* CommentNodePaletteTreeItem::CreateMimeEvent() const
@@ -146,28 +148,28 @@ namespace ScriptCanvasEditor
         return aznew CreateCommentNodeMimeEvent();
     }
 
-    ////////////////////////////////////
-    // CreateBlockCommentNodeMimeEvent
-    ////////////////////////////////////
+    /////////////////////////////
+    // CreateNodeGroupMimeEvent
+    /////////////////////////////
 
-    void CreateBlockCommentNodeMimeEvent::Reflect(AZ::ReflectContext* reflectContext)
+    void CreateNodeGroupMimeEvent::Reflect(AZ::ReflectContext* reflectContext)
     {
         AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(reflectContext);
 
         if (serializeContext)
         {
-            serializeContext->Class<CreateBlockCommentNodeMimeEvent, GraphCanvas::GraphCanvasMimeEvent>()
+            serializeContext->Class<CreateNodeGroupMimeEvent, GraphCanvas::GraphCanvasMimeEvent>()
                 ->Version(0)
                 ;
         }
     }
 
-    NodeIdPair CreateBlockCommentNodeMimeEvent::ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition)
+    NodeIdPair CreateNodeGroupMimeEvent::ConstructNode(const AZ::EntityId& graphCanvasGraphId, const AZ::Vector2& scenePosition)
     {
         NodeIdPair retVal;
 
         AZ::Entity* graphCanvasEntity = nullptr;
-        GraphCanvas::GraphCanvasRequestBus::BroadcastResult(graphCanvasEntity, &GraphCanvas::GraphCanvasRequests::CreateBlockCommentNodeAndActivate);
+        GraphCanvas::GraphCanvasRequestBus::BroadcastResult(graphCanvasEntity, &GraphCanvas::GraphCanvasRequests::CreateNodeGroupAndActivate);
 
         if (graphCanvasEntity)
         {
@@ -179,7 +181,7 @@ namespace ScriptCanvasEditor
         return retVal;
     }
 
-    bool CreateBlockCommentNodeMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId)
+    bool CreateNodeGroupMimeEvent::ExecuteEvent(const AZ::Vector2& mousePosition, AZ::Vector2& sceneDropPosition, const AZ::EntityId& graphCanvasGraphId)
     {
         Metrics::MetricsEventsBus::Broadcast(&Metrics::MetricsEventRequests::SendNodeMetric, ScriptCanvasEditor::Metrics::Events::Canvas::DropHandler, AZ::Uuid("{CE31F6F6-1536-4C97-BB59-863408ABA736}"), graphCanvasGraphId);
 
@@ -200,16 +202,16 @@ namespace ScriptCanvasEditor
     }
 
     ////////////////////////////////////
-    // BlockCommentNodePaletteTreeItem
+    // NodeGroupNodePaletteTreeItem
     ////////////////////////////////////
 
-    BlockCommentNodePaletteTreeItem::BlockCommentNodePaletteTreeItem(const QString& nodeName, const QString& iconPath)
+    NodeGroupNodePaletteTreeItem::NodeGroupNodePaletteTreeItem(AZStd::string_view nodeName, const QString& iconPath)
         : DraggableNodePaletteTreeItem(nodeName, ScriptCanvasEditor::AssetEditorId)
     {
     }
 
-    GraphCanvas::GraphCanvasMimeEvent* BlockCommentNodePaletteTreeItem::CreateMimeEvent() const
+    GraphCanvas::GraphCanvasMimeEvent* NodeGroupNodePaletteTreeItem::CreateMimeEvent() const
     {
-        return aznew CreateBlockCommentNodeMimeEvent();
+        return aznew CreateNodeGroupMimeEvent();
     }
 }

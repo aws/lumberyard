@@ -25,9 +25,17 @@
 #include <AzCore/RTTI/RTTI.h>
 #include <AzCore/Memory/OSAllocator.h>
 
+namespace AZ
+{
+    class ReflectContext;
+}
+
 namespace AzFramework
 {
     typedef AZ::u64 MsgSlotId;                          // meant to be a crc32, but using AZ::u64 so it can be other stuff (pointers)
+
+    // id for the local application
+    static const AZ::u32 k_selfNetworkId = static_cast<AZ::u32>(-1);
 
     enum TargetFlags
     {
@@ -46,7 +54,8 @@ namespace AzFramework
         friend class TargetManagementNetworkImpl;
 
     public:
-        AZ_RTTI(TargetInfo, "{4D166C31-D7F4-4d49-B897-16365B8B0716}");
+        AZ_CLASS_ALLOCATOR(TargetInfo, AZ::OSAllocator, 0);
+        AZ_TYPE_INFO(TargetInfo, "{4D166C31-D7F4-4d49-B897-16365B8B0716}");
 
         TargetInfo(time_t lastSeen = 0, const AZStd::string& displayName = "", AZ::u32 networkId = 0, TargetFlags flags = (TargetFlags)0)
             : m_lastSeen(lastSeen)
@@ -55,11 +64,13 @@ namespace AzFramework
             , m_networkId(networkId)
             , m_flags(flags) {}
 
-        bool        IsValid() const         { return m_lastSeen != 0; }
-        const char* GetDisplayName() const  { return m_displayName.c_str(); }
-        AZ::u32     GetPersistentId() const { return m_persistentId; }
-        int         GetNetworkId() const    { return m_networkId; }
-        AZ::u32     GetStatusFlags() const  { return m_flags; }
+        bool IsSelf() const;
+        bool  IsValid() const;
+        const char* GetDisplayName() const;
+        AZ::u32 GetPersistentId() const;
+        int GetNetworkId() const;
+        AZ::u32 GetStatusFlags() const;
+        bool IsIdentityEqualTo(const TargetInfo& other) const;
 
     private:
         time_t          m_lastSeen;     // how long ago was this process seen?  Used internally for filtering and showing the user the GUI even when the target is temporarily disconnected.
@@ -80,14 +91,21 @@ namespace AzFramework
         AZ_RTTI(TmMsg, "{E16CA6C5-5C78-4AD0-8E9B-A8C1FB4D1DA8}");
 
         TmMsg()
-            : m_customBlob(NULL)
-            , m_customBlobSize(0)
-            , m_refCount(0)                                   {}
-        TmMsg(MsgSlotId msgId)
-            : m_msgId(msgId)
+            : m_msgId(0)
+            , m_senderTargetId(0)
             , m_customBlob(NULL)
             , m_customBlobSize(0)
-            , m_refCount(0)  {}
+            , m_refCount(0)
+            , m_isBlobOwner(false)
+            , m_immediateSelfDispatch(false) {}
+        TmMsg(MsgSlotId msgId)
+            : m_msgId(msgId)
+            , m_senderTargetId(0)
+            , m_customBlob(NULL)
+            , m_customBlobSize(0)
+            , m_refCount(0)
+            , m_isBlobOwner(false)
+            , m_immediateSelfDispatch(false) {}
 
         virtual ~TmMsg()
         {
@@ -104,6 +122,16 @@ namespace AzFramework
             m_isBlobOwner = ownBlob;
         }
 
+        void SetImmediateSelfDispatchEnabled(bool immediateSelfDispatchEnabled)
+        {
+            m_immediateSelfDispatch = immediateSelfDispatchEnabled;
+        }
+
+        bool IsImmediateSelfDispatchEnabled() const
+        {
+            return m_immediateSelfDispatch;
+        }
+
         const void* GetCustomBlob() const       { return m_customBlob; }
         size_t      GetCustomBlobSize() const   { return m_customBlobSize; }
 
@@ -116,6 +144,7 @@ namespace AzFramework
         const void* m_customBlob;
         AZ::u32     m_customBlobSize;
         bool        m_isBlobOwner;
+        bool        m_immediateSelfDispatch;
 
         //---------------------------------------------------------------------
         // refcount
@@ -220,6 +249,8 @@ namespace AzFramework
         // the target controls who gets lua commands, tweak stuff, that kind of thing
         virtual void SetDesiredTarget(AZ::u32 desiredTargetID) = 0;
 
+        virtual void SetDesiredTargetInfo(const TargetInfo& targetInfo) = 0;
+
         // retrieve what it was set to.
         virtual TargetInfo GetDesiredTarget() = 0;
 
@@ -229,9 +260,13 @@ namespace AzFramework
         // check if target is online
         virtual bool IsTargetOnline(AZ::u32 desiredTargetID) = 0;
 
+        virtual bool IsDesiredTargetOnline() = 0;
+
         // set/get the name that is going to identify the local node in the neighborhood
         virtual void SetMyPersistentName(const char* name) = 0;
         virtual const char* GetMyPersistentName() = 0;
+
+        virtual TargetInfo GetMyTargetInfo() const = 0;
 
         // set/get the name of the neighborhood we want to connect to
         virtual void SetNeighborhood(const char* name) = 0;

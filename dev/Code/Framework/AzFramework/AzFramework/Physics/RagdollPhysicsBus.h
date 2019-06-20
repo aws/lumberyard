@@ -62,7 +62,7 @@ namespace AzFramework
         virtual void DisableSimulation() = 0;
 
         /// Gets a pointer to the underlying generic ragdoll object.
-        virtual AZStd::shared_ptr<Physics::Ragdoll> GetRagdoll() = 0;
+        virtual Physics::Ragdoll* GetRagdoll() = 0;
 
         /// Writes the state for all of the nodes in the ragdoll to the provided output.
         /// The caller owns the output state and can safely manipulate it without affecting the physics simulation.
@@ -89,7 +89,7 @@ namespace AzFramework
         /// Gets a pointer to an individual rigid body in the ragdoll.
         /// @param nodeIndex Index in the physics representation of the character.  Note this does not necessarily
         /// correspond to indices used in other systems.
-        virtual AZStd::shared_ptr<Physics::RagdollNode> GetNode(size_t nodeIndex) const = 0;
+        virtual Physics::RagdollNode* GetNode(size_t nodeIndex) const = 0;
 
         // deprecated Cry functions
 

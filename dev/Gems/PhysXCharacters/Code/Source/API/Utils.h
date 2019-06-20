@@ -40,7 +40,7 @@ namespace PhysXCharacters
         /// @param configuration Information about collider geometry and joint setup required to initialize the ragdoll.
         /// @param initialState Initial settings for the positions, orientations and velocities of the ragdoll nodes.
         /// @param parentIndices Identifies the parent ragdoll node for each node in the ragdoll.
-        AZStd::shared_ptr<Ragdoll> CreateRagdoll(const Physics::RagdollConfiguration& configuration,
+        AZStd::unique_ptr<Ragdoll> CreateRagdoll(const Physics::RagdollConfiguration& configuration,
             const Physics::RagdollState& initialState, const ParentIndices& parentIndices);
 
         /// Creates a joint drive with properties based on the input values.

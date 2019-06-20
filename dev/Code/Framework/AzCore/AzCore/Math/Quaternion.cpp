@@ -85,6 +85,29 @@ namespace AZ
         return result;
     }
 
+    // efficient check to determine if a transform has scale applied or not.
+    bool IsUnit(const Transform& t)
+    {
+        return IsCloseMag<AZ::VectorFloat>(t.GetBasisX().GetLengthSq(), AZ::VectorFloat::CreateOne())
+            && IsCloseMag<AZ::VectorFloat>(t.GetBasisY().GetLengthSq(), AZ::VectorFloat::CreateOne())
+            && IsCloseMag<AZ::VectorFloat>(t.GetBasisZ().GetLengthSq(), AZ::VectorFloat::CreateOne());
+    }
+
+    const Quaternion Quaternion::CreateRotationFromScaledTransform(Transform t)
+    {
+        t.ExtractScaleExact();
+        return CreateFromTransform(t);
+    }
+    
+    const Quaternion Quaternion::CreateRotationFromUnscaledTransform(const Transform& t)
+    {
+        AZ_Assert(IsUnit(t), "Creating quaternion from transform without normalized scale - "
+            "the orientation will likely not be what you expect. Either extract the scale first, "
+            "or prefer calling CreateRotationFromScaledTransform which will call ExtractScale for you");
+
+        return CreateFromTransform(t);
+    }
+
     const Quaternion Quaternion::CreateFromTransform(const Transform& t)
     {
         return CreateFromMatrix3x3(Matrix3x3::CreateFromTransform(t));
@@ -101,6 +124,12 @@ namespace AZ
         VectorFloat halfAngle = 0.5f * angle;
         halfAngle.GetSinCos(sin, cos);
         return CreateFromVector3AndValue(sin * axis, cos);
+    }
+
+    const Quaternion Quaternion::CreateFromAxisAngleExact(const Vector3& axis, const VectorFloat& angle)
+    {
+        const VectorFloat halfAngle = 0.5f * angle;
+        return CreateFromVector3AndValue(sinf(halfAngle) * axis, cosf(halfAngle));
     }
 
     const Quaternion Quaternion::CreateShortestArc(const Vector3& v1, const Vector3& v2)

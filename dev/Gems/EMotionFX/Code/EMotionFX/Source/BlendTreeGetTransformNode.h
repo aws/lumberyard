@@ -81,7 +81,7 @@ namespace EMotionFX
 
         void OnUpdateUniqueData(AnimGraphInstance* animGraphInstance) override;
 
-        uint32 GetVisualColor() const override                  { return MCore::RGBA(255, 0, 0); }
+        AZ::Color GetVisualColor() const override                  { return AZ::Color(1.0f, 0.0f, 0.0f, 1.0f); }
 
         const char* GetPaletteName() const override;
         AnimGraphObject::ECategory GetPaletteCategory() const override;

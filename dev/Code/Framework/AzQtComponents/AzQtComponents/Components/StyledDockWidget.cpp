@@ -22,6 +22,8 @@
 #include <QPainter>
 #include <QGuiApplication>
 #include <QWindow>
+#include <QStylePainter>
+#include <QStyleOptionFrame>
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 6, 1) && defined(Q_OS_WIN32)
 #include <QtGui/private/qwindow_p.h>
@@ -169,11 +171,14 @@ namespace AzQtComponents
 
     void StyledDockWidget::paintEvent(QPaintEvent*)
     {
-        if (isFloating() && customTitleBar())
-        {
-            QPainter p(this);
-            drawFrame(p, rect(), /*drawTop=*/ false);
-        }
+        // By default QDockWidget::paintEvent only draws the frame if the dock widget doesn't have
+        // a custom title bar and does not have native window decorations. As a result, QDockWidget
+        // cannot be styled using QSS when floating.
+        // UI 1.0 paint code moved to EditorProxyStyle::drawPrimitive.
+        QStylePainter p(this);
+        QStyleOptionFrame framOpt;
+        framOpt.init(this);
+        p.drawPrimitive(QStyle::PE_FrameDockWidget, framOpt);
     }
 
     bool StyledDockWidget::doesTitleBarOverdraw() const
@@ -258,7 +263,7 @@ namespace AzQtComponents
         p.restore();
     }
 
-    TitleBar* StyledDockWidget::customTitleBar()
+    TitleBar* StyledDockWidget::customTitleBar() const
     {
         return qobject_cast<TitleBar*>(titleBarWidget());
     }

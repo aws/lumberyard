@@ -40,6 +40,7 @@ namespace PhysXCharacters
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
         {
             incompatible.push_back(AZ_CRC("PhysXRagdollService", 0x6d889c70));
+            incompatible.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
         }
 
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
@@ -62,12 +63,12 @@ namespace PhysXCharacters
         // RagdollPhysicsBus
         void EnableSimulation(const Physics::RagdollState& initialState) override;
         void DisableSimulation() override;
-        AZStd::shared_ptr<Physics::Ragdoll> GetRagdoll() override;
+        Physics::Ragdoll* GetRagdoll() override;
         void GetState(Physics::RagdollState& ragdollState) const override;
         void SetState(const Physics::RagdollState& ragdollState) override;
         void GetNodeState(size_t nodeIndex, Physics::RagdollNodeState& nodeState) const override;
         void SetNodeState(size_t nodeIndex, const Physics::RagdollNodeState& nodeState) override;
-        AZStd::shared_ptr<Physics::RagdollNode> GetNode(size_t nodeIndex) const override;
+        Physics::RagdollNode* GetNode(size_t nodeIndex) const override;
 
         // CharacterPhysicsDataNotificationBus
         void OnRagdollConfigurationReady() override;
@@ -80,13 +81,18 @@ namespace PhysXCharacters
         bool IsJointProjectionVisible();
         void Reinit();
 
-        AZStd::shared_ptr<Ragdoll> m_ragdoll;
-        AZ::u32 m_positionIterations = 16; ///< Minimum number of position iterations to perform in the PhysX solver.
-                                           ///< Lower iteration counts are less expensive but may behave less realistically.
-        AZ::u32 m_velocityIterations = 8; ///< Minimum number of velocity iterations to perform in the PhysX solver.
-        bool m_enableJointProjection = true; ///< Whether to use joint projection to preserve joint constraints in demanding
-                                             ///< situations at the expense of potentially reducing physical correctness.
-        float m_jointProjectionLinearTolerance = 1e-3f; ///< Linear joint error above which projection will be applied.
-        float m_jointProjectionAngularToleranceDegrees = 1.0f; ///< Angular joint error (in degrees) above which projection will be applied.
+        AZStd::unique_ptr<Ragdoll> m_ragdoll;
+        /// Minimum number of position iterations to perform in the PhysX solver.
+        /// Lower iteration counts are less expensive but may behave less realistically.
+        AZ::u32 m_positionIterations = 16; 
+        /// Minimum number of velocity iterations to perform in the PhysX solver.
+        AZ::u32 m_velocityIterations = 8;
+        /// Whether to use joint projection to preserve joint constraints in demanding
+        /// situations at the expense of potentially reducing physical correctness.
+        bool m_enableJointProjection = true; 
+        /// Linear joint error above which projection will be applied.
+        float m_jointProjectionLinearTolerance = 1e-3f;
+        /// Angular joint error (in degrees) above which projection will be applied.
+        float m_jointProjectionAngularToleranceDegrees = 1.0f;
     };
 } // namespace PhysXCharacters

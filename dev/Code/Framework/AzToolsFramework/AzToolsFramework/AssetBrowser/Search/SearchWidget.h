@@ -12,48 +12,33 @@
 #pragma once
 
 #include <AzToolsFramework/AssetBrowser/Search/Filter.h>
+#include <AzQtComponents/Components/FilteredSearchWidget.h>
 
-#include <AzCore/Memory/SystemAllocator.h>
-#include <AzCore/std/containers/vector.h>
-
-#include <QWidget>
-#include <QScopedPointer>
 #include <QSharedPointer>
-
-namespace Ui
-{
-    class SearchWidgetClass;
-}
 
 namespace AzToolsFramework
 {
     namespace AssetBrowser
     {
         class SearchWidget
-            : public QWidget
+            : public AzQtComponents::FilteredSearchWidget
         {
             Q_OBJECT
-        public:
-            AZ_CLASS_ALLOCATOR(SearchWidget, AZ::SystemAllocator, 0);
 
+        public:
             explicit SearchWidget(QWidget* parent = nullptr);
-            ~SearchWidget() override;
 
             void Setup(bool stringFilter, bool assetTypeFilter);
 
             QSharedPointer<CompositeFilter> GetFilter() const;
 
-            void ClearAssetTypeFilter() const;
-            void ClearStringFilter() const;
-            QString GetFilterString() const;
+            QString GetFilterString() const { return textFilter(); }
+            void ClearStringFilter() { ClearTextFilter(); }
 
         private:
-            QScopedPointer<Ui::SearchWidgetClass> m_ui;            
             QSharedPointer<CompositeFilter> m_filter;
             QSharedPointer<CompositeFilter> m_stringFilter;
-
-        private Q_SLOTS:
-            void TextChangedSlot(const QString& text) const;
+            QSharedPointer<CompositeFilter> m_typesFilter;
         };
     } // namespace AssetBrowser
 } // namespace AzToolsFramework

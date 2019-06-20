@@ -69,6 +69,8 @@ namespace Audio
 
         MOCK_METHOD2(SetPosition, EAudioRequestStatus(IATLAudioObjectData* const, const SATLWorldPosition&));
 
+        MOCK_METHOD2(SetMultiplePositions, EAudioRequestStatus(IATLAudioObjectData* const, const MultiPositionParams&));
+
         MOCK_METHOD3(SetRtpc, EAudioRequestStatus(IATLAudioObjectData* const, const IATLRtpcImplData* const, const float));
 
         MOCK_METHOD2(SetSwitchState, EAudioRequestStatus(IATLAudioObjectData* const, const IATLSwitchStateImplData* const));

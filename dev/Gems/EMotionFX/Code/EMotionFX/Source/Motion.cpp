@@ -34,7 +34,6 @@ namespace EMotionFX
         : BaseObject()
     {
         mCustomData             = nullptr;
-        mDefaultPlayBackInfo    = nullptr;
         mNameID                 = MCORE_INVALIDINDEX32;
         mID                     = MCore::GetIDGenerator().GenerateID();
         mEventTable             = aznew MotionEventTable();
@@ -73,9 +72,6 @@ namespace EMotionFX
         {
             GetMotionManager().RemoveMotion(this, false);
         }
-
-        // get rid of the default playback info
-        delete mDefaultPlayBackInfo;
 
         if (mEventTable)
         {
@@ -140,6 +136,8 @@ namespace EMotionFX
     {
 #if defined(EMFX_DEVELOPMENT_BUILD)
         mIsOwnedByRuntime = isOwnedByRuntime;
+#else
+        AZ_UNUSED(isOwnedByRuntime);
 #endif
     }
 
@@ -184,28 +182,20 @@ namespace EMotionFX
     }
 
 
-    // allocate memory for the default playback info
-    void Motion::CreateDefaultPlayBackInfo()
-    {
-        if (mDefaultPlayBackInfo == nullptr)
-        {
-            mDefaultPlayBackInfo = new PlayBackInfo();
-        }
-    }
-
-
-    // set the default playback info to the given playback info
     void Motion::SetDefaultPlayBackInfo(const PlayBackInfo& playBackInfo)
     {
-        CreateDefaultPlayBackInfo();
-        *mDefaultPlayBackInfo = playBackInfo;
+        m_defaultPlayBackInfo = playBackInfo;
     }
 
 
-    // get a pointer to the default playback info
-    PlayBackInfo* Motion::GetDefaultPlayBackInfo() const
+    PlayBackInfo* Motion::GetDefaultPlayBackInfo()
     {
-        return mDefaultPlayBackInfo;
+        return &m_defaultPlayBackInfo;
+    }
+
+    const PlayBackInfo* Motion::GetDefaultPlayBackInfo() const
+    {
+        return &m_defaultPlayBackInfo;
     }
 
 

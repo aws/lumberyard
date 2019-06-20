@@ -10,6 +10,34 @@
 #
 ########################################################################################
 
+from waflib.Build import BuildContext
+
+import shutil
+from waflib import Task, TaskGen
+
+@TaskGen.feature('emfx_copyfiles')
+def make_emfx_copyfiles(self):
+    """
+    Creates tasks to copy files from the source tree to the output tree
+    """
+    platform = self.bld.env['PLATFORM']
+    configuration = self.bld.env['CONFIGURATION']
+
+    if platform == 'project_generator':
+        return
+
+    platform_config = self.bld.get_platform_configuration(platform, configuration)
+
+    if not platform_config.is_test:
+        return
+
+    for source in self.path.ant_glob('Tests/TestAssets/**'):
+        outFolders = self.bld.get_output_folders(platform, configuration, self)
+        for outFolder in outFolders:
+            # Get the location of the source file relative to the output folder
+            target = outFolder.make_node(source.relpath())
+            self.create_copy_task(source, target)
+
 def build(bld):
 
     msvc_cxx_flags = [
@@ -77,6 +105,7 @@ def build(bld):
         platforms                   = ['all'],
         file_list                   = ['emotionfx.waf_files'],
         use                         = ['EMotionFXStaticLib'],
+        features                    = ['emfx_copyfiles'],
         win_features                = ['crcfix'],
         #msvc_cxxflags               = msvc_cxx_flags,
         includes                    = ['./Include',
@@ -100,7 +129,9 @@ def build(bld):
         # Editor module - Includes pulls in EmotionFX tools code, and has a dependencies on AzToolsFramework and the EMotionFXStaticLib gem shared library.
         editor = dict(
             platforms       = ['win', 'darwin'],
-            configurations  = ['debug', 'debug_test', 'profile', 'profile_test'],
+            configurations  = ['all'],
+            exclude_monolithic = True,
+            client_only     = True,
             file_list       = ['emotionfx.waf_files',
                                'emotionfx_editor.waf_files',
                                'MysticQt/mysticqt.waf_files',

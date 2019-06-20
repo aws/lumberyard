@@ -88,37 +88,37 @@ namespace LmbrCentral
         AZ::Vector3 desiredAxis;
         switch (axis)
         {
-            case Axis::Z :
+            case Axis::Z:
             {
                 desiredAxis = AZ::Vector3::CreateAxisZ(1.0f);
                 break;
             }
-            case Axis::NegativeZ :
+            case Axis::NegativeZ:
             {
                 desiredAxis = AZ::Vector3::CreateAxisZ(-1.0f);
                 break;
             }
-            case Axis::Y :
+            case Axis::Y:
             {
                 desiredAxis = AZ::Vector3::CreateAxisY(1.0f);
                 break;
             }
-            case Axis::NegativeY :
+            case Axis::NegativeY:
             {
                 desiredAxis = AZ::Vector3::CreateAxisY(-1.0f);
                 break;
             }
-            case Axis::X :
+            case Axis::X:
             {
                 desiredAxis = AZ::Vector3::CreateAxisX(1.0f);
                 break;
             }
-            case Axis::NegativeX :
+            case Axis::NegativeX:
             {
                 desiredAxis = AZ::Vector3::CreateAxisX(-1.0f);
                 break;
             }
-            default :
+            default:
             {
                 AZ_Assert(false, "Unexpected case");
                 desiredAxis = AZ::Vector3::CreateAxisZ(1.0f);
@@ -138,7 +138,9 @@ namespace LmbrCentral
     }
 
     /// ConstraintComponentNotificationBus BehaviorContext forwarder
-    class BehaviorConstraintComponentNotificationBusHandler : public ConstraintComponentNotificationBus::Handler, public AZ::BehaviorEBusHandler
+    class BehaviorConstraintComponentNotificationBusHandler
+        : public ConstraintComponentNotificationBus::Handler
+        , public AZ::BehaviorEBusHandler
     {
     public:
         AZ_EBUS_BEHAVIOR_BINDER(BehaviorConstraintComponentNotificationBusHandler, "{16BDFDDB-E70F-4B48-8C43-1E5018CD5722}", AZ::SystemAllocator,
@@ -179,17 +181,16 @@ namespace LmbrCentral
         AZ::BehaviorContext* behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context);
         if (behaviorContext)
         {
-
             behaviorContext->EBus<ConstraintComponentRequestBus>("ConstraintComponentRequestBus")
                 ->Event("SetConstraintEntities", &ConstraintComponentRequestBus::Events::SetConstraintEntities)
                 ->Event("SetConstraintEntitiesWithPartIds", &ConstraintComponentRequestBus::Events::SetConstraintEntitiesWithPartIds)
                 ->Event("EnableConstraint", &ConstraintComponentRequestBus::Events::EnableConstraint)
                 ->Event("DisableConstraint", &ConstraintComponentRequestBus::Events::DisableConstraint)
-                ;
+            ;
 
             behaviorContext->EBus<ConstraintComponentNotificationBus>("ConstraintComponentNotificationBus")
                 ->Handler<BehaviorConstraintComponentNotificationBusHandler>()
-                ;
+            ;
         }
     }
 
@@ -199,6 +200,7 @@ namespace LmbrCentral
     void ConstraintComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
     {
         provided.push_back(AZ_CRC("ConstraintService", 0xa9a63349));
+        provided.push_back(AZ_CRC("LegacyCryPhysicsService", 0xbb370351));
     }
 
     //=========================================================================
@@ -324,7 +326,7 @@ namespace LmbrCentral
     //=========================================================================
     void ConstraintComponent::SetConstraintEntitiesWithPartIds(const AZ::EntityId& owningEntity, int ownerPartId, const AZ::EntityId& targetEntity, int targetPartId)
     {
-        if ((owningEntity == m_config.m_owningEntity) && (targetEntity == m_config.m_targetEntity) && 
+        if ((owningEntity == m_config.m_owningEntity) && (targetEntity == m_config.m_targetEntity) &&
             (ownerPartId == m_config.m_ownerPartId) && (targetPartId == m_config.m_targetPartId))
         {
             return;
@@ -423,7 +425,7 @@ namespace LmbrCentral
 
         switch (m_config.m_constraintType)
         {
-            case ConstraintConfiguration::ConstraintType::Hinge :
+            case ConstraintConfiguration::ConstraintType::Hinge:
             {
                 m_action_add_constraint.yzlimits[0] = 0.0f;
                 m_action_add_constraint.yzlimits[1] = 0.0f;
@@ -434,7 +436,7 @@ namespace LmbrCentral
                 }
                 break;
             }
-            case ConstraintConfiguration::ConstraintType::Ball :
+            case ConstraintConfiguration::ConstraintType::Ball:
             {
                 if (m_config.m_enableRotationLimits)
                 {
@@ -445,7 +447,7 @@ namespace LmbrCentral
                 }
                 break;
             }
-            case ConstraintConfiguration::ConstraintType::Slider :
+            case ConstraintConfiguration::ConstraintType::Slider:
             {
                 m_action_add_constraint.yzlimits[0] = 0.0f;
                 m_action_add_constraint.yzlimits[1] = 0.0f;
@@ -457,21 +459,21 @@ namespace LmbrCentral
                 m_action_add_constraint.flags |= constraint_line;
                 break;
             }
-            case ConstraintConfiguration::ConstraintType::Plane :
+            case ConstraintConfiguration::ConstraintType::Plane:
             {
                 m_action_add_constraint.flags |= constraint_plane;
                 break;
             }
-            case ConstraintConfiguration::ConstraintType::Magnet :
+            case ConstraintConfiguration::ConstraintType::Magnet:
             {
                 break;
             }
-            case ConstraintConfiguration::ConstraintType::Fixed :
+            case ConstraintConfiguration::ConstraintType::Fixed:
             {
                 m_action_add_constraint.flags |= constraint_no_rotation;
                 break;
             }
-            case ConstraintConfiguration::ConstraintType::Free :
+            case ConstraintConfiguration::ConstraintType::Free:
             {
                 m_action_add_constraint.flags |= constraint_free_position;
                 m_action_add_constraint.flags |= constraint_no_rotation;
@@ -482,7 +484,7 @@ namespace LmbrCentral
                 AZ_Assert(false, "Unexpected constraint type?");
                 break;
             }
-        };
+        }
 
         if (m_config.m_enableConstrainToPartId)
         {
@@ -551,7 +553,7 @@ namespace LmbrCentral
     //=========================================================================
     // ConstraintComponent::SetupPivotsAndFrame
     //=========================================================================
-    void ConstraintComponent::SetupPivotsAndFrame(pe_action_add_constraint &aac) const
+    void ConstraintComponent::SetupPivotsAndFrame(pe_action_add_constraint& aac) const
     {
         // Note: Coordinate space does not change constraint behavior, it only sets the coordinate space for initial positions and coordinate frames
         aac.flags &= ~local_frames;

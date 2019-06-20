@@ -10,14 +10,16 @@
 *
 */
 
-#include "CloudGemDynamicContent_precompiled.h"
-
 #include <DynamicContentFileInfo.h>
 
 #include <FileTransferSupport/FileTransferSupport.h>
 #include <DynamicContentTransferManager.h>
 
 #include <AzCore/std/string/string.h>
+
+#include <platform.h>
+#include <ICryPak.h>
+#include <ISystem.h>
 
 #include <Base64.h>
 
@@ -133,7 +135,9 @@ namespace CloudCanvas
             if ( IsMounted())
             {
                 AZ_TracePrintf("CloudCanvas", "Unmounting pak for %s.", GetFileName().c_str());
-                gEnv->pCryPak->ClosePack(GetFullLocalFileName().c_str());
+                SSystemGlobalEnvironment* pEnv = GetISystem()->GetGlobalEnvironment();
+                ICryPak* cryPak = pEnv->pCryPak;
+                cryPak->ClosePack(GetFullLocalFileName().c_str());
             }
             else
             {

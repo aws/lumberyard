@@ -30,4 +30,16 @@ namespace ScriptCanvasDiagnostics
     };
 
     using DebugDrawBus = AZ::EBus<DebugDrawRequests>;
+
+    class SystemRequests : public AZ::EBusTraits
+    {
+    public:
+
+        static const AZ::EBusHandlerPolicy HandlerPolicy = AZ::EBusHandlerPolicy::Single;
+        static const AZ::EBusAddressPolicy AddressPolicy = AZ::EBusAddressPolicy::Single;
+
+        virtual bool IsEditor() = 0;
+    };
+
+    using SystemRequestBus = AZ::EBus<SystemRequests>;
 }

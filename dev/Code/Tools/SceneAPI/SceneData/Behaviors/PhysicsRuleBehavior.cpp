@@ -23,6 +23,7 @@
 #include <SceneAPI/SceneCore/Utilities/SceneGraphSelector.h>
 #include <SceneAPI/SceneCore/DataTypes/Groups/IMeshGroup.h>
 #include <SceneAPI/SceneCore/DataTypes/Rules/IMaterialRule.h>
+#include <SceneAPI/SceneCore/DataTypes/Rules/ITouchBendingRule.h>
 #include <SceneAPI/SceneCore/DataTypes/GraphData/IMeshData.h>
 #include <SceneAPI/SceneData/Rules/PhysicsRule.h>
 #include <SceneAPI/SceneData/Rules/MaterialRule.h>
@@ -62,6 +63,14 @@ namespace AZ
             {
                 if (target.RTTI_IsTypeOf(DataTypes::IMeshGroup::TYPEINFO_Uuid()))
                 {
+                    //It is only allowed to add PhysicsRule when ITouchBendingRule is not present.
+                    const SceneAPI::DataTypes::IMeshGroup* group = azrtti_cast<const SceneAPI::DataTypes::IMeshGroup*>(&target);
+                    const SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainerConst();
+                    if (rules.ContainsRuleOfType<SceneAPI::DataTypes::ITouchBendingRule>())
+                    {
+                        return;
+                    }
+
                     SceneData::SceneNodeSelectionList selection;
                     size_t physicsCount = SelectPhysicsMeshes(scene, selection);
 
@@ -172,6 +181,38 @@ namespace AZ
                 }
             }
 
+            void PhysicsRuleBehavior::GetAvailableModifiers(SceneAPI::Events::ManifestMetaInfo::ModifiersList& modifiers,
+                const SceneAPI::Containers::Scene& /*scene*/,
+                const SceneAPI::DataTypes::IManifestObject& target)
+            {
+                if (!target.RTTI_IsTypeOf(SceneAPI::DataTypes::IMeshGroup::TYPEINFO_Uuid()))
+                {
+                    return;
+                }
+
+                //When the "Add Modifier" Button in the FBX Settings Editor is clicked,
+                //the expectation is that only those Modifiers(aka Rules) that have not been added to the mesh group
+                //should be displayed for further selection.
+                const SceneAPI::DataTypes::IMeshGroup* group = azrtti_cast<const SceneAPI::DataTypes::IMeshGroup*>(&target);
+                const SceneAPI::Containers::RuleContainer& rules = group->GetRuleContainerConst();
+
+                const size_t ruleCount = rules.GetRuleCount();
+                for (size_t i = 0; i < ruleCount; ++i)
+                {
+                    AZStd::shared_ptr< SceneAPI::DataTypes::IRule> rule = rules.GetRule(i);
+                    if (rule->RTTI_IsTypeOf(SceneAPI::DataTypes::ITouchBendingRule::TYPEINFO_Uuid()))
+                    {
+                        //IPhysicsRule is already added into the MeshGroup.
+                        return;
+                    }
+                    if (rule->RTTI_IsTypeOf(SceneAPI::DataTypes::IPhysicsRule::TYPEINFO_Uuid()))
+                    {
+                        //If ITouchBendingRule is already present, then adding PhysicsRule is not an option.
+                        return;
+                    }
+                }
+                modifiers.push_back(PhysicsRule::TYPEINFO_Uuid());
+            }
         } // namespace SceneData
     } // namespace SceneAPI
 } // namespace AZ

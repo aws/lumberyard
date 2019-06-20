@@ -13,6 +13,7 @@
 #pragma once
 
 #include "EditorBaseShapeComponent.h"
+#include "CompoundShapeComponent.h"
 #include <LmbrCentral/Shape/CompoundShapeComponentBus.h>
 
 namespace LmbrCentral
@@ -20,12 +21,14 @@ namespace LmbrCentral
     class EditorCompoundShapeComponent
         : public EditorBaseShapeComponent
         , private CompoundShapeComponentRequestsBus::Handler
+        , private CompoundShapeComponentHierarchyRequestsBus::Handler
     {
     public:
-        AZ_EDITOR_COMPONENT(EditorCompoundShapeComponent, "{837AA0DF-9C14-4311-8410-E7983E1F4B8D}", EditorBaseShapeComponent);
+        AZ_EDITOR_COMPONENT(EditorCompoundShapeComponent, EditorCompoundShapeComponentTypeId, EditorBaseShapeComponent);
         static void Reflect(AZ::ReflectContext* context);
 
         // AZ::Component
+        void Init() override;
         void Activate() override;
         void Deactivate() override;
         
@@ -50,8 +53,14 @@ namespace LmbrCentral
             return m_configuration;
         }
 
-        bool HasShapeComponentReferencingEntityId(const AZ::EntityId& entityId) override;
+        // CompoundShapeComponentHierarchyRequestsBus::Handler
+        bool HasChildId(const AZ::EntityId& entityId) override;
+
+        bool ValidateChildIds() override;
+
+        bool ValidateConfiguration();
 
         CompoundShapeConfiguration m_configuration; ///< Stores configuration for this component.
+        CompoundShapeComponent m_component;
     };
 } // namespace LmbrCentral

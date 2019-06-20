@@ -8,14 +8,16 @@
 # remove or modify any license notices. This file is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #
-from waflib.Configure import conf
+from cry_utils import append_to_unique_list
 
-@conf
-def load_test_settings(conf):
+
+def load_test_settings(ctx):
     """
     Setup all compiler and linker settings shared over all dedicated configurations
     """
-    v = conf.env
-
     # Setup defines
-    v['DEFINES'] += [ 'AZ_TESTS_ENABLED' ]
+    append_to_unique_list(
+        ctx.env['DEFINES'], [
+            'AZ_TESTS_ENABLED',
+            'AZCORE_ENABLE_MEMORY_TRACKING'         # Enable memory tracking for all unit tests
+            ])

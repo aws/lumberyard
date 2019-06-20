@@ -32,5 +32,6 @@ namespace GraphCanvas
     private:
 
         const Styling::StyleHelper* m_colorPalette;
+        AZStd::vector<const Styling::StyleHelper*> m_containerColorPalettes;
     };
 }

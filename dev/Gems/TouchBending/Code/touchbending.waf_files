@@ -1,0 +1,20 @@
+{
+    "none": {
+        "Source": [
+            "Source/TouchBending_precompiled.cpp",
+            "Source/TouchBending_precompiled.h"
+        ]
+    },
+    "auto": {
+        "Source": [
+            "Source/TouchBendingModule.cpp"
+        ],
+        "Source/Simulation": [
+            "Source/Simulation/PhysicsComponent.cpp",
+            "Source/Simulation/PhysicsComponent.h",
+            "Source/Simulation/AsyncSkeletonBuilderBus.h",
+            "Source/Simulation/PhysicalizedSkeleton.cpp",
+            "Source/Simulation/PhysicalizedSkeleton.h"
+        ]
+    }
+}

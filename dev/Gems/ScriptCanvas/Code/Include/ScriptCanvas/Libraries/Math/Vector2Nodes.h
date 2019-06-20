@@ -34,7 +34,7 @@ namespace ScriptCanvas
         {
             return lhs + rhs;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Add, "Math/Vector2", "{24E5FD67-43D7-44C0-B9E8-0CA02A43777A}", "returns the vector sum of A and B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Add, "Math/Vector2", "{24E5FD67-43D7-44C0-B9E8-0CA02A43777A}", "This node is deprecated, use Add (+), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE Vector2Type Angle(NumberType angle)
         {
@@ -62,6 +62,12 @@ namespace ScriptCanvas
 
         AZ_INLINE Vector2Type DivideByNumber(const Vector2Type source, const NumberType divisor)
         {
+            if (AZ::IsClose(divisor, Data::NumberType(0), std::numeric_limits<Data::NumberType>::epsilon()))
+            {
+                AZ_Error("Script Canvas", false, "Division by zero");
+                return Vector2Type::CreateZero();
+            }
+
             return source / ToVectorFloat(divisor);
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByNumber, "Math/Vector2", "{DEB8225C-2A9C-40A2-AC81-0FA105637AF9}", "returns the source with each element divided by Divisor", "Source", "Divisor");
@@ -70,7 +76,7 @@ namespace ScriptCanvas
         {
             return source / divisor;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(DivideByVector, "Math/Vector2", "{6043B1B4-3E0A-455D-860B-588DE90C7C6C}", "returns the Numerator with each element divided by the corresponding element in Divisor", "Numerator", "Divisor");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(DivideByVector, "Math/Vector2", "{6043B1B4-3E0A-455D-860B-588DE90C7C6C}", "This node is deprecated, use Divide (/), it provides contextual type and slots", "Numerator", "Divisor");
 
         AZ_INLINE NumberType Dot(const Vector2Type lhs, const Vector2Type rhs)
         {
@@ -164,19 +170,19 @@ namespace ScriptCanvas
         }
         SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Min, "Math/Vector2", "{815685B8-B877-4D54-9E11-D0161185B4B9}", "returns the vector (min(A.x, B.x), min(A.y, B.y))", "A", "B");
         
-        AZ_INLINE Vector2Type ModX(Vector2Type source, NumberType value)
+        AZ_INLINE Vector2Type SetX(Vector2Type source, NumberType value)
         {
             source.SetX(aznumeric_caster(value));
             return source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ModX, "Math/Vector2", "{A5C2933F-C871-4915-B3AA-0C31FCFFEC15}", "returns a the vector(X, Source.Y)", "Source", "X");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(SetX, "Math/Vector2", "{A5C2933F-C871-4915-B3AA-0C31FCFFEC15}", "returns a the vector(X, Source.Y)", "Source", "X");
 
-        AZ_INLINE Vector2Type ModY(Vector2Type source, NumberType value)
+        AZ_INLINE Vector2Type SetY(Vector2Type source, NumberType value)
         {
             source.SetY(aznumeric_caster(value));
             return source;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(ModY, "Math/Vector2", "{824BE8DB-BB03-49A2-A829-34DAE2C66AF4}", "returns a the vector(Source.X, Y)", "Source", "Y");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(SetY, "Math/Vector2", "{824BE8DB-BB03-49A2-A829-34DAE2C66AF4}", "returns a the vector(Source.X, Y)", "Source", "Y");
 
         AZ_INLINE Vector2Type MultiplyAdd(Vector2Type a, const Vector2Type b, const Vector2Type c)
         {
@@ -194,7 +200,7 @@ namespace ScriptCanvas
         {
             return source * multiplier;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(MultiplyByVector, "Math/Vector2", "{1C997C54-D457-4101-8210-6FAA48105E64}", "returns the vector Source with each element multiplied by the corresponding element in Multiplier", "Source", "Multiplier");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(MultiplyByVector, "Math/Vector2", "{1C997C54-D457-4101-8210-6FAA48105E64}", "This node is deprecated, use Multiply (*), it provides contextual type and slots", "Source", "Multiplier");
 
         AZ_INLINE Vector2Type Negate(const Vector2Type source)
         {
@@ -232,7 +238,7 @@ namespace ScriptCanvas
         {
             return lhs - rhs;
         }
-        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE(Subtract, "Math/Vector2", "{3D87036A-D1BD-475E-85C7-66922F810885}", "returns the vector A - B", "A", "B");
+        SCRIPT_CANVAS_GENERIC_FUNCTION_NODE_DEPRECATED(Subtract, "Math/Vector2", "{3D87036A-D1BD-475E-85C7-66922F810885}", "This node is deprecated, use Subtract (-), it provides contextual type and slots", "A", "B");
 
         AZ_INLINE Vector2Type ToPerpendicular(const Vector2Type source)
         {
@@ -272,10 +278,10 @@ namespace ScriptCanvas
             , LerpNode
             , MaxNode
             , MinNode
+            , SetXNode
+            , SetYNode
 
 #if ENABLE_EXTENDED_MATH_SUPPORT
-            , ModXNode
-            , ModYNode
             , MultiplyAddNode
 #endif
 

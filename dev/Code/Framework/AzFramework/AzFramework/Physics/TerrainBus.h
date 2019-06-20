@@ -18,7 +18,7 @@ namespace Physics
 {
     /// TerrainRequests serviced by the TerrainComponent.
     class TerrainRequests
-        : public AZ::EBusTraits
+        : public AZ::ComponentBus
     {
     public:
 
@@ -32,7 +32,7 @@ namespace Physics
         /// @param x position in the x direction.
         /// @param y position in the y direction.
         /// return The rigid body representing the tile at the specified index. Returns nullptr if the terrain is not constructed.
-        virtual AZStd::shared_ptr<Physics::RigidBodyStatic> GetTerrainTile(float x, float y) = 0;
+        virtual Physics::RigidBodyStatic* GetTerrainTile(float x, float y) = 0;
     };
 
     using TerrainRequestBus = AZ::EBus<TerrainRequests>;

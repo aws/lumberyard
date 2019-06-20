@@ -11,9 +11,11 @@
 # Original file Copyright Crytek GMBH or its affiliates, used under license.
 #
 import ConfigParser
-from waflib.Configure import conf
+from waflib.Configure import conf, deprecated
+
+from settings_manager import LUMBERYARD_SETTINGS
 import waflib.Logs as waf_logs
-from time import time, sleep
+
 from Tkinter import *
 import Tkinter as tk
 import ttk
@@ -31,7 +33,7 @@ def _save_option(waf_ctx, category_name, option_name, new_value):
     new_value = str(new_value)
     section_name = str(category_name)
     waf_ctx.set_settings_option(section_name, option_name, new_value)
-                
+
 ###############################################################################
 def _create_option_widget(waf_ctx, category_name, option_name, value, default_description, default_value, target_content_area, fn_on_value_changed = None):
     (hint_list, hint_value_list, hint_desc_list, mode) = waf_ctx.hint_settings_option(category_name, option_name, "")
@@ -114,7 +116,7 @@ class UiOption_Base(object):
         # Call verification function once to ensure value is valid (except it is empty)
         # we won't write to the config as the prev_value == value
         if value:
-            self.revalidate()
+            self.revalidate(None, False)
         
     def get_value(self):
         return None
@@ -131,7 +133,7 @@ class UiOption_Base(object):
     def display_input_dialog(self):
         pass
         
-    def handle_value_changed(self, value):  
+    def handle_value_changed(self, value, update_value):
         # Validate value
         new_value = str(value)
         (valValid, warning, error) = _verify_option(self.waf_ctx, self.category_name, self.option_name, new_value)
@@ -155,7 +157,7 @@ class UiOption_Base(object):
         
         prev_value_backup = self.prev_valid_value
         # Write to file and internal waf options system
-        save_option = valValid == True and not warning and not error
+        save_option = valValid == True and not warning and not error and update_value
         if save_option and self.prev_valid_value != new_value:
             _save_option(self.waf_ctx, self.category_name, self.option_name, new_value)
             self.prev_valid_value = new_value
@@ -165,11 +167,11 @@ class UiOption_Base(object):
         
         return valValid
         
-    def revalidate(self, optional_value = None):
+    def revalidate(self, optional_value = None, update_value = True):
         if optional_value:
-            return self.handle_value_changed(optional_value)
+            return self.handle_value_changed(optional_value, update_value)
         else:
-            return self.handle_value_changed(self.get_value())
+            return self.handle_value_changed(self.get_value(), update_value)
         
     def destroy(self):
         self.content_area.destroy()
@@ -220,6 +222,7 @@ class UiOption_CheckBoxList(UiOption_Base):
         self.options_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10)
         
         value_list = self.prev_valid_value.split(',')
+        value_list = [x.strip() for x in value_list]
         for index, option_name in enumerate(self.item_names):
             ttk_checkbox_value = StringVar()
             
@@ -405,9 +408,8 @@ class UiCategory_Base(object):
         self.waf_ctx = self.parent.waf_ctx
         
         # Get options for section
-        if hasattr(self.waf_ctx, 'default_settings'):
-            self.default_options = self.waf_ctx.default_settings.get(self.category_name, [])
-            
+        self.default_options = LUMBERYARD_SETTINGS.get_default_options().get(self.category_name, [])
+
         # Get all valid option in order from the default settings
         for items in self.default_options:
                 attribute = items.get('attribute', None)
@@ -456,22 +458,22 @@ class UiCategory_Base(object):
         value = None
         default_value = ""
         default_description = ""
-        if self.parent.config_parser.has_section(self.category_name) and self.parent.config_parser.has_option(self.category_name, option_name):
-            value = self.parent.config_parser.get(self.category_name, option_name)              
-            (default_value, default_description) = self.waf_ctx.get_default_settings(self.category_name, option_name)
 
-        # Check if this option is new (new options use default value
-        is_new_option = False
-        new_option_section = self.parent.new_options.get(self.category_name, None)
-        if new_option_section:
-            if option_name in new_option_section:
-                is_new_option = True
-            
-        # Before creating the widget, validate that it is valid
+        user_settings = LUMBERYARD_SETTINGS.create_config()
+
+        if user_settings.has_section(self.category_name) and user_settings.has_option(self.category_name, option_name):
+            value = user_settings.get(self.category_name, option_name)
+            default_value, default_description = LUMBERYARD_SETTINGS.get_default_value_and_description(self.category_name, option_name)
+
+        if not value:
+            value = LUMBERYARD_SETTINGS.get_settings_value(option_name)
+            default_value, default_description = LUMBERYARD_SETTINGS.get_default_value_and_description(self.category_name, option_name)
+
+            # Before creating the widget, validate that it is valid
         (valValid, warning, error) = _verify_option(self.waf_ctx, self.category_name, option_name, value)
         
         # Spawn input dialog to inform user
-        if not valValid or is_new_option:   
+        if not valValid:
             d = ForceValidationDialog(self.waf_ctx, self.content_area, self.category_name, option_name, value, default_description, default_value, None)
             if d.result:                    
                 value = d.result
@@ -740,7 +742,7 @@ class GuiTask_GetOption(IGuiTask):
         self.inner_topframe.pack(fill=tk.BOTH, expand=TRUE)
         
         # Option widget
-        (default_value, default_description) = self.ctx.get_default_settings(self.section_name, self.option_name)
+        (default_value, default_description) = self.ctx.get_default_settings_value(self.section_name, self.option_name)
         decription = self.decription_override if self.decription_override else default_description
         self.option_widget = _create_option_widget(self.ctx, self.section_name, self.option_name, self.value, decription, default_value, self.inner_topframe, None)
         self.option_widget.set_focus_out_event(False)
@@ -809,11 +811,9 @@ class GuiTask_AskYesNo(IGuiTask):
 ###############################################################################
 class GuiTask_ModifyWafConfig(IGuiTask):
     
-    def __init__(self, waf_ctx, config_parser):
+    def __init__(self, waf_ctx):
         self.waf_ctx = waf_ctx
-        self.config_parser = config_parser
         self.categories = {}
-        self.new_options = {}
         super(GuiTask_ModifyWafConfig, self).__init__()
         
     def create_gui(self, root, parent, content_area):
@@ -843,14 +843,13 @@ class GuiTask_ModifyWafConfig(IGuiTask):
         box.pack()
         
     def cancel_task(self):
-        if self.config_parser and tkMessageBox.askyesno('Exit WAF', 'Save changes?'):           
+        if tkMessageBox.askyesno('Exit WAF', 'Save changes?'):
             (retVal, error) = self.validate_categories()
             if retVal:
-                self.waf_ctx.save_user_settings(self.config_parser)
+                self.waf_ctx.save_user_settings()
             else:
                 if not tkMessageBox.askyesno('Error on save WAF', 'Unable to save.\n\n%s\n\nExit without saving?' % error):
                     return False
-            
 
         self.parent.signal_task_finished(self)
         return True
@@ -871,7 +870,7 @@ class GuiTask_ModifyWafConfig(IGuiTask):
         
     def read_waf_option_config(self):       
         # Loop over all sections
-        for section in self.waf_ctx.default_settings:
+        for section in LUMBERYARD_SETTINGS.get_default_sections():
             self.categories[section] =  UiCategory(section, self)
         
 ################################################################################
@@ -1097,10 +1096,9 @@ class ThreadedGuiMenu(threading.Thread):
         
     def modify_user_options(self, ctx):
         # Ensure default settings have been loaded
-        (config_parser, new_options) = ctx.load_user_settings() 
-        
+
         self.result = None
-        self.active_task = GuiTask_ModifyWafConfig(ctx, config_parser)
+        self.active_task = GuiTask_ModifyWafConfig(ctx)
         self.wait_for_task() # Blocking call
         return self.result      
         

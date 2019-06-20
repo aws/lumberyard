@@ -1,0 +1,33 @@
+<ObjectStream version="3">
+	<Class name="UserSettingsContainer" version="3" type="{42C087CF-4F19-4DAF-B2B1-2927D94AA295}">
+		<Class name="AZStd::unordered_map" field="Map" type="{79C4F23B-19F1-58AE-9C3A-8CDFD2D00AB0}">
+			<Class name="AZStd::pair" field="element" type="{8B27CED2-6C1F-5A72-9D09-97458A077D47}">
+				<Class name="unsigned int" field="value1" value="653999308" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+				<Class name="AZStd::intrusive_ptr" field="value2" type="{21609605-3020-5D04-A48B-895277FD0093}">
+					<Class name="TargetManagementSettings" field="element" type="{AB1B14BB-C0E3-484A-B498-98F44A58C161}">
+						<Class name="AZStd::string" field="Hub" value="MANNEQUIN002" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+						<Class name="int" field="HubPort" value="5172" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+						<Class name="AZStd::string" field="Name" value="ProjectConfigurator" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+						<Class name="int" field="LocalPort" value="0" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+						<Class name="int" field="ReconnectIntervalMS" value="1000" type="{72039442-EB38-4D42-A1AD-CB68F7E0EEF6}"/>
+						<Class name="TargetInfo" field="LastConnectedTarget" version="2" type="{4D166C31-D7F4-4D49-B897-16365B8B0716}">
+							<Class name="AZStd::string" field="m_displayName" value="" type="{03AAAB3F-5C47-5A66-9EBC-D5FA4DB353C9}"/>
+							<Class name="unsigned int" field="m_persistentId" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+							<Class name="unsigned int" field="m_flags" value="0" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+						</Class>
+					</Class>
+				</Class>
+			</Class>
+			<Class name="AZStd::pair" field="element" type="{8B27CED2-6C1F-5A72-9D09-97458A077D47}">
+				<Class name="unsigned int" field="value1" value="1280829544" type="{43DA906B-7DEF-4CA8-9790-854106D3F983}"/>
+				<Class name="AZStd::intrusive_ptr" field="value2" type="{21609605-3020-5D04-A48B-895277FD0093}">
+					<Class name="AZ::StreamerComponentUserSettings" field="element" type="{DBE98B4C-766C-453E-84AD-AF5425696591}">
+						<Class name="bool" field="enableDrilling" value="true" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+						<Class name="bool" field="drillingTrackStreams" value="false" type="{A0CA880C-AFE4-43CB-926C-59AC48496112}"/>
+					</Class>
+				</Class>
+			</Class>
+		</Class>
+	</Class>
+</ObjectStream>
+

@@ -1,0 +1,9 @@
+{
+    "description": "Configuration for LRV",
+    "visual_studio_name": "LRV",
+    "comment" : "",
+    "game_projects" : "LRV",
+
+    "modules" : [
+    ]
+}

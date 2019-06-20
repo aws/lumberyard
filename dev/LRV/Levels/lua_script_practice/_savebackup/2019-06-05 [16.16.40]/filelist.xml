@@ -1,0 +1,6 @@
+<download name="lua_script_practice" type="Map">
+ <index src="filelist.xml" dest="filelist.xml"/>
+ <files>
+  <file src="level.pak" dest="level.pak" size="39909" md5="1d6727685f3ab75e318a4f22de26ff6f"/>
+ </files>
+</download>

@@ -792,6 +792,7 @@ namespace AzFramework
                         // as soon as possible, before we call these below notification functions, because they might result in our own functions
                         // that search this list being called again.
                         iter = m_queuedSliceInstantiations.erase(iter);
+						bool bIsIterEnd = iter == m_queuedSliceInstantiations.end();
                         // --------------------------- do not refer to 'instantiating' after the above call, it has been destroyed ------------
                         
                         bool isSliceInstantiated = false;
@@ -812,6 +813,12 @@ namespace AzFramework
                                 SliceInstantiationResultBus::Event(ticket, &SliceInstantiationResultBus::Events::OnSliceInstantiated, m_instantiatingAssetId, instance);
 
                                 isSliceInstantiated = true;
+
+								if (bIsIterEnd && iter != m_queuedSliceInstantiations.end())
+								{
+									//Items added into the queue while we were iterating on it so we'll reset the iterator at the beginning in case the asset is already ready
+									iter = m_queuedSliceInstantiations.begin();
+								}
                             }
                             else
                             {

@@ -74,13 +74,13 @@ function LRV_Anim:OnReleased(floatValue)
 	self:HandleInputValue(floatValue)
 end
 
-function LRV_Anim:PlayAnimation()
+-- function LRV_Anim:PlayAnimation()
 	
-	Debug.Log("move in Play Animation: ".. self.move)
-	-- AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "Speed", self.move);
-	--AnimGraphCompnentRequestBus.Event.SetNamedParameterFloat(self.entityId, "Turn", self.turn)
+-- 	Debug.Log("move in Play Animation: ".. self.move)
+-- 	-- AnimGraphComponentRequestBus.Event.SetNamedParameterFloat(self.entityId, "Speed", self.move);
+-- 	--AnimGraphCompnentRequestBus.Event.SetNamedParameterFloat(self.entityId, "Turn", self.turn)
 
-end
+-- end
 
 function LRV_Anim:OnTick(deltaTime, timePoint)
 	if(deltaTime > 0) then

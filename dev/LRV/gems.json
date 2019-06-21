@@ -56,6 +56,12 @@
             "_comment": "LegacyGameInterface"
         },
         {
+            "Path": "Gems/ScriptEvents",
+            "Uuid": "32d8ba21703e4bbbb08487366e48dd69",
+            "Version": "0.1.0",
+            "_comment": "ScriptEvents"
+        },
+        {
             "Path": "Gems/CryLegacy",
             "Uuid": "352fef7706634c92814c587e84d7165a",
             "Version": "0.1.0",
@@ -130,7 +136,7 @@
         {
             "Path": "Gems/CloudGemFramework/v1",
             "Uuid": "6fc787a982184217a5a553ca24676cfa",
-            "Version": "1.1.3",
+            "Version": "1.1.4",
             "_comment": "CloudGemFramework"
         },
         {
@@ -191,12 +197,6 @@
             "Path": "LRV/Gem",
             "Uuid": "bc1961c4b12e4494a6d022b84023d4e7",
             "Version": "0.1.0"
-        },
-        {
-            "Path": "Gems/MultiplayerCharacter",
-            "Uuid": "bf1664d886584cbab6f0ac7c97356bf6",
-            "Version": "0.1.0",
-            "_comment": "MultiplayerCharacter"
         },
         {
             "Path": "Gems/ChatPlay",

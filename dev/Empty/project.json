@@ -1,0 +1,21 @@
+{
+    "project_name": "Empty",
+    "product_name": "Empty",
+    "executable_name": "EmptyLauncher",
+    "modules" : [],
+    "project_id": "{B4CB4B76-CE8B-4A2D-BF42-BC80648602B4}",
+
+    "android_settings" : {
+        "package_name" : "com.lumberyard.yourgame",
+        "version_number" : 1,
+        "version_name" : "1.0.0.0",
+        "orientation" : "landscape"
+    },
+
+    "durango_settings" : {
+    },
+
+    "orbis_settings": {
+    }
+
+}

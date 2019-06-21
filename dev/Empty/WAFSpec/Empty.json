@@ -1,0 +1,9 @@
+{
+    "description": "Configuration for Empty",
+    "visual_studio_name": "Empty",
+    "comment" : "",
+    "game_projects" : "Empty",
+
+    "modules" : [
+    ]
+}

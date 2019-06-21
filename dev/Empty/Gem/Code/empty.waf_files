@@ -1,0 +1,12 @@
+{
+    "auto": {
+        "Include": [
+            "Include/Empty/EmptyBus.h"
+        ],
+        "Source": [
+            "Source/EmptyModule.cpp",
+            "Source/EmptySystemComponent.cpp",
+            "Source/EmptySystemComponent.h"
+        ]
+    }
+}

@@ -8133,3 +8133,35 @@ IHWMouseCursor* CD3D9Renderer::GetIHWMouseCursor()
 
 #endif
 
+void CD3D9Renderer::DebugCull(void * colorData, int width, int height, int wordsperpixel)
+{
+#ifndef _RELEASE
+    assert(wordsperpixel == 4);
+
+    if (!IsEditorMode())
+    {
+        return;
+    }
+
+    // this texture is never released
+    static CTexture* sptexDebugCull = CTexture::CreateTextureObject("$DebugCull", 0, 0, 1, eTT_2D, FT_DONT_RELEASE | FT_NOMIPS | FT_USAGE_DYNAMIC, eTF_R32G32B32A32F);
+
+    if (!CTexture::IsTextureExist(sptexDebugCull))
+    {
+        sptexDebugCull->Create2DTexture(width, height, 1,
+            FT_DONT_RELEASE | FT_NOMIPS | FT_USAGE_DYNAMIC,
+            0, eTF_R32G32B32A32F, eTF_R32G32B32A32F);
+    }
+
+    if (CTexture::IsTextureExist(sptexDebugCull))
+    {
+        STALL_PROFILER("update subresource")
+            CDeviceTexture * pDevTex = sptexDebugCull->GetDevTexture();
+        pDevTex->UploadFromStagingResource(0, [=](void* pData, uint32 rowPitch, uint32 slicePitch)
+        {
+            cryMemcpy(pData, colorData, width * height * wordsperpixel * sizeof(f32));
+            return true;
+        });
+    }
+#endif // _RELEASE
+}

@@ -2371,6 +2371,8 @@ struct IRenderer
 
     virtual int GetRecursionLevel() = 0;
 
+    virtual void DebugCull(void * colorData, int width, int height, int bytesperpixel) = 0;
+
     virtual int GetIntegerConfigurationValue(const char* varName, int defaultValue) = 0;
     virtual float GetFloatConfigurationValue(const char* varName, float defaultValue) = 0;
     virtual bool GetBooleanConfigurationValue(const char* varName, bool defaultValue) = 0;

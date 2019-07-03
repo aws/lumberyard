@@ -2062,7 +2062,7 @@ void CGameEngine::Update()
             }
 
             CCamera& cam = gEnv->pSystem->GetViewCamera();
-            cam.SetFrustum(width, height, pRenderViewport->GetFOV(), cam.GetNearPlane(), cam.GetFarPlane(), cam.GetPixelAspectRatio());
+            cam.SetFrustum(width, height, cam.GetFov(), cam.GetNearPlane(), cam.GetFarPlane(), cam.GetPixelAspectRatio());
         }
 
         if (gEnv->pGame && gEnv->pGame->GetIGameFramework())

@@ -534,24 +534,31 @@ namespace AzFramework
     //=========================================================================
     void EntityContext::CancelSliceInstantiation(const SliceInstantiationTicket& ticket)
     {
-        auto iter = AZStd::find_if(m_queuedSliceInstantiations.begin(), m_queuedSliceInstantiations.end(),
-            [ticket](const InstantiatingSliceInfo& instantiating)
-            {
-                return instantiating.m_ticket == ticket;
-            });
+		AZStd::function<void()> cancelSliceInstantiationCallback =
+			[this, ticket]()
+		{
+	        auto iter = AZStd::find_if(m_queuedSliceInstantiations.begin(), m_queuedSliceInstantiations.end(),
+	            [ticket](const InstantiatingSliceInfo& instantiating)
+	            {
+	                return instantiating.m_ticket == ticket;
+	            });
+	
+	        if (iter != m_queuedSliceInstantiations.end())
+	        {
+	            const AZ::Data::AssetId assetId = iter->m_asset.GetId();
+	
+	            // Erase ticket, but stay connected to AssetBus in case asset is used by multiple tickets.
+	            m_queuedSliceInstantiations.erase(iter);
+	            iter = m_queuedSliceInstantiations.end(); // clear the iterator so that code inserted after this point to operate on iter will raise issues.
+	
+	            DispatchOnSliceInstantiationFailed(ticket, assetId, true);
+	        }
+		};
 
-        if (iter != m_queuedSliceInstantiations.end())
-        {
-            const AZ::Data::AssetId assetId = iter->m_asset.GetId();
-
-            // Erase ticket, but stay connected to AssetBus in case asset is used by multiple tickets.
-            m_queuedSliceInstantiations.erase(iter);
-            iter = m_queuedSliceInstantiations.end(); // clear the iterator so that code inserted after this point to operate on iter will raise issues.
-
-            // No need to queue this notification.
-            // (It's queued in other circumstances, to avoid holding the AssetBus lock any longer than necessary)
-            DispatchOnSliceInstantiationFailed(ticket, assetId, true);
-        }
+		//Queuing the cancellation request to Tickbus to avoid invalidating iterator while processing the OnAssetReady's callback
+		//If this call is not queued and a slice instantiation is canceled while processing OnAssetReady callaback AND that is just so happens 
+		//that the iterator is pointing to the asset being canceled, then the iterator is invalid and will cause a freeze while endlessly incrementing and comparing to m_queuedSliceInstantiations.end()
+		AZ::TickBus::QueueFunction(cancelSliceInstantiationCallback);
     }
 
     //=========================================================================
